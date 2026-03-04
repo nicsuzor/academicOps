@@ -12,100 +12,30 @@ description: Process for collaboratively developing task specifications before i
 
 **Purpose**: Collaboratively develop a complete task specification using TASK-SPEC-TEMPLATE.md before implementation begins.
 
+**Detailed procedures and criteria**: See **[[spec-development-details]]**.
+
 **Steps**:
 
-1. **Identify automation target**
-   - User describes manual process causing pain
-   - Or: Agent observes repeated manual work and suggests automation
-   - Confirm this is actual pain point worth automating
-
-1. **Create specification document**
-   - Copy `$AOPS/aops-core/skills/framework/SPEC-TEMPLATE.md` to working location
-   - Name: `$AOPS/specs/[descriptive-name].md`
-   - This is a collaborative working document
-
-1. **Fill Problem Statement section (collaborative)**
-   - **Agent asks**: "What manual work are we automating?"
-   - **Agent asks**: "Why does this matter?" (time saved, quality gains)
-   - **Agent asks**: "Who benefits and how?"
-   - Write clear, specific answers
-
-1. **Define Acceptance Criteria (collaborative, USER-OWNED)**
-   - **CRITICAL**: These criteria define "done" and are user-owned (agents cannot modify them)
-   - **Before writing criteria**: Consult [[skills/qa/references/qa-planning.md]] — write qualitative dimensions (questions requiring judgment) anchored to user stories, not binary checklists. Define what excellent and poor look like for each dimension.
-   - **Agent writes**: Persona paragraph — inhabit the user's situation when they encounter this feature (cognitive/emotional state, constraints, what success feels like)
-   - **Agent asks**: "How will we know this automation succeeded?" — frame answers as qualitative dimensions, not pass/fail checks
-   - **Agent asks**: "What would indicate this implementation is WRONG?"
-   - **Agent asks**: "What quality threshold is acceptable?" — describe the spectrum from excellent to poor
-   - Write 3-5 qualitative acceptance criteria with quality spectra (per QA Planning guidance)
-   - Write 2-3 failure modes that indicate wrong implementation
-   - Write regression checks (binary guards against breakage, separate from qualitative acceptance)
-   - **Agent confirms**: "Regression checks will be implemented as automated tests. Qualitative criteria will be evaluated narratively. Agents cannot modify these criteria."
-
-1. **Scope the work (collaborative)**
-   - **Agent proposes**: Initial scope based on problem statement
-   - **Agent asks**: "What's explicitly out of scope?"
-   - Keep scope minimal and focused
-   - Define clear boundaries
-   - **Agent asks**: "Does this feel like one focused task?"
-
-1. **Identify dependencies**
-   - **Agent checks**: What infrastructure must exist first?
-   - **Agent checks**: What data is required?
-   - **Agent asks**: "What happens if dependencies are missing?"
-   - Document error handling (fail-fast, no silent failures)
-
-1. **Design integration test (collaborative, CRITICAL)**
-   - **CRITICAL**: Tests IMPLEMENT acceptance criteria from step 5, not new criteria
-   - **Agent proposes**: Test approach that validates EACH acceptance criterion
-   - Map each test to specific acceptance criterion: "Test 1 validates criterion #1"
-   - Walk through: Setup → Execute → Validate → Cleanup
-   - **Agent asks**: "How do we prove EACH acceptance criterion is met?"
-   - **Agent asks**: "How do we detect EACH failure mode?"
-   - Write concrete test steps before any implementation
-   - Test must be designed to fail initially
-   - **Verify**: Every acceptance criterion has corresponding test
-
-1. **Plan implementation approach**
-   - **Agent proposes**: High-level technical design
-   - Identify components and data flow
-   - Justify technology choices
-   - **Agent asks**: "What could go wrong?" (failure modes)
-   - Document error handling strategy
-
-1. **Assess effort and risk**
-   - **Agent estimates**: Time required for each phase
-   - Identify risks and mitigations
-   - **Agent asks**: "Are we confident in this estimate?"
-   - Flag any open questions that need resolution
-
-1. **Review and refine**
-   - **Agent reads back**: Complete specification summary
-   - **Agent asks**: "Does this feel right? Anything missing?"
-   - Iterate on any unclear or incomplete sections
-
-1. **Finalize and submit for bazaar review**
-   - Move completed spec to `$AOPS/specs/` (AUTHORITATIVE location)
-   - Create a feature branch and commit the spec
-   - Open a GitHub PR for bazaar review (see [[specs/pr-process.md]])
-   - Include task ID references in the PR description (see [[skills/framework/workflows/05-feature-development.md#GitHub Integration]])
-   - Record the PR URL in the task body via `mcp__pkb__append(id="task-id", content="PR: [url]", section="Log")`
-   - Bazaar reviews the spec (Gatekeeper, Custodiet, QA, human)
-   - After approval and merge, specification is the contract for implementation
-   - Ready to proceed with workflow 01 (Design New Component)
+1. **Identify automation target**: Confirm a manual process worth automating.
+2. **Create specification document**: Copy `SPEC-TEMPLATE.md` to `specs/[name].md`.
+3. **Fill Problem Statement section**: Collaborative answers on what, why, and for whom.
+4. **Define Acceptance Criteria**: User-owned criteria including persona paragraph and qualitative dimensions (see [[spec-development-details#Step 4]]).
+5. **Scope the work**: Propose initial scope and explicitly define boundaries.
+6. **Identify dependencies**: Check required infrastructure and data; document error handling.
+7. **Design integration test**: Tests that validate EACH acceptance criterion and detect EACH failure mode (see [[spec-development-details#Step 7]]).
+8. **Plan implementation approach**: Technical design with components, data flow, and risk assessment.
+9. **Assess effort and risk**: Time estimates and mitigation plans.
+10. **Review and refine**: Complete summary review with the user.
+11. **Finalize and submit for bazaar review**: Move completed spec to `specs/` and open a GitHub PR. After approval, proceed with implementation.
 
 **Output**:
 
-- Complete specification document ready for implementation
-- GitHub PR open for bazaar review with task ID references
-- User-owned acceptance criteria (observable, testable, cannot be modified by agents)
-- Integration tests that implement each acceptance criterion
-- Identified dependencies and risks
-- User confident in scope and approach
+- Complete specification document.
+- GitHub PR for review with task ID references.
+- User-owned acceptance criteria and integration test design.
 
 **Verification before proceeding**:
 
-- [ ] Acceptance criteria section complete (Success Tests + Failure Modes)
-- [ ] Each acceptance criterion is observable and testable
-- [ ] Integration test design maps to each criterion
-- [ ] User confirms these criteria define "done"
+- [ ] Acceptance criteria section complete.
+- [ ] Integration test design maps to each criterion.
+- [ ] User confirms these criteria define "done".

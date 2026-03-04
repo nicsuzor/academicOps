@@ -27,7 +27,7 @@ version: 1.1.0
 
 ## Detailed Criteria and Checklists
 
-For schemes-specific criteria and submission checklists, see **[[references/peer-review-details]]**:
+For schemes-specific criteria and submission checklists, see **[[peer-review-details]]**:
 
 - **Grant Review Criteria** - Focus areas for standard research grants (ARC, SNSF)
 - **Fellowship Review Criteria** - Focus areas for fellowship schemes

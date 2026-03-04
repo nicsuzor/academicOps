@@ -8,17 +8,12 @@
 
 ## Plan-First Development
 
-No coding or development work without an approved plan:
+No coding or development work without an approved plan. Sequence (NO EXCEPTIONS):
 
-- We operate under the highest standards of academic integrity with genuinely complex research
-- You never know in advance whether work will be more difficult than expected
-- **Required sequence** (NO EXCEPTIONS):
-  1. Create a plan for the proposed work
-  2. Define acceptance criteria
-  3. Get independent review of the plan (Plan agent or peer)
-  4. Get explicit approval from the academic lead before implementing
-- Agents CANNOT skip steps, claim work is "too simple to plan," or begin coding before approval
-- This applies to ALL development work, not just "complex" tasks
+1. Create a plan for the proposed work
+2. Define acceptance criteria
+3. Get independent review of the plan
+4. Get explicit approval from the academic lead before implementing
 
 ## Core Principles
 
@@ -26,19 +21,19 @@ This workflow enforces framework principles from [[AXIOMS.md]]:
 
 - **Plan-First**: Approved plan before any implementation
 - **Test-First**: Integration tests before implementation
-- **Mandatory Acceptance Testing**: Feature development MUST include acceptance testing as tracked TODO. Tests are contracts - fix the code, not the test.
+- **Mandatory Acceptance Testing**: Tests are contracts - fix the code, not the test.
 - **Explicit Success Criteria**: Define measurable outcomes upfront
-- **User-Centric Acceptance Criteria**: Acceptance criteria describe USER outcomes, not technical metrics. Never add performance criteria unless user requests.
+- **User-Centric Acceptance Criteria**: Describe USER outcomes, not technical metrics.
 - **Fail-Fast**: No partial success, fix or revert
 - **Single Source of Truth**: Reference, don't duplicate
 - **Experiment-Driven**: Document as formal experiments
-- **Real Data Fixtures**: Test fixtures use real captured data, not fabricated examples. E2E tests must use REAL framework prompts, not contrived examples.
-- **Side-Effects Over Response Text**: When verifying something IS ALLOWED (not blocked), response text is weak evidence. Use observable side-effects.
-- **Bias for Action**: Execute without unnecessary confirmation (per [[ACCOMMODATIONS.md]])
+- **Real Data Fixtures**: Test fixtures use real captured data.
+- **Side-Effects Over Response Text**: Use observable side-effects for verification.
+- **Bias for Action**: Execute without unnecessary confirmation.
 
 ## Overview
 
-Feature development follows eight phases:
+Feature development follows eight phases. See **[[feature-dev-details]]** for step-by-step procedures, templates, and integration guides.
 
 1. **User Story Capture** - Zero-friction idea intake
 2. **Requirements Analysis** - Transform into testable requirements
@@ -49,413 +44,33 @@ Feature development follows eight phases:
 7. **Validation** - Verify and decide keep/revert/iterate
 8. **Spec Synthesis & Bazaar Review** - Update spec, submit PR for review
 
-## Workflow
-
-### Phase 1: User Story Capture
-
-**Objective**: Capture the feature request with zero friction.
-
-**Actions**:
-
-1. Accept input in ANY format (fragments, voice-to-text, stream-of-consciousness)
-2. Use template `templates/user-story.md` to structure captured input
-3. Don't ask for clarification yet - capture first
-4. Create initial TodoWrite list with phases as items
-
-**Output**: Completed user story document with raw requirements.
-
-**ADHD Accommodation**: Zero-friction capture means accepting messy input without requesting polish.
-
-### Phase 2: Requirements Analysis
-
-**Objective**: Transform user story into clear, testable requirements with qualitative acceptance criteria.
-
-**Actions**:
-
-1. Extract functional requirements from user story
-2. Identify constraints and non-functional requirements
-3. **Inhabit the persona**: Write a paragraph about the user's situation — cognitive/emotional state, constraints, what success feels like (see [[skills/qa/references/qa-planning.md]] Phase 1)
-4. **Design qualitative acceptance criteria**: Write dimensions requiring judgment, not binary checklists. For each dimension, describe what excellent and poor look like. Trace every criterion to a user story. (see [[skills/qa/references/qa-planning.md]] Phase 2)
-5. Clarify ambiguities NOW (ask user for specific decisions)
-6. Document in user story under "Requirements" and "Acceptance Criteria" sections
-
-**Critical Questions**:
-
-- What defines "done" for this feature? (answer as a quality spectrum, not a checklist)
-- How will we know it works correctly? (distinguish qualitative acceptance from regression checks)
-- What edge cases must be handled?
-- What should NOT be in scope?
-
-**Output**: User story enhanced with explicit requirements, qualitative acceptance criteria with quality spectra, and regression checks.
-
-**Fail-Fast**: If requirements conflict or are unclear after discussion, HALT - don't proceed with ambiguity.
-
-### Phase 3: Experiment Design
-
-**Objective**: Formalize feature as testable experiment.
-
-**Actions**:
-
-1. Use template `templates/experiment-plan.md`
-2. Write clear hypothesis (expected outcome of implementing feature)
-3. Define success criteria (from Phase 2)
-4. Specify scope boundaries (what's in/out)
-5. Identify control state (current behavior without feature)
-6. **Create task** (per AXIOM #28 - episodic content → tasks): `mcp__pkb__create_task(task_title="experiment: [feature-name]", project="aops", parent="aops-d109aeee", tags=["experiment"], body="[experiment plan content]")`
-
-**Experiment Tracking Required For**:
-
-- Features touching framework infrastructure
-- Significant new capabilities
-- Changes affecting multiple components
-- User explicitly requests formal experiment
-
-**Experiment Tracking Optional For**:
-
-- Small, isolated features
-- Project-specific functionality (may create issue in project repo instead)
-
-**Output**: Experiment plan document defining hypothesis, success criteria, and scope.
-
-### Phase 4: Test-First Design
-
-**Objective**: Write integration tests before writing feature code.
-
-**Actions**:
-
-1. Use template `templates/test-spec.md` to design tests
-2. Write actual integration test code that will validate success criteria
-3. Run test - MUST FAIL (proves test is testing correctly)
-4. Document test location and how to run it
-5. Commit test code (yes, failing tests are committed as part of TDD)
-
-**Test Requirements**:
-
-- Tests complete user-facing workflow end-to-end
-- Tests validate each success criterion
-- Tests check error conditions
-- Tests are executable and automated
-- Tests fail before feature exists, pass after feature complete
-
-**Test Location**:
-
-- Framework features: `aops-core/skills/framework/tests/`
-- Project features: Within project test directory
-- Cross-cutting features: Dedicated test directory with clear ownership
-
-**Output**: Executable integration test that currently fails.
-
-**Fail-Fast**: If you can't define how to test success criteria, go back to Phase 2.
-
-### Phase 5: Development Planning
-
-**Objective**: Break implementation into discrete, trackable steps.
-
-**Actions**:
-
-1. Use template `templates/dev-plan.md`
-2. Break feature into minimal implementation steps
-3. Identify dependencies between steps
-4. Estimate complexity/risk for each step
-5. Create detailed TodoWrite list with all steps
-6. Mark first step as in_progress
-
-**Planning Principles**:
-
-- Steps should be completable in single work session
-- Each step should be testable independently if possible
-- High-risk steps flagged for extra validation
-- No placeholders or TODOs in plan - specific actions only
-
-**Output**: Development plan with discrete, ordered steps.
-
-**ADHD Accommodation**: Visual progress tracking via todos provides at-a-glance status.
-
-### Phase 6: Execution
-
-**Objective**: Implement feature following plan with continuous validation.
-
-**Actions**:
-
-**For each development step**:
-
-1. Mark step as in_progress in TodoWrite
-2. Implement step following framework principles
-3. Run relevant tests (unit tests if applicable)
-4. Verify no regressions (run existing test suite)
-5. Mark step completed
-6. Move to next step
-
-**Continuous Validation**:
-
-- Run integration test after each major step
-- Check documentation integrity
-- Verify no bloat introduced
-- Confirm single source of truth maintained
-
-**During Implementation**:
-
-- Reference existing documentation, don't duplicate
-- Follow standard tools (per AXIOMS.md #9)
-- No workarounds or silent failures
-- If blocked, update experiment log and halt (don't work around)
-
-**Output**: Implemented feature with integration test passing.
-
-**Fail-Fast**:
-
-- Integration test fails → Stop, fix, or revert
-- Documentation conflicts → Stop, resolve
-- Bloat detected → Stop, refactor
-- No partial success - feature works completely or doesn't ship
-
-### Phase 7: Validation & Decision
-
-**Objective**: Verify against success criteria and decide keep/revert/iterate.
-
-**Actions**:
-
-**Validation Checklist**:
-
-1. Run complete integration test suite - ALL MUST PASS
-2. Verify each success criterion met with evidence
-3. Check documentation integrity (no conflicts, references resolve)
-4. Verify bloat check passes (file size limits)
-5. Confirm framework principles followed
-6. Review code for security issues (injection, XSS, etc.)
-
-   ```
-   description="Quick review: [feature-name]",
-   prompt="Quick sanity check: Implementation for [feature-name] against criteria: [criteria]. Check scope, missing requirements, obvious errors. Return: PROCEED | ESCALATE | HALT")
-   ```
-
-   ```
-   description="Detailed review: [feature-name]",
-   prompt="Review this implementation against the acceptance criteria: [criteria]. Verify tests actually pass and output is correct. Report any gaps.")
-   ```
-
-**Decision Matrix**:
-
-| Outcome                             | Action                                          |
-| ----------------------------------- | ----------------------------------------------- |
-| All criteria met + all tests pass   | **KEEP** - Commit and document success          |
-| Some criteria not met OR tests fail | **REVERT** - Remove feature, document why       |
-| Close to success with clear fix     | **ITERATE** - One more cycle with specific plan |
-
-**Revert Protocol**:
-
-- Remove all feature code
-- Keep integration tests (document as future requirement)
-- Update experiment log with failure analysis
-- No shame in reverting - fail-fast is a feature
-
-**Keep Protocol**:
-
-- Final commit with feature code
-- Update experiment log with success evidence
-- Mark all todos completed
-- Document lessons learned
-
-**Iterate Protocol**:
-
-- Define exactly what needs to change
-- Set limit (max 1 iteration)
-- If iteration fails, REVERT
-- Update experiment log with iteration notes
-
-**Output**: Feature committed (keep), removed (revert), or refined (iterate once).
-
-**Fail-Fast**: Never commit partial success. Better to revert and learn than ship broken features.
-
-### Phase 8: Spec Synthesis & Bazaar Review
-
-**Objective**: Update the authoritative spec and submit for review via GitHub PR.
-
-**Rationale**: Per [[AXIOMS]] #29, one spec per feature. Experiment tracking (tasks) is episodic; specs are timeless. After validation, merge implementation knowledge into the spec and submit for bazaar review (see [[specs/pr-process.md]]).
-
-**Actions**:
-
-1. **Find or create spec**: Check `$AOPS/specs/` for existing spec
-   - If exists: will update it
-   - If not: create from user story (Phase 1) + implementation decisions
-2. **Merge implementation content**: Design decisions, key functions, UX patterns
-3. **Strip temporal content**: Remove "what was built" narrative, dates, deliberation
-4. **Verify spec is timeless**: Reads as "how it works" not "how it was built"
-5. **Update spec index**: Ensure `specs/INDEX.md` lists the spec with correct status
-6. **Create branch and PR**: Commit spec and index update to a feature branch and open a GitHub PR for bazaar review. Include task ID references in the PR description (see GitHub Integration below).
-7. **Complete experiment task**: `mcp__pkb__complete_task(id="[task-id]")` with body noting "Synthesized to spec: [spec-name], PR: [url]"
-
-**TodoWrite items** (mandatory):
-
-```
-- [ ] Update spec with implementation details
-- [ ] Complete experiment task
-- [ ] Verify specs/INDEX.md index updated
-```
-
-**Output**: Updated timeless spec; experiment issue closed with link to spec.
-
-**Fail-Fast**: If spec and implementation doc describe different behaviors, HALT - resolve the discrepancy before proceeding.
-
 ## GitHub Integration
 
-Framework features go through bazaar review on GitHub (see [[specs/pr-process.md]]). This creates bidirectional links between the task system (PKB) and GitHub.
-
-### When to create a PR
-
-| Change type                          | PR required? | Rationale                                                             |
-| ------------------------------------ | ------------ | --------------------------------------------------------------------- |
-| New spec or spec amendment           | **Yes**      | Design decisions need bazaar review                                   |
-| Code implementation                  | **Yes**      | Standard code review                                                  |
-| Workflow/skill documentation changes | **Yes**      | Shared infrastructure                                                 |
-| Bug fix with no design decisions     | Optional     | Non-framework only; PR still required where branch protection applies |
-
-### Spec-first vs implementation-first
-
-**Spec-first** (when the design needs review before building):
-
-1. Write the spec in `specs/`
-2. Create branch, commit spec, open PR
-3. Bazaar reviews the design (Gatekeeper, Custodiet, QA, human reviewer)
-4. After approval, implement (may be a separate PR)
-
-**Implementation-first** (when the design emerges from building):
-
-1. Build and validate (Phases 1-7)
-2. Synthesize spec (Phase 8)
-3. Create branch with both implementation and spec, open PR
-
-### Task-GitHub linking conventions
-
-**In PR descriptions**, reference task IDs:
-
-```markdown
-Task: aops-focus-spec
-Epic: aops-focus-epic
-```
-
-**In task bodies**, record PR URLs:
-
-```python
-mcp__pkb__append(
-    id="task-id",
-    content="PR: https://github.com/.../pull/123",
-    section="Log"
-)
-```
-
-This enables traceability: from a task, find the PR; from a PR, find the task.
+Framework features go through bazaar review on GitHub (see [[specs/pr-process.md]]). This creates bidirectional links between the task system (PKB) and GitHub. See **[[feature-dev-details#GitHub Integration]]** for conventions.
 
 ## Templates
 
-All templates in `templates/` subdirectory:
-
-- [[templates/user-story.md]] - Capture feature request
-- [[templates/experiment-plan.md]] - Formalize as experiment
-- [[templates/test-spec.md]] - Design integration tests
-- [[templates/dev-plan.md]] - Plan implementation steps
-
-Templates follow single-source-of-truth principle by referencing framework docs rather than duplicating them.
+See **[[feature-dev-details#Templates]]** for links to all development templates.
 
 ## Progress Tracking
 
-Use TodoWrite at key points:
-
-**Initial setup** (Phase 1):
-
-```
-- Capture user story
-- Analyze requirements
-- Design experiment
-- Write integration tests
-- Plan development
-- Execute implementation
-- Validate and decide
-- Synthesize to spec
-```
-
-**Development phase** (Phase 5): Break into specific implementation steps per dev-plan.md.
-
-**Update status**:
-
-- Mark in_progress when starting phase/step
-- Mark completed immediately after finishing
-- Only ONE item in_progress at a time
+Use TodoWrite at key points (Phase 1 and Phase 5). See **[[feature-dev-details#Progress Tracking]]** for standard todo lists.
 
 ## Error Handling
 
-**When tests fail**:
+**Fail-Fast on all issues**:
 
-- HALT immediately
-- Do not rationalize failure
-- Do not work around
-- Fix or revert
-- Update experiment log
+- When tests fail: HALT, fix or revert.
+- When blocked on infrastructure: HALT, report issue.
+- When requirements unclear: Go back to Phase 2.
 
-**When blocked on infrastructure**:
-
-- Update experiment log with blocker
-- HALT - do not work around
-- Report infrastructure issue
-- Wait for fix, don't proceed
-
-**When requirements unclear**:
-
-- Go back to Phase 2
-- Get explicit clarification
-- Update user story
-- Don't guess or assume
-
-## Integration with Framework
-
-**This workflow produces**:
-
-- Experiment tracking via tasks (tag: `experiment`)
-- Integration tests in `aops-core/skills/framework/tests/` or project tests
-- Features following framework principles
-
-**This workflow enforces**:
-
-- All axioms from [[AXIOMS.md]]
-- Test-first development
-- Documentation integrity
-- Fail-fast behavior
-- Single source of truth
-
-**This workflow supports**:
-
-- ADHD accommodations from [[ACCOMMODATIONS.md]]
-- Zero-friction capture
-- Bias for action
-- Visual progress tracking
-- Clear phase separation
+See **[[feature-dev-details#Error Handling]]** for detailed protocols.
 
 ## Quick Reference
 
-**Starting feature development**:
+1. Invoke framework skill
+2. Capture story → Analyze requirements → Design experiment
+3. Write tests → Plan development → Implement feature
+4. Validate → Synthesize to spec → Open PR
 
-1. Invoke framework skill with feature request
-2. Capture story (Phase 1)
-3. Analyze requirements (Phase 2) - may ask clarifying questions
-4. Design experiment (Phase 3)
-5. Write tests (Phase 4) - should fail
-6. Plan development (Phase 5)
-7. Implement feature (Phase 6)
-8. Validate and decide (Phase 7)
-9. Synthesize to spec and open PR for bazaar review (Phase 8)
-
-**At each phase**:
-
-- Update TodoWrite status
-- Verify framework principles followed
-- Document in appropriate template
-- Move to next phase only when current complete
-
-**Remember**:
-
-- Test before code
-- Define success upfront
-- Fail-fast on problems
-- Reference, don't duplicate
-- Visual progress tracking
-- Bias for action
+**Remember**: Test before code. Define success upfront. Fail-fast. Reference, don't duplicate. Bias for action.

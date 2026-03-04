@@ -51,7 +51,7 @@ Epic: <epic-id>" && git push
 
 ## Detailed Procedures
 
-For procedures on following steps, see **[[references/handover-details]]**:
+For procedures on following steps, see **[[handover-details]]**:
 
 - **Quick Exit** - Protocol for sessions with no work done
 - **Step 3: Follow-up Tasks** - Procedure for task decomposition (MANDATORY: set `parent` for all new tasks)
@@ -62,7 +62,7 @@ For procedures on following steps, see **[[references/handover-details]]**:
 
 ## Step 5: Output Framework Reflection
 
-Output the reflection in exact AGENTS.md format (see **[[references/handover-details]]** for template):
+Output the reflection in exact AGENTS.md format (see **[[handover-details]]** for template):
 
 ```markdown
 ## Framework Reflection

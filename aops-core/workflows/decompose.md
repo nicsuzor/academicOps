@@ -27,7 +27,7 @@ version: 1.1.0
 
 ## Decompose Strategies and Patterns
 
-For common patterns and heuristics for task granularity, see **[[references/decomposition-patterns]]**:
+For common patterns and heuristics for task granularity, see **[[decomposition-patterns]]**:
 
 - **Temporal Patterns** - Sequencing, parallelism, and milestones
 - **Functional Patterns** - Layered and feature-based decomposition
