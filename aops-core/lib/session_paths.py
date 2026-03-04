@@ -13,12 +13,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 
-def get_claude_project_folder() -> str:
+def get_claude_project_folder(project_dir: str | Path | None = None) -> str:
     """Get Claude Code project folder name from project directory.
 
-    Uses CLAUDE_PROJECT_DIR env var if set (available during hook execution),
-    otherwise falls back to cwd. This is critical for plugin-based hooks that
-    run from the plugin cache directory rather than the project directory.
+    Uses project_dir if provided, otherwise CLAUDE_PROJECT_DIR env var,
+    otherwise falls back to cwd.
 
     Converts absolute path to sanitized folder name matching Claude Code's format:
     /home/user/.project -> -home-user-_project
@@ -30,14 +29,17 @@ def get_claude_project_folder() -> str:
     Returns:
         Project folder name with leading dash and sanitized characters
     """
-    # CLAUDE_PROJECT_DIR is set by Claude Code during hook execution
-    # and contains the absolute path to the project root
-    project_dir = os.environ.get("CLAUDE_PROJECT_DIR")
     if project_dir:
         project_path = Path(project_dir).resolve()
     else:
-        # Fallback for non-hook contexts (e.g., direct script execution)
-        project_path = Path.cwd().resolve()
+        # CLAUDE_PROJECT_DIR is set by Claude Code during hook execution
+        # and contains the absolute path to the project root
+        project_dir_env = os.environ.get("CLAUDE_PROJECT_DIR")
+        if project_dir_env:
+            project_path = Path(project_dir_env).resolve()
+        else:
+            # Fallback for non-hook contexts (e.g., direct script execution)
+            project_path = Path.cwd().resolve()
     # Match Claude Code path sanitization: '/' -> '-', '.' -> '_'
     return "-" + str(project_path)[1:].replace("/", "-").replace(".", "_")
 
@@ -208,7 +210,10 @@ def get_hook_log_path(
         return logs_dir / f"{date_compact}-{short_hash}-hooks.jsonl"
     else:
         # Claude: ~/.claude/projects/<project>/<date>-<shorthash>-hooks.jsonl
-        project_folder = get_claude_project_folder()
+        project_dir = None
+        if input_data and "cwd" in input_data:
+            project_dir = input_data["cwd"]
+        project_folder = get_claude_project_folder(project_dir)
         claude_projects_dir = Path.home() / ".claude" / "projects" / project_folder
         claude_projects_dir.mkdir(parents=True, exist_ok=True)
         return claude_projects_dir / f"{date_compact}-{short_hash}-hooks.jsonl"
@@ -260,8 +265,11 @@ def get_session_status_dir(session_id: str | None = None, input_data: dict | Non
         return gemini_tmp
 
     # 3. Claude Code session (or unknown) - derive path from cwd
-    # Same logic as session_env_setup.sh: ~/.claude/projects/-<cwd-with-dashes>/
-    project_folder = get_claude_project_folder()
+    project_dir = None
+    if input_data and "cwd" in input_data:
+        project_dir = input_data["cwd"]
+
+    project_folder = get_claude_project_folder(project_dir)
     status_dir = Path.home() / ".claude" / "projects" / project_folder
     status_dir.mkdir(parents=True, exist_ok=True)
     return status_dir
@@ -391,7 +399,10 @@ def get_gate_file_path(
             raise ValueError("Gemini session detected but no logs directory configured")
         return logs_dir / f"{date_compact}-{short_hash}-{gate}.md"
     else:
-        project_folder = get_claude_project_folder()
+        project_dir = None
+        if input_data and "cwd" in input_data:
+            project_dir = input_data["cwd"]
+        project_folder = get_claude_project_folder(project_dir)
         claude_projects_dir = Path.home() / ".claude" / "projects" / project_folder
         claude_projects_dir.mkdir(parents=True, exist_ok=True)
         return claude_projects_dir / f"{date_compact}-{short_hash}-{gate}.md"

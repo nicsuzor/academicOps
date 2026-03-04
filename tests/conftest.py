@@ -214,6 +214,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+
 from lib.paths import get_plugin_root as get_aops_root
 
 
@@ -559,8 +560,8 @@ def run_gemini_headless(
             "error": "gemini CLI not found in PATH - these tests require Gemini CLI installed",
         }
 
-    # Build command - use positional prompt with JSON output
-    cmd = ["gemini", prompt, "-o", "json"]
+    # Build command - use -p for headless mode with JSON output
+    cmd = ["gemini", "-p", prompt, "-o", "json"]
 
     if model:
         cmd.extend(["-m", model])
@@ -697,7 +698,7 @@ def gemini_headless():
     if not _gemini_cli_available():
         pytest.skip("gemini CLI not found in PATH - requires Gemini CLI installed")
 
-    return run_gemini_headless
+    return _make_failing_wrapper(run_gemini_headless)
 
 
 # --- Parameterized CLI fixture for cross-platform tests ---
@@ -723,11 +724,11 @@ def cli_headless(request):
     if platform == "claude":
         if not _claude_cli_available():
             pytest.skip("claude CLI not found in PATH")
-        return run_claude_headless, "claude"
+        return _make_failing_wrapper(run_claude_headless), "claude"
     else:
         if not _gemini_cli_available():
             pytest.skip("gemini CLI not found in PATH")
-        return run_gemini_headless, "gemini"
+        return _make_failing_wrapper(run_gemini_headless), "gemini"
 
 
 @pytest.fixture
@@ -1094,7 +1095,7 @@ def claude_headless_tracked():
     def _run_tracked(
         prompt: str,
         model: str = "haiku",
-        timeout_seconds: int = 120,
+        timeout_seconds: int = 180,
         permission_mode: str = "bypassPermissions",
         cwd: Path | None = None,
         fail_on_error: bool = True,
@@ -1135,7 +1136,6 @@ def claude_headless_tracked():
             plugin_dir_core,
             "--plugin-dir",
             plugin_dir_tools,
-            "--no-session-persistence",
         ]
 
         env = os.environ.copy()

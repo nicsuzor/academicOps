@@ -3787,7 +3787,11 @@ def render_task_graph_page():
         selected_layout = st.sidebar.radio(
             "Layout", layout_options, key="tg_layout", horizontal=True
         )
-        layout_mode = layout_map[selected_layout]
+        if selected_layout is None:
+            # Fallback for type safety, though radio should always return selection when options present
+            layout_mode = "force"
+        else:
+            layout_mode = layout_map.get(selected_layout, "force")
 
         # Action handler for bi-directional clicking
         action_event = render_embedded_graph(
@@ -4019,8 +4023,9 @@ def render_session_summary():
 # UNIFIED DASHBOARD - Single page: Graph + Project boxes
 # ============================================================================
 
-from lib.task_model import TaskStatus
 from task_manager_ui import render_task_editor
+
+from lib.task_model import TaskStatus
 
 
 @st.dialog("Edit Task")

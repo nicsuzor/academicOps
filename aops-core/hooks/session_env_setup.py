@@ -18,6 +18,7 @@ AOPS_CORE_DIR = HOOK_DIR.parent
 if str(AOPS_CORE_DIR) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE_DIR))
 
+from hooks.schemas import HookContext
 from lib.gate_model import GateResult, GateVerdict
 from lib.session_paths import (
     get_all_gate_file_paths,
@@ -26,8 +27,6 @@ from lib.session_paths import (
     get_session_status_dir,
 )
 from lib.session_state import SessionState
-
-from hooks.schemas import HookContext
 
 # Gate enforcement mode environment variables
 GATE_MODE_VARS = (
@@ -75,9 +74,17 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
 
     # Use precomputed short_hash from context
     short_hash = ctx.session_short_hash
-    hook_log_path = get_hook_log_path(ctx.session_id, ctx.raw_input)
-    state_file_path = get_session_file_path(ctx.session_id, input_data=ctx.raw_input)
-    status_dir = get_session_status_dir(ctx.session_id, ctx.raw_input)
+
+    # Reconstruct input_data with cwd for path resolution
+    input_data = (ctx.raw_input or {}).copy()
+    if ctx.cwd:
+        input_data["cwd"] = ctx.cwd
+    if ctx.transcript_path:
+        input_data["transcript_path"] = ctx.transcript_path
+
+    hook_log_path = get_hook_log_path(ctx.session_id, input_data)
+    state_file_path = get_session_file_path(ctx.session_id, input_data=input_data)
+    status_dir = get_session_status_dir(ctx.session_id, input_data)
 
     # Fail-fast: ensure state file can be written
     if not state_file_path.exists():

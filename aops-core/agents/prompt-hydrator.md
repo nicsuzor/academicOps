@@ -4,6 +4,7 @@ description: Transform terse prompts into execution plans with scope detection, 
 model: sonnet
 color: cyan
 tools:
+  - Read
   - read_file
   - mcp__pkb__search
   - mcp__pkb__create_task

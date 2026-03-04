@@ -32,12 +32,6 @@ if str(AOPS_CORE_DIR) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE_DIR))
 
 try:
-    from lib.gate_model import GateResult, GateVerdict
-    from lib.gates.registry import GateRegistry
-    from lib.hook_utils import is_subagent_session
-    from lib.session_paths import get_pid_session_map_path, get_session_short_hash
-    from lib.session_state import SessionState
-
     from hooks.gate_config import COMPLIANCE_SUBAGENT_TYPES, extract_subagent_type
     from hooks.schemas import (
         CanonicalHookOutput,
@@ -49,6 +43,11 @@ try:
         HookContext,
     )
     from hooks.unified_logger import log_event_to_session, log_hook_event
+    from lib.gate_model import GateResult, GateVerdict
+    from lib.gates.registry import GateRegistry
+    from lib.hook_utils import is_subagent_session
+    from lib.session_paths import get_pid_session_map_path, get_session_short_hash
+    from lib.session_state import SessionState
 except ImportError as e:
     # Fail fast if schemas missing
     print(f"CRITICAL: Failed to import: {e}", file=sys.stderr)
@@ -669,6 +668,14 @@ class HookRouter:
 
                 print(f"Gate '{gate.name}' failed: {e}", file=sys.stderr)
                 traceback.print_exc(file=sys.stderr)
+                # Log error to file for troubleshooting
+                with open("/tmp/cc_hooks_error.log", "a") as f:
+                    f.write(f"TS: {datetime.now().isoformat()}\n")
+                    f.write(f"Session: {ctx.session_id}\n")
+                    f.write(f"Gate: {gate.name}\n")
+                    f.write(f"Error: {e}\n")
+                    f.write(traceback.format_exc())
+                    f.write("-" * 40 + "\n")
 
         if messages or context_injections or final_verdict != GateVerdict.ALLOW:
             return GateResult(

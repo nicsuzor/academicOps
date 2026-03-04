@@ -74,6 +74,7 @@ def build_hydration_instruction(
     prompt: str,
     transcript_path: str | None = None,
     state: SessionState | None = None,
+    cwd: str | Path | None = None,
 ) -> str:
     """
     Build instruction for main agent to invoke prompt-hydrator.
@@ -85,6 +86,7 @@ def build_hydration_instruction(
         prompt: The user's original prompt
         transcript_path: Path to session transcript for context extraction
         state: Optional existing SessionState object
+        cwd: Current working directory of the session
 
     Returns:
         Short instruction string (<300 tokens) with temp file path
@@ -96,6 +98,8 @@ def build_hydration_instruction(
     input_data = {"session_id": session_id}
     if transcript_path:
         input_data["transcript_path"] = transcript_path
+    if cwd:
+        input_data["cwd"] = str(cwd)
 
     # Cleanup old temp files first
     cleanup_old_temp_files(input_data)

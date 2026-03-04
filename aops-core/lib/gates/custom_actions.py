@@ -86,6 +86,8 @@ def create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path:
     input_data = ctx.raw_input or {}
     if "session_id" not in input_data:
         input_data = {**input_data, "session_id": session_id}
+    if ctx.cwd:
+        input_data["cwd"] = ctx.cwd
     gate_path = get_gate_file_path(gate, session_id, input_data)
     gate_path.parent.mkdir(parents=True, exist_ok=True)
     gate_path.write_text(content, encoding="utf-8")
@@ -115,7 +117,7 @@ def execute_custom_action(
         transcript_path = ctx.transcript_path or ctx.raw_input.get("transcript_path")
 
         instruction = build_hydration_instruction(
-            ctx.session_id, prompt, transcript_path, state=session_state
+            ctx.session_id, prompt, transcript_path, state=session_state, cwd=ctx.cwd
         )
 
         temp_path = session_state.get_gate("hydration").metrics.get("temp_path")

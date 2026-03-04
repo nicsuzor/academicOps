@@ -1,4 +1,5 @@
 import json
+import os
 import re
 from functools import lru_cache
 from pathlib import Path
@@ -9,14 +10,28 @@ from pathlib import Path
 @lru_cache
 def get_plugin_root() -> Path:
     """Find the root of the plugin installation (where README.md/SKILLS.md live)."""
-    # Start from this file's directory: aops-core/lib/hydration/
+    # 1. Try env var if set
+    env_root = os.environ.get("AOPS_CORE_DIR")
+    if env_root:
+        return Path(env_root)
+
+    # 2. Start from this file's directory: aops-core/lib/hydration/
     current = Path(__file__).resolve().parent
     # Go up to aops-core/
     while current.name != "aops-core" and current.parent != current:
         current = current.parent
+
     if current.name == "aops-core":
         return current
-    # Fallback if structure is weird (e.g. tests)
+
+    # 3. Try to find aops-core/ in CWD or its parents (for tests)
+    cwd = Path.cwd()
+    for parent in [cwd] + list(cwd.parents):
+        core_dir = parent / "aops-core"
+        if core_dir.exists() and core_dir.is_dir():
+            return core_dir
+
+    # Fallback
     return Path.cwd()
 
 

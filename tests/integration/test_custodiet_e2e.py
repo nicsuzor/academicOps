@@ -20,8 +20,6 @@ from pathlib import Path
 
 import pytest
 
-from lib import hook_utils
-
 # Custodiet threshold from hooks/custodiet_gate.py
 TOOL_CALL_THRESHOLD = 5
 
@@ -31,19 +29,22 @@ SKIP_TOOLS = {"Read", "Glob", "Grep", "mcp__memory__retrieve_memory"}
 
 
 def get_audit_temp_dir() -> Path:
-    """Get the audit temp directory using shared logic."""
-    # Align with the new consolidated "hydrator" category
-    return hook_utils.get_hook_temp_dir("hydrator")
+    """Get the audit temp directory (now project-specific logs dir)."""
+    # Return home projects dir for finding any recent audit files
+    return Path.home() / ".claude" / "projects"
 
 
 def find_recent_audit_files(max_age_seconds: int = 300) -> list[Path]:
     """Find audit files created in the last N seconds."""
-    temp_dir = get_audit_temp_dir()
-    if not temp_dir.exists():
+    projects_dir = get_audit_temp_dir()
+    if not projects_dir.exists():
         return []
 
     cutoff = time.time() - max_age_seconds
-    return [f for f in temp_dir.glob("audit_*.md") if f.stat().st_mtime > cutoff]
+    # Look for dynamic custodiet audit files
+    return [
+        f for f in projects_dir.glob("**/202[4-9]*-*-custodiet.md") if f.stat().st_mtime > cutoff
+    ]
 
 
 @pytest.mark.slow
@@ -126,7 +127,8 @@ def test_custodiet_task_spawned(claude_headless_tracked) -> None:
     custodiet_calls = [
         call
         for call in tool_calls
-        if call["name"] == "Task" and call.get("input", {}).get("subagent_type") == "custodiet"
+        if call["name"] in ("Task", "Agent")
+        and call.get("input", {}).get("subagent_type") == "custodiet"
     ]
 
     # Count only non-skipped tools
@@ -143,7 +145,7 @@ def test_custodiet_task_spawned(claude_headless_tracked) -> None:
     custodiet_input = custodiet_calls[0].get("input", {})
     custodiet_prompt = custodiet_input.get("prompt", "")
 
-    assert "/hydrator/audit_" in custodiet_prompt, (
+    assert "-custodiet.md" in custodiet_prompt, (
         f"Custodiet prompt should reference temp file path. Got: {custodiet_prompt[:200]}..."
     )
 
@@ -179,7 +181,8 @@ def test_custodiet_subagent_file_access(claude_headless_tracked) -> None:
     custodiet_calls = [
         call
         for call in tool_calls
-        if call["name"] == "Task" and call.get("input", {}).get("subagent_type") == "custodiet"
+        if call["name"] in ("Task", "Agent")
+        and call.get("input", {}).get("subagent_type") == "custodiet"
     ]
 
     if not custodiet_calls:
@@ -360,7 +363,7 @@ class TestCustodietDemo:
         print(f"\nCounted tool calls: {counted} (threshold: {TOOL_CALL_THRESHOLD})")
 
         # Find Task calls
-        task_calls = [c for c in tool_calls if c["name"] == "Task"]
+        task_calls = [c for c in tool_calls if c["name"] in ("Task", "Agent")]
         print(f"\n--- TASK CALLS ({len(task_calls)}) ---")
         for i, call in enumerate(task_calls):
             task_input = call.get("input", {})

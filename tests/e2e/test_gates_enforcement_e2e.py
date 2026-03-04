@@ -72,7 +72,7 @@ class TestHydrationGateE2E:
             f"[{platform}] Expected task manager output, got: {output_text[:300]}"
         )
 
-    def test_hydration_allows_safe_git_bash(self, cli_headless):
+    def test_hydration_allows_safe_git_bash(self, cli_headless, aops_root):
         """
         GIVEN: A fresh session with no hydration
         WHEN: Agent runs safe git command (git status)
@@ -84,8 +84,8 @@ class TestHydrationGateE2E:
             "Run 'git status' using Bash. Just run that one command and show me the output.",
             model="haiku" if platform == "claude" else None,
             fail_on_error=False,
+            cwd=aops_root,
         )
-
         output_text = json.dumps(result.get("result", {}))
 
         git_output_indicators = [

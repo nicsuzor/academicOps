@@ -16,12 +16,12 @@ from datetime import UTC, datetime
 from typing import Any
 
 import psutil
-from lib.gate_model import GateResult
-from lib.session_paths import get_hook_log_path
-from lib.session_state import SessionState
 
 from hooks.internal_models import HookLogEntry
 from hooks.schemas import CanonicalHookOutput, HookContext
+from lib.gate_model import GateResult
+from lib.session_paths import get_hook_log_path
+from lib.session_state import SessionState
 
 # Set up logging
 logging.basicConfig(
@@ -50,7 +50,12 @@ def log_hook_event(
 
     try:
         # Build per-session hook log path
-        input_data = ctx.raw_input
+        input_data = (ctx.raw_input or {}).copy()
+        if ctx.cwd:
+            input_data["cwd"] = ctx.cwd
+        if ctx.transcript_path:
+            input_data["transcript_path"] = ctx.transcript_path
+
         date = input_data.get("date")
         if date is None:
             date = datetime.now(UTC).strftime("%Y-%m-%d")

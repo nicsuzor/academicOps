@@ -336,7 +336,7 @@ SPAWN_TOOLS: dict[str, tuple[tuple[str, ...], bool]] = {
 # Default enforcement modes for gates. Can be overridden by environment variables.
 
 GATE_MODE_DEFAULTS: dict[str, str] = {
-    "hydration": "warn",
+    "hydration": "block",
     "custodiet": "block",
     "qa": "block",
     "handover": "warn",

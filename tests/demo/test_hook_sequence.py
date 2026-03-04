@@ -22,22 +22,28 @@ import pytest
 
 def find_recent_audit_files(max_age_seconds: int = 300) -> list[Path]:
     """Find audit files created in the last N seconds."""
-    temp_dir = Path("/tmp/claude-compliance")
-    if not temp_dir.exists():
+    projects_dir = Path.home() / ".claude" / "projects"
+    if not projects_dir.exists():
         return []
 
     cutoff = time.time() - max_age_seconds
-    return [f for f in temp_dir.glob("audit_*.md") if f.stat().st_mtime > cutoff]
+    # Look for dynamic custodiet audit files
+    return [
+        f for f in projects_dir.glob("**/202[4-9]*-*-custodiet.md") if f.stat().st_mtime > cutoff
+    ]
 
 
 def find_recent_hydrator_files(max_age_seconds: int = 300) -> list[Path]:
     """Find hydrator context files created in the last N seconds."""
-    temp_dir = Path("/tmp/claude-hydrator")
-    if not temp_dir.exists():
+    projects_dir = Path.home() / ".claude" / "projects"
+    if not projects_dir.exists():
         return []
 
     cutoff = time.time() - max_age_seconds
-    return [f for f in temp_dir.glob("hydrate_*.md") if f.stat().st_mtime > cutoff]
+    # Look for dynamic hydration files
+    return [
+        f for f in projects_dir.glob("**/202[4-9]*-*-hydration.md") if f.stat().st_mtime > cutoff
+    ]
 
 
 @pytest.mark.demo
