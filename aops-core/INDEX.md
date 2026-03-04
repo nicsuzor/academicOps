@@ -16,19 +16,20 @@ Master index for aops-core. Sub-indices provide focused context for different co
 
 ## Sub-Indices
 
-| Index                | Purpose                                | When to Load                     |
-| -------------------- | -------------------------------------- | -------------------------------- |
-| [[SKILLS.md]]        | Skill invocation patterns and triggers | Skill-related prompts, routing   |
-| [[WORKFLOWS.md]]     | Workflow decision tree and routing     | All prompts (workflow selection) |
-| [[indices/FILES.md]] | Key files by category                  | File discovery, navigation       |
-| [[RULES.md]]         | AXIOMS and HEURISTICS quick reference  | Governance, principle lookup     |
-| [[indices/PATHS.md]] | Resolved framework paths               | Path resolution                  |
+| Index                 | Purpose                                 | When to Load                     |
+| --------------------- | --------------------------------------- | -------------------------------- |
+| [[SKILLS.md]]         | Skill invocation patterns and triggers  | Skill-related prompts, routing   |
+| [[WORKFLOWS.md]]      | Workflow decision tree (Global + Local) | All prompts (workflow selection) |
+| [[.agent/workflows/]] | Project-specific procedures             | Project-scoped work              |
+| [[indices/FILES.md]]  | Key files by category                   | File discovery, navigation       |
+| [[RULES.md]]          | AXIOMS and HEURISTICS quick reference   | Governance, principle lookup     |
+| [[indices/PATHS.md]]  | Resolved framework paths                | Path resolution                  |
 
 ## Index Loading Protocol
 
 The hydrator **always** receives:
 
-- WORKFLOWS.md (workflow selection)
+- WORKFLOWS.md (workflow selection, including project .agent/workflows/)
 - SKILLS.md (skill recognition)
 - AXIOMS.md (principles - full content)
 - HEURISTICS.md (guidelines - full content)
