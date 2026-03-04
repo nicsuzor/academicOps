@@ -2877,6 +2877,11 @@
         "logged_at": "2026-03-02T01:03:55+00:00",
         "event_hash": "1a2ffcce12a487ca",
         "extracted_at": "2026-03-04T04:44:33.474077+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -2885,7 +2890,7 @@
       "tool_name": "Agent",
       "tool_input": {
         "description": "Explore polecat claiming mechanism",
-        "prompt": "I need to understand the current polecat task claiming and GitHub issue integration. Specifically:\n\n1. How does `claim_next_task()` work in polecat/manager.py? What does it use for atomic claiming?\n2. Is there any GitHub Issue creation or labeling for polecat tasks currently?\n3. How does the existing swarm (`polecat/swarm.py`) coordinate workers?\n4. What is the task status lifecycle? (active → in_progress → merge_ready → done)\n5. Are there any existing GitHub labels or issue templates used for polecat dispatch?\n\nRead the key files: polecat/manager.py (claim_next_task section), polecat/swarm.py, polecat/cli.py (swarm command).",
+        "prompt": "I need to understand the current polecat task claiming and GitHub issue integration. Specifically:\n\n1. How does `claim_next_task()` work in polecat/manager.py? What does it use for atomic claiming?\n2. Is there any GitHub Issue creation or labeling for polecat tasks currently?\n3. How does the existing swarm (`polecat/swarm.py`) coordinate workers?\n4. What is the task status lifecycle? (active \u2192 in_progress \u2192 merge_ready \u2192 done)\n5. Are there any existing GitHub labels or issue templates used for polecat dispatch?\n\nRead the key files: polecat/manager.py (claim_next_task section), polecat/swarm.py, polecat/cli.py (swarm command).",
         "subagent_type": "Explore"
       },
       "subagent_type": null,
@@ -2900,6 +2905,11 @@
         "logged_at": "2026-03-02T01:16:39+00:00",
         "event_hash": "4d3bb19f2f3426a1",
         "extracted_at": "2026-03-04T04:44:33.474193+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -2924,6 +2934,11 @@
         "logged_at": "2026-03-04T04:18:50+00:00",
         "event_hash": "2f4c81244bbab983",
         "extracted_at": "2026-03-04T04:44:33.703913+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -2948,6 +2963,11 @@
         "logged_at": "2026-03-04T04:28:30+00:00",
         "event_hash": "615749246e15d381",
         "extracted_at": "2026-03-04T04:44:33.703986+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -2971,6 +2991,11 @@
         "logged_at": "2026-03-04T03:08:44+00:00",
         "event_hash": "3d18ac24d21a60ee",
         "extracted_at": "2026-03-04T04:44:33.850401+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -2994,6 +3019,11 @@
         "logged_at": "2026-03-04T03:08:45+00:00",
         "event_hash": "e7b0e6f09383c5d7",
         "extracted_at": "2026-03-04T04:44:33.850443+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3017,6 +3047,11 @@
         "logged_at": "2026-03-04T03:08:46+00:00",
         "event_hash": "7bd158cba76976c5",
         "extracted_at": "2026-03-04T04:44:33.850484+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3040,6 +3075,11 @@
         "logged_at": "2026-03-04T03:08:48+00:00",
         "event_hash": "c783d528138d929f",
         "extracted_at": "2026-03-04T04:44:33.850524+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3063,6 +3103,11 @@
         "logged_at": "2026-03-04T03:08:50+00:00",
         "event_hash": "d1bd5198f0ac4e39",
         "extracted_at": "2026-03-04T04:44:33.850565+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3086,6 +3131,11 @@
         "logged_at": "2026-03-04T03:08:50+00:00",
         "event_hash": "47a5fc8d72ac0a03",
         "extracted_at": "2026-03-04T04:44:33.850606+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3111,6 +3161,11 @@
         "logged_at": "2026-03-04T03:08:55+00:00",
         "event_hash": "375690c6ca2cb352",
         "extracted_at": "2026-03-04T04:44:33.850646+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3133,6 +3188,11 @@
         "logged_at": "2026-03-04T03:08:55+00:00",
         "event_hash": "cf07f6eebbcb42e1",
         "extracted_at": "2026-03-04T04:44:33.850684+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3157,6 +3217,11 @@
         "logged_at": "2026-03-04T03:09:38+00:00",
         "event_hash": "d3f7eaac3ef111f9",
         "extracted_at": "2026-03-04T04:44:33.850724+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3179,6 +3244,11 @@
         "logged_at": "2026-03-04T03:09:42+00:00",
         "event_hash": "a8f554df9f799b0a",
         "extracted_at": "2026-03-04T04:44:33.850766+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3201,6 +3271,11 @@
         "logged_at": "2026-03-04T03:09:42+00:00",
         "event_hash": "792f422e2e2ce532",
         "extracted_at": "2026-03-04T04:44:33.850804+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3223,6 +3298,11 @@
         "logged_at": "2026-03-04T03:09:43+00:00",
         "event_hash": "7e72054025657eb5",
         "extracted_at": "2026-03-04T04:44:33.850844+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3245,6 +3325,11 @@
         "logged_at": "2026-03-04T03:09:43+00:00",
         "event_hash": "3fffcaed5170a2cd",
         "extracted_at": "2026-03-04T04:44:33.850883+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3267,6 +3352,11 @@
         "logged_at": "2026-03-04T03:09:43+00:00",
         "event_hash": "1f101bf26c74b8bc",
         "extracted_at": "2026-03-04T04:44:33.850924+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3289,6 +3379,11 @@
         "logged_at": "2026-03-04T03:11:10+00:00",
         "event_hash": "59c39c26dc739dfc",
         "extracted_at": "2026-03-04T04:44:33.850979+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3311,6 +3406,11 @@
         "logged_at": "2026-03-04T03:11:10+00:00",
         "event_hash": "d64697152afb965d",
         "extracted_at": "2026-03-04T04:44:33.851017+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3333,6 +3433,11 @@
         "logged_at": "2026-03-04T03:11:12+00:00",
         "event_hash": "1f1f96c0288d47fa",
         "extracted_at": "2026-03-04T04:44:33.851054+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3355,6 +3460,11 @@
         "logged_at": "2026-03-04T03:11:12+00:00",
         "event_hash": "4c9b3bae4ae0d7de",
         "extracted_at": "2026-03-04T04:44:33.851091+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3377,6 +3487,11 @@
         "logged_at": "2026-03-04T03:11:12+00:00",
         "event_hash": "6773a5414def4cc0",
         "extracted_at": "2026-03-04T04:44:33.851129+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3401,6 +3516,11 @@
         "logged_at": "2026-03-04T03:18:00+00:00",
         "event_hash": "a459e6caa7b81d11",
         "extracted_at": "2026-03-04T04:44:33.851199+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3423,6 +3543,11 @@
         "logged_at": "2026-03-04T03:20:49+00:00",
         "event_hash": "53595554e7d5a892",
         "extracted_at": "2026-03-04T04:44:33.851314+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3447,6 +3572,11 @@
         "logged_at": "2026-03-04T03:36:26+00:00",
         "event_hash": "d86da1e7350d3c43",
         "extracted_at": "2026-03-04T04:44:33.851365+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3469,7 +3599,7 @@
               },
               {
                 "label": "Session Summary regression only",
-                "description": "Fix the NoneType bug first — it's the only actual regression"
+                "description": "Fix the NoneType bug first \u2014 it's the only actual regression"
               }
             ],
             "multiSelect": false
@@ -3496,7 +3626,7 @@
       "tool_name": "Agent",
       "tool_input": {
         "description": "Explore dashboard code",
-        "prompt": "I need to understand the Overwhelm Dashboard Streamlit app to fix 3 issues:\n\n1. **Session Summary view regression** — 40+ NoneType errors when loading session summaries. Error: `'NoneType' object has no attribute 'upper'` and `'NoneType' object has no attribute 'get'`\n2. **Synthesis fallback missing** — When synthesis.json doesn't exist, the Focus Synthesis section silently disappears. Need a fallback message.\n3. **Section ordering** — Above-the-fold shows Spotlight Epic first instead of 'What's running?', 'What's dropped?', 'What needs me?'\n\nFind:\n- The main Streamlit app file (likely in lib/overwhelm/ or similar)\n- The function that renders session summaries and where the NoneType error occurs\n- The function that renders synthesis and how it handles missing synthesis.json\n- The section rendering order in the main dashboard view\n- The spec file for the dashboard (specs/overwhelm-dashboard.md)\n\nSearch thoroughly — check lib/overwhelm/, lib/, and any Streamlit-related files. Also check how session summary JSON files are structured (look at /opt/nic/.aops/sessions/summaries/ for examples).",
+        "prompt": "I need to understand the Overwhelm Dashboard Streamlit app to fix 3 issues:\n\n1. **Session Summary view regression** \u2014 40+ NoneType errors when loading session summaries. Error: `'NoneType' object has no attribute 'upper'` and `'NoneType' object has no attribute 'get'`\n2. **Synthesis fallback missing** \u2014 When synthesis.json doesn't exist, the Focus Synthesis section silently disappears. Need a fallback message.\n3. **Section ordering** \u2014 Above-the-fold shows Spotlight Epic first instead of 'What's running?', 'What's dropped?', 'What needs me?'\n\nFind:\n- The main Streamlit app file (likely in lib/overwhelm/ or similar)\n- The function that renders session summaries and where the NoneType error occurs\n- The function that renders synthesis and how it handles missing synthesis.json\n- The section rendering order in the main dashboard view\n- The spec file for the dashboard (specs/overwhelm-dashboard.md)\n\nSearch thoroughly \u2014 check lib/overwhelm/, lib/, and any Streamlit-related files. Also check how session summary JSON files are structured (look at /opt/nic/.aops/sessions/summaries/ for examples).",
         "subagent_type": "Explore"
       },
       "subagent_type": "Explore",
@@ -3511,6 +3641,11 @@
         "logged_at": "2026-03-04T04:04:33+00:00",
         "event_hash": "e771c943e9c4a5bf",
         "extracted_at": "2026-03-04T04:44:33.851498+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3535,6 +3670,11 @@
         "logged_at": "2026-03-04T04:07:19+00:00",
         "event_hash": "170a7d1a1c15649f",
         "extracted_at": "2026-03-04T04:44:33.851561+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3558,6 +3698,11 @@
         "logged_at": "2026-03-04T02:51:30+00:00",
         "event_hash": "79878115661ddb3b",
         "extracted_at": "2026-03-04T04:44:33.868693+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3581,6 +3726,11 @@
         "logged_at": "2026-03-01T08:51:05+00:00",
         "event_hash": "352508ab4d2f7f26",
         "extracted_at": "2026-03-04T04:44:33.885956+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3604,6 +3754,11 @@
         "logged_at": "2026-03-01T08:53:24+00:00",
         "event_hash": "d060a5584344ae87",
         "extracted_at": "2026-03-04T04:44:33.886064+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3626,6 +3781,11 @@
         "logged_at": "2026-03-01T08:53:33+00:00",
         "event_hash": "329e92ee1be34d77",
         "extracted_at": "2026-03-04T04:44:33.886102+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3648,6 +3808,11 @@
         "logged_at": "2026-03-01T08:54:57+00:00",
         "event_hash": "43b1d7a79e85c0bd",
         "extracted_at": "2026-03-04T04:44:33.886149+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3672,6 +3837,11 @@
         "logged_at": "2026-03-03T04:56:36+00:00",
         "event_hash": "70f3c9955b627d22",
         "extracted_at": "2026-03-04T04:44:33.958378+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3695,6 +3865,11 @@
         "logged_at": "2026-03-03T04:57:19+00:00",
         "event_hash": "95b58f5b859befb5",
         "extracted_at": "2026-03-04T04:44:33.958433+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3718,6 +3893,11 @@
         "logged_at": "2026-03-03T04:57:21+00:00",
         "event_hash": "c57ac555db81bab0",
         "extracted_at": "2026-03-04T04:44:33.958478+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3741,6 +3921,11 @@
         "logged_at": "2026-03-03T04:57:23+00:00",
         "event_hash": "9f270163b505d177",
         "extracted_at": "2026-03-04T04:44:33.958529+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3764,6 +3949,11 @@
         "logged_at": "2026-03-03T04:57:25+00:00",
         "event_hash": "8fc28abca649c704",
         "extracted_at": "2026-03-04T04:44:33.958575+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3786,6 +3976,11 @@
         "logged_at": "2026-03-03T04:57:28+00:00",
         "event_hash": "7201bb5dacf5583f",
         "extracted_at": "2026-03-04T04:44:33.958618+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3810,6 +4005,11 @@
         "logged_at": "2026-03-03T04:57:44+00:00",
         "event_hash": "cba629b99bcfb9da",
         "extracted_at": "2026-03-04T04:44:33.958670+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3832,6 +4032,11 @@
         "logged_at": "2026-03-03T04:58:29+00:00",
         "event_hash": "a064c6574066bb39",
         "extracted_at": "2026-03-04T04:44:33.958744+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3854,6 +4059,11 @@
         "logged_at": "2026-03-03T04:58:30+00:00",
         "event_hash": "e7dbe3d515e3d719",
         "extracted_at": "2026-03-04T04:44:33.958798+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3878,6 +4088,11 @@
         "logged_at": "2026-03-03T04:58:52+00:00",
         "event_hash": "9eb61255030900e3",
         "extracted_at": "2026-03-04T04:44:33.958852+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3900,6 +4115,11 @@
         "logged_at": "2026-03-03T04:59:06+00:00",
         "event_hash": "f8d404b6913028f7",
         "extracted_at": "2026-03-04T04:44:33.958899+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3922,6 +4142,11 @@
         "logged_at": "2026-03-03T04:59:07+00:00",
         "event_hash": "8f75137ce7866b6d",
         "extracted_at": "2026-03-04T04:44:33.958943+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3944,6 +4169,11 @@
         "logged_at": "2026-03-03T05:00:10+00:00",
         "event_hash": "72f4a3ab7ff7740b",
         "extracted_at": "2026-03-04T04:44:33.959013+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3966,6 +4196,11 @@
         "logged_at": "2026-03-03T05:00:11+00:00",
         "event_hash": "98a24811cbb27485",
         "extracted_at": "2026-03-04T04:44:33.959044+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -3990,6 +4225,11 @@
         "logged_at": "2026-03-03T05:00:32+00:00",
         "event_hash": "f30be12710a8b20b",
         "extracted_at": "2026-03-04T04:44:33.959086+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -4012,6 +4252,11 @@
         "logged_at": "2026-03-03T05:01:45+00:00",
         "event_hash": "6ac5432a08ab4663",
         "extracted_at": "2026-03-04T04:44:33.959137+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     }
   ],
@@ -7198,7 +7443,7 @@
       "hook_event": "PreToolUse",
       "tool_name": "Bash",
       "tool_input": {
-        "command": "gh issue comment 676 --repo nicsuzor/academicOps --body \"$(cat <<'EOF'\n## Reworked Proposal: Swarm Supervision via Job Board (Bazaar Model)\n\nResponding to concerns #1 and #2 from the strategic review. This reworks the governor proposal around the distributed/bazaar architecture aligned with VISION.md.\n\n### Core Reframe\n\n**Governor model** (rejected): A local Python process dispatches workers one by one, monitors their health, runs LLM review after each cycle. Local JSONL state, subprocess dispatch, in-process circuit breaker.\n\n**Bazaar model** (proposed): A supervisor **publishes tasks to a job board** (GitHub Issues with labels). Workers anywhere claim and execute. The supervisor **controls the queue** (open/close) and **monitors outcomes** (PR pipeline). No active dispatch. No local state.\n\nWe don't care who runs things — we just manage the process.\n\n---\n\n### Architecture: GitHub Issues as the Job Board\n\n```\nSUPERVISOR                          WORKERS (anywhere)\n                                    \n1. Select ready tasks from PKB      \n2. Create/label GitHub Issues  ──→  GitHub Issues (swarm:available)\n3. Set queue depth (N at a time)     \n                                    4. Worker claims (self-assign, label → swarm:claimed)\n                                    5. Worker executes (branch, code, PR)\n6. Monitor PR pipeline outcomes ←── 6. PR triggers gatekeeper/custodiet/QA\n7. Queue control:                    \n   - Publish more if succeeding      \n   - Close queue if failing          \n   - Halt on systemic failure        \n```\n\n---\n\n### What Changes vs. the Governor\n\n| Aspect | Governor (rejected) | Swarm Supervisor (proposed) |\n|--------|--------------------|-----------------------------|\n| Dispatch | Local subprocess calls | Publish to GitHub Issues |\n| Claiming | fcntl file locks (local) | GitHub issue self-assignment (global) |\n| State | Local JSONL files | GitHub Issues + labels (durable, distributed) |\n| Health review | Local `claude -p` call | PR pipeline outcomes (already built) |\n| Circuit breaker | In-process Python counter | Supervisor checks recent PR failure rate |\n| Worker location | Must be local | Anywhere (local polecat, Jules, Copilot, remote Claude) |\n| Resumability | Manual `--resume` flag | Inherent (GitHub state persists) |\n| Queue control | Kill the process | Remove `swarm:available` labels |\n\n---\n\n### Label Protocol\n\n| Label | Meaning |\n|-------|---------|\n| `swarm:available` | Task is on the board, any worker can claim |\n| `swarm:claimed` | Worker has taken this task |\n| `swarm:pr-filed` | PR submitted, in review pipeline |\n| `swarm:done` | Merged and complete |\n| `swarm:failed` | Worker or pipeline failed, needs attention |\n\n---\n\n### Supervisor Commands\n\n```bash\n# Open a swarm session: publish N ready tasks to the board\npolecat swarm open -p aops -n 10\n\n# Check status: what's available, claimed, in-review, done, failed\npolecat swarm status\n\n# Publish more tasks to the board\npolecat swarm fill -n 5\n\n# Close the queue: remove swarm:available from unclaimed issues\npolecat swarm close\n\n# Halt: close queue + flag all claimed issues for review\npolecat swarm halt --reason \"pipeline instability\"\n```\n\n---\n\n### Queue Control (the circuit breaker, simplified)\n\nThe supervisor doesn't need to run continuously. It's invoked periodically (cron, manual, or by a human checking in):\n\n1. `polecat swarm status` — shows: N available, M claimed, K in-review, J done, F failed\n2. If `F / (J + F) > threshold` → suggest closing the queue\n3. Human or automation decides: `polecat swarm fill` or `polecat swarm close`\n\nFor fully autonomous operation (later): a cron job runs `polecat swarm fill` every N minutes, with a built-in check: if recent failure rate > 30%, stop filling and alert.\n\n---\n\n### Worker Protocol\n\nLocal workers still use `polecat run`, but claiming moves from fcntl to GitHub:\n\n1. Worker checks for `swarm:available` issues: `gh issue list --label swarm:available`\n2. Claims by self-assigning + relabeling: `gh issue edit <N> --add-label swarm:claimed --remove-label swarm:available --add-assignee @me`\n3. Executes work in worktree (existing polecat flow)\n4. Submits PR referencing the issue\n5. Relabels: `swarm:pr-filed`\n\nJules and Copilot follow the same protocol natively — they already work via GitHub issue assignment.\n\n---\n\n### What the Supervisor Does NOT Do\n\n- ❌ Dispatch workers (workers self-select from the board)\n- ❌ Monitor worker health (PR pipeline handles quality)\n- ❌ Run LLM review locally (PR pipeline already does this)\n- ❌ Track which worker is running where (bazaar: we don't care)\n- ❌ Manage worker processes (workers are autonomous)\n\n---\n\n### Fail-Fast (Concern #1 — accepted)\n\nNo fallbacks. If `polecat swarm open` can't create GitHub Issues → halt with error. If `polecat swarm status` can't query the API → halt with error. The supervisor is a thin CLI over GitHub state — if GitHub is down, everything stops, which is correct.\n\nThe mechanical-fallback-for-LLM-review problem disappears entirely: there IS no local LLM review. The PR pipeline handles quality review asynchronously.\n\n---\n\n### Implementation Plan\n\n**Phase 1**: `swarm open`, `swarm status`, `swarm close` — publish PKB tasks as GitHub Issues with labels, query status, close queue. Local polecats claim via GitHub instead of fcntl.\n\n**Phase 2**: `swarm fill` with autonomous queue replenishment + failure-rate circuit breaker. Cron-friendly.\n\n**Phase 3**: Jules and Copilot workers consuming from the same board. No code change needed on the supervisor side — they just claim `swarm:available` issues.\n\n---\n\n### Key Advantages\n\n1. **Aligned with VISION.md**: GitHub IS the coordination layer\n2. **No local process required**: Supervisor is invoked, not running. No JSONL, no resume logic\n3. **Workers truly independent**: Any agent, anywhere, claims from the board\n4. **Existing infrastructure**: PR pipeline already handles quality review — no duplicate LLM review step\n5. **Simple queue control**: Publishing = labeling issues. Closing = removing labels. No process to kill\n6. **Jules/Copilot native**: They already work via GitHub Issues. Zero integration work for them to join the swarm\n\n---\n\n_This rework addresses Concern #1 (fail-fast — accepted, no fallbacks) and Concern #2 (strategic alignment — resolved by moving coordination to GitHub). Concern #3 (round-robin feedback) is deferred: the bazaar model doesn't prescribe worker selection, so runner performance evaluation becomes a separate concern for Phase 2+._\nEOF\n)\" 2>&1",
+        "command": "gh issue comment 676 --repo nicsuzor/academicOps --body \"$(cat <<'EOF'\n## Reworked Proposal: Swarm Supervision via Job Board (Bazaar Model)\n\nResponding to concerns #1 and #2 from the strategic review. This reworks the governor proposal around the distributed/bazaar architecture aligned with VISION.md.\n\n### Core Reframe\n\n**Governor model** (rejected): A local Python process dispatches workers one by one, monitors their health, runs LLM review after each cycle. Local JSONL state, subprocess dispatch, in-process circuit breaker.\n\n**Bazaar model** (proposed): A supervisor **publishes tasks to a job board** (GitHub Issues with labels). Workers anywhere claim and execute. The supervisor **controls the queue** (open/close) and **monitors outcomes** (PR pipeline). No active dispatch. No local state.\n\nWe don't care who runs things \u2014 we just manage the process.\n\n---\n\n### Architecture: GitHub Issues as the Job Board\n\n```\nSUPERVISOR                          WORKERS (anywhere)\n                                    \n1. Select ready tasks from PKB      \n2. Create/label GitHub Issues  \u2500\u2500\u2192  GitHub Issues (swarm:available)\n3. Set queue depth (N at a time)     \n                                    4. Worker claims (self-assign, label \u2192 swarm:claimed)\n                                    5. Worker executes (branch, code, PR)\n6. Monitor PR pipeline outcomes \u2190\u2500\u2500 6. PR triggers gatekeeper/custodiet/QA\n7. Queue control:                    \n   - Publish more if succeeding      \n   - Close queue if failing          \n   - Halt on systemic failure        \n```\n\n---\n\n### What Changes vs. the Governor\n\n| Aspect | Governor (rejected) | Swarm Supervisor (proposed) |\n|--------|--------------------|-----------------------------|\n| Dispatch | Local subprocess calls | Publish to GitHub Issues |\n| Claiming | fcntl file locks (local) | GitHub issue self-assignment (global) |\n| State | Local JSONL files | GitHub Issues + labels (durable, distributed) |\n| Health review | Local `claude -p` call | PR pipeline outcomes (already built) |\n| Circuit breaker | In-process Python counter | Supervisor checks recent PR failure rate |\n| Worker location | Must be local | Anywhere (local polecat, Jules, Copilot, remote Claude) |\n| Resumability | Manual `--resume` flag | Inherent (GitHub state persists) |\n| Queue control | Kill the process | Remove `swarm:available` labels |\n\n---\n\n### Label Protocol\n\n| Label | Meaning |\n|-------|---------|\n| `swarm:available` | Task is on the board, any worker can claim |\n| `swarm:claimed` | Worker has taken this task |\n| `swarm:pr-filed` | PR submitted, in review pipeline |\n| `swarm:done` | Merged and complete |\n| `swarm:failed` | Worker or pipeline failed, needs attention |\n\n---\n\n### Supervisor Commands\n\n```bash\n# Open a swarm session: publish N ready tasks to the board\npolecat swarm open -p aops -n 10\n\n# Check status: what's available, claimed, in-review, done, failed\npolecat swarm status\n\n# Publish more tasks to the board\npolecat swarm fill -n 5\n\n# Close the queue: remove swarm:available from unclaimed issues\npolecat swarm close\n\n# Halt: close queue + flag all claimed issues for review\npolecat swarm halt --reason \"pipeline instability\"\n```\n\n---\n\n### Queue Control (the circuit breaker, simplified)\n\nThe supervisor doesn't need to run continuously. It's invoked periodically (cron, manual, or by a human checking in):\n\n1. `polecat swarm status` \u2014 shows: N available, M claimed, K in-review, J done, F failed\n2. If `F / (J + F) > threshold` \u2192 suggest closing the queue\n3. Human or automation decides: `polecat swarm fill` or `polecat swarm close`\n\nFor fully autonomous operation (later): a cron job runs `polecat swarm fill` every N minutes, with a built-in check: if recent failure rate > 30%, stop filling and alert.\n\n---\n\n### Worker Protocol\n\nLocal workers still use `polecat run`, but claiming moves from fcntl to GitHub:\n\n1. Worker checks for `swarm:available` issues: `gh issue list --label swarm:available`\n2. Claims by self-assigning + relabeling: `gh issue edit <N> --add-label swarm:claimed --remove-label swarm:available --add-assignee @me`\n3. Executes work in worktree (existing polecat flow)\n4. Submits PR referencing the issue\n5. Relabels: `swarm:pr-filed`\n\nJules and Copilot follow the same protocol natively \u2014 they already work via GitHub issue assignment.\n\n---\n\n### What the Supervisor Does NOT Do\n\n- \u274c Dispatch workers (workers self-select from the board)\n- \u274c Monitor worker health (PR pipeline handles quality)\n- \u274c Run LLM review locally (PR pipeline already does this)\n- \u274c Track which worker is running where (bazaar: we don't care)\n- \u274c Manage worker processes (workers are autonomous)\n\n---\n\n### Fail-Fast (Concern #1 \u2014 accepted)\n\nNo fallbacks. If `polecat swarm open` can't create GitHub Issues \u2192 halt with error. If `polecat swarm status` can't query the API \u2192 halt with error. The supervisor is a thin CLI over GitHub state \u2014 if GitHub is down, everything stops, which is correct.\n\nThe mechanical-fallback-for-LLM-review problem disappears entirely: there IS no local LLM review. The PR pipeline handles quality review asynchronously.\n\n---\n\n### Implementation Plan\n\n**Phase 1**: `swarm open`, `swarm status`, `swarm close` \u2014 publish PKB tasks as GitHub Issues with labels, query status, close queue. Local polecats claim via GitHub instead of fcntl.\n\n**Phase 2**: `swarm fill` with autonomous queue replenishment + failure-rate circuit breaker. Cron-friendly.\n\n**Phase 3**: Jules and Copilot workers consuming from the same board. No code change needed on the supervisor side \u2014 they just claim `swarm:available` issues.\n\n---\n\n### Key Advantages\n\n1. **Aligned with VISION.md**: GitHub IS the coordination layer\n2. **No local process required**: Supervisor is invoked, not running. No JSONL, no resume logic\n3. **Workers truly independent**: Any agent, anywhere, claims from the board\n4. **Existing infrastructure**: PR pipeline already handles quality review \u2014 no duplicate LLM review step\n5. **Simple queue control**: Publishing = labeling issues. Closing = removing labels. No process to kill\n6. **Jules/Copilot native**: They already work via GitHub Issues. Zero integration work for them to join the swarm\n\n---\n\n_This rework addresses Concern #1 (fail-fast \u2014 accepted, no fallbacks) and Concern #2 (strategic alignment \u2014 resolved by moving coordination to GitHub). Concern #3 (round-robin feedback) is deferred: the bazaar model doesn't prescribe worker selection, so runner performance evaluation becomes a separate concern for Phase 2+._\nEOF\n)\" 2>&1",
         "description": "Post reworked proposal comment on issue 676"
       },
       "subagent_type": null,
@@ -8097,7 +8342,7 @@
       "tool_name": "Task",
       "tool_input": {
         "description": "Butler: status review after merges",
-        "prompt": "The user just completed a significant session where they:\n\n1. Fixed the PR review pipeline (loop detector, skip notices, honest notifications)\n2. Added workflow_dispatch triggers to all 11 workflows\n3. Added review dismissal instructions to CLAUDE.md and merge-prep.md\n4. Merged all 3 open PRs (579, 575, 576) to main\n5. Fixed a broken test on main (CUSTODIET_MODE → CUSTODIET_GATE_MODE)\n6. Enabled all merge methods (merge commit, squash, rebase) on both nicsuzor/academicOps and qut-dmrc/buttermilk\n\nThe user is asking: \"where are we now after merging those in?\" — they want a status overview of the framework state, what's on main, any open PRs or issues, and what might need attention next. Please check the current state and provide a clear summary.",
+        "prompt": "The user just completed a significant session where they:\n\n1. Fixed the PR review pipeline (loop detector, skip notices, honest notifications)\n2. Added workflow_dispatch triggers to all 11 workflows\n3. Added review dismissal instructions to CLAUDE.md and merge-prep.md\n4. Merged all 3 open PRs (579, 575, 576) to main\n5. Fixed a broken test on main (CUSTODIET_MODE \u2192 CUSTODIET_GATE_MODE)\n6. Enabled all merge methods (merge commit, squash, rebase) on both nicsuzor/academicOps and qut-dmrc/buttermilk\n\nThe user is asking: \"where are we now after merging those in?\" \u2014 they want a status overview of the framework state, what's on main, any open PRs or issues, and what might need attention next. Please check the current state and provide a clear summary.",
         "subagent_type": "aops-core:butler"
       },
       "subagent_type": "aops-core:butler",
@@ -8313,6 +8558,11 @@
         "logged_at": "2026-02-24T00:20:03+00:00",
         "event_hash": "3e11ccee4cb3731f",
         "extracted_at": "2026-03-04T04:44:33.608752+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -8336,6 +8586,11 @@
         "logged_at": "2026-02-24T00:20:04+00:00",
         "event_hash": "c3e6e62b575ed3b2",
         "extracted_at": "2026-03-04T04:44:33.608793+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -8359,6 +8614,11 @@
         "logged_at": "2026-02-24T00:20:06+00:00",
         "event_hash": "8ee8d8ca9bc5184a",
         "extracted_at": "2026-03-04T04:44:33.608835+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -8382,6 +8642,11 @@
         "logged_at": "2026-02-24T00:20:07+00:00",
         "event_hash": "1c8ccca58fce41e5",
         "extracted_at": "2026-03-04T04:44:33.608903+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -8404,6 +8669,11 @@
         "logged_at": "2026-02-24T00:20:12+00:00",
         "event_hash": "6be57ccbf47dc52e",
         "extracted_at": "2026-03-04T04:44:33.608938+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -8426,6 +8696,11 @@
         "logged_at": "2026-02-24T00:20:12+00:00",
         "event_hash": "3abc4b694982454b",
         "extracted_at": "2026-03-04T04:44:33.608972+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -8448,6 +8723,11 @@
         "logged_at": "2026-02-24T00:22:30+00:00",
         "event_hash": "bfaad717278ff813",
         "extracted_at": "2026-03-04T04:44:33.609011+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -8470,6 +8750,11 @@
         "logged_at": "2026-02-24T00:23:35+00:00",
         "event_hash": "12e194851523b182",
         "extracted_at": "2026-03-04T04:44:33.609058+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -8493,6 +8778,11 @@
         "logged_at": "2026-02-24T00:23:38+00:00",
         "event_hash": "7a16d14594c81b73",
         "extracted_at": "2026-03-04T04:44:33.609094+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -8516,6 +8806,11 @@
         "logged_at": "2026-02-24T00:23:40+00:00",
         "event_hash": "1e592ac4e01cc6aa",
         "extracted_at": "2026-03-04T04:44:33.609131+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -8539,6 +8834,11 @@
         "logged_at": "2026-02-24T00:23:42+00:00",
         "event_hash": "04d7014a8cf63ad3",
         "extracted_at": "2026-03-04T04:44:33.609176+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -8561,6 +8861,11 @@
         "logged_at": "2026-02-24T00:29:47+00:00",
         "event_hash": "bd675e62868cee3c",
         "extracted_at": "2026-03-04T04:44:33.609320+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -8583,6 +8888,11 @@
         "logged_at": "2026-02-24T00:29:48+00:00",
         "event_hash": "ede54d57e6a3211f",
         "extracted_at": "2026-03-04T04:44:33.609359+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -8606,6 +8916,11 @@
         "logged_at": "2026-02-24T00:29:50+00:00",
         "event_hash": "90c86f7e5978ce28",
         "extracted_at": "2026-03-04T04:44:33.609395+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -8628,6 +8943,11 @@
         "logged_at": "2026-02-24T00:29:50+00:00",
         "event_hash": "8ac2c292130787a6",
         "extracted_at": "2026-03-04T04:44:33.609427+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -8651,6 +8971,11 @@
         "logged_at": "2026-02-24T00:44:10+00:00",
         "event_hash": "bedaf37e42c0d6ae",
         "extracted_at": "2026-03-04T04:44:33.609604+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -8673,6 +8998,11 @@
         "logged_at": "2026-02-24T00:44:12+00:00",
         "event_hash": "abb273239f760416",
         "extracted_at": "2026-03-04T04:44:33.609641+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -8696,6 +9026,11 @@
         "logged_at": "2026-02-24T00:45:57+00:00",
         "event_hash": "4ca8e172e20c9496",
         "extracted_at": "2026-03-04T04:44:33.609685+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -8718,6 +9053,11 @@
         "logged_at": "2026-02-24T00:55:51+00:00",
         "event_hash": "a9c39b6f5ec16dc5",
         "extracted_at": "2026-03-04T04:44:33.609739+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -8741,6 +9081,11 @@
         "logged_at": "2026-02-24T00:55:52+00:00",
         "event_hash": "920196f8fcf0f3d9",
         "extracted_at": "2026-03-04T04:44:33.609773+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -8764,6 +9109,11 @@
         "logged_at": "2026-02-24T00:55:53+00:00",
         "event_hash": "157b383e5c5cf5c4",
         "extracted_at": "2026-03-04T04:44:33.609807+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -8787,6 +9137,11 @@
         "logged_at": "2026-02-24T00:55:53+00:00",
         "event_hash": "722abb0edb686973",
         "extracted_at": "2026-03-04T04:44:33.609846+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -8810,6 +9165,11 @@
         "logged_at": "2026-02-22T03:26:36+00:00",
         "event_hash": "12ed63bb19f06c69",
         "extracted_at": "2026-03-04T04:44:33.743735+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -8833,6 +9193,11 @@
         "logged_at": "2026-02-22T03:26:38+00:00",
         "event_hash": "421f6cfb33376748",
         "extracted_at": "2026-03-04T04:44:33.743779+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -8856,6 +9221,11 @@
         "logged_at": "2026-02-22T03:26:40+00:00",
         "event_hash": "4c4c26141740d024",
         "extracted_at": "2026-03-04T04:44:33.743837+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -8878,6 +9248,11 @@
         "logged_at": "2026-02-22T03:26:44+00:00",
         "event_hash": "e92109f428c75451",
         "extracted_at": "2026-03-04T04:44:33.743908+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -8900,6 +9275,11 @@
         "logged_at": "2026-02-22T03:27:21+00:00",
         "event_hash": "f55c93744c614094",
         "extracted_at": "2026-03-04T04:44:33.743953+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -8922,6 +9302,11 @@
         "logged_at": "2026-02-22T03:27:21+00:00",
         "event_hash": "57c75838a2246303",
         "extracted_at": "2026-03-04T04:44:33.743985+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -8944,6 +9329,11 @@
         "logged_at": "2026-02-22T03:27:22+00:00",
         "event_hash": "018ceed20f654e3b",
         "extracted_at": "2026-03-04T04:44:33.744016+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -8966,6 +9356,11 @@
         "logged_at": "2026-02-22T03:27:46+00:00",
         "event_hash": "ae8c720ad19255fd",
         "extracted_at": "2026-03-04T04:44:33.744048+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -9031,6 +9426,11 @@
         "logged_at": "2026-03-03T05:16:01+00:00",
         "event_hash": "49474ca130e2c552",
         "extracted_at": "2026-03-04T04:44:34.889460+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -9055,6 +9455,11 @@
         "logged_at": "2026-03-03T05:17:34+00:00",
         "event_hash": "8ed28ca8b9273f07",
         "extracted_at": "2026-03-04T04:44:34.889507+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -9063,7 +9468,7 @@
       "tool_name": "Agent",
       "tool_input": {
         "description": "Explore graph loading pipeline",
-        "prompt": "I need to understand the graph loading pipeline in the overwhelm dashboard. Specifically:\n\n1. In `/opt/nic/academicOps/lib/overwhelm/dashboard.py`, find ALL places where graph data is loaded — both the legacy `load_graph_data()` function and the new `discover_graph_files()` / `load_and_merge_graph_files()` path. I need every call site, not just the definitions.\n\n2. Check how `load_graph_data()` works — what does it load from `graph.json`? Does it already contain per-layout data inside nodes?\n\n3. In the D3 component at `/opt/nic/academicOps/lib/overwhelm/d3_component/index.html`, how does it consume layouts? Does it expect `node.layouts[name]` format?\n\n4. Check `load_task_graph()` function too — is that a separate path?\n\n5. Look at lines 3662-3700 in dashboard.py for the render_task_graph_page function to see exactly how the fallback works.\n\nThe goal is to understand what needs to change to remove the legacy `load_graph_data()` fallback and make everything go through `discover_graph_files()` + `load_and_merge_graph_files()`. But since `aops graph` doesn't produce per-layout JSONs (only per-layout .dot files and one combined graph.json), we need to understand what format graph.json already has.",
+        "prompt": "I need to understand the graph loading pipeline in the overwhelm dashboard. Specifically:\n\n1. In `/opt/nic/academicOps/lib/overwhelm/dashboard.py`, find ALL places where graph data is loaded \u2014 both the legacy `load_graph_data()` function and the new `discover_graph_files()` / `load_and_merge_graph_files()` path. I need every call site, not just the definitions.\n\n2. Check how `load_graph_data()` works \u2014 what does it load from `graph.json`? Does it already contain per-layout data inside nodes?\n\n3. In the D3 component at `/opt/nic/academicOps/lib/overwhelm/d3_component/index.html`, how does it consume layouts? Does it expect `node.layouts[name]` format?\n\n4. Check `load_task_graph()` function too \u2014 is that a separate path?\n\n5. Look at lines 3662-3700 in dashboard.py for the render_task_graph_page function to see exactly how the fallback works.\n\nThe goal is to understand what needs to change to remove the legacy `load_graph_data()` fallback and make everything go through `discover_graph_files()` + `load_and_merge_graph_files()`. But since `aops graph` doesn't produce per-layout JSONs (only per-layout .dot files and one combined graph.json), we need to understand what format graph.json already has.",
         "subagent_type": "Explore"
       },
       "subagent_type": "Explore",
@@ -9078,6 +9483,11 @@
         "logged_at": "2026-03-03T05:52:10+00:00",
         "event_hash": "0fa64af0d50cb097",
         "extracted_at": "2026-03-04T04:44:34.889604+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -9127,7 +9537,7 @@
       "tool_name": "Agent",
       "tool_input": {
         "description": "Explore viz and graph loading",
-        "prompt": "I need to understand two things in `/opt/nic/academicOps`:\n\n1. **`scripts/generate-viz.sh`** — Read the full file. I need to know what it generates beyond the graph data: task-map SVG, D3 HTML, attention map, ego-subgraph, etc. The user wants to strip out extraneous generations and keep only what's needed.\n\n2. **`lib/overwhelm/dashboard.py`** — I need to understand:\n   - The `load_graph_data()` function (around line 3383) — this is the OLD loader to remove\n   - The `load_task_graph()` function (around line 3399) — what does this do?\n   - The `render_task_graph_page()` function (around line 3662-3730) — the full function that needs to be refactored\n   - The `_get_graph_node_count()` function (around line 3654) — it uses `load_graph_data()`, needs updating\n   - Any other callers of `load_graph_data()` or `load_task_graph()`\n\nRead these files and report back all the relevant code sections with line numbers.",
+        "prompt": "I need to understand two things in `/opt/nic/academicOps`:\n\n1. **`scripts/generate-viz.sh`** \u2014 Read the full file. I need to know what it generates beyond the graph data: task-map SVG, D3 HTML, attention map, ego-subgraph, etc. The user wants to strip out extraneous generations and keep only what's needed.\n\n2. **`lib/overwhelm/dashboard.py`** \u2014 I need to understand:\n   - The `load_graph_data()` function (around line 3383) \u2014 this is the OLD loader to remove\n   - The `load_task_graph()` function (around line 3399) \u2014 what does this do?\n   - The `render_task_graph_page()` function (around line 3662-3730) \u2014 the full function that needs to be refactored\n   - The `_get_graph_node_count()` function (around line 3654) \u2014 it uses `load_graph_data()`, needs updating\n   - Any other callers of `load_graph_data()` or `load_task_graph()`\n\nRead these files and report back all the relevant code sections with line numbers.",
         "subagent_type": "Explore"
       },
       "subagent_type": "Explore",
@@ -9142,6 +9552,11 @@
         "logged_at": "2026-03-03T05:58:39+00:00",
         "event_hash": "91182005f4bc5a9c",
         "extracted_at": "2026-03-04T04:44:34.889705+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -9165,6 +9580,11 @@
         "logged_at": "2026-03-03T06:03:14+00:00",
         "event_hash": "4cddab33c97ac40f",
         "extracted_at": "2026-03-04T04:44:34.889748+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -9188,6 +9608,11 @@
         "logged_at": "2026-03-03T06:03:16+00:00",
         "event_hash": "6d1de76f8b2f6cec",
         "extracted_at": "2026-03-04T04:44:34.889782+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -9211,6 +9636,11 @@
         "logged_at": "2026-03-03T06:03:17+00:00",
         "event_hash": "27fc440af4209049",
         "extracted_at": "2026-03-04T04:44:34.889816+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -9233,6 +9663,11 @@
         "logged_at": "2026-03-03T06:03:20+00:00",
         "event_hash": "867687293de1ed1c",
         "extracted_at": "2026-03-04T04:44:34.889847+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -9255,6 +9690,11 @@
         "logged_at": "2026-03-03T06:04:33+00:00",
         "event_hash": "805bb9da64d8f25c",
         "extracted_at": "2026-03-04T04:44:34.889882+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -9277,6 +9717,11 @@
         "logged_at": "2026-03-03T06:04:33+00:00",
         "event_hash": "ae5fc1b4f2eec202",
         "extracted_at": "2026-03-04T04:44:34.889912+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -9299,6 +9744,11 @@
         "logged_at": "2026-03-03T06:05:04+00:00",
         "event_hash": "90c7795f9dd0db24",
         "extracted_at": "2026-03-04T04:44:34.889945+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -9321,6 +9771,11 @@
         "logged_at": "2026-03-03T06:05:05+00:00",
         "event_hash": "9c9262ebd9474949",
         "extracted_at": "2026-03-04T04:44:34.889977+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -9343,6 +9798,11 @@
         "logged_at": "2026-03-03T06:06:13+00:00",
         "event_hash": "cc27e36ad1bbaff5",
         "extracted_at": "2026-03-04T04:44:34.890012+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -9366,6 +9826,11 @@
         "logged_at": "2026-03-03T06:53:01+00:00",
         "event_hash": "c0ebc1fcaa73180f",
         "extracted_at": "2026-03-04T04:44:34.890070+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -9389,6 +9854,11 @@
         "logged_at": "2026-03-03T06:53:04+00:00",
         "event_hash": "b9680940ecae0f47",
         "extracted_at": "2026-03-04T04:44:34.890108+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -9412,6 +9882,11 @@
         "logged_at": "2026-03-03T06:53:32+00:00",
         "event_hash": "2f4b401d3b37211f",
         "extracted_at": "2026-03-04T04:44:34.890166+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     },
     {
@@ -9435,6 +9910,11 @@
         "logged_at": "2026-03-03T06:54:24+00:00",
         "event_hash": "6896cd2d44e9925e",
         "extracted_at": "2026-03-04T04:44:34.890227+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "open"
+        }
       }
     }
   ],
@@ -9445,7 +9925,7 @@
       "tool_name": "Write",
       "tool_input": {
         "file_path": "/home/debian/.aops/crew/audre/aops/.agent/STATUS.md",
-        "content": "# academicOps Framework Status\n\n**Last updated**: 2026-02-24\n\n## Vision\n\nacademicOps (aops) is an LLM-driven framework for managing academic workflows — research, teaching, writing — through structured enforcement, task management, and governance. The framework reduces cognitive load on the academic user by providing intelligent automation that remembers decisions, enforces consistency, and handles routine coordination.\n\n## Architecture Overview\n\n```\nacademicOps/\n├── .agent/           # Agent instructions, commands, skills, rules\n│   ├── rules/        # AXIOMS.md (inviolable principles), protected_paths\n│   ├── commands/     # Slash commands (learn, email, aops, q, bump, pull)\n│   ├── skills/       # Domain skills (analyst, framework, python-dev, custodiet, etc.)\n│   └── workflows/    # Workflow definitions (manual-qa, etc.)\n├── .github/\n│   ├── agents/       # Agent personality prompts (gatekeeper, custodiet, qa, merge-prep, hydrator-reviewer)\n│   └── workflows/    # 18 GitHub Actions workflows\n├── aops-core/        # Framework core\n│   ├── hooks/        # Session hooks (router, policy_enforcer, task_binding, etc.)\n│   ├── lib/          # Shared libraries (gates, hydration, sessions, tasks, etc.)\n│   ├── mcp_servers/  # MCP servers (tasks_server, memory_proxy)\n│   └── scripts/      # Utility scripts (transcript, custodiet_block, etc.)\n├── specs/            # Design specifications (37 specs)\n├── tests/            # Test suite (~90+ test files across unit/integration/e2e/demo)\n└── config/           # Configuration files\n```\n\n**Data layer** ($ACA_DATA): `/home/nic/writing/data` — sessions, projects, logs, context, goals. Separate from framework code.\n\n## Key Components & Current State\n\n### PR Review Pipeline — WORKING (with known issues being addressed)\n\nThe fully automated PR review pipeline is the most mature component. Post-mortem on PRs 582 and 585 (2026-02-23) revealed three failure modes, all now addressed with fixes:\n\n**Pipeline flow**: `code-quality.yml` (lint + gatekeeper + type-check) -> `pr-review-pipeline.yml` (cascade-check -> custodiet -> QA -> merge-prep -> notify-ready) -> human approval -> `pr-lgtm-merge.yml` (check-status -> lint re-trigger -> approve -> auto-merge)\n\n**Safety mechanisms** (added/improved 2026-02-23):\n- **Cascade limit**: Pipeline run-count tracked per PR; halts after 3 runs to prevent infinite bot loops (`pr-review-pipeline.yml`)\n- **LGTM check-status gate**: Merge workflow now checks required status checks before enabling auto-merge; re-triggers lint if failing (`pr-lgtm-merge.yml`)\n- **Strategic gatekeeper**: Gatekeeper now reads `.agent/STATUS.md` in addition to VISION.md and AXIOMS.md, enabling it to reject PRs that delete working components or conflict with key decisions (`gatekeeper.md`)\n- **Loop detector**: Merge-prep uses `Merge-Prep-By:` commit trailer (not author name) — unchanged from prior fix\n\n**Prior fixes (2026-02-22)**:\n- Loop detector in merge-prep uses `Merge-Prep-By:` commit trailer (not author name)\n- Skip notices post honest PR comments when loop detected, including unresolved feedback count\n- Review dismissal instructions added to CLAUDE.md and merge-prep agent prompt\n- All 3 open PRs (579, 575, 576) merged successfully\n- Broken test fixed: `CUSTODIET_MODE` renamed to `CUSTODIET_GATE_MODE`\n\n**All 18 workflows have `workflow_dispatch` triggers** for manual re-runs.\n\n**Agents**: gatekeeper, custodiet, QA, merge-prep, hydrator-reviewer (5 agents with distinct personalities and authorities)\n\n**Merge methods**: merge commit, squash, and rebase all enabled on both nicsuzor/academicOps and qut-dmrc/buttermilk.\n\n### Hook System — WORKING\n\nSession lifecycle hooks managed via `aops-core/hooks/router.py`:\n- `user_prompt_submit.py` — prompt routing and gate evaluation\n- `policy_enforcer.py` — axiom enforcement\n- `task_binding.py` — task context injection\n- `session_env_setup.py` — environment setup (CUSTODIET_GATE_MODE, etc.)\n- `session_end_commit_check.py` — commit verification\n- `generate_transcript.py` — transcript generation\n- `ntfy_notifier.py` — push notifications\n\n### Gate System — WORKING\n\nPredicate-based gate engine at `aops-core/lib/gates/`:\n- `engine.py` — gate evaluation\n- `definitions.py` — gate definitions\n- `registry.py` — gate registration\n- `custom_conditions.py` / `custom_actions.py` — extensibility\n\n### Hydration System — WORKING\n\nContext injection at `aops-core/lib/hydration/`:\n- `builder.py` — hydration pipeline construction\n- `context_loaders.py` — context loading strategies\n- `skip_check.py` — hydration bypass conditions\n\n### Task Management — WORKING\n\n`aops-core/lib/task_model.py`, `task_storage.py`, `task_sync.py`, `task_index.py`\nMCP server: `aops-core/mcp_servers/tasks_server.py`\n\n### Issue Review Agents — EARLY\n\n- `issue-review-custodiet.yml` — proposal quality review on issue open\n- `issue-review-hydrator.yml` — infrastructure context on issue open\n- Known issue: hook over-triggering on read-only operations\n- Hydrator tends to drift into implementation advice (needs stronger guardrails)\n\n### Skills System — WORKING\n\n13+ skills in `.agent/skills/`: analyst, annotations, audit, convert-to-md, critic, custodiet, effectual-planner, framework, garden, pdf, python-dev, qa, remember, session-insights, task-viz, hypervisor\n\n### Session Insights — WORKING\n\nScripts for extracting insights from session transcripts in `.agent/skills/session-insights/scripts/`.\n\n### Agent Dispatch — SUPERVISED (new 2026-02-24)\n\nPolecat swarm no longer running. Task delegation now uses manual dispatch to:\n- **Jules** (online, GitHub-native) — best for PRs, CI work, repo cleanup\n- **Gemini polecats** — best for code generation, MCP tools, CLI additions\n\nDispatch protocol: manual task selection from PKB ready queue, handoff via GitHub issues (Jules) or session prompts (Gemini), human monitors PRs through review pipeline. Assignee convention: `jules` or `gemini` in task frontmatter.\n\n## Key Decisions\n\n| Decision | Rationale | Date |\n|----------|-----------|------|\n| Manual dispatch replaces polecat swarm | Swarm no longer running; Jules + Gemini polecats provide equivalent coverage with manual orchestration | 2026-02-24 |\n| Gatekeeper reads STATUS.md | Without strategic context, gatekeeper cannot catch PRs that delete working components (PR 582 post-mortem) | 2026-02-23 |\n| Pipeline cascade limit (max 3 runs) | PR 582 showed bots triggering bots in unbounded loops; comment-based counting bounds total cycles | 2026-02-23 |\n| LGTM triggers lint re-run if failing | PR 585 showed LGTM silently failing when lint was stale; merge workflow now checks and re-triggers | 2026-02-23 |\n| Commit trailer for loop detection | Author name unreliable (multiple bots use github-actions[bot]) | 2026-02-22 |\n| All workflows get workflow_dispatch | Manual re-run capability for debugging and recovery | 2026-02-22 |\n| Review dismissal by agents | Agents should dismiss reviews they've addressed; humans override remaining | 2026-02-22 |\n| All merge methods enabled | Flexibility for different PR types | 2026-02-22 |\n| Tests at repo root, not in aops-core | Single test suite covering all components | prior |\n| Skills are read-only (P#23) | Mutable state in $ACA_DATA only | prior |\n| Categorical imperative (P#2) | Every change must be a universal rule | prior |\n\n## Open Questions\n\n1. **Issue review over-triggering**: The issue review agents fire on read-only and tracking operations. Needs filtering improvement.\n2. **Hydrator guardrails**: Hydrator agent drifts into implementation advice instead of staying advisory. Needs stronger prompt constraints.\n3. **Autonomous automation readiness**: Most workflows are at \"supervised\" maturity. No workflows have been validated for fully autonomous operation yet. PR 582/585 post-mortem confirms the pipeline is not yet ready for autonomous — the new safety mechanisms need supervised validation.\n4. **PATHS.md staleness**: Generated paths reference `/home/nic/src/academicOps` but the repo is at `/opt/nic/academicOps` on this machine. Environment-specific — may need regeneration.\n5. **Run-count accuracy**: The cascade limit uses comment pattern matching, not a proper counter. Could be inaccurate if comments are deleted or have unusual formatting. Monitor in practice.\n6. **Gemini polecat PR creation**: Gemini polecats may not have direct repo write access — need to confirm whether they can create PRs or if output needs manual PR creation.\n\n## Roadmap\n\n### Recently Completed\n- PR pipeline post-mortem and fixes (cascade limit, LGTM check-status, strategic gatekeeper) — 2026-02-23\n- PR review pipeline end-to-end (loop detection, skip notices, review dismissal) — 2026-02-22\n- workflow_dispatch on all workflows\n- All open PRs merged to main\n- Test fix on main (CUSTODIET_GATE_MODE)\n\n### Near-term\n- **Manual agent dispatch: first supervised batch** — dispatch 3 tasks each to Jules and Gemini polecats, validate through PR pipeline (2026-02-24)\n- **Validate PR pipeline fixes on next real PR** (supervised run) — the three new safety mechanisms (cascade limit, LGTM lint re-trigger, strategic gatekeeper) need real-world validation\n- Address issue review over-triggering\n- Strengthen hydrator guardrails\n\n### Medium-term\n- Graduate PR pipeline from \"supervised\" to \"autonomous\" after multiple clean runs\n- Graduate agent dispatch from manual to semi-automated (script generates handoff prompts from task index)\n- PKB server implementation (spec exists at `specs/pkb-server-spec.md`)\n- Dogfooding workflow (recently added, commit f62c0442)\n- Complete MCP tool additions (9 mechanical tasks in queue)\n- Rework aops local framework (epic `aops-1815798a` with 10 subtasks)\n\n### Long-term\n- Full autonomous agent workflows with butler oversight\n- Cross-project task management\n- Session insights automation\n"
+        "content": "# academicOps Framework Status\n\n**Last updated**: 2026-02-24\n\n## Vision\n\nacademicOps (aops) is an LLM-driven framework for managing academic workflows \u2014 research, teaching, writing \u2014 through structured enforcement, task management, and governance. The framework reduces cognitive load on the academic user by providing intelligent automation that remembers decisions, enforces consistency, and handles routine coordination.\n\n## Architecture Overview\n\n```\nacademicOps/\n\u251c\u2500\u2500 .agent/           # Agent instructions, commands, skills, rules\n\u2502   \u251c\u2500\u2500 rules/        # AXIOMS.md (inviolable principles), protected_paths\n\u2502   \u251c\u2500\u2500 commands/     # Slash commands (learn, email, aops, q, bump, pull)\n\u2502   \u251c\u2500\u2500 skills/       # Domain skills (analyst, framework, python-dev, custodiet, etc.)\n\u2502   \u2514\u2500\u2500 workflows/    # Workflow definitions (manual-qa, etc.)\n\u251c\u2500\u2500 .github/\n\u2502   \u251c\u2500\u2500 agents/       # Agent personality prompts (gatekeeper, custodiet, qa, merge-prep, hydrator-reviewer)\n\u2502   \u2514\u2500\u2500 workflows/    # 18 GitHub Actions workflows\n\u251c\u2500\u2500 aops-core/        # Framework core\n\u2502   \u251c\u2500\u2500 hooks/        # Session hooks (router, policy_enforcer, task_binding, etc.)\n\u2502   \u251c\u2500\u2500 lib/          # Shared libraries (gates, hydration, sessions, tasks, etc.)\n\u2502   \u251c\u2500\u2500 mcp_servers/  # MCP servers (tasks_server, memory_proxy)\n\u2502   \u2514\u2500\u2500 scripts/      # Utility scripts (transcript, custodiet_block, etc.)\n\u251c\u2500\u2500 specs/            # Design specifications (37 specs)\n\u251c\u2500\u2500 tests/            # Test suite (~90+ test files across unit/integration/e2e/demo)\n\u2514\u2500\u2500 config/           # Configuration files\n```\n\n**Data layer** ($ACA_DATA): `/home/nic/writing/data` \u2014 sessions, projects, logs, context, goals. Separate from framework code.\n\n## Key Components & Current State\n\n### PR Review Pipeline \u2014 WORKING (with known issues being addressed)\n\nThe fully automated PR review pipeline is the most mature component. Post-mortem on PRs 582 and 585 (2026-02-23) revealed three failure modes, all now addressed with fixes:\n\n**Pipeline flow**: `code-quality.yml` (lint + gatekeeper + type-check) -> `pr-review-pipeline.yml` (cascade-check -> custodiet -> QA -> merge-prep -> notify-ready) -> human approval -> `pr-lgtm-merge.yml` (check-status -> lint re-trigger -> approve -> auto-merge)\n\n**Safety mechanisms** (added/improved 2026-02-23):\n- **Cascade limit**: Pipeline run-count tracked per PR; halts after 3 runs to prevent infinite bot loops (`pr-review-pipeline.yml`)\n- **LGTM check-status gate**: Merge workflow now checks required status checks before enabling auto-merge; re-triggers lint if failing (`pr-lgtm-merge.yml`)\n- **Strategic gatekeeper**: Gatekeeper now reads `.agent/STATUS.md` in addition to VISION.md and AXIOMS.md, enabling it to reject PRs that delete working components or conflict with key decisions (`gatekeeper.md`)\n- **Loop detector**: Merge-prep uses `Merge-Prep-By:` commit trailer (not author name) \u2014 unchanged from prior fix\n\n**Prior fixes (2026-02-22)**:\n- Loop detector in merge-prep uses `Merge-Prep-By:` commit trailer (not author name)\n- Skip notices post honest PR comments when loop detected, including unresolved feedback count\n- Review dismissal instructions added to CLAUDE.md and merge-prep agent prompt\n- All 3 open PRs (579, 575, 576) merged successfully\n- Broken test fixed: `CUSTODIET_MODE` renamed to `CUSTODIET_GATE_MODE`\n\n**All 18 workflows have `workflow_dispatch` triggers** for manual re-runs.\n\n**Agents**: gatekeeper, custodiet, QA, merge-prep, hydrator-reviewer (5 agents with distinct personalities and authorities)\n\n**Merge methods**: merge commit, squash, and rebase all enabled on both nicsuzor/academicOps and qut-dmrc/buttermilk.\n\n### Hook System \u2014 WORKING\n\nSession lifecycle hooks managed via `aops-core/hooks/router.py`:\n- `user_prompt_submit.py` \u2014 prompt routing and gate evaluation\n- `policy_enforcer.py` \u2014 axiom enforcement\n- `task_binding.py` \u2014 task context injection\n- `session_env_setup.py` \u2014 environment setup (CUSTODIET_GATE_MODE, etc.)\n- `session_end_commit_check.py` \u2014 commit verification\n- `generate_transcript.py` \u2014 transcript generation\n- `ntfy_notifier.py` \u2014 push notifications\n\n### Gate System \u2014 WORKING\n\nPredicate-based gate engine at `aops-core/lib/gates/`:\n- `engine.py` \u2014 gate evaluation\n- `definitions.py` \u2014 gate definitions\n- `registry.py` \u2014 gate registration\n- `custom_conditions.py` / `custom_actions.py` \u2014 extensibility\n\n### Hydration System \u2014 WORKING\n\nContext injection at `aops-core/lib/hydration/`:\n- `builder.py` \u2014 hydration pipeline construction\n- `context_loaders.py` \u2014 context loading strategies\n- `skip_check.py` \u2014 hydration bypass conditions\n\n### Task Management \u2014 WORKING\n\n`aops-core/lib/task_model.py`, `task_storage.py`, `task_sync.py`, `task_index.py`\nMCP server: `aops-core/mcp_servers/tasks_server.py`\n\n### Issue Review Agents \u2014 EARLY\n\n- `issue-review-custodiet.yml` \u2014 proposal quality review on issue open\n- `issue-review-hydrator.yml` \u2014 infrastructure context on issue open\n- Known issue: hook over-triggering on read-only operations\n- Hydrator tends to drift into implementation advice (needs stronger guardrails)\n\n### Skills System \u2014 WORKING\n\n13+ skills in `.agent/skills/`: analyst, annotations, audit, convert-to-md, critic, custodiet, effectual-planner, framework, garden, pdf, python-dev, qa, remember, session-insights, task-viz, hypervisor\n\n### Session Insights \u2014 WORKING\n\nScripts for extracting insights from session transcripts in `.agent/skills/session-insights/scripts/`.\n\n### Agent Dispatch \u2014 SUPERVISED (new 2026-02-24)\n\nPolecat swarm no longer running. Task delegation now uses manual dispatch to:\n- **Jules** (online, GitHub-native) \u2014 best for PRs, CI work, repo cleanup\n- **Gemini polecats** \u2014 best for code generation, MCP tools, CLI additions\n\nDispatch protocol: manual task selection from PKB ready queue, handoff via GitHub issues (Jules) or session prompts (Gemini), human monitors PRs through review pipeline. Assignee convention: `jules` or `gemini` in task frontmatter.\n\n## Key Decisions\n\n| Decision | Rationale | Date |\n|----------|-----------|------|\n| Manual dispatch replaces polecat swarm | Swarm no longer running; Jules + Gemini polecats provide equivalent coverage with manual orchestration | 2026-02-24 |\n| Gatekeeper reads STATUS.md | Without strategic context, gatekeeper cannot catch PRs that delete working components (PR 582 post-mortem) | 2026-02-23 |\n| Pipeline cascade limit (max 3 runs) | PR 582 showed bots triggering bots in unbounded loops; comment-based counting bounds total cycles | 2026-02-23 |\n| LGTM triggers lint re-run if failing | PR 585 showed LGTM silently failing when lint was stale; merge workflow now checks and re-triggers | 2026-02-23 |\n| Commit trailer for loop detection | Author name unreliable (multiple bots use github-actions[bot]) | 2026-02-22 |\n| All workflows get workflow_dispatch | Manual re-run capability for debugging and recovery | 2026-02-22 |\n| Review dismissal by agents | Agents should dismiss reviews they've addressed; humans override remaining | 2026-02-22 |\n| All merge methods enabled | Flexibility for different PR types | 2026-02-22 |\n| Tests at repo root, not in aops-core | Single test suite covering all components | prior |\n| Skills are read-only (P#23) | Mutable state in $ACA_DATA only | prior |\n| Categorical imperative (P#2) | Every change must be a universal rule | prior |\n\n## Open Questions\n\n1. **Issue review over-triggering**: The issue review agents fire on read-only and tracking operations. Needs filtering improvement.\n2. **Hydrator guardrails**: Hydrator agent drifts into implementation advice instead of staying advisory. Needs stronger prompt constraints.\n3. **Autonomous automation readiness**: Most workflows are at \"supervised\" maturity. No workflows have been validated for fully autonomous operation yet. PR 582/585 post-mortem confirms the pipeline is not yet ready for autonomous \u2014 the new safety mechanisms need supervised validation.\n4. **PATHS.md staleness**: Generated paths reference `/home/nic/src/academicOps` but the repo is at `/opt/nic/academicOps` on this machine. Environment-specific \u2014 may need regeneration.\n5. **Run-count accuracy**: The cascade limit uses comment pattern matching, not a proper counter. Could be inaccurate if comments are deleted or have unusual formatting. Monitor in practice.\n6. **Gemini polecat PR creation**: Gemini polecats may not have direct repo write access \u2014 need to confirm whether they can create PRs or if output needs manual PR creation.\n\n## Roadmap\n\n### Recently Completed\n- PR pipeline post-mortem and fixes (cascade limit, LGTM check-status, strategic gatekeeper) \u2014 2026-02-23\n- PR review pipeline end-to-end (loop detection, skip notices, review dismissal) \u2014 2026-02-22\n- workflow_dispatch on all workflows\n- All open PRs merged to main\n- Test fix on main (CUSTODIET_GATE_MODE)\n\n### Near-term\n- **Manual agent dispatch: first supervised batch** \u2014 dispatch 3 tasks each to Jules and Gemini polecats, validate through PR pipeline (2026-02-24)\n- **Validate PR pipeline fixes on next real PR** (supervised run) \u2014 the three new safety mechanisms (cascade limit, LGTM lint re-trigger, strategic gatekeeper) need real-world validation\n- Address issue review over-triggering\n- Strengthen hydrator guardrails\n\n### Medium-term\n- Graduate PR pipeline from \"supervised\" to \"autonomous\" after multiple clean runs\n- Graduate agent dispatch from manual to semi-automated (script generates handoff prompts from task index)\n- PKB server implementation (spec exists at `specs/pkb-server-spec.md`)\n- Dogfooding workflow (recently added, commit f62c0442)\n- Complete MCP tool additions (9 mechanical tasks in queue)\n- Rework aops local framework (epic `aops-1815798a` with 10 subtasks)\n\n### Long-term\n- Full autonomous agent workflows with butler oversight\n- Cross-project task management\n- Session insights automation\n"
       },
       "subagent_type": null,
       "is_subagent": false,
@@ -10257,7 +10737,7 @@
       "hook_event": "PreToolUse",
       "tool_name": "Bash",
       "tool_input": {
-        "command": "gh issue create --repo qut-dmrc/buttermilk \\\n  --title \"Bug: Vertex batch schema rejects integer Literal enums for Gemini models\" \\\n  --body \"$(cat <<'EOF'\n## Task ID\n`buttermilk-cdeb7942`\n\n## Priority\nP0 (Critical) — blocks Gemini Flash classification for OSB benchmarking\n\n## Problem\nAll 9,000 Gemini Flash classification records failed with:\n```\nFailed to parse JSON into proto: GenerateContentRequest @ generationConfig.responseSchema.properties[2].enum[0]: string, near offset 3838: unexpected character: '0'; expected '\"'\n```\n\n## Root Cause\n`ResponseClassification.criticism_intensity` is `Literal[0, 1, 2, 3]` (integer literals). Vertex's `responseSchema` requires all enum values to be JSON strings. Buttermilk's Pydantic-to-Vertex schema converter doesn't coerce integer Literal values to strings.\n\n## Fix\nIn the schema serialisation path (likely `VertexBatchProcessor._build_schema()` or similar), convert integer enum values to their string representations when building `responseSchema` for Gemini models.\n\nDo NOT change the Pydantic model to use string literals — fix the serialization layer.\n\n## Context\n- Claude Haiku batch succeeded (uses `tool_use`, not `responseSchema`)\n- Batch job: `batch_8cacc6243562` (global region)\n- Run: `20260217T2126Z-9oZXvooQ-Vqic5yYS`\n- Model: `ResponseClassification` in `buttermilk.agents.osb_classifier`\n- Parent epic: `buttermilk-5654bcef` (Pipeline Core Fixes)\n\n## Acceptance Criteria\n- [ ] Integer `Literal` enum values are coerced to strings in Vertex `responseSchema`\n- [ ] Existing string Literal enums still work correctly\n- [ ] Add a unit test for the integer-to-string coercion\n- [ ] Gemini Flash batch can be re-submitted without schema errors\nEOF\n)\" \\\n  --label \"bug\" 2>&1",
+        "command": "gh issue create --repo qut-dmrc/buttermilk \\\n  --title \"Bug: Vertex batch schema rejects integer Literal enums for Gemini models\" \\\n  --body \"$(cat <<'EOF'\n## Task ID\n`buttermilk-cdeb7942`\n\n## Priority\nP0 (Critical) \u2014 blocks Gemini Flash classification for OSB benchmarking\n\n## Problem\nAll 9,000 Gemini Flash classification records failed with:\n```\nFailed to parse JSON into proto: GenerateContentRequest @ generationConfig.responseSchema.properties[2].enum[0]: string, near offset 3838: unexpected character: '0'; expected '\"'\n```\n\n## Root Cause\n`ResponseClassification.criticism_intensity` is `Literal[0, 1, 2, 3]` (integer literals). Vertex's `responseSchema` requires all enum values to be JSON strings. Buttermilk's Pydantic-to-Vertex schema converter doesn't coerce integer Literal values to strings.\n\n## Fix\nIn the schema serialisation path (likely `VertexBatchProcessor._build_schema()` or similar), convert integer enum values to their string representations when building `responseSchema` for Gemini models.\n\nDo NOT change the Pydantic model to use string literals \u2014 fix the serialization layer.\n\n## Context\n- Claude Haiku batch succeeded (uses `tool_use`, not `responseSchema`)\n- Batch job: `batch_8cacc6243562` (global region)\n- Run: `20260217T2126Z-9oZXvooQ-Vqic5yYS`\n- Model: `ResponseClassification` in `buttermilk.agents.osb_classifier`\n- Parent epic: `buttermilk-5654bcef` (Pipeline Core Fixes)\n\n## Acceptance Criteria\n- [ ] Integer `Literal` enum values are coerced to strings in Vertex `responseSchema`\n- [ ] Existing string Literal enums still work correctly\n- [ ] Add a unit test for the integer-to-string coercion\n- [ ] Gemini Flash batch can be re-submitted without schema errors\nEOF\n)\" \\\n  --label \"bug\" 2>&1",
         "description": "Create GitHub issue for Jules on buttermilk repo"
       },
       "subagent_type": null,
@@ -10365,7 +10845,7 @@
       "hook_event": "PreToolUse",
       "tool_name": "Bash",
       "tool_input": {
-        "command": "cd /tmp/polecat-aops-a6c9db05 && command gemini -p \"$(cat <<'PROMPT'\n# Task: Remove task gate (does nothing)\nTask ID: aops-a6c9db05\nPriority: 1 (High)\nDownstream weight: 3.0 (blocks simplification of router.py and gate_config.py)\n\n## What to do\nThe \"task gate\" in the aops hook system is a no-op — it does nothing useful. Find it and remove it completely.\n\nLook in:\n- `aops-core/hooks/` — hook scripts that implement gates\n- `aops-core/gate_config.py` or similar — gate configuration/registry\n- `aops-core/router.py` — routing logic that references the task gate\n- Any YAML/JSON config that registers \"task\" as a gate name\n- Tests that reference the task gate\n\n## Steps\n1. Search the codebase for \"task gate\", \"task_gate\", gate names containing \"task\"\n2. Identify all files that reference this gate\n3. Remove the gate implementation, its registration, and any tests specific to it\n4. Make sure other gates still work — don't break the gate system, just remove this one entry\n5. Run existing tests to verify nothing breaks: `uv run pytest tests/ -x`\n6. Commit all changes with message: \"chore: remove task gate (no-op)\n\nRemoves the task gate which does nothing. Unblocks downstream\nsimplification of router.py and gate_config.py.\n\nTask-ID: aops-a6c9db05\"\n7. Push the branch to origin: `git push -u origin polecat/aops-a6c9db05`\n8. Create a PR: `gh pr create --title \"chore: remove task gate (no-op)\" --body \"Removes the task gate which does nothing. Unblocks downstream simplification of router.py and gate_config.py.\\n\\nTask-ID: aops-a6c9db05\"`\n\n## Important\n- Do NOT modify gates other than \"task\"\n- Do NOT refactor router.py or gate_config.py beyond removing the task gate references — that's a separate downstream task\n- Run tests before committing\nPROMPT\n)\" --approval-mode yolo 2>&1 | tail -100",
+        "command": "cd /tmp/polecat-aops-a6c9db05 && command gemini -p \"$(cat <<'PROMPT'\n# Task: Remove task gate (does nothing)\nTask ID: aops-a6c9db05\nPriority: 1 (High)\nDownstream weight: 3.0 (blocks simplification of router.py and gate_config.py)\n\n## What to do\nThe \"task gate\" in the aops hook system is a no-op \u2014 it does nothing useful. Find it and remove it completely.\n\nLook in:\n- `aops-core/hooks/` \u2014 hook scripts that implement gates\n- `aops-core/gate_config.py` or similar \u2014 gate configuration/registry\n- `aops-core/router.py` \u2014 routing logic that references the task gate\n- Any YAML/JSON config that registers \"task\" as a gate name\n- Tests that reference the task gate\n\n## Steps\n1. Search the codebase for \"task gate\", \"task_gate\", gate names containing \"task\"\n2. Identify all files that reference this gate\n3. Remove the gate implementation, its registration, and any tests specific to it\n4. Make sure other gates still work \u2014 don't break the gate system, just remove this one entry\n5. Run existing tests to verify nothing breaks: `uv run pytest tests/ -x`\n6. Commit all changes with message: \"chore: remove task gate (no-op)\n\nRemoves the task gate which does nothing. Unblocks downstream\nsimplification of router.py and gate_config.py.\n\nTask-ID: aops-a6c9db05\"\n7. Push the branch to origin: `git push -u origin polecat/aops-a6c9db05`\n8. Create a PR: `gh pr create --title \"chore: remove task gate (no-op)\" --body \"Removes the task gate which does nothing. Unblocks downstream simplification of router.py and gate_config.py.\\n\\nTask-ID: aops-a6c9db05\"`\n\n## Important\n- Do NOT modify gates other than \"task\"\n- Do NOT refactor router.py or gate_config.py beyond removing the task gate references \u2014 that's a separate downstream task\n- Run tests before committing\nPROMPT\n)\" --approval-mode yolo 2>&1 | tail -100",
         "timeout": 600000,
         "description": "Run Gemini polecat headless on task aops-a6c9db05",
         "run_in_background": true
@@ -10394,7 +10874,7 @@
       "hook_event": "PreToolUse",
       "tool_name": "Bash",
       "tool_input": {
-        "command": "gh issue create --repo nicsuzor/academicOps \\\n  --title \"chore: Remove polecat assignee convention and automatic routing\" \\\n  --body \"$(cat <<'EOF'\n## Task IDs\n- `aops-45f509af` — Remove 'polecat' assignee convention from aops framework\n- `aops-dd74eae2` — Remove automatic assignee routing from task creation\n\n## Problem\nThe framework uses `assignee: polecat` as a default convention for agent-executable tasks and has automatic routing logic (polecat vs nic based on complexity). This convention is no longer needed — tasks should be created without assignees by default.\n\n## What to Change\n\n### Files to Update\n1. **`aops-core/HEURISTICS.md`** — P#102 corollaries reference polecat. Update to reflect new convention (no default assignee).\n2. **`aops-core/skills/q/SKILL.md`** — Remove \"Step 2: Determine assignee\" section that defaults to polecat. Tasks should be created with `assignee: null` by default.\n3. **`aops-core/skills/pull/SKILL.md`** — Remove any polecat assignment references.\n4. **`aops-core/framework/enforcement-map.md`** — Update \"Task Assignment Convention\" section.\n5. **`aops-core/CORE.md`** — Remove polecat convention references if present.\n6. **Any other skills/workflows** referencing `assignee: polecat` — grep `aops-core/` for 'polecat' in instruction/config files.\n\n### What to Keep\n- Explicit user-specified assignees still work (e.g., `/q nic: ...` or `/q bot: ...`)\n- The `assignee` field itself stays — just no automatic routing\n\n## Acceptance Criteria\n- [ ] No framework file defaults assignee to 'polecat'\n- [ ] `/q` skill creates tasks without assignee by default  \n- [ ] P#102 updated to reflect new convention\n- [ ] Task Assignment Convention in enforcement-map.md updated\n- [ ] `grep -ri 'polecat' aops-core/` returns zero hits in instruction/markdown files (code references to the polecat CLI system are OK to keep)\n- [ ] No automatic polecat/nic routing based on complexity\nEOF\n)\" \\\n  --label \"chore\" 2>&1",
+        "command": "gh issue create --repo nicsuzor/academicOps \\\n  --title \"chore: Remove polecat assignee convention and automatic routing\" \\\n  --body \"$(cat <<'EOF'\n## Task IDs\n- `aops-45f509af` \u2014 Remove 'polecat' assignee convention from aops framework\n- `aops-dd74eae2` \u2014 Remove automatic assignee routing from task creation\n\n## Problem\nThe framework uses `assignee: polecat` as a default convention for agent-executable tasks and has automatic routing logic (polecat vs nic based on complexity). This convention is no longer needed \u2014 tasks should be created without assignees by default.\n\n## What to Change\n\n### Files to Update\n1. **`aops-core/HEURISTICS.md`** \u2014 P#102 corollaries reference polecat. Update to reflect new convention (no default assignee).\n2. **`aops-core/skills/q/SKILL.md`** \u2014 Remove \"Step 2: Determine assignee\" section that defaults to polecat. Tasks should be created with `assignee: null` by default.\n3. **`aops-core/skills/pull/SKILL.md`** \u2014 Remove any polecat assignment references.\n4. **`aops-core/framework/enforcement-map.md`** \u2014 Update \"Task Assignment Convention\" section.\n5. **`aops-core/CORE.md`** \u2014 Remove polecat convention references if present.\n6. **Any other skills/workflows** referencing `assignee: polecat` \u2014 grep `aops-core/` for 'polecat' in instruction/config files.\n\n### What to Keep\n- Explicit user-specified assignees still work (e.g., `/q nic: ...` or `/q bot: ...`)\n- The `assignee` field itself stays \u2014 just no automatic routing\n\n## Acceptance Criteria\n- [ ] No framework file defaults assignee to 'polecat'\n- [ ] `/q` skill creates tasks without assignee by default  \n- [ ] P#102 updated to reflect new convention\n- [ ] Task Assignment Convention in enforcement-map.md updated\n- [ ] `grep -ri 'polecat' aops-core/` returns zero hits in instruction/markdown files (code references to the polecat CLI system are OK to keep)\n- [ ] No automatic polecat/nic routing based on complexity\nEOF\n)\" \\\n  --label \"chore\" 2>&1",
         "description": "Create GitHub issue for Jules - Batch A polecat convention removal"
       },
       "subagent_type": null,
@@ -10421,7 +10901,7 @@
       "hook_event": "PreToolUse",
       "tool_name": "Bash",
       "tool_input": {
-        "command": "gh issue create --repo nicsuzor/academicOps \\\n  --title \"chore: Remove polecat assignee convention and automatic routing\" \\\n  --body \"$(cat <<'EOF'\n## Task IDs\n- `aops-45f509af` — Remove 'polecat' assignee convention from aops framework\n- `aops-dd74eae2` — Remove automatic assignee routing from task creation\n\n## Problem\nThe framework uses `assignee: polecat` as a default convention for agent-executable tasks and has automatic routing logic (polecat vs nic based on complexity). This convention is no longer needed — tasks should be created without assignees by default.\n\n## What to Change\n\n### Files to Update\n1. **`aops-core/HEURISTICS.md`** — P#102 corollaries reference polecat. Update to reflect new convention (no default assignee).\n2. **`aops-core/skills/q/SKILL.md`** — Remove \"Step 2: Determine assignee\" section that defaults to polecat. Tasks should be created with `assignee: null` by default.\n3. **`aops-core/skills/pull/SKILL.md`** — Remove any polecat assignment references.\n4. **`aops-core/framework/enforcement-map.md`** — Update \"Task Assignment Convention\" section.\n5. **`aops-core/CORE.md`** — Remove polecat convention references if present.\n6. **Any other skills/workflows** referencing `assignee: polecat` — grep `aops-core/` for 'polecat' in instruction/config files.\n\n### What to Keep\n- Explicit user-specified assignees still work (e.g., `/q nic: ...` or `/q bot: ...`)\n- The `assignee` field itself stays — just no automatic routing\n\n## Acceptance Criteria\n- [ ] No framework file defaults assignee to 'polecat'\n- [ ] `/q` skill creates tasks without assignee by default  \n- [ ] P#102 updated to reflect new convention\n- [ ] Task Assignment Convention in enforcement-map.md updated\n- [ ] `grep -ri 'polecat' aops-core/` returns zero hits in instruction/markdown files (code references to the polecat CLI system are OK to keep)\n- [ ] No automatic polecat/nic routing based on complexity\nEOF\n)\" 2>&1",
+        "command": "gh issue create --repo nicsuzor/academicOps \\\n  --title \"chore: Remove polecat assignee convention and automatic routing\" \\\n  --body \"$(cat <<'EOF'\n## Task IDs\n- `aops-45f509af` \u2014 Remove 'polecat' assignee convention from aops framework\n- `aops-dd74eae2` \u2014 Remove automatic assignee routing from task creation\n\n## Problem\nThe framework uses `assignee: polecat` as a default convention for agent-executable tasks and has automatic routing logic (polecat vs nic based on complexity). This convention is no longer needed \u2014 tasks should be created without assignees by default.\n\n## What to Change\n\n### Files to Update\n1. **`aops-core/HEURISTICS.md`** \u2014 P#102 corollaries reference polecat. Update to reflect new convention (no default assignee).\n2. **`aops-core/skills/q/SKILL.md`** \u2014 Remove \"Step 2: Determine assignee\" section that defaults to polecat. Tasks should be created with `assignee: null` by default.\n3. **`aops-core/skills/pull/SKILL.md`** \u2014 Remove any polecat assignment references.\n4. **`aops-core/framework/enforcement-map.md`** \u2014 Update \"Task Assignment Convention\" section.\n5. **`aops-core/CORE.md`** \u2014 Remove polecat convention references if present.\n6. **Any other skills/workflows** referencing `assignee: polecat` \u2014 grep `aops-core/` for 'polecat' in instruction/config files.\n\n### What to Keep\n- Explicit user-specified assignees still work (e.g., `/q nic: ...` or `/q bot: ...`)\n- The `assignee` field itself stays \u2014 just no automatic routing\n\n## Acceptance Criteria\n- [ ] No framework file defaults assignee to 'polecat'\n- [ ] `/q` skill creates tasks without assignee by default  \n- [ ] P#102 updated to reflect new convention\n- [ ] Task Assignment Convention in enforcement-map.md updated\n- [ ] `grep -ri 'polecat' aops-core/` returns zero hits in instruction/markdown files (code references to the polecat CLI system are OK to keep)\n- [ ] No automatic polecat/nic routing based on complexity\nEOF\n)\" 2>&1",
         "description": "Create GitHub issue for Jules - Batch A (no label)"
       },
       "subagent_type": null,
@@ -10475,7 +10955,7 @@
       "hook_event": "PreToolUse",
       "tool_name": "Bash",
       "tool_input": {
-        "command": "gh issue create --repo nicsuzor/mem \\\n  --title \"feat: PKB search quality — path penalties + pandoc markup stripping\" \\\n  --body \"$(cat <<'EOF'\n## Task IDs\n- `task-1046aa2e` — Add path-based score penalties for archive/incoming documents\n- `task-a1291448` — Strip pandoc tracked-change markup from embedding text\n\nThese are both children of the epic `task-2cbde748` (PKB search quality improvements).\n\n---\n\n## Task 1: Path-based score penalties\n\n### Problem\n`archive/incoming/` contains raw DOCX-to-markdown conversions with tracked changes, XML artifacts, and reference lists. These pollute search results.\n\n### Implementation\nIn `handle_pkb_search` in `mcp_server.rs`, apply post-search score multipliers based on path:\n- If path contains `archive/incoming` → `score *= 0.7`\n- If path contains `archive/` → `score *= 0.85`\n\nApply after semantic scoring but before graph boost. Re-sort results after applying.\n\n### Acceptance\n- ~20 lines of code\n- No reindex needed\n\n---\n\n## Task 2: Strip pandoc tracked-change markup\n\n### Problem\nConverted DOCX files contain pandoc tracked-change syntax like:\n```\n{.deletion author=\"Nicolas Suzor\" date=\"2021-07-21T12:20:00Z\"}\n{.paragraph-deletion author=\"...\" date=\"...\"}\n{.insertion author=\"...\" date=\"...\"}\n[]{.paragraph-deletion ...}\n```\nThese get embedded as text, causing entity queries to match on metadata noise.\n\n### Implementation\nAdd a `clean_body()` function (in `pkb.rs` or `embeddings.rs`) that strips tracked-change patterns using regex:\n```\n\\{\\.(?:deletion|insertion|paragraph-deletion)\\s+author=\"[^\"]*\"\\s+date=\"[^\"]*\"\\}\n```\nAlso strip `[]{.paragraph-deletion ...}` empty spans.\n\nApply `clean_body()` in `PkbDocument::embedding_text()` before the body is chunked and embedded.\n\n### Acceptance\n- Requires reindex after change (`cargo build && reindex`)\n- Tracked-change markup no longer appears in embedding text\n\n## Combined Acceptance\n- [ ] Path-based penalties applied in search handler\n- [ ] Pandoc markup stripped before embedding\n- [ ] Tests pass: `cargo test`\nEOF\n)\" 2>&1",
+        "command": "gh issue create --repo nicsuzor/mem \\\n  --title \"feat: PKB search quality \u2014 path penalties + pandoc markup stripping\" \\\n  --body \"$(cat <<'EOF'\n## Task IDs\n- `task-1046aa2e` \u2014 Add path-based score penalties for archive/incoming documents\n- `task-a1291448` \u2014 Strip pandoc tracked-change markup from embedding text\n\nThese are both children of the epic `task-2cbde748` (PKB search quality improvements).\n\n---\n\n## Task 1: Path-based score penalties\n\n### Problem\n`archive/incoming/` contains raw DOCX-to-markdown conversions with tracked changes, XML artifacts, and reference lists. These pollute search results.\n\n### Implementation\nIn `handle_pkb_search` in `mcp_server.rs`, apply post-search score multipliers based on path:\n- If path contains `archive/incoming` \u2192 `score *= 0.7`\n- If path contains `archive/` \u2192 `score *= 0.85`\n\nApply after semantic scoring but before graph boost. Re-sort results after applying.\n\n### Acceptance\n- ~20 lines of code\n- No reindex needed\n\n---\n\n## Task 2: Strip pandoc tracked-change markup\n\n### Problem\nConverted DOCX files contain pandoc tracked-change syntax like:\n```\n{.deletion author=\"Nicolas Suzor\" date=\"2021-07-21T12:20:00Z\"}\n{.paragraph-deletion author=\"...\" date=\"...\"}\n{.insertion author=\"...\" date=\"...\"}\n[]{.paragraph-deletion ...}\n```\nThese get embedded as text, causing entity queries to match on metadata noise.\n\n### Implementation\nAdd a `clean_body()` function (in `pkb.rs` or `embeddings.rs`) that strips tracked-change patterns using regex:\n```\n\\{\\.(?:deletion|insertion|paragraph-deletion)\\s+author=\"[^\"]*\"\\s+date=\"[^\"]*\"\\}\n```\nAlso strip `[]{.paragraph-deletion ...}` empty spans.\n\nApply `clean_body()` in `PkbDocument::embedding_text()` before the body is chunked and embedded.\n\n### Acceptance\n- Requires reindex after change (`cargo build && reindex`)\n- Tracked-change markup no longer appears in embedding text\n\n## Combined Acceptance\n- [ ] Path-based penalties applied in search handler\n- [ ] Pandoc markup stripped before embedding\n- [ ] Tests pass: `cargo test`\nEOF\n)\" 2>&1",
         "description": "Create GitHub issue for Jules - Batch F PKB search quality"
       },
       "subagent_type": null,
@@ -14755,7 +15235,7 @@
       "tool_name": "Write",
       "tool_input": {
         "file_path": "/home/debian/.aops/crew/audre/aops/.agent/STATUS.md",
-        "content": "# academicOps Framework Status\n\n**Last updated**: 2026-02-24\n\n## Vision\n\nacademicOps (aops) is an LLM-driven framework for managing academic workflows — research, teaching, writing — through structured enforcement, task management, and governance. The framework reduces cognitive load on the academic user by providing intelligent automation that remembers decisions, enforces consistency, and handles routine coordination.\n\n## Architecture Overview\n\n```\nacademicOps/\n├── .agent/           # Agent instructions, commands, skills, rules\n│   ├── rules/        # AXIOMS.md (inviolable principles), protected_paths\n│   ├── commands/     # Slash commands (learn, email, aops, q, bump, pull)\n│   ├── skills/       # Domain skills (analyst, framework, python-dev, custodiet, etc.)\n│   └── workflows/    # Workflow definitions (manual-qa, etc.)\n├── .github/\n│   ├── agents/       # Agent personality prompts (gatekeeper, custodiet, qa, merge-prep, hydrator-reviewer)\n│   └── workflows/    # 18 GitHub Actions workflows\n├── aops-core/        # Framework core\n│   ├── hooks/        # Session hooks (router, policy_enforcer, task_binding, etc.)\n│   ├── lib/          # Shared libraries (gates, hydration, sessions, tasks, etc.)\n│   ├── mcp_servers/  # MCP servers (tasks_server, memory_proxy)\n│   └── scripts/      # Utility scripts (transcript, custodiet_block, etc.)\n├── specs/            # Design specifications (37 specs)\n├── tests/            # Test suite (~90+ test files across unit/integration/e2e/demo)\n└── config/           # Configuration files\n```\n\n**Data layer** ($ACA_DATA): `/home/nic/writing/data` — sessions, projects, logs, context, goals. Separate from framework code.\n\n## Key Components & Current State\n\n### PR Review Pipeline — WORKING (with known issues being addressed)\n\nThe fully automated PR review pipeline is the most mature component. Post-mortem on PRs 582 and 585 (2026-02-23) revealed three failure modes, all now addressed with fixes:\n\n**Pipeline flow**: `code-quality.yml` (lint + gatekeeper + type-check) -> `pr-review-pipeline.yml` (cascade-check -> custodiet -> QA -> merge-prep -> notify-ready) -> human approval -> `pr-lgtm-merge.yml` (check-status -> lint re-trigger -> approve -> auto-merge)\n\n**Safety mechanisms** (added/improved 2026-02-23):\n- **Cascade limit**: Pipeline run-count tracked per PR; halts after 3 runs to prevent infinite bot loops (`pr-review-pipeline.yml`)\n- **LGTM check-status gate**: Merge workflow now checks required status checks before enabling auto-merge; re-triggers lint if failing (`pr-lgtm-merge.yml`)\n- **Strategic gatekeeper**: Gatekeeper now reads `.agent/STATUS.md` in addition to VISION.md and AXIOMS.md, enabling it to reject PRs that delete working components or conflict with key decisions (`gatekeeper.md`)\n- **Loop detector**: Merge-prep uses `Merge-Prep-By:` commit trailer (not author name) — unchanged from prior fix\n\n**Prior fixes (2026-02-22)**:\n- Loop detector in merge-prep uses `Merge-Prep-By:` commit trailer (not author name)\n- Skip notices post honest PR comments when loop detected, including unresolved feedback count\n- Review dismissal instructions added to CLAUDE.md and merge-prep agent prompt\n- All 3 open PRs (579, 575, 576) merged successfully\n- Broken test fixed: `CUSTODIET_MODE` renamed to `CUSTODIET_GATE_MODE`\n\n**All 18 workflows have `workflow_dispatch` triggers** for manual re-runs.\n\n**Agents**: gatekeeper, custodiet, QA, merge-prep, hydrator-reviewer (5 agents with distinct personalities and authorities)\n\n**Merge methods**: merge commit, squash, and rebase all enabled on both nicsuzor/academicOps and qut-dmrc/buttermilk.\n\n### Hook System — WORKING\n\nSession lifecycle hooks managed via `aops-core/hooks/router.py`:\n- `user_prompt_submit.py` — prompt routing and gate evaluation\n- `policy_enforcer.py` — axiom enforcement\n- `task_binding.py` — task context injection\n- `session_env_setup.py` — environment setup (CUSTODIET_GATE_MODE, etc.)\n- `session_end_commit_check.py` — commit verification\n- `generate_transcript.py` — transcript generation\n- `ntfy_notifier.py` — push notifications\n\n### Gate System — WORKING\n\nPredicate-based gate engine at `aops-core/lib/gates/`:\n- `engine.py` — gate evaluation\n- `definitions.py` — gate definitions\n- `registry.py` — gate registration\n- `custom_conditions.py` / `custom_actions.py` — extensibility\n\n### Hydration System — WORKING\n\nContext injection at `aops-core/lib/hydration/`:\n- `builder.py` — hydration pipeline construction\n- `context_loaders.py` — context loading strategies\n- `skip_check.py` — hydration bypass conditions\n\n### Task Management — WORKING\n\n`aops-core/lib/task_model.py`, `task_storage.py`, `task_sync.py`, `task_index.py`\nMCP server: `aops-core/mcp_servers/tasks_server.py`\n\n### Issue Review Agents — EARLY\n\n- `issue-review-custodiet.yml` — proposal quality review on issue open\n- `issue-review-hydrator.yml` — infrastructure context on issue open\n- Known issue: hook over-triggering on read-only operations\n- Hydrator tends to drift into implementation advice (needs stronger guardrails)\n\n### Skills System — WORKING\n\n13+ skills in `.agent/skills/`: analyst, annotations, audit, convert-to-md, critic, custodiet, effectual-planner, framework, garden, pdf, python-dev, qa, remember, session-insights, task-viz, hypervisor\n\n### Session Insights — WORKING\n\nScripts for extracting insights from session transcripts in `.agent/skills/session-insights/scripts/`.\n\n### Agent Dispatch — SUPERVISED (new 2026-02-24)\n\nPolecat swarm no longer running. Task delegation now uses manual dispatch to:\n- **Jules** (online, GitHub-native) — best for PRs, CI work, repo cleanup\n- **Gemini polecats** — best for code generation, MCP tools, CLI additions\n\nDispatch protocol: manual task selection from PKB ready queue, handoff via GitHub issues (Jules) or session prompts (Gemini), human monitors PRs through review pipeline. Assignee convention: `jules` or `gemini` in task frontmatter.\n\n## Key Decisions\n\n| Decision | Rationale | Date |\n|----------|-----------|------|\n| Manual dispatch replaces polecat swarm | Swarm no longer running; Jules + Gemini polecats provide equivalent coverage with manual orchestration | 2026-02-24 |\n| Gatekeeper reads STATUS.md | Without strategic context, gatekeeper cannot catch PRs that delete working components (PR 582 post-mortem) | 2026-02-23 |\n| Pipeline cascade limit (max 3 runs) | PR 582 showed bots triggering bots in unbounded loops; comment-based counting bounds total cycles | 2026-02-23 |\n| LGTM triggers lint re-run if failing | PR 585 showed LGTM silently failing when lint was stale; merge workflow now checks and re-triggers | 2026-02-23 |\n| Commit trailer for loop detection | Author name unreliable (multiple bots use github-actions[bot]) | 2026-02-22 |\n| All workflows get workflow_dispatch | Manual re-run capability for debugging and recovery | 2026-02-22 |\n| Review dismissal by agents | Agents should dismiss reviews they've addressed; humans override remaining | 2026-02-22 |\n| All merge methods enabled | Flexibility for different PR types | 2026-02-22 |\n| Tests at repo root, not in aops-core | Single test suite covering all components | prior |\n| Skills are read-only (P#23) | Mutable state in $ACA_DATA only | prior |\n| Categorical imperative (P#2) | Every change must be a universal rule | prior |\n\n## Open Questions\n\n1. **Issue review over-triggering**: The issue review agents fire on read-only and tracking operations. Needs filtering improvement.\n2. **Hydrator guardrails**: Hydrator agent drifts into implementation advice instead of staying advisory. Needs stronger prompt constraints.\n3. **Autonomous automation readiness**: Most workflows are at \"supervised\" maturity. No workflows have been validated for fully autonomous operation yet. PR 582/585 post-mortem confirms the pipeline is not yet ready for autonomous — the new safety mechanisms need supervised validation.\n4. **PATHS.md staleness**: Generated paths reference `/home/nic/src/academicOps` but the repo is at `/opt/nic/academicOps` on this machine. Environment-specific — may need regeneration.\n5. **Run-count accuracy**: The cascade limit uses comment pattern matching, not a proper counter. Could be inaccurate if comments are deleted or have unusual formatting. Monitor in practice.\n6. **Gemini polecat PR creation**: Gemini polecats may not have direct repo write access — need to confirm whether they can create PRs or if output needs manual PR creation.\n\n## Roadmap\n\n### Recently Completed\n- PR pipeline post-mortem and fixes (cascade limit, LGTM check-status, strategic gatekeeper) — 2026-02-23\n- PR review pipeline end-to-end (loop detection, skip notices, review dismissal) — 2026-02-22\n- workflow_dispatch on all workflows\n- All open PRs merged to main\n- Test fix on main (CUSTODIET_GATE_MODE)\n\n### Near-term\n- **Manual agent dispatch: first supervised batch** — dispatch 3 tasks each to Jules and Gemini polecats, validate through PR pipeline (2026-02-24)\n- **Validate PR pipeline fixes on next real PR** (supervised run) — the three new safety mechanisms (cascade limit, LGTM lint re-trigger, strategic gatekeeper) need real-world validation\n- Address issue review over-triggering\n- Strengthen hydrator guardrails\n\n### Medium-term\n- Graduate PR pipeline from \"supervised\" to \"autonomous\" after multiple clean runs\n- Graduate agent dispatch from manual to semi-automated (script generates handoff prompts from task index)\n- PKB server implementation (spec exists at `specs/pkb-server-spec.md`)\n- Dogfooding workflow (recently added, commit f62c0442)\n- Complete MCP tool additions (9 mechanical tasks in queue)\n- Rework aops local framework (epic `aops-1815798a` with 10 subtasks)\n\n### Long-term\n- Full autonomous agent workflows with butler oversight\n- Cross-project task management\n- Session insights automation\n"
+        "content": "# academicOps Framework Status\n\n**Last updated**: 2026-02-24\n\n## Vision\n\nacademicOps (aops) is an LLM-driven framework for managing academic workflows \u2014 research, teaching, writing \u2014 through structured enforcement, task management, and governance. The framework reduces cognitive load on the academic user by providing intelligent automation that remembers decisions, enforces consistency, and handles routine coordination.\n\n## Architecture Overview\n\n```\nacademicOps/\n\u251c\u2500\u2500 .agent/           # Agent instructions, commands, skills, rules\n\u2502   \u251c\u2500\u2500 rules/        # AXIOMS.md (inviolable principles), protected_paths\n\u2502   \u251c\u2500\u2500 commands/     # Slash commands (learn, email, aops, q, bump, pull)\n\u2502   \u251c\u2500\u2500 skills/       # Domain skills (analyst, framework, python-dev, custodiet, etc.)\n\u2502   \u2514\u2500\u2500 workflows/    # Workflow definitions (manual-qa, etc.)\n\u251c\u2500\u2500 .github/\n\u2502   \u251c\u2500\u2500 agents/       # Agent personality prompts (gatekeeper, custodiet, qa, merge-prep, hydrator-reviewer)\n\u2502   \u2514\u2500\u2500 workflows/    # 18 GitHub Actions workflows\n\u251c\u2500\u2500 aops-core/        # Framework core\n\u2502   \u251c\u2500\u2500 hooks/        # Session hooks (router, policy_enforcer, task_binding, etc.)\n\u2502   \u251c\u2500\u2500 lib/          # Shared libraries (gates, hydration, sessions, tasks, etc.)\n\u2502   \u251c\u2500\u2500 mcp_servers/  # MCP servers (tasks_server, memory_proxy)\n\u2502   \u2514\u2500\u2500 scripts/      # Utility scripts (transcript, custodiet_block, etc.)\n\u251c\u2500\u2500 specs/            # Design specifications (37 specs)\n\u251c\u2500\u2500 tests/            # Test suite (~90+ test files across unit/integration/e2e/demo)\n\u2514\u2500\u2500 config/           # Configuration files\n```\n\n**Data layer** ($ACA_DATA): `/home/nic/writing/data` \u2014 sessions, projects, logs, context, goals. Separate from framework code.\n\n## Key Components & Current State\n\n### PR Review Pipeline \u2014 WORKING (with known issues being addressed)\n\nThe fully automated PR review pipeline is the most mature component. Post-mortem on PRs 582 and 585 (2026-02-23) revealed three failure modes, all now addressed with fixes:\n\n**Pipeline flow**: `code-quality.yml` (lint + gatekeeper + type-check) -> `pr-review-pipeline.yml` (cascade-check -> custodiet -> QA -> merge-prep -> notify-ready) -> human approval -> `pr-lgtm-merge.yml` (check-status -> lint re-trigger -> approve -> auto-merge)\n\n**Safety mechanisms** (added/improved 2026-02-23):\n- **Cascade limit**: Pipeline run-count tracked per PR; halts after 3 runs to prevent infinite bot loops (`pr-review-pipeline.yml`)\n- **LGTM check-status gate**: Merge workflow now checks required status checks before enabling auto-merge; re-triggers lint if failing (`pr-lgtm-merge.yml`)\n- **Strategic gatekeeper**: Gatekeeper now reads `.agent/STATUS.md` in addition to VISION.md and AXIOMS.md, enabling it to reject PRs that delete working components or conflict with key decisions (`gatekeeper.md`)\n- **Loop detector**: Merge-prep uses `Merge-Prep-By:` commit trailer (not author name) \u2014 unchanged from prior fix\n\n**Prior fixes (2026-02-22)**:\n- Loop detector in merge-prep uses `Merge-Prep-By:` commit trailer (not author name)\n- Skip notices post honest PR comments when loop detected, including unresolved feedback count\n- Review dismissal instructions added to CLAUDE.md and merge-prep agent prompt\n- All 3 open PRs (579, 575, 576) merged successfully\n- Broken test fixed: `CUSTODIET_MODE` renamed to `CUSTODIET_GATE_MODE`\n\n**All 18 workflows have `workflow_dispatch` triggers** for manual re-runs.\n\n**Agents**: gatekeeper, custodiet, QA, merge-prep, hydrator-reviewer (5 agents with distinct personalities and authorities)\n\n**Merge methods**: merge commit, squash, and rebase all enabled on both nicsuzor/academicOps and qut-dmrc/buttermilk.\n\n### Hook System \u2014 WORKING\n\nSession lifecycle hooks managed via `aops-core/hooks/router.py`:\n- `user_prompt_submit.py` \u2014 prompt routing and gate evaluation\n- `policy_enforcer.py` \u2014 axiom enforcement\n- `task_binding.py` \u2014 task context injection\n- `session_env_setup.py` \u2014 environment setup (CUSTODIET_GATE_MODE, etc.)\n- `session_end_commit_check.py` \u2014 commit verification\n- `generate_transcript.py` \u2014 transcript generation\n- `ntfy_notifier.py` \u2014 push notifications\n\n### Gate System \u2014 WORKING\n\nPredicate-based gate engine at `aops-core/lib/gates/`:\n- `engine.py` \u2014 gate evaluation\n- `definitions.py` \u2014 gate definitions\n- `registry.py` \u2014 gate registration\n- `custom_conditions.py` / `custom_actions.py` \u2014 extensibility\n\n### Hydration System \u2014 WORKING\n\nContext injection at `aops-core/lib/hydration/`:\n- `builder.py` \u2014 hydration pipeline construction\n- `context_loaders.py` \u2014 context loading strategies\n- `skip_check.py` \u2014 hydration bypass conditions\n\n### Task Management \u2014 WORKING\n\n`aops-core/lib/task_model.py`, `task_storage.py`, `task_sync.py`, `task_index.py`\nMCP server: `aops-core/mcp_servers/tasks_server.py`\n\n### Issue Review Agents \u2014 EARLY\n\n- `issue-review-custodiet.yml` \u2014 proposal quality review on issue open\n- `issue-review-hydrator.yml` \u2014 infrastructure context on issue open\n- Known issue: hook over-triggering on read-only operations\n- Hydrator tends to drift into implementation advice (needs stronger guardrails)\n\n### Skills System \u2014 WORKING\n\n13+ skills in `.agent/skills/`: analyst, annotations, audit, convert-to-md, critic, custodiet, effectual-planner, framework, garden, pdf, python-dev, qa, remember, session-insights, task-viz, hypervisor\n\n### Session Insights \u2014 WORKING\n\nScripts for extracting insights from session transcripts in `.agent/skills/session-insights/scripts/`.\n\n### Agent Dispatch \u2014 SUPERVISED (new 2026-02-24)\n\nPolecat swarm no longer running. Task delegation now uses manual dispatch to:\n- **Jules** (online, GitHub-native) \u2014 best for PRs, CI work, repo cleanup\n- **Gemini polecats** \u2014 best for code generation, MCP tools, CLI additions\n\nDispatch protocol: manual task selection from PKB ready queue, handoff via GitHub issues (Jules) or session prompts (Gemini), human monitors PRs through review pipeline. Assignee convention: `jules` or `gemini` in task frontmatter.\n\n## Key Decisions\n\n| Decision | Rationale | Date |\n|----------|-----------|------|\n| Manual dispatch replaces polecat swarm | Swarm no longer running; Jules + Gemini polecats provide equivalent coverage with manual orchestration | 2026-02-24 |\n| Gatekeeper reads STATUS.md | Without strategic context, gatekeeper cannot catch PRs that delete working components (PR 582 post-mortem) | 2026-02-23 |\n| Pipeline cascade limit (max 3 runs) | PR 582 showed bots triggering bots in unbounded loops; comment-based counting bounds total cycles | 2026-02-23 |\n| LGTM triggers lint re-run if failing | PR 585 showed LGTM silently failing when lint was stale; merge workflow now checks and re-triggers | 2026-02-23 |\n| Commit trailer for loop detection | Author name unreliable (multiple bots use github-actions[bot]) | 2026-02-22 |\n| All workflows get workflow_dispatch | Manual re-run capability for debugging and recovery | 2026-02-22 |\n| Review dismissal by agents | Agents should dismiss reviews they've addressed; humans override remaining | 2026-02-22 |\n| All merge methods enabled | Flexibility for different PR types | 2026-02-22 |\n| Tests at repo root, not in aops-core | Single test suite covering all components | prior |\n| Skills are read-only (P#23) | Mutable state in $ACA_DATA only | prior |\n| Categorical imperative (P#2) | Every change must be a universal rule | prior |\n\n## Open Questions\n\n1. **Issue review over-triggering**: The issue review agents fire on read-only and tracking operations. Needs filtering improvement.\n2. **Hydrator guardrails**: Hydrator agent drifts into implementation advice instead of staying advisory. Needs stronger prompt constraints.\n3. **Autonomous automation readiness**: Most workflows are at \"supervised\" maturity. No workflows have been validated for fully autonomous operation yet. PR 582/585 post-mortem confirms the pipeline is not yet ready for autonomous \u2014 the new safety mechanisms need supervised validation.\n4. **PATHS.md staleness**: Generated paths reference `/home/nic/src/academicOps` but the repo is at `/opt/nic/academicOps` on this machine. Environment-specific \u2014 may need regeneration.\n5. **Run-count accuracy**: The cascade limit uses comment pattern matching, not a proper counter. Could be inaccurate if comments are deleted or have unusual formatting. Monitor in practice.\n6. **Gemini polecat PR creation**: Gemini polecats may not have direct repo write access \u2014 need to confirm whether they can create PRs or if output needs manual PR creation.\n\n## Roadmap\n\n### Recently Completed\n- PR pipeline post-mortem and fixes (cascade limit, LGTM check-status, strategic gatekeeper) \u2014 2026-02-23\n- PR review pipeline end-to-end (loop detection, skip notices, review dismissal) \u2014 2026-02-22\n- workflow_dispatch on all workflows\n- All open PRs merged to main\n- Test fix on main (CUSTODIET_GATE_MODE)\n\n### Near-term\n- **Manual agent dispatch: first supervised batch** \u2014 dispatch 3 tasks each to Jules and Gemini polecats, validate through PR pipeline (2026-02-24)\n- **Validate PR pipeline fixes on next real PR** (supervised run) \u2014 the three new safety mechanisms (cascade limit, LGTM lint re-trigger, strategic gatekeeper) need real-world validation\n- Address issue review over-triggering\n- Strengthen hydrator guardrails\n\n### Medium-term\n- Graduate PR pipeline from \"supervised\" to \"autonomous\" after multiple clean runs\n- Graduate agent dispatch from manual to semi-automated (script generates handoff prompts from task index)\n- PKB server implementation (spec exists at `specs/pkb-server-spec.md`)\n- Dogfooding workflow (recently added, commit f62c0442)\n- Complete MCP tool additions (9 mechanical tasks in queue)\n- Rework aops local framework (epic `aops-1815798a` with 10 subtasks)\n\n### Long-term\n- Full autonomous agent workflows with butler oversight\n- Cross-project task management\n- Session insights automation\n"
       },
       "subagent_type": null,
       "is_subagent": false,
@@ -14994,7 +15474,7 @@
       "hook_event": "PreToolUse",
       "tool_name": "Bash",
       "tool_input": {
-        "command": "gh issue create --repo qut-dmrc/buttermilk \\\n  --title \"Bug: Vertex batch schema rejects integer Literal enums for Gemini models\" \\\n  --body \"$(cat <<'EOF'\n## Task ID\n`buttermilk-cdeb7942`\n\n## Priority\nP0 (Critical) — blocks Gemini Flash classification for OSB benchmarking\n\n## Problem\nAll 9,000 Gemini Flash classification records failed with:\n```\nFailed to parse JSON into proto: GenerateContentRequest @ generationConfig.responseSchema.properties[2].enum[0]: string, near offset 3838: unexpected character: '0'; expected '\"'\n```\n\n## Root Cause\n`ResponseClassification.criticism_intensity` is `Literal[0, 1, 2, 3]` (integer literals). Vertex's `responseSchema` requires all enum values to be JSON strings. Buttermilk's Pydantic-to-Vertex schema converter doesn't coerce integer Literal values to strings.\n\n## Fix\nIn the schema serialisation path (likely `VertexBatchProcessor._build_schema()` or similar), convert integer enum values to their string representations when building `responseSchema` for Gemini models.\n\nDo NOT change the Pydantic model to use string literals — fix the serialization layer.\n\n## Context\n- Claude Haiku batch succeeded (uses `tool_use`, not `responseSchema`)\n- Batch job: `batch_8cacc6243562` (global region)\n- Run: `20260217T2126Z-9oZXvooQ-Vqic5yYS`\n- Model: `ResponseClassification` in `buttermilk.agents.osb_classifier`\n- Parent epic: `buttermilk-5654bcef` (Pipeline Core Fixes)\n\n## Acceptance Criteria\n- [ ] Integer `Literal` enum values are coerced to strings in Vertex `responseSchema`\n- [ ] Existing string Literal enums still work correctly\n- [ ] Add a unit test for the integer-to-string coercion\n- [ ] Gemini Flash batch can be re-submitted without schema errors\nEOF\n)\" \\\n  --label \"bug\" 2>&1",
+        "command": "gh issue create --repo qut-dmrc/buttermilk \\\n  --title \"Bug: Vertex batch schema rejects integer Literal enums for Gemini models\" \\\n  --body \"$(cat <<'EOF'\n## Task ID\n`buttermilk-cdeb7942`\n\n## Priority\nP0 (Critical) \u2014 blocks Gemini Flash classification for OSB benchmarking\n\n## Problem\nAll 9,000 Gemini Flash classification records failed with:\n```\nFailed to parse JSON into proto: GenerateContentRequest @ generationConfig.responseSchema.properties[2].enum[0]: string, near offset 3838: unexpected character: '0'; expected '\"'\n```\n\n## Root Cause\n`ResponseClassification.criticism_intensity` is `Literal[0, 1, 2, 3]` (integer literals). Vertex's `responseSchema` requires all enum values to be JSON strings. Buttermilk's Pydantic-to-Vertex schema converter doesn't coerce integer Literal values to strings.\n\n## Fix\nIn the schema serialisation path (likely `VertexBatchProcessor._build_schema()` or similar), convert integer enum values to their string representations when building `responseSchema` for Gemini models.\n\nDo NOT change the Pydantic model to use string literals \u2014 fix the serialization layer.\n\n## Context\n- Claude Haiku batch succeeded (uses `tool_use`, not `responseSchema`)\n- Batch job: `batch_8cacc6243562` (global region)\n- Run: `20260217T2126Z-9oZXvooQ-Vqic5yYS`\n- Model: `ResponseClassification` in `buttermilk.agents.osb_classifier`\n- Parent epic: `buttermilk-5654bcef` (Pipeline Core Fixes)\n\n## Acceptance Criteria\n- [ ] Integer `Literal` enum values are coerced to strings in Vertex `responseSchema`\n- [ ] Existing string Literal enums still work correctly\n- [ ] Add a unit test for the integer-to-string coercion\n- [ ] Gemini Flash batch can be re-submitted without schema errors\nEOF\n)\" \\\n  --label \"bug\" 2>&1",
         "description": "Create GitHub issue for Jules on buttermilk repo"
       },
       "subagent_type": null,
@@ -15102,7 +15582,7 @@
       "hook_event": "PreToolUse",
       "tool_name": "Bash",
       "tool_input": {
-        "command": "cd /tmp/polecat-aops-a6c9db05 && command gemini -p \"$(cat <<'PROMPT'\n# Task: Remove task gate (does nothing)\nTask ID: aops-a6c9db05\nPriority: 1 (High)\nDownstream weight: 3.0 (blocks simplification of router.py and gate_config.py)\n\n## What to do\nThe \"task gate\" in the aops hook system is a no-op — it does nothing useful. Find it and remove it completely.\n\nLook in:\n- `aops-core/hooks/` — hook scripts that implement gates\n- `aops-core/gate_config.py` or similar — gate configuration/registry\n- `aops-core/router.py` — routing logic that references the task gate\n- Any YAML/JSON config that registers \"task\" as a gate name\n- Tests that reference the task gate\n\n## Steps\n1. Search the codebase for \"task gate\", \"task_gate\", gate names containing \"task\"\n2. Identify all files that reference this gate\n3. Remove the gate implementation, its registration, and any tests specific to it\n4. Make sure other gates still work — don't break the gate system, just remove this one entry\n5. Run existing tests to verify nothing breaks: `uv run pytest tests/ -x`\n6. Commit all changes with message: \"chore: remove task gate (no-op)\n\nRemoves the task gate which does nothing. Unblocks downstream\nsimplification of router.py and gate_config.py.\n\nTask-ID: aops-a6c9db05\"\n7. Push the branch to origin: `git push -u origin polecat/aops-a6c9db05`\n8. Create a PR: `gh pr create --title \"chore: remove task gate (no-op)\" --body \"Removes the task gate which does nothing. Unblocks downstream simplification of router.py and gate_config.py.\\n\\nTask-ID: aops-a6c9db05\"`\n\n## Important\n- Do NOT modify gates other than \"task\"\n- Do NOT refactor router.py or gate_config.py beyond removing the task gate references — that's a separate downstream task\n- Run tests before committing\nPROMPT\n)\" --approval-mode yolo 2>&1 | tail -100",
+        "command": "cd /tmp/polecat-aops-a6c9db05 && command gemini -p \"$(cat <<'PROMPT'\n# Task: Remove task gate (does nothing)\nTask ID: aops-a6c9db05\nPriority: 1 (High)\nDownstream weight: 3.0 (blocks simplification of router.py and gate_config.py)\n\n## What to do\nThe \"task gate\" in the aops hook system is a no-op \u2014 it does nothing useful. Find it and remove it completely.\n\nLook in:\n- `aops-core/hooks/` \u2014 hook scripts that implement gates\n- `aops-core/gate_config.py` or similar \u2014 gate configuration/registry\n- `aops-core/router.py` \u2014 routing logic that references the task gate\n- Any YAML/JSON config that registers \"task\" as a gate name\n- Tests that reference the task gate\n\n## Steps\n1. Search the codebase for \"task gate\", \"task_gate\", gate names containing \"task\"\n2. Identify all files that reference this gate\n3. Remove the gate implementation, its registration, and any tests specific to it\n4. Make sure other gates still work \u2014 don't break the gate system, just remove this one entry\n5. Run existing tests to verify nothing breaks: `uv run pytest tests/ -x`\n6. Commit all changes with message: \"chore: remove task gate (no-op)\n\nRemoves the task gate which does nothing. Unblocks downstream\nsimplification of router.py and gate_config.py.\n\nTask-ID: aops-a6c9db05\"\n7. Push the branch to origin: `git push -u origin polecat/aops-a6c9db05`\n8. Create a PR: `gh pr create --title \"chore: remove task gate (no-op)\" --body \"Removes the task gate which does nothing. Unblocks downstream simplification of router.py and gate_config.py.\\n\\nTask-ID: aops-a6c9db05\"`\n\n## Important\n- Do NOT modify gates other than \"task\"\n- Do NOT refactor router.py or gate_config.py beyond removing the task gate references \u2014 that's a separate downstream task\n- Run tests before committing\nPROMPT\n)\" --approval-mode yolo 2>&1 | tail -100",
         "timeout": 600000,
         "description": "Run Gemini polecat headless on task aops-a6c9db05",
         "run_in_background": true
@@ -15131,7 +15611,7 @@
       "hook_event": "PreToolUse",
       "tool_name": "Bash",
       "tool_input": {
-        "command": "gh issue create --repo nicsuzor/academicOps \\\n  --title \"chore: Remove polecat assignee convention and automatic routing\" \\\n  --body \"$(cat <<'EOF'\n## Task IDs\n- `aops-45f509af` — Remove 'polecat' assignee convention from aops framework\n- `aops-dd74eae2` — Remove automatic assignee routing from task creation\n\n## Problem\nThe framework uses `assignee: polecat` as a default convention for agent-executable tasks and has automatic routing logic (polecat vs nic based on complexity). This convention is no longer needed — tasks should be created without assignees by default.\n\n## What to Change\n\n### Files to Update\n1. **`aops-core/HEURISTICS.md`** — P#102 corollaries reference polecat. Update to reflect new convention (no default assignee).\n2. **`aops-core/skills/q/SKILL.md`** — Remove \"Step 2: Determine assignee\" section that defaults to polecat. Tasks should be created with `assignee: null` by default.\n3. **`aops-core/skills/pull/SKILL.md`** — Remove any polecat assignment references.\n4. **`aops-core/framework/enforcement-map.md`** — Update \"Task Assignment Convention\" section.\n5. **`aops-core/CORE.md`** — Remove polecat convention references if present.\n6. **Any other skills/workflows** referencing `assignee: polecat` — grep `aops-core/` for 'polecat' in instruction/config files.\n\n### What to Keep\n- Explicit user-specified assignees still work (e.g., `/q nic: ...` or `/q bot: ...`)\n- The `assignee` field itself stays — just no automatic routing\n\n## Acceptance Criteria\n- [ ] No framework file defaults assignee to 'polecat'\n- [ ] `/q` skill creates tasks without assignee by default  \n- [ ] P#102 updated to reflect new convention\n- [ ] Task Assignment Convention in enforcement-map.md updated\n- [ ] `grep -ri 'polecat' aops-core/` returns zero hits in instruction/markdown files (code references to the polecat CLI system are OK to keep)\n- [ ] No automatic polecat/nic routing based on complexity\nEOF\n)\" \\\n  --label \"chore\" 2>&1",
+        "command": "gh issue create --repo nicsuzor/academicOps \\\n  --title \"chore: Remove polecat assignee convention and automatic routing\" \\\n  --body \"$(cat <<'EOF'\n## Task IDs\n- `aops-45f509af` \u2014 Remove 'polecat' assignee convention from aops framework\n- `aops-dd74eae2` \u2014 Remove automatic assignee routing from task creation\n\n## Problem\nThe framework uses `assignee: polecat` as a default convention for agent-executable tasks and has automatic routing logic (polecat vs nic based on complexity). This convention is no longer needed \u2014 tasks should be created without assignees by default.\n\n## What to Change\n\n### Files to Update\n1. **`aops-core/HEURISTICS.md`** \u2014 P#102 corollaries reference polecat. Update to reflect new convention (no default assignee).\n2. **`aops-core/skills/q/SKILL.md`** \u2014 Remove \"Step 2: Determine assignee\" section that defaults to polecat. Tasks should be created with `assignee: null` by default.\n3. **`aops-core/skills/pull/SKILL.md`** \u2014 Remove any polecat assignment references.\n4. **`aops-core/framework/enforcement-map.md`** \u2014 Update \"Task Assignment Convention\" section.\n5. **`aops-core/CORE.md`** \u2014 Remove polecat convention references if present.\n6. **Any other skills/workflows** referencing `assignee: polecat` \u2014 grep `aops-core/` for 'polecat' in instruction/config files.\n\n### What to Keep\n- Explicit user-specified assignees still work (e.g., `/q nic: ...` or `/q bot: ...`)\n- The `assignee` field itself stays \u2014 just no automatic routing\n\n## Acceptance Criteria\n- [ ] No framework file defaults assignee to 'polecat'\n- [ ] `/q` skill creates tasks without assignee by default  \n- [ ] P#102 updated to reflect new convention\n- [ ] Task Assignment Convention in enforcement-map.md updated\n- [ ] `grep -ri 'polecat' aops-core/` returns zero hits in instruction/markdown files (code references to the polecat CLI system are OK to keep)\n- [ ] No automatic polecat/nic routing based on complexity\nEOF\n)\" \\\n  --label \"chore\" 2>&1",
         "description": "Create GitHub issue for Jules - Batch A polecat convention removal"
       },
       "subagent_type": null,
@@ -15158,7 +15638,7 @@
       "hook_event": "PreToolUse",
       "tool_name": "Bash",
       "tool_input": {
-        "command": "gh issue create --repo nicsuzor/academicOps \\\n  --title \"chore: Remove polecat assignee convention and automatic routing\" \\\n  --body \"$(cat <<'EOF'\n## Task IDs\n- `aops-45f509af` — Remove 'polecat' assignee convention from aops framework\n- `aops-dd74eae2` — Remove automatic assignee routing from task creation\n\n## Problem\nThe framework uses `assignee: polecat` as a default convention for agent-executable tasks and has automatic routing logic (polecat vs nic based on complexity). This convention is no longer needed — tasks should be created without assignees by default.\n\n## What to Change\n\n### Files to Update\n1. **`aops-core/HEURISTICS.md`** — P#102 corollaries reference polecat. Update to reflect new convention (no default assignee).\n2. **`aops-core/skills/q/SKILL.md`** — Remove \"Step 2: Determine assignee\" section that defaults to polecat. Tasks should be created with `assignee: null` by default.\n3. **`aops-core/skills/pull/SKILL.md`** — Remove any polecat assignment references.\n4. **`aops-core/framework/enforcement-map.md`** — Update \"Task Assignment Convention\" section.\n5. **`aops-core/CORE.md`** — Remove polecat convention references if present.\n6. **Any other skills/workflows** referencing `assignee: polecat` — grep `aops-core/` for 'polecat' in instruction/config files.\n\n### What to Keep\n- Explicit user-specified assignees still work (e.g., `/q nic: ...` or `/q bot: ...`)\n- The `assignee` field itself stays — just no automatic routing\n\n## Acceptance Criteria\n- [ ] No framework file defaults assignee to 'polecat'\n- [ ] `/q` skill creates tasks without assignee by default  \n- [ ] P#102 updated to reflect new convention\n- [ ] Task Assignment Convention in enforcement-map.md updated\n- [ ] `grep -ri 'polecat' aops-core/` returns zero hits in instruction/markdown files (code references to the polecat CLI system are OK to keep)\n- [ ] No automatic polecat/nic routing based on complexity\nEOF\n)\" 2>&1",
+        "command": "gh issue create --repo nicsuzor/academicOps \\\n  --title \"chore: Remove polecat assignee convention and automatic routing\" \\\n  --body \"$(cat <<'EOF'\n## Task IDs\n- `aops-45f509af` \u2014 Remove 'polecat' assignee convention from aops framework\n- `aops-dd74eae2` \u2014 Remove automatic assignee routing from task creation\n\n## Problem\nThe framework uses `assignee: polecat` as a default convention for agent-executable tasks and has automatic routing logic (polecat vs nic based on complexity). This convention is no longer needed \u2014 tasks should be created without assignees by default.\n\n## What to Change\n\n### Files to Update\n1. **`aops-core/HEURISTICS.md`** \u2014 P#102 corollaries reference polecat. Update to reflect new convention (no default assignee).\n2. **`aops-core/skills/q/SKILL.md`** \u2014 Remove \"Step 2: Determine assignee\" section that defaults to polecat. Tasks should be created with `assignee: null` by default.\n3. **`aops-core/skills/pull/SKILL.md`** \u2014 Remove any polecat assignment references.\n4. **`aops-core/framework/enforcement-map.md`** \u2014 Update \"Task Assignment Convention\" section.\n5. **`aops-core/CORE.md`** \u2014 Remove polecat convention references if present.\n6. **Any other skills/workflows** referencing `assignee: polecat` \u2014 grep `aops-core/` for 'polecat' in instruction/config files.\n\n### What to Keep\n- Explicit user-specified assignees still work (e.g., `/q nic: ...` or `/q bot: ...`)\n- The `assignee` field itself stays \u2014 just no automatic routing\n\n## Acceptance Criteria\n- [ ] No framework file defaults assignee to 'polecat'\n- [ ] `/q` skill creates tasks without assignee by default  \n- [ ] P#102 updated to reflect new convention\n- [ ] Task Assignment Convention in enforcement-map.md updated\n- [ ] `grep -ri 'polecat' aops-core/` returns zero hits in instruction/markdown files (code references to the polecat CLI system are OK to keep)\n- [ ] No automatic polecat/nic routing based on complexity\nEOF\n)\" 2>&1",
         "description": "Create GitHub issue for Jules - Batch A (no label)"
       },
       "subagent_type": null,
@@ -15212,7 +15692,7 @@
       "hook_event": "PreToolUse",
       "tool_name": "Bash",
       "tool_input": {
-        "command": "gh issue create --repo nicsuzor/mem \\\n  --title \"feat: PKB search quality — path penalties + pandoc markup stripping\" \\\n  --body \"$(cat <<'EOF'\n## Task IDs\n- `task-1046aa2e` — Add path-based score penalties for archive/incoming documents\n- `task-a1291448` — Strip pandoc tracked-change markup from embedding text\n\nThese are both children of the epic `task-2cbde748` (PKB search quality improvements).\n\n---\n\n## Task 1: Path-based score penalties\n\n### Problem\n`archive/incoming/` contains raw DOCX-to-markdown conversions with tracked changes, XML artifacts, and reference lists. These pollute search results.\n\n### Implementation\nIn `handle_pkb_search` in `mcp_server.rs`, apply post-search score multipliers based on path:\n- If path contains `archive/incoming` → `score *= 0.7`\n- If path contains `archive/` → `score *= 0.85`\n\nApply after semantic scoring but before graph boost. Re-sort results after applying.\n\n### Acceptance\n- ~20 lines of code\n- No reindex needed\n\n---\n\n## Task 2: Strip pandoc tracked-change markup\n\n### Problem\nConverted DOCX files contain pandoc tracked-change syntax like:\n```\n{.deletion author=\"Nicolas Suzor\" date=\"2021-07-21T12:20:00Z\"}\n{.paragraph-deletion author=\"...\" date=\"...\"}\n{.insertion author=\"...\" date=\"...\"}\n[]{.paragraph-deletion ...}\n```\nThese get embedded as text, causing entity queries to match on metadata noise.\n\n### Implementation\nAdd a `clean_body()` function (in `pkb.rs` or `embeddings.rs`) that strips tracked-change patterns using regex:\n```\n\\{\\.(?:deletion|insertion|paragraph-deletion)\\s+author=\"[^\"]*\"\\s+date=\"[^\"]*\"\\}\n```\nAlso strip `[]{.paragraph-deletion ...}` empty spans.\n\nApply `clean_body()` in `PkbDocument::embedding_text()` before the body is chunked and embedded.\n\n### Acceptance\n- Requires reindex after change (`cargo build && reindex`)\n- Tracked-change markup no longer appears in embedding text\n\n## Combined Acceptance\n- [ ] Path-based penalties applied in search handler\n- [ ] Pandoc markup stripped before embedding\n- [ ] Tests pass: `cargo test`\nEOF\n)\" 2>&1",
+        "command": "gh issue create --repo nicsuzor/mem \\\n  --title \"feat: PKB search quality \u2014 path penalties + pandoc markup stripping\" \\\n  --body \"$(cat <<'EOF'\n## Task IDs\n- `task-1046aa2e` \u2014 Add path-based score penalties for archive/incoming documents\n- `task-a1291448` \u2014 Strip pandoc tracked-change markup from embedding text\n\nThese are both children of the epic `task-2cbde748` (PKB search quality improvements).\n\n---\n\n## Task 1: Path-based score penalties\n\n### Problem\n`archive/incoming/` contains raw DOCX-to-markdown conversions with tracked changes, XML artifacts, and reference lists. These pollute search results.\n\n### Implementation\nIn `handle_pkb_search` in `mcp_server.rs`, apply post-search score multipliers based on path:\n- If path contains `archive/incoming` \u2192 `score *= 0.7`\n- If path contains `archive/` \u2192 `score *= 0.85`\n\nApply after semantic scoring but before graph boost. Re-sort results after applying.\n\n### Acceptance\n- ~20 lines of code\n- No reindex needed\n\n---\n\n## Task 2: Strip pandoc tracked-change markup\n\n### Problem\nConverted DOCX files contain pandoc tracked-change syntax like:\n```\n{.deletion author=\"Nicolas Suzor\" date=\"2021-07-21T12:20:00Z\"}\n{.paragraph-deletion author=\"...\" date=\"...\"}\n{.insertion author=\"...\" date=\"...\"}\n[]{.paragraph-deletion ...}\n```\nThese get embedded as text, causing entity queries to match on metadata noise.\n\n### Implementation\nAdd a `clean_body()` function (in `pkb.rs` or `embeddings.rs`) that strips tracked-change patterns using regex:\n```\n\\{\\.(?:deletion|insertion|paragraph-deletion)\\s+author=\"[^\"]*\"\\s+date=\"[^\"]*\"\\}\n```\nAlso strip `[]{.paragraph-deletion ...}` empty spans.\n\nApply `clean_body()` in `PkbDocument::embedding_text()` before the body is chunked and embedded.\n\n### Acceptance\n- Requires reindex after change (`cargo build && reindex`)\n- Tracked-change markup no longer appears in embedding text\n\n## Combined Acceptance\n- [ ] Path-based penalties applied in search handler\n- [ ] Pandoc markup stripped before embedding\n- [ ] Tests pass: `cargo test`\nEOF\n)\" 2>&1",
         "description": "Create GitHub issue for Jules - Batch F PKB search quality"
       },
       "subagent_type": null,
@@ -19679,7 +20159,7 @@
       "tool_name": "Task",
       "tool_input": {
         "description": "Execute iter 7, prep iteration 8",
-        "prompt": "Continue the stale task sweep. Iteration 7 decisions:\n\n**MARK DONE:**\n- aops-5e1819ca (Learning: agent syntax errors during script generation)\n\n**CANCEL (swarm-level, deprecated):**\n- aops-2e13ecb4 (Bug: polecat swarm claims tasks beyond curated batch) — swarm dispatch model deprecated\n- aops-82e6fcd7 (Constrain polecat crew to own subdirectories) — \"crew\" = swarm concept, deprecated\n\n**KEEP (individual polecat behavior, still relevant):**\n- aops-fdc9d0e2 (Bug: polecat auto-finish overrides manual task completion) — individual polecat behavior, keep\n- aops-dd74eae2 (Remove automatic assignee routing) — keep\n- aops-c0b18478 (pc CLI should nuke polecats on successful exit) — keep\n\n**IMPORTANT NOTE TO ADD:** The user wants a note appended to the sweep task (or a relevant strategic location) about polecat direction: \"Polecats need to be finished so they are ONLY directed at producing PRs from worktrees and self-destruct once done. Swarm orchestration is deprecated but individual polecat workers remain.\"\n\nActions:\n1. Complete aops-5e1819ca\n2. Cancel aops-2e13ecb4 and aops-82e6fcd7\n3. Add the polecat direction note to the sweep task log\n4. Log iteration 7 to the sweep task\n5. Prepare iteration 8: continue through remaining stale tasks. Get 5-6 more candidates. Focus on tasks from the Feb 10-20 range that haven't been reviewed yet.\n\nReturn candidates in format:\n```\nCANDIDATES:\n1. [task-id] | [title] | [recommendation: CANCEL/KEEP/DONE] | [one-line reason]\n```",
+        "prompt": "Continue the stale task sweep. Iteration 7 decisions:\n\n**MARK DONE:**\n- aops-5e1819ca (Learning: agent syntax errors during script generation)\n\n**CANCEL (swarm-level, deprecated):**\n- aops-2e13ecb4 (Bug: polecat swarm claims tasks beyond curated batch) \u2014 swarm dispatch model deprecated\n- aops-82e6fcd7 (Constrain polecat crew to own subdirectories) \u2014 \"crew\" = swarm concept, deprecated\n\n**KEEP (individual polecat behavior, still relevant):**\n- aops-fdc9d0e2 (Bug: polecat auto-finish overrides manual task completion) \u2014 individual polecat behavior, keep\n- aops-dd74eae2 (Remove automatic assignee routing) \u2014 keep\n- aops-c0b18478 (pc CLI should nuke polecats on successful exit) \u2014 keep\n\n**IMPORTANT NOTE TO ADD:** The user wants a note appended to the sweep task (or a relevant strategic location) about polecat direction: \"Polecats need to be finished so they are ONLY directed at producing PRs from worktrees and self-destruct once done. Swarm orchestration is deprecated but individual polecat workers remain.\"\n\nActions:\n1. Complete aops-5e1819ca\n2. Cancel aops-2e13ecb4 and aops-82e6fcd7\n3. Add the polecat direction note to the sweep task log\n4. Log iteration 7 to the sweep task\n5. Prepare iteration 8: continue through remaining stale tasks. Get 5-6 more candidates. Focus on tasks from the Feb 10-20 range that haven't been reviewed yet.\n\nReturn candidates in format:\n```\nCANDIDATES:\n1. [task-id] | [title] | [recommendation: CANCEL/KEEP/DONE] | [one-line reason]\n```",
         "subagent_type": "aops-core:butler"
       },
       "subagent_type": "aops-core:butler",
@@ -19725,7 +20205,7 @@
       "tool_name": "Task",
       "tool_input": {
         "description": "Iteration 9 stale candidates",
-        "prompt": "Continue the stale task sweep — iteration 9.\n\nALREADY REVIEWED (do NOT re-suggest):\naops-f4645386, aops-db455ec1, aops-b3be12f0, aops-d49af564, aops-16e30675, aops-8c8d6c1c,\naops-0f0d4d69, aops-ff79affd, aops-8e9f0603, aops-85c6fe0f, aops-1062e647, aops-385fccc4,\naops-cd9f8dd5, aops-fa995012, aops-383f78f9, aops-71c673c9, aops-3d4366f5, aops-c59c6bd8,\naops-578fdde1, aops-d35eae01, aops-d18e3442, aops-b55463e7, aops-47a04db0, aops-44acc773,\naops-bf30d378, aops-8507e1ed, aops-4cd9f55f, aops-13bb16ea, aops-caa5141c, aops-c8d35502,\naops-53ab7815, aops-1136b729, aops-ec823f21, aops-d521d260, aops-a6c9db05, aops-2f405b15,\naops-fdc9d0e2, aops-2e13ecb4, aops-82e6fcd7, aops-dd74eae2, aops-5e1819ca, aops-c0b18478,\naops-4195a54b, aops-afc220fe, aops-45f509af, aops-bd35ed16, aops-21a6f6d7, aops-ea2c506d\n\nAlso log iteration 8 to sweep task (aops-sweep-20260223-iterative-stale-task-sweep):\n\"Iteration 8: 1 cancelled (aops-4195a54b crew git identity), 2 done (aops-21a6f6d7 gatekeeper verification, aops-ea2c506d test PR verification), 3 kept (aops-afc220fe local merge cleanup, aops-45f509af remove polecat assignee, aops-bd35ed16 UTC timestamps).\"\n\nNow find 5-6 NEW stale candidates using mcp__plugin_aops-core_pkb__list_tasks (open tasks) and mcp__plugin_aops-core_pkb__get_task. Target tasks created/modified before 2026-02-17.\n\nReturn in format:\n```\nCANDIDATES:\n1. [task-id] | [title] | [recommendation: CANCEL/KEEP/DONE] | [one-line reason]\n```",
+        "prompt": "Continue the stale task sweep \u2014 iteration 9.\n\nALREADY REVIEWED (do NOT re-suggest):\naops-f4645386, aops-db455ec1, aops-b3be12f0, aops-d49af564, aops-16e30675, aops-8c8d6c1c,\naops-0f0d4d69, aops-ff79affd, aops-8e9f0603, aops-85c6fe0f, aops-1062e647, aops-385fccc4,\naops-cd9f8dd5, aops-fa995012, aops-383f78f9, aops-71c673c9, aops-3d4366f5, aops-c59c6bd8,\naops-578fdde1, aops-d35eae01, aops-d18e3442, aops-b55463e7, aops-47a04db0, aops-44acc773,\naops-bf30d378, aops-8507e1ed, aops-4cd9f55f, aops-13bb16ea, aops-caa5141c, aops-c8d35502,\naops-53ab7815, aops-1136b729, aops-ec823f21, aops-d521d260, aops-a6c9db05, aops-2f405b15,\naops-fdc9d0e2, aops-2e13ecb4, aops-82e6fcd7, aops-dd74eae2, aops-5e1819ca, aops-c0b18478,\naops-4195a54b, aops-afc220fe, aops-45f509af, aops-bd35ed16, aops-21a6f6d7, aops-ea2c506d\n\nAlso log iteration 8 to sweep task (aops-sweep-20260223-iterative-stale-task-sweep):\n\"Iteration 8: 1 cancelled (aops-4195a54b crew git identity), 2 done (aops-21a6f6d7 gatekeeper verification, aops-ea2c506d test PR verification), 3 kept (aops-afc220fe local merge cleanup, aops-45f509af remove polecat assignee, aops-bd35ed16 UTC timestamps).\"\n\nNow find 5-6 NEW stale candidates using mcp__plugin_aops-core_pkb__list_tasks (open tasks) and mcp__plugin_aops-core_pkb__get_task. Target tasks created/modified before 2026-02-17.\n\nReturn in format:\n```\nCANDIDATES:\n1. [task-id] | [title] | [recommendation: CANCEL/KEEP/DONE] | [one-line reason]\n```",
         "subagent_type": "aops-core:butler"
       },
       "subagent_type": "aops-core:butler",
@@ -19913,7 +20393,7 @@
       "tool_name": "Task",
       "tool_input": {
         "description": "Cancel 4 stale tasks, keep 2",
-        "prompt": "Resume the stale task sweep. The user has made decisions on Iteration 1:\n\n**CANCEL these 4:**\n- aops-f4645386 (Fix Framework Health CI failures)\n- aops-db455ec1 (Fix empty accomplishments in session JSONs)\n- aops-b3be12f0 (Workflow base-ref audit for hydrator)\n- aops-16e30675 (Worktree-nuke failsafe)\n\n**KEEP these 2:**\n- aops-d49af564 (GateResult system_message audit) — keep for further investigation\n- aops-8c8d6c1c (/q effectual planner integration) — keep for further investigation\n\nActions:\n1. Use mcp__plugin_aops-core_pkb__update_task to set status to \"cancelled\" on the 4 cancelled tasks\n2. Use mcp__plugin_aops-core_pkb__append on the sweep task (aops-sweep-20260223-iterative-stale-task-sweep) to log iteration 1 results\n3. Then prepare Iteration 2: get the next batch of oldest stale tasks (still from early Feb vintage). Get 5-6 candidates using mcp__plugin_aops-core_pkb__list_tasks and mcp__plugin_aops-core_pkb__get_task. For each, write a one-line assessment and recommendation.\n\nReturn the iteration 2 candidates in this EXACT format so I can present them via AskUserQuestion:\n```\nCANDIDATES:\n1. [task-id] | [title] | [recommendation: CANCEL/KEEP/DONE] | [one-line reason]\n2. [task-id] | [title] | [recommendation: CANCEL/KEEP/DONE] | [one-line reason]\n...\n```",
+        "prompt": "Resume the stale task sweep. The user has made decisions on Iteration 1:\n\n**CANCEL these 4:**\n- aops-f4645386 (Fix Framework Health CI failures)\n- aops-db455ec1 (Fix empty accomplishments in session JSONs)\n- aops-b3be12f0 (Workflow base-ref audit for hydrator)\n- aops-16e30675 (Worktree-nuke failsafe)\n\n**KEEP these 2:**\n- aops-d49af564 (GateResult system_message audit) \u2014 keep for further investigation\n- aops-8c8d6c1c (/q effectual planner integration) \u2014 keep for further investigation\n\nActions:\n1. Use mcp__plugin_aops-core_pkb__update_task to set status to \"cancelled\" on the 4 cancelled tasks\n2. Use mcp__plugin_aops-core_pkb__append on the sweep task (aops-sweep-20260223-iterative-stale-task-sweep) to log iteration 1 results\n3. Then prepare Iteration 2: get the next batch of oldest stale tasks (still from early Feb vintage). Get 5-6 candidates using mcp__plugin_aops-core_pkb__list_tasks and mcp__plugin_aops-core_pkb__get_task. For each, write a one-line assessment and recommendation.\n\nReturn the iteration 2 candidates in this EXACT format so I can present them via AskUserQuestion:\n```\nCANDIDATES:\n1. [task-id] | [title] | [recommendation: CANCEL/KEEP/DONE] | [one-line reason]\n2. [task-id] | [title] | [recommendation: CANCEL/KEEP/DONE] | [one-line reason]\n...\n```",
         "subagent_type": "aops-core:butler"
       },
       "subagent_type": "aops-core:butler",
@@ -19936,7 +20416,7 @@
       "tool_name": "Task",
       "tool_input": {
         "description": "Cancel 3, keep 3, prep iteration 3",
-        "prompt": "Continue the stale task sweep. Iteration 2 decisions:\n\n**CANCEL these 3:**\n- aops-0f0d4d69 (Epic: Task Graph Automation System) — body already says superseded, fix the status\n- aops-8e9f0603 (Epic: Hydrator Workflow - Accept Loose Ideas) — superseded by hydrator rework\n- aops-385fccc4 (Inventory local swarm components to retire) — empty task, abandoned approach\n\n**KEEP these 3:**\n- aops-ff79affd (Epic: Design effectual-planner) — active design concept\n- aops-85c6fe0f (Strategy Session: Map projects to goals) — has unfinished remainder\n- aops-1062e647 (Task files as working memory) — concept worth pursuing\n\nActions:\n1. Use mcp__plugin_aops-core_pkb__update_task to set status to \"cancelled\" on the 3 cancelled tasks\n2. Use mcp__plugin_aops-core_pkb__append on the sweep task to log iteration 2 results\n3. Then prepare Iteration 3: get the next batch of stale tasks. Look at tasks from Feb 4-10 vintage that are still active. Get 5-6 candidates. For each, write a one-line assessment.\n\nReturn the iteration 3 candidates in this EXACT format:\n```\nCANDIDATES:\n1. [task-id] | [title] | [recommendation: CANCEL/KEEP/DONE] | [one-line reason]\n2. ...\n```",
+        "prompt": "Continue the stale task sweep. Iteration 2 decisions:\n\n**CANCEL these 3:**\n- aops-0f0d4d69 (Epic: Task Graph Automation System) \u2014 body already says superseded, fix the status\n- aops-8e9f0603 (Epic: Hydrator Workflow - Accept Loose Ideas) \u2014 superseded by hydrator rework\n- aops-385fccc4 (Inventory local swarm components to retire) \u2014 empty task, abandoned approach\n\n**KEEP these 3:**\n- aops-ff79affd (Epic: Design effectual-planner) \u2014 active design concept\n- aops-85c6fe0f (Strategy Session: Map projects to goals) \u2014 has unfinished remainder\n- aops-1062e647 (Task files as working memory) \u2014 concept worth pursuing\n\nActions:\n1. Use mcp__plugin_aops-core_pkb__update_task to set status to \"cancelled\" on the 3 cancelled tasks\n2. Use mcp__plugin_aops-core_pkb__append on the sweep task to log iteration 2 results\n3. Then prepare Iteration 3: get the next batch of stale tasks. Look at tasks from Feb 4-10 vintage that are still active. Get 5-6 candidates. For each, write a one-line assessment.\n\nReturn the iteration 3 candidates in this EXACT format:\n```\nCANDIDATES:\n1. [task-id] | [title] | [recommendation: CANCEL/KEEP/DONE] | [one-line reason]\n2. ...\n```",
         "subagent_type": "aops-core:butler"
       },
       "subagent_type": "aops-core:butler",
@@ -19959,7 +20439,7 @@
       "tool_name": "Task",
       "tool_input": {
         "description": "Execute iteration 3 decisions, prep iter 4",
-        "prompt": "Continue the stale task sweep. Iteration 3 decisions:\n\n**CANCEL these 1:**\n- aops-cd9f8dd5 (Deprecate and remove local swarm infrastructure) — empty body, parent done\n\n**KEEP these:**\n- aops-fa995012 (Migrate remaining functionality to GitHub-native equivalents) — keep\n- aops-71c673c9 (Implement minimal bridge: sync task status between systems) — keep\n- aops-3d4366f5 (Design PR-to-strategy feedback) — keep\n- aops-c59c6bd8 (Define agent autonomy boundaries) — keep\n\n**SPECIAL: aops-383f78f9 (Worker transcript capture)**\n- Clear the \"merge_ready\" status, set to \"active\" or \"ready\"\n- Edit the task body to update the transcript destination: transcripts should go to `$AOPS_SESSIONS/polecats/` or `transcripts/polecats/` (not the old `~/.aops/transcripts` path)\n- Use mcp__plugin_aops-core_pkb__update_task and mcp__plugin_aops-core_pkb__append to make these changes\n\nActions:\n1. Cancel aops-cd9f8dd5\n2. Fix aops-383f78f9 as described\n3. Log iteration 3 to the sweep task\n4. Prepare iteration 4: get 5-6 more stale candidates from the Feb 10-16 vintage\n\nReturn candidates in format:\n```\nCANDIDATES:\n1. [task-id] | [title] | [recommendation: CANCEL/KEEP/DONE] | [one-line reason]\n```",
+        "prompt": "Continue the stale task sweep. Iteration 3 decisions:\n\n**CANCEL these 1:**\n- aops-cd9f8dd5 (Deprecate and remove local swarm infrastructure) \u2014 empty body, parent done\n\n**KEEP these:**\n- aops-fa995012 (Migrate remaining functionality to GitHub-native equivalents) \u2014 keep\n- aops-71c673c9 (Implement minimal bridge: sync task status between systems) \u2014 keep\n- aops-3d4366f5 (Design PR-to-strategy feedback) \u2014 keep\n- aops-c59c6bd8 (Define agent autonomy boundaries) \u2014 keep\n\n**SPECIAL: aops-383f78f9 (Worker transcript capture)**\n- Clear the \"merge_ready\" status, set to \"active\" or \"ready\"\n- Edit the task body to update the transcript destination: transcripts should go to `$AOPS_SESSIONS/polecats/` or `transcripts/polecats/` (not the old `~/.aops/transcripts` path)\n- Use mcp__plugin_aops-core_pkb__update_task and mcp__plugin_aops-core_pkb__append to make these changes\n\nActions:\n1. Cancel aops-cd9f8dd5\n2. Fix aops-383f78f9 as described\n3. Log iteration 3 to the sweep task\n4. Prepare iteration 4: get 5-6 more stale candidates from the Feb 10-16 vintage\n\nReturn candidates in format:\n```\nCANDIDATES:\n1. [task-id] | [title] | [recommendation: CANCEL/KEEP/DONE] | [one-line reason]\n```",
         "subagent_type": "aops-core:butler"
       },
       "subagent_type": "aops-core:butler",
@@ -19982,7 +20462,7 @@
       "tool_name": "Task",
       "tool_input": {
         "description": "Execute iter 4, prep iteration 5",
-        "prompt": "Continue the stale task sweep. Iteration 4 decisions:\n\n**MARK DONE these 3:**\n- aops-578fdde1 (Fix polecat worktree upstream tracking) — work on main, AC complete\n- aops-b55463e7 ([Learn] TDD workflow missing integration test scope) — fix applied\n- aops-47a04db0 ([Learn] Focus recommends nearly-completed projects) — fix applied\n\nUse mcp__plugin_aops-core_pkb__complete_task for these.\n\n**CANCEL these 2:**\n- aops-d35eae01 (Add _check_incomplete_markers() validation) — old worktree path, blocked tasks cancelled\n- aops-d18e3442 (Test: Verify custodiet gate fires for Gemini) — failed merge, superseded\n\n**KEEP:**\n- aops-44acc773 (Spike: Investigate framework eagerness)\n\nActions:\n1. Complete the 3 done tasks\n2. Cancel the 2 cancelled tasks\n3. Log iteration 4 to the sweep task\n4. Prepare iteration 5: continue through the task list. Look for more stale tasks from Feb 10-16 range. Get 5-6 candidates.\n\nReturn candidates in format:\n```\nCANDIDATES:\n1. [task-id] | [title] | [recommendation: CANCEL/KEEP/DONE] | [one-line reason]\n```",
+        "prompt": "Continue the stale task sweep. Iteration 4 decisions:\n\n**MARK DONE these 3:**\n- aops-578fdde1 (Fix polecat worktree upstream tracking) \u2014 work on main, AC complete\n- aops-b55463e7 ([Learn] TDD workflow missing integration test scope) \u2014 fix applied\n- aops-47a04db0 ([Learn] Focus recommends nearly-completed projects) \u2014 fix applied\n\nUse mcp__plugin_aops-core_pkb__complete_task for these.\n\n**CANCEL these 2:**\n- aops-d35eae01 (Add _check_incomplete_markers() validation) \u2014 old worktree path, blocked tasks cancelled\n- aops-d18e3442 (Test: Verify custodiet gate fires for Gemini) \u2014 failed merge, superseded\n\n**KEEP:**\n- aops-44acc773 (Spike: Investigate framework eagerness)\n\nActions:\n1. Complete the 3 done tasks\n2. Cancel the 2 cancelled tasks\n3. Log iteration 4 to the sweep task\n4. Prepare iteration 5: continue through the task list. Look for more stale tasks from Feb 10-16 range. Get 5-6 candidates.\n\nReturn candidates in format:\n```\nCANDIDATES:\n1. [task-id] | [title] | [recommendation: CANCEL/KEEP/DONE] | [one-line reason]\n```",
         "subagent_type": "aops-core:butler"
       },
       "subagent_type": "aops-core:butler",
@@ -20005,7 +20485,7 @@
       "tool_name": "Task",
       "tool_input": {
         "description": "Execute iter 5, prep iteration 6",
-        "prompt": "Continue the stale task sweep. Iteration 5 decisions:\n\n**MARK DONE these 4:**\n- aops-bf30d378 (Review and restructure PR pipeline workflows)\n- aops-8507e1ed (Manage GitHub rulesets as code)\n- aops-13bb16ea (Update /daily skill to use daily/ directory)\n- aops-c8d35502 (Implement PKB-Wide Knowledge Graph Traversal Epic #554)\n\nUse mcp__plugin_aops-core_pkb__complete_task for these.\n\n**KEEP:**\n- aops-4cd9f55f (Ensure polecat workers sandboxed to worktree) — keep as-is\n\n**SPECIAL: aops-caa5141c (Prohibit new folders in brain)**\n- Reset status to \"active\" (or ready)\n- User wants to keep this, just reset from merge_ready\n\nActions:\n1. Complete the 4 done tasks\n2. Reset aops-caa5141c status\n3. Log iteration 5 to the sweep task\n4. Prepare iteration 6: continue through remaining stale tasks. Get 5-6 more candidates.\n\nReturn candidates in format:\n```\nCANDIDATES:\n1. [task-id] | [title] | [recommendation: CANCEL/KEEP/DONE] | [one-line reason]\n```",
+        "prompt": "Continue the stale task sweep. Iteration 5 decisions:\n\n**MARK DONE these 4:**\n- aops-bf30d378 (Review and restructure PR pipeline workflows)\n- aops-8507e1ed (Manage GitHub rulesets as code)\n- aops-13bb16ea (Update /daily skill to use daily/ directory)\n- aops-c8d35502 (Implement PKB-Wide Knowledge Graph Traversal Epic #554)\n\nUse mcp__plugin_aops-core_pkb__complete_task for these.\n\n**KEEP:**\n- aops-4cd9f55f (Ensure polecat workers sandboxed to worktree) \u2014 keep as-is\n\n**SPECIAL: aops-caa5141c (Prohibit new folders in brain)**\n- Reset status to \"active\" (or ready)\n- User wants to keep this, just reset from merge_ready\n\nActions:\n1. Complete the 4 done tasks\n2. Reset aops-caa5141c status\n3. Log iteration 5 to the sweep task\n4. Prepare iteration 6: continue through remaining stale tasks. Get 5-6 more candidates.\n\nReturn candidates in format:\n```\nCANDIDATES:\n1. [task-id] | [title] | [recommendation: CANCEL/KEEP/DONE] | [one-line reason]\n```",
         "subagent_type": "aops-core:butler"
       },
       "subagent_type": "aops-core:butler",
@@ -20028,7 +20508,7 @@
       "tool_name": "Task",
       "tool_input": {
         "description": "Execute iter 6, prep iteration 7",
-        "prompt": "Continue the stale task sweep. Iteration 6 decisions:\n\n**MARK DONE these 3:**\n- aops-53ab7815 ([Learn] Add debugging context to workflow)\n- aops-1136b729 ([Learn] Remember skill wrote to /home/nic/data instead of $ACA_DATA)\n- aops-ec823f21 ([Learn] Agent conflated filesystem path with task graph structure)\n\nUse mcp__plugin_aops-core_pkb__complete_task for these.\n\n**CANCEL these 2:**\n- aops-d521d260 (Rename /diag skill) — superseded by removal task\n- aops-2f405b15 (Agent soft dependency context in /pull) — orphaned child of cancelled epic\n\n**RESET:**\n- aops-a6c9db05 (Remove task gate) — reset from merge_ready to active\n\nActions:\n1. Complete the 3 done tasks\n2. Cancel the 2 cancelled tasks\n3. Reset aops-a6c9db05 to active\n4. Log iteration 6 to the sweep task\n5. Prepare iteration 7: continue through remaining stale tasks. Get 5-6 more candidates.\n\nReturn candidates in format:\n```\nCANDIDATES:\n1. [task-id] | [title] | [recommendation: CANCEL/KEEP/DONE] | [one-line reason]\n```",
+        "prompt": "Continue the stale task sweep. Iteration 6 decisions:\n\n**MARK DONE these 3:**\n- aops-53ab7815 ([Learn] Add debugging context to workflow)\n- aops-1136b729 ([Learn] Remember skill wrote to /home/nic/data instead of $ACA_DATA)\n- aops-ec823f21 ([Learn] Agent conflated filesystem path with task graph structure)\n\nUse mcp__plugin_aops-core_pkb__complete_task for these.\n\n**CANCEL these 2:**\n- aops-d521d260 (Rename /diag skill) \u2014 superseded by removal task\n- aops-2f405b15 (Agent soft dependency context in /pull) \u2014 orphaned child of cancelled epic\n\n**RESET:**\n- aops-a6c9db05 (Remove task gate) \u2014 reset from merge_ready to active\n\nActions:\n1. Complete the 3 done tasks\n2. Cancel the 2 cancelled tasks\n3. Reset aops-a6c9db05 to active\n4. Log iteration 6 to the sweep task\n5. Prepare iteration 7: continue through remaining stale tasks. Get 5-6 more candidates.\n\nReturn candidates in format:\n```\nCANDIDATES:\n1. [task-id] | [title] | [recommendation: CANCEL/KEEP/DONE] | [one-line reason]\n```",
         "subagent_type": "aops-core:butler"
       },
       "subagent_type": "aops-core:butler",
