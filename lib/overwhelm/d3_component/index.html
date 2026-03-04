@@ -71,11 +71,36 @@
         background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px;
         padding: 4px 10px; font-size: 10px; cursor: pointer; color: #f8fafc; font-weight: 500;
     }
+
+    /* Focus mode back button */
+    #focus-back {
+        display: none; position: absolute; top: 8px; left: 8px; z-index: 11;
+        display: none; align-items: center; gap: 10px;
+    }
+    #focus-back button {
+        background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 6px; padding: 6px 12px; font-size: 11px; cursor: pointer;
+        color: #f8fafc; font-weight: 600; backdrop-filter: blur(8px);
+    }
+    #focus-back button:hover { background: rgba(30, 40, 70, 0.95); }
+    #focus-label {
+        background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 6px; padding: 4px 10px; font-size: 11px; color: #94a3b8;
+        max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        backdrop-filter: blur(8px);
+    }
+    .btn-focus { background: #7c3aed; color: white; }
+    .btn-focus:hover { background: #6d28d9; }
   </style>
 </head>
 <body>
 
   <div id="graph" style="position:relative;"></div>
+
+  <div id="focus-back">
+    <button onclick="exitFocusMode()">← Full view</button>
+    <span id="focus-label"></span>
+  </div>
 
   <div id="legend">
     <div class="legend-item"><div class="legend-box" style="background:#3b82f6"></div><span>Active</span></div>
@@ -93,8 +118,9 @@
         <h3 id="dt"></h3>
         <div id="df"></div>
         <div class="actions">
-            <button class="btn btn-edit" id="btn-edit" onclick="triggerAction('edit')">Edit Task</button>
-            <button class="btn btn-complete" id="btn-complete" onclick="triggerAction('complete')">Complete</button>
+            <button class="btn btn-focus" id="btn-focus" onclick="triggerFocus()">Focus</button>
+            <button class="btn btn-edit" id="btn-edit" onclick="triggerAction('edit')">Edit</button>
+            <button class="btn btn-complete" id="btn-complete" onclick="triggerAction('complete')">Done</button>
         </div>
     </div>
   </div>
@@ -106,8 +132,59 @@
     let currentFocusProject = "ALL";
     let currentLayout = "force";
     let activeNodeId = null;
+    let focusNodeId = null;       // non-null = ego network focus mode
+    let focusNeighborSet = null;  // Set of visible node IDs in focus mode
     let simulation = null;
     let svg, container, zoom, linkEls, nodeEls;
+
+    // --- Ego network helpers ---
+
+    // Returns Set of node IDs within `hops` hops of nodeId
+    function getNeighbors(nodeId, hops) {
+        const result = new Set([nodeId]);
+        let frontier = new Set([nodeId]);
+        for (let h = 0; h < hops; h++) {
+            const next = new Set();
+            graphData.links.forEach(l => {
+                const sid = (typeof l.source === "object") ? l.source.id : l.source;
+                const tid = (typeof l.target === "object") ? l.target.id : l.target;
+                if (frontier.has(sid) && !result.has(tid)) { next.add(tid); result.add(tid); }
+                if (frontier.has(tid) && !result.has(sid)) { next.add(sid); result.add(sid); }
+            });
+            frontier = next;
+            if (frontier.size === 0) break;
+        }
+        return result;
+    }
+
+    function enterFocusMode(nodeId) {
+        focusNodeId = nodeId;
+        focusNeighborSet = getNeighbors(nodeId, 2);
+        const focusNode = graphData.nodes.find(n => n.id === nodeId);
+        const label = focusNode ? focusNode.label : nodeId;
+        document.getElementById("focus-label").textContent = label;
+        document.getElementById("focus-back").style.display = "flex";
+        document.getElementById("detail").style.display = "none";
+        activeNodeId = null;
+        updateVisibility();
+        // Auto-zoom to fit visible nodes
+        const visibleNodes = graphData.nodes.filter(n => focusNeighborSet.has(n.id) && n.x != null && n.x > -9000);
+        if (visibleNodes.length > 0) autoZoomToFit(visibleNodes, 150);
+    }
+
+    function exitFocusMode() {
+        focusNodeId = null;
+        focusNeighborSet = null;
+        activeNodeId = null;
+        document.getElementById("focus-back").style.display = "none";
+        document.getElementById("detail").style.display = "none";
+        updateVisibility();
+        autoZoomToFit(graphData.nodes.filter(n => n.x != null && n.x > -9000), 0);
+    }
+
+    function triggerFocus() {
+        if (activeNodeId) enterFocusMode(activeNodeId);
+    }
 
     // Status colors
     const sbc = {
@@ -249,6 +326,26 @@
 
             builder(g, d);
         });
+    }
+
+    // Outer-scope zoom-to-fit (also used by enterFocusMode / exitFocusMode)
+    function autoZoomToFit(ns, delay) {
+        if (!ns || ns.length === 0) return;
+        function doZoom() {
+            const xs = ns.map(n => n.x);
+            const ys = ns.map(n => n.y);
+            const x0 = Math.min(...xs) - 80, x1 = Math.max(...xs) + 80;
+            const y0 = Math.min(...ys) - 80, y1 = Math.max(...ys) + 80;
+            const dx = x1 - x0, dy = y1 - y0;
+            if (dx === 0 || dy === 0) return;
+            const zoomScale = Math.min(W / dx, H / dy) * 0.88;
+            const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+            svg.transition().duration(450).call(
+                zoom.transform,
+                d3.zoomIdentity.translate(W / 2, H / 2).scale(zoomScale).translate(-cx, -cy)
+            );
+        }
+        if (delay) { setTimeout(doZoom, delay); } else { doZoom(); }
     }
 
     function triggerAction(actionName) {
@@ -414,9 +511,14 @@
         applyLayout();
 
         svg.on("click",()=> {
-            document.getElementById("detail").style.display="none";
-            activeNodeId = null;
-            updateVisibility();
+            if (focusNodeId) {
+                // Click background in focus mode: exit focus, restore full view
+                exitFocusMode();
+            } else {
+                document.getElementById("detail").style.display="none";
+                activeNodeId = null;
+                updateVisibility();
+            }
         });
     }
 
@@ -556,27 +658,6 @@
             });
         }
 
-        // Helper: zoom/pan to fit all nodes with padding
-        function autoZoomToFit(ns, delay) {
-            function doZoom() {
-                const xs = ns.map(n => n.x);
-                const ys = ns.map(n => n.y);
-                const x0 = Math.min(...xs) - 50, x1 = Math.max(...xs) + 50;
-                const y0 = Math.min(...ys) - 50, y1 = Math.max(...ys) + 50;
-                const dx = x1 - x0, dy = y1 - y0;
-                const zoomScale = Math.min(W / dx, H / dy) * 0.9;
-                const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
-                svg.transition().duration(500).call(
-                    zoom.transform,
-                    d3.zoomIdentity
-                        .translate(W / 2, H / 2)
-                        .scale(zoomScale)
-                        .translate(-cx, -cy)
-                );
-            }
-            if (delay) { setTimeout(doZoom, delay); } else { doZoom(); }
-        }
-
         // Reset visibility when switching layouts (precomputed may have hidden nodes)
         nodeEls.attr("display", null);
 
@@ -705,31 +786,54 @@
     }
 
     function updateVisibility() {
+        // --- Focus mode: show only ego network (2-hop neighborhood), hide the rest ---
+        if (focusNodeId && focusNeighborSet) {
+            nodeEls
+                .attr("display", d => focusNeighborSet.has(d.id) ? null : "none")
+                .transition().duration(200)
+                .attr("opacity", d => {
+                    if (!focusNeighborSet.has(d.id)) return 0;
+                    return d.id === focusNodeId ? 1.0 : 0.85;
+                });
+            linkEls.transition().duration(200).attr("opacity", l => {
+                if (currentLayout.startsWith("tree") || currentLayout.startsWith("circle")) return 0;
+                const sid = (typeof l.source === "object") ? l.source.id : l.source;
+                const tid = (typeof l.target === "object") ? l.target.id : l.target;
+                if (!focusNeighborSet.has(sid) || !focusNeighborSet.has(tid)) return 0;
+                return l.type === "ref" ? 0.4 : 0.75;
+            });
+            return;
+        }
+
+        // --- Normal mode ---
+        nodeEls.attr("display", null);
         nodeEls.transition().duration(200).attr("opacity", d => {
             if (currentFocusProject !== "ALL" && d.project !== currentFocusProject) return 0.05;
             if (activeNodeId && d.id !== activeNodeId) {
-                // Dim non-neighbors
-                const isNeighbor = graphData.links.some(l =>
-                    (l.source.id === activeNodeId && l.target.id === d.id) ||
-                    (l.target.id === activeNodeId && l.source.id === d.id)
-                );
-                if (!isNeighbor) return 0.1;
+                // Dim non-neighbors to 15% (still visible for context)
+                const isNeighbor = graphData.links.some(l => {
+                    const sid = (typeof l.source === "object") ? l.source.id : l.source;
+                    const tid = (typeof l.target === "object") ? l.target.id : l.target;
+                    return (sid === activeNodeId && tid === d.id) || (tid === activeNodeId && sid === d.id);
+                });
+                if (!isNeighbor) return 0.12;
             }
-            return 1.0;
+            return d.opacity != null ? d.opacity : 1.0;
         });
 
         linkEls.transition().duration(200).attr("opacity", l => {
-            // Layout-specific base opacities — kept consistent with edge routers in ticked()
             if (currentLayout.startsWith("tree") || currentLayout.startsWith("circle")) return 0;
             const baseRef = currentLayout.startsWith("arc") ? 0.15 : 0.4;
             const baseOther = currentLayout.startsWith("arc") ? 0.4 : 0.7;
             if (currentFocusProject !== "ALL") {
-                const sp = l.source.project || "none";
-                const tp = l.target.project || "none";
+                const sp = (typeof l.source === "object" ? l.source.project : null) || "none";
+                const tp = (typeof l.target === "object" ? l.target.project : null) || "none";
                 if (sp !== currentFocusProject && tp !== currentFocusProject) return 0.01;
             }
             if (activeNodeId) {
-                if (l.source.id !== activeNodeId && l.target.id !== activeNodeId) return 0.05;
+                const sid = (typeof l.source === "object") ? l.source.id : l.source;
+                const tid = (typeof l.target === "object") ? l.target.id : l.target;
+                if (sid !== activeNodeId && tid !== activeNodeId) return 0.05;
             }
             return l.type === "ref" ? baseRef : baseOther;
         });

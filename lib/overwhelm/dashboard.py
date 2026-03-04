@@ -3674,15 +3674,18 @@ def render_task_graph_page():
         has_full = any("full" in v for v in manifest.values()) if manifest else False
         has_focus = any("focus" in v for v in manifest.values()) if manifest else False
 
-        scope_options = ["Filtered"]
-        if has_full:
-            scope_options.append("Full")
+        # Focus scope first (pre-filtered ~700 active nodes vs ~4000 full)
+        scope_options = []
         if has_focus:
             scope_options.append("Focus")
+        scope_options.append("All")
+        if has_full:
+            scope_options.append("Full")
 
+        _scope_key_map = {"Focus": "focus", "All": "default", "Full": "full"}
         if len(scope_options) > 1:
             scope = st.radio("Scope", scope_options, key="tg_scope", horizontal=True)
-            scope_key = scope.lower()
+            scope_key = _scope_key_map.get(scope, "default")
         else:
             scope_key = "default"
 
@@ -3723,14 +3726,28 @@ def render_task_graph_page():
         d3_data = prepare_embedded_graph_data(d3_graph)
         available_layouts = d3_data.get("availableLayouts", [])
         if available_layouts:
-            layout_info = f" | Precomputed layouts: {', '.join(available_layouts)}"
+            layout_info = f" | layouts: {', '.join(available_layouts)}"
         elif d3_data.get("hasLayout"):
-            layout_info = " | Precomputed layout"
+            layout_info = " | precomputed layout"
         else:
             layout_info = ""
-        st.caption(
-            f"Showing {len(d3_data['nodes'])} nodes and {len(d3_data['links'])} links.{layout_info}"
+        from collections import Counter as _Counter
+
+        _status_counts = _Counter(n.get("status", "inbox") for n in d3_data["nodes"])
+        _summary_parts = []
+        for _s, _label in [
+            ("active", "active"),
+            ("in_progress", "in-progress"),
+            ("blocked", "blocked"),
+            ("waiting", "waiting"),
+            ("merge_ready", "ready"),
+        ]:
+            if _status_counts.get(_s, 0) > 0:
+                _summary_parts.append(f"{_status_counts[_s]} {_label}")
+        _status_str = (
+            " · ".join(_summary_parts) if _summary_parts else f"{len(d3_data['nodes'])} nodes"
         )
+        st.caption(f"{_status_str} | {len(d3_data['links'])} links{layout_info}")
 
         # Project filter dropdown (sidebar)
         projects = sorted(set(n.get("project", "") for n in d3_data["nodes"] if n.get("project")))
@@ -4021,8 +4038,9 @@ def render_session_summary():
 # UNIFIED DASHBOARD - Single page: Graph + Project boxes
 # ============================================================================
 
-from lib.task_model import TaskStatus
 from task_manager_ui import render_task_editor
+
+from lib.task_model import TaskStatus
 
 
 @st.dialog("Edit Task")
