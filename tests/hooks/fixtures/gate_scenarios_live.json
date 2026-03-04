@@ -236,7 +236,7 @@
       },
       "gate_overrides": {
         "custodiet": {
-          "ops_since_open": 15
+          "ops_since_open": 50
         }
       }
     },
@@ -263,7 +263,7 @@
       },
       "gate_overrides": {
         "custodiet": {
-          "ops_since_open": 15
+          "ops_since_open": 50
         }
       }
     }
@@ -658,7 +658,7 @@
       },
       "gate_overrides": {
         "custodiet": {
-          "ops_since_open": 15
+          "ops_since_open": 50
         }
       }
     },
@@ -685,7 +685,7 @@
       },
       "gate_overrides": {
         "custodiet": {
-          "ops_since_open": 15
+          "ops_since_open": 50
         }
       }
     }
@@ -881,7 +881,7 @@
       },
       "gate_overrides": {
         "custodiet": {
-          "ops_since_open": 15
+          "ops_since_open": 50
         }
       }
     },
@@ -907,7 +907,7 @@
       },
       "gate_overrides": {
         "custodiet": {
-          "ops_since_open": 15
+          "ops_since_open": 50
         }
       }
     },
@@ -940,7 +940,7 @@
           }
         },
         "custodiet": {
-          "ops_since_open": 15
+          "ops_since_open": 50
         }
       }
     },
@@ -969,7 +969,7 @@
       },
       "gate_overrides": {
         "custodiet": {
-          "ops_since_open": 15
+          "ops_since_open": 50
         }
       }
     }
@@ -1207,7 +1207,7 @@
       },
       "gate_overrides": {
         "custodiet": {
-          "ops_since_open": 15
+          "ops_since_open": 50
         }
       }
     },
@@ -1240,7 +1240,7 @@
           }
         },
         "custodiet": {
-          "ops_since_open": 15
+          "ops_since_open": 50
         }
       }
     },
@@ -1269,7 +1269,7 @@
       },
       "gate_overrides": {
         "custodiet": {
-          "ops_since_open": 15
+          "ops_since_open": 50
         }
       }
     }

@@ -1308,9 +1308,19 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
         agent_output = ""
         try:
             if not interactive and result.stdout:
-                agent_output += result.stdout
+                stdout = (
+                    result.stdout
+                    if isinstance(result.stdout, str)
+                    else result.stdout.decode("utf-8", errors="replace")
+                )
+                agent_output += stdout
             if not interactive and result.stderr:
-                agent_output += result.stderr
+                stderr = (
+                    result.stderr
+                    if isinstance(result.stderr, str)
+                    else result.stderr.decode("utf-8", errors="replace")
+                )
+                agent_output += stderr
         except (AttributeError, NameError):
             pass
 
