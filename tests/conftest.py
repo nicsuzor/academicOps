@@ -45,11 +45,10 @@ def ensure_test_environment(monkeypatch, tmp_path):
     (data_dir / "logs").mkdir(parents=True, exist_ok=True)
     (data_dir / "goals").mkdir(parents=True, exist_ok=True)
     (data_dir / "context").mkdir(parents=True, exist_ok=True)
-    # Sessions is sibling of data_root
-    sessions_dir = data_dir.parent / "sessions"
+    # Always use tmp_path for AOPS_SESSIONS to ensure full test isolation
+    # (avoids writing alongside external ACA_DATA paths when ACA_DATA is set externally)
+    sessions_dir = tmp_path / "sessions"
     sessions_dir.mkdir(parents=True, exist_ok=True)
-
-    # Force AOPS_SESSIONS to ensure isolation from user's local sessions
     monkeypatch.setenv("AOPS_SESSIONS", str(sessions_dir))
 
 

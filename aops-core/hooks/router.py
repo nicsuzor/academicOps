@@ -625,10 +625,10 @@ class HookRouter:
         # construct HookContext directly. extract_subagent_type() covers both
         # SPAWN_TOOLS lookup and Gemini's bare agent name pattern.
         if not ctx.subagent_type and ctx.tool_name:
-            if isinstance(ctx.tool_input, dict):
-                extracted, _ = extract_subagent_type(ctx.tool_name, ctx.tool_input)
-                if extracted:
-                    ctx.subagent_type = extracted
+            tool_input: dict[str, Any] = ctx.tool_input if isinstance(ctx.tool_input, dict) else {}
+            extracted, _ = extract_subagent_type(ctx.tool_name, tool_input)
+            if extracted:
+                ctx.subagent_type = extracted
 
         is_compliance_agent = ctx.is_subagent and (
             state.state.get("hydrator_active") or ctx.subagent_type in COMPLIANCE_SUBAGENT_TYPES
