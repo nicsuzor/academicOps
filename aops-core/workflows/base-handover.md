@@ -17,8 +17,8 @@ Work is NOT complete until `git push` succeeds, a PR is filed, and reflection is
 4. **Invoke `/dump`** (`aops-core:dump`)
 5. **Commit and PUSH**
 6. **File a PR**
-7. **Verify** all committed, pushed, PR filed
-8. **Output Framework Reflection**
+7. **Output Framework Reflection**
+8. **Summary to user** (Step 6 below — LAST output)
 
 ## CRITICAL RULES
 
@@ -83,14 +83,18 @@ Output the reflection using `## Framework Reflection` as an **H2 heading** (not 
 - Everything looks good now
 ```
 
-For the full 9-field template, see **[[references/handover-details]]**.
+## Step 6: Summary to User — LAST OUTPUT
 
-## Step 6: Halt
-
-After reflection, **stop working**. Output:
+After the Framework Reflection, output this. **Nothing follows.** It must stay visible in the terminal.
 
 ```
 ---
-Work COMPLETE: [Summary]. Next: `/pull <task-id>` to resume.
+## Session Complete
+
+**What was done**: [1–3 sentences]
+**Task(s) worked**: [task-id-1], [task-id-2]
+**Follow-up items**: [description → task-id] or "None"
+
+Next: `/pull <task-id>` to resume, or `/pull` to pick from queue.
 ---
 ```
