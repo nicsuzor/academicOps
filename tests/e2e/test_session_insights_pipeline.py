@@ -16,7 +16,6 @@ import tempfile
 from pathlib import Path
 
 import pytest
-
 from lib.insights_generator import InsightsValidationError, validate_insights_schema
 from lib.task_model import TaskType
 from lib.task_storage import TaskStorage
