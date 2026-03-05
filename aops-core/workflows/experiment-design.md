@@ -1,4 +1,5 @@
 ---
+id: experiment-design
 title: Experiment Design
 type: automation
 category: instruction

@@ -22,7 +22,6 @@ Work is NOT complete until `git push` succeeds, a PR is filed, and reflection is
 ## CRITICAL RULES
 
 - Work is **NOT complete** until `git push` succeeds AND a PR is filed
-- **NEVER stop** before pushing to remote and filing a PR
 - Using mutating tools after handover will reset the gate
 
 ---
