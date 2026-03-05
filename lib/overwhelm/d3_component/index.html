@@ -71,11 +71,56 @@
         background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px;
         padding: 4px 10px; font-size: 10px; cursor: pointer; color: #f8fafc; font-weight: 500;
     }
+
+    /* Focus mode back button */
+    #focus-back {
+        display: none; position: absolute; top: 8px; left: 8px; z-index: 11;
+        align-items: center; gap: 10px;
+    }
+    #focus-back button {
+        background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 6px; padding: 6px 12px; font-size: 11px; cursor: pointer;
+        color: #f8fafc; font-weight: 600; backdrop-filter: blur(8px);
+    }
+    #focus-back button:hover { background: rgba(30, 40, 70, 0.95); }
+    #focus-label {
+        background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 6px; padding: 4px 10px; font-size: 11px; color: #94a3b8;
+        max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        backdrop-filter: blur(8px);
+    }
+    .btn-focus { background: #7c3aed; color: white; }
+    .btn-focus:hover { background: #6d28d9; }
+
+    /* Critical path overlay on selected node's dependency chain */
+    @keyframes chain-pulse {
+      0%   { stroke-opacity: 0.9; stroke-width: 4px; }
+      50%  { stroke-opacity: 0.5; stroke-width: 6px; }
+      100% { stroke-opacity: 0.9; stroke-width: 4px; }
+    }
+    .chain-upstream { animation: chain-pulse 1.8s infinite ease-in-out; stroke: #f97316; }
+    .chain-downstream { animation: chain-pulse 1.8s infinite ease-in-out; stroke: #a78bfa; }
+    .chain-path { pointer-events: none; fill: none; }
+
+    /* Spotlight "Start Here" ring for top-priority nodes */
+    @keyframes spotlight-pulse {
+      0%   { stroke-opacity: 0.95; stroke-width: 3px; }
+      50%  { stroke-opacity: 0.35; stroke-width: 6px; }
+      100% { stroke-opacity: 0.95; stroke-width: 3px; }
+    }
+    .spotlight-ring { animation: spotlight-pulse 2.2s infinite ease-in-out; }
+    .hull-path { pointer-events: none; }
+    .hull-label { pointer-events: none; user-select: none; }
   </style>
 </head>
 <body>
 
   <div id="graph" style="position:relative;"></div>
+
+  <div id="focus-back">
+    <button onclick="exitFocusMode()">← Full view</button>
+    <span id="focus-label"></span>
+  </div>
 
   <div id="legend">
     <div class="legend-item"><div class="legend-box" style="background:#3b82f6"></div><span>Active</span></div>
@@ -93,8 +138,9 @@
         <h3 id="dt"></h3>
         <div id="df"></div>
         <div class="actions">
-            <button class="btn btn-edit" id="btn-edit" onclick="triggerAction('edit')">Edit Task</button>
-            <button class="btn btn-complete" id="btn-complete" onclick="triggerAction('complete')">Complete</button>
+            <button class="btn btn-focus" id="btn-focus" onclick="triggerFocus()">Focus</button>
+            <button class="btn btn-edit" id="btn-edit" onclick="triggerAction('edit')">Edit</button>
+            <button class="btn btn-complete" id="btn-complete" onclick="triggerAction('complete')">Done</button>
         </div>
     </div>
   </div>
@@ -106,8 +152,60 @@
     let currentFocusProject = "ALL";
     let currentLayout = "force";
     let activeNodeId = null;
+    let focusNodeId = null;       // non-null = ego network focus mode
+    let focusNeighborSet = null;  // Set of visible node IDs in focus mode
     let simulation = null;
-    let svg, container, zoom, linkEls, nodeEls;
+    let svg, container, zoom, linkEls, nodeEls, hullLayer, critPathLayer;
+
+    // --- Ego network helpers ---
+
+    // Returns Set of node IDs within `hops` hops of nodeId
+    function getNeighbors(nodeId, hops) {
+        const result = new Set([nodeId]);
+        let frontier = new Set([nodeId]);
+        for (let h = 0; h < hops; h++) {
+            const next = new Set();
+            graphData.links.forEach(l => {
+                const sid = (typeof l.source === "object") ? l.source.id : l.source;
+                const tid = (typeof l.target === "object") ? l.target.id : l.target;
+                if (frontier.has(sid) && !result.has(tid)) { next.add(tid); result.add(tid); }
+                if (frontier.has(tid) && !result.has(sid)) { next.add(sid); result.add(sid); }
+            });
+            frontier = next;
+            if (frontier.size === 0) break;
+        }
+        return result;
+    }
+
+    function enterFocusMode(nodeId) {
+        focusNodeId = nodeId;
+        focusNeighborSet = getNeighbors(nodeId, 2);
+        const focusNode = graphData.nodes.find(n => n.id === nodeId);
+        const label = focusNode ? focusNode.label : nodeId;
+        document.getElementById("focus-label").textContent = label;
+        document.getElementById("focus-back").style.display = "flex";
+        document.getElementById("detail").style.display = "none";
+        activeNodeId = null;
+        updateVisibility();
+        // Auto-zoom to fit visible nodes
+        const visibleNodes = graphData.nodes.filter(n => focusNeighborSet.has(n.id) && n.x != null && n.x > -9000);
+        if (visibleNodes.length > 0) autoZoomToFit(visibleNodes, 150);
+    }
+
+    function exitFocusMode() {
+        focusNodeId = null;
+        focusNeighborSet = null;
+        activeNodeId = null;
+        document.getElementById("focus-back").style.display = "none";
+        document.getElementById("detail").style.display = "none";
+        clearCriticalPath();
+        updateVisibility();
+        autoZoomToFit(graphData.nodes.filter(n => n.x != null && n.x > -9000), 0);
+    }
+
+    function triggerFocus() {
+        if (activeNodeId) enterFocusMode(activeNodeId);
+    }
 
     // Status colors
     const sbc = {
@@ -146,6 +244,22 @@
     // --- Layout-specific node shape builders ---
     function buildTaskCardNode(g, d) {
         const hw = d.w/2, hh = d.h/2;
+        // Spotlight ring: top-priority "start here" nodes get a pulsing gold ring
+        if (d.spotlight) {
+            const pad = 9;
+            const rx = d.shape === "pill" ? hh + pad : d.shape === "rounded" ? 14 : 8;
+            g.insert("rect", ":first-child")
+              .attr("x", -hw - pad).attr("y", -hh - pad)
+              .attr("width", (hw + pad) * 2).attr("height", (hh + pad) * 2)
+              .attr("rx", rx).attr("fill", "none")
+              .attr("stroke", "#f59e0b").attr("class", "spotlight-ring");
+            g.append("text")
+              .attr("x", 0).attr("y", -hh - pad - 5)
+              .attr("text-anchor", "middle").attr("font-size", "8px")
+              .attr("font-weight", "700").attr("fill", "#f59e0b")
+              .attr("letter-spacing", "0.6px").attr("pointer-events", "none")
+              .text("★ START HERE");
+        }
         if (d.shape === "pill") {
             g.append("rect").attr("x",-hw).attr("y",-hh).attr("width",d.w).attr("height",d.h)
               .attr("rx",hh).attr("ry",hh)
@@ -251,6 +365,187 @@
         });
     }
 
+    // --- Project convex hull helpers ---
+
+    function projectColor(projectId) {
+        let hash = 0;
+        for (let i = 0; i < projectId.length; i++) {
+            hash = ((hash << 5) - hash) + projectId.charCodeAt(i);
+            hash |= 0;
+        }
+        const hue = Math.abs(hash) % 360;
+        return `hsl(${hue}, 55%, 52%)`;
+    }
+
+    function updateHulls() {
+        if (!hullLayer) return;
+        // Only show hulls in force/precomputed/atlas layouts
+        const isContainment = currentLayout.startsWith("tree") ||
+                              currentLayout.startsWith("circle") ||
+                              currentLayout.startsWith("arc");
+        // Hide hulls in focus mode or containment layouts
+        if (isContainment || focusNodeId) {
+            hullLayer.selectAll("*").remove();
+            return;
+        }
+
+        const projectNodes = new Map();
+        graphData.nodes.forEach(n => {
+            if (n.x == null || n.x < -9000) return;
+            const p = n.project;
+            if (!p) return;
+            if (!projectNodes.has(p)) projectNodes.set(p, []);
+            projectNodes.get(p).push([n.x, n.y]);
+        });
+
+        const hullData = [];
+        projectNodes.forEach((pts, pid) => {
+            if (pts.length < 3) return;
+            const hull = d3.polygonHull(pts);
+            if (!hull) return;
+            // Expand hull outward from centroid by 40px so it wraps around nodes
+            const cx = d3.mean(hull, p => p[0]);
+            const cy = d3.mean(hull, p => p[1]);
+            const expanded = hull.map(([x, y]) => {
+                const dx = x - cx, dy = y - cy;
+                const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                return [x + dx / dist * 40, y + dy / dist * 40];
+            });
+            hullData.push({ id: pid, points: expanded, cx, cy });
+        });
+
+        hullLayer.selectAll(".hull-path").data(hullData, d => d.id)
+            .join("path")
+            .attr("class", "hull-path")
+            .attr("d", d => "M" + d.points.map(p => p.join(",")).join("L") + "Z")
+            .attr("fill", d => projectColor(d.id))
+            .attr("fill-opacity", 0.05)
+            .attr("stroke", d => projectColor(d.id))
+            .attr("stroke-opacity", 0.22)
+            .attr("stroke-width", 1.5)
+            .attr("stroke-dasharray", "5,3");
+
+        hullLayer.selectAll(".hull-label").data(hullData, d => d.id)
+            .join("text")
+            .attr("class", "hull-label")
+            .attr("x", d => d3.mean(d.points, p => p[0]))
+            .attr("y", d => d3.min(d.points, p => p[1]) - 5)
+            .attr("text-anchor", "middle")
+            .attr("font-size", "9px")
+            .attr("font-weight", "700")
+            .attr("fill", d => projectColor(d.id))
+            .attr("opacity", 0.55)
+            .attr("letter-spacing", "0.5px")
+            .text(d => d.id.replace(/_/g, " ").toUpperCase().substring(0, 22));
+    }
+
+    // --- Critical path helpers ---
+
+    // Returns {upstream: Set<edgeIndex>, downstream: Set<edgeIndex>}
+    // upstream  = depends_on edges on paths LEADING TO nodeId (blockers)
+    // downstream = depends_on edges on paths FROM nodeId (what it enables)
+    function getChainEdges(nodeId) {
+        const links = graphData.links;
+
+        // BFS walk along depends_on edges.
+        // direction="up"   → walk edge backwards (find tid in frontier, collect sid)
+        // direction="down" → walk edge forwards  (find sid in frontier, collect tid)
+        function bfsDepends(startId, direction) {
+            const edgeSet = new Set();
+            let frontier = new Set([startId]);
+            const visited = new Set([startId]);
+            while (frontier.size > 0) {
+                const next = new Set();
+                links.forEach((l, i) => {
+                    if (l.type !== "depends_on") return;
+                    const sid = (typeof l.source === "object") ? l.source.id : l.source;
+                    const tid = (typeof l.target === "object") ? l.target.id : l.target;
+                    const inFrontier = direction === "up" ? frontier.has(tid) : frontier.has(sid);
+                    const neighbor   = direction === "up" ? sid : tid;
+                    if (inFrontier && !visited.has(neighbor)) {
+                        edgeSet.add(i);
+                        next.add(neighbor);
+                        visited.add(neighbor);
+                    }
+                });
+                frontier = next;
+            }
+            return edgeSet;
+        }
+
+        return {
+            upstream:   bfsDepends(nodeId, "up"),
+            downstream: bfsDepends(nodeId, "down"),
+        };
+    }
+
+    function updateCriticalPath(nodeId) {
+        if (!critPathLayer) return;
+        critPathLayer.selectAll("*").remove();
+        if (!nodeId) return;
+
+        const {upstream, downstream} = getChainEdges(nodeId);
+        if (upstream.size === 0 && downstream.size === 0) return;
+
+        const allChainLinks = graphData.links.filter((l, i) => upstream.has(i) || downstream.has(i));
+        const isContainment = currentLayout.startsWith("tree") ||
+                              currentLayout.startsWith("circle") ||
+                              currentLayout.startsWith("arc");
+        if (isContainment) return;
+
+        critPathLayer.selectAll(".chain-path")
+            .data(allChainLinks)
+            .join("path")
+            .attr("class", (l, i) => {
+                const idx = graphData.links.indexOf(l);
+                return `chain-path ${upstream.has(idx) ? "chain-upstream" : "chain-downstream"}`;
+            })
+            .attr("d", l => {
+                const sx = l.source.x, sy = l.source.y;
+                const tx = l.target.x, ty = l.target.y;
+                const mx = (sx + tx) / 2;
+                return `M${sx},${sy} L${mx},${sy} L${mx},${ty} L${tx},${ty}`;
+            });
+    }
+
+    function clearCriticalPath() {
+        if (critPathLayer) critPathLayer.selectAll("*").remove();
+    }
+
+    // Outer-scope zoom-to-fit (also used by enterFocusMode / exitFocusMode)
+    // When trimOutliers=true (default for initial layout fit), compute bounding box from
+    // the 5th–95th percentile of node positions so distant outliers don't force the whole
+    // graph to zoom out to an unreadable scale.
+    function autoZoomToFit(ns, delay, trimOutliers) {
+        if (!ns || ns.length === 0) return;
+        function doZoom() {
+            let fitNodes = ns;
+            if (trimOutliers !== false && ns.length > 8) {
+                const xs = ns.map(n => n.x).slice().sort((a, b) => a - b);
+                const ys = ns.map(n => n.y).slice().sort((a, b) => a - b);
+                const p5x = xs[Math.floor(xs.length * 0.05)];
+                const p95x = xs[Math.ceil(xs.length * 0.95) - 1];
+                const p5y = ys[Math.floor(ys.length * 0.05)];
+                const p95y = ys[Math.ceil(ys.length * 0.95) - 1];
+                const core = ns.filter(n => n.x >= p5x && n.x <= p95x && n.y >= p5y && n.y <= p95y);
+                if (core.length >= 4) fitNodes = core;
+            }
+            const xs = fitNodes.map(n => n.x);
+            const ys = fitNodes.map(n => n.y);
+            const x0 = Math.min(...xs) - 80, x1 = Math.max(...xs) + 80;
+            const y0 = Math.min(...ys) - 80, y1 = Math.max(...ys) + 80;
+            const dx = x1 - x0, dy = y1 - y0;
+            if (dx === 0 || dy === 0) return;
+            const zoomScale = Math.min(W / dx, H / dy) * 0.88;
+            const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+            svg.transition().duration(450).call(
+                zoom.transform,
+                d3.zoomIdentity.translate(W / 2, H / 2).scale(zoomScale).translate(-cx, -cy)
+            );
+        }
+        if (delay) { setTimeout(doZoom, delay); } else { doZoom(); }
+    }
+
     function triggerAction(actionName) {
         if (!activeNodeId) return;
         Streamlit.setComponentValue({
@@ -342,6 +637,9 @@
         zoom = d3.zoom().scaleExtent([0.02, 10]).on("zoom", e => container.attr("transform", e.transform));
         svg.call(zoom);
 
+        // Hull layer for project cluster backgrounds (inserted before edges and nodes)
+        hullLayer = container.append("g").attr("class", "hull-layer");
+
         // === Build data structures ===
         const nodeById = new Map();
         nodes.forEach(n => nodeById.set(n.id, n));
@@ -375,6 +673,9 @@
           .attr("stroke-linecap","round").attr("stroke-linejoin","round");
 
         // Nodes
+        // Critical path overlay — above edges, below nodes
+        critPathLayer = container.append("g").attr("class", "crit-path-layer");
+
         const now = Date.now() / 1000;
         const cutoff48h = 48 * 3600;
 
@@ -414,9 +715,15 @@
         applyLayout();
 
         svg.on("click",()=> {
-            document.getElementById("detail").style.display="none";
-            activeNodeId = null;
-            updateVisibility();
+            if (focusNodeId) {
+                // Click background in focus mode: exit focus, restore full view
+                exitFocusMode();
+            } else {
+                document.getElementById("detail").style.display="none";
+                activeNodeId = null;
+                clearCriticalPath();
+                updateVisibility();
+            }
         });
     }
 
@@ -478,6 +785,16 @@
 
         router();
         nodeEls.attr("transform", d => `translate(${d.x},${d.y})`);
+        // Update critical path overlay positions each tick (needed for force simulation)
+        if (activeNodeId && critPathLayer && critPathLayer.selectAll(".chain-path").size() > 0) {
+            critPathLayer.selectAll(".chain-path").attr("d", l => {
+                const sx = l.source.x, sy = l.source.y;
+                const tx = l.target.x, ty = l.target.y;
+                const mx = (sx + tx) / 2;
+                return `M${sx},${sy} L${mx},${sy} L${mx},${ty} L${tx},${ty}`;
+            });
+        }
+        updateHulls();
     }
 
     function applyLayout() {
@@ -554,27 +871,6 @@
                     n._hasLayout = false;
                 }
             });
-        }
-
-        // Helper: zoom/pan to fit all nodes with padding
-        function autoZoomToFit(ns, delay) {
-            function doZoom() {
-                const xs = ns.map(n => n.x);
-                const ys = ns.map(n => n.y);
-                const x0 = Math.min(...xs) - 50, x1 = Math.max(...xs) + 50;
-                const y0 = Math.min(...ys) - 50, y1 = Math.max(...ys) + 50;
-                const dx = x1 - x0, dy = y1 - y0;
-                const zoomScale = Math.min(W / dx, H / dy) * 0.9;
-                const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
-                svg.transition().duration(500).call(
-                    zoom.transform,
-                    d3.zoomIdentity
-                        .translate(W / 2, H / 2)
-                        .scale(zoomScale)
-                        .translate(-cx, -cy)
-                );
-            }
-            if (delay) { setTimeout(doZoom, delay); } else { doZoom(); }
         }
 
         // Reset visibility when switching layouts (precomputed may have hidden nodes)
@@ -701,35 +997,71 @@
         const cBtn = document.getElementById("btn-complete");
         cBtn.style.display = ["done", "completed", "cancelled"].includes(d.status) ? "none" : "flex";
 
+        // Show blocking chain count in detail panel
+        const {upstream, downstream} = getChainEdges(d.id);
+        if (upstream.size > 0 || downstream.size > 0) {
+            const chainDiv = document.createElement("div");
+            chainDiv.className = "f";
+            chainDiv.innerHTML = `<span class="fl">Chain</span><span class="fv" style="color:#f97316">` +
+                `${upstream.size > 0 ? "▲ blocked by " + upstream.size : ""}` +
+                `${upstream.size > 0 && downstream.size > 0 ? " · " : ""}` +
+                `${downstream.size > 0 ? "▼ enables " + downstream.size : ""}` +
+                `</span>`;
+            document.getElementById("df").appendChild(chainDiv);
+        }
+        updateCriticalPath(d.id);
         updateVisibility();
     }
 
     function updateVisibility() {
+        // --- Focus mode: show only ego network (2-hop neighborhood), hide the rest ---
+        if (focusNodeId && focusNeighborSet) {
+            nodeEls
+                .attr("display", d => focusNeighborSet.has(d.id) ? null : "none")
+                .transition().duration(200)
+                .attr("opacity", d => {
+                    if (!focusNeighborSet.has(d.id)) return 0;
+                    return d.id === focusNodeId ? 1.0 : 0.85;
+                });
+            linkEls.transition().duration(200).attr("opacity", l => {
+                if (currentLayout.startsWith("tree") || currentLayout.startsWith("circle")) return 0;
+                const sid = (typeof l.source === "object") ? l.source.id : l.source;
+                const tid = (typeof l.target === "object") ? l.target.id : l.target;
+                if (!focusNeighborSet.has(sid) || !focusNeighborSet.has(tid)) return 0;
+                return l.type === "ref" ? 0.4 : 0.75;
+            });
+            return;
+        }
+
+        // --- Normal mode ---
+        nodeEls.attr("display", null);
         nodeEls.transition().duration(200).attr("opacity", d => {
             if (currentFocusProject !== "ALL" && d.project !== currentFocusProject) return 0.05;
             if (activeNodeId && d.id !== activeNodeId) {
-                // Dim non-neighbors
-                const isNeighbor = graphData.links.some(l =>
-                    (l.source.id === activeNodeId && l.target.id === d.id) ||
-                    (l.target.id === activeNodeId && l.source.id === d.id)
-                );
-                if (!isNeighbor) return 0.1;
+                // Dim non-neighbors to 15% (still visible for context)
+                const isNeighbor = graphData.links.some(l => {
+                    const sid = (typeof l.source === "object") ? l.source.id : l.source;
+                    const tid = (typeof l.target === "object") ? l.target.id : l.target;
+                    return (sid === activeNodeId && tid === d.id) || (tid === activeNodeId && sid === d.id);
+                });
+                if (!isNeighbor) return 0.12;
             }
-            return 1.0;
+            return d.opacity != null ? d.opacity : 1.0;
         });
 
         linkEls.transition().duration(200).attr("opacity", l => {
-            // Layout-specific base opacities — kept consistent with edge routers in ticked()
             if (currentLayout.startsWith("tree") || currentLayout.startsWith("circle")) return 0;
             const baseRef = currentLayout.startsWith("arc") ? 0.15 : 0.4;
             const baseOther = currentLayout.startsWith("arc") ? 0.4 : 0.7;
             if (currentFocusProject !== "ALL") {
-                const sp = l.source.project || "none";
-                const tp = l.target.project || "none";
+                const sp = (typeof l.source === "object" ? l.source.project : null) || "none";
+                const tp = (typeof l.target === "object" ? l.target.project : null) || "none";
                 if (sp !== currentFocusProject && tp !== currentFocusProject) return 0.01;
             }
             if (activeNodeId) {
-                if (l.source.id !== activeNodeId && l.target.id !== activeNodeId) return 0.05;
+                const sid = (typeof l.source === "object") ? l.source.id : l.source;
+                const tid = (typeof l.target === "object") ? l.target.id : l.target;
+                if (sid !== activeNodeId && tid !== activeNodeId) return 0.05;
             }
             return l.type === "ref" ? baseRef : baseOther;
         });
