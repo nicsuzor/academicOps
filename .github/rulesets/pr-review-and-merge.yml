@@ -61,8 +61,10 @@ rules:
   - type: pull_request
     parameters:
       required_approving_review_count: 1
-      # Approval #1: Merge Agent (github-actions[bot]) — triggered by human LGTM
-      # Note: Conceptual Review (claude[bot]) is advisory only — no approval/rejection authority
+      # Approval #1: Merge Prep (github-actions[bot]) — runs on cron, approves when ready
+      # Agent Review uses a commit status check (context: "Agent Review") rather than
+      # gh pr review, so it cannot be overridden by a later merge-prep approval.
+      # The "Agent Review" required status check below enforces this gate.
       dismiss_stale_reviews_on_push: false
       require_code_owner_review: false
       require_last_push_approval: false
@@ -84,11 +86,16 @@ rules:
       do_not_enforce_on_create: false
       required_status_checks:
         - context: Lint
-          # CRITICAL: This must exactly match the `name:` of the job in code-quality.yml.
-          # Current job name: "Lint" (capital L). Any mismatch silently blocks all PRs.
+          # Must match the `name:` of the job in lint.yml.
           # Run `scripts/validate-ruleset-alignment.sh` to verify alignment.
         - context: Type Check
-          # Must match the `name:` of the type-check job in CI.
+          # Must match the `name:` of the job in typecheck.yml.
+        - context: Pytest
+          # Must match the `name:` of the job in pytest.yml.
+        - context: Agent Review
+          # Must match the `name:` of the job in agent-review.yml.
+          # agent-review sets this status via gh api (not gh pr review) so it cannot
+          # be overridden by a subsequent merge-prep approval.
 
   # ─────────────────────────────────────────
   # Code quality (CodeQL / Copilot analysis)
@@ -111,6 +118,6 @@ rules:
   #   wait_minutes: 5
   #   max_entries_to_build: 5
   #   grouping_strategy: ALLGREEN
-  # When enabled, gh pr merge --merge-queue in pr-lgtm-merge.yml enqueues PRs.
+  # When enabled, gh pr merge --merge-queue enqueues PRs.
   # The queue rebases each PR on the current main head and reruns required checks
   # before merging, eliminating cascade conflicts from multiple concurrent PRs.

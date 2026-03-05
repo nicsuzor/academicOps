@@ -1,11 +1,9 @@
-# Cheap checks that run on every PR push: lint and type-check.
-# Type-check runs after lint passes.
+# Lint: ruff check + ruff format with autofix on PRs.
+# Runs independently — does not gate Type Check or Pytest.
 #
-# Conceptual Review runs as a separate standalone workflow (agent-conceptual-review.yml).
-#
-# See specs/pr-process.md for the full process documentation.
+# See specs/pr-pipeline-v2.md for the full process documentation.
 
-name: Code Quality
+name: Lint
 
 on:
   workflow_dispatch:
@@ -15,16 +13,13 @@ on:
     types: [opened, synchronize, assigned]
 
 jobs:
-  # ──────────────────────────────────────────────
-  # Stage 1: Lint
-  # ──────────────────────────────────────────────
   lint:
     name: Lint
     runs-on: ubuntu-latest
     permissions:
       contents: write
     concurrency:
-      group: code-quality-${{ github.event.pull_request.number || github.ref }}
+      group: lint-${{ github.event.pull_request.number || github.ref }}
       cancel-in-progress: true
     steps:
       - uses: actions/checkout@v4
@@ -84,34 +79,3 @@ jobs:
       - name: Ruff format check (final)
         if: steps.format-initial.outcome == 'failure'
         run: uv run ruff format --check
-
-  # ──────────────────────────────────────────────
-  # Stage 2: Type Check
-  # ──────────────────────────────────────────────
-  type-check:
-    name: Type Check
-    needs: lint
-    runs-on: ubuntu-latest
-    concurrency:
-      group: code-quality-${{ github.event.pull_request.number || github.ref }}
-      cancel-in-progress: true
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.ref || github.ref }}
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
-        with:
-          version: "latest"
-
-      - name: Install dependencies
-        run: uv sync --frozen
-
-      - name: Run basedpyright
-        run: uv run basedpyright

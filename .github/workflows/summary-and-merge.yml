@@ -1,0 +1,93 @@
+# Summary and Merge — environment-gated merge workflow
+#
+# Job 1 (summary): Posts a decision brief comment on the PR — synthesises
+#   changes, review verdicts, merge-prep fixes, and outstanding concerns.
+# Job 2 (merge): Requires `production` environment approval, then squash-merges.
+#
+# Triggered by merge-prep on success via workflow_dispatch.
+#
+# See specs/pr-pipeline-v2.md for the full process documentation.
+
+name: "Summary and Merge"
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to summarise and merge'
+        type: string
+        required: true
+
+jobs:
+  # ──────────────────────────────────────────────
+  # Job 1: Decision Brief
+  # ──────────────────────────────────────────────
+  summary:
+    name: Decision Brief
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      actions: read
+      statuses: read
+      id-token: write
+    outputs:
+      pr_number: ${{ inputs.pr_number }}
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PR_NUMBER: ${{ inputs.pr_number }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read agent instructions
+        id: prompt
+        run: |
+          PROMPT=$(cat .github/agents/summary-brief.agent.md)
+          {
+            echo "prompt<<AGENT_EOF"
+            echo "$PROMPT"
+            echo "AGENT_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Generate decision brief
+        uses: anthropics/claude-code-action@v1
+        with:
+          allowed_bots: "claude[bot],github-actions[bot]"
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            ${{ steps.prompt.outputs.prompt }}
+
+            ---
+
+            Generate a decision brief for PR #${{ env.PR_NUMBER }} in repository ${{ github.repository }}.
+
+            Use these commands to gather context:
+            - `gh pr view ${{ env.PR_NUMBER }}` — PR description and metadata
+            - `gh pr diff ${{ env.PR_NUMBER }}` — the diff
+            - `gh api repos/${{ github.repository }}/pulls/${{ env.PR_NUMBER }}/reviews` — all reviews
+            - `gh api repos/${{ github.repository }}/pulls/${{ env.PR_NUMBER }}/comments` — inline comments
+            - `gh api repos/${{ github.repository }}/issues/${{ env.PR_NUMBER }}/comments` — issue comments
+
+            Post the decision brief as a PR comment using `gh pr comment ${{ env.PR_NUMBER }}`.
+
+          claude_args: '--model claude-sonnet-4-6 --allowed-tools "Bash(gh:*),Read"'
+
+  # ──────────────────────────────────────────────
+  # Job 2: Merge (environment-gated)
+  # ──────────────────────────────────────────────
+  merge:
+    name: Merge
+    needs: summary
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Merge PR
+        run: gh pr merge ${{ needs.summary.outputs.pr_number }} --repo ${{ github.repository }} --squash --delete-branch --auto

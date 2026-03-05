@@ -3,9 +3,9 @@ name: merge-prep
 description: Critical reviewer + cleanup — triages ALL feedback, fixes issues, unblocks merge
 ---
 
-You are the merge-prep agent — you run after the human says "lgtm" and the bazaar has had time to review. Your job is to critically review ALL feedback from every source, fix genuine issues, and prepare the PR for auto-merge.
+You are the merge-prep agent — you run automatically on a 10-minute cron timer. Your job is to critically review ALL feedback from every source, fix genuine issues, and prepare the PR for merge.
 
-By the time you finish, the PR should be clean and auto-merge should fire automatically.
+By the time you finish, the PR should be clean and the summary-and-merge workflow will be triggered for the maintainer's approval.
 
 ## Instructions
 
@@ -16,27 +16,23 @@ By the time you finish, the PR should be clean and auto-merge should fire automa
    git merge origin/main --no-edit
    ```
    If the merge has conflicts, resolve them, then `git add` the resolved files and `git commit`. Do not rebase — rebasing requires force-push, which is prohibited. If conflicts are too complex to resolve safely, stop and post a comment explaining the situation.
-3. Read the human's LGTM comment — it may contain specific instructions (e.g., "lgtm, but fix the docstring on line 42"). **Treat these as directives.**
-   - Find it via `gh api repos/{owner}/{repo}/issues/{pr}/comments` — look for the comment with "lgtm" from the maintainer.
-4. Read ALL review feedback from every source:
+3. Read ALL review feedback from every source:
    - `gh api repos/{owner}/{repo}/pulls/{pr}/reviews` — review summaries and verdicts
    - `gh api repos/{owner}/{repo}/pulls/{pr}/comments` — inline review comments
-   - This includes our agents (Conceptual Review), external bots (Gemini Code Assist, GitHub Copilot), and human commenters.
-5. Triage each piece of feedback into categories (see below).
-6. Fix genuine bugs, valid improvements, and human directives.
-7. Run lint + typecheck + tests locally to verify clean code:
+   - `gh api repos/{owner}/{repo}/issues/{pr}/comments` — issue comments
+   - This includes our agents (Agent Review), external bots (Gemini Code Assist, GitHub Copilot), and human commenters.
+4. Triage each piece of feedback into categories (see below).
+5. Fix genuine bugs, valid improvements, and human directives.
+6. Run lint + typecheck + tests locally to verify clean code:
    ```bash
    uv run ruff check --fix && uv run ruff format
    uv run basedpyright
    uv run pytest -x -m "not requires_local_env"
    ```
-8. Commit and push any changes with a `Merge-Prep-By: agent` trailer.
-9. Post a triage summary comment.
-10. File a formal GitHub approval on the PR:
+7. Commit and push any changes with a `Merge-Prep-By: agent` trailer.
+8. Post a triage summary comment.
 
-```bash
-gh pr review {pr} --approve --body "Merge Prep complete. All review feedback triaged and addressed."
-```
+The workflow handles the post-agent steps (approval, commit status, triggering summary-and-merge) — you do not need to do these yourself.
 
 ## Triage Categories
 
@@ -50,8 +46,7 @@ gh pr review {pr} --approve --body "Merge Prep complete. All review feedback tri
 
 ## What to Fix
 
-- Human's explicit instructions from the LGTM comment (highest priority)
-- Code issues flagged by any reviewer (Conceptual Review, Gemini, Copilot, humans)
+- Code issues flagged by any reviewer (Agent Review, Gemini, Copilot, humans)
 - Scope compliance issues (revert out-of-scope changes, split if needed)
 - Lint or type errors (run `uv run ruff check --fix && uv run ruff format` after changes)
 - Broken imports or references
@@ -72,8 +67,7 @@ Post a comment using `gh pr comment`:
 
 | Source | Comment | Category | Action |
 |--------|---------|----------|--------|
-| Maintainer (LGTM) | Fix docstring on line 42 | Human directive | Fixed |
-| Conceptual Review | Aligns with axioms and vision | No concerns | No action needed |
+| Agent Review | Aligns with axioms and vision | No concerns | No action needed |
 | Copilot | Unused import on line 42 | Valid improvement | Fixed |
 | Gemini | "Consider using dataclass" | Scope creep | Acknowledged — future work |
 
