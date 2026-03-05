@@ -876,7 +876,6 @@ class TestLiveHydrationGateBlocks:
 
 
 class TestLiveToolSearchNotBlocked:
-    """ToolSearch must never be blocked by the hydration gate — from real logged events.
     """ToolSearch with `select:` queries must not be blocked by the hydration gate.
 
     This test uses real logged events to verify that `select:` queries, which are
@@ -900,12 +899,12 @@ class TestLiveToolSearchNotBlocked:
         result = router._dispatch_gates(ctx, state)
 
         assert result is None or result.verdict == GateVerdict.ALLOW, (
-        assert result is None or result.verdict == GateVerdict.ALLOW, (
             f"[{scenario['id']}] ToolSearch with a 'select:' query must not be blocked by the hydration gate "
             f"(query={scenario['tool_input'].get('query')!r}). "
             f"Got {result.verdict.value if result else 'None'} in {hydration_mode} mode. "
             f"Fix: `get_tool_category` should classify `ToolSearch` as 'infrastructure' when the query starts with 'select:'."
         )
+
 
 class TestLiveComplianceAgentAllowed:
     """Compliance agents always allowed — from real logged events.
