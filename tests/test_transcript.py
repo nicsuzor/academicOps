@@ -1,6 +1,7 @@
 """Tests for transcript parsing and reflection extraction."""
 
 import pytest
+
 from lib.paths import get_transcripts_dir
 
 
@@ -59,6 +60,26 @@ Some conversation...
         content = "Just some text."
         reflection = parser_module.parse_framework_reflection(content)
         assert reflection is None
+
+    def test_parse_framework_reflection_with_code_fences(self, parser_module) -> None:
+        """Test parsing accomplishments with code fences."""
+        content = """
+## Framework Reflection
+**Accomplishments**:
+- Fixed the bug.
+- ```
+- Some code change
+- ```python
+- print("hello")
+"""
+        reflection = parser_module.parse_framework_reflection(content)
+        assert reflection is not None
+        accomplishments = reflection.get("accomplishments", [])
+        assert "Fixed the bug." in accomplishments
+        assert "Some code change" in accomplishments
+        assert 'print("hello")' in accomplishments
+        # Ensure no raw code fences remain
+        assert not any(acc.startswith("```") for acc in accomplishments)
 
     def test_extract_reflection_from_live_logs(self, parser_module) -> None:
         """CRITICAL: Verify extraction works on actual live session logs.

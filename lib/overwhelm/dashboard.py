@@ -312,6 +312,28 @@ def load_token_metrics() -> dict | None:
     return totals
 
 
+def _extract_summary_from_filename(filename: str) -> str:
+    """Extract a human-readable summary from a session filename slug.
+
+    Format: YYYYMMDD-HH-{project}-{session_id}-{slug}-abridged.md
+    Example: 20260305-04-aops-34dfbb0e-fix-tests-failed-abridged.md -> "Fix tests failed"
+    """
+    # Remove extension and -abridged suffix
+    name = filename.replace("-abridged.md", "").replace(".md", "").replace(".json", "")
+    parts = name.split("-")
+    if len(parts) >= 5:
+        # Slug is everything after the session_id (index 3)
+        slug_parts = parts[4:]
+        # Filter out random hashes that might be at the end
+        slug_parts = [
+            p for p in slug_parts if len(p) < 8 or not all(c in "0123456789abcdef" for c in p)
+        ]
+        slug = " ".join(slug_parts)
+        if slug:
+            return slug.capitalize()
+    return ""
+
+
 def get_recent_sessions(hours: int = 24) -> list[dict]:
     """Get recent session summaries for the Where You Left Off section.
 
@@ -366,13 +388,39 @@ def get_recent_sessions(hours: int = 24) -> list[dict]:
         session_id = data["session_id"]
         project = data["project"]
         session_file = None
+        session_filename = None
 
         # Try to find abridged session file
         # Pattern: YYYYMMDD-HH-{project}-{session_id}-*-abridged.md
         date_prefix = session_date.strftime("%Y%m%d")
         for md_file in sessions_dir.glob(f"{date_prefix}*-{session_id}*-abridged.md"):
             session_file = md_file.stem  # Just the filename without extension
+            session_filename = md_file.name
             break
+
+        # Extract summary and handle "poor" summaries (placeholders, code fences)
+        summary = data.get("summary")
+        accomplishments = data.get("accomplishments", [])
+
+        # Detect poor summaries (including raw code fence reported in P1)
+        is_poor = (
+            not summary
+            or summary == "Session completed"
+            or "```" in str(summary)
+            or (summary.startswith("Successfully completed:") and len(summary) < 30)
+        )
+
+        if is_poor:
+            # Try first meaningful accomplishment
+            if accomplishments:
+                for acc in accomplishments:
+                    if acc and "```" not in acc:
+                        summary = acc
+                        break
+
+            # If still poor, try filename slug
+            if (not summary or "```" in str(summary)) and session_filename:
+                summary = _extract_summary_from_filename(session_filename)
 
         sessions.append(
             {
@@ -380,8 +428,8 @@ def get_recent_sessions(hours: int = 24) -> list[dict]:
                 "date": session_date,
                 "project": project,
                 "outcome": data.get("outcome"),
-                "summary": data.get("summary"),
-                "accomplishments": data.get("accomplishments", []),
+                "summary": summary,
+                "accomplishments": accomplishments,
                 "time_ago": _format_time_ago(session_date),
                 "session_file": session_file,
             }
@@ -1527,12 +1575,8 @@ def get_where_you_left_off(hours: int = 24, limit: int = 10) -> dict:
     recent_sessions = get_recent_sessions(hours=168)  # Get up to 7 days for stale counting
     for s in recent_sessions:
         summary = s.get("summary")
-        if not summary or summary == "Session completed":
-            accomplishments = s.get("accomplishments")
-            if accomplishments:
-                summary = accomplishments[0]
-            else:
-                continue
+        if not summary:
+            continue
 
         session_date = s.get("date")
         if not session_date:
@@ -3359,12 +3403,22 @@ def clean_activity_text(raw_text: str) -> str:
     # Remove any remaining unpaired HTML tags
     s = _re.sub(r"<[^>]+>", "", s, flags=_re.DOTALL)
 
+    # Remove code fences (``` or ```python etc)
+    s = _re.sub(r"```\w*", "", s)
+
     # Remove markdown headers (lines starting with #)
     lines = [line for line in s.split("\n") if not line.strip().startswith("#")]
 
     # Join remaining lines and remove common markdown formatting
     text = " ".join(lines)
-    text = text.replace("**", "").replace("__", "").replace("*", "").replace("_", "").strip()
+    text = (
+        text.replace("**", "")
+        .replace("__", "")
+        .replace("*", "")
+        .replace("_", "")
+        .replace("`", "")
+        .strip()
+    )
 
     # Collapse multiple spaces
     while "  " in text:
@@ -4021,8 +4075,9 @@ def render_session_summary():
 # UNIFIED DASHBOARD - Single page: Graph + Project boxes
 # ============================================================================
 
-from lib.task_model import TaskStatus
 from task_manager_ui import render_task_editor
+
+from lib.task_model import TaskStatus
 
 
 @st.dialog("Edit Task")
