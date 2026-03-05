@@ -3,47 +3,67 @@ id: decompose
 name: decompose-workflow
 category: planning
 bases: [base-task-tracking, base-handover]
-description: Break down goals into manageable tasks using structural decomposition
+description: Break down goals and epics into structured task trees using workflow steps
 permalink: workflows/decompose
 tags: [workflow, planning, decomposition, tasks, epics]
-version: 1.1.0
+version: 2.0.0
 ---
 
 # Decompose Workflow
 
-**Purpose**: Systematically break down a high-level goal or epic into specific, actionable tasks.
+**Purpose**: Break down a goal or epic into a structured task tree. When the epic has an assigned workflow, derive tasks from the workflow's steps.
 
-**When to invoke**: User says "plan X", "break this down", "what steps are needed?", or similar.
+**When to invoke**: User says "plan X", "break this down", "what steps are needed?", or an epic is ready for concrete work after [[strategic-intake]].
 
-## Core Decompose Process
+**Skill**: [[planning]] for decomposition patterns (spikes, dependency types, knowledge flow).
 
-1. **Understand Goal**: Clarify the primary objective and any constraints.
-2. **Identify Key Stages**: Determine the high-level phases of the work.
-3. **Draft Tasks**: Propose a set of tasks that together achieve the goal.
-4. **Define Deliverables**: For each task, specify what the final output should be.
-5. **Estimate Effort**: Assign rough complexity scores (e.g., XS, S, M, L).
-6. **Identify Dependencies**: Note which tasks must complete before others can start.
-7. **Create in PKB**: Use `mcp__pkb__create_task` to record the plan.
+## Core Process
 
-## Decompose Strategies and Patterns
+1. **Understand the Target** — What are we decomposing? A goal (needs projects/epics first), an epic (needs tasks), or a task (needs actions)? Clarify the primary objective and constraints.
 
-For common patterns and heuristics for task granularity, see **[[decomposition-patterns]]**:
+2. **Search for Context** (P52) — Query PKB for existing related work, prior decompositions of similar scope, and established patterns. Use `pkb_context(id, hops=2)` to understand the neighbourhood.
 
-- **Temporal Patterns** - Sequencing, parallelism, and milestones
-- **Functional Patterns** - Layered and feature-based decomposition
-- **Complexity Patterns** - Spikes, prototypes, and productionization
-- **Granularity Heuristics** - Guidelines for task sizing and focus
+3. **Select Workflow** — If the target is an epic, identify which workflow will achieve it (e.g., `feature-dev`, `peer-review`, `experiment-design`). The workflow's steps become the decomposition skeleton. If no existing workflow fits, the epic may need a custom step sequence.
 
-## Hierarchy and Depth (P#101, P#110)
+4. **Derive the Epic Shape** — Every epic needs three phases:
 
-- **Prefer Depth over Breadth**: If a goal produces >5 tasks, group them into functional **Epics**.
-- **Target Structure**: Multi-session work should aim for `Project -> Epic -> Task -> Action`.
-- **Avoid the Star Pattern**: A flat list of sibling tasks under a project is a failure of decomposition.
-- **Traceability**: Each level of the hierarchy must provide context and justification for the level below it (The WHY Test).
+   - **Planning tasks** (before): acceptance criteria, methodology, approach design
+   - **Execution tasks** (during): the actual work, one task per workflow step
+   - **Verification tasks** (after): QA, testing, cross-referencing, review
+
+   Map workflow steps to tasks. Each step becomes one or more tasks. See [[decomposition-patterns]] for temporal, functional, and complexity patterns.
+
+5. **Define Deliverables** — For each task, specify the concrete output. A task without a clear deliverable isn't actionable.
+
+6. **Identify Dependencies** — Which tasks must complete before others can start? Use the [[planning]] skill's dependency-type heuristic: "What happens if the dependency never completes?" If impossible → hard dependency. If less informed → soft dependency.
+
+7. **Estimate Effort** — Assign rough complexity (XS, S, M, L). Tasks over M probably need further decomposition. Single-session tasks (1–4 hours) are the right granularity.
+
+8. **Create in PKB** — Use `mcp__pkb__decompose_task(parent_id, subtasks)` for batch creation under the epic. Include dependencies, complexity, and deliverable descriptions.
+
+## Hierarchy and Depth
+
+- **Prefer depth over breadth**: If decomposition produces >7 tasks, group into sub-epics.
+- **Target structure**: `Project → Epic → Task → Action` (see [[TAXONOMY.md]])
+- **Avoid the star pattern**: A flat list of sibling tasks is a failure of decomposition.
+- **Every task belongs to an epic**: No orphans. If a task exists, its epic gives it purpose.
+
+## Workflow-Step Mapping Example
+
+Epic: "Add user authentication" using `feature-dev` workflow:
+
+| Workflow Step              | Task(s)                                      |
+| -------------------------- | -------------------------------------------- |
+| 1. Understand Requirements | Write auth acceptance criteria (planning)    |
+| 2. Propose Plan            | Design auth architecture doc (planning)      |
+| 3. Draft Tests             | Write auth unit tests (execution)            |
+| 4. Implement               | Implement auth middleware (execution)        |
+| 5. Verify Feature          | Run integration tests, review (verification) |
+| 6. Submit PR               | Create PR, address review (verification)     |
 
 ## Critical Rules
 
-- **Completeness**: All tasks together must fully achieve the original goal.
-- **Actionability**: Every task must be actionable by an agent or human.
-- **Cohesion**: Keep related work in a single task where appropriate.
-- **Validation**: Ensure each task includes a verification or check step.
+- **Completeness**: All tasks together must achieve the original epic.
+- **Actionability**: Every task must be completable in a single session.
+- **Verification**: Every epic must include at least one QA/review task.
+- **Conservative expansion**: If a task can be done in one sitting, don't decompose further.

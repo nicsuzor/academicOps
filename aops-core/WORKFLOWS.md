@@ -50,7 +50,10 @@ User request
     |
     +-- Continuation of session work? --------------> [[interactive-followup]]
     |
-    +-- Goal-level / multi-month work? -------------> [[decompose]]
+    +-- New idea / fragment / constraint? -----------> [[strategic-intake]]
+    |   ("I had an idea", "what if...", "new constraint")
+    |
+    +-- Break down goal/epic into tasks? -----------> [[decompose]]
     |   (uncertain path, need to figure out steps)
     |
     +-- Multiple similar items? --------------------> [[base-batch]]
@@ -79,16 +82,17 @@ User request
 
 ## Scope-Based Routing
 
-| Signal                                         | Route to                                    |
-| ---------------------------------------------- | ------------------------------------------- |
-| "Write a paper", "Build X", "Plan the project" | [[decompose]]                               |
-| "Add feature X", "Fix bug Y" (clear steps)     | [[feature-dev]]                             |
-| "Bug broken", "not working" (cause unknown)    | [[base-investigation]] + task-tracking      |
-| "How do I..." (information only)               | [[simple-question]]                         |
-| "Process all X", "batch update"                | [[base-batch]]                              |
-| "Process emails", "check inbox"                | [[email-triage]]                            |
-| "Review grant", "reference letter"             | [[peer-review]] / [[reference-letter]]      |
-| "/pdf", "/daily" (skill name)                  | [[simple-question]] + invoke skill directly |
+| Signal                                          | Route to                                    |
+| ----------------------------------------------- | ------------------------------------------- |
+| "I had an idea", "what if...", "new constraint" | [[strategic-intake]]                        |
+| "Write a paper", "Build X", "Plan the project"  | [[decompose]]                               |
+| "Add feature X", "Fix bug Y" (clear steps)      | [[feature-dev]]                             |
+| "Bug broken", "not working" (cause unknown)     | [[base-investigation]] + task-tracking      |
+| "How do I..." (information only)                | [[simple-question]]                         |
+| "Process all X", "batch update"                 | [[base-batch]]                              |
+| "Process emails", "check inbox"                 | [[email-triage]]                            |
+| "Review grant", "reference letter"              | [[peer-review]] / [[reference-letter]]      |
+| "/pdf", "/daily" (skill name)                   | [[simple-question]] + invoke skill directly |
 
 ## Available Workflows
 
@@ -96,9 +100,10 @@ User request
 
 These workflows help figure out what to do and how to do it.
 
-| Workflow      | When to Use                                 | Bases                   |
-| ------------- | ------------------------------------------- | ----------------------- |
-| [[decompose]] | Multi-month, uncertain path, goals to epics | task-tracking, handover |
+| Workflow             | When to Use                                          | Bases                         |
+| -------------------- | ---------------------------------------------------- | ----------------------------- |
+| [[strategic-intake]] | New idea, fragment, constraint → place in graph      | task-tracking, memory-capture |
+| [[decompose]]        | Break down goals/epics into tasks via workflow steps | task-tracking, handover       |
 
 ### Development
 
@@ -215,6 +220,7 @@ Projects can extend the global workflow catalog by defining local workflows in t
 
 | If you're unsure between...            | Ask...                                                                                         |
 | -------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| [[strategic-intake]] vs [[decompose]]  | "Placing a new idea" vs "breaking down an existing epic into tasks"                            |
 | [[decompose]] vs [[feature-dev]]       | "Figure out what to do" vs "design how to do it"                                               |
 | [[simple-question]] vs [[feature-dev]] | Pure info (no file mods) vs any file-modifying work                                            |
 | Workflow vs Skill                      | WHAT to do (workflow) vs HOW to do it (skill)                                                  |

@@ -210,14 +210,12 @@ Strategy work succeeds when:
 - Stay at strategic level
 - Focus on thinking, not doing
 
-## Integration Notes
+## Handing Off
 
-**This skill provides strategic space**.
+Strategy sessions produce insights, not tasks. When thinking is done:
 
-For operational work, hand off to:
+1. **Offer to place fragments**: "Ready to turn these insights into concrete plans?" If yes, invoke the [[strategic-intake]] workflow to place ideas, constraints, and connections into the planning hierarchy.
+2. **Offer to decompose**: If an epic has emerged from the discussion, offer to invoke the [[decompose]] workflow to break it into tasks.
+3. **Don't execute directly**: The handoff is to a workflow, not to execution. You surface the thinking; other agents and workflows handle the doing.
 
-- Implementation agents
-- Task management tools
-- Technical problem solving
-
-**Boundary**: Strategy session ends when thinking is done. Implementation is someone else's job.
+**Boundary**: Strategy session ends when thinking is done. Placement and decomposition are the [[effectual-planner]] agent's job via the workflows above. Implementation is someone else's job entirely.

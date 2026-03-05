@@ -9,12 +9,14 @@ category: spec
 ## Giving Effect
 
 - [[agents/effectual-planner.md]] - Agent definition with strategic planning capabilities
-- [[mcp__pkb__get_task_network]] - Task tree for strategic planning context
-- [[mcp__pkb__get_network_metrics]] - Graph metrics for network analysis
-- [[mcp__pkb__get_task_network]] - Task relationships for context discovery
-- [[workflows/strategy.md]] - Strategy workflow for goal decomposition
+- [[strategic-intake]] - Workflow for placing fragments in the planning hierarchy
+- [[decompose]] - Workflow for breaking epics into tasks via workflow steps
+- [[mcp__pkb__get_network_metrics]] - Graph centrality and topology metrics
+- [[mcp__pkb__get_dependency_tree]] - Upstream/downstream dependency traversal
+- [[mcp__pkb__pkb_context]] - Node neighbourhood within N hops
+- [[mcp__pkb__pkb_orphans]] - Disconnected node detection
 
-The Effectual Planning Agent is an AI agent that serves as a strategic planning assistant for academic research and knowledge work under conditions of genuine uncertainty. It receives fragments of information incrementally, organises them into a semantic web of goals, projects, and tasks, surfaces hidden structure, and proposes high-value next steps.
+The Effectual Planning Agent is a strategic planning assistant for academic research and knowledge work under conditions of genuine uncertainty. It receives fragments of information incrementally, organises them into a semantic web of goals, projects, epics, and tasks, surfaces hidden structure, and proposes high-value next steps.
 
 The agent is designed for work where many ideas fail, where you don't know what you don't know, and where the plan must evolve as understanding deepens.
 
@@ -75,38 +77,65 @@ The agent is successful when:
 - The web grows but structure doesn't emerge--just a pile of files
 - Agent spec doesn't grow (not learning) or grows unboundedly (not adapting)
 
+## Three Operational Modes
+
+The planner addresses three levels of challenge. See [[TAXONOMY.md]] for canonical definitions.
+
+**Mode 1: Strategic Intake** (UP — adding to the graph)
+
+New ideas, constraints, and connections enter the planning hierarchy. The agent places fragments at the right level (goal, project, or epic), links them to existing nodes, surfaces assumptions, and identifies what the new information enables or blocks. Uses the [[strategic-intake]] workflow.
+
+**Mode 2: Epic Decomposition** (DOWN — deriving tasks from workflows)
+
+A validated epic needs concrete work. The agent identifies the workflow that will achieve the epic, extracts its steps as a decomposition skeleton, and derives tasks from those steps — including planning tasks before, execution tasks during, and verification tasks after. Uses the [[decompose]] workflow with the [[planning]] skill.
+
+**Mode 3: Prioritisation** (ACROSS — sequencing by information value)
+
+The agent uses graph topology to rank work by learning potential: which tasks unblock the most downstream work? Which test the most load-bearing assumptions? Which threads converge? The agent uses PKB graph tools (`get_network_metrics`, `get_dependency_tree`, `pkb_context`, `pkb_orphans`) to surface structure and propose next steps.
+
 ## Current Feature Set
 
-**Node types**
+**Work hierarchy** (see [[TAXONOMY.md]])
 
-- Goals: desired future states, can be vague
-- Projects: bounded efforts toward goals
-- Tasks: executable actions with optional subtask lists
+```
+GOAL → PROJECT → EPIC → TASK → ACTION
+```
+
+Goals are desired future states. Projects are bounded efforts. Epics are PR-sized units of verifiable work (planning + execution + verification). Tasks are single-session deliverables within epics. Every task belongs to an epic.
 
 **Node lifecycle**
 
-- Status values: `seed` → `growing` → `active` → `complete` (or `blocked`, `dormant`, `dead`)
-- Tasks can contain subtask checklists
-- Tasks can divide (emit children), merge (consolidate), or promote subtasks to full nodes
+Status values: `seed` → `growing` → `active` → `complete` (or `blocked`, `dormant`, `dead`)
 
-**Linking**
+Nodes can divide (emit children), merge (consolidate), or promote subtasks to full nodes.
 
-- Wikilinks for semantic connections
+**Graph reasoning**
+
+The PKB provides topology metrics (centrality, PageRank, downstream weight), dependency trees (upstream/downstream traversal), neighbourhood context (N-hop exploration), path tracing (shortest paths between nodes), and orphan detection. The agent uses these to surface structure that isn't visible from individual nodes.
 
 **Assumption tracking**
 
-- Agent surfaces when new material implies unexamined assumptions
+Agent surfaces when new material implies unexamined assumptions. Assumptions are load-bearing hypotheses — if they're wrong, the dependent work is invalid.
 
 **Self-reflexivity**
 
-- Tracks friction and insights about planning to inform framework evolution
+Tracks friction and insights about planning to inform framework evolution.
 
-**Agent behaviours**
+## Information Value Prioritisation
 
-- Receives fragments and places them
-- Surfaces hidden dependencies and synergies
-- Identifies load-bearing unknowns
-- Proposes next steps by information value
+The core insight: prioritise by **what you'd learn**, not by urgency or importance.
+
+**Heuristic**: Tasks that unblock the most downstream work AND test untested assumptions rank highest. Mentally: `information_value ≈ downstream_weight × assumption_criticality`.
+
+**Using graph metrics**:
+
+- **Downstream weight** (`get_network_metrics`): How much work does completing this task unblock? High downstream weight = high leverage.
+- **Blocking count** (`get_dependency_tree`): How many tasks are directly waiting on this? A task blocking 5 others is more urgent than one blocking none.
+- **Convergence** (`pkb_trace`): When multiple threads lead to the same node, that node is a convergence point — completing it advances multiple projects simultaneously.
+- **Orphans** (`pkb_orphans`): Disconnected nodes may be forgotten ideas worth reconnecting, or dead ends worth pruning.
+- **Centrality** (`get_network_metrics`): High PageRank nodes are structurally important — they connect many parts of the graph.
+
+**What this replaces**: Traditional priority (P0-P4) is a useful heuristic for operational work. For strategic planning, information value is more useful because it accounts for what you'd _learn_, not just what you'd _finish_.
 
 ## Planned Features
 
@@ -121,22 +150,13 @@ Beyond status, a way to express confidence/maturity: how validated is this node'
 **Periodic review prompts**
 Time-triggered suggestions to revisit dormant nodes, review accumulated friction, or check whether active projects still make sense.
 
-**Link graph visualisation**
-Export to a format (Mermaid, Graphviz, or similar) that shows the web structure. Useful for spotting clusters, orphans, and bottlenecks.
-
 ### Medium-term (expand capability)
-
-**Multi-agent handoff**
-Integration points where the planning agent can hand off to execution agents (research agents, writing agents, etc.) with appropriate context.
 
 **Resource tracking**
 Lightweight affordance tracking: what capacities, relationships, and assets are available? Bird-in-hand thinking operationalised.
 
 **Temporal reasoning**
 Soft deadlines, windows of opportunity, and time-sensitive dependencies. Not hard scheduling, but awareness of when timing matters.
-
-**Cross-web queries**
-"What assumptions am I making across all active projects?" "What tasks are blocked and why?" "Where do my projects converge?"
 
 ### Long-term (if validated)
 
@@ -228,16 +248,14 @@ The Effectual Planning Agent is one component of a broader academicOps toolkit.
 
 Things we don't know yet and are planning to find out:
 
-1. **Granularity.** What's the right size for a node? When should a subtask become its own file?
+1. **Review cadence.** How often should the agent prompt for assumption review or friction synthesis?
 
-2. **Review cadence.** How often should the agent prompt for assumption review or friction synthesis?
+2. **Maturity representation.** Is status sufficient, or do we need a separate confidence/validation dimension?
 
-3. **Maturity representation.** Is status sufficient, or do we need a separate confidence/validation dimension?
+3. **Cross-cutting concerns.** Some things (a key relationship, a scarce resource) matter to multiple projects. How do we represent these? (Partially addressed by graph tools — `pkb_trace` finds connections, but representation of shared resources is still ad hoc.)
 
-4. **Cross-cutting concerns.** Some things (a key relationship, a scarce resource) matter to multiple projects. How do we represent these?
+4. **Historical value.** How much should we preserve vs. archive vs. delete? When is a dead project worth keeping?
 
-5. **Historical value.** How much should we preserve vs. archive vs. delete? When is a dead project worth keeping?
-
-6. **Agent boundaries.** When should this agent hand off to others? What context needs to transfer?
+5. **Daily skill alignment.** The daily skill uses operational heuristics (SHOULD/DEEP/ENJOY/QUICK/UNBLOCK) for task recommendations. These should eventually align with the planner's information-value prioritisation, but the integration isn't designed yet.
 
 These are the assumptions we're testing by building and using the system.
