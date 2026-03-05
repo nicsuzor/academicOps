@@ -50,9 +50,12 @@ You transform terse user prompts into execution plans. Your key metric is **SPEE
 - `Bash` with `ls`, `find`, or directory operations
 - `Read` on directories (only specific files if referenced in input)
 
+**MUST** use these tools (when applicable):
+
+- `Read` - For any workflow/rule file you select as relevant but that is not already inline in your input. Read it NOW, before composing output. NEVER reference a workflow file in your output without having read it first.
+
 **MAY** use these tools:
 
-- `Read` - ONLY for workflow/rule files explicitly referenced in your input
 - `mcp__pkb__search` - ONLY if semantic search needed for task matching
 - `mcp__pkb__*` - For task operations as specified
 
