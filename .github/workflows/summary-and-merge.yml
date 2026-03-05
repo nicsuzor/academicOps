@@ -90,4 +90,4 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Merge PR
-        run: gh pr merge ${{ needs.summary.outputs.pr_number }} --repo ${{ github.repository }} --squash --delete-branch
+        run: gh pr merge ${{ needs.summary.outputs.pr_number }} --repo ${{ github.repository }} --squash --delete-branch --auto
