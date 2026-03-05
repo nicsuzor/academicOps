@@ -48,6 +48,7 @@ from hooks.schemas import (
     GeminiHookOutput,
     HookContext,
 )
+
 from lib.gate_model import GateVerdict
 from lib.gate_types import GateState, GateStatus
 from lib.gates.registry import GateRegistry
@@ -182,10 +183,11 @@ def hydration_mode(request, monkeypatch):
 
 
 class TestHydrationGateBlocksWriteTools:
-    """Write-category tools get mode-appropriate verdict when hydration gate is closed.
+    """Write-category tools are blocked (WARN or DENY) when hydration gate is closed.
 
-    warn mode -> WARN (tool allowed, agent warned to hydrate)
-    block mode -> DENY (tool blocked until hydration)
+    The exact verdict depends on HYDRATION_GATE_MODE (warn vs block). These tests
+    verify the gate fires at all — not the specific mode. For mode → verdict mapping
+    see TestGateModeEnvVarOverrides.
     """
 
     SCENARIOS = _flatten_scenarios("hydration_gate_blocks_write_tools")
@@ -195,20 +197,19 @@ class TestHydrationGateBlocksWriteTools:
         SCENARIOS,
         ids=[s["id"] for s in SCENARIOS],
     )
-    def test_write_tool_verdict_matches_mode(self, router, hydration_mode, scenario):
+    def test_write_tool_blocked(self, router, scenario):
         state = _make_session_state(scenario)
         ctx = _make_context(scenario)
 
         result = router._dispatch_gates(ctx, state)
 
-        expected = GateVerdict.WARN if hydration_mode == "warn" else GateVerdict.DENY
         assert result is not None, (
-            f"[{scenario['id']}] Expected {expected.value} but got None (allow) "
-            f"in {hydration_mode} mode"
+            f"[{scenario['id']}] Write tool '{scenario['tool_name']}' should be blocked "
+            f"(WARN or DENY) when hydration gate is closed, got ALLOW"
         )
-        assert result.verdict == expected, (
-            f"[{scenario['id']}] Write tool '{scenario['tool_name']}' should be "
-            f"{expected.value} in {hydration_mode} mode, got {result.verdict.value}"
+        assert result.verdict != GateVerdict.ALLOW, (
+            f"[{scenario['id']}] Write tool '{scenario['tool_name']}' should be blocked "
+            f"(WARN or DENY) when hydration gate is closed, got {result.verdict.value}"
         )
 
 
@@ -221,8 +222,8 @@ class TestHydrationGateBlocksWriteTools:
 class TestHydrationGateReadOnlyTools:
     """Read-only tools are subject to hydration gate — only always_available is exempt.
 
-    warn mode -> WARN (tool allowed, agent warned to hydrate)
-    block mode -> DENY (tool blocked until hydration)
+    These tests verify the gate fires (blocked vs allowed). For mode → verdict
+    mapping (WARN vs DENY) see TestGateModeEnvVarOverrides.
     """
 
     SCENARIOS = _flatten_scenarios("hydration_gate_warns_read_only")
@@ -232,20 +233,19 @@ class TestHydrationGateReadOnlyTools:
         SCENARIOS,
         ids=[s["id"] for s in SCENARIOS],
     )
-    def test_read_tool_verdict_matches_mode(self, router, hydration_mode, scenario):
+    def test_read_tool_blocked(self, router, scenario):
         state = _make_session_state(scenario)
         ctx = _make_context(scenario)
 
         result = router._dispatch_gates(ctx, state)
 
-        expected = GateVerdict.WARN if hydration_mode == "warn" else GateVerdict.DENY
         assert result is not None, (
-            f"[{scenario['id']}] Expected {expected.value} but got None (allow) "
-            f"in {hydration_mode} mode"
+            f"[{scenario['id']}] Read-only tool '{scenario['tool_name']}' should be blocked "
+            f"(WARN or DENY) when hydration gate is closed, got ALLOW"
         )
-        assert result.verdict == expected, (
-            f"[{scenario['id']}] Read-only tool '{scenario['tool_name']}' should be "
-            f"{expected.value} in {hydration_mode} mode, got {result.verdict.value}"
+        assert result.verdict != GateVerdict.ALLOW, (
+            f"[{scenario['id']}] Read-only tool '{scenario['tool_name']}' should be blocked "
+            f"(WARN or DENY) when hydration gate is closed, got {result.verdict.value}"
         )
 
 
@@ -454,10 +454,10 @@ class TestComplianceSubagentTypesComplete:
 
 
 class TestNonComplianceSubagentBlocked:
-    """Non-compliance subagents get mode-appropriate verdict when hydration gate is closed.
+    """Non-compliance subagents are blocked (WARN or DENY) when hydration gate is closed.
 
-    warn mode -> WARN
-    block mode -> DENY
+    These tests verify the gate fires — not the specific mode. For mode → verdict
+    mapping see TestGateModeEnvVarOverrides.
     """
 
     SCENARIOS = _flatten_scenarios("non_compliance_subagent_blocked")
@@ -467,20 +467,20 @@ class TestNonComplianceSubagentBlocked:
         SCENARIOS,
         ids=[s["id"] for s in SCENARIOS],
     )
-    def test_non_compliance_verdict_matches_mode(self, router, hydration_mode, scenario):
+    def test_non_compliance_blocked(self, router, scenario):
         state = _make_session_state(scenario)
         ctx = _make_context(scenario)
 
         result = router._dispatch_gates(ctx, state)
 
-        expected = GateVerdict.WARN if hydration_mode == "warn" else GateVerdict.DENY
         assert result is not None, (
-            f"[{scenario['id']}] Expected {expected.value} but got None (allow) "
-            f"in {hydration_mode} mode"
-        )
-        assert result.verdict == expected, (
             f"[{scenario['id']}] Non-compliance agent '{scenario['subagent_type']}' "
-            f"should be {expected.value} in {hydration_mode} mode, got {result.verdict.value}"
+            f"should be blocked (WARN or DENY) when hydration gate is closed, got ALLOW"
+        )
+        assert result.verdict != GateVerdict.ALLOW, (
+            f"[{scenario['id']}] Non-compliance agent '{scenario['subagent_type']}' "
+            f"should be blocked (WARN or DENY) when hydration gate is closed, "
+            f"got {result.verdict.value}"
         )
 
 
@@ -858,20 +858,18 @@ class TestLiveHydrationGateBlocks:
         SCENARIOS,
         ids=[s["id"] for s in SCENARIOS],
     )
-    def test_hydration_blocks_tool(self, router, hydration_mode, scenario):
+    def test_hydration_blocks_tool(self, router, scenario):
         state = _make_session_state(scenario)
         ctx = _make_context(scenario)
 
         result = router._dispatch_gates(ctx, state)
 
-        expected = GateVerdict.WARN if hydration_mode == "warn" else GateVerdict.DENY
         assert result is not None, (
-            f"[{scenario['id']}] Expected {expected.value} but got None (allow) "
-            f"in {hydration_mode} mode"
+            f"[{scenario['id']}] Expected blocked (WARN or DENY) but got ALLOW"
         )
-        assert result.verdict == expected, (
-            f"[{scenario['id']}] {scenario['tool_name']} should be "
-            f"{expected.value} in {hydration_mode} mode, got {result.verdict.value}"
+        assert result.verdict != GateVerdict.ALLOW, (
+            f"[{scenario['id']}] {scenario['tool_name']} should be blocked "
+            f"(WARN or DENY), got {result.verdict.value}"
         )
 
 
@@ -1117,21 +1115,21 @@ class TestLiveReadOnlyTools:
         SCENARIOS,
         ids=[s["id"] for s in SCENARIOS],
     )
-    def test_read_only_verdict(self, router, hydration_mode, scenario):
+    def test_read_only_verdict(self, router, scenario):
         state = _make_session_state(scenario)
         ctx = _make_context(scenario)
 
         result = router._dispatch_gates(ctx, state)
 
-        # If gate_overrides include hydration=closed, expect mode-dependent verdict
+        # If gate_overrides include hydration=closed, gate must fire
         if scenario.get("gate_overrides", {}).get("hydration", {}).get("status") == "closed":
-            expected = GateVerdict.WARN if hydration_mode == "warn" else GateVerdict.DENY
             assert result is not None, (
-                f"[{scenario['id']}] Expected {expected.value} in {hydration_mode} mode"
+                f"[{scenario['id']}] Expected blocked (WARN or DENY) when hydration closed, "
+                f"got ALLOW"
             )
-            assert result.verdict == expected, (
-                f"[{scenario['id']}] {scenario['tool_name']}: expected {expected.value} "
-                f"in {hydration_mode} mode, got {result.verdict.value}"
+            assert result.verdict != GateVerdict.ALLOW, (
+                f"[{scenario['id']}] {scenario['tool_name']}: should be blocked (WARN or DENY) "
+                f"when hydration closed, got {result.verdict.value}"
             )
         else:
             # No hydration gate override — should be allowed
@@ -1159,7 +1157,7 @@ class TestLiveWriteTools:
         SCENARIOS,
         ids=[s["id"] for s in SCENARIOS],
     )
-    def test_write_tool_verdict(self, router, hydration_mode, scenario):
+    def test_write_tool_verdict(self, router, scenario):
         state = _make_session_state(scenario)
         ctx = _make_context(scenario)
 
@@ -1174,20 +1172,19 @@ class TestLiveWriteTools:
 
         if hydration_closed and custodiet_at_threshold:
             # Both gates fire -- engine merges: deny > warn > allow.
-            # Custodiet is "block" in test env -> DENY.
-            # Hydration is parameterized -> WARN or DENY.
-            # Merged verdict is always DENY (custodiet forces it).
+            # Custodiet is "block" in test env -> DENY always wins.
             assert result is not None
             assert result.verdict == GateVerdict.DENY, (
                 f"[{scenario['id']}] {scenario['tool_name']}: both hydration+custodiet active, "
-                f"expected DENY (custodiet=block), got {result.verdict.value}"
+                f"expected DENY (custodiet=block forces it), got {result.verdict.value}"
             )
         elif hydration_closed:
-            expected = GateVerdict.WARN if hydration_mode == "warn" else GateVerdict.DENY
+            # Hydration gate fires; exact verdict (WARN or DENY) depends on mode.
+            # We only check that the tool is blocked, not the specific verdict.
             assert result is not None
-            assert result.verdict == expected, (
-                f"[{scenario['id']}] {scenario['tool_name']}: expected {expected.value} "
-                f"in {hydration_mode} mode (hydration closed), got {result.verdict.value}"
+            assert result.verdict != GateVerdict.ALLOW, (
+                f"[{scenario['id']}] {scenario['tool_name']}: should be blocked (WARN or DENY) "
+                f"when hydration closed, got {result.verdict.value}"
             )
         elif custodiet_at_threshold:
             # Custodiet mode is block in test env
