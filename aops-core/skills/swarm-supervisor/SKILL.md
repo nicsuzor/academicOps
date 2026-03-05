@@ -15,6 +15,8 @@ triggers:
 
 # Swarm Supervisor - Full Lifecycle Orchestration
 
+> **Taxonomy note**: This skill provides domain expertise (HOW) for orchestrating parallel polecat workers. See [[TAXONOMY.md]] for the skill/workflow distinction.
+
 Orchestrate the complete non-interactive agent workflow: decompose → review → approve → dispatch → PR review → capture.
 
 ## Design Philosophy

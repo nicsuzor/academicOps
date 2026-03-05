@@ -118,18 +118,22 @@ diagnostic: null
 
 ## Task Type Hierarchy
 
+> **Canonical definitions**: See [[TAXONOMY.md]] for authoritative definitions of all concepts below. This section summarises; TAXONOMY.md is the source of truth.
+
 Semantic levels for decomposition:
 
 ```
-GOAL (multi-month/year outcome)
-  ├─ PROJECT (coherent body of work)
-  │   └─ EPIC (group of tasks toward milestone)
-  │       ├─ TASK (discrete deliverable)
-  │       ├─ ACTION (single work session)
-  │       ├─ BUG (defect to fix)
-  │       └─ FEATURE (new functionality)
-  └─ LEARN (observational tracking, not actionable)
+GOAL (multi-month/year desired outcome)
+  └─ PROJECT (coherent body of work toward a goal)
+      └─ EPIC (PR-sized unit of verifiable work)
+          ├─ TASK (discrete deliverable, single session)
+          ├─ ACTION (single step, <30 min)
+          ├─ BUG (defect to fix)
+          └─ FEATURE (new functionality)
+  LEARN (observational tracking, not actionable — attaches at any level)
 ```
+
+**Epic as verifiable unit**: An epic is not an arbitrary container. It is PR-sized and includes planning tasks (methodology, acceptance criteria), execution tasks (the actual work), and verification tasks (QA, review, testing). In the Bazaar model, a failure at any workflow step fails the entire epic until fixed or abandoned. This is how we achieve quality without micromanaging agents.
 
 ## Task Status Lifecycle
 
@@ -223,11 +227,11 @@ parent: 20260115-cognitive-load-epic
 
 **Meaning:** Task is a child of an epic/goal. Used for decomposition.
 
-**Structure:**
+**Structure** (see [[TAXONOMY.md]] for full definitions):
 
 - Goals contain Projects
-- Projects contain Epics
-- Epics contain Tasks/Actions/Features
+- Projects contain Epics (PR-sized verifiable units)
+- Epics contain Tasks/Bugs/Features (each with planning + execution + verification)
 - Tasks can contain Actions
 
 ## Overwhelm Dashboard Fields (from index.json)
@@ -335,14 +339,16 @@ Multi-session projects should aim for a minimum depth of 3 edges from the projec
 
 Before creating a task, ask:
 
-| Question                                            | If YES →                                                     |
-| --------------------------------------------------- | ------------------------------------------------------------ |
-| Will this take multiple sessions?                   | It's probably an **epic**, not a task                        |
-| Does this have multiple distinct deliverables?      | It's probably an **epic**                                    |
-| Is this a single step in a larger process?          | Find or create the parent epic first                         |
-| Is this infrastructure that serves a research goal? | Create the research epic first, then the infra task under it |
-| Can I finish this in one focused session (1-4h)?    | It's a **task**                                              |
-| Can I finish this in under 30 minutes?              | It's an **action**                                           |
+| Question                                                | If YES →                                                     |
+| ------------------------------------------------------- | ------------------------------------------------------------ |
+| Will this take multiple sessions?                       | It's probably an **epic**, not a task                        |
+| Does this have multiple distinct deliverables?          | It's probably an **epic**                                    |
+| Does this need planning AND execution AND verification? | It's an **epic** — those are separate tasks within it        |
+| Is this a single step in a larger process?              | Find or create the parent epic first                         |
+| Is this infrastructure that serves a research goal?     | Create the research epic first, then the infra task under it |
+| Can I finish this in one focused session (1-4h)?        | It's a **task**                                              |
+| Can I finish this in under 30 minutes?                  | It's an **action**                                           |
+| Does this task have no epic parent?                     | Create the epic first — orphan tasks violate the model       |
 
 ### Anti-Patterns with Examples
 

@@ -9,6 +9,8 @@ permalink: skills-convert-to-md
 
 # Document to Markdown Conversion
 
+> **Taxonomy note**: This skill provides domain expertise (HOW) for batch document conversion to markdown. See [[TAXONOMY.md]] for the skill/workflow distinction.
+
 Batch convert documents to markdown format, preserving tracked changes, comments, and other markup.
 
 ## Usage

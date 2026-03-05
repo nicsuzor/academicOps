@@ -11,6 +11,8 @@ permalink: skills-garden
 
 Tend the personal knowledge base and task graph incrementally. Small regular attention beats massive occasional cleanups.
 
+> **Taxonomy note**: This skill provides domain expertise (HOW) for PKM maintenance. The activities listed below are types of gardening expertise, not independent workflows. When a workflow step says "garden the task graph," this skill provides the knowledge for HOW to do it. See [[TAXONOMY.md]] for the skill/workflow distinction.
+
 ## Gardening Activities
 
 | Activity       | What to Do                                          |

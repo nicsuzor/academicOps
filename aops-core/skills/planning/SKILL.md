@@ -9,6 +9,8 @@ permalink: skills-planning
 
 # /planning Skill
 
+> **Taxonomy note**: This skill provides domain expertise (HOW) for decomposing work under uncertainty. See [[TAXONOMY.md]] for the skill/workflow distinction.
+
 Patterns for decomposing work under genuine uncertainty.
 
 ## Purpose

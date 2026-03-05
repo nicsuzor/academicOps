@@ -17,8 +17,8 @@ import re
 from pathlib import Path
 
 import pytest
-from lib.paths import get_aops_root
 
+from lib.paths import get_aops_root
 from tests.conftest import extract_response_text
 
 

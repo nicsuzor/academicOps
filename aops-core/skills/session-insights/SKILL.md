@@ -14,6 +14,8 @@ tags:
 
 # Session Insights (Gemini Post-hoc Analysis)
 
+> **Taxonomy note**: This skill provides domain expertise (HOW) for generating session insights from transcripts. See [[TAXONOMY.md]] for the skill/workflow distinction.
+
 Generate comprehensive session insights from transcripts using Gemini Flash 2.0.
 
 ## Overview

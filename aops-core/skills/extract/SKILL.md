@@ -9,6 +9,8 @@ permalink: skills-extract
 
 # Extraction & Ingestion Skill
 
+> **Taxonomy note**: This skill provides domain expertise (HOW) for extracting structured information from documents and sources. See [[TAXONOMY.md]] for the skill/workflow distinction.
+
 General-purpose extraction skill that intelligently routes to specialized workflows based on input type. Extracts structured information from various sources and stores it appropriately (public framework vs. private data).
 
 ## Framework Context
@@ -104,7 +106,7 @@ When invoked, analyze the input and route to the appropriate workflow:
 #### Type A: Review with Inline Comments (DOCX with tracked changes)
 
 - **Example**: Peer review with inline comments and suggestions
-- **Workflow**: `workflows/review-inline-comments.md`
+- **Procedure**: `procedures/review-inline-comments.md`
 - **Output**: Training pairs + generalized principles
 
 #### Type B: Separate Review + Source Documents
@@ -121,7 +123,7 @@ When invoked, analyze the input and route to the appropriate workflow:
 
 ### Extraction Process
 
-See `workflows/review-inline-comments.md` for detailed workflow.
+See `procedures/review-inline-comments.md` for detailed procedure.
 
 **Quick summary**:
 

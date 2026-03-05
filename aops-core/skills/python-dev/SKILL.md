@@ -10,6 +10,8 @@ title: Python-Dev Skill
 
 # Python Development
 
+> **Taxonomy note**: This skill provides domain expertise (HOW) for production-quality Python code. See [[TAXONOMY.md]] for the skill/workflow distinction.
+
 Production-quality Python development with fail-fast philosophy, type safety, and modern patterns.
 
 ## Standard Tools

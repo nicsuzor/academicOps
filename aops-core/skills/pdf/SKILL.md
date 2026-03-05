@@ -9,6 +9,8 @@ permalink: skills-pdf
 
 # PDF Generation Skill
 
+> **Taxonomy note**: This skill provides domain expertise (HOW) for markdown to PDF conversion with academic typography. See [[TAXONOMY.md]] for the skill/workflow distinction.
+
 ## Overview
 
 Convert markdown documents to professionally formatted PDFs with appropriate typography. This skill uses pandoc with weasyprint to generate beautiful PDFs with Roboto fonts, proper margins, and styling optimized for different document types:

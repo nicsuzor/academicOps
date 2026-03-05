@@ -9,6 +9,8 @@ permalink: skills-daily
 
 # Daily Note Skill
 
+> **Taxonomy note**: This skill provides domain expertise (HOW) for daily note lifecycle management. See [[TAXONOMY.md]] for the skill/workflow distinction.
+
 Manage daily note lifecycle: briefing, task recommendations, progress sync, and work summary.
 
 Location: `$ACA_DATA/daily/YYYYMMDD-daily.md`

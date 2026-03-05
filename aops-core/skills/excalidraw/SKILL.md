@@ -10,6 +10,8 @@ title: Excalidraw Diagram Design Skill
 
 # Excalidraw Diagram Design Skill
 
+> **Taxonomy note**: This skill provides domain expertise (HOW) for creating hand-drawn diagrams with organic layouts. See [[TAXONOMY.md]] for the skill/workflow distinction.
+
 **Purpose**: Create hand-drawn, organic diagrams that communicate clearly and feel human.
 
 **Key principle**: Rigid, corporate diagrams fail to engage. Sloppy, hand-drawn aesthetics with spatial mind-map layouts capture attention and convey meaning effectively.

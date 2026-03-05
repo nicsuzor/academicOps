@@ -40,8 +40,9 @@ sys.path.insert(0, str(REPO_ROOT / "polecat"))
 sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 
 # These imports require the path insertions above.
-from lib.task_model import Task  # noqa: E402
 from manager import PolecatManager  # noqa: E402
+
+from lib.task_model import Task  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Helpers
