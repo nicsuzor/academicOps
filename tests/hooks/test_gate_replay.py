@@ -886,8 +886,8 @@ class TestExecuteHooksSmoke:
     def test_infrastructure_through_full_pipeline(self, router, tmp_path, monkeypatch):
         """Infrastructure tool through full pipeline should always be allowed.
 
-        Infrastructure tools (PKB ops, AskUserQuestion, etc.) bypass all gates.
-        Spawn tools (Agent, Task, Skill) are now subject to hydration gate.
+        Always_available (AskUserQuestion, etc.) and infrastructure (PKB ops) tools bypass all gates.
+        Spawn tools (Agent, Task, Skill) are subject to hydration gate.
         """
         monkeypatch.setenv("AOPS_SESSION_STATE_DIR", str(tmp_path))
         monkeypatch.setenv("AOPS_HOOK_LOG_PATH", str(tmp_path / "hooks.jsonl"))
@@ -913,7 +913,8 @@ class TestExecuteHooksSmoke:
 
 # Each tuple: (tool_name, expected_category, description)
 # expected_category is what gate_config SHOULD return for this tool.
-# "infrastructure" tools bypass ALL gates (PKB ops, meta tools like AskUserQuestion).
+# "always_available" tools bypass ALL gates (meta/control tools: AskUserQuestion, etc.).
+# "infrastructure" tools bypass ALL gates (PKB ops).
 # "spawn" tools are subject to hydration gate (Agent, Task, Skill, etc.).
 # "read_only" tools bypass custodiet gate but are subject to hydration.
 # "write" tools are subject to ALL gate policies.
@@ -943,11 +944,11 @@ REAL_TOOL_NAMES: list[tuple[str, str, str]] = [
     ("TaskUpdate", "spawn", "Claude: update task"),
     ("TaskGet", "spawn", "Claude: get task"),
     ("TaskList", "spawn", "Claude: list tasks"),
-    # Claude Code infrastructure (bypass all gates)
-    ("AskUserQuestion", "infrastructure", "Claude: ask user"),
-    ("TodoWrite", "infrastructure", "Claude: write todo"),
-    ("EnterPlanMode", "infrastructure", "Claude: enter plan"),
-    ("ExitPlanMode", "infrastructure", "Claude: exit plan"),
+    # Claude Code always_available tools (meta/control tools, bypass all gates)
+    ("AskUserQuestion", "always_available", "Claude: ask user"),
+    ("TodoWrite", "always_available", "Claude: write todo"),
+    ("EnterPlanMode", "always_available", "Claude: enter plan"),
+    ("ExitPlanMode", "always_available", "Claude: exit plan"),
     # ===== Gemini CLI tools =====
     ("read_file", "read_only", "Gemini: read file"),
     ("run_shell_command", "write", "Gemini: shell command"),
@@ -1150,8 +1151,8 @@ class TestRealToolNameCategorization:
     ):
         """Infrastructure tools bypass the hydration gate entirely.
 
-        PKB ops (mcp__pkb__*, create_task, etc.) and meta tools (AskUserQuestion,
-        TodoWrite, etc.) are in the infrastructure category and bypass all gates.
+        PKB ops (mcp__pkb__*, create_task, etc.) are in the infrastructure category and bypass
+        all gates. Meta/control tools (AskUserQuestion, TodoWrite, etc.) are in always_available.
         This allows the framework to function even while hydration is pending.
         """
         state = SessionState.create("test-tool-categorization")
