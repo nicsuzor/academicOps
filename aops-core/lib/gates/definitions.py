@@ -69,6 +69,7 @@ GATE_CONFIGS = [
                     current_status=GateStatus.CLOSED,
                     hook_event="PreToolUse",
                     excluded_tool_categories=["infrastructure"],
+                    custom_check="is_not_safe_toolsearch",
                 ),
                 verdict=HYDRATION_GATE_MODE,
                 # Brief user-facing summary
