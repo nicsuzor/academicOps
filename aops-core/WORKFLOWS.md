@@ -10,11 +10,16 @@ tags: [framework, routing, workflows, index]
 
 # Workflow Index
 
-Workflows are **hydrator hints**, not complete instructions. They tell the hydrator:
+> **Canonical definitions**: See [[TAXONOMY.md]] for authoritative definitions. Workflows define WHAT to do and in WHAT order. Skills define HOW. These are separate concerns.
 
-1. When this workflow applies (routing signals)
-2. What's unique to this workflow
-3. Which base workflows to compose
+Workflows are **composable step arrangements** that describe how to achieve an epic. Each workflow declares:
+
+1. **When** it applies (routing signals)
+2. **What steps** to follow, in what order
+3. **Which base patterns** to compose
+4. **Which skills** each step requires (implicitly or explicitly)
+
+Workflows are the Bazaar's quality guarantee. By structuring work into required steps — including verification — workflows ensure that work is good enough regardless of which agent performs it. A workflow achieves an epic; each step within a workflow corresponds to one or more tasks within that epic.
 
 ## Base Workflows (Composable Patterns)
 
@@ -154,6 +159,18 @@ Workflows for session management and state persistence.
 | ----------------- | ---------------------------------------- | ------ |
 | [[base-handover]] | Session completion and state persistence | commit |
 
+### General Purpose
+
+Workflows applicable across domains.
+
+| Workflow                  | When to Use                                            | Bases                       |
+| ------------------------- | ------------------------------------------------------ | --------------------------- |
+| [[experiment-design]]     | Test a hypothesis or new approach before committing    | task-tracking, verification |
+| [[monitor-prevent-bloat]] | Check for bloat, duplication, trim to maintain quality | task-tracking, verification |
+| [[develop-specification]] | Write or update a specification before implementation  | task-tracking, handover     |
+| [[decision-briefing]]     | Unstick a blocked decision with structured analysis    | task-tracking               |
+| [[session-effectiveness]] | Evaluate session transcripts for framework performance | task-tracking               |
+
 ### Meta & Framework
 
 Workflows about the framework itself.
@@ -196,8 +213,13 @@ Projects can extend the global workflow catalog by defining local workflows in t
 
 ## Key Distinctions
 
-| If you're unsure between...            | Ask...                                              |
-| -------------------------------------- | --------------------------------------------------- |
-| [[decompose]] vs [[feature-dev]]       | "Figure out what to do" vs "design how to do it"    |
-| [[simple-question]] vs [[feature-dev]] | Pure info (no file mods) vs any file-modifying work |
-| [[qa]] modes                           | Quick verification vs acceptance vs integration     |
+| If you're unsure between...            | Ask...                                                                                         |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| [[decompose]] vs [[feature-dev]]       | "Figure out what to do" vs "design how to do it"                                               |
+| [[simple-question]] vs [[feature-dev]] | Pure info (no file mods) vs any file-modifying work                                            |
+| Workflow vs Skill                      | WHAT to do (workflow) vs HOW to do it (skill)                                                  |
+| Workflow step vs Task                  | Steps are workflow-level sequencing; tasks are the concrete PKB items created to fulfill steps |
+
+### Workflow vs Skill (Principle #0)
+
+A **workflow** orchestrates a sequence of steps. A **skill** provides the expertise to execute one step. A workflow may reference multiple skills. **A skill never contains a workflow** — if a skill file has a decision tree routing to different process sequences, those sequences should be extracted as separate workflows. See [[TAXONOMY.md]] and the workflow-system-spec in `specs/` for details.

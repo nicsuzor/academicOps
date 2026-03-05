@@ -4,8 +4,9 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from hooks.schemas import HookContext
-from lib.gate_model import GateResult, GateVerdict
 from session_env_setup import run_session_env_setup
+
+from lib.gate_model import GateResult, GateVerdict
 
 
 @patch("session_env_setup.get_hook_log_path")

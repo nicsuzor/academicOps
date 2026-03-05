@@ -9,6 +9,8 @@ triggers:
 
 # Hypervisor - Atomic Locking Patterns
 
+> **Taxonomy note**: This skill provides domain expertise (HOW) for atomic locking patterns for batch operations. See [[TAXONOMY.md]] for the skill/workflow distinction.
+
 > **DEPRECATION NOTICE** (2026-02-06): For parallel task processing, use `/swarm-supervisor` and `polecat swarm` instead. The polecat swarm provides:
 >
 > - **Worktree isolation** (no merge conflicts)

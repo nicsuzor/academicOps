@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 from hooks.router import HookRouter
 from hooks.schemas import CanonicalHookOutput
+
 from lib.gate_model import GateResult, GateVerdict
 
 

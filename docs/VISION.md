@@ -56,6 +56,16 @@ Generic but academically-focused capabilities that support research workflows:
 
 **Scope**: Supports academic work across ALL repositories.
 
+## Core Taxonomy
+
+> See [[TAXONOMY.md]] for canonical definitions of all concepts.
+
+The framework organises work through a clear hierarchy and orchestration layer:
+
+**Hierarchy**: Goal → Project → Epic → Task → Action. Every task belongs to an epic. Epics are PR-sized units of verifiable work that include planning, execution, and verification steps.
+
+**Orchestration**: Workflows define WHAT steps to take and in WHAT order. Skills define HOW to execute each step. A workflow achieves an epic. In the Bazaar model, different agents may handle different steps — quality is guaranteed by the workflow structure, not by micromanaging agents.
+
 ## Core Architecture: Prompt Hydration
 
 Every user prompt is hydrated before execution:
@@ -71,14 +81,14 @@ PROMPT → HYDRATE → EXECUTE (following plan)
 The hydrator receives the user prompt along with session history and memory context, then outputs:
 
 1. **Intent**: What the user actually wants
-2. **Workflow**: Which workflow template applies
+2. **Workflow**: Which workflow template applies (see [[WORKFLOWS.md]])
 3. **TodoWrite Plan**: Concrete steps with per-step skill assignments
 4. **Guardrails**: Constraints based on workflow + domain
 
 ### Key Principles
 
 1. **Single decision point** — Hydrator makes all routing/skill decisions upfront
-2. **Skills match per-step** — Each step can invoke its own skill
+2. **Skills match per-step** — Each step can invoke its own skill (see [[TAXONOMY.md]] for skill/workflow distinction)
 3. **Workflows define quality** — Each workflow embeds appropriate CHECKPOINTs
 4. **Agent follows plan** — Main agent executes steps without re-deciding
 

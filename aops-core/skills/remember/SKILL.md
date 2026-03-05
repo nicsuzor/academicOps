@@ -8,6 +8,8 @@ version: 2.0.0
 
 # Remember Skill
 
+> **Taxonomy note**: This skill provides domain expertise (HOW) for knowledge capture and persistence. See [[TAXONOMY.md]] for the skill/workflow distinction.
+
 Persist knowledge to markdown + PKB. **Both writes required** for semantic search.
 
 ## Current State Machine

@@ -22,7 +22,7 @@ Skills in `aops-core/skills/` MUST have entries in `SKILLS.md`. Workflows refere
 
 ## C1: Workflow file length
 
-**Max 100 lines** for any workflow markdown file (`skills/*/workflows/*.md`, `global_workflows/*.md`).
+**Max 100 lines** for any workflow or procedure markdown file (`workflows/*.md`, `skills/*/procedures/*.md`).
 
 Workflows that exceed this are too complex to follow reliably. Split into:
 

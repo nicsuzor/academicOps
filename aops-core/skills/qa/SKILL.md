@@ -9,7 +9,9 @@ permalink: skills-qa
 
 # /qa Command Skill
 
-QA skill covering both upstream (criteria design, QA planning) and downstream (verification, assessment) workflows.
+QA skill covering both upstream (criteria design, QA planning) and downstream (verification, assessment) quality assurance.
+
+> **Taxonomy note**: This skill provides domain expertise (HOW) for quality assurance. The modes below represent different types of QA expertise, not independent workflows. A workflow step that says "verify the work" invokes this skill; the mode determines which type of QA expertise to apply. See [[TAXONOMY.md]] for the skill/workflow distinction.
 
 ## Purpose
 

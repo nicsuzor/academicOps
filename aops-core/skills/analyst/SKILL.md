@@ -14,6 +14,8 @@ triggers:
 
 # Analyst
 
+> **Taxonomy note**: This skill provides domain expertise (HOW) for research data analysis using dbt and Streamlit. See [[TAXONOMY.md]] for the skill/workflow distinction.
+
 ## Overview
 
 Support academic research data analysis by working collaboratively with dbt (data build tool) and Streamlit dashboards. This skill enforces academicOps methodology: reproducible data pipelines, automated testing, self-documenting code, and fail-fast validation.
