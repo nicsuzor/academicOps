@@ -14,11 +14,10 @@ Work is NOT complete until `git push` succeeds, a PR is filed, and reflection is
 1. **Complete all file changes**
 2. **Run quality gates** (tests, verify)
 3. **Update task status** (mark done/progress)
-4. **Invoke `/dump`** (`aops-core:dump`)
-5. **Commit and PUSH**
-6. **File a PR**
-7. **Verify** all committed, pushed, PR filed
-8. **Output Framework Reflection**
+4. **Codify learnings** (see Detailed Procedures)
+5. **Commit, PUSH, and file PR**
+6. **Output Framework Reflection**
+7. **Summary to user** (see format below — LAST output)
 
 ## CRITICAL RULES
 
@@ -56,7 +55,7 @@ For procedures on following steps, see **[[references/handover-details]]**:
 - **Quick Exit** - Protocol for sessions with no work done
 - **Step 3: Follow-up Tasks** - Procedure for task decomposition (MANDATORY: set `parent` for all new tasks)
 - **Step 4: Memory Persistence** - Capture learnings in PKB
-- **Edge Cases** - Historical tasks and infrastructure blocks
+- **Step 4.5: Codify** - File issue (framework) or update `./.agent/workflows/` (project-scoped)
 
 ---
 
@@ -71,6 +70,7 @@ Output the reflection using `## Framework Reflection` as an **H2 heading** (not 
 
 **Outcome**: success
 **Accomplishments**: Fixed the repo-sync cron script
+**Proposed changes**: Filed issue #123 (or "None")
 **Next step**: None — PR merged, task complete
 ```
 
@@ -83,14 +83,19 @@ Output the reflection using `## Framework Reflection` as an **H2 heading** (not 
 - Everything looks good now
 ```
 
-For the full 9-field template, see **[[references/handover-details]]**.
+## Step 6: Summary to User — LAST OUTPUT
 
-## Step 6: Halt
-
-After reflection, **stop working**. Output:
+After the Framework Reflection, output this. **Nothing follows.** It must stay visible in the terminal.
 
 ```
 ---
-Work COMPLETE: [Summary]. Next: `/pull <task-id>` to resume.
+## Session Complete
+
+**What was done**: [1–3 sentences]
+**Task(s) worked**: [task-id-1], [task-id-2]
+**Follow-up items**:
+- [Description] → [task-id]  (or "None")
+
+Next: `/pull <task-id>` to resume, or `/pull` to pick from queue.
 ---
 ```

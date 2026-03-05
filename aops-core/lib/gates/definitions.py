@@ -68,7 +68,8 @@ GATE_CONFIGS = [
                 condition=GateCondition(
                     current_status=GateStatus.CLOSED,
                     hook_event="PreToolUse",
-                    excluded_tool_categories=["infrastructure"],
+                    excluded_tool_categories=["infrastructure", "always_available"],
+                    custom_check="is_not_safe_toolsearch",
                 ),
                 verdict=HYDRATION_GATE_MODE,
                 # Brief user-facing summary
@@ -122,7 +123,7 @@ GATE_CONFIGS = [
                 condition=GateCondition(
                     hook_event="PreToolUse",
                     min_ops_since_open=CUSTODIET_TOOL_CALL_THRESHOLD,
-                    excluded_tool_categories=["infrastructure", "read_only"],
+                    excluded_tool_categories=["infrastructure", "always_available", "read_only"],
                 ),
                 verdict=CUSTODIET_GATE_MODE,
                 message_template="✕ Compliance check required ({ops_since_open} ops since last check).",

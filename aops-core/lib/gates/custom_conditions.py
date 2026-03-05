@@ -105,4 +105,13 @@ def check_custom_condition(
         except (ImportError, Exception):
             return True  # Assume missing on error
 
+    if name == "is_not_safe_toolsearch":
+        # Returns False ONLY if ToolSearch is loading specific tools by name (select:*)
+        # Returns True for everything else (including discovery ToolSearch)
+        if ctx.tool_name == "ToolSearch":
+            query = ctx.tool_input.get("query", "")
+            if isinstance(query, str) and "select:" in query:
+                return False
+        return True
+
     return False

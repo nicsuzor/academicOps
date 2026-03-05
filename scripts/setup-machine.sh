@@ -177,11 +177,13 @@ if [[ -n "${ACA_DATA:-}" && -d "${ACA_DATA}/.git" ]]; then
         fi
     fi
 
-    if [[ -x "${ACA_DATA}/.githooks/post-commit" ]]; then
-        ok "post-commit hook exists and is executable"
-    else
-        fail "post-commit hook missing or not executable at ${ACA_DATA}/.githooks/post-commit"
-    fi
+    for hook in post-commit post-merge; do
+        if [[ -x "${ACA_DATA}/.githooks/${hook}" ]]; then
+            ok "${hook} hook exists and is executable"
+        else
+            fail "${hook} hook missing or not executable at ${ACA_DATA}/.githooks/${hook}"
+        fi
+    done
 
     # Check remote
     remote=$(git -C "${ACA_DATA}" remote get-url origin 2>/dev/null || echo "")

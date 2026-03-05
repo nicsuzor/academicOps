@@ -1,6 +1,6 @@
 # academicOps Framework Status
 
-**Last updated**: 2026-03-03
+**Last updated**: 2026-03-05
 
 > **Authoritative scope**: This document describes the state of the aops framework codebase and its immediately-connected infrastructure. It is kept current by the butler on each invocation. Automated reviewers (gatekeeper, conceptual-review, etc.) read this document -- accuracy matters. If something is described as "working" here, it is integrated and tested. If it is described as "planned", it does not yet exist in production.
 >
@@ -181,32 +181,41 @@ Agent worker system with sandbox isolation, GitHub integration, and observabilit
 
 Scripts for extracting insights from session transcripts in `.agent/skills/session-insights/scripts/`.
 
+### Acceptance Tests -- IN PROGRESS
+
+Acceptance tests at `tests/acceptance/`:
+
+- `v1.1-release.md` -- 2 tests (email triage routing, framework skill routing). Both FAILING due to test harness gap: hydrator subagent runs without session context (SKILLS.md, WORKFLOWS.md not preloaded into input file).
+- `v0.3-release.md` -- 12 tests designed 2026-03-05 covering hydrator routing accuracy. Tests workflow discrimination (decompose vs feature-dev, peer-review vs reference-letter, report-finalization vs review-response), project-scoped workflow loading, skill bypass routing, multi-intent splitting, batch vs decompose, and negative tests. All PENDING -- blocked on same test harness gap as v1.1.
+
+**Known blocker**: The hydrator subagent test harness does not inject session context. When invoked via `Task(subagent_type="aops-core:prompt-hydrator", ...)`, the hydrator lacks its input file containing SKILLS.md, WORKFLOWS.md, and project workflows. This must be fixed before any acceptance tests can pass. The hydration `builder.py` constructs the input file during normal session hooks, but the test harness bypasses this path.
+
 ## Key Decisions
 
-| Decision                                                 | Rationale                                                                                                             | Date       |
-| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ---------- |
-| Delete qa.agent.md and strategic-review.agent.md         | Neither was invoked by any workflow; dead weight. Conceptual-review and custodiet-reviewer cover these concerns.      | 2026-03-03 |
-| custodiet-reviewer reads AXIOMS.md dynamically           | Hardcoded axiom list missed new axioms (e.g. P#45 Feedback Loops). Dynamic reading ensures full coverage.             | 2026-03-03 |
-| conceptual-review uses assumption audit lens             | Effectual reasoning: treat all unvalidated parameters as assumptions requiring feedback loops, not settled decisions. | 2026-03-03 |
-| PKB server is Rust-native (replaces Python task scripts) | Performance, reliability, single binary deployment. CLI + MCP from same codebase.                                     | 2026-02-22 |
-| All PKB tools are `infrastructure` in gate system        | PKB is framework infrastructure. Gates must never block PKB access. (Was `always_available` pre-PR #730.)             | 2026-03-04 |
-| Hydration gate: only `infrastructure` exempt             | Read-only and `spawn` tools (Agent, Skill, etc.) are blocked until hydration. Gate opens JIT on hydrator PreToolUse. | 2026-03-04 |
-| Agent tool in `spawn` category (not `infrastructure`)    | Prevents bypassing hydration via Agent spawns; compliance agents get a pre-dispatch trigger bypass instead.          | 2026-03-04 |
-| Import convention: qualified paths from aops-core/       | Bare imports caused dual sys.modules entries breaking importlib.reload() in tests.                                    | 2026-03-01 |
-| Gate verdict + replay regression tests                   | 150 scenario tests + 31 real-event replay tests to prevent gate regressions permanently.                              | 2026-03-01 |
+| Decision                                                 | Rationale                                                                                                                  | Date       |
+| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| Delete qa.agent.md and strategic-review.agent.md         | Neither was invoked by any workflow; dead weight. Conceptual-review and custodiet-reviewer cover these concerns.           | 2026-03-03 |
+| custodiet-reviewer reads AXIOMS.md dynamically           | Hardcoded axiom list missed new axioms (e.g. P#45 Feedback Loops). Dynamic reading ensures full coverage.                  | 2026-03-03 |
+| conceptual-review uses assumption audit lens             | Effectual reasoning: treat all unvalidated parameters as assumptions requiring feedback loops, not settled decisions.      | 2026-03-03 |
+| PKB server is Rust-native (replaces Python task scripts) | Performance, reliability, single binary deployment. CLI + MCP from same codebase.                                          | 2026-02-22 |
+| All PKB tools are `infrastructure` in gate system        | PKB is framework infrastructure. Gates must never block PKB access. (Was `always_available` pre-PR #730.)                  | 2026-03-04 |
+| Hydration gate: only `infrastructure` exempt             | Read-only and `spawn` tools (Agent, Skill, etc.) are blocked until hydration. Gate opens JIT on hydrator PreToolUse.       | 2026-03-04 |
+| Agent tool in `spawn` category (not `infrastructure`)    | Prevents bypassing hydration via Agent spawns; compliance agents get a pre-dispatch trigger bypass instead.                | 2026-03-04 |
+| Import convention: qualified paths from aops-core/       | Bare imports caused dual sys.modules entries breaking importlib.reload() in tests.                                         | 2026-03-01 |
+| Gate verdict + replay regression tests                   | 150 scenario tests + 31 real-event replay tests to prevent gate regressions permanently.                                   | 2026-03-01 |
 | "Agent" and "Task" are both `spawn` tools                | Claude Code's subagent tool is "Agent" not "Task". Gate config must list both. (Moved from `always_available` in PR #730.) | 2026-02-28 |
-| Iterative stale task sweep                               | 236+ open tasks with significant junk; batch-review with human decisions, not bulk auto-cancel                        | 2026-02-23 |
-| Conceptual review agent reads STATUS.md                  | Without strategic context, the review agent cannot catch PRs that delete working components (PR 582 post-mortem)      | 2026-02-23 |
-| Pipeline cascade limit (max 3 runs)                      | PR 582 showed bots triggering bots in unbounded loops; comment-based counting bounds total cycles                     | 2026-02-23 |
-| LGTM triggers lint re-run if failing                     | PR 585 showed LGTM silently failing when lint was stale; merge workflow now checks and re-triggers                    | 2026-02-23 |
-| Transcript path: $AOPS_SESSIONS/polecats/                | Worker transcripts go to sessions repo, not old ~/.aops/transcripts path                                              | 2026-02-23 |
-| Commit trailer for loop detection                        | Author name unreliable (multiple bots use github-actions[bot])                                                        | 2026-02-22 |
-| All workflows get workflow_dispatch                      | Manual re-run capability for debugging and recovery                                                                   | 2026-02-22 |
-| Review dismissal by agents                               | Agents should dismiss reviews they've addressed; humans override remaining                                            | 2026-02-22 |
-| All merge methods enabled                                | Flexibility for different PR types                                                                                    | 2026-02-22 |
-| Tests at repo root, not in aops-core                     | Single test suite covering all components                                                                             | prior      |
-| Skills are read-only (P#23)                              | Mutable state in $ACA_DATA only                                                                                       | prior      |
-| Categorical imperative (P#2)                             | Every change must be a universal rule                                                                                 | prior      |
+| Iterative stale task sweep                               | 236+ open tasks with significant junk; batch-review with human decisions, not bulk auto-cancel                             | 2026-02-23 |
+| Conceptual review agent reads STATUS.md                  | Without strategic context, the review agent cannot catch PRs that delete working components (PR 582 post-mortem)           | 2026-02-23 |
+| Pipeline cascade limit (max 3 runs)                      | PR 582 showed bots triggering bots in unbounded loops; comment-based counting bounds total cycles                          | 2026-02-23 |
+| LGTM triggers lint re-run if failing                     | PR 585 showed LGTM silently failing when lint was stale; merge workflow now checks and re-triggers                         | 2026-02-23 |
+| Transcript path: $AOPS_SESSIONS/polecats/                | Worker transcripts go to sessions repo, not old ~/.aops/transcripts path                                                   | 2026-02-23 |
+| Commit trailer for loop detection                        | Author name unreliable (multiple bots use github-actions[bot])                                                             | 2026-02-22 |
+| All workflows get workflow_dispatch                      | Manual re-run capability for debugging and recovery                                                                        | 2026-02-22 |
+| Review dismissal by agents                               | Agents should dismiss reviews they've addressed; humans override remaining                                                 | 2026-02-22 |
+| All merge methods enabled                                | Flexibility for different PR types                                                                                         | 2026-02-22 |
+| Tests at repo root, not in aops-core                     | Single test suite covering all components                                                                                  | prior      |
+| Skills are read-only (P#23)                              | Mutable state in $ACA_DATA only                                                                                            | prior      |
+| Categorical imperative (P#2)                             | Every change must be a universal rule                                                                                      | prior      |
 
 ## Open Questions
 
@@ -215,6 +224,7 @@ Scripts for extracting insights from session transcripts in `.agent/skills/sessi
 3. **Hydrator guardrails**: Hydrator agent drifts into implementation advice instead of staying advisory. Needs stronger prompt constraints.
 4. **Autonomous automation readiness**: Most workflows are at "supervised" maturity. No workflows have been validated for fully autonomous operation yet.
 5. **STATUS.md as bot input**: Bots (gatekeeper, conceptual-review) read this document as authoritative context. Stale information here causes false positives in reviews (see issue #701 where conceptual-review flagged the PKB server as non-existent because STATUS.md listed it as a roadmap item). This document MUST be kept accurate.
+6. **Hydrator acceptance test harness gap**: The hydrator subagent cannot be tested in isolation because the test harness does not construct the input file that `builder.py` normally provides during session hooks. Both v1.1 and v0.3 acceptance tests are blocked on this. Fixing the harness requires either (a) a test-mode builder that constructs the input file without a live session, or (b) a pytest fixture that calls the builder directly.
 
 ## Roadmap
 
@@ -229,6 +239,7 @@ Scripts for extracting insights from session transcripts in `.agent/skills/sessi
 
 ### Near-term
 
+- **Fix hydrator acceptance test harness** -- unblock v0.3 and v1.1 acceptance tests by constructing hydrator input file in test mode
 - Address task lifecycle gap (auto-close tasks when PRs merge)
 - Strengthen hydrator guardrails
 - Address issue review over-triggering
@@ -251,7 +262,6 @@ Scripts for extracting insights from session transcripts in `.agent/skills/sessi
 
 _Update log_ (keep last 3 entries; older history is in git):
 
+- **2026-03-05**: Added v0.3 acceptance tests (`tests/acceptance/v0.3-release.md`) -- 12 tests covering hydrator routing accuracy across workflow discrimination, academic workflows, project-scoped workflow loading, skill bypass, multi-intent splitting, and batch routing. Added "Acceptance Tests" section to Components. Documented hydrator test harness gap as Open Question #6 and near-term roadmap item. Both v1.1 and v0.3 tests blocked on harness fix.
 - **2026-03-04**: Gate hardening (PR #730). Tool categories refactored: `always_available` split into `infrastructure` (PKB, meta tools) and `spawn` (Agent, Task, Skill, delegate_to_agent). Spawn tools now blocked by hydration gate. Custodiet deadlock fixed: PreToolUse trigger resets counter before policy evaluates. Test fixtures rebuilt from live production logs (861 provenance-tracked scenarios). Gate test count: 150+ verdict tests + 31 replay tests.
 - **2026-03-03**: Agent consolidation (PR #705). Deleted qa.agent.md and strategic-review.agent.md (dead agents, no workflow invocations). Agent count updated: 5 -> 3 (worker, merge-prep, conceptual-review). custodiet-reviewer now reads AXIOMS.md dynamically. conceptual-review refocused on assumption audit + effectual reasoning.
-- **2026-03-03**: Major accuracy update (PR #702). Corrected PKB server status from "medium-term roadmap" to "deployed and running" (was causing false review findings, issue #701). Updated workflow count (18->11), agent list (now 5: qa, worker, strategic-review, merge-prep, conceptual-review), skills count (13->17), test count (~90->~100), architecture tree (removed nonexistent aops-tools/). Added PKB Server section as top component. Added authoritative-scope notice. Removed references to merged PRs from "In Progress". Added update log.
-- **2026-03-02**: Previous update (gate system, hydration policy).

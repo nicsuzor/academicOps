@@ -206,12 +206,14 @@
     },
     {
       "id": "syn-infra-ask-user-question",
-      "description": "AskUserQuestion bypasses hydration gate (infrastructure)",
+      "description": "AskUserQuestion bypasses hydration gate (always_available)",
       "_synthetic": "real-tool-synthetic-gate",
       "hook_event": "PreToolUse",
       "tool_name": "AskUserQuestion",
       "tool_input": {
-        "questions": [{"question": "Which task should I work on?", "header": "Task", "options": [], "multiSelect": false}]
+        "questions": [
+          { "question": "Which task should I work on?", "header": "Task", "options": [], "multiSelect": false }
+        ]
       },
       "is_subagent": false,
       "gate_overrides": {

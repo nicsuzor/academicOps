@@ -2,26 +2,20 @@
 # Personality: Diligent, thorough, and judicious. The critical reviewer + janitor.
 # Responsibilities:
 #   - Read ALL review comments (our agents + bazaar: Gemini, Copilot, etc.)
-#   - Read human's LGTM comment for specific instructions
 #   - Triage: fix genuine bugs, respond to false positives, defer scope creep
 #   - Push fixes so cheap checks re-run with clean code
-#   - Set "Merge Prep" commit status to success (unblocks auto-merge)
-#   - Clean up labels (remove lgtm, merge-prep-running)
-# Authority: Can EDIT code, push commits, post comments, set commit status
+#   - On success: approve PR, set merge-prep-status commit status, trigger summary-and-merge
+#   - On 3rd failure or ceiling breach: dismiss approval, set failure status, notify
+# Authority: Can EDIT code, push commits, post comments, file PR reviews
 # Prompt: .github/agents/merge-prep.agent.md
 #
-# Triggers:
-#   - Human approves PR via GitHub review (non-bot)
-#   - Human comments "lgtm" / "merge" / "ship it" on a PR
-#   - Manual workflow_dispatch with pr_number
+# Trigger: workflow_dispatch only (cron dispatcher calls this)
+#
+# See specs/pr-pipeline-v2.md for the full process documentation.
 
 name: "Agent: Merge Prep"
 
 on:
-  pull_request_review:
-    types: [submitted]
-  issue_comment:
-    types: [created]
   workflow_dispatch:
     inputs:
       pr_number:
@@ -29,103 +23,18 @@ on:
         type: string
         required: true
 
+# Global concurrency: serialise merge-prep across all PRs to prevent API rate limits
+concurrency:
+  group: merge-prep-global
+  cancel-in-progress: false
+
 jobs:
-  # ── Gate: validate LGTM signal, resolve PR details, add label ──
-  lgtm-gate:
-    name: LGTM Gate
-    if: >-
-      (github.event_name == 'workflow_dispatch') ||
-      (github.event_name == 'pull_request_review' &&
-        github.event.review.state == 'approved' &&
-        github.event.review.user.type != 'Bot') ||
-      (github.event_name == 'issue_comment' &&
-        github.event.issue.pull_request &&
-        github.event.comment.user.login == 'nicsuzor')
-    runs-on: ubuntu-latest
-    concurrency:
-      group: merge-prep-gate-${{ inputs.pr_number || github.event.pull_request.number || github.event.issue.number }}
-      cancel-in-progress: false
-    permissions:
-      contents: read
-      pull-requests: write
-      issues: write
-      actions: write
-    outputs:
-      pr_number: ${{ steps.pr-ref.outputs.pr_number }}
-      ref: ${{ steps.pr-ref.outputs.ref }}
-    env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    steps:
-      - name: Check LGTM pattern (comment trigger)
-        id: lgtm-check
-        if: github.event_name == 'issue_comment'
-        env:
-          COMMENT_BODY: ${{ github.event.comment.body }}
-        run: |
-          if echo "$COMMENT_BODY" | grep -iqE '^(lgtm|merge|ship it)'; then
-            echo "proceed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "proceed=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Determine PR number and ref
-        id: pr-ref
-        if: >-
-          github.event_name == 'workflow_dispatch' ||
-          github.event_name == 'pull_request_review' ||
-          steps.lgtm-check.outputs.proceed == 'true'
-        run: |
-          PR_NUM="${{ inputs.pr_number || github.event.pull_request.number || github.event.issue.number }}"
-          echo "pr_number=$PR_NUM" >> "$GITHUB_OUTPUT"
-
-          # Look up head ref for the fix job's checkout
-          HEAD_REF=$(gh pr view "$PR_NUM" --repo "${{ github.repository }}" \
-            --json headRefName --jq '.headRefName')
-          echo "ref=$HEAD_REF" >> "$GITHUB_OUTPUT"
-
-      - name: Add lgtm label
-        if: steps.pr-ref.outputs.pr_number != ''
-        run: |
-          gh pr edit "${{ steps.pr-ref.outputs.pr_number }}" \
-            --repo "${{ github.repository }}" \
-            --add-label "lgtm"
-
-      - name: React to comment
-        if: github.event_name == 'issue_comment' && steps.lgtm-check.outputs.proceed == 'true'
-        run: |
-          gh api repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
-            -f content=rocket
-
-      - name: Re-trigger code-quality if checks haven't run on HEAD
-        if: steps.pr-ref.outputs.pr_number != ''
-        run: |
-          PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
-          REPO="${{ github.repository }}"
-          HEAD_REF="${{ steps.pr-ref.outputs.ref }}"
-
-          HEAD_SHA=$(gh pr view "$PR_NUM" --repo "$REPO" \
-            --json headRefOid --jq '.headRefOid')
-
-          # Check if Lint has run on this HEAD
-          LINT_STATE=$(gh api "repos/$REPO/commits/$HEAD_SHA/check-runs" \
-            --jq '.check_runs[] | select(.name == "Lint") | .conclusion' 2>/dev/null | head -1)
-
-          if [ -z "$LINT_STATE" ]; then
-            echo "Lint has not run on HEAD $HEAD_SHA — re-triggering code-quality"
-            gh workflow run code-quality.yml --repo "$REPO" --ref "$HEAD_REF" \
-              || echo "Warning: could not trigger code-quality"
-          else
-            echo "Lint status on HEAD: $LINT_STATE"
-          fi
-
-  # ── Main agent: triage reviews, fix code, set status ──
   fix:
     name: Merge Prep
-    needs: [lgtm-gate]
-    if: needs.lgtm-gate.outputs.pr_number != ''
     runs-on: ubuntu-latest
+    # Per-PR concurrency prevents duplicate runs on the same PR across cron ticks
     concurrency:
-      group: merge-prep-${{ needs.lgtm-gate.outputs.pr_number }}
+      group: merge-prep-${{ inputs.pr_number }}
       cancel-in-progress: true
     permissions:
       contents: write
@@ -135,14 +44,42 @@ jobs:
       issues: write
       actions: read
     env:
-      PR_NUMBER: ${{ needs.lgtm-gate.outputs.pr_number }}
-      PR_REF: ${{ needs.lgtm-gate.outputs.ref }}
+      PR_NUMBER: ${{ inputs.pr_number }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      MAX_MERGE_PREP_RUNS: 5
     steps:
+      - name: Get PR details
+        id: pr-info
+        run: |
+          PR_DATA=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" \
+            --json headRefName,headRefOid)
+          HEAD_REF=$(echo "$PR_DATA" | jq -r '.headRefName')
+          HEAD_SHA=$(echo "$PR_DATA" | jq -r '.headRefOid')
+          echo "ref=$HEAD_REF" >> "$GITHUB_OUTPUT"
+          echo "sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ env.PR_REF }}
+          ref: ${{ steps.pr-info.outputs.ref }}
 
+      # Step 1: Dismiss prior merge-prep approval (approval must reflect latest code)
+      - name: Dismiss prior merge-prep approval
+        run: |
+          REPO="${{ github.repository }}"
+          # Find any existing approval from github-actions[bot]
+          REVIEW_ID=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" \
+            --jq '.[] | select(.state == "APPROVED" and .user.login == "github-actions[bot]") | .id' \
+            | tail -1)
+          if [ -n "$REVIEW_ID" ]; then
+            echo "Dismissing prior merge-prep approval (review $REVIEW_ID)"
+            gh api -X PUT "repos/$REPO/pulls/$PR_NUMBER/reviews/$REVIEW_ID/dismissals" \
+              -f message="Dismissed: new merge-prep run starting"
+          else
+            echo "No prior merge-prep approval to dismiss"
+          fi
+
+      # Step 2: Self-loop detection
       - name: Check if last push was from merge-prep
         id: loop-check
         run: |
@@ -154,17 +91,52 @@ jobs:
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Get PR HEAD SHA
-        id: head
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Step 3: Runaway loop ceiling
+      - name: Check loop ceiling
+        id: ceiling-check
+        if: steps.loop-check.outputs.skip != 'true'
         run: |
-          HEAD_SHA=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" \
-            --json headRefOid --jq '.headRefOid')
-          echo "sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+          git fetch origin main
+          MP_COUNT=$(git log origin/main..HEAD --grep="^Merge-Prep-By:" --oneline | wc -l | tr -d ' ')
+          echo "Merge-Prep-By commits in branch: $MP_COUNT (ceiling: $MAX_MERGE_PREP_RUNS)"
+          if [ "$MP_COUNT" -ge "$MAX_MERGE_PREP_RUNS" ]; then
+            echo "CEILING REACHED: $MP_COUNT merge-prep commits >= $MAX_MERGE_PREP_RUNS"
+            echo "exceeded=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exceeded=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Halt on ceiling breach: dismiss approval, set failure status, notify
+      - name: Halt on ceiling breach
+        if: steps.ceiling-check.outputs.exceeded == 'true'
+        run: |
+          REPO="${{ github.repository }}"
+          HEAD_SHA=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json headRefOid --jq '.headRefOid')
+
+          # Set merge-prep-status failure
+          gh api "repos/$REPO/statuses/$HEAD_SHA" \
+            -f state="failure" \
+            -f context="merge-prep-status" \
+            -f description="Halted: loop ceiling reached ($MAX_MERGE_PREP_RUNS merge-prep commits)" \
+            -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
+          # Notify
+          gh pr comment "$PR_NUMBER" --repo "$REPO" --body "$(cat <<'EOF'
+          ## Merge Prep: Halted (loop ceiling)
+
+          Merge-prep has made ${{ env.MAX_MERGE_PREP_RUNS }} or more commits on this branch without the PR stabilising.
+          Halting automatic retries to prevent runaway loops.
+
+          **Human intervention required.** Please:
+          1. Check the workflow logs and branch history
+          2. Fix any structural issues manually
+          3. Re-run via Actions > Agent: Merge Prep > Run workflow
+          EOF
+          )"
+          exit 1
 
       - name: Read agent instructions
-        if: steps.loop-check.outputs.skip != 'true'
+        if: steps.loop-check.outputs.skip != 'true' && steps.ceiling-check.outputs.exceeded != 'true'
         id: prompt
         run: |
           PROMPT=$(cat .github/agents/merge-prep.agent.md)
@@ -175,7 +147,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Run Merge Prep
-        if: steps.loop-check.outputs.skip != 'true'
+        if: steps.loop-check.outputs.skip != 'true' && steps.ceiling-check.outputs.exceeded != 'true'
         id: claude
         continue-on-error: true
         uses: anthropics/claude-code-action@v1
@@ -194,88 +166,85 @@ jobs:
             - `gh pr diff ${{ env.PR_NUMBER }}` — the diff
             - `gh api repos/${{ github.repository }}/pulls/${{ env.PR_NUMBER }}/reviews` — all reviews
             - `gh api repos/${{ github.repository }}/pulls/${{ env.PR_NUMBER }}/comments` — inline comments
-            - `gh api repos/${{ github.repository }}/issues/${{ env.PR_NUMBER }}/comments` — issue comments (including LGTM)
-
-            Look for the human's LGTM comment — it may contain specific instructions
-            (e.g., "lgtm, but fix the docstring on line 42"). Treat those as directives.
+            - `gh api repos/${{ github.repository }}/issues/${{ env.PR_NUMBER }}/comments` — issue comments
 
             Read ALL reviews from every source (our agents + Gemini + Copilot + anyone).
             Triage them all. Fix what's warranted. Dismiss what's not. Post your summary.
 
           claude_args: '--allowed-tools "Bash,Edit,Read,Write"'
 
-      # ── Post-agent cleanup ──
+      # ── Post-agent: success path ──
 
-      - name: Set Merge Prep status on success
-        if: steps.loop-check.outputs.skip != 'true' && steps.claude.outcome == 'success'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Handle success
+        if: steps.loop-check.outputs.skip != 'true' && steps.ceiling-check.outputs.exceeded != 'true' && steps.claude.outcome == 'success'
         run: |
           REPO="${{ github.repository }}"
+          HEAD_SHA=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json headRefOid --jq '.headRefOid')
 
-          # Get current HEAD (may have changed if merge-prep pushed)
-          HEAD_SHA=$(gh pr view "$PR_NUMBER" --repo "$REPO" \
-            --json headRefOid --jq '.headRefOid')
+          # Approve the PR
+          gh pr review "$PR_NUMBER" --repo "$REPO" --approve \
+            --body "Merge Prep complete. All review feedback triaged and addressed."
 
-          # Check if PR is actually mergeable before declaring success
-          MERGEABLE=$(gh pr view "$PR_NUMBER" --repo "$REPO" \
-            --json mergeable --jq '.mergeable')
-
-          if [ "$MERGEABLE" = "MERGEABLE" ]; then
-            STATE="success"
-            DESC="Review complete — ready to merge"
-          elif [ "$MERGEABLE" = "CONFLICTING" ]; then
-            STATE="failure"
-            DESC="Review complete but PR has merge conflicts"
-          else
-            STATE="failure"
-            DESC="Review complete but mergeable state is unknown — retry shortly"
-          fi
-
+          # Set merge-prep-status commit status
           gh api "repos/$REPO/statuses/$HEAD_SHA" \
-            -f state="$STATE" \
-            -f context="Merge Prep" \
-            -f description="$DESC" \
+            -f state="success" \
+            -f context="merge-prep-status" \
+            -f description="Merge prep complete — ready for summary" \
             -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
 
-      - name: Set Merge Prep status on skip (loop)
+          # Trigger summary-and-merge workflow
+          gh workflow run summary-and-merge.yml \
+            --repo "$REPO" \
+            -f pr_number="$PR_NUMBER"
+
+          echo "Triggered summary-and-merge for PR #$PR_NUMBER"
+
+      - name: Handle skip (loop detection)
         if: steps.loop-check.outputs.skip == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh api "repos/${{ github.repository }}/statuses/${{ steps.head.outputs.sha }}" \
-            -f state=success \
-            -f context="Merge Prep" \
-            -f description="Skipped (loop detection) — ready to merge" \
+          REPO="${{ github.repository }}"
+          HEAD_SHA="${{ steps.pr-info.outputs.sha }}"
+
+          # Set success status — loop skip means prior run's work is still valid
+          gh api "repos/$REPO/statuses/$HEAD_SHA" \
+            -f state="success" \
+            -f context="merge-prep-status" \
+            -f description="Skipped (loop detection) — prior merge-prep work is current" \
             -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
 
-      - name: Clean up labels on success
-        if: steps.claude.outcome == 'success' || steps.loop-check.outputs.skip == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Remove processing labels
-          gh pr edit "$PR_NUMBER" --repo "${{ github.repository }}" --remove-label "lgtm" 2>/dev/null || true
-          gh pr edit "$PR_NUMBER" --repo "${{ github.repository }}" --remove-label "merge-prep-running" 2>/dev/null || true
+      # ── Post-agent: failure path ──
 
       - name: Handle failure
-        if: steps.loop-check.outputs.skip != 'true' && steps.claude.outcome != 'success'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: steps.loop-check.outputs.skip != 'true' && steps.ceiling-check.outputs.exceeded != 'true' && steps.claude.outcome != 'success'
         run: |
           REPO="${{ github.repository }}"
+          HEAD_SHA=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json headRefOid --jq '.headRefOid')
 
-          # Remove running label so cron can retry
-          gh pr edit "$PR_NUMBER" --repo "$REPO" --remove-label "merge-prep-running" 2>/dev/null || true
-          # Keep lgtm label — human approval still stands
-
-          # Check failure count
+          # Count prior failures by checking existing PR comments from github-actions[bot]
+          # We treat previous "Merge Prep: Failed" comments as failure markers.
           FAIL_COUNT=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
-            --jq '[.[] | select(.body | test("Merge Prep: Failed")) and (.user.login == "github-actions[bot]")] | length')
+            --jq '[.[] | select(.user.login == "github-actions[bot]" and ((.body | contains("## Merge Prep: Failed (giving up)")) or (.body | contains("## Merge Prep: Failed"))))] | length')
 
-          if [ "$FAIL_COUNT" -ge "$((3 - 1))" ]; then
-            # This is the 3rd failure — stop retrying
-            gh pr edit "$PR_NUMBER" --repo "$REPO" --add-label "merge-prep-failed" 2>/dev/null || true
+          if [ "$FAIL_COUNT" -ge 2 ]; then
+            # This is the 3rd+ failure — halt permanently
+
+            # Dismiss any merge-prep approval
+            REVIEW_ID=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" \
+              --jq '.[] | select(.state == "APPROVED" and .user.login == "github-actions[bot]") | .id' \
+              | tail -1)
+            if [ -n "$REVIEW_ID" ]; then
+              gh api -X PUT "repos/$REPO/pulls/$PR_NUMBER/reviews/$REVIEW_ID/dismissals" \
+                -f message="Dismissed: merge-prep failed 3 times"
+            fi
+
+            # Set failure commit status
+            gh api "repos/$REPO/statuses/$HEAD_SHA" \
+              -f state="failure" \
+              -f context="merge-prep-status" \
+              -f description="Halted: 3 consecutive failures" \
+              -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
+            # Notify
             gh pr comment "$PR_NUMBER" --repo "$REPO" --body "$(cat <<'EOF'
           ## Merge Prep: Failed (giving up)
 
@@ -284,15 +253,15 @@ jobs:
           **Human intervention required.** Please:
           1. Check the workflow logs for errors
           2. Fix any issues manually
-          3. Remove the `merge-prep-failed` label to allow retries
-          4. Re-run via Actions > Agent: Merge Prep > Run workflow
+          3. Re-run via Actions > Agent: Merge Prep > Run workflow
           EOF
           )"
           else
+            # Not yet at threshold — cron will retry
             gh pr comment "$PR_NUMBER" --repo "$REPO" --body "$(cat <<'EOF'
           ## Merge Prep: Failed
 
-          Merge Prep encountered an error. It will retry on the next cron cycle (~15 min).
+          Merge Prep encountered an error. It will retry on the next cron cycle (~10 min).
           Check the workflow logs for details.
           EOF
           )"
