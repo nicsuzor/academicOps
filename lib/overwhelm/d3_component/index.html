@@ -776,6 +776,21 @@
         });
     }
 
+    function routeSfdpEdges() {
+        // SFDP layout: all edges use Manhattan (orthogonal) routing
+        // Override stroke-linejoin to miter for sharp 90-degree corners
+        linkEls.attr("opacity", d => d.type === "ref" ? 0.25 : 0.6)
+            .attr("stroke-linejoin", "miter")
+            .attr("stroke-linecap", "square");
+        linkEls.attr("d", d => {
+            const sx = d.source.x, sy = d.source.y;
+            const tx = d.target.x, ty = d.target.y;
+            if (sx == null || sy == null || tx == null || ty == null) return null;
+            const mx = (sx + tx) / 2;
+            return `M${sx},${sy} L${mx},${sy} L${mx},${ty} L${tx},${ty}`;
+        });
+    }
+
     // Dispatch table: maps layout mode to edge router
     const edgeRouters = {
         treemap: routeContainmentEdges,
@@ -783,6 +798,7 @@
         circle_pack: routeContainmentEdges,
         circle: routeContainmentEdges,
         arc: routeArcEdges,
+        sfdp: routeSfdpEdges,
     };
 
     // Layout-aware tick handler: delegates to per-layout edge router

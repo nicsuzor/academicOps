@@ -52,6 +52,16 @@ uv run python3 "${SCRIPT_DIR}/synthesize_dashboard.py" 2>&1 || echo "Warning: sy
 echo "==> Generating graph data..."
 "${AOPS_BIN}" graph -f all -o "${GRAPH_DIR}/graph"
 
+# Step 1b: Generate SFDP layout (scalable force-directed with Manhattan routing)
+echo "==> Generating SFDP layout..."
+if command -v sfdp >/dev/null 2>&1; then
+    uv run python3 "${SCRIPT_DIR}/task_graph_sfdp.py" \
+        "${GRAPH_DIR}" \
+        --timeout 600 2>&1 || echo "Warning: SFDP layout generation failed"
+else
+    echo "    Skipped (sfdp not found — install graphviz)"
+fi
+
 # Step 2: Generate SVGs from precomputed layout .dot files
 # Uses neato -n (fixed positions from aops export). Skips files with errors.
 echo "==> Generating SVGs from layout .dot files..."

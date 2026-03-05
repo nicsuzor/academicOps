@@ -4037,6 +4037,7 @@ def render_task_graph_page():
             "arc": "Arc Diagram",
             "treemap": "Treemap",
             "circle_pack": "Circle Pack",
+            "sfdp": "SFDP",
             "fa2": None,  # already exposed as "Precomputed"
             "forceatlas2": None,
         }
