@@ -156,6 +156,7 @@
     let focusNeighborSet = null;  // Set of visible node IDs in focus mode
     let simulation = null;
     let svg, container, zoom, linkEls, nodeEls, hullLayer, critPathLayer;
+    let _tickCount = 0;  // for throttling expensive per-tick operations
 
     // --- Ego network helpers ---
 
@@ -735,19 +736,25 @@
     }
 
     function routeArcEdges() {
-        // Arc diagram: quadratic arc edges above the single horizontal baseline.
-        // All nodes share the same y (baseline), so arcs curve upward (negative y in SVG).
-        // Edge type determines arc height: parent links arch higher, refs flatter.
+        // Arc diagram: quadratic Bezier arcs connecting depth-stratified nodes.
+        // Within the same row (same depth) arcs curve upward above the row.
+        // Cross-row arcs (parent→child spanning depths) are drawn as S-curves.
         linkEls.attr("opacity", d => d.type === "ref" ? 0.15 : 0.5);
         linkEls.attr("d", d => {
             const sx = d.source.x, sy = d.source.y;
             const tx = d.target.x, ty = d.target.y;
-            const dx = tx - sx;
-            const heightScale = d.type === "parent" ? 0.45 : d.type === "depends_on" ? 0.35 : 0.2;
-            const arcH = Math.abs(dx) * heightScale;
-            const midX = (sx + tx) / 2;
-            const baseY = (sy + ty) / 2;  // same for all nodes when baseline is fixed
-            return `M${sx},${baseY} Q${midX},${baseY - arcH} ${tx},${baseY}`;
+            const dx = tx - sx, dy = ty - sy;
+            if (Math.abs(dy) < 5) {
+                // Same row: arc above the baseline
+                const heightScale = d.type === "parent" ? 0.45 : d.type === "depends_on" ? 0.35 : 0.2;
+                const arcH = Math.abs(dx) * heightScale;
+                const midX = (sx + tx) / 2;
+                return `M${sx},${sy} Q${midX},${sy - arcH} ${tx},${ty}`;
+            } else {
+                // Cross-row (parent/dependency): cubic S-curve between rows
+                const my = (sy + ty) / 2;
+                return `M${sx},${sy} C${sx},${my} ${tx},${my} ${tx},${ty}`;
+            }
         });
     }
 
@@ -780,6 +787,7 @@
 
     // Layout-aware tick handler: delegates to per-layout edge router
     function ticked() {
+        _tickCount++;
         let router = routeForceEdges;
         // Sort keys by length descending to match more specific prefixes first.
         const sortedRouterKeys = Object.keys(edgeRouters).sort((a, b) => b.length - a.length);
@@ -798,11 +806,16 @@
                 return `M${sx},${sy} L${mx},${sy} L${mx},${ty} L${tx},${ty}`;
             });
         }
-        updateHulls();
+        // Throttle hull updates — convex hull computation is O(n log n) per project;
+        // update every 4 ticks during simulation, always on final tick.
+        if (_tickCount % 4 === 0 || (simulation && simulation.alpha() < 0.01)) {
+            updateHulls();
+        }
     }
 
     function applyLayout() {
         if (simulation) simulation.stop();
+        _tickCount = 0;
 
         const nodes = graphData.nodes;
         const links = graphData.links;
@@ -882,14 +895,19 @@
 
         if (currentLayout === "force") {
             buildNodeShapes(currentLayout);
+            const chargeMult = fc.chargeMult != null ? fc.chargeMult : 1.0;
+            const linkDistMult = fc.linkDistMult != null ? fc.linkDistMult : 0.75;
             simulation = d3.forceSimulation(nodes)
+                .alphaDecay(fc.alphaDecay != null ? fc.alphaDecay : 0.04)
+                .velocityDecay(fc.velocityDecay != null ? fc.velocityDecay : 0.55)
+                .alphaMin(fc.alphaMin != null ? fc.alphaMin : 0.002)
                 // Pull linked nodes together; per-link distance/strength set in EDGE_FORCE
                 .force("link", d3.forceLink(links).id(d => d.id)
-                    .distance(d => d.distance)
+                    .distance(d => d.distance * linkDistMult)
                     .strength(d => d.strength))
                 // Push all nodes apart; charge varies by type (TYPE_CHARGE)
                 .force("charge", d3.forceManyBody()
-                    .strength(d => d.charge)
+                    .strength(d => d.charge * chargeMult)
                     .distanceMax(fc.chargeDistanceMax))
                 // Anchor the whole graph to the viewport center
                 .force("center", d3.forceCenter(W / 2, H / 2))
@@ -899,12 +917,20 @@
                     .strength(fc.collisionStrength)
                     .iterations(fc.collisionIterations))
                 // Pull same-project nodes toward their shared centroid
-                .force("cluster", forceCluster(fc.clusterStrength))
+                .force("cluster", forceCluster(fc.clusterStrength != null ? fc.clusterStrength : 0.4))
                 // Push orphans (no links) toward the periphery
                 .force("orphanPush", d3.forceRadial(
                         Math.min(W, H) * fc.orphanRadius, W / 2, H / 2
-                    ).strength(d => d.linkCount === 0 ? fc.orphanStrength : 0))
-                .on("tick", ticked);
+                    ).strength(d => d.linkCount === 0 ? fc.orphanStrength : 0));
+
+            // Warm start: run synchronous ticks for a settled initial layout,
+            // then hand off to live animation for the remainder.
+            // This avoids the browser doing heavy work on the first few frames.
+            simulation.stop();
+            const warmup = fc.warmupTicks != null ? fc.warmupTicks : 80;
+            for (let i = 0; i < warmup; i++) simulation.tick();
+            ticked();  // render warm-start result immediately
+            simulation.on("tick", ticked).restart();
         } else if (currentLayout === "precomputed") {
             // Use precomputed coordinates directly — no simulation forces.
             initPrecomputedCoords(nodes);
@@ -968,20 +994,24 @@
                 }
             });
 
-            // Arc diagram: force all nodes onto a single horizontal baseline.
-            // The arc layout in graph.json stores ordering (x) but y values vary —
-            // override y to a fixed baseline so arcs curve cleanly above/below the line.
+            // Arc diagram: normalise x positions and assign y by depth band.
+            // Nodes are ordered horizontally by the graph-generated x position,
+            // and vertically stratified by depth (goals at top, leaf tasks at bottom).
+            // Arcs curve upward above the bands.
             if (currentLayout.startsWith("arc")) {
                 const arcNodes = nodes.filter(n => n._hasLayout);
-                // Normalise x to span the canvas width with margins
+                // Normalise x across the canvas width with margins
                 const xs = arcNodes.map(n => n.x);
                 const minX = Math.min(...xs), maxX = Math.max(...xs);
                 const xRange = maxX - minX || 1;
                 const margin = CANVAS * 0.05;
                 const availW = CANVAS - margin * 2;
+                // Depth bands: spread vertically so hierarchy is readable
+                const maxDepth = Math.max(...arcNodes.map(n => n.depth || 0), 1);
+                const bandH = CANVAS * 0.55 / maxDepth;
                 arcNodes.forEach(n => {
                     n.x = margin + ((n.x - minX) / xRange) * availW;
-                    n.y = 0;  // single baseline; autoZoomToFit centres the view
+                    n.y = (n.depth || 0) * bandH;  // top = depth 0 (goals/projects)
                 });
             }
 

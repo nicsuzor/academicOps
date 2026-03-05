@@ -3707,7 +3707,7 @@ def _get_graph_node_count() -> int:
     return 0
 
 
-_HIERARCHICAL_LAYOUT_LABELS = {"Treemap", "Arc Diagram", "Circle Pack"}
+_HIERARCHICAL_LAYOUT_LABELS = {"Treemap", "Circle Pack"}
 
 
 def render_task_graph_page():
@@ -3766,10 +3766,43 @@ def render_task_graph_page():
                 disabled=not quick_view_enabled,
                 help=f"Show top N leaf tasks (of {_n_leaves} total leaves)",
             )
+
+            with st.expander("⚙️ Force tuning", expanded=False):
+                st.caption("Tune the physics of the force graph")
+                force_charge_mult = st.slider(
+                    "Charge strength",
+                    0.1,
+                    2.0,
+                    value=float(st.session_state.get("tg_charge_mult", 1.0)),
+                    step=0.1,
+                    key="tg_charge_mult",
+                    help="Node repulsion strength. Lower = clusters closer together.",
+                )
+                force_link_dist = st.slider(
+                    "Link distance",
+                    0.2,
+                    2.0,
+                    value=float(st.session_state.get("tg_link_dist", 0.75)),
+                    step=0.05,
+                    key="tg_link_dist",
+                    help="Scale factor on edge distances. Lower = tighter layout.",
+                )
+                force_cluster_str = st.slider(
+                    "Cluster pull",
+                    0.0,
+                    1.0,
+                    value=float(st.session_state.get("tg_cluster_str", 0.4)),
+                    step=0.05,
+                    key="tg_cluster_str",
+                    help="How strongly same-project nodes are pulled together.",
+                )
         else:
             show_only_reachable = False
             quick_view_enabled = False
             quick_view_n = 80
+            force_charge_mult = 1.0
+            force_link_dist = 0.75
+            force_cluster_str = 0.4
 
     if d3_graph:
         # Leaf-node-aware status filtering:
@@ -3924,6 +3957,12 @@ def render_task_graph_page():
         d3_graph["nodes"] = filtered
 
         d3_data = prepare_embedded_graph_data(d3_graph)
+
+        # Apply sidebar force tuning overrides to forceConfig before rendering
+        d3_data["forceConfig"]["chargeMult"] = force_charge_mult
+        d3_data["forceConfig"]["linkDistMult"] = force_link_dist
+        d3_data["forceConfig"]["clusterStrength"] = force_cluster_str
+
         available_layouts = d3_data.get("availableLayouts", [])
         if available_layouts:
             layout_info = f" | layouts: {', '.join(available_layouts)}"
@@ -4258,8 +4297,9 @@ def render_session_summary():
 # UNIFIED DASHBOARD - Single page: Graph + Project boxes
 # ============================================================================
 
-from lib.task_model import TaskStatus
 from task_manager_ui import render_task_editor
+
+from lib.task_model import TaskStatus
 
 
 @st.dialog("Edit Task")

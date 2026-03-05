@@ -24,13 +24,24 @@ EDGE_FORCE = {
 # Global force simulation parameters — all tunables in one place.
 # Passed to JS via graphData.forceConfig so nothing is hardcoded in index.html.
 FORCE_CONFIG = {
-    "chargeDistanceMax": 100,  # Stop repelling beyond this distance (px)
+    # Repulsion
+    "chargeDistanceMax": 280,  # Stop repelling beyond this distance (px); higher = more spread
+    "chargeMult": 1.0,  # Multiplier on all TYPE_CHARGE values (tune via sidebar slider)
+    # Collision
     "collisionPadding": 2,  # Extra px around each node for collision avoidance
     "collisionStrength": 0.4,  # How aggressively collisions are enforced (0-1)
     "collisionIterations": 3,  # Solver iterations per tick (more = stabler but slower)
-    "clusterStrength": 0.25,  # Pull toward project centroid (0 = off, 1 = very strong)
+    # Clustering
+    "clusterStrength": 0.4,  # Pull toward project centroid (0 = off, 1 = very strong)
     "orphanRadius": 0.45,  # Fraction of viewport to push orphans toward (0-1)
     "orphanStrength": 0.3,  # How strongly orphans are pushed to periphery (0-1)
+    # Link distance scaling (multiplied onto per-edge EDGE_FORCE distances)
+    "linkDistMult": 0.75,  # < 1 brings clusters closer; > 1 spreads them out
+    # Simulation convergence — controls performance
+    "alphaDecay": 0.04,  # Default D3: 0.0228 (~300 ticks); 0.04 → ~150 ticks
+    "velocityDecay": 0.55,  # Default D3: 0.4; higher = faster damping, less oscillation
+    "alphaMin": 0.002,  # Simulation stops when alpha < this (default 0.001)
+    "warmupTicks": 80,  # Synchronous pre-ticks before live animation starts
 }
 
 TYPE_CHARGE = {
