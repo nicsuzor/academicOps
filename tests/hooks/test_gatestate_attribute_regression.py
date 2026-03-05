@@ -8,7 +8,6 @@ AOPS_CORE = Path(__file__).parent.parent.parent / "aops-core"
 sys.path.insert(0, str(AOPS_CORE))
 
 from hooks.schemas import HookContext
-
 from lib.gate_types import GateStatus
 from lib.gates.custom_actions import execute_custom_action
 from lib.session_state import SessionState
