@@ -98,7 +98,7 @@ def synthesize(sessions: list[dict], today: str) -> dict:
     # Pre-process sessions to ensure everyone has a summary
     for s in sessions:
         summary = s.get("summary")
-        if _is_poor_summary(summary):
+        if _is_poor_summary(summary or ""):
             filename = s.get("_filename", "")
             slug_summary = _get_slug_summary(filename)
             if slug_summary:

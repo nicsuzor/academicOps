@@ -109,7 +109,8 @@ def check_custom_condition(
         # Returns False ONLY if ToolSearch is loading specific tools by name (select:*)
         # Returns True for everything else (including discovery ToolSearch)
         if ctx.tool_name == "ToolSearch":
-            query = ctx.tool_input.get("query", "")
+            tool_input = ctx.tool_input if isinstance(ctx.tool_input, dict) else {}
+            query = tool_input.get("query", "")
             if isinstance(query, str) and "select:" in query:
                 return False
         return True
