@@ -885,6 +885,7 @@ class TestLiveToolSearchNotBlocked:
 
     Source log: 20260305-2bff28e1-hooks.jsonl (session 2bff28e1, aops-86528f6c)
     """
+
     SCENARIOS = _flatten_scenarios("claude_toolsearch_not_blocked")
 
     @pytest.mark.parametrize(
