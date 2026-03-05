@@ -3707,7 +3707,7 @@ def _get_graph_node_count() -> int:
     return 0
 
 
-_HIERARCHICAL_LAYOUT_LABELS = {"Treemap", "Circle Pack", "Arc Diagram"}
+_HIERARCHICAL_LAYOUT_LABELS = {"Treemap", "Arc Diagram"}
 
 
 def render_task_graph_page():
@@ -3955,25 +3955,23 @@ def render_task_graph_page():
         project_filter = "ALL" if selected_project == "All Projects" else selected_project
 
         # Layout mode (sidebar)
-        # Start with standard client-side force layouts
         layout_map = {
             "Force": "force",
-            "ForceAtlas2": "atlas",
         }
 
         available = d3_data.get("availableLayouts", [])
         layout_options = []
 
-        # Add "Precomputed" (ForceAtlas2) if available
+        # Add "ForceAtlas2" (precomputed) if available
         if d3_data.get("hasLayout"):
-            layout_options.append("Precomputed")
-            # Map "Precomputed" to "fa2" if available, else generic "precomputed"
+            layout_options.append("ForceAtlas2")
+            # Map to fa2/forceatlas2 key from graph data
             if "fa2" in available:
-                layout_map["Precomputed"] = "fa2"
+                layout_map["ForceAtlas2"] = "fa2"
             elif "forceatlas2" in available:
-                layout_map["Precomputed"] = "forceatlas2"
+                layout_map["ForceAtlas2"] = "forceatlas2"
             else:
-                layout_map["Precomputed"] = "precomputed"
+                layout_map["ForceAtlas2"] = "precomputed"
 
         # Add precomputed layouts discovered in graph.json
         named_layout_labels = {
@@ -3996,10 +3994,9 @@ def render_task_graph_page():
                 layout_map[label] = layout_key  # register dynamically
                 layout_options.append(label)
 
-        # Ensure client-side force layouts are always offered at the end
-        for force_label in ["Force", "ForceAtlas2"]:
-            if force_label not in layout_options:
-                layout_options.append(force_label)
+        # Ensure Force layout is always offered at the end
+        if "Force" not in layout_options:
+            layout_options.append("Force")
 
         st.sidebar.markdown("**Layout**")
         selected_layout = st.sidebar.radio(
@@ -4241,8 +4238,9 @@ def render_session_summary():
 # UNIFIED DASHBOARD - Single page: Graph + Project boxes
 # ============================================================================
 
-from lib.task_model import TaskStatus
 from task_manager_ui import render_task_editor
+
+from lib.task_model import TaskStatus
 
 
 @st.dialog("Edit Task")
