@@ -234,7 +234,7 @@ jobs:
               | tail -1)
             if [ -n "$REVIEW_ID" ]; then
               gh api -X PUT "repos/$REPO/pulls/$PR_NUMBER/reviews/$REVIEW_ID/dismissals" \
-                -f message="Dismissed: merge-prep failed 3 times" -f event="DISMISS" || true
+                -f message="Dismissed: merge-prep failed 3 times"
             fi
 
             # Set failure commit status
