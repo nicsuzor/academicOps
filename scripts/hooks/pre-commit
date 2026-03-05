@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Pre-commit hook — installed by polecat via scripts/hooks/pre-commit template.
+# Uses `uv run` at runtime so the hook remains valid across venv rebuilds and
+# across all git worktrees that share this .git/hooks/ directory.
+set -euo pipefail
+
+exec uv run pre-commit run --hook-stage pre-commit
