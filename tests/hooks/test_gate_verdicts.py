@@ -995,10 +995,10 @@ class TestLiveCustodietThreshold:
         is_custodiet_dispatch = effective_subagent in ("custodiet", "aops-core:custodiet")
 
         # Some tools are exempt from custodiet threshold (infrastructure, read_only).
-        # Pass effective_subagent so compliance-spawn bypass (Agent + compliance type →
+        # Pass tool_input so compliance-spawn bypass (Agent + compliance type →
         # infrastructure) is reflected here, matching what the router actually does.
         _exempt_categories = {"infrastructure", "read_only"}
-        tool_cat = get_tool_category(scenario["tool_name"] or "", effective_subagent)
+        tool_cat = get_tool_category(scenario["tool_name"] or "", tool_input)
 
         if tool_cat in _exempt_categories:
             assert result is None or result.verdict == GateVerdict.ALLOW, (
