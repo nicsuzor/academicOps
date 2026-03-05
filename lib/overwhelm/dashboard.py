@@ -3707,6 +3707,9 @@ def _get_graph_node_count() -> int:
     return 0
 
 
+_HIERARCHICAL_LAYOUT_LABELS = {"Treemap", "Circle Pack", "Arc Diagram"}
+
+
 def render_task_graph_page():
     """Render the task/knowledge graph on its own dedicated page."""
     st.markdown("### Task Graph")
@@ -3714,7 +3717,6 @@ def render_task_graph_page():
     # Determine if the currently selected layout is hierarchical (tree/circle/arc).
     # tg_layout session state stores the radio label from the previous render.
     # Used to conditionally hide controls that only apply to force-based layouts.
-    _HIERARCHICAL_LAYOUT_LABELS = {"Treemap", "Circle Pack", "Arc Diagram"}
     _cur_layout_label = st.session_state.get("tg_layout", "")
     _is_hierarchical_layout = _cur_layout_label in _HIERARCHICAL_LAYOUT_LABELS
 
