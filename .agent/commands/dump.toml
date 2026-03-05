@@ -11,6 +11,10 @@ Force graceful handover when work must stop or session must end. This unified co
 /dump
 ```
 
+To invoke programmatically mid-session: `Skill(skill="aops-core:dump")` — note the `skill=` parameter, not `name=`.
+
+> When `/dump` is triggered as a slash command, the skill content is already injected into context — execute the steps directly without calling `Skill` again.
+
 This command is **mandatory** before session end. The framework stop gate blocks exit until `/dump` is invoked and completed.
 
 ## When to Use
