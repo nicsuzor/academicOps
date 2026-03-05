@@ -17,7 +17,7 @@ Work is NOT complete until `git push` succeeds, a PR is filed, and reflection is
 4. **Codify learnings** (see Detailed Procedures)
 5. **Commit, PUSH, and file PR**
 6. **Output Framework Reflection**
-7. **Summary to user** (Step 6 below — LAST output)
+7. **Summary to user** (see format below — LAST output)
 
 ## CRITICAL RULES
 
@@ -93,7 +93,8 @@ After the Framework Reflection, output this. **Nothing follows.** It must stay v
 
 **What was done**: [1–3 sentences]
 **Task(s) worked**: [task-id-1], [task-id-2]
-**Follow-up items**: [description → task-id] or "None"
+**Follow-up items**:
+- [Description] → [task-id]  (or "None")
 
 Next: `/pull <task-id>` to resume, or `/pull` to pick from queue.
 ---
