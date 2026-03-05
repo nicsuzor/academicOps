@@ -598,7 +598,6 @@ class Task:
         "completed": "done",
         "closed": "done",
         "dead": "cancelled",
-        "inbox": "active",
         "todo": "active",
         "open": "active",
         "in_review": "review",
