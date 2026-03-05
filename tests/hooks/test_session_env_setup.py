@@ -19,7 +19,6 @@ if str(aops_core_dir) not in sys.path:
 
 from hooks.schemas import HookContext
 from hooks.session_env_setup import run_session_env_setup
-
 from lib.session_state import SessionState
 
 
