@@ -56,9 +56,7 @@ echo "==> Generating graph data..."
 echo "==> Generating SFDP layout..."
 if command -v sfdp >/dev/null 2>&1; then
     uv run python3 "${SCRIPT_DIR}/task_graph_sfdp.py" \
-        "${GRAPH_DIR}/graph.json" \
-        -o "${GRAPH_DIR}/graph-sfdp.json" \
-        --dot-output "${GRAPH_DIR}/graph-sfdp.dot" \
+        "${GRAPH_DIR}" \
         --timeout 600 2>&1 || echo "Warning: SFDP layout generation failed"
 else
     echo "    Skipped (sfdp not found — install graphviz)"

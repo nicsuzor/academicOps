@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
 """Generate SFDP layout for the task graph with Manhattan edge routing.
 
-Reads graph.json (from ``aops graph``), converts to DOT, runs graphviz
-``sfdp`` for scalable force-directed placement, parses output positions,
-and writes a per-layout JSON file (``graph-sfdp.json``) compatible with
-the overwhelm dashboard's layout system.
+Reads graph.dot (from ``aops graph -f dot``) directly, strips precomputed
+positions, converts digraph to undirected graph, runs graphviz ``sfdp``
+for scalable force-directed placement, then merges positions into
+graph.json to produce ``graph-sfdp.json`` for the dashboard.
 
 SFDP handles hundreds of thousands of nodes efficiently.
 Manhattan edge routing is done client-side by the D3 renderer (not by
 graphviz ortho splines, which are too slow at scale).
 
 Usage:
-    python task_graph_sfdp.py [INPUT] [-o OUTPUT]
+    python task_graph_sfdp.py [SESSIONS_DIR]
 
 Examples:
-    python task_graph_sfdp.py graph.json -o graph-sfdp.json
-    python task_graph_sfdp.py  # reads from $AOPS_SESSIONS/graph.json
+    python task_graph_sfdp.py                    # uses $AOPS_SESSIONS
+    python task_graph_sfdp.py /path/to/sessions  # explicit dir
 """
 
 from __future__ import annotations
@@ -29,106 +29,51 @@ import sys
 import tempfile
 from pathlib import Path
 
-_STATUS_COLORS = {
-    "done": "#dcfce7",
-    "completed": "#dcfce7",
-    "cancelled": "#f1f5f9",
-    "active": "#dbeafe",
-    "in_progress": "#c7d2fe",
-    "blocked": "#fee2e2",
-    "waiting": "#fef9c3",
-    "inbox": "#f1f5f9",
-    "todo": "#f1f5f9",
-    "review": "#f3e8ff",
-    "decomposing": "#e0f2fe",
-    "dormant": "#f1f5f9",
-}
+# ---------------------------------------------------------------------------
+# DOT preparation (strip positions, convert to undirected for sfdp)
+# ---------------------------------------------------------------------------
 
-_EDGE_COLORS = {
-    "parent": "#3b82f6",
-    "depends_on": "#ef4444",
-}
-_EDGE_DEFAULT_COLOR = "#94a3b8"
-
-_TYPE_WEIGHT = {
-    "goal": 8.0,
-    "project": 5.0,
-    "epic": 3.0,
-    "task": 1.0,
-    "feature": 2.0,
-    "bug": 1.0,
-    "action": 0.8,
-    "learn": 0.6,
-    "knowledge": 0.6,
-    "note": 0.4,
-    "daily": 0.3,
-    "person": 1.0,
-    "context": 0.4,
-    "template": 0.3,
-}
+_POS_ATTR_RE = re.compile(r',?\s*pos="[^"]*"')
 
 
-def _escape_dot(s: str) -> str:
-    return s.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
+def prepare_dot_for_sfdp(dot_text: str) -> str:
+    """Prepare server-generated DOT for sfdp consumption.
 
-
-def graph_to_dot(graph: dict) -> str:
-    """Convert graph.json to DOT format for sfdp layout."""
-    lines = [
-        "graph G {",
-        "    overlap=prism;",
-        "    overlap_scaling=-4;",
-        "    K=0.6;",
-        "    repulsiveforce=1.8;",
-        '    sep="+8";',
-        '    node [shape=box, style=filled, fontsize=8, margin="0.04,0.02"];',
-    ]
-
-    nodes = graph.get("nodes", [])
-    edges = graph.get("edges", [])
-    node_ids = {n["id"] for n in nodes}
-
-    for node in nodes:
-        nid = node["id"]
-        label = node.get("label", nid)
-        if len(label) > 40:
-            label = label[:37] + "..."
-        status = (node.get("status") or "inbox").lower()
-        node_type = node.get("node_type") or "task"
-        fill = _STATUS_COLORS.get(status, "#e9ecef")
-        weight = _TYPE_WEIGHT.get(node_type, 1.0)
-        w = 0.8 + weight * 0.15
-        h = 0.3 + weight * 0.05
-
-        lines.append(
-            f'    "{nid}" [label="{_escape_dot(label)}", '
-            f'fillcolor="{fill}", width={w:.2f}, height={h:.2f}, '
-            f"fixedsize=true];"
-        )
-
-    for edge in edges:
-        src, tgt = edge["source"], edge["target"]
-        if src not in node_ids or tgt not in node_ids:
-            continue
-        etype = edge.get("type", "link")
-        color = _EDGE_COLORS.get(etype, _EDGE_DEFAULT_COLOR)
-        weight = 5.0 if etype == "parent" else 2.0 if etype == "depends_on" else 0.5
-        lines.append(f'    "{src}" -- "{tgt}" [color="{color}", weight={weight:.1f}];')
-
-    lines.append("}")
-    return "\n".join(lines)
+    - Converts ``digraph`` to ``graph`` (sfdp needs undirected)
+    - Converts ``->`` edges to ``--``
+    - Strips precomputed ``pos="x,y!"`` attributes
+    - Adds sfdp-tuned graph attributes
+    """
+    out = dot_text
+    # Convert directed to undirected
+    out = re.sub(r"^digraph\b", "graph", out, count=1)
+    out = out.replace("->", "--")
+    # Strip pinned positions
+    out = _POS_ATTR_RE.sub("", out)
+    # Inject sfdp layout parameters after the opening brace
+    # Dense packing: very small K pulls clusters tight, overlap=compress
+    # squeezes remaining gaps, low sep allows near-touching nodes.
+    sfdp_attrs = (
+        "\n    overlap=compress;"
+        "\n    K=0.15;"
+        "\n    repulsiveforce=0.8;"
+        "\n    beautify=true;"
+        '\n    sep="+1";'
+    )
+    out = out.replace("{", "{" + sfdp_attrs, 1)
+    return out
 
 
 # ---------------------------------------------------------------------------
 # SFDP execution and position parsing
 # ---------------------------------------------------------------------------
 
-# Matches multi-line node blocks: nodeId [attr1=..., \n attr2=..., \n pos="x,y"];
+# Matches multi-line node blocks: nodeId [attr1=...,\n attr2=...,\n pos="x,y"];
 _NODE_BLOCK_RE = re.compile(
     r"""(?:^|\n)\s+(?:"([^"]+)"|(\S+?))\s+\[([^\]]*)\]""",
     re.DOTALL,
 )
-_POS_ATTR_RE = re.compile(r'pos="([^"]+)"')
+_POS_OUT_RE = re.compile(r'pos="([^"]+)"')
 
 
 def run_sfdp(dot_input: str, *, timeout: int = 300) -> str:
@@ -145,15 +90,7 @@ def run_sfdp(dot_input: str, *, timeout: int = 300) -> str:
 
     try:
         result = subprocess.run(
-            [
-                "sfdp",
-                "-Goverlap=prism",
-                "-Goverlap_scaling=-4",
-                "-Gsep=+8",
-                "-GK=0.6",
-                "-Grepulsiveforce=1.8",
-                input_path,
-            ],
+            ["sfdp", input_path],
             capture_output=True,
             text=True,
             timeout=timeout,
@@ -175,7 +112,7 @@ def parse_positions(dot_output: str) -> dict[str, tuple[float, float]]:
     for match in _NODE_BLOCK_RE.finditer(dot_output):
         nid = match.group(1) or match.group(2)
         attrs = match.group(3)
-        pos_match = _POS_ATTR_RE.search(attrs)
+        pos_match = _POS_OUT_RE.search(attrs)
         if not pos_match:
             continue
         coords = pos_match.group(1).rstrip("!")
@@ -192,17 +129,24 @@ def parse_positions(dot_output: str) -> dict[str, tuple[float, float]]:
 def normalize_positions(
     positions: dict[str, tuple[float, float]],
     target_range: float = 1000.0,
-    padding: float = 20.0,
+    padding: float = 50.0,
 ) -> dict[str, tuple[float, float]]:
-    """Normalize positions to [padding, target_range - padding] range."""
+    """Normalize positions to [padding, target_range - padding] range.
+
+    Uses percentile-based bounds (2nd-98th) to avoid outliers stretching
+    the layout, which keeps the dense core compact.
+    """
     if not positions:
         return {}
 
-    xs = [p[0] for p in positions.values()]
-    ys = [p[1] for p in positions.values()]
+    xs = sorted(p[0] for p in positions.values())
+    ys = sorted(p[1] for p in positions.values())
 
-    min_x, max_x = min(xs), max(xs)
-    min_y, max_y = min(ys), max(ys)
+    # Percentile bounds to ignore outliers
+    lo = int(len(xs) * 0.02)
+    hi = int(len(xs) * 0.98)
+    min_x, max_x = xs[lo], xs[hi]
+    min_y, max_y = ys[lo], ys[hi]
 
     range_x = max_x - min_x or 1.0
     range_y = max_y - min_y or 1.0
@@ -214,8 +158,16 @@ def normalize_positions(
     for nid, (x, y) in positions.items():
         nx = padding + (x - min_x) * scale
         ny = padding + (y - min_y) * scale
+        # Clamp outliers to bounds
+        nx = max(padding * 0.5, min(target_range - padding * 0.5, nx))
+        ny = max(padding * 0.5, min(target_range - padding * 0.5, ny))
         result[nid] = (round(nx, 2), round(ny, 2))
     return result
+
+
+# ---------------------------------------------------------------------------
+# Output generation
+# ---------------------------------------------------------------------------
 
 
 def build_layout_json(graph: dict, positions: dict[str, tuple[float, float]]) -> dict:
@@ -243,89 +195,67 @@ def build_layout_json(graph: dict, positions: dict[str, tuple[float, float]]) ->
     }
 
 
-def build_positioned_dot(graph: dict, positions: dict[str, tuple[float, float]]) -> str:
-    """Build a DOT file with precomputed positions for neato -n rendering."""
-    lines = [
-        "graph G {",
-        "    splines=ortho;",
-        "    overlap=false;",
-        '    node [shape=box, style=filled, fontsize=8, margin="0.04,0.02"];',
-    ]
+def build_positioned_dot(sfdp_output: str) -> str:
+    """Build a DOT file with sfdp positions for neato -n SVG rendering.
 
-    nodes = graph.get("nodes", [])
-    edges = graph.get("edges", [])
-    node_ids = {n["id"] for n in nodes}
+    Takes the raw sfdp output (which already has positions) and adds
+    splines=ortho for the static SVG render (neato -n is fast enough
+    for static rendering, unlike live sfdp).
+    """
+    # Insert splines=ortho after the opening brace for SVG rendering
+    out = sfdp_output.replace("{", "{\n    splines=ortho;", 1)
+    return out
 
-    for node in nodes:
-        nid = node["id"]
-        if nid not in positions:
-            continue
-        label = node.get("label", nid)
-        if len(label) > 40:
-            label = label[:37] + "..."
-        status = (node.get("status") or "inbox").lower()
-        fill = _STATUS_COLORS.get(status, "#e9ecef")
-        x, y = positions[nid]
-        lines.append(
-            f'    "{nid}" [label="{_escape_dot(label)}", fillcolor="{fill}", pos="{x},{y}!"];'
-        )
 
-    for edge in edges:
-        src, tgt = edge["source"], edge["target"]
-        if src not in node_ids or tgt not in node_ids:
-            continue
-        if src not in positions or tgt not in positions:
-            continue
-        etype = edge.get("type", "link")
-        color = _EDGE_COLORS.get(etype, _EDGE_DEFAULT_COLOR)
-        lines.append(f'    "{src}" -- "{tgt}" [color="{color}"];')
-
-    lines.append("}")
-    return "\n".join(lines)
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
 
 
 def main():
-    sessions = os.environ.get(
+    sessions_default = os.environ.get(
         "AOPS_SESSIONS",
         os.path.join(os.environ.get("POLECAT_HOME", os.path.expanduser("~/.aops")), "sessions"),
     )
-    default_input = os.path.join(sessions, "graph.json")
 
     parser = argparse.ArgumentParser(description="Generate SFDP layout for task graph")
-    parser.add_argument("input", nargs="?", default=default_input, help="Input graph.json")
-    parser.add_argument("-o", "--output", default=None, help="Output JSON path")
-    parser.add_argument("--dot-output", default=None, help="Output positioned DOT path")
+    parser.add_argument(
+        "sessions_dir",
+        nargs="?",
+        default=sessions_default,
+        help="Sessions directory containing graph.json and graph.dot",
+    )
     parser.add_argument("--timeout", type=int, default=300, help="sfdp timeout in seconds")
     args = parser.parse_args()
 
-    input_path = Path(args.input)
-    if not input_path.exists():
-        print(f"Error: {input_path} not found", file=sys.stderr)
+    sessions = Path(args.sessions_dir)
+    dot_path = sessions / "graph.dot"
+    json_path = sessions / "graph.json"
+    output_json = sessions / "graph-sfdp.json"
+    output_dot = sessions / "graph-sfdp.dot"
+
+    if not dot_path.exists():
+        print(f"Error: {dot_path} not found", file=sys.stderr)
+        sys.exit(1)
+    if not json_path.exists():
+        print(f"Error: {json_path} not found", file=sys.stderr)
         sys.exit(1)
 
-    if args.output:
-        output_path = Path(args.output)
-    else:
-        output_path = input_path.parent / "graph-sfdp.json"
+    # Read server-generated DOT
+    print(f"Reading {dot_path} ...", file=sys.stderr)
+    dot_text = dot_path.read_text()
+    line_count = dot_text.count("\n")
+    print(f"  {line_count} lines", file=sys.stderr)
 
-    if args.dot_output:
-        dot_output_path = Path(args.dot_output)
-    else:
-        dot_output_path = input_path.parent / "graph-sfdp.dot"
+    # Prepare for sfdp (strip positions, convert to undirected)
+    print("Preparing DOT for sfdp ...", file=sys.stderr)
+    sfdp_input = prepare_dot_for_sfdp(dot_text)
 
-    print(f"Reading {input_path} ...", file=sys.stderr)
-    graph = json.loads(input_path.read_text())
-    n_nodes = len(graph.get("nodes", []))
-    n_edges = len(graph.get("edges", []))
-    print(f"  {n_nodes} nodes, {n_edges} edges", file=sys.stderr)
-
-    print("Generating DOT ...", file=sys.stderr)
-    dot_input = graph_to_dot(graph)
-
+    # Run sfdp
     print(f"Running sfdp (timeout={args.timeout}s) ...", file=sys.stderr)
-    dot_result = run_sfdp(dot_input, timeout=args.timeout)
+    sfdp_output = run_sfdp(sfdp_input, timeout=args.timeout)
 
-    positions = parse_positions(dot_result)
+    positions = parse_positions(sfdp_output)
     print(f"  Parsed {len(positions)} positions", file=sys.stderr)
 
     if not positions:
@@ -334,13 +264,19 @@ def main():
 
     positions = normalize_positions(positions)
 
-    layout_json = build_layout_json(graph, positions)
-    output_path.write_text(json.dumps(layout_json, separators=(",", ":")))
-    print(f"Wrote {output_path} ({output_path.stat().st_size / 1024:.0f} KB)", file=sys.stderr)
+    # Read graph.json for full node metadata
+    print(f"Reading {json_path} for metadata ...", file=sys.stderr)
+    graph = json.loads(json_path.read_text())
 
-    dot_positioned = build_positioned_dot(graph, positions)
-    dot_output_path.write_text(dot_positioned)
-    print(f"Wrote {dot_output_path}", file=sys.stderr)
+    # Write per-layout JSON
+    layout_json = build_layout_json(graph, positions)
+    output_json.write_text(json.dumps(layout_json, separators=(",", ":")))
+    print(f"Wrote {output_json} ({output_json.stat().st_size / 1024:.0f} KB)", file=sys.stderr)
+
+    # Write positioned DOT for SVG rendering
+    positioned_dot = build_positioned_dot(sfdp_output)
+    output_dot.write_text(positioned_dot)
+    print(f"Wrote {output_dot}", file=sys.stderr)
 
 
 if __name__ == "__main__":
