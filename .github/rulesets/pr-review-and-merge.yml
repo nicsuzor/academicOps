@@ -62,11 +62,9 @@ rules:
     parameters:
       required_approving_review_count: 1
       # Approval #1: Merge Prep (github-actions[bot]) — runs on cron, approves when ready
-      # Agent Review also posts APPROVE/REQUEST_CHANGES, but shares the github-actions[bot]
-      # identity with merge-prep — so its REQUEST_CHANGES can be overridden by a later
-      # merge-prep approval. This is a known limitation. For hard blocking, either use a
-      # separate GitHub App identity for agent-review, or enforce via a required commit
-      # status check (context: "Agent Review") rather than a PR review.
+      # Agent Review uses a commit status check (context: "Agent Review") rather than
+      # gh pr review, so it cannot be overridden by a later merge-prep approval.
+      # The "Agent Review" required status check below enforces this gate.
       dismiss_stale_reviews_on_push: false
       require_code_owner_review: false
       require_last_push_approval: false
@@ -94,6 +92,10 @@ rules:
           # Must match the `name:` of the job in typecheck.yml.
         - context: Pytest
           # Must match the `name:` of the job in pytest.yml.
+        - context: Agent Review
+          # Must match the `name:` of the job in agent-review.yml.
+          # agent-review sets this status via gh api (not gh pr review) so it cannot
+          # be overridden by a subsequent merge-prep approval.
 
   # ─────────────────────────────────────────
   # Code quality (CodeQL / Copilot analysis)

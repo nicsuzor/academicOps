@@ -40,9 +40,12 @@ jobs:
           PR_NUM="${{ inputs.pr_number }}"
           echo "Manual override: processing PR #$PR_NUM immediately"
 
+          HEAD_REF=$(gh pr view "$PR_NUM" --repo "${{ github.repository }}" --json headRefName --jq '.headRefName')
+
           # Dispatch merge-prep
           gh workflow run agent-merge-prep.yml \
             --repo "${{ github.repository }}" \
+            --ref "refs/heads/$HEAD_REF" \
             -f pr_number="$PR_NUM"
 
           echo "Dispatched merge-prep for PR #$PR_NUM"
@@ -85,6 +88,7 @@ jobs:
           echo "$PRS" | jq -c '.[]' | while read -r PR; do
             PR_NUM=$(echo "$PR" | jq -r '.number')
             HEAD_SHA=$(echo "$PR" | jq -r '.headRefOid')
+            HEAD_REF=$(echo "$PR" | jq -r '.headRefName')
 
             echo "--- Checking PR #$PR_NUM ---"
 
@@ -115,7 +119,7 @@ jobs:
             fi
 
             echo "  QUALIFIED: PR #$PR_NUM ready for merge-prep"
-            echo "$PR_NUM" >> /tmp/qualifying_prs.txt
+            echo "$PR_NUM|$HEAD_REF" >> /tmp/qualifying_prs.txt
           done
 
       - name: Dispatch merge-prep for qualifying PRs
@@ -128,11 +132,12 @@ jobs:
             exit 0
           fi
 
-          while read -r PR_NUM; do
-            echo "Dispatching merge-prep for PR #$PR_NUM"
+          while IFS='|' read -r PR_NUM HEAD_REF; do
+            echo "Dispatching merge-prep for PR #$PR_NUM (branch: $HEAD_REF)"
 
             gh workflow run agent-merge-prep.yml \
               --repo "$REPO" \
+              --ref "refs/heads/$HEAD_REF" \
               -f pr_number="$PR_NUM"
 
             echo "  Dispatched successfully"
