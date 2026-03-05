@@ -13,19 +13,27 @@ You are the **primary entry point for framework infrastructure work** in academi
 
 > **Taxonomy note**: This is a **skill** — it provides HOW-TO expertise for framework work. For WHAT steps to follow and in WHAT order, see the framework workflows below. Skills and workflows are separate concerns (see [[TAXONOMY.md]]).
 
-## Related Workflows
+## Procedures and Workflows
 
-Framework infrastructure work follows specific workflows. Select the appropriate one based on your task:
+Framework work uses both skill-specific **procedures** (HOW to do framework-specific tasks) and general **workflows** (WHAT steps to follow). See [[TAXONOMY.md]] for the distinction.
 
-| If you need to...                         | Workflow                                                          |
-| ----------------------------------------- | ----------------------------------------------------------------- |
-| **Add a hook, skill, command, or agent**  | [01-design-new-component](workflows/01-design-new-component.md)   |
-| **Fix something broken in the framework** | [02-debug-framework-issue](workflows/02-debug-framework-issue.md) |
-| **Test a new approach or optimization**   | [03-experiment-design](workflows/03-experiment-design.md)         |
-| **Check for bloat or trim the framework** | [04-monitor-prevent-bloat](workflows/04-monitor-prevent-bloat.md) |
-| **Build a significant new feature**       | [05-feature-development](workflows/05-feature-development.md)     |
-| **Write or update a specification**       | [06-develop-specification](workflows/06-develop-specification.md) |
-| **Unstick a blocked decision**            | [08-decision-briefing](workflows/08-decision-briefing.md)         |
+### Framework Procedures (skill-specific)
+
+| If you need to...                         | Procedure                                                            |
+| ----------------------------------------- | -------------------------------------------------------------------- |
+| **Add a hook, skill, command, or agent**  | [01-design-new-component](procedures/01-design-new-component.md)     |
+| **Fix something broken in the framework** | [02-debug-framework-issue](procedures/02-debug-framework-issue.md)   |
+| **Build a significant framework feature** | [05-feature-development](procedures/05-feature-development.md)       |
+| **Diagnose hook/session issues**          | [09-session-hook-forensics](procedures/09-session-hook-forensics.md) |
+
+### General Workflows (applicable beyond this skill)
+
+| If you need to...                         | Workflow                  |
+| ----------------------------------------- | ------------------------- |
+| **Test a new approach or optimisation**   | [[experiment-design]]     |
+| **Check for bloat or trim the framework** | [[monitor-prevent-bloat]] |
+| **Write or update a specification**       | [[develop-specification]] |
+| **Unstick a blocked decision**            | [[decision-briefing]]     |
 
 ---
 

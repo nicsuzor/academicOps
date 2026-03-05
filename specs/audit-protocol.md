@@ -14,7 +14,7 @@ tags: [audit, governance, validation, framework-health]
 ## Giving Effect
 
 - [[skills/audit/SKILL.md]] - Audit skill with structure and justification checking
-- [[skills/audit/workflows/session-effectiveness.md]] - Session effectiveness audit workflow
+- [[session-effectiveness]] - Session effectiveness audit workflow (global workflow)
 - [[skills/audit/references/report-format.md]] - Audit report format template
 - [[skills/audit/references/output-targets.md]] - Output targets for audit results
 - [[workflows/audit.md]] - Audit workflow in workflow system

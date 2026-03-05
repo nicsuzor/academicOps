@@ -129,20 +129,22 @@ def check_workflow_length(plugin_root: Path) -> list[str]:
                     f"workflows/{path.name}: {line_count} lines (max {WORKFLOW_MAX_LINES})"
                 )
 
-    # Check skill-specific workflows (skills/*/workflows/*.md)
+    # Check skill-specific procedures (skills/*/procedures/*.md)
     skills_dir = plugin_root / "skills"
     if skills_dir.exists():
         for skill_dir in sorted(skills_dir.iterdir()):
             if not skill_dir.is_dir():
                 continue
-            skill_workflows_dir = skill_dir / "workflows"
-            if skill_workflows_dir.exists():
-                for path in sorted(skill_workflows_dir.glob("*.md")):
-                    line_count = len(path.read_text().splitlines())
-                    if line_count > WORKFLOW_MAX_LINES:
-                        errors.append(
-                            f"skills/{skill_dir.name}/workflows/{path.name}: {line_count} lines (max {WORKFLOW_MAX_LINES})"
-                        )
+            # Check both old (workflows/) and new (procedures/) directory names
+            for subdir_name in ("procedures", "workflows"):
+                skill_procedures_dir = skill_dir / subdir_name
+                if skill_procedures_dir.exists():
+                    for path in sorted(skill_procedures_dir.glob("*.md")):
+                        line_count = len(path.read_text().splitlines())
+                        if line_count > WORKFLOW_MAX_LINES:
+                            errors.append(
+                                f"skills/{skill_dir.name}/{subdir_name}/{path.name}: {line_count} lines (max {WORKFLOW_MAX_LINES})"
+                            )
 
     return errors
 

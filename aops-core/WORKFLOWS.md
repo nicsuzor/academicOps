@@ -159,6 +159,18 @@ Workflows for session management and state persistence.
 | ----------------- | ---------------------------------------- | ------ |
 | [[base-handover]] | Session completion and state persistence | commit |
 
+### General Purpose
+
+Workflows applicable across domains.
+
+| Workflow                  | When to Use                                            | Bases                       |
+| ------------------------- | ------------------------------------------------------ | --------------------------- |
+| [[experiment-design]]     | Test a hypothesis or new approach before committing    | task-tracking, verification |
+| [[monitor-prevent-bloat]] | Check for bloat, duplication, trim to maintain quality | task-tracking, verification |
+| [[develop-specification]] | Write or update a specification before implementation  | task-tracking, handover     |
+| [[decision-briefing]]     | Unstick a blocked decision with structured analysis    | task-tracking               |
+| [[session-effectiveness]] | Evaluate session transcripts for framework performance | task-tracking               |
+
 ### Meta & Framework
 
 Workflows about the framework itself.

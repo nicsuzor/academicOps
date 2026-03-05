@@ -106,7 +106,7 @@ When invoked, analyze the input and route to the appropriate workflow:
 #### Type A: Review with Inline Comments (DOCX with tracked changes)
 
 - **Example**: Peer review with inline comments and suggestions
-- **Workflow**: `workflows/review-inline-comments.md`
+- **Procedure**: `procedures/review-inline-comments.md`
 - **Output**: Training pairs + generalized principles
 
 #### Type B: Separate Review + Source Documents
@@ -123,7 +123,7 @@ When invoked, analyze the input and route to the appropriate workflow:
 
 ### Extraction Process
 
-See `workflows/review-inline-comments.md` for detailed workflow.
+See `procedures/review-inline-comments.md` for detailed procedure.
 
 **Quick summary**:
 

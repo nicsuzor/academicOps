@@ -29,10 +29,11 @@ Every node has exactly one parent. Goals are roots. Tasks never float free — t
 ```
 WORKFLOW (composable step arrangement for achieving an epic)
   └─ STEP (one unit of work within a workflow)
-      └─ SKILL (instructions for an agent on HOW to execute a step)
+      └─ SKILL (fungible instructions for HOW to execute a step)
+          └─ PROCEDURE (skill-internal instructions, not fungible)
 ```
 
-Workflows define WHAT to do and in WHAT order. Skills define HOW to do a single step. These are separate concerns.
+Workflows define WHAT to do and in WHAT order. Skills define HOW to do a single step. Skills are fungible — you can swap one for another that does the same thing. Procedures are skill-internal details that only make sense within that skill.
 
 ---
 
@@ -134,15 +135,23 @@ One unit within a workflow. A step has a clear purpose, an expected output, and 
 
 Instructions to an individual agent about **HOW to achieve a workflow step**. A skill is domain expertise packaged as a document: what tools to use, what quality criteria to meet, what patterns to follow, what anti-patterns to avoid.
 
-Skills are fungible — any agent with the right skill can execute the step. This is what enables the Bazaar model: you don't need a specific agent, just one that can follow the skill's instructions.
+**Skills are fungible.** You could use the Outlook email skill or the Gmail email skill to achieve the workflow step "check my email" — it doesn't matter which. This is what enables the Bazaar model: a workflow defines the required steps, and any agent with a skill that satisfies the step can fill the slot. Users can swap skills in and out without changing the workflow.
 
-**Structure**: A skill document contains the domain expertise needed for one type of work. It should NOT contain routing logic, decision trees for selecting between different workflows, or multi-mode operational patterns.
+**Structure**: A skill document contains the domain expertise needed for one type of work. It may include **procedures** — detailed internal instructions for HOW this particular skill accomplishes its tasks. But it should NOT contain workflows (general orchestration that could be achieved by a different skill).
 
 **Examples**: `python-dev` (how to write production-quality Python), `qa` (how to verify work meets criteria), `pdf` (how to create formatted PDFs)
 
-**Anti-pattern**: A skill with 6 different "modes" that are each a separate workflow. Extract the modes as separate workflows; keep the skill focused on one type of expertise.
-
 **Anti-pattern**: A skill with an embedded workflow router ("If you need to do X, use workflow A; if Y, use workflow B"). That routing belongs in WORKFLOWS.md, not in a skill file.
+
+### Procedure
+
+A **skill-internal instruction** that describes HOW a specific skill accomplishes a task. Procedures are tightly coupled to their skill — they only make sense in the context of that skill's tools, conventions, and domain knowledge. Unlike workflows, procedures are NOT fungible: you can't swap in a different skill to follow the same procedure.
+
+**Location**: `skills/{name}/procedures/*.md` (NOT `workflows/` — that name is reserved for general orchestration).
+
+**Examples**: `remember/procedures/capture.md` (how the remember skill captures knowledge), `framework/procedures/01-design-new-component.md` (how to add a new component to this specific framework)
+
+**Test**: Could a different skill achieve the same outcome by following these instructions? If yes, it's a workflow (move to global `workflows/`). If no (the instructions are meaningless outside this skill), it's a procedure.
 
 ---
 
@@ -156,9 +165,9 @@ No orphan tasks. If a task exists, there must be an epic that gives it purpose a
 
 An epic is not an arbitrary container. It's sized for review: small enough to understand in one sitting, large enough to be a meaningful unit of progress. It includes its own verification steps.
 
-### 3. Workflows orchestrate; skills execute
+### 3. Workflows orchestrate; skills execute; skills are fungible
 
-Workflows define WHAT steps to take and in WHAT order. Skills define HOW to execute a step. A workflow may reference multiple skills. A skill NEVER contains a workflow. This separation is what makes the Bazaar model work — workflows guarantee quality through structure, skills provide the expertise for each step.
+Workflows define WHAT steps to take and in WHAT order. Skills define HOW to execute a step. A workflow may reference multiple skills. A skill NEVER contains a workflow — it may contain procedures (skill-internal HOW-TO), but not orchestration (general WHAT-TO-DO). Skills are fungible: a workflow step like "check email" can be satisfied by any email skill (Outlook, Gmail, etc.). This separation is what makes the Bazaar model work — workflows guarantee quality through structure, and any agent with the right skill can fill each slot.
 
 ### 4. The hierarchy provides context
 

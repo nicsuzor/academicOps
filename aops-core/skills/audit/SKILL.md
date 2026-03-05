@@ -47,7 +47,7 @@ Curate root-level index files using LLM judgment. For each file, read the source
 | HEURISTICS.md      | `heuristics/*.md` files                                               |
 | CONSTRAINTS.md     | Pre-commit hooks in `.pre-commit-config.yaml`, hard enforcement rules |
 | SKILLS.md          | `skills/*/SKILL.md` frontmatter                                       |
-| WORKFLOWS.md       | `workflows/*.md`, `skills/*/workflows/*.md`                           |
+| WORKFLOWS.md       | `workflows/*.md`                                                      |
 | enforcement-map.md | `hooks/*.py` "Enforces:" docstrings, `gate_config.py`                 |
 
 **Generated File Header**:
@@ -58,7 +58,7 @@ Each curated index (except WORKFLOWS.md) must include:
 
 1. **README.md Flowchart**: Invoke `Skill(skill="flowchart")` to regenerate the core loop flowchart from `hooks/router.py` and `gate_config.py`.
 2. **README.md Tables**: Update Commands, Skills, and Hooks tables in README.md to match current files.
-   - For skills with multiple workflows, include them in a "Sub-workflows" column.
+   - For skills with multiple procedures, include them in a "Procedures" column.
 
 ### Phase 4: Acceptance Tests
 
@@ -96,4 +96,4 @@ Qualitative assessment of session transcripts to evaluate framework performance.
 Skill(skill="audit", args="session-effectiveness /path/to/transcript.md")
 ```
 
-Workflow defined in `workflows/session-effectiveness.md`.
+Workflow defined in `../../workflows/session-effectiveness.md` (global workflow).
