@@ -3711,6 +3711,13 @@ def render_task_graph_page():
     """Render the task/knowledge graph on its own dedicated page."""
     st.markdown("### Task Graph")
 
+    # Determine if the currently selected layout is hierarchical (tree/circle/arc).
+    # tg_layout session state stores the radio label from the previous render.
+    # Used to conditionally hide controls that only apply to force-based layouts.
+    _HIERARCHICAL_LAYOUT_LABELS = {"Treemap", "Circle Pack", "Arc Diagram"}
+    _cur_layout_label = st.session_state.get("tg_layout", "")
+    _is_hierarchical_layout = _cur_layout_label in _HIERARCHICAL_LAYOUT_LABELS
+
     with st.sidebar:
         if st.button("Reload Graph", key="tg_reload"):
             st.cache_data.clear()
@@ -3720,8 +3727,6 @@ def render_task_graph_page():
         show_blocked = st.checkbox("Blocked", value=True, key="tg_show_blocked")
         show_done = st.checkbox("Done / Cancelled", value=False, key="tg_show_done")
         show_orphans = st.checkbox("Orphans (inbox)", value=False, key="tg_show_orphans")
-        st.markdown("**Filter**")
-        show_only_reachable = st.checkbox("Reachable only", value=False, key="tg_show_reachable")
 
         # Scope toggle (full vs filtered vs focus) — shown when per-layout files exist
         manifest = discover_graph_files()
@@ -3743,21 +3748,32 @@ def render_task_graph_page():
         else:
             scope_key = "default"
 
-        st.markdown("**Quick View**")
-        quick_view_enabled = st.checkbox(
-            "Top N by importance",
-            value=True,
-            key="tg_quickview",
-            help="Show only the highest-priority active nodes + their structural parents. "
-            "Dramatically reduces visual noise.",
-        )
-        quick_view_n = st.select_slider(
-            "N",
-            options=[25, 50, 80, 120, 200],
-            value=80,
-            key="tg_quickview_n",
-            disabled=not quick_view_enabled,
-        )
+        # Force-layout-only controls: hidden when a hierarchical layout is active
+        if not _is_hierarchical_layout:
+            st.markdown("**Filter**")
+            show_only_reachable = st.checkbox(
+                "Reachable only", value=False, key="tg_show_reachable"
+            )
+
+            st.markdown("**Quick View**")
+            quick_view_enabled = st.checkbox(
+                "Top N by importance",
+                value=True,
+                key="tg_quickview",
+                help="Show only the highest-priority active nodes + their structural parents. "
+                "Dramatically reduces visual noise.",
+            )
+            quick_view_n = st.select_slider(
+                "N",
+                options=[25, 50, 80, 120, 200],
+                value=80,
+                key="tg_quickview_n",
+                disabled=not quick_view_enabled,
+            )
+        else:
+            show_only_reachable = False
+            quick_view_enabled = False
+            quick_view_n = 80
 
     # Load from per-layout JSON files (graph-*.json) — cached
     d3_graph = _load_merged_graph(scope=scope_key)
@@ -3923,10 +3939,16 @@ def render_task_graph_page():
         else:
             st.caption(f"{_status_str} | {len(d3_data['links'])} links{layout_info}")
 
+        # --- Sidebar: view controls (rendered after graph load so layout options are known) ---
+        st.sidebar.divider()
+
         # Project filter dropdown (sidebar)
         projects = sorted(set(n.get("project", "") for n in d3_data["nodes"] if n.get("project")))
         selected_project = st.sidebar.selectbox(
-            "Project", ["All Projects"] + projects, key="tg_project"
+            "Project",
+            ["All Projects"] + projects,
+            key="tg_project",
+            help="Filter graph to tasks belonging to a single project",
         )
         project_filter = "ALL" if selected_project == "All Projects" else selected_project
 
@@ -3977,8 +3999,13 @@ def render_task_graph_page():
             if force_label not in layout_options:
                 layout_options.append(force_label)
 
+        st.sidebar.markdown("**Layout**")
         selected_layout = st.sidebar.radio(
-            "Layout", layout_options, key="tg_layout", horizontal=True
+            "Layout",
+            layout_options,
+            key="tg_layout",
+            horizontal=True,
+            label_visibility="collapsed",
         )
         layout_mode = layout_map[selected_layout]
 
@@ -4248,15 +4275,17 @@ page = st.sidebar.radio(
     index=0,
 )
 
-# Time range filter for "Completed Today" section
-completed_time_range = st.sidebar.selectbox(
-    "Completed Time Range",
-    options=["4h", "24h", "7d"],
-    index=1,  # Default to 24h
-    help="Filter completed tasks by time range",
-)
-# Convert to hours
+# Time range filter for "Completed Today" section -- only shown on Dashboard
 COMPLETED_HOURS_MAP = {"4h": 4, "24h": 24, "7d": 168}
+if page != "Task Graph":
+    completed_time_range = st.sidebar.selectbox(
+        "Completed Time Range",
+        options=["4h", "24h", "7d"],
+        index=1,  # Default to 24h
+        help="Filter completed tasks by time range",
+    )
+else:
+    completed_time_range = "24h"
 completed_hours = COMPLETED_HOURS_MAP.get(completed_time_range, 24)
 
 # Version info at bottom of sidebar
