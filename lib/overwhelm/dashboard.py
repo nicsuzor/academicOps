@@ -3958,6 +3958,7 @@ def render_task_graph_page():
             "arc": "Arc Diagram",
             "treemap": "Treemap",
             "circle_pack": "Circle Pack",
+            "sfdp": "SFDP",
             "fa2": None,  # already exposed as "Precomputed"
             "forceatlas2": None,
         }
@@ -4212,8 +4213,9 @@ def render_session_summary():
 # UNIFIED DASHBOARD - Single page: Graph + Project boxes
 # ============================================================================
 
-from lib.task_model import TaskStatus
 from task_manager_ui import render_task_editor
+
+from lib.task_model import TaskStatus
 
 
 @st.dialog("Edit Task")

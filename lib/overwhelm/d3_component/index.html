@@ -765,6 +765,17 @@
         });
     }
 
+    function routeSfdpEdges() {
+        // SFDP layout: all edges use Manhattan (orthogonal) routing
+        linkEls.attr("opacity", d => d.type === "ref" ? 0.25 : 0.6);
+        linkEls.attr("d", d => {
+            const sx = d.source.x, sy = d.source.y;
+            const tx = d.target.x, ty = d.target.y;
+            const mx = (sx + tx) / 2;
+            return `M${sx},${sy} L${mx},${sy} L${mx},${ty} L${tx},${ty}`;
+        });
+    }
+
     // Dispatch table: maps layout mode to edge router
     const edgeRouters = {
         treemap: routeContainmentEdges,
@@ -772,6 +783,7 @@
         circle_pack: routeContainmentEdges,
         circle: routeContainmentEdges,
         arc: routeArcEdges,
+        sfdp: routeSfdpEdges,
     };
 
     // Layout-aware tick handler: delegates to per-layout edge router
