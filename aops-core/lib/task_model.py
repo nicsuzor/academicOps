@@ -589,10 +589,20 @@ class Task:
 
         return fm
 
-    # Status aliases for convenience (hyphenated forms)
+    # Status aliases — matches Rust resolve_status_alias() in mem/src/graph.rs
     STATUS_ALIASES = {
         "in-progress": "in_progress",
         "merge-ready": "merge_ready",
+        "archived": "done",
+        "complete": "done",
+        "completed": "done",
+        "closed": "done",
+        "dead": "cancelled",
+        "inbox": "active",
+        "todo": "active",
+        "open": "active",
+        "in_review": "review",
+        "in-review": "review",
     }
 
     @classmethod
