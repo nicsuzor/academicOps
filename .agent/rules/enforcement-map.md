@@ -414,6 +414,6 @@ Context injected via CORE.md at SessionStart. Guides where agents place files.
 | Pre-commit       | `~/writing/.pre-commit-config.yaml`                                                       |
 | CI/CD            | `$AOPS/.github/workflows/`                                                                |
 | Remember skill   | `$AOPS/aops-core/skills/remember/SKILL.md`                                                |
-| Memory sync      | `$AOPS/aops-core/skills/remember/workflows/sync.md`                                       |
+| Memory sync      | `$AOPS/aops-core/skills/remember/procedures/sync.md`                                      |
 | Session insights | `$AOPS/aops-core/skills/session-insights/SKILL.md`                                        |
 | Session state    | `$AOPS/aops-core/lib/session_state.py` (gate flags: critic_invoked, todo_with_handover)   |

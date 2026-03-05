@@ -986,22 +986,18 @@ class TestLiveCustodietThreshold:
 
         result = router._dispatch_gates(ctx, state)
 
-        # Some tools are exempt from custodiet threshold (infrastructure, read_only).
-        # Derived dynamically from gate_config to stay in sync with production config.
-        # Matches excluded_tool_categories=["infrastructure", "read_only"] in definitions.py.
-        _exempt_categories = {"infrastructure", "read_only"}
-        tool_cat = get_tool_category(scenario["tool_name"] or "")
-
-        # Check if this scenario dispatches custodiet specifically.
-        # The custodiet gate has a PreToolUse trigger that fires ONLY for custodiet
-        # dispatches, resetting ops_since_open BEFORE the policy evaluates (deadlock
-        # prevention fix). Agent(custodiet) at threshold → trigger resets → ALLOW.
-        # Other compliance agents (prompt-hydrator, butler) do NOT reset the custodiet
-        # counter, so they are still subject to the policy at threshold.
+        # Derive effective subagent FIRST so we can pass it to get_tool_category,
+        # matching the router's own lookup behaviour (compliance spawns → infrastructure).
         tool_input = scenario.get("tool_input") or {}
         extracted_st, _ = extract_subagent_type(scenario["tool_name"] or "", tool_input)
         effective_subagent = scenario.get("subagent_type") or extracted_st
         is_custodiet_dispatch = effective_subagent in ("custodiet", "aops-core:custodiet")
+
+        # Some tools are exempt from custodiet threshold (infrastructure, read_only).
+        # Pass tool_input so compliance-spawn bypass (Agent + compliance type →
+        # infrastructure) is reflected here, matching what the router actually does.
+        _exempt_categories = {"infrastructure", "read_only"}
+        tool_cat = get_tool_category(scenario["tool_name"] or "", tool_input)
 
         if tool_cat in _exempt_categories:
             assert result is None or result.verdict == GateVerdict.ALLOW, (

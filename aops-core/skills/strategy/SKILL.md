@@ -9,6 +9,8 @@ permalink: skills-strategy
 
 # /strategy Skill
 
+> **Taxonomy note**: This skill provides domain expertise (HOW) for strategic thinking and exploration. See [[TAXONOMY.md]] for the skill/workflow distinction.
+
 Facilitate strategic exploration through organic conversation. This is **NOT** for task execution - this is for thinking, planning, and strategic clarity.
 
 ## Core Philosophy

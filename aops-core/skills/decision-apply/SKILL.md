@@ -9,6 +9,8 @@ permalink: skills-decision-apply
 
 # Decision Apply Skill
 
+> **Taxonomy note**: This skill provides domain expertise (HOW) for processing annotated decisions and updating task statuses. See [[TAXONOMY.md]] for the skill/workflow distinction.
+
 Process your annotated decisions from the daily note and update the task system accordingly.
 
 ## Prerequisites

@@ -9,6 +9,8 @@ permalink: skills-email-triage
 
 # Email Triage Skill
 
+> **Taxonomy note**: This skill provides domain expertise (HOW) for email triage and task capture. See [[TAXONOMY.md]] for the skill/workflow distinction.
+
 Triage inbox emails with MANDATORY archive receipt logging. Receipts are written to task body concurrently during execution, not after.
 
 ## CRITICAL: Archive Receipt Requirement

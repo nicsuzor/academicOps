@@ -47,7 +47,7 @@ See [[docs/ENFORCEMENT.md]] for practical guide, [[specs/enforcement.md]] for ar
 
 [table: skill | purpose | sub-workflows]
 
-**Sub-workflow documentation**: Skills with multiple workflows/modes MUST list each separately.
+**Sub-procedure documentation**: Skills with multiple procedures/modes MUST list each separately.
 Example for session-insights:
 
 | Skill            | Purpose                     | Sub-workflows                                |

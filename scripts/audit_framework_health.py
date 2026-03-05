@@ -677,10 +677,11 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         "skills/qa-eval/SKILL.md",
         "skills/dashboard/SKILL.md",
         "skills/extractor/SKILL.md",
-        # Skill workflow references
-        "skills/framework/workflows/01-design-new-component.md",
-        "skills/framework/workflows/05-feature-development",
-        "skills/framework/workflows/06-develop-specification",
+        # Skill procedure references
+        "skills/framework/procedures/01-design-new-component.md",
+        "skills/framework/procedures/05-feature-development",
+        # develop-specification promoted to global workflow
+        "workflows/develop-specification",
         # Workflow names (resolve via shortest-path in Obsidian)
         "framework-gate",
         "constraint-check",
@@ -742,7 +743,8 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         "skills/swarm-supervisor/SKILL.md",
         "skills/decision-extract/SKILL.md",
         "skills/decision-apply/SKILL.md",
-        "skills/audit/workflows/session-effectiveness.md",
+        # session-effectiveness promoted to global workflow
+        "workflows/session-effectiveness.md",
         "skills/audit/references/report-format.md",
         "skills/audit/references/output-targets.md",
         "workflows/feature-dev.md",

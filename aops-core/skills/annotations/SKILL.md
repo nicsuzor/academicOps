@@ -9,6 +9,8 @@ permalink: skills-annotations
 
 # Annotations
 
+> **Taxonomy note**: This skill provides domain expertise (HOW) for processing inline HTML comments for human-agent collaboration. See [[TAXONOMY.md]] for the skill/workflow distinction.
+
 Process inline HTML comments for asynchronous human-agent collaboration across file types.
 
 ## Supported File Types

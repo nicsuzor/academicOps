@@ -2,15 +2,15 @@
 
 A constitutional framework for governing autonomous AI agents with:
 
-1. **_Ultra vires_ detection** ensures that agents operate within zones of autonomy bounded by their grant of authority -- using public law theory to identify when discretionary choices become invalid.
+1. **_Ultra vires_ detection** ensures that agents operate within zones of autonomy bounded by their grant of authority — using public law theory to identify when discretionary choices become invalid.
 
 2. **A constitutional hierarchy of norms** (axioms → heuristics → enforcement rules) requires every operational rule to derive from a first principle, preventing governance bloat through the same derivation logic that constrains delegated legislation.
 
 3. **Commons-based peer review** applies the **bazaar** model of F/OSS peer production to AI governance. Instead of ex-ante rules, we encourage experimentation and collaborative work. Agents review each other's work through structured PR pipelines, the way open source maintainers govern contributions from autonomous participants at scale.
 
-4. **Reflective continuous improvemnt** through structured session summaries and explicit transcript analysis means recurring friction gets named, codified, and promoted or demoted based on evidence -- and rules evolve incrementally like common law.
+4. **Reflective continuous improvement** through structured session summaries and explicit transcript analysis means recurring friction gets named, codified, and promoted or demoted based on evidence — and rules evolve incrementally like common law.
 
-5. **Domain-specific academic tools** -- citation management (Zotero), research data analysis (dbt, Streamlit), document conversion, email triage, writing style enforcement.
+5. **Domain-specific academic tools** — citation management (Zotero), research data analysis (dbt, Streamlit), document conversion, email triage, writing style enforcement.
 
 ## The distributed review pipeline
 
@@ -71,7 +71,7 @@ flowchart LR
 
 ## Local session lifecycle
 
-Every mutating operation passes through gates: active task (work tracking), hydrated execution plan (intent verification), periodic compliance audits (drift detection). Sessions end with structured reflection.
+Every mutating operation passes through gates: active task binding (work must belong to an epic), hydrated execution plan (intent verification via workflow selection), periodic compliance audits (drift detection). Sessions end with structured reflection.
 
 ## Hierarchy of norms
 
@@ -106,6 +106,24 @@ The framework treats itself as a hypothesis under continuous test. Every session
 
 `$ACA_DATA` is a current state machine. Human-readable markdown in git, with a memory server providing semantic search over vector embeddings.
 
+## How work is organised
+
+The framework uses a strict taxonomy (see [`TAXONOMY.md`](aops-core/TAXONOMY.md) for full definitions):
+
+```
+GOAL  →  PROJECT  →  EPIC  →  TASK  →  ACTION
+```
+
+**Goals** are multi-month desired outcomes. **Projects** are coherent bodies of work toward a goal. **Epics** are the basic unit of verifiable work — PR-sized, including planning, execution, and verification tasks. A failure at any step fails the entire epic. **Tasks** are single-session deliverables within an epic. Every task belongs to an epic; no orphans.
+
+The orchestration layer is separate from the work hierarchy:
+
+```
+WORKFLOW  →  STEP  →  SKILL  →  PROCEDURE
+```
+
+**Workflows** define WHAT to do and in WHAT order — they're the Bazaar's quality guarantee. **Skills** define HOW to execute a single step. Skills are **fungible**: you could swap the Outlook skill for the Gmail skill to satisfy "check email" and the workflow wouldn't change. This is what makes the Bazaar model work — different agents with different skills can fill different steps, and quality comes from the workflow structure, not from micromanaging agents. **Procedures** are skill-internal instructions that only make sense within their skill (stored in `skills/*/procedures/`, not `workflows/`).
+
 ## Agent architecture
 
 | Agent                 | Role                                                                 |
@@ -118,7 +136,7 @@ The framework treats itself as a hypothesis under continuous test. Every session
 
 ## Skills and commands
 
-24 skills, 8 commands. Skills are fungible. Key examples:
+24 skills, 8 commands. Skills are fungible — swap one for another that does the same thing. Key examples:
 
 |                      |                                                       |
 | -------------------- | ----------------------------------------------------- |
@@ -167,6 +185,6 @@ Or use `make install-dev` to build, install the plugin locally, and activate hoo
 
 Projects customise the framework by adding files to a `.agent/` directory:
 
-- **`.agent/rules/`** - Project-specific rules loaded automatically as binding constraints
-- **`.agent/workflows/`** - Project-specific workflows supplementing the global index
-- **`.agent/context-map.json`** - Maps project documentation to topics for just-in-time context injection
+- **`.agent/rules/`** — Project-specific rules loaded automatically as binding constraints
+- **`.agent/workflows/`** — Project-specific workflows supplementing the global workflow index
+- **`.agent/context-map.json`** — Maps project documentation to topics for just-in-time context injection
