@@ -183,12 +183,13 @@ jobs:
 
           # Guard: refuse to approve if any CHANGES_REQUESTED reviews remain undismissed.
           # The agent must either fix + dismiss, or explicitly flag as unresolvable.
+          # Latest review per author: group by login, take last, count CHANGES_REQUESTED
           UNRESOLVED_CR=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" \
-            --jq '[.[] | select(.state == "CHANGES_REQUESTED")] | length')
+            --jq '[.[] | {state, login: .user.login}] | group_by(.login) | map(last) | map(select(.state == "CHANGES_REQUESTED")) | length')
           if [ "$UNRESOLVED_CR" -gt 0 ]; then
             echo "ERROR: $UNRESOLVED_CR CHANGES_REQUESTED review(s) remain — cannot approve"
             REVIEWERS=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" \
-              --jq '[.[] | select(.state == "CHANGES_REQUESTED") | .user.login] | unique | join(", ")')
+              --jq '[.[] | {state, login: .user.login}] | group_by(.login) | map(last) | map(select(.state == "CHANGES_REQUESTED")) | map(.login) | join(", ")')
             gh pr comment "$PR_NUMBER" --repo "$REPO" \
               --body "Merge Prep blocked: $UNRESOLVED_CR CHANGES_REQUESTED review(s) from $REVIEWERS remain undismissed. Agent must fix and dismiss, or flag as false positive and dismiss. Re-run after resolving."
             gh api "repos/$REPO/statuses/$HEAD_SHA" \
