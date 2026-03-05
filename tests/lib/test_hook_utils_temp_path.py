@@ -11,7 +11,6 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-
 from lib.hook_utils import get_hook_temp_dir
 
 

@@ -1,7 +1,6 @@
 """Tests for task_model.py - Task model with graph relationships."""
 
 import pytest
-
 from lib.task_model import Task, TaskStatus
 
 
