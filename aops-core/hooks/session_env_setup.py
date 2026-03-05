@@ -18,7 +18,6 @@ AOPS_CORE_DIR = HOOK_DIR.parent
 if str(AOPS_CORE_DIR) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE_DIR))
 
-from hooks.schemas import HookContext
 from lib.gate_model import GateResult, GateVerdict
 from lib.session_paths import (
     get_all_gate_file_paths,
@@ -27,6 +26,8 @@ from lib.session_paths import (
     get_session_status_dir,
 )
 from lib.session_state import SessionState
+
+from hooks.schemas import HookContext
 
 # Gate enforcement mode environment variables
 GATE_MODE_VARS = (

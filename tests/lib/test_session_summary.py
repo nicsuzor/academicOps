@@ -8,7 +8,6 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-
 from lib.session_summary import (
     append_task_contribution,
     get_task_contributions_path,
