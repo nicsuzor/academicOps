@@ -73,7 +73,7 @@ class GenericGate:
 
             if (
                 ctx.tool_name
-                and get_tool_category(ctx.tool_name, ctx.subagent_type)
+                and get_tool_category(ctx.tool_name, ctx.tool_input)
                 in condition.excluded_tool_categories
             ):
                 return False
