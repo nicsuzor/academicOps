@@ -34,8 +34,8 @@ if [[ "${1:-}" == "--repo" ]] && [[ -n "${2:-}" ]]; then
 else
   echo "Extracting required checks from $RULESET_FILE..."
   # Parse YAML: find all `- context:` lines in the required_status_checks section
-  REQUIRED_CHECKS=$(grep "context:" "$RULESET_FILE" \
-    | sed 's/.*context: *//' \
+  REQUIRED_CHECKS=$(sed -n '/required_status_checks:/,/^  # ─/p' "$RULESET_FILE" \
+    | grep "context:" | sed 's/.*context: *//' \
     | tr -d '"' \
     | sort)
 fi
