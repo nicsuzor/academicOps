@@ -118,7 +118,7 @@ The framework treats itself as a hypothesis under continuous test. Every session
 
 ## Skills and commands
 
-24 skills, 7 commands. Skills are fungible. Key examples:
+24 skills, 8 commands. Skills are fungible. Key examples:
 
 |                      |                                                       |
 | -------------------- | ----------------------------------------------------- |
