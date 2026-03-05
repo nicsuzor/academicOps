@@ -85,20 +85,22 @@ If there is no feedback to address:
 No actionable feedback found. PR is clean.
 ```
 
-## Review Dismissal
+## CHANGES_REQUESTED Resolution (Required)
 
-After fixing issues that triggered a CHANGES_REQUESTED review, **dismiss that review** so it no longer blocks the PR:
+Before finishing, **you must resolve every CHANGES_REQUESTED review** — the workflow will block approval if any remain. Find them:
 
 ```bash
-gh api -X PUT repos/{owner}/{repo}/pulls/{pr}/reviews/{review_id}/dismissals \
-  -f message="Addressed: <summary of what was fixed>" -f event="DISMISS"
+gh api repos/{owner}/{repo}/pulls/{pr}/reviews \
+  --jq '.[] | select(.state == "CHANGES_REQUESTED") | {id, author: .user.login, body}'
 ```
 
-- Dismiss only reviews whose concerns you have fully addressed.
-- If a human comment overrides a reviewer's concern, dismiss with a message citing the maintainer's decision.
-- If a concern is still valid and you couldn't fix it, leave the review in place.
+For each CHANGES_REQUESTED review, you MUST do one of:
 
-To find review IDs: `gh api repos/{owner}/{repo}/pulls/{pr}/reviews --jq '.[] | select(.state == "CHANGES_REQUESTED") | {id, body}'`
+1. **Fix it** — apply the fix, then dismiss: `gh api -X PUT repos/{owner}/{repo}/pulls/{pr}/reviews/{id}/dismissals -f message="Fixed: <what you did>" -f event="DISMISS"`
+2. **False positive** — respond explaining why, then dismiss: `-f message="False positive: <explanation>"`
+3. **Cannot fix** — leave the review in place and note in your triage table. The workflow will block and notify the maintainer.
+
+Do NOT exit with unresolved CHANGES_REQUESTED reviews unless you explicitly document them as unresolvable in your triage table.
 
 ## Rules
 

@@ -181,6 +181,24 @@ jobs:
           REPO="${{ github.repository }}"
           HEAD_SHA=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json headRefOid --jq '.headRefOid')
 
+          # Guard: refuse to approve if any CHANGES_REQUESTED reviews remain undismissed.
+          # The agent must either fix + dismiss, or explicitly flag as unresolvable.
+          UNRESOLVED_CR=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" \
+            --jq '[.[] | select(.state == "CHANGES_REQUESTED")] | length')
+          if [ "$UNRESOLVED_CR" -gt 0 ]; then
+            echo "ERROR: $UNRESOLVED_CR CHANGES_REQUESTED review(s) remain — cannot approve"
+            REVIEWERS=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" \
+              --jq '[.[] | select(.state == "CHANGES_REQUESTED") | .user.login] | unique | join(", ")')
+            gh pr comment "$PR_NUMBER" --repo "$REPO" \
+              --body "Merge Prep blocked: $UNRESOLVED_CR CHANGES_REQUESTED review(s) from $REVIEWERS remain undismissed. Agent must fix and dismiss, or flag as false positive and dismiss. Re-run after resolving."
+            gh api "repos/$REPO/statuses/$HEAD_SHA" \
+              -f state="failure" \
+              -f context="merge-prep-status" \
+              -f description="Blocked: $UNRESOLVED_CR CHANGES_REQUESTED review(s) unaddressed" \
+              -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            exit 1
+          fi
+
           # Approve the PR
           gh pr review "$PR_NUMBER" --repo "$REPO" --approve \
             --body "Merge Prep complete. All review feedback triaged and addressed."
@@ -192,8 +210,10 @@ jobs:
             -f description="Merge prep complete — ready for summary" \
             -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
 
-          # Trigger summary-and-merge workflow
-          gh workflow run summary-and-merge.yml \
+          # Trigger summary-and-merge workflow.
+          # Note: GITHUB_TOKEN cannot dispatch workflow_dispatch from a workflow_dispatch
+          # context (GitHub security restriction). Use a PAT with workflow scope instead.
+          GH_TOKEN="${{ secrets.AOPS_DIST_PAT }}" gh workflow run summary-and-merge.yml \
             --repo "$REPO" \
             -f pr_number="$PR_NUMBER"
 
