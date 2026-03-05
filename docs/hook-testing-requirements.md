@@ -108,7 +108,24 @@ Refactoring efforts should prioritize closing these gaps:
 2. **Hook State Logic**: Extract state logic (e.g., in `PolicyEnforcer`) into testable methods, separating it from the I/O of the `run()` method.
 3. **Error Handling**: specific tests for when a hook encounters invalid input or internal errors.
 
-## 5. Anti-Patterns to Avoid
+## 5. Gate Behavior Tests — Live Log Format
+
+When testing that a gate **allows** or **blocks** a specific tool, prefer the live-log
+fixture format over synthetic tests:
+
+1. **Fixture**: `tests/hooks/fixtures/gate_scenarios_live.json` — add a group entry
+   with `hook_event`, `tool_name`, `tool_input`, `gate_overrides`, `expected.verdict`,
+   and `_provenance` (source log path + line index).
+2. **Test class**: `tests/hooks/test_gate_verdicts.py` — add a `TestLive*` class that
+   loads the group via `_flatten_scenarios("your_group_name")` and parametrizes over it.
+3. **Pattern**: Follow `TestLiveHydrationGateBlocks` (blocks) or
+   `TestLiveToolSearchNotBlocked` (allows) as templates.
+
+Do NOT write gate behavior tests as plain assertions in `test_gate_config.py` — that
+file is for unit tests of `get_tool_category()` and `TOOL_CATEGORIES` structure, not
+gate policy behavior.
+
+## 6. Anti-Patterns to Avoid
 
 - **Testing via `run_shell_command` only**: Do not rely solely on spawning the CLI to test a hook. Unit tests should instantiate the Python class directly.
 - **Coupling to Global State**: Avoid hooks that rely on global variables. Inject dependencies via `__init__` or `Context`.
