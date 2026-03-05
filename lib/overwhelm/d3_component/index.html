@@ -735,16 +735,19 @@
     }
 
     function routeArcEdges() {
-        // Arc diagram: quadratic arc edges above the baseline
-        linkEls.attr("opacity", d => d.type === "ref" ? 0.15 : 0.4);
+        // Arc diagram: quadratic arc edges above the single horizontal baseline.
+        // All nodes share the same y (baseline), so arcs curve upward (negative y in SVG).
+        // Edge type determines arc height: parent links arch higher, refs flatter.
+        linkEls.attr("opacity", d => d.type === "ref" ? 0.15 : 0.5);
         linkEls.attr("d", d => {
             const sx = d.source.x, sy = d.source.y;
             const tx = d.target.x, ty = d.target.y;
             const dx = tx - sx;
-            const arcH = Math.abs(dx) * 0.3;
+            const heightScale = d.type === "parent" ? 0.45 : d.type === "depends_on" ? 0.35 : 0.2;
+            const arcH = Math.abs(dx) * heightScale;
             const midX = (sx + tx) / 2;
-            const midY = Math.min(sy, ty) - arcH;
-            return `M${sx},${sy} Q${midX},${midY} ${tx},${ty}`;
+            const baseY = (sy + ty) / 2;  // same for all nodes when baseline is fixed
+            return `M${sx},${baseY} Q${midX},${baseY - arcH} ${tx},${baseY}`;
         });
     }
 
@@ -965,6 +968,23 @@
                 }
             });
 
+            // Arc diagram: force all nodes onto a single horizontal baseline.
+            // The arc layout in graph.json stores ordering (x) but y values vary —
+            // override y to a fixed baseline so arcs curve cleanly above/below the line.
+            if (currentLayout.startsWith("arc")) {
+                const arcNodes = nodes.filter(n => n._hasLayout);
+                // Normalise x to span the canvas width with margins
+                const xs = arcNodes.map(n => n.x);
+                const minX = Math.min(...xs), maxX = Math.max(...xs);
+                const xRange = maxX - minX || 1;
+                const margin = CANVAS * 0.05;
+                const availW = CANVAS - margin * 2;
+                arcNodes.forEach(n => {
+                    n.x = margin + ((n.x - minX) / xRange) * availW;
+                    n.y = 0;  // single baseline; autoZoomToFit centres the view
+                });
+            }
+
             buildNodeShapes(currentLayout);
 
             // Z-order: bigger nodes behind (first in DOM), smaller on top for clickability
@@ -977,9 +997,10 @@
             // Hide nodes without layout data for this mode
             nodeEls.attr("display", d => d._hasLayout ? null : "none");
 
-            // Post-layout collision pass for FA2 and other precomputed layouts
+            // Post-layout collision pass for FA2 and other precomputed layouts.
+            // Skip for arc diagrams — collision would push nodes off the baseline.
             const hasCoords = nodes.filter(n => n._hasLayout);
-            if (hasCoords.length > 0) {
+            if (hasCoords.length > 0 && !currentLayout.startsWith("arc")) {
                 const collSim2 = d3.forceSimulation(hasCoords)
                     .force("collision", d3.forceCollide()
                         .radius(d => Math.max(d.w, d.h) / 2 + fc.collisionPadding)
