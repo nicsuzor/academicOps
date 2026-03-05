@@ -3707,12 +3707,24 @@ def _get_graph_node_count() -> int:
     return 0
 
 
-_HIERARCHICAL_LAYOUT_LABELS = {"Treemap", "Arc Diagram"}
+_HIERARCHICAL_LAYOUT_LABELS = {"Treemap", "Arc Diagram", "Circle Pack"}
 
 
 def render_task_graph_page():
     """Render the task/knowledge graph on its own dedicated page."""
     st.markdown("### Task Graph")
+
+    # Load graph upfront so we can compute leaf count for dynamic slider max.
+    # Scope is always "default" — Full scope was removed from UI.
+    d3_graph = _load_merged_graph()
+    all_nodes = d3_graph.get("nodes", []) if d3_graph else []
+
+    # Leaf nodes: nodes that are not a parent of any other node.
+    # Status and Top-N filters apply to leaves only; structural ancestors are
+    # kept whenever at least one of their descendants is visible.
+    _parent_ids = {n.get("parent") for n in all_nodes if n.get("parent")}
+    _leaf_ids = {n["id"] for n in all_nodes if n["id"] not in _parent_ids}
+    _n_leaves = len(_leaf_ids)
 
     # Determine if the currently selected layout is hierarchical (tree/circle/arc).
     # tg_layout session state stores the radio label from the previous render.
@@ -3730,56 +3742,39 @@ def render_task_graph_page():
         show_done = st.checkbox("Done / Cancelled", value=False, key="tg_show_done")
         show_orphans = st.checkbox("Orphans (inbox)", value=False, key="tg_show_orphans")
 
-        # Scope toggle (All vs Full) — shown only when full-scope files exist
-        # Note: Focus scope removed (#773) — superseded by Top N Quick View
-        manifest = discover_graph_files()
-        has_full = any("full" in v for v in manifest.values()) if manifest else False
-
-        if has_full:
-            scope = st.radio(
-                "Scope",
-                ["All", "Full"],
-                key="tg_scope",
-                horizontal=True,
-                help="All: current active tasks. Full: includes completed/dormant history.",
-            )
-            scope_key = "full" if scope == "Full" else "default"
-        else:
-            scope_key = "default"
-
         # Force-layout-only controls: hidden when a hierarchical layout is active
         if not _is_hierarchical_layout:
             st.markdown("**Filter**")
-            show_only_reachable = st.checkbox(
-                "Reachable only", value=False, key="tg_show_reachable"
-            )
+            show_only_reachable = st.checkbox("Reachable only", value=True, key="tg_show_reachable")
 
             st.markdown("**Quick View**")
             quick_view_enabled = st.checkbox(
                 "Top N by importance",
                 value=True,
                 key="tg_quickview",
-                help="Show only the highest-priority active nodes + their structural parents. "
+                help="Show only the highest-priority leaf tasks + their parent hierarchy. "
                 "Dramatically reduces visual noise.",
             )
-            quick_view_n = st.select_slider(
+            _slider_max = max(5, _n_leaves // 2) if _n_leaves > 0 else 50
+            _slider_default = min(st.session_state.get("tg_quickview_n", 80), _slider_max)
+            quick_view_n = st.slider(
                 "N",
-                options=[25, 50, 80, 120, 200],
-                value=80,
+                min_value=1,
+                max_value=_slider_max,
+                value=_slider_default,
                 key="tg_quickview_n",
                 disabled=not quick_view_enabled,
+                help=f"Show top N leaf tasks (of {_n_leaves} total leaves)",
             )
         else:
             show_only_reachable = False
             quick_view_enabled = False
             quick_view_n = 80
 
-    # Load from per-layout JSON files (graph-*.json) — cached
-    d3_graph = _load_merged_graph(scope=scope_key)
     if d3_graph:
-        # Apply checkbox filters
-        all_nodes = d3_graph.get("nodes", [])
-
+        # Leaf-node-aware status filtering:
+        # Status checkboxes apply to leaf nodes only; structural (non-leaf) nodes
+        # are retained whenever at least one of their descendant leaves is visible.
         active_statuses = {
             "active",
             "in_progress",
@@ -3793,22 +3788,46 @@ def render_task_graph_page():
         done_statuses = {"done", "completed", "cancelled", "dormant"}
         orphan_statuses = {"inbox"}
 
-        filtered = []
+        node_by_id: dict = {n["id"]: n for n in all_nodes}
+
+        visible_leaf_ids: set[str] = set()
         for n in all_nodes:
+            if n["id"] not in _leaf_ids:
+                continue
             status = n.get("status", "inbox").lower()
             if status in active_statuses and show_active:
-                filtered.append(n)
+                visible_leaf_ids.add(n["id"])
             elif status in blocked_statuses and show_blocked:
-                filtered.append(n)
+                visible_leaf_ids.add(n["id"])
             elif status in done_statuses and show_done:
-                filtered.append(n)
+                visible_leaf_ids.add(n["id"])
             elif status in orphan_statuses and show_orphans:
-                filtered.append(n)
-        if show_only_reachable:
-            filtered = [n for n in filtered if n.get("reachable")]
+                visible_leaf_ids.add(n["id"])
 
-        # Quick View: keep top N nodes by importance score + their structural parents
-        if quick_view_enabled and len(filtered) > quick_view_n:
+        if show_only_reachable:
+            visible_leaf_ids = {
+                lid for lid in visible_leaf_ids if node_by_id.get(lid, {}).get("reachable")
+            }
+
+        # Collect full ancestor hierarchy for all visible leaves
+        structural_ids: set[str] = set()
+        for leaf_id in visible_leaf_ids:
+            node = node_by_id.get(leaf_id)
+            while node:
+                parent = node.get("parent")
+                if not parent:
+                    break
+                if parent in structural_ids:
+                    break  # already traversed this chain
+                structural_ids.add(parent)
+                node = node_by_id.get(parent)
+
+        filtered = [
+            n for n in all_nodes if n["id"] in visible_leaf_ids or n["id"] in structural_ids
+        ]
+
+        # Quick View: rank leaf nodes by importance, keep top N + their full ancestor hierarchy
+        if quick_view_enabled:
             import time as _time
             from datetime import datetime as _dt
 
@@ -3829,7 +3848,6 @@ def render_task_graph_page():
             _DW_CAP = 200
             _RECENCY_MAX = 50.0  # max recency score (today-modified)
             _RECENCY_DECAY = 2.0  # points lost per day; decays to 0 after 25 days
-            _DEPTH_UNIT = 30  # score bonus per level above depth 3
 
             def _parse_mod(mod) -> float | None:
                 """Return Unix timestamp from either a float/int or ISO datetime string."""
@@ -3840,9 +3858,7 @@ def render_task_graph_page():
                 except (TypeError, ValueError):
                     pass
                 try:
-                    # Handle ISO 8601 with nanoseconds (Python doesn't parse those directly)
                     s = str(mod)
-                    # Truncate sub-microsecond precision (ns → µs)
                     s = __import__("re").sub(r"(\.\d{6})\d+", r"\1", s)
                     return _dt.fromisoformat(s).timestamp()
                 except Exception:
@@ -3863,36 +3879,41 @@ def render_task_graph_page():
                 if mod_ts:
                     days = (_time.time() - mod_ts) / 86400
                     r_score = max(0.0, _RECENCY_MAX - days * _RECENCY_DECAY)
-                # Structural nodes (goals/projects/epics) get a depth bonus
-                depth_bonus = max(0, (3 - int(node.get("depth") or 3)) * _DEPTH_UNIT)
-                return p_score + s_score + dw_score + r_score + depth_bonus
+                return p_score + s_score + dw_score + r_score
 
-            scored = sorted(filtered, key=_importance_score, reverse=True)
-            top_ids = {n["id"] for n in scored[:quick_view_n]}
-            # Always include structural parents (goals/projects/epics) of top nodes
-            parent_ids: set[str] = set()
-            node_by_id = {n["id"]: n for n in filtered}
-            for nid in top_ids:
-                parent = node_by_id.get(nid, {}).get("parent")
-                if parent and parent in node_by_id:
-                    parent_ids.add(parent)
-                    # One more level up
-                    grandparent = node_by_id.get(parent, {}).get("parent")
-                    if grandparent and grandparent in node_by_id:
-                        parent_ids.add(grandparent)
-            keep_ids = top_ids | parent_ids
-            n_before = len(filtered)
-            filtered = [n for n in filtered if n["id"] in keep_ids]
+            # Score leaf nodes only
+            leaf_nodes_filtered = [n for n in filtered if n["id"] in visible_leaf_ids]
+            scored_leaves = sorted(leaf_nodes_filtered, key=_importance_score, reverse=True)
 
-            # Tag the top 3 as "spotlight" for the "start here" visual signal
-            top3_ids = {n["id"] for n in scored[:3]}
+            if len(leaf_nodes_filtered) > quick_view_n:
+                top_leaf_ids = {n["id"] for n in scored_leaves[:quick_view_n]}
+
+                # Build full ancestor hierarchy for top leaves
+                top_structural: set[str] = set()
+                for leaf_id in top_leaf_ids:
+                    node = node_by_id.get(leaf_id)
+                    while node:
+                        parent = node.get("parent")
+                        if not parent or parent in top_structural:
+                            break
+                        top_structural.add(parent)
+                        node = node_by_id.get(parent)
+
+                keep_ids = top_leaf_ids | top_structural
+                n_before = len(filtered)
+                filtered = [n for n in filtered if n["id"] in keep_ids]
+            else:
+                n_before = len(filtered)
+
+            # Tag the top 3 leaves as "spotlight" for the "start here" visual signal
+            top3_ids = {n["id"] for n in scored_leaves[:3]}
             for n in filtered:
                 n["spotlight"] = n["id"] in top3_ids
 
             # Debug: expose scored rankings so user can validate the calibration
             with st.sidebar.expander("🔍 Importance ranking (debug)", expanded=False):
                 st.caption(f"Showing {len(filtered)} of {n_before} filtered nodes")
-                for rank, nd in enumerate(scored[:10], 1):
+                for rank, nd in enumerate(scored_leaves[:10], 1):
                     nid = nd["id"]
                     label = (nd.get("title") or nd.get("label") or nid)[:35]
                     score = _importance_score(nd)
@@ -3982,6 +4003,8 @@ def render_task_graph_page():
         }
 
         for layout_key in available:
+            if "focus" in layout_key.lower():
+                continue  # skip focus variants (removed in #773)
             known_label = named_layout_labels.get(layout_key)
             if known_label is None and layout_key in named_layout_labels:
                 continue  # explicitly skipped (e.g. fa2)
@@ -3991,7 +4014,7 @@ def render_task_graph_page():
                 layout_map[label] = layout_key  # register dynamically
                 layout_options.append(label)
 
-        # Ensure Force layout is always offered at the end
+        # Ensure Force layout is always offered at the end as a fallback
         if "Force" not in layout_options:
             layout_options.append("Force")
 
@@ -4235,8 +4258,9 @@ def render_session_summary():
 # UNIFIED DASHBOARD - Single page: Graph + Project boxes
 # ============================================================================
 
-from lib.task_model import TaskStatus
 from task_manager_ui import render_task_editor
+
+from lib.task_model import TaskStatus
 
 
 @st.dialog("Edit Task")

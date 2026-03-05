@@ -57,11 +57,11 @@
     }
     .danger-pulse { animation: danger-pulse 1.5s infinite ease-in-out; }
 
-    /* Recency Highlight */
+    /* Recency Highlight — warm amber glow for tasks modified in the last 7 days */
     @keyframes recent-glow {
-      0% { filter: drop-shadow(0 0 2px #60a5fa); }
-      50% { filter: drop-shadow(0 0 8px #60a5fa); }
-      100% { filter: drop-shadow(0 0 2px #60a5fa); }
+      0% { filter: drop-shadow(0 0 2px #f59e0b); }
+      50% { filter: drop-shadow(0 0 8px #fb923c); }
+      100% { filter: drop-shadow(0 0 2px #f59e0b); }
     }
     .recent-node { animation: recent-glow 2s infinite ease-in-out; }
 
@@ -128,7 +128,7 @@
     <div class="legend-item"><div class="legend-box" style="background:#22c55e"></div><span>Done</span></div>
     <div class="legend-item"><div class="legend-line" style="background:#3b82f6"></div><span>Parent</span></div>
     <div class="legend-item"><div class="legend-line" style="background:#ef4444"></div><span>Dependency</span></div>
-    <div class="legend-item"><div class="legend-box" style="border: 1px solid #60a5fa; box-shadow: 0 0 4px #60a5fa"></div><span>Recent (<48h)</span></div>
+    <div class="legend-item"><div class="legend-box" style="border: 1px solid #f59e0b; box-shadow: 0 0 4px #f59e0b"></div><span>Recent (7d)</span></div>
   </div>
 
   <button id="legend-toggle" onclick="toggleDetail()">Hide Details</button>
@@ -238,14 +238,15 @@
 
     // Helper: does this layout use a force simulation?
     function isForceLayout(layout) {
-        return layout === "force" || layout === "atlas";
+        return layout === "force";
     }
 
     // --- Layout-specific node shape builders ---
     function buildTaskCardNode(g, d) {
         const hw = d.w/2, hh = d.h/2;
-        // Spotlight ring: top-priority "start here" nodes get a pulsing gold ring
-        if (d.spotlight) {
+        // Spotlight ring: top-priority leaf tasks get a pulsing gold ring + label
+        // Only shown on leaf tasks (isLeaf) — never on structural parent nodes
+        if (d.spotlight && d.isLeaf) {
             const pad = 9;
             const rx = d.shape === "pill" ? hh + pad : d.shape === "rounded" ? 14 : 8;
             g.insert("rect", ":first-child")
@@ -677,13 +678,13 @@
         critPathLayer = container.append("g").attr("class", "crit-path-layer");
 
         const now = Date.now() / 1000;
-        const cutoff48h = 48 * 3600;
+        const cutoff7d = 7 * 24 * 3600;
 
         nodeEls = container.append("g")
           .selectAll("g").data(nodes).join("g")
           .attr("class", d => {
               let cls = "node-g";
-              if (d.modified && (now - d.modified) < cutoff48h) cls += " recent-node";
+              if (d.modified && (now - d.modified) < cutoff7d) cls += " recent-node";
               return cls;
           })
           .attr("cursor","pointer")
@@ -907,7 +908,16 @@
             buildNodeShapes(currentLayout);
             nodeEls.attr("display", d => d._hasLayout ? null : "none");
 
-            // Render once — no simulation drift
+            // Post-layout collision pass: resolve node overlaps without disturbing
+            // the FA2 positions. Run synchronously (stop immediately, tick N times).
+            const collSim = d3.forceSimulation(nodes.filter(n => n._hasLayout))
+                .force("collision", d3.forceCollide()
+                    .radius(d => Math.max(d.w, d.h) / 2 + fc.collisionPadding)
+                    .strength(fc.collisionStrength)
+                    .iterations(fc.collisionIterations))
+                .stop();
+            for (let i = 0; i < 40; i++) collSim.tick();
+
             ticked();
 
             simulation = null;
@@ -966,6 +976,18 @@
 
             // Hide nodes without layout data for this mode
             nodeEls.attr("display", d => d._hasLayout ? null : "none");
+
+            // Post-layout collision pass for FA2 and other precomputed layouts
+            const hasCoords = nodes.filter(n => n._hasLayout);
+            if (hasCoords.length > 0) {
+                const collSim2 = d3.forceSimulation(hasCoords)
+                    .force("collision", d3.forceCollide()
+                        .radius(d => Math.max(d.w, d.h) / 2 + fc.collisionPadding)
+                        .strength(fc.collisionStrength)
+                        .iterations(fc.collisionIterations))
+                    .stop();
+                for (let i = 0; i < 40; i++) collSim2.tick();
+            }
 
             ticked();
 

@@ -257,6 +257,8 @@ def prepare_embedded_graph_data(
 
     node_by_id = {n["id"]: n for n in nodes}
     node_ids = {n["id"] for n in nodes}
+    # Leaf nodes are nodes whose ID doesn't appear as a parent of any other node
+    parent_ids_in_graph = {n.get("parent") for n in nodes if n.get("parent")}
     valid_edges = [e for e in edges if e["source"] in node_ids and e["target"] in node_ids]
     max_depth = max((n.get("depth", 0) for n in nodes), default=0)
 
@@ -378,9 +380,10 @@ def prepare_embedded_graph_data(
                 "project": node.get("project"),
                 "assignee": assignee or node.get("assignee"),
                 "opacity": opacity,
+                "isLeaf": nid not in parent_ids_in_graph,
                 "spotlight": node.get(
                     "spotlight", False
-                ),  # Top-3 by importance: gets "start here" ring
+                ),  # Top-3 leaf tasks by importance: gets "start here" ring
                 "x": node.get("x"),  # Precomputed ForceAtlas2 x (50-950 range, or None)
                 "y": node.get("y"),  # Precomputed ForceAtlas2 y (50-950 range, or None)
                 "layouts": node.get(
