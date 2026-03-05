@@ -57,40 +57,26 @@ List up to 2 secondary concerns, each with a brief proposed resolution. Then **s
 
 ## Output Format
 
-Post a **single PR comment** with this structure:
+Post a **single, concise PR comment**. Every line should earn its place — no padding, no filler.
 
 ```
 ## Agent Review
 
-### Primary Concern
-[What the concern is — why it matters, what breaks if not addressed]
+**Primary concern**: [What's wrong — why it matters]. **Fix**: [your recommendation]
 
-**Proposed resolution**: [Your specific recommendation — not a menu of options]
+**Secondary**: [up to 2 bullet points with concern + fix, or omit section if none]
 
-### Secondary Concerns
-1. [Brief concern]. **Resolution**: [suggestion]
-2. [Brief concern]. **Resolution**: [suggestion]
+**Assumptions**: [any untested load-bearing assumptions, or omit if none]
 
-### Assumption Audit
-- [Untested load-bearing assumption]: [why it matters, what feedback mechanism is needed]
-- [Or: "No untested load-bearing assumptions identified."]
-
-### Self-Consistency
-[Any contradictions found, or "No contradictions identified."]
-
-### Strategic Alignment
-[Brief assessment citing VISION.md / STATUS.md — how this PR fits the current direction]
+**Alignment**: [one sentence on strategic fit]
 ```
 
-If the PR has **no concerns**, post:
+If the PR has **no concerns**:
 
 ```
 ## Agent Review
 
-No concerns identified. This PR is strategically aligned and its assumptions are either tested or appropriately provisional.
-
-### Strategic Alignment
-[Brief positive assessment]
+No concerns. Strategically aligned, assumptions are tested or provisional.
 ```
 
 ## Filing the Review
