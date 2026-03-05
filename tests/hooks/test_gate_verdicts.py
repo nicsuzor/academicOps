@@ -877,14 +877,15 @@ class TestLiveHydrationGateBlocks:
 
 class TestLiveToolSearchNotBlocked:
     """ToolSearch must never be blocked by the hydration gate — from real logged events.
+    """ToolSearch with `select:` queries must not be blocked by the hydration gate.
+
+    This test uses real logged events to verify that `select:` queries, which are
+    pure tool-loading operations, are not blocked by a closed hydration gate.
+    Blocking these creates an unresolvable loop: the agent needs ToolSearch to
+    load tools, but ToolSearch is blocked until hydration, which also requires tools.
 
     Source log: 20260305-2bff28e1-hooks.jsonl (session 2bff28e1, aops-86528f6c)
-
-    ToolSearch is a pure tool-loading operation with no side effects. Blocking it
-    creates an unresolvable loop: the agent needs ToolSearch to load tools, but
-    ToolSearch is blocked until hydration, which also requires tools.
     """
-
     SCENARIOS = _flatten_scenarios("claude_toolsearch_not_blocked")
 
     @pytest.mark.parametrize(
