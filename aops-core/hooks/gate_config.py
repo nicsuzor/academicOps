@@ -420,13 +420,18 @@ _PKB_PREFIX_RE = re.compile(r"^(?:mcp__(?:plugin_(?:aops-core_|[\w.]+_))?(?:pkb|
 # =============================================================================
 
 
-def get_tool_category(tool_name: str) -> str:
+def get_tool_category(tool_name: str, tool_input: dict | None = None) -> str:
     """Get the category for a tool.
 
     Lookup order:
     1. Static TOOL_CATEGORIES sets (O(1) for known tool names)
     2. PKB prefix normalization (handles unknown MCP prefix variants)
     3. Default: 'write' (conservative fallback for truly unknown tools)
+
+    Args:
+        tool_name: The tool name to categorize.
+        tool_input: Optional tool input dict. Used for context-sensitive
+            categorization (e.g. ToolSearch select: vs keyword queries).
     """
     for category, tools in TOOL_CATEGORIES.items():
         if tool_name in tools:

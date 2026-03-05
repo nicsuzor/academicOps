@@ -129,37 +129,51 @@ class TestToolSearchSelectBypass:
     """ToolSearch with select: prefix must bypass the hydration gate.
 
     select: queries are pure tool-loading operations (infrastructure), not new
-    task prompts. They must not trigger the hydration gate — blocking them
-    forces the agent into an unresolvable loop (it needs ToolSearch to load
-    tools, but ToolSearch is blocked until it hydrates, which also needs tools).
+    task prompts. They must not trigger the hydration gate.
 
-    Keyword queries are discovery/routing for new work and remain subject to
-    the hydration gate as normal read_only tools.
+    Test taxonomy:
+    - [RED]   Tests that fail because the behavior does not yet exist.
+    - [GREEN] Regression guards for existing/unchanged behavior. These pass
+              now and must continue to pass after implementation.
     """
 
-    def test_select_prefix_returns_infrastructure(self):
-        """ToolSearch with select: query must be classified as infrastructure."""
+    # ------------------------------------------------------------------
+    # [RED] New behavior: select: prefix elevates ToolSearch to infrastructure
+    # ------------------------------------------------------------------
+
+    def test_select_single_tool_is_infrastructure(self):
+        """[RED] select:X query must return 'infrastructure', not 'read_only'."""
         assert get_tool_category("ToolSearch", {"query": "select:Read"}) == "infrastructure"
 
-    def test_select_multiple_returns_infrastructure(self):
-        """Comma-separated select: still infrastructure."""
+    def test_select_multiple_tools_is_infrastructure(self):
+        """[RED] Comma-separated select: query must still return 'infrastructure'."""
         assert (
             get_tool_category("ToolSearch", {"query": "select:Read,Edit,Bash"}) == "infrastructure"
         )
 
-    def test_keyword_query_returns_read_only(self):
-        """ToolSearch with keyword query must remain read_only (subject to hydration)."""
+    # ------------------------------------------------------------------
+    # [GREEN] Existing behavior: non-select queries stay read_only.
+    # These pass now (behavior already correct) and must not regress.
+    # ------------------------------------------------------------------
+
+    def test_keyword_query_stays_read_only(self):
+        """[GREEN] Keyword search queries remain read_only (subject to hydration)."""
         assert get_tool_category("ToolSearch", {"query": "slack message"}) == "read_only"
 
-    def test_no_tool_input_returns_read_only(self):
-        """ToolSearch without tool_input is read_only (default, unchanged)."""
+    def test_empty_query_stays_read_only(self):
+        """[GREEN] Empty query string is not a select: call — stays read_only."""
+        assert get_tool_category("ToolSearch", {"query": ""}) == "read_only"
+
+    def test_no_tool_input_stays_read_only(self):
+        """[GREEN] Backward compat: no tool_input arg returns read_only unchanged."""
         assert get_tool_category("ToolSearch") == "read_only"
 
-    def test_empty_tool_input_returns_read_only(self):
-        """ToolSearch with empty tool_input is read_only."""
+    def test_empty_tool_input_stays_read_only(self):
+        """[GREEN] Empty dict (no query key) — not a select: call, stays read_only."""
         assert get_tool_category("ToolSearch", {}) == "read_only"
 
-    def test_non_toolsearch_unaffected(self):
-        """The tool_input parameter must not change behaviour for other tools."""
+    def test_other_tools_unaffected_by_tool_input(self):
+        """[GREEN] tool_input must not affect categorization for non-ToolSearch tools."""
         assert get_tool_category("Read", {"query": "select:anything"}) == "read_only"
+        assert get_tool_category("Glob", {"query": "select:anything"}) == "read_only"
         assert get_tool_category("Bash", {"query": "select:anything"}) == "write"
