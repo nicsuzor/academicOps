@@ -37,8 +37,18 @@ from typing import Any
 
 TOOL_CATEGORIES: dict[str, set[str]] = {
     # Always available: bypass ALL gates, including hydration.
-    # These are tools that either invoke agents/skills (needed to satisfy gates)
-    # or manage PKB/task state (needed for framework lifecycle).
+    # These are Claude Code built-in meta/control tools that have no substantive
+    # side effects on user data. They must never be blocked — e.g. AskUserQuestion
+    # is needed to communicate with the user during any gate state.
+    # Distinct from infrastructure (PKB ops) and spawn (subagent dispatch).
+    "always_available": {
+        "AskUserQuestion",
+        "ask_user",
+        "TodoWrite",
+        "EnterPlanMode",
+        "ExitPlanMode",
+        "KillShell",
+    },
     # Infrastructure: bypass ALL gates, including hydration.
     # These are tools required for the framework itself to function (PKB ops).
     "infrastructure": {
@@ -127,13 +137,6 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "decompose_task",
         "append",
         "save_memory",
-        # --- Claude Code built-in meta tools ---
-        "AskUserQuestion",
-        "ask_user",
-        "TodoWrite",
-        "EnterPlanMode",
-        "ExitPlanMode",
-        "KillShell",
     },
     # Spawn: tools that invoke subagents or skills.
     # Subject to hydration gate (must hydrate before doing substantive work).
