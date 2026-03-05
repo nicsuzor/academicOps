@@ -3730,23 +3730,20 @@ def render_task_graph_page():
         show_done = st.checkbox("Done / Cancelled", value=False, key="tg_show_done")
         show_orphans = st.checkbox("Orphans (inbox)", value=False, key="tg_show_orphans")
 
-        # Scope toggle (full vs filtered vs focus) — shown when per-layout files exist
+        # Scope toggle (All vs Full) — shown only when full-scope files exist
+        # Note: Focus scope removed (#773) — superseded by Top N Quick View
         manifest = discover_graph_files()
         has_full = any("full" in v for v in manifest.values()) if manifest else False
-        has_focus = any("focus" in v for v in manifest.values()) if manifest else False
 
-        # Focus scope first (pre-filtered ~700 active nodes vs ~4000 full)
-        scope_options = []
-        if has_focus:
-            scope_options.append("Focus")
-        scope_options.append("All")
         if has_full:
-            scope_options.append("Full")
-
-        _scope_key_map = {"Focus": "focus", "All": "default", "Full": "full"}
-        if len(scope_options) > 1:
-            scope = st.radio("Scope", scope_options, key="tg_scope", horizontal=True)
-            scope_key = _scope_key_map.get(scope, "default")
+            scope = st.radio(
+                "Scope",
+                ["All", "Full"],
+                key="tg_scope",
+                horizontal=True,
+                help="All: current active tasks. Full: includes completed/dormant history.",
+            )
+            scope_key = "full" if scope == "Full" else "default"
         else:
             scope_key = "default"
 
@@ -4238,8 +4235,9 @@ def render_session_summary():
 # UNIFIED DASHBOARD - Single page: Graph + Project boxes
 # ============================================================================
 
-from lib.task_model import TaskStatus
 from task_manager_ui import render_task_editor
+
+from lib.task_model import TaskStatus
 
 
 @st.dialog("Edit Task")
