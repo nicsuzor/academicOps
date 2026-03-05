@@ -1,6 +1,6 @@
 # academicOps Framework Status
 
-**Last updated**: 2026-03-03
+**Last updated**: 2026-03-05
 
 > **Authoritative scope**: This document describes the state of the aops framework codebase and its immediately-connected infrastructure. It is kept current by the butler on each invocation. Automated reviewers (gatekeeper, conceptual-review, etc.) read this document -- accuracy matters. If something is described as "working" here, it is integrated and tested. If it is described as "planned", it does not yet exist in production.
 >
@@ -181,6 +181,15 @@ Agent worker system with sandbox isolation, GitHub integration, and observabilit
 
 Scripts for extracting insights from session transcripts in `.agent/skills/session-insights/scripts/`.
 
+### Acceptance Tests -- IN PROGRESS
+
+Acceptance tests at `tests/acceptance/`:
+
+- `v1.1-release.md` -- 2 tests (email triage routing, framework skill routing). Both FAILING due to test harness gap: hydrator subagent runs without session context (SKILLS.md, WORKFLOWS.md not preloaded into input file).
+- `v0.3-release.md` -- 12 tests designed 2026-03-05 covering hydrator routing accuracy. Tests workflow discrimination (decompose vs feature-dev, peer-review vs reference-letter, report-finalization vs review-response), project-scoped workflow loading, skill bypass routing, multi-intent splitting, batch vs decompose, and negative tests. All PENDING -- blocked on same test harness gap as v1.1.
+
+**Known blocker**: The hydrator subagent test harness does not inject session context. When invoked via `Task(subagent_type="aops-core:prompt-hydrator", ...)`, the hydrator lacks its input file containing SKILLS.md, WORKFLOWS.md, and project workflows. This must be fixed before any acceptance tests can pass. The hydration `builder.py` constructs the input file during normal session hooks, but the test harness bypasses this path.
+
 ## Key Decisions
 
 | Decision                                                 | Rationale                                                                                                                  | Date       |
@@ -215,6 +224,7 @@ Scripts for extracting insights from session transcripts in `.agent/skills/sessi
 3. **Hydrator guardrails**: Hydrator agent drifts into implementation advice instead of staying advisory. Needs stronger prompt constraints.
 4. **Autonomous automation readiness**: Most workflows are at "supervised" maturity. No workflows have been validated for fully autonomous operation yet.
 5. **STATUS.md as bot input**: Bots (gatekeeper, conceptual-review) read this document as authoritative context. Stale information here causes false positives in reviews (see issue #701 where conceptual-review flagged the PKB server as non-existent because STATUS.md listed it as a roadmap item). This document MUST be kept accurate.
+6. **Hydrator acceptance test harness gap**: The hydrator subagent cannot be tested in isolation because the test harness does not construct the input file that `builder.py` normally provides during session hooks. Both v1.1 and v0.3 acceptance tests are blocked on this. Fixing the harness requires either (a) a test-mode builder that constructs the input file without a live session, or (b) a pytest fixture that calls the builder directly.
 
 ## Roadmap
 
@@ -229,6 +239,7 @@ Scripts for extracting insights from session transcripts in `.agent/skills/sessi
 
 ### Near-term
 
+- **Fix hydrator acceptance test harness** -- unblock v0.3 and v1.1 acceptance tests by constructing hydrator input file in test mode
 - Address task lifecycle gap (auto-close tasks when PRs merge)
 - Strengthen hydrator guardrails
 - Address issue review over-triggering
@@ -251,7 +262,6 @@ Scripts for extracting insights from session transcripts in `.agent/skills/sessi
 
 _Update log_ (keep last 3 entries; older history is in git):
 
+- **2026-03-05**: Added v0.3 acceptance tests (`tests/acceptance/v0.3-release.md`) -- 12 tests covering hydrator routing accuracy across workflow discrimination, academic workflows, project-scoped workflow loading, skill bypass, multi-intent splitting, and batch routing. Added "Acceptance Tests" section to Components. Documented hydrator test harness gap as Open Question #6 and near-term roadmap item. Both v1.1 and v0.3 tests blocked on harness fix.
 - **2026-03-04**: Gate hardening (PR #730). Tool categories refactored: `always_available` split into `infrastructure` (PKB, meta tools) and `spawn` (Agent, Task, Skill, delegate_to_agent). Spawn tools now blocked by hydration gate. Custodiet deadlock fixed: PreToolUse trigger resets counter before policy evaluates. Test fixtures rebuilt from live production logs (861 provenance-tracked scenarios). Gate test count: 150+ verdict tests + 31 replay tests.
 - **2026-03-03**: Agent consolidation (PR #705). Deleted qa.agent.md and strategic-review.agent.md (dead agents, no workflow invocations). Agent count updated: 5 -> 3 (worker, merge-prep, conceptual-review). custodiet-reviewer now reads AXIOMS.md dynamically. conceptual-review refocused on assumption audit + effectual reasoning.
-- **2026-03-03**: Major accuracy update (PR #702). Corrected PKB server status from "medium-term roadmap" to "deployed and running" (was causing false review findings, issue #701). Updated workflow count (18->11), agent list (now 5: qa, worker, strategic-review, merge-prep, conceptual-review), skills count (13->17), test count (~90->~100), architecture tree (removed nonexistent aops-tools/). Added PKB Server section as top component. Added authoritative-scope notice. Removed references to merged PRs from "In Progress". Added update log.
-- **2026-03-02**: Previous update (gate system, hydration policy).
