@@ -35,19 +35,25 @@ from pathlib import Path
 
 _POS_ATTR_RE = re.compile(r',?\s*pos="[^"]*"')
 
+# Matches -> as a DOT edge operator at the start of a line (after a node ID).
+# Anchoring to line-start prevents matching -> inside quoted attribute values
+# such as label="A -> B", which appear later on the line after '['.
+_EDGE_ARROW_RE = re.compile(r'^(\s*(?:"[^"]*"|\w[\w.\-:]*))\s*->\s*', re.MULTILINE)
+
 
 def prepare_dot_for_sfdp(dot_text: str) -> str:
     """Prepare server-generated DOT for sfdp consumption.
 
     - Converts ``digraph`` to ``graph`` (sfdp needs undirected)
-    - Converts ``->`` edges to ``--``
+    - Converts ``->`` edge operators to ``--`` (line-anchored to avoid corrupting labels)
     - Strips precomputed ``pos="x,y!"`` attributes
     - Adds sfdp-tuned graph attributes
     """
     out = dot_text
     # Convert directed to undirected
     out = re.sub(r"^digraph\b", "graph", out, count=1)
-    out = out.replace("->", "--")
+    # Replace edge operators only (not -> inside quoted label values)
+    out = _EDGE_ARROW_RE.sub(r"\1 -- ", out)
     # Strip pinned positions
     out = _POS_ATTR_RE.sub("", out)
     # Inject sfdp layout parameters after the opening brace
@@ -171,7 +177,19 @@ def normalize_positions(
 
 
 def build_layout_json(graph: dict, positions: dict[str, tuple[float, float]]) -> dict:
-    """Build per-layout JSON with sfdp positions on nodes."""
+    """Build per-layout JSON with sfdp positions on nodes.
+
+    Nodes that sfdp failed to position receive a fallback position at the
+    centroid of all positioned nodes, preventing null x/y values from
+    producing NaN in SVG paths in the D3 renderer.
+    """
+    # Fallback for unpositioned nodes: centroid of the positioned set
+    if positions:
+        cx = round(sum(p[0] for p in positions.values()) / len(positions), 2)
+        cy = round(sum(p[1] for p in positions.values()) / len(positions), 2)
+    else:
+        cx, cy = 500.0, 500.0
+
     nodes_out = []
     for node in graph.get("nodes", []):
         nid = node["id"]
@@ -180,30 +198,23 @@ def build_layout_json(graph: dict, positions: dict[str, tuple[float, float]]) ->
             out["x"] = positions[nid][0]
             out["y"] = positions[nid][1]
         else:
-            out["x"] = None
-            out["y"] = None
+            out["x"] = cx
+            out["y"] = cy
         nodes_out.append(out)
 
-    return {
-        "nodes": nodes_out,
-        "edges": graph.get("edges", []),
-        "ready": graph.get("ready", []),
-        "blocked": graph.get("blocked", []),
-        "by_project": graph.get("by_project", {}),
-        "roots": graph.get("roots", []),
-        "layout_metadata": graph.get("layout_metadata", {}),
-    }
+    return {**graph, "nodes": nodes_out}
 
 
 def build_positioned_dot(sfdp_output: str) -> str:
     """Build a DOT file with sfdp positions for neato -n SVG rendering.
 
-    Takes the raw sfdp output (which already has positions) and adds
-    splines=ortho for the static SVG render (neato -n is fast enough
-    for static rendering, unlike live sfdp).
+    Uses splines=line for straight-line edges in the static SVG. Ortho
+    routing is avoided here for the same reason it is avoided in sfdp:
+    it is O(n^2+) and causes timeouts at 4k+ nodes. The live D3 view
+    handles Manhattan routing client-side.
     """
-    # Insert splines=ortho after the opening brace for SVG rendering
-    out = sfdp_output.replace("{", "{\n    splines=ortho;", 1)
+    # Insert splines=line after the opening brace for static SVG rendering
+    out = sfdp_output.replace("{", "{\n    splines=line;", 1)
     return out
 
 
