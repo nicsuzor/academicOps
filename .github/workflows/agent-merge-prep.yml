@@ -74,7 +74,7 @@ jobs:
           if [ -n "$REVIEW_ID" ]; then
             echo "Dismissing prior merge-prep approval (review $REVIEW_ID)"
             gh api -X PUT "repos/$REPO/pulls/$PR_NUMBER/reviews/$REVIEW_ID/dismissals" \
-              -f message="Dismissed: new merge-prep run starting" -f event="DISMISS" || true
+              -f message="Dismissed: new merge-prep run starting"
           else
             echo "No prior merge-prep approval to dismiss"
           fi
