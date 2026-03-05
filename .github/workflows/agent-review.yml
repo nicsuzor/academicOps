@@ -12,8 +12,9 @@
 name: "Agent: Review"
 
 on:
-  pull_request:
-    types: [opened, synchronize]
+  # pull_request trigger disabled — review-and-fix agent handles this now
+  # pull_request:
+  #   types: [opened, synchronize]
   workflow_dispatch:
     inputs:
       pr_number:
