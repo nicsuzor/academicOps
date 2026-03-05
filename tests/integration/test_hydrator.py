@@ -17,8 +17,8 @@ import re
 from pathlib import Path
 
 import pytest
-from lib.paths import get_aops_root
 
+from lib.paths import get_aops_root
 from tests.conftest import extract_response_text
 
 
@@ -717,6 +717,59 @@ def test_hydration_temp_file_structure() -> None:
 
     # Heuristics should be present (pre-loaded from HEURISTICS.md)
     assert "## Heuristics" in content, "Missing Heuristics section"
+
+
+def test_hydrator_instructions_prohibit_workflow_read_delegation() -> None:
+    """Regression guard: hydrator instructions must prohibit delegating workflow reads to agent.
+
+    BUG (aops-ff3eb0a9): The hydrator was outputting execution plan steps like
+    "Read workflows/tdd-cycle.md to confirm TDD steps" — delegating the workflow
+    file read to the downstream agent instead of reading it itself.
+
+    Root cause: Instructions used "MAY use read_file" (permissive) and had no
+    explicit prohibition on outputting file-read steps in the execution plan.
+
+    Fix: Both prompt-hydrator.md and prompt-hydrator-context.md were strengthened
+    with:
+    - MAY → MUST for workflow file reads before composing output
+    - Explicit prohibition on "Read workflows/X.md" as an execution step
+    - Workflow Selection Rules updated with read-before-compose requirement
+
+    This test verifies the prohibition text is present in both instruction files.
+    If someone removes it, this test will catch the regression.
+    """
+    from lib.paths import get_aops_root
+
+    aops_root = get_aops_root()
+
+    # Check prompt-hydrator.md (agent instructions)
+    hydrator_agent = aops_root / "agents" / "prompt-hydrator.md"
+    assert hydrator_agent.exists(), f"prompt-hydrator.md not found at {hydrator_agent}"
+    agent_content = hydrator_agent.read_text()
+
+    assert "MUST use `read_file`" in agent_content, (
+        "prompt-hydrator.md must instruct hydrator to MUST (not MAY) use read_file for workflows. "
+        "This prevents workflow read delegation to the downstream agent."
+    )
+    assert "NEVER" in agent_content and "Read workflows" in agent_content, (
+        "prompt-hydrator.md must contain explicit NEVER prohibition on outputting "
+        "'Read workflows/X.md' as an execution step."
+    )
+
+    # Check prompt-hydrator-context.md (runtime template)
+    context_template = aops_root / "hooks" / "templates" / "prompt-hydrator-context.md"
+    assert context_template.exists(), f"prompt-hydrator-context.md not found at {context_template}"
+    template_content = context_template.read_text()
+
+    assert "NEVER output a step that tells the agent to read a workflow file" in template_content, (
+        "prompt-hydrator-context.md must contain explicit prohibition: "
+        "'NEVER output a step that tells the agent to read a workflow file'. "
+        "This is the runtime instruction the hydrator sees when processing prompts."
+    )
+    assert "No Workflow Read Delegation" in template_content, (
+        "prompt-hydrator-context.md must contain 'No Workflow Read Delegation' section "
+        "in the Return Format constraints."
+    )
 
 
 def test_short_confirmation_preserves_context() -> None:
