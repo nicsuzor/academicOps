@@ -220,10 +220,10 @@ jobs:
           REPO="${{ github.repository }}"
           HEAD_SHA=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json headRefOid --jq '.headRefOid')
 
-          # Count prior failures by checking workflow run history
-          FAIL_COUNT=$(gh run list --workflow=agent-merge-prep.yml --repo "$REPO" \
-            --json conclusion,headSha \
-            --jq "[.[] | select(.conclusion == \"failure\" and .headSha == \"$HEAD_SHA\")] | length")
+          # Count prior failures by checking existing PR comments from github-actions[bot]
+          # We treat previous "Merge Prep: Failed" comments as failure markers.
+          FAIL_COUNT=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
+            --jq '[.[] | select(.user.login == "github-actions[bot]" and ((.body | contains("## Merge Prep: Failed (giving up)")) or (.body | contains("## Merge Prep: Failed"))))] | length')
 
           if [ "$FAIL_COUNT" -ge 2 ]; then
             # This is the 3rd+ failure — halt permanently
