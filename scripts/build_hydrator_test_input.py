@@ -55,12 +55,14 @@ def main() -> None:
 
     # Extract the file path from the returned instruction string.
     # Instruction format: `Agent(subagent_type='aops-core:prompt-hydrator', prompt='<path>')`
-    match = re.search(r"prompt='([^']+)'", instruction)
+    # NOTE: This regex is coupled to the format of build_hydration_instruction() in
+    # aops-core/lib/hydration/builder.py. If that format changes, update this pattern.
+    match = re.search(r"prompt=(['\"])(.*?)\1", instruction)
     if not match:
         print(f"ERROR: Could not extract path from instruction:\n{instruction}", file=sys.stderr)
         sys.exit(1)
 
-    context_path = match.group(1)
+    context_path = match.group(2)
     print(context_path)
 
 
