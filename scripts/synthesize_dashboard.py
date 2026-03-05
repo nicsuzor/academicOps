@@ -31,10 +31,29 @@ def load_today_sessions(summaries_dir: Path, date_prefix: str) -> list[dict]:
     for f in sorted(summaries_dir.glob(f"{date_prefix}*.json")):
         try:
             with open(f) as fh:
-                sessions.append(json.load(fh))
+                data = json.load(fh)
+                # Keep filename for slug extraction
+                data["_filename"] = f.name
+                sessions.append(data)
         except (json.JSONDecodeError, OSError) as e:
             print(f"Warning: skipping malformed file {f.name}: {e}", file=sys.stderr)
     return sessions
+
+
+def _get_slug_summary(filename: str) -> str:
+    """Extract a human-readable summary from a session filename slug.
+
+    Format: YYYYMMDD-HH-{project}-{session_id}-{slug}.json
+    Example: 20260305-04-aops-34dfbb0e-fix-tests-failed.json -> "Fix tests failed"
+    """
+    parts = filename.replace(".json", "").split("-")
+    if len(parts) >= 5:
+        # Slug is everything after the session_id (index 3)
+        slug = " ".join(parts[4:])
+        if slug:
+            # Capitalize first letter
+            return slug.capitalize()
+    return ""
 
 
 def _is_placeholder(text: str) -> bool:
@@ -51,9 +70,41 @@ def _is_placeholder(text: str) -> bool:
     return False
 
 
+def _is_poor_summary(text: str) -> bool:
+    """Return True if text is empty, a placeholder, or contains raw code fragments."""
+    if not text:
+        return True
+
+    # Check for placeholder markers
+    if _is_placeholder(text):
+        return True
+
+    # Check for raw code fragments reported in P1 issue
+    t = text.strip()
+    if "```" in t:
+        return True
+
+    # Too short to be meaningful
+    if len(t) < 3:
+        return True
+
+    return False
+
+
 def synthesize(sessions: list[dict], today: str) -> dict:
     """Build synthesis.json from a list of per-session dicts."""
     now = datetime.now(UTC)
+
+    # Pre-process sessions to ensure everyone has a summary
+    for s in sessions:
+        summary = s.get("summary")
+        if _is_poor_summary(summary):
+            filename = s.get("_filename", "")
+            slug_summary = _get_slug_summary(filename)
+            if slug_summary:
+                s["summary"] = slug_summary
+            elif not summary:
+                s["summary"] = "Session completed"
 
     # --- sessions summary ---
     project_counts: Counter[str] = Counter()
@@ -92,6 +143,15 @@ def synthesize(sessions: list[dict], today: str) -> dict:
                 unique_items.append(item)
 
     acc_summary = "; ".join(unique_items[:3]) if unique_items else ""
+
+    # Fallback for acc_summary if empty (use top session summaries)
+    if not acc_summary and sessions:
+        top_summaries = []
+        for s in sessions[-3:]:
+            summary = s.get("summary")
+            if summary and summary not in top_summaries:
+                top_summaries.append(summary)
+        acc_summary = "; ".join(top_summaries)
 
     # --- alignment ---
     outcomes = [s.get("outcome") for s in sessions if s.get("outcome") is not None]

@@ -332,10 +332,22 @@ def _parse_list_field(value: str) -> list[str]:
     if re.match(r"^\s*(none|n/?a|none needed|nothing)\s*$", value, re.IGNORECASE):
         return []
 
+    # PRE-PROCESS: Strip code fences if they wrap the whole value or individual lines
+    # Strip wrapping code block: ```\ncontent\n```
+    value = re.sub(r"^```\w*\n(.*?)\n```$", r"\1", value, flags=re.DOTALL)
+    # Strip inline code block: ```content```
+    value = re.sub(r"^```(.*?)```$", r"\1", value, flags=re.DOTALL)
+
     # Check for bullet or numbered list
     list_items = re.findall(r"^[\s]*[-*\d.]+\s*(.+)$", value, re.MULTILINE)
     if list_items:
-        return [item.strip() for item in list_items if item.strip()]
+        # Filter out bare code fences that often appear in bullet lists when agent
+        # tries to include code blocks
+        return [
+            item.strip()
+            for item in list_items
+            if item.strip() and not item.strip().startswith("```")
+        ]
 
     # Check for comma-separated (only if contains commas and not a single sentence)
     if "," in value and not re.search(r"\.\s", value):

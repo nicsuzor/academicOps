@@ -68,7 +68,12 @@ def check_index_wikilinks(plugin_root: Path) -> list[str]:
 
 
 def check_index_skills(plugin_root: Path) -> list[str]:
-    """Validate SKILLS.md entries resolve to skill or command files."""
+    """Validate SKILLS.md entries resolve to skill or command files, and vice versa.
+
+    Two checks:
+    1. SKILLS.md -> disk: every indexed skill/command has a file (no dangling refs)
+    2. disk -> SKILLS.md: every skill/command file is indexed (no missing entries)
+    """
     errors: list[str] = []
 
     skills_index = plugin_root / "SKILLS.md"
@@ -79,7 +84,7 @@ def check_index_skills(plugin_root: Path) -> list[str]:
 
     # Extract skill names from the table (first column: `/skillname`)
     skill_pattern = re.compile(r"^\|\s*`/([^`]+)`", re.MULTILINE)
-    skill_names = skill_pattern.findall(content)
+    skill_names: set[str] = set(skill_pattern.findall(content))
 
     # Build set of existing skills and commands
     skills_dir = plugin_root / "skills"
@@ -93,10 +98,18 @@ def check_index_skills(plugin_root: Path) -> list[str]:
     if commands_dir.exists():
         existing |= {f.stem for f in commands_dir.glob("*.md")}
 
-    for name in skill_names:
+    # Check 1: SKILLS.md -> disk (no dangling references)
+    for name in sorted(skill_names):
         if name not in existing:
             errors.append(
                 f"SKILLS.md: /{name} -> no file skills/{name}/SKILL.md or commands/{name}.md"
+            )
+
+    # Check 2: disk -> SKILLS.md (no missing entries)
+    for name in sorted(existing):
+        if name not in skill_names:
+            errors.append(
+                f"skills/{name}/SKILL.md or commands/{name}.md -> missing from SKILLS.md (add /{name} entry)"
             )
 
     return errors

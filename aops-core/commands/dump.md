@@ -38,8 +38,9 @@ Execute the [[base-handover]] workflow. The steps are:
 2. **Update task with progress** (or create historical task if none claimed)
 3. **File follow-up tasks** for outstanding work — use [[decompose]] principles and ensure all have a **parent** set to the current task or epic
 4. **Persist discoveries to memory** (optional)
-5. **Output Framework Reflection** (format below)
-6. **Confirm handover complete** and halt
+   4.5. **Codify learnings** — framework improvement → `gh issue create` in aops repo; project-scoped → update `./.agent/workflows/`; see [[references/handover-details]]
+5. **Output Framework Reflection** (include `**Proposed changes**` field referencing what was filed/updated)
+6. **Output Summary to user** — LAST step, after everything else (see format below)
 
 > **CRITICAL**: Do not proceed past Step 1 until ALL changes are committed and pushed. The only acceptable reason to skip is if you made NO file changes.
 
@@ -56,3 +57,20 @@ Use `## Framework Reflection` as an **H2 heading** with `**Field**: value` lines
 ```
 
 Do NOT use `**Framework Reflection:**` (bold text) — the parser requires a heading.
+
+## Summary to User Format
+
+After the Framework Reflection, output this as the **very last thing** before stopping. Nothing should follow it — it must be readable in the terminal without scrolling.
+
+```
+---
+## Session Complete
+
+**What was done**: [1–3 sentences]
+**Task(s) worked**: [task-id-1], [task-id-2]
+**Follow-up items**:
+- [Description] → [task-id]  (or "None")
+
+Next: `/pull <task-id>` to resume, or `/pull` to pick from queue.
+---
+```

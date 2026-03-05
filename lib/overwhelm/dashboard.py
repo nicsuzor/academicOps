@@ -312,6 +312,28 @@ def load_token_metrics() -> dict | None:
     return totals
 
 
+def _extract_summary_from_filename(filename: str) -> str:
+    """Extract a human-readable summary from a session filename slug.
+
+    Format: YYYYMMDD-HH-{project}-{session_id}-{slug}-abridged.md
+    Example: 20260305-04-aops-34dfbb0e-fix-tests-failed-abridged.md -> "Fix tests failed"
+    """
+    # Remove extension and -abridged suffix
+    name = filename.replace("-abridged.md", "").replace(".md", "").replace(".json", "")
+    parts = name.split("-")
+    if len(parts) >= 5:
+        # Slug is everything after the session_id (index 3)
+        slug_parts = parts[4:]
+        # Filter out random hashes that might be at the end
+        slug_parts = [
+            p for p in slug_parts if len(p) < 8 or not all(c in "0123456789abcdef" for c in p)
+        ]
+        slug = " ".join(slug_parts)
+        if slug:
+            return slug.capitalize()
+    return ""
+
+
 def get_recent_sessions(hours: int = 24) -> list[dict]:
     """Get recent session summaries for the Where You Left Off section.
 
@@ -366,13 +388,39 @@ def get_recent_sessions(hours: int = 24) -> list[dict]:
         session_id = data["session_id"]
         project = data["project"]
         session_file = None
+        session_filename = None
 
         # Try to find abridged session file
         # Pattern: YYYYMMDD-HH-{project}-{session_id}-*-abridged.md
         date_prefix = session_date.strftime("%Y%m%d")
         for md_file in sessions_dir.glob(f"{date_prefix}*-{session_id}*-abridged.md"):
             session_file = md_file.stem  # Just the filename without extension
+            session_filename = md_file.name
             break
+
+        # Extract summary and handle "poor" summaries (placeholders, code fences)
+        summary = data.get("summary")
+        accomplishments = data.get("accomplishments", [])
+
+        # Detect poor summaries (including raw code fence reported in P1)
+        is_poor = (
+            not summary
+            or summary == "Session completed"
+            or "```" in str(summary)
+            or (summary.startswith("Successfully completed:") and len(summary) < 30)
+        )
+
+        if is_poor:
+            # Try first meaningful accomplishment
+            if accomplishments:
+                for acc in accomplishments:
+                    if acc and "```" not in acc:
+                        summary = acc
+                        break
+
+            # If still poor, try filename slug
+            if (not summary or "```" in str(summary)) and session_filename:
+                summary = _extract_summary_from_filename(session_filename)
 
         sessions.append(
             {
@@ -380,8 +428,8 @@ def get_recent_sessions(hours: int = 24) -> list[dict]:
                 "date": session_date,
                 "project": project,
                 "outcome": data.get("outcome"),
-                "summary": data.get("summary"),
-                "accomplishments": data.get("accomplishments", []),
+                "summary": summary,
+                "accomplishments": accomplishments,
                 "time_ago": _format_time_ago(session_date),
                 "session_file": session_file,
             }
@@ -1527,12 +1575,8 @@ def get_where_you_left_off(hours: int = 24, limit: int = 10) -> dict:
     recent_sessions = get_recent_sessions(hours=168)  # Get up to 7 days for stale counting
     for s in recent_sessions:
         summary = s.get("summary")
-        if not summary or summary == "Session completed":
-            accomplishments = s.get("accomplishments")
-            if accomplishments:
-                summary = accomplishments[0]
-            else:
-                continue
+        if not summary:
+            continue
 
         session_date = s.get("date")
         if not session_date:
@@ -3359,12 +3403,22 @@ def clean_activity_text(raw_text: str) -> str:
     # Remove any remaining unpaired HTML tags
     s = _re.sub(r"<[^>]+>", "", s, flags=_re.DOTALL)
 
+    # Remove code fences (``` or ```python etc)
+    s = _re.sub(r"```\w*", "", s)
+
     # Remove markdown headers (lines starting with #)
     lines = [line for line in s.split("\n") if not line.strip().startswith("#")]
 
     # Join remaining lines and remove common markdown formatting
     text = " ".join(lines)
-    text = text.replace("**", "").replace("__", "").replace("*", "").replace("_", "").strip()
+    text = (
+        text.replace("**", "")
+        .replace("__", "")
+        .replace("*", "")
+        .replace("_", "")
+        .replace("`", "")
+        .strip()
+    )
 
     # Collapse multiple spaces
     while "  " in text:
@@ -3674,17 +3728,36 @@ def render_task_graph_page():
         has_full = any("full" in v for v in manifest.values()) if manifest else False
         has_focus = any("focus" in v for v in manifest.values()) if manifest else False
 
-        scope_options = ["Filtered"]
-        if has_full:
-            scope_options.append("Full")
+        # Focus scope first (pre-filtered ~700 active nodes vs ~4000 full)
+        scope_options = []
         if has_focus:
             scope_options.append("Focus")
+        scope_options.append("All")
+        if has_full:
+            scope_options.append("Full")
 
+        _scope_key_map = {"Focus": "focus", "All": "default", "Full": "full"}
         if len(scope_options) > 1:
             scope = st.radio("Scope", scope_options, key="tg_scope", horizontal=True)
-            scope_key = scope.lower()
+            scope_key = _scope_key_map.get(scope, "default")
         else:
             scope_key = "default"
+
+        st.markdown("**Quick View**")
+        quick_view_enabled = st.checkbox(
+            "Top N by importance",
+            value=True,
+            key="tg_quickview",
+            help="Show only the highest-priority active nodes + their structural parents. "
+            "Dramatically reduces visual noise.",
+        )
+        quick_view_n = st.select_slider(
+            "N",
+            options=[25, 50, 80, 120, 200],
+            value=80,
+            key="tg_quickview_n",
+            disabled=not quick_view_enabled,
+        )
 
     # Load from per-layout JSON files (graph-*.json) — cached
     d3_graph = _load_merged_graph(scope=scope_key)
@@ -3718,19 +3791,137 @@ def render_task_graph_page():
                 filtered.append(n)
         if show_only_reachable:
             filtered = [n for n in filtered if n.get("reachable")]
+
+        # Quick View: keep top N nodes by importance score + their structural parents
+        if quick_view_enabled and len(filtered) > quick_view_n:
+            import time as _time
+            from datetime import datetime as _dt
+
+            # CALIBRATION_NOTE: These weights are provisional first guesses.
+            # They have not been validated against real usage patterns. If the spotlight
+            # highlights the wrong tasks, adjust these constants and log the delta.
+            # See: https://github.com/nicsuzor/academicOps/pull/760 for rationale.
+            _PRIORITY_WEIGHTS = {0: 1000, 1: 200, 2: 50, 3: 10, 4: 2}
+            _STATUS_WEIGHTS = {
+                "blocked": 500,  # blocked > in_progress: surfaces hidden dependencies
+                "in_progress": 300,
+                "merge_ready": 150,
+                "active": 100,
+                "review": 80,
+                "waiting": 50,
+            }
+            _DW_MULTIPLIER = 20  # downstream_weight → score; capped at 200
+            _DW_CAP = 200
+            _RECENCY_MAX = 50.0  # max recency score (today-modified)
+            _RECENCY_DECAY = 2.0  # points lost per day; decays to 0 after 25 days
+            _DEPTH_UNIT = 30  # score bonus per level above depth 3
+
+            def _parse_mod(mod) -> float | None:
+                """Return Unix timestamp from either a float/int or ISO datetime string."""
+                if mod is None:
+                    return None
+                try:
+                    return float(mod)
+                except (TypeError, ValueError):
+                    pass
+                try:
+                    # Handle ISO 8601 with nanoseconds (Python doesn't parse those directly)
+                    s = str(mod)
+                    # Truncate sub-microsecond precision (ns → µs)
+                    s = __import__("re").sub(r"(\.\d{6})\d+", r"\1", s)
+                    return _dt.fromisoformat(s).timestamp()
+                except Exception:
+                    return None
+
+            def _importance_score(node: dict) -> float:
+                p = node.get("priority", 2)
+                if not isinstance(p, int):
+                    p = 2
+                s = (node.get("status") or "inbox").lower()
+                dw = node.get("downstream_weight") or 0
+                mod = node.get("modified")
+                p_score = _PRIORITY_WEIGHTS.get(p, 50)
+                s_score = _STATUS_WEIGHTS.get(s, 0)
+                dw_score = min(float(dw) * _DW_MULTIPLIER, _DW_CAP)
+                r_score = 0.0
+                mod_ts = _parse_mod(mod)
+                if mod_ts:
+                    days = (_time.time() - mod_ts) / 86400
+                    r_score = max(0.0, _RECENCY_MAX - days * _RECENCY_DECAY)
+                # Structural nodes (goals/projects/epics) get a depth bonus
+                depth_bonus = max(0, (3 - int(node.get("depth") or 3)) * _DEPTH_UNIT)
+                return p_score + s_score + dw_score + r_score + depth_bonus
+
+            scored = sorted(filtered, key=_importance_score, reverse=True)
+            top_ids = {n["id"] for n in scored[:quick_view_n]}
+            # Always include structural parents (goals/projects/epics) of top nodes
+            parent_ids: set[str] = set()
+            node_by_id = {n["id"]: n for n in filtered}
+            for nid in top_ids:
+                parent = node_by_id.get(nid, {}).get("parent")
+                if parent and parent in node_by_id:
+                    parent_ids.add(parent)
+                    # One more level up
+                    grandparent = node_by_id.get(parent, {}).get("parent")
+                    if grandparent and grandparent in node_by_id:
+                        parent_ids.add(grandparent)
+            keep_ids = top_ids | parent_ids
+            n_before = len(filtered)
+            filtered = [n for n in filtered if n["id"] in keep_ids]
+
+            # Tag the top 3 as "spotlight" for the "start here" visual signal
+            top3_ids = {n["id"] for n in scored[:3]}
+            for n in filtered:
+                n["spotlight"] = n["id"] in top3_ids
+
+            # Debug: expose scored rankings so user can validate the calibration
+            with st.sidebar.expander("🔍 Importance ranking (debug)", expanded=False):
+                st.caption(f"Showing {len(filtered)} of {n_before} filtered nodes")
+                for rank, nd in enumerate(scored[:10], 1):
+                    nid = nd["id"]
+                    label = (nd.get("title") or nd.get("label") or nid)[:35]
+                    score = _importance_score(nd)
+                    st.text(
+                        f"#{rank} {label}  {score:.0f}pt  p={nd.get('priority', '?')}  s={nd.get('status', '?')}"
+                    )
+
         d3_graph["nodes"] = filtered
 
         d3_data = prepare_embedded_graph_data(d3_graph)
         available_layouts = d3_data.get("availableLayouts", [])
         if available_layouts:
-            layout_info = f" | Precomputed layouts: {', '.join(available_layouts)}"
+            layout_info = f" | layouts: {', '.join(available_layouts)}"
         elif d3_data.get("hasLayout"):
-            layout_info = " | Precomputed layout"
+            layout_info = " | precomputed layout"
         else:
             layout_info = ""
-        st.caption(
-            f"Showing {len(d3_data['nodes'])} nodes and {len(d3_data['links'])} links.{layout_info}"
+        from collections import Counter as _Counter
+
+        _status_counts = _Counter(n.get("status", "inbox") for n in d3_data["nodes"])
+        _summary_parts = []
+        for _s, _label in [
+            ("active", "active"),
+            ("in_progress", "in-progress"),
+            ("blocked", "blocked"),
+            ("waiting", "waiting"),
+            ("merge_ready", "ready"),
+        ]:
+            if _status_counts.get(_s, 0) > 0:
+                _summary_parts.append(f"{_status_counts[_s]} {_label}")
+        _status_str = (
+            " · ".join(_summary_parts) if _summary_parts else f"{len(d3_data['nodes'])} nodes"
         )
+        # Add "start here" names to status bar for immediate actionability
+        _spotlight_nodes = [n for n in d3_data["nodes"] if n.get("spotlight")]
+        if _spotlight_nodes:
+            _spotlight_labels = [
+                (n.get("title") or n.get("label") or n["id"])[:40] for n in _spotlight_nodes[:3]
+            ]
+            _star_str = "★ Start: " + " · ".join(_spotlight_labels)
+            st.caption(f"{_status_str} | {len(d3_data['links'])} links{layout_info}")
+            st.caption(f"**{_star_str}**")
+        else:
+            st.caption(f"{_status_str} | {len(d3_data['links'])} links{layout_info}")
 
         # Project filter dropdown (sidebar)
         projects = sorted(set(n.get("project", "") for n in d3_data["nodes"] if n.get("project")))

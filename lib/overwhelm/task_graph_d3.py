@@ -378,6 +378,9 @@ def prepare_embedded_graph_data(
                 "project": node.get("project"),
                 "assignee": assignee or node.get("assignee"),
                 "opacity": opacity,
+                "spotlight": node.get(
+                    "spotlight", False
+                ),  # Top-3 by importance: gets "start here" ring
                 "x": node.get("x"),  # Precomputed ForceAtlas2 x (50-950 range, or None)
                 "y": node.get("y"),  # Precomputed ForceAtlas2 y (50-950 range, or None)
                 "layouts": node.get(

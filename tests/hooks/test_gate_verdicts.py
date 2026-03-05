@@ -875,6 +875,38 @@ class TestLiveHydrationGateBlocks:
         )
 
 
+class TestLiveToolSearchNotBlocked:
+    """ToolSearch with `select:` queries must not be blocked by the hydration gate.
+
+    This test uses real logged events to verify that `select:` queries, which are
+    pure tool-loading operations, are not blocked by a closed hydration gate.
+    Blocking these creates an unresolvable loop: the agent needs ToolSearch to
+    load tools, but ToolSearch is blocked until hydration, which also requires tools.
+
+    Source log: 20260305-2bff28e1-hooks.jsonl (session 2bff28e1, aops-86528f6c)
+    """
+
+    SCENARIOS = _flatten_scenarios("claude_toolsearch_not_blocked")
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    def test_toolsearch_not_blocked(self, router, hydration_mode, scenario):
+        state = _make_session_state(scenario)
+        ctx = _make_context(scenario)
+
+        result = router._dispatch_gates(ctx, state)
+
+        assert result is None or result.verdict == GateVerdict.ALLOW, (
+            f"[{scenario['id']}] ToolSearch with a 'select:' query must not be blocked by the hydration gate "
+            f"(query={scenario['tool_input'].get('query')!r}). "
+            f"Got {result.verdict.value if result else 'None'} in {hydration_mode} mode. "
+            f"Fix: `get_tool_category` should classify `ToolSearch` as 'infrastructure' when the query starts with 'select:'."
+        )
+
+
 class TestLiveComplianceAgentAllowed:
     """Compliance agents always allowed — from real logged events.
 
