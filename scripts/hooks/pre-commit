@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Stable pre-commit hook — uses uv run to avoid hardcoded venv paths.
+# Works from any git worktree (main repo, polecat worktrees, crew sessions, etc.).
+#
+# DO NOT replace this file with `pre-commit install` output — that command writes
+# a hardcoded Python path that becomes stale when polecat worktree venvs are cleaned.
+# Instead, update this template and re-run scripts/install-hooks.sh.
+
+HERE="$(cd "$(dirname "$0")" && pwd)"
+cd "$(git rev-parse --show-toplevel)"
+exec uv run pre-commit hook-impl \
+  --config=.pre-commit-config.yaml \
+  --hook-type=pre-commit \
+  --hook-dir "$HERE" \
+  -- "$@"

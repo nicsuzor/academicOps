@@ -1,4 +1,5 @@
 ---
+id: session-effectiveness
 name: session-effectiveness
 category: instruction
 description: Qualitative LLM assessment of session transcripts to evaluate framework performance.

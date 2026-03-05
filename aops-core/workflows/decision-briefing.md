@@ -1,4 +1,5 @@
 ---
+id: decision-briefing
 title: Decision Briefing Workflow
 type: instruction
 category: instruction

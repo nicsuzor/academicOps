@@ -1154,33 +1154,55 @@ class PolecatManager:
         return worktree_path
 
     def _install_precommit_hooks(self, worktree_path: Path):
-        """Install pre-commit hooks in a worktree if .pre-commit-config.yaml exists."""
+        """Install pre-commit hooks in a worktree if .pre-commit-config.yaml exists.
+
+        We deploy a stable hook template (scripts/hooks/pre-commit) that uses `uv run`
+        at runtime, rather than running `pre-commit install` which hardcodes the current
+        venv path. All polecat worktrees share the main repo's .git/hooks/ directory —
+        hardcoding a worker's venv path would break all other worktrees when that venv
+        is cleaned up.
+        """
         config_file = worktree_path / ".pre-commit-config.yaml"
         if not config_file.exists():
             return
 
+        hook_template = worktree_path / "scripts" / "hooks" / "pre-commit"
+        if not hook_template.exists():
+            print(
+                "  ⚠ Hook template scripts/hooks/pre-commit not found; skipping hook install.",
+                file=sys.stderr,
+            )
+            return
+
         print("🪝 Installing pre-commit hooks...")
         try:
-            # Clear VIRTUAL_ENV so uv doesn't conflict with the parent repo's venv
-            env = {k: v for k, v in os.environ.items() if k != "VIRTUAL_ENV"}
+            # Resolve the shared hooks directory (works from main repo and any worktree)
             result = subprocess.run(
-                ["uv", "run", "pre-commit", "install"],
+                ["git", "rev-parse", "--git-common-dir"],
                 cwd=worktree_path,
                 capture_output=True,
                 text=True,
-                check=False,
-                env=env,
+                check=True,
             )
-            if result.returncode == 0:
-                print("  ✅ Pre-commit hooks installed")
-            else:
-                print(
-                    f"  ⚠ Could not install pre-commit hooks: {result.stderr.strip()}",
-                    file=sys.stderr,
-                )
-        except FileNotFoundError:
+            git_common_dir = result.stdout.strip()
+            if not Path(git_common_dir).is_absolute():
+                git_common_dir = str((worktree_path / git_common_dir).resolve())
+            hooks_dir = Path(git_common_dir) / "hooks"
+            hooks_dir.mkdir(parents=True, exist_ok=True)
+
+            import shutil
+
+            shutil.copy(hook_template, hooks_dir / "pre-commit")
+            (hooks_dir / "pre-commit").chmod(0o755)
+            print("  ✅ Pre-commit hooks installed")
+        except subprocess.CalledProcessError as e:
             print(
-                "  ⚠ Could not install pre-commit hooks: 'uv' command not found. Is it in your PATH?",
+                f"  ⚠ Could not install pre-commit hooks: {e.stderr.strip()}",
+                file=sys.stderr,
+            )
+        except OSError as e:
+            print(
+                f"  ⚠ Could not install pre-commit hooks: {e}",
                 file=sys.stderr,
             )
 
