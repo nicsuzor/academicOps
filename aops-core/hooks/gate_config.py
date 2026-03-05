@@ -341,30 +341,16 @@ SPAWN_TOOLS: dict[str, tuple[tuple[str, ...], bool]] = {
 }
 
 # =============================================================================
-# GATE MODE DEFAULTS
+# GATE MODES
 # =============================================================================
-# Default enforcement modes for gates. Can be overridden by environment variables.
+# Gate enforcement modes are set by environment variables before the session
+# starts. No fallback defaults — if a var is missing, it's a deployment error.
 
-GATE_MODE_DEFAULTS: dict[str, str] = {
-    "hydration": "warn",
-    "custodiet": "block",
-    "qa": "block",
-    "handover": "warn",
-}
-
-# Environment variable names for gate modes
-GATE_MODE_ENV_VARS: dict[str, str] = {
-    "hydration": "HYDRATION_GATE_MODE",
-    "custodiet": "CUSTODIET_GATE_MODE",
-    "qa": "QA_GATE_MODE",
-    "handover": "HANDOVER_GATE_MODE",
-}
-
-HANDOVER_GATE_MODE = os.getenv(GATE_MODE_ENV_VARS["handover"], GATE_MODE_DEFAULTS["handover"])
-QA_GATE_MODE = os.getenv(GATE_MODE_ENV_VARS["qa"], GATE_MODE_DEFAULTS["qa"])
-CUSTODIET_GATE_MODE = os.getenv(GATE_MODE_ENV_VARS["custodiet"], GATE_MODE_DEFAULTS["custodiet"])
-CUSTODIET_TOOL_CALL_THRESHOLD = int(os.getenv("CUSTODIET_TOOL_CALL_THRESHOLD", 50))
-HYDRATION_GATE_MODE = os.getenv(GATE_MODE_ENV_VARS["hydration"], GATE_MODE_DEFAULTS["hydration"])
+HANDOVER_GATE_MODE = os.environ["HANDOVER_GATE_MODE"]
+QA_GATE_MODE = os.environ["QA_GATE_MODE"]
+CUSTODIET_GATE_MODE = os.environ["CUSTODIET_GATE_MODE"]
+CUSTODIET_TOOL_CALL_THRESHOLD = int(os.environ.get("CUSTODIET_TOOL_CALL_THRESHOLD", "50"))
+HYDRATION_GATE_MODE = os.environ["HYDRATION_GATE_MODE"]
 
 # =============================================================================
 # PKB PREFIX NORMALIZATION

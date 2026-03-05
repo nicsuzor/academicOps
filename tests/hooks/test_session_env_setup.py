@@ -4,7 +4,6 @@
 Tests environment variable setup logic for SessionStart hook:
 - PYTHONPATH addition to CLAUDE_ENV_FILE
 - AOPS_SESSION_STATE_DIR persistence
-- Default enforcement modes
 """
 
 import sys
@@ -20,6 +19,7 @@ if str(aops_core_dir) not in sys.path:
 
 from hooks.schemas import HookContext
 from hooks.session_env_setup import run_session_env_setup
+
 from lib.session_state import SessionState
 
 
@@ -63,11 +63,12 @@ class TestSessionEnvSetup:
         # Verify AOPS_SESSION_STATE_DIR
         assert 'export AOPS_SESSION_STATE_DIR="/tmp/aops/sessions"' in content
 
-        # Verify enforcement modes
-        assert "export CUSTODIET_GATE_MODE=" in content
-        assert "export HYDRATION_GATE_MODE=" in content
-        assert "export QA_GATE_MODE=" in content
-        assert "export HANDOVER_GATE_MODE=" in content
+        # Gate mode env vars (CUSTODIET_GATE_MODE etc.) are set externally
+        # before the session starts and should NOT be persisted by this hook.
+        assert "CUSTODIET_GATE_MODE" not in content
+        assert "HYDRATION_GATE_MODE" not in content
+        assert "QA_GATE_MODE" not in content
+        assert "HANDOVER_GATE_MODE" not in content
 
     def test_run_session_env_setup_ignored_for_other_events(self, temp_env_file):
         """Verify setup is ignored for non-SessionStart events."""
