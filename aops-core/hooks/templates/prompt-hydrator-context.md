@@ -73,8 +73,8 @@ Based on prompt keywords, these specific files may be relevant:
    - **Tier 3: Tools and paths** (TERTIARY) - Relevant MCP tools and project paths.
 3. **Determine execution path** - Single-session (bounded, path known) or multi-session (goal-level, uncertain path)?
 4. **Bind to task** - Match to existing task or specify new task creation
-5. **Select workflows** - Identify and select relevant workflows from your pre-loaded Workflow index. Read all workflow files you have selected, including any local workflows (in project CWD ./.agent/workflows/), and any [[referenced workflows]] within those files.
-6. **Compose a single integrated workflow** - construct a single ordered list of required steps from the sum of relevant workflows.
+5. **Select workflows** - Identify and select relevant workflows from your pre-loaded Workflow index. For each selected workflow not already inline in your input, you **MUST** read it now using `read_file`. Include local workflows (in `./.agent/workflows/`) and any [[referenced workflows]] within those files. **Do this BEFORE composing your output — NEVER output a step that tells the agent to read a workflow file.**
+6. **Compose a single integrated workflow** - construct a single ordered list of workflow-phase-level steps from the content you just read. Steps must be actions like "Write failing test", "Implement", "Refactor" — **NEVER** steps like "Read workflows/tdd-cycle.md" or "Consult .agent/workflows/X.md". Those reads happened in step 5.
 
 Note:
 
@@ -131,6 +131,12 @@ You may bypass task queue ONLY when ANY is true:
 - For simple questions: minimal or no context needed
 - Main agent receives ONLY your curated output
 - Axioms/heuristics are enforced by custodiet - NOT your responsibility
+
+**CRITICAL - No Workflow Read Delegation**:
+
+- Execution plan steps MUST be composed workflow actions, not file pointers
+- FORBIDDEN in execution plan: "Read workflows/X.md", "Consult .agent/workflows/X.md", "Read the tdd-cycle workflow"
+- If a workflow was relevant, you read it in step 5 — your output contains the extracted steps, not a reference to go read the file
 
 Return this EXACT structure:
 
