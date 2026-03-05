@@ -73,7 +73,10 @@ class GenericGate:
 
             if (
                 ctx.tool_name
-                and get_tool_category(ctx.tool_name, ctx.tool_input)
+                and get_tool_category(
+                    ctx.tool_name,
+                    ctx.tool_input if isinstance(ctx.tool_input, dict) else None,
+                )
                 in condition.excluded_tool_categories
             ):
                 return False
