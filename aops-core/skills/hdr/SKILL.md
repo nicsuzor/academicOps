@@ -15,6 +15,8 @@ tags:
 
 # HDR Student Skill
 
+> **Taxonomy note**: This skill provides domain expertise (HOW) for HDR student task conventions and reference letter workflows. See [[TAXONOMY.md]] for the skill/workflow distinction.
+
 Manage HDR (Higher Degree Research) student-related tasks including supervision, reference letters, reviews, and document handling.
 
 ## Path Resolution

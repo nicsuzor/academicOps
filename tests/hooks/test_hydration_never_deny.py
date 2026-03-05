@@ -18,6 +18,7 @@ import importlib
 from hooks.gate_config import COMPLIANCE_SUBAGENT_TYPES, TOOL_CATEGORIES, get_tool_category
 from hooks.router import HookRouter
 from hooks.schemas import HookContext
+
 from lib.gate_model import GateVerdict
 from lib.gates.registry import GateRegistry
 from lib.session_state import SessionState

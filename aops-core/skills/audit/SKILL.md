@@ -9,6 +9,8 @@ permalink: skills-audit
 
 # Framework Audit Skill
 
+> **Taxonomy note**: This skill provides domain expertise (HOW) for framework index curation and acceptance testing. See [[TAXONOMY.md]] for the skill/workflow distinction.
+
 Simplified audit focused on keeping framework indices up to date and running acceptance tests.
 
 ## Workflow Entry Point

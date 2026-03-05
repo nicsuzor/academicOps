@@ -13,6 +13,8 @@ triggers:
 
 # Task/Note Visualization
 
+> **Taxonomy note**: This skill provides domain expertise (HOW) for task graph visualisation. See [[TAXONOMY.md]] for the skill/workflow distinction.
+
 Generate network graphs of markdown files showing wikilink connections. Uses the `aops` CLI binary (from nicsuzor/mem) for high-performance scanning and optional Python styling for task-specific color coding.
 
 ## Quick Start

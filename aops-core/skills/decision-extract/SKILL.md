@@ -9,6 +9,8 @@ permalink: skills-decision-extract
 
 # Decision Extract Skill
 
+> **Taxonomy note**: This skill provides domain expertise (HOW) for extracting pending decisions from the task queue. See [[TAXONOMY.md]] for the skill/workflow distinction.
+
 Extract pending decisions from your task queue and format them for batch processing in your daily note.
 
 ## What is a Decision?

@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import pytest
 from hooks.schemas import HookContext
+
 from lib.gate_types import GateStatus
 from lib.gates.registry import GateRegistry
 from lib.session_state import SessionState

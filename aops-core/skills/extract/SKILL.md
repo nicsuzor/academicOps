@@ -9,6 +9,8 @@ permalink: skills-extract
 
 # Extraction & Ingestion Skill
 
+> **Taxonomy note**: This skill provides domain expertise (HOW) for extracting structured information from documents and sources. See [[TAXONOMY.md]] for the skill/workflow distinction.
+
 General-purpose extraction skill that intelligently routes to specialized workflows based on input type. Extracts structured information from various sources and stores it appropriately (public framework vs. private data).
 
 ## Framework Context

@@ -3,6 +3,7 @@
 from unittest.mock import patch
 
 import pytest
+
 from lib.binary_install import check_pkb_available
 
 
