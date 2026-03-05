@@ -1,7 +1,15 @@
 #!/usr/bin/env bash
-# Pre-commit hook — installed by polecat via scripts/hooks/pre-commit template.
-# Uses `uv run` at runtime so the hook remains valid across venv rebuilds and
-# across all git worktrees that share this .git/hooks/ directory.
-set -euo pipefail
+# Stable pre-commit hook — uses uv run to avoid hardcoded venv paths.
+# Works from any git worktree (main repo, polecat worktrees, crew sessions, etc.).
+#
+# DO NOT replace this file with `pre-commit install` output — that command writes
+# a hardcoded Python path that becomes stale when polecat worktree venvs are cleaned.
+# Instead, update this template and re-run scripts/install-hooks.sh.
 
-exec uv run pre-commit run --hook-stage pre-commit
+HERE="$(cd "$(dirname "$0")" && pwd)"
+cd "$(git rev-parse --show-toplevel)"
+exec uv run pre-commit hook-impl \
+  --config=.pre-commit-config.yaml \
+  --hook-type=pre-commit \
+  --hook-dir "$HERE" \
+  -- "$@"

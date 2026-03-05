@@ -1,4 +1,5 @@
 ---
+id: develop-specification
 title: Develop Automation Specification
 type: automation
 category: instruction

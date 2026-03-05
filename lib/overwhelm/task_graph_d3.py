@@ -24,13 +24,24 @@ EDGE_FORCE = {
 # Global force simulation parameters — all tunables in one place.
 # Passed to JS via graphData.forceConfig so nothing is hardcoded in index.html.
 FORCE_CONFIG = {
-    "chargeDistanceMax": 100,  # Stop repelling beyond this distance (px)
+    # Repulsion
+    "chargeDistanceMax": 280,  # Stop repelling beyond this distance (px); higher = more spread
+    "chargeMult": 1.0,  # Multiplier on all TYPE_CHARGE values (tune via sidebar slider)
+    # Collision
     "collisionPadding": 2,  # Extra px around each node for collision avoidance
     "collisionStrength": 0.4,  # How aggressively collisions are enforced (0-1)
     "collisionIterations": 3,  # Solver iterations per tick (more = stabler but slower)
-    "clusterStrength": 0.25,  # Pull toward project centroid (0 = off, 1 = very strong)
+    # Clustering
+    "clusterStrength": 0.4,  # Pull toward project centroid (0 = off, 1 = very strong)
     "orphanRadius": 0.45,  # Fraction of viewport to push orphans toward (0-1)
     "orphanStrength": 0.3,  # How strongly orphans are pushed to periphery (0-1)
+    # Link distance scaling (multiplied onto per-edge EDGE_FORCE distances)
+    "linkDistMult": 0.75,  # < 1 brings clusters closer; > 1 spreads them out
+    # Simulation convergence — controls performance
+    "alphaDecay": 0.04,  # Default D3: 0.0228 (~300 ticks); 0.04 → ~150 ticks
+    "velocityDecay": 0.55,  # Default D3: 0.4; higher = faster damping, less oscillation
+    "alphaMin": 0.002,  # Simulation stops when alpha < this (default 0.001)
+    "warmupTicks": 80,  # Synchronous pre-ticks before live animation starts
 }
 
 TYPE_CHARGE = {
@@ -257,6 +268,8 @@ def prepare_embedded_graph_data(
 
     node_by_id = {n["id"]: n for n in nodes}
     node_ids = {n["id"] for n in nodes}
+    # Leaf nodes are nodes whose ID doesn't appear as a parent of any other node
+    parent_ids_in_graph = {n.get("parent") for n in nodes if n.get("parent")}
     valid_edges = [e for e in edges if e["source"] in node_ids and e["target"] in node_ids]
     max_depth = max((n.get("depth", 0) for n in nodes), default=0)
 
@@ -378,9 +391,10 @@ def prepare_embedded_graph_data(
                 "project": node.get("project"),
                 "assignee": assignee or node.get("assignee"),
                 "opacity": opacity,
+                "isLeaf": nid not in parent_ids_in_graph,
                 "spotlight": node.get(
                     "spotlight", False
-                ),  # Top-3 by importance: gets "start here" ring
+                ),  # Top-3 leaf tasks by importance: gets "start here" ring
                 "x": node.get("x"),  # Precomputed ForceAtlas2 x (50-950 range, or None)
                 "y": node.get("y"),  # Precomputed ForceAtlas2 y (50-950 range, or None)
                 "layouts": node.get(
