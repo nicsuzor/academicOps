@@ -25,6 +25,11 @@ Red-green-refactor cycle for any testable code change.
 - A test must exist before implementation begins
 - The test must fail before implementation (this proves the test is meaningful)
 - Each test should target ONE behavior, not multiple
+- **Valid red = `AssertionError` on behavior.** `TypeError` (wrong API shape) is a
+  test bug — add a minimal stub first so the test reaches the assertion.
+- **Every test result must be explained.** If a test passes before implementation:
+  backward-compat behavior → label `[GREEN]` (regression guard, valid). Unclear →
+  the test is wrong; fix or remove it. Never call it "accidental" and move on.
 
 ### Green Phase (Minimal Implementation)
 

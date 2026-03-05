@@ -37,8 +37,18 @@ from typing import Any
 
 TOOL_CATEGORIES: dict[str, set[str]] = {
     # Always available: bypass ALL gates, including hydration.
-    # These are tools that either invoke agents/skills (needed to satisfy gates)
-    # or manage PKB/task state (needed for framework lifecycle).
+    # These are Claude Code built-in meta/control tools that have no substantive
+    # side effects on user data. They must never be blocked — e.g. AskUserQuestion
+    # is needed to communicate with the user during any gate state.
+    # Distinct from infrastructure (PKB ops) and spawn (subagent dispatch).
+    "always_available": {
+        "AskUserQuestion",
+        "ask_user",
+        "TodoWrite",
+        "EnterPlanMode",
+        "ExitPlanMode",
+        "KillShell",
+    },
     # Infrastructure: bypass ALL gates, including hydration.
     # These are tools required for the framework itself to function (PKB ops).
     "infrastructure": {
@@ -127,13 +137,6 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "decompose_task",
         "append",
         "save_memory",
-        # --- Claude Code built-in meta tools ---
-        "AskUserQuestion",
-        "ask_user",
-        "TodoWrite",
-        "EnterPlanMode",
-        "ExitPlanMode",
-        "KillShell",
     },
     # Spawn: tools that invoke subagents or skills.
     # Subject to hydration gate (must hydrate before doing substantive work).
@@ -420,14 +423,28 @@ _PKB_PREFIX_RE = re.compile(r"^(?:mcp__(?:plugin_(?:aops-core_|[\w.]+_))?(?:pkb|
 # =============================================================================
 
 
-def get_tool_category(tool_name: str) -> str:
+def get_tool_category(tool_name: str, subagent_type: str | None = None) -> str:
     """Get the category for a tool.
 
     Lookup order:
-    1. Static TOOL_CATEGORIES sets (O(1) for known tool names)
-    2. PKB prefix normalization (handles unknown MCP prefix variants)
-    3. Default: 'write' (conservative fallback for truly unknown tools)
+    1. Compliance agent spawn: spawn tool + compliance subagent_type -> infrastructure
+    2. Static TOOL_CATEGORIES sets (O(1) for known tool names)
+    3. PKB prefix normalization (handles unknown MCP prefix variants)
+    4. Default: 'write' (conservative fallback for truly unknown tools)
+
+    Args:
+        tool_name: The tool being called.
+        subagent_type: Optional subagent type being spawned (from tool_input).
+            When provided and the tool is a spawn tool targeting a compliance
+            agent (hydrator, custodiet, etc.), returns 'infrastructure' so the
+            spawn bypasses all gate policies.
     """
+    # Compliance agent spawns (Agent/Task + compliance subagent_type) are infrastructure.
+    # This ensures dispatching the hydrator or custodiet is never blocked by any gate,
+    # including custodiet's own ops-threshold policy.
+    if subagent_type and subagent_type in COMPLIANCE_SUBAGENT_TYPES and tool_name in SPAWN_TOOLS:
+        return "infrastructure"
+
     for category, tools in TOOL_CATEGORIES.items():
         if tool_name in tools:
             return category

@@ -20665,5 +20665,131 @@
         "extracted_at": "2026-03-04T04:44:34.750227+00:00"
       }
     }
+  ],
+  "claude_toolsearch_not_blocked": [
+    {
+      "id": "claude-pretooluse-toolsearch-L2",
+      "hook_event": "PreToolUse",
+      "tool_name": "ToolSearch",
+      "tool_input": {
+        "query": "select:mcp__plugin_aops-core_pkb__get_task",
+        "max_results": 5
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "allow"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_95-aops/20260305-2bff28e1-hooks.jsonl",
+        "line_index": 2,
+        "session_id": "2bff28e1",
+        "logged_at": "2026-03-05T03:27:11+00:00",
+        "event_hash": "3555f1d7e584b220",
+        "extracted_at": "2026-03-05T04:00:00.000000+00:00",
+        "note": "ToolSearch must not be blocked by hydration gate \u2014 aops-86528f6c"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "closed",
+          "metrics": {
+            "temp_path": "/tmp/hydration.md"
+          }
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-toolsearch-L6",
+      "hook_event": "PreToolUse",
+      "tool_name": "ToolSearch",
+      "tool_input": {
+        "query": "select:mcp__plugin_aops-core_pkb__update_task",
+        "max_results": 5
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "allow"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_95-aops/20260305-2bff28e1-hooks.jsonl",
+        "line_index": 6,
+        "session_id": "2bff28e1",
+        "logged_at": "2026-03-05T03:27:11+00:00",
+        "event_hash": "2b130401273b02ac",
+        "extracted_at": "2026-03-05T04:00:00.000000+00:00",
+        "note": "ToolSearch must not be blocked by hydration gate \u2014 aops-86528f6c"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "closed",
+          "metrics": {
+            "temp_path": "/tmp/hydration.md"
+          }
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-toolsearch-L54",
+      "hook_event": "PreToolUse",
+      "tool_name": "ToolSearch",
+      "tool_input": {
+        "query": "select:Agent",
+        "max_results": 5
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "allow"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_95-aops/20260305-2bff28e1-hooks.jsonl",
+        "line_index": 54,
+        "session_id": "2bff28e1",
+        "logged_at": "2026-03-05T03:27:11+00:00",
+        "event_hash": "0c491aad492eb480",
+        "extracted_at": "2026-03-05T04:00:00.000000+00:00",
+        "note": "ToolSearch must not be blocked by hydration gate \u2014 aops-86528f6c"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "closed",
+          "metrics": {
+            "temp_path": "/tmp/hydration.md"
+          }
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-toolsearch-L87",
+      "hook_event": "PreToolUse",
+      "tool_name": "ToolSearch",
+      "tool_input": {
+        "query": "select:Skill",
+        "max_results": 5
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "allow"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_95-aops/20260305-2bff28e1-hooks.jsonl",
+        "line_index": 87,
+        "session_id": "2bff28e1",
+        "logged_at": "2026-03-05T03:27:11+00:00",
+        "event_hash": "07c42cec450dced2",
+        "extracted_at": "2026-03-05T04:00:00.000000+00:00",
+        "note": "ToolSearch must not be blocked by hydration gate \u2014 aops-86528f6c"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "closed",
+          "metrics": {
+            "temp_path": "/tmp/hydration.md"
+          }
+        }
+      }
+    }
   ]
 }

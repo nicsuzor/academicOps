@@ -61,28 +61,33 @@ def mock_session_state():
         yield state, mock_load
 
 
-class TestActivateSkillAlwaysAvailable:
-    """Test that activate_skill is in always_available category."""
+class TestActivateSkillInSpawnCategory:
+    """Test that spawn tools (Agent, Task, Skill, activate_skill) are in the spawn category.
 
-    def test_activate_skill_in_always_available(self):
-        """activate_skill should be in the always_available category."""
-        assert "activate_skill" in TOOL_CATEGORIES["always_available"]
+    Spawn tools are subject to the hydration gate (must hydrate before doing substantive
+    work). They are distinct from always_available (meta/control tools that are never
+    blocked) and infrastructure (PKB ops that bypass all gates).
+    """
+
+    def test_activate_skill_in_spawn(self):
+        """activate_skill should be in the spawn category."""
+        assert "activate_skill" in TOOL_CATEGORIES["spawn"]
 
     def test_activate_skill_category(self):
-        """get_tool_category should return always_available for activate_skill."""
-        assert get_tool_category("activate_skill") == "always_available"
+        """get_tool_category should return spawn for activate_skill."""
+        assert get_tool_category("activate_skill") == "spawn"
 
-    def test_skill_tool_in_always_available(self):
-        """Skill tool should also be in always_available."""
-        assert "Skill" in TOOL_CATEGORIES["always_available"]
+    def test_skill_tool_in_spawn(self):
+        """Skill tool should be in spawn category."""
+        assert "Skill" in TOOL_CATEGORIES["spawn"]
 
-    def test_task_tool_in_always_available(self):
-        """Task tool should also be in always_available."""
-        assert "Task" in TOOL_CATEGORIES["always_available"]
+    def test_task_tool_in_spawn(self):
+        """Task tool should be in spawn category."""
+        assert "Task" in TOOL_CATEGORIES["spawn"]
 
-    def test_agent_tool_in_always_available(self):
-        """Agent tool (Claude Code's current subagent tool) should be in always_available."""
-        assert "Agent" in TOOL_CATEGORIES["always_available"]
+    def test_agent_tool_in_spawn(self):
+        """Agent tool (Claude Code's current subagent tool) should be in spawn category."""
+        assert "Agent" in TOOL_CATEGORIES["spawn"]
 
 
 class TestAskUserQuestionAlwaysAvailable:
@@ -266,8 +271,8 @@ class TestReadToolSubjectToHydration:
     def test_read_warned_when_hydration_not_passed(self, mock_session_state):
         """Read should be warned when hydration gate is closed.
 
-        Only always_available tools (Agent, Task, Skill, AskUserQuestion, etc.)
-        bypass the hydration gate. Read-only tools are subject to it.
+        Only always_available (meta/control tools like AskUserQuestion) and infrastructure
+        (PKB ops) bypass the hydration gate. Read-only and spawn tools are subject to it.
         """
         state, _ = mock_session_state
         state.close_gate("hydration")
