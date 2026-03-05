@@ -37,8 +37,28 @@ from typing import Any
 
 TOOL_CATEGORIES: dict[str, set[str]] = {
     # Always available: bypass ALL gates, including hydration.
-    # These are tools that either invoke agents/skills (needed to satisfy gates)
-    # or manage PKB/task state (needed for framework lifecycle).
+    # These are tools needed to invoke compliance agents/skills (hydrator, custodiet, etc.)
+    # or to ask the user a question. Without this bypass, calling Agent(prompt-hydrator)
+    # would itself be blocked by the hydration gate — a circular dependency.
+    "always_available": {
+        # --- Subagent/skill spawn tools (all platforms) ---
+        "Agent",  # Claude Code: spawn subagent (current tool name)
+        "Task",  # Claude Code: spawn subagent (legacy/alias)
+        "Skill",  # Claude Code: invoke skill in-session
+        "delegate_to_agent",  # Gemini CLI: spawn subagent
+        "activate_skill",  # Gemini CLI: invoke skill in-session
+        "TaskCreate",
+        "TaskUpdate",
+        "TaskGet",
+        "TaskList",
+        # --- Claude Code built-in meta tools ---
+        "AskUserQuestion",
+        "ask_user",
+        "TodoWrite",
+        "EnterPlanMode",
+        "ExitPlanMode",
+        "KillShell",
+    },
     # Infrastructure: bypass ALL gates, including hydration.
     # These are tools required for the framework itself to function (PKB ops).
     "infrastructure": {
@@ -127,27 +147,6 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "decompose_task",
         "append",
         "save_memory",
-        # --- Claude Code built-in meta tools ---
-        "AskUserQuestion",
-        "ask_user",
-        "TodoWrite",
-        "EnterPlanMode",
-        "ExitPlanMode",
-        "KillShell",
-    },
-    # Spawn: tools that invoke subagents or skills.
-    # Subject to hydration gate (must hydrate before doing substantive work).
-    # Always allowed if the target subagent is a compliance agent (hydrator, custodiet, etc).
-    "spawn": {
-        "Agent",  # Claude Code: spawn subagent (current tool name)
-        "Task",  # Claude Code: spawn subagent (legacy/alias)
-        "Skill",  # Claude Code: invoke skill in-session
-        "delegate_to_agent",  # Gemini CLI: spawn subagent
-        "activate_skill",  # Gemini CLI: invoke skill in-session
-        "TaskCreate",
-        "TaskUpdate",
-        "TaskGet",
-        "TaskList",
     },
     # Read-only tools: no side effects. Exempt from custodiet gate (not hydration).
     # Hydration gate blocks these until hydrator is dispatched (JIT gate open).

@@ -34,6 +34,7 @@ if str(AOPS_CORE) not in sys.path:
 from hooks.gate_config import COMPLIANCE_SUBAGENT_TYPES, TOOL_CATEGORIES, get_tool_category
 from hooks.router import HookRouter
 from hooks.schemas import CanonicalHookOutput, HookContext
+
 from lib.gate_model import GateVerdict
 from lib.gate_types import GateState, GateStatus
 from lib.gates.registry import GateRegistry
@@ -913,8 +914,8 @@ class TestExecuteHooksSmoke:
 
 # Each tuple: (tool_name, expected_category, description)
 # expected_category is what gate_config SHOULD return for this tool.
-# "infrastructure" tools bypass ALL gates (PKB ops, meta tools like AskUserQuestion).
-# "spawn" tools are subject to hydration gate (Agent, Task, Skill, etc.).
+# "always_available" tools bypass ALL gates (spawn tools + meta tools like AskUserQuestion).
+# "infrastructure" tools bypass ALL gates (PKB ops).
 # "read_only" tools bypass custodiet gate but are subject to hydration.
 # "write" tools are subject to ALL gate policies.
 #
@@ -935,19 +936,18 @@ REAL_TOOL_NAMES: list[tuple[str, str, str]] = [
     ("TaskOutput", "read_only", "Claude: task output"),
     ("TaskStop", "read_only", "Claude: stop task"),
     ("ToolSearch", "read_only", "Claude: tool search"),
-    # Claude Code spawn tools (subject to hydration gate)
-    ("Agent", "spawn", "Claude: spawn subagent"),
-    ("Task", "spawn", "Claude: spawn subagent (legacy)"),
-    ("Skill", "spawn", "Claude: invoke skill"),
-    ("TaskCreate", "spawn", "Claude: create task"),
-    ("TaskUpdate", "spawn", "Claude: update task"),
-    ("TaskGet", "spawn", "Claude: get task"),
-    ("TaskList", "spawn", "Claude: list tasks"),
-    # Claude Code infrastructure (bypass all gates)
-    ("AskUserQuestion", "infrastructure", "Claude: ask user"),
-    ("TodoWrite", "infrastructure", "Claude: write todo"),
-    ("EnterPlanMode", "infrastructure", "Claude: enter plan"),
-    ("ExitPlanMode", "infrastructure", "Claude: exit plan"),
+    # Claude Code always_available tools (bypass all gates)
+    ("Agent", "always_available", "Claude: spawn subagent"),
+    ("Task", "always_available", "Claude: spawn subagent (legacy)"),
+    ("Skill", "always_available", "Claude: invoke skill"),
+    ("TaskCreate", "always_available", "Claude: create task"),
+    ("TaskUpdate", "always_available", "Claude: update task"),
+    ("TaskGet", "always_available", "Claude: get task"),
+    ("TaskList", "always_available", "Claude: list tasks"),
+    ("AskUserQuestion", "always_available", "Claude: ask user"),
+    ("TodoWrite", "always_available", "Claude: write todo"),
+    ("EnterPlanMode", "always_available", "Claude: enter plan"),
+    ("ExitPlanMode", "always_available", "Claude: exit plan"),
     # ===== Gemini CLI tools =====
     ("read_file", "read_only", "Gemini: read file"),
     ("run_shell_command", "write", "Gemini: shell command"),
@@ -956,7 +956,7 @@ REAL_TOOL_NAMES: list[tuple[str, str, str]] = [
     ("write_file", "write", "Gemini: write file"),
     ("list_directory", "read_only", "Gemini: list dir"),
     ("glob", "read_only", "Gemini: glob search"),
-    ("activate_skill", "spawn", "Gemini: invoke skill"),
+    ("activate_skill", "always_available", "Gemini: invoke skill"),
     # Gemini bare PKB tool names (infrastructure: bypass all gates)
     ("get_task", "infrastructure", "Gemini: get task"),
     ("create_task", "infrastructure", "Gemini: create task"),
@@ -1077,41 +1077,41 @@ REAL_TOOL_NAMES: list[tuple[str, str, str]] = [
 # Each tuple: (tool_name, subagent_type, is_subagent, expected_category, description)
 REAL_SPAWN_EVENTS: list[tuple[str, str, bool, str, str]] = [
     # Claude Code Agent spawns (is_subagent=False in main agent context)
-    ("Agent", "Explore", False, "spawn", "CC Agent: Explore"),
-    ("Agent", "aops-core:custodiet", False, "spawn", "CC Agent: custodiet"),
-    ("Agent", "aops-core:prompt-hydrator", False, "spawn", "CC Agent: hydrator"),
-    ("Agent", "aops-core:butler", False, "spawn", "CC Agent: butler"),
-    ("Agent", "general-purpose", False, "spawn", "CC Agent: general-purpose"),
+    ("Agent", "Explore", False, "always_available", "CC Agent: Explore"),
+    ("Agent", "aops-core:custodiet", False, "always_available", "CC Agent: custodiet"),
+    ("Agent", "aops-core:prompt-hydrator", False, "always_available", "CC Agent: hydrator"),
+    ("Agent", "aops-core:butler", False, "always_available", "CC Agent: butler"),
+    ("Agent", "general-purpose", False, "always_available", "CC Agent: general-purpose"),
     # Claude Code legacy Task spawns (is_subagent=True from subagent context)
-    ("Task", "general-purpose", True, "spawn", "CC Task: general-purpose"),
-    ("Task", "aops-core:prompt-hydrator", True, "spawn", "CC Task: hydrator"),
-    ("Task", "aops-core:custodiet", True, "spawn", "CC Task: custodiet"),
-    ("Task", "Explore", True, "spawn", "CC Task: Explore"),
-    ("Task", "claude-code-guide", True, "spawn", "CC Task: cc-guide"),
-    ("Task", "aops-core:butler", True, "spawn", "CC Task: butler"),
-    ("Task", "Plan", True, "spawn", "CC Task: Plan"),
+    ("Task", "general-purpose", True, "always_available", "CC Task: general-purpose"),
+    ("Task", "aops-core:prompt-hydrator", True, "always_available", "CC Task: hydrator"),
+    ("Task", "aops-core:custodiet", True, "always_available", "CC Task: custodiet"),
+    ("Task", "Explore", True, "always_available", "CC Task: Explore"),
+    ("Task", "claude-code-guide", True, "always_available", "CC Task: cc-guide"),
+    ("Task", "aops-core:butler", True, "always_available", "CC Task: butler"),
+    ("Task", "Plan", True, "always_available", "CC Task: Plan"),
     (
         "Task",
         "aops-core:custodiet-reviewer",
         True,
-        "spawn",
+        "always_available",
         "CC Task: custodiet-reviewer",
     ),
-    ("Task", "aops-core:hydrator-reviewer", True, "spawn", "CC Task: hydrator-reviewer"),
-    ("Task", "aops-core:qa", True, "spawn", "CC Task: qa"),
+    ("Task", "aops-core:hydrator-reviewer", True, "always_available", "CC Task: hydrator-reviewer"),
+    ("Task", "aops-core:qa", True, "always_available", "CC Task: qa"),
     # Claude Code Skill invocations
-    ("Skill", "aops-core:dump", False, "spawn", "CC Skill: dump"),
-    ("Skill", "aops-core:daily", False, "spawn", "CC Skill: daily"),
-    ("Skill", "aops-core:learn", False, "spawn", "CC Skill: learn"),
-    ("Skill", "aops-core:strategy", False, "spawn", "CC Skill: strategy"),
-    ("Skill", "aops-core:remember", False, "spawn", "CC Skill: remember"),
-    ("Skill", "aops-core:garden", False, "spawn", "CC Skill: garden"),
-    ("Skill", "aops-core:q", False, "spawn", "CC Skill: q"),
-    ("Skill", "aops-core:framework", False, "spawn", "CC Skill: framework"),
-    ("Skill", "framework", False, "spawn", "CC Skill: framework (bare)"),
-    ("Skill", "remember", False, "spawn", "CC Skill: remember (bare)"),
+    ("Skill", "aops-core:dump", False, "always_available", "CC Skill: dump"),
+    ("Skill", "aops-core:daily", False, "always_available", "CC Skill: daily"),
+    ("Skill", "aops-core:learn", False, "always_available", "CC Skill: learn"),
+    ("Skill", "aops-core:strategy", False, "always_available", "CC Skill: strategy"),
+    ("Skill", "aops-core:remember", False, "always_available", "CC Skill: remember"),
+    ("Skill", "aops-core:garden", False, "always_available", "CC Skill: garden"),
+    ("Skill", "aops-core:q", False, "always_available", "CC Skill: q"),
+    ("Skill", "aops-core:framework", False, "always_available", "CC Skill: framework"),
+    ("Skill", "framework", False, "always_available", "CC Skill: framework (bare)"),
+    ("Skill", "remember", False, "always_available", "CC Skill: remember (bare)"),
     # Gemini CLI
-    ("activate_skill", "aops-core:dump", False, "spawn", "Gemini: activate dump"),
+    ("activate_skill", "aops-core:dump", False, "always_available", "Gemini: activate dump"),
 ]
 
 
@@ -1272,7 +1272,7 @@ class TestRealSpawnEventCategorization:
     def test_spawn_tool_category_and_hydrator_bypass(
         self, router, tool_name, subagent_type, is_subagent, expected_category, desc, gate_mode
     ):
-        """Spawn tools are in 'spawn' category; hydrator dispatches bypass hydration gate JIT."""
+        """Spawn tools are in 'always_available' category; all dispatches bypass hydration gate."""
         state = SessionState.create("test-spawn-categorization")
         # Hostile state: hydration closed, custodiet at threshold
         state.gates["hydration"].status = GateStatus.CLOSED
@@ -1294,25 +1294,19 @@ class TestRealSpawnEventCategorization:
         )
         result = router._dispatch_gates(ctx, state)
 
-        # 1. Category must be "spawn" for all spawn tools
+        # 1. Category must be "always_available" for all spawn tools
         actual_cat = get_tool_category(tool_name)
         assert actual_cat == expected_category, (
             f"Spawn tool '{tool_name}' ({desc}): expected category '{expected_category}', "
             f"got '{actual_cat}'"
         )
 
-        # 2. Only prompt-hydrator dispatches bypass hydration gate via JIT trigger.
-        #    Other spawns (including non-hydrator compliance agents) are subject to
-        #    hydration gate — WARN/DENY is correct when hydration hasn't been done.
-        is_hydrator_dispatch = subagent_type in (
-            "aops-core:prompt-hydrator",
-            "prompt-hydrator",
-            "hydrator",
-        )
-        if is_hydrator_dispatch:
-            if result is not None:
-                assert result.verdict == GateVerdict.ALLOW, (
-                    f"Hydrator dispatch '{tool_name}' -> '{subagent_type}' ({desc}) "
-                    f"should bypass hydration gate (JIT trigger opens it) but got "
-                    f"{result.verdict.value} in {gate_mode.hydration_mode} mode."
-                )
+        # 2. All spawn tool calls bypass the hydration gate (always_available category).
+        #    This prevents circular dependency: you need Agent/Task to call the hydrator,
+        #    so Agent/Task must be allowed even when hydration gate is closed.
+        if result is not None:
+            assert result.verdict == GateVerdict.ALLOW, (
+                f"Spawn tool '{tool_name}' -> '{subagent_type}' ({desc}) "
+                f"should bypass hydration gate (always_available) but got "
+                f"{result.verdict.value} in {gate_mode.hydration_mode} mode."
+            )

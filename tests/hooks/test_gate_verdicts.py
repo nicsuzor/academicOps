@@ -48,6 +48,7 @@ from hooks.schemas import (
     GeminiHookOutput,
     HookContext,
 )
+
 from lib.gate_model import GateVerdict
 from lib.gate_types import GateState, GateStatus
 from lib.gates.registry import GateRegistry
@@ -309,12 +310,17 @@ class TestHydrationGateAllowsInfrastructure:
 
 
 class TestHydrationGateBlocksSpawn:
-    """Spawn tools (Agent, Task, Skill) are BLOCKED by hydration gate."""
+    """Spawn tools (Agent, Task, Skill) are ALLOWED even when hydration gate is closed.
+
+    Spawn tools are in 'always_available' category, bypassing all gates. This prevents
+    the circular dependency where calling the hydrator requires Agent/Task which would
+    itself be blocked by the hydration gate.
+    """
 
     SCENARIOS = [
         {
             "id": "agent_blocked_when_hydration_closed",
-            "description": "Agent (spawn) blocked by hydration gate",
+            "description": "Agent (always_available) allowed despite hydration gate closed",
             "hook_event": "PreToolUse",
             "tool_name": "Agent",
             "tool_input": {"subagent_type": "explorer"},
@@ -325,7 +331,7 @@ class TestHydrationGateBlocksSpawn:
         },
         {
             "id": "delegate_to_agent_blocked_when_hydration_closed",
-            "description": "delegate_to_agent (spawn) blocked by hydration gate",
+            "description": "delegate_to_agent (always_available) allowed despite hydration gate closed",
             "hook_event": "PreToolUse",
             "tool_name": "delegate_to_agent",
             "tool_input": {"name": "explorer"},
@@ -347,9 +353,12 @@ class TestHydrationGateBlocksSpawn:
 
         result = router._dispatch_gates(ctx, state)
 
-        # Spawn tools must be BLOCKED/WARNED
-        assert result is not None
-        assert result.verdict != GateVerdict.ALLOW
+        # Spawn tools are always_available — they bypass hydration gate
+        if result is not None:
+            assert result.verdict == GateVerdict.ALLOW, (
+                f"[{scenario['id']}] Spawn tool '{scenario['tool_name']}' is always_available "
+                f"and should not be blocked by hydration gate, got {result.verdict.value}"
+            )
 
 
 # ===========================================================================
@@ -954,10 +963,10 @@ class TestLiveCustodietThreshold:
 
         result = router._dispatch_gates(ctx, state)
 
-        # Some tools are exempt from custodiet threshold (infrastructure, read_only).
+        # Some tools are exempt from custodiet threshold (infrastructure, always_available, read_only).
         # Derived dynamically from gate_config to stay in sync with production config.
-        # Matches excluded_tool_categories=["infrastructure", "read_only"] in definitions.py.
-        _exempt_categories = {"infrastructure", "read_only"}
+        # Matches excluded_tool_categories=["infrastructure", "always_available", "read_only"] in definitions.py.
+        _exempt_categories = {"infrastructure", "always_available", "read_only"}
         tool_cat = get_tool_category(scenario["tool_name"] or "")
 
         # Check if this scenario dispatches custodiet specifically.
@@ -1006,7 +1015,7 @@ class TestCustodietDeadlockPrevention:
 
     Before the PreToolUse trigger was added to the custodiet gate, there was
     a deadlock: when ops >= threshold, the gate blocked Agent(custodiet)
-    itself (because Agent is in 'spawn' category, not exempt). The agent
+    itself (because Agent was in 'spawn' category, not exempt). The agent
     needed to satisfy the gate, but the gate blocked the agent dispatch.
 
     Fix (definitions.py): added PreToolUse to the custodiet trigger's
