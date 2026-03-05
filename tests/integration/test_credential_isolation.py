@@ -35,7 +35,6 @@ if str(aops_core_dir) not in sys.path:
 
 from hooks.schemas import HookContext
 from hooks.session_env_setup import run_session_env_setup
-
 from lib.agent_env import (
     EnvEntry,
     apply_env_mappings,
