@@ -767,7 +767,10 @@
 
     function routeSfdpEdges() {
         // SFDP layout: all edges use Manhattan (orthogonal) routing
-        linkEls.attr("opacity", d => d.type === "ref" ? 0.25 : 0.6);
+        // Override stroke-linejoin to miter for sharp 90-degree corners
+        linkEls.attr("opacity", d => d.type === "ref" ? 0.25 : 0.6)
+            .attr("stroke-linejoin", "miter")
+            .attr("stroke-linecap", "square");
         linkEls.attr("d", d => {
             const sx = d.source.x, sy = d.source.y;
             const tx = d.target.x, ty = d.target.y;
