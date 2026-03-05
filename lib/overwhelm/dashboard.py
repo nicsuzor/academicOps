@@ -3743,6 +3743,25 @@ def render_task_graph_page():
             import time as _time
             from datetime import datetime as _dt
 
+            # CALIBRATION_NOTE: These weights are provisional first guesses.
+            # They have not been validated against real usage patterns. If the spotlight
+            # highlights the wrong tasks, adjust these constants and log the delta.
+            # See: https://github.com/nicsuzor/academicOps/pull/760 for rationale.
+            _PRIORITY_WEIGHTS = {0: 1000, 1: 200, 2: 50, 3: 10, 4: 2}
+            _STATUS_WEIGHTS = {
+                "blocked": 500,  # blocked > in_progress: surfaces hidden dependencies
+                "in_progress": 300,
+                "merge_ready": 150,
+                "active": 100,
+                "review": 80,
+                "waiting": 50,
+            }
+            _DW_MULTIPLIER = 20  # downstream_weight → score; capped at 200
+            _DW_CAP = 200
+            _RECENCY_MAX = 50.0  # max recency score (today-modified)
+            _RECENCY_DECAY = 2.0  # points lost per day; decays to 0 after 25 days
+            _DEPTH_UNIT = 30  # score bonus per level above depth 3
+
             def _parse_mod(mod) -> float | None:
                 """Return Unix timestamp from either a float/int or ISO datetime string."""
                 if mod is None:
@@ -3767,23 +3786,16 @@ def render_task_graph_page():
                 s = (node.get("status") or "inbox").lower()
                 dw = node.get("downstream_weight") or 0
                 mod = node.get("modified")
-                p_score = {0: 1000, 1: 200, 2: 50, 3: 10, 4: 2}.get(p, 50)
-                s_score = {
-                    "blocked": 500,
-                    "in_progress": 300,
-                    "active": 100,
-                    "waiting": 50,
-                    "review": 80,
-                    "merge_ready": 150,
-                }.get(s, 0)
-                dw_score = min(float(dw) * 20, 200)
+                p_score = _PRIORITY_WEIGHTS.get(p, 50)
+                s_score = _STATUS_WEIGHTS.get(s, 0)
+                dw_score = min(float(dw) * _DW_MULTIPLIER, _DW_CAP)
                 r_score = 0.0
                 mod_ts = _parse_mod(mod)
                 if mod_ts:
                     days = (_time.time() - mod_ts) / 86400
-                    r_score = max(0.0, 50.0 - days * 2)
+                    r_score = max(0.0, _RECENCY_MAX - days * _RECENCY_DECAY)
                 # Structural nodes (goals/projects/epics) get a depth bonus
-                depth_bonus = max(0, (3 - int(node.get("depth") or 3)) * 30)
+                depth_bonus = max(0, (3 - int(node.get("depth") or 3)) * _DEPTH_UNIT)
                 return p_score + s_score + dw_score + r_score + depth_bonus
 
             scored = sorted(filtered, key=_importance_score, reverse=True)
@@ -3800,12 +3812,24 @@ def render_task_graph_page():
                     if grandparent and grandparent in node_by_id:
                         parent_ids.add(grandparent)
             keep_ids = top_ids | parent_ids
+            n_before = len(filtered)
             filtered = [n for n in filtered if n["id"] in keep_ids]
 
             # Tag the top 3 as "spotlight" for the "start here" visual signal
             top3_ids = {n["id"] for n in scored[:3]}
             for n in filtered:
                 n["spotlight"] = n["id"] in top3_ids
+
+            # Debug: expose scored rankings so user can validate the calibration
+            with st.sidebar.expander("🔍 Importance ranking (debug)", expanded=False):
+                st.caption(f"Showing {len(filtered)} of {n_before} filtered nodes")
+                for rank, nd in enumerate(scored[:10], 1):
+                    nid = nd["id"]
+                    label = (nd.get("title") or nd.get("label") or nid)[:35]
+                    score = _importance_score(nd)
+                    st.text(
+                        f"#{rank} {label}  {score:.0f}pt  p={nd.get('priority', '?')}  s={nd.get('status', '?')}"
+                    )
 
         d3_graph["nodes"] = filtered
 
@@ -4134,8 +4158,9 @@ def render_session_summary():
 # UNIFIED DASHBOARD - Single page: Graph + Project boxes
 # ============================================================================
 
-from lib.task_model import TaskStatus
 from task_manager_ui import render_task_editor
+
+from lib.task_model import TaskStatus
 
 
 @st.dialog("Edit Task")

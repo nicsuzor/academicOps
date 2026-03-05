@@ -75,7 +75,7 @@
     /* Focus mode back button */
     #focus-back {
         display: none; position: absolute; top: 8px; left: 8px; z-index: 11;
-        display: none; align-items: center; gap: 10px;
+        align-items: center; gap: 10px;
     }
     #focus-back button {
         background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(255,255,255,0.2);
@@ -446,46 +446,37 @@
     // downstream = depends_on edges on paths FROM nodeId (what it enables)
     function getChainEdges(nodeId) {
         const links = graphData.links;
-        const upstream = new Set();
-        const downstream = new Set();
 
-        // BFS upstream (walk depends_on edges backwards)
-        let frontier = new Set([nodeId]);
-        const visitedUp = new Set([nodeId]);
-        while (frontier.size > 0) {
-            const next = new Set();
-            links.forEach((l, i) => {
-                if (l.type !== "depends_on") return;
-                const sid = (typeof l.source === "object") ? l.source.id : l.source;
-                const tid = (typeof l.target === "object") ? l.target.id : l.target;
-                if (frontier.has(tid) && !visitedUp.has(sid)) {
-                    upstream.add(i);
-                    next.add(sid);
-                    visitedUp.add(sid);
-                }
-            });
-            frontier = next;
+        // BFS walk along depends_on edges.
+        // direction="up"   → walk edge backwards (find tid in frontier, collect sid)
+        // direction="down" → walk edge forwards  (find sid in frontier, collect tid)
+        function bfsDepends(startId, direction) {
+            const edgeSet = new Set();
+            let frontier = new Set([startId]);
+            const visited = new Set([startId]);
+            while (frontier.size > 0) {
+                const next = new Set();
+                links.forEach((l, i) => {
+                    if (l.type !== "depends_on") return;
+                    const sid = (typeof l.source === "object") ? l.source.id : l.source;
+                    const tid = (typeof l.target === "object") ? l.target.id : l.target;
+                    const inFrontier = direction === "up" ? frontier.has(tid) : frontier.has(sid);
+                    const neighbor   = direction === "up" ? sid : tid;
+                    if (inFrontier && !visited.has(neighbor)) {
+                        edgeSet.add(i);
+                        next.add(neighbor);
+                        visited.add(neighbor);
+                    }
+                });
+                frontier = next;
+            }
+            return edgeSet;
         }
 
-        // BFS downstream (walk depends_on edges forwards)
-        frontier = new Set([nodeId]);
-        const visitedDown = new Set([nodeId]);
-        while (frontier.size > 0) {
-            const next = new Set();
-            links.forEach((l, i) => {
-                if (l.type !== "depends_on") return;
-                const sid = (typeof l.source === "object") ? l.source.id : l.source;
-                const tid = (typeof l.target === "object") ? l.target.id : l.target;
-                if (frontier.has(sid) && !visitedDown.has(tid)) {
-                    downstream.add(i);
-                    next.add(tid);
-                    visitedDown.add(tid);
-                }
-            });
-            frontier = next;
-        }
-
-        return {upstream, downstream};
+        return {
+            upstream:   bfsDepends(nodeId, "up"),
+            downstream: bfsDepends(nodeId, "down"),
+        };
     }
 
     function updateCriticalPath(nodeId) {

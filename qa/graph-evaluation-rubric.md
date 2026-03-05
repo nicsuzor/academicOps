@@ -12,6 +12,8 @@ project: overwhelm-dashboard
 
 This rubric defines what "good" means for the task map graph on the overwhelm dashboard. It is used by the agent to score each iteration independently, without asking the user. Scoring is 1–5 per dimension with explicit descriptors.
 
+> **Note:** All iteration scores are agent-assessed (self-evaluated by the implementing agent). The VERIFIED verdict at 20/25 (Iteration 3) is pending independent user validation — treat it as "agent-assessed: pending user confirmation" rather than independently verified.
+
 The primary question: **after 30 seconds in the graph, can Nic answer "what should I work on next"?**
 
 ---
@@ -116,11 +118,11 @@ Evaluated against default scope (3,992 nodes → ~650 after status filter).
 
 ## Iteration Scores
 
-| Iteration | Date       | D1 | D2 | D3 | D4 | D5 | Total | Verdict  |
-| --------- | ---------- | -- | -- | -- | -- | -- | ----- | -------- |
-| Baseline  | 2026-03-04 | 1  | 2  | 2  | 2  | 1  | 8/25  | CRITICAL |
-| Iter 1    | 2026-03-04 | 2  | 3  | 2  | 4  | 2  | 13/25 | ISSUES   |
-| Iter 2    | 2026-03-04 | 3  | 3  | 3  | 4  | 3  | 16/25 | ISSUES   |
-| Iter 3    | 2026-03-04 | 4  | 4  | 4  | 4  | 4  | 20/25 | VERIFIED |
+| Iteration | Date       | D1 | D2 | D3 | D4 | D5 | Total | Verdict                                            |
+| --------- | ---------- | -- | -- | -- | -- | -- | ----- | -------------------------------------------------- |
+| Baseline  | 2026-03-04 | 1  | 2  | 2  | 2  | 1  | 8/25  | CRITICAL                                           |
+| Iter 1    | 2026-03-04 | 2  | 3  | 2  | 4  | 2  | 13/25 | ISSUES                                             |
+| Iter 2    | 2026-03-04 | 3  | 3  | 3  | 4  | 3  | 16/25 | ISSUES                                             |
+| Iter 3    | 2026-03-04 | 4  | 4  | 4  | 4  | 4  | 20/25 | VERIFIED (agent-assessed, pending user validation) |
 
 Target: all dimensions ≥ 4, total ≥ 20.
