@@ -1,13 +1,15 @@
-# Agent: Conceptual Review
+# Agent: Review
 # Personality: Thoughtful reviewer. Provides structured critique.
 # Responsibilities:
 #   - Evaluate PR through axiom compliance + strategic alignment lens
 #   - Apply prioritised critique protocol (primary concern + resolution, secondary concerns)
 #   - Post PR comment with structured review
-#   - Set commit status honestly based on findings
+#   - File a GitHub PR review (APPROVE or REQUEST_CHANGES)
 # Prompt: .github/agents/conceptual-review.agent.md
+#
+# See specs/pr-pipeline-v2.md for the full process documentation.
 
-name: "Agent: Conceptual Review"
+name: "Agent: Review"
 
 on:
   pull_request:
@@ -35,18 +37,17 @@ on:
 
 jobs:
   review:
-    name: Conceptual Review
+    name: Agent Review
     if: >-
       github.event_name != 'pull_request' ||
       github.event.pull_request.user.login != 'github-actions[bot]'
     runs-on: ubuntu-latest
     concurrency:
-      group: conceptual-review-${{ inputs.pr_number || github.event.pull_request.number }}
+      group: agent-review-${{ inputs.pr_number || github.event.pull_request.number }}
       cancel-in-progress: true
     permissions:
       contents: read
       pull-requests: write
-      statuses: write
       id-token: write
       issues: write
       actions: read
@@ -71,23 +72,17 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             echo "pr_number=${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
-            echo "head_sha=${{ github.event.pull_request.head.sha }}" >> "$GITHUB_OUTPUT"
           else
             echo "pr_number=${{ inputs.pr_number }}" >> "$GITHUB_OUTPUT"
-            HEAD_SHA=$(gh pr view "${{ inputs.pr_number }}" --repo "${{ github.repository }}" \
-              --json headRefOid --jq '.headRefOid')
-            echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Run Conceptual Review
+      - name: Run Agent Review
         id: review
         uses: anthropics/claude-code-action@v1
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          HEAD_SHA: ${{ steps.pr-info.outputs.head_sha }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
         with:
           allowed_bots: "claude[bot]"
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -101,18 +96,8 @@ jobs:
 
             Post a PR comment (`gh pr comment`) with your structured review following the output format in your instructions.
 
-            Then set the commit status honestly as described in your instructions. The environment variables HEAD_SHA, GITHUB_REPOSITORY, GITHUB_SERVER_URL, and GITHUB_RUN_ID are available.
+            Then file a GitHub PR review as described in your instructions:
+            - No concerns → `gh pr review ${{ steps.pr-info.outputs.pr_number }} --approve --body "..."`
+            - Concerns found → `gh pr review ${{ steps.pr-info.outputs.pr_number }} --request-changes --body "..."`
 
           claude_args: '--model claude-opus-4-6 --allowed-tools "Bash(gh:*),Read"'
-
-      # Fallback: if the agent crashes, mark the status as failure so it doesn't silently hang as pending
-      - name: Set failure status if agent crashed
-        if: failure()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh api "repos/${{ github.repository }}/statuses/${{ steps.pr-info.outputs.head_sha }}" \
-            -f state="failure" \
-            -f context="Conceptual Review" \
-            -f description="Conceptual review agent crashed" \
-            -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
