@@ -34,7 +34,8 @@ Execute the [[base-handover]] workflow. The steps are:
 2. **Update task with progress** (or create historical task if none claimed)
 3. **File follow-up tasks** for outstanding work — use [[decompose]] principles and ensure all have a **parent** set to the current task or epic
 4. **Persist discoveries to memory** (optional)
-5. **Output Framework Reflection** (format below)
+   4.5. **Codify learnings** — framework improvement → `gh issue create` in aops repo; project-scoped → update `./.agent/workflows/`; see [[references/handover-details]]
+5. **Output Framework Reflection** (include `**Proposed changes**` field referencing what was filed/updated)
 6. **Output Summary to user** — LAST step, after everything else (see format below)
 
 > **CRITICAL**: Do not proceed past Step 1 until ALL changes are committed and pushed. The only acceptable reason to skip is if you made NO file changes.

@@ -49,6 +49,31 @@ mcp__pkb__create_memory(
 )
 ```
 
+## Step 4.5: Codify Learnings
+
+Before committing, ask: **"What did this session reveal that should improve future sessions?"**
+
+| Scope                                      | Action                                             |
+| ------------------------------------------ | -------------------------------------------------- |
+| Framework improvement (affects all agents) | File a GitHub issue in the aops repo               |
+| Project-specific pattern                   | Edit or create `./.agent/workflows/<name>.md`      |
+| One-off / not actionable                   | Note in `**Proposed changes**` field of Reflection |
+
+**For framework issues** (use `gh` CLI):
+
+```bash
+gh issue create --repo nicsuzor/academicOps \
+  --title "[Improvement] <what and why>" \
+  --label "framework" \
+  --body "<what you observed, what should change, expected impact>"
+```
+
+**For project workflow updates**: edit `./.agent/workflows/<relevant>.md` directly — this will be included in your commit.
+
+> **Connection to Reflection**: The `**Proposed changes**` field in the Framework Reflection should describe what was filed or updated here, or "None". Do this step _before_ writing the reflection so you can reference the issue number.
+
+---
+
 ## Step 5: Reflection Template (AGENTS.md Format)
 
 Output the reflection using `## Framework Reflection` as an **H2 heading** — this is critical for the session-insights parser to extract fields. Use `**Field**: value` on each line.
