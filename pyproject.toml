@@ -163,6 +163,8 @@ reportMissingTypeStubs = false
 # reportUnknownVariableType = false
 # reportUnknownArgumentType = false
 [tool.pytest.ini_options]
+# Required by gate_config.py, which intentionally has no defaults (fail-fast design).
+# Values must match valid gate engine modes: warn or block.
 env = [
     "HANDOVER_GATE_MODE=warn",
     "QA_GATE_MODE=block",
