@@ -164,10 +164,10 @@ reportMissingTypeStubs = false
 # reportUnknownArgumentType = false
 [tool.pytest.ini_options]
 env = [
-    "HANDOVER_GATE_MODE=enforce",
-    "QA_GATE_MODE=enforce",
-    "CUSTODIET_GATE_MODE=enforce",
-    "HYDRATION_GATE_MODE=enforce",
+    "HANDOVER_GATE_MODE=warn",
+    "QA_GATE_MODE=block",
+    "CUSTODIET_GATE_MODE=block",
+    "HYDRATION_GATE_MODE=warn",
 ]
 testpaths = ["tests", "aops-core/tests"]
 pythonpath = [".", "aops-core", "aops-core/hooks", "aops-core/lib", "lib/overwhelm"]
