@@ -71,13 +71,17 @@ Does the description match the code? Does the approach contradict its own goals?
 
 File a **single `gh pr review`** with the full summary as the review body. Do NOT post a separate PR comment.
 
-- **No "needs attention" items** → `gh pr review {pr} --approve` with body:
+- **No "needs attention" items** → run:
   ```
-  ## Review & Fix
+  gh pr review {pr} --approve --body "## Review & Fix
 
-  No concerns. Strategically aligned.
+  No concerns. Strategically aligned."
   ```
-- **Has "needs attention" items** → `gh pr review {pr} --request-changes` with body:
+- **Has "needs attention" items** → build the body as a variable, then run:
+  ```
+  gh pr review {pr} --request-changes --body "$SUMMARY"
+  ```
+  where `$SUMMARY` is formatted as:
   ```
   ## Review & Fix
 
