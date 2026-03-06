@@ -4767,7 +4767,7 @@ if synthesis:
         status = alignment.get("status", "drifted")
         status_class = f"alignment {status}"
         status_icon = "✅" if status == "on_track" else "⚠️" if status == "drifted" else "🚫"
-        synth_html += f"<div class='synthesis-card {status_class}'>"
+        synth_html += f"<div class='synthesis-card {esc(status_class)}'>"
         synth_html += f"<div class='synthesis-card-title'>{status_icon} ALIGNMENT</div>"
         synth_html += f"<div class='synthesis-card-content'>{esc(alignment_note)}</div>"
         synth_html += "</div>"

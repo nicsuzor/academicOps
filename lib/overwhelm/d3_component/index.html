@@ -163,6 +163,7 @@
   </div>
 
   <script>
+    function escHtml(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");}
     let graphData = null;
     let W = window.innerWidth;
     let H = window.innerHeight;
@@ -1105,7 +1106,7 @@
 
         document.getElementById("dt").textContent = d.label;
         const bs = sbc[d.status]||"background:#f1f5f9;color:#475569";
-        let h = `<div class="f"><span class="fl">Status</span> <span class="sb" style="${bs}">${d.status}</span></div>`;
+        let h = `<div class="f"><span class="fl">Status</span> <span class="sb" style="${escHtml(bs)}">${escHtml(d.status)}</span></div>`;
         const fs = [
           d.badge?["Type",d.badge]:null, ["Priority","P"+d.priority],
           d.project?["Project",d.project]:null,
@@ -1113,7 +1114,7 @@
           d.stakeholder?["Stakeholder","Yes"]:null,
           d.assignee?["Assignee",d.assignee]:null, ["ID",d.id],
         ].filter(Boolean);
-        h += fs.map(([l,v])=>`<div class="f"><span class="fl">${l}</span><span class="fv">${v}</span></div>`).join("");
+        h += fs.map(([l,v])=>`<div class="f"><span class="fl">${escHtml(l)}</span><span class="fv">${escHtml(v)}</span></div>`).join("");
         document.getElementById("df").innerHTML = h;
         document.getElementById("detail").style.display = "block";
 
