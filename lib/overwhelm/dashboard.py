@@ -10,7 +10,7 @@ import sys
 import textwrap
 import time
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from urllib.parse import quote
 
@@ -1588,9 +1588,22 @@ def get_where_you_left_off(hours: int = 24, limit: int = 10) -> dict:
 
         project = s.get("project") or "unknown"
         session_short = s.get("session_short") or (s.get("session_id", "")[:7])
+        full_session_id = s.get("session_id", "")
 
         # Clean fields for display
         clean_goal = clean_activity_text(goal)
+
+        # If the goal is very short (likely a slug), try to get the first user prompt
+        # from the abridged transcript for a better description
+        if clean_goal and len(clean_goal) < 40 and full_session_id:
+            transcripts_dir = get_transcripts_dir()
+            matches = list(transcripts_dir.glob(f"*-{session_short}*-abridged.md"))
+            if matches:
+                prompt_text = _extract_first_prompt_from_transcript(
+                    matches[0].stem.replace("-abridged", "")
+                )
+                if prompt_text and len(prompt_text) > len(clean_goal):
+                    clean_goal = prompt_text
         clean_now = clean_activity_text(now_task) if now_task else None
         clean_next = clean_activity_text(next_task) if next_task else None
 
@@ -4750,10 +4763,14 @@ if synthesis:
         # Replace slug-like items with real prompts
         acc_items = [slug_replacements.get(item.lower(), item) for item in acc_items]
         acc_count = len(acc_items)
-        acc_display = "; ".join(acc_items)
         synth_html += "<div class='synthesis-card done'>"
         synth_html += f"<div class='synthesis-card-title'>✅ DONE ({acc_count})</div>"
-        synth_html += f"<div class='synthesis-card-content'>{esc(acc_display)}</div>"
+        synth_html += (
+            "<div class='synthesis-card-content'><ul style='margin: 0; padding-left: 1.2em;'>"
+        )
+        for item in acc_items:
+            synth_html += f"<li>{esc(item)}</li>"
+        synth_html += "</ul></div>"
         synth_html += "</div>"
 
     # Alignment card — only show if there's a meaningful note (not the default placeholder)
@@ -4918,9 +4935,9 @@ try:
 
             path_html += "</div>"
 
-        # Group threads by project
+        # Group threads by project (newest first)
         threads_by_project = {}
-        for thread in path.threads:
+        for thread in reversed(path.threads):
             proj = thread.project or "unknown"
             if proj not in threads_by_project:
                 threads_by_project[proj] = []
@@ -4973,7 +4990,24 @@ try:
                     if not re.match(r"^[a-z]+-[a-f0-9]+$", thread.git_branch):
                         branch_html = f"<div class='session-branch' style='font-size: 0.75em; opacity: 0.6; margin-top: -8px; margin-bottom: 8px;' title='Git Branch'>branch: {esc(thread.git_branch)}</div>"
 
-                proj_buf += f"<div class='path-thread-header' title='{esc(cleaned_goal)}'>{goal_display} <span class='session-hash'>({sid_display})</span></div>"
+                # Format date/time for thread header
+                time_label = ""
+                if thread.start_time:
+                    now = datetime.now().astimezone()
+                    thread_dt = thread.start_time
+                    if thread_dt.date() == now.date():
+                        time_label = thread_dt.strftime("today %H:%M")
+                    elif thread_dt.date() == (now - timedelta(days=1)).date():
+                        time_label = thread_dt.strftime("yesterday %H:%M")
+                    else:
+                        time_label = thread_dt.strftime("%b %d %H:%M")
+
+                time_html = (
+                    f" <span style='font-size: 0.75em; opacity: 0.5;'>{esc(time_label)}</span>"
+                    if time_label
+                    else ""
+                )
+                proj_buf += f"<div class='path-thread-header' title='{esc(cleaned_goal)}'>{goal_display} <span class='session-hash'>({sid_display})</span>{time_html}</div>"
                 proj_buf += branch_html
 
                 # Consolidate consecutive TASK_UPDATE events
