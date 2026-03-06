@@ -40,6 +40,47 @@ for task in actionable_tasks:
 **Wrong**: `P0 9/779` (numerator filtered, denominator unfiltered)
 **Right**: `P0 9/333` (both filtered consistently)
 
+### 3.1.3: PR Status Sweep (Verification Check)
+
+Before building the focus dashboard, sweep tasks in `review` or `merge_ready` status to check whether their PRs have actually landed. This prevents stale tasks from cluttering the priority view.
+
+**From loaded task data** (Step 3.1), filter to tasks where `status` is `review` or `merge_ready`. Most of these tasks will have a `pr_url` field (required by the task model at transition time, but legacy tasks may lack it).
+
+**For each task**, check if `pr_url` is set. If it is missing, log inline (e.g., "task-id: pr_url missing — skipping") and continue to the next task. **For each task with a `pr_url`**, check the PR state:
+
+```bash
+gh pr view <pr_url> --json state,mergedAt,closedAt,url,number,createdAt
+```
+
+**Update task status based on PR outcome**:
+
+| PR State              | Action                                                                                      |
+| --------------------- | ------------------------------------------------------------------------------------------- |
+| `MERGED`              | Transition to `done` following the state machine (see note below)                           |
+| `CLOSED` (not merged) | Flag in daily note: "PR closed without merge — needs attention" — do NOT auto-update status |
+| `OPEN`                | No change — PR is still in flight                                                           |
+
+**MERGED transition**: The state machine does not allow a direct `review → done` jump. Check the task's current status:
+
+- If in `review`: `mcp__pkb__update_task(id=task_id, status="merge_ready")`, then `mcp__pkb__update_task(id=task_id, status="done")`
+- If in `merge_ready`: `mcp__pkb__update_task(id=task_id, status="done")` directly
+
+**Report findings in daily note** (append to Focus section, before recommendations):
+
+```markdown
+### PR Verification
+
+- [task-id] [[Task Title]] — PR #N **merged** ✓ → status updated to done
+- [task-id] [[Task Title]] — PR #N **closed without merge** ⚠ — needs attention
+- [task-id] [[Task Title]] — PR #N still open (N days)
+
+_N review/merge_ready tasks checked, M resolved_
+```
+
+**If no tasks in review/merge_ready**: Skip this step entirely (no section generated).
+
+**Error handling**: If `gh` CLI fails for a specific PR, log the error inline and continue to the next task. Do not halt the pipeline.
+
 ### 3.1.5: Generate Task Tree
 
 After loading task data, generate the ASCII task tree for the `## Task Tree` section:
