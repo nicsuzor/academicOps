@@ -723,21 +723,18 @@
           .attr("cursor","pointer")
           .on("click", (e, d) => selectNode(e, d))
           .call(d3.drag()
+            .filter((e) => isForceLayout(currentLayout))
             .on("start", (e, d) => {
-                if (isForceLayout(currentLayout) && simulation) {
+                if (simulation) {
                     simulation.alphaTarget(0.1).restart();
                 }
                 d.fx = d.x; d.fy = d.y;
             })
             .on("drag", (e, d) => {
                 d.fx = e.x; d.fy = e.y;
-                if (!isForceLayout(currentLayout)) {
-                    d.x = e.x; d.y = e.y;
-                    ticked();
-                }
             })
             .on("end", (e, d) => {
-                if (isForceLayout(currentLayout) && simulation) {
+                if (simulation) {
                     simulation.alphaTarget(0);
                 }
                 d.fx = null; d.fy = null;
