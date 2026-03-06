@@ -4591,37 +4591,56 @@ if synthesis:
     # Narrative section - tell the day's story
     narrative = synthesis.get("narrative", [])
     if narrative:
-        synth_html += "<div class='synthesis-narrative'>"
-        synth_html += "<div class='synthesis-narrative-title'>📖 TODAY'S STORY</div>"
-        synth_html += "<ul class='synthesis-narrative-list'>"
+        # Clean up narrative bullets: strip [project] prefixes, deduplicate
+        seen = set()
+        clean_bullets = []
         for bullet in narrative:
-            synth_html += f"<li>{esc(bullet)}</li>"
-        synth_html += "</ul></div>"
+            # Strip "[project] " prefix pattern
+            cleaned = re.sub(r"^\[[\w-]+\]\s*", "", bullet).strip()
+            if not cleaned:
+                continue
+            # Capitalize first letter
+            cleaned = cleaned[0].upper() + cleaned[1:] if cleaned else cleaned
+            if cleaned.lower() not in seen:
+                seen.add(cleaned.lower())
+                clean_bullets.append(cleaned)
+        if clean_bullets:
+            synth_html += "<div class='synthesis-narrative'>"
+            synth_html += "<div class='synthesis-narrative-title'>📖 TODAY'S STORY</div>"
+            synth_html += "<ul class='synthesis-narrative-list'>"
+            for bullet in clean_bullets:
+                synth_html += f"<li>{esc(bullet)}</li>"
+            synth_html += "</ul></div>"
 
     # Grid of status cards
     synth_html += "<div class='synthesis-grid'>"
 
-    # Done card
+    # Done card — derive count from summary items for accuracy
     accomplishments = synthesis.get("accomplishments", {})
-    if accomplishments.get("summary"):
+    acc_summary = accomplishments.get("summary", "")
+    if acc_summary:
+        # Count actual items in the summary (semicolon-separated)
+        acc_items = [s.strip() for s in acc_summary.split(";") if s.strip()]
+        acc_count = len(acc_items)
         synth_html += "<div class='synthesis-card done'>"
-        synth_html += (
-            f"<div class='synthesis-card-title'>✅ DONE ({accomplishments.get('count', 0)})</div>"
-        )
-        synth_html += (
-            f"<div class='synthesis-card-content'>{esc(accomplishments.get('summary', ''))}</div>"
-        )
+        synth_html += f"<div class='synthesis-card-title'>✅ DONE ({acc_count})</div>"
+        synth_html += f"<div class='synthesis-card-content'>{esc(acc_summary)}</div>"
         synth_html += "</div>"
 
-    # Alignment card
+    # Alignment card — only show if there's a meaningful note (not the default placeholder)
     alignment = synthesis.get("alignment", {})
-    if alignment.get("note"):
+    alignment_note = alignment.get("note", "")
+    if alignment_note and alignment_note.lower() not in (
+        "no session outcomes recorded",
+        "no outcomes recorded",
+        "no alignment data",
+    ):
         status = alignment.get("status", "drifted")
         status_class = f"alignment {status}"
         status_icon = "✅" if status == "on_track" else "⚠️" if status == "drifted" else "🚫"
         synth_html += f"<div class='synthesis-card {status_class}'>"
         synth_html += f"<div class='synthesis-card-title'>{status_icon} ALIGNMENT</div>"
-        synth_html += f"<div class='synthesis-card-content'>{esc(alignment.get('note', ''))}</div>"
+        synth_html += f"<div class='synthesis-card-content'>{esc(alignment_note)}</div>"
         synth_html += "</div>"
 
     # Context card
@@ -4644,42 +4663,29 @@ if synthesis:
         )
         synth_html += "</div>"
 
-    # Token usage card
+    # Token metrics — loaded once, used in SESSION INSIGHTS below
     token_metrics = load_token_metrics()
-    if token_metrics:
-        total_tokens = token_metrics["input_tokens"] + token_metrics["output_tokens"]
-        # Format tokens: K for thousands, M for millions
-        if total_tokens >= 1_000_000:
-            tokens_str = f"{total_tokens / 1_000_000:.1f}M"
-        elif total_tokens >= 1_000:
-            tokens_str = f"{total_tokens / 1_000:.0f}K"
-        else:
-            tokens_str = str(total_tokens)
-
-        cache_rate = token_metrics["cache_hit_rate"]
-        # Color coding: green >70%, yellow 40-70%, red <40%
-        if cache_rate >= 70:
-            gauge_color = "#4ade80"
-        elif cache_rate >= 40:
-            gauge_color = "#fbbf24"
-        else:
-            gauge_color = "#f87171"
-
-        session_count = token_metrics["session_count"]
-        synth_html += "<div class='synthesis-card tokens'>"
-        synth_html += (
-            f"<div class='synthesis-card-title'>📊 TOKENS ({session_count} sessions)</div>"
-        )
-        synth_html += f"<div class='synthesis-card-content'>{tokens_str} total <span class='cache-gauge'><span class='cache-gauge-fill' style='width: {cache_rate:.0f}%; background: {gauge_color};'></span></span> {cache_rate:.0f}% cache</div>"
-        synth_html += "</div>"
 
     synth_html += "</div>"  # End grid
 
-    # Session Insights panel (skill compliance, context gaps)
+    # Session Insights panel (tokens, skill compliance, context gaps)
     skill_insights = synthesis.get("skill_insights", {})
-    if skill_insights:
+    show_insights = skill_insights or token_metrics
+    if show_insights:
+        session_label = ""
+        if token_metrics:
+            sc = token_metrics["session_count"]
+            total_tok = token_metrics["input_tokens"] + token_metrics["output_tokens"]
+            if total_tok >= 1_000_000:
+                tok_str = f"{total_tok / 1_000_000:.1f}M"
+            elif total_tok >= 1_000:
+                tok_str = f"{total_tok / 1_000:.0f}K"
+            else:
+                tok_str = str(total_tok)
+            cache_pct = token_metrics["cache_hit_rate"]
+            session_label = f" — {sc} sessions, {tok_str} tokens, {cache_pct:.0f}% cache"
         synth_html += "<div class='insights-panel'>"
-        synth_html += "<div class='insights-title'>🔍 SESSION INSIGHTS</div>"
+        synth_html += f"<div class='insights-title'>🔍 SESSION INSIGHTS{session_label}</div>"
 
         # Stats row
         compliance = skill_insights.get("compliance_rate")
