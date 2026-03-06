@@ -3732,6 +3732,13 @@ def render_task_graph_page():
     _cur_layout_label = st.session_state.get("tg_layout", "")
     _is_hierarchical_layout = _cur_layout_label in _HIERARCHICAL_LAYOUT_LABELS
 
+    show_only_reachable = False
+    quick_view_enabled = False
+    quick_view_n = 80
+    force_charge_mult = 1.0
+    force_link_dist = 0.75
+    force_cluster_str = 0.4
+
     with st.sidebar:
         if st.button("Reload Graph", key="tg_reload"):
             st.cache_data.clear()
@@ -3746,26 +3753,6 @@ def render_task_graph_page():
         if not _is_hierarchical_layout:
             st.markdown("**Filter**")
             show_only_reachable = st.checkbox("Reachable only", value=True, key="tg_show_reachable")
-
-            st.markdown("**Quick View**")
-            quick_view_enabled = st.checkbox(
-                "Top N by importance",
-                value=True,
-                key="tg_quickview",
-                help="Show only the highest-priority leaf tasks + their parent hierarchy. "
-                "Dramatically reduces visual noise.",
-            )
-            _slider_max = max(5, _n_leaves // 2) if _n_leaves > 0 else 50
-            _slider_default = min(st.session_state.get("tg_quickview_n", 80), _slider_max)
-            quick_view_n = st.slider(
-                "N",
-                min_value=1,
-                max_value=_slider_max,
-                value=_slider_default,
-                key="tg_quickview_n",
-                disabled=not quick_view_enabled,
-                help=f"Show top N leaf tasks (of {_n_leaves} total leaves)",
-            )
 
             with st.expander("⚙️ Force tuning", expanded=False):
                 st.caption("Tune the physics of the force graph")
@@ -3796,13 +3783,32 @@ def render_task_graph_page():
                     key="tg_cluster_str",
                     help="How strongly same-project nodes are pulled together.",
                 )
-        else:
-            show_only_reachable = False
-            quick_view_enabled = False
-            quick_view_n = 80
-            force_charge_mult = 1.0
-            force_link_dist = 0.75
-            force_cluster_str = 0.4
+
+        st.markdown("**View Mode**")
+        leaf_view_enabled = st.checkbox(
+            "Leaf view",
+            value=False,
+            key="tg_leafview",
+            help="Show only leaf tasks (actionable work with no actionable children) "
+            "plus their full ancestor chains. Shows your actual work frontier.",
+        )
+
+        st.markdown("**Quick View**")
+        quick_view_enabled = st.checkbox(
+            "Top N by importance",
+            value=not leaf_view_enabled,
+            key="tg_quickview",
+            help="Show only the highest-priority active nodes + their structural parents. "
+            "Dramatically reduces visual noise.",
+            disabled=leaf_view_enabled,
+        )
+        quick_view_n = st.select_slider(
+            "N",
+            options=[25, 50, 80, 120, 200],
+            value=80,
+            key="tg_quickview_n",
+            disabled=not quick_view_enabled or leaf_view_enabled,
+        )
 
     if d3_graph:
         # Leaf-node-aware status filtering:
@@ -3859,8 +3865,54 @@ def render_task_graph_page():
             n for n in all_nodes if n["id"] in visible_leaf_ids or n["id"] in structural_ids
         ]
 
-        # Quick View: rank leaf nodes by importance, keep top N + their full ancestor hierarchy
-        if quick_view_enabled:
+        # Leaf View: show only leaf tasks + full ancestor chains
+        _structural_ids: set[str] = set()
+        if leaf_view_enabled:
+            _actionable = {"active", "in_progress", "blocked", "merge_ready"}
+            _node_by_id = {n["id"]: n for n in all_nodes}
+
+            # Build children map from all nodes (not just filtered)
+            _children_map: dict[str, list[str]] = {}
+            for n in all_nodes:
+                p = n.get("parent")
+                if p:
+                    _children_map.setdefault(p, []).append(n["id"])
+
+            # Identify leaves: actionable nodes with no actionable children
+            _leaf_ids: set[str] = set()
+            for n in filtered:
+                status = n.get("status", "inbox").lower()
+                if status not in _actionable:
+                    continue
+                children = _children_map.get(n["id"], [])
+                has_actionable_child = any(
+                    _node_by_id.get(c, {}).get("status", "inbox").lower() in _actionable
+                    for c in children
+                )
+                if not has_actionable_child:
+                    _leaf_ids.add(n["id"])
+
+            # Walk up parent chains to collect all ancestors
+            _ancestor_ids: set[str] = set()
+            for leaf_id in _leaf_ids:
+                current = _node_by_id.get(leaf_id, {}).get("parent")
+                while current and current in _node_by_id and current not in _ancestor_ids:
+                    _ancestor_ids.add(current)
+                    current = _node_by_id.get(current, {}).get("parent")
+
+            _keep_ids = _leaf_ids | _ancestor_ids
+            _structural_ids = _ancestor_ids - _leaf_ids
+            n_before = len(filtered)
+            filtered = [n for n in all_nodes if n["id"] in _keep_ids]
+
+            with st.sidebar.expander("Leaf view stats", expanded=False):
+                st.caption(
+                    f"{len(_leaf_ids)} leaves + {len(_ancestor_ids)} ancestors "
+                    f"= {len(filtered)} nodes (from {n_before} filtered)"
+                )
+
+        # Quick View: keep top N nodes by importance score + their structural parents
+        if not leaf_view_enabled and quick_view_enabled and len(filtered) > quick_view_n:
             import time as _time
             from datetime import datetime as _dt
 
@@ -3956,7 +4008,8 @@ def render_task_graph_page():
 
         d3_graph["nodes"] = filtered
 
-        d3_data = prepare_embedded_graph_data(d3_graph)
+        _leaf_structural = _structural_ids if leaf_view_enabled else None
+        d3_data = prepare_embedded_graph_data(d3_graph, structural_ids=_leaf_structural)
 
         # Apply sidebar force tuning overrides to forceConfig before rendering
         d3_data["forceConfig"]["chargeMult"] = force_charge_mult
