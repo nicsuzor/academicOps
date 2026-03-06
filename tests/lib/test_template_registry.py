@@ -61,7 +61,8 @@ def configured_registry(templates_dir: Path):
     """Get a registry configured with test templates directory."""
     from lib.template_registry import TemplateRegistry
 
-    return TemplateRegistry.configure(templates_dir=templates_dir)
+    yield TemplateRegistry.configure(templates_dir=templates_dir)
+    TemplateRegistry.reset()
 
 
 # =============================================================================
@@ -357,6 +358,7 @@ def test_configure_creates_fresh_instance(tmp_path: Path):
     reg2 = TemplateRegistry.configure(templates_dir=tmp_path)
     assert reg1 is not reg2
     assert reg2._templates_dir == tmp_path
+    TemplateRegistry.reset()
 
 
 # =============================================================================
