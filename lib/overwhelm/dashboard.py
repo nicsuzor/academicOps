@@ -4658,6 +4658,34 @@ if active_sessions_wlo or paused_sessions_wlo:
 # Load synthesis
 synthesis = load_synthesis()
 
+
+def _build_session_slug_replacements(synth: dict) -> dict[str, str]:
+    """Build a mapping from session summary slugs to real first-prompt text.
+
+    Uses the sessions.recent array in synthesis.json to find session IDs,
+    then reads the first user prompt from abridged transcripts.
+    Returns {slug_lower: real_prompt} for any session where the transcript
+    has a better description than the slug.
+    """
+    replacements: dict[str, str] = {}
+    recent = synth.get("sessions", {}).get("recent", [])
+    for s in recent:
+        slug = s.get("summary", "")
+        sid = s.get("session_id", "")
+        if not slug or not sid:
+            continue
+        # Find the transcript file for this session
+        transcripts_dir = get_transcripts_dir()
+        # Search for the abridged file matching this session ID
+        matches = list(transcripts_dir.glob(f"*-{sid}*-abridged.md"))
+        if not matches:
+            continue
+        prompt = _extract_first_prompt_from_transcript(matches[0].stem.replace("-abridged", ""))
+        if prompt and prompt.lower() != slug.lower():
+            replacements[slug.lower()] = prompt
+    return replacements
+
+
 # === LLM SYNTHESIS PANEL (if available) ===
 if synthesis:
     # Calculate age and staleness
@@ -4673,6 +4701,9 @@ if synthesis:
         else ""
     )
 
+    # Build slug→prompt replacements for better narrative/accomplishment text
+    slug_replacements = _build_session_slug_replacements(synthesis)
+
     synth_html = "<div class='synthesis-panel'>"
     synth_html += f"<div class='synthesis-header'><div class='synthesis-title'>🧠 FOCUS SYNTHESIS{stale_badge}</div><div class='synthesis-age'>{age_str}</div></div>"
 
@@ -4687,6 +4718,9 @@ if synthesis:
             cleaned = re.sub(r"^\[[\w-]+\]\s*", "", bullet).strip()
             if not cleaned:
                 continue
+            # Replace slug-like text with real prompt if available
+            if cleaned.lower() in slug_replacements:
+                cleaned = slug_replacements[cleaned.lower()]
             # Capitalize first letter
             cleaned = cleaned[0].upper() + cleaned[1:] if cleaned else cleaned
             if cleaned.lower() not in seen:
@@ -4709,10 +4743,13 @@ if synthesis:
     if acc_summary:
         # Count actual items in the summary (semicolon-separated)
         acc_items = [s.strip() for s in acc_summary.split(";") if s.strip()]
+        # Replace slug-like items with real prompts
+        acc_items = [slug_replacements.get(item.lower(), item) for item in acc_items]
         acc_count = len(acc_items)
+        acc_display = "; ".join(acc_items)
         synth_html += "<div class='synthesis-card done'>"
         synth_html += f"<div class='synthesis-card-title'>✅ DONE ({acc_count})</div>"
-        synth_html += f"<div class='synthesis-card-content'>{esc(acc_summary)}</div>"
+        synth_html += f"<div class='synthesis-card-content'>{esc(acc_display)}</div>"
         synth_html += "</div>"
 
     # Alignment card — only show if there's a meaningful note (not the default placeholder)
