@@ -37,6 +37,17 @@ mcp__pkb__create_task(
 )
 ```
 
+### Step 3b: Tag Verification Items
+
+For any work product awaiting external confirmation (PR merge, submission acceptance, reviewer response), ensure the task has:
+
+- **Status** reflecting the wait: `review` or `merge_ready` (these require `pr_url`)
+- **`pr_url`** set (required by the task model for review/merge_ready status)
+
+These items will be automatically checked by the `/daily` PR verification sweep (step 3.1.3 in focus-and-recommendations). The sweep queries all `review`/`merge_ready` tasks, checks their PR state via `gh pr view`, and auto-completes tasks whose PRs have merged.
+
+**Key principle**: The agent does not need to remember to follow up — the framework remembers. Encoding verification state in task metadata ensures nothing rots.
+
 ## Step 4: Persist to Memory
 
 For each task complete and learning to persist:
