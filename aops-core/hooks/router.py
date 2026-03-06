@@ -364,12 +364,32 @@ class HookRouter:
             raw_input=raw_input,
         )
 
+    @staticmethod
+    def _is_task_notification(ctx: HookContext) -> bool:
+        """Detect task-notification prompts (background task completions).
+
+        These are internal Claude Code plumbing, not real user input.
+        The prompt field contains <task-notification>...</task-notification>.
+        """
+        prompt = ctx.raw_input.get("prompt", "")
+        return isinstance(prompt, str) and prompt.lstrip().startswith("<task-notification>")
+
     def execute_hooks(self, ctx: HookContext) -> CanonicalHookOutput:
         """Run all configured gates for the event and merge results.
 
         Dispatches directly to GateRegistry and GenericGate methods,
         eliminating the wrapper layers in gates.py and gate_registry.py.
         """
+        # Task-notification prompts are internal plumbing — not real user input.
+        # Return empty output so agents aren't tricked into treating them as fresh prompts.
+        if ctx.hook_event == "UserPromptSubmit" and self._is_task_notification(ctx):
+            output = CanonicalHookOutput(verdict=None)
+            try:
+                log_hook_event(ctx, output=output)
+            except Exception as e:
+                print(f"WARNING: Failed to log task-notification hook event: {e}", file=sys.stderr)
+            return output
+
         merged_result = CanonicalHookOutput()
 
         # Load Session State ONCE
