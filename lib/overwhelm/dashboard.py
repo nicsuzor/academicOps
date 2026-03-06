@@ -4436,8 +4436,9 @@ def render_session_summary():
 # UNIFIED DASHBOARD - Single page: Graph + Project boxes
 # ============================================================================
 
-from lib.task_model import TaskStatus
 from task_manager_ui import render_task_editor
+
+from lib.task_model import TaskStatus
 
 
 @st.dialog("Edit Task")
@@ -5047,6 +5048,8 @@ try:
                         or "you are a polecat worker" in _desc_lower
                         # Placeholder text from Framework Reflection
                         or _desc_lower.startswith("successfully completed: [")
+                        # Placeholder "Created: something" entries from incomplete event logging
+                        or _desc_lower in ("created: something", "created something")
                         # Bare slash commands
                         or (cleaned_desc.startswith("/") and " " not in cleaned_desc.strip())
                     )
