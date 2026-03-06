@@ -29,15 +29,6 @@ from lib.session_state import SessionState
 
 from hooks.schemas import HookContext
 
-# Gate enforcement mode environment variables
-GATE_MODE_VARS = (
-    "CUSTODIET_GATE_MODE",
-    "HYDRATION_GATE_MODE",
-    "QA_GATE_MODE",
-    "HANDOVER_GATE_MODE",
-)
-DEFAULT_GATE_MODE = "warn"
-
 
 def set_persistent_env(env_dict: dict[str, str]):
     """Set environment variables persistently for the session, if possible."""
@@ -61,7 +52,6 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
     - PYTHONPATH (includes aops-core)
     - AOPS_SESSION_STATE_DIR
     - AOPS_HOOK_LOG_PATH
-    - Default gate enforcement modes (CUSTODIET_GATE_MODE, HYDRATION_GATE_MODE, QA_GATE_MODE, HANDOVER_GATE_MODE)
     - Other placeholder variables from original script
 
     """
@@ -193,12 +183,7 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
         new_pythonpath = f"{aops_core}:{current_pythonpath}".strip(":")
         persist["PYTHONPATH"] = new_pythonpath
 
-    # 3. Persist gate mode environment variables
-    for mode_var in GATE_MODE_VARS:
-        current_val = os.environ.get(mode_var, DEFAULT_GATE_MODE)
-        persist[mode_var] = current_val
-
-    # 4. Persist paths
+    # 3. Persist paths
     try:
         persist["AOPS_SESSION_STATE_DIR"] = str(status_dir)
     except Exception as e:
@@ -207,17 +192,17 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
     persist["AOPS_HOOK_LOG_PATH"] = str(hook_log_path)
     persist["AOPS_SESSION_STATE_PATH"] = str(state_file_path)
 
-    # 5. Persist gate file paths
+    # 4. Persist gate file paths
     gate_paths = get_all_gate_file_paths(ctx.session_id, ctx.raw_input)
     for gate_name, gate_path in gate_paths.items():
         persist[f"AOPS_GATE_FILE_{gate_name.upper()}"] = str(gate_path)
 
-    # 6. Apply agent-env-map.conf credential isolation mappings (issue #581)
+    # 5. Apply agent-env-map.conf credential isolation mappings (issue #581)
     from lib.agent_env import get_env_mapping_persist_dict
 
     persist.update(get_env_mapping_persist_dict())
 
-    # 7. Ensure gh CLI is accessible in PATH (portable: uses brew --prefix on macOS)
+    # 6. Ensure gh CLI is accessible in PATH (portable: uses brew --prefix on macOS)
     current_path = os.environ.get("PATH", "")
     if not shutil.which("gh"):
         try:

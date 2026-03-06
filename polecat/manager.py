@@ -1190,8 +1190,6 @@ class PolecatManager:
             hooks_dir = Path(git_common_dir) / "hooks"
             hooks_dir.mkdir(parents=True, exist_ok=True)
 
-            import shutil
-
             shutil.copy(hook_template, hooks_dir / "pre-commit")
             (hooks_dir / "pre-commit").chmod(0o755)
             print("  ✅ Pre-commit hooks installed")

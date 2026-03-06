@@ -57,11 +57,11 @@
     }
     .danger-pulse { animation: danger-pulse 1.5s infinite ease-in-out; }
 
-    /* Recency Highlight */
+    /* Recency Highlight — warm amber glow for tasks modified in the last 7 days */
     @keyframes recent-glow {
-      0% { filter: drop-shadow(0 0 2px #60a5fa); }
-      50% { filter: drop-shadow(0 0 8px #60a5fa); }
-      100% { filter: drop-shadow(0 0 2px #60a5fa); }
+      0% { filter: drop-shadow(0 0 2px #f59e0b); }
+      50% { filter: drop-shadow(0 0 8px #fb923c); }
+      100% { filter: drop-shadow(0 0 2px #f59e0b); }
     }
     .recent-node { animation: recent-glow 2s infinite ease-in-out; }
 
@@ -128,7 +128,7 @@
     <div class="legend-item"><div class="legend-box" style="background:#22c55e"></div><span>Done</span></div>
     <div class="legend-item"><div class="legend-line" style="background:#3b82f6"></div><span>Parent</span></div>
     <div class="legend-item"><div class="legend-line" style="background:#ef4444"></div><span>Dependency</span></div>
-    <div class="legend-item"><div class="legend-box" style="border: 1px solid #60a5fa; box-shadow: 0 0 4px #60a5fa"></div><span>Recent (<48h)</span></div>
+    <div class="legend-item"><div class="legend-box" style="border: 1px solid #f59e0b; box-shadow: 0 0 4px #f59e0b"></div><span>Recent (7d)</span></div>
   </div>
 
   <button id="legend-toggle" onclick="toggleDetail()">Hide Details</button>
@@ -156,6 +156,7 @@
     let focusNeighborSet = null;  // Set of visible node IDs in focus mode
     let simulation = null;
     let svg, container, zoom, linkEls, nodeEls, hullLayer, critPathLayer;
+    let _tickCount = 0;  // for throttling expensive per-tick operations
 
     // --- Ego network helpers ---
 
@@ -238,14 +239,15 @@
 
     // Helper: does this layout use a force simulation?
     function isForceLayout(layout) {
-        return layout === "force" || layout === "atlas";
+        return layout === "force";
     }
 
     // --- Layout-specific node shape builders ---
     function buildTaskCardNode(g, d) {
         const hw = d.w/2, hh = d.h/2;
-        // Spotlight ring: top-priority "start here" nodes get a pulsing gold ring
-        if (d.spotlight) {
+        // Spotlight ring: top-priority leaf tasks get a pulsing gold ring + label
+        // Only shown on leaf tasks (isLeaf) — never on structural parent nodes
+        if (d.spotlight && d.isLeaf) {
             const pad = 9;
             const rx = d.shape === "pill" ? hh + pad : d.shape === "rounded" ? 14 : 8;
             g.insert("rect", ":first-child")
@@ -302,12 +304,26 @@
           .attr("x", -w/2).attr("y", -h/2).attr("width", w).attr("height", h)
           .attr("fill", d.fill).attr("fill-opacity", opacity)
           .attr("stroke", d.borderColor).attr("stroke-width", 1.5);
-        if (w > 40 && h > 20) {
-            const label = (d.label || '').substring(0, 25);
+        if (w > 30 && h > 16) {
+            const label = d.label || '';
             const fs = Math.max(6, Math.min(11, Math.min(w, h) * 0.25));
-            g.append("text").attr("class","node-text").attr("x",0).attr("y",0)
-              .attr("text-anchor","middle").attr("dominant-baseline","central")
-              .attr("font-size", fs + "px").attr("fill", d.textColor || "#fff").text(label);
+            const pad = 3;
+            g.append("foreignObject")
+              .attr("x", -w/2 + pad).attr("y", -h/2 + pad)
+              .attr("width", w - pad * 2).attr("height", h - pad * 2)
+              .append("xhtml:div")
+              .style("font-size", fs + "px")
+              .style("font-family", "-apple-system, sans-serif")
+              .style("color", d.textColor || "#fff")
+              .style("line-height", "1.2")
+              .style("overflow", "hidden")
+              .style("word-wrap", "break-word")
+              .style("overflow-wrap", "break-word")
+              .style("hyphens", "auto")
+              .style("width", "100%")
+              .style("height", "100%")
+              .style("pointer-events", "none")
+              .text(label);
         }
     }
 
@@ -677,13 +693,13 @@
         critPathLayer = container.append("g").attr("class", "crit-path-layer");
 
         const now = Date.now() / 1000;
-        const cutoff48h = 48 * 3600;
+        const cutoff7d = 7 * 24 * 3600;
 
         nodeEls = container.append("g")
           .selectAll("g").data(nodes).join("g")
           .attr("class", d => {
               let cls = "node-g";
-              if (d.modified && (now - d.modified) < cutoff48h) cls += " recent-node";
+              if (d.modified && (now - d.modified) < cutoff7d) cls += " recent-node";
               return cls;
           })
           .attr("cursor","pointer")
@@ -734,16 +750,25 @@
     }
 
     function routeArcEdges() {
-        // Arc diagram: quadratic arc edges above the baseline
-        linkEls.attr("opacity", d => d.type === "ref" ? 0.15 : 0.4);
+        // Arc diagram: quadratic Bezier arcs connecting depth-stratified nodes.
+        // Within the same row (same depth) arcs curve upward above the row.
+        // Cross-row arcs (parent→child spanning depths) are drawn as S-curves.
+        linkEls.attr("opacity", d => d.type === "ref" ? 0.15 : 0.5);
         linkEls.attr("d", d => {
             const sx = d.source.x, sy = d.source.y;
             const tx = d.target.x, ty = d.target.y;
-            const dx = tx - sx;
-            const arcH = Math.abs(dx) * 0.3;
-            const midX = (sx + tx) / 2;
-            const midY = Math.min(sy, ty) - arcH;
-            return `M${sx},${sy} Q${midX},${midY} ${tx},${ty}`;
+            const dx = tx - sx, dy = ty - sy;
+            if (Math.abs(dy) < 5) {
+                // Same row: arc above the baseline
+                const heightScale = d.type === "parent" ? 0.45 : d.type === "depends_on" ? 0.35 : 0.2;
+                const arcH = Math.abs(dx) * heightScale;
+                const midX = (sx + tx) / 2;
+                return `M${sx},${sy} Q${midX},${sy - arcH} ${tx},${ty}`;
+            } else {
+                // Cross-row (parent/dependency): cubic S-curve between rows
+                const my = (sy + ty) / 2;
+                return `M${sx},${sy} C${sx},${my} ${tx},${my} ${tx},${ty}`;
+            }
         });
     }
 
@@ -765,6 +790,21 @@
         });
     }
 
+    function routeSfdpEdges() {
+        // SFDP layout: all edges use Manhattan (orthogonal) routing
+        // Override stroke-linejoin to miter for sharp 90-degree corners
+        linkEls.attr("opacity", d => d.type === "ref" ? 0.25 : 0.6)
+            .attr("stroke-linejoin", "miter")
+            .attr("stroke-linecap", "square");
+        linkEls.attr("d", d => {
+            const sx = d.source.x, sy = d.source.y;
+            const tx = d.target.x, ty = d.target.y;
+            if (sx == null || sy == null || tx == null || ty == null) return null;
+            const mx = (sx + tx) / 2;
+            return `M${sx},${sy} L${mx},${sy} L${mx},${ty} L${tx},${ty}`;
+        });
+    }
+
     // Dispatch table: maps layout mode to edge router
     const edgeRouters = {
         treemap: routeContainmentEdges,
@@ -772,10 +812,12 @@
         circle_pack: routeContainmentEdges,
         circle: routeContainmentEdges,
         arc: routeArcEdges,
+        sfdp: routeSfdpEdges,
     };
 
     // Layout-aware tick handler: delegates to per-layout edge router
     function ticked() {
+        _tickCount++;
         let router = routeForceEdges;
         // Sort keys by length descending to match more specific prefixes first.
         const sortedRouterKeys = Object.keys(edgeRouters).sort((a, b) => b.length - a.length);
@@ -794,11 +836,16 @@
                 return `M${sx},${sy} L${mx},${sy} L${mx},${ty} L${tx},${ty}`;
             });
         }
-        updateHulls();
+        // Throttle hull updates — convex hull computation is O(n log n) per project;
+        // update every 4 ticks during simulation, always on final tick.
+        if (_tickCount % 4 === 0 || (simulation && simulation.alpha() < 0.01)) {
+            updateHulls();
+        }
     }
 
     function applyLayout() {
         if (simulation) simulation.stop();
+        _tickCount = 0;
 
         const nodes = graphData.nodes;
         const links = graphData.links;
@@ -878,14 +925,19 @@
 
         if (currentLayout === "force") {
             buildNodeShapes(currentLayout);
+            const chargeMult = fc.chargeMult != null ? fc.chargeMult : 1.0;
+            const linkDistMult = fc.linkDistMult != null ? fc.linkDistMult : 0.75;
             simulation = d3.forceSimulation(nodes)
+                .alphaDecay(fc.alphaDecay != null ? fc.alphaDecay : 0.04)
+                .velocityDecay(fc.velocityDecay != null ? fc.velocityDecay : 0.55)
+                .alphaMin(fc.alphaMin != null ? fc.alphaMin : 0.002)
                 // Pull linked nodes together; per-link distance/strength set in EDGE_FORCE
                 .force("link", d3.forceLink(links).id(d => d.id)
-                    .distance(d => d.distance)
+                    .distance(d => d.distance * linkDistMult)
                     .strength(d => d.strength))
                 // Push all nodes apart; charge varies by type (TYPE_CHARGE)
                 .force("charge", d3.forceManyBody()
-                    .strength(d => d.charge)
+                    .strength(d => d.charge * chargeMult)
                     .distanceMax(fc.chargeDistanceMax))
                 // Anchor the whole graph to the viewport center
                 .force("center", d3.forceCenter(W / 2, H / 2))
@@ -895,19 +947,36 @@
                     .strength(fc.collisionStrength)
                     .iterations(fc.collisionIterations))
                 // Pull same-project nodes toward their shared centroid
-                .force("cluster", forceCluster(fc.clusterStrength))
+                .force("cluster", forceCluster(fc.clusterStrength != null ? fc.clusterStrength : 0.4))
                 // Push orphans (no links) toward the periphery
                 .force("orphanPush", d3.forceRadial(
                         Math.min(W, H) * fc.orphanRadius, W / 2, H / 2
-                    ).strength(d => d.linkCount === 0 ? fc.orphanStrength : 0))
-                .on("tick", ticked);
+                    ).strength(d => d.linkCount === 0 ? fc.orphanStrength : 0));
+
+            // Warm start: run synchronous ticks for a settled initial layout,
+            // then hand off to live animation for the remainder.
+            // This avoids the browser doing heavy work on the first few frames.
+            simulation.stop();
+            const warmup = fc.warmupTicks != null ? fc.warmupTicks : 80;
+            for (let i = 0; i < warmup; i++) simulation.tick();
+            ticked();  // render warm-start result immediately
+            simulation.on("tick", ticked).restart();
         } else if (currentLayout === "precomputed") {
             // Use precomputed coordinates directly — no simulation forces.
             initPrecomputedCoords(nodes);
             buildNodeShapes(currentLayout);
             nodeEls.attr("display", d => d._hasLayout ? null : "none");
 
-            // Render once — no simulation drift
+            // Post-layout collision pass: resolve node overlaps without disturbing
+            // the FA2 positions. Run synchronously (stop immediately, tick N times).
+            const collSim = d3.forceSimulation(nodes.filter(n => n._hasLayout))
+                .force("collision", d3.forceCollide()
+                    .radius(d => Math.max(d.w, d.h) / 2 + fc.collisionPadding)
+                    .strength(fc.collisionStrength)
+                    .iterations(fc.collisionIterations))
+                .stop();
+            for (let i = 0; i < 40; i++) collSim.tick();
+
             ticked();
 
             simulation = null;
@@ -955,6 +1024,27 @@
                 }
             });
 
+            // Arc diagram: normalise x positions and assign y by depth band.
+            // Nodes are ordered horizontally by the graph-generated x position,
+            // and vertically stratified by depth (goals at top, leaf tasks at bottom).
+            // Arcs curve upward above the bands.
+            if (currentLayout.startsWith("arc")) {
+                const arcNodes = nodes.filter(n => n._hasLayout);
+                // Normalise x across the canvas width with margins
+                const xs = arcNodes.map(n => n.x);
+                const minX = Math.min(...xs), maxX = Math.max(...xs);
+                const xRange = maxX - minX || 1;
+                const margin = CANVAS * 0.05;
+                const availW = CANVAS - margin * 2;
+                // Depth bands: spread vertically so hierarchy is readable
+                const maxDepth = Math.max(...arcNodes.map(n => n.depth || 0), 1);
+                const bandH = CANVAS * 0.55 / maxDepth;
+                arcNodes.forEach(n => {
+                    n.x = margin + ((n.x - minX) / xRange) * availW;
+                    n.y = (n.depth || 0) * bandH;  // top = depth 0 (goals/projects)
+                });
+            }
+
             buildNodeShapes(currentLayout);
 
             // Z-order: bigger nodes behind (first in DOM), smaller on top for clickability
@@ -966,6 +1056,22 @@
 
             // Hide nodes without layout data for this mode
             nodeEls.attr("display", d => d._hasLayout ? null : "none");
+
+            // Post-layout collision pass for FA2 and other precomputed layouts.
+            // Skip for arc/treemap/circle_pack — these layouts pack nodes intentionally.
+            const hasCoords = nodes.filter(n => n._hasLayout);
+            const skipCollision = currentLayout.startsWith("arc") ||
+                                  currentLayout.startsWith("tree") ||
+                                  currentLayout.startsWith("circle");
+            if (hasCoords.length > 0 && !skipCollision) {
+                const collSim2 = d3.forceSimulation(hasCoords)
+                    .force("collision", d3.forceCollide()
+                        .radius(d => Math.max(d.w, d.h) / 2 + fc.collisionPadding)
+                        .strength(fc.collisionStrength)
+                        .iterations(fc.collisionIterations))
+                    .stop();
+                for (let i = 0; i < 40; i++) collSim2.tick();
+            }
 
             ticked();
 

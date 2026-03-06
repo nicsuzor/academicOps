@@ -753,7 +753,7 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         "workflows/constraint-check.md",
         "workflows/framework-gate.md",
         "workflows/collaborate.md",
-        "workflows/strategy.md",
+        "workflows/strategic-intake.md",
         "workflows/design.md",
         "workflows/debugging.md",
         "workflows/base-task-tracking.md",

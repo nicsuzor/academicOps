@@ -9,13 +9,17 @@ permalink: skills-planning
 
 # /planning Skill
 
-> **Taxonomy note**: This skill provides domain expertise (HOW) for decomposing work under uncertainty. See [[TAXONOMY.md]] for the skill/workflow distinction.
+> **Taxonomy note**: This skill provides domain expertise (HOW) for decomposing work under uncertainty. It is the primary skill for the [[decompose]] workflow. See [[TAXONOMY.md]] for the skill/workflow distinction.
 
 Patterns for decomposing work under genuine uncertainty.
 
 ## Purpose
 
 Provides guidance for breaking down complex goals when the path forward is unknown. Use when standard decomposition feels premature or when you need to discover what you don't know.
+
+## Coordination with Workflows
+
+This skill is the HOW for the [[decompose]] workflow's steps. When decomposing an epic that has an assigned workflow, use the workflow's steps as the decomposition skeleton — then apply the patterns below to handle uncertainty within each step. See [[decomposition-patterns]] for workflow-step mapping examples.
 
 ## When to Use
 
