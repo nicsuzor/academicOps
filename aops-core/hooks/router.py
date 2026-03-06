@@ -32,12 +32,6 @@ if str(AOPS_CORE_DIR) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE_DIR))
 
 try:
-    from lib.gate_model import GateResult, GateVerdict
-    from lib.gates.registry import GateRegistry
-    from lib.hook_utils import is_subagent_session
-    from lib.session_paths import get_pid_session_map_path, get_session_short_hash
-    from lib.session_state import SessionState
-
     from hooks.gate_config import COMPLIANCE_SUBAGENT_TYPES, extract_subagent_type
     from hooks.schemas import (
         CanonicalHookOutput,
@@ -49,6 +43,11 @@ try:
         HookContext,
     )
     from hooks.unified_logger import log_event_to_session, log_hook_event
+    from lib.gate_model import GateResult, GateVerdict
+    from lib.gates.registry import GateRegistry
+    from lib.hook_utils import is_subagent_session
+    from lib.session_paths import get_pid_session_map_path, get_session_short_hash
+    from lib.session_state import SessionState
 except ImportError as e:
     # Fail fast if schemas missing
     print(f"CRITICAL: Failed to import: {e}", file=sys.stderr)
@@ -364,12 +363,27 @@ class HookRouter:
             raw_input=raw_input,
         )
 
+    @staticmethod
+    def _is_task_notification(ctx: HookContext) -> bool:
+        """Detect task-notification prompts (background task completions).
+
+        These are internal Claude Code plumbing, not real user input.
+        The prompt field contains <task-notification>...</task-notification>.
+        """
+        prompt = ctx.raw_input.get("prompt", "")
+        return isinstance(prompt, str) and prompt.lstrip().startswith("<task-notification>")
+
     def execute_hooks(self, ctx: HookContext) -> CanonicalHookOutput:
         """Run all configured gates for the event and merge results.
 
         Dispatches directly to GateRegistry and GenericGate methods,
         eliminating the wrapper layers in gates.py and gate_registry.py.
         """
+        # Task-notification prompts are internal plumbing — not real user input.
+        # Return empty output so agents aren't tricked into treating them as fresh prompts.
+        if ctx.hook_event == "UserPromptSubmit" and self._is_task_notification(ctx):
+            return CanonicalHookOutput(verdict=None)
+
         merged_result = CanonicalHookOutput()
 
         # Load Session State ONCE
