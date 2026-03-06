@@ -93,33 +93,33 @@ TYPE_SHAPE = {
 }
 
 STATUS_FILLS = {
-    "done": "#dcfce7",
-    "completed": "#dcfce7",
-    "cancelled": "#f1f5f9",
-    "active": "#dbeafe",
-    "in_progress": "#c7d2fe",
-    "blocked": "#fee2e2",
-    "waiting": "#fef9c3",
-    "inbox": "#f1f5f9",
-    "todo": "#f1f5f9",
-    "review": "#f3e8ff",
-    "decomposing": "#e0f2fe",
-    "dormant": "#f1f5f9",
+    "done": "#166534",  # dark green — readable on dark bg
+    "completed": "#166534",
+    "cancelled": "#334155",  # dark slate
+    "active": "#1e3a5f",  # dark blue
+    "in_progress": "#312e81",  # dark indigo
+    "blocked": "#7f1d1d",  # dark red
+    "waiting": "#713f12",  # dark amber
+    "inbox": "#334155",  # dark slate
+    "todo": "#334155",
+    "review": "#4c1d95",  # dark purple
+    "decomposing": "#0c4a6e",  # dark cyan
+    "dormant": "#1e293b",  # very dark slate
 }
 
 STATUS_TEXT = {
-    "done": "#166534",
-    "completed": "#166534",
-    "cancelled": "#94a3b8",
-    "active": "#1e3a5f",
-    "in_progress": "#312e81",
-    "blocked": "#991b1b",
-    "waiting": "#854d0e",
-    "inbox": "#475569",
-    "todo": "#475569",
-    "review": "#6b21a8",
-    "decomposing": "#0369a1",
-    "dormant": "#94a3b8",
+    "done": "#4ade80",  # bright green
+    "completed": "#4ade80",
+    "cancelled": "#64748b",  # muted slate
+    "active": "#60a5fa",  # bright blue
+    "in_progress": "#a78bfa",  # bright indigo
+    "blocked": "#f87171",  # bright red
+    "waiting": "#fbbf24",  # bright amber
+    "inbox": "#94a3b8",  # light slate
+    "todo": "#94a3b8",
+    "review": "#c084fc",  # bright purple
+    "decomposing": "#38bdf8",  # bright cyan
+    "dormant": "#64748b",  # muted slate
 }
 
 TYPE_BADGE = {
@@ -142,11 +142,11 @@ ASSIGNEE_COLORS = {
 ASSIGNEE_DEFAULT = "#6c757d"
 
 PRIORITY_BORDERS = {
-    0: "#dc3545",
-    1: "#fd7e14",
-    2: "#6c757d",
-    3: "#adb5bd",
-    4: "#dee2e6",
+    0: "#ef4444",  # bright red
+    1: "#f97316",  # bright orange
+    2: "#6b7280",  # gray
+    3: "#4b5563",  # darker gray
+    4: "#374151",  # subtle gray
 }
 
 INCOMPLETE_STATUSES = {
@@ -159,8 +159,8 @@ INCOMPLETE_STATUSES = {
     "pending",
 }
 
-_MUTED_FILL = "#e8eaed"
-_MUTED_TEXT = "#9ca3af"
+_MUTED_FILL = "#1e293b"  # dark slate — muted nodes blend into dark bg
+_MUTED_TEXT = "#64748b"  # dim but readable on dark bg
 
 
 # ---------------------------------------------------------------------------
@@ -316,7 +316,7 @@ def prepare_embedded_graph_data(
         scale = type_scale * weight_factor
 
         base_font = 10
-        font_size = max(8, min(16, round(base_font * scale)))
+        font_size = max(10, min(16, round(base_font * scale)))
 
         max_text_w = 160 * scale
         lines = _wrap_text(label, font_size, max_text_w)

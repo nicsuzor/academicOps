@@ -123,12 +123,29 @@
   </div>
 
   <div id="legend">
-    <div class="legend-item"><div class="legend-box" style="background:#3b82f6"></div><span>Active</span></div>
-    <div class="legend-item"><div class="legend-box" style="background:#ef4444"></div><span>Blocked</span></div>
-    <div class="legend-item"><div class="legend-box" style="background:#22c55e"></div><span>Done</span></div>
-    <div class="legend-item"><div class="legend-line" style="background:#3b82f6"></div><span>Parent</span></div>
-    <div class="legend-item"><div class="legend-line" style="background:#ef4444"></div><span>Dependency</span></div>
-    <div class="legend-item"><div class="legend-box" style="border: 1px solid #f59e0b; box-shadow: 0 0 4px #f59e0b"></div><span>Recent (7d)</span></div>
+    <div style="font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:0.5px;color:#94a3b8;margin-bottom:2px">Status</div>
+    <div class="legend-item"><div class="legend-box" style="background:#1e3a5f;border:1px solid #60a5fa"></div><span>Active</span></div>
+    <div class="legend-item"><div class="legend-box" style="background:#7f1d1d;border:1px solid #f87171"></div><span>Blocked</span></div>
+    <div class="legend-item"><div class="legend-box" style="background:#166534;border:1px solid #4ade80"></div><span>Done</span></div>
+    <div class="legend-item"><div class="legend-box" style="background:#312e81;border:1px solid #a78bfa"></div><span>In Progress</span></div>
+    <div class="legend-item"><div class="legend-box" style="background:#713f12;border:1px solid #fbbf24"></div><span>Waiting</span></div>
+    <div style="font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:0.5px;color:#94a3b8;margin:4px 0 2px">Edges</div>
+    <div class="legend-item"><div class="legend-line" style="background:#60a5fa"></div><span>Parent</span></div>
+    <div class="legend-item"><div class="legend-line" style="background:#ef4444;height:2px;border-top:1px dashed transparent"></div><span>Dependency</span></div>
+    <div class="legend-item"><div class="legend-line" style="background:#94a3b8;border-top:1px dashed #94a3b8;height:0"></div><span>Reference</span></div>
+    <div style="font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:0.5px;color:#94a3b8;margin:4px 0 2px">Priority (border)</div>
+    <div class="legend-item"><div class="legend-box" style="border:2px solid #ef4444"></div><span>P0 Critical</span></div>
+    <div class="legend-item"><div class="legend-box" style="border:2px solid #f97316"></div><span>P1 High</span></div>
+    <div class="legend-item"><div class="legend-box" style="border:2px solid #6b7280"></div><span>P2+ Normal</span></div>
+    <div style="font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:0.5px;color:#94a3b8;margin:4px 0 2px">Shape = Type</div>
+    <div class="legend-item"><div style="width:16px;height:8px;background:#475569;border-radius:8px"></div><span>Goal / Person</span></div>
+    <div class="legend-item"><div style="width:12px;height:10px;background:#475569;border-radius:3px"></div><span>Project / Feature</span></div>
+    <div class="legend-item"><div style="width:12px;height:10px;background:#475569;clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%)"></div><span>Epic</span></div>
+    <div class="legend-item"><div style="width:12px;height:10px;background:#475569"></div><span>Task / Action</span></div>
+    <div style="font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:0.5px;color:#94a3b8;margin:4px 0 2px">Other</div>
+    <div class="legend-item"><div class="legend-box" style="border:1px solid #f59e0b;box-shadow:0 0 4px #f59e0b"></div><span>Recent (7d)</span></div>
+    <div class="legend-item"><div class="legend-box" style="border:2px solid #fbbf24;box-shadow:0 0 6px #fbbf24;background:transparent"></div><span>Start Here</span></div>
+    <div class="legend-item" style="opacity:0.5"><div class="legend-box" style="background:#475569"></div><span>Orphan (dimmed)</span></div>
   </div>
 
   <button id="legend-toggle" onclick="toggleDetail()">Hide Details</button>

@@ -4351,8 +4351,9 @@ def render_session_summary():
 # UNIFIED DASHBOARD - Single page: Graph + Project boxes
 # ============================================================================
 
-from lib.task_model import TaskStatus
 from task_manager_ui import render_task_editor
+
+from lib.task_model import TaskStatus
 
 
 @st.dialog("Edit Task")
@@ -5055,17 +5056,8 @@ try:
         if task.get("status") in ("closed", "done", "completed"):
             continue
 
-        # Determine project
-        # 1. explicit project field
+        # Determine project — only use explicit project field
         proj = task.get("project")
-        # 2. infer from ID if missing
-        if not proj:
-            tid = task.get("id", "")
-            if "-" in tid:
-                proj = tid.split("-")[0]
-            else:
-                proj = "inbox"
-
         if not proj:
             proj = "inbox"
 
@@ -5130,8 +5122,14 @@ try:
         # Exclude hash-like names (8+ hex chars)
         if len(name) >= 8 and all(c in "0123456789abcdef-" for c in name.lower()):
             return False
-        # Valid project if specifically defined in valid_project_ids, or has tasks mapping to it:
-        # Note: Sub-projects will be grouped into parents shortly
+        # Reject short fragments: single chars, bare numbers, strings < 3 chars
+        if len(name) < 3:
+            return False
+        if name.isdigit():
+            return False
+        # Must be a known project (explicit project field or type=project in tasks)
+        if name not in valid_project_ids:
+            return False
         return True
 
     # Merge sub-project data into parent before filtering
