@@ -312,6 +312,45 @@ def load_token_metrics() -> dict | None:
     return totals
 
 
+def _extract_first_prompt_from_transcript(session_filename: str) -> str:
+    """Extract the first user prompt from an abridged transcript file.
+
+    The abridged markdown has frontmatter-like content including:
+    **Original User Request** (first prompt): <the actual prompt>
+
+    Returns the prompt text (truncated to 120 chars) or empty string.
+    """
+    transcripts_dir = get_transcripts_dir()
+    # session_filename might be stem only or have extension
+    stem = session_filename.replace("-abridged.md", "").replace(".md", "")
+    abridged = transcripts_dir / f"{stem}-abridged.md"
+
+    if not abridged.exists():
+        return ""
+
+    try:
+        # Read just the first 2KB — the prompt is near the top
+        text = abridged.read_text()[:2048]
+        # Look for the "Original User Request" line
+        marker = "**Original User Request**"
+        idx = text.find(marker)
+        if idx == -1:
+            return ""
+        # Extract the rest of the line after the colon
+        line_start = text.find(":", idx + len(marker))
+        if line_start == -1:
+            return ""
+        line_end = text.find("\n", line_start)
+        if line_end == -1:
+            line_end = len(text)
+        prompt = text[line_start + 1 : line_end].strip()
+        if prompt:
+            return prompt[:120] + ("..." if len(prompt) > 120 else "")
+    except OSError:
+        pass
+    return ""
+
+
 def _extract_summary_from_filename(filename: str) -> str:
     """Extract a human-readable summary from a session filename slug.
 
@@ -418,7 +457,13 @@ def get_recent_sessions(hours: int = 24) -> list[dict]:
                         summary = acc
                         break
 
-            # If still poor, try filename slug
+            # If still poor, try first user prompt from the abridged transcript
+            if (not summary or "```" in str(summary)) and session_file:
+                prompt_text = _extract_first_prompt_from_transcript(session_file)
+                if prompt_text:
+                    summary = prompt_text
+
+            # Last resort: filename slug (produces gibberish but better than nothing)
             if (not summary or "```" in str(summary)) and session_filename:
                 summary = _extract_summary_from_filename(session_filename)
 
@@ -4391,8 +4436,9 @@ def render_session_summary():
 # UNIFIED DASHBOARD - Single page: Graph + Project boxes
 # ============================================================================
 
-from lib.task_model import TaskStatus
 from task_manager_ui import render_task_editor
+
+from lib.task_model import TaskStatus
 
 
 @st.dialog("Edit Task")
