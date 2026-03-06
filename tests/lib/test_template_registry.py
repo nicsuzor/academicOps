@@ -89,11 +89,22 @@ def test_get_spec_all_registered_templates(registry):
     expected_names = [
         "hydration.block",
         "hydration.warn",
+        "hydration.opened",
+        "hydration.closed",
+        "hydration.policy_message",
         "custodiet.context",
         "custodiet.instruction",
-        "custodiet.fallback",
+        "custodiet.verified",
+        "custodiet.policy_message",
+        "custodiet.policy_context",
+        "custodiet.countdown",
+        "qa.complete",
+        "qa.policy_message",
+        "qa.policy_context",
+        "handover.bound",
+        "handover.complete",
+        "handover.policy_message",
         "stop.handover_block",
-        "tool.gate_message",
     ]
 
     for name in expected_names:

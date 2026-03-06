@@ -63,9 +63,12 @@ class GateTransition(BaseModel):
 
     target_status: GateStatus | None = None  # If None, keep current status
 
-    # Templates for feedback
+    # Templates for feedback — prefer _key fields (resolved via TemplateRegistry)
+    # over inline _template strings. Keys take priority when both are set.
     system_message_template: str | None = None
+    system_message_key: str | None = None
     context_template: str | None = None
+    context_key: str | None = None
 
     # Side effects
     reset_ops_counter: bool = False
@@ -89,9 +92,12 @@ class GatePolicy(BaseModel):
     condition: GateCondition
     verdict: str = "allow"  # allow, warn, deny
 
-    # Message to show if policy triggers (blocking/warning)
-    message_template: str
+    # Message to show if policy triggers — prefer _key fields (resolved via
+    # TemplateRegistry) over inline _template strings. Keys take priority.
+    message_template: str = ""
+    message_key: str | None = None
     context_template: str | None = None
+    context_key: str | None = None
 
     # Execute complex logic (e.g. generate file)
     custom_action: str | None = None
@@ -108,10 +114,12 @@ class CountdownConfig(BaseModel):
     # e.g., if threshold=15 and start_before=5, countdown shows at ops 10-14
     start_before: int = 5
 
-    # Message template. Supports {remaining}, {threshold}, {gate_name}, {temp_path}
+    # Message template — prefer message_key (resolved via TemplateRegistry)
+    # over inline message_template. Key takes priority when both are set.
     message_template: str = (
         "Approaching {gate_name} threshold. You have {remaining} operations remaining."
     )
+    message_key: str | None = None
 
     # Which metric to count against (default: ops_since_open)
     metric: str = "ops_since_open"

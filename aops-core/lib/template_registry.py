@@ -133,6 +133,28 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         optional_vars=("client_type",),
         description="Instruction to invoke prompt hydrator",
     ),
+    # --- Hydration gate: trigger messages ---
+    "hydration.opened": TemplateSpec(
+        name="hydration.opened",
+        category=TemplateCategory.USER_MESSAGE,
+        filename="hydration-opened.md",
+        required_vars=(),
+        description="Status message when hydration gate opens",
+    ),
+    "hydration.closed": TemplateSpec(
+        name="hydration.closed",
+        category=TemplateCategory.USER_MESSAGE,
+        filename="hydration-closed.md",
+        required_vars=(),
+        description="Status message when hydration gate closes on new prompt",
+    ),
+    "hydration.policy_message": TemplateSpec(
+        name="hydration.policy_message",
+        category=TemplateCategory.USER_MESSAGE,
+        filename="hydration-policy-message.md",
+        required_vars=(),
+        description="Short message when hydration gate blocks a tool call",
+    ),
     # --- Custodiet gate ---
     "custodiet.context": TemplateSpec(
         name="custodiet.context",
@@ -163,6 +185,38 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         optional_vars=("session_id", "gate_name", "custodiet_mode", "skills_content"),
         description="Session context for QA verification before exit",
     ),
+    "custodiet.verified": TemplateSpec(
+        name="custodiet.verified",
+        category=TemplateCategory.USER_MESSAGE,
+        filename="custodiet-verified.md",
+        required_vars=(),
+        description="Status message when custodiet compliance check passes",
+    ),
+    "custodiet.policy_message": TemplateSpec(
+        name="custodiet.policy_message",
+        category=TemplateCategory.USER_MESSAGE,
+        filename="custodiet-policy-message.md",
+        required_vars=(),
+        optional_vars=("ops_since_open",),
+        description="Short message when custodiet gate blocks a tool call",
+    ),
+    "custodiet.policy_context": TemplateSpec(
+        name="custodiet.policy_context",
+        category=TemplateCategory.CONTEXT_INJECTION,
+        filename="custodiet-policy-context.md",
+        required_vars=("temp_path",),
+        optional_vars=("ops_since_open",),
+        description="Full context injection when custodiet gate blocks",
+        env_override="CUSTODIET_POLICY_CONTEXT_TEMPLATE",
+    ),
+    "custodiet.countdown": TemplateSpec(
+        name="custodiet.countdown",
+        category=TemplateCategory.USER_MESSAGE,
+        filename="custodiet-countdown.md",
+        required_vars=("remaining", "temp_path"),
+        optional_vars=("threshold", "current", "gate_name"),
+        description="Countdown warning before custodiet threshold",
+    ),
     "custodiet.instruction": TemplateSpec(
         name="custodiet.instruction",
         category=TemplateCategory.CONTEXT_INJECTION,
@@ -171,19 +225,56 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         description="Instruction to invoke custodiet skill",
         env_override="CUSTODIET_INSTRUCTION_TEMPLATE",
     ),
-    "custodiet.fallback": TemplateSpec(
-        name="custodiet.fallback",
-        category=TemplateCategory.USER_MESSAGE,
-        filename="overdue-enforcement-block.md",
-        required_vars=(),
-        description="Fallback block when compliance check overdue",
-    ),
     "custodiet.audit": TemplateSpec(
         name="custodiet.audit",
         category=TemplateCategory.SUBAGENT_INSTRUCTION,
         filename="custodiet-audit.md",
         required_vars=("session_id", "gate_name", "tool_name"),
         description="Audit context for custodiet gate",
+    ),
+    # --- QA gate: trigger and policy messages ---
+    "qa.complete": TemplateSpec(
+        name="qa.complete",
+        category=TemplateCategory.USER_MESSAGE,
+        filename="qa-complete.md",
+        required_vars=(),
+        description="Status message when QA verification completes",
+    ),
+    "qa.policy_message": TemplateSpec(
+        name="qa.policy_message",
+        category=TemplateCategory.USER_MESSAGE,
+        filename="qa-policy-message.md",
+        required_vars=(),
+        description="Short message when QA gate blocks exit",
+    ),
+    "qa.policy_context": TemplateSpec(
+        name="qa.policy_context",
+        category=TemplateCategory.CONTEXT_INJECTION,
+        filename="qa-policy-context.md",
+        required_vars=("temp_path",),
+        description="Full context injection when QA gate blocks exit",
+    ),
+    # --- Handover gate: trigger and policy messages ---
+    "handover.bound": TemplateSpec(
+        name="handover.bound",
+        category=TemplateCategory.USER_MESSAGE,
+        filename="handover-bound.md",
+        required_vars=(),
+        description="Status message when task is bound and handover required",
+    ),
+    "handover.complete": TemplateSpec(
+        name="handover.complete",
+        category=TemplateCategory.USER_MESSAGE,
+        filename="handover-complete.md",
+        required_vars=(),
+        description="Status message when handover/dump skill completes",
+    ),
+    "handover.policy_message": TemplateSpec(
+        name="handover.policy_message",
+        category=TemplateCategory.USER_MESSAGE,
+        filename="handover-policy-message.md",
+        required_vars=(),
+        description="Short message when handover gate blocks exit",
     ),
     # --- Stop gate ---
     "stop.handover_block": TemplateSpec(
@@ -193,43 +284,6 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         required_vars=(),
         description="Block message requiring handover before stop",
         env_override="STOP_GATE_HANDOVER_TEMPLATE",
-    ),
-    "stop.handover_warn": TemplateSpec(
-        name="stop.handover_warn",
-        category=TemplateCategory.CONTEXT_INJECTION,
-        filename="stop-gate-handover-warn.md",
-        required_vars=(),
-        description="Warning about handover before stop",
-    ),
-    # --- Tool gate (unified PreToolUse message) ---
-    "tool.gate_message": TemplateSpec(
-        name="tool.gate_message",
-        category=TemplateCategory.USER_MESSAGE,
-        filename="tool-gate-message.md",
-        required_vars=(
-            "mode",
-            "tool_name",
-            "tool_category",
-            "missing_gates",
-            "gate_status",
-            "next_instruction",
-        ),
-        description="Unified tool gate block/warn message",
-    ),
-    # --- Utility templates ---
-    "fail_fast.reminder": TemplateSpec(
-        name="fail_fast.reminder",
-        category=TemplateCategory.CONTEXT_INJECTION,
-        filename="fail-fast-reminder.md",
-        required_vars=(),
-        description="Reminder when tool returns error",
-    ),
-    "simple_question.instruction": TemplateSpec(
-        name="simple_question.instruction",
-        category=TemplateCategory.CONTEXT_INJECTION,
-        filename="simple-question-instruction.md",
-        required_vars=(),
-        description="Instruction for simple question handling",
     ),
 }
 
