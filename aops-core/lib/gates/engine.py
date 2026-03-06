@@ -331,6 +331,7 @@ class GenericGate:
         }
 
         # Prefer template key over inline string
+        message = None
         if countdown.message_key:
             try:
                 message = TemplateRegistry.instance().render(
@@ -338,13 +339,14 @@ class GenericGate:
                 )
             except (KeyError, ValueError, FileNotFoundError) as e:
                 logger.warning(f"Countdown template key error for gate '{self.name}': {e}")
-                message = f"📋 {remaining} turns until {self.name} check required."
         else:
             try:
                 message = countdown.message_template.format_map(countdown_variables)
             except KeyError as e:
                 logger.warning(f"Countdown template error for gate '{self.name}': {e}")
-                message = f"📋 {remaining} turns until {self.name} check required."
+
+        if not message:
+            message = f"📋 {remaining} turns until {self.name} check required."
 
         return GateResult.allow(system_message=message)
 
