@@ -3754,26 +3754,6 @@ def render_task_graph_page():
             st.markdown("**Filter**")
             show_only_reachable = st.checkbox("Reachable only", value=True, key="tg_show_reachable")
 
-            st.markdown("**Quick View**")
-            quick_view_enabled = st.checkbox(
-                "Top N by importance",
-                value=True,
-                key="tg_quickview",
-                help="Show only the highest-priority leaf tasks + their parent hierarchy. "
-                "Dramatically reduces visual noise.",
-            )
-            _slider_max = max(5, _n_leaves // 2) if _n_leaves > 0 else 50
-            _slider_default = min(st.session_state.get("tg_quickview_n", 80), _slider_max)
-            quick_view_n = st.slider(
-                "N",
-                min_value=1,
-                max_value=_slider_max,
-                value=_slider_default,
-                key="tg_quickview_n",
-                disabled=not quick_view_enabled,
-                help=f"Show top N leaf tasks (of {_n_leaves} total leaves)",
-            )
-
             with st.expander("⚙️ Force tuning", expanded=False):
                 st.caption("Tune the physics of the force graph")
                 force_charge_mult = st.slider(
@@ -3803,8 +3783,6 @@ def render_task_graph_page():
                     key="tg_cluster_str",
                     help="How strongly same-project nodes are pulled together.",
                 )
-        else:
-            scope_key = "default"
 
         st.markdown("**View Mode**")
         leaf_view_enabled = st.checkbox(
