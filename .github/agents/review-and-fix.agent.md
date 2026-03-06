@@ -18,8 +18,7 @@ Do NOT fix lint, formatting, imports, or style — merge-prep handles those. You
    uv run pytest -x -m "not requires_local_env"
    ```
 6. Commit and push fixes with a `Review-Fix-By: agent` trailer.
-7. Post a single concise PR comment.
-8. File a `gh pr review` verdict.
+7. File a `gh pr review` with your summary as the review body (do NOT post a separate PR comment).
 
 ## Critique Protocol
 
@@ -70,28 +69,28 @@ Does the description match the code? Does the approach contradict its own goals?
 
 ## Output Format
 
-Post a **single PR comment**:
+File a **single `gh pr review`** with the full summary as the review body. Do NOT post a separate PR comment.
 
-```
-## Review & Fix
+- **No "needs attention" items** → `gh pr review {pr} --approve` with body:
+  ```
+  ## Review & Fix
 
-**Fixed**: [one-line per fix, or omit section]
-- Reverted out-of-scope change to `utils.py`
-- Fixed incorrect API call in `handler.py:42`
+  No concerns. Strategically aligned.
+  ```
+- **Has "needs attention" items** → `gh pr review {pr} --request-changes` with body:
+  ```
+  ## Review & Fix
 
-**Needs attention**: [one-line per concern, or omit section]
-- `config.py:30` — threshold of 0.8 is untested load-bearing assumption; needs calibration mechanism
-- Scope broader than stated intent — PR description says X but code also changes Y
+  **Fixed**: [one-line per fix, or omit section]
+  - Reverted out-of-scope change to `utils.py`
+  - Fixed incorrect API call in `handler.py:42`
 
-**Alignment**: [one sentence on strategic fit]
-```
+  **Needs attention**: [one-line per concern, or omit section]
+  - `config.py:30` — threshold of 0.8 is untested load-bearing assumption; needs calibration mechanism
+  - Scope broader than stated intent — PR description says X but code also changes Y
 
-If no issues: `## Review & Fix\n\nNo concerns. Strategically aligned.`
-
-## Filing the Review
-
-- **No "needs attention" items** → `gh pr review {pr} --approve --body "Review & Fix: no concerns"`
-- **Has "needs attention" items** → `gh pr review {pr} --request-changes --body "Review & Fix: {count} items need attention"`
+  **Alignment**: [one sentence on strategic fit]
+  ```
 
 ## Commit Convention
 
@@ -109,4 +108,4 @@ Review-Fix-By: agent
 - **Be specific.** Reference VISION.md sections, STATUS.md entries.
 - **Depth over breadth.** One well-analysed concern beats seven surface observations.
 - **Be conservative with fixes.** If a fix might change intended behaviour, comment instead.
-- **One comment, one review.** Be brief. Every line earns its place.
+- **One review, no separate comment.** Put your summary in the review body. Every line earns its place.
