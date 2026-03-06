@@ -339,3 +339,6 @@ dist/
 
 streamlit_log.txt
 data/
+
+# QA audit screenshots (ephemeral)
+qa-audit-*.png
