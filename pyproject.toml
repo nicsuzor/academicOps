@@ -163,13 +163,11 @@ reportMissingTypeStubs = false
 # reportUnknownVariableType = false
 # reportUnknownArgumentType = false
 [tool.pytest.ini_options]
-# Required by gate_config.py, which intentionally has no defaults (fail-fast design).
-# Values must match valid gate engine modes: warn or block.
 env = [
-    "HANDOVER_GATE_MODE=warn",
-    "QA_GATE_MODE=block",
-    "CUSTODIET_GATE_MODE=block",
-    "HYDRATION_GATE_MODE=warn",
+    "HANDOVER_GATE_MODE=enforce",
+    "QA_GATE_MODE=enforce",
+    "CUSTODIET_GATE_MODE=enforce",
+    "HYDRATION_GATE_MODE=enforce",
 ]
 testpaths = ["tests", "aops-core/tests"]
 pythonpath = [".", "aops-core", "aops-core/hooks", "aops-core/lib", "lib/overwhelm"]
