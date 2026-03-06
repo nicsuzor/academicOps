@@ -118,7 +118,7 @@ jobs:
             Fix mechanical issues (lint, types, simple bugs) by editing files and pushing commits.
             Comment on issues that require human judgment.
 
-            Post a PR comment with your summary, then file a `gh pr review` (APPROVE or REQUEST_CHANGES).
+            File a `gh pr review` (APPROVE or REQUEST_CHANGES) with your full summary as the review body. Do NOT post a separate PR comment.
 
             Then set a commit status:
             - No concerns → `gh api repos/${{ github.repository }}/statuses/${{ steps.pr-info.outputs.sha }} -f state="success" -f context="Agent Review & Fix" -f description="Clean — fixes applied if needed"`
