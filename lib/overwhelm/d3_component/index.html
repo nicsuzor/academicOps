@@ -304,12 +304,26 @@
           .attr("x", -w/2).attr("y", -h/2).attr("width", w).attr("height", h)
           .attr("fill", d.fill).attr("fill-opacity", opacity)
           .attr("stroke", d.borderColor).attr("stroke-width", 1.5);
-        if (w > 40 && h > 20) {
-            const label = (d.label || '').substring(0, 25);
+        if (w > 30 && h > 16) {
+            const label = d.label || '';
             const fs = Math.max(6, Math.min(11, Math.min(w, h) * 0.25));
-            g.append("text").attr("class","node-text").attr("x",0).attr("y",0)
-              .attr("text-anchor","middle").attr("dominant-baseline","central")
-              .attr("font-size", fs + "px").attr("fill", d.textColor || "#fff").text(label);
+            const pad = 3;
+            g.append("foreignObject")
+              .attr("x", -w/2 + pad).attr("y", -h/2 + pad)
+              .attr("width", w - pad * 2).attr("height", h - pad * 2)
+              .append("xhtml:div")
+              .style("font-size", fs + "px")
+              .style("font-family", "-apple-system, sans-serif")
+              .style("color", d.textColor || "#fff")
+              .style("line-height", "1.2")
+              .style("overflow", "hidden")
+              .style("word-wrap", "break-word")
+              .style("overflow-wrap", "break-word")
+              .style("hyphens", "auto")
+              .style("width", "100%")
+              .style("height", "100%")
+              .style("pointer-events", "none")
+              .text(label);
         }
     }
 
@@ -1044,9 +1058,12 @@
             nodeEls.attr("display", d => d._hasLayout ? null : "none");
 
             // Post-layout collision pass for FA2 and other precomputed layouts.
-            // Skip for arc diagrams — collision would push nodes off the baseline.
+            // Skip for arc/treemap/circle_pack — these layouts pack nodes intentionally.
             const hasCoords = nodes.filter(n => n._hasLayout);
-            if (hasCoords.length > 0 && !currentLayout.startsWith("arc")) {
+            const skipCollision = currentLayout.startsWith("arc") ||
+                                  currentLayout.startsWith("tree") ||
+                                  currentLayout.startsWith("circle");
+            if (hasCoords.length > 0 && !skipCollision) {
                 const collSim2 = d3.forceSimulation(hasCoords)
                     .force("collision", d3.forceCollide()
                         .radius(d => Math.max(d.w, d.h) / 2 + fc.collisionPadding)
