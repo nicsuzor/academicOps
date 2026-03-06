@@ -3879,7 +3879,6 @@ def render_task_graph_page():
                     _children_map.setdefault(p, []).append(n["id"])
 
             # Identify leaves: actionable nodes with no actionable children
-            _filtered_ids = {n["id"] for n in filtered}
             _leaf_ids: set[str] = set()
             for n in filtered:
                 status = n.get("status", "inbox").lower()
@@ -3897,7 +3896,7 @@ def render_task_graph_page():
             _ancestor_ids: set[str] = set()
             for leaf_id in _leaf_ids:
                 current = _node_by_id.get(leaf_id, {}).get("parent")
-                while current and current in _node_by_id:
+                while current and current in _node_by_id and current not in _ancestor_ids:
                     _ancestor_ids.add(current)
                     current = _node_by_id.get(current, {}).get("parent")
 
