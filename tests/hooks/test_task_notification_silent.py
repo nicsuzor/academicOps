@@ -9,6 +9,7 @@ Source payload: /tmp/stop.jsonl line 1 (session 86b2bb57).
 """
 
 import json
+from unittest.mock import patch
 
 from hooks.router import HookRouter
 
@@ -42,7 +43,6 @@ class TestTaskNotificationSilent:
         monkeypatch.setattr("hooks.router.get_session_data", lambda: {})
         monkeypatch.setattr("hooks.router.persist_session_data", lambda data: None)
         monkeypatch.setattr("hooks.router.log_event_to_session", lambda *a, **kw: None)
-        monkeypatch.setattr("hooks.router.log_hook_event", lambda *a, **kw: None)
 
         router = HookRouter()
 
@@ -53,10 +53,13 @@ class TestTaskNotificationSilent:
         }
 
         ctx = router.normalize_input(raw_input)
-        canonical = router.execute_hooks(ctx)
-        output = router.output_for_claude(canonical, ctx.hook_event)
 
-        output_json = json.loads(output.model_dump_json(exclude_none=True))
-        assert output_json == {}, (
-            f"Expected empty output for task-notification UPS, got: {json.dumps(output_json, indent=2)}"
-        )
+        with patch("hooks.router.log_hook_event") as mock_log:
+            canonical = router.execute_hooks(ctx)
+            output = router.output_for_claude(canonical, ctx.hook_event)
+
+            output_json = json.loads(output.model_dump_json(exclude_none=True))
+            assert output_json == {}, (
+                f"Expected empty output for task-notification UPS, got: {json.dumps(output_json, indent=2)}"
+            )
+            mock_log.assert_called_once_with(ctx, output=canonical)

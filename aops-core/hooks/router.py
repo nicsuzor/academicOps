@@ -383,7 +383,12 @@ class HookRouter:
         # Task-notification prompts are internal plumbing — not real user input.
         # Return empty output so agents aren't tricked into treating them as fresh prompts.
         if ctx.hook_event == "UserPromptSubmit" and self._is_task_notification(ctx):
-            return CanonicalHookOutput(verdict=None)
+            output = CanonicalHookOutput(verdict=None)
+            try:
+                log_hook_event(ctx, output=output)
+            except Exception as e:
+                print(f"WARNING: Failed to log task-notification hook event: {e}", file=sys.stderr)
+            return output
 
         merged_result = CanonicalHookOutput()
 
