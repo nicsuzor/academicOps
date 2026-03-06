@@ -3693,54 +3693,58 @@ def render_spotlight_epic():
         )
 
     scored_epics = [(ep, _epic_activity_score(ep)) for ep in candidate_epics]
-    epic, score = max(scored_epics, key=lambda item: item[1])
-    if score == 0:
-        return  # No active children — skip
+    scored_epics.sort(key=lambda item: item[1], reverse=True)
 
-    # Get children and count by status
-    children_ids = epic.get("children", [])
-    children = [tasks_by_id.get(cid) for cid in children_ids if cid in tasks_by_id]
+    # Show top 3 epics with active children
+    top_epics = [(ep, sc) for ep, sc in scored_epics if sc > 0][:3]
+    if not top_epics:
+        return
 
-    status_counts = {"done": 0, "in_progress": 0, "blocked": 0}
-    for child in children:
-        if child:
-            status = child.get("status", "active")
-            if status in ("done", "closed"):
-                status_counts["done"] += 1
-            elif status == "blocked":
-                status_counts["blocked"] += 1
-            else:
-                status_counts["in_progress"] += 1
+    html = ""
+    for epic, _score in top_epics:
+        # Get children and count by status
+        children_ids = epic.get("children", [])
+        children = [tasks_by_id.get(cid) for cid in children_ids if cid in tasks_by_id]
 
-    total = len(children)
-    done_pct = (status_counts["done"] / total * 100) if total > 0 else 0
+        status_counts = {"done": 0, "in_progress": 0, "blocked": 0}
+        for child in children:
+            if child:
+                status = child.get("status", "active")
+                if status in ("done", "closed"):
+                    status_counts["done"] += 1
+                elif status == "blocked":
+                    status_counts["blocked"] += 1
+                else:
+                    status_counts["in_progress"] += 1
 
-    # Render HTML with synthesis-card pattern
-    html = f"""
-    <div class="spotlight-progress-panel" style="margin-bottom: 24px; padding: 16px; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 8px;">
-        <div class="spotlight-progress-header" style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px;">
-            <div class="spotlight-progress-title" style="font-weight: 600; font-size: 1.1em; color: #60a5fa;">🚀 {esc(epic.get("title", "Epic"))}</div>
-            <div class="spotlight-progress-pct" style="font-size: 0.9em; opacity: 0.8;">{done_pct:.0f}%</div>
-        </div>
-        <div class="spotlight-progress-bar" style="height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; margin-bottom: 16px; overflow: hidden;">
-            <div class="spotlight-progress-fill" style="width: {done_pct}%; height: 100%; background: #3b82f6; transition: width 0.3s ease;"></div>
-        </div>
-        <div class="synthesis-grid">
-            <div class="synthesis-card done">
-                <div class="synthesis-card-title">✅ Done</div>
-                <div class="synthesis-card-content" style="font-size: 1.5em; font-weight: 700;">{status_counts["done"]}</div>
+        total = len(children)
+        done_pct = (status_counts["done"] / total * 100) if total > 0 else 0
+
+        html += f"""
+        <div class="spotlight-progress-panel" style="margin-bottom: 12px; padding: 12px 16px; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 8px;">
+            <div class="spotlight-progress-header" style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
+                <div class="spotlight-progress-title" style="font-weight: 600; font-size: 1em; color: #60a5fa;">🚀 {esc(epic.get("title", "Epic"))}</div>
+                <div class="spotlight-progress-pct" style="font-size: 0.85em; opacity: 0.8;">{done_pct:.0f}%</div>
             </div>
-            <div class="synthesis-card context">
-                <div class="synthesis-card-title">🔄 In Progress</div>
-                <div class="synthesis-card-content" style="font-size: 1.5em; font-weight: 700;">{status_counts["in_progress"]}</div>
+            <div class="spotlight-progress-bar" style="height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; margin-bottom: 8px; overflow: hidden;">
+                <div class="spotlight-progress-fill" style="width: {done_pct}%; height: 100%; background: #3b82f6; transition: width 0.3s ease;"></div>
             </div>
-            <div class="synthesis-card waiting">
-                <div class="synthesis-card-title">🚫 Blocked</div>
-                <div class="synthesis-card-content" style="font-size: 1.5em; font-weight: 700;">{status_counts["blocked"]}</div>
+            <div class="synthesis-grid">
+                <div class="synthesis-card done">
+                    <div class="synthesis-card-title">✅ Done</div>
+                    <div class="synthesis-card-content" style="font-size: 1.3em; font-weight: 700;">{status_counts["done"]}</div>
+                </div>
+                <div class="synthesis-card context">
+                    <div class="synthesis-card-title">🔄 In Progress</div>
+                    <div class="synthesis-card-content" style="font-size: 1.3em; font-weight: 700;">{status_counts["in_progress"]}</div>
+                </div>
+                <div class="synthesis-card waiting">
+                    <div class="synthesis-card-title">🚫 Blocked</div>
+                    <div class="synthesis-card-content" style="font-size: 1.3em; font-weight: 700;">{status_counts["blocked"]}</div>
+                </div>
             </div>
         </div>
-    </div>
-    """
+        """
     st.markdown(html, unsafe_allow_html=True)
 
 
