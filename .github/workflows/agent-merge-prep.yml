@@ -42,7 +42,7 @@ jobs:
       statuses: write
       id-token: write
       issues: write
-      actions: write
+      actions: read
     env:
       PR_NUMBER: ${{ inputs.pr_number }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -214,8 +214,7 @@ jobs:
           # Trigger summary-and-merge workflow.
           # Note: GITHUB_TOKEN cannot dispatch workflow_dispatch from a workflow_dispatch
           # context (GitHub security restriction). Use a PAT with workflow scope instead.
-          # Update: GITHUB_TOKEN CAN dispatch if given actions: write, overriding the PAT which is currently returning 403.
-          GH_TOKEN="${{ secrets.GITHUB_TOKEN }}" gh workflow run summary-and-merge.yml \
+          GH_TOKEN="${{ secrets.AOPS_DIST_PAT }}" gh workflow run summary-and-merge.yml \
             --repo "$REPO" \
             -f pr_number="$PR_NUMBER"
 
