@@ -39,7 +39,7 @@ mcp__pkb__create_task(
 
 ### Step 3b: Tag Verification Items
 
-For any work product awaiting external confirmation (PR merge, submission acceptance, reviewer response), ensure the task has:
+For any work product completed via a pull request that is awaiting merge, ensure the task has:
 
 - **Status** reflecting the wait: `review` or `merge_ready` (these require `pr_url`)
 - **`pr_url`** set (required by the task model for review/merge_ready status)
