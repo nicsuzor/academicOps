@@ -16,21 +16,35 @@ By the time you finish, the PR should be clean and the summary-and-merge workflo
    git merge origin/main --no-edit
    ```
    If the merge has conflicts, resolve them, then `git add` the resolved files and `git commit`. Do not rebase — rebasing requires force-push, which is prohibited. If conflicts are too complex to resolve safely, stop and post a comment explaining the situation.
-3. Read ALL review feedback from every source:
+3. **Check CI status and fix failing checks.** Before triaging review comments, check whether any CI checks (pytest, lint, typecheck, etc.) are failing:
+   ```bash
+   gh pr checks $PR_NUMBER
+   ```
+   If any checks are failing, diagnose and fix them:
+   - **pytest failures**: Read the failing test output, identify the root cause, and fix the code or test.
+   - **Lint failures** (ruff): Run `uv run ruff check --fix . && uv run ruff format .` and fix any remaining issues manually.
+   - **Typecheck failures** (basedpyright): Run `uv run basedpyright` and fix type errors.
+   - **Formatting failures** (dprint): Run `uv run dprint fmt`.
+   - **Other check failures**: Read the logs via `gh run view <run-id> --log-failed`, diagnose, and fix.
+
+   Fixing CI is **equal priority** to fixing review comments — a green build is required for merge.
+4. Read ALL review feedback from every source:
    - `gh api repos/{owner}/{repo}/pulls/{pr}/reviews` — review summaries and verdicts
    - `gh api repos/{owner}/{repo}/pulls/{pr}/comments` — inline review comments
    - `gh api repos/{owner}/{repo}/issues/{pr}/comments` — issue comments
    - This includes our agents (Agent Review), external bots (Gemini Code Assist, GitHub Copilot), and human commenters.
-4. Triage each piece of feedback into categories (see below).
-5. Fix genuine bugs, valid improvements, and human directives.
-6. Run lint + typecheck + tests locally to verify clean code:
+5. Triage each piece of feedback into categories (see below).
+6. Fix genuine bugs, valid improvements, and human directives.
+7. Run lint + typecheck + tests locally to verify all fixes produce clean code:
    ```bash
-   uv run ruff check --fix && uv run ruff format
+   uv run ruff check --fix . && uv run ruff format .
+   uv run dprint fmt
    uv run basedpyright
    uv run pytest -x -m "not requires_local_env"
    ```
-7. Commit and push any changes with a `Merge-Prep-By: agent` trailer.
-8. Post a triage summary comment.
+   If any of these fail, fix the issues and re-run until clean. Do not push code that fails checks.
+8. Commit and push any changes with a `Merge-Prep-By: agent` trailer.
+9. Post a triage summary comment.
 
 The workflow handles the post-agent steps (approval, commit status, triggering summary-and-merge) — you do not need to do these yourself.
 
@@ -46,9 +60,10 @@ The workflow handles the post-agent steps (approval, commit status, triggering s
 
 ## What to Fix
 
+- **Failing CI checks** (pytest, lint, typecheck, formatting) — diagnose and fix the root cause
 - Code issues flagged by any reviewer (Agent Review, Gemini, Copilot, humans)
 - Scope compliance issues (revert out-of-scope changes, split if needed)
-- Lint or type errors (run `uv run ruff check --fix && uv run ruff format` after changes)
+- Lint or type errors (run `uv run ruff check --fix . && uv run ruff format .` after changes)
 - Broken imports or references
 
 ## What NOT to Fix
@@ -65,13 +80,21 @@ Post a comment using `gh pr comment`:
 ```
 ## Merge Prep: Review Triage
 
+### CI Checks
+| Check | Status | Action |
+|-------|--------|--------|
+| pytest | Failing (2 tests) | Fixed: corrected assertion in test_foo.py |
+| lint | Passing | No action needed |
+| typecheck | Passing | No action needed |
+
+### Review Feedback
 | Source | Comment | Category | Action |
 |--------|---------|----------|--------|
 | Agent Review | Aligns with axioms and vision | No concerns | No action needed |
 | Copilot | Unused import on line 42 | Valid improvement | Fixed |
 | Gemini | "Consider using dataclass" | Scope creep | Acknowledged — future work |
 
-**Changes made**: [count] fixes committed
+**Changes made**: [count] fixes committed (CI + review feedback)
 **Deferred**: [count] items flagged as future work
 
 All addressable feedback has been resolved.
