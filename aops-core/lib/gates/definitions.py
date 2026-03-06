@@ -232,7 +232,7 @@ GATE_CONFIGS = [
                 verdict=HANDOVER_GATE_MODE,
                 message_template="≡ Handover gate CLOSED — invoke `/dump` before exit.",
                 context_template=(
-                    "≡ Handover gate is **CLOSED**. Exit is blocked until you complete the Dump Skill.\n\n"
+                    "≡ Handover gate is **CLOSED**. The gate will only open to allow exit once you complete the Dump Skill.\n\n"
                     "Run `/dump` to open the gate and allow exit.\n\n"
                 ),
             ),
