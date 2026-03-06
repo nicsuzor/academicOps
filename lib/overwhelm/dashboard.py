@@ -3731,7 +3731,7 @@ def render_task_graph_page():
     # Used to conditionally hide controls that only apply to force-based layouts.
     _cur_layout_label = st.session_state.get("tg_layout", "")
     _is_hierarchical_layout = _cur_layout_label in _HIERARCHICAL_LAYOUT_LABELS
-    
+
     show_only_reachable = False
     quick_view_enabled = False
     quick_view_n = 80
@@ -3831,7 +3831,7 @@ def render_task_graph_page():
             key="tg_quickview_n",
             disabled=not quick_view_enabled or leaf_view_enabled,
         )
-        
+
     if d3_graph:
         # Leaf-node-aware status filtering:
         # Status checkboxes apply to leaf nodes only; structural (non-leaf) nodes
@@ -4374,9 +4374,8 @@ def render_session_summary():
 # UNIFIED DASHBOARD - Single page: Graph + Project boxes
 # ============================================================================
 
-from task_manager_ui import render_task_editor
-
 from lib.task_model import TaskStatus
+from task_manager_ui import render_task_editor
 
 
 @st.dialog("Edit Task")
