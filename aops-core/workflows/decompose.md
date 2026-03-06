@@ -41,6 +41,16 @@ For common patterns and heuristics for task granularity, see **[[decomposition-p
 - **Avoid the Star Pattern**: A flat list of sibling tasks under a project is a failure of decomposition.
 - **Traceability**: Each level of the hierarchy must provide context and justification for the level below it (The WHY Test).
 
+## Task Handoff Quality (P#120)
+
+Tasks created during decomposition will often be picked up by a **different agent or session** than the one that created them. The creating agent has rich context from the conversation — the picking-up agent has only what's in the task body.
+
+- **Self-contained context**: Each task must include enough background that someone with no session context can understand _why_ this task exists and _what decisions led to it_.
+- **Include data findings**: If the decomposition session discovered relevant data (node counts, edge distributions, performance characteristics), record these in the task body — not just "we found the hierarchy is flat" but the actual numbers.
+- **Link to related tasks**: Use explicit task IDs, not "the other task" or "as discussed."
+- **Record design decisions and constraints**: If the user made a choice (e.g., "filters are dishonest — show everything"), capture it in the task as a design constraint with rationale.
+- **Name terminology**: If new terms were coined (e.g., "unlockers" for soft dependencies), define them in the task body so the next agent uses them correctly.
+
 ## Critical Rules
 
 - **Completeness**: All tasks together must fully achieve the original goal.

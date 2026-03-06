@@ -3743,20 +3743,30 @@ def render_task_graph_page():
         else:
             scope_key = "default"
 
+        st.markdown("**View Mode**")
+        leaf_view_enabled = st.checkbox(
+            "Leaf view",
+            value=False,
+            key="tg_leafview",
+            help="Show only leaf tasks (actionable work with no actionable children) "
+            "plus their full ancestor chains. Shows your actual work frontier.",
+        )
+
         st.markdown("**Quick View**")
         quick_view_enabled = st.checkbox(
             "Top N by importance",
-            value=True,
+            value=not leaf_view_enabled,
             key="tg_quickview",
             help="Show only the highest-priority active nodes + their structural parents. "
             "Dramatically reduces visual noise.",
+            disabled=leaf_view_enabled,
         )
         quick_view_n = st.select_slider(
             "N",
             options=[25, 50, 80, 120, 200],
             value=80,
             key="tg_quickview_n",
-            disabled=not quick_view_enabled,
+            disabled=not quick_view_enabled or leaf_view_enabled,
         )
 
     # Load from per-layout JSON files (graph-*.json) — cached
@@ -3792,8 +3802,55 @@ def render_task_graph_page():
         if show_only_reachable:
             filtered = [n for n in filtered if n.get("reachable")]
 
+        # Leaf View: show only leaf tasks + full ancestor chains
+        _structural_ids: set[str] = set()
+        if leaf_view_enabled:
+            _actionable = {"active", "in_progress", "blocked", "merge_ready"}
+            _node_by_id = {n["id"]: n for n in all_nodes}
+
+            # Build children map from all nodes (not just filtered)
+            _children_map: dict[str, list[str]] = {}
+            for n in all_nodes:
+                p = n.get("parent")
+                if p:
+                    _children_map.setdefault(p, []).append(n["id"])
+
+            # Identify leaves: actionable nodes with no actionable children
+            _filtered_ids = {n["id"] for n in filtered}
+            _leaf_ids: set[str] = set()
+            for n in filtered:
+                status = n.get("status", "inbox").lower()
+                if status not in _actionable:
+                    continue
+                children = _children_map.get(n["id"], [])
+                has_actionable_child = any(
+                    _node_by_id.get(c, {}).get("status", "inbox").lower() in _actionable
+                    for c in children
+                )
+                if not has_actionable_child:
+                    _leaf_ids.add(n["id"])
+
+            # Walk up parent chains to collect all ancestors
+            _ancestor_ids: set[str] = set()
+            for leaf_id in _leaf_ids:
+                current = _node_by_id.get(leaf_id, {}).get("parent")
+                while current and current in _node_by_id:
+                    _ancestor_ids.add(current)
+                    current = _node_by_id.get(current, {}).get("parent")
+
+            _keep_ids = _leaf_ids | _ancestor_ids
+            _structural_ids = _ancestor_ids - _leaf_ids
+            n_before = len(filtered)
+            filtered = [n for n in all_nodes if n["id"] in _keep_ids]
+
+            with st.sidebar.expander("Leaf view stats", expanded=False):
+                st.caption(
+                    f"{len(_leaf_ids)} leaves + {len(_ancestor_ids)} ancestors "
+                    f"= {len(filtered)} nodes (from {n_before} filtered)"
+                )
+
         # Quick View: keep top N nodes by importance score + their structural parents
-        if quick_view_enabled and len(filtered) > quick_view_n:
+        if not leaf_view_enabled and quick_view_enabled and len(filtered) > quick_view_n:
             import time as _time
             from datetime import datetime as _dt
 
@@ -3887,7 +3944,8 @@ def render_task_graph_page():
 
         d3_graph["nodes"] = filtered
 
-        d3_data = prepare_embedded_graph_data(d3_graph)
+        _leaf_structural = _structural_ids if leaf_view_enabled else None
+        d3_data = prepare_embedded_graph_data(d3_graph, structural_ids=_leaf_structural)
         available_layouts = d3_data.get("availableLayouts", [])
         if available_layouts:
             layout_info = f" | layouts: {', '.join(available_layouts)}"
@@ -4212,8 +4270,9 @@ def render_session_summary():
 # UNIFIED DASHBOARD - Single page: Graph + Project boxes
 # ============================================================================
 
-from lib.task_model import TaskStatus
 from task_manager_ui import render_task_editor
+
+from lib.task_model import TaskStatus
 
 
 @st.dialog("Edit Task")
