@@ -1,7 +1,7 @@
-<aops-warning>You have stopped calling tools without finishing. Please complete your assigned work.
+<aops-warning>Handover gate is **CLOSED** — exit is blocked.
 
-**When ending a work session**, you MUST invoke the `handover` Skill and follow all required steps.
+Run `/dump` to complete handover and open the gate.
 
-- It is not sufficient to enact the steps without invoking the `handover` skill -- this will not be recognised by the system.
-- Using mutating tools (Edit, Write, Bash, git) after handover will reset this gate and require you to invoke `/handover` again.
+- The gate only opens when the Dump Skill completes successfully.
+- Using mutating tools (Edit, Write, Bash, git) after handover will reset the gate to CLOSED.
   </aops-warning>

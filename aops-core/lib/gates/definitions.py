@@ -230,10 +230,10 @@ GATE_CONFIGS = [
                     hook_event="Stop",
                 ),
                 verdict=HANDOVER_GATE_MODE,
-                message_template="≡ Handover required before exit.",
+                message_template="≡ Handover gate CLOSED — invoke `/dump` before exit.",
                 context_template=(
-                    "≡ Finalization required before exit.\n\n"
-                    "Please invoke the Dump Skill (`/dump`). The gate will only allow exit once the Dump Skill has completed.\n\n"
+                    "≡ Handover gate is **CLOSED**. The gate will only open to allow exit once you complete the Dump Skill.\n\n"
+                    "Run `/dump` to open the gate and allow exit.\n\n"
                 ),
             ),
         ],
