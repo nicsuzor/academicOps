@@ -395,6 +395,9 @@ def prepare_embedded_graph_data(
                 "spotlight": node.get(
                     "spotlight", False
                 ),  # Top-3 leaf tasks by importance: gets "start here" ring
+                "tags": node.get("tags", []),
+                "created": node.get("created"),
+                "deadline": node.get("deadline") or node.get("due_date") or node.get("due"),
                 "x": node.get("x"),  # Precomputed ForceAtlas2 x (50-950 range, or None)
                 "y": node.get("y"),  # Precomputed ForceAtlas2 y (50-950 range, or None)
                 "layouts": node.get(

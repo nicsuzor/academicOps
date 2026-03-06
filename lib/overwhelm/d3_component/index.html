@@ -1107,14 +1107,43 @@
         document.getElementById("dt").textContent = d.label;
         const bs = sbc[d.status]||"background:#f1f5f9;color:#475569";
         let h = `<div class="f"><span class="fl">Status</span> <span class="sb" style="${escHtml(bs)}">${escHtml(d.status)}</span></div>`;
+        // Compute age from modified timestamp (epoch seconds)
+        let ageStr = null;
+        if (d.modified) {
+            const ageDays = Math.floor((Date.now()/1000 - d.modified) / 86400);
+            if (ageDays === 0) ageStr = "today";
+            else if (ageDays === 1) ageStr = "yesterday";
+            else if (ageDays < 30) ageStr = ageDays + "d ago";
+            else if (ageDays < 365) ageStr = Math.floor(ageDays/30) + "mo ago";
+            else ageStr = Math.floor(ageDays/365) + "y ago";
+        }
+        // Format deadline
+        let deadlineStr = null;
+        if (d.deadline) {
+            try {
+                const dl = new Date(d.deadline);
+                const diffDays = Math.ceil((dl - Date.now()) / 86400000);
+                const dateStr = dl.toLocaleDateString("en-AU", {day:"numeric",month:"short"});
+                if (diffDays < 0) deadlineStr = dateStr + " (overdue)";
+                else if (diffDays === 0) deadlineStr = dateStr + " (today!)";
+                else if (diffDays <= 7) deadlineStr = dateStr + " (" + diffDays + "d)";
+                else deadlineStr = dateStr;
+            } catch(e) { deadlineStr = d.deadline; }
+        }
         const fs = [
           d.badge?["Type",d.badge]:null, ["Priority","P"+d.priority],
           d.project?["Project",d.project]:null,
+          ageStr?["Last modified",ageStr]:null,
+          deadlineStr?["Deadline",deadlineStr]:null,
           d.dw>0?["Impact","\u2696 "+d.dw.toFixed(1)]:null,
           d.stakeholder?["Stakeholder","Yes"]:null,
           d.assignee?["Assignee",d.assignee]:null, ["ID",d.id],
         ].filter(Boolean);
         h += fs.map(([l,v])=>`<div class="f"><span class="fl">${escHtml(l)}</span><span class="fv">${escHtml(v)}</span></div>`).join("");
+        // Tags row
+        if (d.tags && d.tags.length > 0) {
+            h += `<div class="f"><span class="fl">Tags</span><span class="fv" style="font-size:0.85em;opacity:0.8">${d.tags.map(t=>escHtml(t)).join(", ")}</span></div>`;
+        }
         document.getElementById("df").innerHTML = h;
         document.getElementById("detail").style.display = "block";
 
