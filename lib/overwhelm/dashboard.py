@@ -3784,30 +3784,20 @@ def render_task_graph_page():
                     help="How strongly same-project nodes are pulled together.",
                 )
 
-        st.markdown("**View Mode**")
-        leaf_view_enabled = st.checkbox(
-            "Leaf view",
-            value=False,
-            key="tg_leafview",
-            help="Show only leaf tasks (actionable work with no actionable children) "
-            "plus their full ancestor chains. Shows your actual work frontier.",
-        )
-
         st.markdown("**Quick View**")
         quick_view_enabled = st.checkbox(
             "Top N by importance",
-            value=not leaf_view_enabled,
+            value=True,
             key="tg_quickview",
             help="Show only the highest-priority active nodes + their structural parents. "
             "Dramatically reduces visual noise.",
-            disabled=leaf_view_enabled,
         )
         quick_view_n = st.select_slider(
             "N",
             options=[25, 50, 80, 120, 200],
             value=80,
             key="tg_quickview_n",
-            disabled=not quick_view_enabled or leaf_view_enabled,
+            disabled=not quick_view_enabled,
         )
 
     if d3_graph:
@@ -3865,54 +3855,9 @@ def render_task_graph_page():
             n for n in all_nodes if n["id"] in visible_leaf_ids or n["id"] in structural_ids
         ]
 
-        # Leaf View: show only leaf tasks + full ancestor chains
-        _structural_ids: set[str] = set()
-        if leaf_view_enabled:
-            _actionable = {"active", "in_progress", "blocked", "merge_ready"}
-            _node_by_id = {n["id"]: n for n in all_nodes}
-
-            # Build children map from all nodes (not just filtered)
-            _children_map: dict[str, list[str]] = {}
-            for n in all_nodes:
-                p = n.get("parent")
-                if p:
-                    _children_map.setdefault(p, []).append(n["id"])
-
-            # Identify leaves: actionable nodes with no actionable children
-            _leaf_ids: set[str] = set()
-            for n in filtered:
-                status = n.get("status", "inbox").lower()
-                if status not in _actionable:
-                    continue
-                children = _children_map.get(n["id"], [])
-                has_actionable_child = any(
-                    _node_by_id.get(c, {}).get("status", "inbox").lower() in _actionable
-                    for c in children
-                )
-                if not has_actionable_child:
-                    _leaf_ids.add(n["id"])
-
-            # Walk up parent chains to collect all ancestors
-            _ancestor_ids: set[str] = set()
-            for leaf_id in _leaf_ids:
-                current = _node_by_id.get(leaf_id, {}).get("parent")
-                while current and current in _node_by_id and current not in _ancestor_ids:
-                    _ancestor_ids.add(current)
-                    current = _node_by_id.get(current, {}).get("parent")
-
-            _keep_ids = _leaf_ids | _ancestor_ids
-            _structural_ids = _ancestor_ids - _leaf_ids
-            n_before = len(filtered)
-            filtered = [n for n in all_nodes if n["id"] in _keep_ids]
-
-            with st.sidebar.expander("Leaf view stats", expanded=False):
-                st.caption(
-                    f"{len(_leaf_ids)} leaves + {len(_ancestor_ids)} ancestors "
-                    f"= {len(filtered)} nodes (from {n_before} filtered)"
-                )
-
         # Quick View: keep top N nodes by importance score + their structural parents
-        if not leaf_view_enabled and quick_view_enabled and len(filtered) > quick_view_n:
+        _structural_ids: set[str] = set()
+        if quick_view_enabled and len(filtered) > quick_view_n:
             import time as _time
             from datetime import datetime as _dt
 
@@ -4008,7 +3953,7 @@ def render_task_graph_page():
 
         d3_graph["nodes"] = filtered
 
-        _leaf_structural = _structural_ids if leaf_view_enabled else None
+        _leaf_structural = _structural_ids if _structural_ids else None
         d3_data = prepare_embedded_graph_data(d3_graph, structural_ids=_leaf_structural)
 
         # Apply sidebar force tuning overrides to forceConfig before rendering
@@ -4238,6 +4183,101 @@ def render_recent_prompts():
             st.markdown("---")
 
 
+def render_workload_page():
+    """Render the Workload Overview — all leaf tasks in a treemap grouped by project."""
+    st.markdown("### Workload Overview")
+    st.caption(
+        "All actionable leaf tasks grouped by project. Size = downstream weight, color = status."
+    )
+
+    d3_graph = _load_merged_graph()
+    if not d3_graph:
+        st.warning("No graph data found. Run `generate-viz.sh` to generate.")
+        return
+
+    all_nodes = d3_graph.get("nodes", [])
+
+    # Build children map
+    children_map: dict[str, list[str]] = {}
+    for n in all_nodes:
+        p = n.get("parent")
+        if p:
+            children_map.setdefault(p, []).append(n["id"])
+
+    node_by_id = {n["id"]: n for n in all_nodes}
+
+    # Actionable statuses
+    actionable = {"active", "in_progress", "blocked", "merge_ready", "waiting", "review"}
+
+    # Identify leaf tasks: actionable nodes with no actionable children
+    leaf_ids: set[str] = set()
+    for n in all_nodes:
+        status = (n.get("status") or "inbox").lower()
+        if status not in actionable:
+            continue
+        children = children_map.get(n["id"], [])
+        has_actionable_child = any(
+            (node_by_id.get(c, {}).get("status") or "inbox").lower() in actionable for c in children
+        )
+        if not has_actionable_child:
+            leaf_ids.add(n["id"])
+
+    # Walk up parent chains to collect ancestors (structural nodes for treemap hierarchy)
+    ancestor_ids: set[str] = set()
+    for leaf_id in leaf_ids:
+        current = node_by_id.get(leaf_id, {}).get("parent")
+        while current and current in node_by_id and current not in ancestor_ids:
+            ancestor_ids.add(current)
+            current = node_by_id.get(current, {}).get("parent")
+
+    keep_ids = leaf_ids | ancestor_ids
+    structural_ids = ancestor_ids - leaf_ids
+
+    # Filter graph to keep only these nodes
+    filtered = [n for n in all_nodes if n["id"] in keep_ids]
+    d3_graph["nodes"] = filtered
+
+    # Status counts
+    from collections import Counter as _WCounter
+
+    status_counts = _WCounter(
+        (n.get("status") or "inbox").lower() for n in filtered if n["id"] in leaf_ids
+    )
+    parts = []
+    for s, label in [
+        ("active", "active"),
+        ("in_progress", "in-progress"),
+        ("blocked", "blocked"),
+        ("waiting", "waiting"),
+        ("review", "review"),
+    ]:
+        if status_counts.get(s, 0) > 0:
+            parts.append(f"{status_counts[s]} {label}")
+    status_str = " · ".join(parts) if parts else f"{len(leaf_ids)} tasks"
+    st.markdown(f"**{len(leaf_ids)} leaf tasks** — {status_str}")
+
+    # Prepare graph data with structural muting
+    d3_data = prepare_embedded_graph_data(d3_graph, structural_ids=structural_ids)
+
+    # Determine best layout: prefer treemap, fall back to circle_pack
+    available = d3_data.get("availableLayouts", [])
+    if "treemap" in available:
+        layout = "treemap"
+    elif "circle_pack" in available:
+        layout = "circle_pack"
+    elif "tree" in available:
+        layout = "tree"
+    else:
+        layout = "force"  # fallback
+
+    render_embedded_graph(
+        d3_data,
+        height=800,
+        project_filter="ALL",
+        layout_mode=layout,
+    )
+
+
 def render_session_summary():
     """Render summary of today's and yesterday's sessions."""
     from datetime import timedelta
@@ -4383,7 +4423,7 @@ def _handle_graph_action(action: str, task_id: str):
 # Navigation
 page = st.sidebar.radio(
     "View Mode",
-    ["Dashboard", "Manage Tasks", "Session Summary", "Task Graph"],
+    ["Dashboard", "Manage Tasks", "Session Summary", "Task Graph", "Workload"],
     index=0,
 )
 
@@ -4423,6 +4463,10 @@ if page == "Session Summary":
 
 if page == "Task Graph":
     render_task_graph_page()
+    st.stop()
+
+if page == "Workload":
+    render_workload_page()
     st.stop()
 
 # ADHD-optimized order: running -> needs me -> dropped -> context -> counts -> story
