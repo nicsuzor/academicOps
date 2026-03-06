@@ -4440,8 +4440,9 @@ def render_session_summary():
 # UNIFIED DASHBOARD - Single page: Graph + Project boxes
 # ============================================================================
 
-from lib.task_model import TaskStatus
 from task_manager_ui import render_task_editor
+
+from lib.task_model import TaskStatus
 
 
 @st.dialog("Edit Task")
@@ -5096,6 +5097,31 @@ except Exception:
     pass  # Path reconstruction is non-critical; fail silently
 
 render_spotlight_epic()
+
+# === NEEDS YOU SECTION ===
+# Show items that are blocked or waiting on human input
+_needs_you_tasks = load_tasks_from_index()
+_blocked_waiting = [
+    t
+    for t in _needs_you_tasks
+    if t.get("status") in ("blocked", "waiting", "review")
+    and t.get("assignee") in ("nic", None, "")
+    and t.get("type") not in ("goal", "project", "epic")
+]
+if _blocked_waiting:
+    _needs_html = "<div style='margin-bottom: 24px; padding: 12px 16px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px;'>"
+    _needs_html += f"<div style='font-weight: 600; font-size: 1em; color: #f87171; margin-bottom: 8px;'>🚨 NEEDS YOU ({len(_blocked_waiting)})</div>"
+    for _nt in _blocked_waiting[:5]:
+        _status_badge = _nt.get("status", "blocked")
+        _badge_color = "#f87171" if _status_badge == "blocked" else "#fbbf24"
+        _needs_html += "<div style='padding: 4px 0; font-size: 0.9em;'>"
+        _needs_html += f"<span style='background: {_badge_color}; color: #000; padding: 1px 6px; border-radius: 3px; font-size: 0.75em; margin-right: 6px;'>{esc(_status_badge)}</span>"
+        _needs_html += f"{esc(_nt.get('title', ''))}"
+        _needs_html += "</div>"
+    if len(_blocked_waiting) > 5:
+        _needs_html += f"<div style='font-size: 0.8em; opacity: 0.7; padding-top: 4px;'>+ {len(_blocked_waiting) - 5} more</div>"
+    _needs_html += "</div>"
+    st.markdown(_needs_html, unsafe_allow_html=True)
 
 # === DAILY STORY SECTION ===
 daily_story = analyzer.extract_daily_story()
