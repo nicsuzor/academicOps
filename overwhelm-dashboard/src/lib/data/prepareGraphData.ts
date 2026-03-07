@@ -154,6 +154,13 @@ export function prepareGraphData(
     const nodeById = new Map<string, any>(rawNodes.map(n => [n.id, n]));
     const nodeIds = new Set(rawNodes.map(n => n.id));
 
+    // Sanitize orphan parents: if a node's parent isn't in the graph, clear it
+    rawNodes.forEach(n => {
+        if (n.parent && !nodeIds.has(n.parent)) {
+            n.parent = null;
+        }
+    });
+
     const parentIdsInGraph = new Set<string>();
     rawNodes.forEach(n => {
         if (n.parent) parentIdsInGraph.add(n.parent);

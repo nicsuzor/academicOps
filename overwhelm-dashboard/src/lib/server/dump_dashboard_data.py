@@ -32,7 +32,7 @@ import io
 original_stdout = sys.stdout
 sys.stdout = io.StringIO()
 
-sys.path.insert(0, "/Users/suzor/src/academicOps/lib/overwhelm")
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../..", "lib", "overwhelm"))
 
 try:
     import dashboard
