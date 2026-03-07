@@ -222,7 +222,7 @@ def _guard_depth_under_limit(task: Task, **kwargs: Any) -> tuple[bool, str | Non
     return True, None
 
 
-def _guard_pr_url_set(task: Task, **kwargs: Any) -> tuple[bool, str | None]:
+def _guard_pr_metadata_set(task: Task, **kwargs: Any) -> tuple[bool, str | None]:
     """Guard: pr_url or pr must be provided for REVIEW/MERGE_READY status."""
     pr_url = kwargs.get("pr_url") or task.pr_url
     pr = kwargs.get("pr") or task.pr
@@ -290,7 +290,7 @@ TRANSITION_TABLE: dict[tuple[TaskStatus, TaskStatus], tuple[GuardFunc, str]] = {
     (TaskStatus.WAITING, TaskStatus.CANCELLED): (_guard_reason_set, "user_cancels"),
     (TaskStatus.WAITING, TaskStatus.FAILED): (_guard_diagnostic_set, "approval_timeout"),
     # From IN_PROGRESS
-    (TaskStatus.IN_PROGRESS, TaskStatus.REVIEW): (_guard_pr_url_set, "pr_filed"),
+    (TaskStatus.IN_PROGRESS, TaskStatus.REVIEW): (_guard_pr_metadata_set, "pr_filed"),
     (TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED): (
         _guard_unblock_condition_set,
         "dependency_discovered",
@@ -318,7 +318,7 @@ TRANSITION_TABLE: dict[tuple[TaskStatus, TaskStatus], tuple[GuardFunc, str]] = {
     (TaskStatus.BLOCKED, TaskStatus.ACTIVE): (_guard_always_pass, "unblock_condition_met"),
     (TaskStatus.BLOCKED, TaskStatus.DECOMPOSING): (_guard_always_pass, "unblock_condition_met"),
     (TaskStatus.BLOCKED, TaskStatus.IN_PROGRESS): (_guard_worker_id_set, "unblock_condition_met"),
-    (TaskStatus.BLOCKED, TaskStatus.REVIEW): (_guard_pr_url_set, "unblock_condition_met"),
+    (TaskStatus.BLOCKED, TaskStatus.REVIEW): (_guard_pr_metadata_set, "unblock_condition_met"),
     (TaskStatus.BLOCKED, TaskStatus.FAILED): (_guard_diagnostic_set, "blocked_timeout"),
     (TaskStatus.BLOCKED, TaskStatus.CANCELLED): (_guard_reason_set, "user_cancels"),
     # From DORMANT
