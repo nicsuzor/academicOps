@@ -243,6 +243,11 @@
         return layout === "force";
     }
 
+    // Precomputed layouts where node positions are fixed (no drag-to-reposition)
+    function isFixedLayout(layout) {
+        return layout.startsWith("tree") || layout.startsWith("circle") || layout.startsWith("arc");
+    }
+
     // --- Layout-specific node shape builders ---
     function buildTaskCardNode(g, d) {
         const hw = d.w/2, hh = d.h/2;
@@ -601,6 +606,14 @@
         }
     });
 
+    // Re-init when iframe becomes visible (e.g. tab switch)
+    new ResizeObserver(entries => {
+        const w = entries[0]?.contentRect?.width;
+        if (w > 10 && window._pendingArgs) {
+            onRender({args: window._pendingArgs});
+        }
+    }).observe(document.body);
+
     // Main render function called by Streamlit
     function onRender(data) {
         const args = data.args;
@@ -617,7 +630,21 @@
         const newLayout = args.layout_mode || "force";
 
         if (!graphData) {
+            // Defer init if container has zero dimensions (hidden tab iframe).
+            // Re-check on next render when Streamlit makes the iframe visible.
+            const cw = document.body.clientWidth || window.innerWidth;
+            if (!cw || cw < 10) {
+                window._pendingArgs = args;
+                window.rendered = false;  // allow re-init on next render
+                return;
+            }
             graphData = args.data;
+            currentFocusProject = newProject;
+            currentLayout = newLayout;
+            initGraph();
+        } else if (window._pendingArgs) {
+            // Previously deferred — now visible, do full init
+            delete window._pendingArgs;
             currentFocusProject = newProject;
             currentLayout = newLayout;
             initGraph();
@@ -707,12 +734,28 @@
           .on("click", (e, d) => selectNode(e, d))
           .call(d3.drag()
             .on("start", (e, d) => {
+                if (isFixedLayout(currentLayout)) {
+                    // Fixed layouts: track drag start for pan delegation
+                    e.sourceEvent.stopPropagation();
+                    d._dragStartTransform = d3.zoomTransform(svg.node());
+                    d._dragStartX = e.sourceEvent.clientX;
+                    d._dragStartY = e.sourceEvent.clientY;
+                    return;
+                }
                 if (isForceLayout(currentLayout) && simulation) {
                     simulation.alphaTarget(0.1).restart();
                 }
                 d.fx = d.x; d.fy = d.y;
             })
             .on("drag", (e, d) => {
+                if (isFixedLayout(currentLayout)) {
+                    // Fixed layouts: pan the canvas instead of moving the node
+                    const t = d._dragStartTransform;
+                    const dx = e.sourceEvent.clientX - d._dragStartX;
+                    const dy = e.sourceEvent.clientY - d._dragStartY;
+                    svg.call(zoom.transform, t.translate(dx / t.k, dy / t.k));
+                    return;
+                }
                 d.fx = e.x; d.fy = e.y;
                 if (!isForceLayout(currentLayout)) {
                     d.x = e.x; d.y = e.y;
@@ -720,6 +763,7 @@
                 }
             })
             .on("end", (e, d) => {
+                if (isFixedLayout(currentLayout)) return;
                 if (isForceLayout(currentLayout) && simulation) {
                     simulation.alphaTarget(0);
                 }
@@ -1043,6 +1087,84 @@
                 arcNodes.forEach(n => {
                     n.x = margin + ((n.x - minX) / xRange) * availW;
                     n.y = (n.depth || 0) * bandH;  // top = depth 0 (goals/projects)
+                });
+            }
+
+            // --- Client-side treemap layout when server data lacks w/h ---
+            if (currentLayout.startsWith("tree") && !nodes.some(n => n._lw > 0)) {
+                const CANVAS = 3000;
+                // Build D3 hierarchy from parent pointers
+                const byId = new Map(nodes.map(n => [n.id, n]));
+                const roots = [];
+                nodes.forEach(n => {
+                    if (!n.parent || !byId.has(n.parent)) roots.push(n);
+                });
+                // Create a virtual root if multiple roots
+                const rootData = roots.length === 1 ? roots[0] : {id: "__root__", _synth: true, dw: 1};
+                function buildChildren(nd) {
+                    const kids = nodes.filter(c => c.parent === nd.id);
+                    if (kids.length === 0) return undefined;
+                    return kids.map(k => ({...k, children: buildChildren(k)}));
+                }
+                let hierData;
+                if (roots.length === 1) {
+                    hierData = {...rootData, children: buildChildren(rootData)};
+                } else {
+                    hierData = {...rootData, children: roots.map(r => ({...r, children: buildChildren(r)}))};
+                }
+                const hierarchy = d3.hierarchy(hierData)
+                    .sum(d => d.children ? 0 : Math.max(1, d.dw || 1))
+                    .sort((a, b) => b.value - a.value);
+                d3.treemap().size([CANVAS, CANVAS]).padding(2).round(true)(hierarchy);
+                // Map computed layout back to nodes
+                const layoutMap = new Map();
+                hierarchy.each(d => layoutMap.set(d.data.id, d));
+                nodes.forEach(n => {
+                    const hd = layoutMap.get(n.id);
+                    if (hd) {
+                        n.x = (hd.x0 + hd.x1) / 2;
+                        n.y = (hd.y0 + hd.y1) / 2;
+                        n._lw = Math.max(1, hd.x1 - hd.x0);
+                        n._lh = Math.max(1, hd.y1 - hd.y0);
+                        n._hasLayout = true;
+                    }
+                });
+            }
+
+            // --- Client-side circle pack layout when server data lacks r ---
+            if (currentLayout.startsWith("circle") && !nodes.some(n => n._lr > 0)) {
+                const CANVAS = 3000;
+                const byId = new Map(nodes.map(n => [n.id, n]));
+                const roots = [];
+                nodes.forEach(n => {
+                    if (!n.parent || !byId.has(n.parent)) roots.push(n);
+                });
+                const rootData = roots.length === 1 ? roots[0] : {id: "__root__", _synth: true, dw: 1};
+                function buildChildrenCP(nd) {
+                    const kids = nodes.filter(c => c.parent === nd.id);
+                    if (kids.length === 0) return undefined;
+                    return kids.map(k => ({...k, children: buildChildrenCP(k)}));
+                }
+                let hierData;
+                if (roots.length === 1) {
+                    hierData = {...rootData, children: buildChildrenCP(rootData)};
+                } else {
+                    hierData = {...rootData, children: roots.map(r => ({...r, children: buildChildrenCP(r)}))};
+                }
+                const hierarchy = d3.hierarchy(hierData)
+                    .sum(d => d.children ? 0 : Math.max(1, d.dw || 1))
+                    .sort((a, b) => b.value - a.value);
+                d3.pack().size([CANVAS, CANVAS]).padding(2)(hierarchy);
+                const layoutMap = new Map();
+                hierarchy.each(d => layoutMap.set(d.data.id, d));
+                nodes.forEach(n => {
+                    const hd = layoutMap.get(n.id);
+                    if (hd) {
+                        n.x = hd.x;
+                        n.y = hd.y;
+                        n._lr = Math.max(2, hd.r);
+                        n._hasLayout = true;
+                    }
                 });
             }
 
