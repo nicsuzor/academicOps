@@ -33,8 +33,8 @@ academicOps/
 │   ├── rules/        # AXIOMS.md (inviolable principles)
 │   └── skills/       # Domain skills
 ├── .github/
-│   ├── agents/       # Agent prompts (conceptual-review, merge-prep, worker)
-│   └── workflows/    # GitHub Actions (11 workflows)
+│   ├── agents/       # Agent prompts (axiom-review, review-and-fix, merge-prep, worker)
+│   └── workflows/    # GitHub Actions (12 workflows)
 ├── aops-core/        # Framework core
 │   ├── hooks/        # Session lifecycle hooks
 │   ├── lib/          # Shared libraries (gates, hydration, tasks, etc.)
@@ -95,6 +95,6 @@ workflow-length-check. Run `uv run pre-commit run --all-files` to check before c
 
 ## PR Review Pipeline
 
-PRs are reviewed by automated agents (conceptual-review, custodiet-reviewer, merge-prep).
+PRs are reviewed by automated agents (axiom-review, review-and-fix, merge-prep).
 The pipeline runs on PR open/push. Write clear PR descriptions explaining what
 changed and why — the agents use this to evaluate scope compliance.

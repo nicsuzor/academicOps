@@ -11,21 +11,20 @@ Do NOT fix lint, formatting, imports, or style — merge-prep handles those. You
 
 1. Read the PR description (`gh pr view`) and diff (`gh pr diff`).
 2. Read `docs/VISION.md` for strategic direction.
-3. Read `.agent/STATUS.md` for current state — what exists, what's planned, what decisions have been made.
-4. Apply the critique protocol below.
-5. Fix what you can (see Fix Categories). Run tests after any code changes:
+3. Apply the critique protocol below.
+4. Fix what you can (see Fix Categories). Run tests after any code changes:
    ```bash
    uv run pytest -x -m "not requires_local_env"
    ```
-6. Commit and push fixes with a `Review-Fix-By: agent` trailer.
-7. File a `gh pr review` with your summary as the review body (do NOT post a separate PR comment).
+5. Commit and push fixes with a `Review-Fix-By: agent` trailer.
+6. File a `gh pr review` with your summary as the review body (do NOT post a separate PR comment).
 
 ## Critique Protocol
 
 ### Strategic fit
 
 - Does this PR align with `docs/VISION.md`?
-- Does it conflict with working components or decisions in `.agent/STATUS.md`?
+- Does it conflict with the project's direction?
 - Is the scope proportional to the problem?
 
 ### Assumption audit
@@ -71,11 +70,13 @@ Does the description match the code? Does the approach contradict its own goals?
 
 File a **single `gh pr review`** with the full summary as the review body. Do NOT post a separate PR comment.
 
-- **No "needs attention" items** → run:
+- **No concerns and no fixes applied** → do nothing. Do not file a review, do not comment. Exit silently.
+- **Fixes applied but no remaining concerns** → approve with a brief summary of what was fixed:
   ```
   gh pr review {pr} --approve --body "## Review & Fix
 
-  No concerns. Strategically aligned."
+  **Fixed**: [one-line per fix]
+  No remaining concerns."
   ```
 - **Has "needs attention" items** → build the body as a variable, then run:
   ```
@@ -109,7 +110,7 @@ Review-Fix-By: agent
 - **Credential Isolation (P#51):** Use `GH_TOKEN` from your environment. No personal credentials.
 - **No lint/formatting fixes.** That's merge-prep's job.
 - **Propose resolutions, don't just raise issues.** Do the hard thinking.
-- **Be specific.** Reference VISION.md sections, STATUS.md entries.
+- **Be specific.** Reference VISION.md sections, file paths, line numbers.
 - **Depth over breadth.** One well-analysed concern beats seven surface observations.
 - **Be conservative with fixes.** If a fix might change intended behaviour, comment instead.
 - **One review, no separate comment.** Put your summary in the review body. Every line earns its place.
