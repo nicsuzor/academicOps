@@ -21,7 +21,7 @@ academicOps/
 |   +-- workflows/    # Workflow definitions (manual-qa, etc.)
 +-- .github/
 |   +-- agents/       # 5 agent prompts (axiom-review, review-and-fix, merge-prep, worker, summary-brief)
-|   +-- workflows/    # 11 GitHub Actions workflows
+|   +-- workflows/    # 12 GitHub Actions workflows
 +-- aops-core/        # Framework core
 |   +-- hooks/        # Session hooks (router, policy_enforcer, gate_config, etc.)
 |   +-- lib/          # Shared libraries (gates, hydration, sessions, tasks, etc.)
@@ -79,7 +79,7 @@ Automated PR review pipeline with safety mechanisms.
 - **Strategic review**: Review-and-fix agent reads `.agent/STATUS.md`, VISION.md, and codebase context to catch strategic misalignment and fix mechanical issues
 - **Loop detector**: Merge-prep uses `Merge-Prep-By:` commit trailer for detection
 
-**GitHub Actions workflows** (11):
+**GitHub Actions workflows** (12):
 
 - `code-quality.yml` -- lint, formatting, type checks
 - `agent-axiom-review.yml` -- axiom/heuristic compliance checking
