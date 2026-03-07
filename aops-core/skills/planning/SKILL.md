@@ -1,7 +1,17 @@
 ---
 name: planning
+type: skill
 category: instruction
 description: Patterns for decomposing work under uncertainty - spikes, dependencies, and knowledge flow
+triggers:
+  - "decomposition patterns"
+  - "spike tasks"
+  - "dependency types"
+modifies_files: false
+needs_task: true
+mode: conversational
+domain:
+  - operations
 allowed-tools: mcp__pkb__create_task,mcp__pkb__update_task,mcp__pkb__create_task,mcp__pkb__get_task,Read
 version: 1.0.0
 permalink: skills-planning

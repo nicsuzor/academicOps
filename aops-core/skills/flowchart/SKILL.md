@@ -1,7 +1,17 @@
 ---
 name: flowchart
+type: skill
 category: instruction
 description: Creating clear, readable, and attractive Mermaid flowcharts with best practices for accessibility, layout, and maintainability.
+triggers:
+  - "create flowchart"
+  - "mermaid diagram"
+  - "process flow"
+modifies_files: true
+needs_task: true
+mode: execution
+domain:
+  - design
 allowed-tools: Read,Write,Edit
 version: 1.0.0
 permalink: skills-flowchart-skill

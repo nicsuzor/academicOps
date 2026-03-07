@@ -1,7 +1,20 @@
 ---
 name: qa
+type: skill
 category: instruction
 description: QA verification, qualitative assessment, criteria design, and test planning
+triggers:
+  - "verify"
+  - "QA check"
+  - "acceptance test"
+  - "quality check"
+  - "is it done"
+  - "validate work"
+modifies_files: true
+needs_task: true
+mode: execution
+domain:
+  - quality-assurance
 allowed-tools: Task,Read,Glob,Grep
 version: 1.1.0
 permalink: skills-qa

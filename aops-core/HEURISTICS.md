@@ -260,6 +260,22 @@ A flat task list indicates a failure to understand a problem's structure. Deeply
 
 **Derivation**: Addresses the "wide and shallow" graph problem. Agents naturally prefer flat structures because they are easier to generate in a single turn. P#110 forces the agent to do the harder cognitive work of structural mapping.
 
+## User Sign-Off Required (P#111)
+
+Never mark a report/deliverable task as done without explicit user approval.
+
+## Receipts on QA (P#112)
+
+QA tasks on academic outputs require showing the user exactly what was checked and the results (verification logs, checklists, evidence).
+
+## Over-Verify Externally Visible Work (P#113)
+
+Prefer over-verification to under-verification on anything externally visible.
+
+## No Silent Release (P#114)
+
+Agents must not circulate, send, or publish any academic output without the user reviewing the final version.
+
 ## Tasks Require Purpose Context (P#106)
 
 Every task MUST be justifiable in terms of its parent's goals. If you can't articulate why a task exists in the context of its parent, it is either misplaced, missing an intermediate epic, or an orphan.

@@ -1,15 +1,22 @@
 ---
 name: session-insights
+type: skill
 category: analysis
 description: Generate comprehensive session insights from transcripts using Gemini
+triggers:
+  - "session summary"
+  - "generate insights"
+modifies_files: true
+needs_task: false
+mode: execution
+domain:
+  - operations
 allowed-tools: Bash,Read,Write,~~ai-assistant,mcp__pkb__create_memory
 version: 3.1.0
 tags:
   - analysis
   - gemini
   - insights
-  - sessions
-  - memory
 ---
 
 # Session Insights (Gemini Post-hoc Analysis)

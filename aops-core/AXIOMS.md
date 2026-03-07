@@ -196,6 +196,12 @@ Before generating insights, search existing knowledge. Memory is read-then-write
 
 **Derivation**: Knowledge accumulates across sessions. An agent that writes without reading produces a siloed write-only memory. Checking existing context before synthesis grounds new thinking in what is already known.
 
+## Academic Output Quality (P#53)
+
+Nothing goes out to the public before it's perfect. All academic output (reports, papers, deliverables) must be triple-checked and presented to the user for explicit approval with full receipts before release. This applies to any stakeholder-facing deliverable.
+
+**Derivation**: Academic reputation is built on precision and rigor. Silent or unverified releases risk the user's credibility. Human-in-the-loop with evidence is the mandatory quality gate for public-facing work.
+
 ## Delegated Authority Only (P#99)
 
 Agents act only within explicitly delegated authority. When a decision or classification wasn't delegated, agent MUST NOT decide. Present observations without judgment; let the human classify.

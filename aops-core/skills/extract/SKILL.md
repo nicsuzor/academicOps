@@ -1,7 +1,19 @@
 ---
 name: extract
+type: skill
 category: instruction
 description: General extraction/ingestion skill that routes to specific workflows based on input type. Extracts structured information from documents, emails, reviews, feedback, and other sources.
+triggers:
+  - "extract information"
+  - "extract from document"
+  - "ingest"
+  - "extract decisions"
+  - "extract training data"
+modifies_files: true
+needs_task: true
+mode: execution
+domain:
+  - operations
 allowed-tools: Read,Grep,Glob,Edit,Write,Skill,Bash
 version: 1.0.0
 permalink: skills-extract
