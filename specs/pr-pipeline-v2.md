@@ -1,10 +1,11 @@
 ---
 title: PR Pipeline v2
 type: spec
-category: workflow
 status: active
-created: 2026-03-04
-supersedes: specs/pr-process.md
+tier: workflow
+depends_on: []
+tags: [workflow, pr-pipeline]
+supersedes: pr-process.md
 ---
 
 # PR Pipeline v2

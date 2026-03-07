@@ -1,3 +1,12 @@
+---
+title: Task Focus Scoring
+type: spec
+status: active
+tier: ux
+depends_on: []
+tags: [spec, ux, scoring, dashboard]
+---
+
 # Task Focus Scoring
 
 How tasks are classified as "hot" (visible in default views) or "cold" (searchable but hidden), and how the ready queue is ranked.
@@ -170,7 +179,7 @@ This spec extends the server's computation scope. The focus score is determinist
 
 The key distinction: the **formula and weights** are configured externally (agent/user domain), while the **computation** is server-side (same category as graph metrics like downstream dependency counts). The threshold is a configured number, not an inference.
 
-This is explicitly acknowledged as an extension of the server's role from pure data access to include deterministic aggregation. The `mcp-decomposition-tools-v2.md` and `pkb-server-spec.md` specs should be updated to reflect this when implementation proceeds.
+This is explicitly acknowledged as an extension of the server's role from pure data access to include deterministic aggregation. The `mcp-decomposition-tools.md` and `pkb-server-spec.md` specs should be updated to reflect this when implementation proceeds.
 
 ## Giving effect
 

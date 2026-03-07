@@ -1,15 +1,10 @@
 ---
 title: Ultra Vires Custodiet
-permalink: ultra-vires-custodiet
 type: spec
-category: spec
 status: partial
-tags:
-  - framework
-  - agent-behavior
-  - guardrails
-  - enforcement
-created: 2025-12-30
+tier: core
+depends_on: [enforcement]
+tags: [framework, agent-behavior, guardrails, enforcement]
 ---
 
 # Ultra Vires Custodiet

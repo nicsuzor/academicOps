@@ -2,9 +2,13 @@
 title: Workflow Constraints Specification
 type: spec
 category: architecture
-status: draft
+status: partial
+tier: core
+depends_on: [workflow-system-spec]
 created: 2026-01-23
+tags: [spec, architecture, constraints, workflow]
 related: [workflow-system-spec, prompt-hydration, enforcement]
+note: "Partially implemented via 100-line workflow limit and substance moved to Skills"
 ---
 
 # Workflow Constraints Specification

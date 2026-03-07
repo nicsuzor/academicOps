@@ -1,3 +1,12 @@
+---
+title: Session Insights Generation Prompt
+type: prompt-template
+status: active
+tier: observability
+depends_on: [framework-observability]
+tags: [prompt-template, observability, session-insights]
+---
+
 # Session Insights Generation Prompt
 
 ## Giving Effect

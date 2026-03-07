@@ -1,11 +1,10 @@
 ---
 title: Enforcement Architecture
 type: spec
-category: spec
 status: implemented
-permalink: enforcement
+tier: core
+depends_on: []
 tags: [enforcement, compliance, framework-architecture, verification]
-related: [[framework-observability]], [[feedback-loops]], [[workflow-system-spec]]
 ---
 
 # Enforcement Architecture

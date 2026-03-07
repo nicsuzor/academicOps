@@ -1,6 +1,10 @@
 ---
 title: Polecat Supervision Workflow
+type: spec
 status: active
+tier: polecat
+depends_on: [polecat-swarms]
+tags: [spec, polecat, architecture]
 created: 2026-02-06
 updated: 2026-02-06
 implements:

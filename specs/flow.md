@@ -1,8 +1,10 @@
 ---
 title: v1.0 Core Loop Specification
 type: spec
-description: The complete execution flow for aops-core v1.0 - hydration, workflow, QA, reflection
-status: DRAFT - PENDING APPROVAL (v2)
+status: draft
+tier: core
+depends_on: [prompt-hydration, workflow-system-spec]
+tags: []
 ---
 
 # v1.0 Core Loop
