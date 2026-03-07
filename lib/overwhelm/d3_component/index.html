@@ -243,6 +243,11 @@
         return layout === "force";
     }
 
+    // Precomputed layouts where node positions are fixed (no drag-to-reposition)
+    function isFixedLayout(layout) {
+        return layout.startsWith("tree") || layout.startsWith("circle") || layout.startsWith("arc");
+    }
+
     // --- Layout-specific node shape builders ---
     function buildTaskCardNode(g, d) {
         const hw = d.w/2, hh = d.h/2;
@@ -729,12 +734,28 @@
           .on("click", (e, d) => selectNode(e, d))
           .call(d3.drag()
             .on("start", (e, d) => {
+                if (isFixedLayout(currentLayout)) {
+                    // Fixed layouts: track drag start for pan delegation
+                    e.sourceEvent.stopPropagation();
+                    d._dragStartTransform = d3.zoomTransform(svg.node());
+                    d._dragStartX = e.sourceEvent.clientX;
+                    d._dragStartY = e.sourceEvent.clientY;
+                    return;
+                }
                 if (isForceLayout(currentLayout) && simulation) {
                     simulation.alphaTarget(0.1).restart();
                 }
                 d.fx = d.x; d.fy = d.y;
             })
             .on("drag", (e, d) => {
+                if (isFixedLayout(currentLayout)) {
+                    // Fixed layouts: pan the canvas instead of moving the node
+                    const t = d._dragStartTransform;
+                    const dx = e.sourceEvent.clientX - d._dragStartX;
+                    const dy = e.sourceEvent.clientY - d._dragStartY;
+                    svg.call(zoom.transform, t.translate(dx / t.k, dy / t.k));
+                    return;
+                }
                 d.fx = e.x; d.fy = e.y;
                 if (!isForceLayout(currentLayout)) {
                     d.x = e.x; d.y = e.y;
@@ -742,6 +763,7 @@
                 }
             })
             .on("end", (e, d) => {
+                if (isFixedLayout(currentLayout)) return;
                 if (isForceLayout(currentLayout) && simulation) {
                     simulation.alphaTarget(0);
                 }
