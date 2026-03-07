@@ -166,10 +166,10 @@ reportMissingTypeStubs = false
 # Required by gate_config.py, which intentionally has no defaults (fail-fast design).
 # Values must match valid gate engine verdicts: warn, deny, or block.
 env = [
-    "HANDOVER_GATE_MODE=warn",
-    "QA_GATE_MODE=block",
-    "CUSTODIET_GATE_MODE=block",
-    "HYDRATION_GATE_MODE=warn",
+  "HANDOVER_GATE_MODE=warn",
+  "QA_GATE_MODE=block",
+  "CUSTODIET_GATE_MODE=block",
+  "HYDRATION_GATE_MODE=warn",
 ]
 testpaths = ["tests", "aops-core/tests"]
 pythonpath = [".", "aops-core", "aops-core/hooks", "aops-core/lib", "lib/overwhelm"]

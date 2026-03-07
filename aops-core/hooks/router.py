@@ -32,12 +32,6 @@ if str(AOPS_CORE_DIR) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE_DIR))
 
 try:
-    from lib.gate_model import GateResult, GateVerdict
-    from lib.gates.registry import GateRegistry
-    from lib.hook_utils import is_subagent_session
-    from lib.session_paths import get_pid_session_map_path, get_session_short_hash
-    from lib.session_state import SessionState
-
     from hooks.gate_config import COMPLIANCE_SUBAGENT_TYPES, extract_subagent_type
     from hooks.schemas import (
         CanonicalHookOutput,
@@ -49,6 +43,11 @@ try:
         HookContext,
     )
     from hooks.unified_logger import log_event_to_session, log_hook_event
+    from lib.gate_model import GateResult, GateVerdict
+    from lib.gates.registry import GateRegistry
+    from lib.hook_utils import is_subagent_session
+    from lib.session_paths import get_pid_session_map_path, get_session_short_hash
+    from lib.session_state import SessionState
 except ImportError as e:
     # Fail fast if schemas missing
     print(f"CRITICAL: Failed to import: {e}", file=sys.stderr)
@@ -146,10 +145,7 @@ def format_gate_status_icons(state: SessionState) -> str:
     if state.main_agent.current_task:
         parts.append(f"▶ {state.main_agent.current_task}")
 
-    if not parts:
-        return "✓"
-
-    return " ".join(parts)
+    return " ".join(parts) if parts else ""
 
 
 # --- Session Management ---
@@ -416,10 +412,11 @@ class HookRouter:
         # Append gate status icons to system message
         try:
             gate_status = format_gate_status_icons(state)
-            if merged_result.system_message:
-                merged_result.system_message = f"{merged_result.system_message} {gate_status}"
-            else:
-                merged_result.system_message = gate_status
+            if gate_status:
+                if merged_result.system_message:
+                    merged_result.system_message = f"{merged_result.system_message} {gate_status}"
+                else:
+                    merged_result.system_message = gate_status
         except Exception as e:
             print(f"WARNING: Gate status icons failed: {e}", file=sys.stderr)
 
