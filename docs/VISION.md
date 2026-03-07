@@ -30,9 +30,9 @@ In every local session, the framework defines and enforces universal and modular
 
 ### 2. Asynchronous quality assurance (GitHub as automation hub)
 
-GitHub serves as the coordination layer for agents and humans. PR pipelines run automated review workflows — conceptual review (strategic alignment + assumption hygiene) — asynchronously after work is submitted. This catches what synchronous enforcement misses and provides the audit trail.
+GitHub serves as the coordination layer for agents and humans. PR pipelines run automated review workflows — axiom compliance checking and strategic review — asynchronously after work is submitted. This catches what synchronous enforcement misses and provides the audit trail.
 
-- PR Pipeline: Setup → Conceptual Review → Merge Prep → Human Approval
+- PR Pipeline: Setup → Axiom Review + Review & Fix → Merge Prep → Human Approval
 - Polecat workers execute tasks autonomously via GitHub Issues
 - CI/CD enforces linting, type checking, and gatekeeper checks
 
