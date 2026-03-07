@@ -169,6 +169,7 @@ env = [
   "QA_GATE_MODE=block",
   "CUSTODIET_GATE_MODE=block",
   "HYDRATION_GATE_MODE=warn",
+  "COMMIT_GATE_MODE=deny",
 ]
 testpaths = ["tests", "aops-core/tests"]
 pythonpath = [".", "aops-core", "aops-core/hooks", "aops-core/lib", "lib/overwhelm"]
