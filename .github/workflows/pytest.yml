@@ -1,20 +1,19 @@
 name: Pytest
 
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    types: [opened, synchronize]
   workflow_dispatch:
-
-concurrency:
-  group: pytest-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, assigned]
 
 jobs:
   pytest:
     name: Pytest
     runs-on: ubuntu-latest
+    concurrency:
+      group: pytest-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: true
 
     steps:
       - uses: actions/checkout@v4
@@ -28,6 +27,7 @@ jobs:
         uses: astral-sh/setup-uv@v4
         with:
           version: "latest"
+          enable-cache: true
 
       - name: Install dependencies
         run: uv sync --frozen
@@ -42,4 +42,8 @@ jobs:
       - name: Run pytest
         env:
           AOPS: ${{ github.workspace }}
+          HANDOVER_GATE_MODE: warn
+          QA_GATE_MODE: block
+          CUSTODIET_GATE_MODE: block
+          HYDRATION_GATE_MODE: warn
         run: uv run pytest -m "not requires_local_env"
