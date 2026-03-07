@@ -316,27 +316,45 @@
           .attr("x", -w/2).attr("y", -h/2).attr("width", w).attr("height", h)
           .attr("fill", fillColor).attr("fill-opacity", fillOpacity)
           .attr("stroke", d.borderColor).attr("stroke-width", isParent ? 2 : 1);
-        if (isParent && w > 40) {
-            // Parent label at top-left corner
-            const fs = Math.max(7, Math.min(11, w * 0.035));
+        if (isParent && w > 80 && h > 20) {
+            // Parent label: pill tag on top border, only if node is large enough
+            const fs = Math.max(7, Math.min(12, w * 0.03));
+            const maxChars = Math.max(3, Math.floor((w - 16) / (fs * 0.55)));
+            const labelText = (d.label || '').substring(0, maxChars);
+            const textW = labelText.length * fs * 0.55 + 8;
+            const tagH = Math.min(fs + 6, h * 0.4);  // Never taller than 40% of node
+            const tx = -w/2 + 4;
+            const ty = -h/2;
+            g.append("rect")
+              .attr("x", tx).attr("y", ty)
+              .attr("width", Math.min(textW, w - 8)).attr("height", tagH)
+              .attr("rx", 3)
+              .attr("fill", fillColor).attr("fill-opacity", 0.85)
+              .attr("pointer-events", "none");
             g.append("text")
-              .attr("x", -w/2 + 4).attr("y", -h/2 + fs + 2)
-              .attr("font-size", fs + "px").attr("fill", fillColor)
-              .attr("opacity", 0.85).attr("font-weight", "700")
+              .attr("x", tx + 4).attr("y", ty + Math.min(fs, tagH - 2) + 1)
+              .attr("font-size", Math.min(fs, tagH - 4) + "px").attr("fill", "#fff")
+              .attr("font-weight", "600")
               .attr("pointer-events", "none")
-              .text((d.label || '').substring(0, 35));
-        } else if (w > 30 && h > 16) {
+              .text(labelText);
+        } else if (w > 20 && h > 12) {
+            // Leaf/small node label — scale font to fit, truncate if needed
             const label = d.label || '';
-            const fs = Math.max(6, Math.min(11, Math.min(w, h) * 0.25));
-            const pad = 3;
+            const fs = Math.max(5, Math.min(11, Math.min(w * 0.22, h * 0.35)));
+            const pad = 2;
+            const availW = w - pad * 2;
+            const availH = h - pad * 2;
+            // Estimate max chars that fit on one line
+            const maxChars = Math.max(2, Math.floor(availW / (fs * 0.55)));
+            const truncated = label.length > maxChars * 3 ? label.substring(0, maxChars * 3) : label;
             g.append("foreignObject")
               .attr("x", -w/2 + pad).attr("y", -h/2 + pad)
-              .attr("width", w - pad * 2).attr("height", h - pad * 2)
+              .attr("width", availW).attr("height", availH)
               .append("xhtml:div")
               .style("font-size", fs + "px")
               .style("font-family", "-apple-system, sans-serif")
               .style("color", d.textColor || "#fff")
-              .style("line-height", "1.2")
+              .style("line-height", "1.15")
               .style("overflow", "hidden")
               .style("word-wrap", "break-word")
               .style("overflow-wrap", "break-word")
@@ -344,7 +362,7 @@
               .style("width", "100%")
               .style("height", "100%")
               .style("pointer-events", "none")
-              .text(label);
+              .text(truncated);
         }
     }
 
@@ -763,14 +781,32 @@
           if (n.x != null) { n._origX = n.x; n._origY = n.y; }
         });
 
-        // Edges
-        linkEls = container.append("g")
-          .selectAll("path").data(links).join("path")
+        // Edges: two layers so dependency edges render in front of refs/parents
+        const refLinkLayer = container.append("g").attr("class", "ref-link-layer");
+        const depLinkLayer = container.append("g").attr("class", "dep-link-layer");
+
+        // Ref/parent edges (behind)
+        const refLinks = links.filter(l => l.type !== "depends_on");
+        const depLinks = links.filter(l => l.type === "depends_on");
+
+        const refLinkEls = refLinkLayer
+          .selectAll("path").data(refLinks).join("path")
           .attr("fill","none").attr("stroke", d => d.color).attr("stroke-width", d => d.width)
           .attr("stroke-dasharray", d => d.dash || null)
           .attr("marker-end", d => `url(#${mMap[d.type]||"ar"})`)
-          .attr("opacity", d => d.type === "ref" ? 0.4 : 0.7)
+          .attr("opacity", d => d.type === "ref" ? 0.3 : 0.5)
           .attr("stroke-linecap","round").attr("stroke-linejoin","round");
+
+        // Dependency edges (front) — bold, bright red, high contrast
+        const depLinkEls = depLinkLayer
+          .selectAll("path").data(depLinks).join("path")
+          .attr("fill","none").attr("stroke", "#ef4444").attr("stroke-width", 4)
+          .attr("marker-end", `url(#ad)`)
+          .attr("opacity", 0.9)
+          .attr("stroke-linecap","round").attr("stroke-linejoin","round");
+
+        // Combine into a single selection for existing code compatibility
+        linkEls = container.selectAll(".ref-link-layer path, .dep-link-layer path");
 
         // Nodes
         // Critical path overlay — above edges, below nodes
@@ -846,19 +882,33 @@
 
     // Edge routers: one function per layout strategy
     function routeContainmentEdges() {
-        // Containment layouts: optionally show dependency edges
+        // Containment layouts: optionally show dependency edges as bold curves
         if (graphData.showEdges) {
-            linkEls.attr("opacity", d => {
-                if (d.type === "parent") return 0;  // hierarchy shown by containment
-                if (d.type === "ref") return 0.15;
-                return 0.4;  // depends_on
-            });
+            linkEls
+                .attr("opacity", d => {
+                    if (d.type === "depends_on") return 0.95;
+                    if (d.type === "ref" && graphData.showRefs) return 0.3;
+                    return 0;  // hide parent edges; refs hidden unless showRefs
+                })
+                .attr("stroke-width", d => {
+                    if (d.type === "depends_on") return 5;
+                    if (d.type === "ref" && graphData.showRefs) return 1.5;
+                    return 0;
+                })
+                .attr("stroke", d => d.type === "depends_on" ? "#ef4444" : d.color)
+                .attr("stroke-dasharray", d => d.type === "ref" ? "6,4" : null);
             linkEls.attr("d", d => {
                 if (d.type === "parent") return null;
                 const sx = d.source.x, sy = d.source.y;
                 const tx = d.target.x, ty = d.target.y;
                 if (sx == null || tx == null) return null;
-                return `M${sx},${sy} L${tx},${ty}`;
+                // Curved arc: control point offset perpendicular to the line
+                const dx = tx - sx, dy = ty - sy;
+                const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                const bulge = Math.min(dist * 0.3, 150);
+                const mx = (sx + tx) / 2 - dy / dist * bulge;
+                const my = (sy + ty) / 2 + dx / dist * bulge;
+                return `M${sx},${sy} Q${mx},${my} ${tx},${ty}`;
             });
         } else {
             linkEls.attr("d", null).attr("opacity", 0);
@@ -869,7 +919,15 @@
         // Arc diagram: quadratic Bezier arcs connecting depth-stratified nodes.
         // Within the same row (same depth) arcs curve upward above the row.
         // Cross-row arcs (parent→child spanning depths) are drawn as S-curves.
-        linkEls.attr("opacity", d => d.type === "ref" ? 0.15 : 0.5);
+        linkEls
+            .attr("opacity", d => {
+                if (d.type === "ref" && !graphData.showRefs) return 0;
+                if (d.type === "ref") return 0.15;
+                if (d.type === "depends_on") return 0.9;
+                return 0.5;
+            })
+            .attr("stroke-width", d => d.type === "depends_on" ? 4 : d.width)
+            .attr("stroke", d => d.type === "depends_on" ? "#ef4444" : d.color);
         linkEls.attr("d", d => {
             const sx = d.source.x, sy = d.source.y;
             const tx = d.target.x, ty = d.target.y;
@@ -890,7 +948,15 @@
 
     function routeForceEdges() {
         // Force / precomputed / atlas: full edge routing
-        linkEls.attr("opacity", d => d.type === "ref" ? 0.4 : 0.7);
+        linkEls
+            .attr("opacity", d => {
+                if (d.type === "ref" && !graphData.showRefs) return 0;
+                if (d.type === "ref") return 0.3;
+                if (d.type === "depends_on") return 0.9;
+                return 0.7;
+            })
+            .attr("stroke-width", d => d.type === "depends_on" ? 4 : d.width)
+            .attr("stroke", d => d.type === "depends_on" ? "#ef4444" : d.color);
         linkEls.attr("d", d => {
             const sx = d.source.x, sy = d.source.y;
             const tx = d.target.x, ty = d.target.y;
@@ -1166,8 +1232,8 @@
                 });
             }
 
-            // --- Client-side treemap layout when server data lacks w/h ---
-            if (currentLayout.startsWith("tree") && !nodes.some(n => n._lw > 0)) {
+            // --- Client-side treemap layout (always recompute for consistent padding) ---
+            if (currentLayout.startsWith("tree")) {
                 const CANVAS = 3000;
                 // Build D3 hierarchy from parent pointers
                 const byId = new Map(nodes.map(n => [n.id, n]));
@@ -1189,12 +1255,12 @@
                     hierData = {...rootData, children: roots.map(r => ({...r, children: buildChildren(r)}))};
                 }
                 const hierarchy = d3.hierarchy(hierData)
-                    .sum(d => d.children ? 0 : Math.max(1, d.dw || 1))
+                    .sum(d => d.children ? 0 : Math.max(1, Math.sqrt(d.dw || 1)))
                     .sort((a, b) => b.value - a.value);
                 d3.treemap().size([CANVAS, CANVAS])
-                    .paddingTop(18)     // Space for parent label
-                    .paddingInner(3)    // Between siblings
-                    .paddingOuter(4)    // Between parent boundary and children
+                    .paddingInner(8)    // Between siblings
+                    .paddingOuter(10)   // Between parent boundary and children
+                    .paddingTop(24)     // Space for parent label — MUST be after paddingOuter (which overwrites all sides)
                     .round(true)(hierarchy);
                 // Map computed layout back to nodes
                 const layoutMap = new Map();
@@ -1232,7 +1298,7 @@
                     hierData = {...rootData, children: roots.map(r => ({...r, children: buildChildrenCP(r)}))};
                 }
                 const hierarchy = d3.hierarchy(hierData)
-                    .sum(d => d.children ? 0 : Math.max(1, d.dw || 1))
+                    .sum(d => d.children ? 0 : Math.max(1, Math.sqrt(d.dw || 1)))
                     .sort((a, b) => b.value - a.value);
                 d3.pack().size([CANVAS, CANVAS]).padding(6)(hierarchy);
                 const layoutMap = new Map();
@@ -1310,6 +1376,13 @@
 
     function selectNode(e, d) {
         e.stopPropagation();
+        // Toggle: clicking already-selected node deselects it
+        if (activeNodeId === d.id) {
+            activeNodeId = null;
+            document.getElementById("detail").style.display = "none";
+            updateVisibility();
+            return;
+        }
         activeNodeId = d.id;
 
         document.getElementById("dt").textContent = d.label;
@@ -1359,27 +1432,63 @@
                 const isContainment = currentLayout.startsWith("tree") || currentLayout.startsWith("circle");
                 if (isContainment && !graphData.showEdges) return 0;
                 if (isContainment && l.type === "parent") return 0;
+                if (l.type === "ref" && !graphData.showRefs) return 0;
                 const sid = (typeof l.source === "object") ? l.source.id : l.source;
                 const tid = (typeof l.target === "object") ? l.target.id : l.target;
                 if (!focusNeighborSet.has(sid) || !focusNeighborSet.has(tid)) return 0;
-                return l.type === "ref" ? 0.4 : 0.75;
+                return l.type === "ref" ? 0.3 : 0.75;
             });
             return;
         }
 
         // --- Normal mode ---
         nodeEls.attr("display", null);
+
+        // Build highlight set based on layout type
+        let highlightSet = null;
+        if (activeNodeId) {
+            highlightSet = new Set([activeNodeId]);
+            const isContainment = currentLayout.startsWith("tree") || currentLayout.startsWith("circle");
+            const activeNode = graphData.nodes.find(n => n.id === activeNodeId);
+
+            // Add dependencies (all views)
+            graphData.links.forEach(l => {
+                const sid = (typeof l.source === "object") ? l.source.id : l.source;
+                const tid = (typeof l.target === "object") ? l.target.id : l.target;
+                const touches = (sid === activeNodeId) || (tid === activeNodeId);
+                if (!touches) return;
+                const otherId = sid === activeNodeId ? tid : sid;
+
+                if (l.type === "depends_on") {
+                    highlightSet.add(otherId);
+                } else if (!isContainment && l.type === "parent") {
+                    // Force/arc views: highlight parent + siblings
+                    highlightSet.add(otherId);
+                    if (activeNode && activeNode.parent) {
+                        graphData.nodes.forEach(n => {
+                            if (n.parent === activeNode.parent) highlightSet.add(n.id);
+                        });
+                    }
+                }
+            });
+
+            // Clicking a parent highlights all descendants (recursive)
+            if (activeNode && !activeNode.isLeaf) {
+                const addDescendants = (parentId) => {
+                    graphData.nodes.forEach(n => {
+                        if (n.parent === parentId && !highlightSet.has(n.id)) {
+                            highlightSet.add(n.id);
+                            addDescendants(n.id);
+                        }
+                    });
+                };
+                addDescendants(activeNodeId);
+            }
+        }
+
         nodeEls.transition().duration(200).attr("opacity", d => {
             if (currentFocusProject !== "ALL" && d.project !== currentFocusProject) return 0.05;
-            if (activeNodeId && d.id !== activeNodeId) {
-                // Dim non-neighbors to 15% (still visible for context)
-                const isNeighbor = graphData.links.some(l => {
-                    const sid = (typeof l.source === "object") ? l.source.id : l.source;
-                    const tid = (typeof l.target === "object") ? l.target.id : l.target;
-                    return (sid === activeNodeId && tid === d.id) || (tid === activeNodeId && sid === d.id);
-                });
-                if (!isNeighbor) return 0.12;
-            }
+            if (highlightSet && !highlightSet.has(d.id)) return 0.12;
             return d.opacity != null ? d.opacity : 1.0;
         });
 
@@ -1387,7 +1496,8 @@
             const isContainment = currentLayout.startsWith("tree") || currentLayout.startsWith("circle");
             if (isContainment && !graphData.showEdges) return 0;
             if (isContainment && l.type === "parent") return 0;
-            const baseRef = currentLayout.startsWith("arc") ? 0.15 : (isContainment ? 0.15 : 0.4);
+            if (l.type === "ref" && !graphData.showRefs) return 0;
+            const baseRef = currentLayout.startsWith("arc") ? 0.15 : (isContainment ? 0.15 : 0.3);
             const baseOther = currentLayout.startsWith("arc") ? 0.4 : (isContainment ? 0.4 : 0.7);
             if (currentFocusProject !== "ALL") {
                 const sp = (typeof l.source === "object" ? l.source.project : null) || "none";

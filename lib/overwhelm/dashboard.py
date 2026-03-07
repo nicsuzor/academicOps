@@ -3945,6 +3945,7 @@ def _render_overview_tab(
     show_done: bool = False,
     view_mode: str = "Treemap",
     show_edges: bool = False,
+    show_refs: bool = False,
 ):
     """Overview: all tasks (not just leaves) in treemap or circle pack."""
     import copy
@@ -3991,6 +3992,7 @@ def _render_overview_tab(
 
     d3_data = prepare_embedded_graph_data(graph, structural_ids=structural_ids)
     d3_data["showEdges"] = show_edges
+    d3_data["showRefs"] = show_refs
 
     # Layout selection
     available = d3_data.get("availableLayouts", [])
@@ -4189,8 +4191,9 @@ def render_task_graph_page():
         show_done = c3.checkbox("Completed", False, key="g_done")
         show_orphans = c4.checkbox("Orphans", False, key="g_orphans")
 
-        if view == "Overview":
-            show_edges = st.checkbox("Show dependency edges", False, key="g_edges")
+        st.markdown("**Edges**")
+        show_edges = st.checkbox("Show dependencies", False, key="g_edges")
+        show_refs = st.checkbox("Show references", False, key="g_refs")
 
         st.divider()
 
@@ -4233,6 +4236,7 @@ def render_task_graph_page():
             show_done=show_done,
             view_mode=overview_mode,
             show_edges=show_edges,
+            show_refs=show_refs,
         )
     elif view == "ForceAtlas2":
         st.caption("Project clusters with top-N most important leaves.")
