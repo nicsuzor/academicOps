@@ -3773,11 +3773,20 @@ _HIERARCHICAL_LAYOUT_LABELS = {"Treemap", "Circle Pack"}
 # Shared graph helpers
 # ---------------------------------------------------------------------------
 
-_ACTIVE_STATUSES = {"active", "in_progress", "waiting", "todo", "review", "decomposing", "pending"}
+_ACTIVE_STATUSES = {
+    "active",
+    "in_progress",
+    "waiting",
+    "todo",
+    "review",
+    "decomposing",
+    "pending",
+    "merge_ready",
+}
 _BLOCKED_STATUSES = {"blocked"}
 _DONE_STATUSES = {"done", "completed", "cancelled", "dormant"}
 _ORPHAN_STATUSES = {"inbox"}
-_ACTIONABLE_STATUSES = _ACTIVE_STATUSES | _BLOCKED_STATUSES | {"merge_ready"}
+_ACTIONABLE_STATUSES = _ACTIVE_STATUSES | _BLOCKED_STATUSES
 
 # Importance scoring constants (see PR #760 for rationale)
 _PRIORITY_WEIGHTS = {0: 1000, 1: 200, 2: 50, 3: 10, 4: 2}
@@ -4024,6 +4033,8 @@ def _render_fa2_tab(
     link_dist: float = 0.75,
     cluster_str: float = 0.4,
     project_filter: str = "ALL",
+    show_edges: bool = False,
+    show_refs: bool = False,
 ):
     """ForceAtlas2: project clusters with top-N important leaves."""
     import copy
@@ -4064,6 +4075,9 @@ def _render_fa2_tab(
     else:
         layout_mode = "force"
 
+    d3_data["showEdges"] = show_edges
+    d3_data["showRefs"] = show_refs
+
     _render_status_summary(d3_data)
     _render_graph_with_actions(
         d3_data, height=700, project_filter=project_filter, layout_mode=layout_mode
@@ -4082,6 +4096,8 @@ def _render_sfdp_tab(
     charge_mult: float = 1.0,
     link_dist: float = 0.75,
     cluster_str: float = 0.4,
+    show_edges: bool = False,
+    show_refs: bool = False,
 ):
     """SFDP: dense graph with more nodes and visible inter-relations."""
     import copy
@@ -4117,6 +4133,9 @@ def _render_sfdp_tab(
     else:
         layout_mode = "sfdp" if "sfdp" in available else "force"
 
+    d3_data["showEdges"] = show_edges
+    d3_data["showRefs"] = show_refs
+
     _render_status_summary(d3_data)
     _render_graph_with_actions(d3_data, height=700, project_filter="ALL", layout_mode=layout_mode)
 
@@ -4127,6 +4146,8 @@ def _render_arc_tab(
     show_active: bool = True,
     show_blocked: bool = True,
     show_done: bool = False,
+    show_edges: bool = False,
+    show_refs: bool = False,
 ):
     """Arc diagram: dependency chains and relationships."""
     import copy
@@ -4144,6 +4165,8 @@ def _render_arc_tab(
     graph["nodes"] = filtered
 
     d3_data = prepare_embedded_graph_data(graph, structural_ids=structural_ids)
+    d3_data["showEdges"] = show_edges
+    d3_data["showRefs"] = show_refs
 
     available = d3_data.get("availableLayouts", [])
     layout_mode = "arc" if "arc" in available else "force"
@@ -4251,6 +4274,8 @@ def render_task_graph_page():
             link_dist=link_dist,
             cluster_str=cluster_str,
             project_filter=project_filter,
+            show_edges=show_edges,
+            show_refs=show_refs,
         )
     elif view == "SFDP":
         st.caption("Dense layout showing inter-relations across the full task graph.")
@@ -4265,6 +4290,8 @@ def render_task_graph_page():
             charge_mult=charge_mult,
             link_dist=link_dist,
             cluster_str=cluster_str,
+            show_edges=show_edges,
+            show_refs=show_refs,
         )
     elif view == "Arc":
         st.caption("Dependency chains and blocking relationships.")
@@ -4273,6 +4300,8 @@ def render_task_graph_page():
             show_active=show_active,
             show_blocked=show_blocked,
             show_done=show_done,
+            show_edges=show_edges,
+            show_refs=show_refs,
         )
 
 
