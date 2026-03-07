@@ -738,9 +738,10 @@ def render_agents_working():
 
     # Compact box format
     html = "<div class='current-activity-box'>"
-    html += (
-        f"<div class='current-activity-header'>⚡ CURRENT ACTIVITY ({len(agents_filtered)})</div>"
+    _activity_info = info_icon(
+        "Live sessions from the last hour. Data source: session-state.json files in ~/.claude/projects/ dated subdirectories. Only shows sessions with meaningful context (real project or substantive prompt). Each entry shows project, bound task, and current prompt."
     )
+    html += f"<div class='current-activity-header'>⚡ CURRENT ACTIVITY ({len(agents_filtered)}) {_activity_info}</div>"
 
     for agent in agents_filtered[:5]:  # Limit to 5 max
         duration_str = _format_duration(agent.started_at)
@@ -3359,6 +3360,60 @@ st.markdown(
         word-break: break-word;
     }
 
+    /* Info tooltip icon */
+    .info-icon {
+        display: inline-block;
+        position: relative;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.1);
+        color: var(--text-muted, #888);
+        font-size: 11px;
+        font-weight: 700;
+        font-style: normal;
+        text-align: center;
+        line-height: 16px;
+        cursor: help;
+        margin-left: 6px;
+        vertical-align: middle;
+        flex-shrink: 0;
+    }
+    .info-icon:hover {
+        background: rgba(255,255,255,0.2);
+        color: var(--text-primary, #e0e0e0);
+    }
+    .info-icon .info-tooltip {
+        visibility: hidden;
+        opacity: 0;
+        position: absolute;
+        bottom: calc(100% + 8px);
+        left: 50%;
+        transform: translateX(-50%);
+        background: #2a2a2a;
+        border: 1px solid rgba(255,255,255,0.15);
+        color: #ccc;
+        padding: 10px 14px;
+        border-radius: 6px;
+        font-size: 0.8em;
+        font-weight: 400;
+        line-height: 1.5;
+        white-space: normal;
+        width: 320px;
+        max-width: 90vw;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        transition: opacity 0.15s;
+        pointer-events: none;
+        text-align: left;
+        text-transform: none;
+        letter-spacing: normal;
+    }
+    .info-icon:hover .info-tooltip {
+        visibility: visible;
+        opacity: 1;
+    }
+
 </style>
 """,
     unsafe_allow_html=True,
@@ -3375,6 +3430,11 @@ def esc(text):
         .replace('"', "&quot;")
         .replace("'", "&#39;")
     )
+
+
+def info_icon(tooltip: str) -> str:
+    """Return an HTML info icon with a hover tooltip."""
+    return f"<span class='info-icon'>i<span class='info-tooltip'>{esc(tooltip)}</span></span>"
 
 
 def clean_activity_text(raw_text: str) -> str:
@@ -3648,54 +3708,61 @@ def render_spotlight_epic():
         )
 
     scored_epics = [(ep, _epic_activity_score(ep)) for ep in candidate_epics]
-    epic, score = max(scored_epics, key=lambda item: item[1])
-    if score == 0:
-        return  # No active children — skip
+    scored_epics.sort(key=lambda item: item[1], reverse=True)
 
-    # Get children and count by status
-    children_ids = epic.get("children", [])
-    children = [tasks_by_id.get(cid) for cid in children_ids if cid in tasks_by_id]
+    # Show top 3 epics with active children
+    top_epics = [(ep, sc) for ep, sc in scored_epics if sc > 0][:3]
+    if not top_epics:
+        return
 
-    status_counts = {"done": 0, "in_progress": 0, "blocked": 0}
-    for child in children:
-        if child:
-            status = child.get("status", "active")
-            if status in ("done", "closed"):
-                status_counts["done"] += 1
-            elif status == "blocked":
-                status_counts["blocked"] += 1
-            else:
-                status_counts["in_progress"] += 1
+    _epic_info = info_icon(
+        "Dynamically selects the most active open epics from $ACA_DATA/tasks/index.json. Epics are ranked by number of non-done children. Progress bar shows percentage of children marked done. Children are classified as done, in_progress, or blocked based on their frontmatter status field."
+    )
+    html = f"<div style='font-size: 0.75em; text-transform: uppercase; font-weight: 700; color: var(--text-muted, #888); margin-bottom: 4px; letter-spacing: 0.05em;'>SPOTLIGHT EPICS {_epic_info}</div>"
+    for epic, _score in top_epics:
+        # Get children and count by status
+        children_ids = epic.get("children", [])
+        children = [tasks_by_id.get(cid) for cid in children_ids if cid in tasks_by_id]
 
-    total = len(children)
-    done_pct = (status_counts["done"] / total * 100) if total > 0 else 0
+        status_counts = {"done": 0, "in_progress": 0, "blocked": 0}
+        for child in children:
+            if child:
+                status = child.get("status", "active")
+                if status in ("done", "closed"):
+                    status_counts["done"] += 1
+                elif status == "blocked":
+                    status_counts["blocked"] += 1
+                else:
+                    status_counts["in_progress"] += 1
 
-    # Render HTML with synthesis-card pattern
-    html = f"""
-    <div class="spotlight-progress-panel" style="margin-bottom: 24px; padding: 16px; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 8px;">
-        <div class="spotlight-progress-header" style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px;">
-            <div class="spotlight-progress-title" style="font-weight: 600; font-size: 1.1em; color: #60a5fa;">🚀 {esc(epic.get("title", "Epic"))}</div>
-            <div class="spotlight-progress-pct" style="font-size: 0.9em; opacity: 0.8;">{done_pct:.0f}%</div>
-        </div>
-        <div class="spotlight-progress-bar" style="height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; margin-bottom: 16px; overflow: hidden;">
-            <div class="spotlight-progress-fill" style="width: {done_pct}%; height: 100%; background: #3b82f6; transition: width 0.3s ease;"></div>
-        </div>
-        <div class="synthesis-grid">
-            <div class="synthesis-card done">
-                <div class="synthesis-card-title">✅ Done</div>
-                <div class="synthesis-card-content" style="font-size: 1.5em; font-weight: 700;">{status_counts["done"]}</div>
+        total = len(children)
+        done_pct = (status_counts["done"] / total * 100) if total > 0 else 0
+
+        html += f"""
+        <div class="spotlight-progress-panel" style="margin-bottom: 12px; padding: 12px 16px; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 8px;">
+            <div class="spotlight-progress-header" style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
+                <div class="spotlight-progress-title" style="font-weight: 600; font-size: 1em; color: #60a5fa;">🚀 {esc(epic.get("title", "Epic"))}</div>
+                <div class="spotlight-progress-pct" style="font-size: 0.85em; opacity: 0.8;">{done_pct:.0f}%</div>
             </div>
-            <div class="synthesis-card context">
-                <div class="synthesis-card-title">🔄 In Progress</div>
-                <div class="synthesis-card-content" style="font-size: 1.5em; font-weight: 700;">{status_counts["in_progress"]}</div>
+            <div class="spotlight-progress-bar" style="height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; margin-bottom: 8px; overflow: hidden;">
+                <div class="spotlight-progress-fill" style="width: {done_pct}%; height: 100%; background: #3b82f6; transition: width 0.3s ease;"></div>
             </div>
-            <div class="synthesis-card waiting">
-                <div class="synthesis-card-title">🚫 Blocked</div>
-                <div class="synthesis-card-content" style="font-size: 1.5em; font-weight: 700;">{status_counts["blocked"]}</div>
+            <div class="synthesis-grid">
+                <div class="synthesis-card done">
+                    <div class="synthesis-card-title">✅ Done</div>
+                    <div class="synthesis-card-content" style="font-size: 1.3em; font-weight: 700;">{status_counts["done"]}</div>
+                </div>
+                <div class="synthesis-card context">
+                    <div class="synthesis-card-title">🔄 In Progress</div>
+                    <div class="synthesis-card-content" style="font-size: 1.3em; font-weight: 700;">{status_counts["in_progress"]}</div>
+                </div>
+                <div class="synthesis-card waiting">
+                    <div class="synthesis-card-title">🚫 Blocked</div>
+                    <div class="synthesis-card-content" style="font-size: 1.3em; font-weight: 700;">{status_counts["blocked"]}</div>
+                </div>
             </div>
         </div>
-    </div>
-    """
+        """
     st.markdown(html, unsafe_allow_html=True)
 
 
@@ -4228,6 +4295,10 @@ def render_recent_prompts():
     if not sessions:
         return  # No prompts to display
 
+    _prompts_info = info_icon(
+        "Raw user prompts extracted from session summary JSON files in $AOPS_SESSIONS/summaries/. Grouped by session, sorted newest first. Last 7 days of sessions are scanned. Prompts are sanitized to remove system tags and hook injection text."
+    )
+    st.markdown(f"<div style='margin-bottom: -12px;'>{_prompts_info}</div>", unsafe_allow_html=True)
     with st.expander("💬 Recent Prompts (last 7 days)", expanded=False):
         for session in sessions:
             project = session["project"]
@@ -4463,7 +4534,13 @@ active_sessions_wlo = where_left_off.get("active", [])
 paused_sessions_wlo = where_left_off.get("paused", [])
 if active_sessions_wlo or paused_sessions_wlo:
     wlo_html = "<div class='where-left-off-panel'>"
-    wlo_html += "<div class='where-left-off-header'>📍 WHERE YOU LEFT OFF</div>"
+    wlo_html += (
+        "<div class='where-left-off-header'>📍 WHERE YOU LEFT OFF "
+        + info_icon(
+            "Shows recent Claude Code sessions grouped by status (active/paused). Data source: session-state.json files from ~/.claude/projects/ dated subdirectories. Sessions are classified by last activity time — active if touched within 4 hours, paused otherwise. Context (task, prompt, project) is extracted from each session's persisted state."
+        )
+        + "</div>"
+    )
 
     # Active sessions (<4h) - card-based display with rich context, grouped by project
     if active_sessions_wlo:
@@ -4603,7 +4680,10 @@ if synthesis:
     )
 
     synth_html = "<div class='synthesis-panel'>"
-    synth_html += f"<div class='synthesis-header'><div class='synthesis-title'>🧠 FOCUS SYNTHESIS{stale_badge}</div><div class='synthesis-age'>{age_str}</div></div>"
+    _synth_info = info_icon(
+        "Aggregated from today's session summary JSON files (scripts/synthesize_dashboard.py). Each session's Framework Reflection (accomplishments, friction points, outcome) is collected from $AOPS_SESSIONS/summaries/. Narrative bullets are per-session summaries prefixed by project. Accomplishments are deduplicated across sessions. Alignment tracks success/failure outcomes. No LLM calls — pure aggregation."
+    )
+    synth_html += f"<div class='synthesis-header'><div class='synthesis-title'>🧠 FOCUS SYNTHESIS{stale_badge} {_synth_info}</div><div class='synthesis-age'>{age_str}</div></div>"
 
     # Narrative section - tell the day's story
     narrative = synthesis.get("narrative", [])
@@ -4768,7 +4848,13 @@ try:
     path = reconstruct_path(hours=activity_hours)
     if path.threads:
         path_html = "<div class='path-timeline'>"
-        path_html += "<h3>YOUR PATH</h3>"
+        path_html += (
+            "<h3>YOUR PATH "
+            + info_icon(
+                "Reconstructed from session event logs using lib/path_reconstructor.py. Each session's tool calls, task bindings, and completions are parsed into a timeline. Threads are grouped by project. Unfinished tasks are those created/claimed but not marked done across all sessions in the time range. Events include task starts, completions, key tool invocations, and context switches."
+            )
+            + "</h3>"
+        )
 
         # Unfinished tasks callout (most actionable — show first)
         if path.abandoned_work:
@@ -4977,6 +5063,35 @@ except Exception:
 
 render_spotlight_epic()
 
+# === NEEDS YOU SECTION ===
+# Show items that are blocked or waiting on human input
+_needs_you_tasks = load_tasks_from_index()
+_blocked_waiting = [
+    t
+    for t in _needs_you_tasks
+    if t.get("status") in ("blocked", "waiting", "review")
+    and t.get("assignee") in ("nic", None, "")
+    and t.get("type") not in ("goal", "project", "epic")
+]
+if _blocked_waiting:
+    _needs_html = "<div style='margin-bottom: 24px; padding: 12px 16px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px;'>"
+    _needs_info = info_icon(
+        "Tasks with status blocked, waiting, or review assigned to you. Data source: $ACA_DATA/tasks/index.json (generated by aops CLI from PKB markdown frontmatter). Excludes goal/project/epic types — only actionable leaf tasks. Shows up to 5 items."
+    )
+    _needs_html += f"<div style='font-weight: 600; font-size: 1em; color: #f87171; margin-bottom: 8px;'>🚨 NEEDS YOU ({len(_blocked_waiting)}) {_needs_info}</div>"
+    for _nt in _blocked_waiting[:5]:
+        _status_badge = _nt.get("status", "blocked")
+        _badge_color = "#f87171" if _status_badge == "blocked" else "#fbbf24"
+        _needs_html += "<div style='padding: 4px 0; font-size: 0.9em;'>"
+        _needs_html += f"<span style='background: {_badge_color}; color: #000; padding: 1px 6px; border-radius: 3px; font-size: 0.75em; margin-right: 6px;'>{esc(_status_badge)}</span>"
+        _needs_html += f"{esc(_nt.get('title', ''))}"
+        _needs_html += "</div>"
+    if len(_blocked_waiting) > 5:
+        _needs_html += f"<div style='font-size: 0.8em; opacity: 0.7; padding-top: 4px;'>+ {len(_blocked_waiting) - 5} more</div>"
+    _needs_html += "</div>"
+    st.markdown(_needs_html, unsafe_allow_html=True)
+
+
 # === DAILY STORY SECTION ===
 daily_story = analyzer.extract_daily_story()
 if daily_story:
@@ -4989,7 +5104,13 @@ if daily_story:
 
         with col1:
             if daily_story["story"]:
-                st.markdown(f"### 📖 Today's Story\n{daily_story['story']}")
+                _story_info = info_icon(
+                    "Extracted by SessionAnalyzer from today's session transcript summaries. The story is a narrative of what happened across sessions. Dropped threads are topics started but not resolved. Data source: session summary files in $AOPS_SESSIONS/summaries/ parsed by lib/session_analyzer.py."
+                )
+                st.markdown(
+                    f"### 📖 Today's Story {_story_info}\n{daily_story['story']}",
+                    unsafe_allow_html=True,
+                )
             if daily_story["dropped_threads"]:
                 st.markdown("#### ⚠ Dropped Threads")
 
