@@ -4,25 +4,17 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Rajdhani:wght@500;600;700&family=Space+Grotesk:wght@400;500;700&display=swap');
 
 :root {
-  /* Core Color Palette */
-  --color-primary: #00F0FF;
-  /* Cyan Neon */
+  /* Core Color Palette — Amber default */
+  --color-primary: #f2aa0d;
   --color-accent: #FF2A6D;
-  /* Magenta/Alert */
   --color-background: #050505;
-  /* Void Black */
 
   --color-surface: rgba(20, 25, 30, 0.6);
-  /* Glass Panels */
   --color-surface-high: rgba(255, 255, 255, 0.05);
-  /* Hover/Active */
 
   --color-text: #E0E6ED;
-  /* Primary readout */
   --color-muted: #586575;
-  /* Inactive/Background data */
 
-  /* Legacy aliases for compatibility with components */
   --bg-app: var(--color-background);
   --bg-sidebar: rgba(10, 12, 15, 0.8);
   --bg-panel: var(--color-surface);
@@ -31,15 +23,15 @@
   --bg-input-focus: rgba(30, 40, 50, 0.9);
 
   --border-subtle: rgba(255, 255, 255, 0.1);
-  --border-accent: rgba(0, 240, 255, 0.3);
+  --border-accent: rgba(242, 170, 13, 0.3);
 
   --text-primary: var(--color-text);
   --text-secondary: #8c9ba8;
   --text-muted: var(--color-muted);
 
   --accent-primary: var(--color-primary);
-  --accent-secondary: #00b3cc;
-  --accent-success: #00F0FF;
+  --accent-secondary: #d4940b;
+  --accent-success: #22c55e;
   --accent-warning: #fcee0a;
   --accent-danger: var(--color-accent);
 
@@ -56,7 +48,7 @@
   --radius-lg: 8px;
 
   --blur-strength: 12px;
-  --glow: 0 0 20px rgba(0, 240, 255, 0.4);
+  --glow: 0 0 20px rgba(242, 170, 13, 0.4);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.8);
 
   /* Transitions */
@@ -175,4 +167,17 @@ textarea {
 .blur-surface {
   filter: blur(40px) brightness(0.3);
   transition: filter var(--transition-normal), brightness var(--transition-normal);
+}
+
+/* ==========================================================================
+   HOLOGRAPHIC THEME OVERRIDE (Cyan Neon)
+   ========================================================================== */
+
+.theme-holographic {
+  --color-primary: #00F0FF;
+  --border-accent: rgba(0, 240, 255, 0.3);
+  --accent-primary: #00F0FF;
+  --accent-secondary: #00b3cc;
+  --accent-success: #00F0FF;
+  --glow: 0 0 20px rgba(0, 240, 255, 0.4);
 }

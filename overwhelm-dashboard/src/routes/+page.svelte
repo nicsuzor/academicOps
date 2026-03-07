@@ -191,7 +191,7 @@
     {#if $viewSettings.mainTab === "Threaded Tasks"}
         <!-- THREADED TASKS & EDITOR OVERRIDE -->
         <section class="col-span-9 flex flex-col h-full bg-background-dark overflow-hidden">
-            <ThreadedTasksView {data} />
+            <ThreadedTasksView />
         </section>
     {:else}
         <!-- MAIN CONTENT: Graph or Dashboard -->

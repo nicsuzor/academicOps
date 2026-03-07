@@ -1,7 +1,7 @@
 <script lang="ts">
     import * as d3 from "d3";
     import { graphData } from "../../stores/graph";
-    import { toggleSelection } from "../../stores/selection";
+    import { toggleSelection, selection } from "../../stores/selection";
     import { buildCirclePackNode } from "../shared/NodeShapes";
     import { routeContainmentEdges } from "../shared/EdgeRenderer";
 
@@ -23,11 +23,12 @@
         const nodes = data.nodes;
 
         const rootId = "__root__";
+        const nodeIdSet = new Set(nodes.map(n => n.id));
         const packNodes = [
             { id: rootId, parent: "", type: "root" },
             ...nodes.map((n) => ({
                 ...n,
-                parent: n.parent ? n.parent : rootId,
+                parent: (n.parent && nodeIdSet.has(n.parent)) ? n.parent : rootId,
             })),
         ];
 
@@ -86,14 +87,10 @@
                 toggleSelection(d.id);
             })
             .on("mouseenter", (e, d) => {
-                import("../../stores/selection").then(({ selection }) => {
-                    selection.update(s => ({ ...s, hoveredNodeId: d.id }));
-                });
+                selection.update(s => ({ ...s, hoveredNodeId: d.id }));
             })
             .on("mouseleave", () => {
-                import("../../stores/selection").then(({ selection }) => {
-                    selection.update(s => ({ ...s, hoveredNodeId: null }));
-                });
+                selection.update(s => ({ ...s, hoveredNodeId: null }));
             });
 
         nEls.each(function (d) {

@@ -1,7 +1,7 @@
 <script lang="ts">
   import * as d3 from 'd3';
   import { graphData } from '../../stores/graph';
-  import { toggleSelection } from '../../stores/selection';
+  import { toggleSelection, selection } from '../../stores/selection';
   import { buildArcNode } from '../shared/NodeShapes';
   import { routeArcEdges } from '../shared/EdgeRenderer';
   import type { GraphNode, GraphEdge } from '../../data/prepareGraphData';
@@ -63,14 +63,10 @@
       .style("cursor", "pointer")
       .on("click", (e, d) => { e.stopPropagation(); toggleSelection(d.id); })
       .on("mouseenter", (e, d) => {
-        import("../../stores/selection").then(({ selection }) => {
-            selection.update(s => ({ ...s, hoveredNodeId: d.id }));
-        });
+        selection.update(s => ({ ...s, hoveredNodeId: d.id }));
       })
       .on("mouseleave", () => {
-        import("../../stores/selection").then(({ selection }) => {
-            selection.update(s => ({ ...s, hoveredNodeId: null }));
-        });
+        selection.update(s => ({ ...s, hoveredNodeId: null }));
       });
 
     nEls.each(function(d) {

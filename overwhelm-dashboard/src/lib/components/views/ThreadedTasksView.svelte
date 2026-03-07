@@ -3,8 +3,6 @@
     import { selection } from "../../stores/selection";
     import TaskEditorView from "./TaskEditorView.svelte";
 
-    export let data: any;
-
     let selectedTaskForEdit: string | null = null;
     let currentTab = "ACTIVE_TASKS";
 

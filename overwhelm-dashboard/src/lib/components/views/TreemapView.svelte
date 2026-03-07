@@ -26,11 +26,12 @@
 
         // Treemap needs a single root. Create a virtual root if needed.
         const rootId = "__root__";
+        const nodeIdSet = new Set(nodes.map(n => n.id));
         const treemapNodes = [
             { id: rootId, parent: "", type: "root" },
             ...nodes.map((n) => ({
                 ...n,
-                parent: n.parent ? n.parent : rootId,
+                parent: (n.parent && nodeIdSet.has(n.parent)) ? n.parent : rootId,
             })),
         ];
 

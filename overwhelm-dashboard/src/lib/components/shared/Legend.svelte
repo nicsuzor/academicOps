@@ -44,7 +44,7 @@
   .legend {
     position: absolute;
     bottom: 16px;
-    left: 296px; /* Offset to clear sidebar (280px sidebar + 16px pg) */
+    left: 16px;
     z-index: 10;
     background: rgba(15, 23, 42, 0.7);
     border: 1px solid rgba(255,255,255,0.1);
@@ -56,7 +56,7 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: var(--font-mono);
   }
 
   .legend-item {

@@ -82,13 +82,13 @@
 	}
 
 	.text-glow {
-		text-shadow: 0 0 5px rgba(242, 170, 13, 0.5);
+		text-shadow: 0 0 5px color-mix(in srgb, var(--color-primary) 50%, transparent);
 	}
 
 	:global(.grid-bg) {
 		background-image:
-			linear-gradient(rgba(242, 170, 13, 0.05) 1px, transparent 1px),
-			linear-gradient(90deg, rgba(242, 170, 13, 0.05) 1px, transparent 1px);
+			linear-gradient(color-mix(in srgb, var(--color-primary) 5%, transparent) 1px, transparent 1px),
+			linear-gradient(90deg, color-mix(in srgb, var(--color-primary) 5%, transparent) 1px, transparent 1px);
 		background-size: 24px 24px;
 	}
 </style>
