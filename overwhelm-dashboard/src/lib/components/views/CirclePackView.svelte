@@ -43,14 +43,14 @@
         }
 
         root.sum((d) =>
-            d.children?.length ? 0 : Math.max(1, Math.sqrt(d.dw || 1)),
+            d.children?.length ? 0 : Math.max(1, d.dw || 1),
         ).sort((a, b) => (b.value || 0) - (a.value || 0));
 
-        d3.pack<any>().size([1200, 1200]).padding(6)(root);
+        d3.pack<any>().size([1600, 1600]).padding(6)(root);
 
         const leavesAndParents = root
             .descendants()
-            .filter((d) => d.data.id !== rootId);
+            .filter((d) => d.data.id !== rootId && d.value! > 0);
 
         const layoutMap = new Map();
         leavesAndParents.forEach((d: any) => {
@@ -65,15 +65,18 @@
         nodes.forEach((n) => {
             const l = layoutMap.get(n.id);
             if (l) {
-                n.x = l.x - 600; // center at 0
-                n.y = l.y - 600;
+                n.x = l.x - 800; // center at 0
+                n.y = l.y - 800;
+            } else {
+                n.x = -9999;
+                n.y = -9999;
             }
         });
 
         const nEls = d3
             .select(nodesLayer)
             .selectAll<SVGGElement, any>("g.node")
-            .data(nodes, (d: any) => d.id)
+            .data(nodes.filter(n => (n.x || 0) > -9000), (d: any) => d.id)
             .join("g")
             .attr("class", "node")
             .attr("transform", (d) => `translate(${d.x},${d.y})`)
@@ -81,6 +84,16 @@
             .on("click", (e, d) => {
                 e.stopPropagation();
                 toggleSelection(d.id);
+            })
+            .on("mouseenter", (e, d) => {
+                import("../../stores/selection").then(({ selection }) => {
+                    selection.update(s => ({ ...s, hoveredNodeId: d.id }));
+                });
+            })
+            .on("mouseleave", () => {
+                import("../../stores/selection").then(({ selection }) => {
+                    selection.update(s => ({ ...s, hoveredNodeId: null }));
+                });
             });
 
         nEls.each(function (d) {

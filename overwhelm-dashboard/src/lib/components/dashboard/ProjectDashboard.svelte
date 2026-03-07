@@ -6,7 +6,7 @@
 </script>
 
 {#if hasData}
-    <div class="project-dashboard">
+    <div class="flex flex-col gap-6 font-mono text-primary">
         {#each projectProjects as project}
             {@const meta = projectData.meta?.[project] || {}}
             {@const tasks = projectData.tasks?.[project] || []}
@@ -15,46 +15,37 @@
             {@const sessions = projectData.sessions?.[project] || []}
 
             {#if tasks.length > 0 || accomplishments.length > 0 || sessions.length > 0}
-                <div class="project-section glass-surface">
-                    <div class="project-header">
-                        <h3 class="project-title">
-                            <span class="icon">📁</span>
-                            {project}
+                <div class="flex flex-col gap-4">
+                    <div class="flex justify-between items-center border-b border-primary/30 pb-2">
+                        <h3 class="text-sm font-bold tracking-[0.2em] flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[16px]">folder_open</span>
+                            {project.toUpperCase()}
                             {#if meta.is_spotlight}
-                                <span class="spotlight-badge"
-                                    >★ SPOTLIGHT EPIC</span
-                                >
+                                <span class="bg-primary text-black text-[10px] px-2 py-0.5 ml-2 font-bold tracking-widest animate-pulse">
+                                    SPOTLIGHT
+                                </span>
                             {/if}
                         </h3>
                     </div>
 
-                    <div class="project-content">
+                    <div class="flex flex-col gap-4">
                         {#if meta.epics && meta.epics.length > 0}
-                            <div class="epics-list">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 {#each meta.epics as epic}
-                                    <div
-                                        class="epic-card glass-surface hover-glow"
-                                    >
-                                        <div class="epic-header">
-                                            <span class="epic-title"
-                                                >{epic.title}</span
-                                            >
+                                    <div class="bg-black/40 border border-primary/20 p-3 hover:border-primary transition-colors">
+                                        <div class="flex justify-between items-center mb-2">
+                                            <span class="text-xs font-bold truncate pr-2">{epic.title}</span>
                                             {#if epic.progress}
-                                                <span class="epic-progress"
-                                                    >{epic.progress
-                                                        .completed}/{epic
-                                                        .progress.total}</span
+                                                <span class="text-[10px] text-primary/60 shrink-0"
+                                                    >{epic.progress.completed}/{epic.progress.total}</span
                                                 >
                                             {/if}
                                         </div>
                                         {#if epic.progress && epic.progress.total > 0}
-                                            <div class="progress-bar">
+                                            <div class="h-1 w-full bg-black border border-primary/30">
                                                 <div
-                                                    class="progress-fill"
-                                                    style="width: {(epic
-                                                        .progress.completed /
-                                                        epic.progress.total) *
-                                                        100}%"
+                                                    class="h-full bg-primary"
+                                                    style="width: {(epic.progress.completed / epic.progress.total) * 100}%"
                                                 ></div>
                                             </div>
                                         {/if}
@@ -63,39 +54,33 @@
                             </div>
                         {/if}
 
-                        <div class="columns">
-                            <div class="col active-tasks">
-                                <h4 class="col-title">Active Tasks</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Active Tasks Column -->
+                            <div class="flex flex-col gap-2">
+                                <h4 class="text-[10px] font-bold tracking-widest text-primary/60 mb-1">ACTIVE TASKS</h4>
                                 {#each tasks as task}
-                                    <div class="task-card hover-glow">
-                                        <span class="priority p{task.priority}"
-                                            >P{task.priority}</span
-                                        >
-                                        <span class="task-title"
-                                            >{task.title}</span
-                                        >
+                                    <div class="flex items-start gap-2 p-2 bg-primary/5 border-l-2 {task.priority === 0 ? 'border-red-500' : task.priority === 1 ? 'border-orange-500' : 'border-primary/50'} hover:bg-primary/10 transition-colors">
+                                        <span class="text-[10px] font-bold {task.priority === 0 ? 'text-red-500' : task.priority === 1 ? 'text-orange-500' : 'text-primary/70'}">P{task.priority}</span>
+                                        <span class="text-xs text-primary/90 flex-1">{task.title}</span>
                                         {#if task.status === "in_progress"}
-                                            <span class="status-badge running"
-                                                >Running</span
-                                            >
+                                            <span class="text-[10px] bg-primary text-black px-1 font-bold animate-pulse">RUNNING</span>
                                         {/if}
                                     </div>
                                 {:else}
-                                    <div class="empty">No active tasks.</div>
+                                    <div class="text-xs text-primary/40 italic">No active tasks.</div>
                                 {/each}
                             </div>
 
-                            <div class="col recent-done">
-                                <h4 class="col-title">Recently Completed</h4>
+                            <!-- Completed Column -->
+                            <div class="flex flex-col gap-2">
+                                <h4 class="text-[10px] font-bold tracking-widest text-primary/60 mb-1">RECENTLY COMPLETED</h4>
                                 {#each accomplishments as acc}
-                                    <div class="accomplishment-card hover-glow">
-                                        <span class="check">✓</span>
-                                        <span class="acc-desc"
-                                            >{acc.description}</span
-                                        >
+                                    <div class="flex items-start gap-2 p-2 border border-primary/10 bg-black/30 hover:border-primary/30 transition-colors">
+                                        <span class="material-symbols-outlined text-[14px] text-green-500">check</span>
+                                        <span class="text-xs text-primary/70">{acc.description}</span>
                                     </div>
                                 {:else}
-                                    <div class="empty">
+                                    <div class="text-xs text-primary/40 italic">
                                         Nothing recently completed.
                                     </div>
                                 {/each}
@@ -107,220 +92,3 @@
         {/each}
     </div>
 {/if}
-
-<style>
-    .project-section {
-        padding: 24px;
-        margin-bottom: 32px;
-    }
-
-    .project-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 24px;
-        border-bottom: 1px solid var(--border-subtle);
-        padding-bottom: 16px;
-    }
-
-    .project-title {
-        color: var(--text-primary);
-        font-size: 18px;
-        font-weight: 800;
-        margin: 0;
-        letter-spacing: -0.02em;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .epic-badge {
-        background: rgba(129, 140, 248, 0.1);
-        color: var(--accent-primary);
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-size: 11px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        border: 1px solid rgba(129, 140, 248, 0.2);
-    }
-
-    .section-title {
-        color: var(--text-muted);
-        font-size: 12px;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        font-weight: 700;
-        margin: 0 0 16px 0;
-    }
-
-    .group {
-        margin-bottom: 28px;
-    }
-    .group:last-child {
-        margin-bottom: 0;
-    }
-
-    .cards-list {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-    }
-
-    .task-card {
-        background: var(--bg-card);
-        border: 1px solid var(--border-subtle);
-        border-radius: var(--radius-md);
-        padding: 16px;
-        transition:
-            transform var(--transition-fast),
-            box-shadow var(--transition-fast);
-    }
-
-    .task-card:hover {
-        transform: translateX(4px);
-        box-shadow: var(--shadow-sm);
-        border-color: rgba(255, 255, 255, 0.1);
-    }
-
-    .card-title {
-        color: var(--text-primary);
-        font-size: 14px;
-        font-weight: 600;
-        margin-bottom: 8px;
-    }
-
-    .card-meta {
-        display: flex;
-        gap: 12px;
-        font-size: 12px;
-        color: var(--text-muted);
-        align-items: center;
-    }
-
-    .owner {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        background: rgba(255, 255, 255, 0.05);
-        padding: 2px 8px;
-        border-radius: 12px;
-        color: var(--text-secondary);
-    }
-
-    .dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: var(--text-muted);
-    }
-
-    .dot.active {
-        background: var(--accent-success);
-        box-shadow: 0 0 8px rgba(52, 211, 153, 0.4);
-    }
-    .dot.blocked {
-        background: var(--accent-danger);
-        box-shadow: 0 0 8px rgba(248, 113, 113, 0.4);
-    }
-    .dot.done {
-        background: var(--accent-primary);
-    }
-
-    .accomplishment-card {
-        background: linear-gradient(
-            135deg,
-            rgba(52, 211, 153, 0.05),
-            transparent
-        );
-        border: 1px solid rgba(52, 211, 153, 0.1);
-        border-left: 3px solid var(--accent-success);
-        border-radius: var(--radius-md);
-        padding: 16px;
-        transition: transform var(--transition-fast);
-    }
-
-    .accomplishment-card:hover {
-        transform: translateX(4px);
-    }
-
-    .acc-header {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 8px;
-    }
-
-    .acc-title {
-        color: var(--accent-success);
-        font-weight: 600;
-        font-size: 14px;
-    }
-
-    .time {
-        color: var(--text-muted);
-        font-size: 12px;
-        font-variant-numeric: tabular-nums;
-    }
-
-    .priority {
-        font-size: 10px;
-        font-weight: bold;
-        padding: 2px 6px;
-        border-radius: 3px;
-        background: var(--bg-input);
-        color: var(--text-secondary);
-    }
-
-    .priority.p0 {
-        background: var(--accent-danger);
-        color: white;
-    }
-    .priority.p1 {
-        background: var(--accent-warning);
-        color: var(--bg-app);
-    }
-    .priority.p2 {
-        background: var(--accent-success);
-        color: var(--bg-app);
-    }
-
-    .task-title {
-        color: #e2e8f0;
-        font-size: 13px;
-        flex: 1;
-    }
-
-    .status-badge {
-        font-size: 10px;
-        padding: 2px 6px;
-        border-radius: 10px;
-        background: rgba(74, 222, 128, 0.1);
-        color: #4ade80;
-        border: 1px solid rgba(74, 222, 128, 0.2);
-    }
-
-    .acc-item {
-        display: flex;
-        align-items: flex-start;
-        gap: 8px;
-        padding: 6px 0;
-        font-size: 13px;
-    }
-
-    .check {
-        color: #4ade80;
-        font-weight: bold;
-    }
-
-    .acc-desc {
-        color: #94a3b8;
-        line-height: 1.4;
-    }
-
-    .empty {
-        color: #64748b;
-        font-size: 13px;
-        font-style: italic;
-    }
-</style>

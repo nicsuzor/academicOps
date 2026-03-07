@@ -3,7 +3,7 @@
     import { onMount } from "svelte";
     import { graphData } from "../../stores/graph";
     import { filters } from "../../stores/filters";
-    import { toggleSelection } from "../../stores/selection";
+    import { toggleSelection, selection } from "../../stores/selection";
     import { buildTreemapNode } from "../shared/NodeShapes";
     import { routeContainmentEdges } from "../shared/EdgeRenderer";
 
@@ -47,22 +47,23 @@
         }
 
         root.sum((d) =>
-            d.children?.length ? 0 : Math.max(1, Math.sqrt(d.dw || 1)),
+            d.children?.length ? 0 : Math.max(1, d.dw || 1)
         ).sort((a, b) => (b.value || 0) - (a.value || 0));
 
         // Calculate layout
         d3
             .treemap<any>()
-            .size([1200, 800])
-            .paddingOuter(12)
-            .paddingTop(24)
-            .paddingInner(6)
+            .size([1600, 1000]) // Give it more breathing room
+            .paddingOuter(16)
+            .paddingTop(28)
+            .paddingInner(8)
+            .tile(d3.treemapSquarify.ratio(1.5))
             .round(true)(root);
 
         // Filter out virtual root
         const leavesAndParents = root
             .descendants()
-            .filter((d) => d.data.id !== rootId);
+            .filter((d) => d.data.id !== rootId && d.value! > 0);
 
         // Map computed coordinates back to node objects
         const layoutMap = new Map();
@@ -84,6 +85,10 @@
                 n.y = l.y;
                 n.w = l.w;
                 n.h = l.h;
+            } else {
+                // If it wasn't laid out (e.g. 0 value parent), hide it far away
+                n.x = -9999;
+                n.y = -9999;
             }
         });
 
@@ -91,7 +96,7 @@
         const nEls = d3
             .select(nodesLayer)
             .selectAll<SVGGElement, any>("g.node")
-            .data(nodes, (d: any) => d.id)
+            .data(nodes.filter(n => (n.x || 0) > -9000), (d: any) => d.id)
             .join("g")
             .attr("class", "node")
             .attr("transform", (d) => `translate(${d.x},${d.y})`)
@@ -99,6 +104,12 @@
             .on("click", (e, d) => {
                 e.stopPropagation();
                 toggleSelection(d.id);
+            })
+            .on("mouseenter", (e, d) => {
+                selection.update(s => ({ ...s, hoveredNodeId: d.id }));
+            })
+            .on("mouseleave", () => {
+                selection.update(s => ({ ...s, hoveredNodeId: null }));
             });
 
         nEls.each(function (d) {

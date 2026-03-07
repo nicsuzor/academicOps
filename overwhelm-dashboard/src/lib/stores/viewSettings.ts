@@ -2,8 +2,7 @@ import { writable } from 'svelte/store';
 
 export const viewSettings = writable({
     mainTab: 'Dashboard', // 'Dashboard' or 'Task Graph'
-    viewMode: 'Overview',  // e.g. "Overview", "Force Atlas 2", "SFDP", "Arc Diagram"
-    overviewLayout: 'treemap', // 'treemap' or 'circle_pack'
+    viewMode: 'Treemap',  // "Treemap", "Circle Pack", "Force Atlas 2", "SFDP", "Arc Diagram"
     topNLeaves: 80,
     liveSimulation: false,
     chargeStrength: 1.0,
@@ -13,8 +12,10 @@ export const viewSettings = writable({
 
 export const getLayoutFromViewSettings = ($settings: any) => {
     switch ($settings.viewMode) {
-        case 'Overview':
-            return $settings.overviewLayout; // 'treemap' or 'circle_pack'
+        case 'Treemap':
+            return 'treemap';
+        case 'Circle Pack':
+            return 'circle_pack';
         case 'Force Atlas 2':
         case 'SFDP':
             return 'force';

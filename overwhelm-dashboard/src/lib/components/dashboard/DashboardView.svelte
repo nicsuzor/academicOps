@@ -9,64 +9,45 @@
     import QuickCapture from "./QuickCapture.svelte";
 </script>
 
-<div class="dashboard-container">
-    <div class="top-row">
+<div class="h-full p-8 font-mono text-primary flex flex-col gap-6">
+    <div class="border border-primary/30 bg-black/50 p-4">
         <ActiveSessions
             sessions={data?.dashboardData?.active_agents || []}
             needsYou={data?.dashboardData?.needs_you || []}
         />
     </div>
 
-    <div class="main-columns">
-        <div class="left-col">
-            <WhereYouLeftOff leftOff={data?.dashboardData?.left_off} />
-            <ProjectDashboard
-                projectProjects={data?.dashboardData?.project_projects || []}
-                projectData={data?.dashboardData?.project_data || {}}
-            />
+    <div class="grid grid-cols-12 gap-6 flex-1 min-h-0">
+        <div class="col-span-8 flex flex-col gap-6 overflow-y-auto custom-scrollbar pr-2">
+            <div class="border border-primary/30 bg-black/50 p-4">
+                <WhereYouLeftOff leftOff={data?.dashboardData?.left_off} />
+            </div>
+
+            <div class="border border-primary/30 bg-black/50 p-4">
+                <ProjectDashboard
+                    projectProjects={data?.dashboardData?.project_projects || []}
+                    projectData={data?.dashboardData?.project_data || {}}
+                />
+            </div>
+
             {#if data?.dashboardData?.path}
-                <PathTimeline path={data?.dashboardData?.path} />
+                <div class="border border-primary/30 bg-black/50 p-4">
+                    <PathTimeline path={data?.dashboardData?.path} />
+                </div>
             {/if}
         </div>
-        <div class="right-col">
-            <QuickCapture />
-            <SynthesisPanel
-                synthesis={data?.dashboardData?.synthesis}
-                dailyStory={data?.dashboardData?.daily_story}
-            />
+
+        <div class="col-span-4 flex flex-col gap-6 overflow-y-auto custom-scrollbar pr-2">
+            <div class="border border-primary/30 bg-black/50 p-4">
+                <QuickCapture />
+            </div>
+
+            <div class="border border-primary/30 bg-black/50 p-4">
+                <SynthesisPanel
+                    synthesis={data?.dashboardData?.synthesis}
+                    dailyStory={data?.dashboardData?.daily_story}
+                />
+            </div>
         </div>
     </div>
 </div>
-
-<style>
-    .dashboard-container {
-        padding: 32px 40px;
-        color: var(--text-primary);
-        overflow-y: auto;
-        height: 100vh;
-        box-sizing: border-box;
-    }
-
-    .top-row {
-        margin-bottom: 24px;
-    }
-
-    .main-columns {
-        display: flex;
-        gap: 24px;
-    }
-
-    .left-col {
-        flex: 3;
-        display: flex;
-        flex-direction: column;
-        gap: 24px;
-    }
-
-    .right-col {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        gap: 24px;
-    }
-</style>

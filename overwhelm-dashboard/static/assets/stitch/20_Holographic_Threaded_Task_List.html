@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Holographic Flow | Spatial CRUD</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0de3f2",
+                        "background-light": "#f5f8f8",
+                        "background-dark": "#102122",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+                },
+            },
+        }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(13, 227, 242, 0.05);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(13, 227, 242, 0.1);
+        }
+        .spatial-depth-1 { transform: translateZ(0); z-index: 10; }
+        .spatial-depth-2 { transform: translateX(20px) translateY(10px); z-index: 20; }
+        .spatial-depth-3 { transform: translateX(40px) translateY(20px); z-index: 30; }
+        .neon-glow {
+            box-shadow: 0 0 15px rgba(13, 227, 242, 0.3);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen">
+<div class="relative flex min-h-screen w-full flex-col overflow-x-hidden">
+<!-- Top Navigation -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-primary/20 px-6 py-3 glass-panel sticky top-0 z-50">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-3 text-primary">
+<span class="material-symbols-outlined text-3xl">blur_on</span>
+<h2 class="text-xl font-bold leading-tight tracking-tight">Holographic Flow</h2>
+</div>
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-slate-400 hover:text-primary text-sm font-medium transition-colors" href="#">Dashboard</a>
+<a class="text-slate-400 hover:text-primary text-sm font-medium transition-colors" href="#">Analytics</a>
+<a class="text-primary text-sm font-bold border-b-2 border-primary pb-1" href="#">Hierarchy</a>
+</nav>
+</div>
+<div class="flex flex-1 justify-end gap-6 items-center">
+<label class="hidden sm:flex flex-col min-w-40 h-10 max-w-64">
+<div class="flex w-full flex-1 items-stretch rounded h-full bg-primary/10 border border-primary/20">
+<div class="text-primary/60 flex items-center justify-center pl-3">
+<span class="material-symbols-outlined text-xl">search</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 border-none bg-transparent text-slate-100 focus:ring-0 placeholder:text-primary/40 px-3 text-sm" placeholder="Search spatial data..."/>
+</div>
+</label>
+<div class="flex items-center gap-3">
+<button class="text-primary/80 hover:text-primary transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="size-9 rounded-full bg-primary/20 border border-primary/40 bg-cover bg-center" data-alt="User avatar profile placeholder" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuB8NQhCYVEvQJRy6iGfAbDIVa6mX0u9SezvLnu5-U6rw3oF2QQMwFhoSW4hYTR7DD3tzOtKNYThpI7wm-HUGJQK-VJ_1HqCtqr2FavIA2SJ320DinRZGDqcZ3utuAVRXR0MyGWmDewsfzdCQRuf5uyWuhI9_4jsC2pYi6HiJo0VMe_Gw2R_D-uZeM9bVMPG-kSY-5_x_50C4DAb60Z-c9ygxLnqejUlrbFB5SYNvLih4ATrZjtleuJT-SsV-0kcYJAveqLKsI18_OEf')"></div>
+</div>
+</div>
+</header>
+<main class="flex-1 flex flex-col md:flex-row p-6 gap-6">
+<!-- Left Sidebar Navigation -->
+<aside class="w-full md:w-64 flex flex-col gap-2">
+<div class="p-4 mb-4 rounded-xl glass-panel border border-primary/20">
+<p class="text-xs font-bold text-primary uppercase tracking-widest mb-4">Spatial Navigation</p>
+<div class="flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-primary/20 text-primary border border-primary/30" href="#">
+<span class="material-symbols-outlined">layers</span>
+<span class="text-sm font-medium">Global View</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-primary/10 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined">target</span>
+<span class="text-sm font-medium">Goal Tracking</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-primary/10 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined">account_tree</span>
+<span class="text-sm font-medium">Node Map</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-primary/10 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-sm font-medium">System Core</span>
+</a>
+</div>
+</div>
+<div class="p-4 rounded-xl glass-panel border border-primary/10">
+<p class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Current Breadcrumb</p>
+<div class="space-y-3">
+<div class="flex items-center gap-2 text-primary/70 text-xs">
+<span class="material-symbols-outlined text-sm">flag</span>
+<span>Global Expansion</span>
+</div>
+<div class="flex items-center gap-2 text-primary/70 text-xs ml-4">
+<span class="material-symbols-outlined text-sm">rocket_launch</span>
+<span>Q4 Launch Phase</span>
+</div>
+<div class="flex items-center gap-2 text-primary text-xs ml-8 font-bold">
+<span class="material-symbols-outlined text-sm">auto_awesome</span>
+<span>Feature Set Alpha</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Workspace -->
+<section class="flex-1 flex flex-col gap-6">
+<!-- Header Stats -->
+<div class="flex flex-wrap items-end justify-between gap-4">
+<div>
+<h1 class="text-4xl font-black text-slate-100 tracking-tighter mb-1">Feature Set Alpha</h1>
+<p class="text-primary/60 font-medium">Epic level workspace • 12 Active Tasks</p>
+</div>
+<div class="flex gap-3">
+<button class="px-5 py-2.5 rounded-lg bg-primary/10 text-primary border border-primary/30 hover:bg-primary/20 transition-all font-bold text-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-lg">filter_alt</span> Filter
+                        </button>
+<button class="px-5 py-2.5 rounded-lg bg-primary text-background-dark hover:bg-white transition-all font-bold text-sm flex items-center gap-2 neon-glow">
+<span class="material-symbols-outlined text-lg">add</span> New Task
+                        </button>
+</div>
+</div>
+<!-- Tabs -->
+<div class="border-b border-primary/10 flex gap-8 px-2">
+<button class="pb-3 border-b-2 border-primary text-primary font-bold text-sm">Active Workspace</button>
+<button class="pb-3 border-b-2 border-transparent text-slate-500 hover:text-slate-300 font-bold text-sm transition-all">Dependencies</button>
+<button class="pb-3 border-b-2 border-transparent text-slate-500 hover:text-slate-300 font-bold text-sm transition-all">Timeline</button>
+<button class="pb-3 border-b-2 border-transparent text-slate-500 hover:text-slate-300 font-bold text-sm transition-all">Audit Logs</button>
+</div>
+<!-- Spatial Content Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8 pt-4">
+<!-- Task Card 1 (Focused/Top Layer) -->
+<div class="group relative flex flex-col glass-panel rounded-xl p-6 border-l-4 border-l-primary transition-all hover:translate-y-[-4px] hover:shadow-[0_10px_30px_rgba(13,227,242,0.15)]">
+<div class="flex justify-between items-start mb-4">
+<span class="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-primary text-background-dark">In Progress</span>
+<button class="text-slate-500 hover:text-primary transition-colors">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+<h3 class="text-xl font-bold text-slate-100 mb-2">Holographic UI Design</h3>
+<p class="text-slate-400 text-sm leading-relaxed mb-6">Implement translucency and spatial depth in the main CRUD dashboard layout.</p>
+<div class="mt-auto flex items-center justify-between">
+<div class="flex -space-x-2">
+<div class="size-8 rounded-full border-2 border-background-dark bg-slate-700 bg-cover" data-alt="Team member 1" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAx6MRjTGyTs4-C1TBhU3ZIDjuXSnp53GLXLQUtHRgVlR9VygzmG5PIintjJo3DkH5iML0XtrQJeqKDAGmlmwKokVkXLAq1AVp2MSTBOU8dI3BlgjfpZCvLTNlO0nYTcsBwMOU-B7FGIdvggzQ46UVEg8SR3BMgxyskzWFtWFM2xBEnwBaM5M7WLm7RJaio-IfYtHYFx-NatXHmFJxXbvZ46SSJio0mJexmmy7n51Z9IWnqJ5Px01qHq4t9LpoEXd-aPsjNpC2eEWMW')"></div>
+<div class="size-8 rounded-full border-2 border-background-dark bg-slate-700 bg-cover" data-alt="Team member 2" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAtR-t--Y0bZ4F5Ns5k89kir0Gw_ZGUr7alXVaxhA8UOvI-OVxAFBcVKxlM4IYZ0YcWQaDh1Brm1Sh0HYax606-I7-jSL-sxHErKoezG57zE1sMRpRhv87XHA-c4V-poWkt-zfrRWwlnjxFySz8Cek3K85ddZEGfQrYQEIGT1hAUIcOb5ea_znSOPR-xNQsyRLxS4zoqfilFe7uabMuQG4Slv8p0vdeARLcrlq99p9-z-3Z43qAQuEK9ypj3Ca01YtQRhhEl8xEVPoK')"></div>
+</div>
+<div class="flex items-center gap-1 text-primary text-xs font-bold">
+<span class="material-symbols-outlined text-sm">schedule</span>
+                                2 Days Left
+                            </div>
+</div>
+</div>
+<!-- Task Card 2 (Depth Stacked) -->
+<div class="relative flex flex-col">
+<!-- Sub-layer card (simulated depth) -->
+<div class="absolute inset-0 glass-panel rounded-xl opacity-20 scale-95 translate-y-4"></div>
+<div class="absolute inset-0 glass-panel rounded-xl opacity-40 scale-[0.98] translate-y-2"></div>
+<!-- Main Card -->
+<div class="relative glass-panel rounded-xl p-6 border-l-4 border-l-slate-700 transition-all hover:border-l-primary/60">
+<div class="flex justify-between items-start mb-4">
+<span class="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-slate-800 text-slate-400">Backlog</span>
+<button class="text-slate-500">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+<h3 class="text-xl font-bold text-slate-300 mb-2">Node Engine Refactor</h3>
+<p class="text-slate-500 text-sm leading-relaxed mb-6">Optimize the underlying spatial hierarchy tree for faster node traversal.</p>
+<div class="mt-auto flex items-center justify-between">
+<div class="flex -space-x-2">
+<div class="size-8 rounded-full border-2 border-background-dark bg-slate-700 bg-cover" data-alt="Lead engineer avatar" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBM90Gj2cQPRejQffk9-QP64JrWFVyW5il-KAofl5QI6eXj7jR7Tn3yFtfcpmmxgzNyPNcA9Er0E_vkzGiKjDo9MRbZVzyUkEEIMOiAW-11vJ6XM17sE2mUxWY4WSswCrflT_ftY3PhNXCZ46nTFTWuPVCLya0pnaP1JUOPVzB8PxYA-5YUAYpSTIfPcqK1P070McsvEqXEE7EUevGN4EEoc8AI09A4RcgoKh5bAceOfcTCu-S36X5DlmMG0osa-Wnt2XPUujU_RLld')"></div>
+</div>
+<div class="text-slate-600 text-xs font-bold">Unscheduled</div>
+</div>
+</div>
+</div>
+<!-- Task Card 3 -->
+<div class="group relative flex flex-col glass-panel rounded-xl p-6 border-l-4 border-l-primary/40 transition-all hover:translate-y-[-4px] hover:shadow-[0_10px_30px_rgba(13,227,242,0.1)]">
+<div class="flex justify-between items-start mb-4">
+<span class="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-primary/20 text-primary">Review</span>
+<button class="text-slate-500 hover:text-primary transition-colors">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+<h3 class="text-xl font-bold text-slate-100 mb-2">Neon Theme Engine</h3>
+<p class="text-slate-400 text-sm leading-relaxed mb-6">Finalize the color palette for the Neon Cyan design system v2.0.</p>
+<div class="mt-auto flex items-center justify-between">
+<div class="flex -space-x-2">
+<div class="size-8 rounded-full border-2 border-background-dark bg-slate-700 bg-cover" data-alt="Designer avatar" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuB-J4PegFerV_q2ZnE40sX2zIfpx9J9hFNxB1jw0vrRhM7-Epjh6B99kdoNJysiz0YQAEJ-ZXrcJQqeBOywaC6Tux9zDENx52ILHXy6r2hauwp8BHPLn0M16vF65c8Va7qx6_hjSn-2u4j9hNRVutxcCnrvqMCqMd7aCGyNS_WDWavBSLShKMspPNq9sshT_-Xo3R7kBjiOewJ1ypR68Q6SiFlbGuP5VBX0anR97PoqMKFfjueoDTKIq-JKXKjCPHcVjRUoV6DGUDUC')"></div>
+</div>
+<div class="flex items-center gap-1 text-primary text-xs font-bold">
+<span class="material-symbols-outlined text-sm">check_circle</span>
+                                Ready
+                            </div>
+</div>
+</div>
+<!-- Add New Card Area -->
+<div class="flex items-center justify-center border-2 border-dashed border-primary/20 rounded-xl p-12 hover:border-primary/50 transition-all group cursor-pointer">
+<div class="text-center">
+<span class="material-symbols-outlined text-4xl text-primary/30 group-hover:text-primary mb-2 transition-all">add_circle</span>
+<p class="text-sm font-bold text-primary/40 group-hover:text-primary transition-all">Add spatial node</p>
+</div>
+</div>
+</div>
+<!-- Nesting Visualization (Spatial Tree) -->
+<div class="mt-12 p-8 rounded-2xl glass-panel relative overflow-hidden">
+<div class="absolute top-0 right-0 p-8 opacity-10">
+<span class="material-symbols-outlined text-9xl text-primary">hub</span>
+</div>
+<h2 class="text-2xl font-bold text-slate-100 mb-8">Nesting Context</h2>
+<div class="relative flex flex-col gap-4">
+<!-- Goal Layer -->
+<div class="flex items-center gap-6 p-4 rounded-xl border border-primary/40 bg-primary/5 relative z-30">
+<div class="size-10 rounded-lg bg-primary/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">flag</span>
+</div>
+<div>
+<h4 class="font-bold text-slate-100">Global Expansion</h4>
+<p class="text-xs text-primary/60">Primary Goal Node</p>
+</div>
+<div class="ml-auto text-primary text-sm font-bold">84% Complete</div>
+</div>
+<!-- Connector Line -->
+<div class="ml-8 w-0.5 h-6 bg-primary/30"></div>
+<!-- Project Layer -->
+<div class="ml-8 flex items-center gap-6 p-4 rounded-xl border border-primary/30 bg-primary/5 relative z-20">
+<div class="size-10 rounded-lg bg-primary/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">rocket_launch</span>
+</div>
+<div>
+<h4 class="font-bold text-slate-100">Q4 Launch Phase</h4>
+<p class="text-xs text-primary/60">Active Project Branch</p>
+</div>
+<div class="ml-auto text-primary text-sm font-bold">42% Complete</div>
+</div>
+<!-- Connector Line -->
+<div class="ml-16 w-0.5 h-6 bg-primary/30"></div>
+<!-- Epic Layer -->
+<div class="ml-16 flex items-center gap-6 p-4 rounded-xl border border-primary text-background-dark bg-primary relative z-10 shadow-[0_0_20px_rgba(13,227,242,0.4)]">
+<div class="size-10 rounded-lg bg-background-dark/20 flex items-center justify-center text-background-dark">
+<span class="material-symbols-outlined">auto_awesome</span>
+</div>
+<div>
+<h4 class="font-bold text-background-dark">Feature Set Alpha</h4>
+<p class="text-xs text-background-dark/60">Focused Epic Leaf</p>
+</div>
+<div class="ml-auto text-background-dark text-sm font-bold">12/32 Nodes</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Floating Action for Spatial Shift -->
+<div class="fixed bottom-8 right-8 z-[100]">
+<button class="size-14 rounded-full bg-primary text-background-dark shadow-[0_0_30px_rgba(13,227,242,0.5)] flex items-center justify-center hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-3xl">view_in_ar</span>
+</button>
+</div>
+</div>
+</body></html>

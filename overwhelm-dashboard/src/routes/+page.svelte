@@ -11,6 +11,7 @@
     import ArcView from "$lib/components/views/ArcView.svelte";
 
     import DashboardView from "$lib/components/dashboard/DashboardView.svelte";
+    import ThreadedTasksView from "$lib/components/views/ThreadedTasksView.svelte";
 
     import {
         prepareGraphData,
@@ -187,59 +188,66 @@
         <Sidebar />
     </aside>
 
-    <!-- MAIN CONTENT: Graph or Dashboard -->
-    <section class="col-span-6 relative bg-surface-dark flex flex-col h-full border-r border-primary/30 overflow-hidden">
-        <div class="absolute inset-0 grid-bg opacity-30 pointer-events-none"></div>
+    {#if $viewSettings.mainTab === "Threaded Tasks"}
+        <!-- THREADED TASKS & EDITOR OVERRIDE -->
+        <section class="col-span-9 flex flex-col h-full bg-background-dark overflow-hidden">
+            <ThreadedTasksView {data} />
+        </section>
+    {:else}
+        <!-- MAIN CONTENT: Graph or Dashboard -->
+        <section class="col-span-6 relative bg-surface-dark flex flex-col h-full border-r border-primary/30 overflow-hidden">
+            <div class="absolute inset-0 grid-bg opacity-30 pointer-events-none"></div>
 
-        <!-- Focus banner (Absolute Over Graph) -->
-        {#if $selection.focusNodeId}
-            <div class="absolute top-4 left-4 z-20 flex items-center gap-3">
-                <button
-                    class="px-3 py-1.5 bg-black/80 border border-primary/40 text-primary font-mono text-xs hover:bg-primary/20 transition-colors backdrop-blur-md"
-                    on:click={() =>
-                        selection.update((s) => ({
-                            ...s,
-                            focusNodeId: null,
-                            focusNeighborSet: null,
-                        }))}>← FULL VIEW</button>
-                <span class="px-3 py-1.5 bg-black/60 border border-primary/20 text-primary/70 font-mono text-xs backdrop-blur-md">
-                    FOCUS: {$selection.focusNodeId}
-                </span>
-            </div>
-        {/if}
+            <!-- Focus banner (Absolute Over Graph) -->
+            {#if $selection.focusNodeId}
+                <div class="absolute top-4 left-4 z-20 flex items-center gap-3">
+                    <button
+                        class="px-3 py-1.5 bg-black/80 border border-primary/40 text-primary font-mono text-xs hover:bg-primary/20 transition-colors backdrop-blur-md cursor-pointer"
+                        on:click={() =>
+                            selection.update((s) => ({
+                                ...s,
+                                focusNodeId: null,
+                                focusNeighborSet: null,
+                            }))}>← FULL VIEW</button>
+                    <span class="px-3 py-1.5 bg-black/60 border border-primary/20 text-primary/70 font-mono text-xs backdrop-blur-md">
+                        FOCUS: {$selection.focusNodeId}
+                    </span>
+                </div>
+            {/if}
 
-        <!-- The Graph Area -->
-        <div class="flex-1 relative z-0 h-full" class:blur-md={$viewSettings.mainTab === "Dashboard"} class:scale-105={$viewSettings.mainTab === "Dashboard"} style="transition: filter 0.5s ease, transform 0.5s ease;">
-            <ZoomContainer let:containerGroup>
-                {#if containerGroup}
-                    {#if activeLayout === "treemap" || activeLayout === "tree"}
-                        <TreemapView {containerGroup} />
-                    {:else if activeLayout === "circle_pack" || activeLayout === "circle"}
-                        <CirclePackView {containerGroup} />
-                    {:else if activeLayout === "force" || activeLayout === "fa2" || activeLayout === "sfdp"}
-                        <ForceView {containerGroup} />
-                    {:else if activeLayout === "arc"}
-                        <ArcView {containerGroup} />
+            <!-- The Graph Area -->
+            <div class="flex-1 relative z-0 h-full" class:blur-md={$viewSettings.mainTab === "Dashboard"} class:scale-105={$viewSettings.mainTab === "Dashboard"} style="transition: filter 0.5s ease, transform 0.5s ease;">
+                <ZoomContainer let:containerGroup>
+                    {#if containerGroup}
+                        {#if activeLayout === "treemap" || activeLayout === "tree"}
+                            <TreemapView {containerGroup} />
+                        {:else if activeLayout === "circle_pack" || activeLayout === "circle"}
+                            <CirclePackView {containerGroup} />
+                        {:else if activeLayout === "force" || activeLayout === "fa2" || activeLayout === "sfdp"}
+                            <ForceView {containerGroup} />
+                        {:else if activeLayout === "arc"}
+                            <ArcView {containerGroup} />
+                        {/if}
                     {/if}
-                {/if}
-            </ZoomContainer>
-        </div>
-
-        <!-- Legend -->
-        <Legend />
-
-        <!-- Overlay Dashboard -->
-        {#if $viewSettings.mainTab === "Dashboard"}
-            <div class="absolute inset-0 z-50 bg-background-dark/90 backdrop-blur-lg overflow-y-auto custom-scrollbar">
-                <DashboardView {data} />
+                </ZoomContainer>
             </div>
-        {/if}
-    </section>
 
-    <!-- RIGHT SIDEBAR: Details -->
-    <aside class="col-span-3 bg-background-dark flex flex-col h-full overflow-y-auto custom-scrollbar">
-        <DetailPanel />
-    </aside>
+            <!-- Legend -->
+            <Legend />
+
+            <!-- Overlay Dashboard -->
+            {#if $viewSettings.mainTab === "Dashboard"}
+                <div class="absolute inset-0 z-50 bg-background-dark/90 backdrop-blur-lg overflow-y-auto custom-scrollbar">
+                    <DashboardView {data} />
+                </div>
+            {/if}
+        </section>
+
+        <!-- RIGHT SIDEBAR: Details -->
+        <aside class="col-span-3 bg-background-dark flex flex-col h-full overflow-y-auto custom-scrollbar">
+            <DetailPanel />
+        </aside>
+    {/if}
 {/if}
 
 <style>

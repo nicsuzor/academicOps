@@ -3,12 +3,11 @@
   import { viewSettings } from "../stores/viewSettings";
   import { graphData } from "../stores/graph";
 
-  const viewModes = ["Overview", "Force Atlas 2", "SFDP", "Arc Diagram"];
+  const viewModes = ["Treemap", "Circle Pack", "Force Atlas 2", "SFDP", "Arc Diagram"];
 
   $: isForce =
     $viewSettings.viewMode === "Force Atlas 2" ||
     $viewSettings.viewMode === "SFDP";
-  $: isOverview = $viewSettings.viewMode === "Overview";
 
   $: availableProjects = $graphData
     ? Array.from(
@@ -32,6 +31,7 @@
       <select id="mainTab" bind:value={$viewSettings.mainTab} class="w-full bg-black/50 border border-primary/30 text-primary text-xs py-1.5 px-2 focus:ring-1 focus:ring-primary focus:border-primary">
         <option value="Dashboard">DASHBOARD</option>
         <option value="Task Graph">TASK GRAPH</option>
+        <option value="Threaded Tasks">THREADED TASKS</option>
       </select>
     </div>
 
@@ -45,22 +45,6 @@
             <option value={mode}>{mode.toUpperCase()}</option>
           {/each}
         </select>
-      </div>
-    {/if}
-
-    {#if isOverview}
-      <div class="space-y-2">
-        <span class="block text-[10px] font-bold tracking-widest text-primary/60">OVERVIEW LAYOUT</span>
-        <div class="flex flex-col gap-2">
-          <label class="flex items-center gap-2 cursor-pointer group">
-            <input type="radio" bind:group={$viewSettings.overviewLayout} value="tree" class="text-primary bg-black border-primary/30 focus:ring-primary focus:ring-offset-0" />
-            <span class="text-xs group-hover:text-primary transition-colors">TREEMAP</span>
-          </label>
-          <label class="flex items-center gap-2 cursor-pointer group">
-            <input type="radio" bind:group={$viewSettings.overviewLayout} value="circle" class="text-primary bg-black border-primary/30 focus:ring-primary focus:ring-offset-0" />
-            <span class="text-xs group-hover:text-primary transition-colors">CIRCLE PACK</span>
-          </label>
-        </div>
       </div>
     {/if}
 

@@ -14,150 +14,34 @@
     }
 </script>
 
-<div class="glass-surface current-activity-box">
-    <div class="header">
-        <h3>⚡ CURRENT ACTIVITY ({sessions.length})</h3>
+<div class="flex flex-col gap-4 font-mono w-full">
+    <div class="flex justify-between items-center border-b border-primary/30 pb-2">
+        <h3 class="text-sm font-bold tracking-widest text-primary flex items-center gap-2">
+            <span class="material-symbols-outlined text-[16px]">bolt</span>
+            CURRENT ACTIVITY ({sessions.length})
+        </h3>
         {#if needsYou.length > 0}
-            <div class="needs-you-badge">
-                <span class="icon">⚠️</span>
-                <span>{needsYou.length} Needs You</span>
+            <div class="flex items-center gap-2 px-3 py-1 border border-red-500 bg-red-900/20 text-red-500 font-bold text-[10px] uppercase tracking-widest animate-pulse">
+                <span class="material-symbols-outlined text-[14px]">warning</span>
+                {needsYou.length} Needs You
             </div>
         {/if}
     </div>
 
-    <div class="sessions-list">
+    <div class="flex flex-col gap-2">
         {#each sessions.slice(0, 5) as session}
-            <div class="session-row">
-                <span class="ca-time">{formatTimeAgo(session.started_at)}</span>
+            <div class="flex items-center gap-4 bg-primary/5 border-l-2 border-primary/50 p-2 hover:bg-primary/10 transition-colors cursor-default">
+                <span class="text-[10px] text-primary/60 min-w-[55px]">{formatTimeAgo(session.started_at)}</span>
                 {#if session.project}
-                    <span class="ca-project">{session.project}</span>
+                    <span class="text-[10px] font-bold bg-primary/20 text-primary px-2 py-0.5 border border-primary/20">{session.project}</span>
                 {/if}
-                <span class="ca-desc" title={session.description}>
-                    {#if session.description.length > 120}
-                        {session.description.substring(0, 120)}...
-                    {:else}
-                        {session.description}
-                    {/if}
+                <span class="text-xs text-primary/90 truncate flex-1" title={session.description}>
+                    {session.description}
                 </span>
             </div>
         {/each}
         {#if sessions.length === 0}
-            <div class="empty">No active agent sessions in the last hour.</div>
+            <div class="text-xs text-primary/40 italic">No active agent sessions in the last hour.</div>
         {/if}
     </div>
 </div>
-
-<style>
-    .current-activity-box {
-        padding: 20px 24px;
-        border-left: 4px solid var(--accent-success);
-        background: linear-gradient(
-            135deg,
-            rgba(52, 211, 153, 0.05),
-            transparent
-        );
-    }
-
-    .header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 16px;
-    }
-
-    h3 {
-        margin: 0;
-        font-size: 13px;
-        color: var(--accent-success);
-        letter-spacing: 0.1em;
-        font-weight: 700;
-        text-transform: uppercase;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .needs-you-badge {
-        background: rgba(248, 113, 113, 0.1);
-        border: 1px solid rgba(248, 113, 113, 0.2);
-        color: var(--accent-danger);
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: 600;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        box-shadow: 0 2px 8px rgba(248, 113, 113, 0.15);
-        animation: pulse-border 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-    }
-
-    @keyframes pulse-border {
-        0%,
-        100% {
-            border-color: rgba(248, 113, 113, 0.2);
-        }
-        50% {
-            border-color: rgba(248, 113, 113, 0.6);
-        }
-    }
-
-    .sessions-list {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-    }
-
-    .session-row {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        font-size: 14px;
-        padding: 10px 12px;
-        border-radius: var(--radius-sm);
-        background: rgba(255, 255, 255, 0.02);
-        border: 1px solid transparent;
-        transition: all var(--transition-fast);
-    }
-
-    .session-row:hover {
-        background: rgba(255, 255, 255, 0.05);
-        border-color: rgba(255, 255, 255, 0.08);
-        transform: translateX(4px);
-    }
-
-    .ca-time {
-        color: var(--text-muted);
-        font-variant-numeric: tabular-nums;
-        font-size: 12px;
-        font-weight: 500;
-        min-width: 55px;
-    }
-
-    .ca-project {
-        background: rgba(129, 140, 248, 0.1);
-        color: var(--accent-primary);
-        padding: 4px 8px;
-        border-radius: 6px;
-        font-family: "JetBrains Mono", monospace;
-        font-size: 11px;
-        font-weight: 600;
-        letter-spacing: 0.05em;
-    }
-
-    .ca-desc {
-        color: var(--text-primary);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        flex: 1;
-        font-weight: 500;
-    }
-
-    .empty {
-        color: var(--text-muted);
-        font-size: 13px;
-        font-style: italic;
-        padding: 12px 0;
-    }
-</style>

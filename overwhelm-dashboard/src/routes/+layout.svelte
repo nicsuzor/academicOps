@@ -36,6 +36,10 @@
 	</div>
 
 	<div class="flex items-center gap-6">
+		<button class="flex items-center gap-2 px-3 py-1 bg-primary/10 border border-primary/20 hover:bg-primary/30 transition-colors hidden sm:flex cursor-pointer" onclick={() => document.documentElement.classList.toggle('theme-holographic')}>
+			<span class="material-symbols-outlined text-sm">palette</span>
+			<span class="text-xs font-mono font-bold tracking-wider text-primary">THEME</span>
+		</button>
 		<div class="flex items-center gap-2 px-3 py-1 bg-primary/10 border border-primary/20 rounded-none hidden sm:flex">
 			<span class="material-symbols-outlined text-sm">wifi</span>
 			<span class="text-xs font-mono font-bold tracking-wider">NET: SECURE</span>

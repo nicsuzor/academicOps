@@ -127,13 +127,13 @@
   >
     <defs>
       <marker id="ap" viewBox="0 -4 8 8" refX="12" refY="0" markerWidth="4" markerHeight="4" orient="auto">
-        <path d="M0,-3L8,0L0,3" fill="#3b82f6"/>
+        <path d="M0,-3L8,0L0,3" fill="#f2aa0d"/>
       </marker>
       <marker id="ad" viewBox="0 -4 8 8" refX="12" refY="0" markerWidth="4" markerHeight="4" orient="auto">
-        <path d="M0,-3L8,0L0,3" fill="#ef4444"/>
+        <path d="M0,-3L8,0L0,3" fill="#FF2A6D"/>
       </marker>
       <marker id="ar" viewBox="0 -4 8 8" refX="12" refY="0" markerWidth="4" markerHeight="4" orient="auto">
-        <path d="M0,-3L8,0L0,3" fill="#94a3b8"/>
+        <path d="M0,-3L8,0L0,3" fill="#a3a3a3"/>
       </marker>
     </defs>
 

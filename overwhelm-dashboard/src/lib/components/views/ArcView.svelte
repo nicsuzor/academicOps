@@ -61,7 +61,17 @@
       .attr("class", "node")
       .attr("transform", d => `translate(${d.x},${d.y})`)
       .style("cursor", "pointer")
-      .on("click", (e, d) => { e.stopPropagation(); toggleSelection(d.id); });
+      .on("click", (e, d) => { e.stopPropagation(); toggleSelection(d.id); })
+      .on("mouseenter", (e, d) => {
+        import("../../stores/selection").then(({ selection }) => {
+            selection.update(s => ({ ...s, hoveredNodeId: d.id }));
+        });
+      })
+      .on("mouseleave", () => {
+        import("../../stores/selection").then(({ selection }) => {
+            selection.update(s => ({ ...s, hoveredNodeId: null }));
+        });
+      });
 
     nEls.each(function(d) {
       const g = d3.select(this);
