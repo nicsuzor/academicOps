@@ -16,7 +16,7 @@ import os
 import sys
 import tempfile
 from collections import Counter
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -93,7 +93,7 @@ def _is_poor_summary(text: str) -> bool:
 
 def synthesize(sessions: list[dict], today: str) -> dict:
     """Build synthesis.json from a list of per-session dicts."""
-    now = datetime.now(UTC)
+    now = datetime.now().astimezone()
 
     # Pre-process sessions to ensure everyone has a summary
     for s in sessions:

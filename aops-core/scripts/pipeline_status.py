@@ -15,7 +15,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
 
 # Add aops-core to path for imports
@@ -34,7 +34,7 @@ def format_timestamp(ts: str | None) -> str:
         return "Never"
     try:
         dt = datetime.fromisoformat(ts)
-        now = datetime.now(UTC)
+        now = datetime.now().astimezone()
         delta = now - dt
         if delta.total_seconds() < 60:
             return "Just now"

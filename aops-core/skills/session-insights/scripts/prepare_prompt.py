@@ -19,7 +19,6 @@ from pathlib import Path
 # Add aops-core to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
-from datetime import UTC
 
 from lib.insights_generator import (
     load_prompt_template,
@@ -73,7 +72,7 @@ def extract_metadata_from_filename(filename: str) -> dict[str, str]:
         # Use today's date as fallback
         from datetime import datetime
 
-        date = datetime.now(UTC).strftime("%Y-%m-%d")
+        date = datetime.now().astimezone().strftime("%Y-%m-%d")
         return {"session_id": session_id, "date": date, "project": "unknown"}
 
     # Pattern 3: Try to extract any 8-char hex as session_id
@@ -88,7 +87,7 @@ def extract_metadata_from_filename(filename: str) -> dict[str, str]:
         else:
             from datetime import datetime
 
-            date = datetime.now(UTC).strftime("%Y-%m-%d")
+            date = datetime.now().astimezone().strftime("%Y-%m-%d")
 
         # Try to extract project (usually between date and session_id)
         # Handle optional hour component: YYYYMMDD-[HH]-project
