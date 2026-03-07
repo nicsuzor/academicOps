@@ -277,7 +277,7 @@ def generate_gemini_hooks(
                 # Set a safe UV_CACHE_DIR for Gemini because the default may be blocked by macOS Seatbelt.
                 # We use ~/.gemini/uv_cache which is a shared, persistent directory allowed
                 # by the seatbelt profile.
-                gemini_cmd = f"UV_CACHE_DIR=\"~/.gemini/uv_cache\" uv run --directory {aops_path} python {router_script_path} {g_event}"
+                gemini_cmd = f'UV_CACHE_DIR="~/.gemini/uv_cache" uv run --directory {aops_path} python {router_script_path} {g_event}'
 
                 gemini_hooks[g_event].append(
                     {

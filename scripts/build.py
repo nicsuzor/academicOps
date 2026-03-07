@@ -243,7 +243,7 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
                             # by macOS Seatbelt. We use ~/.gemini/uv_cache which is shared and
                             # persistent across all extensions.
                             if "uv run" in cmd:
-                                cmd = f"UV_CACHE_DIR=\"~/.gemini/uv_cache\" {cmd}"
+                                cmd = f'UV_CACHE_DIR="~/.gemini/uv_cache" {cmd}'
 
                             new_hook["command"] = cmd
                         new_hooks.append(new_hook)
