@@ -3738,31 +3738,24 @@ def render_spotlight_epic():
         total = len(children)
         done_pct = (status_counts["done"] / total * 100) if total > 0 else 0
 
-        html += f"""
-        <div class="spotlight-progress-panel" style="margin-bottom: 12px; padding: 12px 16px; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 8px;">
-            <div class="spotlight-progress-header" style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
-                <div class="spotlight-progress-title" style="font-weight: 600; font-size: 1em; color: #60a5fa;">🚀 {esc(epic.get("title", "Epic"))}</div>
-                <div class="spotlight-progress-pct" style="font-size: 0.85em; opacity: 0.8;">{done_pct:.0f}%</div>
-            </div>
-            <div class="spotlight-progress-bar" style="height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; margin-bottom: 8px; overflow: hidden;">
-                <div class="spotlight-progress-fill" style="width: {done_pct}%; height: 100%; background: #3b82f6; transition: width 0.3s ease;"></div>
-            </div>
-            <div class="synthesis-grid">
-                <div class="synthesis-card done">
-                    <div class="synthesis-card-title">✅ Done</div>
-                    <div class="synthesis-card-content" style="font-size: 1.3em; font-weight: 700;">{status_counts["done"]}</div>
-                </div>
-                <div class="synthesis-card context">
-                    <div class="synthesis-card-title">🔄 In Progress</div>
-                    <div class="synthesis-card-content" style="font-size: 1.3em; font-weight: 700;">{status_counts["in_progress"]}</div>
-                </div>
-                <div class="synthesis-card waiting">
-                    <div class="synthesis-card-title">🚫 Blocked</div>
-                    <div class="synthesis-card-content" style="font-size: 1.3em; font-weight: 700;">{status_counts["blocked"]}</div>
-                </div>
-            </div>
-        </div>
-        """
+        html += (
+            f'<div class="spotlight-progress-panel" style="margin-bottom: 12px; padding: 12px 16px; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 8px;">'
+            f'<div class="spotlight-progress-header" style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">'
+            f'<div class="spotlight-progress-title" style="font-weight: 600; font-size: 1em; color: #60a5fa;">🚀 {esc(epic.get("title", "Epic"))}</div>'
+            f'<div class="spotlight-progress-pct" style="font-size: 0.85em; opacity: 0.8;">{done_pct:.0f}%</div>'
+            f"</div>"
+            f'<div class="spotlight-progress-bar" style="height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; margin-bottom: 8px; overflow: hidden;">'
+            f'<div class="spotlight-progress-fill" style="width: {done_pct}%; height: 100%; background: #3b82f6; transition: width 0.3s ease;"></div>'
+            f"</div>"
+            f'<div class="synthesis-grid">'
+            f'<div class="synthesis-card done"><div class="synthesis-card-title">✅ Done</div>'
+            f'<div class="synthesis-card-content" style="font-size: 1.3em; font-weight: 700;">{status_counts["done"]}</div></div>'
+            f'<div class="synthesis-card context"><div class="synthesis-card-title">🔄 In Progress</div>'
+            f'<div class="synthesis-card-content" style="font-size: 1.3em; font-weight: 700;">{status_counts["in_progress"]}</div></div>'
+            f'<div class="synthesis-card waiting"><div class="synthesis-card-title">🚫 Blocked</div>'
+            f'<div class="synthesis-card-content" style="font-size: 1.3em; font-weight: 700;">{status_counts["blocked"]}</div></div>'
+            f"</div></div>"
+        )
     st.markdown(html, unsafe_allow_html=True)
 
 
@@ -4040,27 +4033,24 @@ def _render_fa2_tab(d3_graph: dict):
     leaf_ids = _graph_leaf_ids(all_nodes)
     node_by_id = {n["id"]: n for n in all_nodes}
 
-    # Sidebar controls for this tab
-    with st.sidebar:
-        st.markdown("**FA2 Controls**")
-        show_active = st.checkbox("Active", value=True, key="fa2_show_active")
-        show_blocked = st.checkbox("Blocked", value=True, key="fa2_show_blocked")
-        show_done = st.checkbox("Done / Cancelled", value=False, key="fa2_show_done")
-
-        quick_view_n = st.select_slider(
+    # Inline controls (avoids sidebar bleed to other tabs)
+    with st.expander("FA2 Controls", expanded=False):
+        c1, c2, c3, c4 = st.columns(4)
+        show_active = c1.checkbox("Active", value=True, key="fa2_show_active")
+        show_blocked = c2.checkbox("Blocked", value=True, key="fa2_show_blocked")
+        show_done = c3.checkbox("Done / Cancelled", value=False, key="fa2_show_done")
+        quick_view_n = c4.select_slider(
             "Top N leaves",
             options=[25, 50, 80, 120, 200],
             value=80,
             key="fa2_topn",
         )
-
         use_live = st.toggle("Live simulation", value=False, key="fa2_live")
-
         if use_live:
-            with st.expander("Force tuning", expanded=False):
-                charge_mult = st.slider("Charge strength", 0.1, 2.0, 1.0, 0.1, key="fa2_charge")
-                link_dist = st.slider("Link distance", 0.2, 2.0, 0.75, 0.05, key="fa2_link")
-                cluster_str = st.slider("Cluster pull", 0.0, 1.0, 0.4, 0.05, key="fa2_cluster")
+            fc1, fc2, fc3 = st.columns(3)
+            charge_mult = fc1.slider("Charge strength", 0.1, 2.0, 1.0, 0.1, key="fa2_charge")
+            link_dist = fc2.slider("Link distance", 0.2, 2.0, 0.75, 0.05, key="fa2_link")
+            cluster_str = fc3.slider("Cluster pull", 0.0, 1.0, 0.4, 0.05, key="fa2_cluster")
         else:
             charge_mult, link_dist, cluster_str = 1.0, 0.75, 0.4
 
@@ -4117,15 +4107,14 @@ def _render_sfdp_tab(d3_graph: dict):
     leaf_ids = _graph_leaf_ids(all_nodes)
     node_by_id = {n["id"]: n for n in all_nodes}
 
-    # Show more nodes than FA2 — higher default, status filters in sidebar
-    with st.sidebar:
-        st.markdown("**SFDP Controls**")
-        show_active = st.checkbox("Active", value=True, key="sfdp_show_active")
-        show_blocked = st.checkbox("Blocked", value=True, key="sfdp_show_blocked")
-        show_done = st.checkbox("Done / Cancelled", value=False, key="sfdp_show_done")
-        show_orphans = st.checkbox("Orphans (inbox)", value=False, key="sfdp_show_orphans")
-
-        top_n = st.select_slider(
+    # Inline controls (avoids sidebar bleed to other tabs)
+    with st.expander("SFDP Controls", expanded=False):
+        c1, c2, c3, c4, c5 = st.columns(5)
+        show_active = c1.checkbox("Active", value=True, key="sfdp_show_active")
+        show_blocked = c2.checkbox("Blocked", value=True, key="sfdp_show_blocked")
+        show_done = c3.checkbox("Done / Cancelled", value=False, key="sfdp_show_done")
+        show_orphans = c4.checkbox("Orphans (inbox)", value=False, key="sfdp_show_orphans")
+        top_n = c5.select_slider(
             "Max leaves",
             options=[80, 120, 200, 350, 500],
             value=200,
@@ -4439,8 +4428,9 @@ def render_session_summary():
 # UNIFIED DASHBOARD - Single page: Graph + Project boxes
 # ============================================================================
 
-from lib.task_model import TaskStatus
 from task_manager_ui import render_task_editor
+
+from lib.task_model import TaskStatus
 
 
 @st.dialog("Edit Task")
