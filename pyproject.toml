@@ -67,7 +67,6 @@ dev = [
   "pytest-xdist>=3.8.0",
   "pytest-cov>=7.0.0",
   "pytest-timeout>=2.4.0",
-  "pytest-env>=1.5.0",
   # Linting & type checking
   "basedpyright>=1.29.0",
   "ruff>=0.14.10",
@@ -163,14 +162,6 @@ reportMissingTypeStubs = false
 # reportUnknownVariableType = false
 # reportUnknownArgumentType = false
 [tool.pytest.ini_options]
-# Required by gate_config.py, which intentionally has no defaults (fail-fast design).
-# Values must match valid gate engine verdicts: warn, deny, or block.
-env = [
-    "HANDOVER_GATE_MODE=warn",
-    "QA_GATE_MODE=block",
-    "CUSTODIET_GATE_MODE=block",
-    "HYDRATION_GATE_MODE=warn",
-]
 testpaths = ["tests", "aops-core/tests"]
 pythonpath = [".", "aops-core", "aops-core/hooks", "aops-core/lib", "lib/overwhelm"]
 python_files = ["test_*.py"]

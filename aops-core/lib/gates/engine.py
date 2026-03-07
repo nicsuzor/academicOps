@@ -15,6 +15,7 @@ from lib.gate_types import (
 )
 from lib.session_paths import get_gate_file_path
 from lib.session_state import SessionState
+from lib.template_registry import TemplateRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -119,11 +120,11 @@ class GenericGate:
 
         return True
 
-    def _render_template(
-        self, template: str, ctx: HookContext, state: GateState, session_state: SessionState
-    ) -> str:
-        # Prepare context variables
-        variables: dict[str, Any] = {
+    def _build_template_variables(
+        self, ctx: HookContext, state: GateState, session_state: SessionState
+    ) -> dict[str, Any]:
+        """Build the variable dict available for template rendering."""
+        return {
             "session_id": ctx.session_id,
             "tool_name": ctx.tool_name or "",
             "gate_status": getattr(state.status, "value", state.status),
@@ -134,6 +135,12 @@ class GenericGate:
             # Access metrics
             **state.metrics,
         }
+
+    def _render_template(
+        self, template: str, ctx: HookContext, state: GateState, session_state: SessionState
+    ) -> str:
+        """Render an inline template string with context variables."""
+        variables = self._build_template_variables(ctx, state, session_state)
 
         # Fail fast on missing template variables. The old defaultdict fallback
         # silently produced "(not set)" which caused gates to pass broken
@@ -146,6 +153,33 @@ class GenericGate:
                 f"Available variables: {sorted(variables.keys())}. "
                 f"Template: {template[:200]!r}"
             ) from e
+
+    def _resolve_message(
+        self,
+        template_key: str | None,
+        inline_template: str | None,
+        ctx: HookContext,
+        state: GateState,
+        session_state: SessionState,
+    ) -> str | None:
+        """Resolve a message from a template key or inline string.
+
+        Prefers template_key (via TemplateRegistry) over inline_template.
+        Returns None if neither is set.
+        """
+        if template_key:
+            variables = self._build_template_variables(ctx, state, session_state)
+            try:
+                return TemplateRegistry.instance().render(template_key, variables)
+            except (KeyError, ValueError, FileNotFoundError) as e:
+                raise RuntimeError(
+                    f"Gate '{self.name}' failed to render template key '{template_key}': {e}"
+                ) from e
+
+        if inline_template:
+            return self._render_template(inline_template, ctx, state, session_state)
+
+        return None
 
     def _apply_transition(
         self,
@@ -192,16 +226,22 @@ class GenericGate:
                 custom_sys_msg = result.system_message
                 custom_ctx_inj = result.context_injection
 
-        # Render Messages
-        sys_msg = None
-        if transition.system_message_template:
-            sys_msg = self._render_template(
-                transition.system_message_template, ctx, state, session_state
-            )
+        # Render Messages (prefer template keys over inline strings)
+        sys_msg = self._resolve_message(
+            transition.system_message_key,
+            transition.system_message_template,
+            ctx,
+            state,
+            session_state,
+        )
 
-        ctx_inj = None
-        if transition.context_template:
-            ctx_inj = self._render_template(transition.context_template, ctx, state, session_state)
+        ctx_inj = self._resolve_message(
+            transition.context_key,
+            transition.context_template,
+            ctx,
+            state,
+            session_state,
+        )
 
         # Combine Messages (Template first, then Custom Action)
         if custom_sys_msg:
@@ -282,7 +322,7 @@ class GenericGate:
             temp_path = str(get_gate_file_path(self.name, ctx.session_id))
 
         # Render countdown message
-        variables = {
+        countdown_variables = {
             "remaining": remaining,
             "threshold": threshold,
             "current": current_ops,
@@ -290,10 +330,22 @@ class GenericGate:
             "temp_path": temp_path,
         }
 
-        try:
-            message = countdown.message_template.format_map(variables)
-        except KeyError as e:
-            logger.warning(f"Countdown template error for gate '{self.name}': {e}")
+        # Prefer template key over inline string
+        message = None
+        if countdown.message_key:
+            try:
+                message = TemplateRegistry.instance().render(
+                    countdown.message_key, countdown_variables
+                )
+            except (KeyError, ValueError, FileNotFoundError) as e:
+                logger.warning(f"Countdown template key error for gate '{self.name}': {e}")
+        else:
+            try:
+                message = countdown.message_template.format_map(countdown_variables)
+            except KeyError as e:
+                logger.warning(f"Countdown template error for gate '{self.name}': {e}")
+
+        if not message:
             message = f"📋 {remaining} turns until {self.name} check required."
 
         return GateResult.allow(system_message=message)
@@ -323,12 +375,24 @@ class GenericGate:
                         if action_result.context_injection:
                             ctx_inj_prefix = action_result.context_injection + "\n\n"
 
-                sys_msg = self._render_template(policy.message_template, ctx, state, session_state)
-                ctx_inj = None
-                if policy.context_template:
-                    ctx_inj = self._render_template(
-                        policy.context_template, ctx, state, session_state
+                sys_msg = (
+                    self._resolve_message(
+                        policy.message_key,
+                        policy.message_template or None,
+                        ctx,
+                        state,
+                        session_state,
                     )
+                    or ""
+                )
+                ctx_inj = self._resolve_message(
+                    policy.context_key,
+                    policy.context_template,
+                    ctx,
+                    state,
+                    session_state,
+                )
+                if ctx_inj:
                     ctx_inj = "<SYSTEM HOOK INSTRUCTION>" + ctx_inj + "</SYSTEM HOOK INSTRUCTION>"
 
                 # Combine prefixes

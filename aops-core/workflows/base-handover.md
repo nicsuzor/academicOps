@@ -52,7 +52,7 @@ Epic: <epic-id>" && git push
 For procedures on following steps, see **[[references/handover-details]]**:
 
 - **Quick Exit** - Protocol for sessions with no work done
-- **Step 3: Follow-up Tasks** - Task decomposition (set `parent`) + **Step 3b**: tag verification items with `pr_url`
+- **Step 3: Follow-up Tasks** - Procedure for task decomposition (MANDATORY: set `parent` for all new tasks)
 - **Step 4: Memory Persistence** - Capture learnings in PKB
 - **Step 4.5: Codify** - File issue (framework) or update `./.agent/workflows/` (project-scoped)
 

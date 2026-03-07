@@ -168,8 +168,7 @@ jobs:
             - `gh api repos/${{ github.repository }}/pulls/${{ env.PR_NUMBER }}/comments` — inline comments
             - `gh api repos/${{ github.repository }}/issues/${{ env.PR_NUMBER }}/comments` — issue comments
 
-            First, check CI status with `gh pr checks ${{ env.PR_NUMBER }}` and fix any failing checks (pytest, lint, typecheck, formatting).
-            Then read ALL reviews from every source (our agents + Gemini + Copilot + anyone).
+            Read ALL reviews from every source (our agents + Gemini + Copilot + anyone).
             Triage them all. Fix what's warranted. Dismiss what's not. Post your summary.
 
           claude_args: '--allowed-tools "Bash,Edit,Read,Write"'
