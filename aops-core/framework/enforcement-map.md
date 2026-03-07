@@ -57,6 +57,7 @@ tags: [framework, enforcement, moc]
 | [[mandatory-handover]]                      | Mandatory Handover Workflow         | prompt-hydrator-context.md (Session Completion Rules section), dump.md Step 2                | UserPromptSubmit, Stop |           |
 | [[capture-outstanding-work]]                | Capture Outstanding Work            | dump.md Step 2 (create follow-up tasks for incomplete/deferred work)                         | Stop                   |           |
 | [[explicit-approval-costly-ops]]            | Costly Operations Approval          | external-batch-submission.md workflow + AskUserQuestion before batch submit                  | During execution       |           |
+| [[academic-output-quality]]                 | Academic Output Quality (P#53)      | AXIOMS.md quality gate: user sign-off required for public deliverables                       | Stop                   |           |
 | [[data-boundaries]]                         | Credential Isolation                | `SSH_AUTH_SOCK=""` in settings.local.json; `GH_TOKEN` from limited `AOPS_BOT_GH_TOKEN` PAT   | SessionStart           | 6         |
 
 ## Heuristic → Enforcement Mapping
@@ -126,6 +127,10 @@ tags: [framework, enforcement, moc]
 | [[explain-dont-ask]]                            | Explain, Don't Ask (P#104)                            | HEURISTICS.md                                                                                                                | SessionStart                   |           |
 | [[qa-independent-evidence]]                     | QA Must Produce Independent Evidence                  | HEURISTICS.md, /pull Step 3A.V                                                                                               | Before completion              | 1c        |
 | [[standard-tooling-over-framework-gates]]       | Standard Tooling Over Framework Gates (P#105)         | HEURISTICS.md                                                                                                                | SessionStart                   | 1a        |
+| [[user-sign-off-required]]                      | User Sign-Off Required (P#111)                        | HEURISTICS.md                                                                                                                | Stop                           |           |
+| [[receipts-on-qa]]                              | Receipts on QA (P#112)                                | HEURISTICS.md                                                                                                                | QA execution                   |           |
+| [[over-verify-externally-visible]]              | Over-Verify Externally Visible Work (P#113)           | HEURISTICS.md                                                                                                                | During execution               |           |
+| [[no-silent-release]]                           | No Silent Release (P#114)                             | HEURISTICS.md                                                                                                                | Before release                 |           |
 
 ## Enforcement Level Summary
 
