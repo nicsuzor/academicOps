@@ -1,10 +1,20 @@
 ---
 name: q
+type: command
 category: instruction
 description: Quick-queue a task for later without hydration overhead
+triggers:
+  - "queue task"
+  - "save for later"
+  - "add to backlog"
+  - "new task:"
+modifies_files: true
+needs_task: false
+mode: execution
+domain:
+  - operations
 allowed-tools: mcp__pkb__create_task, mcp__pkb__task_search, mcp__pkb__update_task
 permalink: commands/q
-triggers: ["queue task", "save for later", "add to backlog", "new task:"]
 ---
 
 # /q - Quick Queue

@@ -1,7 +1,17 @@
 ---
 name: remember
+type: skill
 category: instruction
 description: Write knowledge to markdown AND sync to PKB. MUST invoke - do not write markdown directly.
+triggers:
+  - "remember this"
+  - "save to memory"
+  - "store knowledge"
+modifies_files: true
+needs_task: false
+mode: execution
+domain:
+  - operations
 allowed-tools: Read,Write,Edit,mcp__pkb__create_memory,mcp__pkb__search
 version: 2.0.0
 ---

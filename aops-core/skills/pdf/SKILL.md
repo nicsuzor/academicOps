@@ -1,7 +1,17 @@
 ---
 name: pdf
+type: skill
 category: instruction
 description: Convert markdown documents to professionally formatted PDFs with academic-style typography, Roboto fonts, proper page layouts, and styling suitable for research documents, reviews, reports, and academic writing.
+triggers:
+  - "convert to PDF"
+  - "make PDF"
+  - "markdown to PDF"
+modifies_files: true
+needs_task: true
+mode: batch
+domain:
+  - academic
 allowed-tools: Read,Bash
 version: 2.0.0
 permalink: skills-pdf

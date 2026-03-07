@@ -1,16 +1,25 @@
 ---
 name: hdr
+type: skill
 category: instruction
 description: HDR (Higher Degree Research) student task conventions, reference letter workflows, and document access patterns.
+triggers:
+  - "HDR student"
+  - "reference letter"
+  - "supervision"
+  - "dissertation review"
+  - "research student"
+modifies_files: true
+needs_task: true
+mode: execution
+domain:
+  - academic
 allowed-tools: Read,Bash,Grep,Write,Edit,AskUserQuestion,mcp__pkb__create_task,mcp__pkb__update_task,mcp__pkb__search,mcp__pkb__create_memory
 version: 1.0.0
 permalink: skills-hdr
 tags:
   - hdr
   - supervision
-  - students
-  - reference-letters
-  - workflows
 ---
 
 # HDR Student Skill

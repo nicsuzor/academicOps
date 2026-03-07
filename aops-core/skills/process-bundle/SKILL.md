@@ -1,7 +1,17 @@
 ---
 name: process-bundle
+type: skill
 category: instruction
-description: Process annotated briefing bundle -- execute decisions, stage email drafts, create tasks from annotations.
+description: Process annotated briefing bundle — execute decisions, stage email drafts, create tasks from annotations. Never auto-sends email.
+triggers:
+  - "process bundle"
+  - "process annotations"
+  - "execute bundle decisions"
+modifies_files: true
+needs_task: true
+mode: execution
+domain:
+  - operations
 allowed-tools: Read,Bash,Grep,Edit,Write,~~email,~~calendar,~~pkb
 version: 0.1.0
 permalink: skills-process-bundle

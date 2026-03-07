@@ -1,7 +1,18 @@
 ---
 name: pull
+type: command
 category: instruction
 description: Pull a task from queue, claim it (mark active), and mark complete when done
+triggers:
+  - "pull task"
+  - "get work"
+  - "what should I work on"
+  - "next task"
+modifies_files: true
+needs_task: false
+mode: execution
+domain:
+  - operations
 allowed-tools: Task, Bash, Read, Grep, Skill, AskUserQuestion
 permalink: commands/pull
 ---

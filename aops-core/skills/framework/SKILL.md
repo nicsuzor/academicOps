@@ -1,7 +1,17 @@
 ---
 name: framework
+type: skill
 category: instruction
-description: "Primary entry point for framework infrastructure work - task lifecycle, categorical conventions, and quality criteria"
+description: Primary entry point for framework infrastructure work - task lifecycle, categorical conventions, and quality criteria
+triggers:
+  - "framework development"
+  - "hooks"
+  - "agents"
+modifies_files: true
+needs_task: true
+mode: execution
+domain:
+  - framework
 allowed-tools: Task, Read, Glob, Grep, Bash, Edit, Write
 version: 7.0.0
 permalink: skills-framework

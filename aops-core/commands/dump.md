@@ -1,7 +1,19 @@
 ---
 name: dump
+type: command
 category: instruction
-description: Session handover - commit changes, push, file a Pull Request, update task, file follow-ups, output Framework Reflection, halt
+description: Comprehensive work handover and session closure - commit changes, push, file a Pull Request, update tasks, file follow-ups, output Framework Reflection, halt
+triggers:
+  - "emergency handoff"
+  - "save work"
+  - "interrupted"
+  - "session end"
+  - "stop hook blocked"
+modifies_files: true
+needs_task: true
+mode: execution
+domain:
+  - operations
 allowed-tools: Bash, mcp__pkb__create_memory, mcp__pkb__update_task, mcp__pkb__create_task, TodoWrite, AskUserQuestion, Read
 permalink: commands/dump
 ---

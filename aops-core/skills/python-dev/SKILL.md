@@ -1,7 +1,17 @@
 ---
 name: python-dev
+type: skill
 category: instruction
 description: Write production-quality Python code following fail-fast philosophy, type safety, and modern best practices. Enforces rigorous standards for academic and research code where correctness and replicability are paramount.
+triggers:
+  - "Python code"
+  - ".py files"
+  - "type safety"
+modifies_files: true
+needs_task: true
+mode: execution
+domain:
+  - development
 allowed-tools: Read,Grep,Glob,Edit,Write,Bash
 version: 3.0.0
 permalink: skills-python-dev
