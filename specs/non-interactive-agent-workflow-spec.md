@@ -61,21 +61,21 @@ Complete lifecycle for non-interactive agent operation: task selection through P
 
 ### States
 
-| Status        | Phase | Meaning                                     |
-| ------------- | ----- | ------------------------------------------- |
-| `pending`     | -     | In queue, not claimed                       |
-| `active`      | 1     | Agent claimed, beginning work               |
-| `decomposing` | 1     | Effectual planner iterating                 |
-| `consensus`   | 2     | Multi-agent review in progress              |
-| `waiting`     | 3     | Awaiting user decision                      |
-| `in_progress` | 4     | Worker executing approved plan              |
-| `review`      | 5     | PR filed, awaiting review consensus         |
-| `merge_ready` | 5     | Reviews done, awaiting merge approval       |
-| `done`        | 6     | Merged, knowledge captured                  |
-| `blocked`     | any   | External dependency, with unblock condition |
-| `dormant`     | -     | User-initiated backburner                   |
-| `failed`      | any   | Unrecoverable error, with diagnostic        |
-| `cancelled`   | -     | Abandoned, with reason                      |
+| Status        | Phase | Meaning                                                             |
+| ------------- | ----- | ------------------------------------------------------------------- |
+| `pending`     | -     | In queue, not claimed                                               |
+| `active`      | 1     | Agent claimed, beginning work                                       |
+| `decomposing` | 1     | Effectual planner iterating                                         |
+| `consensus`   | 2     | Multi-agent review in progress                                      |
+| `waiting`     | 3     | Awaiting user decision                                              |
+| `in_progress` | 4     | Worker executing approved plan                                      |
+| `review`      | 5     | PR submitted, awaiting review consensus (submitted, not yet merged) |
+| `merge_ready` | 5     | Reviews done, awaiting merge approval                               |
+| `done`        | 6     | Merged, knowledge captured                                          |
+| `blocked`     | any   | External dependency, with unblock condition                         |
+| `dormant`     | -     | User-initiated backburner                                           |
+| `failed`      | any   | Unrecoverable error, with diagnostic                                |
+| `cancelled`   | -     | Abandoned, with reason                                              |
 
 ### Transition Table
 
@@ -105,7 +105,7 @@ waiting       -> pending      | user sends back              | assignee cleared
 waiting       -> dormant      | user backburners             | -
 waiting       -> cancelled    | user cancels                 | reason attached
 waiting       -> failed       | timeout (7 days)             | diagnostic: "approval timeout"
-in_progress   -> review       | PR filed                     | pr_url set
+in_progress   -> review       | PR submitted (PR filed)      | pr_url or pr set
 in_progress   -> blocked      | dependency discovered        | unblock_condition set
 in_progress   -> failed       | worker crash                 | diagnostic: crash report
 in_progress   -> failed       | timeout (24h no progress)    | diagnostic: "stalled"
@@ -135,7 +135,7 @@ cancelled     -> [terminal]   | -                            | -
 - `failed` must have `diagnostic` field set
 - `cancelled` must have `reason` field set
 - `in_progress` must have `worker_id` field set
-- `review` must have `pr_url` field set
+- `review` must have `pr_url` or `pr` field set
 
 ---
 
@@ -783,6 +783,8 @@ Add to task schema: `decomposing`, `consensus`, `merge_ready`, `dormant`, `faile
 
 - `unblock_condition`: string (for `blocked`)
 - `diagnostic`: string (for `failed`)
+- `pr`: int (for `review`, `merge_ready`)
+- `issue`: int (for linking GitHub issues)
 - `pr_url`: string (for `review`, `merge_ready`)
 - `worker_id`: string (for `in_progress`)
 - `approval_type`: enum (for `waiting`)
