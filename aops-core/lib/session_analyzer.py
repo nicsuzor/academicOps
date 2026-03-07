@@ -888,11 +888,12 @@ def get_recent_sessions(
     Returns:
         List of SessionData for matching sessions
     """
-    since = datetime.now().astimezone().replace(hour=0, minute=0, second=0, microsecond=0)
+    now_local = datetime.now().astimezone()
+    since = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
     if hours < 24:
         from datetime import timedelta
 
-        since = datetime.now().astimezone() - timedelta(hours=hours)
+        since = now_local - timedelta(hours=hours)
 
     sessions = find_sessions(project=project, since=since)
     analyzer = SessionAnalyzer()
