@@ -46,9 +46,6 @@
         }
     });
 
-    // Re-run prepareGraphData when global filters change that affect the data shape.
-    // Wait, D3 filtering works better if we just pass a pre-filtered shallow copy
-    // to the graph store rather than fully recomputing prepareGraphData.
     $: if (rawGraph) {
         recomputeGraph();
     }
@@ -56,27 +53,16 @@
     function recomputeGraph() {
         if (!rawGraph) return;
 
-        // First, standard preprocessing
         const prepared = prepareGraphData(rawGraph);
-
-        // Then apply current sidebar filters
         let fNodes = [...prepared.nodes];
         let fLinks = [...prepared.links];
         const isForce =
             $viewSettings.viewMode === "Force Atlas 2" ||
             $viewSettings.viewMode === "SFDP";
 
-        // 1. Status filters
         if (!$filters.showActive) {
             fNodes = fNodes.filter(
-                (n) =>
-                    ![
-                        "active",
-                        "inbox",
-                        "todo",
-                        "in_progress",
-                        "review",
-                    ].includes(n.status),
+                (n) => !["active", "inbox", "todo", "in_progress", "review"].includes(n.status),
             );
         }
         if (!$filters.showBlocked) {
@@ -87,54 +73,34 @@
                 (n) => !["done", "completed", "cancelled"].includes(n.status),
             );
         }
-
-        // 2. Project filter
         if (isForce && $filters.project !== "ALL") {
             fNodes = fNodes.filter(
-                (n) =>
-                    n.project === $filters.project ||
-                    n.type === "project" ||
-                    n.type === "goal",
+                (n) => n.project === $filters.project || n.type === "project" || n.type === "goal",
             );
         }
-
-        // 3. Orphans filter
         if ($viewSettings.viewMode === "SFDP" && !$filters.showOrphans) {
-            // Only keep nodes that have edges
             const nodesWithEdges = new Set<string>();
             fLinks.forEach((l) => {
-                const sid =
-                    typeof l.source === "object" ? l.source.id : l.source;
-                const tid =
-                    typeof l.target === "object" ? l.target.id : l.target;
+                const sid = typeof l.source === "object" ? l.source.id : l.source;
+                const tid = typeof l.target === "object" ? l.target.id : l.target;
                 nodesWithEdges.add(sid);
                 nodesWithEdges.add(tid);
             });
-            fNodes = fNodes.filter(
-                (n) => nodesWithEdges.has(n.id) || !n.isLeaf,
-            );
+            fNodes = fNodes.filter((n) => nodesWithEdges.has(n.id) || !n.isLeaf);
         }
-
-        // 4. Edge toggles
         if (!$filters.showDependencies) {
             fLinks = fLinks.filter((e) => e.type !== "depends_on");
         }
         if (!$filters.showReferences) {
             fLinks = fLinks.filter((e) => e.type !== "ref");
         }
-
-        // 5. Trim Top N (leaves only for performance)
         if (isForce && $viewSettings.topNLeaves < fNodes.length) {
-            // Keep all structural nodes (parents), but limit leaves by weight
             const parents = fNodes.filter((n) => !n.isLeaf);
-            let leaves = fNodes
-                .filter((n) => n.isLeaf)
-                .sort((a, b) => b.dw - a.dw);
+            let leaves = fNodes.filter((n) => n.isLeaf).sort((a, b) => b.dw - a.dw);
             leaves = leaves.slice(0, $viewSettings.topNLeaves);
             fNodes = [...parents, ...leaves];
         }
 
-        // Filter broken edges
         const survivingNodeIds = new Set(fNodes.map((n) => n.id));
         fLinks = fLinks.filter((l) => {
             const sid = typeof l.source === "object" ? l.source.id : l.source;
@@ -142,35 +108,8 @@
             return survivingNodeIds.has(sid) && survivingNodeIds.has(tid);
         });
 
-        // 6. Highlight logic via opacity mutation
         applyHighlightOpacity(fNodes, fLinks);
-
         $graphData = { ...prepared, nodes: fNodes, links: fLinks };
-    }
-
-    function getNeighbors(nodeId: string, hops: number, links: GraphEdge[]) {
-        const result = new Set<string>([nodeId]);
-        let frontier = new Set<string>([nodeId]);
-        for (let h = 0; h < hops; h++) {
-            const next = new Set<string>();
-            links.forEach((l) => {
-                const sid =
-                    typeof l.source === "object" ? l.source.id : l.source;
-                const tid =
-                    typeof l.target === "object" ? l.target.id : l.target;
-                if (frontier.has(sid) && !result.has(tid)) {
-                    next.add(tid);
-                    result.add(tid);
-                }
-                if (frontier.has(tid) && !result.has(sid)) {
-                    next.add(sid);
-                    result.add(sid);
-                }
-            });
-            frontier = next;
-            if (frontier.size === 0) break;
-        }
-        return result;
     }
 
     function applyHighlightOpacity(nodes: GraphNode[], links: GraphEdge[]) {
@@ -180,7 +119,6 @@
         const layout = getLayoutFromViewSettings($viewSettings);
 
         nodes.forEach((n) => {
-            // Reset to default
             if (["done", "completed", "cancelled"].includes(n.status)) {
                 n.opacity = 0.4;
             } else if (n.status === "active") {
@@ -195,37 +133,21 @@
             }
 
             if (active) {
-                // Build highlight set for active selection
-                // Normal highlight logic mimics index.html
-                // For tree/circle: only deps. For force/arc: parents, siblings, deps.
-                // Here we just use a simplified 1-hop focus for now or if we implement the exact html logic:
                 let isHighLighted = false;
-
                 if (n.id === active) isHighLighted = true;
                 if (n.parent === active) isHighLighted = true;
 
-                const isActiveParentNode = nodes.find(
-                    (act) => act.id === active,
-                )?.parent;
-                if (
-                    isActiveParentNode &&
-                    n.parent === isActiveParentNode &&
-                    ["force", "arc"].includes(layout)
-                ) {
+                const isActiveParentNode = nodes.find((act) => act.id === active)?.parent;
+                if (isActiveParentNode && n.parent === isActiveParentNode && ["force", "arc"].includes(layout)) {
                     isHighLighted = true;
                 }
 
-                // deps
                 links.forEach((l) => {
-                    const sid =
-                        typeof l.source === "object" ? l.source.id : l.source;
-                    const tid =
-                        typeof l.target === "object" ? l.target.id : l.target;
+                    const sid = typeof l.source === "object" ? l.source.id : l.source;
+                    const tid = typeof l.target === "object" ? l.target.id : l.target;
                     if (l.type === "depends_on") {
-                        if (sid === active && n.id === tid)
-                            isHighLighted = true;
-                        if (tid === active && n.id === sid)
-                            isHighLighted = true;
+                        if (sid === active && n.id === tid) isHighLighted = true;
+                        if (tid === active && n.id === sid) isHighLighted = true;
                     }
                 });
 
@@ -235,20 +157,13 @@
 
         links.forEach((l) => {
             if (isFocus && focusSet) {
-                const sid =
-                    typeof l.source === "object" ? l.source.id : l.source;
-                const tid =
-                    typeof l.target === "object" ? l.target.id : l.target;
-                l.color =
-                    focusSet.has(sid) && focusSet.has(tid)
-                        ? l.color
-                        : "transparent";
+                const sid = typeof l.source === "object" ? l.source.id : l.source;
+                const tid = typeof l.target === "object" ? l.target.id : l.target;
+                l.color = focusSet.has(sid) && focusSet.has(tid) ? l.color : "transparent";
             }
         });
     }
 
-    // Watch for selection changes to mutate highlight colors without a full recompute if possible,
-    // but a full recompute is fast enough for Top N leaves locally.
     $: {
         if ($selection && rawGraph) {
             recomputeGraph();
@@ -258,150 +173,79 @@
     $: activeLayout = getLayoutFromViewSettings($viewSettings);
 </script>
 
-<div class="app-container">
-    <Sidebar />
-    <div class="main-content">
-        {#if loading}
-            <div class="msg">Loading tasks.json...</div>
-        {:else if errorMsg}
-            <div class="msg error">{errorMsg}</div>
-        {:else}
-            <!-- THE VOID (Background Layer) -->
-            <div
-                class="void-layer"
-                class:deep-blur-scale={$viewSettings.mainTab === "Dashboard"}
-            >
-                <ZoomContainer let:containerGroup>
-                    {#if containerGroup}
-                        {#if activeLayout === "treemap" || activeLayout === "tree"}
-                            <TreemapView {containerGroup} />
-                        {:else if activeLayout === "circle_pack" || activeLayout === "circle"}
-                            <CirclePackView {containerGroup} />
-                        {:else if activeLayout === "force" || activeLayout === "fa2" || activeLayout === "sfdp"}
-                            <ForceView {containerGroup} />
-                        {:else if activeLayout === "arc"}
-                            <ArcView {containerGroup} />
-                        {/if}
-                    {/if}
-                </ZoomContainer>
-            </div>
-
-            <!-- DEEP DIVE (Project Overlays) -->
-            {#if $viewSettings.mainTab === "Dashboard"}
-                <div class="deep-dive-overlay">
-                    <DashboardView {data} />
-                </div>
-            {/if}
-
-            <DetailPanel />
-            <Legend />
-
-            {#if $selection.focusNodeId}
-                <div class="focus-banner">
-                    <button
-                        on:click={() =>
-                            selection.update((s) => ({
-                                ...s,
-                                focusNodeId: null,
-                                focusNeighborSet: null,
-                            }))}>← Full view</button
-                    >
-                    <span>Focusing Ego Network: {$selection.focusNodeId}</span>
-                </div>
-            {/if}
-        {/if}
+{#if loading}
+    <div class="col-span-12 flex items-center justify-center h-full text-primary font-mono text-xl animate-pulse">
+        Initializing Operator System...
     </div>
-</div>
+{:else if errorMsg}
+    <div class="col-span-12 flex items-center justify-center h-full text-red-500 font-mono text-lg">
+        {errorMsg}
+    </div>
+{:else}
+    <!-- LEFT SIDEBAR: Navigation & Filters -->
+    <aside class="col-span-3 border-r border-primary/30 bg-background-dark flex flex-col h-full overflow-y-auto custom-scrollbar">
+        <Sidebar />
+    </aside>
+
+    <!-- MAIN CONTENT: Graph or Dashboard -->
+    <section class="col-span-6 relative bg-surface-dark flex flex-col h-full border-r border-primary/30 overflow-hidden">
+        <div class="absolute inset-0 grid-bg opacity-30 pointer-events-none"></div>
+
+        <!-- Focus banner (Absolute Over Graph) -->
+        {#if $selection.focusNodeId}
+            <div class="absolute top-4 left-4 z-20 flex items-center gap-3">
+                <button
+                    class="px-3 py-1.5 bg-black/80 border border-primary/40 text-primary font-mono text-xs hover:bg-primary/20 transition-colors backdrop-blur-md"
+                    on:click={() =>
+                        selection.update((s) => ({
+                            ...s,
+                            focusNodeId: null,
+                            focusNeighborSet: null,
+                        }))}>← FULL VIEW</button>
+                <span class="px-3 py-1.5 bg-black/60 border border-primary/20 text-primary/70 font-mono text-xs backdrop-blur-md">
+                    FOCUS: {$selection.focusNodeId}
+                </span>
+            </div>
+        {/if}
+
+        <!-- The Graph Area -->
+        <div class="flex-1 relative z-0 h-full" class:blur-md={$viewSettings.mainTab === "Dashboard"} class:scale-105={$viewSettings.mainTab === "Dashboard"} style="transition: filter 0.5s ease, transform 0.5s ease;">
+            <ZoomContainer let:containerGroup>
+                {#if containerGroup}
+                    {#if activeLayout === "treemap" || activeLayout === "tree"}
+                        <TreemapView {containerGroup} />
+                    {:else if activeLayout === "circle_pack" || activeLayout === "circle"}
+                        <CirclePackView {containerGroup} />
+                    {:else if activeLayout === "force" || activeLayout === "fa2" || activeLayout === "sfdp"}
+                        <ForceView {containerGroup} />
+                    {:else if activeLayout === "arc"}
+                        <ArcView {containerGroup} />
+                    {/if}
+                {/if}
+            </ZoomContainer>
+        </div>
+
+        <!-- Legend -->
+        <Legend />
+
+        <!-- Overlay Dashboard -->
+        {#if $viewSettings.mainTab === "Dashboard"}
+            <div class="absolute inset-0 z-50 bg-background-dark/90 backdrop-blur-lg overflow-y-auto custom-scrollbar">
+                <DashboardView {data} />
+            </div>
+        {/if}
+    </section>
+
+    <!-- RIGHT SIDEBAR: Details -->
+    <aside class="col-span-3 bg-background-dark flex flex-col h-full overflow-y-auto custom-scrollbar">
+        <DetailPanel />
+    </aside>
+{/if}
 
 <style>
     :global(body) {
         margin: 0;
         padding: 0;
         overflow: hidden;
-        background: #0f172a; /* Slate 900 background for visualization area */
-    }
-
-    .app-container {
-        display: flex;
-        width: 100vw;
-        height: 100vh;
-    }
-
-    .main-content {
-        flex: 1;
-        position: relative;
-        background: var(--color-background);
-        overflow: hidden;
-    }
-
-    .void-layer {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        transition:
-            filter 0.6s cubic-bezier(0.16, 1, 0.3, 1),
-            transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .deep-blur-scale {
-        filter: blur(20px);
-        transform: scale(
-            1.5
-        ); /* 300% is too extreme for SVG performance, 150% feels deep */
-    }
-
-    .deep-dive-overlay {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 50;
-        overflow-y: auto;
-        padding-left: 320px; /* Offset for floating sidebar */
-    }
-
-    .msg {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        color: white;
-        font-family: sans-serif;
-    }
-    .error {
-        color: #f87171;
-    }
-
-    .focus-banner {
-        position: absolute;
-        top: 16px;
-        left: 16px;
-        z-index: 10;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .focus-banner button {
-        background: rgba(15, 23, 42, 0.85);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        border-radius: 6px;
-        padding: 6px 12px;
-        font-size: 11px;
-        cursor: pointer;
-        color: #f8fafc;
-        font-weight: 600;
-        backdrop-filter: blur(8px);
-    }
-
-    .focus-banner span {
-        background: rgba(15, 23, 42, 0.7);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 6px;
-        padding: 6px 12px;
-        font-size: 11px;
-        color: #94a3b8;
-        backdrop-filter: blur(8px);
     }
 </style>

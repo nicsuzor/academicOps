@@ -12,25 +12,26 @@
 				theme: {
 					extend: {
 						colors: {
-							"primary": "#00F0FF",
-							"void": "#050505",
-							"surface": "rgba(20, 25, 30, 0.6)",
-							"text-main": "#E0E6ED",
-							"text-muted": "#586575",
-							"accent": "#FF2A6D",
+							"primary": "#f2aa0d",
+							"primary-dim": "rgba(242, 170, 13, 0.2)",
+							"primary-glow": "rgba(242, 170, 13, 0.5)",
+							"background-light": "#f8f7f5",
+							"background-dark": "#0A0A0A",
+							"surface-dark": "#141414",
+							"surface-light": "#ffffff",
 						},
 						fontFamily: {
-							"display": ["Rajdhani", "sans-serif"],
-							"body": ["Space Grotesk", "sans-serif"],
+							"display": ["Space Grotesk", "sans-serif"],
 							"mono": ["JetBrains Mono", "monospace"],
-						}
+						},
+						borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem", "none": "0px"},
 					}
 				}
 			}
 		</script>
 		%sveltekit.head%
 	</head>
-	<body data-sveltekit-preload-data="hover" class="bg-void text-text-main font-body antialiased selection:bg-primary/30 min-h-screen">
+	<body data-sveltekit-preload-data="hover" class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-primary font-display antialiased overflow-hidden h-screen flex flex-col selection:bg-primary selection:text-black">
 		<div style="display: contents">%sveltekit.body%</div>
 	</body>
 </html>

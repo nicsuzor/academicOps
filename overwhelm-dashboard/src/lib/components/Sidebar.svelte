@@ -17,337 +17,133 @@
     : [];
 </script>
 
-<aside class="sidebar">
-  <h2>Overwhelm</h2>
-  <hr class="divider" />
-
-  <div class="control-group">
-    <label for="mainTab" class="bold-label">Navigation</label>
-    <select id="mainTab" bind:value={$viewSettings.mainTab}>
-      <option value="Dashboard">Dashboard</option>
-      <option value="Task Graph">Task Graph</option>
-    </select>
+<div class="flex flex-col h-full bg-background-dark font-mono text-primary/80">
+  <div class="p-3 border-b border-primary/30 bg-surface-dark/50 backdrop-blur-sm">
+    <div class="flex items-center justify-between">
+      <h2 class="text-xs font-bold tracking-[0.2em] text-primary">SYSTEM CONTROL</h2>
+      <span class="text-[10px] font-mono opacity-60 animate-pulse">ACTIVE</span>
+    </div>
   </div>
 
-  {#if $viewSettings.mainTab === "Task Graph"}
-    <hr class="divider" />
+  <div class="flex-1 overflow-y-auto p-4 space-y-6 grid-bg custom-scrollbar">
 
-    <div class="control-group">
-      <label for="viewMode" class="bold-label">Graph View Mode</label>
-      <select id="viewMode" bind:value={$viewSettings.viewMode}>
-        {#each viewModes as mode}
-          <option value={mode}>{mode}</option>
-        {/each}
+    <div class="space-y-2">
+      <label for="mainTab" class="block text-[10px] font-bold tracking-widest text-primary/60">NAVIGATION</label>
+      <select id="mainTab" bind:value={$viewSettings.mainTab} class="w-full bg-black/50 border border-primary/30 text-primary text-xs py-1.5 px-2 focus:ring-1 focus:ring-primary focus:border-primary">
+        <option value="Dashboard">DASHBOARD</option>
+        <option value="Task Graph">TASK GRAPH</option>
       </select>
     </div>
-  {/if}
 
-  {#if isOverview}
-    <div class="control-group radio-group">
-      <span class="bold-label">Overview Layout</span>
-      <label>
-        <input
-          type="radio"
-          bind:group={$viewSettings.overviewLayout}
-          value="tree"
-        />
-        Treemap
-      </label>
-      <label>
-        <input
-          type="radio"
-          bind:group={$viewSettings.overviewLayout}
-          value="circle"
-        />
-        Circle Pack
-      </label>
-    </div>
-  {/if}
+    {#if $viewSettings.mainTab === "Task Graph"}
+      <div class="h-px bg-primary/20 w-full"></div>
 
-  {#if $viewSettings.mainTab === "Task Graph"}
-    <hr class="divider" />
-
-    <h3>Filters</h3>
-    <div class="control-group">
-      {#if isForce}
-        <label class="block-label">
-          <span class="label-text">Project filter</span>
-          <select bind:value={$filters.project}>
-            <option value="ALL">ALL</option>
-            {#each availableProjects as project}
-              <option value={project}>{project}</option>
-            {/each}
-          </select>
-        </label>
-      {/if}
-
-      <label class="check-label">
-        <input type="checkbox" bind:checked={$filters.showActive} /> Active/Inbox
-      </label>
-      <label class="check-label">
-        <input type="checkbox" bind:checked={$filters.showBlocked} /> Blocked (Red)
-      </label>
-      <label class="check-label">
-        <input type="checkbox" bind:checked={$filters.showCompleted} /> Completed/Done
-      </label>
-      {#if $viewSettings.viewMode === "SFDP"}
-        <label class="check-label">
-          <input type="checkbox" bind:checked={$filters.showOrphans} /> Include orphans
-        </label>
-      {/if}
-    </div>
-
-    <hr class="divider" />
-
-    <h3>Edges</h3>
-    <div class="control-group">
-      <label class="check-label">
-        <input type="checkbox" bind:checked={$filters.showDependencies} /> Show dependencies
-        (red)
-      </label>
-      <label class="check-label">
-        <input type="checkbox" bind:checked={$filters.showReferences} /> Show references
-        (dashed)
-      </label>
-    </div>
-
-    {#if isForce}
-      <hr class="divider" />
-      <h3>Simulation</h3>
-
-      <div class="control-group">
-        <label class="block-label">
-          <span class="label-text">Top N leaves (complexity)</span>
-          <div class="slider-row">
-            <input
-              type="range"
-              min="10"
-              max="500"
-              bind:value={$viewSettings.topNLeaves}
-            />
-            <span class="val">{$viewSettings.topNLeaves}</span>
-          </div>
-        </label>
-
-        <label class="check-label">
-          <input type="checkbox" bind:checked={$viewSettings.liveSimulation} /> Live
-          Force Simulation
-        </label>
-
-        {#if $viewSettings.liveSimulation}
-          <label class="block-label">
-            <span class="label-text">Charge Strength</span>
-            <div class="slider-row">
-              <input
-                type="range"
-                min="0.1"
-                max="3.0"
-                step="0.1"
-                bind:value={$viewSettings.chargeStrength}
-              />
-              <span class="val">{$viewSettings.chargeStrength.toFixed(1)}</span>
-            </div>
-          </label>
-          <label class="block-label">
-            <span class="label-text">Attraction Strength</span>
-            <div class="slider-row">
-              <input
-                type="range"
-                min="0.2"
-                max="2.0"
-                step="0.05"
-                bind:value={$viewSettings.attractionStrength}
-              />
-              <span class="val"
-                >{$viewSettings.attractionStrength.toFixed(2)}</span
-              >
-            </div>
-          </label>
-          <label class="block-label">
-            <span class="label-text">Cluster Pull</span>
-            <div class="slider-row">
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                bind:value={$viewSettings.clusterPull}
-              />
-              <span class="val">{$viewSettings.clusterPull.toFixed(2)}</span>
-            </div>
-          </label>
-        {/if}
+      <div class="space-y-2">
+        <label for="viewMode" class="block text-[10px] font-bold tracking-widest text-primary/60">GRAPH VIEW MODE</label>
+        <select id="viewMode" bind:value={$viewSettings.viewMode} class="w-full bg-black/50 border border-primary/30 text-primary text-xs py-1.5 px-2 focus:ring-1 focus:ring-primary focus:border-primary">
+          {#each viewModes as mode}
+            <option value={mode}>{mode.toUpperCase()}</option>
+          {/each}
+        </select>
       </div>
     {/if}
-  {/if}
-</aside>
-```
 
-<style>
-  .sidebar {
-    position: absolute;
-    top: 16px;
-    left: 16px;
-    bottom: 16px;
-    width: 280px;
-    padding: 20px;
-    box-sizing: border-box;
-    overflow-y: auto;
-    z-index: 100;
-  }
+    {#if isOverview}
+      <div class="space-y-2">
+        <span class="block text-[10px] font-bold tracking-widest text-primary/60">OVERVIEW LAYOUT</span>
+        <div class="flex flex-col gap-2">
+          <label class="flex items-center gap-2 cursor-pointer group">
+            <input type="radio" bind:group={$viewSettings.overviewLayout} value="tree" class="text-primary bg-black border-primary/30 focus:ring-primary focus:ring-offset-0" />
+            <span class="text-xs group-hover:text-primary transition-colors">TREEMAP</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer group">
+            <input type="radio" bind:group={$viewSettings.overviewLayout} value="circle" class="text-primary bg-black border-primary/30 focus:ring-primary focus:ring-offset-0" />
+            <span class="text-xs group-hover:text-primary transition-colors">CIRCLE PACK</span>
+          </label>
+        </div>
+      </div>
+    {/if}
 
-  /* We apply the global glassmorphism utility class to the section, but Svelte scopes the component.
-     Instead, we just copy properties or assume the parent adds them.
-     Better: add custom styling mapped to our tokens */
-  .sidebar {
-    background: var(--color-surface);
-    backdrop-filter: blur(var(--blur-strength));
-    -webkit-backdrop-filter: blur(var(--blur-strength));
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-md);
-    color: var(--color-text);
-  }
+    {#if $viewSettings.mainTab === "Task Graph"}
+      <div class="h-px bg-primary/20 w-full"></div>
 
-  h2 {
-    margin-top: 0;
-    margin-bottom: 20px;
-    font-size: 24px;
-    font-family: var(--font-display);
-    color: var(--color-text);
-    letter-spacing: 0.05em;
-    text-shadow: 2px 0px 0px rgba(0, 240, 255, 0.4);
-  }
+      <div class="space-y-3">
+        <h3 class="text-[10px] font-bold tracking-widest text-primary/60">FILTERS</h3>
 
-  h3 {
-    font-size: 13px;
-    font-family: var(--font-display);
-    color: var(--color-primary);
-    letter-spacing: 0.1em;
-    margin-bottom: 16px;
-    margin-top: 0;
-  }
+        {#if isForce}
+          <div class="space-y-1">
+            <span class="block text-[10px] text-primary/50">PROJECT</span>
+            <select bind:value={$filters.project} class="w-full bg-black/50 border border-primary/30 text-primary text-xs py-1 px-2 focus:ring-1 focus:ring-primary">
+              <option value="ALL">ALL</option>
+              {#each availableProjects as project}
+                <option value={project}>{project}</option>
+              {/each}
+            </select>
+          </div>
+        {/if}
 
-  .divider {
-    border: 0;
-    height: 1px;
-    background: rgba(255, 255, 255, 0.1);
-    margin: 20px 0;
-  }
+        <div class="flex flex-col gap-2 pt-2">
+          <label class="flex items-center gap-2 cursor-pointer group">
+            <input type="checkbox" bind:checked={$filters.showActive} class="text-primary bg-black border-primary/30 focus:ring-primary rounded-sm" />
+            <span class="text-xs group-hover:text-primary transition-colors">ACTIVE/INBOX</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer group">
+            <input type="checkbox" bind:checked={$filters.showBlocked} class="text-primary bg-black border-primary/30 focus:ring-primary rounded-sm" />
+            <span class="text-xs group-hover:text-primary transition-colors">BLOCKED (RED)</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer group">
+            <input type="checkbox" bind:checked={$filters.showCompleted} class="text-primary bg-black border-primary/30 focus:ring-primary rounded-sm" />
+            <span class="text-xs group-hover:text-primary transition-colors">COMPLETED/DONE</span>
+          </label>
+          {#if $viewSettings.viewMode === "SFDP"}
+            <label class="flex items-center gap-2 cursor-pointer group">
+              <input type="checkbox" bind:checked={$filters.showOrphans} class="text-primary bg-black border-primary/30 focus:ring-primary rounded-sm" />
+              <span class="text-xs group-hover:text-primary transition-colors">INCLUDE ORPHANS</span>
+            </label>
+          {/if}
+        </div>
+      </div>
 
-  .control-group {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    margin-bottom: 24px;
-  }
+      <div class="h-px bg-primary/20 w-full"></div>
 
-  .radio-group {
-    gap: 8px;
-    margin-top: 12px;
-  }
+      <div class="space-y-3">
+        <h3 class="text-[10px] font-bold tracking-widest text-primary/60">EDGES</h3>
+        <div class="flex flex-col gap-2">
+          <label class="flex items-center gap-2 cursor-pointer group">
+            <input type="checkbox" bind:checked={$filters.showDependencies} class="text-primary bg-black border-primary/30 focus:ring-primary rounded-sm" />
+            <span class="text-xs group-hover:text-primary transition-colors">DEPENDENCIES</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer group">
+            <input type="checkbox" bind:checked={$filters.showReferences} class="text-primary bg-black border-primary/30 focus:ring-primary rounded-sm" />
+            <span class="text-xs group-hover:text-primary transition-colors">REFERENCES</span>
+          </label>
+        </div>
+      </div>
 
-  .bold-label {
-    font-weight: 600;
-    font-size: 13px;
-    margin-bottom: 4px;
-    display: block;
-    color: var(--text-secondary);
-  }
+      {#if isForce}
+        <div class="h-px bg-primary/20 w-full"></div>
 
-  select {
-    width: 100%;
-    padding: 8px 12px;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border-subtle);
-    font-size: 13px;
-    background: var(--bg-input);
-    color: var(--text-primary);
-    outline: none;
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
-  }
+        <div class="space-y-4">
+          <h3 class="text-[10px] font-bold tracking-widest text-primary/60">SIMULATION</h3>
 
-  select:focus {
-    border-color: var(--border-accent);
-    background: var(--bg-input-focus);
-    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
-  }
+          <div class="space-y-1">
+            <span class="block text-[10px] text-primary/50">TOP N LEAVES ({$viewSettings.topNLeaves})</span>
+            <input type="range" min="10" max="500" bind:value={$viewSettings.topNLeaves} class="w-full accent-primary" />
+          </div>
 
-  .check-label,
-  .radio-group label {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 13px;
-    cursor: pointer;
-    color: var(--text-secondary);
-    transition: color var(--transition-fast);
-  }
+          <label class="flex items-center gap-2 cursor-pointer group">
+            <input type="checkbox" bind:checked={$viewSettings.liveSimulation} class="text-primary bg-black border-primary/30 focus:ring-primary rounded-sm" />
+            <span class="text-xs group-hover:text-primary transition-colors">LIVE SIMULATION</span>
+          </label>
 
-  .check-label:hover,
-  .radio-group label:hover {
-    color: var(--text-primary);
-  }
-
-  .check-label input,
-  .radio-group input {
-    margin: 0;
-  }
-
-  .block-label {
-    display: block;
-    margin-bottom: 4px;
-  }
-
-  .label-text {
-    display: block;
-    font-size: 13px;
-    margin-bottom: 6px;
-    color: #475569;
-  }
-
-  .slider-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-top: 6px;
-  }
-
-  input[type="range"] {
-    flex: 1;
-    -webkit-appearance: none;
-    appearance: none;
-    background: transparent;
-  }
-
-  input[type="range"]::-webkit-slider-runnable-track {
-    width: 100%;
-    height: 4px;
-    background: var(--bg-input);
-    border-radius: 2px;
-  }
-
-  input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    height: 14px;
-    width: 14px;
-    border-radius: 50%;
-    background: var(--accent-primary);
-    cursor: pointer;
-    margin-top: -5px;
-    box-shadow: 0 0 8px rgba(129, 140, 248, 0.4);
-    transition: transform var(--transition-fast);
-  }
-
-  input[type="range"]::-webkit-slider-thumb:hover {
-    transform: scale(1.2);
-  }
-
-  .val {
-    font-size: 12px;
-    font-family: monospace;
-    color: var(--text-muted);
-    min-width: 30px;
-    text-align: right;
-  }
-</style>
+          {#if $viewSettings.liveSimulation}
+            <div class="space-y-1">
+              <span class="block text-[10px] text-primary/50">CHARGE STRENGTH ({$viewSettings.chargeStrength.toFixed(1)})</span>
+              <input type="range" min="0.1" max="3.0" step="0.1" bind:value={$viewSettings.chargeStrength} class="w-full accent-primary" />
+            </div>
+          {/if}
+        </div>
+      {/if}
+    {/if}
+  </div>
+</div>

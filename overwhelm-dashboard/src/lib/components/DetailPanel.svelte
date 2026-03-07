@@ -26,241 +26,96 @@
 
   function handleAction(actionType: string) {
     if (!node) return;
-    // Real implementation would talk back to python/backend via API or iframe postMessage.
-    // For now, simply console.log for the standalone dashboard version.
     console.log(`Action: ${actionType} on Node: ${node.id}`);
     alert(`Triggered ${actionType} on ${node.id}`);
   }
 </script>
 
 {#if node}
-  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-  <div class="monolith-backdrop" on:click={closePanel}></div>
-  <div class="detail-panel glass-surface">
-    <div class="header">
-      <h3>{node.label}</h3>
-      <button class="close-btn" aria-label="Close" on:click={closePanel}
-        >✕</button
-      >
+  <div class="flex flex-col h-full bg-background-dark font-mono border-l border-primary/30 relative">
+    <div class="p-3 border-b border-primary/30 bg-surface-dark/50 backdrop-blur-sm flex items-center justify-between">
+      <h2 class="text-xs font-bold tracking-[0.2em] text-primary">NODE INSPECTOR</h2>
+      <button class="text-primary hover:text-white transition-colors" on:click={closePanel}>✕</button>
     </div>
 
-    <div class="fields">
-      <div class="field">
-        <span class="label">Status</span>
-        <span
-          class="value badge indicator"
-          style="background: {STATUS_FILLS[node.status] ||
-            '#f1f5f9'}; color: {STATUS_TEXT[node.status] || '#475569'}"
-        >
-          {node.status}
-        </span>
+    <div class="flex-1 overflow-y-auto p-4 space-y-6">
+      <div class="space-y-1">
+        <span class="text-[10px] text-primary/60 tracking-widest">ID: {node.id.split('-').pop()}</span>
+        <h3 class="text-lg font-bold text-primary font-display">{node.label}</h3>
       </div>
 
-      {#if node.type}
-        <div class="field">
-          <span class="label">Type</span>
-          <span class="value badge">{node.type}</span>
+      <div class="grid grid-cols-2 gap-4 text-xs">
+        <div class="flex flex-col gap-1 border border-primary/20 p-2 bg-black/50">
+          <span class="text-[10px] text-primary/60">STATUS</span>
+          <span class="font-bold flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full" style="background: {STATUS_FILLS[node.status] || '#f1f5f9'}"></span>
+            {node.status.toUpperCase()}
+          </span>
         </div>
-      {/if}
 
-      {#if node.project}
-        <div class="field">
-          <span class="label">Project</span>
-          <span class="value">{node.project}</span>
+        <div class="flex flex-col gap-1 border border-primary/20 p-2 bg-black/50">
+          <span class="text-[10px] text-primary/60">TYPE</span>
+          <span class="font-bold text-primary">{node.type?.toUpperCase() || 'UNKNOWN'}</span>
         </div>
-      {/if}
 
-      <div class="field">
-        <span class="label">Priority</span>
-        <span class="value">P{node.priority}</span>
+        <div class="flex flex-col gap-1 border border-primary/20 p-2 bg-black/50">
+          <span class="text-[10px] text-primary/60">PRIORITY</span>
+          <span class="font-bold text-primary">P{node.priority}</span>
+        </div>
+
+        <div class="flex flex-col gap-1 border border-primary/20 p-2 bg-black/50">
+          <span class="text-[10px] text-primary/60">WEIGHT ⚖️</span>
+          <span class="font-bold text-primary">{node.dw.toFixed(1)}</span>
+        </div>
+
+        <div class="flex flex-col gap-1 border border-primary/20 p-2 bg-black/50 col-span-2">
+          <span class="text-[10px] text-primary/60">PROJECT</span>
+          <span class="font-bold text-primary">{node.project || 'NONE'}</span>
+        </div>
       </div>
 
-      <div class="field">
-        <span class="label">Weight ⚖️</span>
-        <span class="value">{node.dw.toFixed(1)}</span>
-      </div>
-
-      {#if node.assignee}
-        <div class="field">
-          <span class="label">Assignee</span>
-          <span class="value">{node.assignee}</span>
+      <div class="space-y-2 pt-4 border-t border-primary/20">
+        <h4 class="text-[10px] font-bold tracking-widest text-primary/60">METRICS</h4>
+        <div class="flex justify-between items-center text-xs">
+          <span class="text-primary/70">Depth</span>
+          <span class="text-primary">{node.depth} / {node.maxDepth}</span>
         </div>
-      {/if}
-
-      <div class="field">
-        <span class="label">Depth</span>
-        <span class="value">{node.depth} / {node.maxDepth}</span>
+        {#if node.assignee}
+          <div class="flex justify-between items-center text-xs">
+            <span class="text-primary/70">Assignee</span>
+            <span class="text-primary">{node.assignee}</span>
+          </div>
+        {/if}
       </div>
     </div>
 
-    <div class="actions">
+    <!-- Actions Footer -->
+    <div class="p-4 border-t border-primary/30 bg-black/80 flex flex-col gap-2">
       <button
-        class="btn btn-focus"
-        class:active-focus={isFocusMode}
+        class="w-full py-2 border {isFocusMode ? 'border-primary bg-primary/20' : 'border-primary/50'} text-primary text-xs font-bold tracking-widest hover:bg-primary hover:text-black transition-colors"
         on:click={toggleFocus}
       >
-        {isFocusMode ? "Exit Focus" : "Focus"}
+        {isFocusMode ? "EXIT FOCUS MODE" : "ISOLATE NODE"}
       </button>
-      <button class="btn btn-edit" on:click={() => handleAction("edit")}
-        >Edit</button
-      >
-      <button class="btn btn-complete" on:click={() => handleAction("complete")}
-        >Done</button
-      >
+      <div class="grid grid-cols-2 gap-2">
+        <button
+          class="py-2 border border-primary/50 text-primary/70 text-xs font-bold tracking-widest hover:border-primary hover:text-primary transition-colors"
+          on:click={() => handleAction("edit")}
+        >
+          EDIT
+        </button>
+        <button
+          class="py-2 bg-primary/10 border border-primary text-primary text-xs font-bold tracking-widest hover:bg-primary hover:text-black transition-colors"
+          on:click={() => handleAction("complete")}
+        >
+          COMPLETE
+        </button>
+      </div>
     </div>
   </div>
+{:else}
+  <div class="flex flex-col h-full bg-background-dark font-mono border-l border-primary/30 items-center justify-center text-primary/30 p-8 text-center">
+    <span class="material-symbols-outlined text-4xl mb-2">radar</span>
+    <span class="text-xs tracking-widest">AWAITING TARGET ACQUISITION</span>
+  </div>
 {/if}
-
-<style>
-  .monolith-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 99;
-    background: rgba(5, 5, 5, 0.4);
-    backdrop-filter: blur(40px) brightness(0.3);
-    -webkit-backdrop-filter: blur(40px) brightness(0.3);
-  }
-
-  .detail-panel {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 100;
-    width: 400px;
-    padding: 24px;
-    box-sizing: border-box;
-    /* Removed custom background/border/blur since glass-surface handles it, but we can boost the box-shadow */
-    box-shadow:
-      0 20px 50px rgba(0, 0, 0, 0.5),
-      0 0 0 1px rgba(255, 255, 255, 0.05);
-  }
-
-  .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 12px;
-  }
-
-  h3 {
-    margin: 0;
-    font-size: 14px;
-    font-weight: 600;
-    line-height: 1.4;
-    word-break: break-word;
-    padding-right: 12px;
-  }
-
-  .close-btn {
-    background: none;
-    border: none;
-    color: #94a3b8;
-    cursor: pointer;
-    font-size: 16px;
-    padding: 0;
-    margin: -4px -4px 0 0;
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 4px;
-  }
-
-  .close-btn:hover {
-    color: #f8fafc;
-    background: rgba(255, 255, 255, 0.1);
-  }
-
-  .fields {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .field {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    font-size: 12px;
-  }
-
-  .label {
-    color: #94a3b8;
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.4px;
-    font-weight: 600;
-  }
-
-  .value {
-    font-weight: 500;
-    text-align: right;
-  }
-
-  .badge {
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    background: rgba(255, 255, 255, 0.1);
-  }
-
-  .actions {
-    display: flex;
-    gap: 12px;
-    margin-top: 24px;
-    padding-top: 16px;
-    border-top: 1px solid var(--border-subtle);
-  }
-
-  .btn {
-    flex: 1;
-    padding: 10px 0;
-    background: transparent;
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-sm);
-    font-size: 13px;
-    font-weight: 700;
-    font-family: var(--font-display);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-  }
-
-  /* Neon fill on hover */
-  .btn-focus {
-    border-color: var(--neon-magenta);
-    color: var(--neon-magenta);
-  }
-  .btn-focus:hover,
-  .btn-focus.active-focus {
-    background: var(--neon-magenta);
-    color: var(--color-void);
-    box-shadow: 0 0 15px var(--neon-magenta);
-  }
-
-  .btn-edit {
-    border-color: var(--neon-cyan);
-    color: var(--neon-cyan);
-  }
-  .btn-edit:hover {
-    background: var(--neon-cyan);
-    color: var(--color-void);
-    box-shadow: 0 0 15px var(--neon-cyan);
-  }
-
-  .btn-complete {
-    border-color: var(--accent-success);
-    color: var(--accent-success);
-  }
-  .btn-complete:hover {
-    background: var(--accent-success);
-    color: var(--color-void);
-    box-shadow: 0 0 15px var(--accent-success);
-  }
-</style>
