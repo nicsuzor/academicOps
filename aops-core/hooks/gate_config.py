@@ -351,7 +351,7 @@ QA_GATE_MODE = os.environ["QA_GATE_MODE"]
 CUSTODIET_GATE_MODE = os.environ["CUSTODIET_GATE_MODE"]
 CUSTODIET_TOOL_CALL_THRESHOLD = int(os.environ.get("CUSTODIET_TOOL_CALL_THRESHOLD", "50"))
 HYDRATION_GATE_MODE = os.environ["HYDRATION_GATE_MODE"]
-COMMIT_GATE_MODE = os.environ.get("COMMIT_GATE_MODE", "deny")
+COMMIT_GATE_MODE = os.environ["COMMIT_GATE_MODE"]
 
 # =============================================================================
 # PKB PREFIX NORMALIZATION
