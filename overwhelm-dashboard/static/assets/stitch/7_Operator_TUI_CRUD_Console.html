@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#f2aa0d",
+                        "background-light": "#f8f7f5",
+                        "background-dark": "#0a0a05",
+                        "surface": "#1a1608",
+                        "muted": "#493d22"
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "monospace"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0px",
+                        "lg": "0px",
+                        "xl": "0px",
+                        "full": "0px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        .cursor-block {
+            display: inline-block;
+            width: 10px;
+            height: 1.2em;
+            background-color: #f2aa0d;
+            vertical-align: middle;
+            animation: blink 1s step-end infinite;
+        }
+        .ascii-border {
+            border-style: solid;
+            border-width: 1px;
+            border-image: linear-gradient(to right, #f2aa0d 100%, #f2aa0d 100%) 1;
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0a0a05;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #493d22;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #f2aa0d;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-primary antialiased selection:bg-primary selection:text-background-dark">
+<div class="relative flex h-screen w-full flex-col overflow-hidden border-4 border-primary/20">
+<!-- Top Terminal Header -->
+<header class="flex items-center justify-between border-b border-primary/40 bg-surface px-6 py-2">
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-xl">terminal</span>
+<h1 class="text-primary text-sm font-bold tracking-tighter uppercase">Operator_OS v4.0.2 // Task_Manager</h1>
+</div>
+<div class="h-4 w-px bg-muted"></div>
+<div class="text-[10px] text-primary/60 uppercase">
+                Status: <span class="text-primary font-bold">[ ONLINE ]</span> | Buffer: 1024KB | Latency: 12ms
+            </div>
+</div>
+<div class="flex items-center gap-4 text-[10px]">
+<span class="text-primary/60 italic">LOGGED_IN: ADMIN_01</span>
+<span class="material-symbols-outlined text-sm">settings</span>
+<span class="material-symbols-outlined text-sm">power_settings_new</span>
+</div>
+</header>
+<div class="flex flex-1 overflow-hidden">
+<!-- Sidebar Navigation -->
+<nav class="w-64 border-r border-primary/40 bg-background-dark p-4 flex flex-col gap-6">
+<div class="space-y-1">
+<div class="text-[10px] text-primary/40 mb-2 px-2 uppercase font-bold tracking-widest">Directories</div>
+<a class="flex items-center gap-3 px-2 py-1 bg-primary text-background-dark font-bold" href="#">
+<span class="material-symbols-outlined text-sm">folder_open</span>
+<span class="text-xs">ROOT/TASKS</span>
+</a>
+<a class="flex items-center gap-3 px-2 py-1 hover:bg-primary/10 transition-colors" href="#">
+<span class="material-symbols-outlined text-sm text-primary/60">inbox</span>
+<span class="text-xs">ROOT/INBOX</span>
+</a>
+<a class="flex items-center gap-3 px-2 py-1 hover:bg-primary/10 transition-colors" href="#">
+<span class="material-symbols-outlined text-sm text-primary/60">terminal</span>
+<span class="text-xs">ROOT/SCRIPTS</span>
+</a>
+<a class="flex items-center gap-3 px-2 py-1 hover:bg-primary/10 transition-colors" href="#">
+<span class="material-symbols-outlined text-sm text-primary/60">history</span>
+<span class="text-xs">ROOT/ARCHIVE</span>
+</a>
+</div>
+<div class="space-y-1">
+<div class="text-[10px] text-primary/40 mb-2 px-2 uppercase font-bold tracking-widest">System Load</div>
+<div class="px-2">
+<div class="text-[9px] mb-1 flex justify-between"><span>CPU</span><span>78%</span></div>
+<div class="w-full bg-muted h-1">
+<div class="bg-primary h-full w-[78%]"></div>
+</div>
+</div>
+<div class="px-2 pt-2">
+<div class="text-[9px] mb-1 flex justify-between"><span>MEM</span><span>42%</span></div>
+<div class="w-full bg-muted h-1">
+<div class="bg-primary h-full w-[42%]"></div>
+</div>
+</div>
+</div>
+<div class="mt-auto border border-primary/20 p-2 bg-surface">
+<div class="text-[9px] text-primary font-bold uppercase mb-1">Navigation Info</div>
+<div class="text-[9px] text-primary/60 space-y-1">
+<p>[J/K] UP/DOWN</p>
+<p>[ENTER] SELECT</p>
+<p>[E] EDIT</p>
+<p>[D] DELETE</p>
+<p>[N] NEW TASK</p>
+</div>
+</div>
+</nav>
+<!-- Main Console Content -->
+<main class="flex-1 flex flex-col bg-background-dark overflow-hidden">
+<!-- Search & Actions Bar -->
+<div class="flex items-center border-b border-primary/40 bg-surface/50 px-4 py-2 gap-4">
+<div class="flex-1 flex items-center gap-2 border border-primary/20 bg-background-dark px-3 py-1">
+<span class="text-primary text-xs font-bold">&gt;</span>
+<input class="bg-transparent border-none focus:ring-0 text-xs w-full placeholder:text-primary/30 text-primary" placeholder="Search tasks..." type="text"/>
+<span class="cursor-block"></span>
+</div>
+<button class="bg-primary text-background-dark px-4 py-1 text-xs font-bold hover:brightness-110 flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">add</span>
+                    NEW_ENTRY [N]
+                </button>
+</div>
+<!-- Task List Table -->
+<div class="flex-1 overflow-auto">
+<table class="w-full text-left text-xs border-collapse">
+<thead class="sticky top-0 bg-background-dark border-b border-primary/60 z-10">
+<tr>
+<th class="px-4 py-3 text-primary/40 font-bold uppercase">ID</th>
+<th class="px-4 py-3 text-primary/40 font-bold uppercase">Status</th>
+<th class="px-4 py-3 text-primary/40 font-bold uppercase">Task Name</th>
+<th class="px-4 py-3 text-primary/40 font-bold uppercase">Priority</th>
+<th class="px-4 py-3 text-primary/40 font-bold uppercase text-right">Uptime</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-primary/10">
+<!-- Active Selected Row -->
+<tr class="bg-primary/10 group cursor-pointer border-l-4 border-l-primary">
+<td class="px-4 py-4 font-mono text-primary/60">#0421</td>
+<td class="px-4 py-4">
+<span class="text-primary font-bold">
+                                    [ RUNNING ]
+                                </span>
+</td>
+<td class="px-4 py-4 text-primary font-bold uppercase tracking-tight">
+                                Decrypt_Subsector_G7_Logs
+                                <div class="text-[10px] text-primary/40 font-normal mt-1 italic">Process assigned to NODE_B7</div>
+</td>
+<td class="px-4 py-4">
+<span class="border border-primary px-2 py-0.5 text-[10px] font-bold">CRITICAL</span>
+</td>
+<td class="px-4 py-4 text-right font-mono text-primary/60">12:44:02</td>
+</tr>
+<!-- Standard Row -->
+<tr class="hover:bg-primary/5 cursor-pointer border-l-4 border-l-transparent">
+<td class="px-4 py-4 font-mono text-primary/60">#0418</td>
+<td class="px-4 py-4">
+<span class="text-primary/60">
+                                    [ IDLE ]
+                                </span>
+</td>
+<td class="px-4 py-4 text-primary font-medium uppercase">
+                                Purge_Cache_Buffer_Zone
+                            </td>
+<td class="px-4 py-4">
+<span class="border border-primary/40 px-2 py-0.5 text-[10px] font-bold text-primary/60">LOW</span>
+</td>
+<td class="px-4 py-4 text-right font-mono text-primary/60">00:12:55</td>
+</tr>
+<!-- Success State -->
+<tr class="hover:bg-primary/5 cursor-pointer border-l-4 border-l-transparent">
+<td class="px-4 py-4 font-mono text-primary/60">#0399</td>
+<td class="px-4 py-4 text-primary">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">check_circle</span>
+<span>DONE</span>
+</div>
+</td>
+<td class="px-4 py-4 text-primary font-medium uppercase opacity-60 line-through">
+                                Recalibrate_O2_Sensors
+                            </td>
+<td class="px-4 py-4">
+<span class="border border-primary/40 px-2 py-0.5 text-[10px] font-bold text-primary/60">HIGH</span>
+</td>
+<td class="px-4 py-4 text-right font-mono text-primary/60">COMPLETED</td>
+</tr>
+<!-- Warning State -->
+<tr class="hover:bg-primary/5 cursor-pointer border-l-4 border-l-transparent">
+<td class="px-4 py-4 font-mono text-primary/60">#0392</td>
+<td class="px-4 py-4 text-primary">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm animate-pulse">warning</span>
+<span>STALLED</span>
+</div>
+</td>
+<td class="px-4 py-4 text-primary font-medium uppercase">
+                                Remote_Handshake_Secure_Link
+                            </td>
+<td class="px-4 py-4">
+<span class="border border-primary px-2 py-0.5 text-[10px] font-bold">MED</span>
+</td>
+<td class="px-4 py-4 text-right font-mono text-primary/60">ERROR_404</td>
+</tr>
+<!-- More Rows -->
+<tr class="hover:bg-primary/5 cursor-pointer border-l-4 border-l-transparent">
+<td class="px-4 py-4 font-mono text-primary/60">#0388</td>
+<td class="px-4 py-4">
+<span class="text-primary/60">
+                                    [ QUEUED ]
+                                </span>
+</td>
+<td class="px-4 py-4 text-primary font-medium uppercase">
+                                System_Defrag_Iteration_9
+                            </td>
+<td class="px-4 py-4">
+<span class="border border-primary/40 px-2 py-0.5 text-[10px] font-bold text-primary/60">LOW</span>
+</td>
+<td class="px-4 py-4 text-right font-mono text-primary/60">--:--:--</td>
+</tr>
+<tr class="hover:bg-primary/5 cursor-pointer border-l-4 border-l-transparent">
+<td class="px-4 py-4 font-mono text-primary/60">#0385</td>
+<td class="px-4 py-4">
+<span class="text-primary/60">
+                                    [ QUEUED ]
+                                </span>
+</td>
+<td class="px-4 py-4 text-primary font-medium uppercase">
+                                Compile_Asset_Manifest
+                            </td>
+<td class="px-4 py-4">
+<span class="border border-primary/40 px-2 py-0.5 text-[10px] font-bold text-primary/60">MED</span>
+</td>
+<td class="px-4 py-4 text-right font-mono text-primary/60">--:--:--</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- ASCII Art Decorative Footer Area -->
+<div class="h-32 border-t border-primary/40 flex">
+<div class="flex-1 p-4 font-mono text-[9px] text-primary/40 leading-none overflow-hidden select-none">
+<pre>  _____  ____  _____  _____  _______  ____  _____
+ |     ||    ||     ||     ||       ||    ||     |
+ |  O  ||  o  ||  _  ||  _  ||_     _||  o  ||  _  |
+ |  _  ||   _/|  |  ||  |  |  |   |  |   _/|  |  |
+ |  |  ||  |  |  |_| ||  |_| |  |   |  |  |  |  |_| |
+ |__|__||__|  |_____||_____|  |___|  |__|  |_____|
+
+SYSTEM_OPERATIONAL_TASKS_LOADED_SUCCESSFULLY
+TERMINAL_WAITING_FOR_USER_INPUT...
+                    </pre>
+</div>
+<div class="w-80 border-l border-primary/40 bg-surface p-4 flex flex-col justify-between">
+<div class="space-y-2">
+<div class="flex justify-between text-[10px] uppercase font-bold">
+<span>Sector Usage</span>
+<span>91.4%</span>
+</div>
+<div class="flex gap-1">
+<div class="h-3 flex-1 bg-primary"></div>
+<div class="h-3 flex-1 bg-primary"></div>
+<div class="h-3 flex-1 bg-primary"></div>
+<div class="h-3 flex-1 bg-primary"></div>
+<div class="h-3 flex-1 bg-primary"></div>
+<div class="h-3 flex-1 bg-primary"></div>
+<div class="h-3 flex-1 bg-primary"></div>
+<div class="h-3 flex-1 bg-primary"></div>
+<div class="h-3 flex-1 bg-primary"></div>
+<div class="h-3 flex-1 bg-muted"></div>
+</div>
+</div>
+<div class="text-[9px] text-primary/60 italic leading-tight">
+                        Warning: Low oxygen detected in Sector 4. Manual intervention required. Proceed with caution.
+                    </div>
+</div>
+</div>
+</main>
+</div>
+<!-- Status Bar -->
+<footer class="bg-primary px-4 py-1 flex items-center justify-between text-[10px] font-bold text-background-dark">
+<div class="flex gap-4">
+<span>[F1] HELP</span>
+<span>[F2] CONFIG</span>
+<span>[F5] REFRESH</span>
+<span>[F10] EXIT</span>
+</div>
+<div class="flex gap-4">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[12px]">schedule</span> 14:32:01</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[12px]">database</span> DB:STABLE</span>
+</div>
+</footer>
+</div>
+</body></html>

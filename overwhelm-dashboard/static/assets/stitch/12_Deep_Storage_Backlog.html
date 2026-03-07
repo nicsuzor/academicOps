@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>The Operator // Deep Storage</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#FFB000",
+                        "primary-dim": "rgba(255, 176, 0, 0.45)",
+                        "background-light": "#f8f7f5",
+                        "background-dark": "#0A0A0A",
+                        "surface-dark": "#141414",
+                        "danger": "#FF3333",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "monospace"],
+                        "mono": ["JetBrains Mono", "monospace"],
+                    },
+                    borderRadius: {
+                        "DEFAULT": "2px",
+                        "lg": "4px",
+                        "xl": "8px",
+                        "full": "9999px"
+                    },
+                    backgroundImage: {
+                        'scanlines': 'repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(0, 0, 0, 0.3) 1px, rgba(0, 0, 0, 0.3) 2px)',
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom scrollbar for webkit to match the theme */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #141414;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #FFB000;
+            border: 2px solid #141414;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #cc8d00;
+        }
+
+        /* Scanline overlay effect */
+        .scanline-overlay {
+            background-image: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+
+        /* CRT flicker animation */
+        @keyframes flicker {
+            0% { opacity: 0.97; }
+            5% { opacity: 0.95; }
+            10% { opacity: 0.9; }
+            15% { opacity: 0.95; }
+            20% { opacity: 0.99; }
+            50% { opacity: 0.95; }
+            55% { opacity: 0.9; }
+            60% { opacity: 0.99; }
+            100% { opacity: 0.97; }
+        }
+        .crt-flicker {
+            animation: flicker 0.15s infinite;
+        }
+
+        /* Blink animation for cursor */
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        .cursor-blink {
+            animation: blink 1s step-end infinite;
+        }
+
+        /* Table row hover effect - Invert colors */
+        .data-row:hover {
+            background-color: #FFB000 !important;
+            color: #0A0A0A !important;
+        }
+        .data-row:hover .text-primary {
+            color: #0A0A0A !important;
+        }
+        .data-row:hover .text-primary-dim {
+            color: #141414 !important;
+        }
+        .data-row:hover .border-primary\/20 {
+            border-color: #0A0A0A !important;
+        }
+    </style>
+</head>
+<body class="bg-background-dark text-primary font-display antialiased overflow-hidden h-screen flex flex-col relative">
+<!-- CRT Overlay -->
+<div class="absolute inset-0 z-50 scanline-overlay pointer-events-none opacity-20 mix-blend-overlay"></div>
+<!-- Top Navigation -->
+<header class="flex-none flex items-center justify-between whitespace-nowrap border-b border-primary/30 bg-surface-dark px-6 py-3 z-10">
+<div class="flex items-center gap-4 text-primary">
+<div class="size-6 text-primary">
+<span class="material-symbols-outlined text-[24px]">terminal</span>
+</div>
+<h2 class="text-lg font-bold leading-tight tracking-widest uppercase">THE OPERATOR // DEEP STORAGE</h2>
+</div>
+<div class="flex gap-4">
+<div class="hidden md:flex items-center gap-2 text-xs font-mono text-primary-dim">
+<span>MEM: 64%</span>
+<span>|</span>
+<span>UPTIME: 04:22:19</span>
+</div>
+<div class="flex gap-2">
+<button class="flex items-center justify-center overflow-hidden rounded bg-primary/10 hover:bg-primary hover:text-background-dark border border-primary text-primary h-8 px-4 text-xs font-bold tracking-wider transition-colors">
+<span class="truncate">LOGOUT</span>
+</button>
+<button class="flex items-center justify-center overflow-hidden rounded bg-surface-dark border border-primary/30 hover:border-primary text-primary h-8 w-8 transition-colors">
+<span class="material-symbols-outlined text-[18px]">settings</span>
+</button>
+<button class="flex items-center justify-center overflow-hidden rounded bg-surface-dark border border-primary/30 hover:border-primary text-primary h-8 w-8 transition-colors">
+<span class="material-symbols-outlined text-[18px]">notifications</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col overflow-hidden relative z-0">
+<!-- Command Line Query Bar -->
+<div class="flex-none bg-background-dark border-b border-primary/30 p-4">
+<div class="relative flex items-center w-full max-w-4xl mx-auto">
+<span class="absolute left-3 text-primary font-mono select-none">&gt;</span>
+<input class="w-full bg-surface-dark border border-primary/30 text-primary font-mono text-sm pl-8 pr-4 py-3 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary placeholder-primary/30 uppercase tracking-wider rounded-sm shadow-[0_0_10px_rgba(255,176,0,0.1)]" placeholder="QUERY SELECT * WHERE STATUS != 'DONE' AND PRIORITY = 'HIGH'" type="text" value="FILTER --STATUS=PENDING --TAG=BACKEND"/>
+<div class="absolute right-3 w-2.5 h-5 bg-primary cursor-blink"></div>
+</div>
+<div class="max-w-4xl mx-auto mt-2 flex justify-between items-center text-xs font-mono text-primary-dim uppercase">
+<span>Query returned 142 records in 0.02s</span>
+<div class="flex gap-4">
+<span class="hover:text-primary cursor-pointer">[ SAVE VIEW ]</span>
+<span class="hover:text-primary cursor-pointer">[ EXPORT CSV ]</span>
+</div>
+</div>
+</div>
+<!-- Data Grid Container -->
+<div class="flex-1 overflow-auto p-4 md:px-8">
+<div class="w-full border border-primary/30 rounded-sm bg-surface-dark/50">
+<!-- Table Header -->
+<div class="grid grid-cols-[40px_100px_1fr_120px_100px_140px_120px] gap-0 border-b border-primary font-mono text-xs font-bold text-primary bg-primary/10 sticky top-0 z-10 backdrop-blur-sm">
+<div class="p-2 border-r border-primary/30 flex justify-center items-center">
+<div class="w-3 h-3 border border-primary cursor-pointer hover:bg-primary"></div>
+</div>
+<div class="p-2 border-r border-primary/30 flex items-center justify-between cursor-pointer hover:bg-primary/20 group">
+                        ID <span class="opacity-0 group-hover:opacity-100">▼</span>
+</div>
+<div class="p-2 border-r border-primary/30 flex items-center justify-between cursor-pointer hover:bg-primary/20 group">
+                        DESCRIPTION <span class="opacity-0 group-hover:opacity-100">▼</span>
+</div>
+<div class="p-2 border-r border-primary/30 flex items-center justify-between cursor-pointer hover:bg-primary/20 group">
+                        DEPENDENCY <span class="opacity-0 group-hover:opacity-100">▼</span>
+</div>
+<div class="p-2 border-r border-primary/30 flex items-center justify-between cursor-pointer hover:bg-primary/20 group">
+                        ESTIMATE <span class="opacity-0 group-hover:opacity-100">▼</span>
+</div>
+<div class="p-2 border-r border-primary/30 flex items-center justify-between cursor-pointer hover:bg-primary/20 group">
+                        DUE DATE <span class="opacity-0 group-hover:opacity-100">▼</span>
+</div>
+<div class="p-2 flex items-center justify-between cursor-pointer hover:bg-primary/20 group">
+                        STATUS <span class="opacity-100">▼</span>
+</div>
+</div>
+<!-- Table Body -->
+<div class="font-mono text-xs text-primary/90">
+<!-- Row 1 (Selected) -->
+<div class="grid grid-cols-[40px_100px_1fr_120px_100px_140px_120px] gap-0 border-b border-primary/20 data-row bg-primary/10 group cursor-default">
+<div class="p-2 border-r border-primary/20 flex justify-center items-center">
+<div class="w-3 h-3 bg-primary border border-primary cursor-pointer flex items-center justify-center text-background-dark font-bold text-[10px]">✓</div>
+</div>
+<div class="p-2 border-r border-primary/20 font-bold">TSK-042</div>
+<div class="p-2 border-r border-primary/20 truncate">Refactor API Gateway middleware for improved latency</div>
+<div class="p-2 border-r border-primary/20 text-primary-dim group-hover:text-background-dark">TSK-001</div>
+<div class="p-2 border-r border-primary/20">4h 30m</div>
+<div class="p-2 border-r border-primary/20 text-danger font-bold">2023-11-24 !</div>
+<div class="p-2 font-bold">[TODO]</div>
+</div>
+<!-- Row 2 -->
+<div class="grid grid-cols-[40px_100px_1fr_120px_100px_140px_120px] gap-0 border-b border-primary/20 data-row group cursor-default">
+<div class="p-2 border-r border-primary/20 flex justify-center items-center">
+<div class="w-3 h-3 border border-primary/50 cursor-pointer hover:border-primary"></div>
+</div>
+<div class="p-2 border-r border-primary/20 font-bold">TSK-043</div>
+<div class="p-2 border-r border-primary/20 truncate">Update user schema migration scripts</div>
+<div class="p-2 border-r border-primary/20 text-primary-dim group-hover:text-background-dark">--</div>
+<div class="p-2 border-r border-primary/20">2h 00m</div>
+<div class="p-2 border-r border-primary/20">2023-11-25</div>
+<div class="p-2 text-primary-dim group-hover:text-background-dark">[WAITING]</div>
+</div>
+<!-- Row 3 (Selected) -->
+<div class="grid grid-cols-[40px_100px_1fr_120px_100px_140px_120px] gap-0 border-b border-primary/20 data-row bg-primary/10 group cursor-default">
+<div class="p-2 border-r border-primary/20 flex justify-center items-center">
+<div class="w-3 h-3 bg-primary border border-primary cursor-pointer flex items-center justify-center text-background-dark font-bold text-[10px]">✓</div>
+</div>
+<div class="p-2 border-r border-primary/20 font-bold">TSK-044</div>
+<div class="p-2 border-r border-primary/20 truncate">Investigate memory leak in worker process</div>
+<div class="p-2 border-r border-primary/20 text-primary-dim group-hover:text-background-dark">TSK-039</div>
+<div class="p-2 border-r border-primary/20">??h ??m</div>
+<div class="p-2 border-r border-primary/20">2023-11-26</div>
+<div class="p-2 font-bold">[WIP]</div>
+</div>
+<!-- Row 4 -->
+<div class="grid grid-cols-[40px_100px_1fr_120px_100px_140px_120px] gap-0 border-b border-primary/20 data-row bg-surface-dark/30 group cursor-default">
+<div class="p-2 border-r border-primary/20 flex justify-center items-center">
+<div class="w-3 h-3 border border-primary/50 cursor-pointer hover:border-primary"></div>
+</div>
+<div class="p-2 border-r border-primary/20 font-bold">TSK-045</div>
+<div class="p-2 border-r border-primary/20 truncate">Design system token synchronization</div>
+<div class="p-2 border-r border-primary/20 text-primary-dim group-hover:text-background-dark">--</div>
+<div class="p-2 border-r border-primary/20">6h 00m</div>
+<div class="p-2 border-r border-primary/20">2023-11-28</div>
+<div class="p-2 text-primary-dim group-hover:text-background-dark">[BACKLOG]</div>
+</div>
+<!-- Row 5 (Selected) -->
+<div class="grid grid-cols-[40px_100px_1fr_120px_100px_140px_120px] gap-0 border-b border-primary/20 data-row bg-primary/10 group cursor-default">
+<div class="p-2 border-r border-primary/20 flex justify-center items-center">
+<div class="w-3 h-3 bg-primary border border-primary cursor-pointer flex items-center justify-center text-background-dark font-bold text-[10px]">✓</div>
+</div>
+<div class="p-2 border-r border-primary/20 font-bold">TSK-046</div>
+<div class="p-2 border-r border-primary/20 truncate">Review PR #882 from feature branch</div>
+<div class="p-2 border-r border-primary/20 text-primary-dim group-hover:text-background-dark">--</div>
+<div class="p-2 border-r border-primary/20">0h 45m</div>
+<div class="p-2 border-r border-primary/20">TODAY</div>
+<div class="p-2 font-bold">[REVIEW]</div>
+</div>
+<!-- Row 6 -->
+<div class="grid grid-cols-[40px_100px_1fr_120px_100px_140px_120px] gap-0 border-b border-primary/20 data-row bg-surface-dark/30 group cursor-default">
+<div class="p-2 border-r border-primary/20 flex justify-center items-center">
+<div class="w-3 h-3 border border-primary/50 cursor-pointer hover:border-primary"></div>
+</div>
+<div class="p-2 border-r border-primary/20 font-bold">TSK-047</div>
+<div class="p-2 border-r border-primary/20 truncate">Documentation for v2 endpoints</div>
+<div class="p-2 border-r border-primary/20 text-primary-dim group-hover:text-background-dark">TSK-042</div>
+<div class="p-2 border-r border-primary/20">3h 00m</div>
+<div class="p-2 border-r border-primary/20">2023-11-30</div>
+<div class="p-2 text-primary-dim group-hover:text-background-dark">[TODO]</div>
+</div>
+<!-- Row 7 -->
+<div class="grid grid-cols-[40px_100px_1fr_120px_100px_140px_120px] gap-0 border-b border-primary/20 data-row group cursor-default">
+<div class="p-2 border-r border-primary/20 flex justify-center items-center">
+<div class="w-3 h-3 border border-primary/50 cursor-pointer hover:border-primary"></div>
+</div>
+<div class="p-2 border-r border-primary/20 font-bold">TSK-048</div>
+<div class="p-2 border-r border-primary/20 truncate">Setup CI/CD pipeline for staging environment</div>
+<div class="p-2 border-r border-primary/20 text-primary-dim group-hover:text-background-dark">--</div>
+<div class="p-2 border-r border-primary/20">8h 00m</div>
+<div class="p-2 border-r border-primary/20">2023-12-01</div>
+<div class="p-2 text-primary-dim group-hover:text-background-dark">[TODO]</div>
+</div>
+<!-- Row 8 -->
+<div class="grid grid-cols-[40px_100px_1fr_120px_100px_140px_120px] gap-0 border-b border-primary/20 data-row bg-surface-dark/30 group cursor-default">
+<div class="p-2 border-r border-primary/20 flex justify-center items-center">
+<div class="w-3 h-3 border border-primary/50 cursor-pointer hover:border-primary"></div>
+</div>
+<div class="p-2 border-r border-primary/20 font-bold">TSK-049</div>
+<div class="p-2 border-r border-primary/20 truncate">Optimize image assets for landing page</div>
+<div class="p-2 border-r border-primary/20 text-primary-dim group-hover:text-background-dark">--</div>
+<div class="p-2 border-r border-primary/20">1h 30m</div>
+<div class="p-2 border-r border-primary/20">2023-12-02</div>
+<div class="p-2 text-primary-dim group-hover:text-background-dark">[BACKLOG]</div>
+</div>
+<!-- Row 9 -->
+<div class="grid grid-cols-[40px_100px_1fr_120px_100px_140px_120px] gap-0 border-b border-primary/20 data-row group cursor-default">
+<div class="p-2 border-r border-primary/20 flex justify-center items-center">
+<div class="w-3 h-3 border border-primary/50 cursor-pointer hover:border-primary"></div>
+</div>
+<div class="p-2 border-r border-primary/20 font-bold">TSK-050</div>
+<div class="p-2 border-r border-primary/20 truncate">Fix responsive layout on mobile safari</div>
+<div class="p-2 border-r border-primary/20 text-primary-dim group-hover:text-background-dark">--</div>
+<div class="p-2 border-r border-primary/20">2h 15m</div>
+<div class="p-2 border-r border-primary/20">2023-12-02</div>
+<div class="p-2 font-bold text-danger">[BUG]</div>
+</div>
+<!-- Row 10 -->
+<div class="grid grid-cols-[40px_100px_1fr_120px_100px_140px_120px] gap-0 border-b border-primary/20 data-row bg-surface-dark/30 group cursor-default">
+<div class="p-2 border-r border-primary/20 flex justify-center items-center">
+<div class="w-3 h-3 border border-primary/50 cursor-pointer hover:border-primary"></div>
+</div>
+<div class="p-2 border-r border-primary/20 font-bold">TSK-051</div>
+<div class="p-2 border-r border-primary/20 truncate">Internal analytics dashboard setup</div>
+<div class="p-2 border-r border-primary/20 text-primary-dim group-hover:text-background-dark">--</div>
+<div class="p-2 border-r border-primary/20">5h 00m</div>
+<div class="p-2 border-r border-primary/20">2023-12-05</div>
+<div class="p-2 text-primary-dim group-hover:text-background-dark">[TODO]</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Sticky Footer Bulk Actions -->
+<div class="flex-none bg-primary border-t border-primary p-3 shadow-[0_-5px_20px_rgba(255,176,0,0.15)] z-20">
+<div class="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+<div class="flex items-center gap-3 text-background-dark font-bold font-mono uppercase tracking-tight">
+<span class="bg-background-dark text-primary px-2 py-0.5 rounded-sm">3 ITEMS SELECTED</span>
+<span class="hidden md:inline">::</span>
+<span class="text-sm">Ready for operation</span>
+</div>
+<div class="flex gap-3 w-full md:w-auto">
+<button class="flex-1 md:flex-none flex items-center justify-center gap-2 bg-background-dark hover:bg-surface-dark text-primary px-4 py-2 rounded-sm text-sm font-bold font-mono border border-transparent hover:border-primary/50 transition-all uppercase">
+<span class="material-symbols-outlined text-[16px]">archive</span>
+                        [ ARCHIVE ]
+                    </button>
+<button class="flex-1 md:flex-none flex items-center justify-center gap-2 bg-background-dark hover:bg-surface-dark text-primary px-4 py-2 rounded-sm text-sm font-bold font-mono border border-transparent hover:border-primary/50 transition-all uppercase">
+<span class="material-symbols-outlined text-[16px]">schedule</span>
+                        [ DEFER ]
+                    </button>
+<button class="flex-1 md:flex-none flex items-center justify-center gap-2 bg-background-dark hover:bg-danger/20 text-danger px-4 py-2 rounded-sm text-sm font-bold font-mono border border-transparent hover:border-danger transition-all uppercase">
+<span class="material-symbols-outlined text-[16px]">delete</span>
+                        [ DELETE ]
+                    </button>
+</div>
+</div>
+</div>
+<!-- Status Line -->
+<div class="flex-none bg-surface-dark border-t border-primary/30 px-4 py-1 flex justify-between items-center text-[10px] font-mono uppercase text-primary-dim tracking-wider">
+<div class="flex gap-4">
+<span>ROWS: 142</span>
+<span>VISIBLE: 50</span>
+<span>SELECTED: 3</span>
+</div>
+<div class="flex gap-4">
+<span>MODE: INSERT</span>
+<span>Ln 1, Col 1</span>
+<span>UTF-8</span>
+</div>
+</div>
+</main>
+</body></html>

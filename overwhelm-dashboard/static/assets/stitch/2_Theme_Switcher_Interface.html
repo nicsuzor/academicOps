@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ec5b13",
+                        "background-light": "#f8f6f6",
+                        "background-dark": "#1a0f0a",
+                        "amber-terminal": "#ffb000",
+                        "cyan-hologram": "#00f2ff",
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .scanlines {
+            background: linear-gradient(to bottom, rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 50%);
+            background-size: 100% 4px;
+            pointer-events: none;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen relative overflow-hidden">
+<div class="absolute inset-0 scanlines opacity-20 z-0"></div>
+<div class="layout-container relative z-10 flex h-full grow flex-col">
+<header class="flex items-center justify-between border-b border-primary/20 px-6 py-4 lg:px-20 bg-background-dark/80 backdrop-blur-md">
+<div class="flex items-center gap-4">
+<div class="text-primary">
+<span class="material-symbols-outlined text-3xl">terminal</span>
+</div>
+<h2 class="text-xl font-black leading-tight tracking-widest uppercase">OS KERNEL SELECTION</h2>
+</div>
+<div class="flex gap-4">
+<button class="flex items-center justify-center rounded-xl h-10 w-10 bg-primary/10 text-primary border border-primary/30 hover:bg-primary hover:text-white transition-all">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<button class="flex items-center justify-center rounded-xl h-10 w-10 bg-primary/10 text-primary border border-primary/30 hover:bg-primary hover:text-white transition-all">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="flex items-center justify-center rounded-xl h-10 w-10 bg-primary/10 text-primary border border-primary/30 hover:bg-primary hover:text-white transition-all">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</div>
+</header>
+<main class="flex-1 flex flex-col items-center justify-center p-6 lg:p-20">
+<div class="w-full max-w-6xl">
+<div class="mb-12 text-center">
+<h1 class="text-4xl lg:text-6xl font-black tracking-tighter uppercase mb-4 text-slate-100">
+                        System Architecture <span class="text-primary">Sync</span>
+</h1>
+<p class="text-slate-400 text-lg max-w-2xl mx-auto">
+                        Choose your interface protocol for terminal synchronization. Neural links will be calibrated based on your selection.
+                    </p>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch relative">
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center">
+<div class="bg-background-dark border-4 border-primary rounded-full p-2 shadow-[0_0_30px_rgba(236,91,19,0.4)]">
+<button class="bg-primary hover:bg-primary/80 text-white w-24 h-24 rounded-full flex flex-col items-center justify-center gap-1 transition-transform active:scale-95 group">
+<span class="material-symbols-outlined text-4xl group-hover:rotate-180 transition-transform duration-500">sync</span>
+<span class="text-[10px] font-bold tracking-tighter">INITIALIZE</span>
+</button>
+</div>
+<div class="mt-4 bg-primary/20 backdrop-blur-md border border-primary/50 px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-[0.3em] text-primary">
+                            Protocol Sync
+                        </div>
+</div>
+<div class="group relative overflow-hidden rounded-2xl border-2 border-amber-terminal/30 bg-black/40 p-8 flex flex-col gap-6 hover:border-amber-terminal transition-all duration-500 cursor-pointer">
+<div class="flex justify-between items-start">
+<div>
+<h3 class="text-amber-terminal font-black text-2xl tracking-widest">OPERATOR_v2.4</h3>
+<p class="text-amber-terminal/60 text-xs font-mono uppercase mt-1">Amber Grid / Terminal Style</p>
+</div>
+<span class="material-symbols-outlined text-amber-terminal text-3xl">grid_view</span>
+</div>
+<div class="relative flex-1 min-h-[300px] border border-amber-terminal/20 rounded-lg p-4 bg-amber-terminal/5 overflow-hidden">
+<div class="absolute inset-0 opacity-10" data-alt="Grid pattern for terminal background" style="background-image: radial-gradient(circle, #ffb000 1px, transparent 1px); background-size: 20px 20px;"></div>
+<div class="relative z-10 font-mono text-[10px] text-amber-terminal/80 space-y-1">
+<p>&gt; INITIALIZING KERNEL...</p>
+<p>&gt; DECRYPTING RSA_KEY_2048...</p>
+<p>&gt; ACCESS GRANTED: ROOT_USER</p>
+<p class="pt-4">[|||||||||||||||||||||] 100%</p>
+<div class="grid grid-cols-3 gap-2 mt-4">
+<div class="h-12 border border-amber-terminal/40 bg-amber-terminal/10"></div>
+<div class="h-12 border border-amber-terminal/40 bg-amber-terminal/10"></div>
+<div class="h-12 border border-amber-terminal/40 bg-amber-terminal/10"></div>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-2 text-amber-terminal/40">
+<span class="h-1 w-12 bg-amber-terminal/40"></span>
+<span class="text-[10px] uppercase tracking-widest font-bold">Vintage Protocol</span>
+</div>
+</div>
+<div class="group relative overflow-hidden rounded-2xl border-2 border-cyan-hologram/30 bg-cyan-900/10 p-8 flex flex-col gap-6 hover:border-cyan-hologram transition-all duration-500 cursor-pointer">
+<div class="flex justify-between items-start">
+<div>
+<h3 class="text-cyan-hologram font-black text-2xl tracking-widest">HOLO_FLOW_v1.0</h3>
+<p class="text-cyan-hologram/60 text-xs font-mono uppercase mt-1">Cyan Glass / Depth Flow</p>
+</div>
+<span class="material-symbols-outlined text-cyan-hologram text-3xl">blur_on</span>
+</div>
+<div class="relative flex-1 min-h-[300px] rounded-lg p-4 glass-panel overflow-hidden border-cyan-hologram/20">
+<div class="absolute -top-10 -right-10 w-40 h-40 bg-cyan-hologram/20 rounded-full blur-[60px]" data-alt="Soft cyan light blur"></div>
+<div class="absolute -bottom-10 -left-10 w-32 h-32 bg-primary/10 rounded-full blur-[50px]" data-alt="Soft orange glow blur"></div>
+<div class="relative z-10 flex flex-col items-center justify-center h-full gap-4">
+<div class="w-24 h-24 border-2 border-cyan-hologram rounded-full flex items-center justify-center relative">
+<div class="absolute inset-0 border border-cyan-hologram/30 rounded-full animate-ping"></div>
+<span class="material-symbols-outlined text-cyan-hologram text-4xl">waves</span>
+</div>
+<div class="h-1 w-32 bg-gradient-to-r from-transparent via-cyan-hologram to-transparent"></div>
+<div class="flex gap-2">
+<div class="w-2 h-2 rounded-full bg-cyan-hologram"></div>
+<div class="w-2 h-2 rounded-full bg-cyan-hologram/40"></div>
+<div class="w-2 h-2 rounded-full bg-cyan-hologram/40"></div>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-2 text-cyan-hologram/40 justify-end">
+<span class="text-[10px] uppercase tracking-widest font-bold">Neural Interface</span>
+<span class="h-1 w-12 bg-cyan-hologram/40"></span>
+</div>
+</div>
+</div>
+<div class="mt-16 flex flex-wrap justify-center gap-8 text-slate-500 uppercase text-[10px] font-bold tracking-[0.4em]">
+<div class="flex items-center gap-2"><span class="w-2 h-2 bg-primary rounded-full"></span> SECURE LINK ACTIVE</div>
+<div class="flex items-center gap-2"><span class="w-2 h-2 bg-slate-700 rounded-full"></span> ENCRYPTED_v9</div>
+<div class="flex items-center gap-2"><span class="w-2 h-2 bg-slate-700 rounded-full"></span> NEURAL_LOCKED</div>
+</div>
+</div>
+</main>
+<footer class="p-6 border-t border-primary/10 bg-background-dark/80 backdrop-blur-md">
+<div class="flex flex-col md:flex-row justify-between items-center gap-4 text-slate-500 text-xs">
+<div class="flex gap-6">
+<a class="hover:text-primary" href="#">CORE_SYSTEM</a>
+<a class="hover:text-primary" href="#">MODULES</a>
+<a class="hover:text-primary" href="#">API_REF</a>
+</div>
+<div class="font-mono opacity-50">
+                    S.T.A.L.K.E.R. INTERFACE // BUILD_9092.AA
+                </div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-sm">wifi_tethering</span>
+<span>SIGNAL: STABLE [98.2%]</span>
+</div>
+</div>
+</footer>
+</div>
+<div class="fixed top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-50 z-50"></div>
+<div class="fixed bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-50 z-50"></div>
+</body></html>
