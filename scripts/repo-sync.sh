@@ -177,14 +177,29 @@ if [[ "$FIX" == "true" && ${#NEEDS_FIX[@]} -gt 0 ]]; then
         echo ""
     fi
 
+    # Resolve brain repo path for lint --fix
+    local brain_path="${ACA_DATA:-$HOME/brain}"
+    brain_path="$(cd "$brain_path" 2>/dev/null && pwd || echo "")"
+
     for repo in "${NEEDS_FIX[@]}"; do
         name=$(basename "$repo")
         [[ "$QUIET" == "false" ]] && echo -e "${BOLD}=== $name ===${NC}"
         cd "$repo"
+
+        # Auto-fix lint errors in brain repo before committing
+        local repo_realpath
+        repo_realpath="$(pwd -P)"
+        if [[ "$repo_realpath" == "$brain_path" ]]; then
+            local aops_bin="/opt/debian/lib/cargo/bin/aops"
+            [[ ! -x "$aops_bin" ]] && aops_bin="${CARGO_HOME:-$HOME/.cargo}/bin/aops"
+            [[ ! -x "$aops_bin" ]] && aops_bin="$(command -v aops 2>/dev/null || true)"
+            if [[ -n "$aops_bin" && -x "$aops_bin" ]]; then
+                [[ "$QUIET" == "false" ]] && echo "  Running aops lint --fix..."
+                "$aops_bin" lint --fix 2>/dev/null || true
+            fi
+        fi
+
         # Run ccommit (the claude alias)
-        # Note: using 'claude' directly might depend on aliases.
-        # In this environment, we should check if 'claude' or 'aops ccommit' is preferred.
-        # The original script used 'claude'.
         claude --dangerously-skip-permissions -p "commit changed and new files, pull, fix conflicts, push" || {
             echo -e "${RED}ccommit failed for $name${NC}"
         }
