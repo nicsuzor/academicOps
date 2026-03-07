@@ -178,7 +178,7 @@ if [[ "$FIX" == "true" && ${#NEEDS_FIX[@]} -gt 0 ]]; then
     fi
 
     # Resolve brain repo path for lint --fix
-    local brain_path="${ACA_DATA:-$HOME/brain}"
+    brain_path="${ACA_DATA:-$HOME/brain}"
     brain_path="$(cd "$brain_path" 2>/dev/null && pwd || echo "")"
 
     for repo in "${NEEDS_FIX[@]}"; do
@@ -187,10 +187,9 @@ if [[ "$FIX" == "true" && ${#NEEDS_FIX[@]} -gt 0 ]]; then
         cd "$repo"
 
         # Auto-fix lint errors in brain repo before committing
-        local repo_realpath
         repo_realpath="$(pwd -P)"
         if [[ "$repo_realpath" == "$brain_path" ]]; then
-            local aops_bin="/opt/debian/lib/cargo/bin/aops"
+            aops_bin="/opt/debian/lib/cargo/bin/aops"
             [[ ! -x "$aops_bin" ]] && aops_bin="${CARGO_HOME:-$HOME/.cargo}/bin/aops"
             [[ ! -x "$aops_bin" ]] && aops_bin="$(command -v aops 2>/dev/null || true)"
             if [[ -n "$aops_bin" && -x "$aops_bin" ]]; then
