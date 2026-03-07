@@ -1,4 +1,5 @@
 from hooks.gate_config import (
+    COMMIT_GATE_MODE,
     CUSTODIET_GATE_MODE,
     CUSTODIET_TOOL_CALL_THRESHOLD,
     HANDOVER_GATE_MODE,
@@ -207,6 +208,34 @@ GATE_CONFIGS = [
                 verdict=HANDOVER_GATE_MODE,
                 message_key="handover.policy_message",
                 context_key="stop.handover_block",
+            ),
+        ],
+    ),
+    # --- Commit ---
+    # Ensures changes are committed and pushed before exit.
+    # Blocks Stop if uncommitted work; Warns Stop if unpushed commits.
+    GateConfig(
+        name="commit",
+        description="Ensures changes are committed and pushed before exit.",
+        initial_status=GateStatus.OPEN,
+        policies=[
+            # Block Stop if uncommitted work
+            GatePolicy(
+                condition=GateCondition(
+                    hook_event="^(Stop|SessionEnd|SubagentStop)$",
+                    custom_check="has_uncommitted_work",
+                ),
+                verdict=COMMIT_GATE_MODE,
+                message_key="commit.uncommitted_block",
+            ),
+            # Warn Stop if unpushed commits
+            GatePolicy(
+                condition=GateCondition(
+                    hook_event="^(Stop|SessionEnd|SubagentStop)$",
+                    custom_check="needs_commit_reminder",
+                ),
+                verdict="warn",
+                message_key="commit.unpushed_reminder",
             ),
         ],
     ),
