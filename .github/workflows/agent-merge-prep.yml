@@ -42,7 +42,7 @@ jobs:
       statuses: write
       id-token: write
       issues: write
-      actions: read
+      actions: write
     env:
       PR_NUMBER: ${{ inputs.pr_number }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -212,9 +212,7 @@ jobs:
             -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
 
           # Trigger summary-and-merge workflow.
-          # Note: GITHUB_TOKEN cannot dispatch workflow_dispatch from a workflow_dispatch
-          # context (GitHub security restriction). Use a PAT with workflow scope instead.
-          GH_TOKEN="${{ secrets.AOPS_DIST_PAT }}" gh workflow run summary-and-merge.yml \
+          GH_TOKEN="${{ secrets.GITHUB_TOKEN }}" gh workflow run summary-and-merge.yml \
             --repo "$REPO" \
             -f pr_number="$PR_NUMBER"
 
