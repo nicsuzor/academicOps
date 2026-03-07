@@ -118,10 +118,11 @@ jobs:
             Fix mechanical issues (lint, types, simple bugs) by editing files and pushing commits.
             Comment on issues that require human judgment.
 
-            File a `gh pr review` (APPROVE or REQUEST_CHANGES) with your full summary as the review body. Do NOT post a separate PR comment.
+            If you have NO concerns and made NO fixes: do NOT file a review or comment. Just set a success status and exit silently.
+            If you made fixes or have concerns: file a `gh pr review` (APPROVE or REQUEST_CHANGES) with your summary as the review body.
 
             Then set a commit status:
-            - No concerns → `gh api repos/${{ github.repository }}/statuses/${{ steps.pr-info.outputs.sha }} -f state="success" -f context="Agent Review & Fix" -f description="Clean — fixes applied if needed"`
-            - Concerns remain → `gh api repos/${{ github.repository }}/statuses/${{ steps.pr-info.outputs.sha }} -f state="failure" -f context="Agent Review & Fix" -f description="Issues flagged — see PR comment"`
+            - No concerns → `gh api repos/${{ github.repository }}/statuses/${{ steps.pr-info.outputs.sha }} -f state="success" -f context="Agent Review & Fix" -f description="Clean — no issues found"`
+            - Concerns remain → `gh api repos/${{ github.repository }}/statuses/${{ steps.pr-info.outputs.sha }} -f state="failure" -f context="Agent Review & Fix" -f description="Issues flagged — see PR review"`
 
           claude_args: '--model claude-opus-4-6 --allowed-tools "Bash,Edit,Read,Write"'
