@@ -175,7 +175,7 @@ Return this EXACT structure:
 
 - Document progress in task and mark as complete/ready for review/failed
 - Confirm all tests pass and no regressions.
-- Format, lint, commit, and push.
+- Format, lint, commit, push, and file a Pull Request.
 - Invoke the **qa** skill: "Verify implementation against **Acceptance Criteria**"
 - Reflect on progress and invoke `Remember` skill to store learnings.
 - **Capture deferred work**: create task for outstanding and follow up work

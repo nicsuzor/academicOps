@@ -62,7 +62,7 @@ Skill(skill="remember")
 After completing logical work units:
 
 - Commit changes
-- Push to remote
+- Push to remote and file a Pull Request
 - Don't batch up commits
 
 ### TodoWrite for Multi-Step Work
@@ -85,7 +85,7 @@ Before claiming success:
 
 **Before ending any session**, complete these steps:
 
-1. **Commit all work**: `git add <files> && git commit -m "..."` + push
+1. **Commit all work**: `git add <files> && git commit -m "..."` + push, and file a Pull Request
 2. **Output Framework Reflection**: Structured summary for session-insights parsing
 
 See [[aops-core/commands/dump.md]] for the exact Framework Reflection format (search "## Framework Reflection").

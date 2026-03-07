@@ -75,7 +75,7 @@ Information surfaces when relevant. Missing context = framework bug.
 
 - Never create backup files (.bak, _old)
 - Edit directly, git tracks changes
-- Commit AND push after completing work
+- Commit, PUSH, AND file a Pull Request after completing work
 
 ### Mandatory Critic Review
 

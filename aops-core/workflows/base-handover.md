@@ -36,13 +36,13 @@ mcp__pkb__update_task(id="<id>", status="done", body="## Session Progress\n- [Ac
 
 ## Step 2: Commit & File PR
 
-**Per P#24**: Commit AND push after completing work. File a PR (MANDATORY). For **polecat worktrees**, set status to `merge_ready`.
+**Per P#24**: Commit, push, and file a PR (MANDATORY). For **polecat worktrees**, set status to `merge_ready`.
 
 ```bash
 git add <files> && git commit -m "<type>: <desc>
 
 Task: <task-id>
-Epic: <epic-id>" && git push
+Epic: <epic-id>" && git push && (gh pr create --fill || gh pr view --json url -q .url)
 ```
 
 ---

@@ -188,9 +188,10 @@ IF git operations fail:
 
    Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 
-4. PUSH
+4. PUSH AND FILE PR
    git pull --rebase            # Handle conflicts per Phase 3a
    git push                     # Push to remote
+   gh pr create --fill || gh pr view --json url -q .url  # File PR (or confirm existing)
    git status                   # Verify: MUST show "up to date with origin"
 
    IF push not possible (no remote, read-only):
@@ -228,12 +229,14 @@ When you encounter something you cannot derive:
 - [ ] QA verification with real data passed
 - [ ] Changes committed with proper message
 - [ ] Changes pushed to remote
+- [ ] Pull Request filed (MANDATORY)
 - [ ] Task completed
 - [ ] Learnings persisted (if applicable)
 
 ### Work is NOT Complete Until
 
 - `git status` shows "up to date with origin"
+- Pull Request has been filed (`gh pr create --fill`)
 - All acceptance criteria met (verified, not assumed)
 
 ---
@@ -253,7 +256,7 @@ When you encounter something you cannot derive:
 ### What You Do NOT Do
 
 - Skip any lifecycle phase
-- Claim complete without pushing
+- Claim complete without pushing and filing a PR
 - Make ad-hoc changes without rules
 - Assume tests pass without running them
 - Mark tasks complete without verification

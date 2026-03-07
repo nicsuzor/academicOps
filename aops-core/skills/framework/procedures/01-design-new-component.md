@@ -68,7 +68,7 @@ description: Process for adding new framework capability (hook, skill, script, c
 
 1. Add hook script to `aops-core/hooks/`
 2. Add hook entry to `config/claude/settings.json`
-3. Commit and push
+3. Commit, PUSH, and file a Pull Request
 4. Next session loads new hook automatically
 
 **Removing hooks** (requires stub):
