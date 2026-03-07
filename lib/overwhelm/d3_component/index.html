@@ -123,12 +123,21 @@
   </div>
 
   <div id="legend">
-    <div class="legend-item"><div class="legend-box" style="background:#3b82f6"></div><span>Active</span></div>
-    <div class="legend-item"><div class="legend-box" style="background:#ef4444"></div><span>Blocked</span></div>
-    <div class="legend-item"><div class="legend-box" style="background:#22c55e"></div><span>Done</span></div>
+    <div style="font-weight:600;margin-bottom:2px;font-size:9px;letter-spacing:0.3px;opacity:0.7">STATUS</div>
+    <div class="legend-item"><div class="legend-box" style="background:#dbeafe;border:1px solid #3b82f6"></div><span>Active</span></div>
+    <div class="legend-item"><div class="legend-box" style="background:#fee2e2;border:1px solid #ef4444"></div><span>Blocked</span></div>
+    <div class="legend-item"><div class="legend-box" style="background:#fef9c3;border:1px solid #854d0e"></div><span>Waiting</span></div>
+    <div class="legend-item"><div class="legend-box" style="background:#f3e8ff;border:1px solid #6b21a8"></div><span>Review</span></div>
+    <div class="legend-item"><div class="legend-box" style="background:#dcfce7;border:1px solid #22c55e"></div><span>Done</span></div>
+    <div style="font-weight:600;margin-top:4px;margin-bottom:2px;font-size:9px;letter-spacing:0.3px;opacity:0.7">EDGES</div>
     <div class="legend-item"><div class="legend-line" style="background:#3b82f6"></div><span>Parent</span></div>
     <div class="legend-item"><div class="legend-line" style="background:#ef4444"></div><span>Dependency</span></div>
-    <div class="legend-item"><div class="legend-box" style="border: 1px solid #f59e0b; box-shadow: 0 0 4px #f59e0b"></div><span>Recent (7d)</span></div>
+    <div class="legend-item"><div class="legend-line" style="background:#94a3b8;border-top:2px dashed #94a3b8;height:0"></div><span>Reference</span></div>
+    <div style="font-weight:600;margin-top:4px;margin-bottom:2px;font-size:9px;letter-spacing:0.3px;opacity:0.7">STYLE</div>
+    <div class="legend-item"><div class="legend-box" style="border:2px solid #dc3545;background:transparent"></div><span>P0 priority</span></div>
+    <div class="legend-item"><div class="legend-box" style="border:2px solid #fd7e14;background:transparent"></div><span>P1 priority</span></div>
+    <div class="legend-item"><div class="legend-box" style="border:1px solid #f59e0b;box-shadow:0 0 4px #f59e0b"></div><span>Recent (7d)</span></div>
+    <div class="legend-item"><div class="legend-box" style="background:#e3f2fd;border:1px solid #0f3460;opacity:0.5"></div><span>Parent node</span></div>
   </div>
 
   <button id="legend-toggle" onclick="toggleDetail()">Hide Details</button>
@@ -251,7 +260,7 @@
     // --- Layout-specific node shape builders ---
     function buildTaskCardNode(g, d) {
         const hw = d.w/2, hh = d.h/2;
-        // Spotlight ring: top-priority leaf tasks get a pulsing gold ring + label
+        // Spotlight ring: top-priority leaf tasks get a pulsing gold ring
         // Only shown on leaf tasks (isLeaf) — never on structural parent nodes
         if (d.spotlight && d.isLeaf) {
             const pad = 9;
@@ -261,12 +270,6 @@
               .attr("width", (hw + pad) * 2).attr("height", (hh + pad) * 2)
               .attr("rx", rx).attr("fill", "none")
               .attr("stroke", "#f59e0b").attr("class", "spotlight-ring");
-            g.append("text")
-              .attr("x", 0).attr("y", -hh - pad - 5)
-              .attr("text-anchor", "middle").attr("font-size", "8px")
-              .attr("font-weight", "700").attr("fill", "#f59e0b")
-              .attr("letter-spacing", "0.6px").attr("pointer-events", "none")
-              .text("★ START HERE");
         }
         if (d.shape === "pill") {
             g.append("rect").attr("x",-hw).attr("y",-hh).attr("width",d.w).attr("height",d.h)
@@ -305,12 +308,24 @@
     function buildTreemapNode(g, d) {
         const w = d._lw || d.w;
         const h = d._lh || d.h;
-        const opacity = statusOpacity(d);
+        const isParent = !d.isLeaf;
+        // Parent/structural nodes: type-based background color
+        const fillColor = (isParent || d.structural) ? (TYPE_COLORS[d.type] || d.fill) : d.fill;
+        const fillOpacity = (isParent || d.structural) ? 0.15 : statusOpacity(d);
         g.append("rect")
           .attr("x", -w/2).attr("y", -h/2).attr("width", w).attr("height", h)
-          .attr("fill", d.fill).attr("fill-opacity", opacity)
-          .attr("stroke", d.borderColor).attr("stroke-width", 1.5);
-        if (w > 30 && h > 16) {
+          .attr("fill", fillColor).attr("fill-opacity", fillOpacity)
+          .attr("stroke", d.borderColor).attr("stroke-width", isParent ? 2 : 1);
+        if (isParent && w > 40) {
+            // Parent label at top-left corner
+            const fs = Math.max(7, Math.min(11, w * 0.035));
+            g.append("text")
+              .attr("x", -w/2 + 4).attr("y", -h/2 + fs + 2)
+              .attr("font-size", fs + "px").attr("fill", fillColor)
+              .attr("opacity", 0.85).attr("font-weight", "700")
+              .attr("pointer-events", "none")
+              .text((d.label || '').substring(0, 35));
+        } else if (w > 30 && h > 16) {
             const label = d.label || '';
             const fs = Math.max(6, Math.min(11, Math.min(w, h) * 0.25));
             const pad = 3;
@@ -335,30 +350,71 @@
 
     function buildCirclePackNode(g, d) {
         const r = Math.max(d._lr || 5, 2);
-        const opacity = statusOpacity(d);
+        const isParent = !d.isLeaf;
+        // Parent/structural nodes: type-based color with lower opacity
+        const fillColor = (isParent || d.structural) ? (TYPE_COLORS[d.type] || d.fill) : d.fill;
+        const fillOpacity = (isParent || d.structural) ? 0.15 : statusOpacity(d);
         g.append("circle").attr("cx",0).attr("cy",0).attr("r", r)
-          .attr("fill", d.fill).attr("fill-opacity", opacity)
-          .attr("stroke", d.borderColor).attr("stroke-width", 1);
+          .attr("fill", fillColor).attr("fill-opacity", fillOpacity)
+          .attr("stroke", d.borderColor).attr("stroke-width", isParent ? 1.5 : 1);
         if (d.status === "blocked" && d.dw >= 2) {
             g.insert("circle",":first-child").attr("cx",0).attr("cy",0).attr("r", r + 4)
               .attr("fill","none").attr("stroke","#ef4444")
               .attr("class","danger-pulse");
         }
-        if (r > 15) {
-            const label = (d.label || '').substring(0, 18);
-            const fs = Math.max(6, Math.min(10, r * 0.35));
-            g.append("text").attr("class","node-text").attr("x",0).attr("y",0)
-              .attr("text-anchor","middle").attr("dominant-baseline","central")
-              .attr("font-size", fs + "px").attr("fill", d.textColor || "#fff").text(label);
+        // Scale text proportionally to circle radius
+        if (r > 10) {
+            const maxChars = Math.max(8, Math.floor(r * 0.22));
+            const label = (d.label || '').substring(0, maxChars);
+            // Larger range: 6-18px, scales better with circle size
+            const fs = Math.max(6, Math.min(18, r * 0.28));
+            // Multi-line for large parent circles
+            if (isParent && r > 50) {
+                const words = (d.label || '').split(' ');
+                const lineH = fs * 1.2;
+                const maxLines = Math.min(3, Math.floor(r / lineH));
+                let lines = [];
+                let cur = '';
+                for (const w of words) {
+                    const test = cur ? cur + ' ' + w : w;
+                    if (test.length > maxChars && cur) { lines.push(cur); cur = w; }
+                    else { cur = test; }
+                }
+                if (cur) lines.push(cur);
+                lines = lines.slice(0, maxLines);
+                const totalH = lines.length * lineH;
+                lines.forEach((line, i) => {
+                    g.append("text").attr("class","node-text").attr("x",0)
+                      .attr("y", -totalH/2 + lineH * (i + 0.7))
+                      .attr("text-anchor","middle").attr("dominant-baseline","central")
+                      .attr("font-size", fs + "px").attr("font-weight", isParent ? "600" : "400")
+                      .attr("fill", d.textColor || "#fff").text(line);
+                });
+            } else {
+                g.append("text").attr("class","node-text").attr("x",0).attr("y",0)
+                  .attr("text-anchor","middle").attr("dominant-baseline","central")
+                  .attr("font-size", fs + "px").attr("font-weight", isParent ? "600" : "400")
+                  .attr("fill", d.textColor || "#fff").text(label);
+            }
         }
     }
 
     function buildArcNode(g, d) {
         const r = Math.max(4, (d.dw || 1) * 0.5 + 3);
-        const opacity = statusOpacity(d);
+        const isParent = !d.isLeaf;
+        const fillColor = (isParent || d.structural) ? (TYPE_COLORS[d.type] || d.fill) : d.fill;
+        const fillOpacity = (isParent || d.structural) ? 0.3 : statusOpacity(d);
         g.append("circle").attr("cx",0).attr("cy",0).attr("r", r)
-          .attr("fill", d.fill).attr("fill-opacity", opacity)
+          .attr("fill", fillColor).attr("fill-opacity", fillOpacity)
           .attr("stroke", d.borderColor).attr("stroke-width", 1);
+        // Show label for larger arc nodes
+        if (r > 8) {
+            const label = (d.label || '').substring(0, 12);
+            const fs = Math.max(5, Math.min(9, r * 0.6));
+            g.append("text").attr("class","node-text").attr("x",0).attr("y", r + fs + 2)
+              .attr("text-anchor","middle").attr("font-size", fs + "px")
+              .attr("fill", d.textColor || "#94a3b8").text(label);
+        }
     }
 
     // Dispatch table: maps layout mode to node builder. Add new layouts here.
@@ -790,8 +846,23 @@
 
     // Edge routers: one function per layout strategy
     function routeContainmentEdges() {
-        // Containment layouts: hide edges entirely
-        linkEls.attr("d", null).attr("opacity", 0);
+        // Containment layouts: optionally show dependency edges
+        if (graphData.showEdges) {
+            linkEls.attr("opacity", d => {
+                if (d.type === "parent") return 0;  // hierarchy shown by containment
+                if (d.type === "ref") return 0.15;
+                return 0.4;  // depends_on
+            });
+            linkEls.attr("d", d => {
+                if (d.type === "parent") return null;
+                const sx = d.source.x, sy = d.source.y;
+                const tx = d.target.x, ty = d.target.y;
+                if (sx == null || tx == null) return null;
+                return `M${sx},${sy} L${tx},${ty}`;
+            });
+        } else {
+            linkEls.attr("d", null).attr("opacity", 0);
+        }
     }
 
     function routeArcEdges() {
@@ -972,18 +1043,21 @@
             buildNodeShapes(currentLayout);
             const chargeMult = fc.chargeMult != null ? fc.chargeMult : 1.0;
             const linkDistMult = fc.linkDistMult != null ? fc.linkDistMult : 0.75;
+            const useLinlog = fc.linlog || false;
             simulation = d3.forceSimulation(nodes)
                 .alphaDecay(fc.alphaDecay != null ? fc.alphaDecay : 0.04)
                 .velocityDecay(fc.velocityDecay != null ? fc.velocityDecay : 0.55)
                 .alphaMin(fc.alphaMin != null ? fc.alphaMin : 0.002)
-                // Pull linked nodes together; per-link distance/strength set in EDGE_FORCE
+                // Pull linked nodes together; linlog uses log(distance) for denser clusters
                 .force("link", d3.forceLink(links).id(d => d.id)
-                    .distance(d => d.distance * linkDistMult)
-                    .strength(d => d.strength))
+                    .distance(d => useLinlog
+                        ? Math.log1p(d.distance * linkDistMult) * 30
+                        : d.distance * linkDistMult)
+                    .strength(d => d.strength * (useLinlog ? 1.5 : 1.0)))
                 // Push all nodes apart; charge varies by type (TYPE_CHARGE)
                 .force("charge", d3.forceManyBody()
                     .strength(d => d.charge * chargeMult)
-                    .distanceMax(fc.chargeDistanceMax))
+                    .distanceMax(useLinlog ? fc.chargeDistanceMax * 0.7 : fc.chargeDistanceMax))
                 // Anchor the whole graph to the viewport center
                 .force("center", d3.forceCenter(W / 2, H / 2))
                 // Prevent node overlap with padding
@@ -1070,22 +1144,24 @@
             });
 
             // Arc diagram: normalise x positions and assign y by depth band.
-            // Nodes are ordered horizontally by the graph-generated x position,
-            // and vertically stratified by depth (goals at top, leaf tasks at bottom).
-            // Arcs curve upward above the bands.
+            // Uses percentile-based normalization to prevent outlier nodes from
+            // distorting the layout by stretching the x range.
             if (currentLayout.startsWith("arc")) {
                 const arcNodes = nodes.filter(n => n._hasLayout);
-                // Normalise x across the canvas width with margins
-                const xs = arcNodes.map(n => n.x);
-                const minX = Math.min(...xs), maxX = Math.max(...xs);
-                const xRange = maxX - minX || 1;
+                // Percentile-based normalization to handle outliers
+                const xs = arcNodes.map(n => n.x).sort((a, b) => a - b);
+                const lo = xs[Math.floor(xs.length * 0.02)] || xs[0];
+                const hi = xs[Math.ceil(xs.length * 0.98) - 1] || xs[xs.length - 1];
+                const xRange = hi - lo || 1;
                 const margin = CANVAS * 0.05;
                 const availW = CANVAS - margin * 2;
                 // Depth bands: spread vertically so hierarchy is readable
                 const maxDepth = Math.max(...arcNodes.map(n => n.depth || 0), 1);
                 const bandH = CANVAS * 0.55 / maxDepth;
                 arcNodes.forEach(n => {
-                    n.x = margin + ((n.x - minX) / xRange) * availW;
+                    // Clamp x to percentile range before normalizing
+                    const clampedX = Math.max(lo, Math.min(hi, n.x));
+                    n.x = margin + ((clampedX - lo) / xRange) * availW;
                     n.y = (n.depth || 0) * bandH;  // top = depth 0 (goals/projects)
                 });
             }
@@ -1115,7 +1191,11 @@
                 const hierarchy = d3.hierarchy(hierData)
                     .sum(d => d.children ? 0 : Math.max(1, d.dw || 1))
                     .sort((a, b) => b.value - a.value);
-                d3.treemap().size([CANVAS, CANVAS]).padding(2).round(true)(hierarchy);
+                d3.treemap().size([CANVAS, CANVAS])
+                    .paddingTop(18)     // Space for parent label
+                    .paddingInner(3)    // Between siblings
+                    .paddingOuter(4)    // Between parent boundary and children
+                    .round(true)(hierarchy);
                 // Map computed layout back to nodes
                 const layoutMap = new Map();
                 hierarchy.each(d => layoutMap.set(d.data.id, d));
@@ -1154,7 +1234,7 @@
                 const hierarchy = d3.hierarchy(hierData)
                     .sum(d => d.children ? 0 : Math.max(1, d.dw || 1))
                     .sort((a, b) => b.value - a.value);
-                d3.pack().size([CANVAS, CANVAS]).padding(2)(hierarchy);
+                d3.pack().size([CANVAS, CANVAS]).padding(6)(hierarchy);
                 const layoutMap = new Map();
                 hierarchy.each(d => layoutMap.set(d.data.id, d));
                 nodes.forEach(n => {
@@ -1166,6 +1246,29 @@
                         n._hasLayout = true;
                     }
                 });
+            }
+
+            // LinLog compression for FA2: compress distances logarithmically to
+            // bring far-apart clusters closer without collapsing nearby nodes.
+            if (fc.linlog && (currentLayout === "fa2" || currentLayout === "forceatlas2" ||
+                              currentLayout.includes("atlas"))) {
+                const hasCoords = nodes.filter(n => n._hasLayout);
+                if (hasCoords.length > 2) {
+                    const cx = d3.mean(hasCoords, n => n.x);
+                    const cy = d3.mean(hasCoords, n => n.y);
+                    const maxDist = d3.max(hasCoords, n => {
+                        const dx = n.x - cx, dy = n.y - cy;
+                        return Math.sqrt(dx * dx + dy * dy);
+                    }) || 1;
+                    hasCoords.forEach(n => {
+                        const dx = n.x - cx, dy = n.y - cy;
+                        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                        // Log compression: preserves cluster structure, reduces gaps
+                        const logDist = Math.log1p(dist) / Math.log1p(maxDist) * maxDist * 0.6;
+                        n.x = cx + dx / dist * logDist;
+                        n.y = cy + dy / dist * logDist;
+                    });
+                }
             }
 
             buildNodeShapes(currentLayout);
@@ -1253,7 +1356,9 @@
                     return d.id === focusNodeId ? 1.0 : 0.85;
                 });
             linkEls.transition().duration(200).attr("opacity", l => {
-                if (currentLayout.startsWith("tree") || currentLayout.startsWith("circle")) return 0;
+                const isContainment = currentLayout.startsWith("tree") || currentLayout.startsWith("circle");
+                if (isContainment && !graphData.showEdges) return 0;
+                if (isContainment && l.type === "parent") return 0;
                 const sid = (typeof l.source === "object") ? l.source.id : l.source;
                 const tid = (typeof l.target === "object") ? l.target.id : l.target;
                 if (!focusNeighborSet.has(sid) || !focusNeighborSet.has(tid)) return 0;
@@ -1279,9 +1384,11 @@
         });
 
         linkEls.transition().duration(200).attr("opacity", l => {
-            if (currentLayout.startsWith("tree") || currentLayout.startsWith("circle")) return 0;
-            const baseRef = currentLayout.startsWith("arc") ? 0.15 : 0.4;
-            const baseOther = currentLayout.startsWith("arc") ? 0.4 : 0.7;
+            const isContainment = currentLayout.startsWith("tree") || currentLayout.startsWith("circle");
+            if (isContainment && !graphData.showEdges) return 0;
+            if (isContainment && l.type === "parent") return 0;
+            const baseRef = currentLayout.startsWith("arc") ? 0.15 : (isContainment ? 0.15 : 0.4);
+            const baseOther = currentLayout.startsWith("arc") ? 0.4 : (isContainment ? 0.4 : 0.7);
             if (currentFocusProject !== "ALL") {
                 const sp = (typeof l.source === "object" ? l.source.project : null) || "none";
                 const tp = (typeof l.target === "object" ? l.target.project : null) || "none";
