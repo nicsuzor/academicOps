@@ -1,8 +1,10 @@
 ---
 title: Plugin Architecture
 type: spec
-category: architecture
-description: Component assignments and boundaries for academicOps plugins
+status: active
+tier: core
+depends_on: []
+tags: [architecture, plugins]
 ---
 
 # Plugin Architecture

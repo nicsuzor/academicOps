@@ -3,6 +3,9 @@ title: Framework Observability Architecture
 type: spec
 category: architecture
 status: active
+tier: observability
+depends_on: []
+tags: [spec, observability, architecture]
 created: 2026-01-24
 related: [[workflow-system-spec]], [[enforcement]], [[session-insights-prompt]]
 ---

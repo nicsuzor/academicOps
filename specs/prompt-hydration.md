@@ -1,9 +1,9 @@
 ---
 title: Prompt Hydration
 type: spec
-category: spec
 status: implemented
-permalink: prompt-hydration
+tier: core
+depends_on: []
 tags: [framework, routing, context]
 ---
 
@@ -338,6 +338,55 @@ Main agent follows the plan
 | `RULES.md`                                   | Quick-reference for AXIOMS and HEURISTICS                                   |
 | `indices/FILES.md`                           | Complete file tree for audits                                               |
 | `indices/PATHS.md`                           | Resolved framework paths                                                    |
+
+## Optimisation Proposals
+
+Identified optimisations not yet implemented. Consolidated from former standalone specs (selective-instruction-injection.md, design-reduce-hydration-overhead.md).
+
+### Selective Instruction Injection
+
+**Problem**: Hook loads entire HEURISTICS.md (~254 lines, ~1500 tokens) into every prompt, regardless of relevance.
+
+**Design**: Let the hydrator (Haiku) filter principles. Load full AXIOMS.md + HEURISTICS.md into the temp file, but hydrator selects only 3-7 relevant principles and outputs them in an "Applicable Principles" section. Main agent receives only the filtered principles, not full files.
+
+```
+UserPromptSubmit hook
+       ↓
+Load full AXIOMS.md + HEURISTICS.md into temp file
+       ↓
+Hydrator (haiku) reads files, selects relevant principles
+       ↓
+Hydrator outputs: 3-7 relevant principles with justification
+       ↓
+Main agent receives filtered principles only (~100-200 tokens)
+```
+
+**Token economics**: Hydrator sees ~3000 tokens (full AXIOMS + HEURISTICS); main agent sees ~100-200 tokens. Saves ~~2800 tokens per prompt since Haiku cost (~~$0.0003) is negligible vs main agent savings.
+
+**Acceptance criteria**:
+
+- Hydrator receives full AXIOMS.md + HEURISTICS.md
+- Outputs "Applicable Principles" with 3-7 relevant entries
+- Main agent receives only selected principles, never full files
+
+### Reduce Investigation Overhead
+
+**Problem**: Hydrator performs verification checks (e.g., "Check for prior implementation") that add latency with limited benefit.
+
+**Four proposed approaches**:
+
+1. **Optimize context loading**: Replace subprocess calls to `task_cli` with direct Python imports or file-based caching.
+2. **Pre-loaded task routing index**: Maintain lightweight JSON index of all open tasks; inject into hydrator (~2-3k tokens for 100 tasks) for deterministic routing without memory searches.
+3. **Shift investigation to execution**: Remove Step 3 verification from hydrator. Assume user intent is valid and route to task. If invalid, main agent handles as execution error (cheaper than pre-flight checks).
+4. **Trust task-creator classification**: Skip re-evaluation if user provides explicit task ID or strong signal.
+
+**Recommended plan**:
+
+1. **Immediate**: Remove/soften "Step 3: Check for prior implementation" from hydrator. Instruct it to plan checks as first execution step, not pre-flight verification.
+2. **Short-term**: Implement `task_routing_index.json`, updated by task operations, read by hook (fast, no subprocess).
+3. **Long-term**: Event-driven context updates.
+
+**Principle**: "It is cheaper to fail at execution time than verify at planning time for every request."
 
 ---
 

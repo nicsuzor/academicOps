@@ -2,7 +2,11 @@
 title: Worker-Hypervisor Architecture
 type: spec
 description: Architecture for parallel task execution with worker agents pulling from bd and a hypervisor managing concurrency
-status: DRAFT
+status: active
+tier: polecat
+depends_on: [polecat-swarms]
+tags: [spec, polecat, architecture]
+note: "May be superseded by GitHub bazaar model for worker spawning"
 ---
 
 # Worker-Hypervisor Architecture

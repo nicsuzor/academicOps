@@ -3,6 +3,9 @@ title: Framework Feedback Loops
 type: spec
 category: architecture
 status: active
+tier: observability
+depends_on: [framework-observability]
+tags: [spec, observability, feedback, architecture]
 created: 2026-01-24
 related: [[framework-observability]], [[enforcement]], [[workflow-system-spec]]
 ---

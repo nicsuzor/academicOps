@@ -1,9 +1,9 @@
 ---
 title: Framework Audit Protocol
 type: spec
-category: governance
 status: active
-permalink: audit-protocol
+tier: workflow
+depends_on: []
 tags: [audit, governance, validation, framework-health]
 ---
 

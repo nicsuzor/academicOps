@@ -3,6 +3,9 @@ title: Session Insights Pipeline Metrics Schema
 type: spec
 category: observability
 status: active
+tier: observability
+depends_on: [framework-observability]
+tags: [spec, observability, metrics, schema]
 created: 2026-02-04
 related: [[framework-observability]], [[session-insights-prompt]]
 ---

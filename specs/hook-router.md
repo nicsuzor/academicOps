@@ -1,7 +1,10 @@
 ---
-name: hook-router
 title: Hook Router
-category: spec
+type: spec
+status: active
+tier: core
+depends_on: []
+tags: []
 ---
 
 # Hook Router

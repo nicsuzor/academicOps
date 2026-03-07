@@ -3,8 +3,12 @@ title: Constraint Checking Test Cases
 type: spec
 category: testing
 status: draft
+tier: core
+depends_on: [predicate-registry, workflow-constraints]
 created: 2026-01-23
+tags: [spec, testing, constraints, validation]
 related: [workflow-constraints, prompt-hydrator, predicate-registry]
+note: "Blocked on predicate-registry design discussion"
 ---
 
 # Constraint Checking Test Cases

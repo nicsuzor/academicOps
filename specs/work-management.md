@@ -1,3 +1,12 @@
+---
+title: Work Management: Tasks MCP
+type: spec
+status: active
+tier: data
+depends_on: []
+tags: [spec, tasks, mcp, data]
+---
+
 # Work Management: Tasks MCP
 
 ## Giving Effect

@@ -2,6 +2,8 @@
 title: Overwhelm Dashboard
 type: spec
 status: active
+tier: ux
+depends_on: []
 tags: [spec, dashboard, tasks, aops-cli, adhd, sessions]
 created: 2026-01-21
 modified: 2026-02-23

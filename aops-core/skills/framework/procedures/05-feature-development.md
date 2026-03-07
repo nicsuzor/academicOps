@@ -46,7 +46,7 @@ Feature development follows eight phases. See **[[feature-dev-details]]** for st
 
 ## GitHub Integration
 
-Framework features go through bazaar review on GitHub (see [[specs/pr-process.md]]). This creates bidirectional links between the task system (PKB) and GitHub. See **[[feature-dev-details#GitHub Integration]]** for conventions.
+Framework features go through bazaar review on GitHub (see [[specs/pr-pipeline-v2.md]]). This creates bidirectional links between the task system (PKB) and GitHub. See **[[feature-dev-details#GitHub Integration]]** for conventions.
 
 ## Templates
 

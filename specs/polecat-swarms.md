@@ -2,7 +2,10 @@
 title: Polecat Swarms & Engineer Review
 type: spec
 description: Specification for parallel polecat swarms, automated merging, and engineer agent review workflow
-status: ACTIVE
+status: active
+tier: polecat
+depends_on: [polecat-system]
+tags: [spec, polecat, architecture]
 ---
 
 # Polecat Swarms & Engineer Review

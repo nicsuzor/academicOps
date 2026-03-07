@@ -1,9 +1,9 @@
 ---
 title: Verification System Architecture
 type: spec
-category: spec
-status: decided
-permalink: verification-system
+status: draft
+tier: core
+depends_on: [enforcement]
 tags: [verification, enforcement, architecture, infrastructure]
 ---
 

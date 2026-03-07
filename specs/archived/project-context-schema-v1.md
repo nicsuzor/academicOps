@@ -1,7 +1,10 @@
 ---
 title: Project Context Schema v1
 type: spec
-status: DRAFT
+status: draft
+tier: aspirational
+depends_on: [session-start-injection]
+tags: [spec, schema, context, project]
 description: Schema for CORE.md files that provide project-specific context to worker agents
 ---
 
