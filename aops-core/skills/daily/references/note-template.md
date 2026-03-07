@@ -32,10 +32,6 @@ P3 ██░░░░░░░░ 15/85
 
 (User's stated priorities are recorded here and never overwritten)
 
-### PR Verification
-
-(Auto-generated: sweep of review/merge_ready tasks — see step 3.1.3)
-
 ## Task Tree
 ```
 
