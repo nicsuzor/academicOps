@@ -191,7 +191,7 @@ IF git operations fail:
 4. PUSH AND FILE PR
    git pull --rebase            # Handle conflicts per Phase 3a
    git push                     # Push to remote
-   gh pr create --fill          # File Pull Request (MANDATORY)
+   gh pr create --fill || gh pr view --json url -q .url  # File PR (or confirm existing)
    git status                   # Verify: MUST show "up to date with origin"
 
    IF push not possible (no remote, read-only):

@@ -42,7 +42,7 @@ mcp__pkb__update_task(id="<id>", status="done", body="## Session Progress\n- [Ac
 git add <files> && git commit -m "<type>: <desc>
 
 Task: <task-id>
-Epic: <epic-id>" && git push && gh pr create --fill
+Epic: <epic-id>" && git push && (gh pr create --fill || gh pr view --json url -q .url)
 ```
 
 ---
