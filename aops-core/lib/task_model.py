@@ -1141,7 +1141,6 @@ class Task:
         ):
             self.pr_url = None
             self.pr = None
-            self.issue = None
         if new_status not in (TaskStatus.WAITING,):
             self.approval_type = None
             self.decision_deadline = None
