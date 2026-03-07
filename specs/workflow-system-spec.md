@@ -1,11 +1,10 @@
 ---
 title: Composable Workflow System Specification
 type: spec
-category: architecture
 status: draft
-related_issues: ns-6hm
-created: 2026-01-14
-related: [[framework-observability]], [[feedback-loops]], [[enforcement]]
+tier: core
+depends_on: []
+tags: [architecture, workflows]
 ---
 
 # Composable Workflow System Specification

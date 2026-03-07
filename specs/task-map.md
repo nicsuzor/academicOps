@@ -2,6 +2,8 @@
 title: Task Map Visualization
 type: spec
 status: active
+tier: ux
+depends_on: [overwhelm-dashboard]
 tags: [spec, dashboard, task-map, visualization, graph, force-graph]
 created: 2026-02-23
 parent: overwhelm-dashboard

@@ -1,3 +1,12 @@
+---
+title: MCP Decomposition Tools v2
+type: spec
+status: active
+tier: data
+depends_on: [work-management]
+tags: [spec, mcp, decomposition, data-access]
+---
+
 # MCP Decomposition Tools v2: Data Access Layer Specification
 
 ## Giving Effect

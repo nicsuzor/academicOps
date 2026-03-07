@@ -738,9 +738,10 @@ def render_agents_working():
 
     # Compact box format
     html = "<div class='current-activity-box'>"
-    html += (
-        f"<div class='current-activity-header'>⚡ CURRENT ACTIVITY ({len(agents_filtered)})</div>"
+    _activity_info = info_icon(
+        "Live sessions from the last hour. Data source: session-state.json files in ~/.claude/projects/ dated subdirectories. Only shows sessions with meaningful context (real project or substantive prompt). Each entry shows project, bound task, and current prompt."
     )
+    html += f"<div class='current-activity-header'>⚡ CURRENT ACTIVITY ({len(agents_filtered)}) {_activity_info}</div>"
 
     for agent in agents_filtered[:5]:  # Limit to 5 max
         duration_str = _format_duration(agent.started_at)
@@ -3359,6 +3360,60 @@ st.markdown(
         word-break: break-word;
     }
 
+    /* Info tooltip icon */
+    .info-icon {
+        display: inline-block;
+        position: relative;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.1);
+        color: var(--text-muted, #888);
+        font-size: 11px;
+        font-weight: 700;
+        font-style: normal;
+        text-align: center;
+        line-height: 16px;
+        cursor: help;
+        margin-left: 6px;
+        vertical-align: middle;
+        flex-shrink: 0;
+    }
+    .info-icon:hover {
+        background: rgba(255,255,255,0.2);
+        color: var(--text-primary, #e0e0e0);
+    }
+    .info-icon .info-tooltip {
+        visibility: hidden;
+        opacity: 0;
+        position: absolute;
+        bottom: calc(100% + 8px);
+        left: 50%;
+        transform: translateX(-50%);
+        background: #2a2a2a;
+        border: 1px solid rgba(255,255,255,0.15);
+        color: #ccc;
+        padding: 10px 14px;
+        border-radius: 6px;
+        font-size: 0.8em;
+        font-weight: 400;
+        line-height: 1.5;
+        white-space: normal;
+        width: 320px;
+        max-width: 90vw;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        transition: opacity 0.15s;
+        pointer-events: none;
+        text-align: left;
+        text-transform: none;
+        letter-spacing: normal;
+    }
+    .info-icon:hover .info-tooltip {
+        visibility: visible;
+        opacity: 1;
+    }
+
 </style>
 """,
     unsafe_allow_html=True,
@@ -3375,6 +3430,11 @@ def esc(text):
         .replace('"', "&quot;")
         .replace("'", "&#39;")
     )
+
+
+def info_icon(tooltip: str) -> str:
+    """Return an HTML info icon with a hover tooltip."""
+    return f"<span class='info-icon'>i<span class='info-tooltip'>{esc(tooltip)}</span></span>"
 
 
 def clean_activity_text(raw_text: str) -> str:
@@ -3648,54 +3708,61 @@ def render_spotlight_epic():
         )
 
     scored_epics = [(ep, _epic_activity_score(ep)) for ep in candidate_epics]
-    epic, score = max(scored_epics, key=lambda item: item[1])
-    if score == 0:
-        return  # No active children — skip
+    scored_epics.sort(key=lambda item: item[1], reverse=True)
 
-    # Get children and count by status
-    children_ids = epic.get("children", [])
-    children = [tasks_by_id.get(cid) for cid in children_ids if cid in tasks_by_id]
+    # Show top 3 epics with active children
+    top_epics = [(ep, sc) for ep, sc in scored_epics if sc > 0][:3]
+    if not top_epics:
+        return
 
-    status_counts = {"done": 0, "in_progress": 0, "blocked": 0}
-    for child in children:
-        if child:
-            status = child.get("status", "active")
-            if status in ("done", "closed"):
-                status_counts["done"] += 1
-            elif status == "blocked":
-                status_counts["blocked"] += 1
-            else:
-                status_counts["in_progress"] += 1
+    _epic_info = info_icon(
+        "Dynamically selects the most active open epics from $ACA_DATA/tasks/index.json. Epics are ranked by number of non-done children. Progress bar shows percentage of children marked done. Children are classified as done, in_progress, or blocked based on their frontmatter status field."
+    )
+    html = f"<div style='font-size: 0.75em; text-transform: uppercase; font-weight: 700; color: var(--text-muted, #888); margin-bottom: 4px; letter-spacing: 0.05em;'>SPOTLIGHT EPICS {_epic_info}</div>"
+    for epic, _score in top_epics:
+        # Get children and count by status
+        children_ids = epic.get("children", [])
+        children = [tasks_by_id.get(cid) for cid in children_ids if cid in tasks_by_id]
 
-    total = len(children)
-    done_pct = (status_counts["done"] / total * 100) if total > 0 else 0
+        status_counts = {"done": 0, "in_progress": 0, "blocked": 0}
+        for child in children:
+            if child:
+                status = child.get("status", "active")
+                if status in ("done", "closed"):
+                    status_counts["done"] += 1
+                elif status == "blocked":
+                    status_counts["blocked"] += 1
+                else:
+                    status_counts["in_progress"] += 1
 
-    # Render HTML with synthesis-card pattern
-    html = f"""
-    <div class="spotlight-progress-panel" style="margin-bottom: 24px; padding: 16px; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 8px;">
-        <div class="spotlight-progress-header" style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px;">
-            <div class="spotlight-progress-title" style="font-weight: 600; font-size: 1.1em; color: #60a5fa;">🚀 {esc(epic.get("title", "Epic"))}</div>
-            <div class="spotlight-progress-pct" style="font-size: 0.9em; opacity: 0.8;">{done_pct:.0f}%</div>
-        </div>
-        <div class="spotlight-progress-bar" style="height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; margin-bottom: 16px; overflow: hidden;">
-            <div class="spotlight-progress-fill" style="width: {done_pct}%; height: 100%; background: #3b82f6; transition: width 0.3s ease;"></div>
-        </div>
-        <div class="synthesis-grid">
-            <div class="synthesis-card done">
-                <div class="synthesis-card-title">✅ Done</div>
-                <div class="synthesis-card-content" style="font-size: 1.5em; font-weight: 700;">{status_counts["done"]}</div>
+        total = len(children)
+        done_pct = (status_counts["done"] / total * 100) if total > 0 else 0
+
+        html += f"""
+        <div class="spotlight-progress-panel" style="margin-bottom: 12px; padding: 12px 16px; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 8px;">
+            <div class="spotlight-progress-header" style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
+                <div class="spotlight-progress-title" style="font-weight: 600; font-size: 1em; color: #60a5fa;">🚀 {esc(epic.get("title", "Epic"))}</div>
+                <div class="spotlight-progress-pct" style="font-size: 0.85em; opacity: 0.8;">{done_pct:.0f}%</div>
             </div>
-            <div class="synthesis-card context">
-                <div class="synthesis-card-title">🔄 In Progress</div>
-                <div class="synthesis-card-content" style="font-size: 1.5em; font-weight: 700;">{status_counts["in_progress"]}</div>
+            <div class="spotlight-progress-bar" style="height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; margin-bottom: 8px; overflow: hidden;">
+                <div class="spotlight-progress-fill" style="width: {done_pct}%; height: 100%; background: #3b82f6; transition: width 0.3s ease;"></div>
             </div>
-            <div class="synthesis-card waiting">
-                <div class="synthesis-card-title">🚫 Blocked</div>
-                <div class="synthesis-card-content" style="font-size: 1.5em; font-weight: 700;">{status_counts["blocked"]}</div>
+            <div class="synthesis-grid">
+                <div class="synthesis-card done">
+                    <div class="synthesis-card-title">✅ Done</div>
+                    <div class="synthesis-card-content" style="font-size: 1.3em; font-weight: 700;">{status_counts["done"]}</div>
+                </div>
+                <div class="synthesis-card context">
+                    <div class="synthesis-card-title">🔄 In Progress</div>
+                    <div class="synthesis-card-content" style="font-size: 1.3em; font-weight: 700;">{status_counts["in_progress"]}</div>
+                </div>
+                <div class="synthesis-card waiting">
+                    <div class="synthesis-card-title">🚫 Blocked</div>
+                    <div class="synthesis-card-content" style="font-size: 1.3em; font-weight: 700;">{status_counts["blocked"]}</div>
+                </div>
             </div>
         </div>
-    </div>
-    """
+        """
     st.markdown(html, unsafe_allow_html=True)
 
 
@@ -3709,433 +3776,445 @@ def _get_graph_node_count() -> int:
 
 _HIERARCHICAL_LAYOUT_LABELS = {"Treemap", "Circle Pack"}
 
+# ---------------------------------------------------------------------------
+# Shared graph helpers
+# ---------------------------------------------------------------------------
+
+_ACTIVE_STATUSES = {"active", "in_progress", "waiting", "todo", "review", "decomposing", "pending"}
+_BLOCKED_STATUSES = {"blocked"}
+_DONE_STATUSES = {"done", "completed", "cancelled", "dormant"}
+_ORPHAN_STATUSES = {"inbox"}
+_ACTIONABLE_STATUSES = _ACTIVE_STATUSES | _BLOCKED_STATUSES | {"merge_ready"}
+
+# Importance scoring constants (see PR #760 for rationale)
+_PRIORITY_WEIGHTS = {0: 1000, 1: 200, 2: 50, 3: 10, 4: 2}
+_STATUS_WEIGHTS = {
+    "blocked": 500,
+    "in_progress": 300,
+    "merge_ready": 150,
+    "active": 100,
+    "review": 80,
+    "waiting": 50,
+}
+_DW_MULTIPLIER = 20
+_DW_CAP = 200
+_RECENCY_MAX = 50.0
+_RECENCY_DECAY = 2.0
+
+
+def _graph_leaf_ids(all_nodes: list[dict]) -> set[str]:
+    """Return IDs of leaf nodes (not parent of any other node)."""
+    parent_ids = {n.get("parent") for n in all_nodes if n.get("parent")}
+    return {n["id"] for n in all_nodes if n["id"] not in parent_ids}
+
+
+def _filter_leaves_by_status(
+    all_nodes: list[dict],
+    leaf_ids: set[str],
+    *,
+    show_active: bool = True,
+    show_blocked: bool = True,
+    show_done: bool = False,
+    show_orphans: bool = False,
+) -> set[str]:
+    """Return visible leaf IDs based on status checkboxes."""
+    visible: set[str] = set()
+    for n in all_nodes:
+        if n["id"] not in leaf_ids:
+            continue
+        status = n.get("status", "inbox").lower()
+        if status in _ACTIVE_STATUSES and show_active:
+            visible.add(n["id"])
+        elif status in _BLOCKED_STATUSES and show_blocked:
+            visible.add(n["id"])
+        elif status in _DONE_STATUSES and show_done:
+            visible.add(n["id"])
+        elif status in _ORPHAN_STATUSES and show_orphans:
+            visible.add(n["id"])
+    return visible
+
+
+def _collect_ancestors(visible_ids: set[str], node_by_id: dict) -> set[str]:
+    """Walk up parent chains to collect structural ancestor IDs."""
+    structural: set[str] = set()
+    for leaf_id in visible_ids:
+        node = node_by_id.get(leaf_id)
+        while node:
+            parent = node.get("parent")
+            if not parent or parent in structural:
+                break
+            structural.add(parent)
+            node = node_by_id.get(parent)
+    return structural
+
+
+def _parse_mod(mod) -> float | None:
+    """Return Unix timestamp from either a float/int or ISO datetime string."""
+    if mod is None:
+        return None
+    try:
+        return float(mod)
+    except (TypeError, ValueError):
+        pass
+    try:
+        s = str(mod)
+        s = re.sub(r"(\.\d{6})\d+", r"\1", s)
+        from datetime import datetime as _dt
+
+        return _dt.fromisoformat(s).timestamp()
+    except Exception:
+        return None
+
+
+def _importance_score(node: dict) -> float:
+    """Score a node by priority, status, downstream weight, and recency."""
+    p = node.get("priority", 2)
+    if not isinstance(p, int):
+        p = 2
+    s = (node.get("status") or "inbox").lower()
+    dw = node.get("downstream_weight") or 0
+    p_score = _PRIORITY_WEIGHTS.get(p, 50)
+    s_score = _STATUS_WEIGHTS.get(s, 0)
+    dw_score = min(float(dw) * _DW_MULTIPLIER, _DW_CAP)
+    r_score = 0.0
+    mod_ts = _parse_mod(node.get("modified"))
+    if mod_ts:
+        days = (time.time() - mod_ts) / 86400
+        r_score = max(0.0, _RECENCY_MAX - days * _RECENCY_DECAY)
+    return p_score + s_score + dw_score + r_score
+
+
+def _apply_top_n(
+    filtered: list[dict],
+    visible_leaf_ids: set[str],
+    node_by_id: dict,
+    n: int,
+) -> tuple[list[dict], set[str]]:
+    """Keep top N leaves by importance + their structural parents. Returns (filtered_nodes, spotlight_ids)."""
+    leaf_nodes = [nd for nd in filtered if nd["id"] in visible_leaf_ids]
+    scored = sorted(leaf_nodes, key=_importance_score, reverse=True)
+    top3_ids = {nd["id"] for nd in scored[:3]}
+
+    if len(leaf_nodes) <= n:
+        for nd in filtered:
+            nd["spotlight"] = nd["id"] in top3_ids
+        return filtered, top3_ids
+
+    top_leaf_ids = {nd["id"] for nd in scored[:n]}
+    top_structural = _collect_ancestors(top_leaf_ids, node_by_id)
+    keep_ids = top_leaf_ids | top_structural
+    result = [nd for nd in filtered if nd["id"] in keep_ids]
+    for nd in result:
+        nd["spotlight"] = nd["id"] in top3_ids
+    return result, top3_ids
+
+
+def _render_status_summary(d3_data: dict):
+    """Render node/link count and spotlight caption."""
+    from collections import Counter as _Counter
+
+    counts = _Counter(n.get("status", "inbox") for n in d3_data["nodes"])
+    parts = []
+    for s, label in [
+        ("active", "active"),
+        ("in_progress", "in-progress"),
+        ("blocked", "blocked"),
+        ("waiting", "waiting"),
+        ("merge_ready", "ready"),
+    ]:
+        if counts.get(s, 0) > 0:
+            parts.append(f"{counts[s]} {label}")
+    status_str = " · ".join(parts) if parts else f"{len(d3_data['nodes'])} nodes"
+
+    spotlight_nodes = [n for n in d3_data["nodes"] if n.get("spotlight")]
+    if spotlight_nodes:
+        labels = [(n.get("title") or n.get("label") or n["id"])[:40] for n in spotlight_nodes[:3]]
+        st.caption(f"{status_str} | {len(d3_data['links'])} links")
+        st.caption(f"**★ Start: {' · '.join(labels)}**")
+    else:
+        st.caption(f"{status_str} | {len(d3_data['links'])} links")
+
+
+def _render_graph_with_actions(d3_data: dict, height: int = 700, **kwargs):
+    """Render embedded graph and handle click actions."""
+    action_event = render_embedded_graph(d3_data, height=height, **kwargs)
+    if action_event and isinstance(action_event, dict):
+        action = action_event.get("action")
+        task_id = action_event.get("id")
+        if action and task_id:
+            _handle_graph_action(action, task_id)
+
+
+# ---------------------------------------------------------------------------
+# Tab renderers
+# ---------------------------------------------------------------------------
+
+
+def _render_overview_tab(d3_graph: dict):
+    """Overview: all actionable leaf tasks in treemap or circle pack."""
+    import copy
+
+    graph = copy.deepcopy(d3_graph)
+    all_nodes = graph.get("nodes", [])
+
+    # Build children map to find actionable leaves
+    children_map: dict[str, list[str]] = {}
+    for n in all_nodes:
+        p = n.get("parent")
+        if p:
+            children_map.setdefault(p, []).append(n["id"])
+
+    node_by_id = {n["id"]: n for n in all_nodes}
+
+    leaf_ids: set[str] = set()
+    for n in all_nodes:
+        status = (n.get("status") or "inbox").lower()
+        if status not in _ACTIONABLE_STATUSES:
+            continue
+        children = children_map.get(n["id"], [])
+        has_actionable_child = any(
+            (node_by_id.get(c, {}).get("status") or "inbox").lower() in _ACTIONABLE_STATUSES
+            for c in children
+        )
+        if not has_actionable_child:
+            leaf_ids.add(n["id"])
+
+    ancestor_ids = _collect_ancestors(leaf_ids, node_by_id)
+    keep_ids = leaf_ids | ancestor_ids
+    structural_ids = ancestor_ids - leaf_ids
+
+    graph["nodes"] = [n for n in all_nodes if n["id"] in keep_ids]
+
+    # Status counts
+    from collections import Counter as _WCounter
+
+    status_counts = _WCounter(
+        (n.get("status") or "inbox").lower() for n in graph["nodes"] if n["id"] in leaf_ids
+    )
+    parts = []
+    for s, label in [
+        ("active", "active"),
+        ("in_progress", "in-progress"),
+        ("blocked", "blocked"),
+        ("waiting", "waiting"),
+        ("review", "review"),
+    ]:
+        if status_counts.get(s, 0) > 0:
+            parts.append(f"{status_counts[s]} {label}")
+    status_str = " · ".join(parts) if parts else f"{len(leaf_ids)} tasks"
+    st.markdown(f"**{len(leaf_ids)} leaf tasks** — {status_str}")
+
+    d3_data = prepare_embedded_graph_data(graph, structural_ids=structural_ids)
+
+    # Layout toggle
+    available = d3_data.get("availableLayouts", [])
+    view_mode = st.radio(
+        "View",
+        ["Treemap", "Circle Pack"],
+        horizontal=True,
+        key="overview_view",
+        label_visibility="collapsed",
+    )
+    if view_mode == "Treemap" and "treemap" in available:
+        layout = "treemap"
+    elif view_mode == "Circle Pack" and "circle_pack" in available:
+        layout = "circle_pack"
+    elif "treemap" in available:
+        layout = "treemap"
+    elif "circle_pack" in available:
+        layout = "circle_pack"
+    elif "tree" in available:
+        layout = "tree"
+    else:
+        layout = "force"
+
+    _render_graph_with_actions(d3_data, height=800, project_filter="ALL", layout_mode=layout)
+
+
+def _render_fa2_tab(d3_graph: dict):
+    """ForceAtlas2: project clusters with top-N important leaves."""
+    import copy
+
+    graph = copy.deepcopy(d3_graph)
+    all_nodes = graph.get("nodes", [])
+    leaf_ids = _graph_leaf_ids(all_nodes)
+    node_by_id = {n["id"]: n for n in all_nodes}
+
+    # Sidebar controls for this tab
+    with st.sidebar:
+        st.markdown("**FA2 Controls**")
+        show_active = st.checkbox("Active", value=True, key="fa2_show_active")
+        show_blocked = st.checkbox("Blocked", value=True, key="fa2_show_blocked")
+        show_done = st.checkbox("Done / Cancelled", value=False, key="fa2_show_done")
+
+        quick_view_n = st.select_slider(
+            "Top N leaves",
+            options=[25, 50, 80, 120, 200],
+            value=80,
+            key="fa2_topn",
+        )
+
+        use_live = st.toggle("Live simulation", value=False, key="fa2_live")
+
+        if use_live:
+            with st.expander("Force tuning", expanded=False):
+                charge_mult = st.slider("Charge strength", 0.1, 2.0, 1.0, 0.1, key="fa2_charge")
+                link_dist = st.slider("Link distance", 0.2, 2.0, 0.75, 0.05, key="fa2_link")
+                cluster_str = st.slider("Cluster pull", 0.0, 1.0, 0.4, 0.05, key="fa2_cluster")
+        else:
+            charge_mult, link_dist, cluster_str = 1.0, 0.75, 0.4
+
+    # Project filter
+    projects = sorted(set(n.get("project", "") for n in all_nodes if n.get("project")))
+    selected_project = st.selectbox(
+        "Project",
+        ["All Projects"] + projects,
+        key="fa2_project",
+    )
+    project_filter = "ALL" if selected_project == "All Projects" else selected_project
+
+    # Filter by status
+    visible_leaf_ids = _filter_leaves_by_status(
+        all_nodes, leaf_ids, show_active=show_active, show_blocked=show_blocked, show_done=show_done
+    )
+    structural_ids = _collect_ancestors(visible_leaf_ids, node_by_id)
+    filtered = [n for n in all_nodes if n["id"] in visible_leaf_ids or n["id"] in structural_ids]
+
+    # Apply top-N importance filter
+    filtered, _top3 = _apply_top_n(filtered, visible_leaf_ids, node_by_id, quick_view_n)
+    graph["nodes"] = filtered
+
+    d3_data = prepare_embedded_graph_data(graph, structural_ids=structural_ids)
+    d3_data["forceConfig"]["chargeMult"] = charge_mult
+    d3_data["forceConfig"]["linkDistMult"] = link_dist
+    d3_data["forceConfig"]["clusterStrength"] = cluster_str
+
+    # Determine layout mode
+    available = d3_data.get("availableLayouts", [])
+    if use_live:
+        layout_mode = "force"
+    elif "fa2" in available:
+        layout_mode = "fa2"
+    elif "forceatlas2" in available:
+        layout_mode = "forceatlas2"
+    elif d3_data.get("hasLayout"):
+        layout_mode = "precomputed"
+    else:
+        layout_mode = "force"
+
+    _render_status_summary(d3_data)
+    _render_graph_with_actions(
+        d3_data, height=700, project_filter=project_filter, layout_mode=layout_mode
+    )
+
+
+def _render_sfdp_tab(d3_graph: dict):
+    """SFDP: dense graph with more nodes and visible inter-relations."""
+    import copy
+
+    graph = copy.deepcopy(d3_graph)
+    all_nodes = graph.get("nodes", [])
+    leaf_ids = _graph_leaf_ids(all_nodes)
+    node_by_id = {n["id"]: n for n in all_nodes}
+
+    # Show more nodes than FA2 — higher default, status filters in sidebar
+    with st.sidebar:
+        st.markdown("**SFDP Controls**")
+        show_active = st.checkbox("Active", value=True, key="sfdp_show_active")
+        show_blocked = st.checkbox("Blocked", value=True, key="sfdp_show_blocked")
+        show_done = st.checkbox("Done / Cancelled", value=False, key="sfdp_show_done")
+        show_orphans = st.checkbox("Orphans (inbox)", value=False, key="sfdp_show_orphans")
+
+        top_n = st.select_slider(
+            "Max leaves",
+            options=[80, 120, 200, 350, 500],
+            value=200,
+            key="sfdp_topn",
+        )
+
+    visible_leaf_ids = _filter_leaves_by_status(
+        all_nodes,
+        leaf_ids,
+        show_active=show_active,
+        show_blocked=show_blocked,
+        show_done=show_done,
+        show_orphans=show_orphans,
+    )
+    structural_ids = _collect_ancestors(visible_leaf_ids, node_by_id)
+    filtered = [n for n in all_nodes if n["id"] in visible_leaf_ids or n["id"] in structural_ids]
+
+    # Apply top-N with higher cap
+    filtered, _ = _apply_top_n(filtered, visible_leaf_ids, node_by_id, top_n)
+    graph["nodes"] = filtered
+
+    d3_data = prepare_embedded_graph_data(graph, structural_ids=structural_ids)
+
+    available = d3_data.get("availableLayouts", [])
+    layout_mode = "sfdp" if "sfdp" in available else "force"
+
+    _render_status_summary(d3_data)
+    _render_graph_with_actions(d3_data, height=700, project_filter="ALL", layout_mode=layout_mode)
+
+
+def _render_arc_tab(d3_graph: dict):
+    """Arc diagram: dependency chains and relationships."""
+    import copy
+
+    graph = copy.deepcopy(d3_graph)
+    all_nodes = graph.get("nodes", [])
+    leaf_ids = _graph_leaf_ids(all_nodes)
+    node_by_id = {n["id"]: n for n in all_nodes}
+
+    # Show active+blocked leaves (dependencies matter most for blocked tasks)
+    visible_leaf_ids = _filter_leaves_by_status(
+        all_nodes, leaf_ids, show_active=True, show_blocked=True
+    )
+    structural_ids = _collect_ancestors(visible_leaf_ids, node_by_id)
+    filtered = [n for n in all_nodes if n["id"] in visible_leaf_ids or n["id"] in structural_ids]
+    graph["nodes"] = filtered
+
+    d3_data = prepare_embedded_graph_data(graph, structural_ids=structural_ids)
+
+    available = d3_data.get("availableLayouts", [])
+    layout_mode = "arc" if "arc" in available else "force"
+
+    _render_status_summary(d3_data)
+    _render_graph_with_actions(d3_data, height=700, project_filter="ALL", layout_mode=layout_mode)
+
 
 def render_task_graph_page():
-    """Render the task/knowledge graph on its own dedicated page."""
-    st.markdown("### Task Graph")
-
-    # Load graph upfront so we can compute leaf count for dynamic slider max.
-    # Scope is always "default" — Full scope was removed from UI.
-    d3_graph = _load_merged_graph()
-    all_nodes = d3_graph.get("nodes", []) if d3_graph else []
-
-    # Leaf nodes: nodes that are not a parent of any other node.
-    # Status and Top-N filters apply to leaves only; structural ancestors are
-    # kept whenever at least one of their descendants is visible.
-    _parent_ids = {n.get("parent") for n in all_nodes if n.get("parent")}
-    _leaf_ids = {n["id"] for n in all_nodes if n["id"] not in _parent_ids}
-    _n_leaves = len(_leaf_ids)
-
-    # Determine if the currently selected layout is hierarchical (tree/circle/arc).
-    # tg_layout session state stores the radio label from the previous render.
-    # Used to conditionally hide controls that only apply to force-based layouts.
-    _cur_layout_label = st.session_state.get("tg_layout", "")
-    _is_hierarchical_layout = _cur_layout_label in _HIERARCHICAL_LAYOUT_LABELS
-
-    show_only_reachable = False
-    quick_view_enabled = False
-    quick_view_n = 80
-    force_charge_mult = 1.0
-    force_link_dist = 0.75
-    force_cluster_str = 0.4
+    """Render specialized graph tabs: Overview, ForceAtlas2, SFDP, Arc."""
+    st.markdown("### Task Graphs")
 
     with st.sidebar:
         if st.button("Reload Graph", key="tg_reload"):
             st.cache_data.clear()
 
-        st.markdown("**Show**")
-        show_active = st.checkbox("Active", value=True, key="tg_show_active")
-        show_blocked = st.checkbox("Blocked", value=True, key="tg_show_blocked")
-        show_done = st.checkbox("Done / Cancelled", value=False, key="tg_show_done")
-        show_orphans = st.checkbox("Orphans (inbox)", value=False, key="tg_show_orphans")
-
-        # Force-layout-only controls: hidden when a hierarchical layout is active
-        if not _is_hierarchical_layout:
-            st.markdown("**Filter**")
-            show_only_reachable = st.checkbox("Reachable only", value=True, key="tg_show_reachable")
-
-            with st.expander("⚙️ Force tuning", expanded=False):
-                st.caption("Tune the physics of the force graph")
-                force_charge_mult = st.slider(
-                    "Charge strength",
-                    0.1,
-                    2.0,
-                    value=float(st.session_state.get("tg_charge_mult", 1.0)),
-                    step=0.1,
-                    key="tg_charge_mult",
-                    help="Node repulsion strength. Lower = clusters closer together.",
-                )
-                force_link_dist = st.slider(
-                    "Link distance",
-                    0.2,
-                    2.0,
-                    value=float(st.session_state.get("tg_link_dist", 0.75)),
-                    step=0.05,
-                    key="tg_link_dist",
-                    help="Scale factor on edge distances. Lower = tighter layout.",
-                )
-                force_cluster_str = st.slider(
-                    "Cluster pull",
-                    0.0,
-                    1.0,
-                    value=float(st.session_state.get("tg_cluster_str", 0.4)),
-                    step=0.05,
-                    key="tg_cluster_str",
-                    help="How strongly same-project nodes are pulled together.",
-                )
-
-        st.markdown("**View Mode**")
-        leaf_view_enabled = st.checkbox(
-            "Leaf view",
-            value=False,
-            key="tg_leafview",
-            help="Show only leaf tasks (actionable work with no actionable children) "
-            "plus their full ancestor chains. Shows your actual work frontier.",
-        )
-
-        st.markdown("**Quick View**")
-        quick_view_enabled = st.checkbox(
-            "Top N by importance",
-            value=not leaf_view_enabled,
-            key="tg_quickview",
-            help="Show only the highest-priority active nodes + their structural parents. "
-            "Dramatically reduces visual noise.",
-            disabled=leaf_view_enabled,
-        )
-        quick_view_n = st.select_slider(
-            "N",
-            options=[25, 50, 80, 120, 200],
-            value=80,
-            key="tg_quickview_n",
-            disabled=not quick_view_enabled or leaf_view_enabled,
-        )
-
-    if d3_graph:
-        # Leaf-node-aware status filtering:
-        # Status checkboxes apply to leaf nodes only; structural (non-leaf) nodes
-        # are retained whenever at least one of their descendant leaves is visible.
-        active_statuses = {
-            "active",
-            "in_progress",
-            "waiting",
-            "todo",
-            "review",
-            "decomposing",
-            "pending",
-        }
-        blocked_statuses = {"blocked"}
-        done_statuses = {"done", "completed", "cancelled", "dormant"}
-        orphan_statuses = {"inbox"}
-
-        node_by_id: dict = {n["id"]: n for n in all_nodes}
-
-        visible_leaf_ids: set[str] = set()
-        for n in all_nodes:
-            if n["id"] not in _leaf_ids:
-                continue
-            status = n.get("status", "inbox").lower()
-            if status in active_statuses and show_active:
-                visible_leaf_ids.add(n["id"])
-            elif status in blocked_statuses and show_blocked:
-                visible_leaf_ids.add(n["id"])
-            elif status in done_statuses and show_done:
-                visible_leaf_ids.add(n["id"])
-            elif status in orphan_statuses and show_orphans:
-                visible_leaf_ids.add(n["id"])
-
-        if show_only_reachable:
-            visible_leaf_ids = {
-                lid for lid in visible_leaf_ids if node_by_id.get(lid, {}).get("reachable")
-            }
-
-        # Collect full ancestor hierarchy for all visible leaves
-        structural_ids: set[str] = set()
-        for leaf_id in visible_leaf_ids:
-            node = node_by_id.get(leaf_id)
-            while node:
-                parent = node.get("parent")
-                if not parent:
-                    break
-                if parent in structural_ids:
-                    break  # already traversed this chain
-                structural_ids.add(parent)
-                node = node_by_id.get(parent)
-
-        filtered = [
-            n for n in all_nodes if n["id"] in visible_leaf_ids or n["id"] in structural_ids
-        ]
-
-        # Leaf View: show only leaf tasks + full ancestor chains
-        _structural_ids: set[str] = set()
-        if leaf_view_enabled:
-            _actionable = {"active", "in_progress", "blocked", "merge_ready"}
-            _node_by_id = {n["id"]: n for n in all_nodes}
-
-            # Build children map from all nodes (not just filtered)
-            _children_map: dict[str, list[str]] = {}
-            for n in all_nodes:
-                p = n.get("parent")
-                if p:
-                    _children_map.setdefault(p, []).append(n["id"])
-
-            # Identify leaves: actionable nodes with no actionable children
-            _leaf_ids: set[str] = set()
-            for n in filtered:
-                status = n.get("status", "inbox").lower()
-                if status not in _actionable:
-                    continue
-                children = _children_map.get(n["id"], [])
-                has_actionable_child = any(
-                    _node_by_id.get(c, {}).get("status", "inbox").lower() in _actionable
-                    for c in children
-                )
-                if not has_actionable_child:
-                    _leaf_ids.add(n["id"])
-
-            # Walk up parent chains to collect all ancestors
-            _ancestor_ids: set[str] = set()
-            for leaf_id in _leaf_ids:
-                current = _node_by_id.get(leaf_id, {}).get("parent")
-                while current and current in _node_by_id and current not in _ancestor_ids:
-                    _ancestor_ids.add(current)
-                    current = _node_by_id.get(current, {}).get("parent")
-
-            _keep_ids = _leaf_ids | _ancestor_ids
-            _structural_ids = _ancestor_ids - _leaf_ids
-            n_before = len(filtered)
-            filtered = [n for n in all_nodes if n["id"] in _keep_ids]
-
-            with st.sidebar.expander("Leaf view stats", expanded=False):
-                st.caption(
-                    f"{len(_leaf_ids)} leaves + {len(_ancestor_ids)} ancestors "
-                    f"= {len(filtered)} nodes (from {n_before} filtered)"
-                )
-
-        # Quick View: keep top N nodes by importance score + their structural parents
-        if not leaf_view_enabled and quick_view_enabled and len(filtered) > quick_view_n:
-            import time as _time
-            from datetime import datetime as _dt
-
-            # CALIBRATION_NOTE: These weights are provisional first guesses.
-            # They have not been validated against real usage patterns. If the spotlight
-            # highlights the wrong tasks, adjust these constants and log the delta.
-            # See: https://github.com/nicsuzor/academicOps/pull/760 for rationale.
-            _PRIORITY_WEIGHTS = {0: 1000, 1: 200, 2: 50, 3: 10, 4: 2}
-            _STATUS_WEIGHTS = {
-                "blocked": 500,  # blocked > in_progress: surfaces hidden dependencies
-                "in_progress": 300,
-                "merge_ready": 150,
-                "active": 100,
-                "review": 80,
-                "waiting": 50,
-            }
-            _DW_MULTIPLIER = 20  # downstream_weight → score; capped at 200
-            _DW_CAP = 200
-            _RECENCY_MAX = 50.0  # max recency score (today-modified)
-            _RECENCY_DECAY = 2.0  # points lost per day; decays to 0 after 25 days
-
-            def _parse_mod(mod) -> float | None:
-                """Return Unix timestamp from either a float/int or ISO datetime string."""
-                if mod is None:
-                    return None
-                try:
-                    return float(mod)
-                except (TypeError, ValueError):
-                    pass
-                try:
-                    s = str(mod)
-                    s = __import__("re").sub(r"(\.\d{6})\d+", r"\1", s)
-                    return _dt.fromisoformat(s).timestamp()
-                except Exception:
-                    return None
-
-            def _importance_score(node: dict) -> float:
-                p = node.get("priority", 2)
-                if not isinstance(p, int):
-                    p = 2
-                s = (node.get("status") or "inbox").lower()
-                dw = node.get("downstream_weight") or 0
-                mod = node.get("modified")
-                p_score = _PRIORITY_WEIGHTS.get(p, 50)
-                s_score = _STATUS_WEIGHTS.get(s, 0)
-                dw_score = min(float(dw) * _DW_MULTIPLIER, _DW_CAP)
-                r_score = 0.0
-                mod_ts = _parse_mod(mod)
-                if mod_ts:
-                    days = (_time.time() - mod_ts) / 86400
-                    r_score = max(0.0, _RECENCY_MAX - days * _RECENCY_DECAY)
-                return p_score + s_score + dw_score + r_score
-
-            # Score leaf nodes only
-            leaf_nodes_filtered = [n for n in filtered if n["id"] in visible_leaf_ids]
-            scored_leaves = sorted(leaf_nodes_filtered, key=_importance_score, reverse=True)
-
-            if len(leaf_nodes_filtered) > quick_view_n:
-                top_leaf_ids = {n["id"] for n in scored_leaves[:quick_view_n]}
-
-                # Build full ancestor hierarchy for top leaves
-                top_structural: set[str] = set()
-                for leaf_id in top_leaf_ids:
-                    node = node_by_id.get(leaf_id)
-                    while node:
-                        parent = node.get("parent")
-                        if not parent or parent in top_structural:
-                            break
-                        top_structural.add(parent)
-                        node = node_by_id.get(parent)
-
-                keep_ids = top_leaf_ids | top_structural
-                n_before = len(filtered)
-                filtered = [n for n in filtered if n["id"] in keep_ids]
-            else:
-                n_before = len(filtered)
-
-            # Tag the top 3 leaves as "spotlight" for the "start here" visual signal
-            top3_ids = {n["id"] for n in scored_leaves[:3]}
-            for n in filtered:
-                n["spotlight"] = n["id"] in top3_ids
-
-            # Debug: expose scored rankings so user can validate the calibration
-            with st.sidebar.expander("🔍 Importance ranking (debug)", expanded=False):
-                st.caption(f"Showing {len(filtered)} of {n_before} filtered nodes")
-                for rank, nd in enumerate(scored_leaves[:10], 1):
-                    nid = nd["id"]
-                    label = (nd.get("title") or nd.get("label") or nid)[:35]
-                    score = _importance_score(nd)
-                    st.text(
-                        f"#{rank} {label}  {score:.0f}pt  p={nd.get('priority', '?')}  s={nd.get('status', '?')}"
-                    )
-
-        d3_graph["nodes"] = filtered
-
-        _leaf_structural = _structural_ids if leaf_view_enabled else None
-        d3_data = prepare_embedded_graph_data(d3_graph, structural_ids=_leaf_structural)
-
-        # Apply sidebar force tuning overrides to forceConfig before rendering
-        d3_data["forceConfig"]["chargeMult"] = force_charge_mult
-        d3_data["forceConfig"]["linkDistMult"] = force_link_dist
-        d3_data["forceConfig"]["clusterStrength"] = force_cluster_str
-
-        available_layouts = d3_data.get("availableLayouts", [])
-        if available_layouts:
-            layout_info = f" | layouts: {', '.join(available_layouts)}"
-        elif d3_data.get("hasLayout"):
-            layout_info = " | precomputed layout"
-        else:
-            layout_info = ""
-        from collections import Counter as _Counter
-
-        _status_counts = _Counter(n.get("status", "inbox") for n in d3_data["nodes"])
-        _summary_parts = []
-        for _s, _label in [
-            ("active", "active"),
-            ("in_progress", "in-progress"),
-            ("blocked", "blocked"),
-            ("waiting", "waiting"),
-            ("merge_ready", "ready"),
-        ]:
-            if _status_counts.get(_s, 0) > 0:
-                _summary_parts.append(f"{_status_counts[_s]} {_label}")
-        _status_str = (
-            " · ".join(_summary_parts) if _summary_parts else f"{len(d3_data['nodes'])} nodes"
-        )
-        # Add "start here" names to status bar for immediate actionability
-        _spotlight_nodes = [n for n in d3_data["nodes"] if n.get("spotlight")]
-        if _spotlight_nodes:
-            _spotlight_labels = [
-                (n.get("title") or n.get("label") or n["id"])[:40] for n in _spotlight_nodes[:3]
-            ]
-            _star_str = "★ Start: " + " · ".join(_spotlight_labels)
-            st.caption(f"{_status_str} | {len(d3_data['links'])} links{layout_info}")
-            st.caption(f"**{_star_str}**")
-        else:
-            st.caption(f"{_status_str} | {len(d3_data['links'])} links{layout_info}")
-
-        # --- Sidebar: view controls (rendered after graph load so layout options are known) ---
-        st.sidebar.divider()
-
-        # Project filter dropdown (sidebar)
-        projects = sorted(set(n.get("project", "") for n in d3_data["nodes"] if n.get("project")))
-        selected_project = st.sidebar.selectbox(
-            "Project",
-            ["All Projects"] + projects,
-            key="tg_project",
-            help="Filter graph to tasks belonging to a single project",
-        )
-        project_filter = "ALL" if selected_project == "All Projects" else selected_project
-
-        # Layout mode (sidebar)
-        layout_map = {
-            "Force": "force",
-        }
-
-        available = d3_data.get("availableLayouts", [])
-        layout_options = []
-
-        # Add "ForceAtlas2" (precomputed) if available
-        if d3_data.get("hasLayout"):
-            layout_options.append("ForceAtlas2")
-            # Map to fa2/forceatlas2 key from graph data
-            if "fa2" in available:
-                layout_map["ForceAtlas2"] = "fa2"
-            elif "forceatlas2" in available:
-                layout_map["ForceAtlas2"] = "forceatlas2"
-            else:
-                layout_map["ForceAtlas2"] = "precomputed"
-
-        # Add precomputed layouts discovered in graph.json
-        named_layout_labels = {
-            "tree": "Treemap",
-            "circle": "Circle Pack",
-            "arc": "Arc Diagram",
-            "treemap": "Treemap",
-            "circle_pack": "Circle Pack",
-            "sfdp": "SFDP",
-            "fa2": None,  # already exposed as "Precomputed"
-            "forceatlas2": None,
-        }
-
-        for layout_key in available:
-            if "focus" in layout_key.lower():
-                continue  # skip focus variants (removed in #773)
-            known_label = named_layout_labels.get(layout_key)
-            if known_label is None and layout_key in named_layout_labels:
-                continue  # explicitly skipped (e.g. fa2)
-
-            label = known_label or layout_key.replace("_", " ").title()
-            if label not in layout_options:
-                layout_map[label] = layout_key  # register dynamically
-                layout_options.append(label)
-
-        # Ensure Force layout is always offered at the end as a fallback
-        if "Force" not in layout_options:
-            layout_options.append("Force")
-
-        st.sidebar.markdown("**Layout**")
-        selected_layout = st.sidebar.radio(
-            "Layout",
-            layout_options,
-            key="tg_layout",
-            horizontal=True,
-            label_visibility="collapsed",
-        )
-        layout_mode = layout_map[selected_layout]
-
-        # Action handler for bi-directional clicking
-        action_event = render_embedded_graph(
-            d3_data,
-            height=700,
-            project_filter=project_filter,
-            layout_mode=layout_mode,
-        )
-
-        if action_event and isinstance(action_event, dict):
-            action = action_event.get("action")
-            task_id = action_event.get("id")
-            if action and task_id:
-                _handle_graph_action(action, task_id)
-    else:
+    d3_graph = _load_merged_graph()
+    if not d3_graph:
         st.warning("No per-layout graph files found. Run `generate-viz.sh` to generate.")
+        return
+
+    tab_overview, tab_fa2, tab_sfdp, tab_arc = st.tabs(["Overview", "ForceAtlas2", "SFDP", "Arc"])
+
+    with tab_overview:
+        st.caption(
+            "All actionable leaf tasks grouped by project. "
+            "Size = downstream weight, color = status."
+        )
+        _render_overview_tab(d3_graph)
+
+    with tab_fa2:
+        st.caption("Project clusters with top-N most important leaves.")
+        _render_fa2_tab(d3_graph)
+
+    with tab_sfdp:
+        st.caption("Dense layout showing inter-relations across the full task graph.")
+        _render_sfdp_tab(d3_graph)
+
+    with tab_arc:
+        st.caption("Dependency chains and blocking relationships.")
+        _render_arc_tab(d3_graph)
 
 
 _USELESS_PROMPTS = frozenset(
@@ -4216,6 +4295,10 @@ def render_recent_prompts():
     if not sessions:
         return  # No prompts to display
 
+    _prompts_info = info_icon(
+        "Raw user prompts extracted from session summary JSON files in $AOPS_SESSIONS/summaries/. Grouped by session, sorted newest first. Last 7 days of sessions are scanned. Prompts are sanitized to remove system tags and hook injection text."
+    )
+    st.markdown(f"<div style='margin-bottom: -12px;'>{_prompts_info}</div>", unsafe_allow_html=True)
     with st.expander("💬 Recent Prompts (last 7 days)", expanded=False):
         for session in sessions:
             project = session["project"]
@@ -4236,6 +4319,11 @@ def render_recent_prompts():
                     st.code(cleaned, language=None)
 
             st.markdown("---")
+
+
+def render_workload_page():
+    """Deprecated: redirects to Task Graph Overview tab."""
+    render_task_graph_page()
 
 
 def render_session_summary():
@@ -4424,6 +4512,7 @@ if page == "Task Graph":
     render_task_graph_page()
     st.stop()
 
+
 # ADHD-optimized order: running -> needs me -> dropped -> context -> counts -> story
 # Initialize analyzer for daily log
 analyzer = SessionAnalyzer()
@@ -4445,7 +4534,13 @@ active_sessions_wlo = where_left_off.get("active", [])
 paused_sessions_wlo = where_left_off.get("paused", [])
 if active_sessions_wlo or paused_sessions_wlo:
     wlo_html = "<div class='where-left-off-panel'>"
-    wlo_html += "<div class='where-left-off-header'>📍 WHERE YOU LEFT OFF</div>"
+    wlo_html += (
+        "<div class='where-left-off-header'>📍 WHERE YOU LEFT OFF "
+        + info_icon(
+            "Shows recent Claude Code sessions grouped by status (active/paused). Data source: session-state.json files from ~/.claude/projects/ dated subdirectories. Sessions are classified by last activity time — active if touched within 4 hours, paused otherwise. Context (task, prompt, project) is extracted from each session's persisted state."
+        )
+        + "</div>"
+    )
 
     # Active sessions (<4h) - card-based display with rich context, grouped by project
     if active_sessions_wlo:
@@ -4585,7 +4680,10 @@ if synthesis:
     )
 
     synth_html = "<div class='synthesis-panel'>"
-    synth_html += f"<div class='synthesis-header'><div class='synthesis-title'>🧠 FOCUS SYNTHESIS{stale_badge}</div><div class='synthesis-age'>{age_str}</div></div>"
+    _synth_info = info_icon(
+        "Aggregated from today's session summary JSON files (scripts/synthesize_dashboard.py). Each session's Framework Reflection (accomplishments, friction points, outcome) is collected from $AOPS_SESSIONS/summaries/. Narrative bullets are per-session summaries prefixed by project. Accomplishments are deduplicated across sessions. Alignment tracks success/failure outcomes. No LLM calls — pure aggregation."
+    )
+    synth_html += f"<div class='synthesis-header'><div class='synthesis-title'>🧠 FOCUS SYNTHESIS{stale_badge} {_synth_info}</div><div class='synthesis-age'>{age_str}</div></div>"
 
     # Narrative section - tell the day's story
     narrative = synthesis.get("narrative", [])
@@ -4750,7 +4848,13 @@ try:
     path = reconstruct_path(hours=activity_hours)
     if path.threads:
         path_html = "<div class='path-timeline'>"
-        path_html += "<h3>YOUR PATH</h3>"
+        path_html += (
+            "<h3>YOUR PATH "
+            + info_icon(
+                "Reconstructed from session event logs using lib/path_reconstructor.py. Each session's tool calls, task bindings, and completions are parsed into a timeline. Threads are grouped by project. Unfinished tasks are those created/claimed but not marked done across all sessions in the time range. Events include task starts, completions, key tool invocations, and context switches."
+            )
+            + "</h3>"
+        )
 
         # Unfinished tasks callout (most actionable — show first)
         if path.abandoned_work:
@@ -4959,6 +5063,35 @@ except Exception:
 
 render_spotlight_epic()
 
+# === NEEDS YOU SECTION ===
+# Show items that are blocked or waiting on human input
+_needs_you_tasks = load_tasks_from_index()
+_blocked_waiting = [
+    t
+    for t in _needs_you_tasks
+    if t.get("status") in ("blocked", "waiting", "review")
+    and t.get("assignee") in ("nic", None, "")
+    and t.get("type") not in ("goal", "project", "epic")
+]
+if _blocked_waiting:
+    _needs_html = "<div style='margin-bottom: 24px; padding: 12px 16px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px;'>"
+    _needs_info = info_icon(
+        "Tasks with status blocked, waiting, or review assigned to you. Data source: $ACA_DATA/tasks/index.json (generated by aops CLI from PKB markdown frontmatter). Excludes goal/project/epic types — only actionable leaf tasks. Shows up to 5 items."
+    )
+    _needs_html += f"<div style='font-weight: 600; font-size: 1em; color: #f87171; margin-bottom: 8px;'>🚨 NEEDS YOU ({len(_blocked_waiting)}) {_needs_info}</div>"
+    for _nt in _blocked_waiting[:5]:
+        _status_badge = _nt.get("status", "blocked")
+        _badge_color = "#f87171" if _status_badge == "blocked" else "#fbbf24"
+        _needs_html += "<div style='padding: 4px 0; font-size: 0.9em;'>"
+        _needs_html += f"<span style='background: {_badge_color}; color: #000; padding: 1px 6px; border-radius: 3px; font-size: 0.75em; margin-right: 6px;'>{esc(_status_badge)}</span>"
+        _needs_html += f"{esc(_nt.get('title', ''))}"
+        _needs_html += "</div>"
+    if len(_blocked_waiting) > 5:
+        _needs_html += f"<div style='font-size: 0.8em; opacity: 0.7; padding-top: 4px;'>+ {len(_blocked_waiting) - 5} more</div>"
+    _needs_html += "</div>"
+    st.markdown(_needs_html, unsafe_allow_html=True)
+
+
 # === DAILY STORY SECTION ===
 daily_story = analyzer.extract_daily_story()
 if daily_story:
@@ -4971,7 +5104,13 @@ if daily_story:
 
         with col1:
             if daily_story["story"]:
-                st.markdown(f"### 📖 Today's Story\n{daily_story['story']}")
+                _story_info = info_icon(
+                    "Extracted by SessionAnalyzer from today's session transcript summaries. The story is a narrative of what happened across sessions. Dropped threads are topics started but not resolved. Data source: session summary files in $AOPS_SESSIONS/summaries/ parsed by lib/session_analyzer.py."
+                )
+                st.markdown(
+                    f"### 📖 Today's Story {_story_info}\n{daily_story['story']}",
+                    unsafe_allow_html=True,
+                )
             if daily_story["dropped_threads"]:
                 st.markdown("#### ⚠ Dropped Threads")
 

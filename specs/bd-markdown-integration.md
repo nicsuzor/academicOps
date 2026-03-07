@@ -3,6 +3,9 @@ title: Markdown Integration Specification
 type: spec
 category: architecture
 status: draft
+tier: data
+depends_on: [work-management, mcp-decomposition-tools]
+tags: [spec, markdown, integration, data]
 created: 2026-01-18
 ---
 

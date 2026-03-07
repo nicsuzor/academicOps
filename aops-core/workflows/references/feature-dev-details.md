@@ -228,7 +228,7 @@ Comprehensive procedures and checklists for each phase of feature development.
 
 ## GitHub Integration
 
-Framework features go through bazaar review on GitHub (see [[specs/pr-process.md]]). This creates bidirectional links between the task system (PKB) and GitHub.
+Framework features go through bazaar review on GitHub (see [[specs/pr-pipeline-v2.md]]). This creates bidirectional links between the task system (PKB) and GitHub.
 
 ### When to create a PR
 

@@ -1,12 +1,10 @@
 ---
 title: Context Loading Specification
 type: spec
-category: spec
-status: Active
-permalink: context-loading-spec
+status: active
+tier: core
+depends_on: []
 tags: [framework, hooks, architecture, session]
-created: 2025-12-30
-updated: 2026-01-22
 ---
 
 # Context Loading Specification

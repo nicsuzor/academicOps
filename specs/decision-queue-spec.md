@@ -1,3 +1,12 @@
+---
+title: Decision Queue Specification
+type: spec
+status: active
+tier: workflow
+depends_on: [effectual-planning-agent]
+tags: [workflow, decision-queue]
+---
+
 # Decision Queue: Batch Decision Processing for Task Unblocking
 
 **Task**: `aops-f4b71ada`

@@ -3,7 +3,11 @@ name: command-intercept
 title: Command Intercept
 category: spec
 status: draft
+type: spec
+tier: core
+depends_on: []
 created: 2026-01-25
+tags: [spec, hooks, tool-transformation]
 ---
 
 # Command Intercept

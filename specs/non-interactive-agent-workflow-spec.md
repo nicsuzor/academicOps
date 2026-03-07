@@ -3,7 +3,9 @@ id: non-interactive-agent-workflow-spec
 title: "Non-Interactive Agent Workflow Specification"
 permalink: non-interactive-agent-workflow-spec
 type: spec
-status: draft
+status: active
+tier: polecat
+depends_on: []
 created: '2026-02-12'
 modified: '2026-02-12'
 parent: aops-core-1dcb461d

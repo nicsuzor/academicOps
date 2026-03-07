@@ -2,6 +2,8 @@
 title: PKB Server Specification
 type: spec
 status: draft
+tier: data
+depends_on: [work-management]
 tags: [spec, pkb, mcp, cli, mem]
 created: 2026-02-22
 ---
@@ -18,7 +20,7 @@ Combined CLI + MCP server for personal knowledge base operations.
 - `pkb-search` MCP server binary — agent access via stdio transport
 - [[knowledge-management-philosophy]] — foundational design principles
 - [[work-management]] — task lifecycle and graph insertion
-- [[mcp-decomposition-tools-v2]] — "Dumb Server, Smart Agent" principle
+- [[mcp-decomposition-tools]] — "Dumb Server, Smart Agent" principle
 
 ## Users
 

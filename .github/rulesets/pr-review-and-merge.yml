@@ -92,9 +92,9 @@ rules:
           # Must match the `name:` of the job in typecheck.yml.
         - context: Pytest
           # Must match the `name:` of the job in pytest.yml.
-        - context: Agent Review
-          # Must match the `name:` of the job in agent-review.yml.
-          # agent-review sets this status via gh api (not gh pr review) so it cannot
+        - context: Axiom Review
+          # Must match the `name:` of the job in agent-axiom-review.yml.
+          # axiom-review sets this status via gh api (not gh pr review) so it cannot
           # be overridden by a subsequent merge-prep approval.
 
   # ─────────────────────────────────────────

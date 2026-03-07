@@ -1,3 +1,12 @@
+---
+title: Polecat System: Ephemeral Agent Workspaces
+type: spec
+status: active
+tier: polecat
+depends_on: []
+tags: [spec, polecat, architecture]
+---
+
 # Polecat System: Ephemeral Agent Workspaces
 
 ## Giving Effect

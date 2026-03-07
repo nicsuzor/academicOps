@@ -2,7 +2,7 @@
 
 **Last updated**: 2026-03-05
 
-> **Authoritative scope**: This document describes the state of the aops framework codebase and its immediately-connected infrastructure. It is kept current by the butler on each invocation. Automated reviewers (gatekeeper, conceptual-review, etc.) read this document -- accuracy matters. If something is described as "working" here, it is integrated and tested. If it is described as "planned", it does not yet exist in production.
+> **Authoritative scope**: This document describes the state of the aops framework codebase and its immediately-connected infrastructure. It is kept current by the butler on each invocation. Automated reviewers (axiom-review, review-and-fix, etc.) read this document -- accuracy matters. If something is described as "working" here, it is integrated and tested. If it is described as "planned", it does not yet exist in production.
 >
 > **Canonical direction**: This document reflects actual state. When the codebase or infrastructure changes, update this document to match reality -- do not change behavior to match this document. If there is a discrepancy between this document and the actual codebase, the codebase is correct and this document needs updating.
 
@@ -20,8 +20,8 @@ academicOps/
 |   +-- skills/       # 17 domain skills (see Skills System below)
 |   +-- workflows/    # Workflow definitions (manual-qa, etc.)
 +-- .github/
-|   +-- agents/       # 3 agent prompts (worker, merge-prep, conceptual-review)
-|   +-- workflows/    # 11 GitHub Actions workflows
+|   +-- agents/       # 5 agent prompts (axiom-review, review-and-fix, merge-prep, worker, summary-brief)
+|   +-- workflows/    # 12 GitHub Actions workflows
 +-- aops-core/        # Framework core
 |   +-- hooks/        # Session hooks (router, policy_enforcer, gate_config, etc.)
 |   +-- lib/          # Shared libraries (gates, hydration, sessions, tasks, etc.)
@@ -69,19 +69,21 @@ The Personal Knowledge Base server is the backbone data layer for the framework.
 
 Automated PR review pipeline with safety mechanisms.
 
-**Pipeline flow**: `code-quality.yml` (lint + type-check) -> `agent-conceptual-review.yml` (strategic/architectural review) -> `agent-merge-prep.yml` (merge preparation) -> human approval
+**Pipeline flow**: `code-quality.yml` (lint + type-check) -> `agent-axiom-review.yml` (axiom compliance) + `agent-review-and-fix.yml` (strategic review & fixes) -> `agent-merge-prep.yml` (merge preparation) -> human approval
 
 **Safety mechanisms**:
 
 - **Cascade limit**: Pipeline run-count tracked per PR; halts after 3 runs to prevent infinite bot loops
 - **LGTM check-status gate**: Merge workflow checks required status checks before enabling auto-merge
-- **Strategic review**: Conceptual review agent reads `.agent/STATUS.md`, AXIOMS.md, and codebase context to catch PRs that conflict with key decisions
+- **Axiom compliance**: Axiom review agent checks diffs against AXIOMS.md, HEURISTICS.md, and project rules (mechanical, silent on success)
+- **Strategic review**: Review-and-fix agent reads `.agent/STATUS.md`, VISION.md, and codebase context to catch strategic misalignment and fix mechanical issues
 - **Loop detector**: Merge-prep uses `Merge-Prep-By:` commit trailer for detection
 
-**GitHub Actions workflows** (11):
+**GitHub Actions workflows** (12):
 
 - `code-quality.yml` -- lint, formatting, type checks
-- `agent-conceptual-review.yml` -- strategic/architectural PR review
+- `agent-axiom-review.yml` -- axiom/heuristic compliance checking
+- `agent-review-and-fix.yml` -- strategic review with fix capability
 - `agent-merge-prep.yml` -- merge preparation
 - `claude.yml` -- Claude agent invocation
 - `pytest.yml` -- test suite
@@ -92,7 +94,7 @@ Automated PR review pipeline with safety mechanisms.
 - `ios-note-capture.yml` -- iOS note capture workflow
 - `merge-prep-cron.yml` -- scheduled merge preparation
 
-**Agents** (3 prompt files in `.github/agents/`): worker, merge-prep, conceptual-review
+**Agents** (5 prompt files in `.github/agents/`): axiom-review, review-and-fix, merge-prep, worker, summary-brief
 
 **Merge methods**: merge commit, squash, and rebase all enabled.
 
@@ -223,7 +225,7 @@ Acceptance tests at `tests/acceptance/`:
 2. **Issue review over-triggering**: The issue review agents fire on read-only and tracking operations. Needs filtering improvement.
 3. **Hydrator guardrails**: Hydrator agent drifts into implementation advice instead of staying advisory. Needs stronger prompt constraints.
 4. **Autonomous automation readiness**: Most workflows are at "supervised" maturity. No workflows have been validated for fully autonomous operation yet.
-5. **STATUS.md as bot input**: Bots (gatekeeper, conceptual-review) read this document as authoritative context. Stale information here causes false positives in reviews (see issue #701 where conceptual-review flagged the PKB server as non-existent because STATUS.md listed it as a roadmap item). This document MUST be kept accurate.
+5. **STATUS.md as bot input**: Bots (axiom-review, review-and-fix) read this document as authoritative context. Stale information here causes false positives in reviews (see issue #701 where a review agent flagged the PKB server as non-existent because STATUS.md listed it as a roadmap item). This document MUST be kept accurate.
 6. **Hydrator acceptance test harness gap**: The hydrator subagent cannot be tested in isolation because the test harness does not construct the input file that `builder.py` normally provides during session hooks. Both v1.1 and v0.3 acceptance tests are blocked on this. Fixing the harness requires either (a) a test-mode builder that constructs the input file without a live session, or (b) a pytest fixture that calls the builder directly.
 
 ## Roadmap

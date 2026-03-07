@@ -3,8 +3,12 @@ title: Predicate Registry
 type: spec
 category: architecture
 status: draft
+tier: core
+depends_on: [workflow-constraints]
 created: 2026-01-23
+tags: [spec, architecture, predicates, constraints]
 related: [workflow-constraints, prompt-hydrator]
+note: "Needs design discussion before implementation"
 ---
 
 # Predicate Registry

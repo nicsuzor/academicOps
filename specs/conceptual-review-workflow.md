@@ -1,7 +1,9 @@
 ---
 title: Conceptual Review Workflow
 type: spec
-status: draft
+status: active
+tier: workflow
+depends_on: [effectual-planning-agent]
 created: 2026-02-28
 tags: [spec, review, multi-agent, workflow]
 related:

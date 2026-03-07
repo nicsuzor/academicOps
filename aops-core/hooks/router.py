@@ -146,10 +146,7 @@ def format_gate_status_icons(state: SessionState) -> str:
     if state.main_agent.current_task:
         parts.append(f"▶ {state.main_agent.current_task}")
 
-    if not parts:
-        return "✓"
-
-    return " ".join(parts)
+    return " ".join(parts) if parts else ""
 
 
 # --- Session Management ---
@@ -416,10 +413,11 @@ class HookRouter:
         # Append gate status icons to system message
         try:
             gate_status = format_gate_status_icons(state)
-            if merged_result.system_message:
-                merged_result.system_message = f"{merged_result.system_message} {gate_status}"
-            else:
-                merged_result.system_message = gate_status
+            if gate_status:
+                if merged_result.system_message:
+                    merged_result.system_message = f"{merged_result.system_message} {gate_status}"
+                else:
+                    merged_result.system_message = gate_status
         except Exception as e:
             print(f"WARNING: Gate status icons failed: {e}", file=sys.stderr)
 

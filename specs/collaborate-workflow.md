@@ -1,3 +1,12 @@
+---
+title: Collaborate Workflow
+type: spec
+status: active
+tier: workflow
+depends_on: []
+tags: [workflow, collaboration]
+---
+
 # Workflow: Collaborate
 
 ## Giving Effect

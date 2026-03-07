@@ -1,13 +1,15 @@
 ---
 title: Research Decomposition
 type: spec
-status: draft
+status: in_progress
+tier: workflow
+depends_on: [conceptual-review-workflow, effectual-planning-agent, mcp-decomposition-tools]
 created: 2026-02-28
 tags: [spec, research, decomposition, planning, academic]
 related:
   - conceptual-review-workflow
   - effectual-planning-agent
-  - mcp-decomposition-tools-v2
+  - mcp-decomposition-tools
   - non-interactive-agent-workflow-spec
   - polecat-swarms
 ---
@@ -20,7 +22,7 @@ _No implementation yet. This spec defines research-specific decomposition as a d
 
 - [[specs/conceptual-review-workflow.md]] -- review workflow; this spec instantiates it for research
 - [[specs/effectual-planning-agent.md]] -- strategic planning; this spec specialises it for research projects
-- [[specs/mcp-decomposition-tools-v2.md]] -- task graph tools (reused)
+- [[specs/mcp-decomposition-tools.md]] -- task graph tools (reused)
 - [[aops-core/workflows/decompose.md]] -- general decomposition workflow; this spec extends it with research primitives
 
 ## Motivation
@@ -382,7 +384,7 @@ verify: "Verify: platform governance study objectives met"
 
 - [[specs/conceptual-review-workflow.md]] -- review layer; this spec is a domain application
 - [[specs/effectual-planning-agent.md]] -- upstream strategic planning; this spec specialises it for research
-- [[specs/mcp-decomposition-tools-v2.md]] -- task graph tools; reused for structured output
+- [[specs/mcp-decomposition-tools.md]] -- task graph tools; reused for structured output
 - [[specs/non-interactive-agent-workflow-spec.md]] -- lifecycle management for non-interactive agent execution
 - [[specs/polecat-swarms.md]] -- execution layer; consumes decomposed task graphs
 - [[aops-core/workflows/decompose.md]] -- general decomposition workflow; this spec extends it with research primitives

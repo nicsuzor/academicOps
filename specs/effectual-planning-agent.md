@@ -2,6 +2,11 @@
 name: effectual-planning-agent
 title: Effectual Planning Agent
 category: spec
+type: spec
+status: active
+tier: core
+depends_on: []
+tags: [spec, planning, agent, effectuation]
 ---
 
 # Effectual Planning Agent
