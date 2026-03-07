@@ -2,9 +2,9 @@ import * as d3 from 'd3';
 import type { GraphNode } from '../../data/prepareGraphData';
 
 function statusOpacity(d: GraphNode) {
-    if (['done', 'completed', 'cancelled'].includes(d.status)) return 0.4;
-    if (d.status === 'active') return 0.8;
-    return 0.6;
+    if (['done', 'completed', 'cancelled'].includes(d.status)) return 0.15;
+    if (d.status === 'active') return 0.9;
+    return 0.35; // The baseline "Void" state
 }
 
 export function buildTaskCardNode(g: d3.Selection<SVGGElement, GraphNode, null, undefined>, d: GraphNode) {
@@ -27,19 +27,24 @@ export function buildTaskCardNode(g: d3.Selection<SVGGElement, GraphNode, null, 
             .text("★ START HERE");
     }
 
+    const opacity = statusOpacity(d);
+
     if (d.shape === "pill") {
         g.append("rect").attr("x", -hw).attr("y", -hh).attr("width", d.w).attr("height", d.h)
             .attr("rx", hh).attr("ry", hh)
-            .attr("fill", d.fill).attr("stroke", d.borderColor).attr("stroke-width", d.borderWidth);
+            .attr("fill", d.fill).attr("stroke", d.borderColor).attr("stroke-width", d.borderWidth)
+            .attr("fill-opacity", opacity).attr("stroke-opacity", Math.max(opacity, 0.4));
     } else if (d.shape === "hexagon") {
         const c = Math.min(hh * 0.6, 12);
         const pts = `${-hw + c},${-hh} ${hw - c},${-hh} ${hw},${0} ${hw - c},${hh} ${-hw + c},${hh} ${-hw},${0}`;
         g.append("polygon").attr("points", pts)
-            .attr("fill", d.fill).attr("stroke", d.borderColor).attr("stroke-width", d.borderWidth);
+            .attr("fill", d.fill).attr("stroke", d.borderColor).attr("stroke-width", d.borderWidth)
+            .attr("fill-opacity", opacity).attr("stroke-opacity", Math.max(opacity, 0.4));
     } else {
         g.append("rect").attr("x", -hw).attr("y", -hh).attr("width", d.w).attr("height", d.h)
             .attr("rx", d.shape === "rounded" ? 10 : 4)
-            .attr("fill", d.fill).attr("stroke", d.borderColor).attr("stroke-width", d.borderWidth);
+            .attr("fill", d.fill).attr("stroke", d.borderColor).attr("stroke-width", d.borderWidth)
+            .attr("fill-opacity", opacity).attr("stroke-opacity", Math.max(opacity, 0.4));
     }
 
     if (d.status === "blocked" && d.dw >= 2) {

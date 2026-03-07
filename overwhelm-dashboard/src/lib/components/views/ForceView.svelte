@@ -4,7 +4,7 @@
     import { graphData } from "../../stores/graph";
     import { viewSettings } from "../../stores/viewSettings";
     import { filters } from "../../stores/filters";
-    import { toggleSelection } from "../../stores/selection";
+    import { selection, toggleSelection } from "../../stores/selection";
     import { buildTaskCardNode } from "../shared/NodeShapes";
     import { routeForceEdges } from "../shared/EdgeRenderer";
     import type { GraphNode, GraphEdge } from "../../data/prepareGraphData";
@@ -36,6 +36,41 @@
                 // Just a fast unlinked layout
                 drawStaticForce();
             }
+        }
+    }
+
+    // Flashlight Hover Effect Logic
+    $: if (nodesLayer && edgesLayer && $graphData) {
+        const hoveredId = $selection.hoveredNodeId;
+        const nEls = d3.select(nodesLayer).selectAll(".node");
+        const eEls = d3.select(edgesLayer).selectAll("path");
+
+        if (hoveredId) {
+            const neighbors = new Set<string>([hoveredId]);
+            $graphData.links.forEach((l: any) => {
+                const sid = l.source.id || l.source;
+                const tid = l.target.id || l.target;
+                if (sid === hoveredId) neighbors.add(tid);
+                if (tid === hoveredId) neighbors.add(sid);
+            });
+
+            nEls.classed("dimmed", (d: any) => !neighbors.has(d.id)).classed(
+                "illuminated",
+                (d: any) => neighbors.has(d.id),
+            );
+
+            eEls.classed("dimmed", (l: any) => {
+                const sid = l.source.id || l.source;
+                const tid = l.target.id || l.target;
+                return sid !== hoveredId && tid !== hoveredId;
+            }).classed("illuminated", (l: any) => {
+                const sid = l.source.id || l.source;
+                const tid = l.target.id || l.target;
+                return sid === hoveredId || tid === hoveredId;
+            });
+        } else {
+            nEls.classed("dimmed", false).classed("illuminated", false);
+            eEls.classed("dimmed", false).classed("illuminated", false);
         }
     }
 
@@ -125,10 +160,16 @@
     }
 
     function bindDragAndClick(nEls: any) {
-        nEls.style("cursor", "pointer")
+        nEls.style("cursor", "crosshair")
             .on("click", (e: any, d: any) => {
                 e.stopPropagation();
                 toggleSelection(d.id);
+            })
+            .on("mouseenter", (e: any, d: any) => {
+                selection.update((s) => ({ ...s, hoveredNodeId: d.id }));
+            })
+            .on("mouseleave", (e: any, d: any) => {
+                selection.update((s) => ({ ...s, hoveredNodeId: null }));
             })
             .call(
                 d3
@@ -208,7 +249,9 @@
             .attr("stroke-dasharray", (d) => d.dash || null)
             .attr("marker-end", "url(#ar)")
             .attr("stroke-linecap", "round")
-            .attr("stroke-linejoin", "round");
+            .attr("stroke-linejoin", "round")
+            .attr("opacity", 0.3)
+            .attr("class", "force-edge");
 
         routeForceEdges(eEls);
         updateHulls();
@@ -297,3 +340,34 @@
     <g bind:this={edgesLayer}></g>
     <g bind:this={nodesLayer}></g>
 {/if}
+
+<style>
+    /* Flashlight depth-of-field state classes */
+    :global(.node) {
+        transition:
+            opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+            filter 0.3s ease;
+    }
+    :global(.node.dimmed) {
+        opacity: 0.15 !important;
+        filter: grayscale(0.8) brightness(0.6);
+    }
+    :global(.node.illuminated) {
+        opacity: 1 !important;
+        filter: drop-shadow(0 0 16px var(--neon-cyan));
+    }
+    :global(path.force-edge) {
+        transition:
+            opacity 0.3s ease,
+            stroke-width 0.3s ease,
+            stroke 0.3s ease;
+    }
+    :global(path.force-edge.dimmed) {
+        opacity: 0.05 !important;
+    }
+    :global(path.force-edge.illuminated) {
+        opacity: 1 !important;
+        stroke: var(--neon-cyan) !important;
+        stroke-width: 2px !important;
+    }
+</style>

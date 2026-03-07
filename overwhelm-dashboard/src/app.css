@@ -1,102 +1,178 @@
-/* Premium Inter Font */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+/* ==========================================================================
+   HOLOGRAPHIC FLOW INTERFACE (Industrial Cyber-Zen)
+   ========================================================================== */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Rajdhani:wght@500;600;700&family=Space+Grotesk:wght@400;500;700&display=swap');
 
 :root {
-  /* Premium Dark Theme Palette */
-  --bg-app: #09090b; /* Zinc 950 */
-  --bg-sidebar: rgba(24, 24, 27, 0.6); /* Zinc 900 Glass */
-  --bg-panel: rgba(24, 24, 27, 0.4);
-  --bg-card: rgba(39, 39, 42, 0.5); /* Zinc 800 */
+  /* Core Color Palette */
+  --color-primary: #00F0FF;
+  /* Cyan Neon */
+  --color-accent: #FF2A6D;
+  /* Magenta/Alert */
+  --color-background: #050505;
+  /* Void Black */
 
-  --bg-input: rgba(39, 39, 42, 0.6);
-  --bg-input-focus: rgba(63, 63, 70, 0.8);
+  --color-surface: rgba(20, 25, 30, 0.6);
+  /* Glass Panels */
+  --color-surface-high: rgba(255, 255, 255, 0.05);
+  /* Hover/Active */
 
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-accent: rgba(99, 102, 241, 0.4); /* Indigo 500 */
+  --color-text: #E0E6ED;
+  /* Primary readout */
+  --color-muted: #586575;
+  /* Inactive/Background data */
 
-  --text-primary: #f4f4f5; /* Zinc 100 */
-  --text-secondary: #a1a1aa; /* Zinc 400 */
-  --text-muted: #71717a; /* Zinc 500 */
+  /* Legacy aliases for compatibility with components */
+  --bg-app: var(--color-background);
+  --bg-sidebar: rgba(10, 12, 15, 0.8);
+  --bg-panel: var(--color-surface);
+  --bg-card: rgba(30, 35, 45, 0.4);
+  --bg-input: rgba(15, 20, 25, 0.8);
+  --bg-input-focus: rgba(30, 40, 50, 0.9);
 
-  --accent-primary: #818cf8; /* Indigo 400 */
-  --accent-secondary: #c084fc; /* Purple 400 */
-  --accent-success: #34d399; /* Emerald 400 */
-  --accent-warning: #fbbf24; /* Amber 400 */
-  --accent-danger: #f87171; /* Red 400 */
+  --border-subtle: rgba(255, 255, 255, 0.1);
+  --border-accent: rgba(0, 240, 255, 0.3);
 
-  /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
-  --shadow-glow: 0 0 15px rgba(129, 140, 248, 0.2);
+  --text-primary: var(--color-text);
+  --text-secondary: #8c9ba8;
+  --text-muted: var(--color-muted);
+
+  --accent-primary: var(--color-primary);
+  --accent-secondary: #00b3cc;
+  --accent-success: #00F0FF;
+  --accent-warning: #fcee0a;
+  --accent-danger: var(--color-accent);
+
+  /* Typography */
+  --font-display: 'Rajdhani', sans-serif;
+  --font-body: 'Space Grotesk', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Effects */
+  --radius: 4px;
+  /* Sharp corners */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+
+  --blur-strength: 12px;
+  --glow: 0 0 20px rgba(0, 240, 255, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.8);
 
   /* Transitions */
   --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-
-  /* Radii */
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
+  --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* ==========================================================================
+   BASE & RESET
+   ========================================================================== */
+
+html,
 body {
   margin: 0;
   padding: 0;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background-color: var(--bg-app);
-  color: var(--text-primary);
-  /* Optional: Background gradient map for an energetic backdrop */
-  background-image:
-    radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.04), transparent 50%),
-    radial-gradient(circle at 85% 30%, rgba(192, 132, 252, 0.04), transparent 50%);
-  background-attachment: fixed;
+  background-color: var(--color-background);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  height: 100vh;
+  overflow: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+
 /* Base interactive resets */
 button {
-  font-family: inherit;
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
-select, input, textarea {
-  font-family: inherit;
+select,
+input,
+textarea {
+  font-family: var(--font-mono);
   transition: all var(--transition-fast);
 }
 
-/* Glassmorphism utilities */
-.glass-panel {
-  background: var(--bg-panel);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
-}
-
-.glass-card {
-  background: var(--bg-card);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-}
-
-/* Custom Scrollbar for sleekness */
+/* Custom Cyber Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 4px;
+  height: 4px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
+  background: var(--color-muted);
+  border-radius: 0;
 }
+
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--color-primary);
+  box-shadow: var(--glow);
+}
+
+/* ==========================================================================
+   Z-AXIS & GLASSMORPHISM UTILITIES
+   ========================================================================== */
+
+/* The primary glass surface for all standard UI elements */
+.glass-surface {
+  background: var(--color-surface);
+  backdrop-filter: blur(var(--blur-strength));
+  -webkit-backdrop-filter: blur(var(--blur-strength));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  color: var(--color-text);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
+}
+
+/* Chromatic Aberration Text Effect */
+.chromatic-text {
+  text-shadow:
+    2px 0px 0px rgba(255, 42, 109, 0.6),
+    -2px 0px 0px rgba(0, 240, 255, 0.6);
+}
+
+/* Hover Glow Wrapper */
+.hover-glow {
+  transition: box-shadow var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.hover-glow:hover {
+  box-shadow: var(--glow);
+  border-color: var(--color-primary);
+  transform: translateY(-2px);
+  z-index: 10;
+}
+
+/* Deep blurs for layering */
+.blur-deep {
+  filter: blur(20px);
+  transition: filter var(--transition-normal);
+}
+
+.blur-surface {
+  filter: blur(40px) brightness(0.3);
+  transition: filter var(--transition-normal), brightness var(--transition-normal);
 }

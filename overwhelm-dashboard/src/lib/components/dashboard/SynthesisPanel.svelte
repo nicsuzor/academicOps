@@ -8,7 +8,7 @@
 </script>
 
 {#if hasSynthesis || hasStory}
-    <div class="panel synthesis-panel">
+    <div class="glass-surface synthesis-panel">
         <div class="synthesis-header">
             <h3 class="synthesis-title">SYNTHESIS & INSIGHTS</h3>
             {#if synthesis?._age_minutes !== undefined}
@@ -71,16 +71,11 @@
 {/if}
 
 <style>
-    .panel {
-        background: var(--bg-panel);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid var(--border-subtle);
-        border-radius: var(--radius-lg);
-        padding: 24px;
-        box-shadow: var(--shadow-md);
+    .synthesis-panel {
+        padding: 32px;
+        height: 100%;
+        box-sizing: border-box;
     }
-
     .synthesis-header {
         display: flex;
         justify-content: space-between;

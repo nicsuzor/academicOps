@@ -265,22 +265,33 @@
             <div class="msg">Loading tasks.json...</div>
         {:else if errorMsg}
             <div class="msg error">{errorMsg}</div>
-        {:else if $viewSettings.mainTab === "Dashboard"}
-            <DashboardView {data} />
         {:else}
-            <ZoomContainer let:containerGroup>
-                {#if containerGroup}
-                    {#if activeLayout === "treemap" || activeLayout === "tree"}
-                        <TreemapView {containerGroup} />
-                    {:else if activeLayout === "circle_pack" || activeLayout === "circle"}
-                        <CirclePackView {containerGroup} />
-                    {:else if activeLayout === "force" || activeLayout === "fa2" || activeLayout === "sfdp"}
-                        <ForceView {containerGroup} />
-                    {:else if activeLayout === "arc"}
-                        <ArcView {containerGroup} />
+            <!-- THE VOID (Background Layer) -->
+            <div
+                class="void-layer"
+                class:deep-blur-scale={$viewSettings.mainTab === "Dashboard"}
+            >
+                <ZoomContainer let:containerGroup>
+                    {#if containerGroup}
+                        {#if activeLayout === "treemap" || activeLayout === "tree"}
+                            <TreemapView {containerGroup} />
+                        {:else if activeLayout === "circle_pack" || activeLayout === "circle"}
+                            <CirclePackView {containerGroup} />
+                        {:else if activeLayout === "force" || activeLayout === "fa2" || activeLayout === "sfdp"}
+                            <ForceView {containerGroup} />
+                        {:else if activeLayout === "arc"}
+                            <ArcView {containerGroup} />
+                        {/if}
                     {/if}
-                {/if}
-            </ZoomContainer>
+                </ZoomContainer>
+            </div>
+
+            <!-- DEEP DIVE (Project Overlays) -->
+            {#if $viewSettings.mainTab === "Dashboard"}
+                <div class="deep-dive-overlay">
+                    <DashboardView {data} />
+                </div>
+            {/if}
 
             <DetailPanel />
             <Legend />
@@ -319,7 +330,35 @@
     .main-content {
         flex: 1;
         position: relative;
-        background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+        background: var(--color-background);
+        overflow: hidden;
+    }
+
+    .void-layer {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        transition:
+            filter 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+            transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .deep-blur-scale {
+        filter: blur(20px);
+        transform: scale(
+            1.5
+        ); /* 300% is too extreme for SVG performance, 150% feels deep */
+    }
+
+    .deep-dive-overlay {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 50;
+        overflow-y: auto;
+        padding-left: 320px; /* Offset for floating sidebar */
     }
 
     .msg {

@@ -44,7 +44,7 @@
 
   {#if isOverview}
     <div class="control-group radio-group">
-      <label class="bold-label">Overview Layout</label>
+      <span class="bold-label">Overview Layout</span>
       <label>
         <input
           type="radio"
@@ -185,37 +185,44 @@
 
 <style>
   .sidebar {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    bottom: 16px;
     width: 280px;
-    height: 100vh;
-    background: var(--bg-sidebar);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border-right: 1px solid var(--border-subtle);
-    padding: 24px 20px;
+    padding: 20px;
     box-sizing: border-box;
     overflow-y: auto;
-    color: var(--text-primary);
-    flex-shrink: 0;
-    box-shadow: 4px 0 15px rgba(0, 0, 0, 0.2);
-    z-index: 10;
+    z-index: 100;
+  }
+
+  /* We apply the global glassmorphism utility class to the section, but Svelte scopes the component.
+     Instead, we just copy properties or assume the parent adds them.
+     Better: add custom styling mapped to our tokens */
+  .sidebar {
+    background: var(--color-surface);
+    backdrop-filter: blur(var(--blur-strength));
+    -webkit-backdrop-filter: blur(var(--blur-strength));
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    color: var(--color-text);
   }
 
   h2 {
     margin-top: 0;
     margin-bottom: 20px;
-    font-size: 22px;
-    font-weight: 700;
-    background: linear-gradient(135deg, var(--text-primary), var(--text-muted));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    letter-spacing: -0.02em;
+    font-size: 24px;
+    font-family: var(--font-display);
+    color: var(--color-text);
+    letter-spacing: 0.05em;
+    text-shadow: 2px 0px 0px rgba(0, 240, 255, 0.4);
   }
 
   h3 {
-    font-size: 12px;
-    font-weight: 700;
-    text-transform: uppercase;
-    color: var(--text-muted);
+    font-size: 13px;
+    font-family: var(--font-display);
+    color: var(--color-primary);
     letter-spacing: 0.1em;
     margin-bottom: 16px;
     margin-top: 0;
@@ -224,8 +231,8 @@
   .divider {
     border: 0;
     height: 1px;
-    background: var(--border-subtle);
-    margin: 24px 0;
+    background: rgba(255, 255, 255, 0.1);
+    margin: 20px 0;
   }
 
   .control-group {

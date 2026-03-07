@@ -15,7 +15,7 @@
             {@const sessions = projectData.sessions?.[project] || []}
 
             {#if tasks.length > 0 || accomplishments.length > 0 || sessions.length > 0}
-                <div class="project-section">
+                <div class="project-section glass-surface">
                     <div class="project-header">
                         <h3 class="project-title">
                             <span class="icon">📁</span>
@@ -32,7 +32,9 @@
                         {#if meta.epics && meta.epics.length > 0}
                             <div class="epics-list">
                                 {#each meta.epics as epic}
-                                    <div class="epic-card">
+                                    <div
+                                        class="epic-card glass-surface hover-glow"
+                                    >
                                         <div class="epic-header">
                                             <span class="epic-title"
                                                 >{epic.title}</span
@@ -65,7 +67,7 @@
                             <div class="col active-tasks">
                                 <h4 class="col-title">Active Tasks</h4>
                                 {#each tasks as task}
-                                    <div class="task-item">
+                                    <div class="task-card hover-glow">
                                         <span class="priority p{task.priority}"
                                             >P{task.priority}</span
                                         >
@@ -86,7 +88,7 @@
                             <div class="col recent-done">
                                 <h4 class="col-title">Recently Completed</h4>
                                 {#each accomplishments as acc}
-                                    <div class="acc-item">
+                                    <div class="accomplishment-card hover-glow">
                                         <span class="check">✓</span>
                                         <span class="acc-desc"
                                             >{acc.description}</span
@@ -107,14 +109,9 @@
 {/if}
 
 <style>
-    .panel {
-        background: var(--bg-panel);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid var(--border-subtle);
-        border-radius: var(--radius-lg);
+    .project-section {
         padding: 24px;
-        box-shadow: var(--shadow-md);
+        margin-bottom: 32px;
     }
 
     .project-header {

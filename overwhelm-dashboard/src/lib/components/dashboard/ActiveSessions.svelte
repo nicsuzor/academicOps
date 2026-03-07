@@ -14,7 +14,7 @@
     }
 </script>
 
-<div class="panel current-activity-box">
+<div class="glass-surface current-activity-box">
     <div class="header">
         <h3>⚡ CURRENT ACTIVITY ({sessions.length})</h3>
         {#if needsYou.length > 0}
@@ -48,17 +48,8 @@
 </div>
 
 <style>
-    .panel {
-        background: var(--bg-panel);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid var(--border-subtle);
-        border-radius: var(--radius-lg);
-        padding: 20px 24px;
-        box-shadow: var(--shadow-md);
-    }
-
     .current-activity-box {
+        padding: 20px 24px;
         border-left: 4px solid var(--accent-success);
         background: linear-gradient(
             135deg,

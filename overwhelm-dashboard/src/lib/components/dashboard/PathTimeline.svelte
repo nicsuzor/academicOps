@@ -19,7 +19,7 @@
 </script>
 
 {#if threads.length > 0 || abandoned.length > 0}
-    <div class="panel path-panel">
+    <div class="glass-surface path-panel">
         <h3 class="section-header">PATH RECONSTRUCTION</h3>
 
         {#if abandoned.length > 0}
@@ -89,14 +89,8 @@
 {/if}
 
 <style>
-    .panel {
-        background: var(--bg-panel);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid var(--border-subtle);
-        border-radius: var(--radius-lg);
-        padding: 24px;
-        box-shadow: var(--shadow-md);
+    .path-panel {
+        padding: 24px 32px;
     }
 
     h3 {

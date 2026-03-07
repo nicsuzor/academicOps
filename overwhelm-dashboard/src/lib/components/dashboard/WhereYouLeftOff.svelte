@@ -5,7 +5,7 @@
     $: paused = leftOff?.paused || [];
 </script>
 
-<div class="panel where-you-left-off">
+<div class="glass-surface where-you-left-off">
     <h3 class="section-header">WHERE YOU LEFT OFF</h3>
 
     {#if active.length === 0 && paused.length === 0}
@@ -87,14 +87,11 @@
 </div>
 
 <style>
-    .panel {
-        background: var(--bg-panel);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid var(--border-subtle);
-        border-radius: var(--radius-lg);
+    .where-you-left-off {
         padding: 24px;
-        box-shadow: var(--shadow-md);
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
     }
 
     .section-header {

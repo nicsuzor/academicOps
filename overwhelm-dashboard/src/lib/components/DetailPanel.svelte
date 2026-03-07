@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { selection, clearSelection } from '../stores/selection';
-  import { graphData } from '../stores/graph';
-  import { STATUS_FILLS, STATUS_TEXT } from '../data/constants';
+  import { selection, clearSelection } from "../stores/selection";
+  import { graphData } from "../stores/graph";
+  import { STATUS_FILLS, STATUS_TEXT } from "../data/constants";
 
   $: activeNodeId = $selection.activeNodeId;
-  $: node = $graphData?.nodes.find(n => n.id === activeNodeId) || null;
+  $: node = $graphData?.nodes.find((n) => n.id === activeNodeId) || null;
 
   $: isFocusMode = $selection.focusNodeId !== null;
 
@@ -14,9 +14,13 @@
 
   function toggleFocus() {
     if (isFocusMode) {
-      selection.update(s => ({ ...s, focusNodeId: null, focusNeighborSet: null }));
+      selection.update((s) => ({
+        ...s,
+        focusNodeId: null,
+        focusNeighborSet: null,
+      }));
     } else if (node) {
-      selection.update(s => ({ ...s, focusNodeId: node.id }));
+      selection.update((s) => ({ ...s, focusNodeId: node.id }));
     }
   }
 
@@ -27,21 +31,27 @@
     console.log(`Action: ${actionType} on Node: ${node.id}`);
     alert(`Triggered ${actionType} on ${node.id}`);
   }
-
 </script>
 
 {#if node}
-  <div class="detail-panel">
+  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+  <div class="monolith-backdrop" on:click={closePanel}></div>
+  <div class="detail-panel glass-surface">
     <div class="header">
       <h3>{node.label}</h3>
-      <button class="close-btn" aria-label="Close" on:click={closePanel}>✕</button>
+      <button class="close-btn" aria-label="Close" on:click={closePanel}
+        >✕</button
+      >
     </div>
 
     <div class="fields">
       <div class="field">
         <span class="label">Status</span>
-        <span class="value badge indicator"
-              style="background: {STATUS_FILLS[node.status] || '#f1f5f9'}; color: {STATUS_TEXT[node.status] || '#475569'}">
+        <span
+          class="value badge indicator"
+          style="background: {STATUS_FILLS[node.status] ||
+            '#f1f5f9'}; color: {STATUS_TEXT[node.status] || '#475569'}"
+        >
           {node.status}
         </span>
       </div>
@@ -84,31 +94,46 @@
     </div>
 
     <div class="actions">
-      <button class="btn btn-focus" class:active-focus={isFocusMode} on:click={toggleFocus}>
-        {isFocusMode ? 'Exit Focus' : 'Focus'}
+      <button
+        class="btn btn-focus"
+        class:active-focus={isFocusMode}
+        on:click={toggleFocus}
+      >
+        {isFocusMode ? "Exit Focus" : "Focus"}
       </button>
-      <button class="btn btn-edit" on:click={() => handleAction('edit')}>Edit</button>
-      <button class="btn btn-complete" on:click={() => handleAction('complete')}>Done</button>
+      <button class="btn btn-edit" on:click={() => handleAction("edit")}
+        >Edit</button
+      >
+      <button class="btn btn-complete" on:click={() => handleAction("complete")}
+        >Done</button
+      >
     </div>
   </div>
 {/if}
 
 <style>
+  .monolith-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+    background: rgba(5, 5, 5, 0.4);
+    backdrop-filter: blur(40px) brightness(0.3);
+    -webkit-backdrop-filter: blur(40px) brightness(0.3);
+  }
+
   .detail-panel {
-    position: absolute;
-    top: 16px;
-    right: 16px;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     z-index: 100;
-    background: rgba(15, 23, 42, 0.85);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 10px;
-    padding: 16px;
-    width: 280px;
+    width: 400px;
+    padding: 24px;
     box-sizing: border-box;
-    color: #f8fafc;
-    backdrop-filter: blur(12px);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    /* Removed custom background/border/blur since glass-surface handles it, but we can boost the box-shadow */
+    box-shadow:
+      0 20px 50px rgba(0, 0, 0, 0.5),
+      0 0 0 1px rgba(255, 255, 255, 0.05);
   }
 
   .header {
@@ -145,7 +170,7 @@
 
   .close-btn:hover {
     color: #f8fafc;
-    background: rgba(255,255,255,0.1);
+    background: rgba(255, 255, 255, 0.1);
   }
 
   .fields {
@@ -181,34 +206,61 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    background: rgba(255,255,255,0.1);
+    background: rgba(255, 255, 255, 0.1);
   }
 
   .actions {
     display: flex;
-    gap: 8px;
-    margin-top: 16px;
-    padding-top: 14px;
-    border-top: 1px solid rgba(255,255,255,0.1);
+    gap: 12px;
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-subtle);
   }
 
   .btn {
     flex: 1;
-    padding: 8px 0;
-    border: none;
-    border-radius: 6px;
-    font-size: 11px;
-    font-weight: 600;
+    padding: 10px 0;
+    background: transparent;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 700;
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    letter-spacing: 1px;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all var(--transition-fast);
   }
 
-  .btn-focus { background: #7c3aed; color: white; }
-  .btn-focus:hover, .btn-focus.active-focus { background: #6d28d9; }
+  /* Neon fill on hover */
+  .btn-focus {
+    border-color: var(--neon-magenta);
+    color: var(--neon-magenta);
+  }
+  .btn-focus:hover,
+  .btn-focus.active-focus {
+    background: var(--neon-magenta);
+    color: var(--color-void);
+    box-shadow: 0 0 15px var(--neon-magenta);
+  }
 
-  .btn-edit { background: #3b82f6; color: white; }
-  .btn-edit:hover { background: #2563eb; }
+  .btn-edit {
+    border-color: var(--neon-cyan);
+    color: var(--neon-cyan);
+  }
+  .btn-edit:hover {
+    background: var(--neon-cyan);
+    color: var(--color-void);
+    box-shadow: 0 0 15px var(--neon-cyan);
+  }
 
-  .btn-complete { background: #10b981; color: white; }
-  .btn-complete:hover { background: #059669; }
+  .btn-complete {
+    border-color: var(--accent-success);
+    color: var(--accent-success);
+  }
+  .btn-complete:hover {
+    background: var(--accent-success);
+    color: var(--color-void);
+    box-shadow: 0 0 15px var(--accent-success);
+  }
 </style>
