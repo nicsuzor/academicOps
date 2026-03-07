@@ -534,5 +534,5 @@ class GenericGate:
     def on_subagent_stop(
         self, context: HookContext, session_state: SessionState
     ) -> GateResult | None:
-        """SubagentStop: Check policies and evaluate triggers."""
-        return self._handle_stop_event(context, session_state)
+        """SubagentStop: Evaluate triggers only (policies are scoped to session end, not subagent completion)."""
+        return self._evaluate_triggers(context, session_state)

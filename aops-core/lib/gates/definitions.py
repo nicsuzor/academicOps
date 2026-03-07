@@ -213,25 +213,25 @@ GATE_CONFIGS = [
     ),
     # --- Commit ---
     # Ensures changes are committed and pushed before exit.
-    # Blocks Stop if uncommitted work; Warns Stop if unpushed commits.
+    # Blocks Stop/SessionEnd if uncommitted work; Warns if unpushed commits.
     GateConfig(
         name="commit",
         description="Ensures changes are committed and pushed before exit.",
         initial_status=GateStatus.OPEN,
         policies=[
-            # Block Stop if uncommitted work
+            # Block Stop/SessionEnd if uncommitted work
             GatePolicy(
                 condition=GateCondition(
-                    hook_event="^(Stop|SessionEnd|SubagentStop)$",
+                    hook_event="^(Stop|SessionEnd)$",
                     custom_check="has_uncommitted_work",
                 ),
                 verdict=COMMIT_GATE_MODE,
                 message_key="commit.uncommitted_block",
             ),
-            # Warn Stop if unpushed commits
+            # Warn Stop/SessionEnd if unpushed commits
             GatePolicy(
                 condition=GateCondition(
-                    hook_event="^(Stop|SessionEnd|SubagentStop)$",
+                    hook_event="^(Stop|SessionEnd)$",
                     custom_check="needs_commit_reminder",
                 ),
                 verdict="warn",
