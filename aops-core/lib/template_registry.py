@@ -285,6 +285,21 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         description="Block message requiring handover before stop",
         env_override="STOP_GATE_HANDOVER_TEMPLATE",
     ),
+    # --- Commit gate ---
+    "commit.uncommitted_block": TemplateSpec(
+        name="commit.uncommitted_block",
+        category=TemplateCategory.USER_MESSAGE,
+        filename="commit-uncommitted-block.md",
+        optional_vars=("block_reason",),
+        description="Block message when uncommitted changes detected",
+    ),
+    "commit.unpushed_reminder": TemplateSpec(
+        name="commit.unpushed_reminder",
+        category=TemplateCategory.USER_MESSAGE,
+        filename="commit-unpushed-reminder.md",
+        optional_vars=("warning_message",),
+        description="Reminder message for unpushed commits",
+    ),
 }
 
 

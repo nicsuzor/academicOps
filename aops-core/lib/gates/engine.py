@@ -481,22 +481,24 @@ class GenericGate:
             metadata=merged_metadata,
         )
 
-    def on_stop(self, context: HookContext, session_state: SessionState) -> GateResult | None:
-        """Stop: Check policies (blocking) AND Evaluate triggers (cleanup)."""
-        # First check policies (blocking)
+    def _handle_stop_event(
+        self, context: HookContext, session_state: SessionState
+    ) -> GateResult | None:
+        """Shared logic for Stop-like events: check policies then evaluate triggers."""
         policy_result = self._evaluate_policies(context, session_state)
         if policy_result and policy_result.verdict == GateVerdict.DENY:
             return policy_result
 
-        # If not blocked, evaluate triggers (side effects like cleanup)
         trigger_result = self._evaluate_triggers(context, session_state)
 
-        # Merge if policy warned and trigger happened?
-        # Usually policy warning is more important.
         if policy_result and policy_result.verdict == GateVerdict.WARN:
             return policy_result
 
         return trigger_result
+
+    def on_stop(self, context: HookContext, session_state: SessionState) -> GateResult | None:
+        """Stop: Check policies (blocking) AND Evaluate triggers (cleanup)."""
+        return self._handle_stop_event(context, session_state)
 
     def on_tool_use(self, context: HookContext, session_state: SessionState) -> GateResult | None:
         """PostToolUse: Evaluate triggers."""
@@ -532,4 +534,5 @@ class GenericGate:
     def on_subagent_stop(
         self, context: HookContext, session_state: SessionState
     ) -> GateResult | None:
+        """SubagentStop: Evaluate triggers only (policies are scoped to session end, not subagent completion)."""
         return self._evaluate_triggers(context, session_state)

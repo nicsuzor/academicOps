@@ -24,7 +24,7 @@ def check_custom_condition(
         except ImportError:
             return False
 
-    if name == "has_unpushed_commits":
+    if name == "needs_commit_reminder":
         try:
             from lib.commit_check import check_uncommitted_work
 
