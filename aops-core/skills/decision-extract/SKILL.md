@@ -1,7 +1,18 @@
 ---
 name: decision-extract
+type: skill
 category: instruction
 description: Extract pending decisions from task queue, prioritize by blocking count, output to daily note for batch processing.
+triggers:
+  - "pending decisions"
+  - "what decisions"
+  - "decision queue"
+  - "decisions blocking"
+modifies_files: true
+needs_task: false
+mode: execution
+domain:
+  - operations
 allowed-tools: Read,Edit,mcp__pkb__list_tasks,mcp__pkb__get_task,mcp__pkb__get_task_network
 version: 1.0.0
 permalink: skills-decision-extract

@@ -1,7 +1,17 @@
 ---
 name: email
+type: command
 category: instruction
-description: Create "ready for action" tasks from emails
+description: Create "ready for action" tasks from emails - with summaries, downloaded documents, and clear response requirements
+triggers:
+  - "process email"
+  - "email to task"
+  - "handle this email"
+modifies_files: true
+needs_task: false
+mode: execution
+domain:
+  - email
 allowed-tools: ~~email, Task, Read, Grep, Skill, AskUserQuestion
 permalink: commands/email
 ---

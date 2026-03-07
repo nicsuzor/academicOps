@@ -1,7 +1,16 @@
 ---
 name: audit
+type: skill
 category: instruction
-description: Framework index curation and acceptance testing. Ensures documentation stays in sync with implementation.
+description: Comprehensive framework governance audit - structure checking, justification checking, and index file updates.
+triggers:
+  - "framework audit"
+  - "check structure"
+modifies_files: true
+needs_task: true
+mode: execution
+domain:
+  - framework
 allowed-tools: Read,Glob,Grep,Edit,Write,Bash,Skill,TodoWrite
 version: 6.0.0
 permalink: skills-audit
@@ -41,14 +50,31 @@ Compare filesystem to `INDEX.md`:
 
 Curate root-level index files using LLM judgment. For each file, read the source materials and ensure it accurately reflects the current state.
 
-| Index File         | Sources                                                               |
-| ------------------ | --------------------------------------------------------------------- |
-| AXIOMS.md          | `axioms/*.md` files                                                   |
-| HEURISTICS.md      | `heuristics/*.md` files                                               |
-| CONSTRAINTS.md     | Pre-commit hooks in `.pre-commit-config.yaml`, hard enforcement rules |
-| SKILLS.md          | `skills/*/SKILL.md` frontmatter                                       |
-| WORKFLOWS.md       | `workflows/*.md`                                                      |
-| enforcement-map.md | `hooks/*.py` "Enforces:" docstrings, `gate_config.py`                 |
+| Index File     | Sources                                                               |
+| -------------- | --------------------------------------------------------------------- |
+| AXIOMS.md      | `axioms/*.md` files                                                   |
+| HEURISTICS.md  | `heuristics/*.md` files                                               |
+| CONSTRAINTS.md | Pre-commit hooks in `.pre-commit-config.yaml`, hard enforcement rules |
+| SKILLS.md      | `skills/*/SKILL.md` and `commands/*.md` frontmatter                   |
+
+**SKILLS.md Extraction Rules**:
+Extract the following fields from frontmatter and format into a consolidated table:
+
+- `name` (as `/name`)
+- `type` (skill/command)
+- `triggers` (joined with commas)
+- `modifies_files` (yes/no)
+- `needs_task` (yes/no)
+- `mode` (conversational/execution/batch)
+- `domain` (joined with commas)
+- `description` (one-line summary)
+
+Sort by Type (command first) then Name.
+
+**WORKFLOWS.md Validation**:
+
+- Every `[[workflow-id]]` in the index MUST have a corresponding file in `workflows/workflow-id.md`.
+- Report any phantom workflows in the audit report.
 
 **Generated File Header**:
 Each curated index (except WORKFLOWS.md) must include:

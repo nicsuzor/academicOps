@@ -1,7 +1,17 @@
 ---
 name: strategy
+type: skill
 category: instruction
 description: Strategic thinking partner for exploration, planning, and clarity - facilitates thinking without executing tasks
+triggers:
+  - "strategic thinking"
+  - "planning session"
+  - "explore complexity"
+modifies_files: false
+needs_task: false
+mode: conversational
+domain:
+  - planning
 allowed-tools: mcp__pkb__search,Skill,AskUserQuestion
 version: 1.0.0
 permalink: skills-strategy

@@ -1,7 +1,17 @@
 ---
 name: excalidraw
+type: skill
 category: instruction
 description: Creating visually compelling, hand-drawn diagrams with organic mind-map layouts and accessibility-focused design.
+triggers:
+  - "draw diagram"
+  - "mind map"
+  - "visual diagram"
+modifies_files: true
+needs_task: true
+mode: execution
+domain:
+  - design
 allowed-tools: Read,Skill
 version: 1.0.0
 permalink: skills-excalidraw-skill

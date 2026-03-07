@@ -1,7 +1,19 @@
 ---
 name: annotations
+type: skill
 category: instruction
 description: "Scan and process inline HTML comments for human-agent collaboration. Finds <!-- @nic: --> or <!-- @ns: --> comments and responds with dated <!-- @claude: --> replies. Works on markdown, Python, and other text files."
+triggers:
+  - "annotations"
+  - "inline comments"
+  - "respond to comments"
+  - "@nic: comment"
+  - "@ns: comment"
+modifies_files: true
+needs_task: false
+mode: execution
+domain:
+  - collaboration
 allowed-tools: Read,Grep,Glob,Edit
 version: 1.0.0
 permalink: skills-annotations

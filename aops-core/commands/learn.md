@@ -1,7 +1,19 @@
 ---
 name: learn
+type: command
 category: instruction
 description: Rapid async knowledge capture for framework failures
+triggers:
+  - "framework issue"
+  - "fix this pattern"
+  - "improve the system"
+  - "knowledge capture"
+  - "bug report"
+modifies_files: true
+needs_task: false
+mode: execution
+domain:
+  - framework
 allowed-tools: Bash, Task
 permalink: commands/learn
 ---

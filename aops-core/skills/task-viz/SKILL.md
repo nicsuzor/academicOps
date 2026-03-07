@@ -1,14 +1,20 @@
 ---
 name: task-viz
+type: skill
 description: Generate network graph of notes/tasks using `aops` CLI (JSON, GraphML, DOT)
 triggers:
-  - task visualization
-  - visualize tasks
-  - network map
-  - knowledge graph
-  - task chart
-  - issue mind map
-  - graph my notes
+  - "task visualization"
+  - "visualize tasks"
+  - "bd visualization"
+  - "task chart"
+  - "issue mind map"
+  - "network map"
+  - "knowledge graph"
+modifies_files: true
+needs_task: false
+mode: execution
+domain:
+  - operations
 ---
 
 # Task/Note Visualization

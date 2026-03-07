@@ -1,7 +1,17 @@
 ---
 name: garden
+type: skill
 category: instruction
 description: Incremental PKM and task graph maintenance - weeding, pruning, linking, consolidating, reparenting. Tends the knowledge base and task hierarchy bit by bit.
+triggers:
+  - "prune knowledge"
+  - "consolidate notes"
+  - "PKM maintenance"
+modifies_files: true
+needs_task: false
+mode: execution
+domain:
+  - operations
 allowed-tools: Read,Grep,Glob,Edit,Write,Bash,Task,mcp__pkb__search,mcp__pkb__list_documents
 version: 1.0.0
 permalink: skills-garden

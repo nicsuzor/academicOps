@@ -1,7 +1,17 @@
 ---
 name: decision-apply
+type: skill
 category: instruction
 description: Process annotated decisions from daily note, update task statuses, and unblock dependent tasks.
+triggers:
+  - "apply decisions"
+  - "process decisions"
+  - "execute decisions"
+modifies_files: true
+needs_task: true
+mode: execution
+domain:
+  - operations
 allowed-tools: Read,Edit,mcp__pkb__update_task,mcp__pkb__get_task,mcp__pkb__get_task_network
 version: 1.0.0
 permalink: skills-decision-apply

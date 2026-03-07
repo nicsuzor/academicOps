@@ -1,7 +1,19 @@
 ---
 name: path
+type: command
 category: retrieval
 description: Show narrative path reconstruction (what happened across sessions)
+triggers:
+  - "show path"
+  - "recent work"
+  - "what happened"
+  - "session history"
+  - "narrative timeline"
+modifies_files: false
+needs_task: false
+mode: conversational
+domain:
+  - operations
 allowed-tools: Bash, RunShellCommand
 permalink: commands/path
 ---

@@ -1,7 +1,16 @@
 ---
 name: convert-to-md
+type: skill
 category: instruction
 description: Batch convert documents (DOCX, PDF, XLSX, TXT, PPTX, MSG, DOC) to markdown, preserving tracked changes and comments.
+triggers:
+  - "convert document"
+  - "DOCX/PDF/XLSX conversion"
+modifies_files: true
+needs_task: true
+mode: batch
+domain:
+  - operations
 allowed-tools: Bash,Read
 version: 1.0.0
 permalink: skills-convert-to-md

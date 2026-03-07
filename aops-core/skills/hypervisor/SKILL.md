@@ -1,24 +1,30 @@
 ---
 name: hypervisor
+type: skill
 description: Atomic locking patterns for batch operations. For parallel task processing, use swarm-supervisor instead.
 triggers:
   - "atomic locking"
   - "batch file processing"
   - "file queue processing"
+modifies_files: true
+needs_task: true
+mode: batch
+domain:
+  - operations
 ---
 
 # Hypervisor - Atomic Locking Patterns
 
 > **Taxonomy note**: This skill provides domain expertise (HOW) for atomic locking patterns for batch operations. See [[TAXONOMY.md]] for the skill/workflow distinction.
 
-> **DEPRECATION NOTICE** (2026-02-06): For parallel task processing, use `/swarm-supervisor` and `polecat swarm` instead. The polecat swarm provides:
->
-> - **Worktree isolation** (no merge conflicts)
-> - **API-based atomic claiming** (no file locks)
-> - **Auto-restart on success**
-> - **Graceful drain mode**
->
-> This skill is retained only for the **atomic locking pattern** which remains useful for non-task batch operations (e.g., processing a queue of files).
+**DEPRECATION NOTICE** (2026-02-06): For parallel task processing, use `/swarm-supervisor` and `polecat swarm` instead. The polecat swarm provides:
+
+- **Worktree isolation** (no merge conflicts)
+- **API-based atomic claiming** (no file locks)
+- **Auto-restart on success**
+- **Graceful drain mode**
+
+This skill is retained only for the **atomic locking pattern** which remains useful for non-task batch operations (e.g., processing a queue of files).
 
 Coordinate batch operations with atomic locking to prevent duplicate processing.
 

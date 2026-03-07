@@ -1,7 +1,18 @@
 ---
 name: briefing-bundle
+type: skill
 category: instruction
-description: Generate a morning briefing bundle with decision coversheets, email drafts, and annotation targets from the daily note.
+description: Generate morning briefing bundle with decision coversheets, email drafts, and annotation targets from the daily note. Run /daily first.
+triggers:
+  - "morning brief"
+  - "briefing bundle"
+  - "generate bundle"
+  - "decision brief"
+modifies_files: true
+needs_task: false
+mode: execution
+domain:
+  - operations
 allowed-tools: Read,Bash,Grep,Write,Edit,AskUserQuestion,~~email,~~calendar,~~pkb
 version: 0.1.0
 permalink: skills-briefing-bundle

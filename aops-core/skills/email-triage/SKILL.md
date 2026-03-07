@@ -1,7 +1,18 @@
 ---
 name: email-triage
+type: skill
 category: instruction
 description: Email triage workflow with mandatory archive receipt logging to task body
+triggers:
+  - "triage inbox"
+  - "email triage"
+  - "process inbox"
+  - "archive emails"
+modifies_files: true
+needs_task: false
+mode: execution
+domain:
+  - email
 allowed-tools: Read,Glob,Grep,Edit,Write,TodoWrite,AskUserQuestion,~~email,mcp__pkb__update_task,mcp__pkb__create_task,mcp__pkb__search
 version: 1.0.0
 permalink: skills-email-triage

@@ -1,5 +1,6 @@
 ---
 name: swarm-supervisor
+type: skill
 description: Orchestrate parallel polecat workers with isolated worktrees. Use polecat swarm for production parallel task processing.
 triggers:
   - "polecat swarm"
@@ -9,8 +10,11 @@ triggers:
   - "parallel workers"
   - "batch tasks"
   - "parallel processing"
-  - "supervise tasks"
-  - "orchestrate workflow"
+modifies_files: true
+needs_task: true
+mode: batch
+domain:
+  - operations
 ---
 
 # Swarm Supervisor - Full Lifecycle Orchestration

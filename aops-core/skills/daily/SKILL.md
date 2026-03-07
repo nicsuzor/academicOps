@@ -1,7 +1,19 @@
 ---
 name: daily
+type: skill
 category: instruction
 description: Daily note lifecycle - briefing, task recommendations, progress sync, and work summary. SSoT for daily note structure.
+triggers:
+  - "daily list"
+  - "daily note"
+  - "morning briefing"
+  - "update daily"
+  - "daily update"
+modifies_files: true
+needs_task: false
+mode: execution
+domain:
+  - operations
 allowed-tools: Read,Bash,Grep,Write,Edit,AskUserQuestion,~~email
 version: 2.0.0
 permalink: skills-daily
