@@ -14,6 +14,7 @@ dependencies = [
   "psutil>=5.9.0",
   # Skills dependencies
   "pdfminer-six>=20260107",
+  "streamlit>=1.54.0",
 ]
 
 [project.optional-dependencies]
