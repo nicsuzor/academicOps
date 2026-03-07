@@ -43,6 +43,10 @@ Is this a time-stamped observation? (what agent did, found, tried)
   → YES: Use tasks MCP (create_task or update_task) - NOT this skill
   → NO: Continue...
 
+Is this about the framework (axioms, heuristics)?
+  → YES: HALT and invoke /framework skill to add properly to $AOPS
+  → NO: Continue...
+
 Is this about the user? (projects, goals, context, tasks)
   → YES: Use appropriate location below
   → NO: Use `knowledge/<topic>/` for general facts
