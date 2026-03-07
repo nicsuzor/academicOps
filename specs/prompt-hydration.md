@@ -121,7 +121,7 @@ The hydrator interprets the workflow for this specific task, breaking it into co
 1. Read parser.py and understand the type error
 2. Implement the fix
 3. CHECKPOINT: Run pytest to verify fix works
-4. Commit and push
+4. Commit, push, and file a Pull Request
 ```
 
 ### 4. Guardrails
@@ -387,7 +387,7 @@ check the custodiet agent -- make sure it doesn't use inline python:
 3. Create packaged script in lib/ for the operation
 4. Update agent to call script instead of inline Python
 5. CHECKPOINT: Run tests to verify agent still functions correctly
-6. Commit and push
+6. Commit, push, and file a Pull Request
 7. Complete task
 ```
 ````

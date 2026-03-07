@@ -25,17 +25,17 @@ Workflows are the Bazaar's quality guarantee. By structuring work into required 
 
 **Always consider these.** Most workflows compose one or more base patterns.
 
-| Base                    | Pattern                                         | Skip When                            |
-| ----------------------- | ----------------------------------------------- | ------------------------------------ |
-| [[base-task-tracking]]  | Claim/create task, update progress, complete    | [[simple-question]], direct skill    |
-| [[base-tdd]]            | Red-green-refactor cycle                        | Non-code changes                     |
-| [[base-verification]]   | Checkpoint before completion                    | Trivial changes                      |
-| [[base-commit]]         | Stage, commit (why not what), push              | No file modifications                |
-| [[base-handover]]       | Session end: task, git push, reflection         | [[simple-question]]                  |
-| [[base-memory-capture]] | Store findings to memory MCP via /remember      | No discoveries, [[simple-question]]  |
-| [[base-qa]]             | QA checkpoint: lock criteria, gather, judge     | Trivial changes, user waives         |
-| [[base-batch]]          | Batch processing: chunk, parallelize, aggregate | Single item, items have dependencies |
-| [[base-investigation]]  | Investigation: hypothesis -> probe -> conclude  | Cause known, just executing          |
+| Base                    | Pattern                                              | Skip When                            |
+| ----------------------- | ---------------------------------------------------- | ------------------------------------ |
+| [[base-task-tracking]]  | Claim/create task, update progress, complete         | [[simple-question]], direct skill    |
+| [[base-tdd]]            | Red-green-refactor cycle                             | Non-code changes                     |
+| [[base-verification]]   | Checkpoint before completion                         | Trivial changes                      |
+| [[base-commit]]         | Stage, commit (why not what), push, and file PR      | No file modifications                |
+| [[base-handover]]       | Session end: task, git push, and file PR, reflection | [[simple-question]]                  |
+| [[base-memory-capture]] | Store findings to memory MCP via /remember           | No discoveries, [[simple-question]]  |
+| [[base-qa]]             | QA checkpoint: lock criteria, gather, judge          | Trivial changes, user waives         |
+| [[base-batch]]          | Batch processing: chunk, parallelize, aggregate      | Single item, items have dependencies |
+| [[base-investigation]]  | Investigation: hypothesis -> probe -> conclude       | Cause known, just executing          |
 
 ## Decision Tree
 

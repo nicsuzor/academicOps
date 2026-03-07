@@ -85,7 +85,7 @@ Skills MUST NOT contain dynamic data. All mutable state lives in $ACA_DATA.
 
 ## Trust Version Control (P#24)
 
-Git is the backup system. NEVER create backup files (`.bak`, `_old`, `_ARCHIVED_*`). Edit directly, rely on git. Commit AND push after completing logical work units. Commit promptly — no hesitation.
+Git is the backup system. NEVER create backup files (`.bak`, `_old`, `_ARCHIVED_*`). Edit directly, rely on git. Commit, PUSH, AND file a Pull Request after completing logical work units. Commit promptly — no hesitation.
 
 **Corollaries**:
 

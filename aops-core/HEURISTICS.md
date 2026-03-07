@@ -292,7 +292,7 @@ Tasks requiring human judgment default to `assignee: null`. Only mechanical work
 
 ## Skills Commit After Brain Writes (P#103)
 
-Skills writing to `$ACA_DATA` MUST commit and push with a specific message describing what was written. Use `brain-push.sh` helper:
+Skills writing to `$ACA_DATA` MUST commit, push, and file a Pull Request with a specific message describing what was written. Use `brain-push.sh` helper:
 
 ```bash
 brain-push.sh "knowledge: tech/new-fact"
