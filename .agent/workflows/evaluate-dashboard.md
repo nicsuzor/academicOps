@@ -25,9 +25,7 @@ Read the current specs before evaluating:
 - `specs/overwhelm-dashboard.md` — acceptance criteria and ADHD design principles
 - `specs/task-map.md` — task graph spec
 
-## 2. The Cold Open (MANDATORY — do this FIRST, before any technical checks)
-
-> **HARD GATE**: The report MUST include a cold-open narration. If your task specifies focus areas, you still do the cold open first. Focus areas narrow what you _fix_, not what you _see_. Skip this and the report is invalid.
+## 2. The Cold Open (do this FIRST, before any technical checks)
 
 Navigate to the dashboard. Pretend you are Nic at 9am. You slept badly. You have 6 projects, agents ran overnight, you can't remember what you were doing yesterday. You open this page.
 
@@ -40,23 +38,6 @@ Navigate to the dashboard. Pretend you are Nic at 9am. You slept badly. You have
 - Did anything feel like noise — information that exists because the system has it, not because you need it?
 
 Write this narration honestly. It is the most important part of the evaluation.
-
-### 2a. Text Readability Scan (MANDATORY)
-
-After the cold open narration, go back to the top and do a **systematic readability pass**. For every section on the page:
-
-1. Read the section heading and the first 3 visible items/lines of content
-2. For each item, ask: **"Would a user understand this?"** — is the text a meaningful description, or is it a slug, truncated ID, filename, or auto-generated gibberish?
-3. Flag any item where the displayed text is: a bare filename or path, a truncated sentence that ends mid-phrase, a hash/ID fragment, a generic placeholder, or jargon that only makes sense to the system
-
-Examples of failures:
-
-- `Https github com` — URL fragment used as a title
-- `Fix problem where` — sentence truncated mid-phrase
-- `Aops core butler` — system slug, not a human description
-- `[sessions] Commit changed files` — bracketed prefix + filename slug
-
-Record every failure. This scan catches data-quality and rendering issues that focus-area evaluation misses because it covers **every visible text element**, not just the sections you've been asked to evaluate.
 
 ## 3. The Three Questions Test
 
@@ -101,15 +82,13 @@ Write results to `qa/dashboard-qa-results-{date}.md`.
 
 **Structure the report with the user experience FIRST:**
 
-1. **Cold Open narration** — what you saw and felt (MANDATORY — report is invalid without this)
-2. **Text Readability Scan** — every section's visible text evaluated: meaningful or gibberish? (MANDATORY)
-3. **Three Questions verdict** — could you answer them? How did it feel?
-4. **Section experience review** — which sections earn their space?
-5. **Emotional assessment** — overall, does this dashboard reduce overwhelm?
-6. **Technical checks** — spec compliance matrix (pass/fail/untested)
-7. **Focus area findings** — detailed analysis of any specifically requested focus areas
-8. **Issues** — prioritized by user impact, not spec severity (include readability scan failures)
-9. **Verdict**: VERIFIED or ISSUES
+1. **Cold Open narration** — what you saw and felt
+2. **Three Questions verdict** — could you answer them? How did it feel?
+3. **Section experience review** — which sections earn their space?
+4. **Emotional assessment** — overall, does this dashboard reduce overwhelm?
+5. **Technical checks** — spec compliance matrix (pass/fail/untested)
+6. **Issues** — prioritized by user impact, not spec severity
+7. **Verdict**: VERIFIED or ISSUES
 
 ## 7. Decomposition & Task Creation
 

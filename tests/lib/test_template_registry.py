@@ -61,7 +61,8 @@ def configured_registry(templates_dir: Path):
     """Get a registry configured with test templates directory."""
     from lib.template_registry import TemplateRegistry
 
-    return TemplateRegistry.configure(templates_dir=templates_dir)
+    yield TemplateRegistry.configure(templates_dir=templates_dir)
+    TemplateRegistry.reset()
 
 
 # =============================================================================
@@ -89,11 +90,22 @@ def test_get_spec_all_registered_templates(registry):
     expected_names = [
         "hydration.block",
         "hydration.warn",
+        "hydration.opened",
+        "hydration.closed",
+        "hydration.policy_message",
         "custodiet.context",
         "custodiet.instruction",
-        "custodiet.fallback",
+        "custodiet.verified",
+        "custodiet.policy_message",
+        "custodiet.policy_context",
+        "custodiet.countdown",
+        "qa.complete",
+        "qa.policy_message",
+        "qa.policy_context",
+        "handover.bound",
+        "handover.complete",
+        "handover.policy_message",
         "stop.handover_block",
-        "tool.gate_message",
     ]
 
     for name in expected_names:
@@ -346,6 +358,7 @@ def test_configure_creates_fresh_instance(tmp_path: Path):
     reg2 = TemplateRegistry.configure(templates_dir=tmp_path)
     assert reg1 is not reg2
     assert reg2._templates_dir == tmp_path
+    TemplateRegistry.reset()
 
 
 # =============================================================================

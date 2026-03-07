@@ -42,7 +42,7 @@ GATE_CONFIGS = [
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
                     reset_ops_counter=True,
-                    system_message_template="💧 Hydration complete.",
+                    system_message_key="hydration.opened",
                 ),
             ),
             # User Prompt (not ignored) -> Close
@@ -53,8 +53,8 @@ GATE_CONFIGS = [
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,
                     custom_action="hydrate_prompt",
-                    system_message_template="💧 New user prompt detected; fresh hydration required.",
-                    context_template="💧 New user prompt detected; fresh hydration required. Immediately invoke the **prompt-hydrator** agent with argument: `{temp_path}`\n",
+                    system_message_key="hydration.closed",
+                    context_key="hydrator.instruction",
                 ),
             ),
         ],
@@ -72,16 +72,8 @@ GATE_CONFIGS = [
                     custom_check="is_not_safe_toolsearch",
                 ),
                 verdict=HYDRATION_GATE_MODE,
-                # Brief user-facing summary
-                message_template="💧 Hydration required.",
-                # Full agent instructions
-                context_template=(
-                    "**ERROR:** You need to hydrate user prompts before you can use tools. To ensure alignment with project workflows and axioms, please invoke the **prompt-hydrator** agent with: `{temp_path}`\n\n"
-                    "Command:\n"
-                    "- Gemini: `delegate_to_agent(name='aops-core:prompt-hydrator', query='{temp_path}')`\n"
-                    "- Claude: `Agent(subagent_type='aops-core:prompt-hydrator', prompt='{temp_path}')`\n\n"
-                    "Invoke the prompt-hydrator to satisfy this gate."
-                ),
+                message_key="hydration.policy_message",
+                context_key="hydration.block",
             )
         ],
     ),
@@ -93,10 +85,7 @@ GATE_CONFIGS = [
         countdown=CountdownConfig(
             start_before=7,
             threshold=CUSTODIET_TOOL_CALL_THRESHOLD,
-            message_template=(
-                "◇ {remaining} turns until compliance check. \n"
-                "Run the check proactively to avoid being blocked by invoking the **custodiet** agent with file path argument:\n`{temp_path}`\n\n"
-            ),
+            message_key="custodiet.countdown",
         ),
         triggers=[
             # Custodiet check -> Reset
@@ -112,8 +101,8 @@ GATE_CONFIGS = [
                 ),
                 transition=GateTransition(
                     reset_ops_counter=True,
-                    system_message_template="◇ Compliance verified.",
-                    context_template="◇ Compliance verified.",
+                    system_message_key="custodiet.verified",
+                    context_key="custodiet.verified",
                 ),
             ),
         ],
@@ -126,13 +115,8 @@ GATE_CONFIGS = [
                     excluded_tool_categories=["infrastructure", "always_available", "read_only"],
                 ),
                 verdict=CUSTODIET_GATE_MODE,
-                message_template="✕ Compliance check required ({ops_since_open} ops since last check).",
-                context_template=(
-                    "**ERROR:** Compliance check OVERDUE. You need to invoke the **custodiet** agent before you can use tools.\n\n"
-                    "**Periodic compliance check required ({ops_since_open} ops since last check).** Invoke the **custodiet** agent with the file path argument: `{temp_path}`\n"
-                    "- Gemini: `delegate_to_agent(name='custodiet', query='{temp_path}')`\n"
-                    "- Claude: `Agent(subagent_type='custodiet', prompt='{temp_path}')`\n"
-                ),
+                message_key="custodiet.policy_message",
+                context_key="custodiet.policy_context",
                 custom_action="prepare_compliance_report",
             ),
         ],
@@ -157,7 +141,7 @@ GATE_CONFIGS = [
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
-                    system_message_template="🧪 QA complete.",
+                    system_message_key="qa.complete",
                 ),
             ),
         ],
@@ -170,17 +154,8 @@ GATE_CONFIGS = [
                 ),
                 verdict=QA_GATE_MODE,
                 custom_action="prepare_qa_review",
-                message_template="✕ QA verification required before exit.",
-                context_template=(
-                    "**QA VERIFICATION REQUIRED**\n\n"
-                    "You must invoke the **qa** agent to verify planned requirements before exiting.\n\n"
-                    "**Instruction**:\n"
-                    "Run the qa with this command:\n"
-                    "- Gemini: `delegate_to_agent(name='aops-core:qa', query='{temp_path}')`\n"
-                    "- Claude: `Agent(subagent_type='aops-core:qa', prompt='{temp_path}')`\n"
-                    "- Make sure you obey the instructions the tool or subagent produces, but do not print the output to the user -- it just clutters up the conversation.\n\n"
-                    "This is a technical requirement. Status: currently BLOCKED, but clearing this is quick and easy -- just execute the command!"
-                ),
+                message_key="qa.policy_message",
+                context_key="qa.policy_context",
             ),
         ],
     ),
@@ -202,7 +177,7 @@ GATE_CONFIGS = [
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,
-                    system_message_template="▶ Task bound. Handover required before exit.",
+                    system_message_key="handover.bound",
                 ),
             ),
             # /dump skill completes -> Open
@@ -218,7 +193,7 @@ GATE_CONFIGS = [
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
-                    system_message_template="≡ Finalization complete.",
+                    system_message_key="handover.complete",
                 ),
             ),
         ],
@@ -230,11 +205,8 @@ GATE_CONFIGS = [
                     hook_event="Stop",
                 ),
                 verdict=HANDOVER_GATE_MODE,
-                message_template="≡ Handover gate CLOSED — invoke `/dump` before exit.",
-                context_template=(
-                    "≡ Handover gate is **CLOSED**. The gate will only open to allow exit once you complete the Dump Skill.\n\n"
-                    "Run `/dump` to open the gate and allow exit.\n\n"
-                ),
+                message_key="handover.policy_message",
+                context_key="stop.handover_block",
             ),
         ],
     ),

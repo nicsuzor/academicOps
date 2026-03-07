@@ -10,7 +10,7 @@ import sys
 import textwrap
 import time
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import quote
 
@@ -312,45 +312,6 @@ def load_token_metrics() -> dict | None:
     return totals
 
 
-def _extract_first_prompt_from_transcript(session_filename: str) -> str:
-    """Extract the first user prompt from an abridged transcript file.
-
-    The abridged markdown has frontmatter-like content including:
-    **Original User Request** (first prompt): <the actual prompt>
-
-    Returns the prompt text (truncated to 120 chars) or empty string.
-    """
-    transcripts_dir = get_transcripts_dir()
-    # session_filename might be stem only or have extension
-    stem = session_filename.replace("-abridged.md", "").replace(".md", "")
-    abridged = transcripts_dir / f"{stem}-abridged.md"
-
-    if not abridged.exists():
-        return ""
-
-    try:
-        # Read just the first 2KB — the prompt is near the top
-        text = abridged.read_text()[:2048]
-        # Look for the "Original User Request" line
-        marker = "**Original User Request**"
-        idx = text.find(marker)
-        if idx == -1:
-            return ""
-        # Extract the rest of the line after the colon
-        line_start = text.find(":", idx + len(marker))
-        if line_start == -1:
-            return ""
-        line_end = text.find("\n", line_start)
-        if line_end == -1:
-            line_end = len(text)
-        prompt = text[line_start + 1 : line_end].strip()
-        if prompt:
-            return prompt[:120] + ("..." if len(prompt) > 120 else "")
-    except OSError:
-        pass
-    return ""
-
-
 def _extract_summary_from_filename(filename: str) -> str:
     """Extract a human-readable summary from a session filename slug.
 
@@ -457,13 +418,7 @@ def get_recent_sessions(hours: int = 24) -> list[dict]:
                         summary = acc
                         break
 
-            # If still poor, try first user prompt from the abridged transcript
-            if (not summary or "```" in str(summary)) and session_file:
-                prompt_text = _extract_first_prompt_from_transcript(session_file)
-                if prompt_text:
-                    summary = prompt_text
-
-            # Last resort: filename slug (produces gibberish but better than nothing)
+            # If still poor, try filename slug
             if (not summary or "```" in str(summary)) and session_filename:
                 summary = _extract_summary_from_filename(session_filename)
 
@@ -1589,22 +1544,9 @@ def get_where_you_left_off(hours: int = 24, limit: int = 10) -> dict:
 
         project = s.get("project") or "unknown"
         session_short = s.get("session_short") or (s.get("session_id", "")[:7])
-        full_session_id = s.get("session_id", "")
 
         # Clean fields for display
         clean_goal = clean_activity_text(goal)
-
-        # If the goal is very short (likely a slug), try to get the first user prompt
-        # from the abridged transcript for a better description
-        if clean_goal and len(clean_goal) < 40 and full_session_id:
-            transcripts_dir = get_transcripts_dir()
-            matches = list(transcripts_dir.glob(f"*-{session_short}*-abridged.md"))
-            if matches:
-                prompt_text = _extract_first_prompt_from_transcript(
-                    matches[0].stem.replace("-abridged", "")
-                )
-                if prompt_text and len(prompt_text) > len(clean_goal):
-                    clean_goal = prompt_text
         clean_now = clean_activity_text(now_task) if now_task else None
         clean_next = clean_activity_text(next_task) if next_task else None
 
@@ -3909,20 +3851,30 @@ def render_task_graph_page():
                     help="How strongly same-project nodes are pulled together.",
                 )
 
+        st.markdown("**View Mode**")
+        leaf_view_enabled = st.checkbox(
+            "Leaf view",
+            value=False,
+            key="tg_leafview",
+            help="Show only leaf tasks (actionable work with no actionable children) "
+            "plus their full ancestor chains. Shows your actual work frontier.",
+        )
+
         st.markdown("**Quick View**")
         quick_view_enabled = st.checkbox(
             "Top N by importance",
-            value=True,
+            value=not leaf_view_enabled,
             key="tg_quickview",
             help="Show only the highest-priority active nodes + their structural parents. "
             "Dramatically reduces visual noise.",
+            disabled=leaf_view_enabled,
         )
         quick_view_n = st.select_slider(
             "N",
             options=[25, 50, 80, 120, 200],
             value=80,
             key="tg_quickview_n",
-            disabled=not quick_view_enabled,
+            disabled=not quick_view_enabled or leaf_view_enabled,
         )
 
     if d3_graph:
@@ -3980,9 +3932,54 @@ def render_task_graph_page():
             n for n in all_nodes if n["id"] in visible_leaf_ids or n["id"] in structural_ids
         ]
 
-        # Quick View: keep top N nodes by importance score + their structural parents
+        # Leaf View: show only leaf tasks + full ancestor chains
         _structural_ids: set[str] = set()
-        if quick_view_enabled and len(filtered) > quick_view_n:
+        if leaf_view_enabled:
+            _actionable = {"active", "in_progress", "blocked", "merge_ready"}
+            _node_by_id = {n["id"]: n for n in all_nodes}
+
+            # Build children map from all nodes (not just filtered)
+            _children_map: dict[str, list[str]] = {}
+            for n in all_nodes:
+                p = n.get("parent")
+                if p:
+                    _children_map.setdefault(p, []).append(n["id"])
+
+            # Identify leaves: actionable nodes with no actionable children
+            _leaf_ids: set[str] = set()
+            for n in filtered:
+                status = n.get("status", "inbox").lower()
+                if status not in _actionable:
+                    continue
+                children = _children_map.get(n["id"], [])
+                has_actionable_child = any(
+                    _node_by_id.get(c, {}).get("status", "inbox").lower() in _actionable
+                    for c in children
+                )
+                if not has_actionable_child:
+                    _leaf_ids.add(n["id"])
+
+            # Walk up parent chains to collect all ancestors
+            _ancestor_ids: set[str] = set()
+            for leaf_id in _leaf_ids:
+                current = _node_by_id.get(leaf_id, {}).get("parent")
+                while current and current in _node_by_id and current not in _ancestor_ids:
+                    _ancestor_ids.add(current)
+                    current = _node_by_id.get(current, {}).get("parent")
+
+            _keep_ids = _leaf_ids | _ancestor_ids
+            _structural_ids = _ancestor_ids - _leaf_ids
+            n_before = len(filtered)
+            filtered = [n for n in all_nodes if n["id"] in _keep_ids]
+
+            with st.sidebar.expander("Leaf view stats", expanded=False):
+                st.caption(
+                    f"{len(_leaf_ids)} leaves + {len(_ancestor_ids)} ancestors "
+                    f"= {len(filtered)} nodes (from {n_before} filtered)"
+                )
+
+        # Quick View: keep top N nodes by importance score + their structural parents
+        if not leaf_view_enabled and quick_view_enabled and len(filtered) > quick_view_n:
             import time as _time
             from datetime import datetime as _dt
 
@@ -4078,7 +4075,7 @@ def render_task_graph_page():
 
         d3_graph["nodes"] = filtered
 
-        _leaf_structural = _structural_ids if _structural_ids else None
+        _leaf_structural = _structural_ids if leaf_view_enabled else None
         d3_data = prepare_embedded_graph_data(d3_graph, structural_ids=_leaf_structural)
 
         # Apply sidebar force tuning overrides to forceConfig before rendering
@@ -4312,101 +4309,6 @@ def render_recent_prompts():
             st.markdown("---")
 
 
-def render_workload_page():
-    """Render the Workload Overview — all leaf tasks in a treemap grouped by project."""
-    st.markdown("### Workload Overview")
-    st.caption(
-        "All actionable leaf tasks grouped by project. Size = downstream weight, color = status."
-    )
-
-    d3_graph = _load_merged_graph()
-    if not d3_graph:
-        st.warning("No graph data found. Run `generate-viz.sh` to generate.")
-        return
-
-    all_nodes = d3_graph.get("nodes", [])
-
-    # Build children map
-    children_map: dict[str, list[str]] = {}
-    for n in all_nodes:
-        p = n.get("parent")
-        if p:
-            children_map.setdefault(p, []).append(n["id"])
-
-    node_by_id = {n["id"]: n for n in all_nodes}
-
-    # Actionable statuses
-    actionable = {"active", "in_progress", "blocked", "merge_ready", "waiting", "review"}
-
-    # Identify leaf tasks: actionable nodes with no actionable children
-    leaf_ids: set[str] = set()
-    for n in all_nodes:
-        status = (n.get("status") or "inbox").lower()
-        if status not in actionable:
-            continue
-        children = children_map.get(n["id"], [])
-        has_actionable_child = any(
-            (node_by_id.get(c, {}).get("status") or "inbox").lower() in actionable for c in children
-        )
-        if not has_actionable_child:
-            leaf_ids.add(n["id"])
-
-    # Walk up parent chains to collect ancestors (structural nodes for treemap hierarchy)
-    ancestor_ids: set[str] = set()
-    for leaf_id in leaf_ids:
-        current = node_by_id.get(leaf_id, {}).get("parent")
-        while current and current in node_by_id and current not in ancestor_ids:
-            ancestor_ids.add(current)
-            current = node_by_id.get(current, {}).get("parent")
-
-    keep_ids = leaf_ids | ancestor_ids
-    structural_ids = ancestor_ids - leaf_ids
-
-    # Filter graph to keep only these nodes
-    filtered = [n for n in all_nodes if n["id"] in keep_ids]
-    d3_graph["nodes"] = filtered
-
-    # Status counts
-    from collections import Counter as _WCounter
-
-    status_counts = _WCounter(
-        (n.get("status") or "inbox").lower() for n in filtered if n["id"] in leaf_ids
-    )
-    parts = []
-    for s, label in [
-        ("active", "active"),
-        ("in_progress", "in-progress"),
-        ("blocked", "blocked"),
-        ("waiting", "waiting"),
-        ("review", "review"),
-    ]:
-        if status_counts.get(s, 0) > 0:
-            parts.append(f"{status_counts[s]} {label}")
-    status_str = " · ".join(parts) if parts else f"{len(leaf_ids)} tasks"
-    st.markdown(f"**{len(leaf_ids)} leaf tasks** — {status_str}")
-
-    # Prepare graph data with structural muting
-    d3_data = prepare_embedded_graph_data(d3_graph, structural_ids=structural_ids)
-
-    # Determine best layout: prefer treemap, fall back to circle_pack
-    available = d3_data.get("availableLayouts", [])
-    if "treemap" in available:
-        layout = "treemap"
-    elif "circle_pack" in available:
-        layout = "circle_pack"
-    elif "tree" in available:
-        layout = "tree"
-    else:
-        layout = "force"  # fallback
-
-    render_embedded_graph(
-        d3_data,
-        height=800,
-        project_filter="ALL",
-        layout_mode=layout,
-    )
-
-
 def render_session_summary():
     """Render summary of today's and yesterday's sessions."""
     from datetime import timedelta
@@ -4520,8 +4422,9 @@ def render_session_summary():
 # UNIFIED DASHBOARD - Single page: Graph + Project boxes
 # ============================================================================
 
-from lib.task_model import TaskStatus
 from task_manager_ui import render_task_editor
+
+from lib.task_model import TaskStatus
 
 
 @st.dialog("Edit Task")
@@ -4551,7 +4454,7 @@ def _handle_graph_action(action: str, task_id: str):
 # Navigation
 page = st.sidebar.radio(
     "View Mode",
-    ["Dashboard", "Manage Tasks", "Session Summary", "Task Graph", "Workload"],
+    ["Dashboard", "Manage Tasks", "Session Summary", "Task Graph"],
     index=0,
 )
 
@@ -4591,10 +4494,6 @@ if page == "Session Summary":
 
 if page == "Task Graph":
     render_task_graph_page()
-    st.stop()
-
-if page == "Workload":
-    render_workload_page()
     st.stop()
 
 # ADHD-optimized order: running -> needs me -> dropped -> context -> counts -> story
@@ -4748,34 +4647,6 @@ if active_sessions_wlo or paused_sessions_wlo:
 # Load synthesis
 synthesis = load_synthesis()
 
-
-def _build_session_slug_replacements(synth: dict) -> dict[str, str]:
-    """Build a mapping from session summary slugs to real first-prompt text.
-
-    Uses the sessions.recent array in synthesis.json to find session IDs,
-    then reads the first user prompt from abridged transcripts.
-    Returns {slug_lower: real_prompt} for any session where the transcript
-    has a better description than the slug.
-    """
-    replacements: dict[str, str] = {}
-    recent = synth.get("sessions", {}).get("recent", [])
-    for s in recent:
-        slug = s.get("summary", "")
-        sid = s.get("session_id", "")
-        if not slug or not sid:
-            continue
-        # Find the transcript file for this session
-        transcripts_dir = get_transcripts_dir()
-        # Search for the abridged file matching this session ID
-        matches = list(transcripts_dir.glob(f"*-{sid}*-abridged.md"))
-        if not matches:
-            continue
-        prompt = _extract_first_prompt_from_transcript(matches[0].stem.replace("-abridged", ""))
-        if prompt and prompt.lower() != slug.lower():
-            replacements[slug.lower()] = prompt
-    return replacements
-
-
 # === LLM SYNTHESIS PANEL (if available) ===
 if synthesis:
     # Calculate age and staleness
@@ -4791,9 +4662,6 @@ if synthesis:
         else ""
     )
 
-    # Build slug→prompt replacements for better narrative/accomplishment text
-    slug_replacements = _build_session_slug_replacements(synthesis)
-
     synth_html = "<div class='synthesis-panel'>"
     _synth_info = info_icon(
         "Aggregated from today's session summary JSON files (scripts/synthesize_dashboard.py). Each session's Framework Reflection (accomplishments, friction points, outcome) is collected from $AOPS_SESSIONS/summaries/. Narrative bullets are per-session summaries prefixed by project. Accomplishments are deduplicated across sessions. Alignment tracks success/failure outcomes. No LLM calls — pure aggregation."
@@ -4803,66 +4671,37 @@ if synthesis:
     # Narrative section - tell the day's story
     narrative = synthesis.get("narrative", [])
     if narrative:
-        # Clean up narrative bullets: strip [project] prefixes, deduplicate
-        seen = set()
-        clean_bullets = []
+        synth_html += "<div class='synthesis-narrative'>"
+        synth_html += "<div class='synthesis-narrative-title'>📖 TODAY'S STORY</div>"
+        synth_html += "<ul class='synthesis-narrative-list'>"
         for bullet in narrative:
-            # Strip "[project] " prefix pattern
-            cleaned = re.sub(r"^\[[\w-]+\]\s*", "", bullet).strip()
-            if not cleaned:
-                continue
-            # Replace slug-like text with real prompt if available
-            if cleaned.lower() in slug_replacements:
-                cleaned = slug_replacements[cleaned.lower()]
-            # Capitalize first letter
-            cleaned = cleaned[0].upper() + cleaned[1:] if cleaned else cleaned
-            if cleaned.lower() not in seen:
-                seen.add(cleaned.lower())
-                clean_bullets.append(cleaned)
-        if clean_bullets:
-            synth_html += "<div class='synthesis-narrative'>"
-            synth_html += "<div class='synthesis-narrative-title'>📖 TODAY'S STORY</div>"
-            synth_html += "<ul class='synthesis-narrative-list'>"
-            for bullet in clean_bullets:
-                synth_html += f"<li>{esc(bullet)}</li>"
-            synth_html += "</ul></div>"
+            synth_html += f"<li>{esc(bullet)}</li>"
+        synth_html += "</ul></div>"
 
     # Grid of status cards
     synth_html += "<div class='synthesis-grid'>"
 
-    # Done card — derive count from summary items for accuracy
+    # Done card
     accomplishments = synthesis.get("accomplishments", {})
-    acc_summary = accomplishments.get("summary", "")
-    if acc_summary:
-        # Count actual items in the summary (semicolon-separated)
-        acc_items = [s.strip() for s in acc_summary.split(";") if s.strip()]
-        # Replace slug-like items with real prompts
-        acc_items = [slug_replacements.get(item.lower(), item) for item in acc_items]
-        acc_count = len(acc_items)
+    if accomplishments.get("summary"):
         synth_html += "<div class='synthesis-card done'>"
-        synth_html += f"<div class='synthesis-card-title'>✅ DONE ({acc_count})</div>"
         synth_html += (
-            "<div class='synthesis-card-content'><ul style='margin: 0; padding-left: 1.2em;'>"
+            f"<div class='synthesis-card-title'>✅ DONE ({accomplishments.get('count', 0)})</div>"
         )
-        for item in acc_items:
-            synth_html += f"<li>{esc(item)}</li>"
-        synth_html += "</ul></div>"
+        synth_html += (
+            f"<div class='synthesis-card-content'>{esc(accomplishments.get('summary', ''))}</div>"
+        )
         synth_html += "</div>"
 
-    # Alignment card — only show if there's a meaningful note (not the default placeholder)
+    # Alignment card
     alignment = synthesis.get("alignment", {})
-    alignment_note = alignment.get("note", "")
-    if alignment_note and alignment_note.lower() not in (
-        "no session outcomes recorded",
-        "no outcomes recorded",
-        "no alignment data",
-    ):
+    if alignment.get("note"):
         status = alignment.get("status", "drifted")
         status_class = f"alignment {status}"
         status_icon = "✅" if status == "on_track" else "⚠️" if status == "drifted" else "🚫"
-        synth_html += f"<div class='synthesis-card {esc(status_class)}'>"
+        synth_html += f"<div class='synthesis-card {status_class}'>"
         synth_html += f"<div class='synthesis-card-title'>{status_icon} ALIGNMENT</div>"
-        synth_html += f"<div class='synthesis-card-content'>{esc(alignment_note)}</div>"
+        synth_html += f"<div class='synthesis-card-content'>{esc(alignment.get('note', ''))}</div>"
         synth_html += "</div>"
 
     # Context card
@@ -4885,29 +4724,42 @@ if synthesis:
         )
         synth_html += "</div>"
 
-    # Token metrics — loaded once, used in SESSION INSIGHTS below
+    # Token usage card
     token_metrics = load_token_metrics()
+    if token_metrics:
+        total_tokens = token_metrics["input_tokens"] + token_metrics["output_tokens"]
+        # Format tokens: K for thousands, M for millions
+        if total_tokens >= 1_000_000:
+            tokens_str = f"{total_tokens / 1_000_000:.1f}M"
+        elif total_tokens >= 1_000:
+            tokens_str = f"{total_tokens / 1_000:.0f}K"
+        else:
+            tokens_str = str(total_tokens)
+
+        cache_rate = token_metrics["cache_hit_rate"]
+        # Color coding: green >70%, yellow 40-70%, red <40%
+        if cache_rate >= 70:
+            gauge_color = "#4ade80"
+        elif cache_rate >= 40:
+            gauge_color = "#fbbf24"
+        else:
+            gauge_color = "#f87171"
+
+        session_count = token_metrics["session_count"]
+        synth_html += "<div class='synthesis-card tokens'>"
+        synth_html += (
+            f"<div class='synthesis-card-title'>📊 TOKENS ({session_count} sessions)</div>"
+        )
+        synth_html += f"<div class='synthesis-card-content'>{tokens_str} total <span class='cache-gauge'><span class='cache-gauge-fill' style='width: {cache_rate:.0f}%; background: {gauge_color};'></span></span> {cache_rate:.0f}% cache</div>"
+        synth_html += "</div>"
 
     synth_html += "</div>"  # End grid
 
-    # Session Insights panel (tokens, skill compliance, context gaps)
+    # Session Insights panel (skill compliance, context gaps)
     skill_insights = synthesis.get("skill_insights", {})
-    show_insights = skill_insights or token_metrics
-    if show_insights:
-        session_label = ""
-        if token_metrics:
-            sc = token_metrics["session_count"]
-            total_tok = token_metrics["input_tokens"] + token_metrics["output_tokens"]
-            if total_tok >= 1_000_000:
-                tok_str = f"{total_tok / 1_000_000:.1f}M"
-            elif total_tok >= 1_000:
-                tok_str = f"{total_tok / 1_000:.0f}K"
-            else:
-                tok_str = str(total_tok)
-            cache_pct = token_metrics["cache_hit_rate"]
-            session_label = f" — {sc} sessions, {tok_str} tokens, {cache_pct:.0f}% cache"
+    if skill_insights:
         synth_html += "<div class='insights-panel'>"
-        synth_html += f"<div class='insights-title'>🔍 SESSION INSIGHTS{session_label}</div>"
+        synth_html += "<div class='insights-title'>🔍 SESSION INSIGHTS</div>"
 
         # Stats row
         compliance = skill_insights.get("compliance_rate")
@@ -5017,9 +4869,9 @@ try:
 
             path_html += "</div>"
 
-        # Group threads by project (newest first)
+        # Group threads by project
         threads_by_project = {}
-        for thread in reversed(path.threads):
+        for thread in path.threads:
             proj = thread.project or "unknown"
             if proj not in threads_by_project:
                 threads_by_project[proj] = []
@@ -5072,24 +4924,7 @@ try:
                     if not re.match(r"^[a-z]+-[a-f0-9]+$", thread.git_branch):
                         branch_html = f"<div class='session-branch' style='font-size: 0.75em; opacity: 0.6; margin-top: -8px; margin-bottom: 8px;' title='Git Branch'>branch: {esc(thread.git_branch)}</div>"
 
-                # Format date/time for thread header
-                time_label = ""
-                if thread.start_time:
-                    now = datetime.now().astimezone()
-                    thread_dt = thread.start_time
-                    if thread_dt.date() == now.date():
-                        time_label = thread_dt.strftime("today %H:%M")
-                    elif thread_dt.date() == (now - timedelta(days=1)).date():
-                        time_label = thread_dt.strftime("yesterday %H:%M")
-                    else:
-                        time_label = thread_dt.strftime("%b %d %H:%M")
-
-                time_html = (
-                    f" <span style='font-size: 0.75em; opacity: 0.5;'>{esc(time_label)}</span>"
-                    if time_label
-                    else ""
-                )
-                proj_buf += f"<div class='path-thread-header' title='{esc(cleaned_goal)}'>{goal_display} <span class='session-hash'>({sid_display})</span>{time_html}</div>"
+                proj_buf += f"<div class='path-thread-header' title='{esc(cleaned_goal)}'>{goal_display} <span class='session-hash'>({sid_display})</span></div>"
                 proj_buf += branch_html
 
                 # Consolidate consecutive TASK_UPDATE events
@@ -5167,8 +5002,6 @@ try:
                         or "you are a polecat worker" in _desc_lower
                         # Placeholder text from Framework Reflection
                         or _desc_lower.startswith("successfully completed: [")
-                        # Placeholder "Created: something" entries from incomplete event logging
-                        or _desc_lower in ("created: something", "created something")
                         # Bare slash commands
                         or (cleaned_desc.startswith("/") and " " not in cleaned_desc.strip())
                     )
@@ -5240,6 +5073,7 @@ if _blocked_waiting:
         _needs_html += f"<div style='font-size: 0.8em; opacity: 0.7; padding-top: 4px;'>+ {len(_blocked_waiting) - 5} more</div>"
     _needs_html += "</div>"
     st.markdown(_needs_html, unsafe_allow_html=True)
+
 
 # === DAILY STORY SECTION ===
 daily_story = analyzer.extract_daily_story()
@@ -5343,8 +5177,17 @@ try:
         if task.get("status") in ("closed", "done", "completed"):
             continue
 
-        # Determine project — only use explicit project field
+        # Determine project
+        # 1. explicit project field
         proj = task.get("project")
+        # 2. infer from ID if missing
+        if not proj:
+            tid = task.get("id", "")
+            if "-" in tid:
+                proj = tid.split("-")[0]
+            else:
+                proj = "inbox"
+
         if not proj:
             proj = "inbox"
 
@@ -5409,14 +5252,8 @@ try:
         # Exclude hash-like names (8+ hex chars)
         if len(name) >= 8 and all(c in "0123456789abcdef-" for c in name.lower()):
             return False
-        # Reject short fragments: single chars, bare numbers, strings < 3 chars
-        if len(name) < 3:
-            return False
-        if name.isdigit():
-            return False
-        # Must be a known project (explicit project field or type=project in tasks)
-        if name not in valid_project_ids:
-            return False
+        # Valid project if specifically defined in valid_project_ids, or has tasks mapping to it:
+        # Note: Sub-projects will be grouped into parents shortly
         return True
 
     # Merge sub-project data into parent before filtering
