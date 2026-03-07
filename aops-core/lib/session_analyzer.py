@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from datetime import UTC, date, datetime
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -888,11 +888,11 @@ def get_recent_sessions(
     Returns:
         List of SessionData for matching sessions
     """
-    since = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+    since = datetime.now().astimezone().replace(hour=0, minute=0, second=0, microsecond=0)
     if hours < 24:
         from datetime import timedelta
 
-        since = datetime.now(UTC) - timedelta(hours=hours)
+        since = datetime.now().astimezone() - timedelta(hours=hours)
 
     sessions = find_sessions(project=project, since=since)
     analyzer = SessionAnalyzer()

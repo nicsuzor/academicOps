@@ -9,7 +9,7 @@ where HH is the 24-hour local time when the session was created.
 
 import hashlib
 import os
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
 
 
@@ -194,7 +194,7 @@ def get_hook_log_path(
     if date is None:
         from datetime import datetime
 
-        date = datetime.now(UTC).strftime("%Y-%m-%d")
+        date = datetime.now().astimezone().strftime("%Y-%m-%d")
 
     short_hash = get_session_short_hash(session_id)
     date_compact = date.replace("-", "")  # YYYY-MM-DD -> YYYYMMDD
@@ -380,7 +380,7 @@ def get_gate_file_path(
         return Path(env_path)
 
     if date is None:
-        date = datetime.now(UTC).strftime("%Y-%m-%d")
+        date = datetime.now().astimezone().strftime("%Y-%m-%d")
 
     short_hash = get_session_short_hash(session_id)
     date_compact = date.replace("-", "")
