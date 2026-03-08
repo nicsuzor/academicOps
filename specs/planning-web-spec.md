@@ -14,7 +14,7 @@ created: 2026-03-07
 
 - Replaces: `aops-tui-spec-v0.1-a190d899` (ratatui TUI), `specs/overwhelm-dashboard.md` (Streamlit dashboard)
 - Consumes: `aops graph` CLI output (`graph.json`, `knowledge-graph.json`), PKB MCP server, `synthesis.json`
-- Related: `specs/task-focus-scoring.md`, `specs/task-map.md`, `specs/effectual-planning-agent.md`, `specs/batch-graph-operations-spec.md`
+- Related: `specs/task-focus-scoring.md`, `specs/task-map.md`, `specs/effectual-planning-agent.md`, `specs/batch-graph-operations-spec.md`, `specs/planning-web-theme-guide.md`
 
 ---
 
@@ -690,3 +690,4 @@ A session must have initial prompt OR current task status. Sessions without mean
 - Snowden & Boone (2007). A Leader's Framework for Decision Making.
 - academicOps VISION.md — Framework vision and success criteria
 - academicOps STYLE.md — Visual design and typography standards
+- `specs/planning-web-theme-guide.md` — Operator and Holographic theme design details
