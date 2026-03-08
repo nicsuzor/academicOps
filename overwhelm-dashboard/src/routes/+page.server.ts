@@ -93,7 +93,9 @@ async function findActiveSessions(hours = 4): Promise<any[]> {
 
 function formatProjectName(folder: string): string {
     const parts = folder.replace(/^-/, '').split('-');
-    const skip = new Set(['home', 'Users', 'debian', 'nic', 'src', 'opt', '_aops', '']);
+    // Derive skip list from environment instead of hardcoding usernames
+    const homeSegments = (env.HOME || os.homedir()).split('/').filter(Boolean);
+    const skip = new Set([...homeSegments, 'src', 'opt', '_aops', '']);
     const meaningful = parts.filter(p => !skip.has(p) && !/^[a-f0-9]{8,}$/.test(p));
     return meaningful.pop() || folder;
 }
