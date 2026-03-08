@@ -20,7 +20,15 @@
         focusNeighborSet: null,
       }));
     } else if (node) {
-      selection.update((s) => ({ ...s, focusNodeId: node.id }));
+      // Build ego-network neighbor set so applyHighlightOpacity can dim non-neighbors
+      const neighbors = new Set<string>([node.id]);
+      $graphData?.links.forEach((l) => {
+        const sid = typeof l.source === "object" ? (l.source as { id: string }).id : l.source;
+        const tid = typeof l.target === "object" ? (l.target as { id: string }).id : l.target;
+        if (sid === node.id) neighbors.add(tid);
+        if (tid === node.id) neighbors.add(sid);
+      });
+      selection.update((s) => ({ ...s, focusNodeId: node.id, focusNeighborSet: neighbors }));
     }
   }
 

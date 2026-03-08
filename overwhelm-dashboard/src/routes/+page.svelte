@@ -48,6 +48,9 @@
     });
 
     $: if (rawGraph) {
+        // Explicitly reference all stores that affect graph output so Svelte
+        // tracks them as reactive dependencies and re-runs on any change.
+        const _deps = [$filters, $viewSettings, $selection];
         recomputeGraph();
     }
 
@@ -163,12 +166,6 @@
                 l.color = focusSet.has(sid) && focusSet.has(tid) ? l.color : "transparent";
             }
         });
-    }
-
-    $: {
-        if ($selection && rawGraph) {
-            recomputeGraph();
-        }
     }
 
     $: activeLayout = getLayoutFromViewSettings($viewSettings);
