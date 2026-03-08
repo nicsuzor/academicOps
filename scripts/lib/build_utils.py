@@ -274,10 +274,7 @@ def generate_gemini_hooks(
                 # e.g., SessionStart -> session-start
                 slug = "".join(["-" + c.lower() if c.isupper() else c for c in g_event]).lstrip("-")
 
-                # Set a safe UV_CACHE_DIR for Gemini because the default may be blocked by macOS Seatbelt.
-                # We use $HOME/.gemini/uv_cache which is a shared, persistent directory allowed
-                # by the seatbelt profile. Note: ~ does not expand inside double quotes in shell.
-                gemini_cmd = f'UV_CACHE_DIR="$HOME/.gemini/uv_cache" uv run --directory {aops_path} python {router_script_path} {g_event}'
+                gemini_cmd = f"uv run --directory {aops_path} python {router_script_path} {g_event}"
 
                 gemini_hooks[g_event].append(
                     {
