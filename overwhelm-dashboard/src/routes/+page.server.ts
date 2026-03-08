@@ -1,8 +1,9 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
+import os from 'node:os';
 import { env } from '$env/dynamic/private';
 
-const ACA_DATA = env.ACA_DATA || '/opt/nic/brain';
+const ACA_DATA = env.ACA_DATA || '';
 
 async function readJson(path: string): Promise<any | null> {
     try {
@@ -14,6 +15,7 @@ async function readJson(path: string): Promise<any | null> {
 }
 
 async function loadSynthesis(): Promise<any | null> {
+    if (!ACA_DATA) return null;
     const path = join(ACA_DATA, 'dashboard', 'synthesis.json');
     const data = await readJson(path);
     if (!data) return null;
@@ -27,7 +29,7 @@ async function loadSynthesis(): Promise<any | null> {
 }
 
 async function findActiveSessions(hours = 4): Promise<any[]> {
-    const claudeProjects = join(env.HOME || '/home/debian', '.claude', 'projects');
+    const claudeProjects = join(env.HOME || os.homedir(), '.claude', 'projects');
     const cutoff = Date.now() - hours * 3600 * 1000;
     const results: any[] = [];
 

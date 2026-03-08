@@ -185,18 +185,18 @@ textarea {
 }
 
 /* Holographic theme: override Tailwind-generated amber colors with cyan */
-.theme-holographic .text-primary { color: #00F0FF !important; }
-.theme-holographic .bg-primary { background-color: #00F0FF !important; }
-.theme-holographic .border-primary { border-color: #00F0FF !important; }
-.theme-holographic .text-primary\/60 { color: rgba(0, 240, 255, 0.6) !important; }
-.theme-holographic .text-primary\/70 { color: rgba(0, 240, 255, 0.7) !important; }
-.theme-holographic .text-primary\/80 { color: rgba(0, 240, 255, 0.8) !important; }
-.theme-holographic .text-primary\/40 { color: rgba(0, 240, 255, 0.4) !important; }
-.theme-holographic .text-primary\/30 { color: rgba(0, 240, 255, 0.3) !important; }
-.theme-holographic .border-primary\/30 { border-color: rgba(0, 240, 255, 0.3) !important; }
-.theme-holographic .border-primary\/20 { border-color: rgba(0, 240, 255, 0.2) !important; }
-.theme-holographic .border-primary\/10 { border-color: rgba(0, 240, 255, 0.1) !important; }
-.theme-holographic .bg-primary\/10 { background-color: rgba(0, 240, 255, 0.1) !important; }
-.theme-holographic .bg-primary\/20 { background-color: rgba(0, 240, 255, 0.2) !important; }
-.theme-holographic .bg-primary\/5 { background-color: rgba(0, 240, 255, 0.05) !important; }
-.theme-holographic .selection\:bg-primary::selection { background-color: #00F0FF !important; }
+.theme-holographic .text-primary { color: #00F0FF; }
+.theme-holographic .bg-primary { background-color: #00F0FF; }
+.theme-holographic .border-primary { border-color: #00F0FF; }
+.theme-holographic .text-primary\/60 { color: rgba(0, 240, 255, 0.6); }
+.theme-holographic .text-primary\/70 { color: rgba(0, 240, 255, 0.7); }
+.theme-holographic .text-primary\/80 { color: rgba(0, 240, 255, 0.8); }
+.theme-holographic .text-primary\/40 { color: rgba(0, 240, 255, 0.4); }
+.theme-holographic .text-primary\/30 { color: rgba(0, 240, 255, 0.3); }
+.theme-holographic .border-primary\/30 { border-color: rgba(0, 240, 255, 0.3); }
+.theme-holographic .border-primary\/20 { border-color: rgba(0, 240, 255, 0.2); }
+.theme-holographic .border-primary\/10 { border-color: rgba(0, 240, 255, 0.1); }
+.theme-holographic .bg-primary\/10 { background-color: rgba(0, 240, 255, 0.1); }
+.theme-holographic .bg-primary\/20 { background-color: rgba(0, 240, 255, 0.2); }
+.theme-holographic .bg-primary\/5 { background-color: rgba(0, 240, 255, 0.05); }
+.theme-holographic .selection\:bg-primary::selection { background-color: #00F0FF; }
