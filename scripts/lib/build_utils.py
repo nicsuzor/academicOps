@@ -274,6 +274,8 @@ def generate_gemini_hooks(
                 # e.g., SessionStart -> session-start
                 slug = "".join(["-" + c.lower() if c.isupper() else c for c in g_event]).lstrip("-")
 
+                gemini_cmd = f"uv run --directory {aops_path} python {router_script_path} {g_event}"
+
                 gemini_hooks[g_event].append(
                     {
                         "matcher": matcher,
@@ -281,7 +283,7 @@ def generate_gemini_hooks(
                             {
                                 "name": f"aops-router-{slug}",
                                 "type": "command",
-                                "command": f"uv run --directory {aops_path} python {router_script_path} {g_event}",
+                                "command": gemini_cmd,
                                 "timeout": timeout,
                             }
                         ],

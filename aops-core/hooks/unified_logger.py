@@ -12,7 +12,7 @@ import logging
 import os
 import sys
 import time
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
 
 import psutil
@@ -53,7 +53,7 @@ def log_hook_event(
         input_data = ctx.raw_input
         date = input_data.get("date")
         if date is None:
-            date = datetime.now(UTC).strftime("%Y-%m-%d")
+            date = datetime.now().astimezone().strftime("%Y-%m-%d")
 
         log_path = get_hook_log_path(session_id, input_data, date)
 

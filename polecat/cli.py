@@ -92,7 +92,7 @@ def save_worker_transcript(
         transcript_file = transcript_dir / f"{task_id}.jsonl"
 
         entry = {
-            "timestamp": datetime.now(UTC).isoformat(),
+            "timestamp": datetime.now().astimezone().isoformat(),
             "task_id": task_id,
             "agent": agent_type,
             "session_type": "polecat",
@@ -1402,7 +1402,7 @@ def analyze(ctx, task_id, transcript_lines):
 
     # Calculate staleness
     if task.modified:
-        now = datetime.now(UTC)
+        now = datetime.now().astimezone()
         modified = task.modified
         if modified.tzinfo is None:
             modified = modified.replace(tzinfo=UTC)
@@ -1604,7 +1604,7 @@ def reset_stalled(ctx, project, hours, dry_run, force):
     manager = PolecatManager(home_dir=ctx.obj.get("home"))
 
     # Calculate cutoff time
-    cutoff = datetime.now(UTC) - timedelta(hours=hours)
+    cutoff = datetime.now().astimezone() - timedelta(hours=hours)
 
     print(f"Checking for tasks stalled since {cutoff.isoformat()}...")
 
@@ -1730,7 +1730,7 @@ def watch(ctx, interval, stall_threshold, project):
     # Track seen PRs and last activity time
     seen_merge_ready = set()
     seen_review = set()
-    last_activity = datetime.now(UTC)
+    last_activity = datetime.now().astimezone()
 
     # Graceful shutdown
     stop_requested = False
@@ -1767,7 +1767,7 @@ def watch(ctx, interval, stall_threshold, project):
 
     while not stop_requested:
         try:
-            now = datetime.now(UTC)
+            now = datetime.now().astimezone()
 
             # Check for new merge_ready tasks (new PRs filed)
             merge_ready_tasks = manager.storage.list_tasks(
@@ -1963,7 +1963,7 @@ def summary(ctx, since, project):
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
-    cutoff = datetime.now(UTC) - timedelta(seconds=seconds)
+    cutoff = datetime.now().astimezone() - timedelta(seconds=seconds)
     cutoff_iso = cutoff.strftime("%Y-%m-%dT%H:%M:%S")
 
     # Format duration for display

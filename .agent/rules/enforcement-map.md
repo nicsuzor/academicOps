@@ -310,14 +310,16 @@ Session end is blocked until requirements are met. Two-phase validation ensures 
 
 ### Uncommitted Work Check
 
-**Enforcement**: `session_end_commit_check.py` Stop hook.
+**Enforcement**: `session_end_commit_check.py` Stop hook (legacy) + `commit` gate (Stop/SessionEnd events).
 
-Blocks session end if:
+The `commit` gate (`lib/gates/definitions.py`) enforces two policies on session exit:
 
-- Framework Reflection or test success detected in transcript
-- AND uncommitted changes exist in git
+- **Block** (`COMMIT_GATE_MODE`, default required): fires `has_uncommitted_work` custom check — blocks Stop/SessionEnd if uncommitted changes exist.
+- **Warn**: fires `needs_commit_reminder` custom check — warns if unpushed commits exist on the branch.
 
-Auto-commits staged changes. Blocks if unstaged changes require manual commit.
+Gate mode is configured via `COMMIT_GATE_MODE` environment variable (required, no default — fail-fast).
+
+`SessionEnd` events are routed to `gate.on_stop()` via `_call_gate_method` in `router.py` (used by Gemini agents). `SubagentStop` is excluded — subagent completion is not a session end and must not trigger commit enforcement.
 
 ## Commit-Time Validation (Pre-commit)
 

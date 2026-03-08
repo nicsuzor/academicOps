@@ -633,7 +633,7 @@ class HookRouter:
         - PostToolUse -> gate.on_tool_use()
         - UserPromptSubmit -> gate.on_user_prompt()
         - SessionStart -> gate.on_session_start()
-        - Stop -> gate.on_stop()
+        - Stop/SessionEnd -> gate.on_stop()
         - AfterAgent -> gate.on_after_agent()
         - SubagentStart -> gate.on_subagent_start()
         - SubagentStop -> gate.on_subagent_stop()
@@ -707,7 +707,7 @@ class HookRouter:
             return gate.on_user_prompt(ctx, state)
         elif event == "SessionStart":
             return gate.on_session_start(ctx, state)
-        elif event == "Stop":
+        elif event in ("Stop", "SessionEnd"):
             return gate.on_stop(ctx, state)
         elif event == "AfterAgent":
             return gate.on_after_agent(ctx, state)

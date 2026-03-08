@@ -88,7 +88,9 @@ class TaskStatus(Enum):
     IN_PROGRESS = "in_progress"  # Worker executing approved plan
 
     # PR phase (Phase 5)
-    REVIEW = "review"  # PR filed, awaiting review consensus
+    REVIEW = (
+        "review"  # PR submitted (PR filed), awaiting review consensus (submitted, not yet merged)
+    )
     MERGE_READY = "merge_ready"  # Reviews done, awaiting merge approval
     MERGING = "merging"  # Currently being merged (merge slot)
 
@@ -220,11 +222,12 @@ def _guard_depth_under_limit(task: Task, **kwargs: Any) -> tuple[bool, str | Non
     return True, None
 
 
-def _guard_pr_url_set(task: Task, **kwargs: Any) -> tuple[bool, str | None]:
-    """Guard: pr_url must be provided for REVIEW/MERGE_READY status."""
+def _guard_pr_metadata_set(task: Task, **kwargs: Any) -> tuple[bool, str | None]:
+    """Guard: pr_url or pr must be provided for REVIEW/MERGE_READY status."""
     pr_url = kwargs.get("pr_url") or task.pr_url
-    if not pr_url:
-        return False, "pr_url is required for REVIEW/MERGE_READY status"
+    pr = kwargs.get("pr") or task.pr
+    if not pr_url and not pr:
+        return False, "pr_url or pr (number) is required for REVIEW/MERGE_READY status"
     return True, None
 
 
@@ -287,7 +290,7 @@ TRANSITION_TABLE: dict[tuple[TaskStatus, TaskStatus], tuple[GuardFunc, str]] = {
     (TaskStatus.WAITING, TaskStatus.CANCELLED): (_guard_reason_set, "user_cancels"),
     (TaskStatus.WAITING, TaskStatus.FAILED): (_guard_diagnostic_set, "approval_timeout"),
     # From IN_PROGRESS
-    (TaskStatus.IN_PROGRESS, TaskStatus.REVIEW): (_guard_pr_url_set, "pr_filed"),
+    (TaskStatus.IN_PROGRESS, TaskStatus.REVIEW): (_guard_pr_metadata_set, "pr_filed"),
     (TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED): (
         _guard_unblock_condition_set,
         "dependency_discovered",
@@ -315,7 +318,7 @@ TRANSITION_TABLE: dict[tuple[TaskStatus, TaskStatus], tuple[GuardFunc, str]] = {
     (TaskStatus.BLOCKED, TaskStatus.ACTIVE): (_guard_always_pass, "unblock_condition_met"),
     (TaskStatus.BLOCKED, TaskStatus.DECOMPOSING): (_guard_always_pass, "unblock_condition_met"),
     (TaskStatus.BLOCKED, TaskStatus.IN_PROGRESS): (_guard_worker_id_set, "unblock_condition_met"),
-    (TaskStatus.BLOCKED, TaskStatus.REVIEW): (_guard_pr_url_set, "unblock_condition_met"),
+    (TaskStatus.BLOCKED, TaskStatus.REVIEW): (_guard_pr_metadata_set, "unblock_condition_met"),
     (TaskStatus.BLOCKED, TaskStatus.FAILED): (_guard_diagnostic_set, "blocked_timeout"),
     (TaskStatus.BLOCKED, TaskStatus.CANCELLED): (_guard_reason_set, "user_cancels"),
     # From DORMANT
@@ -369,8 +372,9 @@ def _validate_state_invariants(
 
     if new_status in (TaskStatus.REVIEW, TaskStatus.MERGE_READY):
         pr_url = kwargs.get("pr_url") or task.pr_url
-        if not pr_url:
-            return False, f"{new_status.value} status requires pr_url field"
+        pr = kwargs.get("pr") or task.pr
+        if not pr_url and not pr:
+            return False, f"{new_status.value} status requires pr_url or pr field"
 
     return True, None
 
@@ -453,6 +457,8 @@ class Task:
     unblock_condition: str | None = None  # Required when status=BLOCKED
     diagnostic: str | None = None  # Required when status=FAILED
     pr_url: str | None = None  # Required when status=REVIEW or MERGE_READY
+    pr: int | None = None  # PR number (Phase 5)
+    issue: int | None = None  # GitHub issue number
     worker_id: str | None = None  # Required when status=IN_PROGRESS
     approval_type: ApprovalType | None = None  # Set when status=WAITING
     decision_deadline: datetime | None = None  # Set when status=WAITING
@@ -576,6 +582,10 @@ class Task:
             fm["diagnostic"] = self.diagnostic
         if self.pr_url:
             fm["pr_url"] = self.pr_url
+        if self.pr:
+            fm["pr"] = self.pr
+        if self.issue:
+            fm["issue"] = self.issue
         if self.worker_id:
             fm["worker_id"] = self.worker_id
         if self.approval_type:
@@ -704,6 +714,15 @@ class Task:
         if isinstance(retry_count, str):
             retry_count = int(retry_count) if retry_count.isdigit() else 0
 
+        # Parse workflow state fields
+        pr = fm.get("pr")
+        if isinstance(pr, str):
+            pr = int(pr) if pr.isdigit() else None
+
+        issue = fm.get("issue")
+        if isinstance(issue, str):
+            issue = int(issue) if issue.isdigit() else None
+
         return cls(
             id=task_id,
             title=fm["title"],
@@ -730,6 +749,8 @@ class Task:
             unblock_condition=fm.get("unblock_condition"),
             diagnostic=fm.get("diagnostic"),
             pr_url=fm.get("pr_url"),
+            pr=pr,
+            issue=issue,
             worker_id=fm.get("worker_id"),
             approval_type=approval_type,
             decision_deadline=decision_deadline,
@@ -956,6 +977,8 @@ class Task:
         unblock_condition: str | None = None,
         diagnostic: str | None = None,
         pr_url: str | None = None,
+        pr: int | None = None,
+        issue: int | None = None,
         worker_id: str | None = None,
         approval_type: ApprovalType | None = None,
         decision_deadline: datetime | None = None,
@@ -1039,6 +1062,8 @@ class Task:
             "unblock_condition": unblock_condition,
             "diagnostic": diagnostic,
             "pr_url": pr_url,
+            "pr": pr,
+            "issue": issue,
             "worker_id": worker_id,
             "approval_type": approval_type,
             "decision_deadline": decision_deadline,
@@ -1080,6 +1105,10 @@ class Task:
             self.diagnostic = diagnostic
         if pr_url is not None:
             self.pr_url = pr_url
+        if pr is not None:
+            self.pr = pr
+        if issue is not None:
+            self.issue = issue
         if worker_id is not None:
             self.worker_id = worker_id
         if approval_type is not None:
@@ -1111,6 +1140,7 @@ class Task:
             TaskStatus.CANCELLED,
         ):
             self.pr_url = None
+            self.pr = None
         if new_status not in (TaskStatus.WAITING,):
             self.approval_type = None
             self.decision_deadline = None
