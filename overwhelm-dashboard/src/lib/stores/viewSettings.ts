@@ -5,9 +5,7 @@ export const viewSettings = writable({
     viewMode: 'Treemap',  // "Treemap", "Circle Pack", "Force Atlas 2", "SFDP", "Arc Diagram"
     topNLeaves: 80,
     liveSimulation: false,
-    chargeStrength: 1.0,
-    attractionStrength: 0.75,
-    clusterPull: 0.4
+    chargeStrength: 1.0
 });
 
 export const getLayoutFromViewSettings = ($settings: any) => {
