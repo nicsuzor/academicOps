@@ -354,7 +354,7 @@
     }
     :global(.node.illuminated) {
         opacity: 1 !important;
-        filter: drop-shadow(0 0 16px var(--neon-cyan));
+        filter: drop-shadow(0 0 16px var(--color-primary));
     }
     :global(path.force-edge) {
         transition:
@@ -367,7 +367,7 @@
     }
     :global(path.force-edge.illuminated) {
         opacity: 1 !important;
-        stroke: var(--neon-cyan) !important;
+        stroke: var(--color-primary) !important;
         stroke-width: 2px !important;
     }
 </style>
