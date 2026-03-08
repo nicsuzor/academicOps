@@ -180,7 +180,6 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
     Gemini CLI reads hooks from <extension>/hooks/hooks.json with:
     - Different event names (BeforeTool vs PreToolUse, etc.)
     - ${extensionPath} variable instead of ${CLAUDE_PLUGIN_ROOT}
-    - UV_CACHE_DIR set to seatbelt-safe path (macOS sandbox blocks default cache)
     """
     try:
         with open(src_path) as f:
@@ -238,12 +237,6 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
                             # Gemini CLI doesn't pass hook_event_name in stdin payload like Claude does,
                             # so we append it as a CLI argument for router.py to detect the event type
                             cmd = f"{cmd} {gemini_event}"
-
-                            # Set a safe UV_CACHE_DIR for Gemini because the default may be blocked
-                            # by macOS Seatbelt. We use $HOME/.gemini/uv_cache which is shared and
-                            # persistent across all extensions.
-                            if "uv run" in cmd:
-                                cmd = f'UV_CACHE_DIR="$HOME/.gemini/uv_cache" {cmd}'
 
                             new_hook["command"] = cmd
                         new_hooks.append(new_hook)
