@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Holographic ForceAtlas2 Visualizer</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0de3f2",
+                        "background-light": "#f5f8f8",
+                        "background-dark": "#102122",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk"]
+                    },
+                    borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+                },
+            },
+        }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(16, 33, 34, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(13, 227, 242, 0.2);
+        }
+        .glow-text {
+            text-shadow: 0 0 10px rgba(13, 227, 242, 0.5);
+        }
+        .network-bg {
+            background: radial-gradient(circle at center, #162d2e 0%, #102122 100%);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 antialiased overflow-x-hidden">
+<div class="relative flex h-auto min-h-screen w-full flex-col group/design-root">
+<div class="layout-container flex h-full grow flex-col">
+<!-- Top Navigation Bar -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-primary/20 px-6 py-4 glass-panel sticky top-0 z-50">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-3 text-primary">
+<span class="material-symbols-outlined text-3xl">hub</span>
+<h2 class="text-slate-100 text-xl font-bold leading-tight tracking-tight uppercase">ForceAtlas2 <span class="text-primary font-light">Visualizer</span></h2>
+</div>
+<nav class="hidden md:flex items-center gap-8">
+<a class="text-slate-100 hover:text-primary transition-colors text-sm font-medium uppercase tracking-widest" href="#">Network</a>
+<a class="text-slate-100/60 hover:text-primary transition-colors text-sm font-medium uppercase tracking-widest" href="#">Nodes</a>
+<a class="text-slate-100/60 hover:text-primary transition-colors text-sm font-medium uppercase tracking-widest" href="#">Analytics</a>
+</nav>
+</div>
+<div class="flex flex-1 justify-end gap-6 items-center">
+<label class="hidden lg:flex flex-col min-w-40 h-10 max-w-64">
+<div class="flex w-full flex-1 items-stretch rounded-lg overflow-hidden border border-primary/20">
+<div class="text-primary flex bg-background-dark items-center justify-center pl-4">
+<span class="material-symbols-outlined text-xl">search</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 border-none bg-background-dark text-slate-100 focus:ring-0 placeholder:text-primary/40 px-4 pl-2 text-sm" placeholder="QUERY NODE ID..." value=""/>
+</div>
+</label>
+<div class="flex gap-2">
+<button class="flex items-center justify-center rounded-lg h-10 w-10 bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 transition-all">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<button class="flex items-center justify-center rounded-lg h-10 w-10 bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 transition-all relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 size-2 bg-primary rounded-full animate-pulse"></span>
+</button>
+</div>
+<div class="bg-primary/20 border border-primary/40 rounded-full size-10 overflow-hidden" data-alt="Avatar of the user profile">
+<img alt="Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAv8H2Tlchx0VKDhqXIbOtzDa7lsTJC76u4nd1J0iM0lbz_rUnvlBLiCj558gkZmVSVCKa4Wl_n_VpXxudgmdd6eBXXJX-RMhsnlujKFQ-J_bIaNQm4LVmAeIn23nwLS6AzN3DCtM9bXTfabIv-sVoHVtTHZjP0z25Y9VqN_866AsFVR6i8k2biJMVI6i2yR0WJdhlIllVru5I83g6kyNHkloWTvHD19v5ur0Q6cRa-DomCbopl1aSdXFP0XBSCFVrGZABw0qYiZIDI"/>
+</div>
+</div>
+</header>
+<main class="flex flex-1 flex-col lg:flex-row h-[calc(100vh-72px)] overflow-hidden">
+<!-- Sidebar Navigation -->
+<aside class="w-full lg:w-64 glass-panel border-r border-primary/20 flex flex-col p-4 gap-6 shrink-0">
+<div class="flex flex-col gap-4">
+<div class="flex items-center gap-3 p-2 rounded-lg bg-primary/10 border border-primary/30">
+<div class="size-10 rounded-lg bg-primary/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">analytics</span>
+</div>
+<div class="flex flex-col">
+<h1 class="text-slate-100 text-xs font-bold uppercase tracking-tighter">Holographic HUD</h1>
+<p class="text-primary text-[10px] font-mono">v2.48.0-CORE</p>
+</div>
+</div>
+<nav class="flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-3 rounded-lg bg-primary text-background-dark font-bold transition-all group" href="#">
+<span class="material-symbols-outlined">grid_view</span>
+<span class="text-sm uppercase tracking-wider">Overview</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-3 rounded-lg text-primary/70 hover:bg-primary/10 hover:text-primary transition-all group" href="#">
+<span class="material-symbols-outlined">layers</span>
+<span class="text-sm uppercase tracking-wider">Neural Layers</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-3 rounded-lg text-primary/70 hover:bg-primary/10 hover:text-primary transition-all group" href="#">
+<span class="material-symbols-outlined">adjust</span>
+<span class="text-sm uppercase tracking-wider">Depth Focus</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-3 rounded-lg text-primary/70 hover:bg-primary/10 hover:text-primary transition-all group" href="#">
+<span class="material-symbols-outlined">download_for_offline</span>
+<span class="text-sm uppercase tracking-wider">Export Data</span>
+</a>
+</nav>
+</div>
+<div class="mt-auto flex flex-col gap-4">
+<div class="p-3 border border-primary/10 rounded-lg bg-primary/5">
+<div class="flex justify-between items-center mb-2">
+<span class="text-[10px] uppercase text-primary/60 tracking-widest">System Load</span>
+<span class="text-[10px] font-mono text-primary">42%</span>
+</div>
+<div class="w-full h-1 bg-primary/10 rounded-full overflow-hidden">
+<div class="h-full bg-primary" style="width: 42%"></div>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Workspace -->
+<div class="flex-1 flex flex-col relative network-bg overflow-hidden">
+<!-- Graph Visualization Area -->
+<div class="relative flex-1 group">
+<!-- Background Pattern / Mockup of Graph -->
+<div class="absolute inset-0 opacity-40 mix-blend-screen" data-alt="Deep focus ForceAtlas2 graph with glowing cyan nodes and neon lines connecting them in a dark void" style="background-image: radial-gradient(circle at 50% 50%, transparent 20%, #102122 100%), url('https://lh3.googleusercontent.com/aida-public/AB6AXuAXSwyeJLfwSYRR3xmxmhbye28eUKBPj8Ikw6iaOkENzvC1xQskNgxDQEfg64ylET9wC8T5N2EMJIVR1x_dSAZxmk55wZOV-YVElPUaSywFSCHR513Y3HVvIm3bkXYMGIqZqGHYrSsirCys0TMtDnLD3pyt3FQe0gNpCw3TtzbK7Xou9iDs3h8obsun4ovE-AFWEShyBLJ_L6YE-O4nxxsGgQsEnJ2tz3kyOGzJ2bnapFtZBOiQ4VcRtk5uBDqF9IYPlghJ3sbDpSZh');">
+</div>
+<!-- HUD Overlays -->
+<div class="absolute top-6 left-6 flex flex-col gap-2 z-10">
+<div class="glass-panel p-4 rounded-xl border-l-4 border-l-primary">
+<h2 class="text-slate-100 text-3xl font-black leading-tight tracking-tighter uppercase glow-text">Deep-Focus Graph</h2>
+<p class="text-primary/70 text-sm font-medium leading-normal max-w-xs">Visualizing importance via depth-of-field and luminescence. High-priority blockers highlighted.</p>
+</div>
+</div>
+<!-- Map Controls -->
+<div class="absolute right-6 top-6 flex flex-col gap-3 z-10">
+<div class="flex flex-col gap-1 p-1 glass-panel rounded-xl">
+<button class="size-10 flex items-center justify-center text-primary hover:bg-primary hover:text-background-dark transition-all rounded-lg">
+<span class="material-symbols-outlined">add</span>
+</button>
+<div class="h-px bg-primary/20 mx-2"></div>
+<button class="size-10 flex items-center justify-center text-primary hover:bg-primary hover:text-background-dark transition-all rounded-lg">
+<span class="material-symbols-outlined">remove</span>
+</button>
+</div>
+<button class="size-10 flex items-center justify-center glass-panel text-primary hover:bg-primary hover:text-background-dark transition-all rounded-xl">
+<span class="material-symbols-outlined">near_me</span>
+</button>
+<button class="size-10 flex items-center justify-center glass-panel text-primary hover:bg-primary hover:text-background-dark transition-all rounded-xl">
+<span class="material-symbols-outlined">fullscreen</span>
+</button>
+</div>
+<!-- Floating Node Info (Holographic Tooltip) -->
+<div class="absolute bottom-32 left-1/2 -translate-x-1/2 glass-panel p-4 rounded-xl border border-primary/40 min-w-[280px] shadow-[0_0_50px_rgba(13,227,242,0.15)]">
+<div class="flex justify-between items-start mb-2">
+<div>
+<span class="text-[10px] text-primary uppercase font-bold tracking-widest">Active Node</span>
+<h3 class="text-slate-100 text-lg font-bold">CORE_BLOCKER_01</h3>
+</div>
+<span class="px-2 py-0.5 rounded bg-primary/20 text-primary text-[10px] font-bold border border-primary/40">CRITICAL</span>
+</div>
+<div class="grid grid-cols-2 gap-4 mt-4 border-t border-primary/10 pt-4">
+<div>
+<p class="text-[10px] text-primary/60 uppercase">Edges</p>
+<p class="text-slate-100 font-mono">14 Connections</p>
+</div>
+<div>
+<p class="text-[10px] text-primary/60 uppercase">Weight</p>
+<p class="text-slate-100 font-mono">0.892 FA2</p>
+</div>
+</div>
+</div>
+<!-- Stats Footer Overlay -->
+<div class="absolute bottom-6 left-6 right-6 flex flex-wrap gap-4 z-10">
+<div class="flex-1 min-w-[180px] glass-panel p-4 rounded-xl border-t border-primary/30">
+<div class="flex items-center gap-2 mb-1">
+<span class="material-symbols-outlined text-primary text-sm">emergency</span>
+<p class="text-primary/60 text-[10px] uppercase font-bold tracking-widest">Critical Nodes</p>
+</div>
+<div class="flex items-end justify-between">
+<p class="text-slate-100 text-2xl font-black glow-text">12</p>
+<p class="text-emerald-400 text-xs font-mono mb-1">+2% Δ</p>
+</div>
+</div>
+<div class="flex-1 min-w-[180px] glass-panel p-4 rounded-xl border-t border-primary/30">
+<div class="flex items-center gap-2 mb-1">
+<span class="material-symbols-outlined text-primary text-sm">share</span>
+<p class="text-primary/60 text-[10px] uppercase font-bold tracking-widest">Total Edges</p>
+</div>
+<div class="flex items-end justify-between">
+<p class="text-slate-100 text-2xl font-black glow-text">482</p>
+<p class="text-emerald-400 text-xs font-mono mb-1">+15% Δ</p>
+</div>
+</div>
+<div class="flex-1 min-w-[180px] glass-panel p-4 rounded-xl border-t border-primary/30">
+<div class="flex items-center gap-2 mb-1">
+<span class="material-symbols-outlined text-primary text-sm">report</span>
+<p class="text-primary/60 text-[10px] uppercase font-bold tracking-widest">Active Blockers</p>
+</div>
+<div class="flex items-end justify-between">
+<p class="text-slate-100 text-2xl font-black glow-text">5</p>
+<p class="text-rose-400 text-xs font-mono mb-1">-1% Δ</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</div>
+</body></html>

@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Operator Terminal - Network Graph V2</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#f2aa0d",
+                        "background-light": "#f8f7f5",
+                        "background-dark": "#221c10",
+                        "danger": "#fa4238",
+                        "success": "#0bda1d",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"],
+                        "mono": ["JetBrains Mono", "monospace"]
+                    },
+                    borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+                },
+            },
+        }
+    </script>
+<style>
+        .grid-bg {
+            background-image:
+                linear-gradient(to right, rgba(242, 170, 13, 0.05) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(242, 170, 13, 0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+        .node-glow {
+            box-shadow: 0 0 15px rgba(242, 170, 13, 0.4);
+        }
+        .terminal-border {
+            border: 1px solid rgba(242, 170, 13, 0.2);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen selection:bg-primary selection:text-background-dark">
+<div class="flex h-screen overflow-hidden">
+<!-- Sidebar Navigation -->
+<aside class="w-64 flex-shrink-0 border-r border-primary/20 bg-background-light dark:bg-background-dark flex flex-col">
+<div class="p-6 border-b border-primary/20">
+<div class="flex items-center gap-3 text-primary">
+<span class="material-symbols-outlined text-3xl">terminal</span>
+<h2 class="text-lg font-bold tracking-tight font-mono">OPERATOR_V2</h2>
+</div>
+<p class="text-[10px] font-mono mt-1 opacity-50 uppercase tracking-widest">Auth: Force-Atlas-02</p>
+</div>
+<nav class="flex-1 overflow-y-auto p-4 space-y-2">
+<div class="text-[10px] font-mono text-primary/50 uppercase tracking-widest px-3 mb-2">Navigation</div>
+<a class="flex items-center gap-3 px-3 py-2 rounded bg-primary/10 text-primary border border-primary/30" href="#">
+<span class="material-symbols-outlined text-xl">hub</span>
+<span class="text-sm font-mono uppercase tracking-tighter">Network Graph</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded hover:bg-primary/5 transition-colors" href="#">
+<span class="material-symbols-outlined text-xl opacity-60">database</span>
+<span class="text-sm font-mono uppercase tracking-tighter">Node Registry</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded hover:bg-primary/5 transition-colors" href="#">
+<span class="material-symbols-outlined text-xl opacity-60">history</span>
+<span class="text-sm font-mono uppercase tracking-tighter">Log Stream</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded hover:bg-primary/5 transition-colors" href="#">
+<span class="material-symbols-outlined text-xl opacity-60">settings_input_component</span>
+<span class="text-sm font-mono uppercase tracking-tighter">Configuration</span>
+</a>
+<div class="pt-6">
+<div class="text-[10px] font-mono text-primary/50 uppercase tracking-widest px-3 mb-2">Systems</div>
+<div class="px-3 space-y-4 mt-4">
+<div class="flex flex-col gap-1">
+<div class="flex justify-between text-[10px] font-mono">
+<span>CPU LOAD</span>
+<span>42%</span>
+</div>
+<div class="h-1 bg-primary/10 rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[42%]"></div>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<div class="flex justify-between text-[10px] font-mono">
+<span>MEM USAGE</span>
+<span>68%</span>
+</div>
+<div class="h-1 bg-primary/10 rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[68%]"></div>
+</div>
+</div>
+</div>
+</div>
+</nav>
+<div class="p-4 border-t border-primary/20">
+<button class="w-full bg-primary text-background-dark font-bold py-3 text-xs tracking-[0.2em] font-mono uppercase hover:brightness-110 transition-all">
+                    RUN SIMULATION
+                </button>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col relative overflow-hidden">
+<!-- Header Bar -->
+<header class="h-16 border-b border-primary/20 flex items-center justify-between px-8 bg-background-light/50 dark:bg-background-dark/50 backdrop-blur-md z-10">
+<div class="flex items-center gap-8">
+<div class="flex flex-col">
+<h1 class="text-sm font-mono font-bold tracking-tight text-primary uppercase">Active Session: THEME_2</h1>
+<p class="text-[10px] font-mono opacity-50">Local Coordinate: 45.32.11.09</p>
+</div>
+<div class="h-8 w-px bg-primary/20"></div>
+<div class="flex gap-4">
+<div class="flex items-center gap-2">
+<span class="size-2 rounded-full bg-success shadow-[0_0_8px_rgba(11,218,29,0.5)]"></span>
+<span class="text-[10px] font-mono uppercase tracking-tighter">Core Online</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="size-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(242,170,13,0.5)]"></span>
+<span class="text-[10px] font-mono uppercase tracking-tighter">Sync Active</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative">
+<span class="material-symbols-outlined text-primary/60 cursor-pointer hover:text-primary">search</span>
+</div>
+<span class="material-symbols-outlined text-primary/60 cursor-pointer hover:text-primary">notifications</span>
+<div class="flex items-center gap-3 pl-6 border-l border-primary/20">
+<div class="text-right">
+<p class="text-[10px] font-mono font-bold">OPERATOR_ID</p>
+<p class="text-[10px] font-mono opacity-50 uppercase tracking-tighter">Level 4 Access</p>
+</div>
+<div class="size-8 rounded border border-primary/30 bg-primary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">person</span>
+</div>
+</div>
+</div>
+</header>
+<!-- Network Graph Canvas Section -->
+<section class="flex-1 relative grid-bg p-8 overflow-hidden">
+<!-- Data HUD Overlays -->
+<div class="absolute top-8 left-8 z-20 space-y-4 max-w-xs">
+<div class="bg-background-dark/80 terminal-border p-4 backdrop-blur-sm">
+<h3 class="text-primary font-mono text-xs mb-3 flex items-center gap-2 border-b border-primary/20 pb-2">
+<span class="material-symbols-outlined text-sm">analytics</span>
+                            GRAPH_METRICS
+                        </h3>
+<div class="grid grid-cols-2 gap-4">
+<div>
+<p class="text-[9px] font-mono opacity-50 uppercase">Nodes</p>
+<p class="text-lg font-mono font-bold text-primary">1,248</p>
+</div>
+<div>
+<p class="text-[9px] font-mono opacity-50 uppercase">Edges</p>
+<p class="text-lg font-mono font-bold text-primary">4,812</p>
+</div>
+<div>
+<p class="text-[9px] font-mono opacity-50 uppercase">Blockers</p>
+<p class="text-lg font-mono font-bold text-danger">42</p>
+</div>
+<div>
+<p class="text-[9px] font-mono opacity-50 uppercase">Density</p>
+<p class="text-lg font-mono font-bold text-success">0.84</p>
+</div>
+</div>
+</div>
+<div class="bg-background-dark/80 terminal-border p-4 backdrop-blur-sm">
+<h3 class="text-primary font-mono text-xs mb-3 flex items-center gap-2 border-b border-primary/20 pb-2">
+<span class="material-symbols-outlined text-sm">filter_alt</span>
+                            VIEW_FILTERS
+                        </h3>
+<div class="space-y-2">
+<label class="flex items-center gap-3 cursor-pointer group">
+<div class="size-3 border border-primary rounded-sm bg-primary/20 flex items-center justify-center">
+<div class="size-1.5 bg-primary"></div>
+</div>
+<span class="text-[10px] font-mono uppercase tracking-tighter group-hover:text-primary transition-colors">Hard Dependencies</span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer group">
+<div class="size-3 border border-primary/50 rounded-sm flex items-center justify-center"></div>
+<span class="text-[10px] font-mono uppercase tracking-tighter group-hover:text-primary transition-colors">Soft Links</span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer group">
+<div class="size-3 border border-primary rounded-sm bg-primary/20 flex items-center justify-center">
+<div class="size-1.5 bg-primary"></div>
+</div>
+<span class="text-[10px] font-mono uppercase tracking-tighter group-hover:text-primary transition-colors">High Impact Nodes</span>
+</label>
+</div>
+</div>
+</div>
+<!-- Central Graph Visual Representation (Stylized) -->
+<div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-80">
+<div class="relative w-full h-full max-w-4xl max-h-[700px]">
+<!-- Abstract Node Cluster 1 -->
+<div class="absolute top-1/4 left-1/3 size-6 bg-primary rounded-full node-glow border-2 border-primary/50"></div>
+<div class="absolute top-1/3 left-1/4 size-4 bg-primary/60 rounded-full border border-primary/30"></div>
+<div class="absolute top-[20%] left-[28%] size-3 bg-primary/40 rounded-full"></div>
+<!-- Hard Dependency Line (Bright Amber/Red) -->
+<div class="absolute top-1/4 left-1/3 w-40 h-[2px] bg-gradient-to-r from-primary to-danger rotate-[45deg] origin-left shadow-[0_0_10px_rgba(250,66,56,0.5)]"></div>
+<!-- High Impact Center -->
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-12 bg-primary/20 rounded-full border-4 border-primary node-glow flex items-center justify-center animate-pulse">
+<div class="size-4 bg-primary rounded-full"></div>
+</div>
+<!-- Secondary Clusters -->
+<div class="absolute bottom-1/4 right-1/4 size-8 bg-primary/80 rounded-full node-glow border border-primary"></div>
+<div class="absolute bottom-[20%] right-[15%] size-4 bg-primary/20 rounded-full border border-primary/30"></div>
+<!-- Soft Dependencies (Muted Amber) -->
+<div class="absolute top-1/2 left-1/2 w-64 h-[1px] bg-primary/10 -rotate-[120deg] origin-left border-dashed border-t border-primary/30"></div>
+<div class="absolute top-1/2 left-1/2 w-48 h-[1px] bg-primary/10 rotate-[10deg] origin-left border-dashed border-t border-primary/30"></div>
+<div class="absolute top-1/2 left-1/2 w-72 h-[1px] bg-primary/10 rotate-[200deg] origin-left border-dashed border-t border-primary/30"></div>
+<!-- Dynamic Node Labels -->
+<div class="absolute top-[23%] left-[34%] bg-background-dark/80 px-2 py-1 terminal-border">
+<p class="text-[8px] font-mono text-primary uppercase">Node: TR-882 [CRITICAL]</p>
+</div>
+<div class="absolute bottom-[23%] right-[23%] bg-background-dark/80 px-2 py-1 terminal-border">
+<p class="text-[8px] font-mono text-primary uppercase">Root: FORCE-02</p>
+</div>
+<!-- Network SVG Connection Simulation -->
+<svg class="absolute inset-0 w-full h-full opacity-30" fill="none" viewbox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
+<path class="text-primary" d="M100,100 L200,300 L400,300 M400,300 L600,100 M400,300 L500,500" stroke="currentColor" stroke-dasharray="4 4" stroke-width="0.5"></path>
+<path class="shadow-lg" d="M700,500 L400,300" stroke="#fa4238" stroke-width="1.5"></path>
+<circle cx="100" cy="100" fill="#f2aa0d" r="3"></circle>
+<circle cx="200" cy="300" fill="#f2aa0d" r="3"></circle>
+<circle cx="600" cy="100" fill="#f2aa0d" r="3"></circle>
+<circle cx="500" cy="500" fill="#f2aa0d" r="3"></circle>
+<circle cx="700" cy="500" fill="#fa4238" r="5"></circle>
+</svg>
+</div>
+</div>
+<!-- Right Interaction Panel -->
+<div class="absolute top-8 right-8 z-20 w-80 space-y-4">
+<div class="bg-background-dark/80 terminal-border backdrop-blur-sm">
+<div class="p-3 border-b border-primary/20 flex justify-between items-center bg-primary/5">
+<h3 class="text-primary font-mono text-xs font-bold tracking-widest uppercase">Node_Inspector</h3>
+<span class="material-symbols-outlined text-xs text-primary cursor-pointer">close</span>
+</div>
+<div class="p-4 space-y-4">
+<div class="flex items-center gap-4">
+<div class="size-12 rounded bg-primary/20 border border-primary flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-3xl">token</span>
+</div>
+<div class="flex-1">
+<p class="text-xs font-mono font-bold text-primary">TASK_NODE_#AF992</p>
+<p class="text-[10px] font-mono opacity-50">Status: BLOCKED_BY_CHILD</p>
+</div>
+</div>
+<div class="space-y-3 pt-2 border-t border-primary/10">
+<div>
+<div class="flex justify-between text-[10px] font-mono uppercase mb-1">
+<span>Propagation Risk</span>
+<span class="text-danger">High (92%)</span>
+</div>
+<div class="h-1 bg-primary/10 rounded-full overflow-hidden">
+<div class="h-full bg-danger w-[92%]"></div>
+</div>
+</div>
+<div>
+<p class="text-[9px] font-mono opacity-50 uppercase mb-1">Parent Process</p>
+<p class="text-[10px] font-mono text-primary px-2 py-1 bg-primary/5 border border-primary/20">ROOT::CLUSTER_MAIN_01</p>
+</div>
+<div>
+<p class="text-[9px] font-mono opacity-50 uppercase mb-1">Active Dependencies</p>
+<ul class="text-[10px] font-mono space-y-1">
+<li class="flex items-center gap-2 text-danger">
+<span class="material-symbols-outlined text-[10px]">error</span>
+                                            Child::Process_AF_01 (Hard)
+                                        </li>
+<li class="flex items-center gap-2 opacity-60">
+<span class="material-symbols-outlined text-[10px]">link</span>
+                                            Link::External_API_S1 (Soft)
+                                        </li>
+</ul>
+</div>
+</div>
+<div class="pt-4 grid grid-cols-2 gap-2">
+<button class="bg-primary/10 border border-primary/40 text-primary font-mono text-[10px] py-2 uppercase hover:bg-primary/20">Isolate</button>
+<button class="bg-primary text-background-dark font-mono font-bold text-[10px] py-2 uppercase">Recalculate</button>
+</div>
+</div>
+</div>
+<div class="bg-background-dark/80 terminal-border p-4 backdrop-blur-sm">
+<div class="flex items-center justify-between mb-4 border-b border-primary/20 pb-2">
+<h3 class="text-primary font-mono text-[10px] font-bold uppercase tracking-widest">Network_Events</h3>
+<span class="text-[9px] font-mono opacity-30 uppercase">Auto Scroll</span>
+</div>
+<div class="space-y-2 h-40 overflow-y-auto pr-2 custom-scrollbar">
+<div class="text-[9px] font-mono flex gap-2">
+<span class="text-primary/40">[14:22:01]</span>
+<span class="text-success uppercase">Node Created: TR-991</span>
+</div>
+<div class="text-[9px] font-mono flex gap-2">
+<span class="text-primary/40">[14:22:15]</span>
+<span class="text-primary uppercase">Recalculating weights...</span>
+</div>
+<div class="text-[9px] font-mono flex gap-2">
+<span class="text-primary/40">[14:23:04]</span>
+<span class="text-danger uppercase">Alert: Blocker at AF992</span>
+</div>
+<div class="text-[9px] font-mono flex gap-2">
+<span class="text-primary/40">[14:24:11]</span>
+<span class="text-primary/60 uppercase">System sync successful</span>
+</div>
+<div class="text-[9px] font-mono flex gap-2">
+<span class="text-primary/40">[14:25:40]</span>
+<span class="text-primary uppercase">Atlas phase synchronized</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Status Bar Overlay -->
+<div class="absolute bottom-8 left-8 right-8 z-20 flex justify-between items-end pointer-events-none">
+<div class="pointer-events-auto">
+<div class="bg-background-dark/80 terminal-border p-3 flex gap-6 backdrop-blur-sm">
+<div class="flex items-center gap-3">
+<div class="text-primary">
+<span class="material-symbols-outlined text-xl">zoom_in</span>
+</div>
+<div class="w-32 h-1 bg-primary/10 rounded-full">
+<div class="h-full bg-primary w-[65%]"></div>
+</div>
+<span class="text-[10px] font-mono text-primary">65%</span>
+</div>
+<div class="w-px h-6 bg-primary/20"></div>
+<div class="flex gap-4">
+<button class="material-symbols-outlined text-primary/60 hover:text-primary transition-colors text-lg">videocam</button>
+<button class="material-symbols-outlined text-primary/60 hover:text-primary transition-colors text-lg">center_focus_strong</button>
+<button class="material-symbols-outlined text-primary/60 hover:text-primary transition-colors text-lg">download</button>
+</div>
+</div>
+</div>
+<div class="text-right pointer-events-none opacity-50 font-mono">
+<p class="text-[10px] uppercase tracking-[0.3em]">ForceAtlas2 Algorithm Engine</p>
+<p class="text-[10px]">VER: 2.11.0-STABLE</p>
+</div>
+</div>
+</section>
+</main>
+</div>
+<style>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(242, 170, 13, 0.05);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(242, 170, 13, 0.3);
+            border-radius: 2px;
+        }
+    </style>
+</body></html>

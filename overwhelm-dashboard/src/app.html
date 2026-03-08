@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en" class="dark">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+		<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+		<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+		<script id="tailwind-config">
+			tailwind.config = {
+				darkMode: "class",
+				theme: {
+					extend: {
+						colors: {
+							"primary": "#f2aa0d",
+							"primary-dim": "rgba(242, 170, 13, 0.2)",
+							"primary-glow": "rgba(242, 170, 13, 0.5)",
+							"background-light": "#f8f7f5",
+							"background-dark": "#0A0A0A",
+							"surface-dark": "#141414",
+							"surface-light": "#ffffff",
+						},
+						fontFamily: {
+							"display": ["Space Grotesk", "sans-serif"],
+							"mono": ["JetBrains Mono", "monospace"],
+						},
+						borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem", "none": "0px"},
+					}
+				}
+			}
+		</script>
+		%sveltekit.head%
+	</head>
+	<body data-sveltekit-preload-data="hover" class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-primary font-display antialiased overflow-hidden h-screen flex flex-col selection:bg-primary selection:text-black">
+		<div style="display: contents">%sveltekit.body%</div>
+	</body>
+</html>

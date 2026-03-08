@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Holographic Flow: Task Inspector</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0de3f2",
+                        "background-light": "#f5f8f8",
+                        "background-dark": "#102122",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(16, 33, 34, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(13, 227, 242, 0.2);
+            box-shadow: 0 0 40px rgba(13, 227, 242, 0.1), inset 0 0 20px rgba(13, 227, 242, 0.05);
+        }
+        .neon-glow-primary {
+            box-shadow: 0 0 15px rgba(13, 227, 242, 0.4);
+        }
+        .dependency-line {
+            background: linear-gradient(90deg, transparent 0%, #0de3f2 50%, transparent 100%);
+            height: 1px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen relative overflow-hidden">
+<!-- Abstract Background Grid/Map (Simulated) -->
+<div class="absolute inset-0 z-0 opacity-20 pointer-events-none">
+<div class="absolute inset-0" style="background-image: radial-gradient(circle at 2px 2px, #0de3f2 1px, transparent 0); background-size: 40px 40px;"></div>
+<div class="absolute top-1/4 left-1/3 w-96 h-96 bg-primary/10 rounded-full blur-[120px]"></div>
+<div class="absolute bottom-1/4 right-1/3 w-64 h-64 bg-primary/20 rounded-full blur-[100px]"></div>
+</div>
+<div class="relative z-10 flex h-screen w-full items-center justify-center p-6">
+<!-- Floating Inspector Panel -->
+<div class="glass-panel w-full max-w-4xl rounded-xl overflow-hidden flex flex-col md:flex-row">
+<!-- Left Sidebar: Metadata & Dependencies -->
+<div class="w-full md:w-72 border-r border-primary/20 p-6 flex flex-col gap-6">
+<div>
+<div class="flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-primary text-sm">info</span>
+<h3 class="text-xs font-bold uppercase tracking-widest text-primary/70">Task Metadata</h3>
+</div>
+<div class="space-y-4">
+<div>
+<p class="text-[10px] text-slate-500 uppercase font-bold">Registry ID</p>
+<p class="text-sm font-medium text-slate-300">HF-9082-ALPHA</p>
+</div>
+<div>
+<p class="text-[10px] text-slate-500 uppercase font-bold">Execution Layer</p>
+<p class="text-sm font-medium text-slate-300">Node_7_Active</p>
+</div>
+</div>
+</div>
+<div class="flex-1">
+<div class="flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-primary text-sm">account_tree</span>
+<h3 class="text-xs font-bold uppercase tracking-widest text-primary/70">Dependencies</h3>
+</div>
+<div class="space-y-3">
+<div class="flex items-center gap-3 group cursor-default">
+<div class="size-2 rounded-full bg-primary neon-glow-primary"></div>
+<span class="text-sm text-slate-300">Core Engine V1.2</span>
+<span class="material-symbols-outlined text-primary text-xs ml-auto">check_circle</span>
+</div>
+<div class="flex items-center gap-3">
+<div class="size-2 rounded-full bg-primary/40"></div>
+<span class="text-sm text-slate-400">Memory Allocation</span>
+<span class="material-symbols-outlined text-slate-600 text-xs ml-auto">pending</span>
+</div>
+<div class="dependency-line my-4 opacity-30"></div>
+<div class="flex items-center gap-3">
+<div class="size-2 rounded-full bg-slate-700"></div>
+<span class="text-sm text-slate-500 italic">Post-Process Sync</span>
+<span class="material-symbols-outlined text-slate-700 text-xs ml-auto">lock</span>
+</div>
+</div>
+</div>
+<div class="mt-auto">
+<button class="w-full py-2 border border-primary/30 rounded text-xs text-primary/80 font-bold hover:bg-primary/10 transition-colors uppercase tracking-widest">
+                        View Graph Map
+                    </button>
+</div>
+</div>
+<!-- Main Inspector Content -->
+<div class="flex-1 flex flex-col">
+<!-- Header -->
+<header class="p-6 border-b border-primary/20 flex justify-between items-start">
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-3 mb-2">
+<span class="bg-primary/20 text-primary px-2 py-0.5 rounded text-[10px] font-bold tracking-tighter uppercase border border-primary/30">Active Session</span>
+<span class="text-slate-500 text-[10px] font-mono">TS: 2024.08.12.14.30.01</span>
+</div>
+<h1 class="text-3xl font-bold tracking-tight text-slate-100">Holographic Flow: Core Engine Optimization</h1>
+</div>
+<div class="flex gap-2">
+<button class="size-8 flex items-center justify-center rounded border border-primary/20 hover:bg-primary/10 text-slate-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-sm">fullscreen</span>
+</button>
+<button class="size-8 flex items-center justify-center rounded border border-primary/20 hover:bg-primary/10 text-slate-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-sm">close</span>
+</button>
+</div>
+</header>
+<!-- Body -->
+<div class="flex-1 p-8 space-y-8 overflow-y-auto">
+<div class="space-y-4">
+<p class="text-slate-400 leading-relaxed text-lg">
+                            Executing critical optimization sequence for the holographic rendering pipeline. This task reallocates vertex buffers to prioritize real-time light refraction patterns within the glass UI substrate.
+                        </p>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 py-4">
+<div class="p-4 bg-primary/5 border border-primary/10 rounded-lg">
+<p class="text-[10px] text-slate-500 font-bold uppercase mb-1">Current Load</p>
+<p class="text-xl font-display font-bold text-primary">84.2%</p>
+</div>
+<div class="p-4 bg-primary/5 border border-primary/10 rounded-lg">
+<p class="text-[10px] text-slate-500 font-bold uppercase mb-1">ETA Completion</p>
+<p class="text-xl font-display font-bold text-primary">12m 45s</p>
+</div>
+<div class="p-4 bg-primary/5 border border-primary/10 rounded-lg">
+<p class="text-[10px] text-slate-500 font-bold uppercase mb-1">Error Rate</p>
+<p class="text-xl font-display font-bold text-slate-100">0.002%</p>
+</div>
+</div>
+</div>
+<div class="space-y-4">
+<div class="flex items-center justify-between">
+<h4 class="text-sm font-bold uppercase tracking-widest text-slate-300">Live Telemetry</h4>
+<span class="text-[10px] text-primary animate-pulse font-bold tracking-widest">STREAMING LIVE</span>
+</div>
+<div class="h-32 w-full bg-slate-900/50 rounded-lg border border-primary/10 relative overflow-hidden flex items-end px-2 pb-2 gap-1">
+<div class="w-full bg-primary/20 h-1/2 rounded-t-sm"></div>
+<div class="w-full bg-primary/30 h-3/4 rounded-t-sm"></div>
+<div class="w-full bg-primary/40 h-2/3 rounded-t-sm"></div>
+<div class="w-full bg-primary h-5/6 rounded-t-sm neon-glow-primary"></div>
+<div class="w-full bg-primary/60 h-1/2 rounded-t-sm"></div>
+<div class="w-full bg-primary/20 h-1/3 rounded-t-sm"></div>
+<div class="w-full bg-primary/40 h-2/3 rounded-t-sm"></div>
+<div class="w-full bg-primary/10 h-1/4 rounded-t-sm"></div>
+<div class="w-full bg-primary/50 h-3/4 rounded-t-sm"></div>
+<div class="w-full bg-primary/20 h-1/2 rounded-t-sm"></div>
+</div>
+</div>
+</div>
+<!-- Footer: Action Bar -->
+<footer class="p-6 border-t border-primary/20 bg-primary/5 flex flex-wrap gap-4 items-center justify-between">
+<div class="flex gap-3">
+<button class="flex items-center gap-2 px-6 h-12 bg-primary text-background-dark font-bold rounded shadow-lg neon-glow-primary hover:brightness-110 transition-all uppercase tracking-widest text-sm">
+<span class="material-symbols-outlined">check_circle</span>
+                            Complete
+                        </button>
+<button class="flex items-center gap-2 px-6 h-12 border border-primary/50 text-primary font-bold rounded hover:bg-primary/10 transition-all uppercase tracking-widest text-sm">
+<span class="material-symbols-outlined">pause</span>
+                            Pause
+                        </button>
+</div>
+<div class="flex gap-3">
+<button class="flex items-center gap-2 px-4 h-12 text-slate-400 hover:text-slate-100 transition-colors uppercase tracking-widest text-xs font-bold">
+<span class="material-symbols-outlined text-sm">calendar_today</span>
+                            Schedule
+                        </button>
+<button class="flex items-center gap-2 px-4 h-12 text-slate-400 hover:text-slate-100 transition-colors uppercase tracking-widest text-xs font-bold">
+<span class="material-symbols-outlined text-sm">edit</span>
+                            Edit
+                        </button>
+</div>
+</footer>
+</div>
+</div>
+</div>
+<!-- Background Decoration -->
+<div class="absolute top-0 right-0 p-10 pointer-events-none">
+<div class="text-[120px] font-bold text-primary/5 select-none leading-none">SYS_7</div>
+</div>
+</body></html>

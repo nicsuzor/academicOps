@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>HoloMap v8.0 | Project Visualization</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0de3f2",
+                        "hotspot": "#ff00ff",
+                        "background-light": "#f5f8f8",
+                        "background-dark": "#102122",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk"]
+                    },
+                    borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+                },
+            },
+        }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(13, 227, 242, 0.05);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(13, 227, 242, 0.2);
+        }
+        .depth-blur {
+            backdrop-filter: blur(8px);
+        }
+        .cyan-glow {
+            box-shadow: 0 0 15px rgba(13, 227, 242, 0.4);
+        }
+        .magenta-glow {
+            box-shadow: 0 0 20px rgba(255, 0, 255, 0.5);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen">
+<div class="relative flex h-full min-h-screen w-full flex-col overflow-x-hidden">
+<header class="flex items-center justify-between border-b border-primary/20 px-6 py-4 glass-panel sticky top-0 z-50">
+<div class="flex items-center gap-4">
+<div class="text-primary">
+<span class="material-symbols-outlined text-3xl">polyline</span>
+</div>
+<h2 class="text-xl font-bold tracking-tight">HoloMap <span class="text-primary">v8.0</span></h2>
+</div>
+<div class="flex flex-1 justify-end gap-6 items-center">
+<label class="flex flex-col min-w-64">
+<div class="flex w-full items-stretch rounded-lg bg-primary/10 border border-primary/30 overflow-hidden">
+<div class="text-primary flex items-center justify-center pl-4">
+<span class="material-symbols-outlined">search</span>
+</div>
+<input class="w-full border-none bg-transparent focus:ring-0 text-sm placeholder:text-primary/50 py-2 px-3" placeholder="Search data clusters..."/>
+</div>
+</label>
+<div class="flex gap-3">
+<button class="flex items-center justify-center rounded-lg h-10 w-10 bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20 transition-all">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="flex items-center justify-center rounded-lg h-10 w-10 bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20 transition-all">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</div>
+<div class="h-10 w-10 rounded-full border-2 border-primary bg-cover bg-center" data-alt="User profile avatar with cyan gradient abstract" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuD-rgW4bvHiVhkoh_-YZ-2aXY1E4tssOS8nHIAZLkV5-F3avRgIwCSOMohnY_ZmkNmV50mBG3As6sL7HXpA6Z6yXhGdnGtPAdfnOy8-4hFaYvy7zVgZQD1RpxNW91I998X7UW4A3S3Rt4pF0aWiEYNRlu3aXBCMUq9CvbrFkGk_-ck4CwVdRhJhRvoaDOqJxJ5t5aZvc4rQWlR3eAectRRb5sN6HhakBwzJFBShU7zSp1qul4ptnwekVO3e7OoEeLy77veJvoe-43es");'>
+</div>
+</div>
+</header>
+<div class="flex flex-1 overflow-hidden">
+<aside class="w-64 border-r border-primary/10 glass-panel p-6 flex flex-col gap-8">
+<div>
+<h3 class="text-xs font-bold uppercase tracking-widest text-primary/60 mb-4">Navigation</h3>
+<nav class="flex flex-col gap-2">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg bg-primary text-background-dark font-bold shadow-lg shadow-primary/20" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-sm">Overview</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-primary/10 transition-colors" href="#">
+<span class="material-symbols-outlined">account_tree</span>
+<span class="text-sm">Tree Map</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-primary/10 transition-colors" href="#">
+<span class="material-symbols-outlined">hub</span>
+<span class="text-sm">Clusters</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-primary/10 transition-colors" href="#">
+<span class="material-symbols-outlined">insights</span>
+<span class="text-sm">Analytics</span>
+</a>
+</nav>
+</div>
+<div>
+<h3 class="text-xs font-bold uppercase tracking-widest text-primary/60 mb-4">System Status</h3>
+<div class="space-y-4">
+<div class="bg-primary/5 p-3 rounded-lg border border-primary/10">
+<div class="flex justify-between text-xs mb-1">
+<span>Core Velocity</span>
+<span class="text-primary font-bold">98.2%</span>
+</div>
+<div class="w-full bg-primary/20 h-1 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[98%]"></div>
+</div>
+</div>
+</div>
+</div>
+</aside>
+<main class="flex-1 p-8 overflow-y-auto bg-gradient-to-br from-background-dark via-background-dark to-primary/5">
+<div class="mb-8 flex justify-between items-end">
+<div>
+<h1 class="text-4xl font-black tracking-tight mb-2">Holographic Tree Map</h1>
+<p class="text-primary/60 max-w-xl">Project Alpha-7 workspace. Real-time visualization of multi-threaded task clusters with holographic depth mapping.</p>
+</div>
+<div class="flex gap-4">
+<div class="glass-panel px-4 py-2 rounded-lg flex items-center gap-2 border-primary/30">
+<div class="size-3 rounded-full bg-primary cyan-glow"></div>
+<span class="text-xs font-bold">ACTIVE</span>
+</div>
+<div class="glass-panel px-4 py-2 rounded-lg flex items-center gap-2 border-hotspot/30">
+<div class="size-3 rounded-full bg-hotspot magenta-glow"></div>
+<span class="text-xs font-bold text-hotspot">HOT SPOT</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-12 gap-6 h-[700px]">
+<div class="col-span-8 grid grid-rows-2 gap-6">
+<div class="grid grid-cols-2 gap-6">
+<div class="glass-panel p-6 rounded-xl flex flex-col justify-between group cursor-pointer hover:border-primary/60 transition-all">
+<div class="flex justify-between">
+<span class="material-symbols-outlined text-primary text-4xl">rocket_launch</span>
+<span class="text-primary font-bold text-xl">84%</span>
+</div>
+<div>
+<h3 class="text-xl font-bold mb-2">Project Alpha</h3>
+<div class="flex gap-1">
+<div class="h-1 flex-1 bg-primary cyan-glow"></div>
+<div class="h-1 flex-1 bg-primary cyan-glow"></div>
+<div class="h-1 flex-1 bg-primary cyan-glow"></div>
+<div class="h-1 flex-1 bg-primary/20"></div>
+</div>
+</div>
+</div>
+<div class="glass-panel p-6 rounded-xl flex flex-col justify-between border-hotspot/50 magenta-glow cursor-pointer relative overflow-hidden">
+<div class="absolute inset-0 bg-hotspot/5"></div>
+<div class="relative z-10">
+<div class="flex justify-between mb-8">
+<span class="material-symbols-outlined text-hotspot text-4xl">warning</span>
+<span class="text-hotspot font-bold px-2 py-1 bg-hotspot/20 rounded text-xs">CRITICAL CLUSTER</span>
+</div>
+<h3 class="text-xl font-bold mb-2">Beta Node Stream</h3>
+<p class="text-sm text-slate-400">Resource contention detected in sub-cluster 04.</p>
+</div>
+<div class="relative z-10 text-hotspot font-bold text-right">92.4% LOAD</div>
+</div>
+</div>
+<div class="glass-panel rounded-xl overflow-hidden relative border-primary/30">
+<div class="absolute inset-0 opacity-20 pointer-events-none" style="background-image: linear-gradient(rgba(13, 227, 242, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(13, 227, 242, 0.1) 1px, transparent 1px); background-size: 20px 20px;">
+</div>
+<div class="p-6 h-full flex flex-col">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-bold flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">grain</span>
+                                        Nested Task Clusters
+                                    </h3>
+<button class="text-xs text-primary font-bold hover:underline">RE-CALIBRATE</button>
+</div>
+<div class="flex-1 grid grid-cols-4 gap-4">
+<div class="glass-panel bg-primary/10 border-dashed border-primary/40 rounded-lg p-4 flex flex-col items-center justify-center gap-2 group">
+<span class="material-symbols-outlined text-primary/40 group-hover:scale-110 transition-transform">add_circle</span>
+<span class="text-[10px] font-bold tracking-widest opacity-40">ADD CLUSTER</span>
+</div>
+<div class="glass-panel bg-primary/5 rounded-lg p-4 flex flex-col gap-3">
+<div class="h-2 w-1/2 bg-primary rounded-full"></div>
+<div class="grid grid-cols-2 gap-2 mt-2">
+<div class="size-8 rounded bg-primary/30 border border-primary/50"></div>
+<div class="size-8 rounded bg-primary/30 border border-primary/50"></div>
+<div class="size-8 rounded bg-primary/30 border border-primary/50"></div>
+<div class="size-8 rounded bg-primary/30 border border-primary/50"></div>
+</div>
+</div>
+<div class="glass-panel bg-primary/5 rounded-lg p-4 flex flex-col gap-3">
+<div class="h-2 w-3/4 bg-primary rounded-full"></div>
+<div class="grid grid-cols-2 gap-2 mt-2">
+<div class="size-8 rounded bg-primary/80 cyan-glow border border-primary"></div>
+<div class="size-8 rounded bg-primary/80 cyan-glow border border-primary"></div>
+<div class="size-8 rounded bg-primary/30 border border-primary/50"></div>
+<div class="size-8 rounded bg-primary/10 border border-primary/20"></div>
+</div>
+</div>
+<div class="glass-panel bg-hotspot/5 border-hotspot/30 rounded-lg p-4 flex flex-col gap-3">
+<div class="h-2 w-full bg-hotspot magenta-glow rounded-full"></div>
+<div class="grid grid-cols-2 gap-2 mt-2">
+<div class="size-8 rounded bg-hotspot/80 border border-hotspot"></div>
+<div class="size-8 rounded bg-hotspot/80 border border-hotspot"></div>
+<div class="size-8 rounded bg-hotspot/80 border border-hotspot"></div>
+<div class="size-8 rounded bg-hotspot/80 border border-hotspot"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="col-span-4 glass-panel rounded-xl p-6 flex flex-col border-primary/30">
+<h3 class="font-bold flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-primary">ads_click</span>
+                            Target Focus
+                        </h3>
+<div class="flex-1 flex flex-col gap-6">
+<div class="relative w-full aspect-square rounded-full border border-primary/20 flex items-center justify-center">
+<div class="absolute w-4/5 h-4/5 rounded-full border border-primary/10 border-dashed animate-spin-slow"></div>
+<div class="absolute w-3/5 h-3/5 rounded-full border border-primary/30"></div>
+<div class="z-10 bg-primary/20 backdrop-blur-xl p-8 rounded-full border border-primary/50 text-center">
+<div class="text-4xl font-black text-primary">12.4k</div>
+<div class="text-[10px] tracking-widest text-primary/60 font-bold uppercase">Requests/Sec</div>
+</div>
+</div>
+<div class="space-y-4">
+<div class="flex items-center justify-between text-sm">
+<span class="text-slate-400">Global Coverage</span>
+<span class="font-mono text-primary">94.8%</span>
+</div>
+<div class="flex items-center justify-between text-sm">
+<span class="text-slate-400">Node Latency</span>
+<span class="font-mono text-primary">12ms</span>
+</div>
+<div class="flex items-center justify-between text-sm">
+<span class="text-slate-400">Active Threads</span>
+<span class="font-mono text-primary">482</span>
+</div>
+</div>
+<button class="mt-auto w-full bg-primary text-background-dark py-3 rounded-lg font-bold hover:scale-[1.02] transition-transform flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">bolt</span>
+                                DEPLOY CLUSTER
+                            </button>
+</div>
+</div>
+</div>
+<div class="mt-8 grid grid-cols-4 gap-6">
+<div class="glass-panel p-6 rounded-xl border-primary/20 hover:border-primary/50 transition-colors">
+<p class="text-xs font-bold text-primary/60 uppercase tracking-widest mb-1">Active Projects</p>
+<p class="text-3xl font-bold">12</p>
+<p class="text-xs text-green-400 mt-2 flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">trending_up</span> +5% vs LY
+                        </p>
+</div>
+<div class="glass-panel p-6 rounded-xl border-primary/20 hover:border-primary/50 transition-colors">
+<p class="text-xs font-bold text-primary/60 uppercase tracking-widest mb-1">Hot Spots</p>
+<p class="text-3xl font-bold">4</p>
+<p class="text-xs text-hotspot mt-2 flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">trending_down</span> -2% vs LW
+                        </p>
+</div>
+<div class="glass-panel p-6 rounded-xl border-primary/20 hover:border-primary/50 transition-colors">
+<p class="text-xs font-bold text-primary/60 uppercase tracking-widest mb-1">Global Health</p>
+<p class="text-3xl font-bold">98.2%</p>
+<p class="text-xs text-green-400 mt-2 flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">check_circle</span> STABLE
+                        </p>
+</div>
+<div class="glass-panel p-6 rounded-xl border-primary/20 hover:border-primary/50 transition-colors">
+<p class="text-xs font-bold text-primary/60 uppercase tracking-widest mb-1">Total Nodes</p>
+<p class="text-3xl font-bold">2.4k</p>
+<p class="text-xs text-primary mt-2 flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">sync</span> SYNCED
+                        </p>
+</div>
+</div>
+</main>
+</div>
+</div>
+</body></html>

@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SvelteKit Design System: Dual-Theme Specification</title>
+<!-- Tailwind CSS v3 with plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Google Fonts for Typography Specs -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&amp;family=Inter:wght@300;400;600;700&amp;display=swap" rel="stylesheet"/>
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            amber: {
+              50: '#fffbeb',
+              400: '#fbbf24',
+              500: '#f59e0b',
+              900: '#78350f',
+              950: '#451a03',
+            },
+            cyan: {
+              400: '#22d3ee',
+              500: '#06b6d4',
+              900: '#164e63',
+            }
+          },
+          fontFamily: {
+            mono: ['JetBrains Mono', 'monospace'],
+            sans: ['Inter', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+<style data-purpose="global-layout">
+    :root {
+      --bg-color: #0a0a0a;
+      --text-color: #f4f4f5;
+    }
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      scroll-behavior: smooth;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #18181b;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #3f3f46;
+    }
+  </style>
+<style data-purpose="operator-theme-styles">
+    .theme-operator {
+      --primary: #f59e0b;
+      --bg-panel: #111;
+      --border-color: #f59e0b44;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .operator-grid {
+      background-image:
+        linear-gradient(to right, rgba(245, 158, 11, 0.05) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(245, 158, 11, 0.05) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+    .operator-card {
+      border: 1px solid var(--primary);
+      background: rgba(0,0,0,0.8);
+      position: relative;
+    }
+    .operator-card::before {
+      content: "";
+      position: absolute;
+      top: -2px; left: -2px;
+      width: 8px; height: 8px;
+      border-top: 2px solid var(--primary);
+      border-left: 2px solid var(--primary);
+    }
+  </style>
+<style data-purpose="holographic-theme-styles">
+    .theme-holographic {
+      --primary: #22d3ee;
+      --bg-glass: rgba(8, 47, 73, 0.4);
+      font-family: 'Inter', sans-serif;
+    }
+    .holographic-gradient {
+      background: radial-gradient(circle at 50% 50%, rgba(34, 211, 238, 0.1) 0%, transparent 70%);
+    }
+    .glass-morphism {
+      background: var(--bg-glass);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(34, 211, 238, 0.2);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    }
+    .holo-glow {
+      box-shadow: 0 0 15px rgba(34, 211, 238, 0.3);
+    }
+  </style>
+</head>
+<body class="antialiased">
+<!-- BEGIN: MainHeader -->
+<header class="sticky top-0 z-50 w-full border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-md">
+<div class="container mx-auto px-6 py-4 flex justify-between items-center">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 bg-white rounded-sm rotate-45 flex items-center justify-center">
+<div class="w-4 h-4 bg-zinc-950 -rotate-45"></div>
+</div>
+<div>
+<h1 class="text-sm font-bold tracking-widest uppercase">Dual-State DS</h1>
+<p class="text-[10px] text-zinc-500 font-mono">Ver. 2.0.4 // SvelteKit Core</p>
+</div>
+</div>
+<nav class="hidden md:flex gap-8 text-xs font-medium uppercase tracking-wider text-zinc-400">
+<a class="hover:text-white transition-colors" href="#schema">Data Schema</a>
+<a class="hover:text-amber-500 transition-colors" href="#operator">Operator</a>
+<a class="hover:text-cyan-400 transition-colors" href="#holographic">Holographic</a>
+<a class="hover:text-white transition-colors" href="#components">Components</a>
+</nav>
+</div>
+</header>
+<!-- END: MainHeader -->
+<main class="container mx-auto px-6 py-12 space-y-24">
+<!-- BEGIN: Section-DataSchema -->
+<section data-purpose="documentation-section" id="schema">
+<div class="max-w-4xl">
+<h2 class="text-3xl font-bold mb-6 flex items-center gap-4">
+<span class="text-zinc-600">01</span> Shared Data Schema
+        </h2>
+<p class="text-zinc-400 mb-8 leading-relaxed">
+          The foundation of the system. Regardless of the visual theme, the underlying data structures for <code>Tasks</code> and <code>Projects</code> remain identical to ensure state synchronization between views.
+        </p>
+<div class="bg-zinc-900 rounded-lg overflow-hidden border border-zinc-800">
+<div class="bg-zinc-800 px-4 py-2 flex items-center justify-between">
+<span class="text-[10px] font-mono text-zinc-400 uppercase">Schema Definition (JSON)</span>
+<div class="flex gap-1.5">
+<div class="w-2 h-2 rounded-full bg-zinc-700"></div>
+<div class="w-2 h-2 rounded-full bg-zinc-700"></div>
+<div class="w-2 h-2 rounded-full bg-zinc-700"></div>
+</div>
+</div>
+<pre class="p-6 text-sm font-mono text-emerald-400 custom-scrollbar overflow-x-auto">{
+  "project": {
+    "id": "uuid-v4",
+    "name": "Project Aegis",
+    "status": "active" | "archived" | "draft",
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "task",
+        "position": { "x": 1024, "y": 768, "z": 0 },
+        "data": {
+          "title": "System Initialization",
+          "priority": 1,
+          "dependencies": ["node-0"],
+          "metadata": {
+            "theme_override": null,
+            "created_at": "2023-10-24T12:00:00Z"
+          }
+        }
+      }
+    ]
+  }
+}</pre>
+</div>
+</div>
+</section>
+<!-- END: Section-DataSchema -->
+<!-- BEGIN: Section-OperatorTheme -->
+<section class="theme-operator operator-grid p-12 rounded-xl border border-amber-900/30" id="operator">
+<div class="max-w-6xl mx-auto">
+<header class="mb-12 border-b border-amber-500/20 pb-6">
+<span class="text-amber-500 font-mono text-xs mb-2 block">// SYSTEM_THEME_01</span>
+<h2 class="text-4xl font-black text-amber-500 uppercase tracking-tighter">Operator</h2>
+<p class="text-amber-500/60 mt-2 max-w-xl">Grid-based terminal aesthetic. Low-fidelity, high-functional density. Designed for rapid data entry and command-line interactions.</p>
+</header>
+<div class="grid md:grid-cols-2 gap-12">
+<!-- Principles -->
+<div class="space-y-6">
+<h3 class="text-amber-500 font-bold border-l-4 border-amber-500 pl-4">Layout Principles: The Grid</h3>
+<p class="text-amber-200/80 text-sm leading-relaxed">
+              Every element must align to a strict 8px/24px grid. No shadows. Depth is communicated through border thickness and nesting levels. All typography is monospaced.
+            </p>
+<div class="grid grid-cols-2 gap-4">
+<div class="operator-card p-4 aspect-square flex flex-col justify-end">
+<span class="text-[10px] opacity-50">PALETTE_01</span>
+<span class="text-xl font-bold">#F59E0B</span>
+</div>
+<div class="operator-card p-4 aspect-square flex flex-col justify-end border-amber-900 bg-zinc-950">
+<span class="text-[10px] opacity-50">PALETTE_02</span>
+<span class="text-xl font-bold text-amber-900">#451A03</span>
+</div>
+</div>
+</div>
+<!-- Sample Component -->
+<div class="space-y-6">
+<h3 class="text-amber-500 font-bold border-l-4 border-amber-500 pl-4">Task Card Spec</h3>
+<div class="operator-card p-6 space-y-4">
+<div class="flex justify-between items-start">
+<span class="bg-amber-500 text-black px-2 py-0.5 text-[10px] font-bold">TASK_782</span>
+<span class="text-[10px] text-amber-500/50">STABLE_V1</span>
+</div>
+<p class="text-lg">DATABASE_MIGRATION_READY</p>
+<div class="w-full h-1 bg-amber-900">
+<div class="h-full bg-amber-500 w-[65%]"></div>
+</div>
+<button class="w-full border border-amber-500 py-2 hover:bg-amber-500 hover:text-black transition-all text-xs uppercase font-bold">
+                [ Execute Action ]
+              </button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- END: Section-OperatorTheme -->
+<!-- BEGIN: Section-HolographicTheme -->
+<section class="theme-holographic holographic-gradient p-12 rounded-xl border border-cyan-900/30 overflow-hidden relative" id="holographic">
+<div class="absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 blur-[120px]"></div>
+<div class="max-w-6xl mx-auto relative z-10">
+<header class="mb-12 border-b border-cyan-400/20 pb-6">
+<span class="text-cyan-400 font-sans text-xs font-semibold tracking-widest mb-2 block">INTERFACE LAYER 02</span>
+<h2 class="text-4xl font-light text-cyan-400 uppercase tracking-[0.2em]">Holographic</h2>
+<p class="text-cyan-200/60 mt-2 max-w-xl font-light">Depth-based glassmorphism. High-fidelity spatial interaction. Designed for visual hierarchy and cognitive flow.</p>
+</header>
+<div class="grid md:grid-cols-2 gap-12">
+<!-- Principles -->
+<div class="space-y-6">
+<h3 class="text-cyan-400 font-semibold border-b border-cyan-400/30 pb-2">Layout Principles: The Z-Axis</h3>
+<p class="text-cyan-100/70 text-sm leading-relaxed">
+              Hierarchy is established through blur intensity and elevation (Z-axis). Use of cyan glow for focus. Typography uses clean san-serif with wide tracking.
+            </p>
+<div class="flex gap-6 items-center">
+<div class="w-24 h-24 rounded-full bg-cyan-500 shadow-[0_0_30px_rgba(6,182,212,0.5)]"></div>
+<div class="w-24 h-24 rounded-full border border-cyan-400/50 glass-morphism"></div>
+<div class="w-24 h-24 rounded-full bg-cyan-900/40"></div>
+</div>
+</div>
+<!-- Sample Component -->
+<div class="space-y-6">
+<h3 class="text-cyan-400 font-semibold border-b border-cyan-400/30 pb-2">Task Node Spec</h3>
+<div class="glass-morphism p-6 rounded-2xl space-y-4 holo-glow">
+<div class="flex justify-between items-center">
+<div class="flex -space-x-2">
+<div class="w-6 h-6 rounded-full bg-cyan-800 border border-cyan-400"></div>
+<div class="w-6 h-6 rounded-full bg-cyan-700 border border-cyan-400"></div>
+</div>
+<span class="text-[10px] text-cyan-400 bg-cyan-400/10 px-2 py-0.5 rounded-full border border-cyan-400/20">Active Node</span>
+</div>
+<h4 class="text-xl text-white font-light tracking-wide">Interface Synthesis</h4>
+<p class="text-xs text-cyan-200/50 italic">Processing spatial coordinates...</p>
+<div class="flex gap-2">
+<button class="flex-1 bg-cyan-500/20 hover:bg-cyan-500/40 border border-cyan-400/30 text-cyan-100 py-2 rounded-lg text-xs transition-all">
+                  Sync
+                </button>
+<button class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-white py-2 rounded-lg text-xs transition-all">
+                  Decline
+                </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- END: Section-HolographicTheme -->
+<!-- BEGIN: Section-ComponentComparison -->
+<section class="bg-zinc-900/50 p-12 rounded-2xl border border-zinc-800" id="components">
+<h2 class="text-2xl font-bold mb-12 text-center tracking-widest uppercase">Cross-Theme Component Spec</h2>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-zinc-700">
+<th class="p-4 text-[10px] text-zinc-500 uppercase tracking-widest">Component</th>
+<th class="p-4 text-[10px] text-amber-500 uppercase tracking-widest font-mono">Operator Token</th>
+<th class="p-4 text-[10px] text-cyan-400 uppercase tracking-widest">Holographic Token</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-zinc-800">
+<tr>
+<td class="p-4 font-medium">Primary Button</td>
+<td class="p-4 font-mono text-xs">.btn-op-solid { bg: #F59E0B; }</td>
+<td class="p-4 text-xs font-sans">.btn-holo-blur { backdrop: blur(8px); }</td>
+</tr>
+<tr>
+<td class="p-4 font-medium">Form Input</td>
+<td class="p-4 font-mono text-xs">border: 1px solid #F59E0B;</td>
+<td class="p-4 text-xs font-sans">border-bottom: 2px solid cyan;</td>
+</tr>
+<tr>
+<td class="p-4 font-medium">Typography</td>
+<td class="p-4 font-mono text-xs">JetBrains Mono | 14px Base</td>
+<td class="p-4 text-xs font-sans">Inter | 16px Base | 400 Wght</td>
+</tr>
+<tr>
+<td class="p-4 font-medium">Transition</td>
+<td class="p-4 font-mono text-xs">Step(4) | 0ms Delay</td>
+<td class="p-4 text-xs font-sans">Ease-in-out | 300ms Duration</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<!-- END: Section-ComponentComparison -->
+</main>
+<!-- BEGIN: Footer -->
+<footer class="border-t border-zinc-800 py-12 mt-24 bg-zinc-950">
+<div class="container mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
+<div class="text-zinc-500 text-[10px] font-mono">
+        © 2024 SVELTEKIT_DESIGN_DOCS // ENCRYPTED_SPEC_V2
+      </div>
+<div class="flex gap-4">
+<div class="w-3 h-3 rounded-full bg-amber-500"></div>
+<div class="w-3 h-3 rounded-full bg-cyan-400"></div>
+<div class="w-3 h-3 rounded-full bg-zinc-700"></div>
+</div>
+<div class="text-zinc-500 text-[10px] font-mono uppercase tracking-widest">
+        Authored for Neural-Link-Display
+      </div>
+</div>
+</footer>
+<!-- END: Footer -->
+</body></html>

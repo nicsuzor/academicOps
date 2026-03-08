@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Holographic Flow Interface - Deep Dive</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Rajdhani:wght@500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00F0FF", // Cyan Neon
+                        "background-dark": "#050505", // Void Black
+                        "surface": "rgba(20, 25, 30, 0.6)",
+                        "text-main": "#E0E6ED",
+                        "text-muted": "#586575",
+                        "accent": "#FF2A6D",
+                    },
+                    fontFamily: {
+                        "display": ["Rajdhani", "sans-serif"],
+                        "body": ["Space Grotesk", "sans-serif"],
+                        "mono": ["JetBrains Mono", "monospace"],
+                    },
+                    boxShadow: {
+                        "neon": "0 0 15px rgba(0, 240, 255, 0.3)",
+                        "neon-strong": "0 0 25px rgba(0, 240, 255, 0.5)",
+                    },
+                    backgroundImage: {
+                        'void-pattern': "radial-gradient(circle at 50% 50%, rgba(0, 240, 255, 0.1) 0%, rgba(5, 5, 5, 0) 50%)",
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom Chromatic Aberration Effect */
+        .chromatic-text {
+            text-shadow: 2px 0 rgba(255, 0, 80, 0.3), -2px 0 rgba(0, 240, 255, 0.3);
+            animation: flicker 3s infinite alternate;
+        }
+
+        @keyframes flicker {
+            0% { opacity: 1; text-shadow: 2px 0 rgba(255, 0, 80, 0.3), -2px 0 rgba(0, 240, 255, 0.3); }
+            5% { opacity: 0.9; text-shadow: 2px 0 rgba(255, 0, 80, 0.3), -2px 0 rgba(0, 240, 255, 0.3); }
+            10% { opacity: 1; text-shadow: 3px 0 rgba(255, 0, 80, 0.4), -3px 0 rgba(0, 240, 255, 0.4); }
+            15% { opacity: 1; text-shadow: 2px 0 rgba(255, 0, 80, 0.3), -2px 0 rgba(0, 240, 255, 0.3); }
+            100% { opacity: 1; text-shadow: 1px 0 rgba(255, 0, 80, 0.2), -1px 0 rgba(0, 240, 255, 0.2); }
+        }
+
+        /* Glassmorphism Utilities */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .glass-panel:hover {
+            border-color: rgba(0, 240, 255, 0.4);
+            background: rgba(255, 255, 255, 0.05);
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.15);
+        }
+
+        /* Background Blur Simulation */
+        .deep-background {
+            filter: blur(20px) brightness(0.6);
+            transform: scale(1.2);
+            z-index: 0;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="bg-background-dark text-text-main font-body overflow-hidden h-screen flex flex-col relative">
+<!-- Background Layer: Simulated Blurred Node Graph -->
+<div aria-hidden="true" class="absolute inset-0 deep-background overflow-hidden">
+<!-- Abstract Nodes and Connections -->
+<div class="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-[80px]"></div>
+<div class="absolute bottom-1/3 right-1/4 w-[500px] h-[500px] bg-accent/10 rounded-full blur-[100px]"></div>
+<!-- SVG Graph Pattern -->
+<svg class="absolute inset-0 w-full h-full opacity-30" height="100%" width="100%">
+<defs>
+<pattern height="100" id="grid" patternunits="userSpaceOnUse" width="100">
+<circle cx="10" cy="10" fill="#586575" r="1.5"></circle>
+<circle cx="60" cy="40" fill="#586575" r="1"></circle>
+<line stroke="#586575" stroke-width="0.5" x1="10" x2="60" y1="10" y2="40"></line>
+</pattern>
+</defs>
+<rect fill="url(#grid)" height="100%" width="100%"></rect>
+<path d="M 200 200 L 400 400 L 800 300" fill="none" opacity="0.4" stroke="#00F0FF" stroke-width="1"></path>
+<circle cx="400" cy="400" fill="#00F0FF" opacity="0.6" r="4"></circle>
+</svg>
+</div>
+<!-- Main Content Layer (Z-Index 10) -->
+<div class="relative z-10 flex flex-col h-full w-full">
+<!-- Navigation Bar -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-[#283839]/30 px-10 py-3 glass-panel rounded-b-none border-t-0 border-x-0">
+<div class="flex items-center gap-4 text-white">
+<div class="size-6 text-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-[24px]">hub</span>
+</div>
+<h2 class="text-white text-lg font-display font-bold leading-tight tracking-[0.05em] uppercase">Holographic Flow</h2>
+</div>
+<div class="flex flex-1 justify-end gap-8 items-center">
+<div class="flex items-center gap-9 font-display tracking-widest text-xs">
+<a class="text-text-muted hover:text-primary transition-colors duration-300" href="#">VOID</a>
+<a class="text-primary font-bold shadow-neon-sm" href="#">DEEP DIVE</a>
+<a class="text-text-muted hover:text-primary transition-colors duration-300" href="#">STREAM</a>
+</div>
+<div class="h-6 w-[1px] bg-[#283839]"></div>
+<button class="flex items-center justify-center gap-2 text-primary text-xs font-mono">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+</span>
+                    SYS.ONLINE
+                </button>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-8 ring-1 ring-primary/30" data-alt="User avatar profile picture showing a young woman" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBIDgoCMWb_B56vsETNKY2HwFWWjUnvX-EFpJbpXiy0ECVGlE9mRVQaUBoMNuNsbWrW7z5bJq6Y2IhDuRGyPGH7FSTuM-s5mF_GGY0kizAZKqwylKvPB4tqKuqVUp1xxR3J8yDygJEVhgEm71CTei1Ynq2TUTQqP-j8dSjW_pXwPUgYrrdsdHlUvXqp1wzjXPT2WX8tF9GQGOJDxgoaxO_JnSMeSbek6xFSiqxlsqrPPR_uMQhPgM2TFiEMGZOlujWgpU7UbNtC97h5");'>
+</div>
+</div>
+</header>
+<!-- Project Header Area -->
+<div class="flex flex-col items-center justify-center py-10 text-center space-y-2 relative">
+<div class="absolute left-10 top-10">
+<button class="flex items-center gap-2 text-text-muted hover:text-primary transition-colors group">
+<span class="material-symbols-outlined text-sm transition-transform group-hover:-translate-x-1">arrow_back_ios_new</span>
+<span class="font-mono text-xs tracking-wider">RETURN_TO_VOID</span>
+</button>
+</div>
+<div class="flex items-center gap-2 text-primary/60 font-mono text-xs tracking-[0.2em] mb-2">
+<span class="material-symbols-outlined text-sm">folder_open</span>
+<span>CLUSTER ID: 0X-92</span>
+</div>
+<h1 class="text-5xl md:text-6xl font-display font-bold text-white tracking-widest chromatic-text uppercase">
+                PROJECT: NEURAL_LINK_V2
+            </h1>
+<div class="flex items-center gap-6 mt-4">
+<div class="flex items-center gap-2 px-3 py-1 rounded bg-white/5 border border-white/10 backdrop-blur-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(0,240,255,0.8)]"></span>
+<span class="text-xs font-mono text-text-main">8 PENDING</span>
+</div>
+<div class="flex items-center gap-2 px-3 py-1 rounded bg-white/5 border border-white/10 backdrop-blur-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-accent shadow-[0_0_8px_rgba(255,42,109,0.8)]"></span>
+<span class="text-xs font-mono text-text-main">2 BLOCKED</span>
+</div>
+<div class="flex items-center gap-2 px-3 py-1 rounded bg-white/5 border border-white/10 backdrop-blur-sm">
+<span class="material-symbols-outlined text-[14px] text-text-muted">schedule</span>
+<span class="text-xs font-mono text-text-muted">T-MINUS 48H</span>
+</div>
+</div>
+</div>
+<!-- Scrollable Content Area -->
+<div class="flex-1 overflow-y-auto px-4 pb-20 custom-scrollbar">
+<div class="max-w-[1200px] mx-auto">
+<!-- Task Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr">
+<!-- Card 1 -->
+<div class="glass-panel rounded-sm p-5 relative group transition-all duration-300 hover:-translate-y-1 cursor-pointer flex flex-col justify-between min-h-[180px]">
+<div>
+<div class="flex justify-between items-start mb-4">
+<span class="px-2 py-0.5 rounded text-[10px] font-mono tracking-wider bg-primary/10 text-primary border border-primary/20">DEV_OPS</span>
+<span class="material-symbols-outlined text-text-muted/50 text-lg group-hover:text-primary transition-colors">more_horiz</span>
+</div>
+<h3 class="text-xl font-display font-semibold text-white tracking-wide mb-2 group-hover:text-primary transition-colors">Refactor Z-Index Stack</h3>
+<p class="text-text-muted text-sm font-body leading-relaxed line-clamp-2">Fix the stacking context issues on the Surface Layer modals causing flickering.</p>
+</div>
+<div class="mt-6">
+<div class="flex justify-between text-[10px] font-mono text-text-muted mb-1">
+<span>PROGRESS</span>
+<span>65%</span>
+</div>
+<div class="h-[2px] w-full bg-white/10 rounded-full overflow-hidden">
+<div class="h-full bg-primary shadow-[0_0_10px_rgba(0,240,255,0.6)] w-[65%]"></div>
+</div>
+</div>
+</div>
+<!-- Card 2 (Active/High Priority) -->
+<div class="glass-panel rounded-sm p-5 relative group transition-all duration-300 hover:-translate-y-1 cursor-pointer flex flex-col justify-between min-h-[180px] border-l-2 border-l-accent">
+<div>
+<div class="flex justify-between items-start mb-4">
+<span class="px-2 py-0.5 rounded text-[10px] font-mono tracking-wider bg-accent/10 text-accent border border-accent/20">CRITICAL</span>
+<span class="material-symbols-outlined text-text-muted/50 text-lg group-hover:text-accent transition-colors">priority_high</span>
+</div>
+<h3 class="text-xl font-display font-semibold text-white tracking-wide mb-2 group-hover:text-accent transition-colors">Security Patch 0.9.2</h3>
+<p class="text-text-muted text-sm font-body leading-relaxed line-clamp-2">Apply hotfix for the authentication token leak in the Void graph data stream.</p>
+</div>
+<div class="mt-6">
+<div class="flex justify-between text-[10px] font-mono text-text-muted mb-1">
+<span>PROGRESS</span>
+<span>15%</span>
+</div>
+<div class="h-[2px] w-full bg-white/10 rounded-full overflow-hidden">
+<div class="h-full bg-accent shadow-[0_0_10px_rgba(255,42,109,0.6)] w-[15%]"></div>
+</div>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="glass-panel rounded-sm p-5 relative group transition-all duration-300 hover:-translate-y-1 cursor-pointer flex flex-col justify-between min-h-[180px]">
+<div>
+<div class="flex justify-between items-start mb-4">
+<span class="px-2 py-0.5 rounded text-[10px] font-mono tracking-wider bg-white/5 text-text-main border border-white/10">DESIGN</span>
+<span class="material-symbols-outlined text-text-muted/50 text-lg group-hover:text-primary transition-colors">more_horiz</span>
+</div>
+<h3 class="text-xl font-display font-semibold text-white tracking-wide mb-2 group-hover:text-primary transition-colors">Optimize Graph Render</h3>
+<p class="text-text-muted text-sm font-body leading-relaxed line-clamp-2">Reduce draw calls for ForceAtlas2 algorithm on lower-end GPUs.</p>
+</div>
+<div class="mt-6">
+<div class="flex justify-between text-[10px] font-mono text-text-muted mb-1">
+<span>PROGRESS</span>
+<span>40%</span>
+</div>
+<div class="h-[2px] w-full bg-white/10 rounded-full overflow-hidden">
+<div class="h-full bg-primary shadow-[0_0_10px_rgba(0,240,255,0.6)] w-[40%]"></div>
+</div>
+</div>
+</div>
+<!-- Card 4 -->
+<div class="glass-panel rounded-sm p-5 relative group transition-all duration-300 hover:-translate-y-1 cursor-pointer flex flex-col justify-between min-h-[180px]">
+<div>
+<div class="flex justify-between items-start mb-4">
+<span class="px-2 py-0.5 rounded text-[10px] font-mono tracking-wider bg-primary/10 text-primary border border-primary/20">FRONTEND</span>
+<span class="material-symbols-outlined text-text-muted/50 text-lg group-hover:text-primary transition-colors">more_horiz</span>
+</div>
+<h3 class="text-xl font-display font-semibold text-white tracking-wide mb-2 group-hover:text-primary transition-colors">User Testing Phase 1</h3>
+<p class="text-text-muted text-sm font-body leading-relaxed line-clamp-2">Synthesize feedback from the alpha cohort regarding navigation speed.</p>
+</div>
+<div class="mt-6">
+<div class="flex justify-between text-[10px] font-mono text-text-muted mb-1">
+<span>PROGRESS</span>
+<span>0%</span>
+</div>
+<div class="h-[2px] w-full bg-white/10 rounded-full overflow-hidden">
+<div class="h-full bg-primary shadow-[0_0_10px_rgba(0,240,255,0.6)] w-[0%]"></div>
+</div>
+</div>
+</div>
+<!-- Card 5 -->
+<div class="glass-panel rounded-sm p-5 relative group transition-all duration-300 hover:-translate-y-1 cursor-pointer flex flex-col justify-between min-h-[180px]">
+<div>
+<div class="flex justify-between items-start mb-4">
+<span class="px-2 py-0.5 rounded text-[10px] font-mono tracking-wider bg-white/5 text-text-main border border-white/10">DOCS</span>
+<div class="flex -space-x-2">
+<div class="h-6 w-6 rounded-full border border-black bg-cover" data-alt="Avatar of team member 1" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBewL4t6EY4iWo2ePgiyzU0SwUzpuSyNk57eqyzCYRFl2IW82kUwH7nTcaanVDAJniVFq-uJl6xkkgIhStchxrnOdGXX7E3P5i8DKJ5acJOTbrFVEU4snCBkI9-0GS0Osfrwu3NWAwYVHJ8HUI-lH9z0Eagx8Kq58ZsE-OZrgiOfu_UPrg5w39oOe54ktGdK5tRJH1OXIgXKHk3q5HFEveGy7RU8DlxZn0nKqctsWYcy_ga-6XGN4hH7MxOCN_hWl0RyT2ahhbRH6mp')"></div>
+<div class="h-6 w-6 rounded-full border border-black bg-cover" data-alt="Avatar of team member 2" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAGyPGGlpWA0XPXNJQny4sBW2XYuHM0DfZ2E5sNfAG2YM5DHWIEinNdIN-bix9o6PW5Tgz6gT4o50eTzHqqfnpC11MD4vw_PxUlEsxNqXNh5WQzTIF4rDfPx_igIK6TpFk4Gx7V91G1ycB5PVAzz0bFhDwNErtmaL4mg6wmTMG4QAsTUu67Bd7fZmdS3lt_A7HMDJYUFxIgMaiEGQCM2kM1HCwN5jVTmAm8fEzoc80BGQ6IAobPnW_SV0VIindS14AGWWyi72TqukkX')"></div>
+</div>
+</div>
+<h3 class="text-xl font-display font-semibold text-white tracking-wide mb-2 group-hover:text-primary transition-colors">Update API Reference</h3>
+<p class="text-text-muted text-sm font-body leading-relaxed line-clamp-2">Ensure all new endpoints for V2 are documented with examples.</p>
+</div>
+<div class="mt-6">
+<div class="flex justify-between text-[10px] font-mono text-text-muted mb-1">
+<span>PROGRESS</span>
+<span>90%</span>
+</div>
+<div class="h-[2px] w-full bg-white/10 rounded-full overflow-hidden">
+<div class="h-full bg-primary shadow-[0_0_10px_rgba(0,240,255,0.6)] w-[90%]"></div>
+</div>
+</div>
+</div>
+<!-- Card 6 -->
+<div class="glass-panel rounded-sm p-5 relative group transition-all duration-300 hover:-translate-y-1 cursor-pointer flex flex-col justify-between min-h-[180px]">
+<div>
+<div class="flex justify-between items-start mb-4">
+<span class="px-2 py-0.5 rounded text-[10px] font-mono tracking-wider bg-primary/10 text-primary border border-primary/20">QA</span>
+<span class="material-symbols-outlined text-text-muted/50 text-lg group-hover:text-primary transition-colors">more_horiz</span>
+</div>
+<h3 class="text-xl font-display font-semibold text-white tracking-wide mb-2 group-hover:text-primary transition-colors">Regression Testing</h3>
+<p class="text-text-muted text-sm font-body leading-relaxed line-clamp-2">Run full suite against build #4092 before staging deploy.</p>
+</div>
+<div class="mt-6">
+<div class="flex justify-between text-[10px] font-mono text-text-muted mb-1">
+<span>PROGRESS</span>
+<span>33%</span>
+</div>
+<div class="h-[2px] w-full bg-white/10 rounded-full overflow-hidden">
+<div class="h-full bg-primary shadow-[0_0_10px_rgba(0,240,255,0.6)] w-[33%]"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer / Status Bar -->
+<div class="flex justify-between items-center mt-12 py-4 border-t border-white/5 text-text-muted text-xs font-mono">
+<div>
+                        MEMORY_USAGE: 402MB <span class="text-primary ml-2">OPTIMAL</span>
+</div>
+<div class="flex gap-4">
+<span>LATENCY: 12ms</span>
+<span>NODES: 1,024</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</body></html>

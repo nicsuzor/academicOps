@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Holographic Flow Interface - Surface Layer</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&amp;family=Rajdhani:wght@500;600;700&amp;family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Theme Config -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00F0FF", // Cyan Neon
+                        "primary-dim": "rgba(0, 240, 255, 0.1)",
+                        "background-void": "#050505",
+                        "surface": "rgba(20, 25, 30, 0.6)",
+                        "monolith-bg": "rgba(10, 10, 15, 0.9)",
+                        "text-main": "#E0E6ED",
+                        "text-muted": "#586575",
+                        "accent-alert": "#FF2A6D",
+                    },
+                    fontFamily: {
+                        "display": ["Rajdhani", "sans-serif"],
+                        "body": ["Space Grotesk", "sans-serif"],
+                        "mono": ["JetBrains Mono", "monospace"],
+                    },
+                    boxShadow: {
+                        "glow": "0 0 20px rgba(0, 240, 255, 0.4)",
+                        "glow-sm": "0 0 10px rgba(0, 240, 255, 0.2)",
+                    },
+                    backgroundImage: {
+                        'grid-pattern': "linear-gradient(to right, #1f2937 1px, transparent 1px), linear-gradient(to bottom, #1f2937 1px, transparent 1px)",
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom Utilities for that specific Cyber-Zen feel */
+        .glass-panel {
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .monolith-border {
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+        }
+
+        .text-glow {
+            text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+        }
+
+        .chromatic-text {
+            text-shadow: -1px 0 rgba(255, 0, 0, 0.6), 1px 0 rgba(0, 0, 255, 0.6);
+        }
+
+        /* Scanline effect */
+        .scanline {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, transparent 50%, rgba(0, 240, 255, 0.02) 51%, transparent 51%);
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        /* Particle dust simulation */
+        .particle {
+            position: absolute;
+            background: rgba(0, 240, 255, 0.3);
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body class="bg-background-void text-text-main h-screen w-screen overflow-hidden selection:bg-primary selection:text-black">
+<!-- Background Layer: Simulated "Deep Dive" view that is heavily blurred -->
+<div class="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+<!-- Abstract geometric background representing the blurred previous state -->
+<div class="absolute inset-0 bg-background-void"></div>
+<!-- Faint grid -->
+<div class="absolute inset-0 opacity-[0.05]" style="background-image: linear-gradient(#333 1px, transparent 1px), linear-gradient(90deg, #333 1px, transparent 1px); background-size: 40px 40px;"></div>
+<!-- Blurred Orbs/Nodes representing the "Project Cluster" -->
+<div class="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-[100px] opacity-20 animate-pulse"></div>
+<div class="absolute bottom-1/3 right-1/4 w-[500px] h-[500px] bg-blue-900/30 rounded-full blur-[120px] opacity-30"></div>
+<!-- Connecting Lines (Blurred) -->
+<svg class="absolute inset-0 w-full h-full opacity-10 blur-sm" xmlns="http://www.w3.org/2000/svg">
+<line stroke="#586575" stroke-width="2" x1="10%" x2="50%" y1="20%" y2="50%"></line>
+<line stroke="#586575" stroke-width="2" x1="50%" x2="80%" y1="50%" y2="80%"></line>
+<line stroke="#586575" stroke-width="2" x1="50%" x2="80%" y1="50%" y2="20%"></line>
+</svg>
+<!-- Heavy Overlay to darken background for focus mode -->
+<div class="absolute inset-0 bg-black/70 backdrop-blur-[40px]"></div>
+</div>
+<!-- Scanline Overlay -->
+<div class="scanline"></div>
+<!-- Floating Particles (Static representation) -->
+<div class="particle w-1 h-1 top-[20%] left-[10%] opacity-20"></div>
+<div class="particle w-0.5 h-0.5 top-[60%] left-[80%] opacity-40"></div>
+<div class="particle w-1 h-1 top-[40%] right-[20%] opacity-10"></div>
+<div class="particle w-0.5 h-0.5 bottom-[10%] left-[40%] opacity-30"></div>
+<!-- Main Content Container (Surface Layer) -->
+<main class="relative z-10 flex flex-col items-center justify-center h-full w-full p-4">
+<!-- Top Status Indicator -->
+<div class="absolute top-8 left-8 flex items-center gap-3 opacity-60">
+<span class="material-symbols-outlined text-primary animate-pulse text-[20px]">radio_button_checked</span>
+<span class="font-mono text-xs tracking-widest text-primary">FOCUS MODE // ACTIVE</span>
+</div>
+<!-- The Monolith (Task Modal) -->
+<div class="relative w-full max-w-[800px] flex flex-col bg-monolith-bg monolith-border rounded-sm backdrop-blur-xl overflow-hidden group">
+<!-- Decorative Top Bar -->
+<div class="h-1 w-full bg-gradient-to-r from-transparent via-primary to-transparent opacity-50"></div>
+<!-- Modal Content -->
+<div class="p-10 flex flex-col gap-6">
+<!-- Header Section -->
+<div class="flex flex-col gap-2">
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-3 font-mono text-xs text-primary/80 tracking-wider">
+<span class="px-2 py-0.5 border border-primary/30 rounded-sm bg-primary/5">BACKEND</span>
+<span class="px-2 py-0.5 border border-primary/30 rounded-sm bg-primary/5">API-V2</span>
+<span class="text-accent-alert animate-pulse">PRIORITY: CRITICAL</span>
+</div>
+<div class="font-mono text-text-muted text-xs">ID: T-8842 // EST: 2H</div>
+</div>
+<h1 class="font-display font-bold text-4xl md:text-5xl text-white tracking-tight leading-tight chromatic-text">
+                        Refactor Authentication API
+                    </h1>
+</div>
+<!-- Divider -->
+<div class="h-px w-full bg-gradient-to-r from-transparent via-primary/30 to-transparent"></div>
+<!-- Description Body -->
+<div class="font-body text-lg md:text-xl text-text-main/90 leading-relaxed font-light space-y-4">
+<p>
+                        Migrate the legacy <span class="text-primary font-medium">JWT implementation</span> to the new OAuth2 provider.
+                        This requires a complete overhaul of the token validation logic in the middleware layer.
+                    </p>
+<ul class="list-none space-y-3 mt-4 pl-1">
+<li class="flex items-start gap-3 group/item">
+<span class="material-symbols-outlined text-primary/50 text-lg mt-1 group-hover/item:text-primary transition-colors">check_box_outline_blank</span>
+<span class="text-text-muted group-hover/item:text-text-main transition-colors">Ensure token refresh rotation is active and persisting to Redis.</span>
+</li>
+<li class="flex items-start gap-3 group/item">
+<span class="material-symbols-outlined text-primary/50 text-lg mt-1 group-hover/item:text-primary transition-colors">check_box_outline_blank</span>
+<span class="text-text-muted group-hover/item:text-text-main transition-colors">Verify endpoint security for <span class="font-mono text-sm bg-white/5 px-1">/user/data</span> routes.</span>
+</li>
+<li class="flex items-start gap-3 group/item">
+<span class="material-symbols-outlined text-primary/50 text-lg mt-1 group-hover/item:text-primary transition-colors">check_box_outline_blank</span>
+<span class="text-text-muted group-hover/item:text-text-main transition-colors">Update swagger documentation.</span>
+</li>
+</ul>
+</div>
+<!-- Associated Files / Context (Optional Detail) -->
+<div class="mt-4 p-4 rounded-sm border border-white/5 bg-black/20 flex items-center gap-4">
+<span class="material-symbols-outlined text-text-muted">folder_open</span>
+<div class="flex flex-col">
+<span class="font-mono text-xs text-text-muted uppercase">Context Context</span>
+<span class="font-body text-sm text-text-main">/src/middleware/auth_v2.ts</span>
+</div>
+<div class="ml-auto">
+<button class="text-primary hover:text-white transition-colors">
+<span class="material-symbols-outlined">open_in_new</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Bottom decorative elements -->
+<div class="absolute bottom-0 right-0 p-2">
+<svg fill="none" height="20" viewbox="0 0 20 20" width="20">
+<path d="M20 20H0L20 0V20Z" fill="rgba(0, 240, 255, 0.2)"></path>
+</svg>
+</div>
+</div>
+<!-- Connecting Line to Action Dock -->
+<div class="h-12 w-px bg-gradient-to-b from-primary/50 to-transparent my-2"></div>
+<!-- Action Dock -->
+<div class="flex items-center gap-4 md:gap-8 mt-2">
+<!-- Secondary Actions -->
+<button class="group flex items-center justify-center px-6 py-3 min-w-[140px] border border-text-muted/30 rounded-sm bg-transparent hover:border-primary/50 hover:bg-primary/5 transition-all duration-300">
+<span class="material-symbols-outlined text-text-muted mr-2 text-[18px] group-hover:text-primary">schedule</span>
+<span class="font-display font-bold text-sm tracking-widest text-text-muted group-hover:text-primary uppercase">Defer</span>
+</button>
+<!-- Primary Action (Complete) -->
+<button class="group relative flex items-center justify-center px-10 py-4 min-w-[200px] border border-primary/50 rounded-sm bg-primary/10 hover:bg-primary hover:text-black hover:border-primary hover:shadow-[0_0_30px_rgba(0,240,255,0.4)] transition-all duration-300 transform hover:-translate-y-1">
+<!-- Glitch decorative elements on hover -->
+<div class="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<span class="material-symbols-outlined text-primary mr-3 group-hover:text-black transition-colors">check_circle</span>
+<span class="font-display font-bold text-base tracking-[0.15em] text-primary group-hover:text-black transition-colors uppercase">Complete Task</span>
+</button>
+<!-- Secondary Actions -->
+<button class="group flex items-center justify-center px-6 py-3 min-w-[140px] border border-text-muted/30 rounded-sm bg-transparent hover:border-primary/50 hover:bg-primary/5 transition-all duration-300">
+<span class="material-symbols-outlined text-text-muted mr-2 text-[18px] group-hover:text-primary">person_add</span>
+<span class="font-display font-bold text-sm tracking-widest text-text-muted group-hover:text-primary uppercase">Delegate</span>
+</button>
+</div>
+<!-- Keyboard Shortcut Hint -->
+<div class="mt-8 font-mono text-[10px] text-text-muted tracking-widest opacity-50">
+            PRESS <span class="text-primary">[ ESC ]</span> TO CANCEL  //  PRESS <span class="text-primary">[ ENTER ]</span> TO COMPLETE
+        </div>
+</main>
+</body></html>

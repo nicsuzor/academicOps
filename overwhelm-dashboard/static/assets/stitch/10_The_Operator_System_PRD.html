@@ -1,0 +1,212 @@
+# The Operator System
+
+## Product Overview
+
+**The Pitch:** A high-density task management environment designed for neurodivergent power users who need structure, not simplicity. It visualizes the entire web of obligations as a navigable engineering schematic rather than a hidden list.
+
+**For:** Systems thinkers, developers, and ADHD power users who find traditional "clean" UIs anxiety-inducing because they obscure complexity.
+
+**Device:** Desktop (Primary focus: ultrawide monitors)
+
+**Design Direction:** Retro-futurist utilitarianism. "Nostromo" meets CLI. High contrast, scanline aesthetics, information density over whitespace.
+
+**Inspired by:** *Alien* (1979) flight computers, *EVA* interfaces from NGE, standard Linux terminal sessions (htop).
+
+---
+
+## Screens
+
+- **Tactical Overview (Dashboard):** Real-time monitoring of current session stack and critical path dependencies.
+- **The Graph (Network View):** ForceAtlas2 visualizer of all tasks, projects, and their connecting logic.
+- **Deep Storage (Backlog):** Tabular, CLI-style database view for bulk entry and tag management.
+- **Session Output (Focus Mode):** Distraction-free (but data-rich) execution environment for a single leaf task.
+
+---
+
+## Key Flows
+
+**Flow: Establishing a Focus Path**
+
+1.  User starts on **The Graph** -> sees full project topology.
+2.  User `Shift` + clicks a root node ("Q4 Launch") -> System highlights the critical path, dimming unrelated nodes.
+3.  User hits `Enter` -> Interface transitions to **Session Output**, locking the path into the sidebar.
+
+**Flow: Handling Interrupts**
+
+1.  User is in **Session Output** -> realizes a blocker exists.
+2.  User hits `Ctrl + B` (Blocker) -> A modal overlay "Interrupt Stack" appears.
+3.  User inputs new dependency -> The original task is paused, new task pushed to top of **Session Context** stack.
+
+---
+
+<details>
+<summary>Design System</summary>
+
+## Color Palette
+
+**Theme:** "Terminal Amber" (High contrast, zero blue-light).
+
+- **Primary:** `#FFB000` - Active cursors, borders, critical text.
+- **Background:** `#0A0A0A` - Deep void black (not grey).
+- **Surface:** `#141414` - Module backgrounds.
+- **Text:** `#FFB000` (100% opacity) - Primary data.
+- **Muted:** `#FFB000` (45% opacity) - Grid lines, inactive metadata.
+- **Accent:** `#FF3333` - Critical errors, blockers.
+
+## Typography
+
+Strictly monospaced. No variable widths. Alignments must snap to character grid.
+
+- **Headings:** `IBM Plex Mono`, 700, 20px (Uppercase, tracked 1px)
+- **Body:** `JetBrains Mono`, 400, 14px
+- **Small text:** `JetBrains Mono`, 400, 12px
+- **Buttons:** `IBM Plex Mono`, 600, 14px (Boxed)
+
+**Style notes:**
+- **Borders:** 1px solid Primary everywhere.
+- **Corners:** 0px radius. Sharp edges only.
+- **Texture:** Subtle scanline overlay (CSS repeating-linear-gradient).
+- **Interactive:** Hover states invert colors (Black text on Amber bg).
+
+## Design Tokens
+
+```css
+:root {
+  --color-primary: #FFB000;
+  --color-background: #0A0A0A;
+  --color-surface: #141414;
+  --color-text: #FFB000;
+  --color-muted: rgba(255, 176, 0, 0.45);
+  --color-error: #FF3333;
+  --font-display: 'IBM Plex Mono', monospace;
+  --font-body: 'JetBrains Mono', monospace;
+  --grid-unit: 24px;
+  --border-width: 1px;
+}
+```
+
+</details>
+
+---
+
+<details>
+<summary>Screen Specifications</summary>
+
+### Tactical Overview (Dashboard)
+
+**Purpose:** The default "morning coffee" screen. Shows system health and immediate priorities.
+
+**Layout:** 3-column Bento grid.
+- **Left (20%):** Session Context (Persistent Stack).
+- **Center (50%):** Active Focus Path (Tree view).
+- **Right (30%):** System Stats & Incoming (Inbox).
+
+**Key Elements:**
+- **Session Context Sidebar:** Vertical list representing the "Call Stack" of the user's brain. Top item is current.
+    - *Look:* `ul` list, top item inverted (active), dotted connectors.
+- **Focus Path Tree:** Linear visualization of the current project's next 3 steps.
+    - *Look:* ASCII-style tree lines (`└──`), bold text for tasks, muted for metadata.
+- **Inbox Buffer:** Raw text input area for "Brain Dump."
+    - *Look:* Textarea with blinking block cursor `█`.
+
+**States:**
+- **Empty:** "SYSTEM IDLE. AWAITING INPUT." blinking text.
+- **Loading:** "[||||||----] INITIALIZING" ASCII progress bar.
+
+**Interactions:**
+- **Click Sidebar Item:** Context switches center panel to that task's parent.
+- **Cmd+K:** Opens command palette (centered overlay).
+
+**Responsive:**
+- **Desktop:** 3 columns.
+- **Tablet:** Sidebar collapses to icon strip.
+- **Mobile:** Single column stack (Context -> Focus -> Inbox).
+
+### The Graph (Network View)
+
+**Purpose:** Spatial understanding of complexity. Identifying bottlenecks.
+
+**Layout:** Full-screen canvas with floating control overlays (HUD style).
+
+**Key Elements:**
+- **The Web:** ForceAtlas2 rendered graph. Nodes = Tasks, Edges = Dependencies.
+    - *Look:* Nodes are hollow squares `[]`. Active node is filled `[█]`.
+- **Filter HUD:** Bottom-right floating panel. Checkboxes for "Blocking," "Due Soon," "Stale."
+    - *Look:* Transparent black bg, 1px border, backdrop blur.
+- **Mini-Map:** Top-right corner. 150x150px view of entire network.
+
+**States:**
+- **Loading:** "COMPUTING TOPOLOGY..." with scrolling hex codes.
+- **Empty:** "DATA CORRUPTION: NO NODES FOUND."
+
+**Interactions:**
+- **Scroll:** Zoom in/out (Semantic zoom: reveals sub-tasks at high zoom).
+- **Drag Node:** Manual repositioning (physics spring back unless pinned).
+- **Hover Node:** Highlights all connected edges in bright Primary, dims others.
+
+### Deep Storage (Backlog)
+
+**Purpose:** Bulk data entry and attribute management. The "Excel" view.
+
+**Layout:** Dense data table. Top sticky header.
+
+**Key Elements:**
+- **Query Bar:** Top input. `> filter --status=pending --tag=backend`.
+- **The Grid:** 14px row height. Columns: ID, DESC, DEP, EST, DUES.
+    - *Look:* Vertical borders between columns. Zebra striping via opacity (10% vs 5%).
+- **Bulk Action Footer:** Sticky bottom bar. "3 items selected. [ARCHIVE] [DEFER] [DELETE]".
+
+**Components:**
+- **Status Chip:** Text only `[TODO]`, `[WIP]`, `[DONE]`. No rounded pills.
+- **Sort Caret:** `▲` or `▼` next to headers.
+
+### Session Output (Focus Mode)
+
+**Purpose:** Execution. Single-tasking with full context.
+
+**Layout:**
+- **Header:** Breadcrumbs `Project / Epic / Task`.
+- **Main:** Markdown editor / Terminal output.
+- **Right Rail:** Timer & Sub-tasks checklist.
+
+**Key Elements:**
+- **Chronometer:** Large countdown timer `00:25:00`.
+    - *Look:* IBM Plex Mono, 64px.
+- **Terminal Editor:** Main writing/notes area.
+    - *Look:* Line numbers on left. 80ch max width centered.
+- **Dependency Log:** Small list of tasks blocking this current one.
+
+**Interactions:**
+- **Complete Task:** Screen flashes inverted colors once. Sound effect: Mechanical switch click.
+
+</details>
+
+---
+
+<details>
+<summary>Build Guide</summary>
+
+**Stack:** HTML + Tailwind CSS v3
+
+**Build Order:**
+1.  **Tactical Overview:** Establishes the Layout/Grid/Sidebar components which persist everywhere.
+2.  **The Graph:** Implements the complex visualization (Canvas/SVG) early to validate performance.
+3.  **Session Output:** Reuses typography and layout tokens from Overview.
+4.  **Deep Storage:** Pure data presentation, easiest to style last.
+
+**Tailwind Config:**
+```javascript
+theme: {
+  colors: {
+    primary: '#FFB000',
+    bg: '#0A0A0A',
+    surface: '#141414',
+  },
+  fontFamily: {
+    mono: ['IBM Plex Mono', 'monospace'],
+    body: ['JetBrains Mono', 'monospace'],
+  }
+}
+```
+
+</details>
