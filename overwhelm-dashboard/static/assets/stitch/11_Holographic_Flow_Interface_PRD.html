@@ -1,0 +1,187 @@
+# Holographic Flow Interface
+
+## Product Overview
+
+**The Pitch:** A depth-based productivity environment that treats task complexity as a navigatable physical space. By using the Z-axis to separate active "signal" from background "noise," we reduce cognitive load for neurodivergent minds dealing with high-velocity data.
+
+**For:** Power users, developers, and systems thinkers with ADHD who need to manage massive complexity without losing context or focus.
+
+**Device:** desktop
+
+**Design Direction:** **Industrial Cyber-Zen.** High-fidelity translucent layers, deep atmospheric blurs, and neon accents against a void-black background. Think "Minority Report" meets "Blade Runner 2049" UI, but optimized for calmness rather than drama.
+
+**Inspired by:** Apple Vision Pro OS (glassmorphism/depth), Eve Online (complex data overlays), Obsidian (knowledge graphs).
+
+---
+
+## Screens
+
+- **The Void (Home):** Global node graph visualization of all projects, dim and ambient.
+- **Deep Dive (Project View):** Focused treemap view of a single project cluster.
+- **Surface Layer (Task Mode):** Single-task focus overlay with background obscured by heavy blur.
+- **The Stream (Inbox):** Rapid-entry feed floating on the bottom-right periphery.
+
+---
+
+## Key Flows
+
+**Flow: Entering Deep Focus**
+
+1. User is on **The Void** -> sees complex galaxy of project nodes.
+2. User clicks **Project Cluster** -> Camera zooms in; unrelated nodes fade and blur heavily (Z-axis shift).
+3. **Deep Dive** view activates -> Specific task cards emerge from the blur.
+4. User clicks **Task Card** -> **Surface Layer** activates; everything else recedes to background.
+5. Result: User sees *only* the current task floating in clear focus.
+
+---
+
+<details>
+<summary>Design System</summary>
+
+## Color Palette
+
+- **Primary:** `#00F0FF` - Cyan Neon (Active states, cursors, key data)
+- **Background:** `#050505` - Void Black (Infinite depth background)
+- **Surface:** `rgba(20, 25, 30, 0.6)` - Glass panels (Backdrop blur required)
+- **Surface High:** `rgba(255, 255, 255, 0.05)` - Hover states, active cards
+- **Text:** `#E0E6ED` - Primary readout
+- **Muted:** `#586575` - Inactive nodes, background data
+- **Accent:** `#FF2A6D` - Critical alerts, deadlines, destructive actions
+
+## Typography
+
+- **Headings:** *Rajdhani*, 600, 24px-48px (Technological, squared-off sans)
+- **Body:** *Space Grotesk*, 400, 16px (Monospace flavor without the jagged edges)
+- **Data/Tiny:** *JetBrains Mono*, 400, 12px (Code-like precision)
+- **Buttons:** *Rajdhani*, 700, 14px (Uppercase, tracked wide)
+
+**Style notes:**
+- **Glassmorphism 2.0:** All surfaces use `backdrop-filter: blur(12px)` and thin `1px` white borders at 10% opacity.
+- **Glow:** Active elements use `box-shadow: 0 0 15px var(--primary-color)`.
+- **Chromatic Aberration:** Subtle text-shadow separation (Red/Blue) on main headings.
+
+## Design Tokens
+
+```css
+:root {
+  --color-primary: #00F0FF;
+  --color-background: #050505;
+  --color-surface: rgba(20, 25, 30, 0.6);
+  --color-text: #E0E6ED;
+  --font-display: 'Rajdhani', sans-serif;
+  --font-body: 'Space Grotesk', sans-serif;
+  --radius: 4px; /* Sharp corners fit the cyberpunk aesthetic better */
+  --blur-strength: 16px;
+  --glow: 0 0 20px rgba(0, 240, 255, 0.4);
+}
+```
+
+</details>
+
+---
+
+<details>
+<summary>Screen Specifications</summary>
+
+### The Void (Home)
+
+**Purpose:** Bird's eye view of total system complexity.
+
+**Layout:** Full-screen canvas. No sidebar. Floating HUD elements in corners.
+
+**Key Elements:**
+- **ForceAtlas2 Graph:** Central visualization. Nodes are projects, edges are dependencies. Auto-drifts slowly.
+  - *Look:* 1px lines (`#333`), glowing dots (`#00F0FF`).
+- **HUD Header:** Top left. "SYSTEM STATUS: ONLINE". Date/Time.
+  - *Look:* *JetBrains Mono*, 12px, Opacity 0.5.
+- **Focus Lens:** Mouse cursor acts as a "flashlight," increasing brightness and opacity of nodes within 100px radius.
+
+**States:**
+- **Idle:** Graph breathes (scales 100% -> 101% over 10s).
+- **Hover Node:** Connection lines brighten to 100% white; connected nodes glow.
+
+**Interactions:**
+- **Scroll/Pinch:** Z-axis zoom. Zooming past a threshold enters "Deep Dive" mode automatically.
+- **Drag:** Pan the infinite canvas.
+
+---
+
+### Deep Dive (Project View)
+
+**Purpose:** Managing a specific context area without distraction.
+
+**Layout:**
+- **Background:** The "Void" graph is still visible but scaled up 300% and blurred (20px), creating depth.
+- **Foreground:** Grid of task cards floating in center screen.
+
+**Key Elements:**
+- **Project Header:** "Project: NEURAL_LINK_V2". Large, chromatic aberration effect. Top center.
+- **Task Grid:** 3x3 layout of pending tasks.
+- **Glass Card:**
+  - *Look:* `rgba(255,255,255,0.03)` fill, `backdrop-filter: blur(10px)`, 1px cyan border on hover.
+  - *Content:* Title (Rajdhani), Tag (pill shape), Progress bar (thin line at bottom).
+
+**States:**
+- **Loading:** Cards "materialize" (opacity 0 -> 1, scale 0.9 -> 1, glitch effect).
+- **Empty:** "SECTOR CLEAR" holographic wireframe icon in center.
+
+**Interactions:**
+- **Hover Card:** Card lifts (Z-index +10), glow intensifies, background blur increases slightly.
+
+---
+
+### Surface Layer (Task Mode)
+
+**Purpose:** Absolute mono-focus on execution.
+
+**Layout:**
+- **Background:** Everything (Void + Deep Dive) is now heavily blurred (40px) and darkened (brightness 0.3).
+- **Center Stage:** A single, large modal (800px wide).
+
+**Key Elements:**
+- **The Monolith (Task Modal):**
+  - *Look:* High opacity glass (`rgba(10,10,15, 0.9)`). Stronger border (`rgba(0, 240, 255, 0.3)`).
+  - *Typography:* Title is massive (32px). Description is high contrast.
+- **Action Dock:** Floating bar below the modal.
+  - *Buttons:* [COMPLETE], [DEFER], [DELEGATE].
+  - *Style:* Wireframe buttons that fill with Neon Cyan on hover.
+
+**Interactions:**
+- **Complete Task:** The Monolith shatters into particles (CSS canvas animation) or dissolves rapidly. View zooms back out to **Deep Dive**.
+
+---
+
+### The Stream (Inbox)
+
+**Purpose:** Quick capture without breaking flow.
+
+**Layout:** Floating drawer anchored bottom-right.
+
+**Key Elements:**
+- **Input Field:** Transparent background. Bottom border only. Blinking block cursor.
+- **Recent Captures:** List of last 3 items above input, fading in opacity (100% -> 50% -> 20%).
+
+**Interactions:**
+- **Global Hotkey (Cmd+K):** Toggles visibility.
+- **Enter:** Item "flies" from the input field into the background Void (animation path).
+
+</details>
+
+---
+
+<details>
+<summary>Build Guide</summary>
+
+**Stack:** React + Tailwind CSS v3 + Framer Motion (animations) + React Force Graph (visualization)
+
+**Build Order:**
+1. **The Void:** Implement the ForceAtlas2 graph. This is the visual foundation. Get the "drift" and "hover glow" right.
+2. **Design Tokens:** Set up the Tailwind config for the specific blurs, neon colors, and fonts.
+3. **Surface Layer:** Build the single-task modal. Focus on the z-index stacking context and backdrop-filters.
+4. **Deep Dive:** Connect the graph zoom transition to the list view.
+
+**Technical Constraints:**
+- Heavy use of `backdrop-filter` can be performance-intensive. Use distinct `will-change` properties.
+- Ensure Z-indexes are managed via variables to prevent "stacking hell."
+
+</details>

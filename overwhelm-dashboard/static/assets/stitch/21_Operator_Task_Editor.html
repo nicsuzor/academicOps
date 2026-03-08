@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#f2aa0d",
+                        "background-light": "#f8f7f5",
+                        "background-dark": "#221c10",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk"]
+                    },
+                    borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+                },
+            },
+        }
+    </script>
+<style>
+        /* TUI-inspired scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #221c10;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #f2aa0d33;
+            border: 1px solid #f2aa0d;
+        }
+        .tui-border {
+            border: 1px solid #f2aa0d44;
+        }
+        .tui-border-focus:focus-within {
+            border-color: #f2aa0d;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-primary min-h-screen">
+<div class="relative flex h-auto min-h-screen w-full flex-col overflow-x-hidden">
+<div class="layout-container flex h-full grow flex-col">
+<!-- Top Navigation -->
+<header class="flex items-center justify-between border-b border-primary/30 px-6 py-3 bg-background-dark">
+<div class="flex items-center gap-4 text-primary">
+<span class="material-symbols-outlined text-3xl">terminal</span>
+<h2 class="text-lg font-bold leading-tight tracking-widest uppercase">Task_Operator_v2.1</h2>
+</div>
+<div class="flex items-center gap-8">
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-primary/70 hover:text-primary text-xs font-bold tracking-tighter transition-colors" href="#">[ DASHBOARD ]</a>
+<a class="text-primary/70 hover:text-primary text-xs font-bold tracking-tighter transition-colors" href="#">[ QUEUE ]</a>
+<a class="text-primary/70 hover:text-primary text-xs font-bold tracking-tighter transition-colors" href="#">[ LOGS ]</a>
+</nav>
+<div class="flex gap-2">
+<button class="flex items-center justify-center rounded border border-primary/40 bg-primary/10 hover:bg-primary/20 h-9 px-3 text-primary transition-all">
+<span class="material-symbols-outlined text-sm">settings_input_component</span>
+</button>
+<button class="flex items-center justify-center rounded border border-primary/40 bg-primary/10 hover:bg-primary/20 h-9 px-3 text-primary transition-all">
+<span class="material-symbols-outlined text-sm">memory</span>
+</button>
+</div>
+</div>
+</header>
+<main class="flex-1 flex flex-col p-6 max-w-6xl mx-auto w-full gap-6">
+<!-- Breadcrumbs & Header -->
+<div class="flex flex-col gap-2">
+<div class="flex items-center gap-2 text-xs font-mono opacity-60">
+<span>ROOT</span>
+<span class="material-symbols-outlined text-[10px]">chevron_right</span>
+<span>PROJECT_ALPHA</span>
+<span class="material-symbols-outlined text-[10px]">chevron_right</span>
+<span class="text-primary">TASK_ID_8842</span>
+</div>
+<div class="flex flex-wrap justify-between items-end gap-4">
+<div class="space-y-1">
+<h1 class="text-3xl font-bold tracking-tight uppercase">EDIT_TASK: core_engine_refactor</h1>
+<p class="text-primary/60 text-xs font-mono uppercase tracking-widest">Operator: SYSTEM_ROOT | Status: <span class="text-primary animate-pulse">● RUNNING</span></p>
+</div>
+<div class="flex gap-3">
+<button class="px-6 py-2 border border-primary text-primary hover:bg-primary hover:text-background-dark font-bold text-sm transition-all rounded">
+                                [ SAVE ]
+                            </button>
+<button class="px-6 py-2 border border-primary/40 text-primary/70 hover:border-primary hover:text-primary font-bold text-sm transition-all rounded">
+                                [ PAUSE ]
+                            </button>
+<button class="px-6 py-2 border border-red-900 text-red-500 hover:bg-red-900/20 font-bold text-sm transition-all rounded">
+                                [ DELETE ]
+                            </button>
+</div>
+</div>
+</div>
+<!-- Form Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<!-- Sidebar Controls -->
+<div class="lg:col-span-1 space-y-6">
+<div class="tui-border p-4 bg-primary/5 space-y-4">
+<div class="space-y-4">
+<label class="block">
+<span class="text-xs font-bold uppercase mb-2 block opacity-70">Priority_Level</span>
+<select class="w-full bg-background-dark border border-primary/30 rounded p-2 text-sm text-primary focus:ring-1 focus:ring-primary focus:border-primary outline-none">
+<option>01_CRITICAL</option>
+<option selected="">02_HIGH</option>
+<option>03_MEDIUM</option>
+<option>04_LOW</option>
+</select>
+</label>
+<label class="block">
+<span class="text-xs font-bold uppercase mb-2 block opacity-70">Estimated_Cycles (ms)</span>
+<input class="w-full bg-background-dark border border-primary/30 rounded p-2 text-sm text-primary focus:ring-1 focus:ring-primary focus:border-primary outline-none" placeholder="0.00" type="number" value="4500"/>
+</label>
+<label class="block">
+<span class="text-xs font-bold uppercase mb-2 block opacity-70">Dependencies</span>
+<div class="space-y-2 max-h-32 overflow-y-auto pr-2">
+<div class="flex items-center justify-between p-2 border border-primary/20 bg-primary/5 rounded">
+<span class="text-[10px] font-mono">DEP_AUTH_MODULE</span>
+<span class="material-symbols-outlined text-xs text-primary/40">close</span>
+</div>
+<div class="flex items-center justify-between p-2 border border-primary/20 bg-primary/5 rounded">
+<span class="text-[10px] font-mono">DEP_DATABASE_V3</span>
+<span class="material-symbols-outlined text-xs text-primary/40">close</span>
+</div>
+<button class="w-full border border-dashed border-primary/30 py-1 text-[10px] uppercase opacity-50 hover:opacity-100">+ Add Link</button>
+</div>
+</label>
+<label class="block">
+<span class="text-xs font-bold uppercase mb-2 block opacity-70">Tags_Metadata</span>
+<div class="flex flex-wrap gap-2">
+<span class="px-2 py-0.5 border border-primary bg-primary/10 text-[10px] font-bold">LEGACY</span>
+<span class="px-2 py-0.5 border border-primary bg-primary/10 text-[10px] font-bold">REFACTOR</span>
+<span class="px-2 py-0.5 border border-primary bg-primary/10 text-[10px] font-bold">BACKEND</span>
+<button class="px-2 py-0.5 border border-primary/30 text-[10px] font-bold">+</button>
+</div>
+</label>
+</div>
+</div>
+<!-- System Health Card -->
+<div class="tui-border p-4 bg-primary/5">
+<span class="text-xs font-bold uppercase mb-3 block opacity-70">System_Metrics</span>
+<div class="space-y-3">
+<div>
+<div class="flex justify-between text-[10px] font-mono mb-1 uppercase">
+<span>CPU_LOAD</span>
+<span>42%</span>
+</div>
+<div class="w-full bg-primary/20 h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[42%]"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between text-[10px] font-mono mb-1 uppercase">
+<span>MEM_ALLOC</span>
+<span>1.2GB / 4.0GB</span>
+</div>
+<div class="w-full bg-primary/20 h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[30%]"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Main Editor -->
+<div class="lg:col-span-2 flex flex-col gap-6">
+<div class="tui-border p-6 flex-1 bg-background-dark relative">
+<div class="absolute top-0 right-0 p-2 text-[10px] font-mono opacity-30 pointer-events-none">
+                                ENCODING: UTF-8 | LINE: 24
+                            </div>
+<div class="mb-4 flex items-center gap-4 border-b border-primary/20 pb-2">
+<button class="text-xs font-bold text-primary border-b border-primary pb-2 -mb-[9px]">DESCRIPTION</button>
+<button class="text-xs font-bold text-primary/40 hover:text-primary transition-colors pb-2">SUB_TASKS</button>
+<button class="text-xs font-bold text-primary/40 hover:text-primary transition-colors pb-2">HISTORY</button>
+</div>
+<textarea class="w-full h-[500px] bg-transparent border-none focus:ring-0 text-sm font-mono leading-relaxed text-primary/90 resize-none" placeholder="[ENTER TECHNICAL SPECIFICATIONS HERE]"># REFACTOR SPECIFICATION: CORE_ENGINE_V2
+
+## OVERVIEW
+Update all pointer-based memory management to smart-pointer architecture to prevent leakage in high-concurrency tasks.
+
+## TECHNICAL_DEBT
+* Current implementation relies on manual `free()` calls.
+* Thread safety is not guaranteed during garbage collection cycles.
+
+## SUB_TASKS
+[ ] Audit pointer references in `core_init.cpp`
+[ ] Replace `malloc` with `std::make_unique`
+[ ] Unit tests for memory isolation
+[ ] Performance benchmarking vs Legacy Engine
+
+## WARNINGS
+Potential breaking changes for plugins relying on direct memory addresses.
+
+// END_OF_BLOCK</textarea>
+</div>
+<!-- Footer Actions / Log -->
+<div class="tui-border p-4 bg-primary/5 font-mono text-[10px] space-y-1 opacity-60">
+<p>&gt; [INFO] 2023-10-24 09:15:22: Task opened for modification by OPERATOR_01</p>
+<p>&gt; [WARN] 2023-10-24 09:16:45: Dependency 'DEP_DATABASE_V3' reports high latency</p>
+<p class="text-primary animate-pulse">&gt; [WAIT] Awaiting user input commit...</p>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Status Bar -->
+<footer class="border-t border-primary/30 px-6 py-2 bg-background-dark flex justify-between items-center text-[10px] font-mono uppercase tracking-widest text-primary/70">
+<div class="flex items-center gap-4">
+<span>SYS_UPTIME: 124:12:09</span>
+<span class="flex items-center gap-1"><span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span> CONNECTION_STABLE</span>
+</div>
+<div class="flex items-center gap-4">
+<span>ENCRYPTION: AES-256</span>
+<span>TERM: XTERM-COLOR</span>
+</div>
+</footer>
+</div>
+</div>
+</body></html>

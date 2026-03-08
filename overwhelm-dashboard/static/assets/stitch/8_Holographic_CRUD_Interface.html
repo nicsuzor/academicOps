@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>HOLO-OS v2.0 | Control Interface</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0de3f2",
+                        "background-light": "#f5f8f8",
+                        "background-dark": "#102122",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+                },
+            },
+        }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(13, 227, 242, 0.05);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(13, 227, 242, 0.1);
+        }
+        .glow-accent:hover {
+            box-shadow: 0 0 15px rgba(13, 227, 242, 0.4);
+        }
+        .glow-text {
+            text-shadow: 0 0 8px rgba(13, 227, 242, 0.6);
+        }
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #0de3f2;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen selection:bg-primary/30">
+<div class="relative flex h-screen w-full flex-col overflow-hidden">
+<!-- Top Navigation Bar -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-primary/20 bg-background-dark/80 backdrop-blur-md px-8 py-3 z-50">
+<div class="flex items-center gap-4">
+<div class="size-8 text-primary glow-text">
+<span class="material-symbols-outlined text-4xl">deployed_code</span>
+</div>
+<h2 class="text-xl font-bold leading-tight tracking-tight text-primary glow-text uppercase">Holo-OS <span class="text-slate-500 font-light italic">v2.0</span></h2>
+</div>
+<div class="flex flex-1 justify-center max-w-2xl px-8">
+<div class="relative w-full group">
+<div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+<span class="material-symbols-outlined text-primary/60">search</span>
+</div>
+<input class="block w-full rounded-lg bg-primary/5 border border-primary/20 py-2 pl-10 pr-3 text-sm text-slate-100 placeholder:text-primary/40 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all" placeholder="Execute command or search entities..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<button class="flex items-center justify-center rounded-lg size-10 bg-primary/10 border border-primary/20 text-primary hover:bg-primary hover:text-background-dark transition-all duration-300">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<button class="flex items-center justify-center rounded-lg size-10 bg-primary/10 border border-primary/20 text-primary hover:bg-primary hover:text-background-dark transition-all duration-300 relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 size-2 bg-red-500 rounded-full"></span>
+</button>
+<div class="h-10 w-[1px] bg-primary/20 mx-2"></div>
+<div class="flex items-center gap-3 pl-2">
+<div class="text-right">
+<p class="text-xs font-bold text-primary leading-none uppercase">Admin_Root</p>
+<p class="text-[10px] text-slate-400 leading-none">Sector 7-G</p>
+</div>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border-2 border-primary/30" data-alt="User avatar of a futuristic administrator profile" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAPW6jCwLWBxs6BcSo5e_cf-kjJEgnPABo8Dotxx6AQfhZn92f9p5zgVlScp7A9LPOxzQqcKe0gvGX0Gi9dWHx9Z2q3dbSswbP03zmdzLHL8WoAFCq5xDNpe92n0BlkNHGah6DX53mL8UYtHW0UfAmuhzmYpBdFEdKrwkVdODoQ5ES3cOWvV3hNNNx_8pt6NJ2jKQU_ye-H-RcR6oTYdv7Q5N6oPrg2wK0I_5WPNZHN3tKekKC3IOJ_MtgCD2K7v-9TiexEl343Z2kt");'></div>
+</div>
+</div>
+</header>
+<main class="flex flex-1 overflow-hidden">
+<!-- Sidebar Navigation -->
+<nav class="w-20 lg:w-64 border-r border-primary/10 bg-background-dark/40 flex flex-col py-6 shrink-0">
+<div class="flex flex-col gap-2 px-4 mb-8">
+<p class="hidden lg:block text-[10px] font-bold text-primary/50 uppercase tracking-widest px-2 mb-2">Navigation</p>
+<a class="flex items-center gap-4 px-3 py-3 rounded-lg bg-primary/20 border border-primary/30 text-primary" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="hidden lg:block font-medium">Core Nodes</span>
+</a>
+<a class="flex items-center gap-4 px-3 py-3 rounded-lg text-slate-400 hover:text-primary hover:bg-primary/5 transition-colors" href="#">
+<span class="material-symbols-outlined">terminal</span>
+<span class="hidden lg:block font-medium">Sub-Systems</span>
+</a>
+<a class="flex items-center gap-4 px-3 py-3 rounded-lg text-slate-400 hover:text-primary hover:bg-primary/5 transition-colors" href="#">
+<span class="material-symbols-outlined">memory</span>
+<span class="hidden lg:block font-medium">Process Logic</span>
+</a>
+<a class="flex items-center gap-4 px-3 py-3 rounded-lg text-slate-400 hover:text-primary hover:bg-primary/5 transition-colors" href="#">
+<span class="material-symbols-outlined">database</span>
+<span class="hidden lg:block font-medium">Neural Vault</span>
+</a>
+</div>
+<div class="mt-auto px-4 flex flex-col gap-2">
+<div class="hidden lg:block glass-panel rounded-xl p-4 border border-primary/20 mb-4">
+<p class="text-xs text-primary/70 mb-2">CPU Utilization</p>
+<div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-2/3 shadow-[0_0_8px_#0de3f2]"></div>
+</div>
+</div>
+<button class="flex items-center justify-center lg:justify-start gap-4 px-3 py-3 rounded-lg text-red-400 hover:bg-red-400/10 transition-colors">
+<span class="material-symbols-outlined">logout</span>
+<span class="hidden lg:block font-medium">Terminate Session</span>
+</button>
+</div>
+</nav>
+<!-- Content Area -->
+<section class="flex-1 flex flex-col bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent">
+<!-- Dashboard Stats -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 p-8">
+<div class="glass-panel p-6 rounded-xl border-l-4 border-l-primary group cursor-pointer transition-all hover:translate-y-[-2px]">
+<div class="flex justify-between items-start mb-4">
+<span class="material-symbols-outlined text-primary text-3xl">bolt</span>
+<span class="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded uppercase">Real-time</span>
+</div>
+<p class="text-slate-400 text-sm">System Uptime</p>
+<p class="text-3xl font-bold text-slate-100 glow-text">99.998%</p>
+</div>
+<div class="glass-panel p-6 rounded-xl border-l-4 border-l-primary/30 group cursor-pointer transition-all hover:translate-y-[-2px]">
+<div class="flex justify-between items-start mb-4">
+<span class="material-symbols-outlined text-primary/60 text-3xl">dns</span>
+<span class="text-[10px] font-bold text-slate-400 bg-slate-800 px-2 py-0.5 rounded uppercase">Optimized</span>
+</div>
+<p class="text-slate-400 text-sm">Buffer Capacity</p>
+<p class="text-3xl font-bold text-slate-100 glow-text">1.2 TB <span class="text-sm font-normal text-slate-500">/ 4 TB</span></p>
+</div>
+<div class="glass-panel p-6 rounded-xl border-l-4 border-l-primary/30 group cursor-pointer transition-all hover:translate-y-[-2px]">
+<div class="flex justify-between items-start mb-4">
+<span class="material-symbols-outlined text-primary/60 text-3xl">sensors</span>
+<span class="text-[10px] font-bold text-green-500 bg-green-500/10 px-2 py-0.5 rounded uppercase">Stable</span>
+</div>
+<p class="text-slate-400 text-sm">Network Latency</p>
+<p class="text-3xl font-bold text-slate-100 glow-text">4 ms</p>
+</div>
+</div>
+<!-- List Control / CRUD -->
+<div class="flex-1 px-8 pb-8 flex flex-col min-h-0">
+<div class="flex items-center justify-between mb-6">
+<div>
+<h3 class="text-2xl font-bold text-slate-100 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">list_alt</span>
+                            Active Neural Tasks
+                        </h3>
+<p class="text-slate-400 text-sm">Managing 48 parallel compute threads</p>
+</div>
+<button class="bg-primary hover:bg-primary/80 text-background-dark font-bold py-2 px-6 rounded-lg flex items-center gap-2 transition-all shadow-[0_0_15px_rgba(13,227,242,0.3)]">
+<span class="material-symbols-outlined">add</span>
+                        INITIALIZE TASK
+                    </button>
+</div>
+<!-- Tabs -->
+<div class="flex gap-1 border-b border-primary/10 mb-6">
+<button class="px-6 py-3 text-sm font-bold text-primary border-b-2 border-primary bg-primary/5 uppercase tracking-wider">Active</button>
+<button class="px-6 py-3 text-sm font-bold text-slate-500 hover:text-primary transition-colors uppercase tracking-wider">Pending</button>
+<button class="px-6 py-3 text-sm font-bold text-slate-500 hover:text-primary transition-colors uppercase tracking-wider">Archive</button>
+<button class="px-6 py-3 text-sm font-bold text-slate-500 hover:text-primary transition-colors uppercase tracking-wider">Quarantined</button>
+</div>
+<!-- Glass List Container -->
+<div class="flex-1 overflow-y-auto pr-4 space-y-3">
+<!-- List Item 1 (Selected/Active) -->
+<div class="group flex items-center gap-6 p-4 rounded-xl border border-primary/40 bg-primary/10 shadow-[0_0_20px_rgba(13,227,242,0.1)] transition-all">
+<div class="size-12 rounded-lg bg-primary/20 flex items-center justify-center text-primary border border-primary/30">
+<span class="material-symbols-outlined">code_blocks</span>
+</div>
+<div class="flex-1">
+<h4 class="font-bold text-slate-100 flex items-center gap-2">
+                                Neural_Core_Dump.sh
+                                <span class="size-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_#0de3f2]"></span>
+</h4>
+<p class="text-xs text-slate-400 uppercase tracking-tighter">ID: TX-8829 | Priority: <span class="text-primary font-bold">Ultra-High</span></p>
+</div>
+<div class="text-right px-4 border-l border-primary/20">
+<p class="text-xs text-slate-500">Progress</p>
+<p class="text-sm font-bold text-primary">82%</p>
+</div>
+<div class="flex gap-2">
+<button class="size-9 rounded-lg border border-primary/30 flex items-center justify-center text-primary hover:bg-primary hover:text-background-dark transition-all">
+<span class="material-symbols-outlined text-xl">play_arrow</span>
+</button>
+<button class="size-9 rounded-lg border border-primary/30 flex items-center justify-center text-primary hover:bg-primary hover:text-background-dark transition-all">
+<span class="material-symbols-outlined text-xl">edit</span>
+</button>
+<button class="size-9 rounded-lg border border-red-500/30 flex items-center justify-center text-red-400 hover:bg-red-500 hover:text-white transition-all">
+<span class="material-symbols-outlined text-xl">delete</span>
+</button>
+</div>
+</div>
+<!-- List Item 2 -->
+<div class="group flex items-center gap-6 p-4 rounded-xl border border-primary/10 hover:border-primary/30 bg-background-dark/30 hover:bg-primary/5 transition-all cursor-pointer">
+<div class="size-12 rounded-lg bg-slate-800 flex items-center justify-center text-slate-500 group-hover:text-primary border border-slate-700 transition-colors">
+<span class="material-symbols-outlined">cloud_sync</span>
+</div>
+<div class="flex-1">
+<h4 class="font-bold text-slate-400 group-hover:text-slate-100 transition-colors">Sync_Cloud_Protocol</h4>
+<p class="text-xs text-slate-500 uppercase tracking-tighter">ID: TX-4410 | Priority: Medium</p>
+</div>
+<div class="text-right px-4 border-l border-slate-700">
+<p class="text-xs text-slate-500">Status</p>
+<p class="text-sm font-bold text-slate-400">Standby</p>
+</div>
+<div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="size-9 rounded-lg border border-primary/30 flex items-center justify-center text-primary hover:bg-primary hover:text-background-dark transition-all">
+<span class="material-symbols-outlined text-xl">play_arrow</span>
+</button>
+<button class="size-9 rounded-lg border border-primary/30 flex items-center justify-center text-primary hover:bg-primary hover:text-background-dark transition-all">
+<span class="material-symbols-outlined text-xl">edit</span>
+</button>
+</div>
+</div>
+<!-- List Item 3 -->
+<div class="group flex items-center gap-6 p-4 rounded-xl border border-primary/10 hover:border-primary/30 bg-background-dark/30 hover:bg-primary/5 transition-all cursor-pointer">
+<div class="size-12 rounded-lg bg-slate-800 flex items-center justify-center text-slate-500 group-hover:text-primary border border-slate-700 transition-colors">
+<span class="material-symbols-outlined">security</span>
+</div>
+<div class="flex-1">
+<h4 class="font-bold text-slate-400 group-hover:text-slate-100 transition-colors">Firewall_Reconstruction</h4>
+<p class="text-xs text-slate-500 uppercase tracking-tighter">ID: TX-0112 | Priority: High</p>
+</div>
+<div class="text-right px-4 border-l border-slate-700">
+<p class="text-xs text-slate-500">Status</p>
+<p class="text-sm font-bold text-slate-400">Idle</p>
+</div>
+<div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="size-9 rounded-lg border border-primary/30 flex items-center justify-center text-primary hover:bg-primary hover:text-background-dark transition-all">
+<span class="material-symbols-outlined text-xl">play_arrow</span>
+</button>
+<button class="size-9 rounded-lg border border-primary/30 flex items-center justify-center text-primary hover:bg-primary hover:text-background-dark transition-all">
+<span class="material-symbols-outlined text-xl">edit</span>
+</button>
+</div>
+</div>
+<!-- List Item 4 -->
+<div class="group flex items-center gap-6 p-4 rounded-xl border border-primary/10 hover:border-primary/30 bg-background-dark/30 hover:bg-primary/5 transition-all cursor-pointer">
+<div class="size-12 rounded-lg bg-slate-800 flex items-center justify-center text-slate-500 group-hover:text-primary border border-slate-700 transition-colors">
+<span class="material-symbols-outlined">auto_graph</span>
+</div>
+<div class="flex-1">
+<h4 class="font-bold text-slate-400 group-hover:text-slate-100 transition-colors">Heuristic_Analysis_B</h4>
+<p class="text-xs text-slate-500 uppercase tracking-tighter">ID: TX-3309 | Priority: Low</p>
+</div>
+<div class="text-right px-4 border-l border-slate-700">
+<p class="text-xs text-slate-500">Status</p>
+<p class="text-sm font-bold text-slate-400">Standby</p>
+</div>
+<div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="size-9 rounded-lg border border-primary/30 flex items-center justify-center text-primary hover:bg-primary hover:text-background-dark transition-all">
+<span class="material-symbols-outlined text-xl">play_arrow</span>
+</button>
+<button class="size-9 rounded-lg border border-primary/30 flex items-center justify-center text-primary hover:bg-primary hover:text-background-dark transition-all">
+<span class="material-symbols-outlined text-xl">edit</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Integrated Terminal -->
+<div class="h-48 border-t border-primary/20 bg-background-dark/90 backdrop-blur-xl p-4 font-mono text-sm relative">
+<div class="absolute top-0 right-4 translate-y-[-100%] bg-background-dark/90 border border-b-0 border-primary/20 rounded-t-lg px-4 py-1 text-[10px] font-bold text-primary uppercase flex items-center gap-2">
+<span class="size-1.5 rounded-full bg-primary shadow-[0_0_5px_#0de3f2]"></span>
+                    Console Link Established
+                </div>
+<div class="h-full flex flex-col gap-1 overflow-y-auto opacity-80 mb-2 pr-4">
+<p class="text-primary/60">[0.0001] Initializing neural handshakes...</p>
+<p class="text-primary/60">[0.0024] Mapping sector 7-G logic gates...</p>
+<p class="text-green-400">[0.0045] Node 127.0.0.1 reached. Status: OK.</p>
+<p class="text-slate-400">[0.1209] user@holo-os:~$ sync --force-all --priority:ultra-high</p>
+<p class="text-primary/90">[0.1215] Requesting priority elevation...</p>
+<p class="text-primary/90">[0.1220] Elevation granted. Syncing Core_Dump.sh (82%)</p>
+</div>
+<div class="flex items-center gap-2 border-t border-primary/10 pt-2">
+<span class="text-primary font-bold">root@holo-os:</span>
+<span class="text-primary">~#</span>
+<input autofocus="" class="flex-1 bg-transparent border-none focus:ring-0 text-primary p-0 caret-primary" placeholder="Type command here (e.g., help, run, kill)" type="text"/>
+</div>
+</div>
+</section>
+<!-- Right System Details Panel -->
+<aside class="hidden xl:flex w-80 border-l border-primary/10 bg-background-dark/40 flex-col p-6 overflow-y-auto">
+<h5 class="text-sm font-bold text-primary mb-6 uppercase tracking-widest flex items-center gap-2">
+<span class="material-symbols-outlined text-lg">info</span>
+                Entity Inspector
+            </h5>
+<div class="glass-panel rounded-xl p-4 mb-6 relative overflow-hidden">
+<div class="absolute top-0 right-0 w-16 h-16 bg-primary/10 rotate-45 translate-x-8 translate-y-[-2rem]"></div>
+<p class="text-[10px] text-primary/50 uppercase mb-4">Current Selection</p>
+<div class="flex items-center gap-3 mb-4">
+<div class="size-10 rounded-lg bg-primary/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">memory</span>
+</div>
+<div>
+<p class="font-bold text-slate-100 leading-tight">Core_Dump.sh</p>
+<p class="text-xs text-slate-500 font-mono">HASH: 0xFD91...A2</p>
+</div>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between text-xs">
+<span class="text-slate-500">File Type</span>
+<span class="text-slate-300 font-mono">Shell Script</span>
+</div>
+<div class="flex justify-between text-xs">
+<span class="text-slate-500">Owner</span>
+<span class="text-slate-300 font-mono">SYSTEM_ROOT</span>
+</div>
+<div class="flex justify-between text-xs">
+<span class="text-slate-500">Permissions</span>
+<span class="text-primary font-mono font-bold">777</span>
+</div>
+</div>
+</div>
+<h5 class="text-[10px] font-bold text-primary/50 mb-4 uppercase tracking-widest">Network Topology</h5>
+<div class="rounded-xl border border-primary/10 bg-background-dark aspect-square mb-6 overflow-hidden relative">
+<!-- Simple Vector-like Pattern for Map/Topology -->
+<div class="absolute inset-0 opacity-20 pointer-events-none" style="background-image: linear-gradient(rgba(13, 227, 242, 0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(13, 227, 242, 0.2) 1px, transparent 1px); background-size: 20px 20px;"></div>
+<div class="absolute inset-0 flex items-center justify-center">
+<div class="size-2 rounded-full bg-primary shadow-[0_0_10px_#0de3f2]"></div>
+<div class="absolute size-24 border border-primary/30 rounded-full animate-ping opacity-30"></div>
+<div class="absolute size-40 border border-primary/10 rounded-full"></div>
+</div>
+<div class="absolute bottom-2 left-2 text-[8px] font-mono text-primary/40 uppercase">Loc: Sector_07G_Nexus</div>
+</div>
+<div class="mt-auto">
+<button class="w-full py-3 border border-primary/30 rounded-lg text-primary text-xs font-bold uppercase tracking-widest hover:bg-primary hover:text-background-dark transition-all">
+                    Generate Diagnostic Report
+                </button>
+</div>
+</aside>
+</main>
+</div>
+</body></html>

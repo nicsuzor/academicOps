@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>OPERATOR_SYSTEM_V2 | Task Manager</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#f2aa0d",
+                        "background-light": "#f8f7f5",
+                        "background-dark": "#221c10",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk"]
+                    },
+                    borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        /* Custom scrollbar for TUI look */
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #221c10;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #493d22;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #f2aa0d;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 antialiased min-h-screen">
+<div class="flex flex-col h-screen overflow-hidden">
+<!-- Top Navigation -->
+<header class="flex items-center justify-between border-b border-primary/20 bg-background-light dark:bg-background-dark px-6 py-3 shrink-0">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-3 text-primary">
+<span class="material-symbols-outlined text-3xl">terminal</span>
+<h2 class="text-lg font-bold leading-tight tracking-tight font-display uppercase">Operator_Sys_v2.0</h2>
+</div>
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-primary text-sm font-medium border-b border-primary" href="#">DASHBOARD</a>
+<a class="text-slate-400 hover:text-primary text-sm font-medium transition-colors" href="#">METRICS</a>
+<a class="text-slate-400 hover:text-primary text-sm font-medium transition-colors" href="#">ARCHIVE</a>
+<a class="text-slate-400 hover:text-primary text-sm font-medium transition-colors" href="#">SETTINGS</a>
+</nav>
+</div>
+<div class="flex items-center gap-4 flex-1 justify-end">
+<div class="relative max-w-xs w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-primary/60 text-lg">search</span>
+<input class="w-full bg-primary/5 border border-primary/20 rounded-lg py-1.5 pl-10 pr-4 text-sm focus:outline-none focus:border-primary transition-all placeholder:text-primary/30" placeholder="EXECUTE_SEARCH..." type="text"/>
+</div>
+<button class="p-2 rounded hover:bg-primary/10 text-primary flex items-center justify-center">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="h-8 w-8 rounded bg-primary/20 border border-primary/40 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">person</span>
+</div>
+</div>
+</header>
+<!-- Main Body: Two Column Layout -->
+<main class="flex flex-1 overflow-hidden">
+<!-- Left Sidebar: Directory Tree (TUI Style) -->
+<aside class="w-72 border-r border-primary/20 bg-background-dark flex flex-col shrink-0">
+<div class="p-4 border-b border-primary/10">
+<h3 class="text-xs font-bold text-primary/60 uppercase tracking-widest mb-1">Directory_Tree</h3>
+<p class="text-[10px] font-mono text-primary/40">ROOT/USER/GOALS</p>
+</div>
+<div class="flex-1 overflow-y-auto p-2 font-mono text-sm">
+<!-- Tree Branch: Goals -->
+<div class="mb-2">
+<div class="flex items-center gap-2 p-2 text-primary hover:bg-primary/10 rounded cursor-pointer group">
+<span class="material-symbols-outlined text-lg">target</span>
+<span class="flex-1">GOALS</span>
+<span class="material-symbols-outlined text-sm opacity-0 group-hover:opacity-100">keyboard_arrow_down</span>
+</div>
+<div class="ml-4 border-l border-primary/20 pl-2 mt-1 space-y-1">
+<div class="flex items-center gap-2 p-1.5 text-primary/80 hover:bg-primary/10 rounded cursor-pointer">
+<span class="material-symbols-outlined text-base">folder</span>
+<span>MARKET_EXPANSION</span>
+</div>
+<!-- Projects under Goal -->
+<div class="ml-4 border-l border-primary/20 pl-2 space-y-1">
+<div class="flex items-center gap-2 p-1.5 text-primary/90 bg-primary/20 rounded cursor-pointer border-l-2 border-primary">
+<span class="material-symbols-outlined text-base">folder_open</span>
+<span>Q4_LAUNCH_INIT</span>
+</div>
+<!-- Epics under Project -->
+<div class="ml-4 border-l border-primary/20 pl-2 space-y-1">
+<div class="flex items-center gap-2 p-1.5 text-primary/70 hover:bg-primary/10 rounded cursor-pointer">
+<span class="material-symbols-outlined text-base">flag</span>
+<span>BETA_TESTING</span>
+</div>
+<div class="flex items-center gap-2 p-1.5 text-primary/70 hover:bg-primary/10 rounded cursor-pointer">
+<span class="material-symbols-outlined text-base">flag</span>
+<span>UI_REFINEMENT</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-2 p-1.5 text-primary/60 hover:bg-primary/10 rounded cursor-pointer">
+<span class="material-symbols-outlined text-base">folder</span>
+<span>TECH_DEBT_REDUCTION</span>
+</div>
+</div>
+</div>
+<!-- Logs Section -->
+<div class="mt-4 pt-4 border-t border-primary/10">
+<div class="flex items-center gap-2 p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded cursor-pointer">
+<span class="material-symbols-outlined text-lg">terminal</span>
+<span>SYSTEM_LOGS</span>
+</div>
+<div class="flex items-center gap-2 p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded cursor-pointer">
+<span class="material-symbols-outlined text-lg">history</span>
+<span>ARCHIVE_DUMP</span>
+</div>
+</div>
+</div>
+<div class="p-4 bg-primary/5 text-[10px] font-mono border-t border-primary/20">
+<div class="flex justify-between items-center mb-1">
+<span class="text-primary/60">CPU_LOAD: 12%</span>
+<span class="text-primary/60">RAM: 4.2GB</span>
+</div>
+<div class="w-full bg-primary/10 h-1 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-1/3"></div>
+</div>
+</div>
+</aside>
+<!-- Right Content: Breadcrumbs & Task List -->
+<section class="flex-1 flex flex-col bg-background-light dark:bg-background-dark">
+<!-- Breadcrumbs -->
+<div class="px-6 py-4 flex items-center gap-3 border-b border-primary/10 bg-primary/5">
+<div class="flex items-center gap-2 text-primary/60 text-sm font-mono">
+<a class="hover:text-primary transition-colors" href="#">GOAL: Expand Market</a>
+<span class="material-symbols-outlined text-xs">chevron_right</span>
+<a class="hover:text-primary transition-colors" href="#">PROJ: Q4 Launch</a>
+<span class="material-symbols-outlined text-xs">chevron_right</span>
+<a class="hover:text-primary transition-colors text-primary font-bold" href="#">EPIC: UI Refinement</a>
+</div>
+<div class="ml-auto flex gap-2">
+<button class="bg-primary text-background-dark px-3 py-1 rounded text-xs font-bold flex items-center gap-1 hover:brightness-110">
+<span class="material-symbols-outlined text-sm">add</span> NEW_TASK
+                        </button>
+<button class="bg-primary/10 border border-primary/30 text-primary px-3 py-1 rounded text-xs font-bold hover:bg-primary/20">
+                            FILTER
+                        </button>
+</div>
+</div>
+<!-- Tabs -->
+<div class="px-6 border-b border-primary/10 flex gap-8">
+<button class="py-3 text-sm font-bold text-primary border-b-2 border-primary">ACTIVE_TASKS [4]</button>
+<button class="py-3 text-sm font-bold text-primary/40 hover:text-primary transition-colors">COMPLETED</button>
+<button class="py-3 text-sm font-bold text-primary/40 hover:text-primary transition-colors">BACKLOG</button>
+</div>
+<!-- Task Table -->
+<div class="flex-1 overflow-auto p-6">
+<div class="border border-primary/20 rounded-lg overflow-hidden bg-background-dark shadow-xl">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-primary/10 border-b border-primary/20">
+<th class="px-4 py-3 text-[10px] font-bold text-primary/70 uppercase tracking-widest w-20">ID</th>
+<th class="px-4 py-3 text-[10px] font-bold text-primary/70 uppercase tracking-widest w-32">Status</th>
+<th class="px-4 py-3 text-[10px] font-bold text-primary/70 uppercase tracking-widest">Task_Name</th>
+<th class="px-4 py-3 text-[10px] font-bold text-primary/70 uppercase tracking-widest w-32">Assignee</th>
+<th class="px-4 py-3 text-[10px] font-bold text-primary/70 uppercase tracking-widest w-28">Priority</th>
+<th class="px-4 py-3 text-[10px] font-bold text-primary/70 uppercase tracking-widest w-12"></th>
+</tr>
+</thead>
+<tbody class="divide-y divide-primary/10 text-sm">
+<!-- Row 1 -->
+<tr class="hover:bg-primary/5 group transition-colors">
+<td class="px-4 py-4 font-mono text-primary/60">T-102</td>
+<td class="px-4 py-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-primary/20 text-primary border border-primary/30">
+                                            IN_PROGRESS
+                                        </span>
+</td>
+<td class="px-4 py-4">
+<div class="flex flex-col">
+<span class="text-slate-100 font-medium">Implement Terminal Amber UI Components</span>
+<span class="text-[10px] text-primary/40 mt-1 uppercase font-mono">Last Update: 12m ago</span>
+</div>
+</td>
+<td class="px-4 py-4">
+<div class="flex items-center gap-2">
+<div class="size-6 rounded bg-primary/10 border border-primary/30 flex items-center justify-center text-[10px] text-primary font-bold">DA</div>
+<span class="text-primary/80 font-mono">Dev_Alpha</span>
+</div>
+</td>
+<td class="px-4 py-4">
+<span class="inline-flex items-center gap-1.5 text-[10px] font-bold text-red-400">
+<span class="size-1.5 rounded-full bg-red-400"></span> CRITICAL
+                                        </span>
+</td>
+<td class="px-4 py-4 text-right">
+<button class="opacity-0 group-hover:opacity-100 p-1 text-primary hover:bg-primary/20 rounded transition-all">
+<span class="material-symbols-outlined text-lg">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-primary/5 group transition-colors">
+<td class="px-4 py-4 font-mono text-primary/60">T-105</td>
+<td class="px-4 py-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700">
+                                            TODO
+                                        </span>
+</td>
+<td class="px-4 py-4">
+<div class="flex flex-col">
+<span class="text-slate-100 font-medium">Refine Threaded Hierarchy Logic</span>
+<span class="text-[10px] text-primary/40 mt-1 uppercase font-mono">Last Update: 2h ago</span>
+</div>
+</td>
+<td class="px-4 py-4">
+<div class="flex items-center gap-2">
+<div class="size-6 rounded bg-primary/10 border border-primary/30 flex items-center justify-center text-[10px] text-primary font-bold">DB</div>
+<span class="text-primary/80 font-mono">Dev_Beta</span>
+</div>
+</td>
+<td class="px-4 py-4">
+<span class="inline-flex items-center gap-1.5 text-[10px] font-bold text-primary">
+<span class="size-1.5 rounded-full bg-primary"></span> HIGH
+                                        </span>
+</td>
+<td class="px-4 py-4 text-right">
+<button class="opacity-0 group-hover:opacity-100 p-1 text-primary hover:bg-primary/20 rounded transition-all">
+<span class="material-symbols-outlined text-lg">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-primary/5 group transition-colors">
+<td class="px-4 py-4 font-mono text-primary/60">T-109</td>
+<td class="px-4 py-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-900/40 text-amber-500 border border-amber-800">
+                                            REVIEW
+                                        </span>
+</td>
+<td class="px-4 py-4">
+<div class="flex flex-col">
+<span class="text-slate-100 font-medium">Breadcrumb Navigation System Audit</span>
+<span class="text-[10px] text-primary/40 mt-1 uppercase font-mono">Last Update: 5h ago</span>
+</div>
+</td>
+<td class="px-4 py-4">
+<div class="flex items-center gap-2">
+<div class="size-6 rounded bg-primary/10 border border-primary/30 flex items-center justify-center text-[10px] text-primary font-bold">DA</div>
+<span class="text-primary/80 font-mono">Dev_Alpha</span>
+</div>
+</td>
+<td class="px-4 py-4">
+<span class="inline-flex items-center gap-1.5 text-[10px] font-bold text-primary/60">
+<span class="size-1.5 rounded-full bg-primary/60"></span> MED
+                                        </span>
+</td>
+<td class="px-4 py-4 text-right">
+<button class="opacity-0 group-hover:opacity-100 p-1 text-primary hover:bg-primary/20 rounded transition-all">
+<span class="material-symbols-outlined text-lg">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-primary/5 group transition-colors">
+<td class="px-4 py-4 font-mono text-primary/60">T-112</td>
+<td class="px-4 py-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700">
+                                            TODO
+                                        </span>
+</td>
+<td class="px-4 py-4">
+<div class="flex flex-col">
+<span class="text-slate-100 font-medium">CRUD API Integration Layer</span>
+<span class="text-[10px] text-primary/40 mt-1 uppercase font-mono">Last Update: 1d ago</span>
+</div>
+</td>
+<td class="px-4 py-4">
+<div class="flex items-center gap-2">
+<div class="size-6 rounded bg-primary/10 border border-primary/30 flex items-center justify-center text-[10px] text-primary font-bold">DG</div>
+<span class="text-primary/80 font-mono">Dev_Gamma</span>
+</div>
+</td>
+<td class="px-4 py-4">
+<span class="inline-flex items-center gap-1.5 text-[10px] font-bold text-primary">
+<span class="size-1.5 rounded-full bg-primary"></span> HIGH
+                                        </span>
+</td>
+<td class="px-4 py-4 text-right">
+<button class="opacity-0 group-hover:opacity-100 p-1 text-primary hover:bg-primary/20 rounded transition-all">
+<span class="material-symbols-outlined text-lg">more_vert</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Density Controls Footer -->
+<div class="mt-4 flex items-center justify-between font-mono text-[10px] text-primary/40 uppercase">
+<div class="flex gap-4">
+<span>TOTAL_TASKS: 142</span>
+<span>FILTERED: 4</span>
+</div>
+<div class="flex gap-4 items-center">
+<span>PAGE_SIZE: 15</span>
+<div class="flex gap-1">
+<button class="p-1 hover:text-primary transition-colors">PREV</button>
+<span class="text-primary px-1">1</span>
+<button class="p-1 hover:text-primary transition-colors">NEXT</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Command Bar Footer -->
+<footer class="h-8 border-t border-primary/20 bg-background-dark flex items-center px-4 font-mono text-[10px] text-primary/60 shrink-0">
+<div class="flex items-center gap-4">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-xs">keyboard</span> F1_HELP</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-xs">search</span> F3_SEARCH</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-xs">add</span> CTRL+N_NEW</span>
+</div>
+<div class="ml-auto flex items-center gap-4">
+<span>SYSTEM_READY</span>
+<span class="h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
+<span class="border-l border-primary/20 pl-4">12:45:08 UTC</span>
+</div>
+</footer>
+</div>
+</body></html>

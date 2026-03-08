@@ -548,3 +548,34 @@ See [[specs/task-map.md#Acceptance Criteria]].
 - [[Task MCP server]] — Primary task operations interface
 - [[task-viz]] — Network graph visualization (standalone skill)
 - `aops` CLI (nicsuzor/mem) — Rust binary for index and graph generation
+
+### Stitch Operator System UI Updates (Implemented Mar 2026)
+
+The dashboard has been heavily refactored to align with the "Operator System" UI (Stitch Project 13602521216895540527), prioritizing a dark, data-dense, TUI-inspired aesthetic built for ADHD context recovery and focus.
+
+#### Operator Theme Architecture
+
+- **Bento Grid Structure**: The app utilizes a rigid 12-column Tailwind grid layout. Core application areas (Sidebar: col-span-3, Main: col-span-6 or 9, Detail: col-span-3).
+- **Aesthetics**:
+  - Colors: Amber (`#f2aa0d`) and dark greys/blacks (`#0A0A0A`).
+  - Typography: `Space Grotesk` (headings/display) and `JetBrains Mono` (data readouts/tables).
+  - Effects: Persistent CRT scanlines (`.scanlines` overlay) and matrix grids.
+- **Theme Switcher**: A global layout header toggle swaps between the `Operator` (Amber) and `Holographic` (Cyan) CSS variables via the `.theme-holographic` document class.
+
+#### Graph Visualization Refinements
+
+- **Unified Selector**: All layout views (Treemap, Circle Pack, Force Atlas 2, SFDP, Arc Diagram) are consolidated into a single "GRAPH VIEW MODE" dropdown under the "TASK GRAPH" tab.
+- **Interaction Fidelity**: D3 elements implement explicit mouseenter and mouseleave handlers tied to Svelte global selection store (hoveredNodeId), enabling responsive, cross-component highlighting.
+- **Edge Aesthetics**:
+  - Containment/Parent edges: Solid Amber, width 3.0.
+  - Dependencies (Blocking): Solid Neon Pink, width 2.5.
+  - References: Dashed Light Slate, width 1.5.
+
+#### Threaded Tasks and TUI Editor
+
+- **Threaded Tasks View**: Replaces the central grid when selected. Features a dual-pane layout: a collapsible "Directory Tree" on the left grouping tasks by project, and a dense, tabular task list on the right.
+- **Task Editor View**: Activated by selecting a task row. Takes over the screen with a multi-pane layout:
+  - Breadcrumb header for positional awareness.
+  - Left control panel exposing Priority, Assignee, and explicit Dependencies mapped directly from the graph data.
+  - System Metrics (Downstream Weight, Depth scales) rendered as horizontal bar graphs.
+  - Main editor pane featuring a markdown textarea for task `body` manipulation and explicit SAVE/PAUSE/DELETE lifecycle buttons.

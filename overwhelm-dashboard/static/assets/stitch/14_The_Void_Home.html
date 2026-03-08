@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Holographic Flow - The Void</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Rajdhani:wght@500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00F0FF",
+                        "void": "#050505",
+                        "surface": "rgba(20, 25, 30, 0.6)",
+                        "text-main": "#E0E6ED",
+                        "text-muted": "#586575",
+                        "accent": "#FF2A6D",
+                    },
+                    fontFamily: {
+                        "display": ["Rajdhani", "sans-serif"],
+                        "body": ["Space Grotesk", "sans-serif"],
+                        "mono": ["JetBrains Mono", "monospace"],
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'drift': 'drift 20s infinite alternate linear',
+                        'float': 'float 10s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        drift: {
+                            '0%': { transform: 'translate(0, 0) scale(1)' },
+                            '100%': { transform: 'translate(-2%, -1%) scale(1.05)' },
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        }
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom styles for the interactive graph simulation */
+        body {
+            background-color: #050505;
+            overflow: hidden;
+            cursor: crosshair;
+        }
+
+        .graph-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            perspective: 1000px;
+            z-index: 0;
+        }
+
+        /* Simulating the graph with absolute positioning */
+        .node {
+            position: absolute;
+            border-radius: 50%;
+            background-color: #00F0FF;
+            box-shadow: 0 0 10px #00F0FF, 0 0 20px rgba(0, 240, 255, 0.4);
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+
+        .node:hover {
+            transform: scale(1.5);
+            box-shadow: 0 0 15px #00F0FF, 0 0 30px rgba(0, 240, 255, 0.8);
+            z-index: 20;
+        }
+
+        .edge {
+            position: absolute;
+            background: linear-gradient(90deg, rgba(51,51,51,0) 0%, rgba(51,51,51,1) 50%, rgba(51,51,51,0) 100%);
+            height: 1px;
+            transform-origin: left center;
+            opacity: 0.4;
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        /* Focus Lens Effect */
+        #focus-lens {
+            position: fixed;
+            pointer-events: none;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(0, 240, 255, 0.08) 0%, rgba(0,0,0,0) 70%);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 5;
+            mix-blend-mode: screen;
+            transition: opacity 0.2s ease;
+        }
+
+        /* Vignette */
+        .vignette {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, transparent 60%, #050505 100%);
+            pointer-events: none;
+            z-index: 20;
+        }
+
+        /* Scanlines */
+        .scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.1));
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 25;
+            opacity: 0.15;
+        }
+    </style>
+</head>
+<body class="text-text-main font-body antialiased selection:bg-primary selection:text-black">
+<!-- Interactive Focus Lens Follower -->
+<div id="focus-lens"></div>
+<!-- Vignette & Effects -->
+<div class="vignette"></div>
+<div class="scanlines"></div>
+<!-- HUD Header -->
+<header class="fixed top-8 left-8 z-50 flex flex-col gap-1 pointer-events-none select-none mix-blend-difference">
+<div class="flex items-center gap-3">
+<div class="relative flex items-center justify-center size-3">
+<div class="absolute w-full h-full rounded-full bg-primary opacity-75 animate-ping"></div>
+<div class="relative w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_#00F0FF]"></div>
+</div>
+<h1 class="font-mono text-xs tracking-[0.2em] text-primary font-bold opacity-80">SYSTEM STATUS: ONLINE</h1>
+</div>
+<div class="font-mono text-[10px] text-text-muted tracking-widest pl-6">
+<span id="clock">2023-10-27 | 14:32:01 UTC</span>
+</div>
+<div class="font-mono text-[10px] text-text-muted tracking-widest pl-6 mt-1 flex gap-4">
+<span>NODES: <span class="text-text-main">42</span></span>
+<span>LATENCY: <span class="text-text-main">12ms</span></span>
+</div>
+</header>
+<!-- Navigation Hints -->
+<div class="fixed bottom-8 right-8 z-50 text-right pointer-events-none select-none">
+<div class="flex flex-col gap-1 items-end">
+<div class="font-display font-bold text-sm tracking-widest text-text-main opacity-60">NAVIGATION PROTOCOLS</div>
+<div class="flex gap-4 font-mono text-[10px] text-primary opacity-40">
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">mouse</span> SCROLL TO DIVE
+                 </span>
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">pan_tool</span> DRAG TO PAN
+                 </span>
+</div>
+</div>
+</div>
+<!-- Main Graph Container -->
+<div class="graph-container animate-drift" id="graph-canvas">
+<!-- Center Hub Node -->
+<div class="node w-6 h-6 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white shadow-[0_0_30px_rgba(255,255,255,0.8)] z-30 group cursor-pointer" style="top: 50%; left: 50%;">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+<span class="font-display text-primary text-sm tracking-widest bg-black/80 px-2 py-1 border border-primary/30 backdrop-blur-sm rounded">CORE_KERNEL</span>
+</div>
+</div>
+<!-- Node Cluster 1: Top Right -->
+<div class="node w-3 h-3 cursor-pointer group" style="top: 30%; left: 65%;">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
+<span class="font-display text-white text-xs tracking-widest bg-void/80 px-2 py-1 border border-white/10 backdrop-blur-sm rounded">PROJECT_NEURAL</span>
+</div>
+</div>
+<div class="node w-2 h-2 opacity-60" style="top: 25%; left: 70%;"></div>
+<div class="node w-2 h-2 opacity-60" style="top: 35%; left: 62%;"></div>
+<div class="edge" style="top: 40%; left: 57.5%; width: 200px; transform: rotate(-35deg);"></div> <!-- Connection to core -->
+<div class="edge" style="top: 28%; left: 66%; width: 80px; transform: rotate(20deg);"></div>
+<div class="edge" style="top: 32%; left: 63%; width: 60px; transform: rotate(-45deg);"></div>
+<!-- Node Cluster 2: Bottom Left -->
+<div class="node w-4 h-4 cursor-pointer group" style="top: 70%; left: 35%;">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
+<span class="font-display text-accent text-xs tracking-widest bg-void/80 px-2 py-1 border border-accent/30 backdrop-blur-sm rounded shadow-[0_0_10px_rgba(255,42,109,0.2)]">ALERT_SECTOR</span>
+</div>
+</div>
+<div class="node w-2 h-2 opacity-50" style="top: 75%; left: 30%;"></div>
+<div class="node w-1.5 h-1.5 opacity-40" style="top: 68%; left: 28%;"></div>
+<div class="edge" style="top: 60%; left: 42.5%; width: 220px; transform: rotate(145deg);"></div> <!-- Connection to core -->
+<div class="edge" style="top: 72%; left: 32%; width: 70px; transform: rotate(10deg);"></div>
+<div class="edge" style="top: 70%; left: 30%; width: 90px; transform: rotate(-20deg);"></div>
+<!-- Node Cluster 3: Top Left (Distant) -->
+<div class="node w-2 h-2 opacity-40 hover:opacity-100 cursor-pointer transition-all duration-300" style="top: 20%; left: 25%;"></div>
+<div class="node w-1 h-1 opacity-30" style="top: 15%; left: 22%;"></div>
+<div class="edge" style="top: 35%; left: 37.5%; width: 300px; transform: rotate(200deg); opacity: 0.2;"></div> <!-- Faint connection -->
+<!-- Scattered Noise Nodes -->
+<div class="node w-1 h-1 opacity-20" style="top: 15%; left: 85%;"></div>
+<div class="node w-1 h-1 opacity-20" style="top: 85%; left: 80%;"></div>
+<div class="node w-1 h-1 opacity-20" style="top: 55%; left: 10%;"></div>
+<div class="node w-1 h-1 opacity-20" style="top: 90%; left: 45%;"></div>
+<div class="node w-1 h-1 opacity-20" style="top: 10%; left: 55%;"></div>
+<!-- Floating decorative elements -->
+<div class="absolute top-1/4 right-1/4 w-64 h-64 border border-primary/5 rounded-full animate-pulse-slow pointer-events-none"></div>
+<div class="absolute bottom-1/3 left-1/3 w-96 h-96 border border-white/5 rounded-full animate-pulse-slow delay-700 pointer-events-none"></div>
+</div>
+<!-- Bottom "Stream" Hint (Inactive State) -->
+<div class="fixed bottom-0 right-0 p-8 z-40">
+<div class="flex items-center justify-end gap-2 opacity-30 hover:opacity-100 transition-opacity cursor-pointer group">
+<span class="font-mono text-xs text-primary group-hover:shadow-[0_0_10px_#00F0FF]">INBOX_STREAM_OFFLINE</span>
+<div class="w-2 h-2 bg-text-muted rounded-full"></div>
+</div>
+</div>
+<script>
+        // Simple script to update the mouse lens position
+        const lens = document.getElementById('focus-lens');
+        document.addEventListener('mousemove', (e) => {
+            lens.style.left = e.clientX + 'px';
+            lens.style.top = e.clientY + 'px';
+        });
+
+        // Simple real-time clock update
+        function updateClock() {
+            const now = new Date();
+            const timeString = now.toISOString().replace('T', ' | ').substring(0, 19) + ' UTC';
+            document.getElementById('clock').innerText = timeString;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+    </script>
+</body></html>
