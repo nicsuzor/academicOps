@@ -141,14 +141,15 @@ def test_critical_path_edge_width():
 
 
 def test_structural_nodes_muted():
-    """Structural nodes should get muted fill/text colors."""
+    """Structural nodes get type-based fill/text colors (task type by default)."""
     graph = _make_graph([_node("s1", status="done")])
     result = prepare_embedded_graph_data(graph, structural_ids={"s1"})
 
     n = result["nodes"][0]
     assert n["structural"] is True
-    assert n["fill"] == "#e2e8f0"
-    assert n["textColor"] == "#94a3b8"
+    # Default _node() uses node_type="task" → TYPE_FILLS["task"] / TYPE_TEXT_COLORS["task"]
+    assert n["fill"] == "#e8f5e9"
+    assert n["textColor"] == "#1b5e20"
 
 
 def test_orphan_opacity():

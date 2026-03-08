@@ -20,7 +20,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -104,7 +104,7 @@ def scan_summaries(
         return []
 
     # Calculate date range
-    today = datetime.now(UTC).date()
+    today = datetime.now().astimezone().date()
     cutoff = today - timedelta(days=days - 1)  # Include today
     cutoff_str = cutoff.strftime("%Y%m%d")
 

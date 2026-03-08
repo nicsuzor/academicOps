@@ -110,9 +110,11 @@ diagnostic: null
 | `soft_depends_on`   | list[string] | Non-blocking context dependencies                     | `[20260112-ux-research]`                                                                |
 | `tags`              | list[string] | Topic tags for categorization                         | `[dashboard, priority, visibility]`                                                     |
 | `assignee`          | string       | Task owner: `nic` (human), `polecat` (agent), or null | `polecat`                                                                               |
+| `pr`                | int          | GitHub Pull Request number                            | `123`                                                                                   |
+| `issue`             | int          | GitHub Issue number                                   | `456`                                                                                   |
 | `complexity`        | enum         | Routing classification                                | `mechanical`, `requires-judgment`, `multi-step`, `needs-decomposition`, `blocked-human` |
 | `worker_id`         | string       | Active worker agent ID (set when claimed)             | `polecat-claude-1`                                                                      |
-| `pr_url`            | string       | Pull request URL (for REVIEW/MERGE_READY status)      | `https://github.com/...`                                                                |
+| `pr_url`            | string       | Pull request URL (submitted, awaiting merge)          | `https://github.com/...`                                                                |
 | `unblock_condition` | string       | What must happen to unblock (BLOCKED status)          | `"Email feedback from reviewer"`                                                        |
 | `diagnostic`        | string       | Error reason (FAILED status)                          | `"Timeout after 30 minutes"`                                                            |
 
@@ -142,7 +144,7 @@ INBOX (new task, not yet triaged)
   ↓
 ACTIVE (ready to be claimed, no blockers)
   ├─ → IN_PROGRESS (worker claims & starts work)
-  │     ├─ → REVIEW (PR filed, awaiting review)
+  │     ├─ → REVIEW (PR submitted, awaiting review)
   │     │     ├─ → MERGE_READY (reviews done, awaiting merge)
   │     │     │     └─ → MERGING (currently being merged)
   │     │     │           └─ → DONE (completed)

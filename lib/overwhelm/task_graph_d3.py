@@ -162,6 +162,44 @@ INCOMPLETE_STATUSES = {
 _MUTED_FILL = "#e8eaed"
 _MUTED_TEXT = "#9ca3af"
 
+# Type-based background fills for structural/parent nodes in hierarchical views.
+# Light tints that indicate the node type without being overwhelming.
+TYPE_FILLS = {
+    "goal": "#fce4ec",
+    "project": "#e3f2fd",
+    "epic": "#fff3e0",
+    "task": "#e8f5e9",
+    "action": "#e0f7fa",
+    "bug": "#ffebee",
+    "feature": "#e8f5e9",
+    "learn": "#fffde7",
+    "knowledge": "#ede7f6",
+    "person": "#efebe9",
+    "context": "#eceff1",
+    "template": "#f5f5f5",
+    "note": "#f5f5f5",
+    "daily": "#eceff1",
+    "memory": "#f3e5f5",
+}
+
+TYPE_TEXT_COLORS = {
+    "goal": "#b71c1c",
+    "project": "#0d47a1",
+    "epic": "#e65100",
+    "task": "#1b5e20",
+    "action": "#006064",
+    "bug": "#b71c1c",
+    "feature": "#1b5e20",
+    "learn": "#f57f17",
+    "knowledge": "#4a148c",
+    "person": "#4e342e",
+    "context": "#37474f",
+    "template": "#616161",
+    "note": "#616161",
+    "daily": "#37474f",
+    "memory": "#6a1b9a",
+}
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -332,8 +370,8 @@ def prepare_embedded_graph_data(
         weight_norm = min(math.log1p(dw) / math.log1p(max_weight), 1.0) if max_weight > 0 else 0
         base_fill = STATUS_FILLS.get(status, "#f1f5f9")
         if is_structural:
-            fill = "#e2e8f0"
-            text_col = "#94a3b8"
+            fill = TYPE_FILLS.get(node_type, "#e2e8f0")
+            text_col = TYPE_TEXT_COLORS.get(node_type, "#64748b")
         else:
             desaturation = max(0.0, 0.4 - weight_norm * 0.4)
             fill = _interpolate_color(base_fill, _MUTED_FILL, desaturation)

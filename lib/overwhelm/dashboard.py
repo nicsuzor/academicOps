@@ -3773,11 +3773,20 @@ _HIERARCHICAL_LAYOUT_LABELS = {"Treemap", "Circle Pack"}
 # Shared graph helpers
 # ---------------------------------------------------------------------------
 
-_ACTIVE_STATUSES = {"active", "in_progress", "waiting", "todo", "review", "decomposing", "pending"}
+_ACTIVE_STATUSES = {
+    "active",
+    "in_progress",
+    "waiting",
+    "todo",
+    "review",
+    "decomposing",
+    "pending",
+    "merge_ready",
+}
 _BLOCKED_STATUSES = {"blocked"}
 _DONE_STATUSES = {"done", "completed", "cancelled", "dormant"}
 _ORPHAN_STATUSES = {"inbox"}
-_ACTIONABLE_STATUSES = _ACTIVE_STATUSES | _BLOCKED_STATUSES | {"merge_ready"}
+_ACTIONABLE_STATUSES = _ACTIVE_STATUSES | _BLOCKED_STATUSES
 
 # Importance scoring constants (see PR #760 for rationale)
 _PRIORITY_WEIGHTS = {0: 1000, 1: 200, 2: 50, 3: 10, 4: 2}
@@ -3919,13 +3928,7 @@ def _render_status_summary(d3_data: dict):
             parts.append(f"{counts[s]} {label}")
     status_str = " · ".join(parts) if parts else f"{len(d3_data['nodes'])} nodes"
 
-    spotlight_nodes = [n for n in d3_data["nodes"] if n.get("spotlight")]
-    if spotlight_nodes:
-        labels = [(n.get("title") or n.get("label") or n["id"])[:40] for n in spotlight_nodes[:3]]
-        st.caption(f"{status_str} | {len(d3_data['links'])} links")
-        st.caption(f"**★ Start: {' · '.join(labels)}**")
-    else:
-        st.caption(f"{status_str} | {len(d3_data['links'])} links")
+    st.caption(f"{status_str} | {len(d3_data['links'])} links")
 
 
 def _render_graph_with_actions(d3_data: dict, height: int = 700, **kwargs):
@@ -3943,38 +3946,37 @@ def _render_graph_with_actions(d3_data: dict, height: int = 700, **kwargs):
 # ---------------------------------------------------------------------------
 
 
-def _render_overview_tab(d3_graph: dict):
-    """Overview: all actionable leaf tasks in treemap or circle pack."""
+def _render_overview_tab(
+    d3_graph: dict,
+    *,
+    show_active: bool = True,
+    show_blocked: bool = True,
+    show_done: bool = False,
+    view_mode: str = "Treemap",
+    show_edges: bool = False,
+    show_refs: bool = False,
+):
+    """Overview: all tasks (not just leaves) in treemap or circle pack."""
     import copy
 
     graph = copy.deepcopy(d3_graph)
     all_nodes = graph.get("nodes", [])
-
-    # Build children map to find actionable leaves
-    children_map: dict[str, list[str]] = {}
-    for n in all_nodes:
-        p = n.get("parent")
-        if p:
-            children_map.setdefault(p, []).append(n["id"])
-
     node_by_id = {n["id"]: n for n in all_nodes}
 
-    leaf_ids: set[str] = set()
+    # Include ALL nodes matching status filters (not just leaves)
+    visible_ids: set[str] = set()
     for n in all_nodes:
         status = (n.get("status") or "inbox").lower()
-        if status not in _ACTIONABLE_STATUSES:
-            continue
-        children = children_map.get(n["id"], [])
-        has_actionable_child = any(
-            (node_by_id.get(c, {}).get("status") or "inbox").lower() in _ACTIONABLE_STATUSES
-            for c in children
-        )
-        if not has_actionable_child:
-            leaf_ids.add(n["id"])
+        if status in _ACTIVE_STATUSES and show_active:
+            visible_ids.add(n["id"])
+        elif status in _BLOCKED_STATUSES and show_blocked:
+            visible_ids.add(n["id"])
+        elif status in _DONE_STATUSES and show_done:
+            visible_ids.add(n["id"])
 
-    ancestor_ids = _collect_ancestors(leaf_ids, node_by_id)
-    keep_ids = leaf_ids | ancestor_ids
-    structural_ids = ancestor_ids - leaf_ids
+    ancestor_ids = _collect_ancestors(visible_ids, node_by_id)
+    keep_ids = visible_ids | ancestor_ids
+    structural_ids = ancestor_ids - visible_ids
 
     graph["nodes"] = [n for n in all_nodes if n["id"] in keep_ids]
 
@@ -3982,7 +3984,7 @@ def _render_overview_tab(d3_graph: dict):
     from collections import Counter as _WCounter
 
     status_counts = _WCounter(
-        (n.get("status") or "inbox").lower() for n in graph["nodes"] if n["id"] in leaf_ids
+        (n.get("status") or "inbox").lower() for n in graph["nodes"] if n["id"] in visible_ids
     )
     parts = []
     for s, label in [
@@ -3994,20 +3996,15 @@ def _render_overview_tab(d3_graph: dict):
     ]:
         if status_counts.get(s, 0) > 0:
             parts.append(f"{status_counts[s]} {label}")
-    status_str = " · ".join(parts) if parts else f"{len(leaf_ids)} tasks"
-    st.markdown(f"**{len(leaf_ids)} leaf tasks** — {status_str}")
+    status_str = " · ".join(parts) if parts else f"{len(visible_ids)} tasks"
+    st.markdown(f"**{len(visible_ids)} tasks** ({len(graph['nodes'])} total) — {status_str}")
 
     d3_data = prepare_embedded_graph_data(graph, structural_ids=structural_ids)
+    d3_data["showEdges"] = show_edges
+    d3_data["showRefs"] = show_refs
 
-    # Layout toggle
+    # Layout selection
     available = d3_data.get("availableLayouts", [])
-    view_mode = st.radio(
-        "View",
-        ["Treemap", "Circle Pack"],
-        horizontal=True,
-        key="overview_view",
-        label_visibility="collapsed",
-    )
     if view_mode == "Treemap" and "treemap" in available:
         layout = "treemap"
     elif view_mode == "Circle Pack" and "circle_pack" in available:
@@ -4024,7 +4021,21 @@ def _render_overview_tab(d3_graph: dict):
     _render_graph_with_actions(d3_data, height=800, project_filter="ALL", layout_mode=layout)
 
 
-def _render_fa2_tab(d3_graph: dict):
+def _render_fa2_tab(
+    d3_graph: dict,
+    *,
+    show_active: bool = True,
+    show_blocked: bool = True,
+    show_done: bool = False,
+    top_n: int = 80,
+    use_live: bool = False,
+    charge_mult: float = 1.0,
+    link_dist: float = 0.75,
+    cluster_str: float = 0.4,
+    project_filter: str = "ALL",
+    show_edges: bool = False,
+    show_refs: bool = False,
+):
     """ForceAtlas2: project clusters with top-N important leaves."""
     import copy
 
@@ -4032,36 +4043,6 @@ def _render_fa2_tab(d3_graph: dict):
     all_nodes = graph.get("nodes", [])
     leaf_ids = _graph_leaf_ids(all_nodes)
     node_by_id = {n["id"]: n for n in all_nodes}
-
-    # Inline controls (avoids sidebar bleed to other tabs)
-    with st.expander("FA2 Controls", expanded=False):
-        c1, c2, c3, c4 = st.columns(4)
-        show_active = c1.checkbox("Active", value=True, key="fa2_show_active")
-        show_blocked = c2.checkbox("Blocked", value=True, key="fa2_show_blocked")
-        show_done = c3.checkbox("Done / Cancelled", value=False, key="fa2_show_done")
-        quick_view_n = c4.select_slider(
-            "Top N leaves",
-            options=[25, 50, 80, 120, 200],
-            value=80,
-            key="fa2_topn",
-        )
-        use_live = st.toggle("Live simulation", value=False, key="fa2_live")
-        if use_live:
-            fc1, fc2, fc3 = st.columns(3)
-            charge_mult = fc1.slider("Charge strength", 0.1, 2.0, 1.0, 0.1, key="fa2_charge")
-            link_dist = fc2.slider("Link distance", 0.2, 2.0, 0.75, 0.05, key="fa2_link")
-            cluster_str = fc3.slider("Cluster pull", 0.0, 1.0, 0.4, 0.05, key="fa2_cluster")
-        else:
-            charge_mult, link_dist, cluster_str = 1.0, 0.75, 0.4
-
-    # Project filter
-    projects = sorted(set(n.get("project", "") for n in all_nodes if n.get("project")))
-    selected_project = st.selectbox(
-        "Project",
-        ["All Projects"] + projects,
-        key="fa2_project",
-    )
-    project_filter = "ALL" if selected_project == "All Projects" else selected_project
 
     # Filter by status
     visible_leaf_ids = _filter_leaves_by_status(
@@ -4071,13 +4052,15 @@ def _render_fa2_tab(d3_graph: dict):
     filtered = [n for n in all_nodes if n["id"] in visible_leaf_ids or n["id"] in structural_ids]
 
     # Apply top-N importance filter
-    filtered, _top3 = _apply_top_n(filtered, visible_leaf_ids, node_by_id, quick_view_n)
+    filtered, _top3 = _apply_top_n(filtered, visible_leaf_ids, node_by_id, top_n)
     graph["nodes"] = filtered
 
     d3_data = prepare_embedded_graph_data(graph, structural_ids=structural_ids)
     d3_data["forceConfig"]["chargeMult"] = charge_mult
     d3_data["forceConfig"]["linkDistMult"] = link_dist
     d3_data["forceConfig"]["clusterStrength"] = cluster_str
+    # Enable linlog mode for denser FA2 clusters
+    d3_data["forceConfig"]["linlog"] = True
 
     # Determine layout mode
     available = d3_data.get("availableLayouts", [])
@@ -4092,13 +4075,30 @@ def _render_fa2_tab(d3_graph: dict):
     else:
         layout_mode = "force"
 
+    d3_data["showEdges"] = show_edges
+    d3_data["showRefs"] = show_refs
+
     _render_status_summary(d3_data)
     _render_graph_with_actions(
         d3_data, height=700, project_filter=project_filter, layout_mode=layout_mode
     )
 
 
-def _render_sfdp_tab(d3_graph: dict):
+def _render_sfdp_tab(
+    d3_graph: dict,
+    *,
+    show_active: bool = True,
+    show_blocked: bool = True,
+    show_done: bool = False,
+    show_orphans: bool = False,
+    top_n: int = 200,
+    use_live: bool = False,
+    charge_mult: float = 1.0,
+    link_dist: float = 0.75,
+    cluster_str: float = 0.4,
+    show_edges: bool = False,
+    show_refs: bool = False,
+):
     """SFDP: dense graph with more nodes and visible inter-relations."""
     import copy
 
@@ -4106,20 +4106,6 @@ def _render_sfdp_tab(d3_graph: dict):
     all_nodes = graph.get("nodes", [])
     leaf_ids = _graph_leaf_ids(all_nodes)
     node_by_id = {n["id"]: n for n in all_nodes}
-
-    # Inline controls (avoids sidebar bleed to other tabs)
-    with st.expander("SFDP Controls", expanded=False):
-        c1, c2, c3, c4, c5 = st.columns(5)
-        show_active = c1.checkbox("Active", value=True, key="sfdp_show_active")
-        show_blocked = c2.checkbox("Blocked", value=True, key="sfdp_show_blocked")
-        show_done = c3.checkbox("Done / Cancelled", value=False, key="sfdp_show_done")
-        show_orphans = c4.checkbox("Orphans (inbox)", value=False, key="sfdp_show_orphans")
-        top_n = c5.select_slider(
-            "Max leaves",
-            options=[80, 120, 200, 350, 500],
-            value=200,
-            key="sfdp_topn",
-        )
 
     visible_leaf_ids = _filter_leaves_by_status(
         all_nodes,
@@ -4139,13 +4125,30 @@ def _render_sfdp_tab(d3_graph: dict):
     d3_data = prepare_embedded_graph_data(graph, structural_ids=structural_ids)
 
     available = d3_data.get("availableLayouts", [])
-    layout_mode = "sfdp" if "sfdp" in available else "force"
+    if use_live:
+        d3_data["forceConfig"]["chargeMult"] = charge_mult
+        d3_data["forceConfig"]["linkDistMult"] = link_dist
+        d3_data["forceConfig"]["clusterStrength"] = cluster_str
+        layout_mode = "force"
+    else:
+        layout_mode = "sfdp" if "sfdp" in available else "force"
+
+    d3_data["showEdges"] = show_edges
+    d3_data["showRefs"] = show_refs
 
     _render_status_summary(d3_data)
     _render_graph_with_actions(d3_data, height=700, project_filter="ALL", layout_mode=layout_mode)
 
 
-def _render_arc_tab(d3_graph: dict):
+def _render_arc_tab(
+    d3_graph: dict,
+    *,
+    show_active: bool = True,
+    show_blocked: bool = True,
+    show_done: bool = False,
+    show_edges: bool = False,
+    show_refs: bool = False,
+):
     """Arc diagram: dependency chains and relationships."""
     import copy
 
@@ -4154,15 +4157,16 @@ def _render_arc_tab(d3_graph: dict):
     leaf_ids = _graph_leaf_ids(all_nodes)
     node_by_id = {n["id"]: n for n in all_nodes}
 
-    # Show active+blocked leaves (dependencies matter most for blocked tasks)
     visible_leaf_ids = _filter_leaves_by_status(
-        all_nodes, leaf_ids, show_active=True, show_blocked=True
+        all_nodes, leaf_ids, show_active=show_active, show_blocked=show_blocked, show_done=show_done
     )
     structural_ids = _collect_ancestors(visible_leaf_ids, node_by_id)
     filtered = [n for n in all_nodes if n["id"] in visible_leaf_ids or n["id"] in structural_ids]
     graph["nodes"] = filtered
 
     d3_data = prepare_embedded_graph_data(graph, structural_ids=structural_ids)
+    d3_data["showEdges"] = show_edges
+    d3_data["showRefs"] = show_refs
 
     available = d3_data.get("availableLayouts", [])
     layout_mode = "arc" if "arc" in available else "force"
@@ -4172,38 +4176,133 @@ def _render_arc_tab(d3_graph: dict):
 
 
 def render_task_graph_page():
-    """Render specialized graph tabs: Overview, ForceAtlas2, SFDP, Arc."""
+    """Render specialized graph views with all controls in the sidebar drawer."""
     st.markdown("### Task Graphs")
-
-    with st.sidebar:
-        if st.button("Reload Graph", key="tg_reload"):
-            st.cache_data.clear()
 
     d3_graph = _load_merged_graph()
     if not d3_graph:
         st.warning("No per-layout graph files found. Run `generate-viz.sh` to generate.")
         return
 
-    tab_overview, tab_fa2, tab_sfdp, tab_arc = st.tabs(["Overview", "ForceAtlas2", "SFDP", "Arc"])
+    all_graph_nodes = d3_graph.get("nodes", [])
+    projects = sorted(set(n.get("project", "") for n in all_graph_nodes if n.get("project")))
 
-    with tab_overview:
-        st.caption(
-            "All actionable leaf tasks grouped by project. "
-            "Size = downstream weight, color = status."
+    # --- All controls in sidebar ---
+    with st.sidebar:
+        if st.button("Reload Graph", key="tg_reload"):
+            st.cache_data.clear()
+
+        st.divider()
+
+        # View selector (replaces inline controls)
+        view = st.selectbox(
+            "View",
+            ["Overview", "ForceAtlas2", "SFDP", "Arc"],
+            key="graph_view",
         )
-        _render_overview_tab(d3_graph)
 
-    with tab_fa2:
+        if view == "Overview":
+            overview_mode = st.radio(
+                "Layout", ["Treemap", "Circle Pack"], horizontal=True, key="ov_layout"
+            )
+
+        st.markdown("**Filters**")
+        c1, c2 = st.columns(2)
+        show_active = c1.checkbox("Active", True, key="g_active")
+        show_blocked = c2.checkbox("Blocked", True, key="g_blocked")
+        c3, c4 = st.columns(2)
+        show_done = c3.checkbox("Completed", False, key="g_done")
+        show_orphans = c4.checkbox("Orphans", False, key="g_orphans")
+
+        st.markdown("**Edges**")
+        show_edges = st.checkbox("Show dependencies", False, key="g_edges")
+        show_refs = st.checkbox("Show references", False, key="g_refs")
+
+        st.divider()
+
+        # Per-view controls
+        if view in ("ForceAtlas2", "SFDP"):
+            if view == "ForceAtlas2":
+                top_n = st.select_slider(
+                    "Top N leaves", [25, 50, 80, 120, 200], 80, key="g_topn_fa2"
+                )
+            else:
+                top_n = st.select_slider(
+                    "Max leaves", [80, 120, 200, 350, 500], 200, key="g_topn_sfdp"
+                )
+
+            use_live = st.toggle("Live simulation", False, key=f"g_live_{view}")
+            if use_live:
+                charge_mult = st.slider(
+                    "Charge strength", 0.1, 3.0, 1.0, 0.1, key=f"g_charge_{view}"
+                )
+                link_dist = st.slider(
+                    "Attraction strength", 0.2, 2.0, 0.75, 0.05, key=f"g_link_{view}"
+                )
+                cluster_str = st.slider(
+                    "Cluster pull", 0.0, 1.0, 0.4, 0.05, key=f"g_cluster_{view}"
+                )
+            else:
+                charge_mult, link_dist, cluster_str = 1.0, 0.75, 0.4
+
+        if view == "ForceAtlas2":
+            selected_project = st.selectbox("Project", ["All Projects"] + projects, key="g_project")
+            project_filter = "ALL" if selected_project == "All Projects" else selected_project
+
+    # --- Render the selected view in main pane ---
+    if view == "Overview":
+        st.caption("All tasks grouped by project. Size = downstream weight, color = status/type.")
+        _render_overview_tab(
+            d3_graph,
+            show_active=show_active,
+            show_blocked=show_blocked,
+            show_done=show_done,
+            view_mode=overview_mode,
+            show_edges=show_edges,
+            show_refs=show_refs,
+        )
+    elif view == "ForceAtlas2":
         st.caption("Project clusters with top-N most important leaves.")
-        _render_fa2_tab(d3_graph)
-
-    with tab_sfdp:
+        _render_fa2_tab(
+            d3_graph,
+            show_active=show_active,
+            show_blocked=show_blocked,
+            show_done=show_done,
+            top_n=top_n,
+            use_live=use_live,
+            charge_mult=charge_mult,
+            link_dist=link_dist,
+            cluster_str=cluster_str,
+            project_filter=project_filter,
+            show_edges=show_edges,
+            show_refs=show_refs,
+        )
+    elif view == "SFDP":
         st.caption("Dense layout showing inter-relations across the full task graph.")
-        _render_sfdp_tab(d3_graph)
-
-    with tab_arc:
+        _render_sfdp_tab(
+            d3_graph,
+            show_active=show_active,
+            show_blocked=show_blocked,
+            show_done=show_done,
+            show_orphans=show_orphans,
+            top_n=top_n,
+            use_live=use_live,
+            charge_mult=charge_mult,
+            link_dist=link_dist,
+            cluster_str=cluster_str,
+            show_edges=show_edges,
+            show_refs=show_refs,
+        )
+    elif view == "Arc":
         st.caption("Dependency chains and blocking relationships.")
-        _render_arc_tab(d3_graph)
+        _render_arc_tab(
+            d3_graph,
+            show_active=show_active,
+            show_blocked=show_blocked,
+            show_done=show_done,
+            show_edges=show_edges,
+            show_refs=show_refs,
+        )
 
 
 _USELESS_PROMPTS = frozenset(
