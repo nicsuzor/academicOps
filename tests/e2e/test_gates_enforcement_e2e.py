@@ -26,7 +26,7 @@ class TestHydrationGateE2E:
         runner, platform = cli_headless
 
         result = runner(
-            "Read the file /etc/hosts and tell me what's in it. Do not use any other tools first.",
+            "Read the file pyproject.toml and tell me what's in it. Do not use any other tools first.",
             model="haiku" if platform == "claude" else None,
             fail_on_error=False,
         )
