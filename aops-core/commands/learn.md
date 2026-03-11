@@ -39,14 +39,16 @@ To analyze the incident, you must first render the transcript of the current or 
 # Locate the session file (For Gemini or Claude)
 SESSION_FILE=$(fd -t f -a --newer 1h .json ~/.gemini/tmp | xargs ls -t | head -1)
 
-# Generate transcript using the framework path
-uv run python -m aops_core.scripts.transcript "$SESSION_FILE"
-# OR if python path doesn't resolve aops_core directly, locate transcript.py dynamically:
-# TRANSCRIPT_SCRIPT=$(find ~ -path "*/aops-core/scripts/transcript.py" | head -n 1)
-# uv run python "$TRANSCRIPT_SCRIPT" "$SESSION_FILE"
+# Generate transcript using the installed plugin path
+TRANSCRIPT_SCRIPT="${ACA_DATA:-~}/.claude/skills/framework/scripts/transcript.py"
+if [ -f "$TRANSCRIPT_SCRIPT" ]; then
+  uv run python "$TRANSCRIPT_SCRIPT" "$SESSION_FILE"
+else
+  uv run python -m aops_core.scripts.transcript "$SESSION_FILE"
+fi
 ```
 
-*Note: Since you might not be in the framework repository, adapt the script path discovery as needed using standard bash commands (`find`, etc.) to locate `aops-core/scripts/transcript.py`.*
+*Note: Since you might not be in the framework repository, adapt the script path discovery as needed using standard bash commands (`find`, etc.) to locate `transcript.py`.*
 
 ### 2. Deep Root Cause Analysis (Crucial)
 
