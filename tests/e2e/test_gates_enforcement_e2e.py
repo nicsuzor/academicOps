@@ -40,7 +40,7 @@ class TestHydrationGateE2E:
             f"[{platform}] Expected hydration gate to block Read tool.\nOutput: {output_text[:500]}"
         )
 
-    def test_hydration_allows_safe_git_bash(self, cli_headless):
+    def test_hydration_allows_safe_git_bash(self, cli_headless, aops_root):
         """GIVEN: Fresh session. WHEN: git status. THEN: Allowed."""
         runner, platform = cli_headless
 
@@ -48,6 +48,7 @@ class TestHydrationGateE2E:
             "Run 'git status' using Bash. Just run that one command and show me the output.",
             model="haiku" if platform == "claude" else None,
             fail_on_error=False,
+            cwd=aops_root,
         )
 
         output_text = result.get("output", "")
@@ -69,7 +70,7 @@ class TestHydrationGateE2E:
 class TestHydrationExemptToolsE2E:
     """E2E tests for tools exempt from hydration gate."""
 
-    def test_glob_bypasses_hydration(self, cli_headless):
+    def test_glob_bypasses_hydration(self, cli_headless, aops_root):
         """GIVEN: Fresh session. WHEN: Glob tool. THEN: Allowed."""
         runner, platform = cli_headless
 
@@ -77,6 +78,7 @@ class TestHydrationExemptToolsE2E:
             "Use the Glob tool with pattern '*.py' to find Python files in the current directory.",
             model="haiku" if platform == "claude" else None,
             fail_on_error=False,
+            cwd=aops_root,
         )
 
         output_text = result.get("output", "")
