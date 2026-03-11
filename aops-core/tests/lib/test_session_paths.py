@@ -14,6 +14,7 @@ def _clear_env_vars(monkeypatch):
         "AOPS_HOOK_LOG_PATH",
         "AOPS_GATE_FILE_HYDRATION",
         "AOPS_GATE_FILE_CUSTODIET",
+        "GEMINI_SESSION_ID",
     )
     for var in ENV_VARS_TO_CLEAR:
         monkeypatch.delenv(var, raising=False)
