@@ -8,11 +8,15 @@ from lib.session_paths import _is_gemini_session, get_gate_file_path, get_sessio
 @pytest.fixture(autouse=True)
 def _clear_env_vars(monkeypatch):
     """Clear env vars that leak from live sessions."""
-    monkeypatch.delenv("AOPS_SESSIONS", raising=False)
-    monkeypatch.delenv("AOPS_SESSION_STATE_DIR", raising=False)
-    monkeypatch.delenv("AOPS_HOOK_LOG_PATH", raising=False)
-    monkeypatch.delenv("AOPS_GATE_FILE_HYDRATION", raising=False)
-    monkeypatch.delenv("AOPS_GATE_FILE_CUSTODIET", raising=False)
+    ENV_VARS_TO_CLEAR = (
+        "AOPS_SESSIONS",
+        "AOPS_SESSION_STATE_DIR",
+        "AOPS_HOOK_LOG_PATH",
+        "AOPS_GATE_FILE_HYDRATION",
+        "AOPS_GATE_FILE_CUSTODIET",
+    )
+    for var in ENV_VARS_TO_CLEAR:
+        monkeypatch.delenv(var, raising=False)
 
 
 class TestIsGeminiSession:
