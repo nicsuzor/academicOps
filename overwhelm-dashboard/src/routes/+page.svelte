@@ -315,7 +315,7 @@
 
             <!-- RIGHT SIDEBAR: Details / Editor -->
             <aside class="col-span-3 bg-background flex flex-col h-full overflow-y-auto custom-scrollbar">
-                <TaskEditorView taskId={$selection.activeNodeId} on:close={() => selection.update(s => ({...s, activeNodeId: null}))} />
+                <TaskEditorView taskId={$selection.activeNodeId} onclose={() => selection.update(s => ({...s, activeNodeId: null}))} />
             </aside>
         {/if}
     {:else}
@@ -421,7 +421,7 @@
                     <!-- Task Editor Overlay -->
                     {#if $selection.activeNodeId}
                         <div class="absolute right-0 top-0 bottom-0 w-full max-w-2xl z-[60] bg-black/90 backdrop-blur-2xl border-l border-primary/20 shadow-2xl overflow-hidden shadow-primary/10">
-                            <TaskEditorView taskId={$selection.activeNodeId} on:close={() => selection.update(s => ({...s, activeNodeId: null}))} />
+                            <TaskEditorView taskId={$selection.activeNodeId} onclose={() => selection.update(s => ({...s, activeNodeId: null}))} />
                         </div>
                     {/if}
                 {/if}

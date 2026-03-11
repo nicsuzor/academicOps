@@ -242,7 +242,7 @@
     <!-- Task Editor: Integrated Side-by-Side View -->
     {#if $selection.activeNodeId}
         <aside class="w-[45%] border-l border-primary/30 bg-background shadow-2xl z-10 transition-all animate-in slide-in-from-right duration-300">
-            <TaskEditorView taskId={$selection.activeNodeId} on:close={() => selection.update(s => ({...s, activeNodeId: null}))} />
+            <TaskEditorView taskId={$selection.activeNodeId} onclose={() => selection.update(s => ({...s, activeNodeId: null}))} />
         </aside>
     {/if}
 </div>

@@ -1,5 +1,4 @@
 <script lang="ts">
-    import { createEventDispatcher } from "svelte";
     import { graphData } from "../../stores/graph";
     import HierarchyTree from "./HierarchyTree.svelte";
 
