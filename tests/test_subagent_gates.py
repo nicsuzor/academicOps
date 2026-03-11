@@ -608,6 +608,9 @@ class TestE2EGateDispatchFromRawStdin:
         assert ctx.tool_name == "Bash"
 
         # Dynamically change the policy verdict since GateRegistry caches configs
+        from lib.gates.registry import GateRegistry
+        registry_gate = GateRegistry.get_gate("hydration")
+        monkeypatch.setattr(registry_gate.config.policies[0], "verdict", "warn")
         gate_config = next(g for g in GATE_CONFIGS if g.name == "hydration")
         monkeypatch.setattr(gate_config.policies[0], "verdict", "warn")
 
