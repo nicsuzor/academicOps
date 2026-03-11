@@ -16,7 +16,7 @@
 set -euo pipefail
 
 REPO="${REPO:-nicsuzor/academicOps}"
-RULESET_ID="${RULESET_ID:-12723813}"
+RULESET_ID="${RULESET_ID:-13762049}"
 RULESET_FILE="${RULESET_FILE:-.github/rulesets/pr-review-and-merge.yml}"
 DRY_RUN=false
 
