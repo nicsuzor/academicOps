@@ -111,6 +111,7 @@ _clear_stale_git_lock() {
 _plain_git_sync() {
     local repo="$1"
     local name=$(basename "$repo")
+    local auto_commit="${2:-false}"
 
     cd "$repo"
 
@@ -118,9 +119,11 @@ _plain_git_sync() {
     git rebase --abort 2>/dev/null || true
 
     # Stage tracked files only (avoid staging secrets/binaries)
-    git add -u
-    if ! git diff --cached --quiet 2>/dev/null; then
-        git commit -m "auto: sync $(date '+%Y-%m-%d %H:%M')" --quiet || return 1
+    if [[ "$auto_commit" == "true" ]]; then
+        git add -u
+        if ! git diff --cached --quiet 2>/dev/null; then
+            git commit -m "auto: sync $(date '+%Y-%m-%d %H:%M')" --quiet || return 1
+        fi
     fi
 
     # Pull with rebase; on conflict, try auto-resolution then retry
@@ -160,10 +163,13 @@ _plain_git_sync() {
         fi
     fi
 
-    git push --quiet 2>/dev/null || {
-        echo -e "${RED}$name: push failed${NC}"
-        return 1
-    }
+    # Only push if we are auto-committing or if we were clean and ahead
+    if [[ "$auto_commit" == "true" ]] || [[ -z $(git status --porcelain 2>/dev/null) ]]; then
+        git push --quiet 2>/dev/null || {
+            echo -e "${RED}$name: push failed${NC}"
+            return 1
+        }
+    fi
 }
 
 check_repo() {
@@ -285,9 +291,11 @@ if [[ "$FIX" == "true" && ${#NEEDS_FIX[@]} -gt 0 ]]; then
         name=$(basename "$repo")
         [[ "$QUIET" == "false" ]] && echo -e "${BOLD}=== $name ===${NC}"
 
-        # Auto-fix lint errors in brain repo before committing
+        # Resolve brain repo path for lint --fix and auto-commit decision
         repo_realpath="$(cd "$repo" && pwd -P)"
+        auto_commit=false
         if [[ "$repo_realpath" == "$brain_path" ]]; then
+            auto_commit=true
             aops_bin="/opt/debian/lib/cargo/bin/aops"
             [[ ! -x "$aops_bin" ]] && aops_bin="${CARGO_HOME:-$HOME/.cargo}/bin/aops"
             [[ ! -x "$aops_bin" ]] && aops_bin="$(command -v aops 2>/dev/null || true)"
@@ -298,7 +306,7 @@ if [[ "$FIX" == "true" && ${#NEEDS_FIX[@]} -gt 0 ]]; then
         fi
 
         # Sync with plain git (no Claude session spawned)
-        _plain_git_sync "$repo" || {
+        _plain_git_sync "$repo" "$auto_commit" || {
             echo -e "${RED}sync failed for $name${NC}"
         }
         [[ "$QUIET" == "false" ]] && echo ""

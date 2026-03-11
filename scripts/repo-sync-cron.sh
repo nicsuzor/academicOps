@@ -83,7 +83,7 @@ TS="$(date '+%Y-%m-%d %H:%M:%S')"
 do_transcript() {
     echo "==> Generating recent transcripts..."
     if [[ -f "${AOPS}/aops-core/scripts/transcript.py" ]]; then
-        uv run uv run python "${AOPS}/aops-core/scripts/transcript.py" --recent > /dev/null 2>&1 || echo "Warning: transcript generation failed"
+        uv run python "${AOPS}/aops-core/scripts/transcript.py" --recent > /dev/null 2>&1 || echo "Warning: transcript generation failed"
     else
         echo "Warning: transcript.py not found"
     fi
