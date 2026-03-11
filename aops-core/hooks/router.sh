@@ -28,6 +28,10 @@ if ! command -v uv &> /dev/null; then
 fi
 
 # 3. Delegate to the Python router
-# Use 'uv run python' to ensure we use the project's virtual environment or
-# a temporary one managed by uv.
-exec uv run python "$(dirname "$0")/router.py" "$@"
+# Use 'uv --directory' with CLAUDE_PLUGIN_ROOT if available to ensure
+# correct environment resolution within the extension runtime.
+# If not set, fallback to relative resolution from script location.
+HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(dirname "$HOOK_DIR")}"
+
+exec uv --directory "$PLUGIN_ROOT" run python "$HOOK_DIR/router.py" "$@"
