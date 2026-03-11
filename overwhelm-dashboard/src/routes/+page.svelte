@@ -74,10 +74,11 @@
         recomputeGraph();
     }
 
-    // Handle selection changes separately and more efficiently
     $: if ($selection && $graphData) {
         applyHighlightOpacity($graphData.nodes, $graphData.links);
     }
+    $: focusNode = $selection.focusNodeId ? $graphData?.nodes.find(n => n.id === $selection.focusNodeId) : null;
+
     function recomputeGraph() {
         if (!rawGraph) return;
 
@@ -227,254 +228,95 @@
         {errorMsg}
     </div>
 {:else}
-    {#if $viewSettings.theme === 'operator'}
-        <!-- OPERATOR LAYOUT (12-Column Bento Grid) -->
-        <!-- LEFT SIDEBAR: Navigation & Filters -->
-        {#if $viewSettings.showSidebar}
-            <aside class="col-span-3 border-r border-primary-border bg-background flex flex-col h-full overflow-y-auto custom-scrollbar transition-all">
-                <Sidebar />
-            </aside>
-        {/if}
+    <!-- OPERATOR LAYOUT (12-Column Bento Grid) -->
+    <!-- LEFT SIDEBAR: Navigation & Filters -->
+    {#if $viewSettings.showSidebar}
+        <aside class="col-span-3 border-r border-primary-border bg-background flex flex-col h-full overflow-y-auto custom-scrollbar transition-all">
+            <Sidebar />
+        </aside>
+    {/if}
 
-        {#if $viewSettings.mainTab === "Threaded Tasks"}
-            <!-- THREADED TASKS & EDITOR OVERRIDE -->
-            <section class="{$viewSettings.showSidebar ? 'col-span-9' : 'col-span-12'} flex flex-col h-full bg-background overflow-hidden transition-all">
-                <ThreadedTasksView />
-            </section>
-        {:else}
-            <!-- MAIN CONTENT: Graph or Dashboard -->
-            <section class="{$viewSettings.showSidebar ? 'col-span-6' : 'col-span-9'} relative bg-surface flex flex-col h-full border-r border-primary-border overflow-hidden transition-all">
-                <div class="absolute inset-0 grid-bg opacity-30 pointer-events-none"></div>
-
-                <!-- Sub-Navigation for Graph Modes (Easy Access) -->
-                {#if $viewSettings.mainTab === "Task Graph"}
-                    <div class="absolute top-4 right-4 z-20 flex items-center gap-0 bg-black/90 backdrop-blur-lg border border-primary/40 p-0.5 shadow-[0_0_30px_rgba(0,0,0,0.8)]">
-                        {#each ["Treemap", "Circle Pack", "Force Atlas 2", "SFDP", "Arc Diagram"] as mode}
-                            <button
-                                class="px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer border border-transparent
-                                {$viewSettings.viewMode === mode ? 'bg-primary text-black border-primary' : 'text-primary/50 hover:text-primary hover:bg-primary/5'}"
-                                onclick={() => $viewSettings.viewMode = mode}
-                            >
-                                {mode}
-                            </button>
-                        {/each}
-                    </div>
-                {/if}
-
-                <!-- Focus banner (Absolute Over Graph) -->
-                {#if $selection.focusNodeId}
-                    <div class="absolute top-4 left-4 z-20 flex items-center gap-3">
-                        <button
-                            class="px-3 py-1.5 bg-black/80 border border-primary/40 text-primary font-mono text-xs hover:bg-primary/20 transition-colors backdrop-blur-md cursor-pointer"
-                            onclick={() =>
-                                selection.update((s) => ({
-                                    ...s,
-                                    focusNodeId: null,
-                                    focusNeighborSet: null,
-                                }))}>← FULL VIEW</button>
-                        <span class="px-3 py-1.5 bg-black/60 border border-primary/20 text-primary/70 font-mono text-xs backdrop-blur-md">
-                            FOCUS: {$selection.focusNodeId}
-                        </span>
-                    </div>
-                {/if}
-
-                <!-- The Graph Area -->
-                <div class="flex-1 relative z-0 h-full" class:blur-md={$viewSettings.mainTab === "Dashboard"} class:scale-105={$viewSettings.mainTab === "Dashboard"} style="transition: filter 0.5s ease, transform 0.5s ease;">
-                    <ZoomContainer let:containerGroup let:innerWidth let:innerHeight>
-                        {#if containerGroup}
-                            {#if activeLayout === "treemap" || activeLayout === "tree"}
-                                <TreemapView
-                                    {containerGroup}
-                                    width={innerWidth}
-                                    height={innerHeight}
-                                />
-                            {:else if activeLayout === "circle_pack" || activeLayout === "circle"}
-                                <CirclePackView {containerGroup} />
-                            {:else if activeLayout === "force" || activeLayout === "fa2" || activeLayout === "sfdp"}
-                                <ForceView {containerGroup} />
-                            {:else if activeLayout === "arc"}
-                                <ArcView {containerGroup} />
-                            {/if}
-                        {/if}
-                    </ZoomContainer>
-                </div>
-
-                <!-- Legend -->
-                <Legend />
-
-                <!-- Graph Configuration Overlay -->
-                <ViewConfigOverlay />
-
-                <!-- Overlay Dashboard -->
-                {#if $viewSettings.mainTab === "Dashboard"}
-                    <div class="absolute inset-0 z-50 bg-background/90 backdrop-blur-lg overflow-y-auto custom-scrollbar">
-                        <DashboardView {data} />
-                    </div>
-                {/if}
-            </section>
-
-            <!-- RIGHT SIDEBAR: Details / Editor -->
-            <aside class="col-span-3 bg-background flex flex-col h-full overflow-y-auto custom-scrollbar">
-                <TaskEditorView taskId={$selection.activeNodeId} onclose={() => selection.update(s => ({...s, activeNodeId: null}))} />
-            </aside>
-        {/if}
+    {#if $viewSettings.mainTab === "Threaded Tasks"}
+        <!-- THREADED TASKS & EDITOR OVERRIDE -->
+        <section class="{$viewSettings.showSidebar ? 'col-span-9' : 'col-span-12'} flex flex-col h-full bg-background overflow-hidden transition-all">
+            <ThreadedTasksView />
+        </section>
     {:else}
-        <!-- HOLOGRAPHIC LAYOUT (Centralized Glassmorphism) -->
-        <div class="w-full h-full flex flex-col items-center flex-1 px-4 md:px-12 py-8 relative">
-            <div class="w-full max-w-7xl mb-8 flex flex-col md:flex-row justify-between items-end gap-6 z-10">
-                <div class="text-left">
-                    <span class="text-primary/60 text-xs font-bold tracking-[0.4em] uppercase mb-4 block">Neural Focus Protocol v4.2</span>
-                    <div class="flex items-center gap-4">
-                        <h1 class="text-slate-100 text-4xl md:text-5xl font-black leading-tight tracking-tighter glow-text uppercase">
-                            {#if $viewSettings.mainTab === "Dashboard"}
-                                Tactical <span class="text-primary italic">Overview</span>
-                            {:else if $viewSettings.mainTab === "Task Graph"}
-                                Active Focus <span class="text-primary italic">Path</span>
-                            {:else if $viewSettings.mainTab === "Threaded Tasks"}
-                                Deep Storage <span class="text-primary italic">Matrix</span>
-                            {/if}
-                        </h1>
-                        <select
-                            bind:value={$viewSettings.mainTab}
-                            class="ml-4 bg-black/50 border border-primary/30 text-primary text-sm font-mono p-2 rounded outline-none cursor-pointer"
+        <!-- MAIN CONTENT: Graph or Dashboard -->
+        <section class="{$viewSettings.showSidebar ? 'col-span-6' : 'col-span-9'} relative bg-surface flex flex-col h-full border-r border-primary-border overflow-hidden transition-all">
+            <div class="absolute inset-0 grid-bg opacity-30 pointer-events-none"></div>
+
+            <!-- Sub-Navigation for Graph Modes (Easy Access) -->
+            {#if $viewSettings.mainTab === "Task Graph"}
+                <div class="absolute top-4 right-4 z-20 flex items-center gap-0 bg-black/90 backdrop-blur-lg border border-primary/40 p-0.5 shadow-[0_0_30px_rgba(0,0,0,0.8)]">
+                    {#each ["Treemap", "Circle Pack", "Force Atlas 2", "SFDP", "Arc Diagram"] as mode}
+                        <button
+                            class="px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer border border-transparent
+                            {$viewSettings.viewMode === mode ? 'bg-primary text-black border-primary' : 'text-primary/50 hover:text-primary hover:bg-primary/5'}"
+                            onclick={() => $viewSettings.viewMode = mode}
                         >
-                            <option value="Dashboard">DASHBOARD</option>
-                            <option value="Task Graph">TASK GRAPH</option>
-                            <option value="Threaded Tasks">THREADED TASKS</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="flex flex-col items-end gap-2">
-                    {#if $viewSettings.mainTab === "Task Graph"}
-                        <div class="flex gap-1 glass-card p-1 rounded-xl border border-primary/20">
-                            {#each ["Treemap", "Circle Pack", "Force Atlas 2", "SFDP", "Arc Diagram"] as mode}
-                                <button
-                                    class="px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer rounded-lg
-                                    {$viewSettings.viewMode === mode ? 'bg-primary text-background shadow-[0_0_15px_rgba(var(--color-primary-rgb),0.4)]' : 'text-primary/60 hover:text-primary hover:bg-primary/10'}"
-                                    onclick={() => $viewSettings.viewMode = mode}
-                                >
-                                    {mode}
-                                </button>
-                            {/each}
-                        </div>
-                    {/if}
-                    <div class="flex gap-4">
-                        <div class="px-6 py-3 glass-card rounded-xl text-center">
-                            <p class="text-[10px] text-primary/60 uppercase font-bold tracking-widest mb-1">Graph Nodes</p>
-                            <p class="text-3xl font-black text-white glow-text">{$graphData?.nodes?.length || 0}</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Main Stage -->
-            <section class="w-full max-w-7xl flex-1 relative min-h-[500px] flex items-center justify-center glass-panel rounded-2xl overflow-hidden shadow-2xl">
-                {#if $viewSettings.mainTab === "Threaded Tasks"}
-                    <div class="absolute inset-0 bg-black/40 backdrop-blur-md overflow-hidden flex flex-col">
-                        <ThreadedTasksView />
-                    </div>
-                {:else}
-                    <!-- Focus banner -->
-                    {#if $selection.focusNodeId}
-                        <div class="absolute top-6 left-6 z-20 flex items-center gap-3">
-                            <button
-                                class="px-4 py-2 glass-card text-primary font-mono text-xs hover:bg-primary/20 transition-colors cursor-pointer rounded-lg"
-                                onclick={() =>
-                                    selection.update((s) => ({
-                                        ...s,
-                                        focusNodeId: null,
-                                        focusNeighborSet: null,
-                                    }))}>← FULL VIEW</button>
-                            <span class="px-4 py-2 glass-card text-primary/70 font-mono text-xs rounded-lg shadow-[0_0_15px_rgba(0,240,255,0.2)]">
-                                FOCUS: {$selection.focusNodeId}
-                            </span>
-                        </div>
-                    {/if}
-
-                    <div class="absolute inset-0 z-0">
-                        <ZoomContainer let:containerGroup let:innerWidth let:innerHeight>
-                            {#if containerGroup}
-                                {#if activeLayout === "treemap" || activeLayout === "tree"}
-                                    <TreemapView
-                                        {containerGroup}
-                                        width={innerWidth}
-                                        height={innerHeight}
-                                    />
-                                {:else if activeLayout === "circle_pack" || activeLayout === "circle"}
-                                    <CirclePackView {containerGroup} />
-                                {:else if activeLayout === "force" || activeLayout === "fa2" || activeLayout === "sfdp"}
-                                    <ForceView {containerGroup} />
-                                {:else if activeLayout === "arc"}
-                                    <ArcView {containerGroup} />
-                                {/if}
-                            {/if}
-                        </ZoomContainer>
-                    </div>
-
-                    <!-- Overlay Dashboard -->
-                    {#if $viewSettings.mainTab === "Dashboard"}
-                        <div class="absolute inset-0 z-50 bg-black/60 backdrop-blur-xl overflow-y-auto custom-scrollbar p-8">
-                            <DashboardView {data} />
-                        </div>
-                    {/if}
-
-                    <!-- Task Editor Overlay -->
-                    {#if $selection.activeNodeId}
-                        <div class="absolute right-0 top-0 bottom-0 w-full max-w-2xl z-[60] bg-black/90 backdrop-blur-2xl border-l border-primary/20 shadow-2xl overflow-hidden shadow-primary/10">
-                            <TaskEditorView taskId={$selection.activeNodeId} onclose={() => selection.update(s => ({...s, activeNodeId: null}))} />
-                        </div>
-                    {/if}
-                {/if}
-            </section>
-
-            <!-- Bottom Data Grids -->
-            {#if $viewSettings.mainTab !== "Dashboard"}
-                <div class="w-full max-w-7xl grid grid-cols-1 md:grid-cols-3 gap-8 mb-8 shrink-0">
-                    <!-- Dropped Threads (Context Recovery) -->
-                    <div class="md:col-span-2 glass-panel p-8 rounded-2xl relative overflow-hidden">
-                        <div class="absolute top-0 right-0 p-6 opacity-5 pointer-events-none">
-                            <span class="material-symbols-outlined text-8xl">history</span>
-                        </div>
-                        <h3 class="flex items-center gap-2 text-primary font-bold tracking-widest uppercase text-xs mb-8">
-                            <span class="material-symbols-outlined text-lg">dynamic_feed</span> Dropped Threads
-                        </h3>
-                        <div class="grid md:grid-cols-2 gap-4">
-                            {#each (data?.dashboardData?.left_off?.abandoned || []).slice(0, 2) as thread}
-                                <div class="glass-card p-5 rounded-xl border-l-2 border-primary group">
-                                    <p class="text-[10px] font-bold text-primary/60 uppercase mb-2 truncate">{thread.project}</p>
-                                    <h4 class="text-slate-100 font-bold mb-1 group-hover:text-primary transition-colors text-sm line-clamp-2">{thread.label}</h4>
-                                    <p class="text-xs text-slate-500">{thread.status}</p>
-                                    <button class="mt-4 flex items-center gap-2 text-[10px] font-black text-primary uppercase tracking-widest hover:gap-3 transition-all" onclick={() => { $viewSettings.mainTab = 'Threaded Tasks'; selection.update(s => ({...s, activeNodeId: thread.id})); }}>
-                                        Resume Circuit <span class="material-symbols-outlined text-sm">bolt</span>
-                                    </button>
-                                </div>
-                            {/each}
-                            {#if (data?.dashboardData?.left_off?.abandoned || []).length === 0}
-                                <div class="text-slate-500 italic text-sm">No dropped threads detected.</div>
-                            {/if}
-                        </div>
-                    </div>
-
-                    <!-- Blocker Radar -->
-                    <div class="glass-panel p-8 rounded-2xl">
-                        <h3 class="flex items-center gap-2 text-primary font-bold tracking-widest uppercase text-xs mb-8">
-                            <span class="material-symbols-outlined text-lg">radar</span> Blocker Radar
-                        </h3>
-                        <div class="space-y-4 max-h-48 overflow-y-auto custom-scrollbar pr-2">
-                            {#each ($graphData?.nodes || []).filter(n => n.status === 'blocked').slice(0, 4) as blocker}
-                                <div class="flex items-center justify-between p-3 bg-primary/5 border border-primary/20 rounded-lg cursor-pointer hover:bg-primary/10 transition-colors" onclick={() => { selection.update(s => ({...s, focusNodeId: blocker.id})); }}>
-                                    <span class="text-xs text-slate-100 font-bold truncate pr-2" title={blocker.label}>{blocker.label}</span>
-                                    <span class="text-[10px] text-destructive font-mono shrink-0">BLOCKED</span>
-                                </div>
-                            {/each}
-                            {#if ($graphData?.nodes || []).filter(n => n.status === 'blocked').length === 0}
-                                <div class="text-slate-500 italic text-sm">No active blockers.</div>
-                            {/if}
-                        </div>
-                    </div>
+                            {mode}
+                        </button>
+                    {/each}
                 </div>
             {/if}
-        </div>
+
+            <!-- Focus banner (Absolute Over Graph) -->
+            {#if $selection.focusNodeId}
+                <div class="absolute top-4 left-4 z-20 flex items-center gap-3">
+                    <button
+                        class="px-3 py-1.5 bg-black/80 border border-primary/40 text-primary font-mono text-xs hover:bg-primary/20 transition-colors backdrop-blur-md cursor-pointer"
+                        onclick={() =>
+                            selection.update((s) => ({
+                                ...s,
+                                focusNodeId: null,
+                                focusNeighborSet: null,
+                            }))}>← FULL VIEW</button>
+                    <span class="px-3 py-1.5 bg-black/60 border border-primary/20 text-primary/70 font-mono text-xs backdrop-blur-md">
+                        FOCUS: {focusNode?.fullTitle || $selection.focusNodeId}
+                    </span>
+                </div>
+            {/if}
+
+            <!-- The Graph Area -->
+            <div class="flex-1 relative z-0 h-full" class:blur-md={$viewSettings.mainTab === "Dashboard"} class:scale-105={$viewSettings.mainTab === "Dashboard"} style="transition: filter 0.5s ease, transform 0.5s ease;">
+                <ZoomContainer let:containerGroup let:innerWidth let:innerHeight>
+                    {#if containerGroup}
+                        {#if activeLayout === "treemap" || activeLayout === "tree"}
+                            <TreemapView
+                                {containerGroup}
+                                width={innerWidth}
+                                height={innerHeight}
+                            />
+                        {:else if activeLayout === "circle_pack" || activeLayout === "circle"}
+                            <CirclePackView {containerGroup} />
+                        {:else if activeLayout === "force" || activeLayout === "fa2" || activeLayout === "sfdp"}
+                            <ForceView {containerGroup} />
+                        {:else if activeLayout === "arc"}
+                            <ArcView {containerGroup} />
+                        {/if}
+                    {/if}
+                </ZoomContainer>
+            </div>
+
+            <!-- Legend -->
+            <Legend />
+
+            <!-- Graph Configuration Overlay -->
+            <ViewConfigOverlay />
+
+            <!-- Overlay Dashboard -->
+            {#if $viewSettings.mainTab === "Dashboard"}
+                <div class="absolute inset-0 z-50 bg-background/90 backdrop-blur-lg overflow-y-auto custom-scrollbar">
+                    <DashboardView {data} />
+                </div>
+            {/if}
+        </section>
+
+        <!-- RIGHT SIDEBAR: Details / Editor -->
+        <aside class="col-span-3 bg-background flex flex-col h-full overflow-y-auto custom-scrollbar">
+            <TaskEditorView taskId={$selection.activeNodeId} onclose={() => selection.update(s => ({...s, activeNodeId: null}))} />
+        </aside>
     {/if}
 {/if}
 

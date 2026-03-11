@@ -1,7 +1,6 @@
 import { writable } from 'svelte/store';
 
 export const viewSettings = writable({
-    theme: 'operator', // 'operator' or 'holographic'
     showSidebar: false, // controls sidebar visibility
     mainTab: 'Dashboard', // 'Dashboard' or 'Task Graph'
     viewMode: 'Treemap',  // "Treemap", "Circle Pack", "Force Atlas 2", "SFDP", "Arc Diagram"

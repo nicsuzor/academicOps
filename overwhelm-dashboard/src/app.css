@@ -20,14 +20,6 @@
   --radius-md: 4px;
 }
 
-/* Custom variant for the theme switcher */
-@custom-variant holographic (&:where(.theme-holographic, .theme-holographic *));
-
-/* Holographic Cyan Overrides */
-.theme-holographic {
-  --color-primary: #0de3f2;
-}
-
 @layer base {
   body {
     @apply bg-background text-primary font-display antialiased overflow-hidden h-screen flex flex-col selection:bg-primary selection:text-black;
@@ -75,29 +67,4 @@
     linear-gradient(var(--color-primary-dim) 1px, transparent 1px),
     linear-gradient(90deg, var(--color-primary-dim) 1px, transparent 1px);
   background-size: 24px 24px;
-}
-
-/* Holographic specific classes */
-.glass-panel {
-    backdrop-filter: blur(20px);
-    background: rgba(10, 10, 10, 0.7);
-    border: 1px solid color-mix(in srgb, var(--color-primary) 15%, transparent);
-}
-.glass-card {
-    backdrop-filter: blur(16px);
-    background: color-mix(in srgb, var(--color-primary) 3%, transparent);
-    border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.glass-card:hover {
-    background: color-mix(in srgb, var(--color-primary) 8%, transparent);
-    border-color: var(--color-primary);
-    transform: translateY(-8px) scale(1.02);
-    box-shadow: 0 10px 40px color-mix(in srgb, var(--color-primary) 15%, transparent);
-}
-.void-bg {
-    background: radial-gradient(circle at 50% 50%, #0a0a0a 0%, #050505 100%);
-}
-.glow-text {
-    text-shadow: 0 0 15px color-mix(in srgb, var(--color-primary) 60%, transparent);
 }
