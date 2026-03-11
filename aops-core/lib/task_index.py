@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Task Index v2: Graph-aware index for hierarchical tasks.
 
 Implements index schema per specs/tasks-v2.md Section 6:

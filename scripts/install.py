@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """
 Installation script for AcademicOps Gemini framework.
 Replaces setup.sh logic.

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """
 Unified hook logger for Claude Code and Gemini CLI.
 
@@ -16,12 +16,12 @@ from datetime import datetime
 from typing import Any
 
 import psutil
-from lib.gate_model import GateResult
-from lib.session_paths import get_hook_log_path
-from lib.session_state import SessionState
 
 from hooks.internal_models import HookLogEntry
 from hooks.schemas import CanonicalHookOutput, HookContext
+from lib.gate_model import GateResult
+from lib.session_paths import get_hook_log_path
+from lib.session_state import SessionState
 
 # Set up logging
 logging.basicConfig(

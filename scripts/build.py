@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """
 Build script for AcademicOps Gemini extensions.
 Generates dist/aops-core and dist/antigravity.

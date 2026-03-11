@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Task Model v2: Hierarchical task decomposition with graph relationships.
 
 Implements the Task model per specs/tasks-v2.md with:

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """
 PostToolUse hook: Auto-commit data/ changes after state-modifying operations.
 

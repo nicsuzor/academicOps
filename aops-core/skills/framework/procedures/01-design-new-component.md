@@ -76,7 +76,7 @@ description: Process for adding new framework capability (hook, skill, script, c
 1. ❌ NEVER delete hook script while session is active
 2. ✅ ALWAYS create no-op stub first:
    ```python
-   #!/usr/bin/env python3
+   #!/usr/bin/env -S uv run python
    import sys
    print("{}")
    sys.exit(0)

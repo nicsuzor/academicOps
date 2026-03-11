@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Task Storage v2: Flat file storage for hierarchical tasks.
 
 Implements file storage per specs/tasks-v2.md Section 2:

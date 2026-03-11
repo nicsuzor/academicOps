@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """ASCII Tree Generator: Visualize task hierarchies in plain text.
 
 Implements the read-only ASCII view generator per specs/bd-markdown-integration.md.

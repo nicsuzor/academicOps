@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Task Sync: Update task files when session accomplishments are matched.
 
 This module syncs completed work from session insights to task files:

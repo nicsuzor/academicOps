@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Show Path CLI - Terminal version of the Overwhelm Dashboard's 'Your Path'.
 
 Displays a narrative timeline of recent work across sessions, prioritizing

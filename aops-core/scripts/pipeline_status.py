@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Display session insights pipeline status and health.
 
 A simple CLI dashboard for monitoring pipeline health.

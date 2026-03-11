@@ -856,7 +856,7 @@ sys.exit(2)  # Claude never sees the JSON - only stderr!
 ### Example: Minimal Hook Implementation
 
 ```python
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 import json
 import sys
 
@@ -917,7 +917,7 @@ The `additionalContext` field in hook output doesn't just add text context—it 
 **Example: Spawning a subagent from UserPromptSubmit hook:**
 
 ```python
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 import json
 import sys
 
@@ -986,7 +986,7 @@ This section covers Python-specific conventions for implementing hooks in the ac
 ### Required Structure
 
 ```python
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """
 {Event} hook for Claude Code.
 

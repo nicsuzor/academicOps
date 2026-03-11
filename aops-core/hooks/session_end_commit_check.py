@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """
 Session-end commit enforcement hook for Claude Code Stop event.
 
@@ -21,6 +21,8 @@ import logging
 import subprocess
 from pathlib import Path
 
+from hooks.internal_models import SessionCleanupResult
+
 # Re-export core functions from lib/commit_check.py
 from lib.commit_check import (
     MAX_MESSAGES_TO_CHECK,
@@ -39,8 +41,6 @@ from lib.commit_check import (
 )
 from lib.insights_generator import find_existing_insights
 from lib.session_paths import get_session_short_hash, get_session_status_dir
-
-from hooks.internal_models import SessionCleanupResult
 
 # Set up logging
 logging.basicConfig(
