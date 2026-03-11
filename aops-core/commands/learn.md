@@ -9,7 +9,7 @@ triggers:
   - "improve the system"
   - "knowledge capture"
   - "bug report"
-modifies_files: true
+modifies_files: false
 needs_task: false
 mode: execution
 domain:
@@ -20,33 +20,39 @@ permalink: commands/learn
 
 # /learn - Rapid Knowledge Capture
 
-**Purpose**: Diagnose a framework failure, apply a fix to the framework file that would have prevented it, and log the incident locally. Capture is not enough — the fix is the deliverable.
+**Purpose**: Diagnose a framework failure and generate a high-quality, curated error report for submission to the `nicsuzor/academicOps` repository, without applying direct local fixes.
 
-**Privacy rule**: NEVER post real people's names, email addresses, student details, or personal information to public GitHub issues, PRs, or comments. All /learn records stay local.
+**Privacy rule**: NEVER include direct logs, session dumps, real people's names, email addresses, student details, or personal information in the curated error report or GitHub issues.
 
 ## Workflow
 
 ### 1. Capture Failure Context
 
 **Identify the failure**:
-
 - Where did the mistake occur?
 - What was the trigger?
 
 **Generate Session Transcript**:
+To analyze the incident, you must first render the transcript of the current or failed session. Because the agent may be in a deployed or isolated session, use the framework's module-based path resolution rather than relying on the `$AOPS` environment variable.
 
 ```bash
-# For Gemini (typical):
+# Locate the session file (For Gemini or Claude)
 SESSION_FILE=$(fd -t f -a --newer 1h .json ~/.gemini/tmp | xargs ls -t | head -1)
-uv run --directory ${AOPS} python aops-core/scripts/transcript.py "$SESSION_FILE"
+
+# Generate transcript using the framework path
+uv run python -m aops_core.scripts.transcript "$SESSION_FILE"
+# OR if python path doesn't resolve aops_core directly, locate transcript.py dynamically:
+# TRANSCRIPT_SCRIPT=$(find ~ -path "*/aops-core/scripts/transcript.py" | head -n 1)
+# uv run python "$TRANSCRIPT_SCRIPT" "$SESSION_FILE"
 ```
+
+*Note: Since you might not be in the framework repository, adapt the script path discovery as needed using standard bash commands (`find`, etc.) to locate `aops-core/scripts/transcript.py`.*
 
 ### 2. Deep Root Cause Analysis (Crucial)
 
-Before recording the incident, investigate **why** the failure was not prevented by the framework. Do not stop at "agent execution failure."
+Before recording the incident, investigate **why** the failure was not prevented by the framework. Do not stop at "agent execution failure." Exercise judgment based on the framework's `VISION.md` regarding how the system SHOULD have worked.
 
 **Check the following layers**:
-
 1. **Discovery Gap**: Did the **Prompt Hydrator** have the necessary information?
    - Check if local project workflows (`.agent/workflows/*.md`) were indexed.
    - Check if relevant specifications were injected into the Hydrator's context.
@@ -55,69 +61,49 @@ Before recording the incident, investigate **why** the failure was not prevented
    - Did the "Execution Plan" include the necessary quality gates (CHECKPOINTs)?
 3. **Instruction Weighting**: Did the agent skip a mandated step in favor of a "shortcut"?
 4. **Index Lag**: Was the failure caused by an outdated `INDEX.md` or `graph.json`?
-5. **Cross-workflow enforcement gap**: Did one workflow detect a problem but lack the mechanism to block another workflow? Check GitHub PR logs (`gh api repos/.../pulls/{pr}/reviews`, `gh api repos/.../pulls/{pr}/comments`) for the full timeline of reviews, dismissals, and merge actions. Common pattern: a reviewer posts `COMMENTED` (advisory) when it should post `CHANGES_REQUESTED` (blocking), so the merge agent can legitimately defer the concern.
+5. **Cross-workflow enforcement gap**: Did one workflow detect a problem but lack the mechanism to block another workflow?
 
-### 3. Map to Enforcement Ladder (MANDATORY)
-
-Consult [[docs/ENFORCEMENT.md]] and map the root cause to an enforcement level. This determines what kind of fix is needed:
-
-| Root Cause                      | Typical Enforcement Level                                | Fix Target                          |
-| ------------------------------- | -------------------------------------------------------- | ----------------------------------- |
-| Agent lacked information        | Level 1c (reasoned prompt) or Level 2 (router/command)   | Skill/command/workflow instructions |
-| Agent had info but skipped step | Level 2b (strengthen command) or Level 4 (pre-tool hook) | Command file or hook                |
-| No mechanism to prevent         | Level 3-5 (tool restriction / hooks)                     | New enforcement mechanism           |
-| Behavior should never occur     | Level 6-7 (deny rule / pre-commit)                       | settings.json or pre-commit config  |
-| Cross-workflow enforcement gap  | Workflow agent prompts + review mechanism                | Agent prompt + workflow YAML + spec |
-
-Include the enforcement level and proposed mechanism in the learn log (step 5).
-
-### 4. Extract Minimal Bug Reproduction
+### 3. Extract Minimal Bug Reproduction
 
 Review the abridged transcript and extract the minimum turns (ideally < 5) to demonstrate the bug.
 Identify:
-
-- **Expected**: What should have happened (e.g., "Hydrator should have selected the local evaluation workflow")
+- **Expected**: What should have happened based on `VISION.md` (e.g., "Hydrator should have selected the local evaluation workflow")
 - **Actual**: What actually happened (e.g., "Hydrator fell back to generic investigation; Agent skipped visual step")
 
-### 5. Record the Incident (PKB)
+### 4. Create Curated Diagnostic Report
 
-Create a `learn` document in the PKB. **Do NOT create GitHub issues** — learn records may contain personal information that must not be posted to public repos.
+Draft a high-quality, privacy-scrubbed diagnostic report in Markdown format. The report should focus on the ROOT CAUSE and not just the specific fault.
 
-```python
-mcp__pkb__create_memory(
-  content="## [Learn] <brief-slug>\n\n**Date**: <date>\n\n## Failure Summary\n[One sentence summary]\n\n## Root Cause Analysis\n[Detailed explanation: Discovery, Detection, or Execution gap]\n\n## Minimal Bug Reproduction\n[Context + Failure Sequence]\n\n## Expected vs Actual\n- **Expected**: [What should have happened]\n- **Actual**: [What actually happened]\n\n## Proposed Fix\n- **Enforcement level**: [from step 3]\n- **Target file**: [path to the framework file that needs changing]\n- **Proposed change**: [specific edit description]\n\n## Session Reference\n- Session ID: [8-char ID]",
-  tags=["learn", "<root-cause-category>"]
-)
+```markdown
+# Bug Report: [Brief summary]
+
+## Incident Context
+- **Trigger:** [What caused the issue]
+- **Root Cause Category:** [Clarity, Context, Blocking, Detection, Discovery Gap, Shortcut Bias]
+
+## Root Cause Analysis
+[Detailed explanation of the framework failure, referencing VISION.md where applicable]
+
+## Minimal Bug Reproduction
+- **Expected:** [What should have happened]
+- **Actual:** [What actually happened]
+
+## Proposed Framework Fix
+- **Enforcement level:** [Level X — mechanism name from docs/ENFORCEMENT.md]
+- **Suggested target:** [Which component/file should be updated]
+- **Proposed change:** [Description of the necessary framework change]
 ```
 
-### 6. Apply the Fix (MANDATORY)
+### 5. File Issue (or Output for User)
 
-Capturing the failure is not enough. **Identify and edit the framework file that would prevent recurrence.** This is the whole point of /learn — if you only file an issue, you've logged the problem but not fixed it.
+Instead of applying a fix directly to local files (since you may not be in the `academicOps` repository), your deliverable is to file this report as an issue on the `nicsuzor/academicOps` repository.
 
-Ask: **"Which file, if it had contained the right instruction, would have prevented this failure?"**
-
-For Level 1-2 fixes (prompt text, command instructions), apply the edit in this session. For Level 3+ fixes (tool restrictions, hooks, deny rules), create a task (step 7) with the specific file and change needed.
-
-Common fix targets:
-
-- **Skill/command definitions** (`aops-core/commands/*.md`, `aops-core/skills/*/SKILL.md`) — add a missing step, checkpoint, or constraint
-- **Workflow definitions** (`.agent/workflows/*.md`) — add a gate or validation
-- **Agent instructions** (`.agent/agents/*.md`, `.github/agents/*.md`) — strengthen an instruction the agent ignored
-- **Specs** (`specs/*.md`) — correct a design gap
-
-### 7. Create Follow-up Task (if fix exceeds session scope)
-
-Create **ONE** task if the fix is too large to apply now (typically Level 3+ enforcement). Resolve parent per [[references/hierarchy-quality-rules]] first. The task must specify the **target file, enforcement level, and proposed change**, not just reference the log entry.
-
-```python
-mcp__pkb__create_task(
-  title="[Learn] <slug>",
-  project="aops",
-  parent="<resolved-parent-id>",
-  priority=2,
-  body="Reference: PKB learn memory tagged 'learn'\n\nEnforcement level: [from step 3]\nTarget file: [path]\nProposed change: [specific edit description]"
-)
+If you have GitHub CLI access:
+```bash
+gh issue create --repo nicsuzor/academicOps --title "Bug: <brief-slug>" --body-file <path-to-your-report.md>
 ```
+
+If you do not have GitHub CLI access, output the curated report to the user and instruct them to file it manually.
 
 ## Framework Reflection
 
@@ -125,7 +111,7 @@ mcp__pkb__create_task(
 ## Framework Reflection
 **Prompts**: [The observation/feedback that triggered /learn]
 **Outcome**: success
-**Accomplishments**: PKB learn memory created. Fix applied: [file path and change summary] OR Follow-up task created: [task-id]
-**Root cause**: [Clarity | Context | Blocking | Detection | Discovery Gap | Shortcut Bias]
-**Enforcement level**: [Level X — mechanism name from docs/ENFORCEMENT.md]
+**Accomplishments**: Curated diagnostic report created and filed (or provided to user).
+**Root cause**: [Category]
+**Enforcement level**: [Level X]
 ```
