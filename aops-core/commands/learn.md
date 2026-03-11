@@ -20,7 +20,9 @@ permalink: commands/learn
 
 # /learn - Rapid Knowledge Capture
 
-**Purpose**: Diagnose a framework failure, apply a fix to the framework file that would have prevented it, and file a GitHub issue for the record. Capture is not enough — the fix is the deliverable.
+**Purpose**: Diagnose a framework failure, apply a fix to the framework file that would have prevented it, and log the incident locally. Capture is not enough — the fix is the deliverable.
+
+**Privacy rule**: NEVER post real people's names, email addresses, student details, or personal information to public GitHub issues, PRs, or comments. All /learn records stay local.
 
 ## Workflow
 
@@ -41,7 +43,7 @@ uv run --directory ${AOPS} python aops-core/scripts/transcript.py "$SESSION_FILE
 
 ### 2. Deep Root Cause Analysis (Crucial)
 
-Before creating the issue, investigate **why** the failure was not prevented by the framework. Do not stop at "agent execution failure."
+Before recording the incident, investigate **why** the failure was not prevented by the framework. Do not stop at "agent execution failure."
 
 **Check the following layers**:
 
@@ -67,7 +69,7 @@ Consult [[docs/ENFORCEMENT.md]] and map the root cause to an enforcement level. 
 | Behavior should never occur     | Level 6-7 (deny rule / pre-commit)                       | settings.json or pre-commit config  |
 | Cross-workflow enforcement gap  | Workflow agent prompts + review mechanism                | Agent prompt + workflow YAML + spec |
 
-Include the enforcement level and proposed mechanism in the GitHub issue (step 5).
+Include the enforcement level and proposed mechanism in the learn log (step 5).
 
 ### 4. Extract Minimal Bug Reproduction
 
@@ -77,39 +79,15 @@ Identify:
 - **Expected**: What should have happened (e.g., "Hydrator should have selected the local evaluation workflow")
 - **Actual**: What actually happened (e.g., "Hydrator fell back to generic investigation; Agent skipped visual step")
 
-### 5. Create GitHub Issue (Async)
+### 5. Record the Incident (PKB)
 
-**Command**:
+Create a `learn` document in the PKB. **Do NOT create GitHub issues** — learn records may contain personal information that must not be posted to public repos.
 
-```bash
-REPO="nicsuzor/academicOps" # Adjust as needed
-
-BODY=$(cat <<EOF
-## Failure Summary
-[One sentence summary: e.g., Prompt Hydrator Discovery Gap for project-scoped workflows]
-
-## Root Cause Analysis
-[Detailed explanation of the framework failure: Discovery, Detection, or Execution gap]
-
-## Minimal Bug Reproduction
-[Context + Failure Sequence]
-
-## Expected vs Actual
-- **Expected**: [What should have happened]
-- **Actual**: [What actually happened]
-
-## Proposed Fix
-- **Enforcement level**: [from step 3 — e.g., Level 2b (command instructions)]
-- **Target file**: [path to the framework file that needs changing]
-- **Proposed change**: [specific edit description]
-
-## Session Reference
-- Session ID: [8-char ID]
-- Transcript: [Full path to -full.md]
-EOF
+```python
+mcp__pkb__create_memory(
+  content="## [Learn] <brief-slug>\n\n**Date**: <date>\n\n## Failure Summary\n[One sentence summary]\n\n## Root Cause Analysis\n[Detailed explanation: Discovery, Detection, or Execution gap]\n\n## Minimal Bug Reproduction\n[Context + Failure Sequence]\n\n## Expected vs Actual\n- **Expected**: [What should have happened]\n- **Actual**: [What actually happened]\n\n## Proposed Fix\n- **Enforcement level**: [from step 3]\n- **Target file**: [path to the framework file that needs changing]\n- **Proposed change**: [specific edit description]\n\n## Session Reference\n- Session ID: [8-char ID]",
+  tags=["learn", "<root-cause-category>"]
 )
-
-gh issue create --repo "$REPO" --title "[Learn] <brief-slug>" --body "$BODY"
 ```
 
 ### 6. Apply the Fix (MANDATORY)
@@ -129,7 +107,7 @@ Common fix targets:
 
 ### 7. Create Follow-up Task (if fix exceeds session scope)
 
-Create **ONE** task if the fix is too large to apply now (typically Level 3+ enforcement). Resolve parent per [[references/hierarchy-quality-rules]] first. The task must specify the **target file, enforcement level, and proposed change**, not just reference the issue.
+Create **ONE** task if the fix is too large to apply now (typically Level 3+ enforcement). Resolve parent per [[references/hierarchy-quality-rules]] first. The task must specify the **target file, enforcement level, and proposed change**, not just reference the log entry.
 
 ```python
 mcp__pkb__create_task(
@@ -137,7 +115,7 @@ mcp__pkb__create_task(
   project="aops",
   parent="<resolved-parent-id>",
   priority=2,
-  body="Reference GitHub Issue: [link]\n\nEnforcement level: [from step 3]\nTarget file: [path]\nProposed change: [specific edit description]"
+  body="Reference: PKB learn memory tagged 'learn'\n\nEnforcement level: [from step 3]\nTarget file: [path]\nProposed change: [specific edit description]"
 )
 ```
 
@@ -147,7 +125,7 @@ mcp__pkb__create_task(
 ## Framework Reflection
 **Prompts**: [The observation/feedback that triggered /learn]
 **Outcome**: success
-**Accomplishments**: GitHub Issue created: [link]. Fix applied: [file path and change summary] OR Follow-up task created: [task-id]
+**Accomplishments**: PKB learn memory created. Fix applied: [file path and change summary] OR Follow-up task created: [task-id]
 **Root cause**: [Clarity | Context | Blocking | Detection | Discovery Gap | Shortcut Bias]
 **Enforcement level**: [Level X — mechanism name from docs/ENFORCEMENT.md]
 ```
