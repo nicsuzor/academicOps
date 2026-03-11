@@ -92,10 +92,6 @@
 				<span class="material-symbols-outlined text-sm">wifi</span>
 				<span class="text-xs font-mono font-bold tracking-wider">NET: SECURE</span>
 			</div>
-			<div class="flex items-center gap-2 px-3 py-1 bg-primary text-black border border-primary rounded-none font-bold">
-				<span class="material-symbols-outlined text-sm animate-spin">sync</span>
-				<span class="text-xs font-mono tracking-wider">SESSION: ACTIVE</span>
-			</div>
 			<div class="flex items-center gap-2 text-primary font-mono">
 				<span class="material-symbols-outlined text-sm">schedule</span>
 				<span class="text-sm">{clock}</span>
