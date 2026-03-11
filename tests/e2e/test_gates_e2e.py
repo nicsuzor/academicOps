@@ -17,11 +17,6 @@ def test_gate_enforcement_e2e(cli_headless, gate, instruction, expected_behavior
 
     model = "gemini-2.0-flash" if platform == "gemini" else "haiku"
 
-    if platform == "gemini" and expected_behavior == "blocked":
-        pytest.xfail(
-            "Gemini CLI hooks (PreToolUse) not triggering for native tools in headless mode (known gap)"
-        )
-
     result = runner(instruction, model=model)
 
     assert result["success"], f"CLI execution failed: {result.get('error')}"
