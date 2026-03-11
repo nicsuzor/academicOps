@@ -1,0 +1,42 @@
+name: Framework Issue Analysis
+
+on:
+  issues:
+    types: [opened, reopened, edited]
+  schedule:
+    - cron: '0 0 * * *' # Daily fallback for missed issues
+  workflow_dispatch:
+
+jobs:
+  analyze-issue:
+    # Only run if the issue title contains "Bug" or "Learn" or has a "bug" label
+    if: contains(github.event.issue.title, 'Bug') || contains(github.event.issue.title, '[Learn]') || contains(github.event.issue.labels.*.name, 'bug') || contains(github.event.issue.labels.*.name, 'learning')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Analyze Issue and Suggest Framework Fix
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
+          plugins: 'code-review@claude-code-plugins'
+          allowed_bots: '*'
+          prompt: |
+            A new framework bug or learning incident has been reported in Issue #${{ github.event.issue.number }}:
+            Title: ${{ github.event.issue.title }}
+
+            Please read the issue body carefully.
+            Your task is to:
+            1. Perform a deep root cause analysis based on `docs/VISION.md` to identify WHY the framework failed to prevent this error. Do not stop at "agent execution failure." Focus on Discovery, Detection, or Execution gaps.
+            2. Map the root cause to the Enforcement Ladder in `docs/ENFORCEMENT.md`.
+            3. Propose a concrete fix to a specific framework file (e.g., a skill prompt, command file, or hook).
+            4. Post your analysis and suggested fix as a comment on the issue.
