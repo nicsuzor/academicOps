@@ -134,7 +134,7 @@
   <!-- svelte-ignore a11y-no-static-element-interactions -->
   <svg
     bind:this={svgElement}
-    on:click={handleSvgClick}
+    onclick={handleSvgClick}
     role="application"
   >
     <defs>

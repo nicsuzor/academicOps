@@ -4,15 +4,14 @@
     import HierarchyTree from "./HierarchyTree.svelte";
 
     export let taskId: string | null = null;
-
-    const dispatch = createEventDispatcher();
+    export let onclose: () => void = () => {};
 
     $: task = taskId ? ($graphData?.nodes.find(n => n.id === taskId) || null) : null;
     $: title = task?.label || "Unknown Task";
     $: description = (task as any)?._raw?.body || ``;
 
     function close() {
-        dispatch("close");
+        onclose();
     }
 </script>
 
