@@ -1,0 +1,129 @@
+# Agent: Assessor (Curia)
+# Personality: Strategic reviewer who fixes what it can and flags what it can't.
+# Responsibilities:
+#   - Review PR diff for strategic alignment and assumption hygiene
+#   - Push fixes for mechanical issues directly to the PR branch
+#   - Comment briefly on issues requiring human judgment
+#   - File gh pr review (APPROVE or REQUEST_CHANGES)
+# Prompt: .github/agents/assessor.agent.md
+# Curia: Assessor (GitHub surface). Local: .agent/skills/critic/SKILL.md
+#
+# See specs/pr-pipeline-v2.md for the full process documentation.
+
+name: "Agent: Review & Fix"
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to review and fix'
+        type: string
+        required: true
+      ref:
+        description: 'Git ref to checkout'
+        type: string
+        required: true
+  workflow_call:
+    inputs:
+      pr_number:
+        description: 'PR number to review and fix'
+        type: string
+        required: true
+      ref:
+        description: 'Git ref to checkout'
+        type: string
+        required: true
+
+jobs:
+  review-and-fix:
+    name: Review & Fix
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.user.login != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: agent-review-fix-${{ inputs.pr_number || github.event.pull_request.number }}
+      cancel-in-progress: true
+    permissions:
+      contents: write
+      pull-requests: write
+      statuses: write
+      id-token: write
+      issues: write
+      actions: read
+    steps:
+      - name: Determine PR info
+        id: pr-info
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "pr_number=${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+            echo "sha=${{ github.event.pull_request.head.sha }}" >> "$GITHUB_OUTPUT"
+            echo "ref=${{ github.event.pull_request.head.ref }}" >> "$GITHUB_OUTPUT"
+          else
+            PR_DATA=$(gh pr view "${{ inputs.pr_number }}" --json number,headRefOid,headRefName)
+            echo "pr_number=${{ inputs.pr_number }}" >> "$GITHUB_OUTPUT"
+            echo "sha=$(echo "$PR_DATA" | jq -r '.headRefOid')" >> "$GITHUB_OUTPUT"
+            echo "ref=$(echo "$PR_DATA" | jq -r '.headRefName')" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ steps.pr-info.outputs.ref }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Read agent instructions
+        id: prompt
+        run: |
+          PROMPT=$(cat .github/agents/assessor.agent.md)
+          {
+            echo "prompt<<AGENT_EOF"
+            echo "$PROMPT"
+            echo "AGENT_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run Review & Fix
+        id: review
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          allowed_bots: "claude[bot]"
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            ${{ steps.prompt.outputs.prompt }}
+
+            ---
+
+            Review and fix PR #${{ steps.pr-info.outputs.pr_number }} in repository ${{ github.repository }}.
+            The PR branch is `${{ steps.pr-info.outputs.ref }}`.
+
+            Use `gh pr view ${{ steps.pr-info.outputs.pr_number }}` and `gh pr diff ${{ steps.pr-info.outputs.pr_number }}` to gather information.
+
+            Fix mechanical issues (lint, types, simple bugs) by editing files and pushing commits.
+            Comment on issues that require human judgment.
+
+            If you have NO concerns and made NO fixes: do NOT file a review or comment. Just set a success status and exit silently.
+            If you made fixes or have concerns: file a `gh pr review` (APPROVE or REQUEST_CHANGES) with your summary as the review body.
+
+            Then set a commit status:
+            - No concerns → `gh api repos/${{ github.repository }}/statuses/${{ steps.pr-info.outputs.sha }} -f state="success" -f context="Agent Review & Fix" -f description="Clean — no issues found"`
+            - Concerns remain → `gh api repos/${{ github.repository }}/statuses/${{ steps.pr-info.outputs.sha }} -f state="failure" -f context="Agent Review & Fix" -f description="Issues flagged — see PR review"`
+
+          claude_args: '--model claude-opus-4-6 --allowed-tools "Bash,Edit,Read,Write"'
