@@ -134,15 +134,12 @@ jobs:
         with:
           path: pkb-binaries/
 
-      - name: Setup SSH for dist repo
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.AOPS_DIST_DEPLOY_KEY }}
-
       - name: Check if version exists in dist repo
         id: check_version
+        env:
+          GH_TOKEN: ${{ secrets.AOPS_DIST_PAT }}
         run: |
-          git clone git@github.com:nicsuzor/aops-dist.git ../aops-dist
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/nicsuzor/aops-dist.git" ../aops-dist
 
           # Testing builds always deploy (version includes run_number so is always unique)
           if [ "${{ steps.release_type.outputs.type }}" = "testing" ]; then
@@ -275,9 +272,6 @@ jobs:
               json.dump(data, f, indent=2)
           EOF
           fi
-
-          # Switch remote to HTTPS with PAT so push triggers workflows
-          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/nicsuzor/aops-dist.git"
 
           # Commit and push
           COMMIT_PREFIX="Release"
