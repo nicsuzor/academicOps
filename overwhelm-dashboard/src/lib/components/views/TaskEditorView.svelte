@@ -6,8 +6,14 @@
     export let onclose: () => void = () => {};
 
     $: task = taskId ? ($graphData?.nodes.find(n => n.id === taskId) || null) : null;
-    $: title = task?.label || "Unknown Task";
+    $: title = (task as any)?.fullTitle || task?.label || "Unknown Task";
     $: description = (task as any)?._raw?.body || ``;
+    $: metadata = (task as any)?._raw || {};
+
+    // Filter out internal fields from metadata display
+    $: filteredMetadata = Object.entries(metadata).filter(([key]) => 
+        !['body', 'id', 'title', 'label', 'node_type', 'status', 'priority', 'project', 'assignee', 'layouts', 'x', 'y', 'depth', 'maxDepth', 'lines', 'dw', 'downstream_weight', 'modified', 'created', 'isLeaf', 'parent', 'fullTitle'].includes(key)
+    );
 
     function close() {
         onclose();
@@ -40,13 +46,21 @@
             </div>
 
             <div class="flex flex-wrap justify-between items-end gap-4 mt-2">
-                <div class="space-y-1 max-w-xl">
-                    <h1 class="text-2xl font-bold tracking-tight uppercase text-primary line-clamp-2">EDIT: {title}</h1>
-                    <p class="text-primary/60 text-xs font-mono uppercase tracking-widest">
-                        Type: {task.type} | Status:
-                        <span class="text-primary {task.status === 'in_progress' ? 'animate-pulse' : ''}">
-                            {task.status === 'in_progress' ? '● RUNNING' : task.status}
+                <div class="space-y-1 w-full max-w-2xl">
+                    <h1 class="text-2xl font-bold tracking-tight uppercase text-primary break-words">EDIT: {title}</h1>
+                    <p class="text-primary/60 text-xs font-mono uppercase tracking-widest flex flex-wrap gap-x-4 gap-y-1">
+                        <span>Type: {task.type}</span>
+                        <span>Status:
+                            <span class="text-primary {task.status === 'in_progress' ? 'animate-pulse' : ''}">
+                                {task.status === 'in_progress' ? '● RUNNING' : task.status}
+                            </span>
                         </span>
+                        {#if task.modified}
+                            <span>Modified: {new Date(task.modified).toLocaleString()}</span>
+                        {/if}
+                        {#if (task as any)?._raw?.created}
+                            <span>Created: {new Date((task as any)._raw.created).toLocaleString()}</span>
+                        {/if}
                     </p>
                 </div>
                 <div class="flex gap-3">
@@ -105,6 +119,22 @@
                                     <button class="w-full border border-dashed border-primary/30 hover:border-primary py-1.5 text-[10px] uppercase text-primary/50 hover:text-primary transition-colors mt-2">+ Add Link</button>
                                 </div>
                             </label>
+                        </div>
+                    </div>
+
+                    <!-- Metadata Section -->
+                    <div class="border border-primary/20 p-4 space-y-3">
+                        <span class="text-xs font-bold uppercase block text-primary/70 border-b border-primary/10 pb-2 mb-2">Extended_Metadata</span>
+                        <div class="space-y-2">
+                            {#each filteredMetadata as [key, value]}
+                                <div class="flex flex-col gap-1">
+                                    <span class="text-[9px] uppercase text-primary/40 font-bold tracking-tighter">{key}</span>
+                                    <span class="text-xs text-primary/80 truncate" title={String(value)}>{value}</span>
+                                </div>
+                            {/each}
+                            {#if filteredMetadata.length === 0}
+                                <span class="text-[10px] text-primary/30 italic">No extended metadata.</span>
+                            {/if}
                         </div>
                     </div>
                 </div>

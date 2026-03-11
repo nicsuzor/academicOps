@@ -47,6 +47,8 @@ export interface GraphNode {
     x?: number;
     y?: number;
     layouts: Record<string, any>;
+    fullTitle: string;
+    _raw: any;
 
     // D3 physics mutation state
     fx?: number | null;
@@ -58,6 +60,8 @@ export interface GraphNode {
     _lr?: number;        // circle pack layout radius
     _lw?: number;        // treemap layout width
     _lh?: number;        // treemap layout height
+    _isLeaf?: boolean;   // layout leaf state
+    _isOverflow?: boolean; // layout overflow state
     _lastSelected?: boolean; // previous selection state for dirty-check optimisation
 }
 
@@ -197,6 +201,7 @@ export function prepareGraphData(
         let label = node.title || node.label || nid;
         // Strip redundant type prefixes (e.g. "Epic: ...", "Project: ...")
         label = label.replace(/^(Epic|Project|Task|Goal|Note|Memory):\s*/i, '');
+        const fullTitle = label;
         if (label.length > 60) label = label.substring(0, 57) + "...";
 
         // Skip file-system recency extraction as we are in browser JS.
@@ -264,6 +269,7 @@ export function prepareGraphData(
         d3Nodes.push({
             id: nid,
             label,
+            fullTitle,
             lines,
             type: nodeType,
             shape,
@@ -292,7 +298,8 @@ export function prepareGraphData(
             spotlight: Boolean(node.spotlight),
             x: node.x,
             y: node.y,
-            layouts: node.layouts || {}
+            layouts: node.layouts || {},
+            _raw: node
         });
     }
 

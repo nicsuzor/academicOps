@@ -74,10 +74,11 @@
         recomputeGraph();
     }
 
-    // Handle selection changes separately and more efficiently
     $: if ($selection && $graphData) {
         applyHighlightOpacity($graphData.nodes, $graphData.links);
     }
+    $: focusNode = $selection.focusNodeId ? $graphData?.nodes.find(n => n.id === $selection.focusNodeId) : null;
+
     function recomputeGraph() {
         if (!rawGraph) return;
 
@@ -273,7 +274,7 @@
                                     focusNeighborSet: null,
                                 }))}>← FULL VIEW</button>
                         <span class="px-3 py-1.5 bg-black/60 border border-primary/20 text-primary/70 font-mono text-xs backdrop-blur-md">
-                            FOCUS: {$selection.focusNodeId}
+                            FOCUS: {focusNode?.fullTitle || $selection.focusNodeId}
                         </span>
                     </div>
                 {/if}
@@ -386,7 +387,7 @@
                                         focusNeighborSet: null,
                                     }))}>← FULL VIEW</button>
                             <span class="px-4 py-2 glass-card text-primary/70 font-mono text-xs rounded-lg shadow-[0_0_15px_rgba(0,240,255,0.2)]">
-                                FOCUS: {$selection.focusNodeId}
+                                FOCUS: {focusNode?.fullTitle || $selection.focusNodeId}
                             </span>
                         </div>
                     {/if}
