@@ -3,8 +3,6 @@ name: Framework Issue Analysis
 on:
   issues:
     types: [opened, reopened, edited]
-  schedule:
-    - cron: '0 0 * * *' # Daily fallback for missed issues
   workflow_dispatch:
 
 jobs:
