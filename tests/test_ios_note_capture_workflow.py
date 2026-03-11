@@ -125,7 +125,7 @@ def test_ios_note_capture_workflow_uses_claude_code_action(workflow_yaml: dict) 
             assert "with" in step, "Claude Code action must have 'with' configuration"
             with_config = step["with"]
 
-            assert "anthropic_api_key" in with_config, "Must specify anthropic_api_key"
+            assert "claude_code_oauth_token" in with_config, "Must specify claude_code_oauth_token"
             assert "prompt" in with_config, "Must specify prompt for note processing"
 
             break
