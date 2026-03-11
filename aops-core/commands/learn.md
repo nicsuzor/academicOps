@@ -42,7 +42,7 @@ SESSION_FILE=$(fd -t f -a --newer 1h .json ~/.gemini/tmp | xargs ls -t | head -1
 # Generate transcript using the framework path
 uv run python -m aops_core.scripts.transcript "$SESSION_FILE"
 # OR if python path doesn't resolve aops_core directly, locate transcript.py dynamically:
-# TRANSCRIPT_SCRIPT=$(find ~ -path "*/aops-core/scripts/transcript.py" | head -n 1)
+# TRANSCRIPT_SCRIPT=$(find ~ -path "*/aops-core/scripts/transcript.py" -print -quit)
 # uv run python "$TRANSCRIPT_SCRIPT" "$SESSION_FILE"
 ```
 
