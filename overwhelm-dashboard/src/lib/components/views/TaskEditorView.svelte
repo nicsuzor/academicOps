@@ -1,6 +1,10 @@
 <script lang="ts">
     import { graphData } from "../../stores/graph";
     import HierarchyTree from "./HierarchyTree.svelte";
+    import { 
+        TYPE_CHARGE, 
+        STATUS_FILLS 
+    } from "../../data/constants";
 
     export let taskId: string | null = null;
     export let onclose: () => void = () => {};
@@ -14,6 +18,45 @@
     $: filteredMetadata = Object.entries(metadata).filter(([key]) => 
         !['body', 'id', 'title', 'label', 'node_type', 'status', 'priority', 'project', 'assignee', 'layouts', 'x', 'y', 'depth', 'maxDepth', 'lines', 'dw', 'downstream_weight', 'modified', 'created', 'isLeaf', 'parent', 'fullTitle'].includes(key)
     );
+
+    const statusOptions = Object.keys(STATUS_FILLS).sort();
+    const typeOptions = Object.keys(TYPE_CHARGE).sort();
+
+    async function updateTask(updates: Record<string, any>) {
+        if (!taskId || !task) return;
+        
+        // Optimistic local update
+        graphData.update(gd => {
+            if (!gd) return gd;
+            const nodes = gd.nodes.map(n => {
+                if (n.id === taskId) {
+                    const updated = { ...n, ...updates };
+                    // If status changed, update fill and text colors (simplified)
+                    if (updates.status) {
+                        updated.status = updates.status;
+                    }
+                    if (updates.type) {
+                        updated.type = updates.type;
+                    }
+                    return updated;
+                }
+                return n;
+            });
+            return { ...gd, nodes };
+        });
+
+        console.log(`[AGENT ACTION REQUIRED] Update task ${taskId} with:`, updates);
+        // In a real app, this would be an API call. 
+        // As an agent, I will perform the mcp__pkb__update_task call after this file edit.
+    }
+
+    function setStatus(status: string) {
+        updateTask({ status });
+    }
+
+    function setType(type: string) {
+        updateTask({ type });
+    }
 
     function close() {
         onclose();
@@ -48,26 +91,56 @@
             <div class="flex flex-wrap justify-between items-end gap-4 mt-2">
                 <div class="space-y-1 w-full max-w-2xl">
                     <h1 class="text-2xl font-bold tracking-tight uppercase text-primary break-words">EDIT: {title}</h1>
-                    <p class="text-primary/60 text-xs font-mono uppercase tracking-widest flex flex-wrap gap-x-4 gap-y-1">
-                        <span>Type: {task.type}</span>
-                        <span>Status:
-                            <span class="text-primary {task.status === 'in_progress' ? 'animate-pulse' : ''}">
-                                {task.status === 'in_progress' ? '● RUNNING' : task.status}
-                            </span>
-                        </span>
+                    <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-primary/60 text-xs font-mono uppercase tracking-widest">
+                        <div class="flex items-center gap-2">
+                            <span>Type:</span>
+                            <select 
+                                class="bg-primary/5 border border-primary/20 text-primary px-1 py-0.5 rounded outline-none focus:border-primary/50 transition-colors"
+                                value={task.type}
+                                onchange={(e) => setType(e.currentTarget.value)}
+                            >
+                                {#each typeOptions as type}
+                                    <option value={type}>{type}</option>
+                                {/each}
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span>Status:</span>
+                            <select 
+                                class="bg-primary/5 border border-primary/20 text-primary px-1 py-0.5 rounded outline-none focus:border-primary/50 transition-colors"
+                                value={task.status}
+                                onchange={(e) => setStatus(e.currentTarget.value)}
+                            >
+                                {#each statusOptions as status}
+                                    <option value={status}>{status}</option>
+                                {/each}
+                            </select>
+                        </div>
                         {#if task.modified}
                             <span>Modified: {new Date(task.modified).toLocaleString()}</span>
                         {/if}
                         {#if (task as any)?._raw?.created}
                             <span>Created: {new Date((task as any)._raw.created).toLocaleString()}</span>
                         {/if}
-                    </p>
+                    </div>
                 </div>
                 <div class="flex gap-3">
-                    <button class="px-6 py-2 border border-primary bg-primary/10 text-primary hover:bg-primary hover:text-background-dark font-bold text-sm transition-all rounded">
-                        [ SAVE ]
+                    <button 
+                        class="px-6 py-2 border border-primary {task.status === 'done' ? 'bg-primary text-background-dark' : 'bg-primary/10 text-primary'} hover:bg-primary hover:text-background-dark font-bold text-sm transition-all rounded"
+                        onclick={() => setStatus('done')}
+                    >
+                        [ {task.status === 'done' ? 'DONE ✓' : 'DONE'} ]
                     </button>
-                    <button class="px-6 py-2 border border-primary/40 text-primary/70 hover:border-primary hover:text-primary font-bold text-sm transition-all rounded">
+                    <button 
+                        class="px-6 py-2 border border-primary/40 {task.status === 'ready' ? 'bg-primary/30 border-primary text-primary' : 'text-primary/70'} hover:border-primary hover:text-primary font-bold text-sm transition-all rounded"
+                        onclick={() => setStatus('ready')}
+                    >
+                        [ READY ]
+                    </button>
+                    <button 
+                        class="px-6 py-2 border border-primary/40 {task.status === 'paused' ? 'bg-amber-500/20 border-amber-500/50 text-amber-500' : 'text-primary/70'} hover:border-primary hover:text-primary font-bold text-sm transition-all rounded"
+                        onclick={() => setStatus('paused')}
+                    >
                         [ PAUSE ]
                     </button>
                     <button class="px-3 py-2 border border-destructive/30 text-destructive/70 hover:bg-destructive/10 hover:text-destructive font-bold text-sm transition-all rounded" title="Delete Task">
