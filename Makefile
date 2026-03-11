@@ -130,6 +130,9 @@ install-crontab:
 		 echo "# aOps full maintenance"; \
 		 echo "0 * * * * $(CRON_SCRIPT) >> /tmp/repo-sync-cron.log 2>&1") | crontab -; \
 		echo "✓ Crontab entries installed"; \
+	else \
+		echo "✗ Cron script not found at $(CRON_SCRIPT)"; \
+		exit 1; \
 	fi
 
 # --- Release Management ---
