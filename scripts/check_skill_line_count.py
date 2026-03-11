@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Pre-commit hook: Check if SKILL.md files exceed 500 lines."""
 
 from __future__ import annotations

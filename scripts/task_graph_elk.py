@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Generate styled task graph using ELK (Eclipse Layout Kernel) via elkjs.
 
 Produces force-directed or layered layouts with proper orthogonal edge routing.

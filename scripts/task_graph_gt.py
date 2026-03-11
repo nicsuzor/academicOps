@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Generate styled task graph using graph-tool + Cairo/Graphviz rendering.
 
 Produces denser, better-routed graphs than the DOT-only task_graph.py.

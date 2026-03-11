@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Generate SFDP layout for the task graph with Manhattan edge routing.
 
 Reads graph.dot (from ``aops graph -f dot``) directly, strips precomputed

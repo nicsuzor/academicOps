@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Scan session summaries for daily note and overwhelm dashboard.
 
 Scans the last N days of session summary JSONs from ~/writing/sessions/summaries/

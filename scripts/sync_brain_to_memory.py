@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Sync ~/brain markdown files to the remote memory MCP server.
 
 Walks ~/brain recursively, chunks markdown by headers, and stores each

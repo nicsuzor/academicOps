@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Pre-commit hook: Block silent fallback patterns in hook code.
 
 Enforces P#8 (Fail-Fast Code): No defaults, no fallbacks, no workarounds, no silent failures.

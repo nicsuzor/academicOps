@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Generate styled task graph using OGDF (Open Graph Drawing Framework).
 
 Produces hierarchical or force-directed layouts with OGDF's edge routing.

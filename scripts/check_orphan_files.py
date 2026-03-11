@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Pre-commit hook: Check for orphan files (no incoming wikilinks).
 
 This is a WARNING-only check - exits 0 but reports orphans.

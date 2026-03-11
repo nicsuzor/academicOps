@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Convert Claude Code MCP configs (plugin + global) to Gemini CLI format.
 
 Claude Code uses plugin-based MCP configs (.mcp.json in each plugin) plus a global

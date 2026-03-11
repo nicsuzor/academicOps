@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Generate styled DOT graph from `aops graph` JSON output.
 
 Reads JSON from `aops graph` and applies color coding based on

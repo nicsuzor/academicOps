@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Generate interactive D3-force task graph from `aops graph` JSON output.
 
 Uses d3-force with hierarchical edge weighting for layout, S-curves for

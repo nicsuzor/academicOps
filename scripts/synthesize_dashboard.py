@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Aggregate per-session insights into synthesis.json for the dashboard.
 
 Reads today's session summary files from $AOPS_SESSIONS/summaries/

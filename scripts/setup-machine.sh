@@ -237,7 +237,7 @@ else
         mkdir -p "$(dirname "${POLECAT_YAML}")"
 
         # Parse master registry and discover local paths
-        python3 -c "
+        uv run python -c "
 import yaml
 from pathlib import Path
 import os

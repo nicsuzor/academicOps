@@ -11,7 +11,7 @@
 # Usage:
 #   ./scripts/sync-ruleset.sh [--dry-run]
 #
-# Requires: gh CLI (authenticated as repo admin), python3 with PyYAML
+# Requires: gh CLI (authenticated as repo admin), uv run python with PyYAML
 
 set -euo pipefail
 
@@ -37,7 +37,7 @@ echo "Reading ruleset from $RULESET_FILE..."
 echo ""
 
 # Convert YAML -> API JSON payload, stripping unsupported rule types
-PAYLOAD=$(python3 - "$RULESET_FILE" "${API_UNSUPPORTED[@]}" << 'PYTHON_EOF'
+PAYLOAD=$(uv run python - "$RULESET_FILE" "${API_UNSUPPORTED[@]}" << 'PYTHON_EOF'
 import json, sys, yaml
 
 ruleset_file = sys.argv[1]
@@ -62,13 +62,13 @@ PYTHON_EOF
 )
 
 echo "Payload to apply:"
-echo "$PAYLOAD" | python3 -m json.tool
+echo "$PAYLOAD" | uv run python -m json.tool
 echo ""
 
 # Show diff with current live state
 echo "Fetching current live ruleset for comparison..."
 if CURRENT=$(gh api "repos/$REPO/rulesets/$RULESET_ID" 2>/dev/null); then
-  python3 - "$CURRENT" "$PAYLOAD" << 'DIFF_EOF'
+  uv run python - "$CURRENT" "$PAYLOAD" << 'DIFF_EOF'
 import json, sys
 
 current = json.loads(sys.argv[1])
@@ -102,7 +102,7 @@ RESULT=$(echo "$PAYLOAD" | gh api "repos/$REPO/rulesets/$RULESET_ID" \
   -X PUT \
   --input - 2>&1)
 
-python3 - "$RESULT" << 'RESULT_EOF' || echo "$RESULT"
+uv run python - "$RESULT" << 'RESULT_EOF' || echo "$RESULT"
 import json, sys
 d = json.loads(sys.argv[1])
 print("Updated successfully at:", d.get("updated_at", "?"))

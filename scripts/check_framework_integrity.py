@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Pre-commit hook: Framework integrity checks.
 
 Consolidates framework-specific pre-commit validations into one script.

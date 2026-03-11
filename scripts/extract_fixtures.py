@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Extract test fixtures from real hook invocation logs.
 
 Reads JSONL hook logs (Claude or Gemini) and produces parameterized

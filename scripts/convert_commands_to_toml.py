@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """
 Convert Claude Code markdown commands to Gemini CLI TOML format.
 

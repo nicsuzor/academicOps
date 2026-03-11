@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Build hydrator test input file for acceptance testing.
 
 Constructs the same context file that the UserPromptSubmit hook builds in live

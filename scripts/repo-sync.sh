@@ -8,7 +8,7 @@
 set -euo pipefail
 
 # Check dependencies
-for cmd in git python3; do
+for cmd in git uv; do
     if ! command -v "$cmd" &>/dev/null; then
         echo "Error: '$cmd' is required but not installed." >&2
         exit 1
@@ -28,7 +28,7 @@ POLECAT_YAML="${POLECAT_HOME:-${HOME}/.polecat}/polecat.yaml"
 REPOS=()
 
 if [[ -f "$POLECAT_YAML" ]]; then
-    # Use python3 to extract paths from polecat.yaml (requires PyYAML)
+    # Use uv run python to extract paths from polecat.yaml (requires PyYAML)
     # If PyYAML is missing, it will fail gracefully.
     while IFS= read -r path; do
         # Expand ~ if it exists
@@ -36,7 +36,7 @@ if [[ -f "$POLECAT_YAML" ]]; then
         if [[ -d "$expanded_path" ]]; then
             REPOS+=("$expanded_path")
         fi
-    done < <(uv run --directory "${AOPS:-$(dirname "$(dirname "$0")")}" python3 -c "
+    done < <(uv run --directory "${AOPS:-$(dirname "$(dirname "$0")")}" python -c "
 import yaml, sys
 try:
     with open(sys.argv[1]) as f:

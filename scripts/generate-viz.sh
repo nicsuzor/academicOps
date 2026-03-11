@@ -46,7 +46,7 @@ mkdir -p "${GRAPH_DIR}"
 
 # Step 0: Generate dashboard synthesis
 echo "==> Generating dashboard synthesis..."
-uv run python3 "${SCRIPT_DIR}/synthesize_dashboard.py" 2>&1 || echo "Warning: synthesis generation failed"
+uv run uv run python "${SCRIPT_DIR}/synthesize_dashboard.py" 2>&1 || echo "Warning: synthesis generation failed"
 
 # Step 1: Generate graph data (per-layout JSONs + .dot files)
 echo "==> Generating graph data..."
@@ -55,7 +55,7 @@ echo "==> Generating graph data..."
 # Step 1b: Generate SFDP layout (scalable force-directed with Manhattan routing)
 echo "==> Generating SFDP layout..."
 if command -v sfdp >/dev/null 2>&1; then
-    uv run python3 "${SCRIPT_DIR}/task_graph_sfdp.py" \
+    uv run uv run python "${SCRIPT_DIR}/task_graph_sfdp.py" \
         "${GRAPH_DIR}" \
         --timeout 600 2>&1 || echo "Warning: SFDP layout generation failed"
 else
