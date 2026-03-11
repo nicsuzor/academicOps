@@ -89,7 +89,6 @@ Draft a high-quality, privacy-scrubbed diagnostic report in Markdown format. The
 - **Actual:** [What actually happened]
 
 ## Proposed Framework Fix
-- **Enforcement level:** [Level X — mechanism name from docs/ENFORCEMENT.md]
 - **Suggested target:** [Which component/file should be updated]
 - **Proposed change:** [Description of the necessary framework change]
 ```
@@ -113,5 +112,4 @@ If you do not have GitHub CLI access, output the curated report to the user and 
 **Outcome**: success
 **Accomplishments**: Curated diagnostic report created and filed (or provided to user).
 **Root cause**: [Category]
-**Enforcement level**: [Level X]
 ```
