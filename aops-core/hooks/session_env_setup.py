@@ -229,8 +229,10 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
 
     persist.update(get_env_mapping_persist_dict())
 
-    # 7. Ensure gh CLI is accessible in PATH (portable: uses brew --prefix on macOS)
+    # 7. Ensure gh and uv CLIs are accessible in PATH (portable: uses brew --prefix on macOS)
     current_path = os.environ.get("PATH", "")
+
+    # Check for gh
     if not shutil.which("gh"):
         try:
             result = subprocess.run(["brew", "--prefix"], capture_output=True, text=True, timeout=5)
@@ -239,8 +241,26 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
                 path_segments = [s for s in current_path.split(os.pathsep) if s]
                 if brew_bin not in path_segments:
                     persist["PATH"] = os.pathsep.join([brew_bin, *path_segments])
+                    current_path = persist["PATH"]
         except (FileNotFoundError, subprocess.TimeoutExpired):
             pass
+
+    # Check for uv
+    if not shutil.which("uv"):
+        # Try common installation paths
+        common_uv_paths = [
+            Path.home() / ".local" / "bin" / "uv",
+            Path("/opt/homebrew/bin/uv"),
+            Path("/usr/local/bin/uv"),
+            Path("/usr/bin/uv"),
+        ]
+        for uv_path in common_uv_paths:
+            if uv_path.exists():
+                uv_bin_dir = str(uv_path.parent)
+                path_segments = [s for s in current_path.split(os.pathsep) if s]
+                if uv_bin_dir not in path_segments:
+                    persist["PATH"] = os.pathsep.join([uv_bin_dir, *path_segments])
+                break
 
     # Persist all environment variables
     set_persistent_env(persist)
