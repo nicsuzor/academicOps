@@ -28,6 +28,14 @@ if ! command -v uv &> /dev/null; then
 fi
 
 # 3. Delegate to the Python router
-# Use 'uv run python' to ensure we use the project's virtual environment or
-# a temporary one managed by uv.
-exec uv run python "$(dirname "$0")/router.py" "$@"
+# Use 'uv --directory' with CLAUDE_PLUGIN_ROOT to ensure
+# correct environment resolution within the extension runtime.
+# CLAUDE_PLUGIN_ROOT must be set explicitly — no silent fallback (P#8).
+if [[ -z "${CLAUDE_PLUGIN_ROOT:-}" ]]; then
+    echo "CRITICAL: CLAUDE_PLUGIN_ROOT is not set. Cannot resolve plugin root." >&2
+    exit 1
+fi
+
+HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+exec uv --directory "$CLAUDE_PLUGIN_ROOT" run python "$HOOK_DIR/router.py" "$@"
