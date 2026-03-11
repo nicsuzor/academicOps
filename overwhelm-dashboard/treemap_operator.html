@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;700;900&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ec5b13",
+                        "background-light": "#f8f6f6",
+                        "background-dark": "#221610",
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans"],
+                        "mono": ["IBM Plex Mono"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .treemap-cell {
+            background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(236, 91, 19, 0.05) 5px, rgba(236, 91, 19, 0.05) 10px);
+        }
+        .striped-blocked {
+            background-image: repeating-linear-gradient(135deg, rgba(0,0,0,0.1), rgba(0,0,0,0.1) 4px, transparent 4px, transparent 8px);
+        }
+        .double-border {
+            outline: 3px double #ef4444;
+            outline-offset: -4px;
+        }
+        .terminal-amber-spectrum-10 { background-color: rgba(236, 91, 19, 0.1); }
+        .terminal-amber-spectrum-30 { background-color: rgba(236, 91, 19, 0.3); }
+        .terminal-amber-spectrum-50 { background-color: rgba(236, 91, 19, 0.5); }
+        .terminal-amber-spectrum-70 { background-color: rgba(236, 91, 19, 0.7); }
+        .terminal-amber-spectrum-90 { background-color: rgba(236, 91, 19, 0.9); }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-mono text-slate-900 dark:text-slate-100 min-h-screen">
+<div class="relative flex h-auto min-h-screen w-full flex-col overflow-x-hidden">
+<header class="flex items-center justify-between border-b border-primary/20 px-6 py-3 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-sm sticky top-0 z-50">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-3">
+<div class="text-primary">
+<span class="material-symbols-outlined text-3xl">terminal</span>
+</div>
+<div>
+<h2 class="text-lg font-bold leading-tight tracking-tight uppercase">The Operator System</h2>
+<p class="text-[10px] text-primary/60 font-mono tracking-widest uppercase">Kernel Node v4.2.0-stable</p>
+</div>
+</div>
+<nav class="hidden lg:flex items-center gap-6">
+<a class="text-xs font-bold uppercase hover:text-primary transition-colors border-b border-transparent hover:border-primary" href="#">Nodes</a>
+<a class="text-xs font-bold uppercase hover:text-primary transition-colors border-b border-transparent hover:border-primary" href="#">Weights</a>
+<a class="text-xs font-bold uppercase hover:text-primary transition-colors border-b border-primary" href="#">Schematics</a>
+<a class="text-xs font-bold uppercase hover:text-primary transition-colors border-b border-transparent hover:border-primary" href="#">Status</a>
+</nav>
+</div>
+<div class="flex flex-1 justify-end gap-4">
+<label class="flex items-center max-w-xs w-full bg-primary/10 border border-primary/20 rounded h-9 px-3">
+<span class="material-symbols-outlined text-primary text-sm mr-2">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-full placeholder:text-primary/40 p-0" placeholder="QUERY NODE_ID..." type="text"/>
+</label>
+<div class="flex gap-2">
+<button class="flex items-center justify-center rounded border border-primary/20 h-9 w-9 bg-primary/5 text-primary hover:bg-primary/20">
+<span class="material-symbols-outlined text-sm">settings</span>
+</button>
+<button class="flex items-center justify-center rounded border border-primary/20 h-9 w-9 bg-primary/5 text-primary hover:bg-primary/20">
+<span class="material-symbols-outlined text-sm">code</span>
+</button>
+</div>
+<div class="size-9 rounded bg-primary/20 border border-primary/40 flex items-center justify-center overflow-hidden">
+<img class="object-cover w-full h-full opacity-80" data-alt="User avatar for polecat operator" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAggD_V3CdzFJi6h5-1oK_y2w24EgrkHTX6SUTvruD7WpOWJjsN1COQFjXpRjPxhF9iFbRHzJG8uAu6deou1J2VMXMv6Gsh3fPJ-sMaOiPLK6Idg1NaCrYZT1NZ85V2iSHk0iaDsHzXpIic5ZykWfDYtj-G7ZimRLYbP8u7PRcFE2Cs0LaRGnB8l-qprrsP1v4J0QlXuZ2bbMSm-tanQ1O5bB6ZqfXlaCN8kEtmi_JlehOEzOg694rICfrs0LyquOfgRRltW8KAEWSV"/>
+</div>
+</div>
+</header>
+<main class="flex-1 p-6 flex flex-col gap-6">
+<div class="flex flex-wrap justify-between items-end gap-4 border-l-4 border-primary pl-4">
+<div>
+<h1 class="text-3xl font-black uppercase tracking-tighter">Operator Treemap: System Overview</h1>
+<p class="text-primary/70 text-sm font-mono mt-1">Downstream Weight (DW) Analysis | Root: /SYS/ACTIVE_PROJECTS/DW-VISUALIZATION</p>
+</div>
+<div class="flex gap-2">
+<button class="px-4 py-2 bg-primary/10 border border-primary/30 text-primary text-[10px] font-bold uppercase rounded hover:bg-primary hover:text-white transition-all">
+                        Export SVG
+                    </button>
+<button class="px-4 py-2 bg-primary/10 border border-primary/30 text-primary text-[10px] font-bold uppercase rounded hover:bg-primary hover:text-white transition-all">
+                        Refresh Kernel
+                    </button>
+</div>
+</div>
+<div class="grid grid-cols-12 gap-6 h-[700px]">
+<div class="col-span-12 lg:col-span-9 bg-primary/5 border border-primary/20 p-2 relative overflow-hidden flex flex-col">
+<div class="flex justify-between items-center mb-2 px-2">
+<span class="text-[10px] text-primary/60 font-bold uppercase">T-MAP INTERFACE [RES: 4K_VIRTUAL]</span>
+<span class="text-[10px] text-primary/60 font-bold">Σ 420dw</span>
+</div>
+<div class="flex-1 grid grid-cols-6 grid-rows-6 gap-1 relative font-mono text-[9px]">
+<!-- Main Project 1 (P0 Blocked) -->
+<div class="col-span-3 row-span-4 border border-primary/40 terminal-amber-spectrum-70 double-border p-2 striped-blocked flex flex-col justify-between group cursor-crosshair">
+<div class="flex justify-between items-start">
+<span class="bg-black text-white px-1">ID: PRJ-001</span>
+<span class="material-symbols-outlined text-sm text-red-500">warning</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="font-bold truncate text-xs uppercase">Core Engine Revamp</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[10px]">pentagon</span> EPIC</span>
+<span class="text-primary-dark opacity-70">OP: polecat</span>
+</div>
+<div class="absolute inset-0 bg-primary/10 opacity-0 group-hover:opacity-100 flex items-center justify-center pointer-events-none transition-opacity">
+<span class="text-xs bg-black text-primary px-2 py-1 font-bold">LOCKED: BLOCKED_BY_NODE_45</span>
+</div>
+</div>
+<!-- Project 2 (P1 Active) -->
+<div class="col-span-3 row-span-2 border border-primary/40 terminal-amber-spectrum-50 p-2 flex flex-col justify-between cursor-crosshair">
+<div class="flex justify-between items-start">
+<span class="bg-black text-white px-1">ID: PRJ-442</span>
+<span class="material-symbols-outlined text-sm">rocket_launch</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="font-bold truncate uppercase text-xs">Neural Weighting Module</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[10px]">hexagon</span> PROJECT</span>
+<span class="text-primary-dark opacity-70">OP: polecat</span>
+</div>
+</div>
+<!-- Project 3 (P2 Done/Low Opacity) -->
+<div class="col-span-2 row-span-2 border border-primary/20 terminal-amber-spectrum-10 p-2 flex flex-col justify-between opacity-50 cursor-crosshair">
+<div class="flex justify-between items-start">
+<span class="bg-black/20 px-1">ID: PRJ-99</span>
+<span class="material-symbols-outlined text-sm text-green-600">check_circle</span>
+</div>
+<div class="flex flex-col">
+<span class="font-bold truncate uppercase">UI Schematic v2</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[10px]">square</span> TASK</span>
+</div>
+</div>
+<!-- Small items grid -->
+<div class="col-span-1 row-span-2 border border-primary/40 terminal-amber-spectrum-30 p-1 flex flex-col justify-center items-center">
+<span class="text-center font-bold">D-33</span>
+<span class="material-symbols-outlined text-[10px]">target</span>
+</div>
+<!-- Lower section -->
+<div class="col-span-2 row-span-2 border border-primary/40 terminal-amber-spectrum-90 p-2 flex flex-col justify-between cursor-crosshair">
+<div class="flex justify-between items-start">
+<span class="bg-black text-white px-1 font-bold">ID: ARC-20</span>
+<span class="material-symbols-outlined text-sm">architecture</span>
+</div>
+<div class="flex flex-col">
+<span class="font-bold truncate text-[10px] uppercase">Node Link Protocol</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[10px]">star</span> GOAL</span>
+</div>
+</div>
+<div class="col-span-4 row-span-2 border border-primary/40 terminal-amber-spectrum-50 p-2 flex gap-4 overflow-hidden">
+<div class="w-1/2 border-r border-primary/20 pr-2 flex flex-col justify-between">
+<span class="bg-black text-white px-1 w-fit">ID: TS-88</span>
+<span class="font-bold text-[10px] uppercase">Memory Buffer Sync</span>
+<span class="material-symbols-outlined text-sm">settings_input_component</span>
+</div>
+<div class="w-1/2 flex flex-col justify-between">
+<span class="bg-black text-white px-1 w-fit">ID: TS-89</span>
+<span class="font-bold text-[10px] uppercase">Cache Overflow Proc</span>
+<span class="material-symbols-outlined text-sm">memory</span>
+</div>
+</div>
+</div>
+</div>
+<div class="col-span-12 lg:col-span-3 flex flex-col gap-4">
+<!-- Detail Panel -->
+<div class="bg-primary/5 border border-primary/20 p-4">
+<div class="flex items-center gap-2 mb-4 border-b border-primary/20 pb-2">
+<span class="material-symbols-outlined text-primary">analytics</span>
+<h3 class="text-xs font-bold uppercase">Inspector_Node_v4</h3>
+</div>
+<div class="space-y-4 font-mono text-[11px]">
+<div class="flex justify-between border-b border-primary/10 py-1">
+<span class="text-primary/60">NODE_ID</span>
+<span class="font-bold">PRJ-001</span>
+</div>
+<div class="flex flex-col border-b border-primary/10 py-1">
+<span class="text-primary/60">LABEL</span>
+<span class="font-bold">CORE_ENGINE_REVAMP_FINAL_V4</span>
+</div>
+<div class="flex justify-between border-b border-primary/10 py-1">
+<span class="text-primary/60">ASSIGNEE</span>
+<span class="font-bold uppercase">operator.polecat</span>
+</div>
+<div class="flex justify-between border-b border-primary/10 py-1">
+<span class="text-primary/60">DW_INDEX</span>
+<span class="font-bold text-primary">88.291 (HIGH)</span>
+</div>
+<div class="flex justify-between border-b border-primary/10 py-1">
+<span class="text-primary/60">STATUS</span>
+<span class="font-bold text-red-500 uppercase">Blocked</span>
+</div>
+<div class="mt-4 p-2 bg-primary/10 border border-primary/20 italic text-[10px] text-primary/80">
+                                system_msg: dependency loop detected in downstream node cluster 0xAF4. operator intervention required.
+                            </div>
+</div>
+</div>
+<!-- Legend -->
+<div class="bg-primary/10 border border-primary/40 p-4 flex-1">
+<h3 class="text-xs font-black uppercase mb-3 flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">legend_toggle</span>
+                            Operator Schematic Legend
+                        </h3>
+<div class="space-y-4 text-[10px]">
+<div>
+<p class="text-primary/60 mb-2 uppercase font-bold border-b border-primary/20">Shape: Type</p>
+<div class="grid grid-cols-2 gap-2">
+<div class="flex items-center gap-2"><span class="material-symbols-outlined text-sm">star</span> Goal</div>
+<div class="flex items-center gap-2"><span class="material-symbols-outlined text-sm">pentagon</span> Epic</div>
+<div class="flex items-center gap-2"><span class="material-symbols-outlined text-sm">hexagon</span> Project</div>
+<div class="flex items-center gap-2"><span class="material-symbols-outlined text-sm">square</span> Task</div>
+</div>
+</div>
+<div>
+<p class="text-primary/60 mb-2 uppercase font-bold border-b border-primary/20">Fill: Status</p>
+<div class="space-y-2">
+<div class="flex items-center gap-2"><div class="w-4 h-4 striped-blocked border border-primary/40"></div> Blocked (Striped)</div>
+<div class="flex items-center gap-2"><div class="w-4 h-4 opacity-30 bg-primary border border-primary/40"></div> Done (Ghosted)</div>
+<div class="flex items-center gap-2"><div class="w-4 h-4 bg-primary border border-primary/40"></div> Active (Solid)</div>
+</div>
+</div>
+<div>
+<p class="text-primary/60 mb-2 uppercase font-bold border-b border-primary/20">Border: Priority</p>
+<div class="space-y-2">
+<div class="flex items-center gap-2"><div class="w-8 h-4 double-border"></div> P0 (Double Red)</div>
+<div class="flex items-center gap-2"><div class="w-8 h-4 border-2 border-primary"></div> P1 (Thick)</div>
+<div class="flex items-center gap-2"><div class="w-8 h-4 border border-primary/40"></div> P2-P4 (Standard)</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer Metrics -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+<div class="bg-primary/5 border border-primary/20 p-4 rounded">
+<p class="text-[10px] text-primary/60 font-bold uppercase mb-1">Total System Weight</p>
+<p class="text-2xl font-black">420.00 <span class="text-xs">dw</span></p>
+</div>
+<div class="bg-primary/5 border border-primary/20 p-4 rounded">
+<p class="text-[10px] text-primary/60 font-bold uppercase mb-1">Active Nodes</p>
+<p class="text-2xl font-black">156 <span class="text-xs text-primary">+12%</span></p>
+</div>
+<div class="bg-primary/5 border border-primary/20 p-4 rounded">
+<p class="text-[10px] text-primary/60 font-bold uppercase mb-1">Cluster Density</p>
+<p class="text-2xl font-black">0.84 <span class="text-xs text-primary/50">ρ</span></p>
+</div>
+<div class="bg-primary/5 border border-primary/20 p-4 rounded">
+<p class="text-[10px] text-primary/60 font-bold uppercase mb-1">Critical Blockers</p>
+<p class="text-2xl font-black text-red-500">03 <span class="text-xs">!!</span></p>
+</div>
+</div>
+</main>
+<footer class="border-t border-primary/20 p-4 flex justify-between items-center text-[10px] text-primary/40 font-mono">
+<div class="flex gap-4">
+<span>TERMINAL: TTY_01</span>
+<span>BAUD: 9600</span>
+<span>SEC: LEVEL_4</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="animate-pulse size-1.5 bg-green-500 rounded-full"></span>
+<span>SYSTEM_NOMINAL_420_DW_LOAD</span>
+</div>
+</footer>
+</div>
+</body></html>

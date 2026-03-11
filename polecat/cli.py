@@ -1,0 +1,2322 @@
+#!/usr/bin/env python3
+import json
+import os
+import shutil
+import subprocess
+import sys
+from datetime import UTC, datetime
+from pathlib import Path
+
+# Add aops-core to path for lib imports
+SCRIPT_DIR = Path(__file__).parent.resolve()
+REPO_ROOT = SCRIPT_DIR.parent
+if str(REPO_ROOT / "aops-core") not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT / "aops-core"))
+
+import click
+from lib.agent_env import apply_env_mappings
+from manager import PolecatManager
+from validation import TaskIDValidationError, validate_task_id_or_raise
+
+
+def _make_worker_env() -> dict[str, str]:
+    """Create a sanitized environment for polecat/crew worker subprocesses.
+
+    Strips SSH credentials and maps git auth to the bot token, ensuring
+    workers can ONLY authenticate via the provided AOPS_BOT_GH_TOKEN.
+    This runs agent-env-map.conf mappings eagerly (before subprocess launch)
+    rather than relying on the SessionStart hook inside the child process.
+    """
+    env = os.environ.copy()
+    apply_env_mappings(env)
+    return env
+
+
+def set_terminal_title(title: str) -> None:
+    """Set terminal/tmux window title for session identification.
+
+    Uses OSC 0 escape sequence (same as dotfiles set-tab-title function).
+    In tmux, also sets the window name via rename-window so it appears
+    in set-titles-string (#W) and the window list.
+    """
+    # OSC 0: Set window title — works in Terminal.app, iTerm2, most terminals
+    sys.stdout.write(f"\033]0;{title}\007")
+    sys.stdout.flush()
+
+    # If inside tmux, also rename the window for #W in set-titles-string
+    if os.environ.get("TMUX"):
+        tmux = shutil.which("tmux")
+        if tmux:
+            subprocess.run([tmux, "rename-window", title], capture_output=True)
+
+
+def reset_terminal_title() -> None:
+    """Reset terminal title to automatic naming after session ends."""
+    if os.environ.get("TMUX"):
+        tmux = shutil.which("tmux")
+        if tmux:
+            # Re-enable automatic window renaming
+            subprocess.run(
+                [tmux, "set-window-option", "automatic-rename", "on"],
+                capture_output=True,
+            )
+    # Clear terminal title (let shell/terminal manage it)
+    sys.stdout.write("\033]0;\007")
+    sys.stdout.flush()
+
+
+def save_worker_transcript(
+    task_id: str,
+    stdout: str,
+    stderr: str,
+    exit_code: int,
+    agent_type: str,
+    home_dir: Path,
+) -> Path:
+    """Save worker output to transcript file.
+
+    Writes a JSONL entry with metadata and full output to
+    $AOPS_SESSIONS/polecats/<task-id>.jsonl
+
+    Args:
+        task_id: The task identifier
+        stdout: Captured standard output
+        stderr: Captured standard error
+        exit_code: Process exit code
+        agent_type: "claude" or "gemini"
+        home_dir: Polecat home directory (fallback if AOPS_SESSIONS not set)
+
+    Returns:
+        Path to the transcript file
+
+    Raises:
+        OSError: If transcript directory cannot be created or file cannot be written
+    """
+    try:
+        try:
+            from lib.paths import get_polecat_transcripts_dir
+
+            transcript_dir = get_polecat_transcripts_dir()
+        except ImportError:
+            # Fallback for older installations or missing lib.paths
+            transcript_dir = home_dir / "transcripts"
+
+        transcript_dir.mkdir(parents=True, exist_ok=True)
+
+        transcript_file = transcript_dir / f"{task_id}.jsonl"
+
+        entry = {
+            "timestamp": datetime.now().astimezone().isoformat(),
+            "task_id": task_id,
+            "agent": agent_type,
+            "session_type": "polecat",
+            "exit_code": exit_code,
+            "success": exit_code == 0,
+            "stdout": stdout or "",
+            "stderr": stderr or "",
+        }
+
+        with open(transcript_file, "a") as f:
+            f.write(json.dumps(entry) + "\n")
+
+        return transcript_file
+    except OSError as e:
+        raise OSError(f"Failed to save transcript for task {task_id}: {e}") from e
+
+
+def is_interactive() -> bool:
+    """Check if we're running in an interactive terminal."""
+    return sys.stdin.isatty()
+
+
+@click.group()
+@click.option(
+    "--home",
+    envvar="POLECAT_HOME",
+    type=click.Path(path_type=Path),
+    help="Polecat home directory (default: $POLECAT_HOME, or ~/.polecat)",
+)
+@click.pass_context
+def main(ctx, home):
+    """Polecat: Ephemeral worker management system."""
+    ctx.ensure_object(dict)
+    ctx.obj["home"] = home
+
+
+@main.command()
+@click.option("--project", "-p", help="Initialize only this project (default: all)")
+@click.pass_context
+def init(ctx, project):
+    """Initialize bare mirror repos in <home>/polecat/.repos/
+
+    Creates bare clones of all registered projects for isolated worktree spawning.
+    Run this once before using polecat, or when adding new projects.
+
+    Examples:
+        polecat init              # Initialize all projects
+        polecat init -p aops      # Initialize only aops
+        polecat --home /custom/path init  # Use custom home directory
+    """
+    manager = PolecatManager(home_dir=ctx.obj.get("home"))
+
+    if project:
+        try:
+            path = manager.ensure_repo_mirror(project)
+            print(f"✓ {project} -> {path}")
+        except ValueError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+        except Exception as e:
+            print(f"Failed to initialize {project}: {e}", file=sys.stderr)
+            sys.exit(1)
+    else:
+        print(f"Initializing mirrors in {manager.repos_dir}...")
+        results = manager.init_all_mirrors()
+        failures = [p for p, path in results.items() if path is None]
+        if failures:
+            print(f"\n⚠️  Failed: {', '.join(failures)}")
+            sys.exit(1)
+        print("\n✓ All mirrors ready")
+
+
+@main.command()
+@click.pass_context
+def sync(ctx):
+    """Fetch latest from origin for all mirror repos.
+
+    Updates existing bare mirrors with latest branches from origin.
+    Use before spawning polecats to ensure they have recent code.
+
+    Examples:
+        polecat sync
+    """
+    manager = PolecatManager(home_dir=ctx.obj.get("home"))
+    print(f"Syncing mirrors in {manager.repos_dir}...")
+    results = manager.sync_all_mirrors()
+    successes = sum(1 for v in results.values() if v)
+    print(f"\n✓ Synced {successes}/{len(results)} mirrors")
+
+
+@main.command()
+@click.option("--project", "-p", help="Project to claim tasks from")
+@click.option("--caller", "-c", default="polecat", help="Identity claiming the task")
+@click.pass_context
+def start(ctx, project, caller):
+    """Claim next ready task and spawn a worktree."""
+    manager = PolecatManager(home_dir=ctx.obj.get("home"))
+
+    print(f"Looking for ready tasks{' in project ' + project if project else ''}...")
+    task = manager.claim_next_task(caller, project)
+
+    if not task:
+        print("No ready tasks found.")
+        sys.exit(3)  # Exit 3 = queue empty. Swarm treats non-zero as "stop worker".
+
+    print(f"Claimed task: {task.title} ({task.id})")
+
+    try:
+        worktree_path = manager.setup_worktree(task)
+        print(f"\nSuccess! Worktree ready at:\n{worktree_path}")
+        print(f"\nTo start working:\ncd {worktree_path}")
+    except Exception as e:
+        print(f"\nError setting up worktree: {e}")
+        sys.exit(1)
+
+
+@main.command()
+@click.argument("task_id")
+@click.option("--caller", "-c", default="polecat", help="Identity claiming the task")
+@click.pass_context
+def checkout(ctx, task_id, caller):
+    """Checkout a specific task by ID and create its worktree.
+
+    Use with shell integration for automatic cd:
+        cd $(polecat checkout TASK_ID)
+
+    Or add to your shell rc:
+        pc() { cd "$(polecat checkout "$@")" 2>/dev/null || polecat checkout "$@"; }
+    """
+    # Validate task ID before any operations
+    try:
+        validate_task_id_or_raise(task_id)
+    except TaskIDValidationError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    manager = PolecatManager(home_dir=ctx.obj.get("home"))
+
+    task = manager.storage.get_task(task_id)
+    if not task:
+        print(f"Task not found: {task_id}", file=sys.stderr)
+        sys.exit(1)
+
+    # Claim the task if not already in progress
+    try:
+        from lib.task_model import TaskStatus
+
+        if task.status == TaskStatus.ACTIVE:
+            task.status = TaskStatus.IN_PROGRESS
+            task.assignee = caller
+            manager.storage.save_task(task)
+            print(f"Claimed: {task.title}", file=sys.stderr)
+    except ImportError:
+        pass
+
+    try:
+        worktree_path = manager.setup_worktree(task)
+        # Output just the path for shell integration (cd $(polecat checkout ...))
+        print(worktree_path)
+    except Exception as e:
+        print(f"Error setting up worktree: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+@main.command()
+@click.option("--no-push", is_flag=True, help="Skip pushing to remote")
+@click.option("--nuke", "do_nuke", is_flag=True, help="Also remove the worktree after finishing")
+@click.option(
+    "--force",
+    "-f",
+    is_flag=True,
+    help="Skip confirmation prompts (required in non-interactive mode)",
+)
+@click.option(
+    "--force-done",
+    is_flag=True,
+    help="Force task status to 'done' even if no git changes detected",
+)
+@click.pass_context
+def finish(ctx, no_push, do_nuke, force, force_done):
+    """Mark current task as ready for merge.
+
+    Must be run from within a polecat worktree.
+    Pushes branch and sets task status to 'merge_ready'.
+    """
+    import subprocess
+
+    manager = PolecatManager(home_dir=ctx.obj.get("home"))
+    cwd = Path.cwd()
+
+    # Detect if we're in a polecat worktree
+    if not cwd.is_relative_to(manager.polecats_dir):
+        print(
+            f"Error: Not in a polecat worktree. Expected path under {manager.polecats_dir}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    # Extract task ID from directory name
+    task_id = cwd.relative_to(manager.polecats_dir).parts[0]
+    task = manager.storage.get_task(task_id)
+
+    if not task:
+        print(f"Error: Task {task_id} not found in task database", file=sys.stderr)
+        sys.exit(1)
+
+    # --- SAFEGUARD 0: Completion Protection ---
+    # If the task is already DONE, or in review/merge phase, do NOT override it.
+    # This prevents the "infinite retry loop" where auto-finish resets a manually completed task.
+    try:
+        from lib.task_model import TaskStatus
+
+        terminal_or_pr_statuses = (
+            TaskStatus.DONE,
+            TaskStatus.REVIEW,
+            TaskStatus.MERGE_READY,
+            TaskStatus.MERGING,
+            TaskStatus.CANCELLED,
+        )
+
+        if task.status in terminal_or_pr_statuses:
+            print(
+                f"✅ Task {task_id} is in status '{task.status.value}'. Skipping auto-retry reset."
+            )
+            if do_nuke:
+                print("Nuking worktree...")
+                os.chdir(Path.home())  # Move out of worktree before nuking
+                manager.nuke_worktree(task_id, force=False)
+                print("Worktree removed")
+            return
+    except ImportError:
+        pass
+
+    print(f"Finishing task: {task.title} ({task_id})")
+
+    # --- SAFEGUARD 1: Dirty Exit Protection ---
+    # Check for uncommitted changes
+    result = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True)
+    if result.stdout.strip():
+        print("⚠️  Warning: Uncommitted changes detected.")
+        # Automatically commit changes if they are simple
+        print("  🧹 Automatically staging and committing changes...")
+        try:
+            subprocess.run(["git", "add", "-u"], check=True)  # Stage modified/deleted
+            subprocess.run(["git", "add", "."], check=True)  # Stage new files (careful!)
+            subprocess.run(
+                ["git", "commit", "-m", "chore: saving uncommitted agent work"],
+                check=True,
+            )
+            print("  ✅ Changes saved.")
+        except subprocess.CalledProcessError as e:
+            print(f"  ❌ Failed to auto-commit: {e}")
+            if not force:
+                print(
+                    "  🚫 Uncommitted changes could not be saved. Use --force to continue anyway."
+                )
+                sys.exit(1)
+
+    # --- NO-CHANGES DETECTION ---
+    # If the agent made no changes, the task was likely not completed (e.g., stuck in
+    # hydration loop, crashed early, or other failure mode). Do NOT mark as done.
+    # See: aops-91e4c3f2 - Gemini polecat workers stuck in hydration gate loop
+    try:
+        # First, fetch to ensure we have latest origin/main
+        subprocess.run(
+            ["git", "fetch", "origin", "main"],
+            capture_output=True,
+            check=False,
+        )
+        # Check if there are any commits on this branch vs origin/main
+        diff_check = subprocess.run(
+            ["git", "diff", "--quiet", "origin/main", "HEAD"],
+            capture_output=True,
+            check=False,
+        )
+        # git diff --quiet returns 0 if no changes, 1 if changes exist
+        if diff_check.returncode == 0:
+            if force_done:
+                print("📭 No changes detected, but --force-done specified.")
+                print("✅ Proceeding to mark as DONE (verified complete without changes).")
+                try:
+                    from lib.task_model import TaskStatus
+
+                    task.status = TaskStatus.DONE
+                    manager.storage.save_task(task)
+                    print(f"✅ Task {task_id} marked as DONE.")
+                except ImportError:
+                    print("Warning: Could not update task status (lib.task_model not available)")
+
+                # Optionally nuke
+                if do_nuke:
+                    print("Nuking worktree...")
+                    os.chdir(Path.home())  # Move out of worktree before nuking
+                    manager.nuke_worktree(task_id, force=True)
+                    print("Worktree removed")
+                else:
+                    print(f"\nTo clean up later: polecat nuke {task_id}")
+                return  # Exit early, task is DONE
+            else:
+                print("📭 No changes detected. Worker may not have completed the task.")
+                print(
+                    "⚠️  Marking as 'review' for investigation (use --force-done for legitimate zero-change tasks)."
+                )
+                # Mark task as REVIEW, NOT active (avoid infinite re-queue for non-code tasks)
+                # Zero changes needs human/supervisor judgment — could be failure OR legitimate
+                try:
+                    from lib.task_model import TaskStatus
+
+                    task.status = TaskStatus.REVIEW
+                    task.assignee = None  # Clear assignee for review
+                    task.body = (
+                        (task.body or "")
+                        + "\n\n## ⚠️ Review needed (zero changes detected)\n"
+                        + "Worker finished without making changes. Needs investigation:\n"
+                        + "- If the task legitimately requires no code changes, re-run with `--force-done`\n"
+                        + "- If the worker failed silently, check transcript and retry\n"
+                    )
+                    manager.storage.save_task(task)
+                    print("📋 Task sent to review queue")
+                except ImportError:
+                    print("Warning: Could not update task status (lib.task_model not available)")
+
+                # Optionally nuke
+                if do_nuke:
+                    print("Nuking worktree...")
+                    os.chdir(Path.home())  # Move out of worktree before nuking
+                    manager.nuke_worktree(task_id, force=False)
+                    print("Worktree removed")
+                else:
+                    print(f"\nTo clean up later: polecat nuke {task_id}")
+                return  # Exit early, skip rest of finish flow
+
+    except Exception as e:
+        print(f"Warning: Could not check for changes against origin/main: {e}")
+        # Fallback: try local main ref instead of origin/main
+        try:
+            diff_local = subprocess.run(
+                ["git", "diff", "--quiet", "main", "HEAD"],
+                capture_output=True,
+                check=False,
+            )
+            if diff_local.returncode == 0:
+                # Zero changes confirmed via local main ref
+                if force_done:
+                    print(
+                        "📭 No changes detected (local main fallback), but --force-done specified."
+                    )
+                    print("✅ Proceeding to mark as DONE (verified complete without changes).")
+                    try:
+                        from lib.task_model import TaskStatus
+
+                        task.status = TaskStatus.DONE
+                        manager.storage.save_task(task)
+                        print(f"✅ Task {task_id} marked as DONE.")
+                    except ImportError:
+                        print(
+                            "Warning: Could not update task status (lib.task_model not available)"
+                        )
+                    if do_nuke:
+                        print("Nuking worktree...")
+                        os.chdir(Path.home())
+                        manager.nuke_worktree(task_id, force=True)
+                        print("Worktree removed")
+                    else:
+                        print(f"\nTo clean up later: polecat nuke {task_id}")
+                    return
+                else:
+                    print(
+                        "📭 No changes detected (local main fallback). Worker may not have completed the task."
+                    )
+                    print(
+                        "⚠️  Marking as 'review' for investigation (use --force-done for legitimate zero-change tasks)."
+                    )
+                    try:
+                        from lib.task_model import TaskStatus
+
+                        task.status = TaskStatus.REVIEW
+                        task.assignee = None
+                        task.body = (
+                            (task.body or "")
+                            + "\n\n## ⚠️ Review needed (zero changes detected)\n"
+                            + "Worker finished without making changes. Needs investigation:\n"
+                            + "- If the task legitimately requires no code changes, re-run with `--force-done`\n"
+                            + "- If the worker failed silently, check transcript and retry\n"
+                        )
+                        manager.storage.save_task(task)
+                        print("📋 Task sent to review queue")
+                    except ImportError:
+                        print(
+                            "Warning: Could not update task status (lib.task_model not available)"
+                        )
+                    if do_nuke:
+                        print("Nuking worktree...")
+                        os.chdir(Path.home())
+                        manager.nuke_worktree(task_id, force=False)
+                        print("Worktree removed")
+                    else:
+                        print(f"\nTo clean up later: polecat nuke {task_id}")
+                    return
+            # else: diff_local.returncode != 0 means changes exist, fall through to normal flow
+        except Exception as e2:
+            print(f"Warning: Fallback change detection also failed: {e2}")
+            # Both origin/main and local main failed — needs human investigation
+            print("⚠️  Cannot verify changes exist. Marking as 'review' (safe default).")
+            try:
+                from lib.task_model import TaskStatus
+
+                task.status = TaskStatus.REVIEW
+                task.assignee = None
+                task.body = (
+                    (task.body or "")
+                    + "\n\n## ⚠️ Review needed (change detection failed)\n"
+                    + "Could not compare against main to determine if worker made changes.\n"
+                    + "- If the task legitimately requires no code changes, re-run with `--force-done`\n"
+                    + "- If the worker failed silently, check transcript and retry\n"
+                )
+                manager.storage.save_task(task)
+                print("📋 Task sent to review queue")
+            except ImportError:
+                print("Warning: Could not update task status (lib.task_model not available)")
+            if do_nuke:
+                print("Nuking worktree...")
+                os.chdir(Path.home())
+                manager.nuke_worktree(task_id, force=False)
+                print("Worktree removed")
+            else:
+                print(f"\nTo clean up later: polecat nuke {task_id}")
+            return
+
+    # --- SAFEGUARD 2: Repo-Nuke Protection ---
+    # Check if we are unexpectedly rewriting the whole repo
+    # This prevents the "orphan branch" issue where an agent commits 1000+ files as new
+    try:
+        # Get shortstat diff against origin/main to see scale of changes
+        diff_res = subprocess.run(
+            ["git", "diff", "--shortstat", "origin/main", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        # Output format: " 10 files changed, 100 insertions(+), 50 deletions(-)"
+        if diff_res.returncode == 0 and diff_res.stdout.strip():
+            parts = diff_res.stdout.strip().split(",")
+            files_changed_str = parts[0].strip().split(" ")[0]
+            if files_changed_str.isdigit():
+                files_changed = int(files_changed_str)
+                if files_changed > 50:
+                    print(
+                        f"\n🚨 SAFEGUARD ACTIVATE: Large changeset detected ({files_changed} files)."
+                    )
+                    print("   This looks like a 'repo nuke' or orphan branch issue.")
+                    print("   Run 'git reset --soft FETCH_HEAD' to recover if this is accidental.")
+                    if not force:
+                        print(
+                            "   🚫 Large changeset requires confirmation. Use --force to push anyway."
+                        )
+                        sys.exit(1)
+    except Exception as e:
+        print(f"Warning: Could not run repo checking safeguards: {e}")
+
+    # Push to origin
+    if not no_push:
+        branch_name = f"polecat/{task_id}"
+
+        # --- SAFEGUARD 3: Main-Push Blockade ---
+        if branch_name == "main" or branch_name == "master":
+            print("🚨 SAFEGUARD: Refusing to push 'main' branch via polecat.")
+            sys.exit(1)
+
+        # --- REBASE BEFORE PUSH ---
+        # Fetch and rebase onto latest main to prevent orphan commits and merge conflicts
+        print("🔄 Syncing with latest main before push...")
+        try:
+            # Fetch latest from origin
+            subprocess.run(
+                ["git", "fetch", "origin", "main"],
+                check=True,
+                capture_output=True,
+            )
+
+            # Check if we need to rebase (are we behind origin/main?)
+            merge_base = subprocess.run(
+                ["git", "merge-base", "HEAD", "origin/main"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            origin_main = subprocess.run(
+                ["git", "rev-parse", "origin/main"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+
+            if merge_base.stdout.strip() != origin_main.stdout.strip():
+                # We're behind, need to rebase
+                print("  📥 Branch is behind origin/main, rebasing...")
+                rebase_result = subprocess.run(
+                    ["git", "rebase", "origin/main"],
+                    capture_output=True,
+                    text=True,
+                )
+                if rebase_result.returncode != 0:
+                    # Rebase failed - abort and report
+                    subprocess.run(["git", "rebase", "--abort"], check=False)
+                    print("  ❌ Rebase failed due to conflicts.", file=sys.stderr)
+                    print(f"  {rebase_result.stderr}", file=sys.stderr)
+                    print("  Task will be marked for review.", file=sys.stderr)
+                    # Don't exit - let it fall through to mark as review
+                    try:
+                        from lib.task_model import TaskStatus
+
+                        task.status = TaskStatus.REVIEW
+                        task.body += (
+                            "\n\n## ⚠️ Rebase Failed\nConflicts detected during rebase onto main.\n"
+                        )
+                        manager.storage.save_task(task)
+                    except ImportError:
+                        pass
+                    sys.exit(1)
+                print("  ✅ Rebase successful")
+            else:
+                print("  ✅ Already up-to-date with main")
+
+        except subprocess.CalledProcessError as e:
+            print(f"  ⚠️ Sync failed: {e}", file=sys.stderr)
+            # Continue anyway - the push might still work
+
+        print(f"Pushing {branch_name} to origin...")
+        try:
+            # Fetch the branch tracking ref so --force-with-lease has current data.
+            # Without this, rebase leaves the local tracking ref stale and push
+            # is rejected with "(stale info)".
+            subprocess.run(
+                ["git", "fetch", "origin", branch_name],
+                check=False,
+                capture_output=True,
+            )
+            # Use --force for polecat branches (they're ephemeral worker branches)
+            # After rebase, --force-with-lease would reject push due to stale tracking ref
+            # Force is safe here: polecat branches are single-worker, disposable feature branches
+            subprocess.run(
+                [
+                    "git",
+                    "push",
+                    "--force",
+                    "-u",
+                    "origin",
+                    f"{branch_name}:{branch_name}",
+                ],
+                check=True,
+            )
+        except subprocess.CalledProcessError as e:
+            print(f"Error pushing to origin: {e}", file=sys.stderr)
+            sys.exit(1)
+
+    # --- GitHub PR Integration ---
+    try:
+        # Import locally to avoid potential circular dependencies
+        try:
+            from github import check_gh_installed, generate_pr_body
+        except ImportError:
+            # Fallback if running as module
+            from .github import check_gh_installed, generate_pr_body
+
+        if check_gh_installed():
+            print("  🐙 GitHub CLI detected. Updating Pull Request...")
+            pr_body = generate_pr_body(task)
+
+            # Create a temp file for the body to handle multiline content safely
+            import json
+            import tempfile
+
+            with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
+                f.write(pr_body)
+                body_file = f.name
+
+            try:
+                # Check if PR exists
+                pr_check = subprocess.run(
+                    [
+                        "gh",
+                        "pr",
+                        "list",
+                        "--head",
+                        branch_name,
+                        "--json",
+                        "number",
+                        "--state",
+                        "open",
+                    ],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+
+                prs = []
+                if pr_check.returncode == 0 and pr_check.stdout.strip():
+                    try:
+                        prs = json.loads(pr_check.stdout)
+                    except json.JSONDecodeError:
+                        pass
+
+                if prs:
+                    # Update existing PR
+                    pr_number = prs[0]["number"]
+                    subprocess.run(
+                        ["gh", "pr", "edit", str(pr_number), "--body-file", body_file],
+                        check=True,
+                        capture_output=True,
+                    )
+                    print(f"  ✅ Updated PR #{pr_number}")
+                else:
+                    # Create new PR
+                    subprocess.run(
+                        [
+                            "gh",
+                            "pr",
+                            "create",
+                            "--title",
+                            task.title,
+                            "--body-file",
+                            body_file,
+                            "--head",
+                            branch_name,
+                            "--base",
+                            "main",
+                        ],
+                        check=True,
+                        capture_output=True,
+                    )
+                    print("  ✅ Created new PR")
+
+            except subprocess.CalledProcessError as e:
+                # Don't fail the whole finish command if PR creation fails
+                err_msg = e.stderr.decode().strip() if e.stderr else str(e)
+                print(f"  ⚠️  Failed to manage PR: {err_msg}")
+            except Exception as e:
+                print(f"  ⚠️  Error in PR integration: {e}")
+            finally:
+                if os.path.exists(body_file):
+                    os.unlink(body_file)
+
+    except ImportError:
+        print("  ⚠️  Could not import github module for PR integration.")
+    except Exception as e:
+        print(f"  ⚠️  Unexpected error in PR integration: {e}")
+
+    # Update task status to merge_ready
+    try:
+        from lib.task_model import TaskStatus
+
+        task.status = TaskStatus.MERGE_READY
+        manager.storage.save_task(task)
+        print("✅ Task marked as 'merge_ready'")
+        print(
+            "📋 If a PR was created, the review pipeline will handle merge. See logs above for PR status."
+        )
+
+    except ImportError:
+        print("Warning: Could not update task status (lib.task_model not available)")
+
+    # Optionally nuke
+    if do_nuke:
+        print("Nuking worktree...")
+        os.chdir(Path.home())  # Move out of worktree before nuking
+        # Branch was pushed and PR filed; merge check no longer applies here
+        manager.nuke_worktree(task_id, force=True)
+        print("Worktree removed")
+    else:
+        print(f"\nTo clean up later: polecat nuke {task_id}")
+
+
+@main.command()
+@click.argument("task_id")
+@click.option("--force", "-f", is_flag=True, help="Delete even if work is not merged")
+@click.pass_context
+def nuke(ctx, task_id, force):
+    """Destroy a polecat (remove worktree and branch)."""
+    # Validate task ID before any operations
+    try:
+        validate_task_id_or_raise(task_id)
+    except TaskIDValidationError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    manager = PolecatManager(home_dir=ctx.obj.get("home"))
+    try:
+        manager.nuke_worktree(task_id, force=force)
+        print(f"Nuked polecat {task_id}")
+    except RuntimeError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+@main.command("list")
+@click.pass_context
+def list_polecats(ctx):
+    """List active polecats."""
+    manager = PolecatManager(home_dir=ctx.obj.get("home"))
+    if not manager.polecats_dir.exists():
+        print("No polecats directory found.")
+        return
+
+    # Directories to exclude from listing (system dirs)
+    exclude = {".repos", "crew"}
+
+    found = False
+    for item in manager.polecats_dir.iterdir():
+        if item.is_dir() and not item.name.startswith(".") and item.name not in exclude:
+            print(f"{item.name} -> {item}")
+            found = True
+
+    if not found:
+        print("No active polecats.")
+
+
+@main.command()
+def merge():
+    """Scan for tasks in REVIEW status and merge them to main.
+
+    This runs the Refinery: finds all tasks marked 'review',
+    squash-merges their polecat branches, runs tests, and
+    marks them 'done' on success.
+    """
+    from engineer import Engineer
+
+    eng = Engineer()
+    eng.scan_and_merge()
+
+
+def _branch_has_open_pr(branch_name: str, repo_path: Path) -> bool:
+    """Check if a branch has an open PR on GitHub."""
+    try:
+        result = subprocess.run(
+            ["gh", "pr", "list", "--head", branch_name, "--state", "open", "--json", "number"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            prs = json.loads(result.stdout)
+            return len(prs) > 0
+    except (FileNotFoundError, subprocess.TimeoutExpired, json.JSONDecodeError):
+        pass
+    return False
+
+
+@main.command("c", hidden=True)
+@click.argument("target", required=False, default=None)
+@click.argument("extra", required=False, default=None)
+@click.option("--name", "-n", help="Crew name (randomly generated if not specified)")
+@click.option("--gemini", "-g", is_flag=True, help="Use Gemini CLI instead of Claude")
+@click.option("--resume", "-r", help="Resume existing crew worker by name")
+@click.option("--keep", "-k", is_flag=True, help="Keep worktree even if a PR is open")
+@click.pass_context
+def crew_alias(ctx, target, extra, name, gemini, resume, keep):
+    """Shorthand for 'crew'. See 'polecat crew --help'."""
+    ctx.invoke(crew, target=target, extra=extra, name=name, gemini=gemini, resume=resume, keep=keep)
+
+
+@main.command()
+@click.argument("target", required=False, default=None)
+@click.argument("extra", required=False, default=None)
+@click.option("--name", "-n", help="Crew name (randomly generated if not specified)")
+@click.option("--gemini", "-g", is_flag=True, help="Use Gemini CLI instead of Claude")
+@click.option("--resume", "-r", help="Resume existing crew worker by name")
+@click.option("--keep", "-k", is_flag=True, help="Keep worktree even if a PR is open")
+@click.pass_context
+def crew(ctx, target, extra, name, gemini, resume, keep):
+    """Start an interactive crew session with worktree isolation.
+
+    Crew workers are persistent, named agents for interactive collaboration.
+    Each crew session creates an isolated git worktree and drops you into it.
+    Workers are sandboxed to their worktree — no operations outside it.
+
+    TARGET is a project alias (e.g., aops, bm), or 'repo' for arbitrary paths.
+    If TARGET is 'repo', EXTRA is the path to the repository.
+
+    \b
+    Examples:
+        polecat crew aops             # Crew in academicOps repo
+        polecat crew bm               # Crew in buttermilk repo
+        polecat crew repo /path/to/x  # Crew in arbitrary repo
+        polecat crew -r audre         # Resume crew worker "audre"
+        polecat crew                  # Crew with all projects (legacy)
+    """
+    import subprocess
+
+    manager = PolecatManager(home_dir=ctx.obj.get("home"))
+
+    # --- Resolve target project(s) ---
+    if resume:
+        # Resume mode: ignore target, use existing crew
+        projects = []  # Will be populated from existing worktrees
+        crew_name = resume
+        if crew_name not in manager.list_crew():
+            print(
+                f"Error: No crew worker named '{crew_name}'. Active: {manager.list_crew()}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+    elif target == "repo":
+        # Ad-hoc repo mode: pc crew repo /path/to/repo
+        if not extra:
+            print("Error: 'repo' target requires a path argument.", file=sys.stderr)
+            print("Usage: polecat crew repo /path/to/repo", file=sys.stderr)
+            sys.exit(1)
+        repo_path = Path(extra).expanduser().resolve()
+        try:
+            slug = manager.register_adhoc_project(repo_path)
+        except (FileNotFoundError, ValueError) as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+        projects = [slug]
+        crew_name = name or manager.generate_crew_name()
+    elif target:
+        # Named project/alias: pc crew aops, pc crew bm
+        try:
+            slug = manager.resolve_project_alias(target)
+        except ValueError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+        projects = [slug]
+        crew_name = name or manager.generate_crew_name()
+    else:
+        # No target: legacy behaviour — all projects
+        projects = list(manager.projects.keys())
+        crew_name = name or manager.generate_crew_name()
+
+    print(f"\U0001f9d1\u200d\U0001f91d\u200d\U0001f9d1 Crew worker: {crew_name}")
+
+    # Setup worktrees for project(s)
+    worktree_paths = {}
+    if resume:
+        # Recover worktree paths from existing crew directory
+        crew_path = manager.crew_dir / crew_name
+        for project_dir in crew_path.iterdir():
+            if project_dir.is_dir():
+                worktree_paths[project_dir.name] = project_dir
+                print(f"\U0001f4c1 {project_dir.name}: {project_dir}")
+        projects = list(worktree_paths.keys())
+    else:
+        try:
+            for proj in projects:
+                worktree_path = manager.setup_crew_worktree(crew_name, proj)
+                worktree_paths[proj] = worktree_path
+                print(f"\U0001f4c1 {proj}: {worktree_path}")
+        except Exception as e:
+            print(f"Error setting up worktree: {e}", file=sys.stderr)
+            sys.exit(1)
+
+    if not worktree_paths:
+        print("Error: No worktrees available.", file=sys.stderr)
+        sys.exit(1)
+
+    # Determine working directory:
+    # Single project -> drop directly into the project worktree
+    # Multiple projects -> use crew root (parent of all project worktrees)
+    if len(worktree_paths) == 1:
+        work_dir = next(iter(worktree_paths.values()))
+    else:
+        work_dir = manager.crew_dir / crew_name
+
+    # Build agent command with isolation
+    cli_tool = "gemini" if gemini else "claude"
+    print(f"\n\U0001f91d Starting {cli_tool} crew session...")
+    print(f"   Crew: {crew_name}")
+    print(f"   Projects: {', '.join(projects)}")
+    print(f"   Working dir: {work_dir}")
+    print("-" * 50)
+
+    if gemini:
+        # Gemini: --sandbox restricts file access to CWD (the worktree)
+        cmd = [
+            "gemini",
+            "--sandbox",
+        ]
+    else:
+        # Claude Code: sandbox via project settings.json + setting-sources
+        cmd = [
+            "claude",
+            "--permission-mode=plan",
+            "--dangerously-skip-permissions",
+            "--setting-sources=user,project",
+        ]
+
+    # Set session type environment variable for hooks to detect
+    # Use sanitized env: SSH stripped, git auth set to bot token only
+    env = _make_worker_env()
+    env["POLECAT_SESSION_TYPE"] = "crew"
+    env["POLECAT_CREW_NAME"] = crew_name
+    env["POLECAT_WORKTREE"] = str(work_dir)
+
+    set_terminal_title(f"crew:{crew_name}")
+    try:
+        subprocess.run(cmd, cwd=work_dir, env=env)
+    except FileNotFoundError:
+        print(f"Error: '{cli_tool}' command not found.", file=sys.stderr)
+        sys.exit(1)
+    except KeyboardInterrupt:
+        print("\n\n\u26a0\ufe0f  Session interrupted")
+    finally:
+        reset_terminal_title()
+
+    print("-" * 50)
+    print(f"\n\U0001f4cb Crew '{crew_name}' session ended.")
+
+    # Auto-cleanup: nuke worktree if a PR is open (work is safely on remote)
+    branch_name = f"crew/{crew_name}"
+    if not keep and _branch_has_open_pr(branch_name, work_dir):
+        print(f"   PR open for {branch_name} — cleaning up worktree.")
+        try:
+            manager.nuke_crew(crew_name, force=True)
+            print(f"   Worktree removed. Use `polecat crew -r {crew_name}` after merge.")
+        except (ValueError, RuntimeError) as e:
+            print(f"   Cleanup failed: {e}", file=sys.stderr)
+            print(f"   Manual cleanup: polecat nuke-crew {crew_name}")
+    else:
+        print(f"   Worktrees preserved at: {manager.crew_dir / crew_name}")
+        print(f"   To resume: polecat crew -r {crew_name}")
+        print(f"   To nuke:   polecat nuke-crew {crew_name}")
+
+
+@main.command("nuke-crew")
+@click.argument("name")
+@click.option("--force", "-f", is_flag=True, help="Delete even if work is not merged")
+@click.pass_context
+def nuke_crew(ctx, name, force):
+    """Remove a crew worker and their worktrees."""
+    manager = PolecatManager(home_dir=ctx.obj.get("home"))
+    try:
+        manager.nuke_crew(name, force=force)
+    except (ValueError, RuntimeError) as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+@main.command("list-crew")
+@click.pass_context
+def list_crew(ctx):
+    """List active crew workers."""
+    manager = PolecatManager(home_dir=ctx.obj.get("home"))
+    crew = manager.list_crew()
+    if not crew:
+        print("No active crew workers.")
+        return
+    print("Active crew workers:")
+    for name in crew:
+        crew_path = manager.crew_dir / name
+        projects = [d.name for d in crew_path.iterdir() if d.is_dir()]
+        print(f"  {name}: {', '.join(projects)}")
+
+
+def _fetch_github_issue(issue_ref: str, project: str | None) -> dict:
+    """Fetch a GitHub issue and return a dict with task-like fields.
+
+    Args:
+        issue_ref: GitHub issue reference. Accepted formats:
+            - "owner/repo#123"
+            - "https://github.com/owner/repo/issues/123"
+            - "#123" or "123" (requires --project to resolve the repo)
+        project: Polecat project slug, used to resolve bare issue numbers.
+
+    Returns:
+        Dict with keys: id, title, body, project, repo, number, url
+    """
+    import json
+    import re
+    import subprocess
+
+    repo = None
+    number = None
+
+    # Full URL: https://github.com/owner/repo/issues/123
+    url_match = re.match(r"https?://github\.com/([^/]+/[^/]+)/issues/(\d+)", issue_ref)
+    if url_match:
+        repo = url_match.group(1)
+        number = url_match.group(2)
+
+    # owner/repo#123
+    if not repo:
+        ref_match = re.match(r"([^/]+/[^#]+)#(\d+)", issue_ref)
+        if ref_match:
+            repo = ref_match.group(1)
+            number = ref_match.group(2)
+
+    # Bare #123 or 123
+    if not repo:
+        bare_match = re.match(r"#?(\d+)$", issue_ref)
+        if bare_match:
+            number = bare_match.group(1)
+            if not project:
+                print(
+                    f"Error: Bare issue number '{issue_ref}' requires --project to resolve the repo.",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+
+    if number is None:
+        print(f"Error: Could not parse issue reference: {issue_ref}", file=sys.stderr)
+        sys.exit(1)
+
+    gh_args = ["gh", "issue", "view", number, "--json", "title,body,number,url"]
+    if repo:
+        gh_args.extend(["--repo", repo])
+
+    try:
+        result = subprocess.run(gh_args, capture_output=True, text=True, check=True)
+    except FileNotFoundError:
+        print("Error: 'gh' CLI not found. Install: https://cli.github.com/", file=sys.stderr)
+        sys.exit(1)
+    except subprocess.CalledProcessError as e:
+        print(f"Error fetching issue: {e.stderr.strip()}", file=sys.stderr)
+        sys.exit(1)
+
+    data = json.loads(result.stdout)
+
+    # Synthesize a safe task ID for worktree/branch naming
+    repo_slug = repo.replace("/", "-") if repo else (project or "gh")
+    task_id = f"gh-{repo_slug}-{number}"
+
+    return {
+        "id": task_id,
+        "title": data.get("title", f"Issue #{number}"),
+        "body": data.get("body", ""),
+        "project": project,
+        "number": int(number),
+        "url": data.get("url", ""),
+        "repo": repo,
+    }
+
+
+class _IssueTask:
+    """Lightweight task-like object for GitHub issues.
+
+    Duck-types the attributes that setup_worktree and prompt_template need.
+    """
+
+    def __init__(self, issue_data: dict):
+        self.id = issue_data["id"]
+        self.title = issue_data["title"]
+        self.body = issue_data["body"]
+        self.project = issue_data["project"]
+        self.type = "task"
+        self.status = None
+        self.parent = None
+        self.priority = None
+        self.tags = []
+        self.soft_depends_on = []
+        self.assignee = None
+        self.issue_url = issue_data.get("url", "")
+        self.issue_number = issue_data.get("number")
+        self.issue_repo = issue_data.get("repo")
+
+
+@main.command()
+@click.option("--project", "-p", help="Project to claim tasks from")
+@click.option("--caller", "-c", default="polecat", help="Identity claiming the task")
+@click.option("--task-id", "-t", help="Specific task ID to run (skips claim)")
+@click.option("--issue", help="GitHub issue to run (owner/repo#N, URL, or #N with --project)")
+@click.option("--no-finish", is_flag=True, hidden=True, help="(Deprecated, no-op)")
+@click.option("--gemini", "-g", is_flag=True, help="Use Gemini CLI instead of Claude")
+@click.option("--interactive", "-i", is_flag=True, help="Run in interactive mode (not headless)")
+@click.option(
+    "--no-auto-finish",
+    is_flag=True,
+    help="Skip automatic 'polecat finish' on successful completion",
+)
+@click.pass_context
+def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no_auto_finish):
+    """Run a polecat cycle: claim → setup → work → finish.
+
+    Claims a task, spawns a worktree, and runs claude with the task context.
+    On successful completion (exit code 0), automatically runs `polecat finish`.
+
+    Examples:
+        polecat run -p aops              # Run next ready task from aops project
+        polecat run -t task-123          # Run specific task
+        polecat run --issue owner/repo#42  # Run a GitHub issue
+        polecat run --issue 42 -p writing  # Run issue #42 from writing project repo
+        polecat run -p aops --no-auto-finish  # Skip auto-finish on success
+    """
+    import subprocess
+
+    if issue and task_id:
+        print("Error: --issue and --task-id are mutually exclusive.", file=sys.stderr)
+        sys.exit(1)
+
+    manager = PolecatManager(home_dir=ctx.obj.get("home"))
+
+    # Step 1: Get/claim task (or fetch GitHub issue)
+    is_issue = False
+    if issue:
+        # GitHub issue path — fetch metadata, create lightweight task object
+        print(f"Fetching GitHub issue: {issue}...")
+        issue_data = _fetch_github_issue(issue, project)
+        task = _IssueTask(issue_data)
+        is_issue = True
+    elif task_id:
+        # Validate task ID before any operations
+        try:
+            validate_task_id_or_raise(task_id)
+        except TaskIDValidationError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+
+        task = manager.storage.get_task(task_id)
+        if not task:
+            print(f"Task not found: {task_id}", file=sys.stderr)
+            sys.exit(1)
+
+        # Claim if not already in progress
+        try:
+            from lib.task_model import TaskStatus
+
+            if task.status in (TaskStatus.DONE, TaskStatus.CANCELLED):
+                print(f"✅ Task {task_id} is already '{task.status.value}'.")
+                sys.exit(0)
+
+            # Refuse to re-dispatch tasks locked by an open PR (not yet merged).
+            # MERGE_READY/REVIEW/MERGING all mean a PR was filed and is pending.
+            # Even if status somehow reverted to ACTIVE, a pr_url/pr field signals prior work.
+            _LOCKED_STATUSES = (TaskStatus.MERGE_READY, TaskStatus.REVIEW, TaskStatus.MERGING)
+            pr_ref = task.pr_url or (f"#{task.pr}" if task.pr else None)
+            if task.status in _LOCKED_STATUSES or pr_ref:
+                print(
+                    f"🔒 Task {task_id} is locked "
+                    f"(status: {task.status.value}"
+                    + (f", PR: {pr_ref}" if pr_ref else "")
+                    + "). A PR already exists for this task — refusing to re-dispatch.",
+                    file=sys.stderr,
+                )
+                sys.exit(2)  # Exit 2 = locked; distinct from exit 1 (error) / exit 3 (empty queue)
+
+            if task.status == TaskStatus.ACTIVE:
+                task.status = TaskStatus.IN_PROGRESS
+                task.assignee = caller
+                manager.storage.save_task(task)
+        except ImportError:
+            pass
+    else:
+        print(f"Looking for ready tasks{' in project ' + project if project else ''}...")
+        task = manager.claim_next_task(caller, project)
+        if not task:
+            print("No ready tasks found.")
+            sys.exit(3)  # Exit 3 = queue empty. Swarm treats non-zero as "stop worker".
+
+    if is_issue:
+        print(f"🎯 Issue: {task.title} ({getattr(task, 'issue_url', '') or task.id})")
+    else:
+        print(f"🎯 Task: {task.title} ({task.id})")
+
+    # Step 2: Setup worktree
+    try:
+        worktree_path = manager.setup_worktree(task)
+        print(f"📁 Worktree: {worktree_path}")
+    except Exception as e:
+        print(f"Error setting up worktree: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    # Step 3: Build prompt from task context (self-contained, no /pull needed)
+    from polecat.prompt_template import build_polecat_prompt
+
+    # Build task body — for issues, prepend the issue URL for reference
+    task_body = task.body or ""
+    issue_url = getattr(task, "issue_url", "")
+    if is_issue and issue_url:
+        task_body = f"**GitHub Issue**: {issue_url}\n\n{task_body}"
+
+    # Resolve soft dependencies for context injection (local tasks only)
+    soft_deps = None
+    if not is_issue and task.soft_depends_on:
+        soft_deps = []
+        for dep_id in task.soft_depends_on:
+            dep_task = manager.storage.get_task(dep_id)
+            if dep_task:
+                soft_deps.append(
+                    {
+                        "id": dep_task.id,
+                        "title": dep_task.title,
+                        "status": dep_task.status.value
+                        if hasattr(dep_task.status, "value")
+                        else str(dep_task.status),
+                        "body": dep_task.body or "",
+                    }
+                )
+
+    prompt = build_polecat_prompt(
+        task_id=task.id,
+        task_title=task.title,
+        task_type=task.type.value if hasattr(task.type, "value") else str(task.type),  # type: ignore[reportAttributeAccessIssue]
+        task_project=task.project or "",
+        task_body=task_body,
+        task_meta={
+            "parent": task.parent,
+            "priority": task.priority,
+            "tags": task.tags,
+            "status": (task.status.value if hasattr(task.status, "value") else str(task.status))
+            if task.status is not None
+            else None,
+            "pr_url": getattr(task, "pr_url", None),
+            "pr": getattr(task, "pr", None),
+        },
+        soft_deps=soft_deps,
+        is_issue=is_issue,
+    )
+
+    # Step 4: Run agent in the worktree
+    # Choose CLI tool based on --gemini flag
+    cli_tool = "gemini" if gemini else "claude"
+    mode = "interactive" if interactive else "headless"
+    print(f"\n🤖 Starting {cli_tool} agent ({mode})...")
+    print("-" * 50)
+
+    # Build command - gemini and claude have different CLI interfaces
+    if gemini:
+        # Gemini CLI
+        cmd = [
+            "gemini",
+            "--approval-mode",
+            "yolo",
+        ]
+        # Note: Gemini CLI doesn't support --session-id; it uses --resume for session management
+        # For now, each polecat run starts a fresh session
+
+        if interactive:
+            # -i starts interactive mode with initial prompt
+            cmd.extend(["-i", prompt])
+        else:
+            # Headless mode with auto-approve
+            cmd.extend(["-p", prompt])
+    else:
+        # Claude CLI
+        cmd = [
+            "claude",
+            "--dangerously-skip-permissions",
+            "--setting-sources=user,project",
+        ]
+
+        if interactive:
+            # Interactive: just append the prompt as positional arg
+            cmd.append(prompt)
+        else:
+            # Headless: use -p for print mode
+            cmd.extend(["-p", prompt])
+
+    # Set session type environment variable for hooks to detect
+    # Use sanitized env: SSH stripped, git auth set to bot token only
+    env = _make_worker_env()
+    env["POLECAT_SESSION_TYPE"] = "polecat"
+
+    if interactive:
+        set_terminal_title(f"polecat:{task.id}")
+    try:
+        if interactive:
+            # In interactive mode, we MUST NOT capture output or it will hang
+            # and we want the user to see/interact with the CLI
+            result = subprocess.run(
+                cmd,
+                cwd=worktree_path,
+                env=env,
+            )
+            exit_code = result.returncode
+            # No transcript to analyze in interactive mode (currently)
+        else:
+            result = subprocess.run(
+                cmd,
+                cwd=worktree_path,
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+            exit_code = result.returncode
+            # Display agent output after run
+            if result.stdout:
+                print(result.stdout)
+            if result.stderr:
+                print(result.stderr, file=sys.stderr)
+
+            # Save transcript to $AOPS_SESSIONS/polecats/<task-id>.jsonl
+            try:
+                transcript_path = save_worker_transcript(
+                    task_id=task.id,
+                    stdout=result.stdout,
+                    stderr=result.stderr,
+                    exit_code=exit_code,
+                    agent_type=cli_tool,
+                    home_dir=manager.home_dir,
+                )
+                print(f"📝 Transcript saved: {transcript_path}")
+            except OSError as e:
+                print(f"⚠️  Warning: Failed to save transcript: {e}", file=sys.stderr)
+
+            # Analyze the transcript for failures
+            analyze_func = getattr(manager, "analyze_transcript", None)
+            if analyze_func:
+                analyze_func(task, result.stdout, result.stderr)
+
+    except FileNotFoundError:
+        print(f"Error: '{cli_tool}' command not found.", file=sys.stderr)
+        sys.exit(1)
+    except KeyboardInterrupt:
+        print("\n\n⚠️  Agent interrupted by user")
+        exit_code = 130
+    finally:
+        if interactive:
+            reset_terminal_title()
+
+    print("-" * 50)
+
+    # Step 5: Auto-finish on success (unless disabled)
+    if exit_code == 0:
+        print("\n✅ Agent completed successfully.")
+
+        # Check for completion signals in stdout/stderr (e.g. fix already deployed)
+        # This allows us to auto-finish even if no git changes were detected.
+        auto_force_done = False
+        completion_signals = [
+            "verified complete",
+            "fix already deployed",
+            "no changes needed",
+            "work already done",
+            "verified the change is present",
+            "verified the fix is already there",
+            "task already completed",
+            "already been completed",
+        ]
+
+        # Use result.stdout if it exists (not captured in interactive mode)
+        agent_output = ""
+        try:
+            if not interactive and result.stdout:
+                stdout = (
+                    result.stdout
+                    if isinstance(result.stdout, str)
+                    else result.stdout.decode("utf-8", errors="replace")
+                )
+                agent_output += stdout
+            if not interactive and result.stderr:
+                stderr = (
+                    result.stderr
+                    if isinstance(result.stderr, str)
+                    else result.stderr.decode("utf-8", errors="replace")
+                )
+                agent_output += stderr
+        except (AttributeError, NameError):
+            pass
+
+        if agent_output:
+            for signal in completion_signals:
+                if signal.lower() in agent_output.lower():
+                    print(f"✨ Found completion signal: '{signal}'")
+                    auto_force_done = True
+                    break
+
+        if not no_auto_finish:
+            print("🔄 Running auto-finish...")
+            # Change to worktree directory and invoke finish directly
+            original_cwd = os.getcwd()
+            try:
+                os.chdir(worktree_path)
+                # Pass force_done if we detected a completion signal
+                ctx.invoke(finish, no_push=False, do_nuke=True, force_done=auto_force_done)
+                print("✅ Auto-finish completed.")
+            except SystemExit as e:
+                if e.code != 0:
+                    print("⚠️  Auto-finish failed.")
+                    print(f"   You can retry manually: cd {worktree_path} && polecat finish")
+            except Exception as e:
+                print(f"⚠️  Auto-finish failed: {e}")
+                print(f"   You can retry manually: cd {worktree_path} && polecat finish")
+            finally:
+                os.chdir(original_cwd)
+        else:
+            print("📝 Auto-finish disabled. Run `polecat finish` when ready.")
+            print(f"   Worktree: {worktree_path}")
+    else:
+        print(f"\n⚠️  Agent exited with code {exit_code}. Skipping auto-finish.")
+        print(f"   Worktree: {worktree_path}")
+        print(f"   To finish manually: cd {worktree_path} && polecat finish")
+
+
+@main.command()
+@click.argument("task_id")
+@click.option("--transcript-lines", "-n", default=20, help="Number of transcript lines to show")
+@click.pass_context
+def analyze(ctx, task_id, transcript_lines):
+    """Diagnose a stalled or failed task.
+
+    Shows task metadata, worktree status, transcript tail, and suggested
+    remediation actions for tasks that are stuck in_progress.
+
+    Examples:
+        polecat analyze aops-abc12345     # Full diagnostic
+        polecat analyze aops-abc12345 -n 50  # Show more transcript
+    """
+    from datetime import datetime
+
+    # Validate task ID
+    try:
+        validate_task_id_or_raise(task_id)
+    except TaskIDValidationError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    manager = PolecatManager(home_dir=ctx.obj.get("home"))
+
+    # Load task
+    task = manager.storage.get_task(task_id)
+    if not task:
+        print(f"❌ Task not found: {task_id}", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"🔍 Analyzing task: {task_id}")
+    print("=" * 60)
+
+    # --- Section 1: Task Metadata ---
+    print("\n📋 TASK METADATA")
+    print(f"   Title:    {task.title}")
+    print(f"   Status:   {task.status.value if hasattr(task.status, 'value') else task.status}")
+    print(f"   Assignee: {task.assignee or '(none)'}")
+    print(f"   Project:  {task.project or 'aops'}")
+    print(f"   Priority: P{task.priority}")
+
+    # Calculate staleness
+    if task.modified:
+        now = datetime.now().astimezone()
+        modified = task.modified
+        if modified.tzinfo is None:
+            modified = modified.replace(tzinfo=UTC)
+        age = now - modified
+        hours = age.total_seconds() / 3600
+        print(f"   Modified: {modified.isoformat()} ({hours:.1f}h ago)")
+
+        # Flag staleness
+        if hours > 4:
+            print(f"   ⚠️  STALE: No activity for {hours:.1f} hours")
+
+    # --- Section 2: Worktree Status ---
+    print("\n📁 WORKTREE STATUS")
+    worktree_path = manager.polecats_dir / task_id
+
+    if not worktree_path.exists():
+        print(f"   ❌ Worktree not found at {worktree_path}")
+        print("   💡 Suggestion: Task may not have been started, or worktree was nuked")
+    else:
+        print(f"   ✓ Worktree exists at {worktree_path}")
+
+        # Check git status
+        import subprocess
+
+        git_status = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=worktree_path,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        if git_status.returncode == 0:
+            if git_status.stdout.strip():
+                changes = git_status.stdout.strip().split("\n")
+                print(f"   ⚠️  Uncommitted changes ({len(changes)} files):")
+                for line in changes[:5]:
+                    print(f"      {line}")
+                if len(changes) > 5:
+                    print(f"      ... and {len(changes) - 5} more")
+            else:
+                print("   ✓ Working tree clean")
+        else:
+            print(f"   ❌ Git status failed: {git_status.stderr.strip()}")
+
+        # Check branch and commits
+        branch_result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=worktree_path,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if branch_result.returncode == 0:
+            branch = branch_result.stdout.strip()
+            print(f"   Branch: {branch}")
+
+            # Check commits ahead of main
+            commits_result = subprocess.run(
+                ["git", "log", "--oneline", "origin/main..HEAD"],
+                cwd=worktree_path,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if commits_result.returncode == 0 and commits_result.stdout.strip():
+                commits = commits_result.stdout.strip().split("\n")
+                print(f"   Commits ahead of main ({len(commits)}):")
+                for commit in commits[:3]:
+                    print(f"      {commit}")
+                if len(commits) > 3:
+                    print(f"      ... and {len(commits) - 3} more")
+            else:
+                print("   No commits ahead of main")
+
+    # --- Section 3: Transcript (if available) ---
+    print("\n📜 TRANSCRIPT")
+    try:
+        from lib.paths import get_polecat_transcripts_dir, get_sessions_repo
+
+        sessions = get_sessions_repo()
+        # Try primary location
+        transcript_path = sessions / "polecats" / f"{task_id}.jsonl"
+        if not transcript_path.exists():
+            # Try fallback location
+            fallback_path = sessions / "transcripts" / "polecats" / f"{task_id}.jsonl"
+            if fallback_path.exists():
+                transcript_path = fallback_path
+            else:
+                # Default to canonical directory
+                transcript_path = get_polecat_transcripts_dir() / f"{task_id}.jsonl"
+    except ImportError:
+        transcript_path = manager.home_dir / "transcripts" / f"{task_id}.jsonl"
+
+    if not transcript_path.exists():
+        print(f"   (No transcript found at {transcript_path})")
+        print("   💡 Transcript capture may not be enabled yet")
+    else:
+        import json
+
+        try:
+            # Read last N lines
+            with open(transcript_path) as f:
+                lines = f.readlines()
+
+            if not lines:
+                print("   (Transcript file is empty)")
+            else:
+                print(
+                    f"   Showing last {min(transcript_lines, len(lines))} of {len(lines)} entries:"
+                )
+                print()
+                for line in lines[-transcript_lines:]:
+                    try:
+                        entry = json.loads(line)
+                        # Format depends on transcript structure
+                        if "type" in entry:
+                            print(
+                                f"   [{entry.get('type', '?')}] {entry.get('message', entry.get('content', str(entry)[:80]))}"
+                            )
+                        else:
+                            print(f"   {str(entry)[:100]}")
+                    except json.JSONDecodeError:
+                        print(f"   {line.strip()[:100]}")
+        except Exception as e:
+            print(f"   ❌ Failed to read transcript: {e}")
+
+    # --- Section 4: Suggested Remediation ---
+    print("\n💡 SUGGESTED ACTIONS")
+
+    status_str = task.status.value if hasattr(task.status, "value") else str(task.status)
+
+    if status_str == "in_progress":
+        if not worktree_path.exists():
+            print("   1. Task claimed but no worktree - may have crashed during setup")
+            print(
+                f"      → Reset: polecat reset-stalled --hours 0 --project {task.project or 'aops'}"
+            )
+            print("      → Or retry: polecat run -t {task_id}")
+        elif hours > 4:
+            print("   1. Task appears stalled (no activity > 4h)")
+            print("      → Check if agent is still running")
+            print("      → Reset if abandoned: polecat reset-stalled")
+            print(f"      → Or manually finish: cd {worktree_path} && polecat finish")
+        else:
+            print("   1. Task is in progress and appears active")
+            print("      → Wait for agent to complete, or check logs")
+    elif status_str == "merge_ready":
+        print("   1. Task ready to merge")
+        print("      → Run: polecat merge")
+    elif status_str == "review":
+        print("   1. Task needs human review before merging")
+        print(f"      → Review changes: cd {worktree_path}")
+        print("      → Then set status to merge_ready or fix issues")
+    elif status_str == "blocked":
+        print("   1. Task is blocked")
+        print("      → Check task body for blocker details")
+        if task.depends_on:
+            print(f"      → Depends on: {', '.join(task.depends_on)}")
+    elif status_str == "done":
+        print("   1. Task is already complete ✓")
+        if worktree_path.exists():
+            print(f"      → Consider cleanup: polecat nuke {task_id}")
+    else:
+        print(f"   Status is '{status_str}' - no specific suggestions")
+
+    print()
+
+
+@main.command("reset-stalled")
+@click.option("--project", "-p", help="Filter by project")
+@click.option("--hours", default=4.0, help="Hours since last modification (default: 4)")
+@click.option("--dry-run", is_flag=True, help="Show what would be reset without changing")
+@click.option(
+    "--force",
+    "-f",
+    is_flag=True,
+    help="Skip confirmation prompt (required in non-interactive mode)",
+)
+@click.pass_context
+def reset_stalled(ctx, project, hours, dry_run, force):
+    """Reset stalled in_progress tasks back to active.
+
+    Finds tasks that have been in_progress for > N hours and resets them.
+    Useful for cleaning up after crashed/abandoned agents.
+    """
+    from datetime import datetime, timedelta
+
+    try:
+        from lib.task_index import TaskIndex
+        from lib.task_model import TaskStatus
+    except ImportError:
+        print(
+            "Error: Could not import task libraries. Ensure aops-core is available.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    manager = PolecatManager(home_dir=ctx.obj.get("home"))
+
+    # Calculate cutoff time
+    cutoff = datetime.now().astimezone() - timedelta(hours=hours)
+
+    print(f"Checking for tasks stalled since {cutoff.isoformat()}...")
+
+    # List tasks
+    candidates = manager.storage.list_tasks(status=TaskStatus.IN_PROGRESS, project=project)
+
+    stalled = []
+    pr_locked = []
+    for task in candidates:
+        # Ensure timezone awareness
+        task_mod = task.modified
+        if task_mod.tzinfo is None:
+            task_mod = task_mod.replace(tzinfo=UTC)
+
+        if task_mod < cutoff:
+            # Never reset tasks that have an open PR — they are locked by prior work.
+            if task.pr_url or task.pr:
+                pr_locked.append(task)
+            else:
+                stalled.append(task)
+
+    if pr_locked:
+        print(f"Skipping {len(pr_locked)} PR-locked tasks (have open PR — will not reset):")
+        for t in pr_locked:
+            pr_ref = t.pr_url or f"#{t.pr}"
+            print(f"  [{t.id}] {t.title} (PR: {pr_ref})")
+
+    if not stalled:
+        print("No stalled tasks found.")
+        return
+
+    print(f"Found {len(stalled)} stalled tasks (modified > {hours}h ago):")
+    for t in stalled:
+        print(f"  [{t.id}] {t.title} (modified: {t.modified.isoformat()})")
+
+    if dry_run:
+        print("\nDry run: no changes made.")
+        return
+
+    if not force:
+        print(f"\nError: This will reset {len(stalled)} tasks. Use --force to confirm.")
+        sys.exit(1)
+
+    reset_count = 0
+    for task in stalled:
+        try:
+            task.status = TaskStatus.ACTIVE
+            task.assignee = None
+            manager.storage.save_task(task)
+            reset_count += 1
+        except Exception as e:
+            print(f"Failed to reset {task.id}: {e}", file=sys.stderr)
+
+    # Rebuild index
+    if reset_count > 0:
+        try:
+            # Try to get data root from storage or use default
+            data_root = manager.storage.data_root
+            index = TaskIndex(data_root)
+            index.rebuild_fast()
+            print("Index rebuilt.")
+        except Exception as e:
+            print(f"Warning: Failed to rebuild index: {e}", file=sys.stderr)
+
+    print(f"\n✅ Reset {reset_count} tasks.")
+
+
+def _send_notification(title: str, message: str, urgency: str = "normal"):
+    """Send a desktop notification via notify-send if available.
+
+    Args:
+        title: Notification title
+        message: Notification body
+        urgency: low, normal, or critical
+    """
+    import shutil
+
+    print(f"[{urgency.upper()}] {title}: {message}")
+
+    if shutil.which("notify-send"):
+        try:
+            import subprocess
+
+            subprocess.run(
+                ["notify-send", "-u", urgency, title, message],
+                check=False,
+                capture_output=True,
+            )
+        except Exception:
+            pass
+
+
+@main.command()
+@click.option(
+    "--interval",
+    "-i",
+    default=300,
+    help="Polling interval in seconds (default: 300 = 5 min)",
+)
+@click.option(
+    "--stall-threshold",
+    "-s",
+    default=30,
+    help="Minutes without progress before stall alert (default: 30)",
+)
+@click.option("--project", "-p", help="Project to monitor (default: all)")
+@click.pass_context
+def watch(ctx, interval, stall_threshold, project):
+    """Monitor swarm activity and send desktop notifications.
+
+    Runs as a background process that:
+    - Polls for new PRs and merge_ready tasks
+    - Sends notification when a new PR is filed
+    - Alerts if swarm stalls (no progress in threshold minutes)
+
+    Examples:
+        polecat watch              # Default: poll every 5min, stall at 30min
+        polecat watch -i 60        # Poll every 60 seconds
+        polecat watch -s 60        # Alert after 60min of no progress
+        polecat watch &            # Run in background
+    """
+    import signal
+    import time
+    from datetime import datetime, timedelta
+
+    try:
+        from lib.task_model import TaskStatus
+    except ImportError:
+        print("Error: Could not import task libraries.", file=sys.stderr)
+        sys.exit(1)
+
+    manager = PolecatManager(home_dir=ctx.obj.get("home"))
+
+    # Track seen PRs and last activity time
+    seen_merge_ready = set()
+    seen_review = set()
+    last_activity = datetime.now().astimezone()
+
+    # Graceful shutdown
+    stop_requested = False
+
+    def handle_signal(signum, frame):
+        nonlocal stop_requested
+        print("\nShutting down watch...")
+        stop_requested = True
+
+    signal.signal(signal.SIGINT, handle_signal)
+    signal.signal(signal.SIGTERM, handle_signal)
+
+    print("Starting polecat watch...")
+    print(f"  Polling interval: {interval}s")
+    print(f"  Stall threshold: {stall_threshold}min")
+    print(f"  Project filter: {project or 'all'}")
+    print("  Press Ctrl+C to stop.\n")
+
+    # Initial scan to populate seen sets (don't alert on startup)
+    try:
+        merge_ready_tasks = manager.storage.list_tasks(
+            status=TaskStatus.MERGE_READY, project=project
+        )
+        for task in merge_ready_tasks:
+            seen_merge_ready.add(task.id)
+
+        review_tasks = manager.storage.list_tasks(status=TaskStatus.REVIEW, project=project)
+        for task in review_tasks:
+            seen_review.add(task.id)
+
+        print(f"Initial state: {len(seen_merge_ready)} merge_ready, {len(seen_review)} review")
+    except Exception as e:
+        print(f"Warning: Initial scan failed: {e}")
+
+    while not stop_requested:
+        try:
+            now = datetime.now().astimezone()
+
+            # Check for new merge_ready tasks (new PRs filed)
+            merge_ready_tasks = manager.storage.list_tasks(
+                status=TaskStatus.MERGE_READY, project=project
+            )
+            for task in merge_ready_tasks:
+                if task.id not in seen_merge_ready:
+                    seen_merge_ready.add(task.id)
+                    last_activity = now
+                    _send_notification(
+                        "PR Filed",
+                        f"{task.id}: {task.title}",
+                        urgency="normal",
+                    )
+
+            # Check for new review tasks (merge failures)
+            review_tasks = manager.storage.list_tasks(status=TaskStatus.REVIEW, project=project)
+            for task in review_tasks:
+                if task.id not in seen_review:
+                    seen_review.add(task.id)
+                    last_activity = now
+                    _send_notification(
+                        "Review Needed",
+                        f"{task.id}: {task.title}",
+                        urgency="critical",
+                    )
+
+            # Check for completed tasks (mark as activity)
+            manager.storage.list_tasks(status=TaskStatus.DONE, project=project)
+            # We don't track done tasks, but finding new ones means progress
+            # This is a simplification - in production you'd track these too
+
+            # Check for in_progress tasks (active work)
+            in_progress = manager.storage.list_tasks(status=TaskStatus.IN_PROGRESS, project=project)
+            if in_progress:
+                # Check if any were modified recently
+                for task in in_progress:
+                    task_mod = task.modified
+                    if task_mod.tzinfo is None:
+                        task_mod = task_mod.replace(tzinfo=UTC)
+                    if task_mod > last_activity:
+                        last_activity = task_mod
+
+            # Check for stall
+            stall_cutoff = now - timedelta(minutes=stall_threshold)
+            if last_activity < stall_cutoff:
+                minutes_stalled = int((now - last_activity).total_seconds() / 60)
+                _send_notification(
+                    "Swarm Stalled",
+                    f"No progress in {minutes_stalled} minutes",
+                    urgency="critical",
+                )
+                # Reset to avoid spamming alerts
+                last_activity = now
+
+            # Status line
+            active_count = len(in_progress)
+            ready_count = len(merge_ready_tasks)
+            review_count = len(review_tasks)
+            timestamp = now.strftime("%H:%M:%S")
+            print(
+                f"[{timestamp}] active={active_count} merge_ready={ready_count} review={review_count}"
+            )
+
+        except Exception as e:
+            print(f"Error during poll: {e}")
+
+        # Sleep in small chunks to allow interrupt
+        for _ in range(interval):
+            if stop_requested:
+                break
+            time.sleep(1)
+
+    print("Watch stopped.")
+
+
+@main.command()
+@click.option("--claude", "-c", default=0, help="Number of Claude workers")
+@click.option("--gemini", "-g", default=0, help="Number of Gemini workers")
+@click.option("--project", "-p", help="Project to focus on (default: all)")
+@click.option("--caller", default="polecat", help="Identity claiming the tasks (default: bot)")
+@click.option("--dry-run", is_flag=True, help="Simulate execution")
+@click.pass_context
+def swarm(ctx, claude, gemini, project, caller, dry_run):
+    """Run a swarm of parallel Polecat workers.
+
+    Spawns N claude and M gemini workers, managing CPU affinity.
+    Restarting workers on success, stopping on failure.
+    """
+    try:
+        from swarm import run_swarm
+    except ImportError:
+        # Fallback for when running as script in same dir
+        try:
+            from .swarm import run_swarm
+        except ImportError:
+            # Last ditch for direct execution
+            try:
+                import swarm as swarm_module
+
+                run_swarm = swarm_module.run_swarm
+            except ImportError:
+                print("Error: Could not import swarm module.", file=sys.stderr)
+                sys.exit(1)
+
+    home = ctx.obj.get("home")
+    run_swarm(claude, gemini, project, caller, dry_run, str(home) if home else None)
+
+
+@main.command()
+@click.option("--project", "-p", required=True, help="Project to pull tasks from")
+@click.option(
+    "--max-pairs", "-n", default=3, help="Max (task, runner) pairs per round (default: 3)"
+)
+@click.option("--max-rounds", default=10, help="Max supervisor loop iterations (default: 10)")
+@click.option(
+    "--supervisor",
+    type=click.Choice(["claude", "gemini"]),
+    default="claude",
+    help="Which LLM to use as supervisor (default: claude)",
+)
+@click.option("--model", default=None, help="Model override for supervisor LLM")
+@click.option("--dry-run", is_flag=True, help="Show what would be dispatched without running")
+def supervise(project, max_pairs, max_rounds, supervisor, model, dry_run):
+    """LLM-driven supervisor loop: plan, dispatch, verify, repeat.
+
+    Each round: an LLM reviews the task queue, selects tasks to dispatch,
+    workers run in parallel, then the LLM verifies results before continuing.
+    """
+    try:
+        from supervisor_loop import supervisor_loop
+    except ImportError:
+        try:
+            from .supervisor_loop import supervisor_loop
+        except ImportError:
+            print("Error: Could not import supervisor_loop module.", file=sys.stderr)
+            sys.exit(1)
+
+    supervisor_loop(
+        project=project,
+        max_pairs=max_pairs,
+        max_rounds=max_rounds,
+        supervisor=supervisor,
+        model=model,
+        dry_run=dry_run,
+    )
+
+
+def parse_duration(duration_str: str) -> int:
+    """Parse a duration string like '8h', '1d', '30m' into seconds.
+
+    Args:
+        duration_str: Duration string with suffix h (hours), d (days), or m (minutes)
+
+    Returns:
+        Duration in seconds
+
+    Raises:
+        ValueError: If format is invalid
+    """
+    if not duration_str:
+        raise ValueError("Duration string cannot be empty")
+
+    duration_str = duration_str.strip().lower()
+
+    # Handle numeric-only input (default to hours)
+    if duration_str.isdigit():
+        return int(duration_str) * 3600
+
+    if len(duration_str) < 2:
+        raise ValueError(f"Invalid duration format: {duration_str}")
+
+    value_str = duration_str[:-1]
+    unit = duration_str[-1]
+
+    try:
+        value = float(value_str)
+    except ValueError as e:
+        raise ValueError(f"Invalid duration value: {value_str}") from e
+
+    multipliers = {
+        "m": 60,  # minutes
+        "h": 3600,  # hours
+        "d": 86400,  # days
+    }
+
+    if unit not in multipliers:
+        raise ValueError(f"Unknown duration unit: {unit}. Use m, h, or d")
+
+    return int(value * multipliers[unit])
+
+
+@main.command()
+@click.option(
+    "--since",
+    "-s",
+    default="8h",
+    help="Time period to summarize (e.g., 8h, 1d, 30m). Default: 8h",
+)
+@click.option("--project", "-p", help="Filter by project (default: all)")
+@click.pass_context
+def summary(ctx, since, project):
+    """Generate a summary of polecat swarm work.
+
+    Shows merged PRs, completed tasks, and queue changes for the specified
+    time period. Output is markdown suitable for daily notes.
+
+    Examples:
+        polecat summary                # Last 8 hours
+        polecat summary --since 1d     # Last day
+        polecat summary -s 4h -p aops  # Last 4 hours, aops only
+    """
+    import json
+    import subprocess
+    from datetime import datetime, timedelta
+
+    try:
+        from lib.task_model import TaskStatus
+    except ImportError:
+        print(
+            "Error: Could not import task libraries. Ensure aops-core is available.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    manager = PolecatManager(home_dir=ctx.obj.get("home"))
+
+    # Parse the duration
+    try:
+        seconds = parse_duration(since)
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    cutoff = datetime.now().astimezone() - timedelta(seconds=seconds)
+    cutoff_iso = cutoff.strftime("%Y-%m-%dT%H:%M:%S")
+
+    # Format duration for display
+    if seconds >= 86400:
+        duration_display = f"{seconds // 86400} day(s)"
+    elif seconds >= 3600:
+        duration_display = f"{seconds // 3600} hour(s)"
+    else:
+        duration_display = f"{seconds // 60} minute(s)"
+
+    print(f"## Polecat Swarm Summary (last {duration_display})")
+    print()
+
+    # --- Merged PRs ---
+    print("### PRs Merged")
+    print()
+
+    merged_prs = []
+    try:
+        # Query GitHub for merged PRs
+        # gh pr list --state merged returns PRs merged, filtered by date
+        gh_cmd = [
+            "gh",
+            "pr",
+            "list",
+            "--state",
+            "merged",
+            "--search",
+            f"merged:>{cutoff_iso[:10]}",  # Date only for search
+            "--json",
+            "number,title,mergedAt,headRefName",
+            "--limit",
+            "100",
+        ]
+
+        result = subprocess.run(gh_cmd, capture_output=True, text=True, check=False)
+
+        if result.returncode == 0 and result.stdout.strip():
+            all_prs = json.loads(result.stdout)
+
+            # Filter by actual merged time (gh search is date-only)
+            for pr in all_prs:
+                merged_at = pr.get("mergedAt", "")
+                if merged_at:
+                    # Parse ISO timestamp
+                    try:
+                        merged_dt = datetime.fromisoformat(merged_at.replace("Z", "+00:00"))
+                        if merged_dt >= cutoff:
+                            # Filter by project if specified
+                            if project:
+                                # Check if branch matches project pattern
+                                branch = pr.get("headRefName", "")
+                                if not branch.startswith("polecat/"):
+                                    continue
+                            merged_prs.append(pr)
+                    except (ValueError, TypeError):
+                        pass
+
+            if merged_prs:
+                print(f"**{len(merged_prs)} PRs merged**")
+                print()
+                for pr in merged_prs[:20]:  # Limit display
+                    print(f"- #{pr['number']}: {pr['title']}")
+                if len(merged_prs) > 20:
+                    print(f"- ... and {len(merged_prs) - 20} more")
+            else:
+                print("No PRs merged in this period.")
+        else:
+            print("(Could not query GitHub - gh CLI not available or not authenticated)")
+
+    except FileNotFoundError:
+        print("(GitHub CLI not installed)")
+    except Exception as e:
+        print(f"(GitHub query failed: {e})")
+
+    print()
+
+    # --- Completed Tasks ---
+    print("### Tasks Completed")
+    print()
+
+    completed_tasks = []
+    try:
+        # Get all done tasks and filter by modified time
+        all_done = manager.storage.list_tasks(status=TaskStatus.DONE, project=project)
+
+        for task in all_done:
+            task_mod = task.modified
+            # Handle both date and datetime objects
+            if hasattr(task_mod, "tzinfo"):
+                # It's a datetime
+                if task_mod.tzinfo is None:
+                    task_mod = task_mod.replace(tzinfo=UTC)
+            else:
+                # It's a date - convert to datetime at midnight UTC
+                task_mod = datetime.combine(task_mod, datetime.min.time(), tzinfo=UTC)
+
+            if task_mod >= cutoff:
+                completed_tasks.append(task)
+
+        if completed_tasks:
+            print(f"**{len(completed_tasks)} tasks completed**")
+            print()
+            for task in completed_tasks[:20]:
+                print(f"- [{task.id}] {task.title}")
+            if len(completed_tasks) > 20:
+                print(f"- ... and {len(completed_tasks) - 20} more")
+        else:
+            print("No tasks completed in this period.")
+
+    except Exception as e:
+        print(f"(Task query failed: {e})")
+
+    print()
+
+    # --- Queue Status ---
+    print("### Queue Status")
+    print()
+
+    try:
+        # Count tasks by status
+        ready_tasks = manager.storage.get_ready_tasks(project=project)
+        in_progress = manager.storage.list_tasks(status=TaskStatus.IN_PROGRESS, project=project)
+        blocked = manager.storage.list_tasks(status=TaskStatus.BLOCKED, project=project)
+        review = manager.storage.list_tasks(status=TaskStatus.REVIEW, project=project)
+        merge_ready = manager.storage.list_tasks(status=TaskStatus.MERGE_READY, project=project)
+
+        print(f"- **Ready**: {len(ready_tasks)} tasks")
+        print(f"- **In Progress**: {len(in_progress)} tasks")
+        print(f"- **Blocked**: {len(blocked)} tasks")
+        print(f"- **Review**: {len(review)} tasks")
+        print(f"- **Merge Ready**: {len(merge_ready)} tasks")
+        print(f"- **Completed** (this period): {len(completed_tasks)} tasks")
+
+    except Exception as e:
+        print(f"(Queue status query failed: {e})")
+
+    print()
+
+    # --- Active Workers ---
+    print("### Active Workers")
+    print()
+
+    try:
+        # Count active polecats (worktrees)
+        exclude = {".repos", "crew", ".git"}
+        active_polecats = [
+            d.name
+            for d in manager.polecats_dir.iterdir()
+            if d.is_dir() and not d.name.startswith(".") and d.name not in exclude
+        ]
+
+        # Count crew workers
+        crew_workers = manager.list_crew()
+
+        if active_polecats:
+            print(f"- **Polecats**: {len(active_polecats)} active worktrees")
+        else:
+            print("- **Polecats**: None active")
+
+        if crew_workers:
+            print(f"- **Crew**: {len(crew_workers)} workers ({', '.join(crew_workers)})")
+        else:
+            print("- **Crew**: None active")
+
+    except Exception as e:
+        print(f"(Worker status query failed: {e})")
+
+    print()
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,34 @@
+name: release-please
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          # Uses the default GITHUB_TOKEN. If release PR merges need to
+          # trigger other workflows (e.g. build-extension), switch to a PAT:
+          #   token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+      # GITHUB_TOKEN cannot trigger other workflows (tag push / release events
+      # are ignored). Use a PAT with `gh workflow run` to trigger the build via
+      # a workflow_dispatch event.
+      - name: Trigger build-extension workflow
+        if: ${{ steps.release.outputs.release_created }}
+        env:
+          GH_TOKEN: ${{ secrets.AOPS_DIST_PAT }}
+        run: |
+          gh workflow run build-extension.yml --repo ${{ github.repository }} --ref refs/tags/${{ steps.release.outputs.tag_name }}

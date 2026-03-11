@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ec5b13",
+                        "background-light": "#f8f6f6",
+                        "background-dark": "#221610",
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Public Sans', sans-serif; }
+        .treemap-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            gap: 4px;
+        }
+        .dependency-line {
+            position: absolute;
+            pointer-events: none;
+            z-index: 10;
+            stroke: #ec5b13;
+            stroke-width: 1.5;
+            filter: drop-shadow(0 0 4px #ec5b13);
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 transition-colors duration-200">
+<div class="relative flex h-screen w-full flex-col overflow-hidden">
+<!-- Top Navigation Bar -->
+<header class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-background-dark px-6 py-3 z-30">
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-3 text-primary">
+<span class="material-symbols-outlined text-3xl">account_tree</span>
+<h2 class="text-slate-900 dark:text-white text-lg font-bold tracking-tight">Spectral Treemap</h2>
+</div>
+<div class="hidden md:flex items-center bg-slate-100 dark:bg-slate-800 rounded-xl px-3 py-1.5 border border-slate-200 dark:border-slate-700">
+<span class="material-symbols-outlined text-slate-500 text-sm">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-64 placeholder:text-slate-500" placeholder="Search nodes or dependencies..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-400">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-400">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center border border-primary/30 overflow-hidden">
+<img alt="User" data-alt="User profile avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDx1H-yneY3K91KJLVXiCC9w3iriO9l7VtfKETajYrGJfM_vHJEHX9qpmXcwG72xYsz62Vgm60EboFsIW74_wvG0THMKFyYKdv1IQ3wS5_GFVH0yJGHe2FwAomPMugyZ3wBrdcLNiyv_wYdlLRNyY4YgkHYgVgCyVI-dy5boeVxGBS5Nuxct3oH4yd8JIs2tBi2HBHCxKr3Cc7SuEoQhg0gGH3sj-qbrdreweS1q1OF9Y1ZFOurwIm1hg8WbMl2gjlb92m5BWPR1Rhr"/>
+</div>
+</div>
+</header>
+<div class="flex flex-1 overflow-hidden relative">
+<!-- Main Content: Treemap Area -->
+<main class="flex-1 relative bg-slate-100 dark:bg-background-dark/50 p-6 overflow-hidden flex flex-col">
+<!-- Breadcrumb Overlay -->
+<div class="flex items-center gap-2 mb-4 z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm self-start px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
+<span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Project Gamma</span>
+<span class="material-symbols-outlined text-sm text-slate-400">chevron_right</span>
+<span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Infrastructure</span>
+<span class="material-symbols-outlined text-sm text-slate-400">chevron_right</span>
+<span class="text-xs font-bold text-primary uppercase tracking-wider">Node-882: Database Scaling</span>
+</div>
+<div class="relative flex-1 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-black/20 shadow-inner">
+<!-- Treemap Layout Container -->
+<div class="absolute inset-0 p-4 treemap-grid opacity-30 pointer-events-none">
+<!-- Dimmed Background Nodes -->
+<div class="col-span-4 row-span-3 bg-slate-200 dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-700 p-2">
+<span class="text-[10px] text-slate-400 font-bold opacity-50">DEPARTMENT A</span>
+</div>
+<div class="col-span-2 row-span-5 bg-slate-200 dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-700"></div>
+<div class="col-span-6 row-span-2 bg-slate-200 dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-700"></div>
+<div class="col-span-3 row-span-4 bg-slate-200 dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-700"></div>
+<div class="col-span-3 row-span-2 bg-slate-200 dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-700"></div>
+<div class="col-span-4 row-span-3 bg-slate-200 dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-700"></div>
+<div class="col-span-2 row-span-3 bg-slate-200 dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-700"></div>
+</div>
+<!-- Highlighted Layer (Selected Node & Neighborhood) -->
+<div class="absolute inset-0 p-4 treemap-grid z-10">
+<!-- Spacer to align with background -->
+<div class="col-span-4 row-span-3"></div>
+<!-- Dependency Line (SVG) -->
+<svg class="absolute inset-0 w-full h-full pointer-events-none z-20">
+<!-- Line from Selected to Child -->
+<path class="dependency-line" d="M 520 280 L 680 400" fill="none"></path>
+<!-- Line from Selected to Dependency -->
+<path class="dependency-line" d="M 520 280 L 320 180" fill="none" stroke-dasharray="4"></path>
+</svg>
+<!-- Selected Node (Node-882) -->
+<div class="col-start-5 col-span-3 row-start-3 row-span-3 bg-white dark:bg-slate-900 rounded-xl border-4 border-primary shadow-2xl flex flex-col p-4 relative ring-8 ring-primary/10">
+<div class="flex justify-between items-start mb-2">
+<span class="bg-primary/10 text-primary text-[10px] font-bold px-2 py-0.5 rounded-full border border-primary/20 uppercase">In Progress</span>
+<span class="material-symbols-outlined text-primary text-xl">star</span>
+</div>
+<h3 class="text-sm font-bold leading-tight mb-1">Node-882: Database Scaling</h3>
+<p class="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2">Optimization of horizontal sharding logic for region-based clusters.</p>
+<div class="mt-auto flex items-center gap-2">
+<div class="flex -space-x-2">
+<div class="size-5 rounded-full border border-white dark:border-slate-900 bg-primary/20"></div>
+<div class="size-5 rounded-full border border-white dark:border-slate-900 bg-primary/40"></div>
+</div>
+<span class="text-[10px] font-medium text-slate-400">4 Subtasks</span>
+</div>
+<!-- Hierarchy Path Overlay on Node -->
+<div class="absolute -top-3 left-4 bg-primary text-white text-[9px] font-bold px-2 py-1 rounded shadow-lg uppercase tracking-widest whitespace-nowrap">
+                                Projects / Infrastructure / Scaling
+                            </div>
+</div>
+<!-- Neighbor: Child A -->
+<div class="col-start-8 col-span-2 row-start-5 row-span-2 bg-white dark:bg-slate-900 rounded-xl border border-primary/40 shadow-xl p-3 opacity-90">
+<span class="bg-slate-100 dark:bg-slate-800 text-slate-500 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase">Blocked</span>
+<h4 class="text-xs font-bold mt-2">Shard Rebalancer</h4>
+</div>
+<!-- Neighbor: Dependency Source -->
+<div class="col-start-3 col-span-2 row-start-2 row-span-2 bg-white dark:bg-slate-900 rounded-xl border border-primary/40 shadow-xl p-3 opacity-90">
+<span class="bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase">Done</span>
+<h4 class="text-xs font-bold mt-2">Core API V2</h4>
+</div>
+</div>
+<!-- Layout Controls -->
+<div class="absolute bottom-6 left-6 z-30 flex items-center gap-2">
+<div class="bg-white dark:bg-slate-900 rounded-lg shadow-lg border border-slate-200 dark:border-slate-800 p-1 flex">
+<button class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-600 dark:text-slate-400">
+<span class="material-symbols-outlined">zoom_in</span>
+</button>
+<button class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-600 dark:text-slate-400">
+<span class="material-symbols-outlined">zoom_out</span>
+</button>
+<div class="w-px bg-slate-200 dark:bg-slate-800 mx-1"></div>
+<button class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-600 dark:text-slate-400">
+<span class="material-symbols-outlined">filter_center_focus</span>
+</button>
+</div>
+<div class="bg-white dark:bg-slate-900 rounded-lg shadow-lg border border-slate-200 dark:border-slate-800 px-3 py-2 text-xs font-bold text-slate-500">
+                            12.5% SCALE
+                        </div>
+</div>
+</div>
+</main>
+<!-- Detail Panel (Right Side) -->
+<aside class="w-96 bg-white dark:bg-background-dark border-l border-slate-200 dark:border-slate-800 z-40 flex flex-col shadow-2xl">
+<div class="p-6 border-b border-slate-200 dark:border-slate-800">
+<div class="flex items-center justify-between mb-4">
+<span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Node Details</span>
+<button class="text-slate-400 hover:text-slate-600">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<div class="flex items-center gap-3 mb-2">
+<div class="h-10 w-2 bg-primary rounded-full"></div>
+<h2 class="text-xl font-bold">Node-882: Database Scaling</h2>
+</div>
+<div class="flex flex-wrap gap-2 mt-4">
+<div class="flex items-center gap-1.5 px-2 py-1 bg-primary/10 rounded text-primary text-[10px] font-bold">
+<span class="material-symbols-outlined text-sm">schedule</span>
+                            IN PROGRESS
+                        </div>
+<div class="flex items-center gap-1.5 px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-slate-600 dark:text-slate-400 text-[10px] font-bold border border-slate-200 dark:border-slate-700">
+<span class="material-symbols-outlined text-sm">priority_high</span>
+                            P0 CRITICAL
+                        </div>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto p-6 space-y-8">
+<!-- Dependencies Section -->
+<section>
+<h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center justify-between">
+                            Dependencies
+                            <span class="material-symbols-outlined text-sm">link</span>
+</h3>
+<div class="space-y-3">
+<div class="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700/50 flex items-center gap-3">
+<span class="material-symbols-outlined text-green-500">check_circle</span>
+<div class="flex-1">
+<p class="text-xs font-bold">Node-102: Core API V2</p>
+<p class="text-[10px] text-slate-500 uppercase">Input Dependency</p>
+</div>
+</div>
+<div class="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-primary/30 flex items-center gap-3 ring-2 ring-primary/5">
+<span class="material-symbols-outlined text-primary">error</span>
+<div class="flex-1">
+<p class="text-xs font-bold">Node-994: Shard Rebalancer</p>
+<p class="text-[10px] text-slate-500 uppercase">Output Dependency (Blocked)</p>
+</div>
+<span class="material-symbols-outlined text-slate-400 text-sm">arrow_forward</span>
+</div>
+</div>
+</section>
+<!-- Network View Snapshot -->
+<section>
+<h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Network Context</h3>
+<div class="aspect-square w-full rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 relative overflow-hidden group">
+<div class="absolute inset-0 flex items-center justify-center">
+<div class="relative w-24 h-24 border border-primary/20 rounded-full animate-pulse"></div>
+<div class="absolute w-2 h-2 bg-primary rounded-full shadow-[0_0_10px_#ec5b13]"></div>
+<div class="absolute top-10 right-10 w-1 h-1 bg-slate-400 rounded-full"></div>
+<div class="absolute bottom-12 left-8 w-1 h-1 bg-slate-400 rounded-full"></div>
+</div>
+<div class="absolute inset-0 bg-gradient-to-t from-white dark:from-background-dark via-transparent opacity-80"></div>
+<div class="absolute bottom-3 left-3">
+<p class="text-[10px] font-bold opacity-60">LOCAL CLUSTER VIEW</p>
+</div>
+<button class="absolute top-3 right-3 p-1.5 bg-white dark:bg-slate-800 rounded shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-sm">open_in_full</span>
+</button>
+</div>
+</section>
+<!-- Stats -->
+<section class="grid grid-cols-2 gap-4">
+<div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700/50">
+<p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Impact</p>
+<p class="text-xl font-display font-bold text-primary">88%</p>
+</div>
+<div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700/50">
+<p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Density</p>
+<p class="text-xl font-display font-bold">14.2</p>
+</div>
+</section>
+</div>
+<!-- Footer Action -->
+<div class="p-6 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
+<button class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">edit</span>
+                        Edit Node Parameters
+                    </button>
+</div>
+</aside>
+</div>
+</div>
+</body></html>

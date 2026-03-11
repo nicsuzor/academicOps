@@ -1,0 +1,84 @@
+# Decision Brief — posts a summary comment on the PR so the maintainer
+# knows what they're approving without reading 30 bot comments.
+#
+# Triggered by merge-prep on success via repository_dispatch (or manually via workflow_dispatch).
+# Merge happens via GitHub auto-merge (checks + human approval), not this workflow.
+#
+# See specs/pr-pipeline-v2.md for the full process documentation.
+
+name: "Decision Brief"
+
+on:
+  repository_dispatch:
+    types: [summary-and-merge]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to summarise and merge'
+        type: string
+        required: true
+
+jobs:
+  # ──────────────────────────────────────────────
+  # Job 1: Decision Brief
+  # ──────────────────────────────────────────────
+  summary:
+    name: Decision Brief
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      actions: read
+      statuses: read
+      id-token: write
+    outputs:
+      pr_number: ${{ inputs.pr_number || github.event.client_payload.pr_number }}
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PR_NUMBER: ${{ inputs.pr_number || github.event.client_payload.pr_number }}
+    steps:
+      - name: Validate PR number
+        run: |
+          if [ -z "$PR_NUMBER" ]; then
+            echo "Error: PR number is not set."
+            echo "Requires workflow_dispatch.inputs.pr_number or repository_dispatch.client_payload.pr_number"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read agent instructions
+        id: prompt
+        run: |
+          PROMPT=$(cat .github/agents/summary-brief.agent.md)
+          {
+            echo "prompt<<AGENT_EOF"
+            echo "$PROMPT"
+            echo "AGENT_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Generate decision brief
+        uses: anthropics/claude-code-action@v1
+        with:
+          allowed_bots: "claude[bot],github-actions[bot]"
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            ${{ steps.prompt.outputs.prompt }}
+
+            ---
+
+            Generate a decision brief for PR #${{ env.PR_NUMBER }} in repository ${{ github.repository }}.
+
+            Use these commands to gather context:
+            - `gh pr view ${{ env.PR_NUMBER }}` — PR description and metadata
+            - `gh pr diff ${{ env.PR_NUMBER }}` — the diff
+            - `gh api repos/${{ github.repository }}/pulls/${{ env.PR_NUMBER }}/reviews` — all reviews
+            - `gh api repos/${{ github.repository }}/pulls/${{ env.PR_NUMBER }}/comments` — inline comments
+            - `gh api repos/${{ github.repository }}/issues/${{ env.PR_NUMBER }}/comments` — issue comments
+
+            Post the decision brief as a PR comment using `gh pr comment ${{ env.PR_NUMBER }}`.
+
+          claude_args: '--model claude-sonnet-4-6 --allowed-tools "Bash(gh:*),Read"'

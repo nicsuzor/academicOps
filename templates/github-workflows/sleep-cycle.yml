@@ -1,0 +1,105 @@
+# Sleep Cycle: Periodic Consolidation Agent
+# Runs in the brain ($ACA_DATA) repo on a schedule.
+# Launches a Claude agent that works through consolidation phases using judgment.
+#
+# Install: copy this file to $ACA_DATA/.github/workflows/sleep-cycle.yml
+
+name: Sleep Cycle
+
+on:
+  schedule:
+    - cron: '0 */4 * * *' # Every 4 hours
+  workflow_dispatch:
+    inputs:
+      focus:
+        description: 'Optional focus area (e.g., "staleness only", "backfill and triage")'
+        required: false
+        type: string
+
+jobs:
+  sleep-cycle:
+    name: Sleep Cycle
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+
+    steps:
+      - name: Checkout brain repo
+        uses: actions/checkout@v4
+
+      - name: Checkout academicOps
+        uses: actions/checkout@v4
+        with:
+          repository: nicsuzor/academicOps
+          path: _aops
+          token: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Install academicOps dependencies
+        working-directory: _aops
+        run: uv sync --frozen
+
+      - name: Run sleep cycle agent
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            You are the Sleep Cycle consolidation agent. Your job is to do periodic
+            offline maintenance of the brain repo — like neural sleep consolidation.
+
+            Work through these phases in order. Use your judgment about what needs
+            attention. Skip phases where there's nothing to do.
+
+            ## Environment
+            - Brain repo (data): ${{ github.workspace }}
+            - academicOps (code): ${{ github.workspace }}/_aops
+            - Full spec: ${{ github.workspace }}/_aops/specs/sleep-cycle.md
+
+            ## Phase 1: Session Backfill
+            Check for session transcripts without insights. If found, run:
+            `uv run python _aops/aops-core/scripts/transcript.py --recent`
+
+            ## Phase 2: Episode Replay
+            Scan recent git activity (commits, task changes since last run).
+            Identify knowledge that should be promoted to a named consumer
+            (MEMORY.md, PKB, framework files). Stage candidates — don't auto-create
+            knowledge docs from unverified fragments.
+
+            ## Phase 3: Framework Index Refresh
+            Check if _aops/aops-core/ index files (SKILLS.md, INDEX.md) are stale.
+            Update mechanical indices only. Flag governance docs for human review via PR.
+
+            ## Phase 4: Staleness Sweep
+            Run the task quality triage tool as ONE signal:
+            `uv run python _aops/aops-core/skills/garden/scripts/triage_tasks.py . --recursive --format json`
+
+            But also use your own judgment: look at the tasks it flags and decide
+            whether they genuinely need attention. The script is a starting point,
+            not the final word. Also check for:
+            - Orphan docs with no graph connections
+            - Knowledge docs that contradict recent evidence
+            - Stale in_progress tasks (no update in 7+ days)
+
+            ## Phase 5: Brain Sync
+            Commit any changes and push. Use message: "sleep: periodic consolidation"
+
+            ## Rules
+            - You have a 15-minute time budget. Exit cleanly when time is up.
+            - Surfaces > decisions. Flag things for human review, don't auto-fix judgment calls.
+            - Be incremental. Only process what's new since the last sleep cycle.
+            - Write a summary of what you did to $GITHUB_STEP_SUMMARY.
+
+            ${{ inputs.focus && format('## Focus\nThe operator asked you to focus on: {0}', inputs.focus) || '' }}

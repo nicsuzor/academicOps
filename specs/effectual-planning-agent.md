@@ -1,0 +1,300 @@
+---
+name: effectual-planning-agent
+title: Effectual Planning Agent
+category: spec
+type: spec
+status: active
+tier: core
+depends_on: []
+tags: [spec, planning, agent, effectuation]
+---
+
+# Effectual Planning Agent
+
+## Giving Effect
+
+- [[agents/effectual-planner.md]] - Agent definition with strategic planning capabilities
+- [[strategic-intake]] - Workflow for placing fragments in the planning hierarchy
+- [[decompose]] - Workflow for breaking epics into tasks via workflow steps
+- [[intentions.md]] - Intention-driven decomposition trigger (Mode 2 invoked by `/intend`)
+- [[mcp__pkb__get_network_metrics]] - Graph centrality and topology metrics
+- [[mcp__pkb__get_dependency_tree]] - Upstream/downstream dependency traversal
+- [[mcp__pkb__pkb_context]] - Node neighbourhood within N hops
+- [[mcp__pkb__pkb_orphans]] - Disconnected node detection
+
+The Effectual Planning Agent is a strategic planning assistant for academic research and knowledge work under conditions of genuine uncertainty. It receives fragments of information incrementally, organises them into a semantic web of goals, projects, epics, and tasks, surfaces hidden structure, and proposes high-value next steps.
+
+The agent is designed for work where many ideas fail, where you don't know what you don't know, and where the plan must evolve as understanding deepens.
+
+## Vision
+
+i have a key idea: i want to use network mapping methods from maths and science to improve our academic task planning and prioritising in conditions of uncertainty. i have a tasks database that has hierarchical dependencies but also soft dependencies. i want to, for example:
+
+- identify what abstract goals/tasks are ready for deconstruction in to more concrete assortments of specific tasks for things we know how to do and exploratory tasks for things we know we don't know
+- prioritise between different tasks based on how much valueable information we are likely to generate from a task and what cross-network work gets unlocked by finding out that info.
+
+### Where we're going
+
+A planning system that feels less like project management and more like thinking with a collaborator who has perfect recall and no ego. You throw fragments at it—half-formed ideas, discovered constraints, sudden connections—and it builds a map of your understanding. The map reveals what you're assuming, what depends on what, where threads converge, and what you'd learn most from doing next.
+
+The system doesn't tell you what to do. It shows you what you know and don't know, and helps you decide what's worth finding out.
+
+### What this enables
+
+For academic researchers and knowledge workers:
+
+- **Reduced cognitive load.** Stop holding the whole project graph in your head. Externalise it in a form that's queryable and navigable.
+
+- **Assumption hygiene.** Research projects fail on unexamined assumptions. Surface them early, test them cheap.
+
+- **Synergy discovery.** When you're working on multiple threads (papers, grants, collaborations, tool-building), notice when they want the same thing.
+
+- **Adaptive planning.** When reality surprises you—a paper gets rejected, a collaboration falls through, a new opportunity appears—the system helps you re-orient rather than just re-schedule.
+
+## Success Criteria
+
+The agent is successful when:
+
+### Functional success
+
+1. **Fragments land gracefully.** Partial, ambiguous, half-baked inputs get placed somewhere sensible and linked appropriately. The system never demands premature specification.
+
+2. **Structure emerges.** After accumulating fragments, the web reveals relationships the user didn't explicitly state: hidden dependencies, convergent threads, orphaned ideas.
+
+3. **Assumptions surface.** Load-bearing hypotheses get identified and tracked. The user knows what they're betting on.
+
+4. **Next steps are insightful.** When asked "what should I do?", the agent proposes actions that would genuinely improve understanding--not just urgent tasks or obvious next items.
+
+5. **The framework evolves.** Friction gets logged, patterns get recognised, amendments happen. The system learns from its own use.
+
+### Quality indicators
+
+- **Low friction-to-insight ratio.** Using the system shouldn't feel like feeding a bureaucracy. If it takes more effort to maintain than it returns in clarity, something's wrong.
+
+- **Appropriate formality gradient.** Early-stage ideas stay loose. Mature plans get more structure. The system doesn't over-specify prematurely or under-specify when precision matters.
+
+- **Useful dead ends.** When a project dies or pivots, the record of why is valuable. The system treats failures as data, not waste.
+
+### Anti-patterns (how we'd know it's failing)
+
+- User avoids logging things because the format is too rigid
+- Agent asks clarifying questions instead of making reasonable placements
+- Assumptions accumulate but never get reviewed or tested
+- The web grows but structure doesn't emerge--just a pile of files
+- Agent spec doesn't grow (not learning) or grows unboundedly (not adapting)
+
+## Three Operational Modes
+
+The planner addresses three levels of challenge. See [[TAXONOMY.md]] for canonical definitions.
+
+**Mode 1: Strategic Intake** (UP — adding to the graph)
+
+New ideas, constraints, and connections enter the planning hierarchy. The agent places fragments at the right level (goal, project, or epic), links them to existing nodes, surfaces assumptions, and identifies what the new information enables or blocks. Uses the [[strategic-intake]] workflow.
+
+**Mode 2: Epic Decomposition** (DOWN — deriving tasks from workflows)
+
+A validated epic needs concrete work. The agent identifies the workflow that will achieve the epic, extracts its steps as a decomposition skeleton, and derives tasks from those steps — including planning tasks before, execution tasks during, and verification tasks after. Uses the [[decompose]] workflow with the [[planning]] skill.
+
+**Mode 3: Prioritisation** (ACROSS — sequencing by information value)
+
+The agent uses graph topology to rank work by learning potential: which tasks unblock the most downstream work? Which test the most load-bearing assumptions? Which threads converge? The agent uses PKB graph tools (`get_network_metrics`, `get_dependency_tree`, `pkb_context`, `pkb_orphans`) to surface structure and propose next steps.
+
+## Current Feature Set
+
+**Work hierarchy** (see [[TAXONOMY.md]])
+
+```
+GOAL → PROJECT → EPIC → TASK → ACTION
+```
+
+Goals are desired future states. Projects are bounded efforts. Epics are PR-sized units of verifiable work (planning + execution + verification). Tasks are single-session deliverables within epics. Every task belongs to an epic.
+
+**Node lifecycle**
+
+Status values: `seed` → `growing` → `active` → `complete` (or `blocked`, `dormant`, `dead`)
+
+Nodes can divide (emit children), merge (consolidate), or promote subtasks to full nodes.
+
+**Graph reasoning**
+
+The PKB provides topology metrics (centrality, PageRank, downstream weight), dependency trees (upstream/downstream traversal), neighbourhood context (N-hop exploration), path tracing (shortest paths between nodes), and orphan detection. The agent uses these to surface structure that isn't visible from individual nodes.
+
+**Assumption tracking**
+
+Agent surfaces when new material implies unexamined assumptions. Assumptions are load-bearing hypotheses — if they're wrong, the dependent work is invalid.
+
+**Self-reflexivity**
+
+Tracks friction and insights about planning to inform framework evolution.
+
+## Information Value Prioritisation
+
+The core insight: prioritise by **what you'd learn**, not by urgency or importance.
+
+**Heuristic**: Tasks that unblock the most downstream work AND test untested assumptions rank highest. Mentally: `information_value ≈ downstream_weight × assumption_criticality`.
+
+**Using graph metrics**:
+
+- **Downstream weight** (`get_network_metrics`): How much work does completing this task unblock? High downstream weight = high leverage.
+- **Blocking count** (`get_dependency_tree`): How many tasks are directly waiting on this? A task blocking 5 others is more urgent than one blocking none.
+- **Convergence** (`pkb_trace`): When multiple threads lead to the same node, that node is a convergence point — completing it advances multiple projects simultaneously.
+- **Orphans** (`pkb_orphans`): Disconnected nodes may be forgotten ideas worth reconnecting, or dead ends worth pruning.
+- **Centrality** (`get_network_metrics`): High PageRank nodes are structurally important — they connect many parts of the graph.
+
+**What this replaces**: Traditional priority (P0-P4) is a useful heuristic for operational work. For strategic planning, information value is more useful because it accounts for what you'd _learn_, not just what you'd _finish_.
+
+## Planned Features
+
+### Near-term (validate core model)
+
+**Probe templates**
+When an assumption is critical and untested, suggest specific lightweight experiments to validate it. "You're assuming X. A cheap test might be: [concrete action]."
+
+**Maturity indicators**
+Beyond status, a way to express confidence/maturity: how validated is this node's content? This affects how much weight to put on it when reasoning about dependencies.
+
+**Periodic review prompts**
+Time-triggered suggestions to revisit dormant nodes, review accumulated friction, or check whether active projects still make sense.
+
+### Medium-term (expand capability)
+
+**Resource tracking**
+Lightweight affordance tracking: what capacities, relationships, and assets are available? Bird-in-hand thinking operationalised.
+
+**Temporal reasoning**
+Soft deadlines, windows of opportunity, and time-sensitive dependencies. Not hard scheduling, but awareness of when timing matters.
+
+### Long-term (if validated)
+
+**Learning consolidation**
+Periodically synthesise `meta/learnings.md` into updated heuristics or agent behaviours. The system doesn't just log what it learns—it incorporates it.
+
+**Collaborative webs**
+Multiple users contributing to shared planning webs. Requires thinking about attribution, conflict resolution, and divergent views.
+
+**Integration with knowledge base**
+Connection to the broader academicOps knowledge management layer—notes, sources, concepts—so planning can reference and link to research materials.
+
+## Implementation Choices
+
+### Why markdown + YAML + wikilinks
+
+**Tool-agnostic.** Works with any text editor, any file sync, any version control. No lock-in to specific apps.
+
+**Human-readable.** The planning web is inspectable without the agent. If the agent breaks, you still have your data.
+
+**AI-parseable.** Modern LLMs read markdown natively. No translation layer needed. The agent can reason about content semantically.
+
+**Progressive structure.** YAML frontmatter captures what needs to be structured. Markdown body stays freeform. Structure accretes as needed.
+
+**Ecosystem compatibility.** Plays well with Obsidian, Logseq, and similar tools. Can use their features (graph view, backlinks) without depending on them.
+
+### Why minimal schema
+
+**Premature structure kills emergence.** We don't know yet what fields matter. Better to start sparse and add as needs surface.
+
+**Semantic understanding compensates.** The agent reads prose. It doesn't need everything in structured fields to reason about relationships.
+
+**Friction reveals needs.** When the minimal schema fails, we log it. Repeated friction patterns justify schema extensions. Evidence-based specification.
+
+### Why self-reflexive architecture
+
+**The framework is a hypothesis.** We're applying effectual planning principles to the design of an effectual planning tool. It would be hypocritical not to.
+
+**Learning compounds.** The `meta/` layer means the system gets better at helping you plan, not just better at tracking plans.
+
+**Transparency.** When the framework changes, the rationale is recorded. You can trace why things are the way they are.
+
+### Why Claude Code specifically
+
+**File system native.** Claude Code works directly with files and directories. No API translation layer.
+
+**Agentic capability.** Can read, write, search, and reason about the web autonomously within a session.
+
+**Semantic reasoning.** Strong at inferring relationships, surfacing implications, and generating useful suggestions from unstructured content.
+
+**Conversational interface.** Natural for the fragment-at-a-time input pattern. You talk to it; it updates the web.
+
+## Theoretical Foundations
+
+The agent's design draws on:
+
+**Effectuation** (Sarasvathy): Bird-in-hand thinking, affordable loss, lemonade principle, crazy quilt partnerships. Goals emerge from means; surprises are resources.
+
+**Discovery-Driven Planning** (McGrath & MacMillan): Explicit assumption tracking, knowledge milestones, cheap validation before commitment.
+
+**Cynefin** (Snowden): Recognising complex vs. complicated domains. Probe-sense-respond for genuine uncertainty.
+
+**Set-Based Design** (Toyota): Maintaining optionality, delaying commitment until the last responsible moment.
+
+**Bounded rationality** (Simon): Satisficing over optimising. Human cognition has limits; tools should respect them.
+
+## Integration with academicOps
+
+The Effectual Planning Agent is one component of a broader academicOps toolkit.
+
+**Upstream dependencies:**
+
+- Knowledge base provides context for planning (what do we know about X?)
+- Existing research materials inform project scoping
+
+**Downstream consumers:**
+
+- Writing agents receive project briefs and task context
+- Analysis pipelines get prioritisation signals
+- Coordination tools get dependency information
+
+**Shared principles:**
+
+- Opinionated defaults, progressive complexity (from Buttermilk)
+- Tool-agnostic, human-readable, AI-parseable
+- Markdown + YAML + wikilinks as common substrate
+
+## Intention-Driven Decomposition
+
+When a user declares an intention (via `/intend`) on a node that has no leaf tasks, the effectual planner's Mode 2 (DOWN) is triggered to decompose the intention root into actionable work.
+
+### Trigger
+
+The `/intend` command detects that the intention root has no actionable descendants (no leaf tasks with active/ready status). It offers to invoke the planner:
+
+```
+This epic has no actionable tasks yet. Shall I decompose it?
+```
+
+If the user confirms, `/intend` invokes the planner via `/planning`.
+
+### Behaviour
+
+The planner operates in standard Mode 2 (Epic Decomposition) with one addition: it reports the intention subgraph statistics after decomposition so `/intend` can display:
+
+```
+Intention set: "Get the OSB benchmarking study out"
+Created 8 tasks. 3 are ready to start.
+Next task: [ns-abc] Write methods section (P1)
+```
+
+### Connection to Intentions
+
+The planner does NOT need to know about intentions directly. It decomposes epics/projects into tasks as normal. The intention system is a lens on the graph, not a modification to it. The planner creates tasks; the intention system scopes which tasks are visible.
+
+However, the planner benefits from intention context:
+
+- When prioritising (Mode 3), tasks in active intention subgraphs score higher via `intention_alignment` in focus scoring (see [[task-focus-scoring.md]])
+- When proposing next steps, awareness of active intentions helps the planner recommend work that advances declared goals
+
+## Open Questions
+
+Things we don't know yet and are planning to find out:
+
+1. **Review cadence.** How often should the agent prompt for assumption review or friction synthesis?
+
+2. **Maturity representation.** Is status sufficient, or do we need a separate confidence/validation dimension?
+
+3. **Cross-cutting concerns.** Some things (a key relationship, a scarce resource) matter to multiple projects. How do we represent these? (Partially addressed by graph tools — `pkb_trace` finds connections, but representation of shared resources is still ad hoc.)
+
+4. **Historical value.** How much should we preserve vs. archive vs. delete? When is a dead project worth keeping?
+
+5. ~~**Daily skill alignment.**~~ **Resolved by [[intentions.md]].** When intentions are active, the daily note leads with intention-scoped next actions instead of SHOULD/DEEP/ENJOY/QUICK/UNBLOCK categories. Within an intention's subgraph, the agent still applies judgment about what advances the intention most — combining the planner's information-value lens with the daily skill's operational awareness.
+
+These are the assumptions we're testing by building and using the system.

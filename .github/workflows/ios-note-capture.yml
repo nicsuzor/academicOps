@@ -1,0 +1,114 @@
+name: iOS Note Capture
+
+on:
+  repository_dispatch:
+    types: [capture-note]
+  workflow_dispatch:
+    inputs:
+      content:
+        description: 'Note content'
+        required: true
+        type: string
+      tags:
+        description: 'Comma-separated tags'
+        required: false
+        default: 'mobile-capture,inbox'
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  process-note:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 1
+
+      - name: Setup memory server access
+        run: |
+          echo "Memory server access via remote MCP over Tailscale"
+          # No caching needed - memory server is remote
+
+      - name: Extract payload
+        id: payload
+        run: |
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            {
+              echo "content<<EOF"
+              echo "${{ github.event.client_payload.content }}"
+              echo "EOF"
+            } >> $GITHUB_OUTPUT
+            echo "tags=${{ github.event.client_payload.tags }}" >> $GITHUB_OUTPUT
+          else
+            {
+              echo "content<<EOF"
+              echo "${{ inputs.content }}"
+              echo "EOF"
+            } >> $GITHUB_OUTPUT
+            echo "tags=${{ inputs.tags }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Process note with Claude Code
+        id: claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: |
+            --allowedTools "Read,Write,Edit,Bash(mkdir:*),Bash(date:*)"
+            --max-turns 5
+          prompt: |
+            Store this iOS capture to the memory server.
+
+            INPUT:
+            - Content: ${{ steps.payload.outputs.content }}
+            - Tags: ${{ steps.payload.outputs.tags }}
+
+            TASK:
+            1. Use the [[remember]] skill to store this content to the memory server.
+               MANDATORY: Use the 'notes/mobile-captures/' directory for the file.
+            2. Include metadata:
+               - Tags: mobile-capture, plus any from input
+               - Type: note
+               - Source: iOS capture via voice/text input
+
+            Example call:
+            Use mcp__memory__store_memory with:
+            - content: The iOS capture content
+            - folder: notes/mobile-captures
+            - metadata: { "tags": "mobile-capture,inbox,...", "type": "note" }
+
+            Report success when the memory has been stored.
+
+      - name: Commit and push note
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "academicOps Agent"
+          git config user.email "agent@academicops.local"
+
+          # Add all changes (Claude should have created a new file in notes/mobile-captures/)
+          git add -A
+
+          # Find the new note file
+          FILE=$(git diff --cached --name-only | grep "^notes/mobile-captures/" | head -n 1)
+
+          if [ -n "$FILE" ]; then
+            # Extract keywords from filename (removing date prefix and replacing hyphens with spaces)
+            FILENAME=$(basename "$FILE" .md)
+            KEYWORDS=$(echo "$FILENAME" | sed -E 's/^[0-9]{4}-[0-9]{2}-[0-9]{2}-//' | tr '-' ' ')
+            COMMIT_MSG="capture: $KEYWORDS"
+
+            echo "Committing: $FILE with message: $COMMIT_MSG"
+            git commit -m "$COMMIT_MSG"
+            git push origin HEAD:${{ github.ref }}
+          else
+            echo "No new capture file found in notes/mobile-captures/. Skipping commit."
+          fi

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Spectral Treemap - High Density View</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ec5b13",
+                        "background-light": "#f8f6f6",
+                        "background-dark": "#221610",
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Public Sans', sans-serif; }
+        .treemap-node:hover .node-label { opacity: 1; }
+        .node-label { opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+        .treemap-container {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            grid-template-rows: repeat(12, 1fr);
+            gap: 2px;
+            height: calc(100vh - 220px);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100">
+<div class="relative flex h-screen w-full flex-col overflow-hidden">
+<!-- TopNavBar -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-slate-200 dark:border-slate-800 bg-background-light dark:bg-background-dark px-6 py-3 shrink-0">
+<div class="flex items-center gap-4">
+<div class="flex items-center justify-center p-2 bg-primary/10 rounded-lg text-primary">
+<span class="material-symbols-outlined">grid_view</span>
+</div>
+<div>
+<h2 class="text-slate-900 dark:text-slate-100 text-lg font-bold leading-tight tracking-tight">Spectral Treemap</h2>
+<p class="text-xs text-slate-500 dark:text-slate-400">Variation 3: Maximum Density</p>
+</div>
+</div>
+<div class="flex flex-1 justify-end gap-4 items-center">
+<label class="hidden md:flex flex-col w-64 h-9">
+<div class="flex w-full flex-1 items-stretch rounded-lg h-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+<div class="text-slate-400 flex items-center justify-center pl-3">
+<span class="material-symbols-outlined text-sm">search</span>
+</div>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-full placeholder:text-slate-400 px-3" placeholder="Search tasks or clusters..." value=""/>
+</div>
+</label>
+<div class="flex gap-2">
+<button class="flex items-center justify-center rounded-lg h-9 w-9 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-primary/20 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">zoom_in</span>
+</button>
+<button class="flex items-center justify-center rounded-lg h-9 w-9 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-primary/20 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">zoom_out</span>
+</button>
+<button class="flex items-center justify-center rounded-lg h-9 w-9 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-primary/20 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">tune</span>
+</button>
+</div>
+<div class="h-8 w-px bg-slate-200 dark:bg-slate-800 mx-2"></div>
+<div class="bg-primary/10 rounded-full h-9 w-9 flex items-center justify-center border border-primary/20 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="User profile avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCCM-FlJETqlS1Pq3ArkIx4QUPWuTf-14MQk89FAboKizP-yzQmwFMMBBjs_r0UltFjyiIh4edQ8Ab_hU6Qwi_vFsZm0yPCbiG7C1s5HSvE1BZrlZv70GPbsVyFkkwM71u-W3WN1jB_gYd0G4VfDBJrfqu7kIreiu212ocGsO1vnIs1p8BIT2H92CGnOM-7fcUPqS0g-1e1qJdMD3bdN6XwPCWiExrNbVEq94R6uU-cM2IRLWW8fdwtrnXLFmpHj1cfNUUzh9K5YEFO"/>
+</div>
+</div>
+</header>
+<!-- Main Treemap Area -->
+<main class="flex-1 p-4 overflow-hidden relative">
+<div class="treemap-container w-full h-full">
+<!-- Cluster A: Marketing (Warm Spectrum) -->
+<div class="col-span-4 row-span-8 bg-orange-500/20 rounded-lg p-1 grid grid-cols-4 grid-rows-4 gap-1 border border-orange-500/30">
+<div class="col-span-2 row-span-2 bg-orange-600/60 rounded relative group cursor-pointer treemap-node">
+<div class="node-label absolute inset-0 flex items-center justify-center bg-black/40 text-white text-[10px] font-bold p-1 text-center">Campaign Assets</div>
+</div>
+<div class="col-span-2 row-span-1 bg-orange-400/60 rounded relative group cursor-pointer treemap-node">
+<div class="node-label absolute inset-0 flex items-center justify-center bg-black/40 text-white text-[10px] font-bold p-1 text-center">Social Copy</div>
+</div>
+<div class="col-span-1 row-span-1 bg-orange-300/60 rounded relative group cursor-pointer treemap-node"></div>
+<div class="col-span-1 row-span-1 bg-orange-700/60 rounded relative group cursor-pointer treemap-node"></div>
+<div class="col-span-4 row-span-2 grid grid-cols-8 gap-1">
+<div class="bg-orange-500/40 rounded cursor-pointer treemap-node relative"><div class="node-label absolute inset-0 bg-black/40"></div></div>
+<div class="bg-orange-500/50 rounded cursor-pointer treemap-node relative"><div class="node-label absolute inset-0 bg-black/40"></div></div>
+<div class="bg-orange-500/30 rounded cursor-pointer treemap-node relative"><div class="node-label absolute inset-0 bg-black/40"></div></div>
+<div class="bg-orange-500/60 rounded cursor-pointer treemap-node relative"><div class="node-label absolute inset-0 bg-black/40"></div></div>
+<div class="bg-orange-500/40 rounded cursor-pointer treemap-node relative"><div class="node-label absolute inset-0 bg-black/40"></div></div>
+<div class="bg-orange-500/50 rounded cursor-pointer treemap-node relative"><div class="node-label absolute inset-0 bg-black/40"></div></div>
+<div class="bg-orange-500/70 rounded cursor-pointer treemap-node relative"><div class="node-label absolute inset-0 bg-black/40"></div></div>
+<div class="bg-orange-500/20 rounded cursor-pointer treemap-node relative"><div class="node-label absolute inset-0 bg-black/40"></div></div>
+<div class="col-span-3 bg-orange-400/40 rounded cursor-pointer treemap-node relative"><div class="node-label absolute inset-0 bg-black/40"></div></div>
+<div class="col-span-5 bg-orange-600/40 rounded cursor-pointer treemap-node relative"><div class="node-label absolute inset-0 bg-black/40"></div></div>
+</div>
+</div>
+<!-- Cluster B: Engineering (Cool Spectrum) -->
+<div class="col-span-8 row-span-5 bg-blue-500/20 rounded-lg p-1 grid grid-cols-8 grid-rows-3 gap-1 border border-blue-500/30">
+<div class="col-span-5 row-span-2 bg-blue-600/60 rounded relative group cursor-pointer treemap-node">
+<div class="node-label absolute inset-0 flex items-center justify-center bg-black/40 text-white text-[12px] font-bold p-1 text-center">Core API Sync</div>
+</div>
+<div class="col-span-3 row-span-1 bg-blue-400/60 rounded relative group cursor-pointer treemap-node">
+<div class="node-label absolute inset-0 flex items-center justify-center bg-black/40 text-white text-[10px] font-bold p-1 text-center">Data Migration</div>
+</div>
+<div class="col-span-3 row-span-1 bg-cyan-500/60 rounded relative group cursor-pointer treemap-node"></div>
+<div class="col-span-2 row-span-1 bg-blue-700/60 rounded relative group cursor-pointer treemap-node"></div>
+<div class="col-span-6 row-span-1 grid grid-cols-12 gap-1">
+<!-- Tiny packed tasks -->
+<div class="bg-blue-400/80 rounded cursor-pointer treemap-node relative"></div>
+<div class="bg-blue-400/80 rounded cursor-pointer treemap-node relative"></div>
+<div class="bg-blue-300/80 rounded cursor-pointer treemap-node relative"></div>
+<div class="bg-blue-500/80 rounded cursor-pointer treemap-node relative"></div>
+<div class="bg-blue-600/80 rounded cursor-pointer treemap-node relative"></div>
+<div class="bg-blue-700/80 rounded cursor-pointer treemap-node relative"></div>
+<div class="bg-blue-500/80 rounded cursor-pointer treemap-node relative"></div>
+<div class="bg-blue-400/80 rounded cursor-pointer treemap-node relative"></div>
+<div class="bg-blue-300/80 rounded cursor-pointer treemap-node relative"></div>
+<div class="bg-blue-200/80 rounded cursor-pointer treemap-node relative"></div>
+<div class="bg-blue-500/80 rounded cursor-pointer treemap-node relative"></div>
+<div class="bg-blue-400/80 rounded cursor-pointer treemap-node relative"></div>
+</div>
+</div>
+<!-- Cluster C: Research (Purple Spectrum) -->
+<div class="col-span-3 row-span-4 bg-purple-500/20 rounded-lg p-1 grid grid-cols-2 grid-rows-2 gap-1 border border-purple-500/30">
+<div class="col-span-1 row-span-2 bg-purple-600/60 rounded cursor-pointer treemap-node relative">
+<div class="node-label absolute inset-0 flex items-center justify-center bg-black/40 text-white text-[10px] font-bold p-1 text-center">User Interviews</div>
+</div>
+<div class="bg-purple-400/60 rounded cursor-pointer treemap-node relative"></div>
+<div class="bg-purple-300/60 rounded cursor-pointer treemap-node relative"></div>
+</div>
+<!-- Cluster D: Internal Ops (Green Spectrum) -->
+<div class="col-span-5 row-span-4 bg-emerald-500/20 rounded-lg p-1 grid grid-cols-5 gap-1 border border-emerald-500/30">
+<div class="col-span-3 bg-emerald-600/60 rounded cursor-pointer treemap-node relative">
+<div class="node-label absolute inset-0 flex items-center justify-center bg-black/40 text-white text-[10px] font-bold p-1 text-center">Q3 Planning</div>
+</div>
+<div class="col-span-2 grid grid-rows-3 gap-1">
+<div class="bg-emerald-400/60 rounded cursor-pointer treemap-node relative"></div>
+<div class="bg-emerald-300/60 rounded cursor-pointer treemap-node relative"></div>
+<div class="bg-emerald-700/60 rounded cursor-pointer treemap-node relative"></div>
+</div>
+</div>
+<!-- Cluster E: UI Kit (Yellow Spectrum) -->
+<div class="col-span-4 row-span-3 bg-yellow-500/20 rounded-lg p-1 flex gap-1 border border-yellow-500/30">
+<div class="flex-1 bg-yellow-600/60 rounded cursor-pointer treemap-node relative">
+<div class="node-label absolute inset-0 flex items-center justify-center bg-black/40 text-white text-[10px] font-bold p-1 text-center">Iconography</div>
+</div>
+<div class="flex-1 bg-yellow-400/60 rounded cursor-pointer treemap-node relative"></div>
+<div class="w-4 flex flex-col gap-1">
+<div class="flex-1 bg-yellow-300/60 rounded cursor-pointer treemap-node relative"></div>
+<div class="flex-1 bg-yellow-500/60 rounded cursor-pointer treemap-node relative"></div>
+<div class="flex-1 bg-yellow-200/60 rounded cursor-pointer treemap-node relative"></div>
+</div>
+</div>
+<!-- Cluster F: Legacy Docs (Slate Spectrum) -->
+<div class="col-span-8 row-span-3 bg-slate-500/20 rounded-lg p-1 grid grid-cols-12 gap-1 border border-slate-500/30">
+<div class="col-span-4 bg-slate-600/60 rounded cursor-pointer treemap-node relative"></div>
+<div class="col-span-8 grid grid-cols-6 gap-1">
+<div class="bg-slate-400/60 rounded cursor-pointer treemap-node relative"></div>
+<div class="bg-slate-300/60 rounded cursor-pointer treemap-node relative"></div>
+<div class="bg-slate-700/60 rounded cursor-pointer treemap-node relative"></div>
+<div class="bg-slate-500/60 rounded cursor-pointer treemap-node relative"></div>
+<div class="bg-slate-400/60 rounded cursor-pointer treemap-node relative"></div>
+<div class="bg-slate-300/60 rounded cursor-pointer treemap-node relative"></div>
+<div class="col-span-6 bg-slate-800/60 rounded cursor-pointer treemap-node relative"></div>
+</div>
+</div>
+</div>
+<!-- Quick Edit Overlay (Appears relative to active task) -->
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[420px] shadow-2xl animate-in fade-in zoom-in duration-200">
+<div class="flex flex-col gap-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-lg">
+<div class="flex flex-row items-start justify-between">
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 rounded-full bg-blue-500"></span>
+<p class="text-slate-900 dark:text-slate-100 text-sm font-bold leading-tight">Quick Edit: Task #402</p>
+</div>
+<p class="text-slate-500 dark:text-slate-400 text-xs font-normal leading-normal">Core API Sync &amp; Middleware Validation</p>
+</div>
+<button class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<div class="flex gap-2 items-center">
+<div class="flex-1 flex gap-2">
+<button class="flex h-8 items-center justify-center gap-1 rounded-lg bg-slate-100 dark:bg-slate-800 px-3 border border-slate-200 dark:border-slate-700">
+<span class="material-symbols-outlined text-sm">priority_high</span>
+<span class="text-xs font-medium">High</span>
+</button>
+<button class="flex h-8 items-center justify-center gap-1 rounded-lg bg-slate-100 dark:bg-slate-800 px-3 border border-slate-200 dark:border-slate-700">
+<span class="material-symbols-outlined text-sm">rotate_right</span>
+<span class="text-xs font-medium">In Progress</span>
+</button>
+</div>
+<button class="flex items-center justify-center rounded-lg h-8 px-4 bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-all">
+<span class="truncate">Full Detail View</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+<!-- Legend Docked at Bottom -->
+<footer class="bg-background-light dark:bg-background-dark border-t border-slate-200 dark:border-slate-800 p-3 shrink-0">
+<div class="max-w-[1200px] mx-auto flex flex-wrap items-center justify-between gap-4">
+<div class="flex items-center gap-6 overflow-x-auto no-scrollbar">
+<div class="flex items-center gap-2 shrink-0">
+<span class="w-3 h-3 rounded bg-orange-500"></span>
+<span class="text-xs font-bold text-slate-600 dark:text-slate-300">Marketing</span>
+</div>
+<div class="flex items-center gap-2 shrink-0">
+<span class="w-3 h-3 rounded bg-blue-500"></span>
+<span class="text-xs font-bold text-slate-600 dark:text-slate-300">Engineering</span>
+</div>
+<div class="flex items-center gap-2 shrink-0">
+<span class="w-3 h-3 rounded bg-purple-500"></span>
+<span class="text-xs font-bold text-slate-600 dark:text-slate-300">Research</span>
+</div>
+<div class="flex items-center gap-2 shrink-0">
+<span class="w-3 h-3 rounded bg-emerald-500"></span>
+<span class="text-xs font-bold text-slate-600 dark:text-slate-300">Internal Ops</span>
+</div>
+<div class="flex items-center gap-2 shrink-0">
+<span class="w-3 h-3 rounded bg-yellow-500"></span>
+<span class="text-xs font-bold text-slate-600 dark:text-slate-300">UI Kit</span>
+</div>
+<div class="flex items-center gap-2 shrink-0">
+<span class="w-3 h-3 rounded bg-slate-500"></span>
+<span class="text-xs font-bold text-slate-600 dark:text-slate-300">Legacy Docs</span>
+</div>
+</div>
+<div class="flex items-center gap-4 text-xs font-medium text-slate-500 dark:text-slate-400">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">calendar_today</span>
+<span>Updated 2m ago</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">groups</span>
+<span>12 Contributors</span>
+</div>
+</div>
+</div>
+</footer>
+<!-- Filter Bar -->
+<div class="px-4 py-2 border-b border-slate-200 dark:border-slate-800 flex gap-2 bg-slate-50 dark:bg-slate-900/50 overflow-x-auto shrink-0">
+<button class="flex h-7 shrink-0 items-center justify-center gap-x-1 rounded-lg bg-primary/10 text-primary px-3 border border-primary/20">
+<p class="text-[11px] font-bold">Priority: High</p>
+<span class="material-symbols-outlined text-[14px]">expand_more</span>
+</button>
+<button class="flex h-7 shrink-0 items-center justify-center gap-x-1 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-3">
+<p class="text-[11px] font-medium">Status: All</p>
+<span class="material-symbols-outlined text-[14px]">expand_more</span>
+</button>
+<button class="flex h-7 shrink-0 items-center justify-center gap-x-1 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-3">
+<p class="text-[11px] font-medium">Owner: Me</p>
+<span class="material-symbols-outlined text-[14px]">expand_more</span>
+</button>
+<button class="flex h-7 shrink-0 items-center justify-center gap-x-1 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-3">
+<p class="text-[11px] font-medium">Overdue</p>
+</button>
+<button class="flex h-7 shrink-0 items-center justify-center gap-x-1 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-3">
+<p class="text-[11px] font-medium">Milestones</p>
+<span class="material-symbols-outlined text-[14px]">expand_more</span>
+</button>
+</div>
+</div>
+</body></html>

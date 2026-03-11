@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Holographic - Focus View</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00F0FF",
+                        "background-light": "#f5f8f8",
+                        "background-dark": "#050505",
+                        "surface": "#0a0a0a",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk"]
+                    },
+                    borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+                },
+            },
+        }</script>
+<style>
+        .glass-panel {
+            backdrop-filter: blur(20px);
+            background: rgba(10, 10, 10, 0.7);
+            border: 1px solid rgba(0, 240, 255, 0.15);
+        }
+        .glass-card {
+            backdrop-filter: blur(16px);
+            background: rgba(0, 240, 255, 0.03);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass-card:hover {
+            background: rgba(0, 240, 255, 0.08);
+            border-color: #00F0FF;
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 10px 40px rgba(0, 240, 255, 0.15);
+        }
+        .void-bg {
+            background: radial-gradient(circle at 50% 50%, #0a0a0a 0%, #050505 100%);
+        }
+        .glow-text {
+            text-shadow: 0 0 15px rgba(0, 240, 255, 0.6);
+        }
+        .neural-line {
+            stroke-dasharray: 1000;
+            stroke-dashoffset: 1000;
+            animation: dash 5s linear infinite;
+            filter: drop-shadow(0 0 8px #00F0FF);
+        }
+        @keyframes dash {
+            to {
+                stroke-dashoffset: 0;
+            }
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen overflow-x-hidden selection:bg-primary/30">
+<div class="relative flex h-auto min-h-screen w-full flex-col void-bg">
+<!-- Floating Nav -->
+<header class="sticky top-0 z-50 flex items-center justify-between px-6 py-4 glass-panel border-b border-primary/10">
+<div class="flex items-center gap-3">
+<div class="bg-primary p-1 rounded">
+<span class="material-symbols-outlined text-background-dark text-xl font-bold">deployed_code</span>
+</div>
+<h2 class="text-slate-100 text-xl font-bold tracking-tight uppercase">Holographic</h2>
+</div>
+<nav class="hidden md:flex gap-8 items-center">
+<a class="text-primary text-sm font-bold tracking-widest flex items-center gap-2" href="#">
+<span class="material-symbols-outlined text-lg">target</span> FOCUS
+                </a>
+<a class="text-slate-400 hover:text-primary transition-colors text-sm font-bold tracking-widest flex items-center gap-2" href="#">
+<span class="material-symbols-outlined text-lg">database</span> VAULT
+                </a>
+<a class="text-slate-400 hover:text-primary transition-colors text-sm font-bold tracking-widest flex items-center gap-2" href="#">
+<span class="material-symbols-outlined text-lg">sensors</span> SIGNALS
+                </a>
+</nav>
+<div class="flex gap-4">
+<button class="p-2 text-slate-400 hover:text-primary glass-card rounded-lg">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<button class="p-2 text-slate-400 hover:text-primary glass-card rounded-lg">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</div>
+</header>
+<main class="layout-container flex flex-col items-center flex-1 px-4 md:px-20 py-12">
+<!-- Hero & Focus Flow -->
+<div class="w-full max-w-6xl mb-12 flex flex-col md:flex-row justify-between items-end gap-6">
+<div class="text-left">
+<span class="text-primary/60 text-xs font-bold tracking-[0.4em] uppercase mb-4 block">Neural Focus Protocol v4.2</span>
+<h1 class="text-slate-100 text-5xl md:text-6xl font-black leading-tight tracking-tighter glow-text uppercase">
+            Active Focus <span class="text-primary italic">Path</span>
+</h1>
+</div>
+<div class="flex gap-4">
+<div class="px-6 py-3 glass-card rounded-xl text-center">
+<p class="text-[10px] text-primary/60 uppercase font-bold tracking-widest mb-1">Focus Flow</p>
+<p class="text-3xl font-black text-white glow-text">+12.4%</p>
+</div>
+</div>
+</div>
+<!-- Neural Path Map -->
+<section class="w-full max-w-6xl mb-20 relative min-h-[500px] flex items-center justify-center">
+<div class="absolute inset-0 pointer-events-none opacity-30">
+<svg class="w-full h-full" fill="none" viewbox="0 0 1000 500">
+<path class="neural-line" d="M100,250 C300,250 300,100 500,100" opacity="0.5" stroke="#00F0FF" stroke-width="1"></path>
+<path class="neural-line" d="M100,250 C300,250 300,250 500,250" stroke="#00F0FF" stroke-width="2"></path>
+<path class="neural-line" d="M100,250 C300,250 300,400 500,400" opacity="0.3" stroke="#00F0FF" stroke-width="1"></path>
+<path d="M500,100 L800,100" opacity="0.5" stroke="#00F0FF" stroke-dasharray="4 4" stroke-width="1"></path>
+<path d="M500,250 L800,250" stroke="#00F0FF" stroke-dasharray="4 4" stroke-width="1"></path>
+<path d="M500,400 L800,400" opacity="0.3" stroke="#00F0FF" stroke-dasharray="4 4" stroke-width="1"></path>
+</svg>
+</div>
+<div class="relative w-full h-full flex items-center justify-between px-10 gap-12">
+<!-- Origin Node -->
+<div class="glass-card p-6 w-72 rounded-xl border-l-4 border-primary z-20">
+<span class="text-[10px] font-black text-primary uppercase mb-2 block tracking-widest">Origin Point</span>
+<h4 class="text-white font-bold text-lg mb-2">Current State</h4>
+<p class="text-slate-400 text-xs leading-relaxed">3/3 Primary goals initialized. System awaiting specific execution nodes.</p>
+</div>
+<!-- Initiative Stack -->
+<div class="flex flex-col gap-12">
+<!-- Active -->
+<div class="glass-card p-6 w-80 rounded-xl border-2 border-primary shadow-[0_0_30px_rgba(0,240,255,0.15)] z-30">
+<div class="flex justify-between items-start mb-4">
+<span class="bg-primary text-background-dark text-[10px] font-black px-2 py-0.5 rounded">INITIATIVE A</span>
+<span class="material-symbols-outlined text-primary">trending_up</span>
+</div>
+<h4 class="text-white font-bold text-xl mb-2">Market Research</h4>
+<p class="text-slate-300 text-xs mb-4">Immediate: Compile user interview transcripts from yesterday.</p>
+<div class="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+<div class="h-full bg-primary w-2/3 shadow-[0_0_10px_#00F0FF]"></div>
+</div>
+</div>
+<!-- Secondary -->
+<div class="glass-card p-6 w-80 rounded-xl opacity-60 hover:opacity-100 z-10 scale-95 hover:scale-100 grayscale hover:grayscale-0">
+<div class="flex justify-between items-start mb-4">
+<span class="bg-slate-700 text-white text-[10px] font-black px-2 py-0.5 rounded">INITIATIVE B</span>
+<span class="material-symbols-outlined text-slate-400">architecture</span>
+</div>
+<h4 class="text-white font-bold text-lg mb-2">UI Prototyping</h4>
+<p class="text-slate-400 text-xs">Immediate: Finalize wireframes for the 'Resume' interaction flow.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Bottom Data Grids -->
+<div class="w-full max-w-6xl grid grid-cols-1 md:grid-cols-3 gap-8">
+<!-- Dropped Threads (Context Recovery) -->
+<div class="md:col-span-2 glass-panel p-8 rounded-2xl relative overflow-hidden">
+<div class="absolute top-0 right-0 p-6 opacity-5">
+<span class="material-symbols-outlined text-8xl">history</span>
+</div>
+<h3 class="flex items-center gap-2 text-primary font-bold tracking-widest uppercase text-xs mb-8">
+<span class="material-symbols-outlined text-lg">dynamic_feed</span> Dropped Threads
+        </h3>
+<div class="grid md:grid-cols-2 gap-4">
+<div class="glass-card p-5 rounded-xl border-l-2 border-primary group">
+<p class="text-[10px] font-bold text-primary/60 uppercase mb-2">Secondary Stack</p>
+<h4 class="text-slate-100 font-bold mb-1 group-hover:text-primary transition-colors">Refining UI Components</h4>
+<p class="text-xs text-slate-500">Paused 2h ago • Status: 85% Sync</p>
+<button class="mt-4 flex items-center gap-2 text-[10px] font-black text-primary uppercase tracking-widest hover:gap-3 transition-all">
+                    Resume Circuit <span class="material-symbols-outlined text-sm">bolt</span>
+</button>
+</div>
+<div class="glass-card p-5 rounded-xl border-l-2 border-slate-700 group opacity-60 hover:opacity-100">
+<p class="text-[10px] font-bold text-slate-500 uppercase mb-2">Archive Thread</p>
+<h4 class="text-slate-100 font-bold mb-1">Backend Schema Mapping</h4>
+<p class="text-xs text-slate-500">Paused 1d ago • Status: Pending Review</p>
+<button class="mt-4 flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    Access Node <span class="material-symbols-outlined text-sm">link</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Blocker Radar -->
+<div class="glass-panel p-8 rounded-2xl">
+<h3 class="flex items-center gap-2 text-primary font-bold tracking-widest uppercase text-xs mb-8">
+<span class="material-symbols-outlined text-lg">radar</span> Blocker Radar
+        </h3>
+<div class="space-y-4">
+<div class="flex items-center justify-between p-3 bg-primary/5 border border-primary/20 rounded-lg">
+<span class="text-xs text-slate-100 font-bold">API Latency</span>
+<span class="text-[10px] text-primary font-mono">Critical</span>
+</div>
+<div class="flex items-center justify-between p-3 bg-white/5 border border-white/5 rounded-lg opacity-50">
+<span class="text-xs text-slate-400 font-bold">Asset Sync</span>
+<span class="text-[10px] text-slate-500 font-mono">Low</span>
+</div>
+</div>
+</div>
+</div></main>
+<!-- Void Graph Decorative Layer (Absolute Background) -->
+<div class="fixed inset-0 -z-10 pointer-events-none opacity-20 overflow-hidden">
+<div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
+<svg class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[150%] blur-3xl" viewbox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+<path d="M44.7,-76.4C58.8,-69.2,71.8,-59.1,79.6,-46.2C87.4,-33.3,90,-16.6,89.1,-0.5C88.2,15.6,83.8,31.2,75.4,44.1C67,57,54.6,67.3,40.5,74.5C26.4,81.7,10.7,85.8,-4,92.7C-18.7,99.6,-32.4,109.3,-44.6,106.3C-56.8,103.3,-67.5,87.6,-74.3,72.2C-81.1,56.8,-84.1,41.7,-87.3,26.5C-90.5,11.3,-94,-3.9,-91.3,-18.3C-88.6,-32.7,-79.8,-46.3,-68.2,-55.5C-56.6,-64.7,-42.2,-69.5,-29.1,-77.2C-16.1,-84.9,-4.3,-95.5,8.8,-110.7C21.9,-125.9,43.8,-145.7,44.7,-76.4Z" fill="#0de3f2" transform="translate(100 100)"></path>
+</svg>
+<div class="absolute inset-0 bg-gradient-to-t from-background-dark via-transparent to-background-dark"></div>
+</div>
+<!-- Footer / Status Bar -->
+<footer class="w-full px-6 py-4 glass-panel border-t border-primary/10 flex flex-wrap justify-between items-center gap-4">
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2">
+<div class="size-2 rounded-full bg-primary animate-pulse shadow-[0_0_12px_#00F0FF]"></div>
+<span class="text-[10px] text-primary font-black uppercase tracking-[0.2em]">Synaptic Link Active</span>
+</div>
+<div class="h-4 w-[1px] bg-white/10"></div>
+<div class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">
+            Latency: <span class="text-primary">14ms</span>
+</div>
+<div class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">
+            Security: <span class="text-primary">Quantum-Shielded</span>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex gap-2">
+<button class="px-4 py-1.5 glass-card rounded-md text-[10px] font-black text-white uppercase tracking-widest">Export Schematic</button>
+<button class="px-4 py-1.5 bg-primary text-background-dark rounded-md text-[10px] font-black uppercase tracking-widest">Sync Neural Map</button>
+</div>
+<div class="text-[10px] text-slate-600 font-mono">
+            COORD: 34.0522° N, 118.2437° W
+        </div>
+</div>
+</footer>
+</div>
+</body></html>

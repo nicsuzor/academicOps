@@ -1,0 +1,52 @@
+#!/usr/bin/env python3
+"""Integration tests for aops-core plugin loading.
+
+Consolidated from 6 tests to 2 (1 fast discovery + 1 slow smoke test).
+"""
+
+from pathlib import Path
+
+import pytest
+
+from tests.conftest import extract_response_text
+
+
+class TestPluginDiscovery:
+    """Verify plugin is discovered via symlink (fast, no headless)."""
+
+    @pytest.mark.integration
+    def test_plugin_symlink_exists(self) -> None:
+        """Plugin symlink must exist at ~/.claude/plugins/aops-core."""
+        symlink = Path.home() / ".claude" / "plugins" / "aops-core"
+        if not symlink.exists():
+            pytest.skip("Plugin symlink not installed (expected for CI/fresh environments)")
+        assert symlink.is_symlink(), f"Not a symlink: {symlink}"
+
+    @pytest.mark.integration
+    def test_plugin_target_valid(self) -> None:
+        """Plugin symlink must point to valid directory."""
+        symlink = Path.home() / ".claude" / "plugins" / "aops-core"
+        if not symlink.exists():
+            pytest.skip("Plugin symlink not installed (expected for CI/fresh environments)")
+        target = symlink.resolve()
+        assert target.is_dir(), f"Symlink target not a directory: {target}"
+        assert (target / ".claude-plugin" / "plugin.json").exists(), "Missing plugin.json"
+
+
+class TestHookFunctionality:
+    """Verify hooks are functional (slow, uses headless)."""
+
+    @pytest.mark.integration
+    @pytest.mark.slow
+    def test_session_completes_from_tmp(self, claude_headless, tmp_path: Path) -> None:
+        """Session should complete without hook errors when run from /tmp."""
+        workdir = tmp_path / "plugin-test"
+        workdir.mkdir()
+        result = claude_headless(
+            "What is 2+2? Answer with just the number.",
+            cwd=workdir,
+            timeout_seconds=60,
+        )
+
+        response = extract_response_text(result)
+        assert "4" in response, f"Expected '4' in response: {response}"

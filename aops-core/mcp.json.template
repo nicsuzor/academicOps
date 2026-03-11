@@ -1,0 +1,25 @@
+{
+  "claude": {
+    "mcpServers": {
+      "pkb": {
+        "type": "stdio",
+        "command": "pkb",
+        "env": {
+          "ACA_DATA": "${ACA_DATA}",
+          "RUST_LOG": "warn"
+        }
+      }
+    }
+  },
+  "gemini": {
+    "mcpServers": {
+      "pkb": {
+        "command": "pkb",
+        "env": {
+          "ACA_DATA": "${ACA_DATA}",
+          "RUST_LOG": "warn"
+        }
+      }
+    }
+  }
+}

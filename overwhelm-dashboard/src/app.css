@@ -1,0 +1,103 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #0A0A0A;
+  --color-surface: #1A1A1A;
+
+  /* Operator Amber (Default) */
+  --color-primary: #f2aa0d;
+  --color-primary-glow: color-mix(in srgb, var(--color-primary) 50%, transparent);
+  --color-primary-dim: color-mix(in srgb, var(--color-primary) 15%, transparent);
+  --color-primary-border: color-mix(in srgb, var(--color-primary) 30%, transparent);
+
+  --color-matrix: #00FF41;
+  --color-destructive: #FF007F;
+
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --radius-sm: 2px;
+  --radius-md: 4px;
+}
+
+/* Custom variant for the theme switcher */
+@custom-variant holographic (&:where(.theme-holographic, .theme-holographic *));
+
+/* Holographic Cyan Overrides */
+.theme-holographic {
+  --color-primary: #0de3f2;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-primary font-display antialiased overflow-hidden h-screen flex flex-col selection:bg-primary selection:text-black;
+  }
+}
+
+@layer utilities {
+  .selected-node {
+    filter: drop-shadow(0 0 15px var(--color-primary)) drop-shadow(0 0 5px #fff);
+    z-index: 100;
+  }
+  .selected-node rect, .selected-node circle, .selected-node polygon {
+    stroke: #fff !important;
+    stroke-width: 5px !important;
+    stroke-opacity: 1 !important;
+  }
+}
+
+/* CRT Scanline Effect */
+.scanlines {
+  background: linear-gradient(
+    to bottom,
+    rgba(255,255,255,0),
+    rgba(255,255,255,0) 50%,
+    rgba(0,0,0,0.2) 50%,
+    rgba(0,0,0,0.2)
+  );
+  background-size: 100% 4px;
+  pointer-events: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  opacity: 0.15;
+}
+
+.text-glow {
+  text-shadow: 0 0 5px var(--color-primary-glow);
+}
+
+.grid-bg {
+  background-image:
+    linear-gradient(var(--color-primary-dim) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-primary-dim) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Holographic specific classes */
+.glass-panel {
+    backdrop-filter: blur(20px);
+    background: rgba(10, 10, 10, 0.7);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 15%, transparent);
+}
+.glass-card {
+    backdrop-filter: blur(16px);
+    background: color-mix(in srgb, var(--color-primary) 3%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.glass-card:hover {
+    background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+    border-color: var(--color-primary);
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 10px 40px color-mix(in srgb, var(--color-primary) 15%, transparent);
+}
+.void-bg {
+    background: radial-gradient(circle at 50% 50%, #0a0a0a 0%, #050505 100%);
+}
+.glow-text {
+    text-shadow: 0 0 15px color-mix(in srgb, var(--color-primary) 60%, transparent);
+}

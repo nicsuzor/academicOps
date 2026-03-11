@@ -1,0 +1,129 @@
+# Agent: Auditor (Curia)
+# Personality: Mechanical compliance checker. Silent unless violations found.
+# Responsibilities:
+#   - Check PR diff against axioms, heuristics, and project-local rules
+#   - Post PR comment ONLY if violations are found
+#   - Set "Axiom Review" commit status (success/failure)
+# Prompt: .github/agents/auditor.agent.md
+# Curia: Auditor (GitHub surface). Local: .agent/skills/custodiet/SKILL.md
+#
+# This is distinct from "Agent: Assessor" (agent-review-and-fix.yml),
+# which handles strategic review and can push fixes.
+
+name: "Agent: Axiom Review"
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to review'
+        type: string
+        required: true
+      ref:
+        description: 'Git ref to checkout'
+        type: string
+        required: true
+  workflow_call:
+    inputs:
+      pr_number:
+        description: 'PR number to review'
+        type: string
+        required: true
+      ref:
+        description: 'Git ref to checkout'
+        type: string
+        required: true
+
+jobs:
+  axiom-review:
+    name: Axiom Review
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.user.login != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: axiom-review-${{ inputs.pr_number || github.event.pull_request.number }}
+      cancel-in-progress: true
+    permissions:
+      contents: read
+      pull-requests: write
+      statuses: write
+      id-token: write
+      issues: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref || github.event.pull_request.head.ref }}
+
+      - name: Read agent instructions
+        id: prompt
+        run: |
+          PROMPT=$(cat .github/agents/auditor.agent.md)
+          {
+            echo "prompt<<AGENT_EOF"
+            echo "$PROMPT"
+            echo "AGENT_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Determine PR info
+        id: pr-info
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "pr_number=${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+            echo "sha=${{ github.event.pull_request.head.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            PR_DATA=$(gh pr view "${{ inputs.pr_number }}" --json number,headRefOid)
+            echo "pr_number=${{ inputs.pr_number }}" >> "$GITHUB_OUTPUT"
+            echo "sha=$(echo "$PR_DATA" | jq -r '.headRefOid')" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run Axiom Review
+        id: review
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          allowed_bots: "claude[bot]"
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            ${{ steps.prompt.outputs.prompt }}
+
+            ---
+
+            Review PR #${{ steps.pr-info.outputs.pr_number }} in repository ${{ github.repository }}.
+            Use `gh pr diff ${{ steps.pr-info.outputs.pr_number }}` to get the diff.
+
+            Read the project rules:
+            - `.agent/rules/AXIOMS.md`
+            - `.agent/rules/HEURISTICS.md`
+            - `.agent/rules/enforcement-map.md`
+            - `.agent/rules/protected_paths.txt`
+
+            Check the diff for violations against these rules.
+
+            If NO violations: set a success status and exit. Do NOT post a comment or review.
+            ```bash
+            gh api repos/${{ github.repository }}/statuses/${{ steps.pr-info.outputs.sha }} -f state="success" -f context="Axiom Review" -f description="No violations found"
+            ```
+
+            If violations found: submit a CHANGES_REQUESTED review listing each violation, then set a failure status:
+            ```bash
+            gh pr review ${{ steps.pr-info.outputs.pr_number }} --request-changes --body "$(cat <<'REVIEW_EOF'
+            ## Axiom Review
+
+            **Violations found**: N
+
+            1. **[P#XX] Rule Name** — path/to/file:line
+               What the rule requires vs what the PR does.
+            REVIEW_EOF
+            )"
+            gh api repos/${{ github.repository }}/statuses/${{ steps.pr-info.outputs.sha }} -f state="failure" -f context="Axiom Review" -f description="Violations found — see review"
+            ```
+
+          claude_args: '--model claude-sonnet-4-6 --allowed-tools "Bash(gh:*),Read"'

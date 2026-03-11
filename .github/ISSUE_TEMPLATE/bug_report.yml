@@ -1,0 +1,65 @@
+name: Bug Report
+description: File a bug report to help us improve academicOps
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a bug! Please provide as much detail as possible.
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear and concise description of what the bug is.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Steps to reproduce the behavior.
+      placeholder: |
+        1. Run command '...'
+        2. Set environment variable '...'
+        3. See error
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: A clear and concise description of what you expected to happen.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: A clear and concise description of what actually happened.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: |
+        Please provide details about your environment:
+        - OS: [e.g. macOS, Ubuntu]
+        - Python version: [e.g. 3.11.5]
+        - academicOps version: [run `aops --version` or check `pyproject.toml`]
+        - Model used (if applicable): [e.g. Claude 3.5 Sonnet]
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Log Output
+      description: Please copy and paste any relevant log output or screenshots.
+      render: shell
+  - type: checkboxes
+    id: checkboxes
+    attributes:
+      label: Verification
+      options:
+        - label: I have searched the existing issues and this is not a duplicate.
+          required: true

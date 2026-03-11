@@ -1,0 +1,33 @@
+# GitHub Ruleset: Copilot review for default branch
+# Ruleset ID: 13308185
+# Applied to: default branch (~DEFAULT_BRANCH) of nicsuzor/academicOps
+#
+# This ruleset enables Copilot code review on pull requests targeting
+# the default branch.
+#
+# Created: 2026-02-27
+# Last updated from live: 2026-03-03
+
+name: Copilot review for default branch
+
+target: branch
+conditions:
+  ref_name:
+    include:
+      - ~DEFAULT_BRANCH
+    exclude: []
+
+enforcement: active
+
+bypass_actors: []
+
+rules:
+  # ─────────────────────────────────────────
+  # Copilot Code Review
+  # ─────────────────────────────────────────
+  - type: copilot_code_review
+    parameters:
+      review_on_push: false
+      review_draft_pull_requests: false
+    # Copilot reviews PRs when requested, not automatically on every push.
+    # Draft PRs are excluded from automatic review.

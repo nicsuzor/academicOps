@@ -1,0 +1,66 @@
+name: Task / Epic / Goal
+description: Create a structured task for the framework
+labels: ["task", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for general tasks, epics, or goals that need to be tracked in the framework.
+  - type: dropdown
+    id: type
+    attributes:
+      label: Task Type
+      description: The semantic level of the task.
+      options:
+        - task
+        - action
+        - epic
+        - project
+        - goal
+        - bug
+        - feature
+        - learn
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: 0 (Critical) to 4 (Someday).
+      options:
+        - "0"
+        - "1"
+        - "2"
+        - "3"
+        - "4"
+    validations:
+      required: true
+  - type: input
+    id: project
+    attributes:
+      label: Project Slug
+      description: (Optional) The project this task belongs to.
+  - type: input
+    id: assignee
+    attributes:
+      label: Assignee
+      description: (Optional) 'nic' (human) or 'bot' (agent).
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Detailed description of the task.
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: (Optional) List IDs of tasks that must be completed first.
+  - type: checkboxes
+    id: checkboxes
+    attributes:
+      label: Verification
+      options:
+        - label: I have searched the existing issues and this is not a duplicate.
+          required: true

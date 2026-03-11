@@ -1,0 +1,3 @@
+[submodule "lib/markdown-links"]
+	path = lib/markdown-links
+	url = https://github.com/tchayen/markdown-links.git
