@@ -41,6 +41,7 @@ export interface GraphNode {
     parent: string | null;
     project: string | null;
     assignee: string | null;
+    path: string | null;
     opacity: number;
     isLeaf: boolean;
     spotlight: boolean;
@@ -293,6 +294,7 @@ export function prepareGraphData(
             parent: node.parent || null,
             project: node.project || null,
             assignee,
+            path: node.path || null,
             opacity,
             isLeaf: !parentIdsInGraph.has(nid),
             spotlight: Boolean(node.spotlight),

@@ -64,6 +64,15 @@
         const key = getGraphLayoutKey($viewSettings);
         if (key !== currentLayoutKey) {
             fetchGraph(key);
+
+            // Apply requested defaults for specific views
+            if ($viewSettings.viewMode === "SFDP") {
+                filters.update(f => ({ ...f, showActive: true, showBlocked: true, showCompleted: false, showOrphans: true, showDependencies: true }));
+                viewSettings.update(s => ({ ...s, topNLeaves: 9999 })); // Show ALL
+            } else if ($viewSettings.viewMode === "Force Atlas 2") {
+                filters.update(f => ({ ...f, showActive: true, showBlocked: false, showCompleted: false, showOrphans: false }));
+                viewSettings.update(s => ({ ...s, topNLeaves: 40 })); // Priority only (smaller N)
+            }
         }
     }
 

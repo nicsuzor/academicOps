@@ -1,30 +1,57 @@
 <script lang="ts">
     import { graphData } from "../../stores/graph";
     import HierarchyTree from "./HierarchyTree.svelte";
-    import { 
-        TYPE_CHARGE, 
-        STATUS_FILLS 
+    import {
+        TYPE_CHARGE,
+        STATUS_FILLS
     } from "../../data/constants";
 
-    export let taskId: string | null = null;
-    export let onclose: () => void = () => {};
+    let { taskId = null, onclose = () => {} }: { taskId?: string | null, onclose?: () => void } = $props();
 
-    $: task = taskId ? ($graphData?.nodes.find(n => n.id === taskId) || null) : null;
-    $: title = (task as any)?.fullTitle || task?.label || "Unknown Task";
-    $: description = (task as any)?._raw?.body || ``;
-    $: metadata = (task as any)?._raw || {};
+    let task = $derived(taskId ? ($graphData?.nodes.find(n => n.id === taskId) || null) : null);
+    let title = $derived((task as any)?.fullTitle || task?.label || "Unknown Task");
+    let metadata = $derived((task as any)?._raw || {});
+
+    let description = $state("");
+    let loadingBody = $state(false);
+
+    // Fetch body on-demand
+    $effect(() => {
+        if (task?.path) {
+            fetchBody(task.path);
+        } else {
+            description = "";
+        }
+    });
+
+    async function fetchBody(path: string) {
+        loadingBody = true;
+        try {
+            const res = await fetch(`/api/task?path=${encodeURIComponent(path)}`);
+            if (res.ok) {
+                const data = await res.json();
+                description = data.body || "";
+            } else {
+                description = "Failed to load task description.";
+            }
+        } catch (e) {
+            description = "Error loading task description.";
+        } finally {
+            loadingBody = false;
+        }
+    }
 
     // Filter out internal fields from metadata display
-    $: filteredMetadata = Object.entries(metadata).filter(([key]) => 
+    let filteredMetadata = $derived(Object.entries(metadata).filter(([key]) =>
         !['body', 'id', 'title', 'label', 'node_type', 'status', 'priority', 'project', 'assignee', 'layouts', 'x', 'y', 'depth', 'maxDepth', 'lines', 'dw', 'downstream_weight', 'modified', 'created', 'isLeaf', 'parent', 'fullTitle'].includes(key)
-    );
+    ));
 
     const statusOptions = Object.keys(STATUS_FILLS).sort();
     const typeOptions = Object.keys(TYPE_CHARGE).sort();
 
     async function updateTask(updates: Record<string, any>) {
         if (!taskId || !task) return;
-        
+
         // Optimistic local update
         graphData.update(gd => {
             if (!gd) return gd;
@@ -46,7 +73,7 @@
         });
 
         console.log(`[AGENT ACTION REQUIRED] Update task ${taskId} with:`, updates);
-        // In a real app, this would be an API call. 
+        // In a real app, this would be an API call.
         // As an agent, I will perform the mcp__pkb__update_task call after this file edit.
     }
 
@@ -94,7 +121,7 @@
                     <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-primary/60 text-xs font-mono uppercase tracking-widest">
                         <div class="flex items-center gap-2">
                             <span>Type:</span>
-                            <select 
+                            <select
                                 class="bg-primary/5 border border-primary/20 text-primary px-1 py-0.5 rounded outline-none focus:border-primary/50 transition-colors"
                                 value={task.type}
                                 onchange={(e) => setType(e.currentTarget.value)}
@@ -106,7 +133,7 @@
                         </div>
                         <div class="flex items-center gap-2">
                             <span>Status:</span>
-                            <select 
+                            <select
                                 class="bg-primary/5 border border-primary/20 text-primary px-1 py-0.5 rounded outline-none focus:border-primary/50 transition-colors"
                                 value={task.status}
                                 onchange={(e) => setStatus(e.currentTarget.value)}
@@ -125,19 +152,19 @@
                     </div>
                 </div>
                 <div class="flex gap-3">
-                    <button 
+                    <button
                         class="px-6 py-2 border border-primary {task.status === 'done' ? 'bg-primary text-background-dark' : 'bg-primary/10 text-primary'} hover:bg-primary hover:text-background-dark font-bold text-sm transition-all rounded"
                         onclick={() => setStatus('done')}
                     >
                         [ {task.status === 'done' ? 'DONE ✓' : 'DONE'} ]
                     </button>
-                    <button 
+                    <button
                         class="px-6 py-2 border border-primary/40 {task.status === 'ready' ? 'bg-primary/30 border-primary text-primary' : 'text-primary/70'} hover:border-primary hover:text-primary font-bold text-sm transition-all rounded"
                         onclick={() => setStatus('ready')}
                     >
                         [ READY ]
                     </button>
-                    <button 
+                    <button
                         class="px-6 py-2 border border-primary/40 {task.status === 'paused' ? 'bg-amber-500/20 border-amber-500/50 text-amber-500' : 'text-primary/70'} hover:border-primary hover:text-primary font-bold text-sm transition-all rounded"
                         onclick={() => setStatus('paused')}
                     >
@@ -221,7 +248,7 @@
                         <div class="mb-4 flex items-center gap-4 border-b border-primary/20 pb-2">
                             <button class="text-xs font-bold text-primary border-b-2 border-primary pb-2 -mb-[9px]">DESCRIPTION</button>
                         </div>
-                        <textarea class="w-full flex-1 bg-transparent border-none focus:ring-0 text-sm font-mono leading-relaxed text-primary/90 resize-none outline-none" placeholder={description ? "" : "No description provided."} value={description}></textarea>
+                        <textarea class="w-full flex-1 bg-transparent border-none focus:ring-0 text-sm font-mono leading-relaxed text-primary/90 resize-none outline-none" placeholder={loadingBody ? "Loading content..." : (description ? "" : "No description provided.")} value={description}></textarea>
                     </div>
                 </div>
             </div>

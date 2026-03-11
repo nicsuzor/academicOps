@@ -256,12 +256,12 @@
             .join("path")
             .attr("fill", "none")
             .attr("stroke", (d: any) => d.type === 'depends_on' ? 'var(--color-destructive)' : d.type === 'ref' ? 'var(--color-primary)' : 'rgba(255,255,255,0.2)')
-            .attr("stroke-width", (d: any) => d.type === 'depends_on' ? 1.5 : 1)
+            .attr("stroke-width", (d: any) => d.type === 'depends_on' ? 2.5 : d.type === 'ref' ? 1.5 : 1)
             .attr("stroke-dasharray", (d: any) => d.type === 'ref' ? '4,4' : null)
             .attr("marker-end", "url(#ar)")
             .attr("stroke-linecap", "round")
             .attr("stroke-linejoin", "round")
-            .attr("opacity", (d: any) => d.type === 'depends_on' ? 0.6 : d.type === 'ref' ? 0.3 : 0.1)
+            .attr("opacity", (d: any) => d.type === 'depends_on' ? 0.8 : d.type === 'ref' ? 0.5 : 0.2)
             .attr("class", "force-edge");
 
         if ($viewSettings.viewMode === "SFDP") {

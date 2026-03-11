@@ -8,10 +8,10 @@ export const viewSettings = writable({
     liveSimulation: false,
     chargeStrength: 1.0,
     linkDistance: 1.0,
-    collisionRadius: 1.0,
+    collisionRadius: 1.2,
     gravity: 0.05,
     alphaDecay: 0.04,
-    velocityDecay: 0.55,
+    velocityDecay: 0.7,
     circleRollupThreshold: 15,
     arcVerticalSpacing: 1.0
 });

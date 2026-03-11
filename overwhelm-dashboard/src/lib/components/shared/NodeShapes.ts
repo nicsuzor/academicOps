@@ -271,10 +271,11 @@ export function buildTreemapNode(g: d3.Selection<SVGGElement, any, null, undefin
 }
 export function buildCirclePackNode(g: d3.Selection<SVGGElement, any, null, undefined>, d: any, isSelected = false) {
     const r = Math.max(d._lr || d.w / 2 || 5, 2);
+    const isParent = !d.isLeaf;
     const opacity = statusOpacity(d);
 
     // Add native tooltip
-    g.append("title").text(`${d.label} (${d.status})`);
+    g.append("title").text(`${d.label} (${d.status})\nType: ${d.type}`);
 
     if (isSelected) {
         g.classed("selected-node", true);
@@ -282,25 +283,45 @@ export function buildCirclePackNode(g: d3.Selection<SVGGElement, any, null, unde
         g.classed("selected-node", false);
     }
 
-    g.append("circle").attr("cx", 0).attr("cy", 0).attr("r", r)
-        .attr("fill", d.fill).attr("fill-opacity", opacity)
-        .attr("stroke", isSelected ? "#fff" : d.borderColor).attr("stroke-width", isSelected ? 4 : 1);
+    if (isParent) {
+        // Parent containment circle
+        g.append("circle").attr("cx", 0).attr("cy", 0).attr("r", r)
+            .attr("fill", "rgba(255,255,255,0.03)")
+            .attr("stroke", isSelected ? "#fff" : "rgba(242, 170, 13, 0.2)")
+            .attr("stroke-width", isSelected ? 4 : 1)
+            .attr("stroke-dasharray", "4,2");
 
-    if (d.status === "blocked" && d.dw >= 2) {
-        g.insert("circle", ":first-child")
-            .attr("cx", 0).attr("cy", 0).attr("r", r + 4)
-            .attr("fill", "none").attr("stroke", "#ef4444")
-            .attr("class", "danger-pulse");
-    }
+        // Parent label at top
+        if (r > 20) {
+            g.append("text").attr("class", "node-text")
+                .attr("x", 0).attr("y", -r + 12)
+                .attr("text-anchor", "middle")
+                .attr("font-size", "9px").attr("font-weight", "bold")
+                .attr("fill", "rgba(242, 170, 13, 0.6)").attr("text-transform", "uppercase")
+                .text((d.label || '').substring(0, 30));
+        }
+    } else {
+        // Leaf task circle
+        g.append("circle").attr("cx", 0).attr("cy", 0).attr("r", r)
+            .attr("fill", d.fill).attr("fill-opacity", opacity)
+            .attr("stroke", isSelected ? "#fff" : d.borderColor).attr("stroke-width", isSelected ? 4 : 1);
 
-    if (r > 8) {
-        const label = (d.label || '').substring(0, 24);
-        const fs = Math.max(5, Math.min(12, r * 0.4));
-        g.append("text").attr("class", "node-text")
-            .attr("x", 0).attr("y", 0)
-            .attr("text-anchor", "middle").attr("dominant-baseline", "central")
-            .attr("font-size", fs + "px").attr("fill", d.textColor || "#fff").attr("opacity", 0.9)
-            .text(label.length > 20 ? label.substring(0, 18) + '...' : label);
+        if (d.status === "blocked" && d.dw >= 2) {
+            g.insert("circle", ":first-child")
+                .attr("cx", 0).attr("cy", 0).attr("r", r + 4)
+                .attr("fill", "none").attr("stroke", "#ef4444")
+                .attr("class", "danger-pulse");
+        }
+
+        if (r > 8) {
+            const label = (d.label || '').substring(0, 24);
+            const fs = Math.max(5, Math.min(12, r * 0.4));
+            g.append("text").attr("class", "node-text")
+                .attr("x", 0).attr("y", 0)
+                .attr("text-anchor", "middle").attr("dominant-baseline", "central")
+                .attr("font-size", fs + "px").attr("fill", d.textColor || "#fff").attr("opacity", 0.9)
+                .text(label.length > 20 ? label.substring(0, 18) + '...' : label);
+        }
     }
 }
 
@@ -320,7 +341,7 @@ export function buildArcNode(g: d3.Selection<SVGGElement, any, null, undefined>,
     g.append("circle").attr("cx", 0).attr("cy", 0).attr("r", r)
         .attr("fill", d.fill).attr("fill-opacity", opacity)
         .attr("stroke", isSelected ? "#fff" : d.borderColor).attr("stroke-width", isSelected ? 4 : 1);
-        
+
     g.append("text").attr("class", "node-text")
         .attr("x", 0).attr("y", r + 12)
         .attr("text-anchor", "middle").attr("font-size", "8px")
