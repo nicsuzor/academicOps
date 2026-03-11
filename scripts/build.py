@@ -230,6 +230,7 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
                             # Replace Claude variable with Gemini variable
                             cmd = new_hook["command"]
                             cmd = cmd.replace("${CLAUDE_PLUGIN_ROOT}", "${extensionPath}")
+                            cmd = cmd.replace("router.py", "router.sh")
 
                             # Ensure we use the correct client flag for Gemini
                             cmd = cmd.replace("--client claude", "--client gemini")

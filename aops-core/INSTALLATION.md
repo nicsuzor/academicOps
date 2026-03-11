@@ -43,9 +43,9 @@ To install `aops-core` as a Gemini extension:
    ```json
    {
      "hooks": {
-       "SessionStart": "uv run python aops-core/hooks/router.py",
-       "BeforeTool": "uv run python aops-core/hooks/router.py",
-       "BeforeAgent": "uv run python aops-core/hooks/router.py"
+       "SessionStart": "bash aops-core/hooks/router.sh --client gemini SessionStart",
+       "BeforeTool": "bash aops-core/hooks/router.sh --client gemini BeforeTool",
+       "BeforeAgent": "bash aops-core/hooks/router.sh --client gemini BeforeAgent"
      }
    }
    ```

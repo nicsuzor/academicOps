@@ -118,7 +118,7 @@ Hooks are registered in the extension manifest, **not** in settings.json:
       "hooks": [{
         "name": "aops-router",
         "type": "command",
-        "command": "uv run --directory ${AOPS} python ${AOPS}/dist/aops-core/hooks/router.py SessionStart",
+        "command": "bash ${AOPS}/dist/aops-core/hooks/router.sh --client gemini SessionStart",
         "timeout": 15000
       }]
     }],
@@ -127,7 +127,7 @@ Hooks are registered in the extension manifest, **not** in settings.json:
       "hooks": [{
         "name": "aops-router",
         "type": "command",
-        "command": "uv run --directory ${AOPS} python ${AOPS}/dist/aops-core/hooks/router.py BeforeTool",
+        "command": "bash ${AOPS}/dist/aops-core/hooks/router.sh --client gemini BeforeTool",
         "timeout": 5000
       }]
     }]
