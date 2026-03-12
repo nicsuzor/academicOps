@@ -222,6 +222,28 @@ fn resolve_type_alias(t: &str) -> (&'static str, Option<&'static str>) {
 }
 ```
 
+## User Expectations
+
+### Work Item Management
+
+- **Unified Visibility**: Users expect `task_search` and `list_tasks` to return ALL work items, including bugs, features, and learning tracks, without needing to guess which specific type a work item was filed under.
+- **Clean Task Lists**: Users expect task management tools to show only work to be done, never cluttering results with research notes, meeting transcripts, or contact information.
+- **Hierarchical Clarity**: While the canonical hierarchy is slightly flattened (Action/Bug/Feature absorbed into Task), users expect to still see a clear relationship from Goal → Project → Epic → Task, with `classification` (e.g., `action`) providing the necessary granularity for session-sized work.
+
+### Knowledge Organization
+
+- **Canonical Consistency**: Users expect the system to automatically suggest or fix non-canonical types (e.g., `insight` -> `note`) to keep the knowledge base organized and searchable.
+- **Clear Boundaries**: Users expect a sharp distinction between _reference_ material (knowledge artifacts) and _actionable_ material (work to be done), ensuring that a research note never accidentally appears as a blocked task.
+
+### Implementation Status (Audit Assessment)
+
+- **What Works**: Basic hierarchical task graph and searching for the core `task`, `project`, and `goal` types. The foundational infrastructure for `ACTIONABLE_TYPES` exists in the Rust layer.
+- **Missing**:
+  - **Cross-Layer Sync**: Python `TaskType` and Rust `ACTIONABLE_TYPES` are out of sync; the Python side still maintains retired types as top-level enums.
+  - **Visibility Gaps**: Many work items (`bug`, `feature`, `action`) are currently invisible to search or buried in noise because they aren't yet unified under the `ACTIONABLE_TYPES` constant in all search/list operations.
+  - **Metadata Standardization**: The `classification` field is not yet universally parsed or displayed across the dashboard, TUI, and CLI.
+- **Aspirational**: Full automated migration of existing data using `aops lint --fix` and a unified single-source-of-truth for types across the entire Rust/Python stack.
+
 ## Acceptance criteria
 
 1. `task_search("anything")` returns results with type `bug`, `feature`, `action`, `epic`, `learn` — not just `task|project|goal`
