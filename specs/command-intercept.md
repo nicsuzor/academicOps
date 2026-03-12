@@ -112,7 +112,7 @@ tools:
 
 ### Default Behavior
 
-When no config file exists or a tool has no registered transformers: **pass through unchanged** (no-op).
+When a tool has no registered transformers: **pass through unchanged** (no-op). A missing or invalid config file is a misconfiguration error — the hook must fail fast (P#8), not silently pass through.
 
 ## First Transformer: `exclude_directories`
 
@@ -165,7 +165,7 @@ Glob does not support exclusion patterns natively. Strategies to evaluate:
 
 ## Hook Registration
 
-Add to `HOOK_REGISTRY` in `router.py`:
+Register in `GateRegistry` (see `router.py`):
 
 ```python
 "PreToolUse": [
