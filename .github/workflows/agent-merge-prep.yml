@@ -152,7 +152,7 @@ jobs:
         continue-on-error: true
         uses: anthropics/claude-code-action@v1
         with:
-          allowed_bots: "*"
+          allowed_bots: "claude[bot],github-actions[bot]"
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
             ${{ steps.prompt.outputs.prompt }}
@@ -206,8 +206,6 @@ jobs:
             || {
               if echo "$APPROVE_OUTPUT" | grep -q "Can not approve your own pull request"; then
                 echo "WARNING: Self-approval blocked by GitHub — skipping (expected for own PRs)"
-              elif echo "$APPROVE_OUTPUT" | grep -q "GitHub Actions is not permitted to approve pull requests"; then
-                echo "WARNING: Approval blocked by GitHub Actions permissions — skipping"
               else
                 echo "ERROR: Approval failed unexpectedly: $APPROVE_OUTPUT"
                 exit 1

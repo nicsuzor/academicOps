@@ -104,7 +104,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          allowed_bots: "*"
+          allowed_bots: "claude[bot]"
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
             ${{ steps.prompt.outputs.prompt }}
