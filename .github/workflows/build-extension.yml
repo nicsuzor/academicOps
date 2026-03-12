@@ -342,6 +342,7 @@ jobs:
             # Create release if it doesn't exist, or upload to existing
             gh release upload "v$VERSION" $GEMINI_ARCHIVES --clobber \
               || gh release create "v$VERSION" \
+                --target "${{ github.sha }}" \
                 --title "v$VERSION" \
                 --notes "AcademicOps v$VERSION" \
                 $PRERELEASE_FLAG \
