@@ -38,9 +38,9 @@ Collaboration sessions can produce massive amounts of text (thousands of lines).
 
 Raw collaboration transcripts MUST be stored in a dedicated file, separate from the task definition.
 
-- **Location:** `data/transcripts/YYYY/MM/` (or `data/collaboration/` if distinct from standard transcripts).
+- **Location:** `$AOPS_SESSIONS/transcripts/` (CLI sessions go to `$AOPS_SESSIONS/polecats/`).
 - **Format:** Markdown.
-- **Naming:** `YYYYMMDD-{short-topic}-{session-id}.md`.
+- **Naming:** `YYYYMMDD-{short-topic}-{session-id}-full.md` (full history) and `…-abridged.md` (conversation only).
 
 #### 2. Task Body Content
 
@@ -50,7 +50,7 @@ The task body MUST only contain a **Summary** and a **Reference**.
   - Maximum 500 characters (approximate).
   - Captures the _outcome_, _key decisions_, and _next steps_.
 - **Reference:**
-  - A link to the raw output file: `[Full Transcript](../../data/transcripts/...)`.
+  - A link to the raw output file: `[Full Transcript]($AOPS_SESSIONS/transcripts/...)`.
   - (Optional) A link to the session insights JSON/report if generated.
 
 #### 3. Integration with Session Insights
@@ -71,14 +71,14 @@ When starting a collaboration task:
 2. Use the task to track _goals_ of the collaboration.
 3. Perform the collaboration (in CLI or Web).
 4. **If CLI:** Use `/session-insights` to process the session.
-   - This automatically generates a summary and stores it in `data/sessions/summaries/`.
+   - This automatically generates a summary and stores it in `$AOPS_SESSIONS/summaries/`.
    - Update the task with the generated summary.
-5. **If Web/External:** Save the transcript to `data/transcripts/...` manually, then summarize into the task.
+5. **If Web/External:** Save the transcript to `$AOPS_SESSIONS/transcripts/` manually, then summarize into the task.
 6. **Do not** paste the full chat log into the task.
 
 ## Acceptance Criteria
 
-1. Raw transcripts are stored in `data/transcripts/` or `data/collaboration/`, never in task bodies.
+1. Raw transcripts are stored in `$AOPS_SESSIONS` (under `transcripts/` or `polecats/`), never in task bodies.
 2. Task bodies contain only a summary (approx. 500 chars) and a reference link to the full transcript.
 3. The `/session-insights` skill is used to generate summaries for all CLI-based sessions.
 4. Large transcripts (> 10KB) are handled via external reference as per P#69.
