@@ -22,7 +22,7 @@ tags: [spec, hooks, tool-transformation]
 
 A modular PreToolUse hook
 
-that intercepts and transforms tool calls before execution. Designed to be a **no-op by default** with configurable behaviors registered per tool.
+that intercepts and transforms tool calls before execution. Tools without registered transformers **pass through unchanged**, but the system requires explicit configuration (P#8).
 
 ### Problem Statement
 
