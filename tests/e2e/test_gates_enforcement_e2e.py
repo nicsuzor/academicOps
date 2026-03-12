@@ -34,6 +34,7 @@ class TestHydrationGateE2E:
         output_text = result.get("output", "")
 
         from tests.conftest import check_blocked
+
         is_blocked = check_blocked(result)
 
         assert is_blocked, (
@@ -82,6 +83,7 @@ class TestHydrationExemptToolsE2E:
         output_text = result.get("output", "")
 
         from tests.conftest import check_blocked
+
         blocked_for_hydration = check_blocked(result)
 
         assert not blocked_for_hydration, (
