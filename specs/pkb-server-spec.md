@@ -93,6 +93,37 @@ The server supports comprehensive capture (create documents, memories, tasks wit
 
 The server computes deterministic metrics (counts, depths, degrees). It does NOT make recommendations, score by "value", generate proposals, or perform semantic analysis beyond vector similarity. Judgment stays in the LLM.
 
+## User Expectations
+
+### Performance & Availability
+
+- **Immediate Feedback**: CLI commands (search, tasks, status) respond in <500ms for typical PKBs (<5,000 nodes).
+- **Search Latency**: MCP hybrid search returns results within 2 seconds.
+- **Always Available**: The server is stateless and starts in <1s. If the index is stale, search results include a warning but remain functional.
+
+### Data Integrity & Portability
+
+- **Human First**: Every file created or modified remains a standard Markdown file with valid YAML frontmatter. Users can edit files in any text editor without breaking the system.
+- **Strict Validation**: The server rejects any write operation that would result in malformed frontmatter.
+- **Zero Lock-in**: If the PKB server is removed, the knowledge base remains fully functional as a collection of Markdown files.
+
+### Retrieval & Intelligence
+
+- **Semantic Discovery**: Users expect to find information by intent ("what do I know about...") rather than path or filename.
+- **Hybrid Precision**: Search results prioritize semantic relevance but are boosted by graph proximity to the current context (via `boost_id`).
+- **Data over Judgment**: The server provides raw data, counts, and metrics. It never proactively suggests "best" tasks or interprets the "meaning" of work beyond vector similarity.
+
+### Graph & Connectivity
+
+- **No Orphans**: Users and agents are alerted to disconnected tasks (orphans) during graph traversal or via specific tools.
+- **Relationship Transparency**: Every task retrieval (`get_task`) includes its immediate neighborhood (parents, children, dependencies, blockers) by default.
+- **Deterministic Metrics**: Centrality and weight metrics (PageRank, downstream weight) are stable and reproducible.
+
+### Capture & Friction
+
+- **Zero-Friction Entry**: Creating a task or memory requires only a title. The server handles routing, ID generation, and timestamping automatically.
+- **Flexible Resolution**: The system resolves ambiguous identifiers (title fragments, stems) to unique IDs whenever possible, failing gracefully with a list of candidates if truly ambiguous.
+
 ## MCP Tool Inventory (18 tools)
 
 Target: 18 tools across 6 groups. Each tool has one clear purpose.
