@@ -249,7 +249,7 @@ Scan for `<!-- @nic: -->` annotations without matching `<!-- @claude: -->` respo
 
 This spec is implemented via a pair of skills that coordinate between the daily note, the briefing bundle document, and the external data sources (PKB and Outlook).
 
-- **Implementation**: `aops-core/skills/briefing-bundle/`
-- **Implementation**: `aops-core/skills/process-bundle/`
+- **Implementation**: [[aops-core/skills/briefing-bundle/SKILL.md]]
+- **Implementation**: [[aops-core/skills/process-bundle/SKILL.md]]
 - **Upstream**: [[aops-core/skills/daily/SKILL.md]] — daily note that the bundle reads
 - **Upstream**: [[aops-core/skills/annotations/SKILL.md]] — annotation processing convention
