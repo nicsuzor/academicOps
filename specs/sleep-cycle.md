@@ -203,7 +203,7 @@ There is no Python orchestrator. The workflow launches a **Claude agent** (`anth
 
 The sleep cycle is the framework's "maintenance" layer. Users (human or agent) can expect the following behaviors:
 
-1. **Autonomous Maintenance**: The cycle runs every 4 hours via GitHub Actions. It should complete without intervention and stay within its 20-minute time budget.
+1. **Autonomous Maintenance**: The cycle runs every 4 hours via GitHub Actions. It should complete without intervention and stay within its time budget (see Open Questions for duration).
 2. **Zero-Orphan Sessions**: Every session transcript eventually receives a corresponding summary JSON and PKB memory. Users shouldn't need to manually run `/session-insights` in bulk.
 3. **Self-Cleaning Task Graph**: Under-specified tasks (vague titles, empty bodies) are automatically flagged. The task graph stays actionable without manual pruning of dead ends.
 4. **Living Framework Indices**: Mechanical framework files (`SKILLS.md`, `INDEX.md`) stay synchronized with the filesystem. New skills or commands appear in indices within 4 hours of being merged.
@@ -217,7 +217,7 @@ The sleep cycle is the framework's "maintenance" layer. Users (human or agent) c
 - [ ] **Index Refresh**: After adding a new skill file to `aops-core/skills/`, the sleep cycle (Phase 3) updates `aops-core/SKILLS.md` to include the new skill.
 - [ ] **Governance Protection**: Changes to governance documents (`VISION.md`, `AXIOMS.md`) are flagged via Pull Request rather than being auto-committed.
 - [ ] **Sync Integrity**: Every successful cycle concludes with a commit to the brain repo using the standard message `sleep: periodic consolidation`.
-- [ ] **Time Management**: The agent exits cleanly and records a summary to `$GITHUB_STEP_SUMMARY` within the 20-minute timeout.
+- [ ] **Time Management**: The agent exits cleanly and records a summary to `$GITHUB_STEP_SUMMARY` within the configured timeout.
 
 ## Open Questions
 
