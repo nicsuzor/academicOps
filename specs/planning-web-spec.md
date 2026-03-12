@@ -47,7 +47,7 @@ The interface must be scannable, not studyable. Visual hierarchy (size, color, s
 
 ### 3. Graph Fidelity
 
-The Planning Web must be a high-fidelity projection of the underlying PKB. Changes made in the web interface (status, priority, relationships) must reflect in the markdown files immediately, and vice versa.
+The Planning Web must be a high-fidelity projection of the underlying PKB. Changes made in the web interface (status, priority, relationships) must reflect in the markdown files near-instantly, and vice versa.
 
 ### 4. Zero-Friction Capture
 
