@@ -151,9 +151,21 @@ The dashboard exists because Nic's brain can't hold all this state. He needs an 
 **I want** the dashboard itself to not be another source of cognitive overload,
 **So that** opening it calms me down rather than stressing me out more.
 
-**What this means**: The page can't be an endless scroll of every piece of information the system has. Sections must be collapsible. Stale/irrelevant data must be hidden by default. The most important information (what's running now, what's dropped, what needs me) must be above the fold. Dense data (full project grids, graph visualizations) must be below or collapsed.
+**What "not overwhelming" means**: The page can't be an endless scroll of every piece of information the system has. Sections must be collapsible. Stale/irrelevant data must be hidden by default. The most important information (what's running now, what's dropped, what needs me) must be above the fold. Dense data (full project grids, graph visualizations) must be below or collapsed.
 
 **Acceptance test**: The dashboard's above-the-fold content (before scrolling) answers the three critical questions: "What's running?", "What's dropped?", and "What needs me?"
+
+## User Expectations
+
+For an academic with ADHD managing 500+ tasks across parallel workstreams, the dashboard must meet these baseline expectations:
+
+1. **Context Recovery (The 15-Second Rule)**: I expect to recover my working context in under 15 seconds. This requires "Where You Left Off" (active/paused sessions) and "Your Path" (dropped threads) to be visible above the fold.
+2. **Conversation-Centric Identity**: I expect to identify agent sessions by what _I_ asked them to do (initial prompt), not by agent IDs or generic statuses. If a session cannot answer "what was I doing here?", it should not be displayed in the active list.
+3. **Graph-Native Visibility**: I expect the graph to be the primary interface for structural understanding. It must make bottlenecks (high downstream weight) and connectivity between research and tooling visible at a glance.
+4. **Zero-Friction Capture**: I expect to capture an idea in under 5 seconds from the dashboard. The capture interface must be always accessible and require only a title — no mandatory project or priority triage at the moment of inspiration.
+5. **Narrative Synthesis**: I expect a pre-computed "Today's Story" summary that provides a narrative overview of progress, alignment, and blockers. I expect to see a staleness indicator if this synthesis is >60 minutes old.
+6. **Cognitive Calm (Collapsible Density)**: I expect the dashboard to reduce my overwhelm through collapsible sections, directive framing, and high-impact defaults. Detailed or dense data must be available on demand but hidden by default.
+7. **Proactive Triage**: I expect the system to handle stale data for me. Sessions >24h old should not clutter my active view; I expect a batch-archive prompt that allows me to clear the deck with one click.
 
 ## Page Layout
 
