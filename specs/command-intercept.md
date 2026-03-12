@@ -283,8 +283,9 @@ def test_glob_excludes_venv_in_real_session():
 
 ### Phase 1: Infrastructure (this spec)
 
+- [x] Router support for `updatedInput` (implemented in `router.py`)
 - [ ] Create `command_intercept.py` hook skeleton
-- [ ] Register in `HOOK_REGISTRY`
+- [ ] Register in `GateRegistry` or `HOOK_REGISTRY`
 - [ ] Load config from `$ACA_DATA/command_intercept.yaml`
 - [ ] Pass-through when no config
 
@@ -299,6 +300,33 @@ def test_glob_excludes_venv_in_real_session():
 - [ ] Measure effectiveness of advisory approach
 - [ ] If insufficient, implement tool substitution (option 4)
 - [ ] Add Grep transformer if needed
+
+## User Expectations
+
+This section defines the verifiable behavior of the command intercept system. Note that while the routing infrastructure supports tool transformation, the active interceptor and transformers are currently in the design phase.
+
+### Current State: Passive Pass-through
+
+- **Expectation**: By default, all tool calls pass through the framework without modification.
+- **Pass Criteria**: A `Glob` or `Grep` call returns results matching standard Claude Code / Gemini CLI behavior.
+- **Pass Criteria**: The hook output is empty (`{}`), indicating no transformation was attempted.
+
+### Design Goal: Transparent Transformation
+
+- **Expectation**: When a transformation is applied, the agent and user are notified of the change to maintain epistemic integrity (P#115).
+- **Pass Criteria**: The hook response contains `updatedInput` with modified parameters.
+- **Pass Criteria**: The hook response contains `additionalContext` or `systemMessage` explaining what was transformed (e.g., "Glob transformed: excluded .venv").
+
+### Design Goal: Fail-Safe Configuration
+
+- **Expectation**: The system is resilient to configuration errors, ensuring tool availability is never compromised by the interceptor.
+- **Pass Criteria**: If `$ACA_DATA/command_intercept.yaml` is missing, malformed, or has an invalid version, the hook falls back to passive pass-through.
+- **Fail Criteria**: A configuration error results in a tool call being blocked or the session crashing.
+
+### Design Goal: Context Noise Reduction
+
+- **Expectation**: The `exclude_directories` transformer for `Glob` reduces context waste by filtering out high-noise directories.
+- **Pass Criteria**: With the transformer active and configured to exclude `node_modules`, a `Glob` search for `**/*.js` does not return any files from `node_modules/`.
 
 ## Related
 
