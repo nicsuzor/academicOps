@@ -32,6 +32,16 @@ Each test case includes:
 - **Constraint Check**: Which constraints apply and how they're evaluated
 - **Expected Result**: Pass, fail, or remediation needed
 
+## User Expectations
+
+As a draft specification for a system that is currently **partially implemented via probabilistic LLM reasoning** rather than a deterministic enforcement engine, the following expectations apply:
+
+1. **Workflow Identification**: When a user request matches a pilot workflow (feature-dev, decompose, tdd-cycle), the hydrator is expected to correctly identify and load the corresponding workflow instructions.
+2. **Plan Alignment**: The generated execution plan should qualitatively satisfy the "Critical Rules" defined in the workflow files (e.g., planning a "Write failing test" step before an "Implement" step).
+3. **No Formal Blocking**: Users should **not** expect deterministic error messages or hard blocks if a plan violates a constraint. Constraint enforcement is currently "best effort" by the LLM during hydration.
+4. **Verification via Review**: Correctness of the plan against these constraints must be verified qualitatively by the user or a `qa` agent during the planning phase.
+5. **Test Case Validity**: The test cases in this spec define the "ground truth" for how a future formal checker should behave. They serve as the benchmark for implementation success.
+
 ---
 
 ## Feature-Dev Workflow Tests
