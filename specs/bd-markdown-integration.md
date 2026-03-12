@@ -189,3 +189,36 @@ A task is skill-sized when:
 - Clear input/output boundaries
 - Can be verified independently
 - No decision points requiring human input mid-task
+
+---
+
+## User Expectations
+
+### 1. Project-Task Connectivity
+
+- **Expectation**: Users can associate tasks with specific projects by using a `project:<slug>` label in the task and a matching `project: <slug>` field in the project's markdown frontmatter.
+- **Verification**: Running `aops tasks --project <slug>` correctly filters and displays only the tasks associated with that project.
+
+### 2. Task Tree Visualization
+
+- **Expectation**: The system provides a read-only ASCII task tree that accurately reflects the hierarchy and state of tasks.
+- **Visual Accuracy**: The tree uses the following status symbols and annotations consistently:
+  - Symbols: `○` (Open/Active/Waiting), `●` (Closed/Done/Cancelled), `◐` (In-progress/Review/Merge Ready), `⊘` (Blocked).
+  - Annotations: Priority (e.g., `[P1]`), Type (e.g., `[epic]`, `[discovery]`), and Assignee (e.g., `@bot`, `@nic`).
+- **Nesting**: Parent-child relationships are represented with standard tree connectors (`├─`, `└─`).
+
+### 3. Read-Only Source of Truth
+
+- **Expectation**: Task trees injected into markdown files are read-only views generated from the PKB.
+- **Data Integrity**: Manual edits to the ASCII tree text within a markdown file do not propagate back to the PKB. The PKB remains the single source of truth for task state.
+
+### 4. Automatic Decomposition
+
+- **Expectation**: High-level goals or epics can be decomposed into structured task trees using the `decompose` workflow.
+- **Heuristics**: The system identifies skill-sized tasks for `@bot` execution and identifies `[discovery]` tasks for human input when the path is unclear.
+- **Connectivity**: All generated subtasks must remain connected to their parent epic and correctly inherit the project association.
+
+### 5. Automation Scope
+
+- **Current State**: Automated injection of the task tree is currently implemented for the **Daily Note** (via the `daily` skill).
+- **Aspirational**: Systematic auto-injection into all project-linked markdown files is supported by the underlying `lib/ascii_tree.py` but may require manual invocation or specific workflow triggers outside of the daily note lifecycle.
