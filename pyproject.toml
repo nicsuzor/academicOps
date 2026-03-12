@@ -58,7 +58,7 @@ source = "uv-dynamic-versioning"
 # https://github.com/ninoseki/uv-dynamic-versioning/issues/21
 [tool.uv-dynamic-versioning]
 vcs = "git"
-style = "pep440"
+style = "semver"
 bump = true
 
 [dependency-groups]
