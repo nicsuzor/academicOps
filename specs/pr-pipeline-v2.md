@@ -30,6 +30,15 @@ supersedes: pr-process.md
 
 The previous pipeline ([[specs/pr-process.md]]) required a human LGTM to trigger merge-prep. This created a sequencing problem: merge-prep fixes failing checks, so it cannot wait for checks to pass before running. The new design inverts the dependency — merge-prep runs automatically on a cron, bots prepare everything, and the human approves or denies once at the end.
 
+## User Expectations
+
+- **Zero-Touch Preparation:** As a PR author, I expect my contribution to be automatically linted, tested, and reviewed without manual intervention. Trivial issues (lint/formatting) are fixed and pushed back to my branch automatically.
+- **Bazaar Window for Feedback:** I expect a 15-minute "bazaar window" after my last push for external tools (Gemini, Copilot) and human reviewers to provide feedback before "Merge Prep" begins its final triage.
+- **Synthesis, Not Noise:** As a maintainer, I expect a single "Decision Brief" comment that synthesizes feedback from all sources. I should not have to hunt through dozens of bot comments to understand the PR's state.
+- **Single Decision Point:** I expect to make exactly one decision — "Approve" or "Reject" — via a clear GitHub Actions Environment gate. Approval should lead to an immediate merge.
+- **Fail-Safe Operation:** I expect the system to halt and notify me if it encounters a runaway loop (more than 5 merge-prep commits) or repeated failures (3 attempts), ensuring I am alerted when human intervention is required.
+- **Fast, Parallel Feedback:** I expect my PR checks (Lint, Type Check, Pytest) to run concurrently and independently, providing immediate feedback on every push without false dependencies.
+
 ## Design Principles
 
 1. **Bots prepare, human decides.** All mechanical work (lint fixes, review triage, conflict resolution) happens before the human looks at the PR. The human's job is approval or rejection, not preparation.
