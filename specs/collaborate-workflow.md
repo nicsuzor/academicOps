@@ -40,7 +40,7 @@ Raw collaboration transcripts MUST be stored in a dedicated file, separate from 
 
 - **Location:** `$AOPS_SESSIONS/transcripts/` (CLI sessions go to `$AOPS_SESSIONS/polecats/`).
 - **Format:** Markdown.
-- **Naming:** `YYYYMMDD-{short-topic}-{session-id}-full.md` (full history) and `…-abridged.md` (conversation only).
+- **Naming:** `YYYYMMDD-HH-{project}-{session-id}-{slug}-full.md` (full history) and `…-abridged.md` (conversation only).
 
 #### 2. Task Body Content
 
