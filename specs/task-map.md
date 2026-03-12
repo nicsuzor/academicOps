@@ -40,6 +40,19 @@ These constrain all design decisions for the task map:
 - **No flat displays at scale.** 500 same-sized circles is noise, not information. Visual hierarchy (size, shape, emphasis) must create entry points and scannable structure.
 - **Support focus transitions.** The hardest ADHD moment is shifting from "seeing everything" to "working on one thing." The graph should support both modes: full overview for orientation, and single-project focus for commitment.
 
+## User Expectations
+
+The task map is successful only if it reduces cognitive load. The user expects:
+
+1. **Immediate Structural Orientation:** Upon opening, the "forest" must be visible. High-level goals and projects should be immediately distinguishable from leaf tasks through size and shape.
+2. **Leverage visibility:** The visual weight of a node must correlate with its "downstream weight." The most load-bearing tasks (those that unblock the most work) must stand out.
+3. **Surgical Filtering:** Every node on the screen must have a reason for being there. The "reachable" view should prune anything that isn't active or a structural ancestor of active work.
+4. **Actionable Alarms:** Blocked tasks, especially those with high downstream impact, should be visually alarming (e.g., larger size + red color) to prompt investigation.
+5. **Workstream Heat:** The graph should feel "alive." Recently modified areas should be saturated/bright, while stale threads should visually recede into the background.
+6. **Drill-down Context:** Clicking any node should provide a working-memory "jump-start" — showing the title (not ID), breadcrumbs, children, and dependency neighborhood in a detail panel.
+7. **Spatial Memory:** The layout should be stable. If a project is "to the left" today, it should stay there tomorrow, allowing the user to develop a spatial map of their commitments.
+8. **Self-Explaining Visuals:** A compact, accurate legend should enable a first-time viewer to decode the graph's language within 10 seconds.
+
 ## Current Implementation
 
 ### Filtering: `filter_reachable` (in `scripts/task_graph.py`)
