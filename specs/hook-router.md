@@ -96,3 +96,13 @@ If hooks aren't firing for an MCP tool:
 1. Check which plugin defines the MCP server (`.mcp.json`)
 2. Check which plugin defines the hooks (`hooks/hooks.json`)
 3. Ensure they're the **same plugin**
+
+## User Expectations
+
+1. **Unified Experience**: Users expect a consistent experience across both Gemini CLI and Claude Code. The router must normalize platform-specific events and outputs so that framework behavior (blocking, warnings, context injection) feels identical regardless of the client used.
+2. **Robustness and Fail-Fast**: Hook execution must be reliable. If the router or a sub-hook crashes, the framework should fail-fast with a clear error message rather than silently allowing potentially non-compliant actions.
+3. **Consolidated Feedback**: When multiple gates trigger simultaneously (e.g., a "hydration required" block and a "custodiet countdown" warning), users expect a single, well-formatted response from the router. Feedback should be prioritized (blocking reasons first) and deduplicated.
+4. **Least Privilege Enforcement**: The strictest verdict across all active gates must always prevail. A single gate's "deny" cannot be overridden by other gates' "allow" verdicts.
+5. **Contextual Guidance**: When an action is blocked or a threshold is approaching, the router must inject specific, actionable instructions into the agent's context (e.g., "Run /hydrate to unblock tool use") rather than generic error messages.
+6. **State Persistence**: Users expect gate state (counters, status, metadata) to be accurately persisted across turns and sessions. Opening a gate (e.g., via a compliance check) should consistently unblock the agent until the next state transition.
+7. **Performance**: Hook routing must introduce minimal latency. Users expect a responsive CLI; hook execution should ideally complete within 500ms for standard operations to avoid breaking the interactive loop.
