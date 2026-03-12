@@ -1,5 +1,3 @@
-import json
-
 import pytest
 
 
@@ -21,21 +19,10 @@ def test_gate_enforcement_e2e(cli_headless, gate, instruction, expected_behavior
 
     assert result["success"], f"CLI execution failed: {result.get('error')}"
 
-    output_text = json.dumps(result["result"])
-
     if expected_behavior == "blocked":
-        block_indicators = [
-            "Hydration Required",
-            "This session is not hydrated",
-            "Access Denied",
-            "Gate Blocked",
-            "BLOCKED",
-        ]
+        from tests.conftest import check_blocked
 
-        is_blocked = any(indicator in output_text for indicator in block_indicators)
-
-        if not is_blocked:
-            is_blocked = "block" in output_text.lower() or "denied" in output_text.lower()
+        is_blocked = check_blocked(result)
 
         assert is_blocked, (
             f"Expected {gate} gate to block, but no block message found. Platform: {platform}"

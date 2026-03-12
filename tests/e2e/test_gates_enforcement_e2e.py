@@ -33,8 +33,9 @@ class TestHydrationGateE2E:
 
         output_text = result.get("output", "")
 
-        block_indicators = ["hydration", "BLOCKED", "gate", "pending"]
-        is_blocked = any(ind.lower() in output_text.lower() for ind in block_indicators)
+        from tests.conftest import check_blocked
+
+        is_blocked = check_blocked(result)
 
         assert is_blocked, (
             f"[{platform}] Expected hydration gate to block Read tool.\nOutput: {output_text[:500]}"
@@ -83,8 +84,10 @@ class TestHydrationExemptToolsE2E:
 
         output_text = result.get("output", "")
 
+        # Negative assertion: use strict AND logic (not the broad check_blocked helper)
+        # to avoid false failures when output incidentally contains words like "gate".
         blocked_for_hydration = (
-            "hydration" in output_text.lower() and "BLOCKED" in output_text.upper()
+            "hydration" in output_text.lower() and "blocked" in output_text.lower()
         )
 
         assert not blocked_for_hydration, (
