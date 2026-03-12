@@ -83,6 +83,15 @@ When starting a collaboration task:
 3. The `/session-insights` skill is used to generate summaries for all CLI-based sessions.
 4. Large transcripts (> 10KB) are handled via external reference as per P#69.
 
+## User Expectations
+
+- **Automated Recording**: Collaboration sessions are automatically recorded as markdown transcripts and stored in the sessions repository (configured via `$AOPS_SESSIONS`).
+- **Transcript Versions**: Every session produces both a `-full.md` (complete history) and an `-abridged.md` (conversation only) transcript.
+- **On-Demand Insights**: Structured summaries, accomplishments, and learnings can be generated for any session using the `/session-insights` skill.
+- **Searchable Knowledge**: Key outcomes from collaboration sessions are synced to the personal knowledge base (PKB) for semantic search.
+- **Clean Task Management**: Task bodies used for collaboration remain focused on outcomes, avoiding the anti-pattern of pasting raw chat logs.
+- **Large Session Support**: The system handles large transcripts (>10KB) by storing them externally and using reference links in task bodies.
+
 ## Alignment with Heuristics
 
 - **H1 (Self-Correction):** Reviewing the summary allows identifying if the session drifted.
