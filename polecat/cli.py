@@ -29,6 +29,9 @@ def _make_worker_env() -> dict[str, str]:
     """
     env = os.environ.copy()
     apply_env_mappings(env)
+    # Prevent gh CLI from launching interactive prompts in non-TTY environments.
+    # Workers run headless — any prompt would hang indefinitely.
+    env.setdefault("GH_PROMPT_DISABLED", "1")
     return env
 
 
