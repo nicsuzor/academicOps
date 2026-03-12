@@ -268,6 +268,50 @@ Track these to measure framework health:
 | Learning observation frequency | count of learn-type tasks | Stable or decreasing            |
 | Time to root cause             | task creation → fix       | < 24 hours for recurring issues |
 
+## User Expectations
+
+Users can expect the framework to actively capture, analyze, and act upon session data through the following mechanisms:
+
+### 1. Automatic Task Synchronization
+
+When a session reflection includes an accomplishment that references a task ID (e.g., `[[aops-123]]`), the framework automatically:
+
+- **Updates Checklists**: Marks corresponding items in the task's "Acceptance Criteria" as completed if a match is detected.
+- **Logs Progress**: Appends a timestamped entry to the task's "Progress" section with the session ID and a summary of the work.
+- **Maintains Audit Trail**: Ensures that every task update is backed by a specific session transcript.
+
+### 2. Mandatory Session Reflections
+
+At the end of every session, the agent is expected to emit a `## Framework Reflection` block. Users rely on this to:
+
+- **Verify Outcomes**: Confirm whether the session was a `success`, `partial` completion, or `failure`.
+- **Capture Friction**: Document what was harder than expected to identify systemic tool or context gaps.
+- **Propose Improvements**: Suggest immediate changes to workflows, skills, or heuristics.
+
+### 3. Transparent Observability
+
+Reflections and operational metrics (token usage, skill compliance, custodiet blocks) are aggregated into:
+
+- **Session Insights**: Structured JSON files providing a detailed post-mortem of every session.
+- **Project Dashboards**: Daily summaries that highlight project alignment, recent accomplishments, and recurring friction points.
+- **Resource Tracking**: Clear visibility into token consumption and cache efficiency per model and agent.
+
+### 4. Graduated Framework Improvement
+
+Users can trigger systemic improvements using the `/learn` command when a failure occurs:
+
+- **Root Cause Analysis**: The framework diagnoses whether the failure was a discovery gap, instruction weighting issue, or detection failure.
+- **Async Reporting**: Generates a privacy-scrubbed diagnostic report and files it as a GitHub issue for maintainers.
+- **Proportionate Intervention**: Fixes are applied at the lowest effective level (e.g., a new heuristic before a new hard enforcement rule) to minimize friction.
+
+### 5. Automated Governance
+
+The `audit` skill ensures the framework remains healthy by:
+
+- **Syncing Indices**: Automatically updating `SKILLS.md`, `WORKFLOWS.md`, and `HEURISTICS.md` to match the current filesystem.
+- **Broken Link Detection**: Identifying stale or "orphan" specifications and documentation.
+- **Acceptance Testing**: Running agent-driven end-to-end tests to verify that core feedback loops remain functional.
+
 ## Related Documents
 
 - [[framework-observability]] - What we observe and how
