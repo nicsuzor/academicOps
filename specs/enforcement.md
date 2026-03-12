@@ -55,12 +55,15 @@ graph TD
         L[PR Pipeline]
     end
 
-    A --> D
+    A & B --> D
     D --> E
     E --> F
     F --> G
-    G --> I
-    I --> K
+    G --> H
+    H --> I
+    I --> J
+    J --> K
+    K --> L
 ```
 
 **Purpose**: Architectural philosophy for why enforcement works the way it does. For practical mechanism selection, see [[ENFORCEMENT|docs/ENFORCEMENT.md]]. For current active rules, see [[RULES]].
@@ -182,10 +185,10 @@ The enforcement system ensures framework compliance through real-time gating and
 
 - **Expectation**: A session cannot be closed until work is verified and documented.
 - **Behavior**: The `Stop` event is blocked if:
-  - The `/qa` skill (or `qa` agent) has not been invoked to verify results.
-  - A "Framework Reflection" is missing or malformed in the agent's response.
-  - The `/dump` skill has not been run (if a task was bound to the session).
-- **Verification**: Running `Stop` without fulfilling these conditions should return a `HANDOVER_GATE` or `QA_GATE` block with specific instructions.
+  - A "Framework Reflection" is missing or malformed in the agent's response. *(Handover gate — active)*
+  - The `/dump` skill has not been run (if a task was bound to the session). *(Handover gate — active)*
+  - The `/qa` skill (or `qa` agent) has not been invoked to verify results. *(QA gate — planned, not yet enforced: gate starts OPEN and has no closing trigger)*
+- **Verification**: Running `Stop` without a Framework Reflection or `/dump` should return a `HANDOVER_GATE` block. The `QA_GATE` block is not yet active.
 
 ### 4. Commitment Safety
 
