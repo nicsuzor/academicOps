@@ -54,10 +54,18 @@ CLAUDE_TO_GEMINI_EVENTS = {
 
 
 def sanitize_version(version: str) -> str:
-    """Sanitize version for PEP 440 compliance (uv is strict)."""
-    # Replace -testing.N with .devN
+    """Sanitize version for semver compliance.
+
+    Converts PEP 440 dev versions (.devN) and legacy -testing.N
+    formats to semver pre-release format (-dev.N).
+    """
+    import re
+
+    # Replace -testing.N with -dev.N
     if "-testing." in version:
-        return version.replace("-testing.", ".dev")
+        return version.replace("-testing.", "-dev.")
+    # Replace PEP 440 .devN with semver -dev.N
+    version = re.sub(r"\.dev(\d+)", r"-dev.\1", version)
     return version
 
 
@@ -102,6 +110,10 @@ def get_project_version(aops_root: Path) -> str:
                 "latest",
                 "--exclude",
                 "testing",
+                "--exclude",
+                "*.dev*",
+                "--match",
+                "v[0-9]*",
             ],
             cwd=aops_root,
             capture_output=True,
@@ -112,9 +124,9 @@ def get_project_version(aops_root: Path) -> str:
             desc = result.stdout.strip().lstrip("v")
             # If it's just a short SHA (no tag), it's probably 0.1.0-dev
             if len(desc) == 8 and all(c in "0123456789abcdef" for c in desc):
-                return f"0.1.0.dev0+g{desc}"
+                return f"0.1.0-dev.0+g{desc}"
 
-            # Convert git describe format (0.2.1-5-gabc123) to PEP 440 (0.2.1.dev5+gabc123)
+            # Convert git describe format (0.2.1-5-gabc123) to semver (0.2.1-dev.5+gabc123)
             if "-" in desc:
                 parts = desc.split("-")
                 base = parts[0]
@@ -122,7 +134,7 @@ def get_project_version(aops_root: Path) -> str:
                     dev_num = parts[1]
                     sha = parts[2] if len(parts) > 2 else ""
                     dirty = ".dirty" if "dirty" in desc else ""
-                    return f"{base}.dev{dev_num}+{sha}{dirty}"
+                    return f"{base}-dev.{dev_num}+{sha}{dirty}"
             return sanitize_version(desc)
     except FileNotFoundError:
         pass
@@ -140,7 +152,7 @@ def get_project_version(aops_root: Path) -> str:
         stable_tags = [
             t
             for t in tags
-            if not any(s in t for s in ["-testing", ".dev", "-beta", "-rc", "-alpha"])
+            if not any(s in t for s in ["-testing", ".dev", "-dev.", "-beta", "-rc", "-alpha"])
         ]
         if stable_tags:
             return stable_tags[0].lstrip("v")
@@ -913,7 +925,7 @@ def main():
         "--set-version",
         type=str,
         default=None,
-        help="Override the auto-detected version (e.g. '0.1.15-testing.42')",
+        help="Override the auto-detected version (e.g. '0.3.1-dev.42')",
     )
     parser.add_argument(
         "--pkb-binary",
