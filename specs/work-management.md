@@ -68,6 +68,17 @@ flowchart LR
 | `mcp__pkb__get_blocked_tasks()`       | Get blocked tasks  |
 | `mcp__pkb__create_task(id, children)` | Break down task    |
 
+## User Expectations
+
+- **State Transparency**: Users can always see the exact, real-time status of all work. The system must support statuses including `active`, `in_progress`, `done`, `blocked`, `failed`, `review`, `merge_ready`, and `waiting`.
+- **Justification (The "Why")**: Every task must be anchored in the hierarchy (Goal → Project → Epic → Task). Users can always trace why a task exists by examining its parent field.
+- **Actionable Visibility**: Users can query for actionable work and receive a prioritized list of unblocked leaf tasks that are ready for execution.
+- **Multi-Session Continuity**: Work state is persisted in markdown files, allowing work started in one session to be safely paused and accurately resumed in another by any agent.
+- **Ownership Clarity**: Every task has an explicit `assignee` (`nic` for human, `polecat` or `bot` for agent), ensuring no ambiguity about who is responsible for the next step.
+- **Dependency Awareness**: The system explicitly tracks blocking relationships. When a task is stalled, the user can identify exactly which dependency or human input is required to proceed.
+- **Fail-Fast Diagnostics**: When an execution fails, the task must record a `diagnostic` message. Users expect to understand the reason for failure without manual log analysis.
+- **Searchability & Indexing**: All tasks are indexed and searchable by title, tag, or project, ensuring that every work item remains discoverable and no context is lost over time.
+
 ## Task Lifecycle
 
 ```
