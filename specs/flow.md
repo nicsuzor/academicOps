@@ -365,7 +365,7 @@ User invokes `/session-insights` skill to analyze transcripts with Gemini:
 
 As specified in [[docs/VISION.md]], the core loop ensures that academic work maintains epistemic integrity through synchronous enforcement and qualitative review.
 
-1. **Zero-Friction Initialization**: Every session automatically configures the environment ($AOPS, $PYTHONPATH, $ACA_DATA) and loads core principles (AXIOMS, HEURISTICS). Users expect a consistent, pre-configured starting state regardless of the working directory.
+1. **Zero-Friction Initialization**: Every session automatically configures the environment ($AOPS, $PYTHONPATH, $ACA_DATA) and ensures core principles (AXIOMS, HEURISTICS) are available for planning and compliance. Users expect a consistent, pre-configured starting state regardless of the working directory.
 2. **Mandatory Hydration**: Terse prompts are automatically transformed into structured execution plans. The user expects the system to "think before acting," selecting appropriate workflows and skills based on intent before any modifications are made.
 3. **Workflow-Driven Progress**: Execution follows defined, composable workflows (e.g., `feature-dev`, `tdd-cycle`). The user expects the framework to enforce these procedures, preventing "plan-less execution" and ensuring all required steps are performed in sequence.
 4. **Continuous Compliance (Custodiet)**: The framework periodically audits the session for scope drift and principle violations. The user expects immediate notification (and session halting in block mode) if the agent diverges from the original intent or violates core axioms.
