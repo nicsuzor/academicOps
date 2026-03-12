@@ -203,7 +203,7 @@ A task is skill-sized when:
 
 - **Expectation**: The system provides a read-only ASCII task tree that accurately reflects the hierarchy and state of tasks.
 - **Visual Accuracy**: The tree uses the following status symbols and annotations consistently:
-  - Symbols: `○` (Open/Active/Waiting), `●` (Closed/Done/Cancelled), `◐` (In-progress/Review/Merge Ready), `⊘` (Blocked).
+  - Symbols: `○` (Open/Active/Waiting/Review/Merge Ready), `●` (Closed/Done/Cancelled), `◐` (In-progress), `⊘` (Blocked).
   - Annotations: Priority (e.g., `[P1]`), Type (e.g., `[epic]`, `[discovery]`), and Assignee (e.g., `@bot`, `@nic`).
 - **Nesting**: Parent-child relationships are represented with standard tree connectors (`├─`, `└─`).
 
