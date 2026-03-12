@@ -19,7 +19,7 @@ tags: [verification, enforcement, architecture, infrastructure]
 - [[HEURISTICS.md]] - H3 Verification heuristic
 - [[specs/enforcement.md]] - Enforcement architecture defining evidence types
 
-_Note: This is a design spec. Phase 1 (Advocate Agent) not yet implemented._
+_Note: This is a design spec. Phase 1 (Independent QA Agent) is implemented as `aops-core:qa`._
 
 ## Problem Statement
 
@@ -74,15 +74,15 @@ if claim_pattern(agent_output) and not recent_verification_tools():
 
 **Enforcement strength:** Medium-Strong (Level 4 on enforcement ladder)
 
-### Option B: Layer 5 Advocate Agent
+### Option B: Layer 5 Independent QA Agent
 
 **Mechanism:** Dedicated subagent reviews conclusions with actual-state verification.
 
 **Workflow:**
 
 1. Agent completes work, presents conclusion
-2. `/advocate` agent invoked (automatically or by user)
-3. Advocate reads actual files/configs to verify claims
+2. `/qa` agent invoked (automatically or by user)
+3. QA reads actual files/configs to verify claims
 4. Returns VERIFIED / QUESTIONABLE / FALSE with evidence
 
 **Pros:**
@@ -104,20 +104,20 @@ if claim_pattern(agent_output) and not recent_verification_tools():
 ### Option C: Hybrid Approach
 
 **Layer 4:** Lightweight detection for obvious violations (no verification tools used)
-**Layer 5:** Advocate agent for conclusions/claims
+**Layer 5:** QA agent for conclusions/claims
 
 **Trigger logic:**
 
 ```
 PostToolUse: If agent says "complete" or "success" without verification tools → inject reminder
-Stop hook: Offer advocate review when session ends
+Stop hook: Offer qa review when session ends
 ```
 
 **Pros:**
 
 - Defense in depth (catches different failure modes)
 - Escalation path (Layer 4 reminder → Layer 5 verification)
-- Cost-effective (only invoke advocate when needed)
+- Cost-effective (only invoke qa when needed)
 
 **Cons:**
 
@@ -130,27 +130,27 @@ Stop hook: Offer advocate review when session ends
 
 1. **No single layer is reliable** (P#enforcement-architecture) - defense in depth required
 2. **Layer 4 catches obvious violations cheaply** - "success" without evidence gathering
-3. **Layer 5 provides ground truth** - advocate agent verifies actual state
+3. **Layer 5 provides ground truth** - qa agent verifies actual state
 4. **Gradual enforcement** - reminder before blocking, verification before accepting
 
 ### Implementation Phases
 
-#### Phase 1: Layer 5 Advocate Agent (Foundation)
+#### Phase 1: Layer 5 Independent QA Agent (Foundation)
 
 Build the reliable verification mechanism first.
 
 **Components:**
 
-- `aops-core/agents/advocate.md` - Skeptical verification agent
+- `aops-core/agents/qa.md` - Skeptical verification agent (Active)
 - Tools: Read, Bash, Grep (can check actual state)
 - Model: Opus (needs strong reasoning for verification)
-- Invocation: Manual first (`Task(subagent_type="advocate")`)
+- Invocation: Manual first (`Task(subagent_type="qa")`)
 
 **Workflow:**
 
 ```
 User: "Verify this conclusion: [agent's claim]"
-Advocate:
+QA:
   1. Identify claims requiring verification
   2. Gather evidence (Read configs, Bash commands, Grep patterns)
   3. Compare claim vs actual state
@@ -181,15 +181,39 @@ Detect missing verification and inject reminder.
 
 **Why Phase 3:** Preventive nudge. Doesn't block (avoids false positives) but raises salience.
 
-#### Phase 4: Automatic Advocate Invocation (Optional)
+#### Phase 4: Automatic QA Invocation (Optional)
 
 Automate verification review.
 
-**Hook:** Stop hook offers advocate review
+**Hook:** Stop hook offers qa review
 **Trigger:** Session ending after qa-proof or verification-required workflow
-**Action:** "Run advocate verification? [Y/n]"
+**Action:** "Run qa verification? [Y/n]"
 
 **Why Phase 4:** Reduces friction. Only pursue if manual invocation proves valuable.
+
+## User Expectations
+
+The Verification System ensures the epistemic integrity of the framework by replacing mechanical checklists with LLM-driven qualitative judgment. Users should expect the following:
+
+### 1. High-Stakes Skepticism (Active)
+
+- **Independent QA**: When a session reaches a "verification required" gate, the `qa` subagent (`aops-core:qa`) will be invoked. This agent provides a skeptical, independent perspective, treating the main agent's claims as hypotheses to be tested against ground truth.
+- **Evidence-First Verdicts**: The system will not accept "looks correct" as a verdict. Verification must be grounded in `actual_state` evidence: terminal output, test results, or direct file reads.
+
+### 2. Guarding Original Intent (Active)
+
+- **Anti-Sycophancy**: The QA layer protects against "goalpost shifting." It verifies work against the user's _original_ request verbatim, catching cases where an agent has simplified the task to make it easier to complete.
+- **Intent vs. Compliance**: Success is measured by whether the user's need was met, not whether a specific technical procedure was followed.
+
+### 3. Proactive Evidence Gathering (Active)
+
+- **Verify First (P#26)**: Users should expect agents to explore the existing state before proposing changes. Observations (Read/Bash/Grep) must precede assertions.
+- **No Silent Failures (P#8)**: If verification tools fail or produce ambiguous output, agents are expected to HALT and report the uncertainty rather than guessing.
+
+### 4. Automated Verification Loop (Aspirational)
+
+- **Layer 4 Nudges**: Users will eventually receive real-time reminders if they attempt to claim "success" or "completion" without having first demonstrated evidence.
+- **Continuous Compliance**: Periodic background checks by `custodiet` ensure that the session hasn't drifted away from its original verification goals.
 
 ## Success Criteria
 
@@ -197,12 +221,12 @@ Automate verification review.
 
 1. **Reduction in unverified claims** - Tracked via custodiet detections
 2. **User confidence** - Can trust agent conclusions without manual checking
-3. **Agent learning** - Agents internalize verification patterns from advocate feedback
+3. **Agent learning** - Agents internalize verification patterns from qa feedback
 
 **Validation:**
 
 - Track verification tool usage before claims (Bash/Read/Grep before "success")
-- Measure advocate VERIFIED vs QUESTIONABLE rate
+- Measure qa VERIFIED vs QUESTIONABLE rate
 - Monitor custodiet P#26 violation detections (should decrease)
 
 ## Non-Goals
@@ -215,8 +239,8 @@ Automate verification review.
 
 ## Open Questions
 
-1. **Advocate invocation cost** - Is Opus per verification sustainable? (Measure in Phase 1)
-2. **Trigger granularity** - Which conclusions require advocate vs self-verification?
+1. **QA invocation cost** - Is Opus per verification sustainable? (Measure in Phase 1)
+2. **Trigger granularity** - Which conclusions require qa vs self-verification?
 3. **False reminder rate** - Will Phase 3 hook create reminder fatigue? (Measure in Phase 3)
 
 ## References
