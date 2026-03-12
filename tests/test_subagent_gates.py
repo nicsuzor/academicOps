@@ -609,7 +609,7 @@ class TestE2EGateDispatchFromRawStdin:
 
         # Dynamically change the policy verdict since GateRegistry caches configs
         gate_config = next(g for g in GATE_CONFIGS if g.name == "hydration")
-        monkeypatch.setattr(gate_config.policies[0], "verdict", GateVerdict.WARN)
+        monkeypatch.setattr(gate_config.policies[0], "verdict", GateVerdict.WARN.value)
 
         # Gate dispatch: hydration CLOSED blocks non-infrastructure tools
         result = router._dispatch_gates(ctx, state_hydration_closed)
