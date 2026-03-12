@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.1](https://github.com/nicsuzor/academicOps/compare/v0.3.0...v0.3.1) (2026-03-12)
+
+
+### Bug Fixes
+
+* revert to PEP 440 versioning for Python packaging compatibility ([a6d6c73](https://github.com/nicsuzor/academicOps/commit/a6d6c733dcc1f01df81efb6032a630a97158fd90))
+* use semver for prerelease versions ([0c6e1c9](https://github.com/nicsuzor/academicOps/commit/0c6e1c9d12382f4780d23cadc113b9d84991d1e5))
+* use semver format for prerelease versions instead of PEP 440 ([18bcd06](https://github.com/nicsuzor/academicOps/commit/18bcd0630c76234dee8e783f8cd2c961114b3323))
+
 ## [0.3.0](https://github.com/nicsuzor/academicOps/compare/v0.2.0...v0.3.0) (2026-03-12)
 
 
