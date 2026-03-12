@@ -87,14 +87,39 @@ After triaging, HALT. Do not continue to execution.
 """
 
 FINISH_LOCAL_TASK = """\
-After successful execution, mark the task complete:
+After successful execution:
 
-```
-complete_task(id="{task_id}")
-```
+1. **Commit** all changes with a descriptive message.
 
-Do NOT call complete_task unless all changes are committed and acceptance \
-criteria are met."""
+2. **If code or files were changed**, push your branch and file a PR \
+(`GH_PROMPT_DISABLED=1` is already set in your environment):
+
+   ```bash
+   git push -u origin HEAD
+   gh pr create \\
+     --title "<task title>" \\
+     --body "<what changed and why>\\n\\nCloses {task_id}" \\
+     --head <branch-name> \\
+     --base main
+   ```
+
+   All four flags (`--title`, `--body`, `--head`, `--base`) are required. \
+Omitting `--head` or `--base` will cause `gh` to hang.
+
+3. **Update the task** in PKB with the outcome, then close it:
+
+   - If a PR was filed:
+     ```
+     mcp__pkb__update_task(id="{task_id}", status="merge_ready",
+       body="## Outcome\\n- Branch: <branch>\\n- Commit: <sha>\\n- PR: <url>")
+     ```
+   - If no code changes (learn tasks, investigations, etc.):
+     ```
+     complete_task(id="{task_id}")
+     ```
+
+Do NOT update status until all changes are committed and acceptance criteria \
+are met."""
 
 FINISH_GITHUB_ISSUE = """\
 After successful execution, ensure all changes are committed with a \
