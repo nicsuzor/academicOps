@@ -278,8 +278,8 @@ Insights JSON uses consistent schemas so tooling can:
 
 Users can expect that every session (Gemini CLI or Claude Code) automatically generates a persistent audit trail.
 
-- **Transcripts**: Full and abridged markdown transcripts are generated at session end and stored in the `sessions/transcripts/` directory.
-- **Insights JSON**: A structured analysis of the session (outcome, accomplishments, friction points) is saved to the `sessions/summaries/` directory.
+- **Transcripts**: Full and abridged markdown transcripts are generated at session end and stored in the `sessions/transcripts/` directory within the sessions data repository.
+- **Insights JSON**: A structured analysis of the session (outcome, accomplishments, friction points) is saved to the `sessions/summaries/` directory within the sessions data repository.
 - **Token Tracking**: Detailed token usage metrics are captured per session, allowing users to monitor cost and efficiency.
 
 ### 2. Self-Reflexive Learning
@@ -295,7 +295,7 @@ The framework uses session-end reflections to improve itself.
 Operations are instrumented for performance monitoring.
 
 - **Metrics**: Users can observe operation latency, lock contention, and queue depth through structured logs (prefixed with `[POLECAT_METRIC]`).
-- **Health Checks**: The observability pipeline itself is monitored, with health metrics (success rate, task match rate) stored in `.metrics/pipeline-metrics.json`.
+- **Health Checks**: The observability pipeline itself is monitored, with health metrics (success rate, task match rate) stored in `.metrics/pipeline-metrics.json` within the session summaries directory.
 
 ### 4. Verification
 
