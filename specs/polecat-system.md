@@ -325,7 +325,7 @@ If a merge fails (due to conflicts or failing tests), the Refinery implements a 
 
 The Polecat System is the foundational workspace for autonomous agent work. Users and agents can expect the following behaviors:
 
-1. **Worktree Isolation**: Every task claimed via `polecat start` or `polecat run` operates in a dedicated, isolated git worktree at `$POLECAT_HOME/<task-id>`.
+1. **Worktree Isolation**: Every task claimed via `polecat start` or `polecat run` operates in a dedicated, isolated git worktree at `$POLECAT_HOME/polecat/<task-id>`.
    - **Test**: Changes made in a polecat worktree are not visible in the main development repository (e.g., `~/src/academicOps`) until they are explicitly merged.
 2. **Concurrency**: Multiple agents can work on different tasks in parallel without branch name collisions or file locking issues.
    - **Test**: Two separate `polecat start` commands for different tasks succeed and create two distinct worktrees and branches.
@@ -336,6 +336,6 @@ The Polecat System is the foundational workspace for autonomous agent work. User
 5. **Verified Merging (Refinery)**: The `polecat merge` command only integrates work that passes the project's automated test suite.
    - **Test**: A task in `merge_ready` status with failing tests is moved to `review` status with an error report, and is NOT merged into `main`.
 6. **Clean Exit**: Completing a task with `polecat finish --nuke` or `polecat nuke` removes the worktree and cleans up local resources.
-   - **Test**: After `polecat nuke <task-id>`, the directory `$POLECAT_HOME/<task-id>` no longer exists.
+   - **Test**: After `polecat nuke <task-id>`, the directory `$POLECAT_HOME/polecat/<task-id>` no longer exists.
 7. **Mirror Freshness**: Worktrees are spawned from a local bare mirror that is automatically synced (best-effort) on creation.
    - **Test**: `polecat start` logs a warning if the local mirror is stale compared to the main development repository, but still completes the setup.
