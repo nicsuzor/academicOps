@@ -262,8 +262,8 @@ def test_glob_exclude_passthrough_when_disabled():
 def test_glob_exclude_adds_context_warning():
     """When enabled, adds advisory context about exclusions."""
 
-def test_no_config_is_noop():
-    """Missing config file = no transformation."""
+def test_missing_config_fails_fast():
+    """Missing config file = error, not silent pass-through (P#8)."""
 
 def test_unknown_tool_is_noop():
     """Tools not in config pass through unchanged."""
