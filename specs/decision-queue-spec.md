@@ -45,7 +45,7 @@ A two-phase workflow orchestrated by the effectual planner:
 
 ### Phase 1: Extract (`/decision-extract`)
 
-The effectual planner scans all decision sources and produces a prioritized markdown file containing:
+The effectual planner scans all decision sources and produces a prioritized markdown section in the daily note containing:
 
 1. Each pending decision with context
 2. Space for the user's annotation
@@ -58,10 +58,23 @@ The effectual planner scans all decision sources and produces a prioritized mark
 
 After the user annotates their decisions, a second skill:
 
-1. Reads the annotated markdown file
-2. Updates the original sources (tasks, calendar, email drafts)
+1. Reads the annotated daily note
+2. Updates the original sources (tasks, etc.)
 3. Unblocks dependent tasks
 4. Reports what was resolved
+
+## User Expectations
+
+As a core part of the academicOps workflow, the Decision Queue must meet the following user expectations:
+
+- **Visibility**: I expect to see a summary of pending decisions (count and high-priority highlights) in my morning briefing (`/daily`).
+- **One-Stop Batching**: I expect to be able to trigger a full extraction (`/decision-extract`) that gathers all decision-type tasks from across the system into my daily note.
+- **Decision-Ready Context**: I expect each entry in the queue to provide sufficient context—including the task title, a snippet of the task body, and the number of downstream tasks it is blocking—so I can make a decision without having to open the original task file.
+- **Frictionless Annotation**: I expect to record my decisions using simple markdown interactions (checking boxes like `[x] Approve` or `[x] Defer`) and adding optional notes in the provided space.
+- **Reliable Execution**: I expect that running `/decision-apply` will faithfully update the task system, change statuses as intended, and provide a clear report of which tasks were unblocked.
+- **Safety First**: I expect the system to never perform irreversible external actions (such as sending an email or declining a calendar invite) without my explicit, separate confirmation or the use of a specialized communication skill.
+- **Persistence**: I expect my annotations to be preserved if I refresh the decision queue or run the daily update multiple times.
+- **Graceful Deferral**: I expect to be able to skip or defer some decisions without the system failing or losing track of the remaining items.
 
 ## Decision Classification
 
@@ -281,50 +294,30 @@ This should invoke the decision extraction logic and present results conversatio
 
 ## Implementation Phases
 
-### Phase A: Requirements (CONFIRMED 2026-02-03)
+### Phase A: Core Task Integration (COMPLETED)
 
-1. **Decision sources**: Task system only (start minimal)
-   - [x] Task system (status: waiting/review, assignee: nic)
-   - [ ] Outlook calendar (future expansion)
-   - [ ] Outlook inbox (future expansion)
-   - [ ] GitHub PRs (future expansion)
+- [x] Task system integration (status: waiting/review, assignee: nic)
+- [x] Output location: Daily note inline
+- [x] Apply behavior: Automatic PKB updates (status, body log)
+- [x] Frequency: Summary in `/daily`, full extraction via `/decision-extract`
 
-2. **Output location**: Daily note inline
-   - Decisions section embedded directly in daily note
-   - No separate file management needed
+### Phase B: Context & Prioritization (ACTIVE)
 
-3. **Apply behavior**: Fully automatic
-   - Trust user annotations completely
-   - Execute all actions without confirmation prompts
+- [x] Priority ordering by blocking count (leverage graph topology)
+- [x] Multi-tier classification (High/Medium/Low priority)
+- [ ] Integration with `decision-briefing` workflow for complex choices
 
-4. **Frequency**: Both
-   - Summary count appears in `/daily` briefing
-   - Full extraction available via `/decision-extract` on demand
+### Phase C: Expansion (BACKLOG)
 
-### Phase B: Extraction Logic
+- [ ] Outlook calendar integration (unresponded invitations)
+- [ ] Outlook inbox integration (flagged/categorized emails)
+- [ ] GitHub PR integration (assigned reviews)
 
-- Query task system for decision-type tasks
-- Query Outlook calendar for unresponded invitations
-- Query Outlook inbox for flagged/categorized emails
-- Score and sort by priority
-- Generate markdown file
+### Phase D: Advanced Features (BACKLOG)
 
-### Phase C: Annotation Workflow
-
-- User reviews and annotates file
-- File format supports both human-readable and machine-parseable sections
-
-### Phase D: Apply Logic
-
-- Parse annotated decisions
-- Execute actions for each decision type
-- Update source systems
-- Report results
-
-### Phase E: Integration
-
-- Hook into `/daily` skill
-- Add decision summary to effectual planner repertoire
+- [ ] Decision expiry/archiving logic
+- [ ] Undo support for applied decisions (where possible)
+- [ ] Delegation support (automatic subtask creation)
 
 ## Open Questions
 
