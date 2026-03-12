@@ -83,6 +83,36 @@ The agent is successful when:
 - The web grows but structure doesn't emerge--just a pile of files
 - Agent spec doesn't grow (not learning) or grows unboundedly (not adapting)
 
+## User Expectations
+
+These expectations define the verifiable behaviour of the Effectual Planning Agent. Each must be testable through direct observation of the task graph and session logs.
+
+### 1. Fragment Placement (Mode 1)
+
+- **Expectation**: When the user provides an unstructured fragment (idea, constraint, surprise), the agent must search the PKB for related context before creating or updating a node.
+- **Testable**: Given a fragment "I should talk to Alice about the OSB study", the agent calls `mcp__pkb__search(query="Alice OSB study")` or similar before performing any write operations.
+- **Expectation**: The agent must link new fragments to at least one existing goal, project, or epic if a relationship is discoverable.
+- **Testable**: After placing a fragment, the resulting node contains at least one wikilink to an existing relevant node.
+
+### 2. Epic Decomposition (Mode 2)
+
+- **Expectation**: When decomposing an epic, the agent must identify and apply the steps of an established workflow (e.g., `feature-dev`, `peer-review`, `strategic-intake`) as the task skeleton.
+- **Testable**: Decomposing an epic with an assigned workflow results in a task tree where task titles or bodies explicitly map to the workflow's defined steps.
+- **Expectation**: Every decomposition must include at least one planning task (before) and at least one verification/QA task (after).
+- **Testable**: The set of tasks created for any epic contains at least one task with "plan" or "criteria" in its title/body and at least one with "verify", "review", or "test".
+
+### 3. Information-Value Prioritisation (Mode 3)
+
+- **Expectation**: When asked for priorities, the agent must use graph metrics (downstream weight, blocking count) to justify its recommendations.
+- **Testable**: The agent's prioritization response explicitly mentions metrics like "downstream weight" or "blocks X tasks" for the top recommended items.
+- **Expectation**: Recommended next steps must prioritize unblocking convergent threads (nodes where multiple dependency paths meet).
+- **Testable**: In a graph with a bottleneck task (blocking multiple descendants), the agent identifies it as a higher priority than leaf tasks with no descendants.
+
+### 4. Intention-Driven Focus
+
+- **Expectation**: When intentions are active (defined in `$ACA_DATA/intentions.yaml`), the agent must prioritize tasks within those intention subgraphs.
+- **Testable**: When an intention is active, the agent's recommended "next actions" are members of the intention's descendant set (verifiable via `get_task_children(root_id, recursive=True)`).
+
 ## Three Operational Modes
 
 The planner addresses three levels of challenge. See [[TAXONOMY.md]] for canonical definitions.
