@@ -182,7 +182,7 @@ Audits follow the phased workflow defined in `skills/audit/SKILL.md`:
 A user performing or requesting a framework audit can expect:
 
 - **Comprehensive Coverage**: The audit validates filesystem structure, index accuracy, documentation consistency, and behavioral correctness (via acceptance tests).
-- **Standardized Reporting**: Every audit produces a timestamped markdown report in `$ACA_DATA/projects/aops/audit/` following a consistent format.
+- **Standardized Reporting**: Every audit produces a timestamped markdown report in `$ACA_DATA/projects/aops/audit/` (e.g., `YYYY-MM-DD-HHMMSS-audit.md`) following a consistent format.
 - **Actionable Outcomes**: Discrepancies are categorized as either "Automated Fixes" (already applied) or "Human Review Queue" (requiring decision).
 - **Integrity Verification**: The system identifies orphaned files, broken links, and documentation mismatches that could lead to agent confusion or failure.
 - **Performance Baseline**: Acceptance tests provide empirical evidence that core framework capabilities (e.g., routing, skill execution) remain functional after changes.
@@ -190,10 +190,10 @@ A user performing or requesting a framework audit can expect:
 
 ### Acceptance Criteria for Audit PASS
 
-An audit is considered to **PASS** only when the following criteria are met:
+These criteria summarize the technical checklist in [Validation Criteria](#validation-criteria). An audit PASS reflects a qualitative judgment informed by the following signals — metrics are indicators, not automatic verdicts (P#115):
 
-1. **Structural Integrity**: 100% wikilink resolution across all curated framework documents and 100% filesystem-to-INDEX.md synchronization.
-2. **Governance Compliance**: 100% skill-to-spec coverage (every skill has a corresponding specification) and all skills meet structural constraints (e.g., < 500 lines).
+1. **Structural Integrity**: All known broken wikilinks and missing INDEX.md entries are resolved or documented as intentional exceptions.
+2. **Governance Compliance**: All skills either have a corresponding spec or are classified as "Implicit" in the justification matrix; all skills meet structural constraints (e.g., < 500 lines).
 3. **Index Accuracy**: Root-level indices (SKILLS.md, WORKFLOWS.md, AXIOMS.md, HEURISTICS.md) accurately reflect the contents of their respective source directories.
 4. **Behavioral Validation**: All active acceptance tests in the current release suite (e.g., `tests/acceptance/v1.1-release.md`) pass.
 5. **Mandatory Reporting**: A report is successfully persisted to the designated audit directory with all required sections completed.
