@@ -99,7 +99,7 @@ These expectations define the verifiable behaviour of the Effectual Planning Age
 - **Expectation**: When decomposing an epic, the agent must identify and apply the steps of an established workflow (e.g., `feature-dev`, `peer-review`, `strategic-intake`) as the task skeleton.
 - **Testable**: Decomposing an epic with an assigned workflow results in a task tree where task titles or bodies explicitly map to the workflow's defined steps.
 - **Expectation**: Every decomposition must include at least one planning task (before) and at least one verification/QA task (after).
-- **Testable**: The set of tasks created for any epic contains at least one task with "plan" or "criteria" in its title/body and at least one with "verify", "review", or "test".
+- **Testable**: The set of tasks created for any epic contains at least one task with a title/body containing a planning-related keyword (e.g., "plan", "planning", "criteria") and at least one with a verification-related keyword (e.g., "verify", "review", "test").
 
 ### 3. Information-Value Prioritisation (Mode 3)
 
