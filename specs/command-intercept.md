@@ -285,9 +285,9 @@ def test_glob_excludes_venv_in_real_session():
 
 - [x] Router support for `updatedInput` (implemented in `router.py`)
 - [ ] Create `command_intercept.py` hook skeleton
-- [ ] Register in `GateRegistry` or `HOOK_REGISTRY`
+- [ ] Register in `GateRegistry`
 - [ ] Load config from `$ACA_DATA/command_intercept.yaml`
-- [ ] Pass-through when no config
+- [ ] Fail with error when config is missing or invalid (P#8)
 
 ### Phase 2: First Transformer
 
@@ -317,11 +317,11 @@ This section defines the verifiable behavior of the command intercept system. No
 - **Pass Criteria**: The hook response contains `updatedInput` with modified parameters.
 - **Pass Criteria**: The hook response contains `additionalContext` or `systemMessage` explaining what was transformed (e.g., "Glob transformed: excluded .venv").
 
-### Design Goal: Fail-Safe Configuration
+### Design Goal: Fail-Fast Configuration
 
-- **Expectation**: The system is resilient to configuration errors, ensuring tool availability is never compromised by the interceptor.
-- **Pass Criteria**: If `$ACA_DATA/command_intercept.yaml` is missing, malformed, or has an invalid version, the hook falls back to passive pass-through.
-- **Fail Criteria**: A configuration error results in a tool call being blocked or the session crashing.
+- **Expectation**: The system surfaces configuration errors immediately (P#8). A missing or invalid config is a misconfiguration that must be reported, not silently bypassed.
+- **Pass Criteria**: If `$ACA_DATA/command_intercept.yaml` is missing, malformed, or has an invalid version, the hook exits with a non-zero status and a clear error message identifying the problem.
+- **Fail Criteria**: A configuration error is silently ignored and the hook passes through as if no config existed.
 
 ### Design Goal: Context Noise Reduction
 
