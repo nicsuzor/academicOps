@@ -107,7 +107,8 @@ The output MUST be **narrative prose**, not tables. Structure:
 ```
 Task(subagent_type="qa",
      prompt="Qualitative assessment of [FEATURE] against user stories in [SPEC/TASK].
-     Inhabit the user persona. Walk the scenarios. Evaluate fitness-for-purpose
+     Inhabit the user persona. Walk the scenarios. If the task involves UI changes or visual artifacts, you MUST apply the Visual Analysis Protocol in references/visual-analysis.md.
+     Evaluate fitness-for-purpose
      in narrative prose. Is this good for the people it was designed for?"
 )
 ```
