@@ -1,5 +1,3 @@
-import json
-
 import pytest
 
 
@@ -25,8 +23,6 @@ def test_gate_enforcement_e2e(cli_headless, gate, instruction, expected_behavior
     result = runner(instruction, model=model)
 
     assert result["success"], f"CLI execution failed: {result.get('error')}"
-
-    output_text = json.dumps(result["result"])
 
     if expected_behavior == "blocked":
         from tests.conftest import check_blocked
