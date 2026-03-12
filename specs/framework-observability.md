@@ -14,12 +14,12 @@ related: [[workflow-system-spec]], [[enforcement]], [[session-insights-prompt]]
 
 ## Giving Effect
 
-- [[skills/session-insights/SKILL.md]] - Skill for generating session insights from transcripts
+- [[aops-core/skills/session-insights/SKILL.md]] - Skill for generating session insights from transcripts
 - [[specs/session-insights-prompt.md]] - Prompt template for session analysis
 - [[specs/session-insights-metrics-schema.md]] - Schema for metrics extraction
-- [[hooks/unified_logger.py]] - Centralized logging for observability
+- [[aops-core/hooks/unified_logger.py]] - Centralized logging for observability
 - [[polecat/observability.py]] - Polecat-specific observability
-- [[commands/learn.md]] - `/learn` command for capturing framework observations and improvements
+- [[aops-core/commands/learn.md]] - `/learn` command for capturing framework observations and improvements
 
 ## Overview
 
@@ -64,7 +64,7 @@ These observables create an audit trail that humans and agents can analyze.
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                         TRANSCRIPT PROCESSING                            │
 │                                                                         │
-│  scripts/transcript.py parses JSONL into structured data:               │
+│  aops-core/scripts/transcript.py parses JSONL into structured data:      │
 │                                                                         │
 │  SessionProcessor.parse_session_file()                                  │
 │  ├── Entry.from_dict()           Extract per-entry data                 │
@@ -200,18 +200,18 @@ Structured capture of agent mistakes and corrections:
 }
 ```
 
-These feed into the [[/learn|learn]] workflow for root cause analysis.
+These feed into the [[aops-core/commands/learn.md|learn]] workflow for root cause analysis.
 
 ## Integration Points
 
 ### Hooks That Generate Observables
 
-| Hook                          | Event        | Observable Generated            |
-| ----------------------------- | ------------ | ------------------------------- |
-| `sessionstart_load_axioms.py` | SessionStart | Session initialization logged   |
-| `custodiet_gate.py`           | PostToolUse  | Block events, drift detection   |
-| `session_reflect.py`          | Stop         | Framework Reflection extraction |
-| `autocommit_state.py`         | PostToolUse  | State file updates              |
+| Hook                                  | Event        | Observable Generated            |
+| ------------------------------------- | ------------ | ------------------------------- |
+| `sessionstart_load_axioms.py`         | SessionStart | Session initialization logged   |
+| `custodiet_gate.py`                   | PostToolUse  | Block events, drift detection   |
+| `aops-core/scripts/transcript.py`     | Stop         | Framework Reflection extraction |
+| `aops-core/hooks/autocommit_state.py` | PostToolUse  | State file updates              |
 
 ### Workflows That Consume Observables
 
@@ -227,7 +227,7 @@ To add a new observable pattern:
 
 1. **Identify the source** - Where does this data originate? (JSONL, hook, tool result)
 
-2. **Add extraction** - Update `lib/transcript_parser.py`:
+2. **Add extraction** - Update `aops-core/lib/transcript_parser.py`:
    - Add field to `Entry` dataclass if per-entry
    - Add aggregation to `UsageStats` if session-wide
    - Update `Entry.from_dict()` to extract the data
@@ -237,7 +237,7 @@ To add a new observable pattern:
    - Add to example JSON output
    - Document when to use null/empty
 
-4. **Wire into pipeline** - Update `scripts/transcript.py`:
+4. **Wire into pipeline** - Update `aops-core/scripts/transcript.py`:
    - Pass new data through `_process_reflection()`
    - Update `reflection_to_insights()` to include it
 
@@ -271,6 +271,39 @@ Insights JSON uses consistent schemas so tooling can:
 - Trend over time
 - Filter by project/outcome/compliance
 - Feed into dashboards or reports
+
+## User Expectations
+
+### 1. Automated Session Artifacts
+
+Users can expect that every session (Gemini CLI or Claude Code) automatically generates a persistent audit trail.
+
+- **Transcripts**: Full and abridged markdown transcripts are generated at session end and stored in the `sessions/transcripts/` directory.
+- **Insights JSON**: A structured analysis of the session (outcome, accomplishments, friction points) is saved to the `sessions/summaries/` directory.
+- **Token Tracking**: Detailed token usage metrics are captured per session, allowing users to monitor cost and efficiency.
+
+### 2. Self-Reflexive Learning
+
+The framework uses session-end reflections to improve itself.
+
+- **Reflections**: Agents are expected to output a `## Framework Reflection` at the end of every task-oriented session.
+- **Feedback Loop**: While currently focused on human-in-the-loop review, these insights are designed to eventually trigger "one-click" heuristic and axiom updates as the framework evolves toward a self-curating state.
+- **Transparency**: Users can verify framework behavior by inspecting the `insights.json` and checking the `skill_compliance` and `learning_observations` fields.
+
+### 3. Observable Performance
+
+Operations are instrumented for performance monitoring.
+
+- **Metrics**: Users can observe operation latency, lock contention, and queue depth through structured logs (prefixed with `[POLECAT_METRIC]`).
+- **Health Checks**: The observability pipeline itself is monitored, with health metrics (success rate, task match rate) stored in `.metrics/pipeline-metrics.json`.
+
+### 4. Verification
+
+Users can test the observability system by:
+
+- Running a session and verifying that a new transcript and insights file appear in the sessions repository.
+- Checking that token counts in `insights.json` match the actual session usage.
+- Invoking the `/learn` command and verifying that it accurately captures the root cause of a failure.
 
 ## Related Documents
 
