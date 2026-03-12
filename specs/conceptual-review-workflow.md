@@ -62,7 +62,7 @@ A researcher or team member has written a proposal -- a grant application, proje
 **What to expect from the system:**
 
 1. **Automated Strategic Review**: Every pull request proposing changes to intellectual artifacts (specs, plans, designs) will automatically receive a strategic review from the **Assessor** agent.
-   - _Test_: A PR is opened; the `Agent Review & Fix` workflow runs and posts a `gh pr review` with a summary of findings.
+   - _Test_: A PR is opened; the `Agent: Review & Fix` workflow runs and posts a `gh pr review` with a summary of findings.
 2. **Depth Over Breadth**: The reviewer will focus on 1-3 high-impact concerns rather than a checklist of minor issues. It prioritises **strategic alignment** (fit with `docs/VISION.md`), **assumption hygiene** (surfacing untested foundations), and **self-consistency**.
    - _Test_: The review body contains a "Needs attention" section with at most 3 prioritised items.
 3. **Mandatory Resolutions**: Every concern raised by the reviewer will include a specific proposed resolution.
