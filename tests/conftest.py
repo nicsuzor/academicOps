@@ -1362,7 +1362,6 @@ def pytest_collection_modifyitems(config, items):  # noqa: ARG001
         if "integration" in str(item.fspath):
             item.add_marker(pytest.mark.integration)
 
-
 def check_blocked(result: dict) -> bool:
     """Check if the agent was blocked.
 
@@ -1372,16 +1371,19 @@ def check_blocked(result: dict) -> bool:
     Returns:
         True if the agent was blocked, False otherwise.
     """
-    import json
+    output = result.get("output", "")
+    if isinstance(output, dict):
+        import json
+        output = json.dumps(output)
 
-    parts = []
-    for key in ("output", "result"):
-        val = result.get(key, "")
-        if isinstance(val, (dict, list)):
-            val = json.dumps(val)
-        parts.append(str(val))
+    output_text = str(output).lower()
 
-    combined = " ".join(parts).lower()
-
-    block_indicators = ["hydration", "blocked", "gate", "pending", "access denied", "denied"]
-    return any(indicator in combined for indicator in block_indicators)
+    block_indicators = [
+        "hydration",
+        "blocked",
+        "gate",
+        "pending",
+        "access denied",
+        "denied"
+    ]
+    return any(indicator in output_text for indicator in block_indicators)
