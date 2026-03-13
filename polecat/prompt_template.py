@@ -118,7 +118,7 @@ Omitting `--head` or `--base` will cause `gh` to hang.
      `complete_task` for PR-backed work.
    - If no code changes (learn tasks, investigations, etc.):
      ```
-     complete_task(id="{task_id}")
+     mcp__pkb__complete_task(id="{task_id}")
      ```
 
 Do NOT update status until all changes are committed and acceptance criteria \
@@ -127,7 +127,7 @@ are met."""
 FINISH_GITHUB_ISSUE = """\
 After successful execution, ensure all changes are committed with a \
 descriptive message. The polecat system will handle pushing and PR creation. \
-Do NOT call complete_task — there is no local task to complete."""
+Do NOT call mcp__pkb__complete_task — there is no local task to complete."""
 
 
 def build_task_extras(task: dict) -> str:
