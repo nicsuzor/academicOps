@@ -115,7 +115,7 @@ The server computes deterministic metrics (counts, depths, degrees). It does NOT
 
 ### Graph & Connectivity
 
-- **No Orphans**: Users and agents are alerted to disconnected tasks (orphans) during graph traversal or via specific tools.
+- **Orphan Detection**: Disconnected tasks (orphans) can be identified by users and agents through specific graph traversal tools or dedicated commands.
 - **Relationship Transparency**: Every task retrieval (`get_task`) includes its immediate neighborhood (parents, children, dependencies, blockers) by default.
 - **Deterministic Metrics**: Centrality and weight metrics (PageRank, downstream weight) are stable and reproducible.
 
