@@ -399,12 +399,12 @@ class GenericGate:
                 final_sys_msg = sys_msg_prefix + sys_msg
                 final_ctx_inj = ctx_inj_prefix + (ctx_inj if ctx_inj else "")
 
-                if policy.verdict in ("deny", "block"):
+                if getattr(policy.verdict, "value", policy.verdict) in ("deny", "block"):
                     return GateResult.deny(
                         system_message=final_sys_msg,
                         context_injection=final_ctx_inj if final_ctx_inj else None,
                     )
-                elif policy.verdict == "warn":
+                elif getattr(policy.verdict, "value", policy.verdict) == "warn":
                     return GateResult.warn(
                         system_message=final_sys_msg,
                         context_injection=final_ctx_inj if final_ctx_inj else None,
@@ -431,7 +431,12 @@ class GenericGate:
         policy_result = self._evaluate_policies(context, session_state)
 
         # If policy blocks/warns, return that (countdown not needed)
-        if policy_result and policy_result.verdict in (GateVerdict.DENY, GateVerdict.WARN):
+        policy_verdict = (
+            getattr(policy_result.verdict, "value", policy_result.verdict)
+            if policy_result
+            else None
+        )
+        if policy_verdict in ("deny", "block", "warn"):
             if trigger_result:
                 # Merge trigger messages but keep policy verdict
                 return GateResult(
