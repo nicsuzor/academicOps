@@ -103,8 +103,8 @@ After successful execution:
      --base main
    ```
 
-   All four flags (`--title`, `--body`, `--head`, `--base`) are required. \
-Omitting `--head` or `--base` will cause `gh` to hang.
+   All four flags (`--title`, `--body`, `--head`, `--base`) are required.
+   Omitting `--head` or `--base` will cause `gh` to hang.
 
 3. **Update the task** in PKB to reflect the outcome:
 
