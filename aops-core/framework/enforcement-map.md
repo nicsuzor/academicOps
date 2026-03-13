@@ -249,16 +249,15 @@ These guardrails are applied by [[prompt-hydration]] based on task classificatio
 
 ## Periodic Compliance (Custodiet)
 
-The custodiet hook (`hooks/custodiet_gate.py`) provides periodic semantic compliance checking via [[ultra-vires-custodiet]].
+The custodiet gate (`lib/gates/definitions.py`) provides periodic semantic compliance checking via [[ultra-vires-custodiet]]. Standalone hook scripts (`custodiet_gate.py`, `overdue_enforcement.py`) have been consolidated into the unified gate architecture.
 
 ### Mechanism
 
-| Parameter              | Value               | Description                                          |
-| ---------------------- | ------------------- | ---------------------------------------------------- |
-| `TOOL_CALL_THRESHOLD`  | 7 (2 for debug)     | Full compliance check every N tool calls             |
-| `REMINDER_PROBABILITY` | 0.3                 | 30% chance of reminder between checks                |
-| Counted tools          | ALL tool calls      | Counter increments for every tool (Read, Edit, etc.) |
-| Blocked tools          | MUTATING_TOOLS only | Only Edit/Write/Bash blocked at threshold            |
+| Parameter             | Value               | Description                                          |
+| --------------------- | ------------------- | ---------------------------------------------------- |
+| `TOOL_CALL_THRESHOLD` | 50 (5 for debug)    | Full compliance check every N tool calls             |
+| Counted tools         | ALL tool calls      | Counter increments for every tool (Read, Edit, etc.) |
+| Blocked tools         | MUTATING_TOOLS only | Only Edit/Write/Bash blocked at threshold            |
 
 ### Compliance Check (Threshold)
 
@@ -269,17 +268,13 @@ At threshold, spawns haiku subagent to review session transcript for:
 - Drift patterns (scope creep, plan deviation)
 - Insight capture (advisory) - flags when discoveries aren't persisted to bd or remember skill
 
-Uses `decision: "block"` output format to force agent attention. Insight capture is advisory only (no block).
+Gate verdict is converted to client JSON by `router.py`: `deny` forces agent attention (blocking); `warn` is advisory only.
 
 **Enforcement mode**: `block` (default). Custodiet violations halt the session. Override via `CUSTODIET_GATE_MODE=warn` env var. Changed from `warn` to `block` on 2026-02-14 after agent scope-drifted from user-specified URL without detection (see `$ACA_DATA/aops/fails/20260214-scope-drift-url-pivot.md`).
 
-### Random Reminders (Between Checks)
+### PR Compliance (Async)
 
-Between threshold checks, randomly injects soft reminders from `hooks/data/reminders.txt`.
-
-**Soft-tissue file**: Edit `reminders.txt` to add/modify reminders. One per line, `#` for comments.
-
-Uses passive `additionalContext` format - agent may proceed without addressing.
+The `custodiet-reviewer.md` agent (`aops-core/agents/custodiet-reviewer.md`) applies the same compliance check asynchronously to PRs, ensuring consistent quality across local sessions and pull requests.
 
 ## Path Protection (Deny Rules)
 
@@ -497,6 +492,8 @@ Context injected via CORE.md at SessionStart. Guides where agents place files.
 | Stop             | `$AOPS/aops-core/hooks/reflection_check.py`, `session_end_commit_check.py`                                   |
 | Pre-commit       | `$AOPS/.pre-commit-config.yaml`                                                                              |
 | CI/CD            | `$AOPS/.github/workflows/`                                                                                   |
+| PR compliance    | `$AOPS/aops-core/agents/custodiet-reviewer.md` (async custodiet gate for pull requests)                      |
+| Gate definitions | `$AOPS/aops-core/lib/gates/definitions.py` (custodiet threshold, unified gate config)                        |
 | Remember skill   | `$AOPS/aops-core/skills/remember/SKILL.md`                                                                   |
 | Memory sync      | `$AOPS/aops-core/skills/remember/procedures/sync.md`                                                         |
 | Session insights | `$AOPS/aops-core/skills/session-insights/SKILL.md`                                                           |
