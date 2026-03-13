@@ -40,15 +40,26 @@ class TestToolCategoryConsistency:
 
 
 class TestAgentNameSeparation:
-    """Agent names must NOT be in TOOL_CATEGORIES."""
+    """Agent names must NOT be in TOOL_CATEGORIES.
+
+    EXEMPTION: Gemini bare agent tools (where tool_name == agent_name).
+    """
 
     def test_compliance_types_not_in_tool_categories(self):
-        """COMPLIANCE_SUBAGENT_TYPES entries should NOT be in any tool category."""
+        """COMPLIANCE_SUBAGENT_TYPES entries should NOT be in any tool category UNLESS they are spawning tools.
+
+        This separation prevents accidentally blocking a tool because it happens
+        to share a name with an agent. For Gemini, we intentionally use the same name.
+        """
         all_tools = set()
         for tools in TOOL_CATEGORIES.values():
             all_tools |= tools
 
         for agent_name in COMPLIANCE_SUBAGENT_TYPES:
+            if agent_name in SPAWN_TOOLS:
+                # Gemini pattern: name is both tool and agent. Allowed.
+                continue
+
             assert agent_name not in all_tools, (
                 f"Compliance agent '{agent_name}' found in TOOL_CATEGORIES. "
                 f"Agent names are subagent_type values, not tool names."
@@ -56,10 +67,14 @@ class TestAgentNameSeparation:
 
 
 class TestSpawnToolsInSpawnCategory:
-    """All spawn tool names must be in spawn category (subject to hydration gate)."""
+    """All spawn tool names must be in spawn category (subject to hydration gate).
+
+    EXEMPTION: Compliance agents (e.g. prompt-hydrator) are spawning tools but
+    must bypass gates as infrastructure.
+    """
 
     def test_all_spawn_tools_in_spawn_category(self):
-        """Every tool in SPAWN_TOOLS should be in spawn category.
+        """Every tool in SPAWN_TOOLS should be in spawn category OR COMPLIANCE_SUBAGENT_TYPES.
 
         Spawn tools (Agent, Task, Skill, etc.) are subject to the hydration gate —
         they cannot dispatch subagents until hydration is complete. This is distinct
@@ -67,16 +82,19 @@ class TestSpawnToolsInSpawnCategory:
         """
         spawn_cat = TOOL_CATEGORIES["spawn"]
         for tool_name in SPAWN_TOOLS:
-            assert tool_name in spawn_cat, (
+            is_compliance = tool_name in COMPLIANCE_SUBAGENT_TYPES
+            assert tool_name in spawn_cat or is_compliance, (
                 f"Spawn tool '{tool_name}' not in spawn category. "
-                f"Spawn tools must be subject to hydration gate."
+                f"Non-compliance spawn tools must be subject to hydration gate."
             )
 
     def test_get_tool_category_for_spawn_tools(self):
-        """get_tool_category should return spawn for all spawn tools."""
+        """get_tool_category returns spawn for regular spawn tools, infrastructure for compliance."""
         for tool_name in SPAWN_TOOLS:
-            assert get_tool_category(tool_name) == "spawn", (
-                f"get_tool_category('{tool_name}') didn't return 'spawn'"
+            is_compliance = tool_name in COMPLIANCE_SUBAGENT_TYPES
+            expected = "infrastructure" if is_compliance else "spawn"
+            assert get_tool_category(tool_name) == expected, (
+                f"get_tool_category('{tool_name}') didn't return '{expected}'"
             )
 
 
@@ -84,8 +102,11 @@ class TestExtractSubagentType:
     """Test extract_subagent_type covers all platforms in SPAWN_TOOLS."""
 
     def test_every_spawn_tool_extracts_with_first_param(self):
-        """For each spawn tool, extraction works with the first parameter name."""
+        """For each spawn tool with params, extraction works with the first parameter name."""
         for tool_name, (param_names, expected_is_skill) in SPAWN_TOOLS.items():
+            if not param_names:
+                # Strategy 1 (bare agent) tools have no parameters
+                continue
             first_param = param_names[0]
             tool_input = {first_param: "test-agent"}
             result, is_skill = extract_subagent_type(tool_name, tool_input)
@@ -97,11 +118,14 @@ class TestExtractSubagentType:
                 f"is_skill for '{tool_name}' was {is_skill}, expected {expected_is_skill}"
             )
 
-    def test_empty_tool_input_returns_none(self):
-        """Empty tool_input should return None for all spawn tools."""
+    def test_empty_tool_input_returns_none_unless_compliance(self):
+        """Empty tool_input should return None for regular spawn tools, or self for compliance."""
         for tool_name in SPAWN_TOOLS:
             result, _ = extract_subagent_type(tool_name, {})
-            assert result is None
+            if tool_name in COMPLIANCE_SUBAGENT_TYPES:
+                assert result == tool_name
+            else:
+                assert result is None
 
 
 class TestComplianceSubagentTypes:
@@ -119,10 +143,6 @@ class TestComplianceSubagentTypes:
     def test_audit_variants(self):
         assert "audit" in COMPLIANCE_SUBAGENT_TYPES
         assert "aops-core:audit" in COMPLIANCE_SUBAGENT_TYPES
-
-    def test_butler_variants(self):
-        assert "butler" in COMPLIANCE_SUBAGENT_TYPES
-        assert "aops-core:butler" in COMPLIANCE_SUBAGENT_TYPES
 
 
 class TestToolSearchSelectBypass:

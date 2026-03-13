@@ -152,6 +152,11 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "TaskUpdate",
         "TaskGet",
         "TaskList",
+        "aops_core_prompt_hydrator",
+        "aops_core_custodiet",
+        "aops_core_qa",
+        "aops_core_audit",
+        "aops_core_butler",
     },
     # Read-only tools: no side effects. Exempt from custodiet gate (not hydration).
     # Hydration gate blocks these until hydrator is dispatched (JIT gate open).
@@ -310,9 +315,6 @@ COMPLIANCE_SUBAGENT_TYPES: frozenset[str] = frozenset(
         "audit",
         "aops-core:audit",
         "aops_core_audit",
-        "butler",
-        "aops-core:butler",
-        "aops_core_butler",
         "qa",
         "aops-core:qa",
         "aops_core_qa",
@@ -461,23 +463,23 @@ def get_tool_category(tool_name: str, tool_input: dict[str, Any] | None = None) 
             - Detect ToolSearch select: queries (infrastructure bypass)
             - Extract subagent_type for compliance-spawn bypass
     """
-    if tool_input:
-        # ToolSearch with select: prefix is a pure tool-loading operation (infrastructure).
-        # Blocking it creates an unresolvable loop: the agent needs ToolSearch to load
-        # tools, but ToolSearch is blocked until hydration, which also requires tools.
-        if tool_name == "ToolSearch":
-            query = tool_input.get("query", "")
-            if isinstance(query, str) and query.startswith("select:"):
-                return "infrastructure"
-
-        # Compliance agent spawns (Agent/Task + compliance subagent_type, or tool_name
-        # is the compliance agent name directly) are infrastructure.
-        # This ensures dispatching the hydrator or custodiet is never blocked by any gate,
-        # including custodiet's own ops-threshold policy.
-        extracted_st, _ = extract_subagent_type(tool_name, tool_input)
-        if extracted_st and extracted_st in COMPLIANCE_SUBAGENT_TYPES:
+    # 1. ToolSearch with select: prefix is a pure tool-loading operation (infrastructure).
+    # Blocking it creates an unresolvable loop: the agent needs ToolSearch to load
+    # tools, but ToolSearch is blocked until hydration, which also requires tools.
+    if tool_name == "ToolSearch" and tool_input:
+        query = tool_input.get("query", "")
+        if isinstance(query, str) and query.startswith("select:"):
             return "infrastructure"
 
+    # 2. Compliance agent spawns (Agent/Task + compliance subagent_type, or tool_name
+    # is the compliance agent name directly) are infrastructure.
+    # This ensures dispatching the hydrator or custodiet is never blocked by any gate,
+    # including custodiet's own ops-threshold policy.
+    extracted_st, _ = extract_subagent_type(tool_name, tool_input or {})
+    if extracted_st and extracted_st in COMPLIANCE_SUBAGENT_TYPES:
+        return "infrastructure"
+
+    # 3. Static categories
     for category, tools in TOOL_CATEGORIES.items():
         if tool_name in tools:
             return category
