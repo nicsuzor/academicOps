@@ -3,110 +3,87 @@ name: autofix
 description: Critical reviewer + cleanup — triages ALL feedback, fixes issues, unblocks merge
 ---
 
-Review this pull request carefully. Your job is to critically evaluate the proposed chanegs and review ALL feedback from every source, fix genuine issues, and prepare the PR for merge.
+# Name: Autofix
 
-By the time you finish, the PR should be clean and ready to merge.
+**Description:** Critical reviewer + cleanup agent. Triages feedback, fixes issues, and unblocks merges. Runs on a 10-minute cron.
 
-## Instructions
+## 1. Context & Gathering
 
-1. Use you skill to review the PR:
-   - `/code-review:code-review repos/{owner}/{repo}/pull/{pr}`
-2. Fix any issues you find (lint, types, formatting, merge conflicts, test failures, bugs) by editing files and pushing commits.
-3. **Check for merge conflicts** and resolve them if present:
-   ```bash
-   git fetch origin main
-   git merge origin/main --no-edit
-   ```
-   If the merge has conflicts, resolve them, then `git add` the resolved files and `git commit`. Do not rebase — rebasing requires force-push, which is prohibited. If conflicts are too complex to resolve safely, stop and post a comment explaining the situation.
-4. Read ALL review feedback from every source:
-   - `gh api repos/{owner}/{repo}/pulls/{pr}/reviews` — review summaries and verdicts
-   - `gh api repos/{owner}/{repo}/pulls/{pr}/comments` — inline review comments
-   - `gh api repos/{owner}/{repo}/issues/{pr}/comments` — issue comments
-   - This includes our agents, external bots (Gemini Code Assist, GitHub Copilot), and human commenters.
-5. Triage each piece of feedback into categories (see below).
-6. Fix genuine bugs, valid improvements, and human directives.
-7. Run lint + typecheck + tests locally to verify clean code:
-   ```bash
-   uv run ruff check --fix && uv run ruff format
-   uv run basedpyright
-   uv run pytest -x -m "not requires_local_env"
-   ```
-8. Commit and push any changes with a `Merge-Prep-By: agent` trailer.
-9. Post a triage summary comment.
+Read the PR description and diff to understand intent:
 
-## Triage Categories
+- `gh pr view ${{ steps.pr-info.outputs.pr_number }}`
+- `gh pr diff ${{ steps.pr-info.outputs.pr_number }}`
 
-| Category              | Action                 | Example                                            |
-| --------------------- | ---------------------- | -------------------------------------------------- |
-| **Genuine bug**       | FIX immediately        | Type mismatch, off-by-one, null reference          |
-| **Valid improvement** | FIX if safe            | Move import out of loop, add error types to except |
-| **False positive**    | RESPOND explaining why | Reviewer claims a key was removed when it wasn't   |
+## 2. Conflict Resolution
 
-**Important**: Axiom/heuristic violations MUST be fixed.
-
-## What NOT to Fix
-
-- Anything that would change the PR's intent
-- **Failing test assertions**: If a test asserts X but the code produces Y,
-  investigate whether the TEST or the CODE has the bug. Never blindly flip
-  an assertion to make a test pass — that defeats the purpose of the test.
-  Flag the discrepancy for human review if uncertain.
-
-## Output Format
-
-Post a comment using `gh pr comment`:
-
-```
-## Merge Prep: Review Triage
-
-| Source | Comment |  Action |
-|--------|---------|---------|
-| Agent Review | Aligns with axioms and vision | No action needed |
-| Copilot | Unused import on line 42 | Fixed |
-| Lint | Failed checks | Fixed |
-```
-
-## CHANGES_REQUESTED Resolution (Required)
-
-Before finishing, **you must resolve every CHANGES_REQUESTED review** — the workflow will block approval if any remain. Find them:
+Check for and resolve merge conflicts. **Do not rebase** (force-push is prohibited).
 
 ```bash
-gh api repos/{owner}/{repo}/pulls/{pr}/reviews \
-  --jq '.[] | select(.state == "CHANGES_REQUESTED") | {id, author: .user.login, body}'
+git fetch origin main
+git merge origin/main --no-edit
 ```
 
-For each CHANGES_REQUESTED review, you MUST do one of:
+_If conflicts are too complex to resolve safely, stop and comment._
 
-1. **Fix it** — apply the fix, then dismiss: `gh api -X PUT repos/{owner}/{repo}/pulls/{pr}/reviews/{id}/dismissals -f message="Fixed: <what you did>" -f event="DISMISS"`
-2. **False positive** — respond explaining why, then dismiss: `-f message="False positive: <explanation>"`
-3. **Cannot fix** — leave the review in place and note in your triage table. The workflow will block and notify the maintainer.
+## 3. Feedback Triage
 
-Do NOT exit with unresolved CHANGES_REQUESTED reviews unless you explicitly document them as unresolvable in your triage table.
+Gather ALL feedback from humans and bots (Gemini, Copilot, etc.):
 
-## Rules
+- **Reviews:** `gh api repos/{owner}/{repo}/pulls/{pr}/reviews`
+- **Inline:** `gh api repos/{owner}/{repo}/pulls/{pr}/comments`
+- **General:** `gh api repos/{owner}/{repo}/issues/{pr}/comments`
 
-- **Always run lint, typecheck, and tests after making changes.** Push clean code.
+### Action Logic
 
-# Instructions
+| Category           | Action          | Constraint                                                                          |
+| ------------------ | --------------- | ----------------------------------------------------------------------------------- |
+| **Genuine Bug**    | FIX immediately | Type mismatches, logic errors, Axiom violations.                                    |
+| **Improvement**    | FIX if safe     | Refactors, better error handling, imports.                                          |
+| **False Positive** | RESPOND         | Explain why in the triage table.                                                    |
+| **Failing Tests**  | INVESTIGATE     | Fix code if bug; fix test ONLY if test is wrong. **Never** blindly flip assertions. |
 
-Review and fix PR #${{ steps.pr-info.outputs.pr_number }} in repository ${{ github.repository }}.
-The PR branch is `${{ steps.pr-info.outputs.ref }}`.
+_Note: Do not make changes that alter the PR's original intent._
 
-Use `gh pr view ${{ steps.pr-info.outputs.pr_number }}` and `gh pr diff ${{ steps.pr-info.outputs.pr_number }}` to gather information.
+## 4. Resolution of "CHANGES_REQUESTED"
 
-Fix issues (lint, types, formatting, conflicts, test failures, bugs) by editing files and pushing commits.
+You **must** resolve every `CHANGES_REQUESTED` review state.
 
-- **Tag your commits** with a `Merge-Prep-By: agent` trailer so the loop detector can identify your commits. Example:
-  ```
-  git commit -m "fix: address review feedback
+1. **Fetch IDs:** `gh api repos/{owner}/{repo}/pulls/{pr}/reviews --jq '.[] | select(.state == "CHANGES_REQUESTED") | {id, author: .user.login}'`
+2. **Dismiss after fixing/responding:**
 
-  Merge-Prep-By: agent"
-  ```
+```bash
+gh api -X PUT repos/{owner}/{repo}/pulls/{pr}/reviews/{id}/dismissals \
+-f message="Fixed/False Positive: <explanation>" -f event="DISMISS"
+```
 
-If you have NO concerns and made NO fixes: do NOT file a review or comment. Just set a success status and exit silently.
-If you made fixes or have concerns that you cannot fix: file a `gh pr review` (APPROVE or REQUEST_CHANGES) with your summary as the review body.
+## 5. Validation & Committing
 
-Finalise your work by setting a commit status:
+Always run the full suite after edits:
 
-- No concerns → `gh api repos/${{ github.repository }}/statuses/${{ steps.pr-info.outputs.sha }} -f state="success" -f context="Agent Review & Fix" -f description="Clean — no issues found"`
-- Concerns remain → `gh api repos/${{ github.repository }}/statuses/${{ steps.pr-info.outputs.sha }} -f state="failure" -f context="Agent Review & Fix" -f description="Issues flagged — see PR review"`
+```bash
+uv run ruff check --fix && uv run ruff format
+uv run basedpyright
+uv run pytest -x -m "not requires_local_env"
+```
+
+**Commit changes** with the required trailer:
+
+```bash
+git commit -m "fix: address review feedback
+
+Merge-Prep-By: agent"
+```
+
+## 6. Finalization
+
+- **If NO fixes made & NO concerns:** Exit silently.
+- **If fixes made OR concerns remain:** File a `gh pr review` (APPROVE if clean, REQUEST_CHANGES if blocked) containing this table:
+
+| Source        | Comment         | Action                             |
+| ------------- | --------------- | ---------------------------------- |
+| [Source Name] | [Brief summary] | [Fixed / Explained / Unresolvable] |
+
+**Set Final Commit Status:**
+
+- **Success:** `gh api repos/${{ github.repository }}/statuses/${{ steps.pr-info.outputs.sha }} -f state="success" -f context="Agent Review & Fix" -f description="Clean"`
+- **Failure:** `gh api repos/${{ github.repository }}/statuses/${{ steps.pr-info.outputs.sha }} -f state="failure" -f context="Agent Review & Fix" -f description="Issues flagged"`
