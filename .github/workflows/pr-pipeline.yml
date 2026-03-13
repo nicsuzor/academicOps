@@ -1,0 +1,56 @@
+name: PR Review Pipeline
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
+
+concurrency:
+  group: pr-pipeline-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  # ─── PHASE 1: Foundational CI ──────────────────────────────────────
+  # These run in parallel. If Lint autofixes and pushes, this workflow
+  # run is cancelled and restarts.
+  lint:
+    uses: ./.github/workflows/lint.yml
+    secrets: inherit
+  pytest:
+    uses: ./.github/workflows/pytest.yml
+    secrets: inherit
+  typecheck:
+    uses: ./.github/workflows/typecheck.yml
+    secrets: inherit
+
+  # ─── PHASE 2: Agent Review & Fix ───────────────────────────────────
+  # Runs after CI. Uses `always()` so it runs even if Pytest or Typecheck
+  # failed, allowing Claude to attempt a fix. If it pushes a fix, the
+  # pipeline restarts.
+  agent-fix:
+    name: Agent Fix
+    needs: [lint, pytest, typecheck]
+    if: always() && !cancelled()
+    uses: ./.github/workflows/agent-assessor.yml
+    with:
+      pr_number: ${{ github.event.pull_request.number }}
+      ref: ${{ github.event.pull_request.head.ref }}
+    secrets: inherit
+
+  # ─── PHASE 3: Higher-Level Reviews ─────────────────────────────────
+  # Only run if the code is structurally sound and the fix agent succeeded.
+  agent-auditor:
+    name: Axiom Review
+    needs: [agent-fix]
+    if: success()
+    uses: ./.github/workflows/agent-auditor.yml
+    with:
+      pr_number: ${{ github.event.pull_request.number }}
+      ref: ${{ github.event.pull_request.head.ref }}
+    secrets: inherit
+
+  claude-review:
+    name: Claude Code Review
+    needs: [agent-fix]
+    if: success()
+    uses: ./.github/workflows/claude-code-review.yml
+    secrets: inherit

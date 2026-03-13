@@ -13,8 +13,6 @@
 name: "Agent: Review & Fix"
 
 on:
-  pull_request:
-    types: [opened, synchronize]
   workflow_dispatch:
     inputs:
       pr_number:
