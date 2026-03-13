@@ -15,6 +15,7 @@ dependencies = [
   # Skills dependencies
   "pdfminer-six>=20260107",
   "streamlit>=1.54.0",
+  "jsonschema>=4.26.0",
 ]
 
 [project.optional-dependencies]

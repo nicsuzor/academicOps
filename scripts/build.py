@@ -11,7 +11,10 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import urllib.request
 from pathlib import Path
+
+import jsonschema
 
 # Add shared lib to path (assuming scripts/lib exists)
 SCRIPT_DIR = Path(__file__).parent.resolve()
@@ -438,8 +441,8 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
         "Write": "write_file",
         "Edit": "replace",
         "Glob": "glob",
-        "Grep": "search_file_content",
-        "grep": "search_file_content",  # lowercase variant
+        "Grep": "grep_search",
+        "grep": "grep_search",  # lowercase variant
         # Shell execution
         "Bash": "run_shell_command",
         "bash": "run_shell_command",  # lowercase variant
@@ -448,7 +451,7 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
         "Task": "activate_skill",
         # Web operations
         "WebFetch": "web_fetch",
-        "WebSearch": "web_search",
+        "WebSearch": "google_web_search",
     }
 
     # Handle case where tools is already a string (no transformation needed for format)
@@ -557,7 +560,7 @@ def translate_tool_calls(text: str, platform: str) -> str:
             "Edit(": "replace(",
             "ls(": "list_directory(",
             "Glob(": "glob(",
-            "Grep(": "search_file_content(",
+            "Grep(": "grep_search(",
             "Read tool": "read_file tool",
             "Write tool": "write_file tool",
             "Edit tool": "replace tool",
@@ -566,8 +569,8 @@ def translate_tool_calls(text: str, platform: str) -> str:
             "`Edit`": "`replace`",
             "`ls`": "`list_directory`",
             "`Glob`": "`glob`",
-            "`Grep`": "`search_file_content`",
-            "Read or Grep": "read_file or search_file_content",
+            "`Grep`": "`grep_search`",
+            "Read or Grep": "read_file or grep_search",
         },
         "claude": {
             "Read(": "read_file(",
@@ -605,6 +608,28 @@ def translate_tool_calls(text: str, platform: str) -> str:
         text = text.replace("`Skill(`", "`activate_skill(`")
 
     return text
+
+
+def validate_settings_file(settings_data: dict, schema_url: str):
+    """Validate settings data against the official Gemini CLI JSON schema."""
+    try:
+        print(f"  Validating settings against {schema_url}...")
+        # Use a session or simple request to get the schema
+        with urllib.request.urlopen(schema_url) as response:
+            schema = json.loads(response.read().decode())
+
+        # Filter out AcademicOps-specific fields if they somehow got into settings
+        # (Though they shouldn't be in the settings files we generate)
+        filtered_data = {
+            k: v
+            for k, v in settings_data.items()
+            if k in schema.get("properties", {}) or k == "$schema"
+        }
+
+        jsonschema.validate(instance=filtered_data, schema=schema)
+        print("  ✓ Settings validation successful")
+    except Exception as e:
+        print(f"  ⚠️  Settings validation failed: {e}")
 
 
 def build_aops_core(
@@ -886,8 +911,17 @@ def build_antigravity(aops_root: Path, dist_root: Path, all_mcps: dict):
     # Convert all gathered Gemini MCPs to Antigravity format
     ag_mcps = convert_gemini_to_antigravity(all_mcps)
 
+    mcp_config = {"mcpServers": ag_mcps}
+
+    # Validate against Gemini settings schema
+    # (Since this is a settings snippet)
+    validate_settings_file(
+        mcp_config,
+        "https://raw.githubusercontent.com/google-gemini/gemini-cli/main/schemas/settings.schema.json",
+    )
+
     with open(ag_dist / "mcp_config.json", "w") as f:
-        json.dump({"mcpServers": ag_mcps}, f, indent=2)
+        json.dump(mcp_config, f, indent=2)
 
     # 3. Rules (AXIOMS, HEURISTICS, core.md)
     # NOTE: Antigravity doesn't use rules directly yet - setup.sh links from source to .agent/rules.
