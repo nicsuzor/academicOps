@@ -9,6 +9,7 @@ if ! command -v uv &> /dev/null; then
     # Try common installation paths
     COMMON_PATHS=(
         "$HOME/.local/bin"
+        "/home/debian/.local/bin"
         "/usr/local/bin"
         "/opt/homebrew/bin"
         "/usr/bin"

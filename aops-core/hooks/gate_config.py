@@ -152,6 +152,11 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "TaskUpdate",
         "TaskGet",
         "TaskList",
+        "aops_core_prompt_hydrator",
+        "aops_core_custodiet",
+        "aops_core_qa",
+        "aops_core_audit",
+        "aops_core_butler",
     },
     # Read-only tools: no side effects. Exempt from custodiet gate (not hydration).
     # Hydration gate blocks these until hydrator is dispatched (JIT gate open).
@@ -303,14 +308,16 @@ COMPLIANCE_SUBAGENT_TYPES: frozenset[str] = frozenset(
         "hydrator",
         "prompt-hydrator",
         "aops-core:prompt-hydrator",
+        "aops_core_prompt_hydrator",
         "custodiet",
         "aops-core:custodiet",
+        "aops_core_custodiet",
         "audit",
         "aops-core:audit",
-        "butler",
-        "aops-core:butler",
+        "aops_core_audit",
         "qa",
         "aops-core:qa",
+        "aops_core_qa",
         # Curia alias: "auditor" is the Curia name for the custodiet/audit role.
         # Other Curia roles (Assessor/Critic, Advocate) are not compliance agents
         # and must not bypass gate enforcement.
@@ -341,6 +348,12 @@ SPAWN_TOOLS: dict[str, tuple[tuple[str, ...], bool]] = {
     # Gemini CLI
     "delegate_to_agent": (("name", "agent_name"), False),
     "activate_skill": (("skill", "name"), True),
+    # Gemini: bare agent tools (Strategy 2)
+    "aops_core_prompt_hydrator": ((), False),
+    "aops_core_custodiet": ((), False),
+    "aops_core_qa": ((), False),
+    "aops_core_audit": ((), False),
+    "aops_core_butler": ((), False),
     # Codex: add entries when tool names are known
     # GitHub Copilot: add entries when tool names are known
 }
@@ -450,22 +463,23 @@ def get_tool_category(tool_name: str, tool_input: dict[str, Any] | None = None) 
             - Detect ToolSearch select: queries (infrastructure bypass)
             - Extract subagent_type for compliance-spawn bypass
     """
-    if tool_input:
-        # ToolSearch with select: prefix is a pure tool-loading operation (infrastructure).
-        # Blocking it creates an unresolvable loop: the agent needs ToolSearch to load
-        # tools, but ToolSearch is blocked until hydration, which also requires tools.
-        if tool_name == "ToolSearch":
-            query = tool_input.get("query", "")
-            if isinstance(query, str) and query.startswith("select:"):
-                return "infrastructure"
-
-        # Compliance agent spawns (Agent/Task + compliance subagent_type) are infrastructure.
-        # This ensures dispatching the hydrator or custodiet is never blocked by any gate,
-        # including custodiet's own ops-threshold policy.
-        extracted_st, _ = extract_subagent_type(tool_name, tool_input)
-        if extracted_st and extracted_st in COMPLIANCE_SUBAGENT_TYPES and tool_name in SPAWN_TOOLS:
+    # 1. ToolSearch with select: prefix is a pure tool-loading operation (infrastructure).
+    # Blocking it creates an unresolvable loop: the agent needs ToolSearch to load
+    # tools, but ToolSearch is blocked until hydration, which also requires tools.
+    if tool_name == "ToolSearch" and tool_input:
+        query = tool_input.get("query", "")
+        if isinstance(query, str) and query.startswith("select:"):
             return "infrastructure"
 
+    # 2. Compliance agent spawns (Agent/Task + compliance subagent_type, or tool_name
+    # is the compliance agent name directly) are infrastructure.
+    # This ensures dispatching the hydrator or custodiet is never blocked by any gate,
+    # including custodiet's own ops-threshold policy.
+    extracted_st, _ = extract_subagent_type(tool_name, tool_input or {})
+    if extracted_st and extracted_st in COMPLIANCE_SUBAGENT_TYPES:
+        return "infrastructure"
+
+    # 3. Static categories
     for category, tools in TOOL_CATEGORIES.items():
         if tool_name in tools:
             return category
@@ -493,11 +507,11 @@ def extract_subagent_type(
     """Extract subagent_type from a tool invocation.
 
     Two extraction strategies:
-    1. SPAWN_TOOLS table: tool_name is a spawning tool (e.g. "Agent",
-       "delegate_to_agent") and the agent name is in tool_input.
-    2. Direct match: tool_name IS the agent name (e.g. Gemini reports
+    1. Direct match: tool_name IS the agent name (e.g. Gemini reports
        tool_name="prompt-hydrator" rather than "delegate_to_agent").
        Matched against COMPLIANCE_SUBAGENT_TYPES.
+    2. SPAWN_TOOLS table: tool_name is a spawning tool (e.g. "Agent",
+       "delegate_to_agent") and the agent name is in tool_input.
 
     Args:
         tool_name: The tool being called (e.g. "Task", "delegate_to_agent",
@@ -512,7 +526,13 @@ def extract_subagent_type(
     if not tool_name:
         return None, False
 
-    # Strategy 1: SPAWN_TOOLS lookup (Claude Agent/Task, Gemini delegate_to_agent)
+    # Strategy 1: tool_name IS the agent name (Gemini bare agent pattern)
+    # Checked first so compliance agent names as tool_name take precedence
+    # even if they are also registered in SPAWN_TOOLS.
+    if tool_name in COMPLIANCE_SUBAGENT_TYPES:
+        return tool_name, False
+
+    # Strategy 2: SPAWN_TOOLS lookup (Claude Agent/Task, Gemini delegate_to_agent)
     spec = SPAWN_TOOLS.get(tool_name)
     if spec:
         param_names, is_skill = spec
@@ -523,9 +543,5 @@ def extract_subagent_type(
                 if stripped:
                     return stripped, is_skill
         return None, is_skill
-
-    # Strategy 2: tool_name IS the agent name (Gemini bare agent pattern)
-    if tool_name in COMPLIANCE_SUBAGENT_TYPES:
-        return tool_name, False
 
     return None, False

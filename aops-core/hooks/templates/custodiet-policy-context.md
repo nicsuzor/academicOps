@@ -11,5 +11,5 @@ description: |
 
 **Periodic compliance check required ({ops_since_open} ops since last check).** Invoke the **custodiet** agent with the file path argument: `{temp_path}`
 
-- Gemini: `delegate_to_agent(name='custodiet', query='{temp_path}')`
+- Gemini: `aops_core_custodiet(message='{temp_path}')`
 - Claude: `Agent(subagent_type='custodiet', prompt='{temp_path}')`

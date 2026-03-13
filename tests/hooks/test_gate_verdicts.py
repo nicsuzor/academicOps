@@ -425,14 +425,16 @@ class TestComplianceSubagentTypesComplete:
         "hydrator",
         "prompt-hydrator",
         "aops-core:prompt-hydrator",
+        "aops_core_prompt_hydrator",
         "custodiet",
         "aops-core:custodiet",
+        "aops_core_custodiet",
         "audit",
         "aops-core:audit",
-        "butler",
-        "aops-core:butler",
+        "aops_core_audit",
         "qa",
         "aops-core:qa",
+        "aops_core_qa",
         # Curia alias: "auditor" is the Curia name for the custodiet/audit role.
         # Critic (formerly Assessor) and Advocate are not compliance bypass agents.
         "auditor",

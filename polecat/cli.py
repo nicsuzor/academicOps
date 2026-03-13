@@ -26,9 +26,27 @@ def _make_worker_env() -> dict[str, str]:
     workers can ONLY authenticate via the provided AOPS_BOT_GH_TOKEN.
     This runs agent-env-map.conf mappings eagerly (before subprocess launch)
     rather than relying on the SessionStart hook inside the child process.
+    It also ensures 'uv' and other critical binaries are in the PATH.
     """
     env = os.environ.copy()
     apply_env_mappings(env)
+
+    # Ensure uv is in PATH for hooks and agent tools
+    current_path = env.get("PATH", "")
+    path_segments = [s for s in current_path.split(os.pathsep) if s]
+
+    # Prepend common user-level bin paths if they exist and are not already in PATH.
+    # We only prepend user bin paths to avoid messing with system binary precedence.
+    user_bin_paths = [
+        str(Path.home() / ".local" / "bin"),
+        str(Path.home() / "bin"),
+    ]
+    for p in reversed(user_bin_paths):
+        if os.path.isdir(p) and p not in path_segments:
+            path_segments.insert(0, p)
+
+    env["PATH"] = os.pathsep.join(path_segments)
+
     # Prevent gh CLI from launching interactive prompts in non-TTY environments.
     # Workers run headless — any prompt would hang indefinitely.
     env["GH_PROMPT_DISABLED"] = "1"

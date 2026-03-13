@@ -345,7 +345,7 @@ class TestAgentNamesNotInToolCategories:
             )
 
     def test_compliance_subagent_types_has_expected_members(self):
-        expected = {"prompt-hydrator", "custodiet", "audit", "butler"}
+        expected = {"prompt-hydrator", "custodiet", "audit"}
         for name in expected:
             assert (
                 name in COMPLIANCE_SUBAGENT_TYPES

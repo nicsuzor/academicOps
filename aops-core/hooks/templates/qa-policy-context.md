@@ -14,7 +14,7 @@ You must invoke the **qa** agent to verify planned requirements before exiting.
 **Instruction**:
 Run the qa with this command:
 
-- Gemini: `delegate_to_agent(name='aops-core:qa', query='{temp_path}')`
+- Gemini: `aops_core_qa(message='{temp_path}')`
 - Claude: `Agent(subagent_type='aops-core:qa', prompt='{temp_path}')`
 - Make sure you obey the instructions the tool or subagent produces, but do not print the output to the user -- it just clutters up the conversation.
 

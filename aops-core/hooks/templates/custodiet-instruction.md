@@ -12,7 +12,7 @@ description: |
 
 Run the custodiet with this command:
 
-- Gemini: `delegate_to_agent(name='aops-core:custodiet', query='{temp_path}')`
+- Gemini: `aops_core_custodiet(message='{temp_path}')`
 - Claude: `Agent(subagent_type='aops-core:custodiet', prompt='{temp_path}')`
 
 Pass the file path directly to the agent — it will read the file and perform the compliance check.
