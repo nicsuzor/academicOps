@@ -106,13 +106,16 @@ After successful execution:
    All four flags (`--title`, `--body`, `--head`, `--base`) are required. \
 Omitting `--head` or `--base` will cause `gh` to hang.
 
-3. **Update the task** in PKB with the outcome, then close it:
+3. **Update the task** in PKB to reflect the outcome:
 
    - If a PR was filed:
      ```
      mcp__pkb__update_task(id="{task_id}", status="merge_ready",
        body="## Outcome\\n- Branch: <branch>\\n- Commit: <sha>\\n- PR: <url>")
      ```
+     This sets the task to `merge_ready`, which is the final worker state for PR-backed
+     work. The governing system will close the task after the PR is merged. Do not call
+     `complete_task` for PR-backed work.
    - If no code changes (learn tasks, investigations, etc.):
      ```
      complete_task(id="{task_id}")
