@@ -73,6 +73,8 @@ dev = [
   # Linting & type checking
   "basedpyright>=1.29.0",
   "ruff>=0.14.10",
+  # Build tooling
+  "jsonschema>=4.26.0",
   # Git hooks
   "pre-commit>=4.5.1",
   "bump-my-version>=1.2.6",
