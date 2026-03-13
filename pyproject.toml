@@ -15,7 +15,6 @@ dependencies = [
   # Skills dependencies
   "pdfminer-six>=20260107",
   "streamlit>=1.54.0",
-  "jsonschema>=4.26.0",
 ]
 
 [project.optional-dependencies]
@@ -74,6 +73,8 @@ dev = [
   # Linting & type checking
   "basedpyright>=1.29.0",
   "ruff>=0.14.10",
+  # Build tooling
+  "jsonschema>=4.26.0",
   # Git hooks
   "pre-commit>=4.5.1",
   "bump-my-version>=1.2.6",
