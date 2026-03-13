@@ -581,15 +581,18 @@ class HookRouter:
                     tool_input = ctx.tool_input
                     if isinstance(tool_input, dict):
                         # Support both Claude (subagent_type) and Gemini (name) parameters
-                        # extracted_st already covers Strategy 2 (tool_name IS agent_name)
+                        # extracted_st already covers Strategy 1 (tool_name IS agent_name)
                         extracted_st, is_skill = extract_subagent_type(ctx.tool_name, tool_input)
                         if extracted_st:
                             agent_type = extracted_st
                         else:
+                            # Use tool name itself for bare agent dispatches that aren't
+                            # in COMPLIANCE_SUBAGENT_TYPES but are in SPAWN_TOOLS.
                             agent_type = (
                                 tool_input.get("subagent_type")
                                 or tool_input.get("agent_name")
-                                or tool_input.get("name", "unknown")
+                                or tool_input.get("name")
+                                or ctx.tool_name
                             )
                     verdict = None
                     if tool_result := ctx.tool_output:

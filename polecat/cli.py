@@ -33,17 +33,18 @@ def _make_worker_env() -> dict[str, str]:
 
     # Ensure uv is in PATH for hooks and agent tools
     current_path = env.get("PATH", "")
-    common_bin_paths = [
-        str(Path.home() / ".local" / "bin"),
-        "/usr/local/bin",
-        "/opt/homebrew/bin",
-        "/usr/bin",
-        "/bin",
-    ]
     path_segments = [s for s in current_path.split(os.pathsep) if s]
-    for p in common_bin_paths:
-        if p not in path_segments and os.path.exists(p):
+
+    # Prepend common user-level bin paths if they exist and are not already in PATH.
+    # We only prepend user bin paths to avoid messing with system binary precedence.
+    user_bin_paths = [
+        str(Path.home() / ".local" / "bin"),
+        str(Path.home() / "bin"),
+    ]
+    for p in reversed(user_bin_paths):
+        if os.path.isdir(p) and p not in path_segments:
             path_segments.insert(0, p)
+
     env["PATH"] = os.pathsep.join(path_segments)
 
     # Prevent gh CLI from launching interactive prompts in non-TTY environments.

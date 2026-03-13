@@ -152,11 +152,6 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "TaskUpdate",
         "TaskGet",
         "TaskList",
-        "aops_core_prompt_hydrator",
-        "aops_core_custodiet",
-        "aops_core_qa",
-        "aops_core_audit",
-        "aops_core_butler",
     },
     # Read-only tools: no side effects. Exempt from custodiet gate (not hydration).
     # Hydration gate blocks these until hydrator is dispatched (JIT gate open).
@@ -510,11 +505,11 @@ def extract_subagent_type(
     """Extract subagent_type from a tool invocation.
 
     Two extraction strategies:
-    1. SPAWN_TOOLS table: tool_name is a spawning tool (e.g. "Agent",
-       "delegate_to_agent") and the agent name is in tool_input.
-    2. Direct match: tool_name IS the agent name (e.g. Gemini reports
+    1. Direct match: tool_name IS the agent name (e.g. Gemini reports
        tool_name="prompt-hydrator" rather than "delegate_to_agent").
        Matched against COMPLIANCE_SUBAGENT_TYPES.
+    2. SPAWN_TOOLS table: tool_name is a spawning tool (e.g. "Agent",
+       "delegate_to_agent") and the agent name is in tool_input.
 
     Args:
         tool_name: The tool being called (e.g. "Task", "delegate_to_agent",
@@ -529,7 +524,13 @@ def extract_subagent_type(
     if not tool_name:
         return None, False
 
-    # Strategy 1: SPAWN_TOOLS lookup (Claude Agent/Task, Gemini delegate_to_agent)
+    # Strategy 1: tool_name IS the agent name (Gemini bare agent pattern)
+    # Checked first so compliance agent names as tool_name take precedence
+    # even if they are also registered in SPAWN_TOOLS.
+    if tool_name in COMPLIANCE_SUBAGENT_TYPES:
+        return tool_name, False
+
+    # Strategy 2: SPAWN_TOOLS lookup (Claude Agent/Task, Gemini delegate_to_agent)
     spec = SPAWN_TOOLS.get(tool_name)
     if spec:
         param_names, is_skill = spec
@@ -540,9 +541,5 @@ def extract_subagent_type(
                 if stripped:
                     return stripped, is_skill
         return None, is_skill
-
-    # Strategy 2: tool_name IS the agent name (Gemini bare agent pattern)
-    if tool_name in COMPLIANCE_SUBAGENT_TYPES:
-        return tool_name, False
 
     return None, False
