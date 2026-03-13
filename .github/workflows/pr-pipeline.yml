@@ -30,7 +30,7 @@ jobs:
     name: Agent Fix
     needs: [lint, pytest, typecheck]
     if: always() && !cancelled()
-    uses: ./.github/workflows/agent-assessor.yml
+    uses: ./.github/workflows/agent-autofix.yml
     with:
       pr_number: ${{ github.event.pull_request.number }}
       ref: ${{ github.event.pull_request.head.ref }}
