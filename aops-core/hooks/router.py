@@ -38,7 +38,7 @@ try:
     from lib.session_paths import get_pid_session_map_path, get_session_short_hash
     from lib.session_state import SessionState
 
-    from hooks.gate_config import extract_subagent_type
+    from hooks.gate_config import SPAWN_TOOLS, extract_subagent_type
     from hooks.schemas import (
         CanonicalHookOutput,
         ClaudeGeneralHookOutput,
@@ -576,16 +576,21 @@ class HookRouter:
                         elif status == "done":
                             notify_task_completed(config, ctx.session_id, task_id)
 
-                if ctx.tool_name in ("Agent", "Task", "delegate_to_agent"):
+                if ctx.tool_name in SPAWN_TOOLS:
                     agent_type = "unknown"
                     tool_input = ctx.tool_input
                     if isinstance(tool_input, dict):
                         # Support both Claude (subagent_type) and Gemini (name) parameters
-                        agent_type = (
-                            tool_input.get("subagent_type")
-                            or tool_input.get("agent_name")
-                            or tool_input.get("name", "unknown")
-                        )
+                        # extracted_st already covers Strategy 2 (tool_name IS agent_name)
+                        extracted_st, is_skill = extract_subagent_type(ctx.tool_name, tool_input)
+                        if extracted_st:
+                            agent_type = extracted_st
+                        else:
+                            agent_type = (
+                                tool_input.get("subagent_type")
+                                or tool_input.get("agent_name")
+                                or tool_input.get("name", "unknown")
+                            )
                     verdict = None
                     if tool_result := ctx.tool_output:
                         if isinstance(tool_result, dict) and "verdict" in tool_result:

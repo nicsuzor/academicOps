@@ -152,6 +152,11 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "TaskUpdate",
         "TaskGet",
         "TaskList",
+        "aops_core_prompt_hydrator",
+        "aops_core_custodiet",
+        "aops_core_qa",
+        "aops_core_audit",
+        "aops_core_butler",
     },
     # Read-only tools: no side effects. Exempt from custodiet gate (not hydration).
     # Hydration gate blocks these until hydrator is dispatched (JIT gate open).
@@ -303,14 +308,19 @@ COMPLIANCE_SUBAGENT_TYPES: frozenset[str] = frozenset(
         "hydrator",
         "prompt-hydrator",
         "aops-core:prompt-hydrator",
+        "aops_core_prompt_hydrator",
         "custodiet",
         "aops-core:custodiet",
+        "aops_core_custodiet",
         "audit",
         "aops-core:audit",
+        "aops_core_audit",
         "butler",
         "aops-core:butler",
+        "aops_core_butler",
         "qa",
         "aops-core:qa",
+        "aops_core_qa",
         # Curia alias: "auditor" is the Curia name for the custodiet/audit role.
         # Other Curia roles (Assessor/Critic, Advocate) are not compliance agents
         # and must not bypass gate enforcement.
@@ -341,6 +351,12 @@ SPAWN_TOOLS: dict[str, tuple[tuple[str, ...], bool]] = {
     # Gemini CLI
     "delegate_to_agent": (("name", "agent_name"), False),
     "activate_skill": (("skill", "name"), True),
+    # Gemini: bare agent tools (Strategy 2)
+    "aops_core_prompt_hydrator": ((), False),
+    "aops_core_custodiet": ((), False),
+    "aops_core_qa": ((), False),
+    "aops_core_audit": ((), False),
+    "aops_core_butler": ((), False),
     # Codex: add entries when tool names are known
     # GitHub Copilot: add entries when tool names are known
 }
@@ -459,11 +475,12 @@ def get_tool_category(tool_name: str, tool_input: dict[str, Any] | None = None) 
             if isinstance(query, str) and query.startswith("select:"):
                 return "infrastructure"
 
-        # Compliance agent spawns (Agent/Task + compliance subagent_type) are infrastructure.
+        # Compliance agent spawns (Agent/Task + compliance subagent_type, or tool_name
+        # is the compliance agent name directly) are infrastructure.
         # This ensures dispatching the hydrator or custodiet is never blocked by any gate,
         # including custodiet's own ops-threshold policy.
         extracted_st, _ = extract_subagent_type(tool_name, tool_input)
-        if extracted_st and extracted_st in COMPLIANCE_SUBAGENT_TYPES and tool_name in SPAWN_TOOLS:
+        if extracted_st and extracted_st in COMPLIANCE_SUBAGENT_TYPES:
             return "infrastructure"
 
     for category, tools in TOOL_CATEGORIES.items():
