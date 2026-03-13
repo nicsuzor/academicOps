@@ -457,11 +457,12 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
     # Handle case where tools is already a string (no transformation needed for format)
     if isinstance(original_tools, str):
         if platform == "gemini":
-            # Strip mcp__ prefix and remap tool names for Gemini
+            # Remap tool names for Gemini
             tools_list = [t.strip() for t in original_tools.split(",")]
             filtered = []
             for t in tools_list:
-                tool_name = t[5:] if t.startswith("mcp__") else t
+                # Convert double underscores to single underscores for Gemini MCP tool names
+                tool_name = t.replace("__", "_")
                 filtered.append(GEMINI_TOOL_NAME_MAP.get(tool_name, tool_name))
             frontmatter["tools"] = filtered  # Convert to list for Gemini schema
             # Remove 'color' field - not supported by Gemini CLI
@@ -473,11 +474,11 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
         return content
 
     if platform == "gemini":
-        # Strip mcp__ prefix and remap tool names for Gemini
+        # Remap tool names for Gemini
         filtered_tools = []
         for t in original_tools:
-            # Strip mcp__ prefix if present
-            tool_name = t[5:] if t.startswith("mcp__") else t
+            # Convert double underscores to single underscores for Gemini MCP tool names
+            tool_name = t.replace("__", "_")
             # Remap to Gemini tool name if mapping exists, otherwise keep as-is
             filtered_tools.append(GEMINI_TOOL_NAME_MAP.get(tool_name, tool_name))
 
@@ -598,6 +599,11 @@ def translate_tool_calls(text: str, platform: str) -> str:
 
     # 2. Dynamic replacement for Gemini/Claude compatibility (Task/Skill)
     if platform == "gemini":
+        # Convert mcp__server__tool to mcp_server_tool in body
+        import re
+
+        text = re.sub(r"mcp__([a-zA-Z0-9_-]+)__([a-zA-Z0-9_-]*)", r"mcp_\1_\2", text)
+
         # Task(subagent_type=...) -> activate_skill(name=...)
         text = text.replace("Task(subagent_type=", "activate_skill(name=")
         # Skill(skill=...) -> activate_skill(name=...)

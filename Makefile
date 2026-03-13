@@ -7,7 +7,6 @@
 
 AOPS_ROOT := $(shell pwd)
 DIST_DIR := $(AOPS_ROOT)/dist
-MEM_REPO_PATH := $(or $(wildcard $(HOME)/src/mem),$(wildcard /opt/nic/mem))
 INSTALL_BIN := $(if $(USER_OPT),$(USER_OPT)/bin,$(HOME)/.local/bin)
 CRON_SCRIPT := $(AOPS_ROOT)/scripts/repo-sync-cron.sh
 DIST_REPO := nicsuzor/aops-dist
@@ -41,7 +40,6 @@ help:
 	@echo "  make install        - Install all components from GitHub releases"
 	@echo "  make install-claude - Install Claude plugin from dist repo"
 	@echo "  make install-gemini - Install Gemini extension from main repo"
-	@echo "  make install-cli    - Install pkb/aops CLI binaries"
 	@echo "  make install-crontab - Setup background sync"
 	@echo ""
 	@echo "Release Management (Automation):"
@@ -69,14 +67,15 @@ build-dev:
 
 # Install local build artifacts into clients
 install-dev:
+	@echo "Uninstalling existing local plugins/extensions..."
+	-command gemini extensions uninstall aops-core
+	-command claude plugin uninstall aops-core
+	@echo "Configuring local Claude marketplace..."
+	-command claude plugin marketplace add $(AOPS_ROOT)
 	@echo "Installing local build into Claude Code..."
-	@command claude plugin install $(DIST_DIR)/aops-claude --force || echo "  ⚠️ Claude install failed"
+	@command claude plugin install aops-core@aops || echo "  ⚠️ Claude install failed"
 	@echo "Installing local build into Gemini CLI..."
 	@command gemini extensions install $(DIST_DIR)/aops-gemini --consent || echo "  ⚠️ Gemini install failed"
-	@if [ -n "$(MEM_REPO_PATH)" ]; then \
-		echo "Building CLI tools from $(MEM_REPO_PATH)..."; \
-		cargo install --path "$(MEM_REPO_PATH)" || echo "  ⚠️ CLI build failed"; \
-	fi
 	@echo "✓ Local installation complete"
 
 # Install pre-commit hooks
@@ -88,7 +87,7 @@ install-hooks:
 # --- User Installation (Remote) ---
 
 # Standard user install from official releases
-install: install-claude install-gemini install-cli install-crontab
+install: install-claude install-gemini install-crontab
 
 install-claude:
 	@echo "Installing aops plugin for Claude Code from $(DIST_REPO)..."
@@ -101,23 +100,6 @@ install-gemini:
 	@echo "Installing aops extension for Gemini CLI from GitHub..."
 	@command gemini extensions install git@github.com:nicsuzor/academicOps.git --consent --auto-update --pre-release && \
 	echo "✓ Gemini CLI extension installed"
-
-install-cli:
-ifndef PLATFORM
-	$(error Cannot detect platform. Set PLATFORM manually: make install-cli PLATFORM=linux-x86_64)
-endif
-	@echo "Installing aops + pkb from $(DIST_REPO) release..."
-	@mkdir -p "$(INSTALL_BIN)"
-	@TMPDIR=$$(mktemp -d) && \
-	ARCHIVE="aops-claude-$(PLATFORM).tar.gz" && \
-	gh release download --repo $(DIST_REPO) --pattern "$$ARCHIVE" --dir "$$TMPDIR" --clobber && \
-	tar xzf "$$TMPDIR/$$ARCHIVE" -C "$$TMPDIR" && \
-	if [ -f "$$TMPDIR/bin/aops" ]; then cp "$$TMPDIR/bin/aops" "$(INSTALL_BIN)/aops" && chmod +x "$(INSTALL_BIN)/aops"; \
-	elif [ -f "$$TMPDIR/aops-claude/bin/aops" ]; then cp "$$TMPDIR/aops-claude/bin/aops" "$(INSTALL_BIN)/aops" && chmod +x "$(INSTALL_BIN)/aops"; fi && \
-	if [ -f "$$TMPDIR/bin/pkb" ]; then cp "$$TMPDIR/bin/pkb" "$(INSTALL_BIN)/pkb" && chmod +x "$(INSTALL_BIN)/pkb"; \
-	elif [ -f "$$TMPDIR/aops-claude/bin/pkb" ]; then cp "$$TMPDIR/aops-claude/bin/pkb" "$(INSTALL_BIN)/pkb" && chmod +x "$(INSTALL_BIN)/pkb"; fi && \
-	rm -rf "$$TMPDIR" && \
-	echo "✓ CLI tools installed to $(INSTALL_BIN)"
 
 install-crontab:
 	@if crontab -l 2>/dev/null | grep -q "repo-sync-cron"; then \
