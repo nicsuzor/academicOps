@@ -608,7 +608,7 @@ class TestE2EGateDispatchFromRawStdin:
         assert ctx.tool_name == "Bash"
 
         # Dynamically change the policy verdict since GateRegistry caches configs
-        gate_config = next(g for g in GATE_CONFIGS if g.name == "hydration")
+        gate_config = GateRegistry.get_gate("hydration").config
         monkeypatch.setattr(gate_config.policies[0], "verdict", "warn")
 
         # Gate dispatch: hydration CLOSED blocks non-infrastructure tools
