@@ -41,7 +41,7 @@ jobs:
       statuses: read
       actions: write
     env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
       BAZAAR_WINDOW_SECONDS: 900  # 15 minutes
     steps:
       # ── Manual override: process a specific PR immediately ──
