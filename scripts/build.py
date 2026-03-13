@@ -462,6 +462,8 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
             filtered = []
             for t in tools_list:
                 tool_name = t[5:] if t.startswith("mcp__") else t
+                # Convert double underscores to single underscores for Gemini MCP tool names
+                tool_name = tool_name.replace("__", "_")
                 filtered.append(GEMINI_TOOL_NAME_MAP.get(tool_name, tool_name))
             frontmatter["tools"] = filtered  # Convert to list for Gemini schema
             # Remove 'color' field - not supported by Gemini CLI
@@ -478,6 +480,8 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
         for t in original_tools:
             # Strip mcp__ prefix if present
             tool_name = t[5:] if t.startswith("mcp__") else t
+            # Convert double underscores to single underscores for Gemini MCP tool names
+            tool_name = tool_name.replace("__", "_")
             # Remap to Gemini tool name if mapping exists, otherwise keep as-is
             filtered_tools.append(GEMINI_TOOL_NAME_MAP.get(tool_name, tool_name))
 
@@ -598,6 +602,11 @@ def translate_tool_calls(text: str, platform: str) -> str:
 
     # 2. Dynamic replacement for Gemini/Claude compatibility (Task/Skill)
     if platform == "gemini":
+        # Convert mcp__server__tool to server_tool in body
+        import re
+
+        text = re.sub(r"mcp__([a-zA-Z0-9_-]+)__([a-zA-Z0-9_-]*)", r"\1_\2", text)
+
         # Task(subagent_type=...) -> activate_skill(name=...)
         text = text.replace("Task(subagent_type=", "activate_skill(name=")
         # Skill(skill=...) -> activate_skill(name=...)
