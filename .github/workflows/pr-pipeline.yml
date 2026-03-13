@@ -24,7 +24,7 @@ jobs:
 
   # ─── PHASE 2: Agent Review & Fix ───────────────────────────────────
   # Runs after CI. Uses `always()` so it runs even if Pytest or Typecheck
-  # failed, allowing Claude to attempt a fix. If it pushes a fix, the
+  # failed, allowing agent to attempt a fix. If it pushes a fix, the
   # pipeline restarts.
   agent-fix:
     name: Agent Fix
@@ -46,11 +46,4 @@ jobs:
     with:
       pr_number: ${{ github.event.pull_request.number }}
       ref: ${{ github.event.pull_request.head.ref }}
-    secrets: inherit
-
-  claude-review:
-    name: Claude Code Review
-    needs: [agent-fix]
-    if: success()
-    uses: ./.github/workflows/claude-code-review.yml
     secrets: inherit

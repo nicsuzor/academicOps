@@ -29,6 +29,7 @@ permalink: commands/learn
 ### 1. Capture Failure Context
 
 **Identify the failure**:
+
 - Where did the mistake occur?
 - What was the trigger?
 
@@ -48,13 +49,14 @@ else
 fi
 ```
 
-*Note: Since you might not be in the framework repository, adapt the script path discovery as needed using standard bash commands (`find`, etc.) to locate `transcript.py`.*
+_Note: Since you might not be in the framework repository, adapt the script path discovery as needed using standard bash commands (`find`, etc.) to locate `transcript.py`._
 
 ### 2. Deep Root Cause Analysis (Crucial)
 
 Before recording the incident, investigate **why** the failure was not prevented by the framework. Do not stop at "agent execution failure." Exercise judgment based on the framework's `VISION.md` regarding how the system SHOULD have worked.
 
 **Check the following layers**:
+
 1. **Discovery Gap**: Did the **Prompt Hydrator** have the necessary information?
    - Check if local project workflows (`.agent/workflows/*.md`) were indexed.
    - Check if relevant specifications were injected into the Hydrator's context.
@@ -69,6 +71,7 @@ Before recording the incident, investigate **why** the failure was not prevented
 
 Review the abridged transcript and extract the minimum turns (ideally < 5) to demonstrate the bug.
 Identify:
+
 - **Expected**: What should have happened based on `VISION.md` (e.g., "Hydrator should have selected the local evaluation workflow")
 - **Actual**: What actually happened (e.g., "Hydrator fell back to generic investigation; Agent skipped visual step")
 
@@ -80,17 +83,21 @@ Draft a high-quality, privacy-scrubbed diagnostic report in Markdown format. The
 # Bug Report: [Brief summary]
 
 ## Incident Context
+
 - **Trigger:** [What caused the issue]
 - **Root Cause Category:** [Clarity, Context, Blocking, Detection, Discovery Gap, Shortcut Bias]
 
 ## Root Cause Analysis
+
 [Detailed explanation of the framework failure, referencing VISION.md where applicable]
 
 ## Minimal Bug Reproduction
+
 - **Expected:** [What should have happened]
 - **Actual:** [What actually happened]
 
 ## Proposed Framework Fix
+
 - **Suggested target:** [Which component/file should be updated]
 - **Proposed change:** [Description of the necessary framework change]
 ```
@@ -100,6 +107,7 @@ Draft a high-quality, privacy-scrubbed diagnostic report in Markdown format. The
 Instead of applying a fix directly to local files (since you may not be in the `academicOps` repository), your deliverable is to file this report as an issue on the `nicsuzor/academicOps` repository.
 
 If you have GitHub CLI access:
+
 ```bash
 gh issue create --repo nicsuzor/academicOps --title "Bug: <brief-slug>" --body-file <path-to-your-report.md>
 ```

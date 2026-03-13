@@ -10,7 +10,7 @@
 #
 # See specs/pr-pipeline-v2.md for the full process documentation.
 
-name: "Agent: Review & Fix"
+name: "Agent: Auto Review & Fix"
 
 on:
   workflow_dispatch:
@@ -83,13 +83,25 @@ jobs:
         with:
           version: "latest"
 
+      # Self-loop detection
+      - name: Check if last push was from merge-prep
+        id: loop-check
+        run: |
+          LAST_MSG=$(git log -1 --format='%B')
+          if echo "$LAST_MSG" | grep -q 'Merge-Prep-By:'; then
+            echo "Last commit was from merge-prep — skipping to avoid loop"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Install dependencies
         run: uv sync --frozen
 
       - name: Read agent instructions
         id: prompt
         run: |
-          PROMPT=$(cat .github/agents/assessor.agent.md)
+          PROMPT=$(cat .github/agents/autofix.agent.md)
           {
             echo "prompt<<AGENT_EOF"
             echo "$PROMPT"
@@ -98,6 +110,7 @@ jobs:
 
       - name: Run Review & Fix
         id: review
+        if: steps.loop-check.outputs.skip != 'true'
         uses: anthropics/claude-code-action@v1
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -106,22 +119,4 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
             ${{ steps.prompt.outputs.prompt }}
-
-            ---
-
-            Review and fix PR #${{ steps.pr-info.outputs.pr_number }} in repository ${{ github.repository }}.
-            The PR branch is `${{ steps.pr-info.outputs.ref }}`.
-
-            Use `gh pr view ${{ steps.pr-info.outputs.pr_number }}` and `gh pr diff ${{ steps.pr-info.outputs.pr_number }}` to gather information.
-
-            Fix mechanical issues (lint, types, simple bugs) by editing files and pushing commits.
-            Comment on issues that require human judgment.
-
-            If you have NO concerns and made NO fixes: do NOT file a review or comment. Just set a success status and exit silently.
-            If you made fixes or have concerns: file a `gh pr review` (APPROVE or REQUEST_CHANGES) with your summary as the review body.
-
-            Then set a commit status:
-            - No concerns → `gh api repos/${{ github.repository }}/statuses/${{ steps.pr-info.outputs.sha }} -f state="success" -f context="Agent Review & Fix" -f description="Clean — no issues found"`
-            - Concerns remain → `gh api repos/${{ github.repository }}/statuses/${{ steps.pr-info.outputs.sha }} -f state="failure" -f context="Agent Review & Fix" -f description="Issues flagged — see PR review"`
-
           claude_args: '--model claude-opus-4-6 --allowed-tools "Bash,Edit,Read,Write"'
