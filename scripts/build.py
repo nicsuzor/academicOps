@@ -54,45 +54,114 @@ CLAUDE_TO_GEMINI_EVENTS = {
 
 
 def sanitize_version(version: str) -> str:
-    """Sanitize version for PEP 440 compliance (uv is strict)."""
-    # Replace -testing.N with .devN
+    """Sanitize version for semver compliance.
+
+    Converts PEP 440 dev versions (.devN) and legacy -testing.N
+    formats to semver pre-release format (-dev.N).
+    """
+    import re
+
+    # Replace -testing.N with -dev.N
     if "-testing." in version:
-        return version.replace("-testing.", ".dev")
+        return version.replace("-testing.", "-dev.")
+    # Replace PEP 440 .devN with semver -dev.N
+    version = re.sub(r"\.dev(\d+)", r"-dev.\1", version)
     return version
 
 
 def get_project_version(aops_root: Path) -> str:
-    """Get latest stable version from git tags.
+    """Get the project version.
 
-    Filters out dev/testing/pre-release tags so that the returned version
-    is always a clean X.Y.Z release.  Git's version sort disagrees with
-    PEP 440 on dev suffixes (git ranks 0.1.57.dev1 > 0.1.56, while
-    PEP 440 ranks it < 0.1.57), so we must exclude them explicitly.
+    Tries in order:
+    1. uv version (dynamic versioning)
+    2. git describe (for dev versions)
+    3. git tags (stable version)
+    4. Fallback to 0.1.0
     """
+    # 1. Try uv version if uv is available and it's a uv project
+    try:
+        result = subprocess.run(
+            ["uv", "tree", "--depth", "0"],
+            cwd=aops_root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode == 0:
+            # Output format: academicops v0.2.1 (...)
+            for line in result.stdout.splitlines():
+                if "academicops v" in line:
+                    version = line.split(" v")[1].split(" ")[0]
+                    return sanitize_version(version)
+    except FileNotFoundError:
+        pass
+
+    # 2. Try git describe for a more accurate dev version
+    try:
+        # Exclude common meta-tags like 'latest' or 'testing'
+        result = subprocess.run(
+            [
+                "git",
+                "describe",
+                "--tags",
+                "--always",
+                "--dirty",
+                "--exclude",
+                "latest",
+                "--exclude",
+                "testing",
+                "--exclude",
+                "*.dev*",
+                "--match",
+                "v[0-9]*",
+            ],
+            cwd=aops_root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode == 0:
+            desc = result.stdout.strip().lstrip("v")
+            # If it's just a short SHA (no tag), it's probably 0.1.0-dev
+            if len(desc) == 8 and all(c in "0123456789abcdef" for c in desc):
+                return f"0.1.0-dev.0+g{desc}"
+
+            # Convert git describe format (0.2.1-5-gabc123) to semver (0.2.1-dev.5+gabc123)
+            if "-" in desc:
+                parts = desc.split("-")
+                base = parts[0]
+                if len(parts) >= 2 and parts[1].isdigit():
+                    dev_num = parts[1]
+                    sha = parts[2] if len(parts) > 2 else ""
+                    dirty = ".dirty" if "dirty" in desc else ""
+                    return f"{base}-dev.{dev_num}+{sha}{dirty}"
+            return sanitize_version(desc)
+    except FileNotFoundError:
+        pass
+
+    # 3. Fallback to stable tags as before
     try:
         result = subprocess.run(
             ["git", "tag", "--merged", "HEAD", "--sort=-v:refname", "--list", "v0.*"],
             cwd=aops_root,
             capture_output=True,
             text=True,
-            check=True,
+            check=False,
         )
         tags = [t.strip() for t in result.stdout.split("\n") if t.strip()]
-        # Only consider stable release tags (vX.Y.Z with no suffix)
         stable_tags = [
             t
             for t in tags
-            if not any(s in t for s in ["-testing", ".dev", "-beta", "-rc", "-alpha"])
+            if not any(s in t for s in ["-testing", ".dev", "-dev.", "-beta", "-rc", "-alpha"])
         ]
         if stable_tags:
             return stable_tags[0].lstrip("v")
         if tags:
-            # Fall back to latest tag if no stable tags exist
             return sanitize_version(tags[0].lstrip("v"))
-        return "0.1.0"
-    except subprocess.CalledProcessError:
-        print("Warning: No git tags found, using fallback version 0.1.0")
-        return "0.1.0"
+    except Exception:
+        pass
+
+    return "0.1.0"
 
 
 # Template for aops-core pyproject.toml - version is injected at build time
@@ -856,7 +925,7 @@ def main():
         "--set-version",
         type=str,
         default=None,
-        help="Override the auto-detected version (e.g. '0.1.15-testing.42')",
+        help="Override the auto-detected version (e.g. '0.3.1-dev.42')",
     )
     parser.add_argument(
         "--pkb-binary",

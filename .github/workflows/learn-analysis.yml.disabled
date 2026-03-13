@@ -1,0 +1,55 @@
+name: Framework Issue Analysis
+
+on:
+  issues:
+    types: [opened, reopened, edited]
+  workflow_dispatch:
+
+jobs:
+  analyze-issue:
+    # Only run if the issue title contains "Bug" or "Learn" or has a "bug" label
+    if: contains(github.event.issue.title, 'Bug') || contains(github.event.issue.title, '[Learn]') || contains(github.event.issue.labels.*.name, 'bug') || contains(github.event.issue.labels.*.name, 'learning')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Analyze Issue and Suggest Framework Fix
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
+          plugins: 'code-review@claude-code-plugins'
+          allowed_bots: '*'
+          prompt: |
+            A new framework bug or learning incident has been reported in Issue #${{ github.event.issue.number }}:
+            Title: ${{ github.event.issue.title }}
+
+            Please read the issue body carefully.
+            Your task is to:
+            1. Perform a deep root cause analysis based on `docs/VISION.md` to identify WHY the framework failed to prevent this error. Do not stop at "agent execution failure." Focus on Discovery, Detection, or Execution gaps.
+               - Also check for a Cross-workflow enforcement gap: Did one workflow detect a problem but lack the mechanism to block another workflow? Check GitHub PR logs (`gh api repos/.../pulls/{pr}/reviews`, `gh api repos/.../pulls/{pr}/comments`) for the full timeline of reviews, dismissals, and merge actions. Common pattern: a reviewer posts `COMMENTED` (advisory) when it should post `CHANGES_REQUESTED` (blocking), so the merge agent can legitimately defer the concern.
+            2. Map the root cause to the Enforcement Ladder in `docs/ENFORCEMENT.md`. This determines what kind of fix is needed:
+               | Root Cause                      | Typical Enforcement Level                                | Fix Target                          |
+               | ------------------------------- | -------------------------------------------------------- | ----------------------------------- |
+               | Agent lacked information        | Level 1c (reasoned prompt) or Level 2 (router/command)   | Skill/command/workflow instructions |
+               | Agent had info but skipped step | Level 2b (strengthen command) or Level 4 (pre-tool hook) | Command file or hook                |
+               | No mechanism to prevent         | Level 3-5 (tool restriction / hooks)                     | New enforcement mechanism           |
+               | Behavior should never occur     | Level 6-7 (deny rule / pre-commit)                       | settings.json or pre-commit config  |
+               | Cross-workflow enforcement gap  | Workflow agent prompts + review mechanism                | Agent prompt + workflow YAML + spec |
+            3. Apply the fix. Ask: "Which file, if it had contained the right instruction, would have prevented this failure?"
+               - For Level 1-2 fixes (prompt text, command instructions), apply the edit in this session using git tools.
+               - For Level 3+ fixes (tool restrictions, hooks, deny rules), propose the specific file and change needed.
+               - Common fix targets:
+                 - **Skill/command definitions** (`aops-core/commands/*.md`, `aops-core/skills/*/SKILL.md`) — add a missing step, checkpoint, or constraint
+                 - **Workflow definitions** (`.agent/workflows/*.md`) — add a gate or validation
+                 - **Agent instructions** (`.agent/agents/*.md`, `.github/agents/*.md`) — strengthen an instruction the agent ignored
+                 - **Specs** (`specs/*.md`) — correct a design gap
+            4. Post your analysis and the result of your fix as a comment on the issue.

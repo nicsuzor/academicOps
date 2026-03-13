@@ -114,6 +114,7 @@ Task(subagent_type="aops-core:qa", model="opus", prompt="
 Qualitative Assessment mode. Read references/qualitative-assessment.md first.
 
 Evaluate [FEATURE] against user stories in [SPEC/TASK].
+If the task involves UI changes or visual artifacts, you MUST apply the Visual Analysis Protocol in references/visual-analysis.md.
 Inhabit the user persona. Walk the scenarios. Evaluate fitness-for-purpose
 in narrative prose. Is this good for the people it was designed for?
 ")

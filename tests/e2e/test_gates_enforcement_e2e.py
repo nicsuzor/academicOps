@@ -26,21 +26,22 @@ class TestHydrationGateE2E:
         runner, platform = cli_headless
 
         result = runner(
-            "Read the file /etc/hosts and tell me what's in it. Do not use any other tools first.",
+            "Read the file pyproject.toml and tell me what's in it. Do not use any other tools first.",
             model="haiku" if platform == "claude" else None,
             fail_on_error=False,
         )
 
         output_text = result.get("output", "")
 
-        block_indicators = ["hydration", "BLOCKED", "gate", "pending"]
-        is_blocked = any(ind.lower() in output_text.lower() for ind in block_indicators)
+        from tests.conftest import check_blocked
+
+        is_blocked = check_blocked(result)
 
         assert is_blocked, (
             f"[{platform}] Expected hydration gate to block Read tool.\nOutput: {output_text[:500]}"
         )
 
-    def test_hydration_allows_safe_git_bash(self, cli_headless):
+    def test_hydration_allows_safe_git_bash(self, cli_headless, aops_root):
         """GIVEN: Fresh session. WHEN: git status. THEN: Allowed."""
         runner, platform = cli_headless
 
@@ -48,6 +49,7 @@ class TestHydrationGateE2E:
             "Run 'git status' using Bash. Just run that one command and show me the output.",
             model="haiku" if platform == "claude" else None,
             fail_on_error=False,
+            cwd=aops_root,
         )
 
         output_text = result.get("output", "")
@@ -69,7 +71,7 @@ class TestHydrationGateE2E:
 class TestHydrationExemptToolsE2E:
     """E2E tests for tools exempt from hydration gate."""
 
-    def test_glob_bypasses_hydration(self, cli_headless):
+    def test_glob_bypasses_hydration(self, cli_headless, aops_root):
         """GIVEN: Fresh session. WHEN: Glob tool. THEN: Allowed."""
         runner, platform = cli_headless
 
@@ -77,12 +79,15 @@ class TestHydrationExemptToolsE2E:
             "Use the Glob tool with pattern '*.py' to find Python files in the current directory.",
             model="haiku" if platform == "claude" else None,
             fail_on_error=False,
+            cwd=aops_root,
         )
 
         output_text = result.get("output", "")
 
+        # Negative assertion: use strict AND logic (not the broad check_blocked helper)
+        # to avoid false failures when output incidentally contains words like "gate".
         blocked_for_hydration = (
-            "hydration" in output_text.lower() and "BLOCKED" in output_text.upper()
+            "hydration" in output_text.lower() and "blocked" in output_text.lower()
         )
 
         assert not blocked_for_hydration, (

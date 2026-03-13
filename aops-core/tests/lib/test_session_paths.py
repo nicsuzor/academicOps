@@ -5,6 +5,21 @@ import pytest
 from lib.session_paths import _is_gemini_session, get_gate_file_path, get_session_short_hash
 
 
+@pytest.fixture(autouse=True)
+def _clear_env_vars(monkeypatch):
+    """Clear env vars that leak from live sessions."""
+    ENV_VARS_TO_CLEAR = (
+        "AOPS_SESSIONS",
+        "AOPS_SESSION_STATE_DIR",
+        "AOPS_HOOK_LOG_PATH",
+        "AOPS_GATE_FILE_HYDRATION",
+        "AOPS_GATE_FILE_CUSTODIET",
+        "GEMINI_SESSION_ID",
+    )
+    for var in ENV_VARS_TO_CLEAR:
+        monkeypatch.delenv(var, raising=False)
+
+
 class TestIsGeminiSession:
     """Tests for _is_gemini_session function."""
 
@@ -39,12 +54,6 @@ class TestIsGeminiSession:
 
 class TestGetGateFilePath:
     """Tests for get_gate_file_path function."""
-
-    @pytest.fixture(autouse=True)
-    def _clear_gate_env_vars(self, monkeypatch):
-        """Clear gate file env vars that leak from live sessions."""
-        monkeypatch.delenv("AOPS_GATE_FILE_HYDRATION", raising=False)
-        monkeypatch.delenv("AOPS_GATE_FILE_CUSTODIET", raising=False)
 
     def test_env_override(self):
         """Test that AOPS_GATE_FILE_<GATE> environment variable overrides the path."""

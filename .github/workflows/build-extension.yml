@@ -116,12 +116,12 @@ jobs:
 
           if [ "${{ steps.release_type.outputs.type }}" = "testing" ]; then
             # Append pre-release suffix to the CURRENT stable version.
-            # Uses PEP 440 dev format: X.Y.Z.devN
+            # Uses semver pre-release format: X.Y.Z-dev.N
             # The next `make release` will bump to X.Y.(Z+1), which is
-            # strictly greater than any X.Y.Z.devN pre-release.
+            # strictly greater than any X.Y.Z-dev.N pre-release.
             # Strip any existing pre-release suffix first (idempotent).
             CLEAN_VERSION=$(echo "$BASE_VERSION" | sed -E 's/([-+\.]dev|[-+]).*//')
-            VERSION="${CLEAN_VERSION}.dev${{ github.run_number }}"
+            VERSION="${CLEAN_VERSION}-dev.${{ github.run_number }}"
             echo "version=$VERSION" >> $GITHUB_OUTPUT
             echo "Testing version: $VERSION (base: $BASE_VERSION)"
           else
@@ -342,6 +342,7 @@ jobs:
             # Create release if it doesn't exist, or upload to existing
             gh release upload "v$VERSION" $GEMINI_ARCHIVES --clobber \
               || gh release create "v$VERSION" \
+                --target "${{ github.sha }}" \
                 --title "v$VERSION" \
                 --notes "AcademicOps v$VERSION" \
                 $PRERELEASE_FLAG \

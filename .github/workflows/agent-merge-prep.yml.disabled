@@ -206,6 +206,8 @@ jobs:
             || {
               if echo "$APPROVE_OUTPUT" | grep -q "Can not approve your own pull request"; then
                 echo "WARNING: Self-approval blocked by GitHub — skipping (expected for own PRs)"
+              elif echo "$APPROVE_OUTPUT" | grep -q "GitHub Actions is not permitted to approve pull requests"; then
+                echo "WARNING: GitHub Actions cannot approve PRs — skipping"
               else
                 echo "ERROR: Approval failed unexpectedly: $APPROVE_OUTPUT"
                 exit 1
