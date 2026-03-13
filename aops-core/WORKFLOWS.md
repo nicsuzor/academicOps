@@ -74,6 +74,9 @@ User request
     +-- Planning/designing known work? -------------> [[feature-dev]]
     |   (know what to build, designing how)
     |
+    +-- Sharing/sending/publishing externally? ------> [[outbound-review]]
+    |   ("send to", "share with", "circulate", "publish draft")
+    |
     +-- Need QA verification? ----------------------> [[qa]]
     |
     +-- Framework governance change? ---------------> [[framework-gate]]
@@ -83,17 +86,18 @@ User request
 
 ## Scope-Based Routing
 
-| Signal                                          | Route to                                    |
-| ----------------------------------------------- | ------------------------------------------- |
-| "I had an idea", "what if...", "new constraint" | [[strategic-intake]]                        |
-| "Write a paper", "Build X", "Plan the project"  | [[decompose]]                               |
-| "Add feature X", "Fix bug Y" (clear steps)      | [[feature-dev]]                             |
-| "Bug broken", "not working" (cause unknown)     | [[base-investigation]] + task-tracking      |
-| "How do I..." (information only)                | [[simple-question]]                         |
-| "Process all X", "batch update"                 | [[base-batch]]                              |
-| "Process emails", "check inbox"                 | [[email-triage]]                            |
-| "Review grant", "reference letter"              | [[peer-review]] / [[reference-letter]]      |
-| "/pdf", "/daily" (skill name)                   | [[simple-question]] + invoke skill directly |
+| Signal                                            | Route to                                    |
+| ------------------------------------------------- | ------------------------------------------- |
+| "I had an idea", "what if...", "new constraint"   | [[strategic-intake]]                        |
+| "Write a paper", "Build X", "Plan the project"    | [[decompose]]                               |
+| "Add feature X", "Fix bug Y" (clear steps)        | [[feature-dev]]                             |
+| "Bug broken", "not working" (cause unknown)       | [[base-investigation]] + task-tracking      |
+| "How do I..." (information only)                  | [[simple-question]]                         |
+| "Send to X", "share with", "publish", "circulate" | [[outbound-review]]                         |
+| "Process all X", "batch update"                   | [[base-batch]]                              |
+| "Process emails", "check inbox"                   | [[email-triage]]                            |
+| "Review grant", "reference letter"                | [[peer-review]] / [[reference-letter]]      |
+| "/pdf", "/daily" (skill name)                     | [[simple-question]] + invoke skill directly |
 
 ## Available Workflows
 
@@ -116,9 +120,10 @@ Core workflows for building and fixing software.
 
 ### Quality Assurance
 
-| Workflow | When to Use                                                          | Bases                       |
-| -------- | -------------------------------------------------------------------- | --------------------------- |
-| [[qa]]   | Pre-completion verification, acceptance testing, integration testing | task-tracking, qa, handover |
+| Workflow            | When to Use                                                          | Bases                       |
+| ------------------- | -------------------------------------------------------------------- | --------------------------- |
+| [[qa]]              | Pre-completion verification, acceptance testing, integration testing | task-tracking, qa, handover |
+| [[outbound-review]] | Multi-agent review gate before sharing/publishing externally         | task-tracking, qa, handover |
 
 ### Operations & Batch
 
