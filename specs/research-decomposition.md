@@ -39,6 +39,31 @@ This spec composes with the general decomposition workflow in `aops-core/workflo
 
 A researcher with multiple active projects and limited working memory. They might be starting from a vague idea ("I want to study how platform governance affects content moderation outcomes") or refining an existing project plan. They need a thinking partner that catches what they miss -- hidden assumptions, methodology gaps, missing literature -- without forcing ceremony on exploratory work. When it works, it feels like a conversation with a rigorous collaborator. When it fails, it feels like submitting to a committee.
 
+## User Expectations
+
+As a domain-specific extension of the core decomposition and review workflows, this system must meet high standards for academic rigor and ADHD-friendly low-friction interaction.
+
+### 1. Epistemic Rigor (The Thinking Partner)
+
+- **Beyond Task Parsing**: Users expect the system to act as a "peer reviewer" rather than a "task secretary." It should proactively identify methodological gaps (e.g., "You're asking a causal question but your methodology only allows for correlation") and unexamined assumptions.
+- **Research Primitives**: Users expect to see familiar academic concepts (`lit-review`, `methodology`, `ethics`, `data-collection`) as first-class task types, with their inherent dependency logic (e.g., ethics as a hard gate before data collection) applied automatically.
+- **MVC as a Safety Floor**: The "Minimum Viable Contribution" should be a core output, giving the user confidence that the project has a publishable "floor" even if more ambitious "stretch" bets fail.
+
+### 2. Low-Friction Interaction (The Seedling Experience)
+
+- **Respect for Immaturity**: In Seedling mode, the system must NOT force formal structure (no Gantt charts, no complex task IDs). The user expects a "loose" conversation that helps clarify the "intellectual bet" without the overhead of project management.
+- **Means-First Thinking**: Following the effectual planning principle, the system should ask "what do you have?" (data access, relationships, expertise) to help shape the question, rather than demanding a perfect question before planning starts.
+
+### 3. High-Signal Review (The Convergence)
+
+- **Prioritised Critique**: The user expects the "Conceptual Review" to lead with the most critical methodological or structural flaw, providing a proposed resolution. They should not be overwhelmed by minor formatting or stylistic comments until the "load-bearing" logic is sound.
+- **Transparency of Assumptions**: All load-bearing assumptions must be surfaced in a dedicated table with clear validation paths (spikes). The user expects to see _why_ a task exists (e.g., "This lit-review validates Assumption #2").
+
+### 4. Verification and Audit
+
+- **Testable Decompositions**: Every decomposition should include verification tasks that cross-reference findings back to the original research question.
+- **Auditability**: The resulting task graph should be verifiable via `aops audit` to ensure no orphans are created and all research-specific gates (like ethics) are correctly placed.
+
 ## User Stories
 
 **US-1: Early exploration (Seedling)**

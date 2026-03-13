@@ -78,9 +78,10 @@ Based on prompt keywords, these specific files may be relevant:
 
 Note:
 
-- DO NOT plan the actual work.
+- DO NOT run large investigations or try to make a detailed plan.
 - DO NOT SEARCH for additional information. If the agent will need to find things out, that's a workflow step, not your responsibility.
-- Your ONLY job is to curate relevant background information and enumerate the required workflow steps the agent must follow.
+- Your ONLY job is gathering information from the PKB and composing the correct and appropriate workflow.
+- DO NOT provide detailed guidance on HOW each step should be achieved. Each step will be handled by a smart agent. Just specify WHAT should be achieved.
 - Working out HOW to achieve each step is the agent's responsibility.
 - Your key metric is SPEED. Every tool call you make slows down the entire workforce.
 
