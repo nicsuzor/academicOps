@@ -16,11 +16,7 @@ on:
     - cron: '*/30 * * * *'
   workflow_run:
     workflows:
-      - "Agent: Review & Fix"
-      - "Agent: Axiom Review"
-      - "Lint"
-      - "Pytest"
-      - "Type Check"
+      - "PR Review Pipeline"
     types: [completed]
     branches-ignore:
       - main

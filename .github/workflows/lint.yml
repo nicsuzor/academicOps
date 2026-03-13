@@ -7,10 +7,9 @@ name: Lint
 
 on:
   workflow_dispatch:
+  workflow_call:
   push:
     branches: [main]
-  pull_request:
-    types: [opened, synchronize, assigned]
 
 jobs:
   lint:

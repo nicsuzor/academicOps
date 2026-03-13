@@ -13,8 +13,6 @@
 name: "Agent: Axiom Review"
 
 on:
-  pull_request:
-    types: [opened, synchronize]
   workflow_dispatch:
     inputs:
       pr_number:
@@ -93,37 +91,4 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
             ${{ steps.prompt.outputs.prompt }}
-
-            ---
-
-            Review PR #${{ steps.pr-info.outputs.pr_number }} in repository ${{ github.repository }}.
-            Use `gh pr diff ${{ steps.pr-info.outputs.pr_number }}` to get the diff.
-
-            Read the project rules:
-            - `.agent/rules/AXIOMS.md`
-            - `.agent/rules/HEURISTICS.md`
-            - `.agent/rules/enforcement-map.md`
-            - `.agent/rules/protected_paths.txt`
-
-            Check the diff for violations against these rules.
-
-            If NO violations: set a success status and exit. Do NOT post a comment or review.
-            ```bash
-            gh api repos/${{ github.repository }}/statuses/${{ steps.pr-info.outputs.sha }} -f state="success" -f context="Axiom Review" -f description="No violations found"
-            ```
-
-            If violations found: submit a CHANGES_REQUESTED review listing each violation, then set a failure status:
-            ```bash
-            gh pr review ${{ steps.pr-info.outputs.pr_number }} --request-changes --body "$(cat <<'REVIEW_EOF'
-            ## Axiom Review
-
-            **Violations found**: N
-
-            1. **[P#XX] Rule Name** — path/to/file:line
-               What the rule requires vs what the PR does.
-            REVIEW_EOF
-            )"
-            gh api repos/${{ github.repository }}/statuses/${{ steps.pr-info.outputs.sha }} -f state="failure" -f context="Axiom Review" -f description="Violations found — see review"
-            ```
-
           claude_args: '--model claude-sonnet-4-6 --allowed-tools "Bash(gh:*),Read"'
