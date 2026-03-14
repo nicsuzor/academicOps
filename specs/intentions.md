@@ -229,6 +229,17 @@ For unplanned work:
 3. "Are these still the right intentions for next week?"
 4. Archive completed intentions, declare new ones
 
+## User Expectations
+
+As a core ADHD accommodation, the intentions system must be **low-friction** and **high-focus**. A user should expect:
+
+1. **Selection (Zero-Friction)**: Running `/intend "some idea"` should automatically search the PKB, resolve candidates, and allow for a quick selection of a goal, project, or epic as the focus root. If the root is empty, the system should offer immediate [decomposition](#effectual-planner).
+2. **Scoping (Deep Focus)**: When an intention is active, `/pull` and the `/daily` note should strictly filter to the [intention subgraph](#intention-subgraph) (descendants + dependency frontier) by default. The system's primary job is to hide the "other 500 tasks" that are not currently relevant.
+3. **Safety (Urgency Bypass)**: Truly urgent items (P0/P1) that fall outside active intentions should still surface in a dedicated ["Outside Intentions" section](#daily-note) of the daily note, ensuring that "deep focus" doesn't become "blind focus" to critical fires.
+4. **Continuity**: Intentions must persist across terminal sessions, different agents, and different devices until explicitly completed or cleared. The system remembers the user's focus so the user doesn't have to.
+5. **Progress Awareness**: The user should see a high-level [progress bar](#subgraph-statistics) and "next actionable task" for each active intention whenever they run `/intend` or view their daily note.
+6. **Closure (Reflection)**: Completing an intention (`/intend done`) should trigger a moment of qualitative [reflection](#reflection) ("What went well? What was hard?") that is captured to the user's knowledge base, turning focus into learning.
+
 ## Open Questions
 
 1. **Intention granularity.** Should intentions point only to goals/projects/epics, or also to individual tasks? Current design restricts to goal/project/epic to ensure a meaningful subgraph. Individual task focus is handled by `/pull`.
