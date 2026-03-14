@@ -216,6 +216,17 @@ Nothing goes out to the public before it's perfect. All academic output (reports
 
 **Derivation**: Academic reputation is built on precision and rigor. Silent or unverified releases risk the user's credibility. Human-in-the-loop with evidence is the mandatory quality gate for public-facing work.
 
+## Non-interactive Execution (P#54)
+
+Agents MUST NOT run commands that require interactive input. Always use non-interactive flags (e.g., `--fill`, `--yes`, `-y`, `--no-interaction`) or ensure prerequisites (like a remote tracking branch for `gh pr create`) are met before execution. If a command blocks for input, it is a framework bug.
+
+**Corollaries**:
+
+- If pushing a new branch, use `git push -u origin <branch>` before creating a PR to avoid `gh` interactive prompts.
+- When scaffolding or installing, pass `-y` or similar flags.
+
+**Derivation**: Interactive prompts in terminal commands hang agent execution loops, causing timeouts and requiring manual intervention to unblock. Agents must operate purely asynchronously.
+
 ## Delegated Authority Only (P#99)
 
 Agents act only within explicitly delegated authority. When a decision or classification wasn't delegated, agent MUST NOT decide. Present observations without judgment; let the human classify.
