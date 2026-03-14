@@ -26,7 +26,7 @@ def check_index_wikilinks(plugin_root: Path) -> list[str]:
     errors: list[str] = []
     wikilink_pattern = re.compile(r"\[\[([^\]|]+)(?:\|[^\]]+)?\]\]")
 
-    workflows_index = plugin_root / "WORKFLOWS.md"
+    workflows_index = plugin_root / "skills" / "hydrator" / "WORKFLOWS.md"
     if not workflows_index.exists():
         return errors
 
@@ -36,12 +36,12 @@ def check_index_wikilinks(plugin_root: Path) -> list[str]:
     # Build set of existing workflow stems
     existing: set[str] = set()
 
-    # 1. Global workflows
-    workflows_dir = plugin_root / "workflows"
+    # 1. Hydrator-owned workflows (canonical location)
+    workflows_dir = plugin_root / "skills" / "hydrator" / "workflows"
     if workflows_dir.exists():
         existing |= {f.stem for f in workflows_dir.glob("*.md")}
 
-    # 2. Skill-specific workflows
+    # 2. Other skill-specific workflows
     skills_dir = plugin_root / "skills"
     if skills_dir.exists():
         for skill_dir in skills_dir.iterdir():
@@ -119,14 +119,14 @@ def check_workflow_length(plugin_root: Path) -> list[str]:
     """Validate workflow files are <= WORKFLOW_MAX_LINES lines."""
     errors: list[str] = []
 
-    # Check global workflows
-    workflows_dir = plugin_root / "workflows"
+    # Check hydrator-owned workflows (canonical location after PR #67)
+    workflows_dir = plugin_root / "skills" / "hydrator" / "workflows"
     if workflows_dir.exists():
         for path in sorted(workflows_dir.glob("*.md")):
             line_count = len(path.read_text().splitlines())
             if line_count > WORKFLOW_MAX_LINES:
                 errors.append(
-                    f"workflows/{path.name}: {line_count} lines (max {WORKFLOW_MAX_LINES})"
+                    f"skills/hydrator/workflows/{path.name}: {line_count} lines (max {WORKFLOW_MAX_LINES})"
                 )
 
     # Check skill-specific procedures (skills/*/procedures/*.md)

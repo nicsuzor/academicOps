@@ -75,13 +75,13 @@ Quick definitions for framework-specific terminology. Used by hydrator to interp
 
 ## Agent Types (for Task tool)
 
-| Type                        | Purpose                                   |
-| --------------------------- | ----------------------------------------- |
-| `Explore`                   | Codebase exploration and search           |
-| `Plan`                      | Software architecture planning            |
-| `aops-butler`               | Framework coordination and STATUS updates |
-| `aops-core:prompt-hydrator` | Transform prompts (internal)              |
-| `aops-core:qa`              | End-to-end verification                   |
+| Type                 | Purpose                                   |
+| -------------------- | ----------------------------------------- |
+| `Explore`            | Codebase exploration and search           |
+| `Plan`               | Software architecture planning            |
+| `aops-butler`        | Framework coordination and STATUS updates |
+| `aops-core:hydrator` | Transform prompts (internal)              |
+| `aops-core:qa`       | End-to-end verification                   |
 
 ## Key Principles (by ID)
 

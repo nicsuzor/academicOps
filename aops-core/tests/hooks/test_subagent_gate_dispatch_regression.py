@@ -212,7 +212,7 @@ class TestSubagentGateBypass:
             hook_event="PreToolUse",
             tool_name="Read",
             is_subagent=True,
-            subagent_type="prompt-hydrator",
+            subagent_type="hydrator",
             raw_input={},
         )
 

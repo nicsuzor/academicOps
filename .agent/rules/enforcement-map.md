@@ -17,7 +17,7 @@ tags: [framework, enforcement, moc]
 | Axiom                                       | Rule                             | Enforcement                                                                                  | Point                     | Level  |
 | ------------------------------------------- | -------------------------------- | -------------------------------------------------------------------------------------------- | ------------------------- | ------ |
 | [[no-other-truths]]                         | No Other Truths                  | AXIOMS.md injection                                                                          | SessionStart              |        |
-| [[categorical-imperative]]                  | Categorical Imperative           | prompt-hydrator suggests skills                                                              | UserPromptSubmit          |        |
+| [[categorical-imperative]]                  | Categorical Imperative           | hydrator suggests skills                                                                     | UserPromptSubmit          |        |
 | [[dont-make-shit-up]]                       | Don't Make Shit Up               | AXIOMS.md                                                                                    | SessionStart              |        |
 | [[always-cite-sources]]                     | Always Cite Sources              | AXIOMS.md                                                                                    | SessionStart              |        |
 | [[do-one-thing]]                            | Do One Thing                     | TodoWrite visibility, custodiet drift detection, verbatim prompt comparison                  | During execution          |        |
@@ -47,7 +47,7 @@ tags: [framework, enforcement, moc]
 | [[feedback-loops-for-uncertainty]]          | Feedback Loops                   | AXIOMS.md                                                                                    | SessionStart              |        |
 | [[current-state-machine]]                   | Current State Machine            | autocommit_state.py (auto-commit+push)                                                       | PostToolUse               |        |
 | [[one-spec-per-feature]]                    | One Spec Per Feature             | AXIOMS.md                                                                                    | SessionStart              |        |
-| [[mandatory-handover]]                      | Mandatory Handover Workflow      | prompt-hydrator-context.md (Session Completion Rules section)                                | UserPromptSubmit          |        |
+| [[mandatory-handover]]                      | Mandatory Handover Workflow      | hydrator-context.md (Session Completion Rules section)                                       | UserPromptSubmit          |        |
 | [[no-shitty-nlp]]                           | No Shitty NLP (P#49)             | AXIOMS.md, HEURISTICS.md, custodiet periodic check, REMINDERS.md                             | SessionStart, PostToolUse | 1a, 3b |
 | [[no-shitty-nlp]]                           | Agentic-First Design (P#49)      | AXIOMS.md corollary: no programmatic LLM API wrappers; custodiet detects proposals           | SessionStart, PostToolUse | 1a, 3b |
 | [[non-interactive-execution]]               | Non-interactive Execution (P#55) | AXIOMS.md, CONSTRAINTS.md C3, agent system prompts                                           | SessionStart              |        |
@@ -56,12 +56,12 @@ tags: [framework, enforcement, moc]
 
 | Heuristic                                       | Rule                                                  | Enforcement                                            | Point                          | Level |
 | ----------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------ | ------------------------------ | ----- |
-| [[skill-invocation-framing]]                    | Skill Invocation Framing                              | prompt-hydrator guidance                               | UserPromptSubmit               |       |
-| [[skill-first-action]]                          | Skill-First Action                                    | prompt-hydrator suggests skills                        | UserPromptSubmit               |       |
+| [[skill-invocation-framing]]                    | Skill Invocation Framing                              | hydrator guidance                                      | UserPromptSubmit               |       |
+| [[skill-first-action]]                          | Skill-First Action                                    | hydrator suggests skills                               | UserPromptSubmit               |       |
 | [[verification-before-assertion]]               | Verification Before Assertion                         | session_reflect.py detection, custodiet periodic check | Stop, PostToolUse              |       |
 | [[explicit-instructions-override]]              | Explicit Instructions Override                        | HEURISTICS.md, custodiet periodic check                | SessionStart, PostToolUse      |       |
 | [[error-messages-primary-evidence]]             | Error Messages Primary Evidence                       | HEURISTICS.md                                          | SessionStart                   |       |
-| [[context-uncertainty-favors-skills]]           | Context Uncertainty Favors Skills                     | prompt-hydrator guidance                               | UserPromptSubmit               |       |
+| [[context-uncertainty-favors-skills]]           | Context Uncertainty Favors Skills                     | hydrator guidance                                      | UserPromptSubmit               |       |
 | [[link-dont-repeat]]                            | Link, Don't Repeat                                    | HEURISTICS.md                                          | SessionStart                   |       |
 | [[avoid-namespace-collisions]]                  | Avoid Namespace Collisions                            | HEURISTICS.md                                          | SessionStart                   |       |
 | [[skills-no-dynamic-content]]                   | Skills No Dynamic Content                             | settings.json denies skill writes                      | PreToolUse                     |       |
@@ -73,7 +73,7 @@ tags: [framework, enforcement, moc]
 | [[streamlit-hot-reloads]]                       | Streamlit Hot Reloads                                 | HEURISTICS.md                                          | SessionStart                   |       |
 | [[use-askuserquestion]]                         | Use AskUserQuestion                                   | HEURISTICS.md                                          | SessionStart                   |       |
 | [[check-skill-conventions]]                     | Check Skill Conventions                               | HEURISTICS.md                                          | SessionStart                   |       |
-| [[deterministic-computation-in-code]]           | Deterministic Computation in Code                     | HEURISTICS.md, prompt-hydrator-context.md              | SessionStart, UserPromptSubmit |       |
+| [[deterministic-computation-in-code]]           | Deterministic Computation in Code                     | HEURISTICS.md, hydrator-context.md                     | SessionStart, UserPromptSubmit |       |
 | [[questions-require-answers]]                   | Questions Need Answers First                          | HEURISTICS.md, custodiet periodic check                | SessionStart, PostToolUse      |       |
 | [[critical-thinking-over-compliance]]           | Critical Thinking Over Compliance                     | HEURISTICS.md                                          | SessionStart                   |       |
 | [[core-first-expansion]]                        | Core-First Expansion                                  | HEURISTICS.md                                          | SessionStart                   |       |
@@ -101,12 +101,12 @@ tags: [framework, enforcement, moc]
 | [[just-in-time-information]]                    | Just-In-Time Information                              | HEURISTICS.md                                          | SessionStart                   |       |
 | [[summarize-tool-responses]]                    | Summarize Tool Responses                              | HEURISTICS.md                                          | SessionStart                   | 1a    |
 | [[structured-justification-format]]             | Structured Justification Format                       | /learn command, PreToolUse hook (planned)              | Before framework edit          | 1d    |
-| [[extract-implies-persist]]                     | Extract Implies Persist in PKM Context                | prompt-hydrator guidance                               | UserPromptSubmit               |       |
+| [[extract-implies-persist]]                     | Extract Implies Persist in PKM Context                | hydrator guidance                                      | UserPromptSubmit               |       |
 | [[background-agent-visibility]]                 | Background Agent Visibility                           | HEURISTICS.md                                          | SessionStart                   |       |
 | [[imminent-deadline-surfacing]]                 | Imminent Deadline Surfacing                           | daily skill DEADLINE TODAY category                    | /daily invocation              | 1a    |
 | [[decomposed-tasks-complete]]                   | Decomposed Tasks Are Complete                         | HEURISTICS.md                                          | SessionStart                   |       |
 | [[task-sequencing-on-insert]]                   | Task Sequencing on Insert                             | HEURISTICS.md                                          | SessionStart                   |       |
-| [[methodology-belongs-to-researcher]]           | Methodology Belongs to Researcher                     | HEURISTICS.md, prompt-hydrator guidance                | SessionStart, UserPromptSubmit |       |
+| [[methodology-belongs-to-researcher]]           | Methodology Belongs to Researcher                     | HEURISTICS.md, hydrator guidance                       | SessionStart, UserPromptSubmit |       |
 | [[qualitative-evaluation-over-quantitative]]    | Qualitative Evaluation Over Quantitative (P#115)      | HEURISTICS.md, /qa skill Qualitative Assessment mode   | SessionStart, /qa invocation   |       |
 | [[delegate-agency-to-capable-agents]]           | Delegate Agency to Capable Agents (P#116)             | HEURISTICS.md                                          | SessionStart                   |       |
 
@@ -133,7 +133,7 @@ Context loading follows a **three-tier architecture** (see [[session-start-injec
 | ---- | ----------------------------------------------- | -------------------------------- | ------------------------- |
 | 1    | `$AOPS/CORE.md`                                 | Framework tools (essential only) | SessionStart (ALL agents) |
 | 2    | `$cwd/.agent/CORE.md`                           | Project-specific context         | SessionStart (if exists)  |
-| 3    | `AXIOMS.md`, `HEURISTICS.md`, workflows, skills | Detailed guidance                | JIT via prompt-hydrator   |
+| 3    | `AXIOMS.md`, `HEURISTICS.md`, workflows, skills | Detailed guidance                | JIT via hydrator          |
 
 **Design principle**: Minimal baseline, maximal JIT. Agents start with only what they need to understand the framework and project. Everything else loads on-demand.
 
@@ -355,7 +355,7 @@ Main agent has all tools except deny rules. Subagents are restricted:
 | Agent             | Tools Granted                                  | Model  | Purpose                  |
 | ----------------- | ---------------------------------------------- | ------ | ------------------------ |
 | Main agent        | All (minus deny rules)                         | varies | Primary task execution   |
-| prompt-hydrator   | Read, Grep, mcp__memory__retrieve_memory, Task | haiku  | Context enrichment       |
+| hydrator          | Read, Grep, mcp__memory__retrieve_memory, Task | haiku  | Context enrichment       |
 | custodiet         | Read                                           | haiku  | Compliance checking      |
 | critic            | Read                                           | opus   | Plan/conclusion review   |
 | qa                | Read, Grep, Glob                               | opus   | Independent verification |

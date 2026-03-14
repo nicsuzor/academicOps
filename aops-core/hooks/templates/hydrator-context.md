@@ -1,9 +1,9 @@
 ---
-name: prompt-hydrator-context
+name: hydrator-context
 title: Prompt Hydrator Context Template
 category: template
 description: |
-  Template written to temp file by UserPromptSubmit hook for prompt-hydrator subagent.
+  Template written to temp file by UserPromptSubmit hook for hydrator subagent.
   Variables: {prompt} (user prompt), {session_context} (recent prompts, tools, tasks),
              {task_state} (current work state from tasks MCP)
   NOTE: Axioms/heuristics are handled by custodiet, not the hydrator.

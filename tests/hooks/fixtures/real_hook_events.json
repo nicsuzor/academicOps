@@ -229,11 +229,11 @@
     "tool_input": {
       "description": "Run prompt hydration",
       "prompt": "/Users/suzor/.claude/projects/-Users-suzor-src-academicOps/20260227-4076474b-hydration.md",
-      "subagent_type": "aops-core:prompt-hydrator",
+      "subagent_type": "aops-core:hydrator",
       "model": "haiku"
     },
     "is_subagent": true,
-    "subagent_type": "aops-core:prompt-hydrator",
+    "subagent_type": "aops-core:hydrator",
     "recorded_verdict": "allow"
   },
   {
@@ -242,7 +242,7 @@
     "tool_name": null,
     "tool_input": {},
     "is_subagent": false,
-    "subagent_type": "aops-core:prompt-hydrator",
+    "subagent_type": "aops-core:hydrator",
     "recorded_verdict": "allow"
   },
   {
@@ -274,7 +274,7 @@
     "tool_name": null,
     "tool_input": {},
     "is_subagent": false,
-    "subagent_type": "aops-core:prompt-hydrator",
+    "subagent_type": "aops-core:hydrator",
     "recorded_verdict": "allow"
   },
   {
@@ -284,11 +284,11 @@
     "tool_input": {
       "description": "Run prompt hydration",
       "prompt": "/Users/suzor/.claude/projects/-Users-suzor-src-academicOps/20260227-4076474b-hydration.md",
-      "subagent_type": "aops-core:prompt-hydrator",
+      "subagent_type": "aops-core:hydrator",
       "model": "haiku"
     },
     "is_subagent": true,
-    "subagent_type": "aops-core:prompt-hydrator",
+    "subagent_type": "aops-core:hydrator",
     "recorded_verdict": "allow"
   },
   {

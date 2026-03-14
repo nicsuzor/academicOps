@@ -45,7 +45,7 @@ content = load_template(
 | `custodiet-instruction.md`        | `custodiet_gate.py`      | Short instruction to spawn custodiet       |
 | `hydration-gate-block.md`         | `hydration_gate.py`      | Message when blocking without hydration    |
 | `hydration-gate-warn.md`          | `hydration_gate.py`      | Warning when hydration skipped (warn mode) |
-| `prompt-hydrator-context.md`      | `user_prompt_submit.py`  | Full context for prompt hydration          |
+| `hydrator-context.md`             | `user_prompt_submit.py`  | Full context for prompt hydration          |
 | `prompt-hydration-instruction.md` | `user_prompt_submit.py`  | Short instruction to spawn hydrator        |
 | `fail-fast-reminder.md`           | `fail_fast_watchdog.py`  | Reminder when tool returns error           |
 | `overdue-enforcement-block.md`    | `overdue_enforcement.py` | Block when compliance check overdue        |

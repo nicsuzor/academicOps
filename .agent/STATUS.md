@@ -171,7 +171,7 @@ The canonical index is `aops-core/SKILLS.md` with 36 entries (8 commands + 28 sk
 
 | Domain            | Skills                                                                                           |
 | ----------------- | ------------------------------------------------------------------------------------------------ |
-| framework         | `audit`, `custodiet`, `framework`, `prompt-hydrator`                                             |
+| framework         | `audit`, `custodiet`, `framework`, `hydrator`                                                    |
 | operations        | `daily`, `densify`, `garden`, `hypervisor`, `remember`, `session-insights`, `task-viz`, `worker` |
 | academic          | `analyst`, `hdr`, `pdf`                                                                          |
 | email             | `email-triage`                                                                                   |
@@ -197,13 +197,13 @@ The Curia is the named agent team that operates across local sessions and GitHub
 
 **Roster** (see `.agent/curia/CURIA.md` for full details):
 
-| Agent        | Charter            | Local Skill       | GitHub Agent                                                         | Mechanical (Hook/Gate)                  |
-| ------------ | ------------------ | ----------------- | -------------------------------------------------------------------- | --------------------------------------- |
-| **Hydrator** | Context enrichment | `prompt-hydrator` | --                                                                   | hydration gate, `user_prompt_submit.py` |
-| **Auditor**  | Rule enforcement   | `custodiet`       | `auditor.agent.md`                                                   | `policy_enforcer.py`                    |
-| **Critic**   | Strategic review   | `critic`          | `assessor.agent.md` (→ `critic.agent.md`†), `summary-brief.agent.md` | --                                      |
-| **QA**       | Acceptance testing | `qa`              | `qa.agent.md`                                                        | QA gate                                 |
-| **Advocate** | Voice matching     | -- (future)       | -- (future)                                                          | --                                      |
+| Agent        | Charter            | Local Skill | GitHub Agent                                                         | Mechanical (Hook/Gate)                  |
+| ------------ | ------------------ | ----------- | -------------------------------------------------------------------- | --------------------------------------- |
+| **Hydrator** | Context enrichment | `hydrator`  | --                                                                   | hydration gate, `user_prompt_submit.py` |
+| **Auditor**  | Rule enforcement   | `custodiet` | `auditor.agent.md`                                                   | `policy_enforcer.py`                    |
+| **Critic**   | Strategic review   | `critic`    | `assessor.agent.md` (→ `critic.agent.md`†), `summary-brief.agent.md` | --                                      |
+| **QA**       | Acceptance testing | `qa`        | `qa.agent.md`                                                        | QA gate                                 |
+| **Advocate** | Voice matching     | -- (future) | -- (future)                                                          | --                                      |
 
 **Portability**: The QA agent is designed to work on any repo -- `qa.agent.md` includes an inline fallback methodology for repos without the aops framework installed.
 

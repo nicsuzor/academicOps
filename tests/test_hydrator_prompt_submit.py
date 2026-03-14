@@ -31,7 +31,7 @@ def test_hydrator_hook_with_specific_input(
 
                 state.gates["hydration"] = GateState()
             state.gates["hydration"].metrics["temp_path"] = "/tmp/hydrator/hydrate_da2ab2cf.md"
-        return "Run prompt-hydrator with /tmp/hydrator/instruction.md"
+        return "Run hydrator with /tmp/hydrator/instruction.md"
 
     mock_build_instruction.side_effect = build_side_effect
 
@@ -69,7 +69,7 @@ def test_hydrator_hook_with_specific_input(
     # Assertions
     # The gate logic returns ALLOW with context_injection
     assert result.verdict == "allow"
-    assert "Run prompt-hydrator" in result.context_injection
+    assert "Run hydrator" in result.context_injection
 
     # Verify build_hydration_instruction was called with correct args
     mock_build_instruction.assert_called_with(

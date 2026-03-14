@@ -192,7 +192,9 @@ def _load_global_workflow_content(prompt: str = "") -> str:
     from lib.file_index import get_relevant_file_paths
 
     relevant_paths = get_relevant_file_paths(prompt, max_files=20)
-    workflow_paths = [p for p in relevant_paths if p["path"].startswith("workflows/")]
+    workflow_paths = [
+        p for p in relevant_paths if p["path"].startswith("skills/hydrator/workflows/")
+    ]
 
     if not workflow_paths:
         return ""
@@ -228,8 +230,8 @@ def _load_global_workflow_content(prompt: str = "") -> str:
                             bases = fm.get("bases", [])
                             if isinstance(bases, list):
                                 for base in bases:
-                                    # Convert base ID to path (e.g. base-commit -> workflows/base-commit.md)
-                                    base_path = f"workflows/{base}.md"
+                                    # Convert base ID to path (e.g. base-commit -> skills/hydrator/workflows/base-commit.md)
+                                    base_path = f"skills/hydrator/workflows/{base}.md"
                                     if base_path not in processed:
                                         queue.append(base_path)
                     except Exception:
@@ -252,7 +254,7 @@ def _load_global_workflow_content(prompt: str = "") -> str:
 def load_workflows_index(prompt: str = "") -> str:
     """Load WORKFLOWS.md for hydrator context."""
     plugin_root = get_plugin_root()
-    workflows_path = plugin_root / "WORKFLOWS.md"
+    workflows_path = plugin_root / "skills" / "hydrator" / "WORKFLOWS.md"
 
     if not workflows_path.exists():
         raise FileNotFoundError(f"Framework file not found: {workflows_path}")
