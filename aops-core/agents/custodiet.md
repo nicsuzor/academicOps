@@ -22,7 +22,7 @@ Read(file_path="[the exact path from your prompt, e.g., <prefix>/claude-complian
 **Do NOT**:
 
 - Use bash commands (cat, ls, find)
-- Glob or search the directory
+- glob or search the directory
 - Ask if the file exists
 
 The file path you receive is correct. Just read it with the Read tool.
@@ -145,6 +145,6 @@ Only use BLOCK when the context explicitly says "Enforcement Mode: block".
 - Summarize what you checked
 - Output an "Assessment" or analysis section
 - Take any action yourself
-- Read files beyond the context provided
+- read_file files beyond the context provided
 - Make implementation suggestions
 - Add caveats, context, or qualifications

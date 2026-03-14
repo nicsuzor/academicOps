@@ -2,7 +2,7 @@ from scripts.build import transform_agent_for_platform, translate_tool_calls
 
 
 def test_gemini_tool_name_transformation():
-    """Test that mcp__server__tool is transformed to server_tool for Gemini."""
+    """Test that mcp__server__tool is transformed to mcp_server_tool for Gemini."""
     content = """---
 name: test-agent
 description: Test agent
@@ -19,8 +19,8 @@ Body with mcp__pkb__search and mcp__pkb__create_task.
     # Translate body
     final = translate_tool_calls(transformed, "gemini")
 
-    assert "pkb_search" in final
-    assert "pkb_create_task" in final
+    assert "mcp_pkb_search" in final
+    assert "mcp_pkb_create_task" in final
     assert "mcp__pkb__search" not in final
     assert "mcp__pkb__create_task" not in final
     # Ensure it's single underscore
@@ -43,15 +43,16 @@ Body.
     # Claude uses comma-separated string for tools
     assert "mcp__pkb__search" in transformed
     assert "Read" in transformed  # read_file maps to Read for Claude
-    assert "pkb_search" not in transformed
+    assert "mcp_pkb_search" not in transformed
 
 
 def test_translate_tool_calls_body_gemini():
     """Test that tool names in the body are translated for Gemini."""
     body = "Use mcp__pkb__search to find tasks."
     translated = translate_tool_calls(body, "gemini")
-    assert translated == "Use pkb_search to find tasks."
+    assert translated == "Use mcp_pkb_search to find tasks."
 
     body_list = "Tools: mcp__pkb__list_tasks, mcp__pkb__get_task."
     translated = translate_tool_calls(body_list, "gemini")
-    assert translated == "Tools: pkb_list_tasks, pkb_get_task."
+    assert translated == "Tools: mcp_pkb_list_tasks, mcp_pkb_get_task."
+
