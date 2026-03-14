@@ -4,6 +4,14 @@ on:
   pull_request:
     types: [opened, synchronize, ready_for_review, reopened]
 
+permissions:
+  contents: write
+  pull-requests: write
+  statuses: write
+  id-token: write
+  issues: write
+  actions: read
+
 concurrency:
   group: pr-pipeline-${{ github.event.pull_request.number }}
   cancel-in-progress: true
