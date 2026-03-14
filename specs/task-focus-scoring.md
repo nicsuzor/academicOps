@@ -30,6 +30,19 @@ When the user declares intentions (see [[intentions.md]]), the intention subgrap
 4. **Reversible.** Nothing is deleted or archived by the scoring system. A task's score can rise if conditions change (e.g., a dependency chain activates it).
 5. **ADHD-aware.** The system manages overflow by design. "Too many tasks" is the normal state, not an error.
 
+## User expectations
+
+1. **Automatic "hot" surfacing.** When a user marks a task as an active intention (via [[intentions.md]]), that task and its immediate dependency frontier MUST automatically cross the "hot" threshold (>= 0.3) and appear in default views.
+   - _Testable_: Create a task, verify score < 0.3. Add it as an intention. Verify score >= 0.3.
+2. **Deterministic ranking.** Tasks in the ready queue (`status: active`) MUST be ranked by `focus_score` by default. A task with higher unblocking value (downstream dependents) MUST score higher than an identical task with none, all else being equal.
+   - _Testable_: Compare two identical tasks where one has a dependent. Verify the one with a dependent has a higher `focus_score`.
+3. **Passive cooling.** A task with no recent activity and no active project association MUST eventually cross below the "hot" threshold as its `recency_signal` decays, without requiring manual status changes.
+   - _Testable_: Mock a task's `modified` date to 91 days ago. Verify `recency_signal` is 0.0 and `focus_score` is below threshold (assuming other signals don't pull it up).
+4. **Signal transparency.** The system MUST provide a breakdown of how a score was calculated when requested (via `_score_breakdown`), allowing the user to verify why a task is being surfaced.
+   - _Testable_: Call `list_tasks(debug=true)` and verify the presence and accuracy of `_score_breakdown` for returned tasks.
+5. **Manual boost persistence.** A manual `user_boost` (e.g., `focus: boost` in frontmatter) MUST reliably increase the score but MUST also decay over time (default 7 days) to prevent "permanent focus" from stale manual overrides.
+   - _Testable_: Set `focus: boost`, verify score increase. Mock time 8 days forward, verify boost has decayed.
+
 ## Focus score
 
 Each task's focus score is computed from weighted signals:
@@ -177,7 +190,7 @@ focus:
 - Focus scores are computed at query time, not stored. This avoids stale scores and index maintenance.
 - For large task sets (>1000), consider caching scores with a TTL matching the shortest decay window.
 - The `_score_breakdown` field is optional and only returned when requested (e.g., `list_tasks(debug=true)`).
-- The PKB server already computes weighted scores. This spec extends that existing capability with additional signals and a hot/cold threshold.
+- The PKB server (`aops` binary) currently computes a simpler `downstream_weight`. This spec extends that into a multi-signal `focus_score` with a configurable hot/cold threshold.
 
 ### Reconciliation with "Dumb Server, Smart Agent" (P#78)
 
