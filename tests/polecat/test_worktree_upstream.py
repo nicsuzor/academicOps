@@ -163,9 +163,9 @@ class TestCrewWorktreeNoUpstream:
 
     def test_new_branch_tracks_self_not_main(self, local_clone: Path, manager: PolecatManager):
         """Crew branch created via setup_crew_worktree() must track itself, not main."""
-        manager.setup_crew_worktree("test-worker", "test")
+        worktree_path = manager.setup_crew_worktree("test-worker", "test")
 
-        upstream = _get_upstream(local_clone, "crew/test-worker")
+        upstream = _get_upstream(worktree_path, "crew/test-worker")
         # Should track origin/crew/test-worker, definitely NOT origin/main
         assert upstream == "origin/crew/test-worker", (
             f"crew branch 'crew/test-worker' should track itself, but is tracking: {upstream!r}. "
@@ -217,9 +217,9 @@ class TestPolecatWorktreeNoUpstream:
         task_id = "aops-578fdde1"
         task = Task(id=task_id, title="regression test task", project="test")
 
-        manager._do_setup_worktree(task)
+        worktree_path = manager._do_setup_worktree(task)
 
-        upstream = _get_upstream(local_clone, f"polecat/{task_id}")
+        upstream = _get_upstream(worktree_path, f"polecat/{task_id}")
         expected = f"origin/polecat/{task_id}"
         assert upstream == expected, (
             f"polecat branch 'polecat/{task_id}' should track {expected}, but is tracking: {upstream!r}. "

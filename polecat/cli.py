@@ -899,11 +899,11 @@ def crew_alias(ctx, target, extra, name, gemini, resume, keep):
 @click.option("--keep", "-k", is_flag=True, help="Keep worktree even if a PR is open")
 @click.pass_context
 def crew(ctx, target, extra, name, gemini, resume, keep):
-    """Start an interactive crew session with worktree isolation.
+    """Start an interactive crew session with worker isolation.
 
     Crew workers are persistent, named agents for interactive collaboration.
-    Each crew session creates an isolated git worktree and drops you into it.
-    Workers are sandboxed to their worktree — no operations outside it.
+    Each crew session creates an isolated local git clone and drops you into it.
+    Workers are sandboxed to their clone — no operations outside it.
 
     TARGET is a project alias (e.g., aops, bm), or 'repo' for arbitrary paths.
     If TARGET is 'repo', EXTRA is the path to the repository.
