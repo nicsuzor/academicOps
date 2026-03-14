@@ -607,10 +607,10 @@ def translate_tool_calls(text: str, platform: str) -> str:
 
     # 2. Dynamic replacement for Gemini/Claude compatibility (Task/Skill)
     if platform == "gemini":
-        # Convert mcp__server__tool to server_tool in body
+        # Convert mcp__server__tool to mcp_server_tool in body (matches frontmatter)
         import re
 
-        text = re.sub(r"mcp__([a-zA-Z0-9_-]+)__([a-zA-Z0-9_-]*)", r"\1_\2", text)
+        text = re.sub(r"mcp__([a-zA-Z0-9_-]+)__([a-zA-Z0-9_-]*)", r"mcp_\1_\2", text)
 
         # Task(subagent_type=...) -> activate_skill(name=...)
         text = text.replace("Task(subagent_type=", "activate_skill(name=")
