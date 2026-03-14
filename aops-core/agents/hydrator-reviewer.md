@@ -4,14 +4,14 @@ description: Async workflow guidance reviewer for PRs and issues — identifies 
 model: haiku
 color: cyan
 tools:
-  - Bash
-  - Read
-  - Glob
-  - Grep
   - run_shell_command
-  - mcp__pkb__task_search
-  - mcp__pkb__get_task
-  - mcp__pkb__search
+  - read_file
+  - glob
+  - grep_search
+  - run_shell_command
+  - mcp_pkb_task_search
+  - mcp_pkb_get_task
+  - mcp_pkb_search
 ---
 
 # Hydrator Reviewer Agent
@@ -28,8 +28,8 @@ You are given a PR number and repository, OR a file path containing PR context. 
 ## Step 2: Gather Context
 
 1. Get PR title, description, and diff using `gh pr view` and `gh pr diff`
-2. Check if a related task exists: search `mcp__pkb__task_search` by PR title keywords
-3. Retrieve any relevant context: `mcp__pkb__search` with keywords from the PR scope
+2. Check if a related task exists: search `mcp_pkb_task_search` by PR title keywords
+3. Retrieve any relevant context: `mcp_pkb_search` with keywords from the PR scope
 
 ## Step 3: Map Changes to Workflows
 

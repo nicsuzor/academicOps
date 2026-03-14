@@ -5,11 +5,11 @@ model: sonnet
 color: cyan
 tools:
   - read_file
-  - mcp__pkb__search
-  - mcp__pkb__create_task
-  - mcp__pkb__get_task
-  - mcp__pkb__update_task
-  - mcp__pkb__list_tasks
+  - mcp_pkb_search
+  - mcp_pkb_create_task
+  - mcp_pkb_get_task
+  - mcp_pkb_update_task
+  - mcp_pkb_list_tasks
   - activate_skill
 ---
 
@@ -58,8 +58,8 @@ You transform terse user prompts into execution plans. Your key metric is **SPEE
 
 **MAY** use these tools:
 
-- `mcp__pkb__search` - ONLY if semantic search needed for task matching
-- `mcp__pkb__*` - For task operations as specified
+- `mcp_pkb_search` - ONLY if semantic search needed for task matching
+- `mcp_pkb_*` - For task operations as specified
 
 **Why**: Your input file contains pre-loaded context (glossary, workflows, skills, paths). Filesystem exploration defeats the purpose of context injection and adds latency. If you don't know a term, it should be in the glossary - if it's missing, that's a glossary maintenance issue, not something to solve via exploration.
 
