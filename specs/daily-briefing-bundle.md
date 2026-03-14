@@ -31,6 +31,16 @@ The **briefing bundle** (this spec) is a morning snapshot. It reads the daily no
 
 **What the daily note should NOT try to do** (that's the bundle's job): write coversheets, draft emails, make recommendations with annotation targets, or produce self-contained decision items. The daily note surfaces priorities; the bundle makes them actionable.
 
+## User Expectations
+
+Nic can expect the following behavior from the Briefing Bundle workflow:
+
+1. **Linear, High-Signal Review**: A single document generated each morning containing 5-15 items requiring judgment. Every decision item MUST have a clear, justified recommendation ("Accept because...", not "It depends").
+2. **No Silent Execution**: Generating a bundle (`/bundle`) is a non-destructive, draft-only action. No tasks are updated and no emails are sent until the bundle is annotated and processed.
+3. **Annotation-Driven Agency**: The system only acts on Nic's explicit intent. Annotations like `<!-- @nic: approved -->` or `<!-- @nic: send -->` are the only triggers for state changes in the PKB or Outlook.
+4. **Ephemeral Lifecycle**: The bundle is a "scratchpad" for the morning brief. Once `/process-bundle` runs, the "truth" of those decisions is persisted in the Task Graph or email drafts, and the bundle file itself can be safely archived or deleted.
+5. **ADHD-Friendly Flow**: Top-to-bottom reading with no need to jump between apps or files. Every decision includes the minimum context needed to act, with supporting details tucked into collapsed sections.
+
 ## Design Philosophy
 
 Board papers work because a skilled secretary pre-digests the material, orders it by importance, writes a coversheet that tells the reader exactly what is needed from them, and limits the supporting material to what is necessary for the decision at hand.
@@ -237,9 +247,9 @@ Scan for `<!-- @nic: -->` annotations without matching `<!-- @claude: -->` respo
 
 ## Giving Effect
 
-_No implementation yet. This spec defines the briefing-bundle skill._
+This spec is implemented via a pair of skills that coordinate between the daily note, the briefing bundle document, and the external data sources (PKB and Outlook).
 
-- Upstream: [[skills/daily/SKILL.md]] — daily note that the bundle reads
-- Upstream: [[skills/annotations/SKILL.md]] — annotation processing convention
-- Planned: `skills/briefing-bundle/SKILL.md` — skill implementing this spec
-- Planned: `skills/process-bundle/SKILL.md` — annotation processing skill
+- **Implementation**: [[aops-core/skills/briefing-bundle/SKILL.md]]
+- **Implementation**: [[aops-core/skills/process-bundle/SKILL.md]]
+- **Upstream**: [[aops-core/skills/daily/SKILL.md]] — daily note that the bundle reads
+- **Upstream**: [[aops-core/skills/annotations/SKILL.md]] — annotation processing convention
