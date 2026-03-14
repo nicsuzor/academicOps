@@ -10,6 +10,7 @@ tools:
   - mcp__pkb__get_task
   - mcp__pkb__create_task
   - mcp__pkb__update_task
+  - mcp__pkb__append
   - mcp__pkb__retrieve_memory
   - mcp__pkb__get_dependency_tree
 ---
@@ -46,12 +47,17 @@ You enrich tasks with execution context. Your output is a PKB task that any work
 
 - `read_file` — for any workflow file you select as relevant. Read it BEFORE composing output. NEVER reference a workflow you haven't read.
 
+**MUST** use for enriched output:
+
+- `mcp__pkb__append` — write enriched body content to the task (NOT `update_task`, which is frontmatter-only)
+
 **MAY** use:
 
 - `mcp__pkb__search` — semantic search for relevant context
 - `mcp__pkb__retrieve_memory` — fetch relevant memories
 - `mcp__pkb__task_search` — find existing tasks by keywords
 - `mcp__pkb__get_dependency_tree` — find blocking/related tasks
+- `mcp__pkb__update_task` — ONLY for frontmatter fields (e.g., `needs_decomposition: true`)
 
 **Budget**: ≤5 PKB tool calls total. Speed matters.
 
@@ -65,7 +71,9 @@ You enrich tasks with execution context. Your output is a PKB task that any work
 
 ## Output: Enriched Task Body
 
-Update the task body (via `update_task`) with this structure:
+**CRITICAL**: `update_task` only modifies frontmatter fields. To write the enriched body, use `append` (which writes to the markdown body after the frontmatter). Use `update_task` ONLY for frontmatter fields like `needs_decomposition: true`.
+
+Write the enriched content via `append(id=task_id, content=enriched_markdown)`. The enriched markdown follows this structure:
 
 ```markdown
 ## Intent
@@ -99,7 +107,7 @@ Update the task body (via `update_task`) with this structure:
 - Applicable constraints from AXIOMS/HEURISTICS
 ```
 
-If there are no dependencies, omit the Dependencies section. Don't pad with generic advice.
+If the task already has a body (Problem, Evidence sections from original creation), the enrichment is PREPENDED above the existing content — use `append` which places content at the top. If there are no dependencies, omit the Dependencies section. Don't pad with generic advice.
 
 ## Scope Detection
 
