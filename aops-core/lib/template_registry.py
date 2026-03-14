@@ -129,9 +129,9 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         name="hydrator.instruction",
         category=TemplateCategory.CONTEXT_INJECTION,
         filename="prompt-hydration-instruction.md",
-        required_vars=("temp_path",),
+        required_vars=(),
         optional_vars=("client_type",),
-        description="Instruction to invoke prompt hydrator",
+        description="Instruction to invoke hydrator skill",
     ),
     # --- Hydration gate: trigger messages ---
     "hydration.opened": TemplateSpec(
