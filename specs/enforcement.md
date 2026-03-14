@@ -13,15 +13,17 @@ tags: [enforcement, compliance, framework-architecture, verification]
 
 ## Giving Effect
 
-- [[AXIOMS.md]] - Layer 1: Immutable principles loaded at session start
-- [[hooks/user_prompt_submit.py]] - Layer 2: Prompt hydration and intent routing
-- [[hooks/hydration_gate.py]] - Layer 2: Blocks/warns if agent skips hydration
-- [[hooks/overdue_enforcement.py]] - Layer 2.5: Periodic compliance audit via custodiet
-- [[agents/custodiet.md]] - Layer 2.5: Drift detection and axiom violation checking
-- [[hooks/policy_enforcer.py]] - Layer 4: PostToolUse detection hooks
-- [[hooks/gate_registry.py]] - Layer 4: Gate registration and configuration
-- [[agents/critic.md]] - Layer 5: Post-hoc review agent
-- [[framework/enforcement-map.md]] - Registry of all active enforcement mechanisms
+- [[aops-core/hooks/router.py]] - Central hook router and state manager
+- [[aops-core/lib/gates/registry.py]] - Registry for all active enforcement gates
+- [[aops-core/lib/gates/definitions.py]] - Declarative gate configurations (Hydration, Custodiet, QA, etc.)
+- [[aops-core/lib/gates/engine.py]] - Generic gate engine executing triggers and policies
+- [[aops-core/AXIOMS.md]] - Layer 1: Immutable principles loaded at session start
+- [[aops-core/hooks/user_prompt_submit.py]] - Layer 2: Prompt hydration and intent routing
+- [[aops-core/agents/custodiet.md]] - Layer 2.5: Drift detection and axiom violation checking
+- [[aops-core/hooks/policy_enforcer.py]] - Layer 4: PostToolUse pattern detection hooks
+- [[aops-core/hooks/gate_config.py]] - Gate mode and tool category configuration
+- [[aops-core/agents/qa.md]] - Layer 5: Independent verification agent
+- [[aops-core/framework/enforcement-map.md]] - Registry of all active enforcement mechanisms
 
 ## Enforcement Model
 
@@ -37,30 +39,31 @@ graph TD
         E[Inject Guidance]
     end
 
-    subgraph "Layer 3: Observable"
-        F[TodoWrite]
-        G[Plan Mode]
+    subgraph "Layer 3: Gates (Synchronous)"
+        F[Hydration Gate]
+        G[Custodiet Countdown]
+        H[QA/Handover Gates]
     end
 
-    subgraph "Layer 4: Detection"
-        H[PostToolUse Hooks]
+    subgraph "Layer 4: Detection & Deny"
+        I[PostToolUse Hooks]
+        J[settings.json Deny]
     end
 
     subgraph "Layer 5: Review"
-        I[advocate]
-        J[Critic Agent]
+        K[QA Agent]
+        L[PR Pipeline]
     end
 
-    subgraph "Layer 6: User"
-        K[Show Evidence Request]
-    end
-
-    A --> D
+    A & B --> D
     D --> E
     E --> F
-    F --> H
+    F --> G
+    G --> H
     H --> I
-    I --> K
+    I --> J
+    J --> K
+    K --> L
 ```
 
 **Purpose**: Architectural philosophy for why enforcement works the way it does. For practical mechanism selection, see [[ENFORCEMENT|docs/ENFORCEMENT.md]]. For current active rules, see [[RULES]].
@@ -71,7 +74,7 @@ How the aops framework influences agent behavior. We cannot force compliance - o
 
 **We cannot force agent behavior.** Claude Code has no mechanism to prevent an agent from skipping steps. Any "enforcement" is actually "encouragement with detection."
 
-**But prompt injection IS enforcement.** "Soft" doesn't mean "not real." Prompt-level rules (Level 1 in the enforcement ladder) are the most common enforcement mechanism - 43 rules use this level. When we say a rule is "enforced via FRAMEWORK-PATHS.md injection at SessionStart," that IS the enforcement. Don't dismiss it as "no enforcement" just because there's no blocking hook.
+**But prompt injection IS enforcement.** "Soft" doesn't mean "not real." Prompt-level rules (Level 1 in the enforcement ladder) are the most common enforcement mechanism. When we say a rule is "enforced via CORE.md injection at SessionStart," that IS the enforcement. Don't dismiss it as "no enforcement" just because there's no blocking hook.
 
 **The knowing-doing gap**: Agents read AXIOMS, understand them, and still skip steps due to:
 
@@ -102,7 +105,7 @@ The [[specs/prompt-hydration]] process classifies prompts and suggests workflows
 
 #### Hydration Gate (Mechanical Enforcement)
 
-**Hook**: `hydration_gate.py` (PreToolUse)
+**Gate**: `hydration` (PreToolUse)
 **Status**: Active (warn-only mode by default)
 
 Blocks/warns when agent attempts to use tools before invoking prompt-hydrator subagent.
@@ -114,18 +117,16 @@ Blocks/warns when agent attempts to use tools before invoking prompt-hydrator su
 
 **Bypass Conditions**:
 
-- Subagent sessions (`CLAUDE_AGENT_TYPE` set) - subagents inherit hydration from parent
-- First prompt from CLI (no session state exists) - prevents blocking on session startup
-- User bypass prefix (`.` or `/`) - handled by UserPromptSubmit hook
-- Task invocation spawning prompt-hydrator - clears gate flag
+- Subagent sessions (`is_subagent` in HookContext) - subagents inherit hydration from parent
+- Infrastructure tools (`get_task`, `create_task`, etc.) - allows framework initialization
+- Always available tools (`AskUserQuestion`, `TodoWrite`) - allows communication and planning
+- Compliance agents (`prompt-hydrator`, `custodiet`, etc.) - allows enforcement itself to run
 
-**Implementation**: Gate checks `hydration_pending` flag set by UserPromptSubmit hook. Flag is cleared when Task tool spawns prompt-hydrator subagent.
-
-**Rationale**: Mechanical enforcement ensures hydration happens before work begins, closing the gap where agents might skip workflow classification and context gathering.
+**Implementation**: `aops-core/lib/gates/definitions.py` defines the hydration gate. It starts `CLOSED` on `UserPromptSubmit` and opens `JIT` when the `prompt-hydrator` is dispatched.
 
 ### Layer 2.5: JIT Compliance Audit
 
-Haiku-based compliance checking at strategic checkpoints. Uses same temp-file pattern as prompt hydration.
+Periodic compliance checking at strategic checkpoints.
 
 #### User Intervention Priority
 
@@ -135,28 +136,17 @@ On every `UserPromptSubmit`, the instruction includes:
 
 This addresses the "steamroller" pattern where agents continue planned work instead of responding to user corrections.
 
-#### Periodic Compliance Check
+#### Periodic Compliance Check (Custodiet)
 
-On `PostToolUse` (every ~7 tool calls), spawns custodiet subagent to check:
+**Gate**: `custodiet` (PreToolUse)
+**Status**: Active (warn mode by default)
 
-- Axiom violations (#7 Fail-Fast, #17 Verify First, #22 Acceptance Criteria)
-- Heuristic violations (H3 Verification, H4 Explicit Instructions, H19 Questions)
-- Plan drift (doing something different from TodoWrite plan)
+Tracks tool calls and demands a compliance check after a threshold (default: 50).
 
-**Implementation**: `hooks/overdue_enforcement.py` tracks tool count in `/tmp/claude-compliance/state.json`, emits audit instruction when threshold reached.
+**Implementation**: `aops-core/lib/gates/engine.py` manages a countdown. When `ops_since_open >= threshold`, the gate triggers a warning or block on mutating tools (Edit, Write, Bash).
 
 **What it does**: Catches drift and violations mid-execution before user has to intervene
 **What it can't do**: Force agent to follow corrections (still relies on agent compliance)
-
-#### Dormant: Random Reminders
-
-**Status**: Disabled (REMINDER_PROBABILITY = 0.0)
-
-The custodiet gate has a dormant random reminder injection mechanism that can inject reminders from `hooks/data/reminders.txt` at 30% probability between threshold checks.
-
-**Rationale for dormancy**: Enforcement should be high-signal, low-noise. Injecting reminders without evidence of agents forgetting instructions adds friction without demonstrated benefit.
-
-**Activation criteria**: Enable when behavioral data shows agents forgetting specific instructions mid-session. The mechanism is preserved in code (set `REMINDER_PROBABILITY = 0.3` in `overdue_enforcement.py`) for rapid deployment when evidence justifies it.
 
 ### Layer 3: Observable Checkpoints
 
@@ -165,25 +155,58 @@ TodoWrite and Plan Mode create visible artifacts user can review.
 **What this enables**: User sees if verification steps exist, creates paper trail
 **Limitation**: Agent can skip entirely
 
-### Layer 4: Detection Hooks
+### Layer 4: Detection & Deny
 
-PostToolUse hooks can detect patterns:
-
-- Claims without preceding Read/Bash/Grep
-- Diagnosis without evidence-gathering tools
-
-**Limitation**: See tool calls, not reasoning.
+- **PostToolUse Hooks**: Detect patterns like claims without evidence or diagnosis without reading.
+- **Deny Rules**: Hard blocks in `settings.json` or policy engines for sensitive paths (e.g., `~/.claude/*.json`).
 
 ### Layer 5: Post-Hoc Verification
 
-`/advocate` or critic agent reviews work with skeptical stance.
+- **QA Agent**: Independent subagent verifies work against original request and acceptance criteria.
+- **Handover Gate**: Blocks session exit until a valid Framework Reflection is provided and `/dump` is run.
 
-**Most reliable layer**: Separate invocation, fresh context.
-**Limitation**: Reactive, not preventive.
+## User Expectations
 
-### Layer 6: User Habits
+The enforcement system ensures framework compliance through real-time gating and diagnostic feedback. Users can expect the following behaviors:
 
-User asking "show me the evidence" is the most effective enforcement.
+### 1. Hydration Enforcement
+
+- **Expectation**: Every new user prompt or session start must be hydrated by the `prompt-hydrator` before any non-infrastructure tools (Read, Edit, etc.) are used.
+- **Behavior**: If the agent skips hydration, the system will warn (default) or block tool use. The gate opens automatically when the hydrator subagent is dispatched.
+- **Verification**: Attempting a `Read` or `Edit` immediately after a user prompt without invoking the hydrator should trigger a `HYDRATION_GATE` warning or block.
+
+### 2. Periodic Compliance Audits (Custodiet)
+
+- **Expectation**: Agents are subject to periodic compliance checks to detect drift and axiom violations.
+- **Behavior**: After 50 tool calls (default), the system warns or blocks mutating tools (Edit, Write, Bash) until the `custodiet` subagent verifies the session. A countdown (e.g., "◇ 5") appears in the gate status strip as the threshold approaches.
+- **Verification**: Performing 50+ tool calls without a compliance check should trigger the `CUSTODIET_GATE` policy.
+
+### 3. Session-End Verification (QA & Handover)
+
+- **Expectation**: A session cannot be closed until work is verified and documented.
+- **Behavior**: The `Stop` event is blocked if:
+  - A "Framework Reflection" is missing or malformed in the agent's response. *(Handover gate — active)*
+  - The `/dump` skill has not been run (if a task was bound to the session). *(Handover gate — active)*
+  - The `/qa` skill (or `qa` agent) has not been invoked to verify results. *(QA gate — planned, not yet enforced: gate starts OPEN and has no closing trigger)*
+- **Verification**: Running `Stop` without a Framework Reflection or `/dump` should return a `HANDOVER_GATE` block. The `QA_GATE` block is not yet active.
+
+### 4. Commitment Safety
+
+- **Expectation**: No work is left uncommitted or unpushed upon session exit.
+- **Behavior**: The system blocks session exit if uncommitted changes exist in the repository. It warns if there are unpushed commits.
+- **Verification**: Modifying a file and attempting to exit without committing should trigger the `COMMIT_GATE` block.
+
+### 5. Path & Credential Protection
+
+- **Expectation**: Critical framework files and user credentials are isolated from agent modification.
+- **Behavior**: Writes to protected paths (e.g., `.claude/settings.json`, `$AOPS/aops-core/hooks/`) are blocked via `settings.json` deny rules. Agents operate with a limited-scope GitHub PAT and no SSH agent access.
+- **Verification**: Attempting to write to `~/.claude/settings.json` should be blocked by the underlying client or a hard deny rule.
+
+### 6. Transparent Gate Status
+
+- **Expectation**: Users and agents can see the current state of enforcement gates.
+- **Behavior**: A status icon strip (e.g., `💧 ◇ 12 ▶ aops-123`) is appended to system messages, indicating pending hydration, custodiet countdowns, and active task bindings.
+- **Verification**: The icon strip should appear in the system message of every hook response where gates are active.
 
 ## Verification: The Top Failure Pattern
 
