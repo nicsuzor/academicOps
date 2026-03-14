@@ -512,17 +512,6 @@ def run_claude_headless(
     config_dir = working_dir / ".claude"
     env["CLAUDE_CONFIG_DIR"] = str(config_dir)
     config_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Preserve login state by copying auth files from real home
-    # This matches the pattern used for Gemini CLI above
-    orig_claude = Path.home() / ".claude"
-    for filename in ["settings.json", "auth.json"]:
-        src = orig_claude / filename
-        if src.exists():
-            try:
-                shutil.copy2(src, config_dir / filename)
-            except OSError:
-                pass # Silently skip if cannot copy
 
     # FAIL FAST: Required environment variables must be set
     if "AOPS" not in env:
@@ -1301,16 +1290,6 @@ def claude_headless_tracked(tmp_path):
             config_dir = test_dir / ".claude"
             env["CLAUDE_CONFIG_DIR"] = str(config_dir)
             config_dir.mkdir(parents=True, exist_ok=True)
-
-            # Preserve login state by copying auth files from real home
-            orig_claude = Path.home() / ".claude"
-            for filename in ["settings.json", "auth.json"]:
-                src = orig_claude / filename
-                if src.exists():
-                    try:
-                        shutil.copy2(src, config_dir / filename)
-                    except OSError:
-                        pass # Silently skip if cannot copy
 
             result = subprocess.run(
                 cmd,
