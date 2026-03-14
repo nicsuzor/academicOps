@@ -10,6 +10,21 @@ created: 2026-02-23
 
 Hard rules for aops framework internals. Enforced by pre-commit hooks where possible, by agents otherwise.
 
+## C1: Workflow file length
+
+**Max 100 lines** for any workflow or procedure markdown file (`workflows/*.md`, `skills/*/procedures/*.md`).
+
+Workflows that exceed this are too complex to follow reliably. Split into:
+
+- A shorter orchestration workflow that delegates to sub-workflows
+- Reference docs (in `references/`) for detail that doesn't need to be in the execution path
+
+**Enforced by**: `check-workflow-length` pre-commit hook (`.pre-commit-config.yaml`).
+
+**Current violations**: Most existing workflows exceed this. Treat as tech debt — enforce on new workflows, refactor existing ones opportunistically.
+
+---
+
 ## C2: Framework integrity (SKILLS.md + WORKFLOWS.md + wikilinks)
 
 Skills in `aops-core/skills/` MUST have entries in `SKILLS.md`. Workflows referenced in `WORKFLOWS.md` MUST exist on disk. Wikilinks in framework files MUST resolve.
@@ -28,18 +43,3 @@ Agents MUST NOT execute commands that require interactive terminal input.
 - For `npm`, `uv`, `apt`, use `-y`, `--yes`, `--no-interaction`, or `--non-interactive` flags.
 
 **Enforced by**: Agent behavior and system prompts. Interactive commands will hang the session and cause timeouts.
-
----
-
-## C1: Workflow file length
-
-**Max 100 lines** for any workflow or procedure markdown file (`workflows/*.md`, `skills/*/procedures/*.md`).
-
-Workflows that exceed this are too complex to follow reliably. Split into:
-
-- A shorter orchestration workflow that delegates to sub-workflows
-- Reference docs (in `references/`) for detail that doesn't need to be in the execution path
-
-**Enforced by**: `check-workflow-length` pre-commit hook (`.pre-commit-config.yaml`).
-
-**Current violations**: Most existing workflows exceed this. Treat as tech debt — enforce on new workflows, refactor existing ones opportunistically.
