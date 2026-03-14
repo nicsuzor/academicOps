@@ -1002,7 +1002,8 @@ def crew(ctx, target, extra, name, gemini, resume, keep):
     print("-" * 50)
 
     if gemini:
-        # Gemini: --sandbox restricts file access to CWD (the worktree)
+        # Gemini: --sandbox runs tool calls inside the aops-sandbox Docker image.
+        # The image is built from .gemini/sandbox.Dockerfile via `make build-sandbox`.
         cmd = [
             "gemini",
             "--sandbox",
@@ -1022,6 +1023,10 @@ def crew(ctx, target, extra, name, gemini, resume, keep):
     env["POLECAT_SESSION_TYPE"] = "crew"
     env["POLECAT_CREW_NAME"] = crew_name
     env["POLECAT_WORKTREE"] = str(work_dir)
+    if gemini:
+        # Use the aops-specific sandbox image so crew workers have uv, gh, etc.
+        # Falls back to Gemini's default sandbox image if aops-sandbox isn't built.
+        env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-sandbox")
 
     set_terminal_title(f"crew:{crew_name}")
     try:
