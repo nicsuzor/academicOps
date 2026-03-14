@@ -1,5 +1,5 @@
 ---
-title: The Abstraction Layer Architecture
+title: The Bazaar Model Extension
 type: spec
 status: proposal
 tier: architecture
@@ -7,7 +7,7 @@ depends_on: [plugin-architecture, workflow-system-spec]
 tags: [modularity, agents, qa, architecture, task-graph]
 ---
 
-# The Abstraction Layer Architecture
+# The Bazaar Model Extension
 
 This specification defines the transition from a monolithic, client-injected framework to a modular architecture centered on the **Task Graph** and the **Personal Knowledge Base (PKB)**. We are moving up a layer of abstraction: instead of trying to control _how_ third-party agents execute tasks turn-by-turn, we define strict requirements and verify them before ratification.
 
