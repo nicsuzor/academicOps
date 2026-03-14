@@ -354,6 +354,35 @@ def test_database_connection():
     assert db.ping()
 ```
 
+## Proper Use of pytest.skip
+
+### Core Rule: Fail Loudly on Configuration Errors
+
+We should **NOT** skip tests in a way that disguises our own test failures or configuration errors.
+
+- **❌ NEVER skip** because a directory, file, or environment variable is missing when it is expected for the test to function correctly. This is a failure, not a skip condition.
+- **❌ NEVER skip** simply because a test is currently failing in a specific environment.
+- **✅ ONLY skip** if the test **definitely will not work** in that environment (e.g., trying to test macOS-specific behavior on Linux, or missing a required external binary that isn't part of the project's own setup).
+
+### Why Fail Loudly?
+
+If we look in the wrong directory and skip the test instead of failing, we lose the opportunity to fix the path. A skip should be reserved for cases where the test is fundamentally inapplicable.
+
+### Example: Assertion instead of Skip
+
+```python
+# ❌ BAD: Disguising a configuration error as a skip
+def test_reflection_extraction():
+    sessions_dir = get_transcripts_dir()
+    if not sessions_dir.exists():
+        pytest.skip(f"Directory {sessions_dir} not found") # Hides the bug!
+
+# ✅ GOOD: Asserting existence
+def test_reflection_extraction():
+    sessions_dir = get_transcripts_dir()
+    assert sessions_dir.exists(), f"Transcripts directory {sessions_dir} must exist. Check configuration."
+```
+
 ## Test Isolation
 
 ### Temporary Resources

@@ -25,6 +25,11 @@ from lib.session_state import SessionState
 class TestSessionEnvSetup:
     """Test environment setup logic."""
 
+    @pytest.fixture(autouse=True)
+    def _mock_home(self, monkeypatch, tmp_path):
+        """Mock home to tmp_path."""
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+
     @pytest.fixture
     def temp_env_file(self, tmp_path):
         """Create a temporary CLAUDE_ENV_FILE."""

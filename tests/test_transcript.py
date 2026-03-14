@@ -1,5 +1,7 @@
 """Tests for transcript parsing and reflection extraction."""
 
+from pathlib import Path
+
 import pytest
 from lib.paths import get_transcripts_dir
 
@@ -80,15 +82,20 @@ Some conversation...
         # Ensure no raw code fences remain
         assert not any(acc.startswith("```") for acc in accomplishments)
 
-    def test_extract_reflection_from_live_logs(self, parser_module) -> None:
+    def test_extract_reflection_from_live_logs(self, parser_module, original_env) -> None:
         """CRITICAL: Verify extraction works on actual live session logs.
 
         This test finds recent session logs that contain reflections and
         verifies the extraction pipeline works end-to-end.
         """
 
-        # Find session transcripts with Framework Reflections
-        sessions_dir = get_transcripts_dir()
+        # Use actual sessions directory from environment (bypassing test isolation)
+        aops_sessions = original_env.get("AOPS_SESSIONS")
+        if aops_sessions:
+            sessions_dir = Path(aops_sessions).resolve() / "transcripts"
+        else:
+            sessions_dir = get_transcripts_dir()
+
         reflection_files = []
 
         if sessions_dir.exists():
@@ -106,13 +113,10 @@ Some conversation...
                     continue
 
         # We must have at least one session with a reflection to test against
-        if len(reflection_files) == 0:
-            import pytest
-
-            pytest.skip(
-                f"No live session logs with Framework Reflections found in {sessions_dir}. "
-                "Skipping live log extraction test."
-            )
+        assert len(reflection_files) > 0, (
+            f"No live session logs with Framework Reflections found in {sessions_dir}. "
+            "Ensure session transcripts exist for testing."
+        )
 
         # Test extraction on each found file
         successful_extractions = 0

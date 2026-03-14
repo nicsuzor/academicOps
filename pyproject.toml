@@ -181,6 +181,10 @@ pythonpath = [".", "aops-core", "aops-core/hooks", "aops-core/lib"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+log_cli = true
+log_cli_level = "INFO"
+log_cli_format = "%(asctime)s [%(levelname)8s] %(message)s (%(filename)s:%(lineno)s)"
+log_cli_date_format = "%Y-%m-%d %H:%M:%S"
 addopts = "-n 16 -m 'not slow and not integration and not requires_local_env'"
 markers = [
   "slow: marks tests as slow (run with '-m slow')",
