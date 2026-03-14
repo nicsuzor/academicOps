@@ -30,7 +30,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Install Gemini CLI and Claude Code globally
-RUN npm install -g @google/gemini-cli @anthropic-ai/claude-code
+RUN npm install -g @google/gemini-cli @anthropic-ai/claude-code && npm cache clean --force
 
 # Set workdir
 WORKDIR /app

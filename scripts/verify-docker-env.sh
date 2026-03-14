@@ -14,6 +14,13 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m'
 
+# Ensure cleanup runs on script exit
+cleanup() {
+    echo -e "\n--- Cleaning up test image ---"
+    docker rmi "$IMAGE_NAME" &>/dev/null || true
+}
+trap cleanup EXIT
+
 echo "--- Building aops environment image ---"
 docker build -t "$IMAGE_NAME" .
 
