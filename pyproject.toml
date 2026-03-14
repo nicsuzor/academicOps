@@ -60,6 +60,7 @@ source = "uv-dynamic-versioning"
 vcs = "git"
 style = "pep440"
 bump = true
+fallback = "0.0.0"
 
 [dependency-groups]
 dev = [

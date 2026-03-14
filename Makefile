@@ -65,6 +65,11 @@ build-dev:
 	@ACA_DATA=$(AOPS_ROOT) uv run python scripts/build.py
 	@echo "✓ Build artifacts in $(DIST_DIR)"
 
+# Verify the Docker environment for both Claude and Gemini
+test-docker:
+	@echo "Verifying Docker environment (multi-client support)..."
+	@./scripts/verify-docker-env.sh
+
 # Install local build artifacts into clients
 install-dev:
 	@echo "Uninstalling existing local plugins/extensions..."
