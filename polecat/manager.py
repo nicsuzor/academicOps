@@ -360,7 +360,9 @@ class PolecatManager:
         )
         origin_url = result.stdout.strip()
         if origin_url:
-            subprocess.run(["git", "remote", "set-url", "origin", origin_url], cwd=worktree_path, check=True)
+            subprocess.run(
+                ["git", "remote", "set-url", "origin", origin_url], cwd=worktree_path, check=True
+            )
 
         # Fetch from the real origin so we have up to date refs before checking out
         subprocess.run(["git", "fetch", "origin"], cwd=worktree_path, check=False)
@@ -372,7 +374,7 @@ class PolecatManager:
             capture_output=True,
             text=True,
         )
-        
+
         if branch_exists_result.stdout.strip():
             # Exists remotely, check it out and track
             subprocess.run(["git", "checkout", branch_name], cwd=worktree_path, check=True)
@@ -1071,7 +1073,9 @@ class PolecatManager:
         )
         origin_url = result.stdout.strip()
         if origin_url:
-            subprocess.run(["git", "remote", "set-url", "origin", origin_url], cwd=worktree_path, check=True)
+            subprocess.run(
+                ["git", "remote", "set-url", "origin", origin_url], cwd=worktree_path, check=True
+            )
 
         # Check if the branch exists on remote, if so check it out, else create fresh from default
         branch_exists_result = subprocess.run(
