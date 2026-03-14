@@ -33,4 +33,7 @@ fi
 # correct environment resolution within the extension runtime.
 HOOK_DIR="$(cd "$(dirname "$(dirname "$0")")" && pwd)"
 
+# Set UV_CACHE_DIR to avoid Seatbelt permission errors outside the extension path
+export UV_CACHE_DIR="$HOOK_DIR/.uv-cache"
+
 exec uv --directory "$HOOK_DIR" run python "$HOOK_DIR/hooks/router.py" "$@"
