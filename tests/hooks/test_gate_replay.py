@@ -677,7 +677,7 @@ class TestTempPathValidation:
         """Claude gate files should be under ~/.claude/projects/."""
         # Mock home to tmp_path
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
-        
+
         monkeypatch.setenv("CLAUDE_PROJECT_DIR", "/Users/test/src/myproject")
         # Clear any cached env vars
         monkeypatch.delenv("AOPS_GATE_FILE_HYDRATION", raising=False)

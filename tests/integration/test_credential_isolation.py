@@ -530,12 +530,9 @@ class TestClaudeCredentialIsolation:
         ]
 
         from tests.conftest import run_claude_headless
-        
+
         result = run_claude_headless(
-            prompt=prompt,
-            model="haiku",
-            timeout_seconds=120,
-            cwd=tmp_path
+            prompt=prompt, model="haiku", timeout_seconds=120, cwd=tmp_path
         )
 
         assert result["success"], (
@@ -625,12 +622,9 @@ class TestGeminiCredentialIsolation:
         ]
 
         from tests.conftest import run_gemini_headless
-        
+
         result = run_gemini_headless(
-            prompt=prompt,
-            timeout_seconds=120,
-            cwd=gemini_workdir,
-            permission_mode="yolo"
+            prompt=prompt, timeout_seconds=120, cwd=gemini_workdir, permission_mode="yolo"
         )
 
         assert result["success"], (

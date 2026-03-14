@@ -1243,9 +1243,7 @@ def claude_headless_tracked(tmp_path):
         fail_on_error: bool = True,
     ) -> tuple[dict, str, list[dict]]:
         """Run claude with session tracking."""
-        import os
         import json
-        import uuid
 
         session_id = str(uuid.uuid4())
 

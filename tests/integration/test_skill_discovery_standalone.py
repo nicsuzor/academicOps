@@ -14,18 +14,18 @@ from pathlib import Path
 def setup_mock_home(tmp_path):
     """Setup a mock ~/.claude/ structure in tmp_path."""
     from unittest.mock import patch
-    
+
     # Create structure
     skills_dir = tmp_path / ".claude" / "skills"
     skills_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Create framework skill
     framework_scripts = skills_dir / "framework" / "scripts"
     framework_scripts.mkdir(parents=True, exist_ok=True)
-    
+
     # Create required scripts
     (framework_scripts / "validate_docs.py").touch()
-    
+
     # Setup symlink to real AOPS if available
     aops = os.environ.get("AOPS")
     if aops:
@@ -33,6 +33,7 @@ def setup_mock_home(tmp_path):
         if aops_scripts.exists():
             # Replace framework_scripts with symlink
             import shutil
+
             shutil.rmtree(framework_scripts.parent)
             framework_scripts.parent.mkdir(parents=True, exist_ok=True)
             framework_scripts.symlink_to(aops_scripts)
@@ -42,7 +43,6 @@ def setup_mock_home(tmp_path):
 
 def test_symlink_structure(tmp_path):
     """Verify ~/.claude/skills/ symlink structure."""
-    import pytest
     with setup_mock_home(tmp_path):
         print("Testing symlink structure...")
 
@@ -83,6 +83,7 @@ def test_aops_env_var():
 def test_script_execution_from_writing(tmp_path):
     """Test that scripts can execute from writing repo."""
     import pytest
+
     with setup_mock_home(tmp_path):
         print("\nTesting script execution from writing repo...")
 
@@ -98,7 +99,9 @@ def test_script_execution_from_writing(tmp_path):
         assert data_dir.exists(), f"Writing root does not exist: {data_dir}"
 
         # Build command - use validate_docs.py instead of task_view.py
-        script_path = Path.home() / ".claude" / "skills" / "framework" / "scripts" / "validate_docs.py"
+        script_path = (
+            Path.home() / ".claude" / "skills" / "framework" / "scripts" / "validate_docs.py"
+        )
         assert script_path.exists(), f"Script not found at {script_path}"
 
         aops = os.environ.get("AOPS")
@@ -152,6 +155,7 @@ def test_script_execution_from_writing(tmp_path):
 def test_symlink_points_to_aops(tmp_path):
     """Verify symlink resolves to AOPS directory."""
     import pytest
+
     with setup_mock_home(tmp_path):
         print("\nTesting symlink resolution...")
 
@@ -163,7 +167,9 @@ def test_symlink_points_to_aops(tmp_path):
         symlink_scripts = Path.home() / ".claude" / "skills" / "framework" / "scripts"
 
         aops_scripts_alt = Path(aops) / "skills" / "framework" / "scripts"
-        assert aops_scripts.exists() or aops_scripts_alt.exists(), f"AOPS scripts don't exist: {aops_scripts} and {aops_scripts_alt}"
+        assert aops_scripts.exists() or aops_scripts_alt.exists(), (
+            f"AOPS scripts don't exist: {aops_scripts} and {aops_scripts_alt}"
+        )
         if aops_scripts_alt.exists() and not aops_scripts.exists():
             aops_scripts = aops_scripts_alt
 

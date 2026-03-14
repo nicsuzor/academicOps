@@ -4,9 +4,10 @@
 Consolidated from 6 tests to 2 (1 fast discovery + 1 slow smoke test).
 """
 
-import pytest
 from pathlib import Path
 from unittest.mock import patch
+
+import pytest
 
 from tests.conftest import extract_response_text
 
@@ -17,7 +18,7 @@ def mock_home(tmp_path):
     # Create structure
     plugins_dir = tmp_path / ".claude" / "plugins"
     plugins_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Create plugin symlink or dir
     aops_core = plugins_dir / "aops-core"
     aops_core.mkdir(parents=True, exist_ok=True)

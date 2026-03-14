@@ -16,8 +16,6 @@ Running tests:
 import json
 from pathlib import Path
 
-import pytest
-
 
 def test_settings_json_discoverable_by_claude(bots_dir: Path) -> None:
     """Test that Claude Code can discover settings.json at expected locations.
@@ -43,7 +41,9 @@ def test_settings_json_discoverable_by_claude(bots_dir: Path) -> None:
     user_exists = user_settings.exists()
     project_exists = project_settings.exists()
 
-    assert user_exists or project_exists, "No settings.json found at ~/.claude/settings.json or project root"
+    assert user_exists or project_exists, (
+        "No settings.json found at ~/.claude/settings.json or project root"
+    )
 
     # Determine which settings file to validate
     settings_path = user_settings if user_exists else project_settings
@@ -72,10 +72,9 @@ def test_settings_json_discoverable_by_claude(bots_dir: Path) -> None:
     # Modern Claude Code uses plugins, which include their own hooks.
     has_hooks = "hooks" in config and "SessionStart" in config["hooks"]
     has_plugins = "enabledPlugins" in config
-    
+
     assert has_hooks or has_plugins, (
-        f"settings.json at {settings_path} must have 'hooks' section "
-        "OR 'enabledPlugins' section."
+        f"settings.json at {settings_path} must have 'hooks' section OR 'enabledPlugins' section."
     )
 
     if has_hooks:
