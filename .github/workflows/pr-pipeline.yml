@@ -4,6 +4,14 @@ on:
   pull_request:
     types: [opened, synchronize, ready_for_review, reopened]
 
+permissions:
+  contents: write
+  pull-requests: write
+  statuses: write
+  id-token: write
+  issues: write
+  actions: read
+
 concurrency:
   group: pr-pipeline-${{ github.event.pull_request.number }}
   cancel-in-progress: true
@@ -30,9 +38,9 @@ jobs:
     name: Agent Fix
     needs: [lint, pytest, typecheck]
     if: always() && !cancelled()
-    uses: ./.github/workflows/agent-assessor.yml
+    uses: ./.github/workflows/agent-autofix.yml
     with:
-      pr_number: ${{ github.event.pull_request.number }}
+      pr_number: "${{ github.event.pull_request.number }}"
       ref: ${{ github.event.pull_request.head.ref }}
     secrets: inherit
 
@@ -44,6 +52,6 @@ jobs:
     if: success()
     uses: ./.github/workflows/agent-auditor.yml
     with:
-      pr_number: ${{ github.event.pull_request.number }}
+      pr_number: "${{ github.event.pull_request.number }}"
       ref: ${{ github.event.pull_request.head.ref }}
     secrets: inherit
