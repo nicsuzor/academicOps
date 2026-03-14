@@ -345,25 +345,41 @@ class PolecatManager:
             # Already exists, just return it
             return worktree_path
 
-        print(f"Creating crew worktree at {worktree_path} from local repo {local_repo_path}...")
+        print(f"Creating crew clone at {worktree_path} from local repo {local_repo_path}...")
 
-        # Check if branch already exists in local repo
-        if self._branch_exists(local_repo_path, branch_name):
-            # Use existing branch
-            cmd = ["git", "worktree", "add", str(worktree_path), branch_name]
+        # Clone locally (fast, uses hardlinks on same filesystem)
+        cmd = ["git", "clone", str(local_repo_path), str(worktree_path)]
+        subprocess.run(cmd, check=True)
+
+        # Re-point origin to the actual remote instead of the local repo
+        result = subprocess.run(
+            ["git", "remote", "get-url", "origin"],
+            cwd=local_repo_path,
+            capture_output=True,
+            text=True,
+        )
+        origin_url = result.stdout.strip()
+        if origin_url:
+            subprocess.run(["git", "remote", "set-url", "origin", origin_url], cwd=worktree_path, check=True)
+
+        # Fetch from the real origin so we have up to date refs before checking out
+        subprocess.run(["git", "fetch", "origin"], cwd=worktree_path, check=False)
+
+        # Check if branch exists remotely
+        branch_exists_result = subprocess.run(
+            ["git", "ls-remote", "--heads", "origin", branch_name],
+            cwd=worktree_path,
+            capture_output=True,
+            text=True,
+        )
+        
+        if branch_exists_result.stdout.strip():
+            # Exists remotely, check it out and track
+            subprocess.run(["git", "checkout", branch_name], cwd=worktree_path, check=True)
         else:
-            # Create new branch from default branch
-            cmd = [
-                "git",
-                "worktree",
-                "add",
-                "-b",
-                branch_name,
-                str(worktree_path),
-                default_branch,
-            ]
-
-        subprocess.run(cmd, cwd=local_repo_path, check=True)
+            # Create new branch from the default branch
+            subprocess.run(["git", "checkout", default_branch], cwd=worktree_path, check=False)
+            subprocess.run(["git", "checkout", "-b", branch_name], cwd=worktree_path, check=True)
 
         # Configure git credentials for HTTPS push
         configure_git_credentials(worktree_path)
@@ -428,12 +444,9 @@ class PolecatManager:
                                 f"Use --force to delete anyway."
                             )
 
-                    # Remove worktree
-                    subprocess.run(
-                        ["git", "worktree", "remove", "--force", str(project_dir)],
-                        cwd=repo_path,
-                        check=False,
-                    )
+                    # Remove clone
+                    if project_dir.exists():
+                        shutil.rmtree(project_dir, ignore_errors=True)
 
                     # Delete branch
                     if self._branch_exists(repo_path, branch_name):
@@ -906,14 +919,14 @@ class PolecatManager:
         return None
 
     def setup_worktree(self, task, lock_timeout: float = 30.0):
-        """Creates a git worktree in $POLECAT_HOME/polecat linked to the project repo.
+        """Creates a local git clone in $POLECAT_HOME/polecat linked to the project repo.
 
-        Before creating the worktree, performs a safe sync of the mirror (if used)
+        Before creating the clone, performs a safe sync of the mirror (if used)
         to ensure we have the latest commits from origin. Sync failures are non-fatal
         to support offline operation.
 
         Uses fcntl locking to prevent TOCTOU race conditions when multiple polecats
-        try to create worktrees simultaneously.
+        try to create clones simultaneously.
 
         Args:
             task: Task object with id and project attributes
@@ -1007,10 +1020,10 @@ class PolecatManager:
         default_branch = self.projects.get(task.project or "aops", {}).get("default_branch", "main")
 
         if worktree_path.exists():
-            # Validate it's actually a git worktree (has .git file pointing to parent repo)
-            git_file = worktree_path / ".git"
-            if git_file.exists():
-                # Verify the worktree has valid git state (not orphan/corrupted)
+            # Validate it's actually a git repo
+            git_dir = worktree_path / ".git"
+            if git_dir.exists():
+                # Verify the repo has valid git state (not orphan/corrupted)
                 result = subprocess.run(
                     ["git", "rev-parse", "HEAD"],
                     cwd=worktree_path,
@@ -1020,50 +1033,61 @@ class PolecatManager:
                     return worktree_path
                 # Worktree exists but is broken (orphan branch or corrupted)
                 print(
-                    f"Worktree at {worktree_path} is corrupted, recreating...",
+                    f"Clone at {worktree_path} is corrupted, recreating...",
                     file=sys.stderr,
                 )
             else:
                 print(
-                    f"Directory {worktree_path} exists but is not a git worktree, recreating...",
+                    f"Directory {worktree_path} exists but is not a git repo, recreating...",
                     file=sys.stderr,
                 )
-            # Remove the broken/non-worktree directory
+            # Remove the broken/non-repo directory
             shutil.rmtree(worktree_path)
-            # Prune stale worktree references from git
-            subprocess.run(["git", "worktree", "prune"], cwd=repo_path, check=False)
 
-        print(f"Creating worktree at {worktree_path} from repo {repo_path}...")
+        print(f"Creating local clone at {worktree_path} from repo {repo_path}...")
 
         cmd = [
             "git",
-            "worktree",
-            "add",
-            "-b",
-            branch_name,
+            "clone",
+            str(repo_path),
             str(worktree_path),
-            default_branch,
         ]
 
         try:
-            subprocess.run(cmd, cwd=repo_path, check=True)
+            subprocess.run(cmd, check=True)
         except subprocess.CalledProcessError as e:
             print(
-                f"Worktree creation failed: {e}. Attempting recovery...",
+                f"Clone creation failed: {e}",
                 file=sys.stderr,
             )
-            if self._branch_exists(repo_path, branch_name):
-                # Branch exists from a previous run - delete and recreate fresh from main.
-                # Polecat branches are disposable work branches; reusing stale branches
-                # leads to worktrees that are many commits behind main.
-                print(
-                    f"Branch {branch_name} exists from previous run, deleting and recreating fresh...",
-                    file=sys.stderr,
-                )
-                subprocess.run(["git", "branch", "-D", branch_name], cwd=repo_path, check=False)
-                subprocess.run(cmd, cwd=repo_path, check=True)
-            else:
-                raise e
+            raise e
+
+        # Re-point origin to the actual remote instead of the local repo
+        result = subprocess.run(
+            ["git", "remote", "get-url", "origin"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+        )
+        origin_url = result.stdout.strip()
+        if origin_url:
+            subprocess.run(["git", "remote", "set-url", "origin", origin_url], cwd=worktree_path, check=True)
+
+        # Check if the branch exists on remote, if so check it out, else create fresh from default
+        branch_exists_result = subprocess.run(
+            ["git", "ls-remote", "--heads", "origin", branch_name],
+            cwd=worktree_path,
+            capture_output=True,
+            text=True,
+        )
+
+        if branch_exists_result.stdout.strip():
+            # Exists remotely, checkout and track
+            subprocess.run(["git", "checkout", branch_name], cwd=worktree_path, check=True)
+        else:
+            # Create fresh from default branch. Note: clone usually checks out default branch.
+            subprocess.run(["git", "checkout", default_branch], cwd=worktree_path, check=False)
+            subprocess.run(["git", "checkout", "-b", branch_name], cwd=worktree_path, check=True)
 
         # Configure git credentials for HTTPS push
         configure_git_credentials(worktree_path)
@@ -1094,17 +1118,15 @@ class PolecatManager:
             capture_output=True,
         )
         if result.returncode != 0:
-            # Worktree was created but is orphan - this should not happen
+            # Clone was created but is orphan - this should not happen
             print(
-                f"ERROR: Worktree created with orphan branch at {worktree_path}",
+                f"ERROR: Clone created with orphan branch at {worktree_path}",
                 file=sys.stderr,
             )
             print(f"Branch: {branch_name}, Default: {default_branch}", file=sys.stderr)
             # Clean up and fail
             shutil.rmtree(worktree_path)
-            subprocess.run(["git", "worktree", "prune"], cwd=repo_path, check=False)
-            subprocess.run(["git", "branch", "-D", branch_name], cwd=repo_path, check=False)
-            raise RuntimeError("Failed to create valid worktree - orphan branch detected")
+            raise RuntimeError("Failed to create valid clone - orphan branch detected")
 
         # Configure git identity if specified in config
         identity = self.config.get("git_identity", {})
@@ -1397,14 +1419,8 @@ class PolecatManager:
                 )
 
         if worktree_path.exists():
-            print(f"Removing worktree {worktree_path}...")
-            subprocess.run(
-                ["git", "worktree", "remove", "--force", str(worktree_path)],
-                cwd=repo_path,
-                check=False,
-            )
-            if worktree_path.exists():
-                shutil.rmtree(worktree_path)
+            print(f"Removing clone {worktree_path}...")
+            shutil.rmtree(worktree_path, ignore_errors=True)
 
         if self._branch_exists(repo_path, branch_name):
             print(f"Deleting branch {branch_name}...")
