@@ -436,7 +436,7 @@ class GenericGate:
             if policy_result
             else None
         )
-        if policy_verdict in ("deny", "block", "warn"):
+        if policy_result and policy_verdict in ("deny", "block", "warn"):
             if trigger_result:
                 # Merge trigger messages but keep policy verdict
                 return GateResult(
