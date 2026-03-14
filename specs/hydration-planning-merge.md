@@ -33,7 +33,31 @@ When a user provides a prompt that requires decomposition, the Hydrator will no 
 4. **Graph Artifacts**: Instead of outputting a `<hydration_result>` with a markdown "Execution Plan," the system creates formal tasks in the PKB using tools like `mcp__pkb__decompose_task`.
 5. **Execution Handoff**: The session begins with the agent bound to the newly created leaf tasks in the graph, subject to standard QA and verification gates.
 
-## Required Changes
+## Conceptual Distinction: Hydrator vs Effectual Planner
+
+A critical question in this merge is whether the Hydrator and the Effectual Planner are functionally the same thing. They both share the same underlying LLM mechanics and use high-level workflows to drive decomposition, but they serve distinct architectural purposes:
+
+1. **Workflows as Guardrails (The Hydrator's Primary Role)**:
+   - **Context Independence**: Guardrails can be set without full PKB access. This makes the Hydrator highly portable.
+   - **Function**: The Hydrator intercepts a vague command, identifies the workflow, and outputs the _process steps_ needed to plan or execute safely. It acts as the tactical boundary providing JIT (Just-In-Time) execution context to agents.
+2. **Workflows as Strategic Plans (The Planner's Primary Role)**:
+   - **Context Dependence**: Strategic planning _requires_ full PKB access to map dependencies, surface assumptions, and coordinate across sessions.
+   - **Function**: The Planner takes the process steps identified by the Hydrator and embeds them into the semantic graph, creating a formal Execution Plan of durable nodes.
+
+While the boundaries blur, the distinction allows for a flexible deployment model where guardrails can run anywhere, but deep strategic planning remains anchored to the PKB.
+
+## Phase 1 Prototype Requirements
+
+To prove this model, the first working prototype of the merged system must support two deployment paradigms for the Hydrator, operating from a secure machine:
+
+1. **JIT Mode (Portable/Live)**: The Hydrator provides input _anywhere_ to agents as they need them. In this mode, the Hydrator finds relevant execution context (memories) to help a polecat agent _execute_ immediately, without relying on the PKB task graph.
+2. **Advance Mode (Graph-Integrated)**: The Hydrator updates the PKB task with information for any agent to read _with_ the task it pulls. The Effectual Planner takes the vague command and decomposes it into a series of PKB steps for execution later.
+
+### Prototype Deliverables
+
+- **Memories (Context)**: The Hydrator finds relevant context to help an agent **execute** (delivered live or via a task file).
+- **Workflows (Guardrails)**: The Hydrator reads workflows and outputs relevant process steps needed to **plan** tasks (delivered live to the Effectual Planner).
+- **Execution Plan (Strategy)**: The Effectual Planner translates the vague command into a durable series of execution steps (delivered via PKB task files to polecat workers).
 
 ### 1. `prompt-hydrator` Agent Update
 
