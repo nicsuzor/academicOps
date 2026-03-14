@@ -199,6 +199,26 @@ $ACA_DATA/.github/workflows/sleep-cycle.yml       ← installed workflow (copy f
 
 There is no Python orchestrator. The workflow launches a **Claude agent** (`anthropics/claude-code-action`) with a consolidation prompt. The agent works through phases using judgment, calling tools like `triage_tasks.py` as signals — not deterministic scripts that make the decisions. Smart agents, not dumb code.
 
+## User Expectations
+
+The sleep cycle is the framework's "maintenance" layer. Users (human or agent) can expect the following behaviors:
+
+1. **Autonomous Maintenance**: The cycle runs every 4 hours via GitHub Actions. It should complete without intervention and stay within its time budget (see Open Questions for duration).
+2. **Zero-Orphan Sessions**: Every session transcript eventually receives a corresponding summary JSON and PKB memory. Users shouldn't need to manually run `/session-insights` in bulk.
+3. **Self-Cleaning Task Graph**: Under-specified tasks (vague titles, empty bodies) are automatically flagged. The task graph stays actionable without manual pruning of dead ends.
+4. **Living Framework Indices**: Mechanical framework files (`SKILLS.md`, `INDEX.md`) stay synchronized with the filesystem. New skills or commands appear in indices within 4 hours of being merged.
+5. **Staged Knowledge Promotion**: Significant patterns from recent sessions or tasks are surfaced as candidates for `MEMORY.md` or PKB. The system identifies _what_ is worth remembering, even if the human didn't manually invoke `/remember`.
+6. **Remote Consistency**: The brain repo (`$ACA_DATA`) is kept synchronized across devices through periodic commits and pushes.
+
+### Testable Criteria (Pass/Fail)
+
+- [ ] **Backfill**: Given a session transcript without a summary, running the sleep cycle (Phase 1) generates the corresponding summary JSON.
+- [ ] **Triage**: Given an active task with a vague title (e.g., "Stuff") and no body, the sleep cycle (Phase 4) flags it as `needs-deletion` or `needs-decomposition`.
+- [ ] **Index Refresh**: After adding a new skill file to `aops-core/skills/`, the sleep cycle (Phase 3) updates `aops-core/SKILLS.md` to include the new skill.
+- [ ] **Governance Protection**: Changes to governance documents (`VISION.md`, `AXIOMS.md`) are flagged via Pull Request rather than being auto-committed.
+- [ ] **Sync Integrity**: Every successful cycle concludes with a commit to the brain repo using the standard message `sleep: periodic consolidation`.
+- [ ] **Time Management**: The agent exits cleanly and records a summary to `$GITHUB_STEP_SUMMARY` within the configured timeout.
+
 ## Open Questions
 
 1. **Human review interface**: How do staged promotion candidates reach the human most effectively? The `/briefing-bundle` and `/process-bundle` skills support the annotation→decision pipeline — should candidates flow through that, or through a daily note section?
