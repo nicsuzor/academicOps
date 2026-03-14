@@ -32,16 +32,16 @@ The framework is divided into five operational layers, but the center of gravity
 | **4. Utilities (Commodity)**        | PDF, Flowchart, Python                     | Swappable AI tools; nothing special about these, could be replaced by any market plugin.                                                                                                                                                           |
 | **5. Expertise (Specialized)**      | Analyst (dbt/streamlit), HDR               | Battle-hardened workflows providing specific instructional guidance for complex research tasks.                                                                                                                                                    |
 
-## The Role of the Hydrator: Ephemeral Decomposition
+## The Role of the Hydrator: Task Enrichment
 
-In this new architecture, **Hydration is Decomposition**.
+In this new architecture, **Hydration is something done TO tasks**.
 
-When a user provides a prompt, the Hydrator decomposes that intent into an execution plan. The difference between Hydration and formal Task Decomposition is merely persistence:
+When a user provides a prompt, the Hydrator creates or binds to a Task Graph node and enriches it with execution context: relevant memories, applicable workflow steps, acceptance criteria, and guardrails. The enriched task is a durable artifact — any worker can pull it and execute without additional context gathering.
 
-- **Task Decomposition** creates durable artifact nodes (Epics/Tasks) in the Task Graph.
-- **Hydration** creates an _ephemeral_ workplan for a limited session.
+- **The Effectual Planner** decomposes complex work into task hierarchies (Epics → Tasks).
+- **The Hydrator** enriches individual tasks with the context needed for execution.
 
-The Hydrator's role is to ensure the ephemeral session plan inherits the strategic alignment and requirements from the PKB, ensuring the agent knows exactly what standards it must meet before the session ends.
+The Hydrator requires full PKB access (memories, tasks, documents) and runs on the secure machine. It ensures every task inherits strategic alignment and requirements from the PKB before execution begins.
 
 ## From Mechanical Hooks to Agentic Workflow Steps
 
