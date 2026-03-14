@@ -34,7 +34,7 @@ A constitutional automation framework for academic work. academicOps operates th
 In every local session, the framework defines and enforces universal and modular workflows. Hooks, the hydrator, and custodiet ensure agents use the skills we provide and follow the procedures we define — in real time, as work happens.
 
 - SessionStart loads principles ([[AXIOMS.md|AXIOMS]], [[HEURISTICS.md|HEURISTICS]])
-- Prompt hydration transforms terse inputs into structured execution plans
+- Prompt hydration enriches Task Graph nodes with execution context (memories, workflow steps, acceptance criteria, guardrails)
 - Custodiet detects drift and scope violations during execution
 - Workflows embed quality gates appropriate to each task type
 
@@ -84,16 +84,17 @@ Every user prompt is hydrated before execution:
 PROMPT → HYDRATE → EXECUTE (following plan)
 ```
 
-### HYDRATE (prompt-hydrator agent)
+### HYDRATE (task-hydrator agent)
 
-**Purpose**: Transform terse prompt into a complete execution plan
+**Purpose**: Enrich Task Graph nodes with execution context
 
-The hydrator receives the user prompt along with session history and memory context, then outputs:
+The hydrator receives the user prompt along with session history and memory context, then creates or binds to a PKB task and enriches it with:
 
 1. **Intent**: What the user actually wants
 2. **Workflow**: Which workflow template applies (see [[WORKFLOWS.md]])
-3. **TodoWrite Plan**: Concrete steps with per-step skill assignments
-4. **Guardrails**: Constraints based on workflow + domain
+3. **Context**: Relevant memories and prior knowledge from PKB
+4. **Acceptance Criteria**: Measurable outcomes for the task
+5. **Guardrails**: Constraints based on workflow + domain
 
 ### Key Principles
 

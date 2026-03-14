@@ -35,7 +35,7 @@ Skills in `aops-core/skills/` MUST have entries in `SKILLS.md`. Workflows refere
 
 ---
 
-## C3: Non-interactive Execution (P#54)
+## C3: Non-interactive Execution (P#55)
 
 Agents MUST NOT execute commands that require interactive terminal input.
 
