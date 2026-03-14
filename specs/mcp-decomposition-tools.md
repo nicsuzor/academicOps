@@ -46,6 +46,14 @@ The server does NOT:
 
 Reference: `tasks_server.py` already follows this pattern with 18 thin data-access tools.
 
+## User Expectations
+
+- **Interpretive Responsibility**: The server provides raw data (metrics, relationships, text); the agent is responsible for all interpretation (e.g., identifying "bottlenecks," "high-value" tasks, or "refactoring opportunities").
+- **Semantic Analysis**: No NLP or similarity matching is performed by the server. Agents expect to receive lists of titles/tags and use their own LLM capabilities to find related or similar work.
+- **Topological Integrity**: Agents can rely on the server to provide accurate, deterministic graph metrics (degree, depth, downstream weight) to inform structural decisions.
+- **Contextual Discovery**: The server provides the graph neighborhood (backlinks, neighbors, project-mates). The agent uses this context to suggest relationships or propose decompositions.
+- **Fail-Fast Protocols**: The server enforces strict schema validation for all writes (e.g., `create_task`, `update_task`). Users expect immediate errors for malformed frontmatter or invalid relationships.
+
 ---
 
 ## Tool Reconceptions
