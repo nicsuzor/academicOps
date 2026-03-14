@@ -55,4 +55,3 @@ def test_translate_tool_calls_body_gemini():
     body_list = "Tools: mcp__pkb__list_tasks, mcp__pkb__get_task."
     translated = translate_tool_calls(body_list, "gemini")
     assert translated == "Tools: mcp_pkb_list_tasks, mcp_pkb_get_task."
-

@@ -531,7 +531,6 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
 
         # Transform each tool name
         transformed_tools = []
-        import re
         for tool in original_tools:
             if tool.startswith("mcp__"):
                 # MCP tools keep their full name
