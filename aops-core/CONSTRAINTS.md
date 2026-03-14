@@ -20,6 +20,17 @@ Skills in `aops-core/skills/` MUST have entries in `SKILLS.md`. Workflows refere
 
 ---
 
+## C3: Non-interactive Execution (P#54)
+
+Agents MUST NOT execute commands that require interactive terminal input.
+
+- For `gh pr create`, always ensure the branch is pushed to origin first (`git push -u origin <branch>`), or use appropriate flags (`--fill`) to prevent interactive prompts about where to push.
+- For `npm`, `uv`, `apt`, use `-y`, `--yes`, `--no-interaction`, or `--non-interactive` flags.
+
+**Enforced by**: Agent behavior and system prompts. Interactive commands will hang the session and cause timeouts.
+
+---
+
 ## C1: Workflow file length
 
 **Max 100 lines** for any workflow or procedure markdown file (`workflows/*.md`, `skills/*/procedures/*.md`).
