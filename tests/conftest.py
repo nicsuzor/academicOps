@@ -5,6 +5,7 @@ All paths resolve using AOPS and ACA_DATA environment variables.
 """
 
 import json
+import logging
 import os
 import shutil
 import subprocess
@@ -23,6 +24,8 @@ from .paths import (
     get_repo_root,
     get_writing_root,
 )
+
+log = logging.getLogger(__name__)
 
 
 def _is_xdist_worker() -> bool:
@@ -525,6 +528,9 @@ def run_claude_headless(
 
     try:
         # Execute command
+        log.debug("Full Launch Command: %s", " ".join(str(x) for x in cmd))
+        log.debug("Working Directory: %s", working_dir)
+
         result = subprocess.run(
             cmd,
             cwd=working_dir,
@@ -721,6 +727,9 @@ def run_gemini_headless(
 
     try:
         # Execute command
+        log.debug("Full Launch Command: %s", " ".join(str(x) for x in cmd))
+        log.debug("Working Directory: %s", working_dir)
+
         result = subprocess.run(
             cmd,
             cwd=working_dir,
@@ -1273,6 +1282,9 @@ def claude_headless_tracked(tmp_path):
             else:
                 test_dir = tmp_path / "claude-test"
                 test_dir.mkdir(parents=True, exist_ok=True)
+
+            log.debug("Full Launch Command: %s", " ".join(str(x) for x in cmd))
+            log.debug("Working Directory: %s", test_dir)
 
             result = subprocess.run(
                 cmd,
