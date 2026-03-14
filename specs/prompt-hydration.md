@@ -27,14 +27,16 @@ Transform a raw user prompt into a complete execution plan with workflow selecti
 
 ## Purpose
 
+In the Abstraction Layer architecture, **Hydration is Ephemeral Decomposition**.
+
 Users type terse prompts. Agents need:
 
 - **Intent** - What does the user actually want?
 - **Workflow** - Which workflow template applies?
 - **Steps** - What specific actions, in what order?
-- **Guardrails** - What constraints apply?
+- **Guardrails** - What strict standards must be met for this work to be ratified?
 
-Prompt Hydration bridges this gap automatically on every prompt, outputting a complete execution plan the agent can follow.
+Prompt Hydration bridges this gap automatically on every prompt. It decomposes the intent into a session-bound execution plan. Unlike formal Task Decomposition (which creates durable nodes in the Task Graph), Hydration creates ephemeral workplans for a limited session, ensuring the agent knows exactly what requirements to meet before the session ends.
 
 ## Architecture (Modular Workflow System)
 
