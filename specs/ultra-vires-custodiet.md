@@ -1,7 +1,7 @@
 ---
 title: Ultra Vires Custodiet
 type: spec
-status: partial
+status: active
 tier: core
 depends_on: [enforcement]
 tags: [framework, agent-behavior, guardrails, enforcement]
@@ -9,17 +9,17 @@ tags: [framework, agent-behavior, guardrails, enforcement]
 
 # Ultra Vires Custodiet
 
-**Status**: Partial - agent defined, automated gate archived
-**Current**: Custodiet agent available for manual invocation via `agents/custodiet.md`
-**Archived**: Automated PostToolUse gate (`custodiet_gate.py`) moved to `archived/hooks/`
+**Status**: Active - Unified gate system implemented
+**Current**: Custodiet gate active in `lib/gates/definitions.py`; agent at `aops-core/agents/custodiet.md`
+**Evolution**: Standalone hooks (`custodiet_gate.py`, `overdue_enforcement.py`) consolidated into unified gate architecture.
 
 ## Giving Effect
 
-- [[agents/custodiet.md]] - Haiku agent that reads transcript and evaluates authority compliance
-- [[hooks/overdue_enforcement.py]] - PostToolUse hook that triggers custodiet every N tool calls
-- [[hooks/data/reminders.txt]] - Soft-tissue file with editable reminder lines
-- [[hooks/templates/custodiet-context.j2]] - Jinja2 context template (conditional axiom/heuristic injection)
-- [[hooks/templates/custodiet-instruction.md]] - Short instruction template
+- [[aops-core/lib/gates/definitions.py]] - Unified gate configuration including `custodiet` threshold
+- [[aops-core/agents/custodiet.md]] - Haiku agent that reads transcript and evaluates authority compliance
+- [[aops-core/agents/custodiet-reviewer.md]] - Haiku agent for async PR compliance review
+- [[aops-core/hooks/templates/custodiet-context.md]] - Context template (conditional axiom/heuristic injection)
+- [[aops-core/hooks/templates/custodiet-instruction.md]] - Short instruction template
 - [[archived/hooks/custodiet_gate.py]] - Original automated gate (archived)
 
 ## Purpose
@@ -108,6 +108,15 @@ User must constantly monitor agent behavior for drift:
 
 Nic - ensures agents stay within granted authority, enforces [[AXIOMS]] #4 (Do One Thing) and #22 (Acceptance Criteria Own Success).
 
+## User Expectations
+
+- **Visibility**: I expect to see the current status of the custodiet gate in the session's icon strip (e.g., `◇` for overdue, `◇ N` for countdown).
+- **Predictability**: I expect the compliance check to trigger automatically after 50 operations (by default) to ensure ongoing alignment with framework principles.
+- **No Interruption**: I expect the gate to remain "OPEN" and non-blocking until the operation threshold is reached, allowing for focused work without constant interruptions.
+- **Actionable Feedback**: If a violation is detected, I expect a clear, diagnostic message identifying the specific axiom or heuristic violated and a suggestion for correction.
+- **Proportionate Enforcement**: I expect the enforcement level (Warn vs. Block) to be configurable via environment variables (`CUSTODIET_GATE_MODE`), defaulting to "Warn" to avoid unnecessary work stoppages.
+- **PR Alignment**: I expect the same principles used in local sessions to be applied asynchronously to PRs via the `custodiet-reviewer`, ensuring consistent quality across all contributions.
+
 ## Architecture
 
 See [[specs/gate-agent-architecture]] for the unified gate system design. Custodiet is a **post-action gate** that enforces compliance after tool execution.
@@ -157,12 +166,12 @@ Per [[HEURISTICS#H31]] (No LLM Calls in Hooks), hooks cannot call LLMs directly.
 
 ### Invocation Points
 
-| Hook                     | Trigger             | Mode       | Purpose                                 |
-| ------------------------ | ------------------- | ---------- | --------------------------------------- |
-| **PostToolUse**          | Tool returns error  | Background | Watch for Type A (reactive helpfulness) |
-| **PostToolUse**          | Every ~7 tool calls | Background | Periodic compliance check               |
-| **PreToolUse:TodoWrite** | Todo list changes   | Blocking   | Catch Type B (scope expansion)          |
-| **SubagentStop**         | Subagent completes  | Background | Audit delegated work                    |
+| Hook                     | Trigger              | Mode       | Purpose                                 |
+| ------------------------ | -------------------- | ---------- | --------------------------------------- |
+| **PostToolUse**          | Tool returns error   | Background | Watch for Type A (reactive helpfulness) |
+| **PostToolUse**          | Every ~50 tool calls | Background | Periodic compliance check               |
+| **PreToolUse:TodoWrite** | Todo list changes    | Blocking   | Catch Type B (scope expansion)          |
+| **SubagentStop**         | Subagent completes   | Background | Audit delegated work                    |
 
 ### Enforcement Levels
 
@@ -201,60 +210,42 @@ No issues detected. Continue current work.
 
 ### Current State
 
-- `hooks/overdue_enforcement.py` - PostToolUse hook, triggers every N tool calls
-- `hooks/data/reminders.txt` - Soft-tissue file with editable reminder lines
-- `agents/custodiet.md` - Haiku agent that reads transcript
-- `hooks/templates/custodiet-context.j2` - Jinja2 context template (conditional axiom/heuristic injection)
-- `hooks/templates/custodiet-instruction.md` - Short instruction template
+- `aops-core/lib/gates/definitions.py` - Unified `custodiet` gate definition
+- `aops-core/agents/custodiet.md` - Haiku agent that reads transcript
+- `aops-core/agents/custodiet-reviewer.md` - Haiku agent for PR reviews
+- `aops-core/hooks/templates/custodiet-context.md` - Context template
+- `aops-core/hooks/templates/custodiet-instruction.md` - Short instruction template
 
 ### Implementation Evolution
 
 **Original**: `custodiet_gate.py` (archived)
-**Current**: `overdue_enforcement.py`
+**Transitional**: `overdue_enforcement.py` (archived)
+**Current**: Unified `custodiet` gate in `lib/gates/definitions.py`
 
-The hook was renamed to better reflect its purpose: enforcing overdue compliance checks rather than acting as a "gate". The core functionality remains identical—periodic spawning of the custodiet agent to check for axiom/heuristic violations and plan drift.
+The enforcement logic has been moved from standalone hook scripts into the unified gate architecture. This provides better lifecycle management, icons in the icon strip, and JIT (Just-In-Time) gate opening for compliance agents.
 
-**What changed**: File name and semantic clarity
-**What didn't change**: Logic, thresholds, output formats, agent integration
+**What changed**: Implementation moved to `lib/gates/` system; threshold increased to 50 ops.
+**What didn't change**: Logic, output formats, agent integration.
 
 ### Hook Output Formats
 
-**Critical**: PostToolUse hooks have two output modes with different behavior:
+Gate enforcement is handled by the `router.py` which converts gate verdicts into client-specific JSON outputs.
 
-| Format                                                 | Behavior                             | Use Case             |
-| ------------------------------------------------------ | ------------------------------------ | -------------------- |
-| `{"decision": "block", "reason": "..."}`               | **Active** - forces agent to address | Full custodiet check |
-| `{"hookSpecificOutput": {"additionalContext": "..."}}` | **Passive** - agent may ignore       | Light reminders      |
-
-The custodiet hook uses `decision: "block"` at threshold to ensure the agent spawns the compliance subagent.
-
-### Random Reminder Injection
-
-Between threshold checks, the hook randomly injects soft reminders:
-
-| Parameter              | Value          | Location                   |
-| ---------------------- | -------------- | -------------------------- |
-| `TOOL_CALL_THRESHOLD`  | 7              | `overdue_enforcement.py`   |
-| `REMINDER_PROBABILITY` | 0.0 (disabled) | `overdue_enforcement.py`   |
-| Reminder lines         | Editable       | `hooks/data/reminders.txt` |
-
-**Behavior**:
-
-- Tool calls 1 to (N-1): Random reminder with 30% probability (passive)
-- Tool call N (threshold): Full custodiet check (blocking)
-
-Edit `hooks/data/reminders.txt` to add/modify reminders. One per line, `#` for comments.
+| Verdict | Behavior                             | Use Case                     |
+| ------- | ------------------------------------ | ---------------------------- |
+| `deny`  | **Active** - forces agent to address | Full custodiet check (BLOCK) |
+| `warn`  | **Passive** - agent receives context | Light reminders/advisory     |
 
 ### Implementation Phases
 
 #### Phase 1: Periodic Compliance (IMPLEMENTED)
 
-- [x] PostToolUse hook tracks tool count
+- [x] Unified `custodiet` gate tracks tool count
 - [x] Spawns haiku subagent at threshold
 - [x] Subagent reads transcript via temp file
 - [x] Checks axioms/heuristics/drift
-- [x] Uses `decision: "block"` output format
-- [x] Random reminder injection between checks
+- [x] Uses `deny` (block) or `warn` mode via env vars
+- [x] Visual feedback in icon strip (`◇`)
 
 #### Phase 2: Error-Triggered Detection
 
