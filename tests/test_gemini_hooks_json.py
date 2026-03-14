@@ -51,8 +51,6 @@ class TestGeminiHooksJsonExists:
         if not dist_hooks_json.exists():
             pytest.skip("hooks.json not built in dist. Run 'python scripts/build.py' to test.")
 
-        assert dist_hooks_json.exists(), "hooks.json must exist in dist/"
-
         ext_content = json.loads(gemini_extension_json.read_text())
         hooks_content = json.loads(dist_hooks_json.read_text())
 
