@@ -35,7 +35,33 @@ The Planning Web is the human-facing surface of the academicOps framework (see `
 - **Zero-friction capture** — ideas flow from the interface into the PKB without mode-switching
 - **Nothing lost** — every task, assumption, and knowledge node is searchable and surfaced when relevant
 
-### Design Principles
+## User Expectations
+
+### 1. Immediacy and Orientation
+
+The user expects to answer "What should I do now?" and "Where did I leave off?" within 30 seconds of opening the application. The Focus View and Dashboard must provide immediate entry points without requiring manual data sorting.
+
+### 2. ADHD-Centric Design
+
+The interface must be scannable, not studyable. Visual hierarchy (size, color, shape) must communicate priority and status before text is read. Dropped threads and active sessions must be prioritized to support context recovery.
+
+### 3. Graph Fidelity
+
+The Planning Web must be a high-fidelity projection of the underlying PKB. Changes made in the web interface (status, priority, relationships) must reflect in the markdown files near-instantly, and vice versa.
+
+### 4. Zero-Friction Capture
+
+The user expects to capture thoughts in under 5 seconds from any view. The Quick Capture mechanism must be omnipresent and require minimal metadata to succeed.
+
+### 5. Knowledge Integration
+
+Tasks should never appear in isolation. The user expects relevant knowledge (notes, citations, previous decisions) to be surfaced automatically based on the current task's context.
+
+### 6. Agency and Suggestion
+
+While the system provides focus scoring and agent-suggested actions, the user expects to maintain final authority over all task transitions and prioritizations. The UI should present "options for judgment," not "directives for compliance."
+
+## Design Principles
 
 1. **Effectuation over causation.** The UI doesn't demand top-down planning. It supports bottom-up emergence: fragments arrive, get placed, and structure reveals itself.
 2. **Progressive disclosure.** Default view shows 3-5 actionable items. Complexity is available but never forced.
