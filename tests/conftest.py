@@ -1256,19 +1256,11 @@ def claude_headless_tracked(tmp_path):
         cwd: Path | None = None,
         fail_on_error: bool = True,
     ) -> tuple[dict, str, list[dict]]:
-        """Run claude with session tracking.
+        """Run claude with session tracking."""
+        import os
+        import json
+        import uuid
 
-        Args:
-            prompt: Prompt to send
-            model: Model to use (default: haiku)
-            timeout_seconds: Command timeout
-            permission_mode: Permission mode (default: bypassPermissions)
-            cwd: Working directory (defaults to /tmp/claude-test for exclusion from transcription)
-            fail_on_error: If True (default), pytest.fail() on session failure
-
-        Returns:
-            Tuple of (result dict, session_id, tool_calls list)
-        """
         session_id = str(uuid.uuid4())
 
         # Get aops-core plugin directory for agent availability
