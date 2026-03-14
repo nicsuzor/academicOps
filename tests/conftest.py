@@ -53,7 +53,7 @@ def gemini_home(tmp_path_factory) -> Path:
         check=False,
     )
     if build_result.returncode != 0:
-        pytest.skip(
+        pytest.fail(
             f"Gemini extension build failed (exit {build_result.returncode}): "
             f"{build_result.stderr[:200]}"
         )
@@ -94,13 +94,13 @@ def gemini_home(tmp_path_factory) -> Path:
     # This is safer than manual symlinking as it might update internal registries
     dist_gemini = repo_root / "dist" / "aops-gemini"
     if not dist_gemini.exists():
-        pytest.skip(
+        pytest.fail(
             f"Build artifact not found: {dist_gemini}. "
             "Expected build.py to produce dist/aops-gemini."
         )
 
     if not shutil.which("gemini"):
-        pytest.skip("gemini CLI not found in PATH - requires Gemini CLI installed")
+        pytest.fail("gemini CLI not found in PATH - requires Gemini CLI installed")
 
     # Set GEMINI_CLI_HOME env for the link command
     env = os.environ.copy()
@@ -120,6 +120,19 @@ def gemini_home(tmp_path_factory) -> Path:
         )
 
     return tmp_home
+
+
+_ORIGINAL_AOPS_SESSIONS = os.environ.get("AOPS_SESSIONS")
+_ORIGINAL_ACA_DATA = os.environ.get("ACA_DATA")
+
+
+@pytest.fixture(scope="session")
+def original_env():
+    """Returns a dictionary containing original environment variables before they were patched."""
+    return {
+        "AOPS_SESSIONS": _ORIGINAL_AOPS_SESSIONS,
+        "ACA_DATA": _ORIGINAL_ACA_DATA,
+    }
 
 
 @pytest.fixture(autouse=True)
@@ -160,7 +173,7 @@ def skip_demo_in_xdist(request):
     Run demo tests with: pytest -m demo -n 0
     """
     if "demo" in request.keywords and _is_xdist_worker():
-        pytest.skip("Demo tests require -n 0 for visible output. Run: pytest -m demo -n 0")
+        pytest.fail("Demo tests require -n 0 for visible output. Run: pytest -m demo -n 0")
 
 
 @pytest.fixture
@@ -615,7 +628,7 @@ def claude_headless():
     """
     # Skip test if claude CLI not available
     if not _claude_cli_available():
-        pytest.skip("claude CLI not found in PATH - requires Claude Code CLI installed")
+        pytest.fail("claude CLI not found in PATH - requires Claude Code CLI installed")
 
     return _make_failing_wrapper(run_claude_headless)
 
@@ -803,7 +816,7 @@ def gemini_headless(gemini_home):
     """
     # Skip test if gemini CLI not available
     if not _gemini_cli_available():
-        pytest.skip("gemini CLI not found in PATH - requires Gemini CLI installed")
+        pytest.fail("gemini CLI not found in PATH - requires Gemini CLI installed")
 
     def _run(prompt, **kwargs):
         return run_gemini_headless(prompt, gemini_home=gemini_home, **kwargs)
@@ -833,11 +846,11 @@ def cli_headless(request, gemini_home):
 
     if platform == "claude":
         if not _claude_cli_available():
-            pytest.skip("claude CLI not found in PATH")
+            pytest.fail("claude CLI not found in PATH")
         return _make_failing_wrapper(run_claude_headless), "claude"
     else:
         if not _gemini_cli_available():
-            pytest.skip("gemini CLI not found in PATH")
+            pytest.fail("gemini CLI not found in PATH")
 
         def _run_gemini(prompt, **kwargs):
             return run_gemini_headless(prompt, gemini_home=gemini_home, **kwargs)
@@ -1204,7 +1217,7 @@ def claude_headless_tracked():
 
     # Skip test if claude CLI not available
     if not _claude_cli_available():
-        pytest.skip("claude CLI not found in PATH - requires Claude Code CLI installed")
+        pytest.fail("claude CLI not found in PATH - requires Claude Code CLI installed")
 
     def _run_tracked(
         prompt: str,

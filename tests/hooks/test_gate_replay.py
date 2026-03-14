@@ -321,8 +321,7 @@ class TestHookLogDiscovery:
     def test_hook_logs_exist_and_parseable(self):
         """Verify that hook log files exist and contain valid JSON."""
         hook_files = self._find_hook_logs()
-        if not hook_files:
-            pytest.skip("No hook log files found (expected in CI)")
+        assert hook_files, "No hook log files found in ~/.claude/projects/ (expected in CI)"
 
         # At least one file should parse successfully
         parsed_any = False
@@ -338,8 +337,7 @@ class TestHookLogDiscovery:
                     assert "verdict" in event["output"]
                 break
 
-        if not parsed_any:
-            pytest.skip("No hook log files could be parsed")
+        assert parsed_any, "No hook log files could be parsed"
 
     def test_replay_real_pretooluse_from_disk(self, router):
         """Replay PreToolUse events from actual disk logs through gate system.
@@ -350,8 +348,7 @@ class TestHookLogDiscovery:
         specific verdicts (which depend on gate state at the time).
         """
         hook_files = self._find_hook_logs()
-        if not hook_files:
-            pytest.skip("No hook log files found (expected in CI)")
+        assert hook_files, "No hook log files found in ~/.claude/projects/ (expected in CI)"
 
         # Find the richest file
         best_file = None
@@ -362,8 +359,7 @@ class TestHookLogDiscovery:
                 best_count = len(events)
                 best_file = f
 
-        if best_file is None or best_count == 0:
-            pytest.skip("No PreToolUse events found in hook logs")
+        assert best_file is not None and best_count > 0, "No PreToolUse events found in hook logs"
 
         events = self._parse_pretooluse_events(best_file, limit=50)
         state = SessionState.create("test-disk-replay")
@@ -395,8 +391,7 @@ class TestHookLogDiscovery:
         events and replays them under hostile gate state.
         """
         hook_files = self._find_hook_logs()
-        if not hook_files:
-            pytest.skip("No hook log files found (expected in CI)")
+        assert hook_files, "No hook log files found in ~/.claude/projects/ (expected in CI)"
 
         compliance_events = []
         for f in hook_files[:10]:
@@ -417,8 +412,7 @@ class TestHookLogDiscovery:
             if len(compliance_events) >= 20:
                 break
 
-        if not compliance_events:
-            pytest.skip("No compliance agent PreToolUse events found in logs")
+        assert compliance_events, "No compliance agent PreToolUse events found in logs"
 
         state = SessionState.create("test-compliance-disk")
         state.gates["hydration"].status = GateStatus.CLOSED
@@ -679,8 +673,11 @@ class TestTempPathValidation:
     3. Named with a predictable pattern for session isolation
     """
 
-    def test_claude_gate_path_under_claude_projects(self, monkeypatch):
+    def test_claude_gate_path_under_claude_projects(self, monkeypatch, tmp_path):
         """Claude gate files should be under ~/.claude/projects/."""
+        # Mock home to tmp_path
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+        
         monkeypatch.setenv("CLAUDE_PROJECT_DIR", "/Users/test/src/myproject")
         # Clear any cached env vars
         monkeypatch.delenv("AOPS_GATE_FILE_HYDRATION", raising=False)
@@ -720,13 +717,17 @@ class TestTempPathValidation:
         assert path == test_gate_file
         assert path.parent.exists(), f"Gate file parent directory must exist: {path.parent}"
 
-    def test_gate_path_not_in_tmp(self, monkeypatch):
+    def test_gate_path_not_in_tmp(self, monkeypatch, tmp_path):
         """Gate files should NOT be in /tmp (not readable across session restarts).
 
         Gate files in /tmp would be lost on reboot, making them unreliable
         for long-running sessions.
         """
+        # Mock home to tmp_path
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+
         monkeypatch.setenv("CLAUDE_PROJECT_DIR", "/Users/test/src/myproject")
+
         monkeypatch.delenv("AOPS_GATE_FILE_HYDRATION", raising=False)
         monkeypatch.delenv("GEMINI_SESSION_ID", raising=False)
         monkeypatch.delenv("AOPS_SESSION_STATE_DIR", raising=False)

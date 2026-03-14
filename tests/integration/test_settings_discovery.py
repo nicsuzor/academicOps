@@ -43,8 +43,7 @@ def test_settings_json_discoverable_by_claude(bots_dir: Path) -> None:
     user_exists = user_settings.exists()
     project_exists = project_settings.exists()
 
-    if not (user_exists or project_exists):
-        pytest.skip("No settings.json found (expected for CI/fresh environments)")
+    assert user_exists or project_exists, "No settings.json found at ~/.claude/settings.json or project root"
 
     # Determine which settings file to validate
     settings_path = user_settings if user_exists else project_settings
@@ -70,13 +69,9 @@ def test_settings_json_discoverable_by_claude(bots_dir: Path) -> None:
         raise AssertionError(msg) from e
 
     # Validate SessionStart hooks are configured
-    if "hooks" not in config:
-        pytest.skip("settings.json missing 'hooks' section (expected for CI/fresh environments)")
+    assert "hooks" in config, f"settings.json at {settings_path} missing 'hooks' section"
 
-    if "SessionStart" not in config["hooks"]:
-        pytest.skip(
-            "settings.json missing 'SessionStart' hooks (expected for CI/fresh environments)"
-        )
+    assert "SessionStart" in config["hooks"], f"settings.json at {settings_path} missing 'SessionStart' hooks"
 
     session_start_hooks = config["hooks"]["SessionStart"]
     assert isinstance(session_start_hooks, list), (

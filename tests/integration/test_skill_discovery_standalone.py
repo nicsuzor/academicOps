@@ -18,22 +18,16 @@ def test_symlink_structure():
     print("Testing symlink structure...")
 
     skills_path = Path.home() / ".claude" / "skills"
-    if not skills_path.exists():
-        print("⚠️  SKIP: ~/.claude/skills/ does not exist")
-        pytest.skip("~/.claude/skills/ does not exist - local setup only")
+    assert skills_path.exists(), "~/.claude/skills/ does not exist"
 
     # Update to check for framework skill scripts instead of tasks skill scripts
     framework_scripts = skills_path / "framework" / "scripts"
-    if not framework_scripts.exists():
-        print(f"⚠️  SKIP: {framework_scripts} does not exist")
-        pytest.skip(f"{framework_scripts} does not exist - local setup only")
+    assert framework_scripts.exists(), f"{framework_scripts} does not exist"
 
     required_scripts = ["validate_docs.py"]
     for script in required_scripts:
         script_path = framework_scripts / script
-        if not script_path.exists():
-            print(f"⚠️  SKIP: {script} not found at {script_path}")
-            pytest.skip(f"{script} not found - local setup only")
+        assert script_path.exists(), f"{script} not found at {script_path}"
         print(f"  ✓ Found: {script}")
 
     print("✅ PASS: All required scripts exist via symlink")
@@ -46,9 +40,7 @@ def test_aops_env_var():
     print("\nTesting AOPS environment variable...")
 
     aops = os.environ.get("AOPS")
-    if not aops:
-        print("⚠️  SKIP: AOPS environment variable not set")
-        pytest.skip("AOPS environment variable not set - local setup only")
+    assert aops, "AOPS environment variable not set"
 
     aops_path = Path(aops)
     if not aops_path.exists():
@@ -74,15 +66,11 @@ def test_script_execution_from_writing():
         print(f"⚠️  ACA_DATA not set, using CWD: {aca_data}")
 
     data_dir = Path(aca_data)
-    if not data_dir.exists():
-        print(f"⚠️  SKIP: Writing root does not exist: {data_dir}")
-        pytest.skip(f"Writing root does not exist: {data_dir}")
+    assert data_dir.exists(), f"Writing root does not exist: {data_dir}"
 
     # Build command - use validate_docs.py instead of task_view.py
     script_path = Path.home() / ".claude" / "skills" / "framework" / "scripts" / "validate_docs.py"
-    if not script_path.exists():
-        print(f"⚠️  SKIP: Script not found: {script_path}")
-        pytest.skip(f"Script not found: {script_path} - local setup only")
+    assert script_path.exists(), f"Script not found at {script_path}"
 
     aops = os.environ.get("AOPS")
     # validate_docs.py supports --help
@@ -139,26 +127,18 @@ def test_symlink_points_to_aops():
     print("\nTesting symlink resolution...")
 
     aops = os.environ.get("AOPS")
-    if not aops:
-        print("⚠️  SKIP: AOPS not set")
-        pytest.skip("AOPS not set - local setup only")
+    assert aops, "AOPS environment variable not set"
 
     # Update path to framework scripts within aops-core
     aops_scripts = Path(aops) / "aops-core" / "skills" / "framework" / "scripts"
     symlink_scripts = Path.home() / ".claude" / "skills" / "framework" / "scripts"
 
     aops_scripts_alt = Path(aops) / "skills" / "framework" / "scripts"
-    if not aops_scripts.exists() and not aops_scripts_alt.exists():
-        print(f"⚠️  SKIP: AOPS scripts don't exist: {aops_scripts} and {aops_scripts_alt}")
-        pytest.skip(
-            f"AOPS scripts don't exist: {aops_scripts} and {aops_scripts_alt} - local setup only"
-        )
-    elif aops_scripts_alt.exists():
+    assert aops_scripts.exists() or aops_scripts_alt.exists(), f"AOPS scripts don't exist: {aops_scripts} and {aops_scripts_alt}"
+    if aops_scripts_alt.exists() and not aops_scripts.exists():
         aops_scripts = aops_scripts_alt
 
-    if not symlink_scripts.exists():
-        print(f"⚠️  SKIP: Symlink scripts don't exist: {symlink_scripts}")
-        pytest.skip("Symlink scripts don't exist - local setup only")
+    assert symlink_scripts.exists(), f"Symlink scripts don't exist: {symlink_scripts}"
 
     # Resolve both paths
     aops_resolved = aops_scripts.resolve()
