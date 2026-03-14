@@ -7,7 +7,7 @@ status: active
 tier: polecat
 depends_on: []
 created: '2026-02-12'
-modified: '2026-02-12'
+modified: '2026-03-12'
 parent: aops-core-1dcb461d
 tags:
 - framework
@@ -29,6 +29,31 @@ Complete lifecycle for non-interactive agent operation: task selection through P
 3. **Fail loudly** - No silent failures; every error surfaces to observable state
 4. **Human-in-the-loop gates** - Automation proposes, humans approve (at PR, not at plan)
 5. **Task body is the audit trail** - No separate observability infrastructure; agents append to task bodies as they work
+
+## User Expectations
+
+### Phase 1: Decomposition & Review
+
+- **Accuracy**: Users can rely on the supervisor to decompose large tasks into logical, PR-sized units that follow project conventions.
+- **Transparency**: Users can see the full rationale for decomposition and any reviewer concerns directly in the task body before approving.
+- **Fail-Fast**: If a task cannot be decomposed within 10 iterations, the system must escalate it to the user with a diagnostic rather than continuing indefinitely.
+
+### Phase 2: Approval & Dispatch
+
+- **Control**: No code-modifying worker will start until a human has explicitly approved the plan in the daily note or via CLI.
+- **Isolation**: Every worker session is isolated in its own git worktree with a fresh `uv` environment, preventing cross-task contamination.
+- **Observability**: Users can see which worker is claiming a task and track its progress (current step, files touched) in real-time via the task body.
+
+### Phase 3: PR & Merge
+
+- **Quality**: All PRs submitted by workers must pass automated CI checks and a multi-agent review (Custodiet + Critic) before being marked as `merge_ready`.
+- **Merge Gate**: Users retain the final decision to merge any PR; auto-merge is only used for clean, pre-approved maintenance tasks.
+- **Lifecycle Sync**: Merging a PR on GitHub automatically marks the associated task as `done` and triggers knowledge capture.
+
+### Phase 4: Knowledge & Follow-up
+
+- **Retention**: Structured learnings (decisions, mistakes, patterns) are extracted from every completed task and persisted to the knowledge base.
+- **Continuity**: Technical debt or required improvements identified during execution are automatically captured as follow-up tasks in the `pending` queue.
 
 ## What Is Code vs What Is Prompt
 
