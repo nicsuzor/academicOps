@@ -2,7 +2,7 @@
 """Integration tests for prompt hydration system.
 
 Consolidated from 9 slow tests to 2 essential tests.
-Tests the UserPromptSubmit hook -> temp file -> prompt-hydrator subagent pipeline.
+Tests the UserPromptSubmit hook -> temp file -> task-hydrator subagent pipeline.
 """
 
 import re
@@ -32,8 +32,8 @@ def test_hydrator_does_not_answer_user_questions(
     bug_indicators = [".zshrc", ".bashrc", ".config/", "PS1=", "Read(file_path=", "Grep(pattern="]
 
     if (
-        'subagent_type":"aops-core:prompt-hydrator"' in output
-        or 'subagent_type":"prompt-hydrator"' in output
+        'subagent_type":"aops-core:task-hydrator"' in output
+        or 'subagent_type":"task-hydrator"' in output
     ):
         hydrator_result_pattern = r'"type":"tool_result".*?"content":"(.*?)"'
         matches = re.findall(hydrator_result_pattern, output, re.DOTALL)
@@ -49,12 +49,10 @@ def test_hydrator_does_not_answer_user_questions(
         c
         for c in tool_calls
         if c["name"] == "Task"
-        and "prompt-hydrator" in str(c.get("input", {}).get("subagent_type", ""))
+        and "task-hydrator" in str(c.get("input", {}).get("subagent_type", ""))
     ]
 
-    assert len(hydrator_calls) > 0, (
-        f"prompt-hydrator should have been spawned. Session: {session_id}"
-    )
+    assert len(hydrator_calls) > 0, f"task-hydrator should have been spawned. Session: {session_id}"
 
 
 @pytest.mark.slow
@@ -82,11 +80,11 @@ def test_directive_disguised_as_question_routes_to_feature_dev(
         c
         for c in tool_calls
         if c["name"] == "Task"
-        and "prompt-hydrator" in str(c.get("input", {}).get("subagent_type", ""))
+        and "task-hydrator" in str(c.get("input", {}).get("subagent_type", ""))
     ]
 
     assert len(hydrator_calls) > 0, (
-        f"prompt-hydrator should have been spawned for directive prompt. Session: {session_id}"
+        f"task-hydrator should have been spawned for directive prompt. Session: {session_id}"
     )
 
     simple_question_selected = (
