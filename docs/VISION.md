@@ -29,9 +29,9 @@ The framework itself is the research instrument. We dogfood it daily, observe wh
 
 A constitutional automation framework for academic work. academicOps operates through four mechanisms:
 
-### 1. Synchronous workflow enforcement (local, real-time)
+### 1. Local session guardrails (real-time)
 
-In every local session, the framework defines and enforces universal and modular workflows. Hooks, the hydrator, and custodiet ensure agents use the skills we provide and follow the procedures we define — in real time, as work happens.
+In every local session, the framework provides structural guardrails and task enrichment. Hooks enforce structural constraints (data boundaries, fail-fast). The hydrator enriches Task Graph nodes with execution context so workers have everything they need. Custodiet detects drift during execution. Quality of outputs is verified asynchronously at boundaries (see §2), not by controlling how agents execute.
 
 - SessionStart loads principles ([[AXIOMS.md|AXIOMS]], [[HEURISTICS.md|HEURISTICS]])
 - Prompt hydration enriches Task Graph nodes with execution context (memories, workflow steps, acceptance criteria, guardrails)
