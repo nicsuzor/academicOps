@@ -7,8 +7,7 @@ ENV AOPS=/app \
     UV_INSTALL_DIR=/usr/local/bin \
     PATH="/root/.local/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
-    NODE_VERSION=22 \
-    UV_DYNAMIC_VERSIONING_OVERRIDE="0.1.0"
+    NODE_VERSION=22
 
 # Install system dependencies (including Node.js for Claude/Gemini CLIs and GitHub CLI)
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -44,16 +43,6 @@ RUN uv sync --frozen --no-install-project --no-dev
 
 # Copy the rest of the application
 COPY . .
-
-# Remove any copied worktree .git file and init a fresh dummy repo
-# This is required for uv-dynamic-versioning to work in a container build
-RUN rm -rf .git && \
-    git init && \
-    git config user.email "bot@example.com" && \
-    git config user.name "Bot" && \
-    git add . && \
-    git commit -m "initial" && \
-    git tag v0.1.0
 
 # Final sync to install the project itself
 RUN uv sync --frozen --no-dev

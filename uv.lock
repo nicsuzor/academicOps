@@ -8,6 +8,7 @@ resolution-markers = [
 
 [[package]]
 name = "academicops"
+version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
@@ -78,7 +79,7 @@ requires-dist = [
     { name = "streamlit", marker = "extra == 'viz'", specifier = ">=1.54.0" },
     { name = "streamlit-agraph", marker = "extra == 'viz'", specifier = ">=0.0.45" },
 ]
-provides-extras = ["analysis", "anthropic", "notify", "ogdf", "viz"]
+provides-extras = ["viz", "ogdf", "analysis", "notify", "anthropic"]
 
 [package.metadata.requires-dev]
 dev = [
