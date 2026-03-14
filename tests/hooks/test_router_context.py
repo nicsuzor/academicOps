@@ -535,7 +535,8 @@ class TestExtractRouterContextDemo:
 
         # Find real session transcripts
         session_dir = Path.home() / ".claude/projects/-Users-suzor-src-academicOps"
-        assert session_dir.exists(), f"No session directory found at {session_dir}"
+        if not session_dir.exists():
+            pytest.skip(f"No session directory found at {session_dir}")
 
         sessions = sorted(
             [s for s in session_dir.glob("*.jsonl") if not s.name.startswith("agent-")],
@@ -543,7 +544,8 @@ class TestExtractRouterContextDemo:
             reverse=True,
         )
 
-        assert sessions, f"No session files found in {session_dir}"
+        if not sessions:
+            pytest.skip(f"No session files found in {session_dir}")
 
         current = sessions[0]
         log.info("=" * 70)

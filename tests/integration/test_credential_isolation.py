@@ -488,7 +488,8 @@ class TestClaudeCredentialIsolation:
 
     @pytest.fixture(autouse=True)
     def _require_claude(self):
-        assert shutil.which("claude"), "claude CLI not found in PATH"
+        if not shutil.which("claude"):
+            pytest.skip("claude CLI not found in PATH")
 
     def test_claude_session_gets_bot_token(self, credential_markers, output_file, tmp_path):
         """Claude's Bash tool should see GH_TOKEN = AOPS_BOT_GH_TOKEN.
@@ -575,7 +576,8 @@ class TestGeminiCredentialIsolation:
 
     @pytest.fixture(autouse=True)
     def _require_gemini(self):
-        assert shutil.which("gemini"), "gemini CLI not found in PATH"
+        if not shutil.which("gemini"):
+            pytest.skip("gemini CLI not found in PATH")
 
     @pytest.fixture
     def gemini_workdir(self, tmp_path):

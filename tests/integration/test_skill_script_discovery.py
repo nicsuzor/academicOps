@@ -46,14 +46,15 @@ def mock_home(tmp_path, monkeypatch):
 def test_skill_scripts_exist_via_symlink():
     """Test that skill scripts are accessible via ~/.claude/skills/ symlink."""
     skills_path = Path.home() / ".claude" / "skills"
-    assert skills_path.exists(), "~/.claude/skills/ not found"
+    if not skills_path.exists():
+        pytest.skip("~/.claude/skills/ not found - local setup only")
     assert skills_path.is_symlink() or skills_path.is_dir(), (
         "~/.claude/skills/ should be symlink or directory"
     )
 
     framework_skill_path = skills_path / "framework"
-    assert framework_skill_path.exists(), "~/.claude/skills/framework/ not found"
-    assert framework_skill_path.exists(), "~/.claude/skills/framework/ should exist"
+    if not framework_skill_path.exists():
+        pytest.skip("~/.claude/skills/framework/ not found - local setup only")
 
     scripts_path = framework_skill_path / "scripts"
     assert scripts_path.exists(), "~/.claude/skills/framework/scripts/ should exist"
@@ -69,10 +70,12 @@ def test_skill_scripts_exist_via_symlink():
 def test_framework_script_runs_from_writing_repo(data_dir):
     """Test that framework scripts execute correctly from writing repo."""
     script_path = Path.home() / ".claude" / "skills" / "framework" / "scripts" / "validate_docs.py"
-    assert script_path.exists(), f"Script not found at {script_path}"
+    if not script_path.exists():
+        pytest.skip(f"Script not found at {script_path} - local setup only")
 
     aops = os.environ.get("AOPS")
-    assert aops, "AOPS environment variable not set"
+    if not aops:
+        pytest.skip("AOPS environment variable not set - local setup only")
 
     cmd = ["uv", "run", "python", str(script_path), "--help"]
     env = os.environ.copy()
@@ -98,14 +101,16 @@ def test_framework_script_runs_from_writing_repo(data_dir):
 def test_skill_self_contained_architecture():
     """Test that skills are self-contained with their own scripts."""
     aops = os.environ.get("AOPS")
-    assert aops, "AOPS environment variable not set"
+    if not aops:
+        pytest.skip("AOPS environment variable not set - local setup only")
 
     aops_path = Path(aops)
     scripts_in_aops = aops_path / "aops-core" / "skills" / "framework" / "scripts"
     assert scripts_in_aops.exists(), f"Scripts should exist in AOPS: {scripts_in_aops}"
 
     symlink_path = Path.home() / ".claude" / "skills" / "framework" / "scripts"
-    assert symlink_path.exists(), f"Symlink path not found at {symlink_path}"
+    if not symlink_path.exists():
+        pytest.skip(f"Symlink path not found at {symlink_path} - local setup only")
 
     symlink_resolved = symlink_path.resolve()
     scripts_resolved = scripts_in_aops.resolve()

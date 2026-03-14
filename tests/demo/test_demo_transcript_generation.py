@@ -55,7 +55,8 @@ class TestTranscriptGenerationDemo:
         print("\n--- STEP 1: Session Discovery ---")
         projects_dir = Path.home() / ".claude" / "projects"
 
-        assert projects_dir.exists(), f"Claude projects directory not found at {projects_dir}"
+        if not projects_dir.exists():
+            pytest.skip(f"Claude projects directory not found at {projects_dir}")
 
         print(f"Scanning: {projects_dir}")
         session_files = list(projects_dir.rglob("*.jsonl"))
@@ -67,7 +68,8 @@ class TestTranscriptGenerationDemo:
             if not f.name.endswith("-hooks.jsonl") and "subagent" not in str(f)
         ]
 
-        assert session_files, f"No main session files found in {projects_dir}"
+        if not session_files:
+            pytest.skip(f"No main session files found in {projects_dir}")
 
         print(f"Found {len(session_files)} session file(s)")
 
@@ -107,9 +109,8 @@ class TestTranscriptGenerationDemo:
 
         # Find files meeting minimum size - prefer larger files for realistic demos
         large_enough = [(f, s) for f, s in session_files_with_size if s >= MIN_SIZE]
-        assert large_enough, (
-            f"No session files >= {MIN_SIZE} bytes found. Cannot run realistic demo."
-        )
+        if not large_enough:
+            pytest.skip(f"No session files >= {MIN_SIZE} bytes found")
 
         # Use most recent among those large enough
         session_file = max([f for f, _ in large_enough], key=lambda f: f.stat().st_mtime)
