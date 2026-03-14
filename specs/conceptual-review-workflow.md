@@ -17,11 +17,15 @@ related:
 
 ## Giving Effect
 
-_No implementation yet. This spec defines a general-purpose iterative review pattern for intellectual artifacts._
+The conceptual review pattern is implemented through the following framework components:
 
-- [[specs/effectual-planning-agent.md]] -- upstream dependency (strategic planning under uncertainty)
-- [[specs/non-interactive-agent-workflow-spec.md]] -- agent lifecycle (Phase 1 decomposition protocol)
-- [[specs/research-decomposition.md]] -- downstream domain application (research project planning instantiates this workflow)
+- **Asynchronous PR Review**: The [[.github/workflows/agent-assessor.yml|Assessor Agent]] performs strategic review on pull requests, evaluating alignment and assumptions.
+- **Axiom Compliance**: The [[.github/workflows/agent-auditor.yml|Auditor Agent]] performs mechanical rule-checking (Axioms/Heuristics).
+- **In-Session Criticality**: The [[.agent/skills/critic/SKILL.md|Critic Skill]] provides skeptical second-opinion review of plans and conclusions during interactive sessions.
+- **Orchestration**: [[specs/pr-pipeline-v2.md|PR Pipeline v2]] manages the convergence loop via GitHub's native PR review system.
+- **Upstream/Downstream**:
+  - [[specs/effectual-planning-agent.md]] -- upstream; strategic planning under uncertainty.
+  - [[specs/research-decomposition.md]] -- downstream; domain-specific application of the review pattern.
 
 ## Motivation
 
@@ -52,6 +56,27 @@ A framework contributor has written a spec, design doc, or manuscript draft. The
 A researcher or team member has written a proposal -- a grant application, project plan, or design brief -- and wants to know if the argument holds together before submitting. They need a review that tests whether the assumptions are identified, the method matches the question, and the scope is realistic. The system applies domain-appropriate lenses (assumption hygiene, feasibility, strategic alignment) and returns a prioritised critique with proposed resolutions, so the author can revise with confidence rather than anxiety.
 
 > **Coherence check**: This serves the core academicOps mission -- externalise cognitive load so the researcher can focus on thinking, not planning. The general review layer also serves the framework's self-reflexive architecture: using the system to improve the system.
+
+## User Expectations
+
+**What to expect from the system:**
+
+1. **Automated Strategic Review**: Every pull request proposing changes to intellectual artifacts (specs, plans, designs) will automatically receive a strategic review from the **Assessor** agent.
+   - _Test_: A PR is opened; the `Agent: Review & Fix` workflow runs and posts a `gh pr review` with a summary of findings.
+2. **Depth Over Breadth**: The reviewer will focus on 1-3 high-impact concerns rather than a checklist of minor issues. It prioritises **strategic alignment** (fit with `docs/VISION.md`), **assumption hygiene** (surfacing untested foundations), and **self-consistency**.
+   - _Test_: The review body contains a "Needs attention" section with at most 3 prioritised items.
+3. **Mandatory Resolutions**: Every concern raised by the reviewer will include a specific proposed resolution.
+   - _Test_: Every item in the "Needs attention" section is followed by a "Propose resolution" or similar actionable instruction.
+4. **In-Session Criticality**: Major plans and conclusions developed during interactive sessions will be "stress-tested" by a second agent perspective (the **Critic**) before being finalized.
+   - _Test_: Using the `/planning` or `/meta` skills triggers a "Critic Review" block in the session output.
+5. **Convergence via Interaction**: Addressing concerns (via code changes) or providing a reasoned **User Override** (e.g., "accepting this risk because [reason]") will move the review toward approval.
+   - _Test_: After a user responds to a `REQUEST_CHANGES` review with a commit or comment, the next review pass recognizes the resolution or override.
+
+**How to interact with the review:**
+
+- **Prioritise the Lead Concern**: Address the most critical issue identified by the reviewer first.
+- **Engage with Proposals**: Accept, modify, or decline the reviewer's proposed resolutions with technical rationale.
+- **Provide Overrides**: If an assumption is known and accepted, explicitly state this in a comment or the artifact itself to terminate the critique thread.
 
 ## Composable Lens Registry
 

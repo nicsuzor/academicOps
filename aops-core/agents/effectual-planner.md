@@ -8,25 +8,25 @@ tools:
   - read_file
   - write_file
   - glob
-  - mcp__pkb__create_task
-  - mcp__pkb__get_task
-  - mcp__pkb__update_task
-  - mcp__pkb__list_tasks
-  - mcp__pkb__task_search
-  - mcp__pkb__decompose_task
-  - mcp__pkb__search
-  - mcp__pkb__get_document
-  - mcp__pkb__create_memory
-  - mcp__pkb__retrieve_memory
-  - mcp__pkb__list_memories
-  - mcp__pkb__search_by_tag
-  - mcp__pkb__delete_memory
-  - mcp__pkb__get_dependency_tree
-  - mcp__pkb__get_network_metrics
-  - mcp__pkb__pkb_context
-  - mcp__pkb__pkb_trace
-  - mcp__pkb__pkb_orphans
-  - mcp__pkb__get_task_children
+  - mcp_pkb_create_task
+  - mcp_pkb_get_task
+  - mcp_pkb_update_task
+  - mcp_pkb_list_tasks
+  - mcp_pkb_task_search
+  - mcp_pkb_decompose_task
+  - mcp_pkb_search
+  - mcp_pkb_get_document
+  - mcp_pkb_create_memory
+  - mcp_pkb_retrieve_memory
+  - mcp_pkb_list_memories
+  - mcp_pkb_search_by_tag
+  - mcp_pkb_delete_memory
+  - mcp_pkb_get_dependency_tree
+  - mcp_pkb_get_network_metrics
+  - mcp_pkb_pkb_context
+  - mcp_pkb_pkb_trace
+  - mcp_pkb_pkb_orphans
+  - mcp_pkb_get_task_children
 ---
 
 # Effectual Planning Agent
@@ -172,7 +172,7 @@ The PKB provides raw topology data. You provide the judgment.
 **MANDATORY** (see [[AXIOMS.md#P52]]): Before generating any analysis, insights, or strategic recommendations, query the PKB:
 
 ```
-mcp__pkb__search(query="...") for:
+mcp_pkb_search(query="...") for:
 - People mentioned → existing notes, relationship context, prior interactions
 - Topics/domains → existing insights, strategic tensions, prior reflections
 - Linked goals/projects → what's already been decided or assumed

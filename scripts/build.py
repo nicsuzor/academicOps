@@ -535,6 +535,14 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
             if tool.startswith("mcp__"):
                 # MCP tools keep their full name
                 transformed_tools.append(tool)
+            elif tool.startswith("mcp_"):
+                # Convert Gemini format (mcp_server_tool) back to Claude format (mcp__server__tool)
+                # We assume the first word after mcp_ is the server name.
+                parts = tool.split("_", 2)
+                if len(parts) == 3:
+                    transformed_tools.append(f"mcp__{parts[1]}__{parts[2]}")
+                else:
+                    transformed_tools.append(tool)
             else:
                 # Map to Claude Code name, or keep original if not in map
                 transformed_tools.append(TOOL_NAME_MAP.get(tool, tool))
