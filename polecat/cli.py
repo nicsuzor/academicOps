@@ -145,26 +145,28 @@ def save_worker_transcript(
         raise OSError(f"Failed to save transcript for task {task_id}: {e}") from e
 
 
-def _build_docker_cmd(cli_tool: str, work_dir: Path, env: dict, agent_cmd: list[str], is_interactive: bool) -> list[str]:
+def _build_docker_cmd(
+    cli_tool: str, work_dir: Path, env: dict, agent_cmd: list[str], is_interactive: bool
+) -> list[str]:
     """Wraps an agent command in a Docker run command with appropriate mounts."""
     # Use environment variable for image, or default to the one built by test-docker
     image = os.environ.get("POLECAT_DOCKER_IMAGE", "aops-env-test")
-    
+
     cmd = ["docker", "run", "--rm"]
-    
+
     # TTY allocation
     if is_interactive:
         cmd.append("-it")
     else:
         cmd.append("-i")
-        
+
     # User / Permissions (run as root in container to avoid uid mapping issues for now, or match host)
     # The sandbox image sets up /app, we mount into /workspace
-    
+
     # Mount worktree
     cmd.extend(["-v", f"{work_dir.resolve()}:/workspace"])
     cmd.extend(["-w", "/workspace"])
-    
+
     # Mount authentication for Claude
     home = Path.home()
     if cli_tool == "claude":
@@ -174,18 +176,23 @@ def _build_docker_cmd(cli_tool: str, work_dir: Path, env: dict, agent_cmd: list[
             cmd.extend(["-v", f"{claude_json}:/root/.claude.json"])
         if claude_dir.exists():
             cmd.extend(["-v", f"{claude_dir}:/root/.claude"])
-            
+
     # Add host networking for MCPs running on localhost
     cmd.extend(["--add-host", "host.docker.internal:host-gateway"])
-            
+
     # Forward specific environment variables
     for key, val in env.items():
-        if key.startswith("POLECAT_") or key in ("AOPS_BOT_GH_TOKEN", "GITHUB_TOKEN", "ANTHROPIC_API_KEY"):
+        if key.startswith("POLECAT_") or key in (
+            "AOPS_BOT_GH_TOKEN",
+            "GITHUB_TOKEN",
+            "ANTHROPIC_API_KEY",
+        ):
             cmd.extend(["-e", f"{key}={val}"])
-            
+
     cmd.append(image)
     cmd.extend(agent_cmd)
     return cmd
+
 
 def is_interactive() -> bool:
     """Check if we're running in an interactive terminal."""
