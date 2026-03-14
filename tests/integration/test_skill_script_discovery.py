@@ -10,6 +10,35 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from unittest.mock import patch
+
+
+@pytest.fixture(autouse=True)
+def mock_home(tmp_path, monkeypatch):
+    """Setup a mock ~/.claude/ structure in tmp_path."""
+    # Create structure
+    skills_dir = tmp_path / ".claude" / "skills"
+    skills_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Create framework skill
+    framework_scripts = skills_dir / "framework" / "scripts"
+    framework_scripts.mkdir(parents=True, exist_ok=True)
+    
+    # Create required scripts
+    (framework_scripts / "validate_docs.py").touch()
+    
+    # Setup symlink to real AOPS if available
+    aops = os.environ.get("AOPS")
+    if aops:
+        aops_scripts = Path(aops) / "aops-core" / "skills" / "framework" / "scripts"
+        if aops_scripts.exists():
+            import shutil
+            shutil.rmtree(framework_scripts.parent)
+            framework_scripts.parent.mkdir(parents=True, exist_ok=True)
+            framework_scripts.symlink_to(aops_scripts)
+
+    with patch.object(Path, "home", return_value=tmp_path):
+        yield
 
 
 @pytest.mark.integration

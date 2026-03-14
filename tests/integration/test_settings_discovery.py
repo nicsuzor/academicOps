@@ -68,17 +68,28 @@ def test_settings_json_discoverable_by_claude(bots_dir: Path) -> None:
         msg = f"Cannot read settings.json at {settings_path}: {e}"
         raise AssertionError(msg) from e
 
-    # Validate SessionStart hooks are configured
-    assert "hooks" in config, f"settings.json at {settings_path} missing 'hooks' section"
-
-    assert "SessionStart" in config["hooks"], f"settings.json at {settings_path} missing 'SessionStart' hooks"
-
-    session_start_hooks = config["hooks"]["SessionStart"]
-    assert isinstance(session_start_hooks, list), (
-        f"SessionStart hooks must be a list, got {type(session_start_hooks).__name__}"
+    # Validate SessionStart hooks are configured OR plugins are enabled
+    # Modern Claude Code uses plugins, which include their own hooks.
+    has_hooks = "hooks" in config and "SessionStart" in config["hooks"]
+    has_plugins = "enabledPlugins" in config
+    
+    assert has_hooks or has_plugins, (
+        f"settings.json at {settings_path} must have 'hooks' section "
+        "OR 'enabledPlugins' section."
     )
 
-    assert len(session_start_hooks) > 0, (
-        f"SessionStart hooks list is empty at {settings_path}.\n"
-        f"At least one SessionStart hook configuration is required."
-    )
+    if has_hooks:
+        session_start_hooks = config["hooks"]["SessionStart"]
+        assert isinstance(session_start_hooks, list), (
+            f"SessionStart hooks must be a list, got {type(session_start_hooks).__name__}"
+        )
+
+        assert len(session_start_hooks) > 0, (
+            f"SessionStart hooks list is empty at {settings_path}.\n"
+            f"At least one SessionStart hook configuration is required."
+        )
+    elif has_plugins:
+        # If using plugins, verify aops-core is enabled
+        plugins = config.get("enabledPlugins", {})
+        aops_enabled = any("aops-core" in name for name in plugins.keys())
+        assert aops_enabled, f"aops-core plugin not enabled in {settings_path}"

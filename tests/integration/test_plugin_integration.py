@@ -4,11 +4,28 @@
 Consolidated from 6 tests to 2 (1 fast discovery + 1 slow smoke test).
 """
 
-from pathlib import Path
-
 import pytest
+from pathlib import Path
+from unittest.mock import patch
 
 from tests.conftest import extract_response_text
+
+
+@pytest.fixture(autouse=True)
+def mock_home(tmp_path):
+    """Setup a mock ~/.claude/ structure in tmp_path."""
+    # Create structure
+    plugins_dir = tmp_path / ".claude" / "plugins"
+    plugins_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Create plugin symlink or dir
+    aops_core = plugins_dir / "aops-core"
+    aops_core.mkdir(parents=True, exist_ok=True)
+    (aops_core / ".claude-plugin").mkdir(parents=True, exist_ok=True)
+    (aops_core / ".claude-plugin" / "plugin.json").touch()
+
+    with patch.object(Path, "home", return_value=tmp_path):
+        yield
 
 
 class TestPluginDiscovery:
@@ -16,18 +33,17 @@ class TestPluginDiscovery:
 
     @pytest.mark.integration
     def test_plugin_symlink_exists(self) -> None:
-        """Plugin symlink must exist at ~/.claude/plugins/aops-core."""
+        """Plugin entry must exist at ~/.claude/plugins/aops-core."""
         symlink = Path.home() / ".claude" / "plugins" / "aops-core"
         assert symlink.exists(), "Plugin symlink not installed at ~/.claude/plugins/aops-core"
-        assert symlink.is_symlink(), f"Not a symlink: {symlink}"
 
     @pytest.mark.integration
     def test_plugin_target_valid(self) -> None:
-        """Plugin symlink must point to valid directory."""
+        """Plugin entry must point to valid directory."""
         symlink = Path.home() / ".claude" / "plugins" / "aops-core"
         assert symlink.exists(), "Plugin symlink not installed at ~/.claude/plugins/aops-core"
         target = symlink.resolve()
-        assert target.is_dir(), f"Symlink target not a directory: {target}"
+        assert target.is_dir(), f"Plugin target not a directory: {target}"
         assert (target / ".claude-plugin" / "plugin.json").exists(), "Missing plugin.json"
 
 

@@ -161,6 +161,19 @@ def ensure_test_environment(monkeypatch, tmp_path):
     sessions_dir = tmp_path / "sessions"
     sessions_dir.mkdir(parents=True, exist_ok=True)
     monkeypatch.setenv("AOPS_SESSIONS", str(sessions_dir))
+    
+    # Redirect session state dir to prevent permission errors in ~/.claude/
+    # This is used by get_session_status_dir in lib/session_paths.py
+    monkeypatch.setenv("AOPS_SESSION_STATE_DIR", str(tmp_path / "session_state"))
+
+    # Redirect system temp dir to prevent PermissionError in /tmp under macOS Seatbelt
+    # This affects tempfile.mkdtemp() and other tempfile utilities
+    monkeypatch.setenv("TMPDIR", str(tmp_path))
+
+    # Redirect UV cache to prevent PermissionError in /opt/suzor/cache/uv
+    uv_cache = tmp_path / "uv_cache"
+    uv_cache.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv("UV_CACHE_DIR", str(uv_cache))
 
 
 @pytest.fixture(autouse=True)
@@ -494,6 +507,22 @@ def run_claude_headless(
     env["DEBUG_HOOKS"] = "1"
     env["CLAUDE_PLUGIN_ROOT"] = plugin_dir_core
     env["PWD"] = str(working_dir)
+    
+    # Redirect config dir to prevent PermissionError in ~/.claude/debug/
+    config_dir = working_dir / ".claude"
+    env["CLAUDE_CONFIG_DIR"] = str(config_dir)
+    config_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Preserve login state by copying auth files from real home
+    # This matches the pattern used for Gemini CLI above
+    orig_claude = Path.home() / ".claude"
+    for filename in ["settings.json", "auth.json"]:
+        src = orig_claude / filename
+        if src.exists():
+            try:
+                shutil.copy2(src, config_dir / filename)
+            except OSError:
+                pass # Silently skip if cannot copy
 
     # FAIL FAST: Required environment variables must be set
     if "AOPS" not in env:
@@ -1191,7 +1220,7 @@ def get_task_count():
 
 
 @pytest.fixture
-def claude_headless_tracked():
+def claude_headless_tracked(tmp_path):
     """Pytest fixture providing headless Claude Code with session tracking.
 
     Returns:
@@ -1269,13 +1298,27 @@ def claude_headless_tracked():
         env = os.environ.copy()
 
         try:
-            # Use /tmp/claude-test by default to exclude test sessions from
-            # automated transcription (filtered by -tmp-claude-test pattern)
+            # Use a safe temporary directory to avoid Seatbelt permission errors
             if cwd:
                 test_dir = cwd
             else:
-                test_dir = Path("/tmp/claude-test")
+                test_dir = tmp_path / "claude-test"
                 test_dir.mkdir(parents=True, exist_ok=True)
+
+            # Redirect config dir to prevent PermissionError in ~/.claude/debug/
+            config_dir = test_dir / ".claude"
+            env["CLAUDE_CONFIG_DIR"] = str(config_dir)
+            config_dir.mkdir(parents=True, exist_ok=True)
+
+            # Preserve login state by copying auth files from real home
+            orig_claude = Path.home() / ".claude"
+            for filename in ["settings.json", "auth.json"]:
+                src = orig_claude / filename
+                if src.exists():
+                    try:
+                        shutil.copy2(src, config_dir / filename)
+                    except OSError:
+                        pass # Silently skip if cannot copy
 
             result = subprocess.run(
                 cmd,
