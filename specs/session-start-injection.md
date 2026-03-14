@@ -104,6 +104,15 @@ Tier 3: JIT Injection (prompt-hydrator or on-demand)
 - Load only what the current task requires
 - Hydrator decides relevance, not session-start hooks
 
+## User Expectations
+
+1. **Low Latency**: Sessions start instantly. Large framework files (Axioms, Heuristics, and full Skill documentation) are NOT loaded until a specific task requires them.
+2. **Just-In-Time Context**: Relevant skills, workflows, and rules are surfaced automatically by the `prompt-hydrator` when your prompt matches a known pattern.
+3. **No Exploration Overhead**: Agents receive the necessary paths, tool definitions, and documentation for their current task without needing to manually `grep` or `find` them.
+4. **Project Specificity**: Projects can provide their own local context via `.agent/CORE.md` or `.agent/workflows/`, which the framework prioritizes over global defaults.
+5. **Consistency Across Agents**: All agents (main session, subagents, and automated workers) follow the same context loading architecture. A subagent spawned for a specific task will receive the same hydrated context as the main session.
+6. **Self-Correcting**: If an agent starts without sufficient context, the `hydration` gate blocks tool usage and instructs the agent to invoke the hydrator.
+
 ## File Inventory
 
 | Tier | File                                        | Purpose                        | Size Target |
@@ -188,6 +197,7 @@ echo "# Project Context" > .agent/CORE.md
 
 ## Acceptance Criteria
 
+- [ ] User expectations documented: fast start, JIT context, project-specificity
 - [ ] $AOPS/CORE.md contains ONLY essential framework tool info (~2KB)
 - [ ] $cwd/.agent/CORE.md convention documented and templated
 - [ ] SessionStart hook injects Tier 1 only
