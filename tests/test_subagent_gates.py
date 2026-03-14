@@ -222,26 +222,23 @@ class TestSubagentEventsNotSubagent:
 
 
 def test_hydration_gate_simplified_triggers():
-    """Test that simplified triggers in hydration gate work correctly."""
+    """Test that hydration gate opens when hydrator skill is invoked via PreToolUse.
+
+    The hydrator is a skill (not a subagent), so the gate opens on PreToolUse
+    when Skill(skill='aops-core:hydrator') is called. SubagentStop/PostToolUse
+    do not fire for skills running in the main session.
+    """
     state = SessionState.create("test-session")
     state.get_gate("hydration").status = GateStatus.CLOSED
 
     hydration_config = next(g for g in GATE_CONFIGS if g.name == "hydration")
     gate = GenericGate(hydration_config)
 
-    # 1. Test SubagentStop trigger
-    ctx_stop = HookContext(
-        session_id="aafdeee", hook_event="SubagentStop", subagent_type="prompt-hydrator"
+    # PreToolUse with hydrator skill invocation opens the gate
+    ctx_pre = HookContext(
+        session_id="aafdeee", hook_event="PreToolUse", subagent_type="aops-core:hydrator"
     )
-    gate.on_subagent_stop(ctx_stop, state)
-    assert state.get_gate("hydration").status == GateStatus.OPEN
-
-    # 2. Reset and Test PostToolUse fallback trigger
-    state.get_gate("hydration").status = GateStatus.CLOSED
-    ctx_post = HookContext(
-        session_id="aafdeee", hook_event="PostToolUse", subagent_type="prompt-hydrator"
-    )
-    gate.on_tool_use(ctx_post, state)
+    gate.on_tool_use(ctx_pre, state)
     assert state.get_gate("hydration").status == GateStatus.OPEN
 
 
@@ -252,7 +249,7 @@ def test_regex_hook_event_matching():
     state = SessionState.create("s1")
 
     cond = GateCondition(
-        hook_event="^(SubagentStop|PostToolUse)$", subagent_type_pattern="prompt-hydrator"
+        hook_event="^(SubagentStop|PostToolUse)$", subagent_type_pattern="hydrator"
     )
 
     hydration_config = next(g for g in GATE_CONFIGS if g.name == "hydration")
@@ -262,9 +259,7 @@ def test_regex_hook_event_matching():
     assert (
         gate._evaluate_condition(
             cond,
-            HookContext(
-                session_id="s1", hook_event="SubagentStop", subagent_type="prompt-hydrator"
-            ),
+            HookContext(session_id="s1", hook_event="SubagentStop", subagent_type="hydrator"),
             state.get_gate("hydration"),
             state,
         )
@@ -273,7 +268,7 @@ def test_regex_hook_event_matching():
     assert (
         gate._evaluate_condition(
             cond,
-            HookContext(session_id="s1", hook_event="PostToolUse", subagent_type="prompt-hydrator"),
+            HookContext(session_id="s1", hook_event="PostToolUse", subagent_type="hydrator"),
             state.get_gate("hydration"),
             state,
         )
@@ -284,7 +279,7 @@ def test_regex_hook_event_matching():
     assert (
         gate._evaluate_condition(
             cond,
-            HookContext(session_id="s1", hook_event="PreToolUse", subagent_type="prompt-hydrator"),
+            HookContext(session_id="s1", hook_event="PreToolUse", subagent_type="hydrator"),
             state.get_gate("hydration"),
             state,
         )
@@ -293,7 +288,7 @@ def test_regex_hook_event_matching():
     assert (
         gate._evaluate_condition(
             cond,
-            HookContext(session_id="s1", hook_event="Stop", subagent_type="prompt-hydrator"),
+            HookContext(session_id="s1", hook_event="Stop", subagent_type="hydrator"),
             state.get_gate("hydration"),
             state,
         )

@@ -43,7 +43,7 @@ FILE_PREFIX = "hydrate_"
 
 # Paths relative to hooks/ (for template loading)
 HOOK_DIR = Path(__file__).parent.parent.parent / "hooks"
-CONTEXT_TEMPLATE_FILE = HOOK_DIR / "templates" / "prompt-hydrator-context.md"
+CONTEXT_TEMPLATE_FILE = HOOK_DIR / "templates" / "hydrator-context.md"
 INSTRUCTION_TEMPLATE_FILE = HOOK_DIR / "templates" / "prompt-hydration-instruction.md"
 
 
@@ -76,7 +76,7 @@ def build_hydration_instruction(
     state: SessionState | None = None,
 ) -> str:
     """
-    Build instruction for main agent to invoke prompt-hydrator.
+    Build instruction for main agent to invoke hydrator.
 
     Writes full context to temp file, returns short instruction with file path.
 

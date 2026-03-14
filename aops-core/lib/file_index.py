@@ -30,7 +30,7 @@ from lib.paths import get_plugin_root
 class FileEntry:
     """A file with its path, description, and matching keywords."""
 
-    path: str  # Relative to plugin root (e.g., "agents/prompt-hydrator.md")
+    path: str  # Relative to plugin root (e.g., "agents/hydrator.md")
     description: str  # What this file does
     keywords: tuple[str, ...]  # Keywords that trigger inclusion
 
@@ -149,7 +149,7 @@ FILE_INDEX: tuple[FileEntry, ...] = (
         ),
     ),
     FileEntry(
-        path="WORKFLOWS.md",
+        path="skills/hydrator/WORKFLOWS.md",
         description="Workflow decision tree and routing",
         keywords=("workflow", "workflows", "routing", "decision tree", "flow"),
     ),
@@ -171,11 +171,11 @@ FILE_INDEX: tuple[FileEntry, ...] = (
     ),
     # --- Prompt Hydration System ---
     FileEntry(
-        path="agents/prompt-hydrator.md",
-        description="Prompt hydrator agent definition (routing logic)",
+        path="skills/hydrator/SKILL.md",
+        description="Hydrator skill definition (routing logic)",
         keywords=(
             "hydrator",
-            "prompt-hydrator",
+            "hydrator",
             "prompt hydration",
             "routing",
             "triage",
@@ -184,7 +184,7 @@ FILE_INDEX: tuple[FileEntry, ...] = (
     FileEntry(
         path="specs/prompt-hydration.md",
         description="Prompt hydration system spec",
-        keywords=("hydrator", "prompt-hydrator", "hydration spec", "routing spec"),
+        keywords=("hydrator", "hydrator", "hydration spec", "routing spec"),
     ),
     FileEntry(
         path="hooks/user_prompt_submit.py",
@@ -198,7 +198,7 @@ FILE_INDEX: tuple[FileEntry, ...] = (
         ),
     ),
     FileEntry(
-        path="hooks/templates/prompt-hydrator-context.md",
+        path="hooks/templates/hydrator-context.md",
         description="Template for hydrator temp file",
         keywords=("hydrator template", "context template", "hydrator context"),
     ),
@@ -225,32 +225,32 @@ FILE_INDEX: tuple[FileEntry, ...] = (
         keywords=("constraint", "constraints", "verification", "predicate"),
     ),
     FileEntry(
-        path="workflows/feature-dev.md",
+        path="skills/hydrator/workflows/feature-dev.md",
         description="Feature development workflow",
         keywords=("feature", "feature-dev", "development", "implement", "new feature"),
     ),
     FileEntry(
-        path="workflows/design.md",
+        path="skills/hydrator/workflows/design.md",
         description="Planning/designing known work",
         keywords=("design", "designing", "architecture", "plan"),
     ),
     FileEntry(
-        path="workflows/collaborate.md",
+        path="skills/hydrator/workflows/collaborate.md",
         description="Interactive exploration/brainstorming",
         keywords=("collaborate", "brainstorm", "explore", "interactive"),
     ),
     FileEntry(
-        path="workflows/batch-processing.md",
+        path="skills/hydrator/workflows/batch-processing.md",
         description="Multiple independent items processing",
         keywords=("batch", "process all", "bulk"),
     ),
     FileEntry(
-        path="workflows/debugging.md",
+        path="skills/hydrator/workflows/debugging.md",
         description="Debugging workflow",
         keywords=("debug", "debugging", "investigate", "bug", "error", "fix"),
     ),
     FileEntry(
-        path="workflows/framework-change.md",
+        path="skills/hydrator/workflows/framework-change.md",
         description="Framework governance change workflow",
         keywords=(
             "framework change",
@@ -260,27 +260,27 @@ FILE_INDEX: tuple[FileEntry, ...] = (
         ),
     ),
     FileEntry(
-        path="workflows/decompose.md",
+        path="skills/hydrator/workflows/decompose.md",
         description="Task decomposition workflow",
         keywords=("decompose", "decomposition", "break down", "subtask", "breakdown"),
     ),
     FileEntry(
-        path="workflows/tdd-cycle.md",
+        path="skills/hydrator/workflows/tdd-cycle.md",
         description="Test-driven development workflow (in aops-core)",
         keywords=("tdd", "test driven", "test first", "failing test"),
     ),
     FileEntry(
-        path="workflows/base-tdd.md",
+        path="skills/hydrator/workflows/base-tdd.md",
         description="TDD base pattern (composable)",
         keywords=("tdd", "test driven", "base-tdd"),
     ),
     FileEntry(
-        path="workflows/base-task-tracking.md",
+        path="skills/hydrator/workflows/base-task-tracking.md",
         description="Task tracking base pattern",
         keywords=("task tracking", "base-task", "task workflow"),
     ),
     FileEntry(
-        path="workflows/simple-question.md",
+        path="skills/hydrator/workflows/simple-question.md",
         description="Simple question workflow (no task needed)",
         keywords=("simple question", "question", "explain", "what is"),
     ),
@@ -291,7 +291,7 @@ FILE_INDEX: tuple[FileEntry, ...] = (
         keywords=("task", "tasks", "work management", "task system", "task lifecycle"),
     ),
     FileEntry(
-        path="workflows/base-handover.md",
+        path="skills/hydrator/workflows/base-handover.md",
         description="Handover base pattern (session end, task update, git push)",
         keywords=("handover", "session end", "exit", "reflection", "git push", "dump"),
     ),
@@ -467,7 +467,7 @@ FILE_INDEX: tuple[FileEntry, ...] = (
         ),
     ),
     FileEntry(
-        path="workflows/qa.md",
+        path="skills/hydrator/workflows/qa.md",
         description="QA verification workflow steps",
         keywords=("qa workflow", "qa verification", "qa steps", "quality check"),
     ),

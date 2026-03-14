@@ -32,31 +32,19 @@ permalink: commands/hydrate
 Determine whether the input is a task ID or a terse prompt:
 
 - **Task ID** (matches `aops-*` or `academicops-*` pattern): Load the task with `mcp__pkb__get_task`
-- **Terse prompt**: Pass directly to the task-hydrator agent (it will search for or create a task)
+- **Terse prompt**: Pass directly to the hydrator agent (it will search for or create a task)
 
-### Step 2: Spawn Task Hydrator
-
-Invoke the task-hydrator agent:
+### Step 2: Invoke Hydrator Skill
 
 ```
-Agent(subagent_type='aops-core:task-hydrator', prompt='
-## Hydration Request
-
-**Input**: {user input — task ID or terse prompt}
-
-**Framework paths**:
-- WORKFLOWS.md: aops-core/WORKFLOWS.md
-- AXIOMS.md: aops-core/AXIOMS.md
-- HEURISTICS.md: aops-core/HEURISTICS.md
-- Workflow files: aops-core/workflows/
-
-**Instructions**: Enrich this task with execution context per your agent definition. Output the enriched task ID when complete.
-')
+Skill(skill='aops-core:hydrator')
 ```
+
+The hydrator skill runs in the current session and knows where to find framework workflows. Pass the user input as context — the skill reads the current prompt directly.
 
 ### Step 3: Report Result
 
-After the task-hydrator completes, report:
+After the hydrator completes, report:
 
 - The enriched task ID
 - A 1-sentence summary of what context was added

@@ -17,7 +17,7 @@ Document containing source text and inline comments/feedback (DOCX, Google Docs,
 
 ### Generalized Patterns → Framework (public repo)
 
-1. **Update `aops-core/workflows/peer-review.md`**: Add depersonalized principles
+1. **Update `aops-core/skills/hydrator/workflows/peer-review.md`**: Add depersonalized principles
 2. **Constructed examples**: Create generic examples illustrating principles
 3. **No identifying information**: Remove names, titles, institutional details
 

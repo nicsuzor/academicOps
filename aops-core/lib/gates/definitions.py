@@ -30,15 +30,15 @@ GATE_CONFIGS = [
         description="Ensures prompts are hydrated with context.",
         initial_status=GateStatus.CLOSED,  # Starts CLOSED. Opens when hydrator is dispatched.
         triggers=[
-            # Hydrator dispatched or finishes -> Open (JIT gate open)
-            # Fires on PreToolUse for Agent(subagent_type=prompt-hydrator), opening the
-            # gate BEFORE the policy evaluates. This means: the Agent tool call itself is
+            # Hydrator skill invoked -> Open (JIT gate open)
+            # Fires on PreToolUse for Skill(skill='aops-core:hydrator'), opening the
+            # gate BEFORE the policy evaluates. This means: the Skill tool call itself is
             # always_available (bypasses policy), AND the trigger opens the gate so the
-            # hydrator subagent's own tool calls (Read, Glob, etc.) are not blocked.
+            # hydrator skill's own tool calls (Read, PKB ops) are not blocked.
             GateTrigger(
                 condition=GateCondition(
-                    hook_event="^(SubagentStart|PreToolUse|SubagentStop|PostToolUse)$",
-                    subagent_type_pattern="^(aops-core:)?prompt-hydrator$",
+                    hook_event="^PreToolUse$",
+                    subagent_type_pattern="^(aops-core:)?hydrator$",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,

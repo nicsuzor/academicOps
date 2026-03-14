@@ -9,7 +9,7 @@ bug_reference: hydrator claiming email search was "human task"
 
 ## Background
 
-The prompt-hydrator subagent cannot know what tools the main agent has access to. It only sees:
+The hydrator subagent cannot know what tools the main agent has access to. It only sees:
 
 - read_file
 - memory MCP
@@ -27,12 +27,12 @@ The main agent may have: omcp (Outlook), zot (Zotero), osb, playwright, context7
 
 ## What We Fixed
 
-1. **Agent definition** (`agents/prompt-hydrator.md`): Added explicit anti-instructions
+1. **Agent definition** (`agents/hydrator.md`): Added explicit anti-instructions
    - "You do NOT know what tools the main agent has"
    - "NEVER claim a task is 'fundamentally a human task' based on tool assumptions"
    - "Let the main agent discover its own limitations"
 
-2. **Context template** (`hooks/templates/prompt-hydrator-context.md`): Added warnings
+2. **Context template** (`hooks/templates/hydrator-context.md`): Added warnings
    - "This list shows what's CONFIGURED, not what's available"
    - "Do NOT make feasibility judgments based on this list"
 
@@ -124,7 +124,7 @@ The following is tested automatically in `tests/hooks/test_hydrator_tool_awarene
 
 If this bug recurs:
 
-1. Check if someone removed the anti-instructions from `agents/prompt-hydrator.md`
+1. Check if someone removed the anti-instructions from `agents/hydrator.md`
 2. Check if context template warnings were removed
 3. Check if new code introduced tool availability assumptions
 4. Run `pytest tests/hooks/test_hydrator_tool_awareness.py`

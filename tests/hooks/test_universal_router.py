@@ -191,10 +191,10 @@ class TestSubagentTypeExtraction:
             "hook_event_name": "PreToolUse",
             "session_id": "test-123",
             "tool_name": "Task",
-            "tool_input": {"subagent_type": "prompt-hydrator", "prompt": "Hydrate this"},
+            "tool_input": {"subagent_type": "hydrator", "prompt": "Hydrate this"},
         }
         ctx = router_instance.normalize_input(raw)
-        assert ctx.subagent_type == "prompt-hydrator"
+        assert ctx.subagent_type == "hydrator"
 
     def test_gemini_delegate_to_agent_name(self, router_instance):
         """Gemini delegate_to_agent with name= extracts correctly."""
@@ -202,10 +202,10 @@ class TestSubagentTypeExtraction:
             "hook_event_name": "PreToolUse",
             "session_id": "test-123",
             "tool_name": "delegate_to_agent",
-            "tool_input": {"name": "prompt-hydrator", "query": "Hydrate this"},
+            "tool_input": {"name": "hydrator", "query": "Hydrate this"},
         }
         ctx = router_instance.normalize_input(raw)
-        assert ctx.subagent_type == "prompt-hydrator"
+        assert ctx.subagent_type == "hydrator"
 
     def test_gemini_delegate_to_agent_agent_name(self, router_instance):
         """Gemini delegate_to_agent with agent_name= also works."""
@@ -224,10 +224,10 @@ class TestSubagentTypeExtraction:
             "hook_event_name": "PreToolUse",
             "session_id": "test-123",
             "tool_name": "activate_skill",
-            "tool_input": {"name": "prompt-hydrator"},
+            "tool_input": {"name": "hydrator"},
         }
         ctx = router_instance.normalize_input(raw)
-        assert ctx.subagent_type == "prompt-hydrator"
+        assert ctx.subagent_type == "hydrator"
 
     def test_skill_tool_uses_skill_param(self, router_instance):
         """Skill tool extracts from 'skill' param (not 'subagent_type')."""
@@ -269,7 +269,7 @@ class TestSubagentTypeExtraction:
             "hook_event_name": "PreToolUse",
             "session_id": "test-123",
             "tool_name": "delegate_to_agent",
-            "tool_input": {"name": "aops-core:prompt-hydrator", "query": "Hydrate"},
+            "tool_input": {"name": "aops-core:hydrator", "query": "Hydrate"},
         }
         ctx = router_instance.normalize_input(raw)
-        assert ctx.subagent_type == "aops-core:prompt-hydrator"
+        assert ctx.subagent_type == "aops-core:hydrator"

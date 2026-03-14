@@ -52,9 +52,9 @@ Review the abridged transcript for each session and assess the conversation, loo
 
 **What to Look For:**
 
-1. **Hydration behavior**: Did the agent invoke the prompt-hydrator when instructed?
-   - Claude: `Task(subagent_type="aops-core:prompt-hydrator", ...)`
-   - Gemini: `activate_skill(name="prompt-hydrator", ...)`
+1. **Hydration behavior**: Did the agent invoke the hydrator when instructed?
+   - Claude: `Task(subagent_type="aops-core:hydrator", ...)`
+   - Gemini: `activate_skill(name="hydrator", ...)`
    - **Check for "(not set)" paths**: Ensure the block message correctly resolved the `{temp_path}`. If it says `Follow instructions in (not set)`, the path resolution logic is broken.
 
 2. **Hook compliance**: Look for `**Invoked:**` markers showing hook triggers.
@@ -124,14 +124,14 @@ In production, the UserPromptSubmit hook calls `build_hydration_instruction()` w
 context_path=$(uv run scripts/build_hydrator_test_input.py "check my email and triage anything urgent")
 
 # Step 2: Invoke the hydrator with the file path (not the raw prompt)
-Agent(subagent_type='aops-core:prompt-hydrator', prompt='<context_path from step 1>')
+Agent(subagent_type='aops-core:hydrator', prompt='<context_path from step 1>')
 ```
 
 **Anti-pattern** (causes all tests to fail — hydrator has no framework context):
 
 ```python
 # WRONG — hydrator receives no SKILLS.md, no workflows, can't route anything
-Agent(subagent_type='aops-core:prompt-hydrator', prompt='check my email')
+Agent(subagent_type='aops-core:hydrator', prompt='check my email')
 ```
 
 ### Running the Test Suite
@@ -184,7 +184,7 @@ These patterns recur and should be checked when failures appear:
 
 - Symptom: Hydrator tries to execute the task (draft files, talk to user, ask questions) instead of routing to `Skill(skill="remember")`
 - Root cause: "remember" prompts contain concrete content that tempts the hydrator to act; its tool restrictions (`read_file` only) are not strong enough to prevent it from attempting writes
-- Fix target: `agents/prompt-hydrator.md` — strengthen the prohibition against execution for persist-type tasks; add explicit example: "User says 'remember X' → route to Skill(skill='remember'), do NOT draft the content yourself"
+- Fix target: `agents/hydrator.md` — strengthen the prohibition against execution for persist-type tasks; add explicit example: "User says 'remember X' → route to Skill(skill='remember'), do NOT draft the content yourself"
 - Tests to rerun: TEST-011
 
 ### After Fixing Failures

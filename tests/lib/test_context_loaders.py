@@ -63,9 +63,9 @@ class TestContextLoadersWithRealFiles:
         assert len(content) > 50, "Scripts index content suspiciously short"
 
     def test_load_workflows_index_returns_content(self) -> None:
-        """WORKFLOWS.md exists in aops-core and loader returns non-empty content."""
-        workflows_path = AOPS_CORE_DIR / "WORKFLOWS.md"
-        assert workflows_path.exists(), f"WORKFLOWS.md missing from {AOPS_CORE_DIR}"
+        """WORKFLOWS.md exists in hydrator skill and loader returns non-empty content."""
+        workflows_path = AOPS_CORE_DIR / "skills" / "hydrator" / "WORKFLOWS.md"
+        assert workflows_path.exists(), f"WORKFLOWS.md missing from {workflows_path.parent}"
         content = load_workflows_index()
         assert content, "load_workflows_index() returned empty despite WORKFLOWS.md existing"
 
@@ -142,12 +142,17 @@ class TestHydrationContextCompleteness:
 
     def test_critical_framework_files_exist(self) -> None:
         """All framework files referenced by context loaders must exist."""
-        critical_files = ["GLOSSARY.md", "SKILLS.md", "SCRIPTS.md", "WORKFLOWS.md"]
+        critical_files = [
+            (AOPS_CORE_DIR, "GLOSSARY.md"),
+            (AOPS_CORE_DIR, "SKILLS.md"),
+            (AOPS_CORE_DIR, "SCRIPTS.md"),
+            (AOPS_CORE_DIR / "skills" / "hydrator", "WORKFLOWS.md"),
+        ]
         missing = []
-        for filename in critical_files:
-            path = AOPS_CORE_DIR / filename
+        for base, filename in critical_files:
+            path = base / filename
             if not path.exists():
-                missing.append(filename)
+                missing.append(str(path.relative_to(AOPS_CORE_DIR)))
 
         assert not missing, (
             f"Critical framework files missing from {AOPS_CORE_DIR}: {missing}. "

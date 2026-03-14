@@ -21,7 +21,7 @@ from typing import Any
 # Categorize TOOL NAMES by their side effects. This determines which gates
 # must pass before the tool can be used.
 #
-# IMPORTANT: Only TOOL NAMES go here. Agent/skill names (prompt-hydrator,
+# IMPORTANT: Only TOOL NAMES go here. Agent/skill names (hydrator,
 # custodiet, etc.) are subagent_type values, not tool names. They belong in
 # COMPLIANCE_SUBAGENT_TYPES below.
 #
@@ -152,7 +152,6 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "TaskUpdate",
         "TaskGet",
         "TaskList",
-        "aops_core_prompt_hydrator",
         "aops_core_custodiet",
         "aops_core_qa",
         "aops_core_audit",
@@ -306,12 +305,8 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
 COMPLIANCE_SUBAGENT_TYPES: frozenset[str] = frozenset(
     {
         "hydrator",
-        "prompt-hydrator",
-        "aops-core:prompt-hydrator",
-        "aops_core_prompt_hydrator",
-        "task-hydrator",
-        "aops-core:task-hydrator",
-        "aops_core_task_hydrator",
+        "aops-core:hydrator",
+        "aops_core_hydrator",
         "custodiet",
         "aops-core:custodiet",
         "aops_core_custodiet",
@@ -352,7 +347,7 @@ SPAWN_TOOLS: dict[str, tuple[tuple[str, ...], bool]] = {
     "delegate_to_agent": (("name", "agent_name"), False),
     "activate_skill": (("skill", "name"), True),
     # Gemini: bare agent tools (Strategy 2)
-    "aops_core_prompt_hydrator": ((), False),
+    # Note: hydrator is a skill — invoked via activate_skill(name='aops-core:hydrator')
     "aops_core_custodiet": ((), False),
     "aops_core_qa": ((), False),
     "aops_core_audit": ((), False),
@@ -511,14 +506,14 @@ def extract_subagent_type(
 
     Two extraction strategies:
     1. Direct match: tool_name IS the agent name (e.g. Gemini reports
-       tool_name="prompt-hydrator" rather than "delegate_to_agent").
+       tool_name="hydrator" rather than "delegate_to_agent").
        Matched against COMPLIANCE_SUBAGENT_TYPES.
     2. SPAWN_TOOLS table: tool_name is a spawning tool (e.g. "Agent",
        "delegate_to_agent") and the agent name is in tool_input.
 
     Args:
         tool_name: The tool being called (e.g. "Task", "delegate_to_agent",
-            or the agent name directly like "prompt-hydrator").
+            or the agent name directly like "hydrator").
         tool_input: The tool's input parameters.
 
     Returns:

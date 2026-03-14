@@ -702,7 +702,6 @@ def build_aops_core(
         "TAXONOMY.md",
         "TOOLS.md",
         "WORKERS.md",
-        "WORKFLOWS.md",
         "uv.lock",
     ]
 
