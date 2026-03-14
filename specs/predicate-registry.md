@@ -30,6 +30,19 @@ Workflows define constraints using predicates like `tests_exist`, `plan_approved
 2. How to verify it at planning time (static check)
 3. How to verify it at execution time (runtime check)
 
+## User Expectations
+
+As the semantic foundation for workflow enforcement, the Predicate Registry must satisfy these core expectations:
+
+1. **Deterministic Definitions**: Users expect each predicate to have a single, unambiguous meaning. `tests_pass` must consistently mean "zero exit code from the primary test runner," regardless of the workflow context.
+2. **Static & Dynamic Verifiability**: Every predicate must be verifiable at two distinct phases:
+   - **Planning (Static)**: Can the hydrator find a step in the proposed plan that _intends_ to satisfy the predicate?
+   - **Execution (Dynamic)**: Can the executor empirically confirm the system state matches the predicate?
+3. **Transparent Failure Modes**: When a constraint fails, the user expects to see exactly which predicate(s) failed and why. Errors should not be opaque; they should point to the missing file, the failing test, or the missing plan step.
+4. **Tool-Agnostic Semantics**: Predicates should describe the _intent_ (e.g., `tests_pass`) rather than the _implementation_ (e.g., `run_pytest_exit_0`), allowing the underlying tools to change without breaking workflow definitions.
+5. **Fail-Closed Security**: If a predicate cannot be evaluated due to environmental issues (e.g., missing tool, permission error), it must be treated as `FALSE` to prevent accidental constraint bypass.
+6. **Human-in-the-loop for Heuristics**: For predicates requiring qualitative judgment (e.g., `minimal_implementation`), users expect the system to flag the check for human review or provide a soft recommendation rather than making an autonomous, potentially incorrect verdict.
+
 ## Predicate Categories
 
 ### Test Predicates
