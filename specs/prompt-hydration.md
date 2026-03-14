@@ -36,6 +36,44 @@ Users type terse prompts. Agents need:
 
 Prompt Hydration bridges this gap automatically on every prompt, outputting a complete execution plan the agent can follow.
 
+## User Expectations
+
+### 1. Unified Execution Plan
+
+- **Expectation**: A single, structured execution plan for every non-trivial prompt.
+- **Verification**: The system must output a plan with clear **Intent**, **Task Binding**, and **Execution Steps**.
+- **Testable**: Prompt results in a markdown-formatted hydration result containing these specific sections.
+
+### 2. Contextual Accuracy
+
+- **Expectation**: The hydrator surfaces relevant principles (Axioms/Heuristics), project rules, and related task state.
+- **Verification**: Check if the "Relevant Context" section includes items from `.agent/` and recent task state.
+- **Testable**: Context injection matches keywords in the user prompt and recent task updates.
+
+### 3. Workflow-Driven Sequencing
+
+- **Expectation**: Execution plans derived from the canonical `WORKFLOWS.md` index.
+- **Verification**: Steps follow the prescribed sequence for the selected workflow (e.g., TDD-first for code).
+- **Testable**: The generated plan contains `CHECKPOINT` markers for workflow-mandated verification steps.
+
+### 4. Zero-Friction Handover
+
+- **Expectation**: Main agent follows the plan without re-reading workflow files.
+- **Verification**: The execution plan must not contain steps that instruct the agent to "Read workflows/X.md".
+- **Testable**: Automated audit of plan steps confirms no file-read instructions for workflows.
+
+### 5. Performance & Efficiency
+
+- **Expectation**: Hydration adds minimal latency (target < 10s) and is token-efficient.
+- **Verification**: Check logs for hydration subagent turn-around time.
+- **Testable**: Latency measurement during E2E testing of the `UserPromptSubmit` hook.
+
+### 6. Fail-Fast Reliability
+
+- **Expectation**: Infrastructure failures (e.g., temp file write) fail-fast; content-gathering failures degrade gracefully.
+- **Verification**: Induce temp file failure and verify the system stops; induce memory failure and verify a baseline plan is provided.
+- **Testable**: Failure-injection tests for hook I/O and subagent timeouts.
+
 ## Architecture (Modular Workflow System)
 
 The hydrator follows a **composition-based architecture** where routing logic is defined in reusable workflows:
