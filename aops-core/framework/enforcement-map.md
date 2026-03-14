@@ -61,6 +61,7 @@ tags: [framework, enforcement, moc]
 | [[no-shitty-nlp]]                           | No Shitty NLP (P#49)                | AXIOMS.md, HEURISTICS.md, custodiet periodic check, REMINDERS.md                              | SessionStart, PostToolUse | 1a, 3b    |
 | [[no-shitty-nlp]]                           | Agentic-First Design (P#49)         | AXIOMS.md corollary: no programmatic LLM API wrappers; custodiet detects "API call" proposals | SessionStart, PostToolUse | 1a, 3b    |
 | [[data-boundaries]]                         | Credential Isolation                | `SSH_AUTH_SOCK=""` in settings.local.json; `GH_TOKEN` from limited `AOPS_BOT_GH_TOKEN` PAT    | SessionStart              | 6         |
+| [[non-interactive-execution]]               | Non-interactive Execution (P#55)    | AXIOMS.md, C3 constraint; agent behavior and system prompts                                   | During execution          |           |
 
 ## Heuristic → Enforcement Mapping
 
