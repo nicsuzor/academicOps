@@ -132,6 +132,10 @@ If you can't fix it, HALT.
 
 Only user-defined acceptance criteria determine whether work is complete. Agents cannot modify, weaken, or reinterpret acceptance criteria.
 
+**Corollaries**:
+
+- **The Task Graph is the QA Guarantee**: The strict requirements defined in a PKB task node are the ultimate authority. An agent's execution method is irrelevant; the work is only ratified as "done" when these specific criteria are met and verified by the Filter layer.
+
 ## Plan-First Development (P#41)
 
 No coding without an approved plan.
@@ -174,6 +178,7 @@ Legacy NLP (keyword matching, regex heuristics, fuzzy string matching) is forbid
 - Don't filter documentation based on keyword matches
 - Provide the Agent with the _index of choices_ and let the Agent decide
 - **Agentic-first design**: Do NOT propose building scripts or tools that call LLM APIs programmatically (e.g., Python scripts that invoke the Anthropic/OpenAI API, custom evaluation harnesses wrapping model calls). This framework runs on agentic platforms — Claude Code, Gemini CLI, Jules, GitHub agents. These agents ARE the LLM. Any work requiring judgment, evaluation, classification, or semantic reasoning should be designed as a skill, workflow, or agent task that a capable agent executes directly — not as a deterministic program that wraps API calls. Smarts should be agentic; code should be minimised.
+- **The Abstraction Layer**: Stop trying to build rigid, hook-based mechanical controls that inject constraints into a client's specific turn-by-turn loop (e.g., regex hooks overriding outputs). Clients are unpredictable. Instead, move up a layer of abstraction: define strict requirements in the Task Graph and use asynchronous agentic gates to verify those standards _before_ ratification. We don't control how the agent executes; we control whether the output is accepted.
 
 **Derivation**: LLMs understand semantics; regex does not. Agentic frameworks (Claude Code, Gemini CLI) already provide full LLM capabilities with tool access, context management, and iterative reasoning. Building programmatic API wrappers duplicates this capability poorly — the wrapper is less capable than the agent, harder to maintain, and violates the framework's core architecture. The same anti-pattern manifests in two forms: (1) using regex/keyword matching instead of LLM judgment ("classic shitty NLP"), and (2) writing code that calls an LLM API instead of delegating to an agent that IS an LLM ("shiny shitty NLP"). Both attempt to replace agentic capability with deterministic code.
 
