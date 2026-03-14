@@ -1,6 +1,7 @@
 # Claude code
 .claude/
 .gemini/
+!.gemini/sandbox.Dockerfile
 .aops/
 .polecat/
 !.agent/commands/
