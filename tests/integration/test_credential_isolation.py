@@ -488,8 +488,7 @@ class TestClaudeCredentialIsolation:
 
     @pytest.fixture(autouse=True)
     def _require_claude(self):
-        if not shutil.which("claude"):
-            pytest.skip("claude CLI not found in PATH")
+        assert shutil.which("claude"), "claude CLI not found in PATH"
 
     def test_claude_session_gets_bot_token(self, credential_markers, output_file, tmp_path):
         """Claude's Bash tool should see GH_TOKEN = AOPS_BOT_GH_TOKEN.
@@ -530,20 +529,16 @@ class TestClaudeCredentialIsolation:
             plugin_dir,
         ]
 
-        result = subprocess.run(
-            cmd,
-            env=env,
-            capture_output=True,
-            text=True,
-            timeout=120,
-            cwd=tmp_path,
-            check=False,
+        from tests.conftest import run_claude_headless
+
+        result = run_claude_headless(
+            prompt=prompt, model="haiku", timeout_seconds=120, cwd=tmp_path
         )
 
-        assert result.returncode == 0, (
-            f"Claude CLI failed (exit {result.returncode}):\n"
-            f"stderr: {result.stderr[:500]}\n"
-            f"stdout: {result.stdout[:500]}"
+        assert result["success"], (
+            f"Claude CLI failed:\n"
+            f"error: {result.get('error')}\n"
+            f"stdout: {result.get('output', '')[:500]}"
         )
 
         assert output_file.exists(), (
@@ -580,8 +575,7 @@ class TestGeminiCredentialIsolation:
 
     @pytest.fixture(autouse=True)
     def _require_gemini(self):
-        if not shutil.which("gemini"):
-            pytest.skip("gemini CLI not found in PATH")
+        assert shutil.which("gemini"), "gemini CLI not found in PATH"
 
     @pytest.fixture
     def gemini_workdir(self, tmp_path):
@@ -627,20 +621,16 @@ class TestGeminiCredentialIsolation:
             "--yolo",
         ]
 
-        result = subprocess.run(
-            cmd,
-            env=env,
-            capture_output=True,
-            text=True,
-            timeout=120,
-            cwd=str(gemini_workdir),
-            check=False,
+        from tests.conftest import run_gemini_headless
+
+        result = run_gemini_headless(
+            prompt=prompt, timeout_seconds=120, cwd=gemini_workdir, permission_mode="yolo"
         )
 
-        assert result.returncode == 0, (
-            f"Gemini CLI failed (exit {result.returncode}):\n"
-            f"stderr: {result.stderr[:500]}\n"
-            f"stdout: {result.stdout[:500]}"
+        assert result["success"], (
+            f"Gemini CLI failed:\n"
+            f"error: {result.get('error')}\n"
+            f"stdout: {result.get('output', '')[:500]}"
         )
 
         assert output_file.exists(), (

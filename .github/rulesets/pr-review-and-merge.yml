@@ -85,17 +85,10 @@ rules:
       # The merge queue handles rebasing; strict mode is redundant and adds friction.
       do_not_enforce_on_create: false
       required_status_checks:
-        - context: Lint
-          # Must match the `name:` of the job in lint.yml.
-          # Run `scripts/validate-ruleset-alignment.sh` to verify alignment.
-        - context: Type Check
-          # Must match the `name:` of the job in typecheck.yml.
-        - context: Pytest
-          # Must match the `name:` of the job in pytest.yml.
-        - context: Axiom Review
-          # Must match the `name:` of the job in agent-axiom-review.yml.
-          # axiom-review sets this status via gh api (not gh pr review) so it cannot
-          # be overridden by a subsequent merge-prep approval.
+        - context: "PR Review Pipeline / lint / Lint"
+        - context: "PR Review Pipeline / typecheck / Type Check"
+        - context: "PR Review Pipeline / pytest / Pytest"
+        - context: "PR Review Pipeline / Axiom Review / Axiom Review"
 
   # ─────────────────────────────────────────
   # Code quality (CodeQL / Copilot analysis)

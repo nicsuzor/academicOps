@@ -68,10 +68,15 @@ ERRORS=0
 echo "Checking alignment..."
 
 while IFS= read -r required; do
-  if echo "$ALL_JOB_NAMES" | grep -qxF "$required"; then
-    echo "  ✓ '$required' — found in workflow files"
+  # GitHub Actions prepends the caller workflow and job ID for reusable workflows 
+  # e.g., "PR Review Pipeline / lint / Lint". We strip everything up to the last " / " 
+  # to match against the actual job name defined in the reusable workflow YAML.
+  basename_required=$(echo "$required" | sed 's/.* \/ //')
+  
+  if echo "$ALL_JOB_NAMES" | grep -qxF "$basename_required"; then
+    echo "  ✓ '$required' (as '$basename_required') — found in workflow files"
   else
-    echo "  ✗ '$required' — NOT found in any workflow job name!"
+    echo "  ✗ '$required' (as '$basename_required') — NOT found in any workflow job name!"
     echo "    This will silently block all PRs. Fix: update the ruleset or rename the job."
     ERRORS=$((ERRORS + 1))
   fi
