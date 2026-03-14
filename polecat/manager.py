@@ -351,6 +351,9 @@ class PolecatManager:
         cmd = ["git", "clone", str(local_repo_path), str(worktree_path)]
         subprocess.run(cmd, check=True)
 
+        # Propagate git identity from source repo (clone doesn't copy local config)
+        self._propagate_git_identity(local_repo_path, worktree_path)
+
         # Re-point origin to the actual remote instead of the local repo
         result = subprocess.run(
             ["git", "remote", "get-url", "origin"],
@@ -1064,6 +1067,9 @@ class PolecatManager:
             )
             raise e
 
+        # Propagate git identity from source repo (clone doesn't copy local config)
+        self._propagate_git_identity(repo_path, worktree_path)
+
         # Re-point origin to the actual remote instead of the local repo
         result = subprocess.run(
             ["git", "remote", "get-url", "origin"],
@@ -1336,6 +1342,27 @@ class PolecatManager:
         # the correct origin push URL (git@github.com:...). No need to
         # reconfigure here. (A previous attempt to set-url --push here
         # had a bug that corrupted the push URL to the literal string "origin".)
+
+    @staticmethod
+    def _propagate_git_identity(source_repo: Path, target_repo: Path):
+        """Copy user.name and user.email from source repo to target if not already set."""
+        for key in ("user.name", "user.email"):
+            # Check if already set in target
+            check = subprocess.run(
+                ["git", "config", key], cwd=target_repo, capture_output=True, text=True
+            )
+            if check.returncode == 0 and check.stdout.strip():
+                continue
+            # Read from source
+            result = subprocess.run(
+                ["git", "config", key], cwd=source_repo, capture_output=True, text=True
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                subprocess.run(
+                    ["git", "config", key, result.stdout.strip()],
+                    cwd=target_repo,
+                    check=False,
+                )
 
     def _branch_exists(self, repo_path, branch_name):
         res = subprocess.run(
