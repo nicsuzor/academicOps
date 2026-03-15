@@ -34,16 +34,18 @@ class TestPluginDiscovery:
 
     @pytest.mark.integration
     def test_plugin_symlink_exists(self) -> None:
-        """Plugin entry must exist at ~/.claude/plugins/aops-core."""
-        symlink = Path.home() / ".claude" / "plugins" / "aops-core"
-        assert symlink.exists(), "Plugin symlink not installed at ~/.claude/plugins/aops-core"
+        """Plugin entry must exist in plugins dir."""
+        from lib.paths import get_plugin_root
+        plugin_root = get_plugin_root()
+        assert plugin_root.exists(), f"Plugin not found at {plugin_root}"
 
     @pytest.mark.integration
     def test_plugin_target_valid(self) -> None:
         """Plugin entry must point to valid directory."""
-        symlink = Path.home() / ".claude" / "plugins" / "aops-core"
-        assert symlink.exists(), "Plugin symlink not installed at ~/.claude/plugins/aops-core"
-        target = symlink.resolve()
+        from lib.paths import get_plugin_root
+        plugin_root = get_plugin_root()
+        assert plugin_root.exists(), f"Plugin not found at {plugin_root}"
+        target = plugin_root.resolve()
         assert target.is_dir(), f"Plugin target not a directory: {target}"
         assert (target / ".claude-plugin" / "plugin.json").exists(), "Missing plugin.json"
 

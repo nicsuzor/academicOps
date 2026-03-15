@@ -46,7 +46,8 @@ def test_symlink_structure(tmp_path):
     with setup_mock_home(tmp_path):
         print("Testing symlink structure...")
 
-        skills_path = Path.home() / ".claude" / "skills"
+        from lib.paths import get_skills_dir
+        skills_path = get_skills_dir()
         assert skills_path.exists(), "~/.claude/skills/ does not exist"
 
         # Update to check for framework skill scripts instead of tasks skill scripts
@@ -100,8 +101,9 @@ def test_script_execution_from_writing(tmp_path):
         assert data_dir.exists(), f"Writing root does not exist: {data_dir}"
 
         # Build command - use validate_docs.py instead of task_view.py
+        from lib.paths import get_skills_dir
         script_path = (
-            Path.home() / ".claude" / "skills" / "framework" / "scripts" / "validate_docs.py"
+            get_skills_dir() / "framework" / "scripts" / "validate_docs.py"
         )
         assert script_path.exists(), f"Script not found at {script_path}"
 
@@ -168,8 +170,9 @@ def test_symlink_points_to_aops(tmp_path):
             pytest.skip("AOPS environment variable not set")
 
         # Update path to framework scripts within aops-core
+        from lib.paths import get_skills_dir
         aops_scripts = Path(aops) / "aops-core" / "skills" / "framework" / "scripts"
-        symlink_scripts = Path.home() / ".claude" / "skills" / "framework" / "scripts"
+        symlink_scripts = get_skills_dir() / "framework" / "scripts"
 
         aops_scripts_alt = Path(aops) / "skills" / "framework" / "scripts"
         assert aops_scripts.exists() or aops_scripts_alt.exists(), (

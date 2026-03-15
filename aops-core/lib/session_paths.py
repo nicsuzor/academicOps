@@ -436,7 +436,8 @@ def get_gate_file_path(
         return logs_dir / f"{date_compact}-{short_hash}-{gate}.md"
     else:
         project_folder = get_claude_project_folder()
-        claude_projects_dir = Path.home() / ".claude" / "projects" / project_folder
+        from lib.paths import get_projects_dir
+        claude_projects_dir = get_projects_dir() / project_folder
         claude_projects_dir.mkdir(parents=True, exist_ok=True)
         return claude_projects_dir / f"{date_compact}-{short_hash}-{gate}.md"
 

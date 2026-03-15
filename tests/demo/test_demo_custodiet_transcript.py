@@ -27,6 +27,8 @@ from pathlib import Path
 
 import pytest
 
+from lib.paths import get_projects_dir
+
 
 def find_custodiet_transcripts(limit: int = 10) -> list[Path]:
     """Find subagent transcripts that contain custodiet activity.
@@ -34,7 +36,7 @@ def find_custodiet_transcripts(limit: int = 10) -> list[Path]:
     Custodiet transcripts contain the string "custodiet" or read from
     /tmp/claude-compliance/audit_*.md files.
     """
-    projects_dir = Path.home() / ".claude" / "projects"
+    projects_dir = get_projects_dir()
     if not projects_dir.exists():
         return []
 
