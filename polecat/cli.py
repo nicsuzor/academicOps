@@ -446,22 +446,322 @@ def init(ctx, project):
         print("\n✓ All mirrors ready")
 
 
-@main.command()
-@click.pass_context
-def sync(ctx):
-    """Fetch latest from origin for all mirror repos.
+def _clear_stale_git_lock(repo_path: Path) -> bool:
+    """Remove stale .git/index.lock if no process holds it.
 
-    Updates existing bare mirrors with latest branches from origin.
-    Use before spawning polecats to ensure they have recent code.
+    Returns True if lock was cleared or didn't exist, False if held by a process.
+    """
+    lockfile = repo_path / ".git" / "index.lock"
+    if not lockfile.exists():
+        return True
+
+    # Check if a process holds the lock
+    lsof = shutil.which("lsof")
+    if lsof:
+        result = subprocess.run([lsof, str(lockfile)], capture_output=True, check=False)
+        if result.returncode == 0:
+            # Process holds the lock
+            return False
+
+    # No process holds it — stale lock, remove
+    lockfile.unlink(missing_ok=True)
+    return True
+
+
+def _sync_working_repo(
+    repo_path: Path, *, auto_commit: bool = False, quiet: bool = False
+) -> tuple[bool, str]:
+    """Sync a working repo: fetch, pull/push, auto-resolve conflicts.
+
+    Returns (success, message).
+    """
+    name = repo_path.name
+
+    if not (repo_path / ".git").exists():
+        return False, f"{name}: not a git repo"
+
+    if not _clear_stale_git_lock(repo_path):
+        return False, f"{name}: git lock held by active process"
+
+    # Fetch
+    subprocess.run(
+        ["git", "fetch", "--quiet"],
+        cwd=repo_path,
+        capture_output=True,
+        check=False,
+    )
+
+    # Check status
+    porcelain = subprocess.run(
+        ["git", "status", "--porcelain"],
+        cwd=repo_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    ).stdout.strip()
+    dirty = bool(porcelain)
+
+    # Check ahead/behind
+    tracking = subprocess.run(
+        ["git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
+        cwd=repo_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    ).stdout.strip()
+
+    ahead_count = behind_count = 0
+    if tracking:
+        counts = subprocess.run(
+            ["git", "rev-list", "--left-right", "--count", "HEAD...@{u}"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            check=False,
+        ).stdout.strip()
+        if counts:
+            parts = counts.split()
+            if len(parts) == 2:
+                ahead_count, behind_count = int(parts[0]), int(parts[1])
+
+    if dirty:
+        if auto_commit:
+            # Stage tracked files and commit
+            subprocess.run(["git", "add", "-u"], cwd=repo_path, capture_output=True, check=False)
+            has_staged = (
+                subprocess.run(
+                    ["git", "diff", "--cached", "--quiet"],
+                    cwd=repo_path,
+                    capture_output=True,
+                    check=False,
+                ).returncode
+                != 0
+            )
+
+            if has_staged:
+                subprocess.run(
+                    [
+                        "git",
+                        "commit",
+                        "-m",
+                        f"auto: sync {datetime.now():%Y-%m-%d %H:%M}",
+                        "--quiet",
+                    ],
+                    cwd=repo_path,
+                    capture_output=True,
+                    check=False,
+                )
+
+            # Pull with rebase
+            pull = subprocess.run(
+                ["git", "pull", "--rebase", "--quiet"],
+                cwd=repo_path,
+                capture_output=True,
+                check=False,
+            )
+            if pull.returncode != 0:
+                # Auto-resolve conflicts by accepting remote
+                unmerged = subprocess.run(
+                    ["git", "diff", "--name-only", "--diff-filter=U"],
+                    cwd=repo_path,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                ).stdout.strip()
+                if unmerged:
+                    resolved = True
+                    for conflict_file in unmerged.splitlines():
+                        r = subprocess.run(
+                            ["git", "checkout", "--theirs", "--", conflict_file],
+                            cwd=repo_path,
+                            capture_output=True,
+                            check=False,
+                        )
+                        if r.returncode == 0:
+                            subprocess.run(
+                                ["git", "add", conflict_file],
+                                cwd=repo_path,
+                                capture_output=True,
+                                check=False,
+                            )
+                        else:
+                            resolved = False
+                            break
+
+                    if resolved:
+                        cont = subprocess.run(
+                            ["git", "rebase", "--continue"],
+                            cwd=repo_path,
+                            capture_output=True,
+                            check=False,
+                            env={**os.environ, "GIT_EDITOR": "true"},
+                        )
+                        if cont.returncode != 0:
+                            subprocess.run(
+                                ["git", "rebase", "--abort"],
+                                cwd=repo_path,
+                                capture_output=True,
+                                check=False,
+                            )
+                            return False, f"{name}: rebase --continue failed"
+                    else:
+                        subprocess.run(
+                            ["git", "rebase", "--abort"],
+                            cwd=repo_path,
+                            capture_output=True,
+                            check=False,
+                        )
+                        return False, f"{name}: conflict needs manual resolution"
+                else:
+                    subprocess.run(
+                        ["git", "rebase", "--abort"],
+                        cwd=repo_path,
+                        capture_output=True,
+                        check=False,
+                    )
+                    return False, f"{name}: rebase failed"
+
+            # Push
+            push = subprocess.run(
+                ["git", "push", "--quiet"],
+                cwd=repo_path,
+                capture_output=True,
+                check=False,
+            )
+            if push.returncode != 0:
+                return False, f"{name}: push failed"
+            return True, f"{name}: auto-synced (committed + pushed)"
+        else:
+            status_parts = ["dirty"]
+            if ahead_count:
+                status_parts.append(f"{ahead_count} ahead")
+            if behind_count:
+                status_parts.append(f"{behind_count} behind")
+            return False, f"{name}: {', '.join(status_parts)} (skipped — not auto-commit)"
+
+    elif behind_count > 0:
+        pull = subprocess.run(
+            ["git", "pull", "--quiet"],
+            cwd=repo_path,
+            capture_output=True,
+            check=False,
+        )
+        if pull.returncode == 0:
+            return True, f"{name}: pulled {behind_count} commit(s)"
+        return False, f"{name}: pull failed"
+
+    elif ahead_count > 0:
+        push = subprocess.run(
+            ["git", "push", "--quiet"],
+            cwd=repo_path,
+            capture_output=True,
+            check=False,
+        )
+        if push.returncode == 0:
+            return True, f"{name}: pushed {ahead_count} commit(s)"
+        return False, f"{name}: push failed"
+
+    else:
+        return True, f"{name}: ok"
+
+
+@main.command()
+@click.option("--check", is_flag=True, help="Just show status, don't fix anything")
+@click.option("--quiet", "-q", is_flag=True, help="Only show repos needing attention")
+@click.option("--mirrors-only", is_flag=True, help="Only sync bare mirrors (skip working repos)")
+@click.pass_context
+def sync(ctx, check, quiet, mirrors_only):
+    """Sync all git repos: working repos and bare mirrors.
+
+    Fetches, pulls, and pushes working repos defined in polecat.yaml.
+    Also updates bare mirrors used by polecat workers.
+
+    The brain repo ($ACA_DATA) gets special treatment: dirty files are
+    auto-committed and pushed. Other repos are only pulled/pushed if clean.
 
     Examples:
-        polecat sync
+        polecat sync              # Sync everything
+        polecat sync --check      # Just show status
+        polecat sync --quiet      # Only show issues
+        polecat sync --mirrors-only  # Only sync bare mirrors
     """
     manager = PolecatManager(home_dir=ctx.obj.get("home"))
-    print(f"Syncing mirrors in {manager.repos_dir}...")
+
+    # --- Phase 1: Working repos ---
+    if not mirrors_only:
+        if not quiet:
+            print("Syncing working repos...")
+
+        brain_path = os.environ.get("ACA_DATA", str(Path.home() / "brain"))
+        try:
+            brain_path = str(Path(brain_path).resolve())
+        except OSError:
+            brain_path = ""
+
+        needs_attention = []
+        for project_name, project_cfg in manager.config.get("projects", {}).items():
+            repo_path_str = project_cfg.get("path", "")
+            if not repo_path_str:
+                continue
+            repo_path = Path(os.path.expanduser(repo_path_str))
+            if not repo_path.is_dir():
+                if not quiet:
+                    print(f"  {project_name}: path not found ({repo_path})")
+                continue
+
+            # Brain repo gets auto-commit; other repos don't
+            is_brain = False
+            try:
+                is_brain = str(repo_path.resolve()) == brain_path
+            except OSError:
+                pass
+
+            if is_brain and not check:
+                # Run aops lint --fix on brain before syncing
+                aops_bin = shutil.which("aops")
+                if aops_bin:
+                    subprocess.run(
+                        [aops_bin, "lint", "--fix"],
+                        capture_output=True,
+                        check=False,
+                    )
+
+            if check:
+                # Just report status
+                success, msg = _sync_working_repo(repo_path, auto_commit=False, quiet=quiet)
+                if not success or not quiet:
+                    print(f"  {msg}")
+                if not success:
+                    needs_attention.append(project_name)
+            else:
+                success, msg = _sync_working_repo(repo_path, auto_commit=is_brain, quiet=quiet)
+                if not success or not quiet:
+                    print(f"  {msg}")
+                if not success:
+                    needs_attention.append(project_name)
+
+        # Also sync AOPS_SESSIONS if defined
+        sessions_dir = os.environ.get("AOPS_SESSIONS")
+        if sessions_dir:
+            sessions_path = Path(os.path.expanduser(sessions_dir))
+            if sessions_path.is_dir():
+                success, msg = _sync_working_repo(sessions_path, auto_commit=True, quiet=quiet)
+                if not success or not quiet:
+                    print(f"  {msg}")
+
+        if not quiet:
+            if needs_attention:
+                print(f"\n⚠ {len(needs_attention)} repo(s) need attention")
+            else:
+                print()
+
+    # --- Phase 2: Bare mirrors ---
+    if not quiet:
+        print(f"Syncing mirrors in {manager.repos_dir}...")
     results = manager.sync_all_mirrors()
     successes = sum(1 for v in results.values() if v)
-    print(f"\n✓ Synced {successes}/{len(results)} mirrors")
+    if not quiet:
+        print(f"✓ Synced {successes}/{len(results)} mirrors")
 
 
 @main.command()
