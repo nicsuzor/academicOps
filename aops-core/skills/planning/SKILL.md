@@ -95,6 +95,14 @@ GOAL → PROJECT → EPIC → TASK → ACTION
 
 `seed` → `growing` → `active` → `complete` (or `blocked`, `dormant`, `dead`)
 
+- **seed**: just an idea, unexamined
+- **growing**: being developed, assumptions being surfaced
+- **active**: validated enough to act on
+- **blocked**: waiting on something (explanation in body)
+- **complete**: done, for whatever "done" means here
+- **dormant**: not dead, but not now
+- **dead**: abandoned (with a note on why in body — this is valuable data)
+
 ## Operating Modes
 
 Detect which mode applies. They often blend.
@@ -135,13 +143,13 @@ Memory is read-then-write, never write-only.
 
 The PKB provides topology data. You provide the judgment.
 
-- `pkb_context(id, hops=2)` — Node neighbourhood. Use before placing anything.
-- `get_dependency_tree(id, direction='downstream')` — What does completing this unblock? High downstream weight = high leverage.
-- `get_dependency_tree(id, direction='upstream')` — What must happen first? Identifies blockers.
-- `get_network_metrics(id)` — Centrality, PageRank, degree. High centrality = structurally important.
-- `pkb_orphans()` — Disconnected nodes. Reconnect or prune.
-- `pkb_trace(from, to)` — Shortest path. Reveals hidden connections.
-- `decompose_task(parent_id, subtasks)` — Batch-create subtasks under a parent.
+- `mcp__pkb__pkb_context(id, hops=2)` — Node neighbourhood. Use before placing anything.
+- `mcp__pkb__get_dependency_tree(id, direction='downstream')` — What does completing this unblock? High downstream weight = high leverage.
+- `mcp__pkb__get_dependency_tree(id, direction='upstream')` — What must happen first? Identifies blockers.
+- `mcp__pkb__get_network_metrics(id)` — Centrality, PageRank, degree. High centrality = structurally important.
+- `mcp__pkb__pkb_orphans()` — Disconnected nodes. Reconnect or prune.
+- `mcp__pkb__pkb_trace(from, to)` — Shortest path. Reveals hidden connections.
+- `mcp__pkb__decompose_task(parent_id, subtasks)` — Batch-create subtasks under a parent.
 
 **Prioritisation heuristic**: `information_value ≈ downstream_weight × assumption_criticality`
 
