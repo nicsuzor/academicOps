@@ -182,7 +182,7 @@ def skip_demo_in_xdist(request):
     Run demo tests with: pytest -m demo -n 0
     """
     if "demo" in request.keywords and _is_xdist_worker():
-        pytest.fail("Demo tests require -n 0 for visible output. Run: pytest -m demo -n 0")
+        pytest.skip("Demo tests require -n 0 for visible output. Run: pytest -m demo -n 0")
 
 
 @pytest.fixture
