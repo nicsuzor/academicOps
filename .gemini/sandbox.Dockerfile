@@ -43,4 +43,7 @@ RUN uv sync --frozen --no-dev
 
 RUN mkdir -p /data
 
+# Create worker home for non-root polecat execution
+RUN mkdir -p /home/worker && chmod 777 /home/worker
+
 CMD ["/bin/bash"]

@@ -36,11 +36,23 @@ def _make_worker_env() -> dict[str, str]:
     path_segments = [s for s in current_path.split(os.pathsep) if s]
 
     # Prepend common user-level bin paths if they exist and are not already in PATH.
-    # We only prepend user bin paths to avoid messing with system binary precedence.
+    # Include nvm-managed node bin (for gemini/claude CLIs installed via npm).
+    nvm_dir = os.environ.get("NVM_DIR", str(Path.home() / ".nvm"))
+    nvm_bin = os.environ.get("NVM_BIN", "")
     user_bin_paths = [
         str(Path.home() / ".local" / "bin"),
         str(Path.home() / "bin"),
     ]
+    # Add NVM bin if set, otherwise scan for nvm node versions
+    if nvm_bin:
+        user_bin_paths.append(nvm_bin)
+    elif os.path.isdir(nvm_dir):
+        versions_dir = Path(nvm_dir) / "versions" / "node"
+        if versions_dir.is_dir():
+            # Use the most recent node version's bin
+            node_versions = sorted(versions_dir.iterdir(), reverse=True)
+            if node_versions:
+                user_bin_paths.append(str(node_versions[0] / "bin"))
     for p in reversed(user_bin_paths):
         if os.path.isdir(p) and p not in path_segments:
             path_segments.insert(0, p)
@@ -160,8 +172,15 @@ def _build_docker_cmd(
     else:
         cmd.append("-i")
 
-    # User / Permissions (run as root in container to avoid uid mapping issues for now, or match host)
-    # The sandbox image sets up /app, we mount into /workspace
+    # Run as current user — Claude Code refuses --dangerously-skip-permissions under root
+    uid = os.getuid()
+    gid = os.getgid()
+    cmd.extend(["--user", f"{uid}:{gid}"])
+    # Use host home path so absolute paths in plugin configs (installed_plugins.json) resolve
+    container_home = str(Path.home())
+    cmd.extend(["-e", f"HOME={container_home}"])
+    # Create writable home dir in container via tmpfs
+    cmd.extend(["--tmpfs", container_home])
 
     # Mount worktree
     cmd.extend(["-v", f"{work_dir.resolve()}:/workspace"])
@@ -173,9 +192,9 @@ def _build_docker_cmd(
         claude_json = home / ".claude.json"
         claude_dir = home / ".claude"
         if claude_json.exists():
-            cmd.extend(["-v", f"{claude_json}:/root/.claude.json"])
+            cmd.extend(["-v", f"{claude_json}:{container_home}/.claude.json"])
         if claude_dir.exists():
-            cmd.extend(["-v", f"{claude_dir}:/root/.claude"])
+            cmd.extend(["-v", f"{claude_dir}:{container_home}/.claude"])
 
     # Add host networking for MCPs running on localhost
     cmd.extend(["--add-host", "host.docker.internal:host-gateway"])
@@ -1073,13 +1092,18 @@ def crew(ctx, target, extra, name, gemini, resume, keep):
     env["POLECAT_CREW_NAME"] = crew_name
     env["POLECAT_WORKTREE"] = str(work_dir)
     if gemini:
-        # Use the aops-specific sandbox image so crew workers have uv, gh, etc.
-        # Falls back to Gemini's default sandbox image if aops-sandbox isn't built.
-        env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-sandbox")
+        # Gemini --sandbox re-execs itself inside the container, so the image
+        # needs the Gemini CLI installed. Use aops-env-test (full image with AI CLIs).
+        env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-env-test")
         final_cmd = cmd
     else:
         # Claude Code: manually wrap in docker container
         final_cmd = _build_docker_cmd(cli_tool, work_dir, env, cmd, is_interactive=True)
+
+    # Resolve CLI binary to absolute path so subprocess doesn't depend on PATH lookup
+    resolved = shutil.which(final_cmd[0], path=env.get("PATH"))
+    if resolved:
+        final_cmd[0] = resolved
 
     set_terminal_title(f"crew:{crew_name}")
     try:
@@ -1441,8 +1465,9 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
     env["POLECAT_SESSION_TYPE"] = "polecat"
 
     if gemini:
-        # Use the aops-specific sandbox image so workers have uv, gh, etc.
-        env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-sandbox")
+        # Gemini --sandbox re-execs itself inside the container, so the image
+        # needs the Gemini CLI installed. Use aops-env-test (full image with AI CLIs).
+        env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-env-test")
         final_cmd = cmd
     else:
         # Claude Code: manually wrap in docker container
