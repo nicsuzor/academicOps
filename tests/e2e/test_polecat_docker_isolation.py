@@ -16,7 +16,6 @@ def temp_polecat_home(tmp_path):
     return home
 
 
-@pytest.mark.slow
 @pytest.mark.integration
 def test_crew_spawns_docker_container_claude(temp_polecat_home, tmp_path):
     """
@@ -61,7 +60,6 @@ def test_crew_spawns_docker_container_claude(temp_polecat_home, tmp_path):
     )
 
 
-@pytest.mark.slow
 @pytest.mark.integration
 def test_crew_spawns_docker_container_gemini(temp_polecat_home, tmp_path):
     """

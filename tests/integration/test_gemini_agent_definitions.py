@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-pytestmark = [pytest.mark.slow, pytest.mark.integration]
+pytestmark = [pytest.mark.integration]
 
 
 def test_source_agent_tool_names():

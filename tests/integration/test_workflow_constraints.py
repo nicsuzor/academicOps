@@ -20,7 +20,7 @@ Run with demo output:
 
 import pytest
 
-pytestmark = [pytest.mark.slow, pytest.mark.integration]
+pytestmark = [pytest.mark.integration]
 
 # ============================================================================
 # CONSTRAINT TEST CASES

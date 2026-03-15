@@ -21,7 +21,7 @@ from lib.task_model import TaskType
 from lib.task_storage import TaskStorage
 from lib.task_sync import TaskSyncService
 
-pytestmark = [pytest.mark.slow, pytest.mark.integration]
+pytestmark = [pytest.mark.integration]
 
 
 class TestScenario1_HappyPath:
