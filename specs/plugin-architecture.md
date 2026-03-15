@@ -83,9 +83,9 @@ This document defines the component assignments for the academicOps plugin ecosy
 - `/email` - Create actionable tasks from emails
 - `/q` - Queue task for later execution (creates bd issue)
 
-**Agents**:
+**Skills (standalone packages)**:
 
-- `effectual-planner` - Strategic planning under uncertainty
+- `planning` (`skills/planning/`) - Strategic planning under uncertainty (effectual planner)
 
 **MCP Servers**:
 

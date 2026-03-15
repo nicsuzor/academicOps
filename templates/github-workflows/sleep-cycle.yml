@@ -102,4 +102,14 @@ jobs:
             - Be incremental. Only process what's new since the last sleep cycle.
             - Write a summary of what you did to $GITHUB_STEP_SUMMARY.
 
+            ## Repo Topology (CRITICAL)
+            This repo is a DATA repo — it contains tasks, notes, and memories, NOT code.
+            Code lives in separate repositories (e.g., academicOps at _aops/).
+
+            When evaluating whether a feature exists or a task is obsolete:
+            - NEVER conclude a feature "doesn't exist" because you can't find code HERE
+            - Search the code repo (_aops/) and any installed plugin paths for implementations
+            - If you can't locate code in the code repo either, flag for human review — do NOT auto-cancel
+            - Tasks referencing features, skills, or tools are about code that lives ELSEWHERE
+
             ${{ inputs.focus && format('## Focus\nThe operator asked you to focus on: {0}', inputs.focus) || '' }}

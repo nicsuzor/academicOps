@@ -165,7 +165,7 @@ Skills exist in two locations with different roles:
 1. **`.agent/skills/`** (17 skills): Agent-facing skill definitions loaded by Claude Code's native skill system. These are the skills that appear when Claude Code lists available skills.
 2. **`aops-core/skills/`** (28 skill definitions): Canonical skill definitions with `SKILL.md` frontmatter (triggers, domain, mode, allowed-tools). These are loaded by the hydration system via `SKILLS.md` for routing.
 
-The canonical index is `aops-core/SKILLS.md` with 36 entries (8 commands + 28 skills). Several skills in `aops-core/skills/` do not have corresponding entries in `.agent/skills/` (`assess-hydrator`, `briefing-bundle`, `convert-to-md`, `decision-apply`, `decision-extract`, `densify`, `email-triage`, `excalidraw`, `extract`, `flowchart`, `hdr`, `pdf`, `planning`, `process-bundle`, `strategy`, `swarm-supervisor`).
+The canonical index is `aops-core/SKILLS.md` with 36 entries (8 commands + 28 skills). Several skills in `aops-core/skills/` do not have corresponding entries in `.agent/skills/` (`assess-hydrator`, `briefing-bundle`, `convert-to-md`, `decision-apply`, `decision-extract`, `densify`, `email-triage`, `excalidraw`, `extract`, `flowchart`, `hdr`, `pdf`, `planning`, `process-bundle`, `strategy`, `swarm-supervisor`). Note: `effectual-planner` was retired as an agent and consolidated into `aops-core/skills/planning/` as a self-contained skill package (same pattern as `hydrator`).
 
 **Skills by domain**:
 
@@ -176,7 +176,7 @@ The canonical index is `aops-core/SKILLS.md` with 36 entries (8 commands + 28 sk
 | academic          | `analyst`, `hdr`, `pdf`                                                                          |
 | email             | `email-triage`                                                                                   |
 | collaboration     | `annotations`, `critic`                                                                          |
-| planning          | `effectual-planner`, `planning`, `strategy`                                                      |
+| planning          | `planning`, `strategy`                                                                           |
 | quality           | `qa`                                                                                             |
 | quality-assurance | `assess-hydrator`                                                                                |
 | development       | `python-dev`                                                                                     |

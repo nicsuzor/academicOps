@@ -19,10 +19,10 @@ This index categorizes key files within the `aops-core/` directory and the root 
 
 ## Agents
 
-- `[[aops-core/agents/hydrator.md]]`: The hydration agent.
-- `[[aops-core/agents/effectual-planner.md]]`: Strategic planning agent.
 - `[[aops-core/agents/qa.md]]`: Quality assurance agent.
 - `[[aops-core/agents/custodiet.md]]`: Drift detection agent.
+- `[[aops-core/skills/planning/SKILL.md]]`: Strategic planning skill (effectual planner).
+- `[[aops-core/skills/hydrator/SKILL.md]]`: Context enrichment skill.
 
 ## Hooks
 

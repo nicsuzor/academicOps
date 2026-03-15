@@ -106,7 +106,7 @@ def test_crew_spawns_docker_container_gemini(temp_polecat_home, tmp_path):
     )
 
     output = result.stdout + result.stderr
-    assert "GEMINI_SANDBOX_IMAGE=aops-sandbox" in output, (
+    assert "GEMINI_SANDBOX_IMAGE=aops-env-test" in output, (
         "Should set GEMINI_SANDBOX_IMAGE for gemini CLI"
     )
     assert "ARGS: --sandbox" in output, "Should invoke gemini with --sandbox flag"

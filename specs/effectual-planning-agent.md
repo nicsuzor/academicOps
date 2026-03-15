@@ -13,7 +13,7 @@ tags: [spec, planning, agent, effectuation]
 
 ## Giving Effect
 
-- [[agents/effectual-planner.md]] - Agent definition with strategic planning capabilities
+- [[skills/planning/SKILL.md]] - Planning skill definition with strategic planning capabilities
 - [[strategic-intake]] - Workflow for placing fragments in the planning hierarchy
 - [[decompose]] - Workflow for breaking epics into tasks via workflow steps
 - [[intentions.md]] - Intention-driven decomposition trigger (Mode 2 invoked by `/intend`)

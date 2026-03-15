@@ -103,7 +103,7 @@ User request
 
 ### Planning & Discovery
 
-These workflows help figure out what to do and how to do it.
+These workflows help figure out what to do and how to do it. They live in the `planning` skill package (`aops-core/skills/planning/workflows/`) and are executed by the planning skill, not the hydrator directly.
 
 | Workflow             | When to Use                                          | Bases                         |
 | -------------------- | ---------------------------------------------------- | ----------------------------- |

@@ -430,14 +430,14 @@ Auto-commits staged changes. Blocks if unstaged changes require manual commit.
 
 Main agent has all tools except deny rules. Subagents are restricted:
 
-| Agent             | Tools Granted                      | Model  | Purpose                                                                                                        |
-| ----------------- | ---------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------- |
-| Main agent        | All (minus deny rules)             | varies | Primary task execution                                                                                         |
-| hydrator          | Read, Grep, mcp__pkb__search, Task | haiku  | Context enrichment (Edit/Write blocked by check_subagent_tool_restrictions)                                    |
-| custodiet         | Read                               | haiku  | Compliance checking                                                                                            |
-| qa                | Read, Grep, Glob                   | opus   | Independent verification (anti-sycophancy: must verify against original request verbatim, not agent reframing) |
-| planner           | All (inherits from main)           | sonnet | Implementation planning                                                                                        |
-| effectual-planner | All (inherits from main)           | opus   | Strategic planning                                                                                             |
+| Agent          | Tools Granted                                | Model  | Purpose                                                                                                        |
+| -------------- | -------------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------- |
+| Main agent     | All (minus deny rules)                       | varies | Primary task execution                                                                                         |
+| hydrator       | Read, Grep, mcp__pkb__search, Task           | haiku  | Context enrichment (Edit/Write blocked by check_subagent_tool_restrictions)                                    |
+| custodiet      | Read                                         | haiku  | Compliance checking                                                                                            |
+| qa             | Read, Grep, Glob                             | opus   | Independent verification (anti-sycophancy: must verify against original request verbatim, not agent reframing) |
+| planner        | All (inherits from main)                     | sonnet | Implementation planning                                                                                        |
+| planning skill | See `skills/planning/SKILL.md` allowed-tools | opus   | Strategic planning (invoked via `Skill(skill="planning")`)                                                     |
 
 **Note**: `tools:` in agent frontmatter RESTRICTS available tools - it cannot GRANT access beyond what settings.json allows. Deny rules apply globally.
 
