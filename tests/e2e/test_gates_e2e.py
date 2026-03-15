@@ -3,6 +3,7 @@ import pytest
 
 @pytest.mark.integration
 @pytest.mark.slow
+@pytest.mark.requires_local_env
 @pytest.mark.parametrize(
     "gate, instruction, expected_behavior",
     [

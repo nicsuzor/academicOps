@@ -12,6 +12,7 @@ from tests.conftest import extract_task_calls
 pytestmark = [
     pytest.mark.integration,
     pytest.mark.slow,
+    pytest.mark.requires_local_env,
     pytest.mark.xdist_group("multi_agent"),
 ]
 

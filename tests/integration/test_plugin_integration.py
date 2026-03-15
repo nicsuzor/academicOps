@@ -53,6 +53,7 @@ class TestHookFunctionality:
 
     @pytest.mark.integration
     @pytest.mark.slow
+    @pytest.mark.requires_local_env
     def test_session_completes_from_tmp(self, claude_headless, tmp_path: Path) -> None:
         """Session should complete without hook errors when run from /tmp."""
         workdir = tmp_path / "plugin-test"

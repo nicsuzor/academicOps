@@ -17,6 +17,7 @@ def temp_polecat_home(tmp_path):
 
 
 @pytest.mark.slow
+@pytest.mark.requires_local_env
 def test_crew_spawns_docker_container_claude(temp_polecat_home, tmp_path):
     """
     E2E test: running polecat crew wraps claude in docker.
@@ -61,6 +62,7 @@ def test_crew_spawns_docker_container_claude(temp_polecat_home, tmp_path):
 
 
 @pytest.mark.slow
+@pytest.mark.requires_local_env
 def test_crew_spawns_docker_container_gemini(temp_polecat_home, tmp_path):
     """
     E2E test: running polecat crew -g delegates sandboxing to Gemini CLI via GEMINI_SANDBOX_IMAGE.

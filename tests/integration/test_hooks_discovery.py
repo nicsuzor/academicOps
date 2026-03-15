@@ -12,6 +12,7 @@ from tests.conftest import extract_response_text
 
 @pytest.mark.slow
 @pytest.mark.integration
+@pytest.mark.requires_local_env
 def test_claude_hooks_registry_not_empty(claude_headless) -> None:
     """Test that Claude's hook registry has entries and hooks are firing."""
     result = claude_headless(
