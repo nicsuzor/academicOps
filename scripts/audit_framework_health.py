@@ -768,7 +768,6 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         "commands/q.md",
         "commands/learn.md",
         "hooks/session_env_setup.py",
-        "hooks/user_prompt_submit.py",
         "hooks/router.py",
         "hooks/hooks.json",
         "hooks/gate_registry.py",
@@ -779,7 +778,6 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         "hooks/task_binding.py",
         "hooks/templates/prompt-hydrator-context.md",
         "hooks/templates/custodiet-instruction.md",
-        "lib/file_index.py",
         "lib/session_reader.py",
         "lib/session_state.py",
     }

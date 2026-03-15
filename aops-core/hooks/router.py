@@ -432,6 +432,10 @@ class HookRouter:
         # Initialize gate registry
         GateRegistry.initialize()
 
+        # Increment per-prompt turn counter (used by gate min_turns_since_open conditions)
+        if ctx.hook_event == "UserPromptSubmit":
+            state.global_turn_count += 1
+
         # Run special handlers first (unified_logger, ntfy, etc.) then gates
         self._run_special_handlers(ctx, state, merged_result)
 

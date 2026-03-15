@@ -89,7 +89,18 @@ class GenericGate:
             if not re.search(condition.tool_input_pattern, input_str):
                 return False
 
-        # 3.5 Subagent Type Pattern
+        # 3.5 Subagent exclusion
+        if condition.exclude_if_subagent and ctx.is_subagent:
+            return False
+
+        # 3.6 Prompt exclude patterns
+        if condition.prompt_exclude_patterns:
+            prompt = ctx.raw_input.get("prompt", "").strip()
+            for pattern in condition.prompt_exclude_patterns:
+                if re.search(pattern, prompt):
+                    return False
+
+        # 3.7 Subagent Type Pattern
         if condition.subagent_type_pattern:
             if not ctx.subagent_type:
                 return False

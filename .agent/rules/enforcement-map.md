@@ -352,15 +352,15 @@ Gate mode is configured via `COMMIT_GATE_MODE` environment variable (required, n
 
 Main agent has all tools except deny rules. Subagents are restricted:
 
-| Agent             | Tools Granted                                  | Model  | Purpose                  |
-| ----------------- | ---------------------------------------------- | ------ | ------------------------ |
-| Main agent        | All (minus deny rules)                         | varies | Primary task execution   |
-| hydrator          | Read, Grep, mcp__memory__retrieve_memory, Task | haiku  | Context enrichment       |
-| custodiet         | Read                                           | haiku  | Compliance checking      |
-| critic            | Read                                           | opus   | Plan/conclusion review   |
-| qa                | Read, Grep, Glob                               | opus   | Independent verification |
-| planner           | All (inherits from main)                       | sonnet | Implementation planning  |
-| effectual-planner | All (inherits from main)                       | opus   | Strategic planning       |
+| Agent          | Tools Granted                                  | Model  | Purpose                                                    |
+| -------------- | ---------------------------------------------- | ------ | ---------------------------------------------------------- |
+| Main agent     | All (minus deny rules)                         | varies | Primary task execution                                     |
+| hydrator       | Read, Grep, mcp__memory__retrieve_memory, Task | haiku  | Context enrichment                                         |
+| custodiet      | Read                                           | haiku  | Compliance checking                                        |
+| critic         | Read                                           | opus   | Plan/conclusion review                                     |
+| qa             | Read, Grep, Glob                               | opus   | Independent verification                                   |
+| planner        | All (inherits from main)                       | sonnet | Implementation planning                                    |
+| planning skill | See `skills/planning/SKILL.md` allowed-tools   | opus   | Strategic planning (invoked via `Skill(skill="planning")`) |
 
 **Note**: `tools:` in agent frontmatter RESTRICTS available tools - it cannot GRANT access beyond what settings.json allows. Deny rules apply globally.
 

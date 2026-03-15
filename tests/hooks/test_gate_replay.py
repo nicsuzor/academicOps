@@ -252,8 +252,8 @@ class TestRealEventSequenceReplay:
 
             if event["hook_event"] == "UserPromptSubmit":
                 # After UserPromptSubmit, hydration should be closed
-                # (may depend on custom_check "is_hydratable" which we can't
-                # evaluate in test context, so just track if it was already closed)
+                # (trigger uses declarative exclude_if_subagent + prompt_exclude_patterns
+                # so just track if it was already closed)
                 if hydration_status == GateStatus.CLOSED:
                     hydration_was_closed = True
 
@@ -280,6 +280,7 @@ class TestRealEventSequenceReplay:
 
 
 @pytest.mark.integration
+@pytest.mark.requires_local_env
 class TestHookLogDiscovery:
     """Discover and parse actual hook log files from the filesystem.
 
@@ -520,10 +521,9 @@ class TestPostToolUseCounter:
 class TestUserPromptSubmitClosesGate:
     """Verify UserPromptSubmit closes the hydration gate.
 
-    Note: The hydration gate's UserPromptSubmit trigger has a custom_check
-    'is_hydratable' which depends on session context. We test the
-    gate machinery directly by verifying the trigger fires when conditions
-    are met.
+    The hydration gate's UserPromptSubmit trigger uses declarative
+    exclude_if_subagent + prompt_exclude_patterns to skip slash commands,
+    dot-prefixed prompts, agent/task notifications, and subagent sessions.
     """
 
     def test_hydration_gate_config_initial_status_is_closed(self):
@@ -557,7 +557,7 @@ class TestUserPromptSubmitClosesGate:
         )
 
     def test_hydrator_trigger_opens_then_prompt_can_close(self, router):
-        """After hydrator opens gate, a new event can exercise the close path."""
+        """After hydrator opens gate, a UserPromptSubmit for a normal prompt closes it."""
         state = SessionState.create("test-ups-lifecycle")
 
         # 1. Open gate via hydrator trigger
@@ -571,21 +571,70 @@ class TestUserPromptSubmitClosesGate:
         router._dispatch_gates(ctx_open, state)
         assert state.gates["hydration"].status == GateStatus.OPEN
 
-        # 2. The UserPromptSubmit trigger requires is_hydratable custom check
-        #    which depends on session context we can't easily reproduce.
-        #    But we can verify the gate infrastructure is correct by checking
-        #    the trigger definition.
-        from lib.gates.definitions import GATE_CONFIGS
+        # 2. A normal (non-skipped) UserPromptSubmit should close the gate.
+        ctx_prompt = HookContext(
+            session_id="test-ups-lifecycle",
+            hook_event="UserPromptSubmit",
+            is_subagent=False,
+            raw_input={"prompt": "Fix the bug in auth.py"},
+        )
+        router._dispatch_gates(ctx_prompt, state)
+        assert state.gates["hydration"].status == GateStatus.CLOSED, (
+            "Normal UserPromptSubmit should close the hydration gate"
+        )
 
-        hydration_config = next(c for c in GATE_CONFIGS if c.name == "hydration")
-        ups_trigger = next(
-            t for t in hydration_config.triggers if t.condition.hook_event == "UserPromptSubmit"
+    def test_hydrator_trigger_skips_slash_command(self, router):
+        """UserPromptSubmit with a slash command should NOT close the hydration gate."""
+        state = SessionState.create("test-ups-slash")
+
+        # Pre-open the gate
+        ctx_open = HookContext(
+            session_id="test-ups-slash",
+            hook_event="SubagentStop",
+            tool_name=None,
+            tool_input={},
+            subagent_type="aops-core:hydrator",
         )
-        assert ups_trigger.transition.target_status == GateStatus.CLOSED, (
-            "UserPromptSubmit trigger should transition to CLOSED"
+        router._dispatch_gates(ctx_open, state)
+        assert state.gates["hydration"].status == GateStatus.OPEN
+
+        # Slash command should NOT close the gate
+        ctx_prompt = HookContext(
+            session_id="test-ups-slash",
+            hook_event="UserPromptSubmit",
+            is_subagent=False,
+            raw_input={"prompt": "/commit"},
         )
-        assert ups_trigger.condition.custom_check == "is_hydratable", (
-            "UserPromptSubmit trigger should check is_hydratable"
+        router._dispatch_gates(ctx_prompt, state)
+        assert state.gates["hydration"].status == GateStatus.OPEN, (
+            "Slash command UserPromptSubmit should NOT close the hydration gate"
+        )
+
+    def test_hydrator_trigger_skips_subagent_session(self, router):
+        """UserPromptSubmit in a subagent session should NOT close the hydration gate."""
+        state = SessionState.create("test-ups-subagent")
+
+        # Pre-open the gate
+        ctx_open = HookContext(
+            session_id="test-ups-subagent",
+            hook_event="SubagentStop",
+            tool_name=None,
+            tool_input={},
+            subagent_type="aops-core:hydrator",
+        )
+        router._dispatch_gates(ctx_open, state)
+        assert state.gates["hydration"].status == GateStatus.OPEN
+
+        # Subagent session UserPromptSubmit should NOT close the gate
+        ctx_prompt = HookContext(
+            session_id="test-ups-subagent",
+            hook_event="UserPromptSubmit",
+            is_subagent=True,
+            raw_input={"prompt": "Fix the bug in auth.py"},
+        )
+        router._dispatch_gates(ctx_prompt, state)
+        assert state.gates["hydration"].status == GateStatus.OPEN, (
+            "Subagent UserPromptSubmit should NOT close the hydration gate"
         )
 
 

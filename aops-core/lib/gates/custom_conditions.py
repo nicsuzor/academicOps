@@ -37,28 +37,6 @@ def check_custom_condition(
         except ImportError:
             return False
 
-    if name == "is_hydratable":
-        try:
-            from lib.hydration import should_skip_hydration
-
-            # Extract prompt
-            # For Claude, prompt is not directly in input usually?
-            # It might be in 'user_message' or similar if router normalizes it.
-            # Or we look at raw input.
-            prompt = ctx.raw_input.get("prompt")  # Gemini
-            if not prompt:
-                # Try to extract from raw input for Claude if structured differently
-                # But for now assume it's available or skip
-                return False
-
-            # Pass ctx.is_subagent so should_skip_hydration() uses the router's
-            # pre-computed value rather than falling back to is_subagent_session()
-            # heuristics. This centralises subagent detection and prevents the
-            # is_subagent_session() fallback from running when ctx.is_subagent=False.
-            return not should_skip_hydration(prompt, ctx.session_id, is_subagent=ctx.is_subagent)
-        except ImportError:
-            return False
-
     if name == "has_framework_reflection":
         try:
             from lib.transcript_parser import parse_framework_reflection

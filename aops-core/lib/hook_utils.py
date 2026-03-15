@@ -12,10 +12,7 @@ All gates should use these utilities instead of duplicating code.
 from __future__ import annotations
 
 import os
-import tempfile
-import time
 from functools import lru_cache
-from pathlib import Path
 from typing import Any, TypedDict
 
 from lib.paths import (
@@ -23,83 +20,13 @@ from lib.paths import (
     get_heuristics_file,
     get_skills_file,
 )
-from lib.session_paths import get_session_status_dir
 from lib.template_loader import load_template
-
-# Cleanup age: 1 hour in seconds
-CLEANUP_AGE_SECONDS = 60 * 60
 
 
 class HookOutput(TypedDict, total=False):
     """Standard hook output format."""
 
     hookSpecificOutput: dict[str, Any]
-
-
-def get_hook_temp_dir(category: str, input_data: dict[str, Any] | None = None) -> Path:
-    """Get temporary directory for hook files.
-
-    Unified temp directory resolution using session_paths logic.
-    """
-    # 1. Check for standard temp dir env var (highest priority - host CLI provided)
-    tmpdir = os.environ.get("TMPDIR")
-    if tmpdir:
-        path = Path(tmpdir) / category
-        path.mkdir(parents=True, exist_ok=True)
-        return path
-
-    # 2. Check for Gemini router provided temp root
-    gemini_root = os.environ.get("AOPS_GEMINI_TEMP_ROOT")
-    if gemini_root:
-        path = Path(gemini_root) / category
-        path.mkdir(parents=True, exist_ok=True)
-        return path
-
-    # 3. Use unified session status directory resolution
-    session_id = get_session_id(input_data)
-    status_dir = get_session_status_dir(session_id, input_data)
-
-    # Platform-specific temp sub-structure
-    # Gemini uses flat category directories in state dir (~/.gemini/tmp/<hash>/<category>)
-    # Claude uses tmp subdirectory (~/.claude/projects/<project>/tmp/<category>)
-    if ".gemini" in str(status_dir):
-        path = status_dir / category
-    else:
-        path = status_dir / "tmp" / category
-
-    path.mkdir(parents=True, exist_ok=True)
-    return path
-
-
-def cleanup_old_temp_files(
-    temp_dir: Path,
-    prefix: str,
-    age_seconds: int = CLEANUP_AGE_SECONDS,
-) -> int:
-    """Delete temp files older than specified age.
-
-    Args:
-        temp_dir: Directory to clean
-        prefix: File prefix pattern (e.g., "hydrate_", "audit_")
-        age_seconds: Max file age in seconds (default: 1 hour)
-
-    Returns:
-        Number of files deleted
-    """
-    if not temp_dir.exists():
-        return 0
-
-    deleted = 0
-    cutoff = time.time() - age_seconds
-    for f in temp_dir.glob(f"{prefix}*.md"):
-        try:
-            if f.stat().st_mtime < cutoff:
-                f.unlink()
-                deleted += 1
-        except OSError:
-            pass  # Ignore cleanup errors
-
-    return deleted
 
 
 @lru_cache(maxsize=1)
@@ -116,58 +43,6 @@ def load_framework_content() -> tuple[str, str, str]:
     heuristics = load_template(get_heuristics_file())
     skills = load_template(get_skills_file())
     return axioms, heuristics, skills
-
-
-def write_temp_file(
-    content: str,
-    temp_dir: Path,
-    prefix: str,
-    suffix: str = ".md",
-    session_id: str | None = None,
-) -> Path:
-    """Write content to temp file, return path.
-
-    When session_id is provided, uses a deterministic filename based on the
-    session hash. This ensures a single temp file per session (P#102), with
-    subsequent writes overwriting the same file.
-
-    Args:
-        content: Content to write
-        temp_dir: Target directory
-        prefix: File name prefix (e.g., "hydrate_", "audit_")
-        suffix: File extension (default: ".md")
-        session_id: Optional session identifier for consistent naming
-
-    Returns:
-        Path to created temp file
-
-    Raises:
-        OSError: If temp file cannot be written (fail-fast, no silent fallback)
-    """
-    temp_dir.mkdir(parents=True, exist_ok=True)
-
-    # Use consistent session hash in filename when available (P#102)
-    # This ensures one temp file per session, overwritten on each trigger
-    sid = session_id or get_session_id({})
-    if sid:
-        from lib.session_paths import get_session_short_hash
-
-        short_hash = get_session_short_hash(sid)
-        # prefix already contains trailing underscore if intended
-        path = temp_dir / f"{prefix}{short_hash}{suffix}"
-        path.write_text(content)  # Fail-fast: no silent fallback to random names
-        return path
-
-    # Fallback only when no session_id: Generate random unique filename
-    with tempfile.NamedTemporaryFile(
-        mode="w",
-        prefix=prefix,
-        suffix=suffix,
-        dir=temp_dir,
-        delete=False,
-    ) as f:
-        f.write(content)
-        return Path(f.name)
 
 
 def get_session_id(input_data: dict[str, Any] | None = None) -> str:
