@@ -184,7 +184,7 @@ FILE_INDEX: tuple[FileEntry, ...] = (
     FileEntry(
         path="specs/prompt-hydration.md",
         description="Prompt hydration system spec",
-        keywords=("hydrator", "hydrator", "hydration spec", "routing spec"),
+        keywords=("hydrator", "hydration spec", "routing spec"),
     ),
     FileEntry(
         path="hooks/user_prompt_submit.py",

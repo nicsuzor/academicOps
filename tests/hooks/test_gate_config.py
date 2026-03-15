@@ -133,7 +133,6 @@ class TestComplianceSubagentTypes:
 
     def test_hydrator_variants(self):
         assert "hydrator" in COMPLIANCE_SUBAGENT_TYPES
-        assert "hydrator" in COMPLIANCE_SUBAGENT_TYPES
         assert "aops-core:hydrator" in COMPLIANCE_SUBAGENT_TYPES
 
     def test_custodiet_variants(self):

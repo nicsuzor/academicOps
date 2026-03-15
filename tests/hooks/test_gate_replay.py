@@ -261,7 +261,6 @@ class TestRealEventSequenceReplay:
             if event.get("subagent_type") in (
                 "aops-core:hydrator",
                 "hydrator",
-                "hydrator",
             ):
                 if hydration_status == GateStatus.OPEN:
                     hydration_opened_by_trigger = True
@@ -1312,7 +1311,6 @@ class TestRealSpawnEventCategorization:
         #    hydration gate — WARN/DENY is correct when hydration hasn't been done.
         is_hydrator_dispatch = subagent_type in (
             "aops-core:hydrator",
-            "hydrator",
             "hydrator",
         )
         if is_hydrator_dispatch:
