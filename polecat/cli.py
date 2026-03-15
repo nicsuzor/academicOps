@@ -169,6 +169,28 @@ def save_worker_transcript(
         raise OSError(f"Failed to save transcript for task {task_id}: {e}") from e
 
 
+def _detect_system_timezone() -> str:
+    """Detect system timezone from /etc/localtime or /etc/timezone. Returns 'UTC' if undetectable."""
+    try:
+        tz_link = Path("/etc/localtime")
+        if tz_link.is_symlink():
+            target = str(tz_link.resolve())
+            # /etc/localtime -> /usr/share/zoneinfo/Region/City
+            marker = "/zoneinfo/"
+            idx = target.find(marker)
+            if idx != -1:
+                return target[idx + len(marker) :]
+    except OSError:
+        pass
+    try:
+        tz_file = Path("/etc/timezone")
+        if tz_file.exists():
+            return tz_file.read_text().strip()
+    except OSError:
+        pass
+    return "UTC"
+
+
 def _build_docker_cmd(
     cli_tool: str,
     work_dir: Path,
@@ -204,7 +226,7 @@ def _build_docker_cmd(
     cmd.extend(["-e", f"HOME={container_home}"])
 
     # Timezone — match host timezone for consistent timestamps in commits/logs
-    tz = os.environ.get("TZ", "Australia/Brisbane")
+    tz = os.environ.get("TZ") or _detect_system_timezone()
     cmd.extend(["-e", f"TZ={tz}"])
 
     # Git identity — required for git commit inside the container

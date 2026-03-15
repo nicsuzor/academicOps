@@ -162,13 +162,13 @@ class TestBuildDockerCmd:
         assert "--tmpfs" not in cmd
 
     def test_sets_timezone(self):
-        """TZ is set in Docker env."""
-        cmd = self._build()
+        """TZ is set in Docker env, detected from system when not in env."""
+        with patch("cli._detect_system_timezone", return_value="US/Eastern"):
+            cmd = self._build()
         env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
         tz_args = [a for a in env_args if a.startswith("TZ=")]
         assert len(tz_args) == 1
-        # Default is Australia/Brisbane
-        assert tz_args[0] == "TZ=Australia/Brisbane"
+        assert tz_args[0] == "TZ=US/Eastern"
 
     def test_timezone_from_env(self):
         """TZ can be overridden via environment variable."""
@@ -282,3 +282,43 @@ class TestMakeWorkerEnv:
 
         env = _make_worker_env()
         assert env.get("GH_PROMPT_DISABLED") == "1"
+
+
+class TestDetectSystemTimezone:
+    """Tests for _detect_system_timezone."""
+
+    def test_from_localtime_symlink(self):
+        from cli import _detect_system_timezone
+
+        mock_localtime = type(
+            "MockPath",
+            (),
+            {
+                "is_symlink": lambda self: True,
+                "resolve": lambda self: Path("/usr/share/zoneinfo/Europe/London"),
+            },
+        )()
+        mock_no_timezone = type("MockPath", (), {"exists": lambda self: False})()
+
+        def path_factory(p):
+            if p == "/etc/localtime":
+                return mock_localtime
+            if p == "/etc/timezone":
+                return mock_no_timezone
+            return Path(p)
+
+        with patch("cli.Path", side_effect=path_factory):
+            result = _detect_system_timezone()
+        assert result == "Europe/London"
+
+    def test_fallback_to_utc(self):
+        from cli import _detect_system_timezone
+
+        mock_path = type(
+            "MockPath",
+            (),
+            {"is_symlink": lambda self: False, "exists": lambda self: False},
+        )()
+        with patch("cli.Path", side_effect=lambda p: mock_path):
+            result = _detect_system_timezone()
+        assert result == "UTC"
