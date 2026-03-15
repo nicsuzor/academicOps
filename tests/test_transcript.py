@@ -120,11 +120,6 @@ Some conversation...
                 "Ensure session transcripts exist for testing."
             )
 
-        assert len(reflection_files) > 0, (
-            f"No live session logs with Framework Reflections found in {sessions_dir}. "
-            "Ensure session transcripts exist for testing."
-        )
-
         # Test extraction on each found file
         successful_extractions = 0
         for md_file in reflection_files:
