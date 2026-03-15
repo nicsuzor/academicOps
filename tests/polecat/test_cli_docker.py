@@ -132,6 +132,34 @@ class TestBuildDockerCmd:
         home_args = [a for a in env_args if a.startswith("HOME=")]
         assert len(home_args) == 1
 
+    def test_mounts_pkb_binary_when_available(self):
+        """pkb binary is mounted read-only for MCP server access."""
+        with patch(
+            "cli.shutil.which",
+            side_effect=lambda name, **kw: "/usr/bin/pkb" if name == "pkb" else None,
+        ):
+            cmd = self._build()
+        vol_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-v"]
+        assert any("/usr/bin/pkb:/usr/local/bin/pkb:ro" in v for v in vol_args)
+
+    def test_no_pkb_mount_when_missing(self):
+        """No pkb mount when binary is not found on host."""
+        with patch("cli.shutil.which", return_value=None):
+            cmd = self._build()
+        vol_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-v"]
+        assert not any("pkb" in v for v in vol_args)
+
+    def test_mounts_aca_data_when_set(self, tmp_path):
+        """ACA_DATA directory is mounted for PKB access."""
+        aca_dir = tmp_path / "brain"
+        aca_dir.mkdir()
+        env = {"ACA_DATA": str(aca_dir)}
+        cmd = self._build(env=env)
+        vol_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-v"]
+        assert any(str(aca_dir) in v for v in vol_args)
+        env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
+        assert f"ACA_DATA={aca_dir}" in env_args
+
 
 class TestMakeWorkerEnv:
     """Tests for _make_worker_env environment construction."""

@@ -207,6 +207,17 @@ def _build_docker_cmd(
         if claude_dir.exists():
             cmd.extend(["-v", f"{claude_dir}:{container_home}/.claude:ro"])
 
+    # Mount pkb binary for MCP server (plugin config references 'pkb' from PATH)
+    pkb_bin = shutil.which("pkb")
+    if pkb_bin:
+        cmd.extend(["-v", f"{pkb_bin}:/usr/local/bin/pkb:ro"])
+
+    # Mount ACA_DATA for PKB access (read-write — agents may update tasks)
+    aca_data = env.get("ACA_DATA") or os.environ.get("ACA_DATA")
+    if aca_data and os.path.isdir(aca_data):
+        cmd.extend(["-v", f"{aca_data}:{aca_data}"])
+        cmd.extend(["-e", f"ACA_DATA={aca_data}"])
+
     # Add host networking for MCPs running on localhost
     cmd.extend(["--add-host", "host.docker.internal:host-gateway"])
 
