@@ -63,15 +63,10 @@ class TestGetGateFilePath:
 
     @patch("lib.session_paths.Path.home")
     @patch("lib.session_paths.get_claude_project_folder")
-    def test_claude_path_generation(self, mock_project_folder, mock_home, tmp_path, monkeypatch):
+    def test_claude_path_generation(self, mock_project_folder, mock_home, tmp_path):
         """Test path generation for a Claude session."""
         mock_home.return_value = tmp_path
         mock_project_folder.return_value = "-home-user-project"
-
-        # get_projects_dir uses ACA_DATA so mock it
-        aca_data = tmp_path / "aca_data"
-        aca_data.mkdir()
-        monkeypatch.setenv("ACA_DATA", str(aca_data))
 
         session_id = "550e8400-e29b-41d4-a716-446655440000"
         gate = "custodiet"
@@ -79,11 +74,11 @@ class TestGetGateFilePath:
 
         path = get_gate_file_path(gate, session_id, date=date)
 
-        # Expected: <projects_dir>/<project>/<date>-<shorthash>-<gate>.md
+        # Expected: ~/.claude/projects/<project>/<date>-<shorthash>-<gate>.md
         # Short hash for "550e8400..." is "550e8400"
         expected_path = (
             tmp_path
-            / "aca_data"
+            / ".claude"
             / "projects"
             / "-home-user-project"
             / "20240520-550e8400-custodiet.md"

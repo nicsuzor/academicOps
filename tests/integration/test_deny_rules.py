@@ -3,6 +3,8 @@
 Consolidated from 2 tests to 1 (the other was already skipped due to design flaw).
 """
 
+from pathlib import Path
+
 import pytest
 
 pytestmark = [pytest.mark.integration, pytest.mark.slow]
@@ -39,9 +41,7 @@ def test_deny_rules_block_claude_dir_write(claude_headless):
 
     found_denial = any(indicator in response_text for indicator in deny_indicators)
 
-    from lib.paths import get_config_dir
-
-    test_file = get_config_dir() / "test-deny-rules.txt"
+    test_file = Path.home() / ".claude" / "test-deny-rules.txt"
     file_exists = test_file.exists()
 
     if file_exists:
