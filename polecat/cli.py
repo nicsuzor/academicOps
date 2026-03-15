@@ -31,7 +31,7 @@ def _node_version_key(p: Path) -> tuple[int, ...]:
     return tuple(int(x) for x in m.groups()) if m else (0, 0, 0)
 
 
-def _make_worker_env() -> dict[str, str]:
+def _make_worker_env(interactive: bool = False) -> dict[str, str]:
     """Create a sanitized environment for polecat/crew worker subprocesses.
 
     Strips SSH credentials and maps git auth to the bot token, ensuring
@@ -39,9 +39,15 @@ def _make_worker_env() -> dict[str, str]:
     This runs agent-env-map.conf mappings eagerly (before subprocess launch)
     rather than relying on the SessionStart hook inside the child process.
     It also ensures 'uv' and other critical binaries are in the PATH.
+    It also enables 24-bit color mode if interactive is True.
     """
     env = os.environ.copy()
     apply_env_mappings(env)
+
+    if interactive:
+        # Enable 24-bit color (TrueColor) for interactive sessions
+        env["COLORTERM"] = "truecolor"
+        env["FORCE_COLOR"] = "3"  # 3 = 24-bit color for Node.js chalk and others
 
     # Ensure uv is in PATH for hooks and agent tools
     current_path = env.get("PATH", "")
@@ -278,6 +284,20 @@ def _build_docker_cmd(
         cmd.extend(["-v", f"{aca_data}:{aca_data}"])
         cmd.extend(["-e", f"ACA_DATA={aca_data}"])
 
+    # Mount uv cache to speed up installs inside the container
+    # Use UV_CACHE_DIR from env if set (configurable location), otherwise default to ~/.cache/uv
+    host_uv_cache = env.get("UV_CACHE_DIR")
+    if host_uv_cache:
+        uv_cache_path = Path(host_uv_cache).expanduser().resolve()
+    else:
+        uv_cache_path = Path.home() / ".cache" / "uv"
+
+    if uv_cache_path.exists():
+        # Map to standard location in container
+        cmd.extend(["-v", f"{uv_cache_path}:/root/.cache/uv"])
+        # Ensure uv in container uses the mounted path (mapped to root's home)
+        cmd.extend(["-e", "UV_CACHE_DIR=/root/.cache/uv"])
+
     # Add host networking for MCPs running on localhost
     cmd.extend(["--add-host", "host.docker.internal:host-gateway"])
 
@@ -288,7 +308,10 @@ def _build_docker_cmd(
             "AOPS_BOT_GH_TOKEN",
             "GH_TOKEN",
             "GITHUB_TOKEN",
+            "GH_TOKEN",
             "ANTHROPIC_API_KEY",
+            "COLORTERM",
+            "FORCE_COLOR",
         ):
             cmd.extend(["-e", f"{key}={val}"])
 
@@ -430,6 +453,31 @@ def main(ctx, home):
     """Polecat: Ephemeral worker management system."""
     ctx.ensure_object(dict)
     ctx.obj["home"] = home
+
+
+@main.command()
+@click.pass_context
+def setup(ctx):
+    """Run full framework installation and extension linking.
+
+    This builds extensions and runs scripts/install.py to set up
+    cron jobs, symlinks, and link Gemini/Claude extensions.
+    Requires uv and should be run from the repository root.
+    """
+    repo_root = Path(__file__).parent.parent.resolve()
+    setup_script = repo_root / "setup.sh"
+
+    if not setup_script.exists():
+        print(f"Error: setup.sh not found at {setup_script}", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"Running framework setup from {setup_script}...")
+    try:
+        subprocess.run(["bash", str(setup_script)], check=True)
+        print("\n✓ Polecat setup complete")
+    except subprocess.CalledProcessError as e:
+        print(f"\nError: Setup failed with exit code {e.returncode}", file=sys.stderr)
+        sys.exit(1)
 
 
 @main.command()
@@ -1587,7 +1635,7 @@ def crew(ctx, target, extra, name, gemini, resume, keep):
 
     # Set session type environment variable for hooks to detect
     # Use sanitized env: SSH stripped, git auth set to bot token only
-    env = _make_worker_env()
+    env = _make_worker_env(interactive=True)
     env["POLECAT_SESSION_TYPE"] = "crew"
     env["POLECAT_CREW_NAME"] = crew_name
     env["POLECAT_WORKTREE"] = str(work_dir)
@@ -1978,7 +2026,7 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
 
     # Set session type environment variable for hooks to detect
     # Use sanitized env: SSH stripped, git auth set to bot token only
-    env = _make_worker_env()
+    env = _make_worker_env(interactive=interactive)
     env["POLECAT_SESSION_TYPE"] = "polecat"
 
     tmp_gemini_home = None
