@@ -118,16 +118,7 @@ def execute_custom_action(
             ctx.session_id, prompt, transcript_path, state=session_state
         )
 
-        temp_path = session_state.get_gate("hydration").metrics.get("temp_path")
-        if not temp_path:
-            raise RuntimeError(
-                "hydrate_prompt: build_hydration_instruction completed but "
-                "temp_path not set in hydration gate metrics"
-            )
-
-        return GateResult.allow(
-            system_message=f"Hydration ready: {temp_path}", context_injection=instruction
-        )
+        return GateResult.allow(system_message="Hydration ready", context_injection=instruction)
 
     if name == "prepare_compliance_report":
         temp_path = create_audit_file(ctx.session_id, "custodiet", ctx)

@@ -57,8 +57,6 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
 
     """
 
-    from lib import hook_utils
-
     if ctx.hook_event != "SessionStart":
         return None
 
@@ -86,33 +84,7 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
                 metadata={"source": "session_start", "error": str(e)},
             )
 
-    # Gemini-specific: validate hydration temp path infrastructure
     transcript_path = ctx.raw_input.get("transcript_path", "") if ctx.raw_input else ""
-    if transcript_path and ".gemini" in str(transcript_path):
-        try:
-            hydration_temp_dir = hook_utils.get_hook_temp_dir("hydrator", ctx.raw_input)
-            if not hydration_temp_dir.exists():
-                hydration_temp_dir.mkdir(parents=True, exist_ok=True)
-        except RuntimeError as e:
-            return GateResult(
-                verdict=GateVerdict.DENY,
-                system_message=(
-                    f"STATE ERROR: Hydration temp path missing from session state.\n\n"
-                    f"Details: {e}\n\n"
-                    f"Fix: Ensure Gemini CLI has initialized the project directory."
-                ),
-                metadata={"source": "session_start", "error": "gemini_temp_dir_missing"},
-            )
-        except OSError as e:
-            return GateResult(
-                verdict=GateVerdict.DENY,
-                system_message=(
-                    f"STATE ERROR: Cannot create hydration temp directory.\n\n"
-                    f"Error: {e}\n\n"
-                    f"Fix: Check directory permissions for ~/.gemini/tmp/"
-                ),
-                metadata={"source": "session_start", "error": "gemini_temp_dir_permission"},
-            )
 
     # Session started messages
     messages = [
