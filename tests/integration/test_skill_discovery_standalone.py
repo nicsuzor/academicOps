@@ -12,6 +12,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = [pytest.mark.slow, pytest.mark.integration]
+
 
 def setup_mock_home(tmp_path):
     """Setup a mock ~/.claude/ structure in tmp_path."""

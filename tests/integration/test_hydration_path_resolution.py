@@ -8,6 +8,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 # Tests are run from root, so we need to add aops-core to path
 AOPS_CORE_DIR = Path(__file__).resolve().parent.parent.parent / "aops-core"
 if str(AOPS_CORE_DIR) not in sys.path:
@@ -15,6 +17,8 @@ if str(AOPS_CORE_DIR) not in sys.path:
 
 from lib.hydration.builder import build_hydration_instruction
 from lib.session_state import SessionState
+
+pytestmark = [pytest.mark.slow, pytest.mark.integration]
 
 
 class TestHydrationPathResolution(unittest.TestCase):
