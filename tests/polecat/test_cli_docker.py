@@ -106,8 +106,8 @@ class TestBuildDockerCmd:
         assert not any("MY_SECRET" in a for a in env_args)
         assert not any("DATABASE_URL" in a for a in env_args)
 
-    def test_claude_mounts_config_readonly(self, tmp_path):
-        """Claude config dirs are mounted read-only to prevent container writes."""
+    def test_claude_mounts_config(self, tmp_path):
+        """Claude .claude.json is read-only; .claude dir is read-write (needs session writes)."""
         claude_json = tmp_path / ".claude.json"
         claude_json.write_text("{}")
         claude_dir = tmp_path / ".claude"
@@ -117,9 +117,13 @@ class TestBuildDockerCmd:
             cmd = self._build(cli_tool="claude")
 
         vol_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-v"]
-        claude_vols = [v for v in vol_args if ".claude" in v]
-        assert all(v.endswith(":ro") for v in claude_vols), (
-            f"Claude config mounts should be read-only, got: {claude_vols}"
+        json_vols = [v for v in vol_args if ".claude.json" in v]
+        dir_vols = [v for v in vol_args if ".claude" in v and ".claude.json" not in v]
+        assert all(v.endswith(":ro") for v in json_vols), (
+            f".claude.json should be read-only, got: {json_vols}"
+        )
+        assert all(not v.endswith(":ro") for v in dir_vols), (
+            f".claude dir should be read-write for session data, got: {dir_vols}"
         )
 
     def test_sets_home_env(self):

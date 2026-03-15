@@ -205,7 +205,9 @@ def _build_docker_cmd(
         if claude_json.exists():
             cmd.extend(["-v", f"{claude_json}:{container_home}/.claude.json:ro"])
         if claude_dir.exists():
-            cmd.extend(["-v", f"{claude_dir}:{container_home}/.claude:ro"])
+            # Read-write: Claude Code writes session data, plugin cache, etc.
+            # Container is ephemeral (--rm), so writes don't persist.
+            cmd.extend(["-v", f"{claude_dir}:{container_home}/.claude"])
 
     # Mount pkb binary for MCP server (plugin config references 'pkb' from PATH)
     pkb_bin = shutil.which("pkb")
@@ -1052,35 +1054,35 @@ def crew(ctx, target, extra, name, gemini, resume, keep):
 
     print(f"\U0001f9d1\u200d\U0001f91d\u200d\U0001f9d1 Crew worker: {crew_name}")
 
-    # Setup worktrees for project(s)
-    worktree_paths = {}
+    # Setup isolated clones for project(s)
+    clone_paths = {}
     if resume:
-        # Recover worktree paths from existing crew directory
+        # Recover clone paths from existing crew directory
         crew_path = manager.crew_dir / crew_name
         for project_dir in crew_path.iterdir():
             if project_dir.is_dir():
-                worktree_paths[project_dir.name] = project_dir
+                clone_paths[project_dir.name] = project_dir
                 print(f"\U0001f4c1 {project_dir.name}: {project_dir}")
-        projects = list(worktree_paths.keys())
+        projects = list(clone_paths.keys())
     else:
         try:
             for proj in projects:
-                worktree_path = manager.setup_crew_worktree(crew_name, proj)
-                worktree_paths[proj] = worktree_path
-                print(f"\U0001f4c1 {proj}: {worktree_path}")
+                clone_path = manager.setup_crew_worktree(crew_name, proj)
+                clone_paths[proj] = clone_path
+                print(f"\U0001f4c1 {proj}: {clone_path}")
         except Exception as e:
-            print(f"Error setting up worktree: {e}", file=sys.stderr)
+            print(f"Error setting up crew clone: {e}", file=sys.stderr)
             sys.exit(1)
 
-    if not worktree_paths:
-        print("Error: No worktrees available.", file=sys.stderr)
+    if not clone_paths:
+        print("Error: No clones available.", file=sys.stderr)
         sys.exit(1)
 
     # Determine working directory:
-    # Single project -> drop directly into the project worktree
-    # Multiple projects -> use crew root (parent of all project worktrees)
-    if len(worktree_paths) == 1:
-        work_dir = next(iter(worktree_paths.values()))
+    # Single project -> drop directly into the project clone
+    # Multiple projects -> use crew root (parent of all project clones)
+    if len(clone_paths) == 1:
+        work_dir = next(iter(clone_paths.values()))
     else:
         work_dir = manager.crew_dir / crew_name
 
@@ -1142,18 +1144,18 @@ def crew(ctx, target, extra, name, gemini, resume, keep):
     print("-" * 50)
     print(f"\n\U0001f4cb Crew '{crew_name}' session ended.")
 
-    # Auto-cleanup: nuke worktree if a PR is open (work is safely on remote)
+    # Auto-cleanup: nuke clone if a PR is open (work is safely on remote)
     branch_name = f"crew/{crew_name}"
     if not keep and _branch_has_open_pr(branch_name, work_dir):
-        print(f"   PR open for {branch_name} — cleaning up worktree.")
+        print(f"   PR open for {branch_name} — cleaning up clone.")
         try:
             manager.nuke_crew(crew_name, force=True)
-            print(f"   Worktree removed. Use `polecat crew -r {crew_name}` after merge.")
+            print(f"   Clone removed. Use `polecat crew -r {crew_name}` after merge.")
         except (ValueError, RuntimeError) as e:
             print(f"   Cleanup failed: {e}", file=sys.stderr)
             print(f"   Manual cleanup: polecat nuke-crew {crew_name}")
     else:
-        print(f"   Worktrees preserved at: {manager.crew_dir / crew_name}")
+        print(f"   Clone preserved at: {manager.crew_dir / crew_name}")
         print(f"   To resume: polecat crew -r {crew_name}")
         print(f"   To nuke:   polecat nuke-crew {crew_name}")
 
