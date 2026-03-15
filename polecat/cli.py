@@ -5,6 +5,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -187,11 +188,11 @@ def _build_docker_cmd(
     uid = os.getuid()
     gid = os.getgid()
     cmd.extend(["--user", f"{uid}:{gid}"])
-    # Use host home path so absolute paths in plugin configs (installed_plugins.json) resolve
-    container_home = str(Path.home())
+    # Use /home/worker as container home — NOT --tmpfs on $HOME.
+    # Docker --tmpfs mounts override bind mounts at the same path, hiding
+    # .claude/ and .claude.json and causing Claude to hang on startup.
+    container_home = "/home/worker"
     cmd.extend(["-e", f"HOME={container_home}"])
-    # Create writable home dir in container via tmpfs
-    cmd.extend(["--tmpfs", container_home])
 
     # Mount worktree
     cmd.extend(["-v", f"{work_dir.resolve()}:/workspace"])
@@ -203,7 +204,16 @@ def _build_docker_cmd(
         claude_json = home / ".claude.json"
         claude_dir = home / ".claude"
         if claude_json.exists():
-            cmd.extend(["-v", f"{claude_json}:{container_home}/.claude.json:ro"])
+            # Claude needs bypassPermissionsModeAccepted=true for --dangerously-skip-permissions
+            # to work without an interactive prompt. Create a temp copy with this flag set
+            # rather than modifying the user's actual config.
+            with open(claude_json) as f:
+                config = json.load(f)
+            config["bypassPermissionsModeAccepted"] = True
+            tmp_claude_json = Path(tempfile.mktemp(suffix=".claude.json"))
+            with open(tmp_claude_json, "w") as f:
+                json.dump(config, f)
+            cmd.extend(["-v", f"{tmp_claude_json}:{container_home}/.claude.json"])
         if claude_dir.exists():
             # Read-write: Claude Code writes session data, plugin cache, etc.
             # Container is ephemeral (--rm), so writes don't persist.

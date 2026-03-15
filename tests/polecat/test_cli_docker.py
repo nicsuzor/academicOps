@@ -7,6 +7,7 @@ Covers:
 - Worker environment construction (_make_worker_env)
 """
 
+import json
 import os
 import sys
 from pathlib import Path
@@ -107,7 +108,7 @@ class TestBuildDockerCmd:
         assert not any("DATABASE_URL" in a for a in env_args)
 
     def test_claude_mounts_config(self, tmp_path):
-        """Claude .claude.json is read-only; .claude dir is read-write (needs session writes)."""
+        """Claude config is mounted: .claude.json as temp copy with bypass flag, .claude dir read-write."""
         claude_json = tmp_path / ".claude.json"
         claude_json.write_text("{}")
         claude_dir = tmp_path / ".claude"
@@ -119,18 +120,46 @@ class TestBuildDockerCmd:
         vol_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-v"]
         json_vols = [v for v in vol_args if ".claude.json" in v]
         dir_vols = [v for v in vol_args if ".claude" in v and ".claude.json" not in v]
-        assert all(v.endswith(":ro") for v in json_vols), (
-            f".claude.json should be read-only, got: {json_vols}"
-        )
+        # .claude.json is a temp copy (not the original) — mounted without :ro
+        assert len(json_vols) == 1, f"Expected one .claude.json mount, got: {json_vols}"
+        assert ":/home/worker/.claude.json" in json_vols[0]
+        # The temp copy should NOT be the original file
+        assert str(tmp_path / ".claude.json") not in json_vols[0].split(":")[0]
         assert all(not v.endswith(":ro") for v in dir_vols), (
             f".claude dir should be read-write for session data, got: {dir_vols}"
         )
 
-    def test_sets_home_env(self):
+    def test_claude_json_has_bypass_flag(self, tmp_path):
+        """Temp .claude.json copy has bypassPermissionsModeAccepted=true."""
+        claude_json = tmp_path / ".claude.json"
+        claude_json.write_text('{"projects": {}}')
+        claude_dir = tmp_path / ".claude"
+        claude_dir.mkdir()
+
+        with patch("cli.Path.home", return_value=tmp_path):
+            cmd = self._build(cli_tool="claude")
+
+        vol_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-v"]
+        json_vols = [v for v in vol_args if ".claude.json" in v]
+        # Read the temp file to verify bypass flag was injected
+        tmp_file = json_vols[0].split(":")[0]
+        with open(tmp_file) as f:
+            config = json.load(f)
+        assert config["bypassPermissionsModeAccepted"] is True
+        assert config["projects"] == {}
+
+    def test_sets_home_to_worker_dir(self):
+        """HOME is /home/worker, not host $HOME — avoids tmpfs mount conflicts."""
         cmd = self._build()
         env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
         home_args = [a for a in env_args if a.startswith("HOME=")]
         assert len(home_args) == 1
+        assert home_args[0] == "HOME=/home/worker"
+
+    def test_no_tmpfs_mount(self):
+        """No --tmpfs: it overrides bind mounts at the same path, hiding .claude config."""
+        cmd = self._build()
+        assert "--tmpfs" not in cmd
 
     def test_mounts_pkb_binary_when_available(self):
         """pkb binary is mounted read-only for MCP server access."""
