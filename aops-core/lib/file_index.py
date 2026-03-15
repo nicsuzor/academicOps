@@ -175,7 +175,6 @@ FILE_INDEX: tuple[FileEntry, ...] = (
         description="Hydrator skill definition (routing logic)",
         keywords=(
             "hydrator",
-            "hydrator",
             "prompt hydration",
             "routing",
             "triage",
