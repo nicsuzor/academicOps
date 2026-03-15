@@ -9,7 +9,7 @@ import pytest
 
 from tests.conftest import extract_subagent_tool_calls
 
-pytestmark = [pytest.mark.slow, pytest.mark.integration]
+pytestmark = [pytest.mark.integration]
 
 
 def test_extract_subagent_tool_calls_empty_list():

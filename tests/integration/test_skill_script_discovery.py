@@ -65,7 +65,6 @@ def test_skill_scripts_exist_via_symlink():
 
 
 @pytest.mark.integration
-@pytest.mark.slow
 @pytest.mark.integration
 def test_framework_script_runs_from_writing_repo(data_dir):
     """Test that framework scripts execute correctly from writing repo."""

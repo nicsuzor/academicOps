@@ -18,7 +18,7 @@ if str(AOPS_CORE_DIR) not in sys.path:
 from lib.hydration.builder import build_hydration_instruction
 from lib.session_state import SessionState
 
-pytestmark = [pytest.mark.slow, pytest.mark.integration]
+pytestmark = [pytest.mark.integration]
 
 
 class TestHydrationPathResolution(unittest.TestCase):
