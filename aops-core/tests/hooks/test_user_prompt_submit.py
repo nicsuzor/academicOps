@@ -41,7 +41,6 @@ class TestUserPromptSubmit(unittest.TestCase):
     @patch("lib.hydration.builder.load_scripts_index")
     @patch("lib.hydration.builder.load_project_rules")
     @patch("lib.hydration.builder.get_task_work_state")
-    @patch("lib.hydration.builder.get_formatted_relevant_paths")
     @patch("lib.hydration.builder.load_project_context_index")
     @patch("lib.hydration.builder.load_template")
     @patch("lib.hydration.builder.extract_router_context")
@@ -52,7 +51,6 @@ class TestUserPromptSubmit(unittest.TestCase):
         mock_extract_context,
         mock_load_template,
         mock_load_context_index,
-        mock_get_relevant_paths,
         mock_get_task_work,
         mock_load_project_rules,
         mock_load_scripts,

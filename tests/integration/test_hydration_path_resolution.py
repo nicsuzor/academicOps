@@ -40,7 +40,6 @@ class TestHydrationPathResolution(unittest.TestCase):
     @patch("lib.hydration.builder.load_scripts_index")
     @patch("lib.hydration.builder.load_project_rules")
     @patch("lib.hydration.builder.get_task_work_state")
-    @patch("lib.hydration.builder.get_formatted_relevant_paths")
     @patch("lib.hydration.builder.load_project_context_index")
     @patch("lib.hydration.builder.extract_router_context")
     @patch("lib.session_state.SessionState.load")
@@ -49,7 +48,6 @@ class TestHydrationPathResolution(unittest.TestCase):
         mock_load,
         mock_extract,
         mock_proj_idx,
-        mock_rel_paths,
         mock_task_state,
         mock_rules,
         mock_scripts,
@@ -111,7 +109,6 @@ class TestHydrationPathResolution(unittest.TestCase):
     @patch("lib.hydration.builder.load_scripts_index")
     @patch("lib.hydration.builder.load_project_rules")
     @patch("lib.hydration.builder.get_task_work_state")
-    @patch("lib.hydration.builder.get_formatted_relevant_paths")
     @patch("lib.hydration.builder.load_project_context_index")
     @patch("lib.hydration.builder.extract_router_context")
     @patch("lib.session_state.SessionState.load")
@@ -120,7 +117,6 @@ class TestHydrationPathResolution(unittest.TestCase):
         mock_load,
         mock_extract,
         mock_proj_idx,
-        mock_rel_paths,
         mock_task_state,
         mock_rules,
         mock_scripts,

@@ -36,12 +36,6 @@ The following files are mapped in this project's context map. **You must decide*
 {project_context_index}
 {project_rules}
 
-## Relevant Files (Selective Injection)
-
-Based on prompt keywords, these specific files may be relevant:
-
-{relevant_files}
-
 {project_paths}
 
 **Usage**: Reference these paths in your output when main agent needs to read specific files for context.

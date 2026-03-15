@@ -9,7 +9,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from lib.file_index import get_formatted_relevant_paths
 from lib.hook_utils import (
     cleanup_old_temp_files as _cleanup_temp,
 )
@@ -127,7 +126,6 @@ def build_hydration_instruction(
     scripts_index = load_scripts_index()
     project_rules = load_project_rules()
     task_state = get_task_work_state()
-    relevant_files = get_formatted_relevant_paths(prompt, max_files=10)
     project_context_index = load_project_context_index()
 
     # Build full context for temp file
@@ -142,7 +140,6 @@ def build_hydration_instruction(
         project_paths=project_paths,
         project_context_index=project_context_index,
         project_rules=project_rules,
-        relevant_files=relevant_files,
         workflows_index=workflows_index,
         skills_index=skills_index,
         scripts_index=scripts_index,

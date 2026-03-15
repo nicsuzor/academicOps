@@ -185,72 +185,6 @@ def _load_project_workflows(prompt: str = "") -> str:
     return result
 
 
-def _load_global_workflow_content(prompt: str = "") -> str:
-    """Selectively load the content of relevant global workflows and their bases."""
-    import yaml
-
-    from lib.file_index import get_relevant_file_paths
-
-    relevant_paths = get_relevant_file_paths(prompt, max_files=20)
-    workflow_paths = [
-        p for p in relevant_paths if p["path"].startswith("skills/hydrator/workflows/")
-    ]
-
-    if not workflow_paths:
-        return ""
-
-    plugin_root = get_plugin_root()
-    included_content = {}  # Use dict to avoid duplicates: name -> content
-
-    # Use a queue for breadth-first traversal of bases
-    queue = [p["path"] for p in workflow_paths]
-    processed = set()
-
-    while queue:
-        rel_path = queue.pop(0)
-        if rel_path in processed:
-            continue
-        processed.add(rel_path)
-
-        path = plugin_root / rel_path
-        if not path.exists():
-            continue
-
-        try:
-            raw_content = path.read_text()
-            wf_name = Path(rel_path).stem
-
-            # Parse frontmatter to find bases
-            if raw_content.startswith("---"):
-                parts = raw_content.split("---", 2)
-                if len(parts) >= 3:
-                    try:
-                        fm = yaml.safe_load(parts[1])
-                        if isinstance(fm, dict):
-                            bases = fm.get("bases", [])
-                            if isinstance(bases, list):
-                                for base in bases:
-                                    # Convert base ID to path (e.g. base-commit -> skills/hydrator/workflows/base-commit.md)
-                                    base_path = f"skills/hydrator/workflows/{base}.md"
-                                    if base_path not in processed:
-                                        queue.append(base_path)
-                    except Exception:
-                        pass
-
-            included_content[wf_name] = _strip_frontmatter(raw_content)
-        except OSError:
-            pass
-
-    # Format output
-    result = []
-    # Reverse order so bases appear before the workflows that use them (or vice versa,
-    # but breadth-first queue gives us workflows then bases)
-    for name, content in included_content.items():
-        result.append(f"\n\n### Workflow: {name}\n\n{content}")
-
-    return "".join(result)
-
-
 def load_workflows_index(prompt: str = "") -> str:
     """Load WORKFLOWS.md for hydrator context."""
     plugin_root = get_plugin_root()
@@ -263,9 +197,8 @@ def load_workflows_index(prompt: str = "") -> str:
     base_workflows = _strip_frontmatter(content)
 
     project_workflows = _load_project_workflows(prompt)
-    global_workflow_content = _load_global_workflow_content(prompt)
 
-    return base_workflows + project_workflows + global_workflow_content
+    return base_workflows + project_workflows
 
 
 def load_project_context_index() -> str:

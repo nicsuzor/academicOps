@@ -90,7 +90,7 @@ description: Working hypotheses validated by evidence.
 
 ## Planning Guidance Goes to Daily Note (P#64)
 
-**Statement**: When effectual-planner or similar prioritization agents provide guidance, write output to daily note. Do NOT execute the recommended tasks.
+**Statement**: When the planning skill (/planning) or similar prioritisation agents provide guidance, write output to daily note. Do NOT execute the recommended tasks.
 
 **Derivation**: User asking "help me prioritize" wants GUIDANCE FOR THEMSELVES, not automated execution. The agent's job is to surface the plan, not act on it. User controls execution timing. Write marching orders to daily note via /daily skill, then STOP.
 

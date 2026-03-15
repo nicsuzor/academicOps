@@ -13,7 +13,6 @@ Exit codes:
 
 from pathlib import Path
 
-from lib.file_index import get_formatted_relevant_paths
 from lib.hook_utils import write_temp_file as _write_temp
 
 # Re-export main functions from lib/hydration/
@@ -128,6 +127,5 @@ __all__ = [
     "INTENT_MAX_LENGTH",
     # Backward-compatible utilities for tests
     "load_template",
-    "get_formatted_relevant_paths",
     "_write_temp",
 ]
