@@ -221,14 +221,13 @@ def _build_docker_cmd(
     # Add host networking for MCPs running on localhost
     cmd.extend(["--add-host", "host.docker.internal:host-gateway"])
 
-    # Forward specific environment variables
+    # Forward specific environment variables (Claude Docker path only —
+    # Gemini uses its own sandbox and doesn't go through _build_docker_cmd)
     for key, val in env.items():
         if key.startswith("POLECAT_") or key in (
             "AOPS_BOT_GH_TOKEN",
             "GITHUB_TOKEN",
             "ANTHROPIC_API_KEY",
-            "GEMINI_API_KEY",
-            "GOOGLE_API_KEY",
         ):
             cmd.extend(["-e", f"{key}={val}"])
 

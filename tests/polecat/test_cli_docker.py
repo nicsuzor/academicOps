@@ -84,17 +84,13 @@ class TestBuildDockerCmd:
         env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
         assert "ANTHROPIC_API_KEY=sk-test-123" in env_args
 
-    def test_forwards_gemini_api_key(self):
-        env = {"GEMINI_API_KEY": "gemini-test-key"}
+    def test_does_not_forward_gemini_keys(self):
+        """Gemini keys not needed in Claude Docker container — Gemini uses its own sandbox."""
+        env = {"GEMINI_API_KEY": "gemini-test-key", "GOOGLE_API_KEY": "google-test-key"}
         cmd = self._build(env=env)
         env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
-        assert "GEMINI_API_KEY=gemini-test-key" in env_args
-
-    def test_forwards_google_api_key(self):
-        env = {"GOOGLE_API_KEY": "google-test-key"}
-        cmd = self._build(env=env)
-        env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
-        assert "GOOGLE_API_KEY=google-test-key" in env_args
+        assert not any("GEMINI_API_KEY" in a for a in env_args)
+        assert not any("GOOGLE_API_KEY" in a for a in env_args)
 
     def test_forwards_polecat_prefixed_env(self):
         env = {"POLECAT_SESSION_TYPE": "crew", "POLECAT_CREW_NAME": "test"}
