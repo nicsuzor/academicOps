@@ -531,10 +531,10 @@ class TestExtractRouterContextDemo:
         - How they're formatted
         - Token efficiency of the output
         """
-        from lib.session_reader import extract_router_context
-
         # Find real session transcripts
         from lib.paths import get_projects_dir
+        from lib.session_reader import extract_router_context
+
         session_dir = get_projects_dir()
 
         # In testing, it might be the general projects dir. Find all sessions.
@@ -543,7 +543,11 @@ class TestExtractRouterContextDemo:
             pytest.skip(f"No sessions found in {session_dir}")
 
         sessions = sorted(
-            [s for s in all_sessions if not s.name.startswith("agent-") and "subagents" not in str(s)],
+            [
+                s
+                for s in all_sessions
+                if not s.name.startswith("agent-") and "subagents" not in str(s)
+            ],
             key=lambda f: f.stat().st_mtime,
             reverse=True,
         )

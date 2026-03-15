@@ -46,6 +46,7 @@ def mock_home(tmp_path, monkeypatch):
 def test_skill_scripts_exist_via_symlink():
     """Test that skill scripts are accessible via skills dir."""
     from lib.paths import get_skills_dir
+
     skills_path = get_skills_dir()
     assert skills_path.exists(), "skills dir not found"
     assert skills_path.is_symlink() or skills_path.is_dir(), (
@@ -70,6 +71,7 @@ def test_skill_scripts_exist_via_symlink():
 def test_framework_script_runs_from_writing_repo(data_dir):
     """Test that framework scripts execute correctly from writing repo."""
     from lib.paths import get_skills_dir
+
     script_path = get_skills_dir() / "framework" / "scripts" / "validate_docs.py"
     if not script_path.exists():
         pytest.skip(f"Script not found at {script_path}")
@@ -110,6 +112,7 @@ def test_skill_self_contained_architecture():
     assert scripts_in_aops.exists(), f"Scripts should exist in AOPS: {scripts_in_aops}"
 
     from lib.paths import get_skills_dir
+
     symlink_path = get_skills_dir() / "framework" / "scripts"
     assert symlink_path.exists(), f"Symlink path not found at {symlink_path}"
 

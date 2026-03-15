@@ -437,6 +437,7 @@ def get_gate_file_path(
     else:
         project_folder = get_claude_project_folder()
         from lib.paths import get_projects_dir
+
         claude_projects_dir = get_projects_dir() / project_folder
         claude_projects_dir.mkdir(parents=True, exist_ok=True)
         return claude_projects_dir / f"{date_compact}-{short_hash}-{gate}.md"

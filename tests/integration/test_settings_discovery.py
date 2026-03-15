@@ -37,6 +37,7 @@ def test_settings_json_discoverable_by_claude(bots_dir: Path) -> None:
     """
     # Define expected locations where Claude Code looks for settings.json
     from lib.paths import get_config_dir
+
     user_settings = get_config_dir() / "settings.json"
     project_settings = bots_dir / ".claude" / "settings.json"
 

@@ -26,7 +26,6 @@ import json
 from pathlib import Path
 
 import pytest
-
 from lib.paths import get_projects_dir
 
 

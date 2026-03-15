@@ -896,6 +896,7 @@ def find_session_jsonl(session_id: str) -> Path | None:
         Path to JSONL file if found, None otherwise
     """
     from lib.paths import get_projects_dir
+
     claude_dir = get_projects_dir()
     if not claude_dir.exists():
         return None

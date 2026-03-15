@@ -292,6 +292,7 @@ class TestHookLogDiscovery:
     def _find_hook_logs() -> list[Path]:
         """Find hook log files in known locations."""
         from lib.paths import get_projects_dir
+
         locations = [
             get_projects_dir(),
         ]
@@ -697,6 +698,7 @@ class TestTempPathValidation:
 
         # Path should be under projects directory
         from lib.paths import get_projects_dir
+
         assert str(path).startswith(str(get_projects_dir())), (
             f"Gate file path should be under projects directory, got: {path}"
         )

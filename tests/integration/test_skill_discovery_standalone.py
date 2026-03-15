@@ -47,6 +47,7 @@ def test_symlink_structure(tmp_path):
         print("Testing symlink structure...")
 
         from lib.paths import get_skills_dir
+
         skills_path = get_skills_dir()
         assert skills_path.exists(), "~/.claude/skills/ does not exist"
 
@@ -102,9 +103,8 @@ def test_script_execution_from_writing(tmp_path):
 
         # Build command - use validate_docs.py instead of task_view.py
         from lib.paths import get_skills_dir
-        script_path = (
-            get_skills_dir() / "framework" / "scripts" / "validate_docs.py"
-        )
+
+        script_path = get_skills_dir() / "framework" / "scripts" / "validate_docs.py"
         assert script_path.exists(), f"Script not found at {script_path}"
 
         aops = os.environ.get("AOPS")
@@ -171,6 +171,7 @@ def test_symlink_points_to_aops(tmp_path):
 
         # Update path to framework scripts within aops-core
         from lib.paths import get_skills_dir
+
         aops_scripts = Path(aops) / "aops-core" / "skills" / "framework" / "scripts"
         symlink_scripts = get_skills_dir() / "framework" / "scripts"
 

@@ -36,6 +36,7 @@ class TestPluginDiscovery:
     def test_plugin_symlink_exists(self) -> None:
         """Plugin entry must exist in plugins dir."""
         from lib.paths import get_plugin_root
+
         plugin_root = get_plugin_root()
         assert plugin_root.exists(), f"Plugin not found at {plugin_root}"
 
@@ -43,6 +44,7 @@ class TestPluginDiscovery:
     def test_plugin_target_valid(self) -> None:
         """Plugin entry must point to valid directory."""
         from lib.paths import get_plugin_root
+
         plugin_root = get_plugin_root()
         assert plugin_root.exists(), f"Plugin not found at {plugin_root}"
         target = plugin_root.resolve()

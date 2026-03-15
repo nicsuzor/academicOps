@@ -39,7 +39,6 @@ def test_deny_rules_block_claude_dir_write(claude_headless):
 
     found_denial = any(indicator in response_text for indicator in deny_indicators)
 
-    from pathlib import Path
     from lib.paths import get_config_dir
 
     test_file = get_config_dir() / "test-deny-rules.txt"
