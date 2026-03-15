@@ -768,7 +768,6 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         "commands/q.md",
         "commands/learn.md",
         "hooks/session_env_setup.py",
-        "hooks/user_prompt_submit.py",
         "hooks/router.py",
         "hooks/hooks.json",
         "hooks/gate_registry.py",
