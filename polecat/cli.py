@@ -222,6 +222,31 @@ def main(ctx, home):
 
 
 @main.command()
+@click.pass_context
+def setup(ctx):
+    """Run full framework installation and extension linking.
+
+    This builds extensions and runs scripts/install.py to set up
+    cron jobs, symlinks, and link Gemini/Claude extensions.
+    Requires uv and should be run from the repository root.
+    """
+    repo_root = Path(__file__).parent.parent.resolve()
+    setup_script = repo_root / "setup.sh"
+
+    if not setup_script.exists():
+        print(f"Error: setup.sh not found at {setup_script}", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"Running framework setup from {setup_script}...")
+    try:
+        subprocess.run(["bash", str(setup_script)], check=True)
+        print("\n✓ Polecat setup complete")
+    except subprocess.CalledProcessError as e:
+        print(f"\nError: Setup failed with exit code {e.returncode}", file=sys.stderr)
+        sys.exit(1)
+
+
+@main.command()
 @click.option("--project", "-p", help="Initialize only this project (default: all)")
 @click.pass_context
 def init(ctx, project):
