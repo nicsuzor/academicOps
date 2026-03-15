@@ -1397,7 +1397,7 @@ def check_blocked(result: dict) -> bool:
     parts = []
     for key in ("output", "result"):
         val = result.get(key, "")
-        if isinstance(val, (dict, list)):
+        if isinstance(val, dict | list):
             val = json.dumps(val)
         parts.append(str(val))
 
@@ -1405,3 +1405,161 @@ def check_blocked(result: dict) -> bool:
 
     block_indicators = ["hydration", "blocked", "gate", "pending", "access denied", "denied"]
     return any(indicator in combined for indicator in block_indicators)
+
+
+# ---------------------------------------------------------------------------
+# Docker-containerised Claude fixtures
+# ---------------------------------------------------------------------------
+
+
+def _docker_available() -> bool:
+    """Check if Docker is available and the aops-env-test image exists."""
+    try:
+        result = subprocess.run(
+            ["docker", "images", "aops-env-test", "--format", "{{.Repository}}"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        return result.returncode == 0 and "aops-env-test" in result.stdout
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return False
+
+
+@pytest.fixture
+def claude_docker(tmp_path):
+    """Run Claude inside Docker container, matching polecat crew behavior.
+
+    Returns callable with same API as claude_headless_tracked::
+
+        result, session_id, tool_calls = claude_docker(
+            "What is 2+2?",
+            timeout_seconds=60,
+        )
+
+    Skips if: Docker unavailable, no Claude auth, or aops-env-test image not built.
+    Claude authenticates via OAuth (stored in ~/.claude/.credentials.json) which is
+    bind-mounted into the container. Falls back to ANTHROPIC_API_KEY if set.
+    """
+    import uuid
+
+    if not _docker_available():
+        pytest.skip("Docker not available or aops-env-test image not built")
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    has_oauth = (Path.home() / ".claude" / ".credentials.json").exists()
+    if not api_key and not has_oauth:
+        pytest.skip("No Claude auth: neither ANTHROPIC_API_KEY nor OAuth credentials found")
+
+    # Import _build_docker_cmd from polecat
+    repo_root = get_repo_root()
+    polecat_dir = str(repo_root / "polecat")
+    aops_core_dir = str(repo_root / "aops-core")
+    if polecat_dir not in sys.path:
+        sys.path.insert(0, polecat_dir)
+    if aops_core_dir not in sys.path:
+        sys.path.insert(0, aops_core_dir)
+
+    from cli import _build_docker_cmd
+
+    def _run_in_docker(
+        prompt: str,
+        model: str = "haiku",
+        timeout_seconds: int = 120,
+        fail_on_error: bool = True,
+    ) -> tuple[dict, str, list[dict]]:
+        """Run Claude in Docker with session tracking."""
+        session_id = str(uuid.uuid4())
+
+        # Create workspace directory
+        workspace = tmp_path / f"docker-test-{session_id[:8]}"
+        workspace.mkdir()
+
+        # Build agent command
+        agent_cmd = [
+            "claude",
+            "--dangerously-skip-permissions",
+            "-p",
+            prompt,
+            "--output-format",
+            "json",
+            "--session-id",
+            session_id,
+            "--model",
+            model,
+            "--max-turns",
+            "3",
+        ]
+
+        # Build Docker command via polecat's builder
+        env = {}
+        if api_key:
+            env["ANTHROPIC_API_KEY"] = api_key
+        # Forward ACA_DATA if set
+        aca_data = os.environ.get("ACA_DATA")
+        if aca_data:
+            env["ACA_DATA"] = aca_data
+
+        cmd = _build_docker_cmd(
+            cli_tool="claude",
+            work_dir=workspace,
+            env=env,
+            agent_cmd=agent_cmd,
+            is_interactive=False,
+        )
+
+        log.debug("Docker command: %s", " ".join(str(x) for x in cmd))
+
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=timeout_seconds,
+                check=False,
+            )
+        except subprocess.TimeoutExpired:
+            # Try to extract partial progress from session file
+            session_file = find_session_jsonl(session_id)
+            tool_calls = parse_tool_calls(session_file) if session_file else []
+            error_msg = f"Docker session timed out after {timeout_seconds}s"
+            if fail_on_error:
+                pytest.fail(f"{error_msg}. Session made {len(tool_calls)} tool calls.")
+            return (
+                {"success": False, "output": "", "result": {}, "error": error_msg},
+                session_id,
+                tool_calls,
+            )
+
+        if result.returncode != 0:
+            session_file = find_session_jsonl(session_id)
+            tool_calls = parse_tool_calls(session_file) if session_file else []
+            error_msg = (
+                f"Docker session failed (exit {result.returncode}): "
+                f"{result.stderr[:500] if result.stderr else 'no stderr'}"
+            )
+            if fail_on_error:
+                pytest.fail(f"{error_msg}. Session made {len(tool_calls)} tool calls.")
+            return (
+                {"success": False, "output": result.stdout, "result": {}, "error": error_msg},
+                session_id,
+                tool_calls,
+            )
+
+        # Parse JSON output
+        try:
+            parsed = json.loads(result.stdout)
+            response = {"success": True, "output": result.stdout, "result": parsed}
+        except json.JSONDecodeError as e:
+            error_msg = f"JSON parse error: {e}. stdout: {result.stdout[:200]}"
+            if fail_on_error:
+                pytest.fail(error_msg)
+            response = {"success": False, "output": result.stdout, "result": {}, "error": error_msg}
+
+        # Extract tool calls from session JSONL (written to bind-mounted ~/.claude/)
+        session_file = find_session_jsonl(session_id)
+        tool_calls = parse_tool_calls(session_file) if session_file else []
+
+        return response, session_id, tool_calls
+
+    return _run_in_docker
