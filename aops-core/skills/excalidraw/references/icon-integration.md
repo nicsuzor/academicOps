@@ -334,7 +334,7 @@ def create_status_icon(status, x, y):
 
 ## Quick Start Checklist
 
-For task-viz agent or manual diagramming:
+For agent or manual diagramming:
 
 **Before starting**:
 

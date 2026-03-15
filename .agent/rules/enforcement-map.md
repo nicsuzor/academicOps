@@ -403,7 +403,7 @@ Context injected via CORE.md at SessionStart. Guides where agents place files.
 | ---------------------- | -------------------- | ---------------------------------------- |
 | aops feature specs     | `$AOPS/specs/`       | `$AOPS/specs/task-graph-network-v1.0.md` |
 | User knowledge/designs | `$ACA_DATA/designs/` | `$ACA_DATA/designs/my-project-design.md` |
-| Generated outputs      | `$ACA_DATA/outputs/` | `$ACA_DATA/outputs/task-viz.excalidraw`  |
+| Generated outputs      | `$ACA_DATA/outputs/` | `$ACA_DATA/outputs/`  |
 
 **Enforcement**: Prompt-level (CORE.md). No mechanical gate.
 

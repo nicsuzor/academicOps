@@ -22,7 +22,6 @@ Utility scripts for framework development and maintenance. These are NOT user-in
 | --------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------ |
 | `session_transcript.py`     | Save/export session transcript to markdown                | `uv run python $AOPS/scripts/session_transcript.py <session.jsonl> -o output.md`     |
 | `scan_session_summaries.py` | Scan session summaries for daily note/overwhelm dashboard | `uv run python $AOPS/scripts/scan_session_summaries.py [--days N] [--format FORMAT]` |
-| `task_graph.py`             | Generate styled DOT/SVG graph from task JSON              | `uv run python $AOPS/scripts/task_graph.py INPUT.json [-o OUTPUT]`                   |
 | `audit_framework_health.py` | Collect framework health metrics (orphans, broken links)  | `uv run python $AOPS/scripts/audit_framework_health.py`                              |
 | `generate_context_index.py` | Scan docs and generate project-context.md                 | `uv run python $AOPS/scripts/generate_context_index.py`                              |
 | `refinery.py`               | Run polecat refinery scan and merge                       | `uv run python $AOPS/scripts/refinery.py`                                            |
@@ -51,6 +50,5 @@ Utility scripts for framework development and maintenance. These are NOT user-in
 ## When to Surface Scripts
 
 - **Token/session analysis**: Surface `session_transcript.py`, `scan_session_summaries.py`
-- **Task visualization**: Surface `task_graph.py`
 - **Framework health**: Surface `audit_framework_health.py`, `check_orphan_files.py`
 - **Build/release**: Surface `build.py`, `bump_version.py`, `install.py`
