@@ -50,10 +50,11 @@ RUN uv sync --frozen --no-dev
 # Create data directory for persistence
 RUN mkdir -p /data
 
-# Create /home/worker with open permissions — polecat crew runs containers
+# Create /home/worker with sticky bit — polecat crew runs containers
 # as the host UID (non-root), which needs a writable HOME for .claude/ session data.
-# Open permissions (777) because the host UID varies per machine.
-RUN mkdir -p /home/worker && chmod 777 /home/worker
+# Sticky bit (1777) because the host UID varies per machine; prevents users
+# from deleting each other's files while still allowing writes.
+RUN mkdir -p /home/worker && chmod 1777 /home/worker
 
 # Default command
 CMD ["/bin/bash"]

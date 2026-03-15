@@ -8,15 +8,17 @@ Tests verify ACTUAL behavior (Task spawned, files created) not surface patterns.
 from pathlib import Path
 
 import pytest
-from lib import hook_utils
+from lib.session_paths import get_gate_file_path
 
 TOOL_CALL_THRESHOLD = 5
 SKIP_TOOLS = {"Read", "Glob", "Grep", "mcp__memory__retrieve_memory"}
 
 
 def get_audit_temp_dir() -> Path:
-    """Get the audit temp directory using shared logic."""
-    return hook_utils.get_hook_temp_dir("hydrator")
+    """Get the audit temp directory using session paths."""
+    # get_gate_file_path returns a file path; we need the parent directory
+    gate_path = get_gate_file_path("custodiet", "dummy")
+    return gate_path.parent
 
 
 @pytest.mark.slow
