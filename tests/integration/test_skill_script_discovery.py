@@ -73,7 +73,8 @@ def test_framework_script_runs_from_writing_repo(data_dir):
     assert script_path.exists(), f"Script not found at {script_path}"
 
     aops = os.environ.get("AOPS")
-    assert aops, "AOPS environment variable not set"
+    if not aops:
+        pytest.skip("AOPS environment variable not set")
 
     cmd = ["uv", "run", "python", str(script_path), "--help"]
     env = os.environ.copy()
@@ -100,7 +101,8 @@ def test_framework_script_runs_from_writing_repo(data_dir):
 def test_skill_self_contained_architecture():
     """Test that skills are self-contained with their own scripts."""
     aops = os.environ.get("AOPS")
-    assert aops, "AOPS environment variable not set"
+    if not aops:
+        pytest.skip("AOPS environment variable not set")
 
     aops_path = Path(aops)
     scripts_in_aops = aops_path / "aops-core" / "skills" / "framework" / "scripts"
