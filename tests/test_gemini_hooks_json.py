@@ -37,7 +37,9 @@ class TestGeminiHooksJsonExists:
         Gemini CLI reads hooks from hooks/hooks.json, NOT from gemini-extension.json.
         """
         if not dist_hooks_json.exists():
-            pytest.skip(f"hooks.json must exist at {dist_hooks_json}. Gemini CLI reads hooks from this file, not gemini-extension.json. Run 'python scripts/build.py' to generate it.")
+            pytest.skip(
+                f"hooks.json must exist at {dist_hooks_json}. Gemini CLI reads hooks from this file, not gemini-extension.json. Run 'python scripts/build.py' to generate it."
+            )
 
         assert dist_hooks_json.exists(), (
             f"hooks.json must exist at {dist_hooks_json}. "
