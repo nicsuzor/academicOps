@@ -842,11 +842,169 @@ def gemini_headless(gemini_home):
 # --- Parameterized CLI fixture for cross-platform tests ---
 
 
-@pytest.fixture(params=["claude", "gemini"])
-def cli_headless(request, gemini_home):
-    """Parameterized fixture that yields both Claude and Gemini headless runners.
+def _run_claude_docker_simple(prompt: str, tmp_path: Path, **kwargs) -> dict[str, Any]:
+    """Run Claude in Docker, returning simple result dict (no session tracking)."""
+    # Import _build_docker_cmd from polecat
+    repo_root = get_repo_root()
+    polecat_dir = str(repo_root / "polecat")
+    aops_core_dir = str(repo_root / "aops-core")
+    if polecat_dir not in sys.path:
+        sys.path.insert(0, polecat_dir)
+    if aops_core_dir not in sys.path:
+        sys.path.insert(0, aops_core_dir)
 
-    Use this for tests that should run on both platforms.
+    from cli import _build_docker_cmd
+
+    workspace = tmp_path / "docker-claude"
+    workspace.mkdir(exist_ok=True)
+
+    model = kwargs.get("model", "haiku")
+    timeout_seconds = kwargs.get("timeout_seconds", 120)
+
+    agent_cmd = [
+        "claude",
+        "--dangerously-skip-permissions",
+        "-p",
+        prompt,
+        "--output-format",
+        "json",
+        "--model",
+        model,
+        "--max-turns",
+        "3",
+    ]
+
+    env = {}
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if api_key:
+        env["ANTHROPIC_API_KEY"] = api_key
+    aca_data = os.environ.get("ACA_DATA")
+    if aca_data:
+        env["ACA_DATA"] = aca_data
+
+    cmd = _build_docker_cmd(
+        cli_tool="claude",
+        work_dir=workspace,
+        env=env,
+        agent_cmd=agent_cmd,
+        is_interactive=False,
+    )
+
+    try:
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, timeout=timeout_seconds, check=False
+        )
+    except subprocess.TimeoutExpired:
+        return {
+            "success": False,
+            "output": "",
+            "result": {},
+            "error": f"Docker session timed out after {timeout_seconds}s",
+        }
+
+    if result.returncode != 0:
+        return {
+            "success": False,
+            "output": result.stdout,
+            "result": {},
+            "error": f"Docker session failed (exit {result.returncode}): {result.stderr[:500]}",
+        }
+
+    try:
+        parsed = json.loads(result.stdout)
+        return {"success": True, "output": result.stdout, "result": parsed}
+    except json.JSONDecodeError as e:
+        return {
+            "success": False,
+            "output": result.stdout,
+            "result": {},
+            "error": f"JSON parse error: {e}",
+        }
+
+
+def _run_gemini_docker(prompt: str, gemini_home: Path | None = None, **kwargs) -> dict[str, Any]:
+    """Run Gemini with --sandbox (tool calls inside Docker container)."""
+    timeout_seconds = kwargs.get("timeout_seconds", 120)
+    model = kwargs.get("model")
+
+    cmd = ["gemini", "--sandbox", "--yolo", "-p", prompt, "-o", "json"]
+    if model:
+        cmd.extend(["-m", model])
+
+    env = os.environ.copy()
+    env["GEMINI_SANDBOX_IMAGE"] = os.environ.get("GEMINI_SANDBOX_IMAGE", "aops-env-test")
+
+    # When gemini_home is provided (e.g. from gemini_home fixture), use it directly.
+    # Otherwise, replicate auth from ~/.gemini so sandbox can authenticate.
+    tmp_gemini_home = None
+    if gemini_home:
+        env["GEMINI_CLI_HOME"] = str(gemini_home)
+    else:
+        from cli import _replicate_gemini_auth
+
+        tmp_gemini_home = _replicate_gemini_auth(env)
+
+    # Apply credential isolation
+    from lib.agent_env import apply_env_mappings
+
+    apply_env_mappings(env)
+
+    try:
+        try:
+            result = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=timeout_seconds, check=False, env=env
+            )
+        except subprocess.TimeoutExpired:
+            return {
+                "success": False,
+                "output": "",
+                "result": {},
+                "error": f"Gemini sandbox session timed out after {timeout_seconds}s",
+            }
+
+        if result.returncode != 0:
+            return {
+                "success": False,
+                "output": result.stdout,
+                "result": {},
+                "error": f"Gemini sandbox failed (exit {result.returncode}): {result.stderr[:500]}",
+            }
+
+        # Parse JSON — reuse the same robust parsing as run_gemini_headless
+        try:
+            parsed = json.loads(result.stdout)
+        except json.JSONDecodeError:
+            # Fallback: find last valid JSON object in output
+            candidates = []
+            output = result.stdout
+            for i, char in enumerate(output):
+                if char == "{":
+                    try:
+                        obj, end_idx = json.JSONDecoder().raw_decode(output[i:])
+                        candidates.append((i + end_idx, obj))
+                    except json.JSONDecodeError:
+                        continue
+            if candidates:
+                _, parsed = max(candidates, key=lambda x: x[0])
+            else:
+                return {
+                    "success": False,
+                    "output": result.stdout,
+                    "result": {},
+                    "error": "Could not find valid JSON in gemini sandbox output",
+                }
+
+        return {"success": True, "output": result.stdout, "result": parsed}
+    finally:
+        if tmp_gemini_home and tmp_gemini_home.exists():
+            shutil.rmtree(tmp_gemini_home)
+
+
+@pytest.fixture(params=["claude", "gemini", "claude-docker", "gemini-docker"])
+def cli_headless(request, tmp_path, gemini_home):
+    """Parameterized fixture that yields headless runners across all backends.
+
+    Covers host and Docker execution for both Claude and Gemini.
 
     Example:
         def test_simple_math(cli_headless):
@@ -856,21 +1014,51 @@ def cli_headless(request, gemini_home):
 
     Returns:
         Tuple of (runner_function, platform_name)
+
+    Backends:
+        - claude: Claude CLI on host
+        - gemini: Gemini CLI on host
+        - claude-docker: Claude inside aops-env-test Docker container
+        - gemini-docker: Gemini with --sandbox (tool calls in Docker)
     """
     platform = request.param
 
     if platform == "claude":
         if not _claude_cli_available():
-            pytest.fail("claude CLI not found in PATH")
+            pytest.skip("claude CLI not found in PATH")
         return _make_failing_wrapper(run_claude_headless), "claude"
-    else:
+
+    elif platform == "gemini":
         if not _gemini_cli_available():
-            pytest.fail("gemini CLI not found in PATH")
+            pytest.skip("gemini CLI not found in PATH")
 
         def _run_gemini(prompt, **kwargs):
             return run_gemini_headless(prompt, gemini_home=gemini_home, **kwargs)
 
         return _make_failing_wrapper(_run_gemini), "gemini"
+
+    elif platform == "claude-docker":
+        if not _docker_available():
+            pytest.skip("Docker not available or aops-env-test image not built")
+        has_oauth = (Path.home() / ".claude" / ".credentials.json").exists()
+        if not os.environ.get("ANTHROPIC_API_KEY") and not has_oauth:
+            pytest.skip("No Claude auth for Docker")
+
+        def _run_claude_in_docker(prompt, **kwargs):
+            return _run_claude_docker_simple(prompt, tmp_path=tmp_path, **kwargs)
+
+        return _make_failing_wrapper(_run_claude_in_docker), "claude-docker"
+
+    elif platform == "gemini-docker":
+        if not _gemini_cli_available():
+            pytest.skip("gemini CLI not found in PATH")
+        if not _docker_available():
+            pytest.skip("Docker not available or aops-env-test image not built")
+
+        def _run_gemini_in_docker(prompt, **kwargs):
+            return _run_gemini_docker(prompt, gemini_home=gemini_home, **kwargs)
+
+        return _make_failing_wrapper(_run_gemini_in_docker), "gemini-docker"
 
 
 @pytest.fixture
