@@ -16,7 +16,12 @@ Running tests:
 import json
 from pathlib import Path
 
+import pytest
 
+pytestmark = [pytest.mark.slow, pytest.mark.integration]
+
+
+@pytest.mark.integration
 def test_settings_json_discoverable_by_claude(bots_dir: Path) -> None:
     """Test that Claude Code can discover settings.json at expected locations.
 

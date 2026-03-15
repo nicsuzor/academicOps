@@ -21,6 +21,7 @@ def get_audit_temp_dir() -> Path:
 
 @pytest.mark.slow
 @pytest.mark.integration
+@pytest.mark.integration
 def test_custodiet_temp_file_created_on_threshold(claude_headless) -> None:
     """Verify custodiet hook creates temp file when threshold reached.
 
@@ -59,6 +60,7 @@ def test_custodiet_temp_file_created_on_threshold(claude_headless) -> None:
 
 
 @pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.integration
 def test_custodiet_task_spawned(claude_headless_tracked) -> None:
     """Verify custodiet Task is actually spawned when threshold reached."""

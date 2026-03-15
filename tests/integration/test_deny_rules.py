@@ -5,7 +5,7 @@ Consolidated from 2 tests to 1 (the other was already skipped due to design flaw
 
 import pytest
 
-pytestmark = [pytest.mark.integration, pytest.mark.slow]
+pytestmark = [pytest.mark.integration, pytest.mark.slow, pytest.mark.integration]
 
 
 def test_deny_rules_block_claude_dir_write(claude_headless):

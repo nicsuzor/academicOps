@@ -8,7 +8,7 @@ and allows bypass with '.' prefix.
 
 import pytest
 
-pytestmark = [pytest.mark.integration, pytest.mark.slow]
+pytestmark = [pytest.mark.integration, pytest.mark.slow, pytest.mark.integration]
 
 
 class TestHydrationGateBlocking:

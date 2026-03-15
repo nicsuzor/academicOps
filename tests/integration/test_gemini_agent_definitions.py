@@ -3,6 +3,8 @@ from pathlib import Path
 import pytest
 import yaml
 
+pytestmark = [pytest.mark.slow, pytest.mark.integration]
+
 
 def test_source_agent_tool_names():
     agents_dir = Path(__file__).parent.parent.parent / "aops-core" / "agents"

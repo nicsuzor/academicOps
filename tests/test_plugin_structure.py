@@ -41,14 +41,22 @@ class TestCoreSkills:
 class TestCoreAgents:
     """Verify core agents are present."""
 
-    CORE_AGENTS = ["prompt-hydrator", "custodiet", "qa", "effectual-planner"]
+    CORE_AGENTS = ["custodiet", "qa", "effectual-planner"]
+    CORE_SKILLS = ["hydrator"]
 
     def test_all_core_agents_present(self) -> None:
-        """All 5 core agents must be present."""
+        """All core agents must be present."""
         agents_dir = PLUGIN_ROOT / "agents"
         for agent_name in self.CORE_AGENTS:
             agent_file = agents_dir / f"{agent_name}.md"
             assert agent_file.exists(), f"Missing core agent: {agent_name}"
+
+    def test_all_core_skills_present(self) -> None:
+        """Core skills must be present as skills (not agents)."""
+        skills_dir = PLUGIN_ROOT / "skills"
+        for skill_name in self.CORE_SKILLS:
+            skill_file = skills_dir / skill_name / "SKILL.md"
+            assert skill_file.exists(), f"Missing core skill: {skill_name}"
 
 
 class TestCoreHooks:

@@ -132,6 +132,10 @@ If you can't fix it, HALT.
 
 Only user-defined acceptance criteria determine whether work is complete. Agents cannot modify, weaken, or reinterpret acceptance criteria.
 
+**Corollaries**:
+
+- **The Task Graph is the QA Guarantee**: The strict requirements defined in a PKB task node are the ultimate authority. An agent's execution method is irrelevant; the work is only ratified as "done" when these specific criteria are met and verified by the Filter layer.
+
 ## Plan-First Development (P#41)
 
 No coding without an approved plan.
@@ -174,6 +178,7 @@ Legacy NLP (keyword matching, regex heuristics, fuzzy string matching) is forbid
 - Don't filter documentation based on keyword matches
 - Provide the Agent with the _index of choices_ and let the Agent decide
 - **Agentic-first design**: Do NOT propose building scripts or tools that call LLM APIs programmatically (e.g., Python scripts that invoke the Anthropic/OpenAI API, custom evaluation harnesses wrapping model calls). This framework runs on agentic platforms — Claude Code, Gemini CLI, Jules, GitHub agents. These agents ARE the LLM. Any work requiring judgment, evaluation, classification, or semantic reasoning should be designed as a skill, workflow, or agent task that a capable agent executes directly — not as a deterministic program that wraps API calls. Smarts should be agentic; code should be minimised.
+- **The Bazaar Model Extension**: Stop trying to build rigid, hook-based mechanical controls that inject constraints into a client's specific turn-by-turn loop (e.g., regex hooks overriding outputs). Clients are unpredictable. Instead, define strict requirements in the Task Graph and use asynchronous agentic gates to verify those standards _before_ ratification. We don't control how the agent executes; we control whether the output is accepted.
 
 **Derivation**: LLMs understand semantics; regex does not. Agentic frameworks (Claude Code, Gemini CLI) already provide full LLM capabilities with tool access, context management, and iterative reasoning. Building programmatic API wrappers duplicates this capability poorly — the wrapper is less capable than the agent, harder to maintain, and violates the framework's core architecture. The same anti-pattern manifests in two forms: (1) using regex/keyword matching instead of LLM judgment ("classic shitty NLP"), and (2) writing code that calls an LLM API instead of delegating to an agent that IS an LLM ("shiny shitty NLP"). Both attempt to replace agentic capability with deterministic code.
 
@@ -210,6 +215,17 @@ Before generating insights, search existing knowledge. Memory is read-then-write
 Nothing goes out to the public before it's perfect. All academic output (reports, papers, deliverables) must be triple-checked and presented to the user for explicit approval with full receipts before release. This applies to any stakeholder-facing deliverable.
 
 **Derivation**: Academic reputation is built on precision and rigor. Silent or unverified releases risk the user's credibility. Human-in-the-loop with evidence is the mandatory quality gate for public-facing work.
+
+## Non-interactive Execution (P#55)
+
+Agents MUST NOT run commands that require interactive input. Always use non-interactive flags (e.g., `--fill`, `--yes`, `-y`, `--no-interaction`) or ensure prerequisites (like a remote tracking branch for `gh pr create`) are met before execution. If a command blocks for input, it is a framework bug.
+
+**Corollaries**:
+
+- If pushing a new branch, use `git push -u origin <branch>` before creating a PR to avoid `gh` interactive prompts.
+- When scaffolding or installing, pass `-y` or similar flags.
+
+**Derivation**: Interactive prompts in terminal commands hang agent execution loops, causing timeouts and requiring manual intervention to unblock. Agents must operate purely asynchronously.
 
 ## Delegated Authority Only (P#99)
 

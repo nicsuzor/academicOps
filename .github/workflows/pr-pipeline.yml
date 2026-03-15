@@ -30,13 +30,25 @@ jobs:
     uses: ./.github/workflows/typecheck.yml
     secrets: inherit
 
+  # ─── PHASE 1.5: Settle Delay ────────────────────────────────────────
+  # Wait 120s after CI before starting the agent. Absorbs rapid pushes
+  # by cancelling the cheap sleep rather than the expensive agent run.
+  settle:
+    name: Settle
+    needs: [lint, pytest, typecheck]
+    if: always() && !cancelled()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for branch to settle
+        run: sleep 120
+
   # ─── PHASE 2: Agent Review & Fix ───────────────────────────────────
-  # Runs after CI. Uses `always()` so it runs even if Pytest or Typecheck
-  # failed, allowing agent to attempt a fix. If it pushes a fix, the
-  # pipeline restarts.
+  # Runs after settle delay. Uses `always()` so it runs even if Pytest
+  # or Typecheck failed, allowing agent to attempt a fix. If it pushes
+  # a fix, the pipeline restarts.
   agent-fix:
     name: Agent Fix
-    needs: [lint, pytest, typecheck]
+    needs: [settle]
     if: always() && !cancelled()
     uses: ./.github/workflows/agent-autofix.yml
     with:

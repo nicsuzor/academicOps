@@ -2,7 +2,7 @@
 """Integration tests for prompt hydration system.
 
 Consolidated from 9 slow tests to 2 essential tests.
-Tests the UserPromptSubmit hook -> temp file -> prompt-hydrator subagent pipeline.
+Tests the UserPromptSubmit hook -> temp file -> hydrator subagent pipeline.
 """
 
 import re
@@ -11,6 +11,7 @@ import pytest
 
 
 @pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.integration
 def test_hydrator_does_not_answer_user_questions(
     claude_headless_tracked,
@@ -31,10 +32,7 @@ def test_hydrator_does_not_answer_user_questions(
     # Check if hydrator used Read or Grep (which it shouldn't have access to)
     bug_indicators = [".zshrc", ".bashrc", ".config/", "PS1=", "Read(file_path=", "Grep(pattern="]
 
-    if (
-        'subagent_type":"aops-core:prompt-hydrator"' in output
-        or 'subagent_type":"prompt-hydrator"' in output
-    ):
+    if 'subagent_type":"aops-core:hydrator"' in output or 'subagent_type":"hydrator"' in output:
         hydrator_result_pattern = r'"type":"tool_result".*?"content":"(.*?)"'
         matches = re.findall(hydrator_result_pattern, output, re.DOTALL)
         for match in matches:
@@ -48,16 +46,14 @@ def test_hydrator_does_not_answer_user_questions(
     hydrator_calls = [
         c
         for c in tool_calls
-        if c["name"] == "Task"
-        and "prompt-hydrator" in str(c.get("input", {}).get("subagent_type", ""))
+        if c["name"] == "Task" and "hydrator" in str(c.get("input", {}).get("subagent_type", ""))
     ]
 
-    assert len(hydrator_calls) > 0, (
-        f"prompt-hydrator should have been spawned. Session: {session_id}"
-    )
+    assert len(hydrator_calls) > 0, f"hydrator should have been spawned. Session: {session_id}"
 
 
 @pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.integration
 def test_directive_disguised_as_question_routes_to_feature_dev(
     claude_headless_tracked,
@@ -81,12 +77,11 @@ def test_directive_disguised_as_question_routes_to_feature_dev(
     hydrator_calls = [
         c
         for c in tool_calls
-        if c["name"] == "Task"
-        and "prompt-hydrator" in str(c.get("input", {}).get("subagent_type", ""))
+        if c["name"] == "Task" and "hydrator" in str(c.get("input", {}).get("subagent_type", ""))
     ]
 
     assert len(hydrator_calls) > 0, (
-        f"prompt-hydrator should have been spawned for directive prompt. Session: {session_id}"
+        f"hydrator should have been spawned for directive prompt. Session: {session_id}"
     )
 
     simple_question_selected = (

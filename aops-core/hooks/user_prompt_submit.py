@@ -52,7 +52,7 @@ from lib.template_loader import load_template
 
 # Paths (kept for backwards compatibility)
 HOOK_DIR = Path(__file__).parent
-CONTEXT_TEMPLATE_FILE = HOOK_DIR / "templates" / "prompt-hydrator-context.md"
+CONTEXT_TEMPLATE_FILE = HOOK_DIR / "templates" / "hydrator-context.md"
 INSTRUCTION_TEMPLATE_FILE = HOOK_DIR / "templates" / "prompt-hydration-instruction.md"
 
 # Intent envelope max length

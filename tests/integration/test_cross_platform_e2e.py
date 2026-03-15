@@ -9,6 +9,7 @@ import pytest
 pytestmark = [
     pytest.mark.integration,
     pytest.mark.slow,
+    pytest.mark.integration,
     pytest.mark.xdist_group("cross_platform_e2e"),
 ]
 

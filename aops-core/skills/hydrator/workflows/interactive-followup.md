@@ -27,7 +27,7 @@ Follow-ups are detected automatically when ALL conditions are met:
 
 ## What Gets Skipped
 
-- **Hydrator agent** - No prompt-hydrator invocation
+- **Hydrator agent** - No hydrator invocation
 - **New task binding** - Inherits active task from session
 
 ## What Still Applies

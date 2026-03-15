@@ -483,6 +483,7 @@ class TestCredentialBridgeHook:
 
 @pytest.mark.slow
 @pytest.mark.integration
+@pytest.mark.integration
 class TestClaudeCredentialIsolation:
     """E2E tests: verify Claude Code gets bot token via unified env mapping."""
 
@@ -512,22 +513,6 @@ class TestClaudeCredentialIsolation:
         assert plugin_dir, "Cannot find aops-core plugin directory"
 
         prompt = f"Use the Bash tool to run this exact command: printenv GH_TOKEN > {output_file}"
-
-        cmd = [
-            "claude",
-            "-p",
-            prompt,
-            "--output-format",
-            "json",
-            "--dangerously-skip-permissions",
-            "--max-turns",
-            "3",
-            "--model",
-            "haiku",
-            "--no-session-persistence",
-            "--plugin-dir",
-            plugin_dir,
-        ]
 
         from tests.conftest import run_claude_headless
 
@@ -564,6 +549,7 @@ class TestClaudeCredentialIsolation:
 
 
 @pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.integration
 class TestGeminiCredentialIsolation:
     """E2E tests: verify Gemini CLI gets bot token via unified env mapping.
@@ -612,14 +598,6 @@ class TestGeminiCredentialIsolation:
         apply_env_mappings(env)
 
         prompt = f"Execute this shell command: printenv GH_TOKEN > {output_file}"
-
-        cmd = [
-            "gemini",
-            prompt,
-            "-o",
-            "json",
-            "--yolo",
-        ]
 
         from tests.conftest import run_gemini_headless
 

@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-pytestmark = [pytest.mark.integration]
+pytestmark = [pytest.mark.integration, pytest.mark.integration]
 
 
 class TestRouterExitCodePropagation:
@@ -89,7 +89,7 @@ class TestClaudeCodeBlockEnforcement:
         hydrator_calls = [
             c
             for c in tool_calls
-            if c["name"] == "Task" and c.get("input", {}).get("subagent_type") == "prompt-hydrator"
+            if c["name"] == "Task" and c.get("input", {}).get("subagent_type") == "hydrator"
         ]
 
         if result["success"]:
@@ -101,8 +101,7 @@ class TestClaudeCodeBlockEnforcement:
                 hydrator_idx = next(
                     i
                     for i, c in enumerate(tool_calls)
-                    if c["name"] == "Task"
-                    and c.get("input", {}).get("subagent_type") == "prompt-hydrator"
+                    if c["name"] == "Task" and c.get("input", {}).get("subagent_type") == "hydrator"
                 )
                 bash_idx = next(i for i, c in enumerate(tool_calls) if c["name"] == "Bash")
                 assert hydrator_idx < bash_idx, (
