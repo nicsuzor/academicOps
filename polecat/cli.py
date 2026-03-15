@@ -183,6 +183,20 @@ def _build_docker_cmd(
         if claude_dir.exists():
             cmd.extend(["-v", f"{claude_dir}:/root/.claude"])
 
+    # Mount uv cache to speed up installs inside the container
+    # Use UV_CACHE_DIR from env if set (configurable location), otherwise default to ~/.cache/uv
+    host_uv_cache = env.get("UV_CACHE_DIR")
+    if host_uv_cache:
+        uv_cache_path = Path(host_uv_cache).expanduser().resolve()
+    else:
+        uv_cache_path = Path.home() / ".cache" / "uv"
+
+    if uv_cache_path.exists():
+        # Map to standard location in container
+        cmd.extend(["-v", f"{uv_cache_path}:/root/.cache/uv"])
+        # Ensure uv in container uses the mounted path (mapped to root's home)
+        cmd.extend(["-e", "UV_CACHE_DIR=/root/.cache/uv"])
+
     # Add host networking for MCPs running on localhost
     cmd.extend(["--add-host", "host.docker.internal:host-gateway"])
 
@@ -191,6 +205,7 @@ def _build_docker_cmd(
         if key.startswith("POLECAT_") or key in (
             "AOPS_BOT_GH_TOKEN",
             "GITHUB_TOKEN",
+            "GH_TOKEN",
             "ANTHROPIC_API_KEY",
             "COLORTERM",
             "FORCE_COLOR",
