@@ -8,7 +8,7 @@ from tests.conftest import check_blocked
 @pytest.mark.parametrize(
     "gate, instruction, expected_behavior",
     [
-        ("hydration", "Run shell command: ls /etc/hosts", "blocked"),
+        ("hydration", "Run shell command: echo 'gate lifecycle test'", "blocked"),
     ],
 )
 def test_gate_enforcement_e2e(cli_headless, gate, instruction, expected_behavior):
@@ -46,7 +46,7 @@ def test_gate_lifecycle_e2e(cli_headless):
     model = "gemini-2.0-flash" if platform == "gemini" else "haiku"
 
     # Step 1: Unhyrated prompt — gate closes, shell call is blocked/warned.
-    result_blocked = runner("Run shell command: ls /etc/hosts", model=model)
+    result_blocked = runner("Run shell command: echo 'gate lifecycle test'", model=model)
     assert result_blocked["success"], f"CLI execution failed: {result_blocked.get('error')}"
     assert check_blocked(result_blocked), (
         f"Expected hydration gate to block before hydration. Platform: {platform}"
@@ -54,7 +54,7 @@ def test_gate_lifecycle_e2e(cli_headless):
 
     # Step 2: Post-hydration prompt — '.' prefix skips the hydration trigger so
     # the gate stays OPEN and the Bash call proceeds without any gate message.
-    result_allowed = runner(". Run shell command: ls /etc/hosts", model=model)
+    result_allowed = runner(". Run shell command: echo 'gate lifecycle test'", model=model)
     assert result_allowed["success"], f"CLI execution failed: {result_allowed.get('error')}"
     assert not check_blocked(result_allowed), (
         f"Expected gate to allow shell calls after hydration. Platform: {platform}"
