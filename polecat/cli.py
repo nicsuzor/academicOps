@@ -248,6 +248,85 @@ def _build_docker_cmd(
     return cmd
 
 
+def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | None:
+    """Replicate Gemini authentication files to a temporary directory.
+
+    For headless sessions to authenticate properly in a sandbox, critical files
+    from the user's ~/.gemini/ directory must be replicated in the temporary
+    GEMINI_CLI_HOME:
+    - settings.json
+    - google_accounts.json
+    - oauth_creds.json
+    - installation_id
+    - trustedFolders.json
+
+    If work_dir is provided, it is added to the replicated trustedFolders.json
+    to avoid trust prompts in the sandbox.
+
+    Returns:
+        Path to the temporary directory containing the replicated files,
+        or None if authentication replication is disabled or fails.
+    """
+    if os.environ.get("POLECAT_GEMINI_AUTH_DISABLED") == "1":
+        return None
+
+    home = Path.home()
+    gemini_dir = home / ".gemini"
+
+    if not gemini_dir.exists():
+        return None
+
+    # Check if we have any auth-related files
+    auth_files = [
+        "settings.json",
+        "google_accounts.json",
+        "oauth_creds.json",
+        "installation_id",
+        "trustedFolders.json",
+    ]
+
+    existing_files = [f for f in auth_files if (gemini_dir / f).exists()]
+    if not existing_files:
+        return None
+
+    # Create a temporary directory for replicated configs
+    tmp_gemini_home = Path(tempfile.mkdtemp(prefix="polecat-gemini-auth-"))
+    target_dir = tmp_gemini_home / ".gemini"
+    target_dir.mkdir(parents=True)
+
+    for f in existing_files:
+        if f == "trustedFolders.json" and work_dir:
+            try:
+                with open(gemini_dir / f) as src_f:
+                    trust_data = json.load(src_f)
+                # Inject the work directory into trust data
+                # We use TRUST_FOLDER which is the most common entry type
+                trust_data[str(work_dir.resolve())] = "TRUST_FOLDER"
+                with open(target_dir / f, "w") as dest_f:
+                    json.dump(trust_data, dest_f, indent=2)
+                continue
+            except (json.JSONDecodeError, OSError):
+                # Fall back to simple copy if processing fails
+                pass
+
+        shutil.copy2(gemini_dir / f, target_dir / f)
+
+    # If trustedFolders.json didn't exist but we have a work_dir, create it
+    if "trustedFolders.json" not in existing_files and work_dir:
+        try:
+            trust_data = {str(work_dir.resolve()): "TRUST_FOLDER"}
+            with open(target_dir / "trustedFolders.json", "w") as f:
+                json.dump(trust_data, f, indent=2)
+        except OSError:
+            pass
+
+    # Set GEMINI_CLI_HOME to the parent directory — Gemini creates .gemini/
+    # inside GEMINI_CLI_HOME (i.e. path.join(GEMINI_CLI_HOME, ".gemini", ...)).
+    env["GEMINI_CLI_HOME"] = str(tmp_gemini_home)
+
+    return tmp_gemini_home
+
+
 def is_interactive() -> bool:
     """Check if we're running in an interactive terminal."""
     return sys.stdin.isatty()
@@ -1126,7 +1205,15 @@ def crew(ctx, target, extra, name, gemini, resume, keep):
     env["POLECAT_SESSION_TYPE"] = "crew"
     env["POLECAT_CREW_NAME"] = crew_name
     env["POLECAT_WORKTREE"] = str(work_dir)
+
+    tmp_gemini_home = None
     if gemini:
+        # Replicate Gemini authentication if available.
+        # Inject the work directory into trustedFolders.json to avoid trust prompts.
+        tmp_gemini_home = _replicate_gemini_auth(env, work_dir=work_dir)
+        if tmp_gemini_home:
+            print(f"   Auth: Replicated to {env['GEMINI_CLI_HOME']}")
+
         # Gemini --sandbox re-execs itself inside the container, so the image
         # needs the Gemini CLI installed. Use aops-env-test (full image with AI CLIs).
         env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-env-test")
@@ -1150,6 +1237,9 @@ def crew(ctx, target, extra, name, gemini, resume, keep):
         print("\n\n\u26a0\ufe0f  Session interrupted")
     finally:
         reset_terminal_title()
+        # Clean up temporary Gemini home
+        if tmp_gemini_home and tmp_gemini_home.exists():
+            shutil.rmtree(tmp_gemini_home)
 
     print("-" * 50)
     print(f"\n\U0001f4cb Crew '{crew_name}' session ended.")
@@ -1499,7 +1589,14 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
     env = _make_worker_env()
     env["POLECAT_SESSION_TYPE"] = "polecat"
 
+    tmp_gemini_home = None
     if gemini:
+        # Replicate Gemini authentication if available.
+        # Inject the work directory into trustedFolders.json to avoid trust prompts.
+        tmp_gemini_home = _replicate_gemini_auth(env, work_dir=worktree_path)
+        if tmp_gemini_home:
+            print(f"   Auth: Replicated to {env['GEMINI_CLI_HOME']}")
+
         # Gemini --sandbox re-execs itself inside the container, so the image
         # needs the Gemini CLI installed. Use aops-env-test (full image with AI CLIs).
         env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-env-test")
@@ -1569,6 +1666,9 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
     finally:
         if interactive:
             reset_terminal_title()
+        # Clean up temporary Gemini home
+        if tmp_gemini_home and tmp_gemini_home.exists():
+            shutil.rmtree(tmp_gemini_home)
 
     print("-" * 50)
 
