@@ -609,7 +609,9 @@ def _sync_working_repo(
                             check=False,
                         )
                         if remote_content.returncode == 0 and remote_content.stdout:
-                            backup_path = Path(repo_path) / f"{conflict_file}.conflict-remote-{timestamp}"
+                            backup_path = (
+                                Path(repo_path) / f"{conflict_file}.conflict-remote-{timestamp}"
+                            )
                             backup_path.parent.mkdir(parents=True, exist_ok=True)
                             backup_path.write_text(remote_content.stdout)
                             backup_paths.append(str(backup_path.relative_to(repo_path)))
@@ -661,7 +663,10 @@ def _sync_working_repo(
                             f"Remote versions saved to: {', '.join(backup_paths) or 'none'}"
                         )
                         print(warn, file=sys.stderr)
-                        return True, f"{name}: auto-synced with conflict resolution ({len(conflict_files)} file(s))"
+                        return (
+                            True,
+                            f"{name}: auto-synced with conflict resolution ({len(conflict_files)} file(s))",
+                        )
                     else:
                         subprocess.run(
                             ["git", "rebase", "--abort"],
