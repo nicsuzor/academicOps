@@ -170,9 +170,18 @@ def save_worker_transcript(
 
 
 def _build_docker_cmd(
-    cli_tool: str, work_dir: Path, env: dict, agent_cmd: list[str], is_interactive: bool
+    cli_tool: str,
+    work_dir: Path,
+    env: dict,
+    agent_cmd: list[str],
+    is_interactive: bool,
+    tmp_files: list[Path] | None = None,
 ) -> list[str]:
-    """Wraps an agent command in a Docker run command with appropriate mounts."""
+    """Wraps an agent command in a Docker run command with appropriate mounts.
+
+    If tmp_files is provided, any temporary files created (e.g. modified .claude.json)
+    are appended to it so callers can clean them up.
+    """
     # Use environment variable for image, or default to the one built by test-docker
     image = os.environ.get("POLECAT_DOCKER_IMAGE", "aops-env-test")
 
@@ -222,9 +231,14 @@ def _build_docker_cmd(
             with open(claude_json) as f:
                 config = json.load(f)
             config["bypassPermissionsModeAccepted"] = True
-            tmp_claude_json = Path(tempfile.mktemp(suffix=".claude.json"))
-            with open(tmp_claude_json, "w") as f:
-                json.dump(config, f)
+            # Use NamedTemporaryFile (not deprecated mktemp) with delete=False
+            # so the file persists for Docker to mount. Caller cleans up via tmp_files.
+            tmp_fd = tempfile.NamedTemporaryFile(suffix=".claude.json", delete=False, mode="w")
+            json.dump(config, tmp_fd)
+            tmp_fd.close()
+            tmp_claude_json = Path(tmp_fd.name)
+            if tmp_files is not None:
+                tmp_files.append(tmp_claude_json)
             cmd.extend(["-v", f"{tmp_claude_json}:{container_home}/.claude.json"])
         if claude_dir.exists():
             # Read-write: Claude Code writes session data, plugin cache, etc.
@@ -355,9 +369,9 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
                 with open(target_dir / f, "w") as dest_f:
                     json.dump(trust_data, dest_f, indent=2)
                 continue
-            except (json.JSONDecodeError, OSError):
+            except (json.JSONDecodeError, OSError) as e:
                 # Fall back to simple copy if processing fails
-                pass
+                print(f"   Warning: could not process {gemini_dir / f}: {e}", file=sys.stderr)
 
         shutil.copy2(gemini_dir / f, target_dir / f)
 
@@ -367,8 +381,8 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
             trust_data = {str(work_dir.resolve()): "TRUST_FOLDER"}
             with open(target_dir / "trustedFolders.json", "w") as f:
                 json.dump(trust_data, f, indent=2)
-        except OSError:
-            pass
+        except OSError as e:
+            print(f"   Warning: could not create trustedFolders.json: {e}", file=sys.stderr)
 
     # Set GEMINI_CLI_HOME to the parent directory — Gemini creates .gemini/
     # inside GEMINI_CLI_HOME (i.e. path.join(GEMINI_CLI_HOME, ".gemini", ...)).
@@ -1257,6 +1271,7 @@ def crew(ctx, target, extra, name, gemini, resume, keep):
     env["POLECAT_WORKTREE"] = str(work_dir)
 
     tmp_gemini_home = None
+    tmp_files: list[Path] = []
     if gemini:
         # Replicate Gemini authentication if available.
         # Inject the work directory into trustedFolders.json to avoid trust prompts.
@@ -1270,7 +1285,9 @@ def crew(ctx, target, extra, name, gemini, resume, keep):
         final_cmd = cmd
     else:
         # Claude Code: manually wrap in docker container
-        final_cmd = _build_docker_cmd(cli_tool, work_dir, env, cmd, is_interactive=True)
+        final_cmd = _build_docker_cmd(
+            cli_tool, work_dir, env, cmd, is_interactive=True, tmp_files=tmp_files
+        )
 
     # Resolve CLI binary to absolute path so subprocess doesn't depend on PATH lookup
     resolved = shutil.which(final_cmd[0], path=env.get("PATH"))
@@ -1290,6 +1307,9 @@ def crew(ctx, target, extra, name, gemini, resume, keep):
         # Clean up temporary Gemini home
         if tmp_gemini_home and tmp_gemini_home.exists():
             shutil.rmtree(tmp_gemini_home)
+        # Clean up temporary files created by _build_docker_cmd
+        for tmp_file in tmp_files:
+            tmp_file.unlink(missing_ok=True)
 
     print("-" * 50)
     print(f"\n\U0001f4cb Crew '{crew_name}' session ended.")
@@ -1640,6 +1660,7 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
     env["POLECAT_SESSION_TYPE"] = "polecat"
 
     tmp_gemini_home = None
+    tmp_files: list[Path] = []
     if gemini:
         # Replicate Gemini authentication if available.
         # Inject the work directory into trustedFolders.json to avoid trust prompts.
@@ -1653,7 +1674,9 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
         final_cmd = cmd
     else:
         # Claude Code: manually wrap in docker container
-        final_cmd = _build_docker_cmd(cli_tool, worktree_path, env, cmd, is_interactive=interactive)
+        final_cmd = _build_docker_cmd(
+            cli_tool, worktree_path, env, cmd, is_interactive=interactive, tmp_files=tmp_files
+        )
 
     # Resolve CLI binary to absolute path so subprocess doesn't depend on PATH lookup
     resolved = shutil.which(final_cmd[0], path=env.get("PATH"))
@@ -1719,6 +1742,9 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
         # Clean up temporary Gemini home
         if tmp_gemini_home and tmp_gemini_home.exists():
             shutil.rmtree(tmp_gemini_home)
+        # Clean up temporary files created by _build_docker_cmd
+        for tmp_file in tmp_files:
+            tmp_file.unlink(missing_ok=True)
 
     print("-" * 50)
 
