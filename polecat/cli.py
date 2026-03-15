@@ -1473,6 +1473,11 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
         # Claude Code: manually wrap in docker container
         final_cmd = _build_docker_cmd(cli_tool, worktree_path, env, cmd, is_interactive=interactive)
 
+    # Resolve CLI binary to absolute path so subprocess doesn't depend on PATH lookup
+    resolved = shutil.which(final_cmd[0], path=env.get("PATH"))
+    if resolved:
+        final_cmd[0] = resolved
+
     if interactive:
         set_terminal_title(f"polecat:{task.id}")
     try:

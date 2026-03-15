@@ -50,8 +50,5 @@ RUN uv sync --frozen --no-dev
 # Create data directory for persistence
 RUN mkdir -p /data
 
-# Create worker home for non-root polecat execution
-RUN mkdir -p /home/worker && chmod 777 /home/worker
-
 # Default command
 CMD ["/bin/bash"]
