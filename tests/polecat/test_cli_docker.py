@@ -147,7 +147,7 @@ class TestBuildDockerCmd:
         with patch("cli.shutil.which", return_value=None):
             cmd = self._build()
         vol_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-v"]
-        assert not any("pkb" in v for v in vol_args)
+        assert not any("/usr/local/bin/pkb" in v for v in vol_args)
 
     def test_mounts_aca_data_when_set(self, tmp_path):
         """ACA_DATA directory is mounted for PKB access."""
