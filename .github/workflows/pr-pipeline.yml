@@ -37,7 +37,9 @@ jobs:
   agent-fix:
     name: Agent Fix
     needs: [lint, pytest, typecheck]
-    if: always() && !cancelled()
+    if: >-
+      always() && !cancelled() &&
+      (needs.lint.result == 'failure' || needs.pytest.result == 'failure' || needs.typecheck.result == 'failure')
     uses: ./.github/workflows/agent-autofix.yml
     with:
       pr_number: "${{ github.event.pull_request.number }}"
