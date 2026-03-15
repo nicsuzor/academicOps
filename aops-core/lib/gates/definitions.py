@@ -53,7 +53,6 @@ GATE_CONFIGS = [
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,
-                    custom_action="hydrate_prompt",
                     system_message_key="hydration.closed",
                     context_key="hydrator.instruction",
                 ),
