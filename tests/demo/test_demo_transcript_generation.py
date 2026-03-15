@@ -53,9 +53,10 @@ class TestTranscriptGenerationDemo:
 
         # === STEP 1: Discover Session Files ===
         print("\n--- STEP 1: Session Discovery ---")
-        projects_dir = Path.home() / ".claude" / "projects"
+        from lib.paths import get_projects_dir
 
-        assert projects_dir.exists(), f"Claude projects directory not found at {projects_dir}"
+        projects_dir = get_projects_dir()
+        assert projects_dir.exists(), f"Projects directory not found at {projects_dir}"
 
         print(f"Scanning: {projects_dir}")
         session_files = list(projects_dir.rglob("*.jsonl"))

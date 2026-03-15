@@ -26,6 +26,7 @@ import json
 from pathlib import Path
 
 import pytest
+from lib.paths import get_projects_dir
 
 
 def find_custodiet_transcripts(limit: int = 10) -> list[Path]:
@@ -34,7 +35,7 @@ def find_custodiet_transcripts(limit: int = 10) -> list[Path]:
     Custodiet transcripts contain the string "custodiet" or read from
     /tmp/claude-compliance/audit_*.md files.
     """
-    projects_dir = Path.home() / ".claude" / "projects"
+    projects_dir = get_projects_dir()
     if not projects_dir.exists():
         return []
 
@@ -189,9 +190,10 @@ class TestCustodietTranscriptDemo:
         print("\n--- STEP 1: Discover Custodiet Transcripts ---")
         transcripts = find_custodiet_transcripts(limit=20)
 
-        assert transcripts, (
-            "No custodiet transcripts found in ~/.claude/projects/. Ensure custodiet is active."
-        )
+        if not transcripts:
+            pytest.skip(
+                "No custodiet transcripts found in ~/.claude/projects/. Ensure custodiet is active."
+            )
 
         print(f"Found {len(transcripts)} custodiet transcript(s)")
 

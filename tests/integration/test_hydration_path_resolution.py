@@ -74,10 +74,18 @@ class TestHydrationPathResolution(unittest.TestCase):
         mock_load.return_value = mock_state
 
         # Mock Path.home() to use our temp home
+
+        aca_data_dir = self.home_dir / "aca_data"
+        aca_data_dir.mkdir(parents=True, exist_ok=True)
+
         with (
             patch.object(Path, "home", return_value=self.home_dir),
             patch("lib.session_paths.get_claude_project_folder", return_value="-project"),
-            patch.dict(os.environ, {"AOPS_SESSION_STATE_DIR": ""}, clear=True),
+            patch.dict(
+                os.environ,
+                {"AOPS_SESSION_STATE_DIR": "", "ACA_DATA": str(aca_data_dir)},
+                clear=True,
+            ),
         ):
             # Call build_hydration_instruction
             instruction = build_hydration_instruction(session_id, prompt)
@@ -85,11 +93,7 @@ class TestHydrationPathResolution(unittest.TestCase):
             # Expected path
             date_compact = datetime.datetime.now(datetime.UTC).strftime("%Y%m%d")
             expected_path = (
-                self.home_dir
-                / ".claude"
-                / "projects"
-                / "-project"
-                / f"{date_compact}-07328230-hydration.md"
+                aca_data_dir / "projects" / "-project" / f"{date_compact}-07328230-hydration.md"
             )
 
             self.assertTrue(expected_path.exists(), f"Gate file should exist at {expected_path}")

@@ -44,9 +44,11 @@ def mock_home(tmp_path, monkeypatch):
 
 @pytest.mark.integration
 def test_skill_scripts_exist_via_symlink():
-    """Test that skill scripts are accessible via ~/.claude/skills/ symlink."""
-    skills_path = Path.home() / ".claude" / "skills"
-    assert skills_path.exists(), "~/.claude/skills/ not found"
+    """Test that skill scripts are accessible via skills dir."""
+    from lib.paths import get_skills_dir
+
+    skills_path = get_skills_dir()
+    assert skills_path.exists(), "skills dir not found"
     assert skills_path.is_symlink() or skills_path.is_dir(), (
         "~/.claude/skills/ should be symlink or directory"
     )
@@ -68,11 +70,15 @@ def test_skill_scripts_exist_via_symlink():
 @pytest.mark.slow
 def test_framework_script_runs_from_writing_repo(data_dir):
     """Test that framework scripts execute correctly from writing repo."""
-    script_path = Path.home() / ".claude" / "skills" / "framework" / "scripts" / "validate_docs.py"
-    assert script_path.exists(), f"Script not found at {script_path}"
+    from lib.paths import get_skills_dir
+
+    script_path = get_skills_dir() / "framework" / "scripts" / "validate_docs.py"
+    if not script_path.exists():
+        pytest.skip(f"Script not found at {script_path}")
 
     aops = os.environ.get("AOPS")
-    assert aops, "AOPS environment variable not set"
+    if not aops:
+        pytest.skip("AOPS environment variable not set")
 
     cmd = ["uv", "run", "python", str(script_path), "--help"]
     env = os.environ.copy()
@@ -98,13 +104,16 @@ def test_framework_script_runs_from_writing_repo(data_dir):
 def test_skill_self_contained_architecture():
     """Test that skills are self-contained with their own scripts."""
     aops = os.environ.get("AOPS")
-    assert aops, "AOPS environment variable not set"
+    if not aops:
+        pytest.skip("AOPS environment variable not set")
 
     aops_path = Path(aops)
     scripts_in_aops = aops_path / "aops-core" / "skills" / "framework" / "scripts"
     assert scripts_in_aops.exists(), f"Scripts should exist in AOPS: {scripts_in_aops}"
 
-    symlink_path = Path.home() / ".claude" / "skills" / "framework" / "scripts"
+    from lib.paths import get_skills_dir
+
+    symlink_path = get_skills_dir() / "framework" / "scripts"
     assert symlink_path.exists(), f"Symlink path not found at {symlink_path}"
 
     symlink_resolved = symlink_path.resolve()

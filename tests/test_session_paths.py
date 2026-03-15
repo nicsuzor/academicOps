@@ -208,11 +208,12 @@ class TestSessionPaths(unittest.TestCase):
                         os.environ.pop("AOPS_SESSIONS", None)
                         os.environ.pop("GEMINI_SESSION_ID", None)
                         os.environ.pop("AOPS_SESSION_STATE_DIR", None)
+                        os.environ["ACA_DATA"] = tmpdir
                         gate_path = session_paths.get_gate_file_path(
                             "hydration", "07328230-44d4-414b-9fec-191a6eec0948", date="2026-01-24"
                         )
 
-                        self.assertIn(".claude/projects/-project", str(gate_path))
+                        self.assertIn("projects/-project", str(gate_path))
                         self.assertIn("20260124-07328230-hydration.md", str(gate_path))
 
     def test_get_gate_file_path_gemini_prefix(self):
