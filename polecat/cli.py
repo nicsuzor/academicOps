@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -17,6 +18,16 @@ import click
 from lib.agent_env import apply_env_mappings
 from manager import PolecatManager
 from validation import TaskIDValidationError, validate_task_id_or_raise
+
+
+def _node_version_key(p: Path) -> tuple[int, ...]:
+    """Sort key for NVM node version directories using semver comparison.
+
+    Lexicographic sorting gets v9.x.x > v20.x.x wrong because '9' > '2'.
+    This extracts numeric components for correct ordering.
+    """
+    m = re.match(r"v?(\d+)\.(\d+)\.(\d+)", p.name)
+    return tuple(int(x) for x in m.groups()) if m else (0, 0, 0)
 
 
 def _make_worker_env() -> dict[str, str]:
@@ -49,8 +60,8 @@ def _make_worker_env() -> dict[str, str]:
     elif os.path.isdir(nvm_dir):
         versions_dir = Path(nvm_dir) / "versions" / "node"
         if versions_dir.is_dir():
-            # Use the most recent node version's bin
-            node_versions = sorted(versions_dir.iterdir(), reverse=True)
+            # Use the most recent node version's bin (semver sort, not lexicographic)
+            node_versions = sorted(versions_dir.iterdir(), key=_node_version_key, reverse=True)
             if node_versions:
                 user_bin_paths.append(str(node_versions[0] / "bin"))
     for p in reversed(user_bin_paths):
@@ -186,15 +197,15 @@ def _build_docker_cmd(
     cmd.extend(["-v", f"{work_dir.resolve()}:/workspace"])
     cmd.extend(["-w", "/workspace"])
 
-    # Mount authentication for Claude
+    # Mount authentication and plugin cache for Claude
     home = Path.home()
     if cli_tool == "claude":
         claude_json = home / ".claude.json"
         claude_dir = home / ".claude"
         if claude_json.exists():
-            cmd.extend(["-v", f"{claude_json}:{container_home}/.claude.json"])
+            cmd.extend(["-v", f"{claude_json}:{container_home}/.claude.json:ro"])
         if claude_dir.exists():
-            cmd.extend(["-v", f"{claude_dir}:{container_home}/.claude"])
+            cmd.extend(["-v", f"{claude_dir}:{container_home}/.claude:ro"])
 
     # Add host networking for MCPs running on localhost
     cmd.extend(["--add-host", "host.docker.internal:host-gateway"])
@@ -205,6 +216,8 @@ def _build_docker_cmd(
             "AOPS_BOT_GH_TOKEN",
             "GITHUB_TOKEN",
             "ANTHROPIC_API_KEY",
+            "GEMINI_API_KEY",
+            "GOOGLE_API_KEY",
         ):
             cmd.extend(["-e", f"{key}={val}"])
 
