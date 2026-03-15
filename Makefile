@@ -1,7 +1,7 @@
 # AcademicOps Makefile
 # Unified build and installation entry point
 
-.PHONY: help dev build-dev install-dev install-remote install-claude install-gemini install-cli install-crontab install-hooks nextver release prerelease clean
+.PHONY: help dev build-dev install-dev install-remote install-claude install-gemini install-cli install-crontab install-hooks nextver release prerelease clean build-sandbox shell
 
 # --- Configuration ---
 
@@ -64,6 +64,11 @@ build-dev:
 	@echo "Building AcademicOps extension locally..."
 	@ACA_DATA=$(AOPS_ROOT) uv run python scripts/build.py
 	@echo "✓ Build artifacts in $(DIST_DIR)"
+
+# Verify the Docker environment for both Claude and Gemini
+test-docker:
+	@echo "Verifying Docker environment (multi-client support)..."
+	@./scripts/verify-docker-env.sh
 
 # Install local build artifacts into clients
 install-dev:
@@ -137,6 +142,21 @@ release:
 	git tag "v$$next" && \
 	git push origin "$$branch" "v$$next" && \
 	echo "✓ Released v$$next (Note: Release-please PR might be out of sync)"
+
+# --- Docker ---
+
+SANDBOX_IMAGE := aops-sandbox
+
+# Build the Gemini crew sandbox image from .gemini/sandbox.Dockerfile
+build-sandbox:
+	@echo "Building aops Gemini sandbox image..."
+	@docker build -f .gemini/sandbox.Dockerfile -t $(SANDBOX_IMAGE) .
+	@echo "✓ Sandbox image built: $(SANDBOX_IMAGE)"
+	@echo "  Use with: GEMINI_SANDBOX_IMAGE=$(SANDBOX_IMAGE) gemini --sandbox"
+
+# Drop into an interactive shell in the sandbox image (for local testing)
+shell: build-sandbox
+	@docker run -it --rm -v $(AOPS_ROOT):/app -w /app $(SANDBOX_IMAGE)
 
 # --- Utils ---
 

@@ -1,0 +1,40 @@
+# Ignore everything by default
+**
+
+# Allow .git for versioning (P#93 / uv-dynamic-versioning)
+!/.git
+!/.git/**
+
+# Allow project files
+!/pyproject.toml
+!/uv.lock
+!/README.md
+!/LICENSE
+!/Makefile
+!/setup.sh
+
+# Allow source code
+!/aops-core/**
+!/polecat/**
+!/scripts/**
+!/specs/**
+!/docs/**
+!/tests/**
+!/templates/**
+
+# Re-ignore unnecessary files in allowed directories
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.pytest_cache
+**/.coverage
+**/htmlcov
+**/dist
+**/node_modules
+**/.venv
+**/.agent
+**/.claude
+**/.gemini
+**/.aops
+**/.polecat

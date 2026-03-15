@@ -145,6 +145,55 @@ def save_worker_transcript(
         raise OSError(f"Failed to save transcript for task {task_id}: {e}") from e
 
 
+def _build_docker_cmd(
+    cli_tool: str, work_dir: Path, env: dict, agent_cmd: list[str], is_interactive: bool
+) -> list[str]:
+    """Wraps an agent command in a Docker run command with appropriate mounts."""
+    # Use environment variable for image, or default to the one built by test-docker
+    image = os.environ.get("POLECAT_DOCKER_IMAGE", "aops-env-test")
+
+    cmd = ["docker", "run", "--rm"]
+
+    # TTY allocation
+    if is_interactive:
+        cmd.append("-it")
+    else:
+        cmd.append("-i")
+
+    # User / Permissions (run as root in container to avoid uid mapping issues for now, or match host)
+    # The sandbox image sets up /app, we mount into /workspace
+
+    # Mount worktree
+    cmd.extend(["-v", f"{work_dir.resolve()}:/workspace"])
+    cmd.extend(["-w", "/workspace"])
+
+    # Mount authentication for Claude
+    home = Path.home()
+    if cli_tool == "claude":
+        claude_json = home / ".claude.json"
+        claude_dir = home / ".claude"
+        if claude_json.exists():
+            cmd.extend(["-v", f"{claude_json}:/root/.claude.json"])
+        if claude_dir.exists():
+            cmd.extend(["-v", f"{claude_dir}:/root/.claude"])
+
+    # Add host networking for MCPs running on localhost
+    cmd.extend(["--add-host", "host.docker.internal:host-gateway"])
+
+    # Forward specific environment variables
+    for key, val in env.items():
+        if key.startswith("POLECAT_") or key in (
+            "AOPS_BOT_GH_TOKEN",
+            "GITHUB_TOKEN",
+            "ANTHROPIC_API_KEY",
+        ):
+            cmd.extend(["-e", f"{key}={val}"])
+
+    cmd.append(image)
+    cmd.extend(agent_cmd)
+    return cmd
+
+
 def is_interactive() -> bool:
     """Check if we're running in an interactive terminal."""
     return sys.stdin.isatty()
@@ -1002,7 +1051,8 @@ def crew(ctx, target, extra, name, gemini, resume, keep):
     print("-" * 50)
 
     if gemini:
-        # Gemini: --sandbox restricts file access to CWD (the worktree)
+        # Gemini: --sandbox runs tool calls inside the aops-sandbox Docker image.
+        # The image is built from .gemini/sandbox.Dockerfile via `make build-sandbox`.
         cmd = [
             "gemini",
             "--sandbox",
@@ -1022,10 +1072,18 @@ def crew(ctx, target, extra, name, gemini, resume, keep):
     env["POLECAT_SESSION_TYPE"] = "crew"
     env["POLECAT_CREW_NAME"] = crew_name
     env["POLECAT_WORKTREE"] = str(work_dir)
+    if gemini:
+        # Use the aops-specific sandbox image so crew workers have uv, gh, etc.
+        # Falls back to Gemini's default sandbox image if aops-sandbox isn't built.
+        env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-sandbox")
+        final_cmd = cmd
+    else:
+        # Claude Code: manually wrap in docker container
+        final_cmd = _build_docker_cmd(cli_tool, work_dir, env, cmd, is_interactive=True)
 
     set_terminal_title(f"crew:{crew_name}")
     try:
-        subprocess.run(cmd, cwd=work_dir, env=env)
+        subprocess.run(final_cmd, cwd=work_dir, env=env)
     except FileNotFoundError:
         print(f"Error: '{cli_tool}' command not found.", file=sys.stderr)
         sys.exit(1)
@@ -1349,6 +1407,7 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
         # Gemini CLI
         cmd = [
             "gemini",
+            "--sandbox",
             "--approval-mode",
             "yolo",
         ]
@@ -1381,6 +1440,14 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
     env = _make_worker_env()
     env["POLECAT_SESSION_TYPE"] = "polecat"
 
+    if gemini:
+        # Use the aops-specific sandbox image so workers have uv, gh, etc.
+        env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-sandbox")
+        final_cmd = cmd
+    else:
+        # Claude Code: manually wrap in docker container
+        final_cmd = _build_docker_cmd(cli_tool, worktree_path, env, cmd, is_interactive=interactive)
+
     if interactive:
         set_terminal_title(f"polecat:{task.id}")
     try:
@@ -1388,7 +1455,7 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
             # In interactive mode, we MUST NOT capture output or it will hang
             # and we want the user to see/interact with the CLI
             result = subprocess.run(
-                cmd,
+                final_cmd,
                 cwd=worktree_path,
                 env=env,
             )
@@ -1396,7 +1463,7 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
             # No transcript to analyze in interactive mode (currently)
         else:
             result = subprocess.run(
-                cmd,
+                final_cmd,
                 cwd=worktree_path,
                 capture_output=True,
                 text=True,
