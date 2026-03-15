@@ -16,7 +16,10 @@ Running tests:
 import json
 from pathlib import Path
 
+import pytest
 
+
+@pytest.mark.requires_local_env
 def test_settings_json_discoverable_by_claude(bots_dir: Path) -> None:
     """Test that Claude Code can discover settings.json at expected locations.
 
