@@ -19,7 +19,7 @@ from manager import PolecatManager
 from validation import TaskIDValidationError, validate_task_id_or_raise
 
 
-def _make_worker_env() -> dict[str, str]:
+def _make_worker_env(interactive: bool = False) -> dict[str, str]:
     """Create a sanitized environment for polecat/crew worker subprocesses.
 
     Strips SSH credentials and maps git auth to the bot token, ensuring
@@ -27,9 +27,15 @@ def _make_worker_env() -> dict[str, str]:
     This runs agent-env-map.conf mappings eagerly (before subprocess launch)
     rather than relying on the SessionStart hook inside the child process.
     It also ensures 'uv' and other critical binaries are in the PATH.
+    It also enables 24-bit color mode if interactive is True.
     """
     env = os.environ.copy()
     apply_env_mappings(env)
+
+    if interactive:
+        # Enable 24-bit color (TrueColor) for interactive sessions
+        env["COLORTERM"] = "truecolor"
+        env["FORCE_COLOR"] = "3"  # 3 = 24-bit color for Node.js chalk and others
 
     # Ensure uv is in PATH for hooks and agent tools
     current_path = env.get("PATH", "")
@@ -186,6 +192,8 @@ def _build_docker_cmd(
             "AOPS_BOT_GH_TOKEN",
             "GITHUB_TOKEN",
             "ANTHROPIC_API_KEY",
+            "COLORTERM",
+            "FORCE_COLOR",
         ):
             cmd.extend(["-e", f"{key}={val}"])
 
@@ -1068,7 +1076,7 @@ def crew(ctx, target, extra, name, gemini, resume, keep):
 
     # Set session type environment variable for hooks to detect
     # Use sanitized env: SSH stripped, git auth set to bot token only
-    env = _make_worker_env()
+    env = _make_worker_env(interactive=True)
     env["POLECAT_SESSION_TYPE"] = "crew"
     env["POLECAT_CREW_NAME"] = crew_name
     env["POLECAT_WORKTREE"] = str(work_dir)
@@ -1437,7 +1445,7 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
 
     # Set session type environment variable for hooks to detect
     # Use sanitized env: SSH stripped, git auth set to bot token only
-    env = _make_worker_env()
+    env = _make_worker_env(interactive=interactive)
     env["POLECAT_SESSION_TYPE"] = "polecat"
 
     if gemini:
