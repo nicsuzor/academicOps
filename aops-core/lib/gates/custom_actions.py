@@ -100,35 +100,6 @@ def execute_custom_action(
     Custom actions that produce temp files MUST set state.metrics["temp_path"]
     before returning. Policy templates depend on this metric being present.
     """
-    if name == "hydrate_prompt":
-        from lib.hydration import build_hydration_instruction
-
-        prompt = ctx.raw_input.get("prompt")
-        if not prompt:
-            prompt = ctx.raw_input.get("message") or ctx.raw_input.get("intent")
-
-        if not prompt:
-            raise RuntimeError(
-                f"hydrate_prompt: no prompt found in raw_input (keys: {list(ctx.raw_input.keys())})"
-            )
-
-        transcript_path = ctx.transcript_path or ctx.raw_input.get("transcript_path")
-
-        instruction = build_hydration_instruction(
-            ctx.session_id, prompt, transcript_path, state=session_state
-        )
-
-        temp_path = session_state.get_gate("hydration").metrics.get("temp_path")
-        if not temp_path:
-            raise RuntimeError(
-                "hydrate_prompt: build_hydration_instruction completed but "
-                "temp_path not set in hydration gate metrics"
-            )
-
-        return GateResult.allow(
-            system_message=f"Hydration ready: {temp_path}", context_injection=instruction
-        )
-
     if name == "prepare_compliance_report":
         temp_path = create_audit_file(ctx.session_id, "custodiet", ctx)
         state.metrics["temp_path"] = str(temp_path)
