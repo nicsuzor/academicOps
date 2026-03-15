@@ -60,7 +60,7 @@ def temp_repo():
 @pytest.mark.demo
 @pytest.mark.slow
 @pytest.mark.integration
-@pytest.mark.requires_local_env
+@pytest.mark.integration
 def test_demo_blocks_destructive_bash_without_gate(claude_test, temp_repo) -> None:
     """Destructive Bash commands should be blocked without criteria gate."""
     target_file = temp_repo / "important_data.json"

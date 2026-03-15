@@ -172,11 +172,10 @@ log_cli = true
 log_cli_level = "INFO"
 log_cli_format = "%(asctime)s [%(levelname)8s] %(message)s (%(filename)s:%(lineno)s)"
 log_cli_date_format = "%Y-%m-%d %H:%M:%S"
-addopts = "-n 16 -m 'not slow and not integration and not requires_local_env'"
+addopts = "-n 16 -m 'not slow and not integration'"
 markers = [
   "slow: marks tests as slow (run with '-m slow')",
   "integration: marks tests as integration tests",
   "metrics: observability tests that report metrics (run with '-m metrics')",
   "demo: demo tests showing real behavior (run with '-k demo -v -s -n 0')",
-  "requires_local_env: marks tests that require a local environment/history (skipped in CI)",
 ]

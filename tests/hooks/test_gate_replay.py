@@ -279,7 +279,7 @@ class TestRealEventSequenceReplay:
 # ===========================================================================
 
 
-@pytest.mark.requires_local_env
+@pytest.mark.integration
 class TestHookLogDiscovery:
     """Discover and parse actual hook log files from the filesystem.
 

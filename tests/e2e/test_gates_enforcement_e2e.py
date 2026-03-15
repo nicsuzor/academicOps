@@ -18,7 +18,7 @@ def enforce_strict_gates(monkeypatch):
 
 
 @pytest.mark.slow
-@pytest.mark.requires_local_env
+@pytest.mark.integration
 class TestHydrationGateE2E:
     """E2E tests for hydration gate enforcement."""
 
@@ -69,7 +69,7 @@ class TestHydrationGateE2E:
 
 
 @pytest.mark.slow
-@pytest.mark.requires_local_env
+@pytest.mark.integration
 class TestHydrationExemptToolsE2E:
     """E2E tests for tools exempt from hydration gate."""
 

@@ -11,7 +11,7 @@ import pytest
 pytestmark = [
     pytest.mark.integration,
     pytest.mark.slow,
-    pytest.mark.requires_local_env,
+    pytest.mark.integration,
     pytest.mark.xdist_group("gemini_mcp"),
 ]
 

@@ -58,7 +58,7 @@ def temp_repo():
 
 @pytest.mark.slow
 @pytest.mark.integration
-@pytest.mark.requires_local_env
+@pytest.mark.integration
 def test_e2e_blocks_git_push_force(claude_test, temp_repo) -> None:
     """Test that Claude cannot run 'git push --force'."""
     result = claude_test(

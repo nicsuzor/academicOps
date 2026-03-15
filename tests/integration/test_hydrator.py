@@ -12,7 +12,7 @@ import pytest
 
 @pytest.mark.slow
 @pytest.mark.integration
-@pytest.mark.requires_local_env
+@pytest.mark.integration
 def test_hydrator_does_not_answer_user_questions(
     claude_headless_tracked,
 ) -> None:
@@ -54,7 +54,7 @@ def test_hydrator_does_not_answer_user_questions(
 
 @pytest.mark.slow
 @pytest.mark.integration
-@pytest.mark.requires_local_env
+@pytest.mark.integration
 def test_directive_disguised_as_question_routes_to_feature_dev(
     claude_headless_tracked,
 ) -> None:

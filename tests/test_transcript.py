@@ -82,7 +82,7 @@ Some conversation...
         # Ensure no raw code fences remain
         assert not any(acc.startswith("```") for acc in accomplishments)
 
-    @pytest.mark.requires_local_env
+    @pytest.mark.integration
     def test_extract_reflection_from_live_logs(self, parser_module, original_env) -> None:
         """CRITICAL: Verify extraction works on actual live session logs.
 

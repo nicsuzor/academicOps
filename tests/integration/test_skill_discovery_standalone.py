@@ -66,7 +66,7 @@ def test_symlink_structure(tmp_path):
         print("✅ PASS: All required scripts exist via symlink")
 
 
-@pytest.mark.requires_local_env
+@pytest.mark.integration
 def test_aops_env_var():
     """Verify AOPS environment variable is set."""
     import pytest
@@ -85,7 +85,7 @@ def test_aops_env_var():
     print("✅ PASS: AOPS environment variable valid")
 
 
-@pytest.mark.requires_local_env
+@pytest.mark.integration
 def test_script_execution_from_writing(tmp_path):
     """Test that scripts can execute from writing repo."""
     import pytest
@@ -158,7 +158,7 @@ def test_script_execution_from_writing(tmp_path):
             pytest.fail(f"Exception during execution: {e}")
 
 
-@pytest.mark.requires_local_env
+@pytest.mark.integration
 def test_symlink_points_to_aops(tmp_path):
     """Verify symlink resolves to AOPS directory."""
     import pytest

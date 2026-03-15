@@ -10,7 +10,7 @@ import pytest
 
 @pytest.mark.slow
 @pytest.mark.integration
-@pytest.mark.requires_local_env
+@pytest.mark.integration
 def test_session_insights_skill_e2e(claude_headless) -> None:
     """Test that session-insights skill executes successfully end-to-end.
 
