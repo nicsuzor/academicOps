@@ -107,7 +107,7 @@ jobs:
             - orphan_count > 20 → connect or archive truly disconnected nodes
             - All healthy → densify edges (add depends_on between related tasks)
 
-            Process at most 10 items per cycle. For obvious connections (task title
+            Process at most 30 items per cycle. For obvious connections (task title
             mentions the project), apply autonomously. For ambiguous ones, flag in
             the cycle summary for human review.
 

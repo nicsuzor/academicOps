@@ -87,7 +87,7 @@ Each cycle, pick ONE strategy based on what graph_stats shows needs the most att
 | `orphan_count` > 20           | Fix orphans         | Connect or archive truly disconnected nodes         |
 | All metrics healthy           | Densify edges       | Use densify strategies to add dependency edges      |
 
-**Bounded effort**: Process at most 10 items per cycle. Quality over quantity.
+**Bounded effort**: Process at most 30 items per cycle. Quality over quantity.
 
 **Autonomous vs. flagged**:
 
