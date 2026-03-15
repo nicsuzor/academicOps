@@ -194,6 +194,18 @@ def _build_docker_cmd(
     container_home = "/home/worker"
     cmd.extend(["-e", f"HOME={container_home}"])
 
+    # Timezone — match host timezone for consistent timestamps in commits/logs
+    tz = os.environ.get("TZ", "Australia/Brisbane")
+    cmd.extend(["-e", f"TZ={tz}"])
+
+    # Git identity — required for git commit inside the container
+    git_name = os.environ.get("GIT_AUTHOR_NAME", "aops-bot")
+    git_email = os.environ.get("GIT_AUTHOR_EMAIL", "aops-bot@users.noreply.github.com")
+    cmd.extend(["-e", f"GIT_AUTHOR_NAME={git_name}"])
+    cmd.extend(["-e", f"GIT_AUTHOR_EMAIL={git_email}"])
+    cmd.extend(["-e", f"GIT_COMMITTER_NAME={git_name}"])
+    cmd.extend(["-e", f"GIT_COMMITTER_EMAIL={git_email}"])
+
     # Mount worktree
     cmd.extend(["-v", f"{work_dir.resolve()}:/workspace"])
     cmd.extend(["-w", "/workspace"])
@@ -238,10 +250,48 @@ def _build_docker_cmd(
     for key, val in env.items():
         if key.startswith("POLECAT_") or key in (
             "AOPS_BOT_GH_TOKEN",
+            "GH_TOKEN",
             "GITHUB_TOKEN",
             "ANTHROPIC_API_KEY",
         ):
             cmd.extend(["-e", f"{key}={val}"])
+
+    # Git credential helper — use GH_TOKEN for HTTPS pushes.
+    # GH_TOKEN is set by agent-env-map.conf from AOPS_BOT_GH_TOKEN.
+    # SSH is disabled (SSH_AUTH_SOCK=""), so HTTPS is the only path.
+    gh_token = env.get("GH_TOKEN") or os.environ.get("AOPS_BOT_GH_TOKEN")
+    if gh_token:
+        cmd.extend(
+            [
+                "-e",
+                "GIT_ASKPASS=true",
+                "-e",
+                f"GH_TOKEN={gh_token}",
+            ]
+        )
+        # Configure git to use GH_TOKEN via credential helper inside the container
+        cmd.extend(
+            [
+                "-e",
+                "GIT_CONFIG_COUNT=3",
+                "-e",
+                "GIT_CONFIG_KEY_0=credential.helper",
+                "-e",
+                "GIT_CONFIG_VALUE_0=!f() { echo username=x-access-token; echo password=$GH_TOKEN; }; f",
+                "-e",
+                "GIT_CONFIG_KEY_1=url.https://github.com/.insteadOf",
+                "-e",
+                "GIT_CONFIG_VALUE_1=git@github.com:",
+                "-e",
+                "GIT_CONFIG_KEY_2=credential.https://github.com.helper",
+                "-e",
+                "GIT_CONFIG_VALUE_2=!f() { echo username=x-access-token; echo password=$GH_TOKEN; }; f",
+            ]
+        )
+
+    # SSH isolation — no SSH auth inside container
+    cmd.extend(["-e", "SSH_AUTH_SOCK="])
+    cmd.extend(["-e", "GIT_TERMINAL_PROMPT=0"])
 
     cmd.append(image)
     cmd.extend(agent_cmd)

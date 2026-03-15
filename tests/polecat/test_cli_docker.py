@@ -161,6 +161,70 @@ class TestBuildDockerCmd:
         cmd = self._build()
         assert "--tmpfs" not in cmd
 
+    def test_sets_timezone(self):
+        """TZ is set in Docker env."""
+        cmd = self._build()
+        env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
+        tz_args = [a for a in env_args if a.startswith("TZ=")]
+        assert len(tz_args) == 1
+        # Default is Australia/Brisbane
+        assert tz_args[0] == "TZ=Australia/Brisbane"
+
+    def test_timezone_from_env(self):
+        """TZ can be overridden via environment variable."""
+        with patch.dict(os.environ, {"TZ": "UTC"}):
+            cmd = self._build()
+        env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
+        tz_args = [a for a in env_args if a.startswith("TZ=")]
+        assert tz_args[0] == "TZ=UTC"
+
+    def test_sets_git_identity(self):
+        """Git author/committer identity is set for commits inside container."""
+        cmd = self._build()
+        env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
+        assert "GIT_AUTHOR_NAME=aops-bot" in env_args
+        assert "GIT_AUTHOR_EMAIL=aops-bot@users.noreply.github.com" in env_args
+        assert "GIT_COMMITTER_NAME=aops-bot" in env_args
+        assert "GIT_COMMITTER_EMAIL=aops-bot@users.noreply.github.com" in env_args
+
+    def test_git_identity_from_env(self):
+        """Git identity can be overridden via environment variables."""
+        with patch.dict(
+            os.environ,
+            {"GIT_AUTHOR_NAME": "custom-bot", "GIT_AUTHOR_EMAIL": "custom@example.com"},
+        ):
+            cmd = self._build()
+        env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
+        assert "GIT_AUTHOR_NAME=custom-bot" in env_args
+        assert "GIT_AUTHOR_EMAIL=custom@example.com" in env_args
+
+    def test_ssh_isolation(self):
+        """SSH_AUTH_SOCK is cleared and GIT_TERMINAL_PROMPT=0 inside container."""
+        cmd = self._build()
+        env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
+        assert "SSH_AUTH_SOCK=" in env_args
+        assert "GIT_TERMINAL_PROMPT=0" in env_args
+
+    def test_git_credential_helper_with_gh_token(self):
+        """Git credential helper is configured when GH_TOKEN is available."""
+        env = {"GH_TOKEN": "ghp_test123"}
+        cmd = self._build(env=env)
+        env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
+        assert "GIT_CONFIG_COUNT=3" in env_args
+        config_vals = [a for a in env_args if a.startswith("GIT_CONFIG_VALUE_0=")]
+        assert len(config_vals) == 1
+        assert "x-access-token" in config_vals[0]
+        # URL rewriting: git@github.com: → https://github.com/
+        insteadof_keys = [a for a in env_args if a.startswith("GIT_CONFIG_KEY_1=")]
+        assert insteadof_keys[0] == "GIT_CONFIG_KEY_1=url.https://github.com/.insteadOf"
+
+    def test_forwards_gh_token(self):
+        """GH_TOKEN is forwarded to Docker container."""
+        env = {"GH_TOKEN": "ghp_test123"}
+        cmd = self._build(env=env)
+        env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
+        assert "GH_TOKEN=ghp_test123" in env_args
+
     def test_mounts_pkb_binary_when_available(self):
         """pkb binary is mounted read-only for MCP server access."""
         with patch(
