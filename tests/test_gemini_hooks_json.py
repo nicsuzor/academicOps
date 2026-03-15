@@ -30,6 +30,7 @@ class TestGeminiHooksJsonExists:
             f"gemini-extension.json must exist at {gemini_extension_json}"
         )
 
+    @pytest.mark.requires_local_env
     def test_hooks_json_exists_in_dist(self, dist_hooks_json: Path) -> None:
         """Verify hooks.json exists in dist/aops-core/hooks/.
 
@@ -41,6 +42,7 @@ class TestGeminiHooksJsonExists:
             "Run 'python scripts/build.py' to generate it."
         )
 
+    @pytest.mark.requires_local_env
     def test_hooks_json_matches_extension(
         self, gemini_extension_json: Path, dist_hooks_json: Path
     ) -> None:

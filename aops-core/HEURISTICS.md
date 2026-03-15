@@ -141,6 +141,7 @@ LLMs are bad at counting and aggregation. Use Python/scripts for deterministic o
 Tests should NOT use `pytest.skip` to mask configuration errors, missing dependencies, or environment-specific setup issues. Silence masks technical debt.
 
 **Patterns**:
+
 - **❌ BAD**: `if not path.exists(): pytest.skip()`
 - **✅ GOOD**: `assert path.exists(), f"Required directory {path} not found. Check setup."`
 
@@ -151,6 +152,7 @@ Tests should NOT use `pytest.skip` to mask configuration errors, missing depende
 When running tests under restrictive environments (like macOS Seatbelt), redirect all global/system write paths to temporary test-local directories via environment variables.
 
 **Required Redirections**:
+
 - `TMPDIR` → `tmp_path` (prevents PermissionError in `/tmp`)
 - `CLAUDE_CONFIG_DIR` → `tmp_path/.claude` (prevents PermissionError in `~/.claude/debug`)
 - `AOPS_SESSION_STATE_DIR` → `tmp_path/state` (prevents PermissionError in project-derived paths)

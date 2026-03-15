@@ -280,12 +280,13 @@ class TestRealEventSequenceReplay:
 # ===========================================================================
 
 
+@pytest.mark.requires_local_env
 class TestHookLogDiscovery:
     """Discover and parse actual hook log files from the filesystem.
 
     This test verifies that real hook log files exist, are parseable,
     and contain events that can be replayed through the gate system.
-    Skipped if no hook logs are found (CI environments).
+    Skipped in CI environments (requires_local_env marker).
     """
 
     @staticmethod
@@ -717,15 +718,12 @@ class TestTempPathValidation:
         assert path == test_gate_file
         assert path.parent.exists(), f"Gate file parent directory must exist: {path.parent}"
 
-    def test_gate_path_not_in_tmp(self, monkeypatch, tmp_path):
+    def test_gate_path_not_in_tmp(self, monkeypatch):
         """Gate files should NOT be in /tmp (not readable across session restarts).
 
         Gate files in /tmp would be lost on reboot, making them unreliable
         for long-running sessions.
         """
-        # Mock home to tmp_path
-        monkeypatch.setattr(Path, "home", lambda: tmp_path)
-
         monkeypatch.setenv("CLAUDE_PROJECT_DIR", "/Users/test/src/myproject")
 
         monkeypatch.delenv("AOPS_GATE_FILE_HYDRATION", raising=False)
