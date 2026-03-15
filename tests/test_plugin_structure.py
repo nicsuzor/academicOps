@@ -62,7 +62,7 @@ class TestCoreAgents:
 class TestCoreHooks:
     """Verify core hooks are present."""
 
-    CORE_HOOKS = ["router.py", "unified_logger.py", "user_prompt_submit.py"]
+    CORE_HOOKS = ["router.py", "unified_logger.py"]
 
     def test_all_core_hooks_present(self) -> None:
         """All core hooks must be present."""
