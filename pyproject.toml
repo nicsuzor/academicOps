@@ -1,6 +1,6 @@
 [project]
 name = "academicops"
-dynamic = ["version"]
+version = "0.3.2"
 description = "Academic Operations Framework"
 requires-python = ">=3.11"
 dependencies = [
@@ -44,22 +44,9 @@ anthropic = ["anthropic>=0.75.0"]
 [tool.hatch.build.targets.wheel]
 packages = ["lib", "skills", "tests", "scripts"]
 
-# Dynamic versioning from:
-# https://github.com/ninoseki/uv-dynamic-versioning/
 [build-system]
-requires = ["hatchling", "uv-dynamic-versioning"]
+requires = ["hatchling"]
 build-backend = "hatchling.build"
-
-[tool.hatch.version]
-source = "uv-dynamic-versioning"
-
-# Note JSON schemas don't seem to be right for tool.hatch.version.source so
-# this may cause false warnings in IDEs.
-# https://github.com/ninoseki/uv-dynamic-versioning/issues/21
-[tool.uv-dynamic-versioning]
-vcs = "git"
-style = "pep440"
-bump = true
 
 [dependency-groups]
 dev = [

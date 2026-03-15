@@ -18,6 +18,7 @@
     ".": {
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
+        "pyproject.toml",
         "gemini-extension.json",
         "aops-core/.claude-plugin/plugin.json",
         {
