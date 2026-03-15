@@ -90,79 +90,9 @@ do_transcript() {
 }
 
 do_sync() {
-    # Sync all configured git repos
-    if [[ -f "${SCRIPT_DIR}/repo-sync.sh" ]]; then
-        echo "==> Syncing repositories..."
-        "${SCRIPT_DIR}/repo-sync.sh" --quiet 2>&1 || echo "Warning: repo-sync failed"
-    else
-        echo "Warning: ${SCRIPT_DIR}/repo-sync.sh not found"
-    fi
-
-    # Sync AOPS_SESSIONS: pull remote, commit local artifacts, push
-    if [[ -d "${AOPS_SESSIONS}/.git" ]]; then
-        echo "==> Syncing AOPS_SESSIONS artifacts..."
-        cd "${AOPS_SESSIONS}"
-
-        # Clear stale git locks before operations
-        _sessions_lockfile="${AOPS_SESSIONS}/.git/index.lock"
-        if [[ -f "$_sessions_lockfile" ]]; then
-            local _skip_sessions=false
-            if command -v lsof &>/dev/null; then
-                lsof "$_sessions_lockfile" &>/dev/null
-                local _lsof_rc=$?
-                if [[ "$_lsof_rc" -eq 0 ]]; then
-                    echo "  sessions: index.lock held by active process, skipping"
-                    _skip_sessions=true
-                elif [[ "$_lsof_rc" -ne 1 ]]; then
-                    echo "  sessions: lsof failed (rc=$_lsof_rc), leaving index.lock" >&2
-                    _skip_sessions=true
-                fi
-            fi
-            if [[ "$_skip_sessions" == "true" ]]; then
-                cd "${AOPS}"
-                return
-            fi
-            echo "  sessions: removing stale index.lock"
-            rm -f "$_sessions_lockfile"
-        fi
-
-        # Pull remote changes first
-        git fetch --quiet 2>/dev/null || true
-        git pull --rebase --quiet 2>/dev/null || {
-            echo "Warning: AOPS_SESSIONS pull failed, aborting rebase"
-            git rebase --abort 2>/dev/null || true
-        }
-
-        # Commit any new/changed local artifacts (viz, transcripts, summaries)
-        if [[ -n $(git status --porcelain 2>/dev/null) ]]; then
-            git add -u
-            # Also stage new files in known artifact directories
-            git add transcripts/ summaries/ 2>/dev/null || true
-            git commit -m "sync: auto-generated viz and transcripts" --quiet 2>/dev/null || true
-        fi
-
-        # Push everything with retry loop to handle concurrent updates
-        local max_push_attempts=3
-        local push_attempt=1
-        while (( push_attempt <= max_push_attempts )); do
-            if git push --quiet 2>/dev/null; then
-                break
-            fi
-            echo "Warning: AOPS_SESSIONS push failed (attempt ${push_attempt}/${max_push_attempts}), trying to rebase and retry..."
-            git fetch --quiet 2>/dev/null || true
-            if ! git pull --rebase --quiet 2>/dev/null; then
-                echo "Warning: AOPS_SESSIONS pull --rebase failed during push retry, aborting rebase"
-                git rebase --abort 2>/dev/null || true
-                break
-            fi
-            (( push_attempt++ ))
-        done
-        if (( push_attempt > max_push_attempts )); then
-            echo "Warning: AOPS_SESSIONS push failed after ${max_push_attempts} attempts"
-        fi
-
-        cd "${AOPS}"
-    fi
+    # Sync all configured git repos and bare mirrors via polecat sync
+    echo "==> Syncing repositories..."
+    uv run --directory "${AOPS}" polecat sync --quiet 2>&1 || echo "Warning: polecat sync failed"
 }
 
 do_viz() {

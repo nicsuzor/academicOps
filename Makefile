@@ -1,7 +1,7 @@
 # AcademicOps Makefile
 # Unified build and installation entry point
 
-.PHONY: help dev build-dev install-dev install-remote install-claude install-gemini install-cli install-crontab install-hooks nextver release prerelease clean build-sandbox shell
+.PHONY: help dev build-dev install-dev uninstall-dev install-remote install-claude install-gemini install-cli install-crontab install-hooks nextver release prerelease clean build-sandbox shell
 
 # --- Configuration ---
 
@@ -34,6 +34,7 @@ help:
 	@echo "  make dev            - Full local dev setup (sync, build, install-dev)"
 	@echo "  make build-dev      - Build extension locally (dist/)"
 	@echo "  make install-dev    - Install current dist/ into Claude and Gemini"
+	@echo "  make uninstall-dev  - Restore release marketplace after local testing"
 	@echo "  make install-hooks  - Install pre-commit hooks"
 	@echo ""
 	@echo "User Installation (Install from remote releases):"
@@ -71,6 +72,8 @@ test-docker:
 	@./scripts/verify-docker-env.sh
 
 # Install local build artifacts into clients
+# NOTE: This overrides the release marketplace with a local directory source.
+# Run `make uninstall-dev` to restore the release marketplace when done testing.
 install-dev:
 	@echo "Uninstalling existing local plugins/extensions..."
 	-command gemini extensions uninstall aops-core
@@ -83,13 +86,23 @@ active = json.load(open(f))['plugins'].get('aops-core@aops', [{}])[-1].get('inst
 cache = pathlib.Path.home() / '.claude/plugins/cache/aops/aops-core'; \
 [shutil.rmtree(v) or print(f'  removed {v.name}') for v in cache.iterdir() if v.is_dir() and str(v) != active] if cache.exists() else None \
 "
-	@echo "Configuring local Claude marketplace..."
+	@echo "Configuring local Claude marketplace (overrides release source)..."
 	-command claude plugin marketplace add $(AOPS_ROOT)
 	@echo "Installing local build into Claude Code..."
 	@command claude plugin install aops-core@aops || echo "  ⚠️ Claude install failed"
 	@echo "Installing local build into Gemini CLI..."
 	@command gemini extensions install $(DIST_DIR)/aops-gemini --consent || echo "  ⚠️ Gemini install failed"
 	@echo "✓ Local installation complete"
+	@echo "  ⚠️  Marketplace 'aops' now points to $(AOPS_ROOT)"
+	@echo "  Run 'make uninstall-dev' to restore the release marketplace."
+
+# Restore the release marketplace after local dev testing
+uninstall-dev:
+	@echo "Restoring release marketplace ($(DIST_REPO))..."
+	@command claude plugin marketplace add $(DIST_REPO)
+	@command claude plugin marketplace update aops
+	@command claude plugin install aops-core@aops
+	@echo "✓ Release marketplace restored"
 
 # Install pre-commit hooks
 install-hooks:
