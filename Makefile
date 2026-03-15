@@ -70,6 +70,14 @@ install-dev:
 	@echo "Uninstalling existing local plugins/extensions..."
 	-command gemini extensions uninstall aops-core
 	-command claude plugin uninstall aops-core
+	@echo "Pruning old plugin cache versions..."
+	-python3 -c "\
+import json, shutil, pathlib; \
+f = pathlib.Path.home() / '.claude/plugins/installed_plugins.json'; \
+active = json.load(open(f))['plugins'].get('aops-core@aops', [{}])[-1].get('installPath', '') if f.exists() else ''; \
+cache = pathlib.Path.home() / '.claude/plugins/cache/aops/aops-core'; \
+[shutil.rmtree(v) or print(f'  removed {v.name}') for v in cache.iterdir() if v.is_dir() and str(v) != active] if cache.exists() else None \
+"
 	@echo "Configuring local Claude marketplace..."
 	-command claude plugin marketplace add $(AOPS_ROOT)
 	@echo "Installing local build into Claude Code..."
