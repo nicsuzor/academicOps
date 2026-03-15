@@ -57,11 +57,13 @@ jobs:
     secrets: inherit
 
   # ─── PHASE 3: Higher-Level Reviews ─────────────────────────────────
-  # Only run if the code is structurally sound and the fix agent succeeded.
-  agent-auditor:
+  # Only run if the code is structurally sound or the fix agent succeeded/skipped.
+  # Using `!failure() && !cancelled()` ensures it runs even if Phase 2 was skipped
+  # (e.g. on bot PRs), which satisfies the required status check.
+  axiom-review:
     name: Axiom Review
     needs: [agent-fix]
-    if: success()
+    if: !failure() && !cancelled()
     uses: ./.github/workflows/agent-auditor.yml
     with:
       pr_number: "${{ github.event.pull_request.number }}"

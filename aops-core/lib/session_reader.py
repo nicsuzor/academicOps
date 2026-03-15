@@ -762,7 +762,7 @@ def load_skill_scope(skill_name: str) -> str | None:
     the workflow section to provide context for compliance checking.
 
     Args:
-        skill_name: Name of the skill (e.g., "learn", "daily", "task-viz")
+        skill_name: Name of the skill (e.g., "learn", "daily")
 
     Returns:
         Brief description of what the skill authorizes, or None if not found.

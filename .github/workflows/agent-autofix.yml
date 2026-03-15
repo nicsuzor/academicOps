@@ -37,9 +37,6 @@ on:
 jobs:
   review-and-fix:
     name: Review & Fix
-    if: >-
-      github.event_name != 'pull_request' ||
-      github.event.pull_request.user.login != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     concurrency:
@@ -54,6 +51,7 @@ jobs:
       actions: read
     steps:
       - name: Determine PR info
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]'
         id: pr-info
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
@@ -70,22 +68,26 @@ jobs:
           GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
 
       - uses: actions/checkout@v4
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]'
         with:
           fetch-depth: 0
           ref: ${{ steps.pr-info.outputs.ref }}
 
       - name: Set up Python
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]'
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
       - name: Install uv
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]'
         uses: astral-sh/setup-uv@v4
         with:
           version: "latest"
 
       # Self-loop detection
       - name: Check if last push was from merge-prep
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]'
         id: loop-check
         run: |
           LAST_MSG=$(git log -1 --format='%B')
@@ -97,9 +99,11 @@ jobs:
           fi
 
       - name: Install dependencies
+        if: (github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]') && steps.loop-check.outputs.skip != 'true'
         run: uv sync --frozen
 
       - name: Read agent instructions
+        if: (github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]') && steps.loop-check.outputs.skip != 'true'
         id: prompt
         run: |
           PROMPT=$(cat .github/agents/autofix.agent.md)
@@ -111,7 +115,7 @@ jobs:
 
       - name: Run Review & Fix
         id: review
-        if: steps.loop-check.outputs.skip != 'true'
+        if: (github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]') && steps.loop-check.outputs.skip != 'true'
         uses: anthropics/claude-code-action@v1
         env:
           GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}

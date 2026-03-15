@@ -18,7 +18,6 @@ modified: 2026-02-23
 - `aops` CLI (nicsuzor/mem) — Rust binary for PKB indexing and graph export
 - [[specs/task-map.md]] — Task map visualization spec (extracted)
 - [[archived/specs/dashboard-narrative.md]] — Narrative synthesis design (partially implemented)
-- [[skills/task-viz/SKILL.md]] — Task visualization skill (JSON, GraphML, DOT output)
 - [[skills/dashboard/SKILL.md]] — Cognitive Load Dashboard skill
 - [[mcp__pkb__get_network_metrics]] — Graph metrics for dashboard
 - [[mcp__pkb__reindex]] — Index rebuild using `aops` CLI
@@ -54,13 +53,11 @@ graph TD
 
     subgraph "Rendering"
         F[Streamlit dashboard]
-        G[task-viz skill]
     end
 
     C --> A
     A --> B
     B --> F
-    B --> G
     D --> F
     D --> H
     E --> F
