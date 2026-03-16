@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.9](https://github.com/nicsuzor/academicOps/compare/v0.3.8...v0.3.9) (2026-03-16)
+
+
+### Bug Fixes
+
+* address Gemini review feedback on safe_copy/safe_symlink and loop constant ([8102585](https://github.com/nicsuzor/academicOps/commit/81025853ca7ba251f8a0491904be7d7f4e728fb6))
+* **build:** correct Gemini hook mappings and include AfterAgent ([70e22c4](https://github.com/nicsuzor/academicOps/commit/70e22c4a3ade09a31c3cea05dffc40ddd997d7fa))
+* **build:** correct Gemini hook mappings and include AfterAgent ([9193d38](https://github.com/nicsuzor/academicOps/commit/9193d38c8c835358234697f7205d01a471e01cce))
+
 ## [0.3.8](https://github.com/nicsuzor/academicOps/compare/v0.3.7...v0.3.8) (2026-03-16)
 
 
