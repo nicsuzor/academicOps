@@ -191,6 +191,9 @@ class TestCustodietTranscriptDemo:
 
         if not transcripts:
             pytest.skip("No custodiet transcripts found in ~/.claude/projects/.")
+        assert transcripts, (
+            "No custodiet transcripts found in ~/.claude/projects/. Ensure custodiet is active."
+        )
 
         print(f"Found {len(transcripts)} custodiet transcript(s)")
 

@@ -62,6 +62,9 @@ class TestSessionDiscoveryDemo:
 
         if not sessions:
             pytest.skip("No sessions found")
+        assert sessions, (
+            "No sessions found - find_sessions() returned empty list. Check configuration."
+        )
 
         print(f"Sessions discovered: {len(sessions)}")
 

@@ -44,9 +44,6 @@ def gemini_home(tmp_path_factory) -> Path:
     Returns:
         Path: Path to the temporary GEMINI_CLI_HOME directory
     """
-    if not shutil.which("gemini"):
-        pytest.skip("gemini CLI not found in PATH - requires Gemini CLI installed")
-
     tmp_home = tmp_path_factory.mktemp("gemini_home")
     repo_root = get_repo_root()
 
@@ -104,6 +101,9 @@ def gemini_home(tmp_path_factory) -> Path:
             f"Build artifact not found: {dist_gemini}. "
             "Expected build.py to produce dist/aops-gemini."
         )
+
+    if not shutil.which("gemini"):
+        pytest.skip("gemini CLI not found in PATH - requires Gemini CLI installed")
 
     # Set GEMINI_CLI_HOME env for the link command
     env = os.environ.copy()

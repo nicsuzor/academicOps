@@ -324,6 +324,7 @@ class TestHookLogDiscovery:
         hook_files = self._find_hook_logs()
         if not hook_files:
             pytest.skip("No hook log files found")
+        assert hook_files, "No hook log files found in ~/.claude/projects/ (expected in CI)"
 
         # At least one file should parse successfully
         parsed_any = False
@@ -353,6 +354,7 @@ class TestHookLogDiscovery:
         hook_files = self._find_hook_logs()
         if not hook_files:
             pytest.skip("No hook log files found")
+        assert hook_files, "No hook log files found in ~/.claude/projects/ (expected in CI)"
 
         # Find the richest file
         best_file = None
@@ -398,6 +400,7 @@ class TestHookLogDiscovery:
         hook_files = self._find_hook_logs()
         if not hook_files:
             pytest.skip("No hook log files found")
+        assert hook_files, "No hook log files found in ~/.claude/projects/ (expected in CI)"
 
         compliance_events = []
         for f in hook_files[:10]:

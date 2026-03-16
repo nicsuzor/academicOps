@@ -25,6 +25,7 @@ class TestRouterExitCodePropagation:
         aops = os.environ.get("AOPS")
         if not aops:
             pytest.skip("AOPS environment variable not set")
+        assert aops, "AOPS environment variable not set"
         return Path(aops) / "aops-core" / "hooks" / "router.py"
 
     def test_router_exits_zero_when_all_hooks_allow(self, router_path: Path):

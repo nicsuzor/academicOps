@@ -55,8 +55,7 @@ class TestTranscriptGenerationDemo:
         print("\n--- STEP 1: Session Discovery ---")
         projects_dir = Path.home() / ".claude" / "projects"
 
-        if not projects_dir.exists():
-            pytest.skip(f"Claude projects directory not found at {projects_dir}")
+        assert projects_dir.exists(), f"Claude projects directory not found at {projects_dir}"
 
         print(f"Scanning: {projects_dir}")
         session_files = list(projects_dir.rglob("*.jsonl"))
@@ -70,6 +69,7 @@ class TestTranscriptGenerationDemo:
 
         if not session_files:
             pytest.skip(f"No main session files found in {projects_dir}")
+        assert session_files, f"No main session files found in {projects_dir}"
 
         print(f"Found {len(session_files)} session file(s)")
 
