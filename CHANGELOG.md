@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.3.8](https://github.com/nicsuzor/academicOps/compare/v0.3.7...v0.3.8) (2026-03-16)
+
+
+### Bug Fixes
+
+* **build:** correct Gemini hooks.json structure ([55a760b](https://github.com/nicsuzor/academicOps/commit/55a760b7362c2a5c0c963463de2325babb33b25c))
+* **build:** remove redundant top-level 'hooks' key from Gemini hooks.json ([b9f0169](https://github.com/nicsuzor/academicOps/commit/b9f0169c5ed786174ce04d63238df12da5efdbd0))
+
+## [0.3.7](https://github.com/nicsuzor/academicOps/compare/v0.3.6...v0.3.7) (2026-03-16)
+
+
+### Bug Fixes
+
+* **tests:** remove redundant HOME env var test for Docker ([00c8b0c](https://github.com/nicsuzor/academicOps/commit/00c8b0c5944f65829f803664f1de46f3720f913b))
+* **tests:** remove redundant HOME env var test for Docker ([6254f0b](https://github.com/nicsuzor/academicOps/commit/6254f0ba9ae91413253b77a9e481c9a697a45654))
+
 ## [0.3.6](https://github.com/nicsuzor/academicOps/compare/v0.3.5...v0.3.6) (2026-03-16)
 
 
