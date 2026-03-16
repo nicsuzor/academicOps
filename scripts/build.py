@@ -42,17 +42,19 @@ CLAUDE_TO_GEMINI_EVENTS = {
     "PreToolUse": "BeforeTool",
     "PostToolUse": "AfterTool",
     "UserPromptSubmit": "BeforeAgent",
-    "Stop": "SessionEnd",
+    "Stop": ["SessionEnd", "AfterAgent"],  # Stop needs both for unified router.py handling
     # These are the same in both
     "SessionStart": "SessionStart",
     "SessionEnd": "SessionEnd",
-    "SubagentStop": "AfterTool",  # Subagents are tools in Gemini, so map stop to AfterTool
+    "SubagentStart": "BeforeTool",  # Subagents are tools in Gemini
+    "SubagentStop": "AfterTool",  # Subagents are tools in Gemini
     "PreCompact": "BeforeAgent",  # Map to BeforeAgent as a safe fallback
     "Notification": "BeforeAgent",  # Map to BeforeAgent as a safe fallback
     # Gemini-specific (keep as-is if present)
     "BeforeTool": "BeforeTool",
     "AfterTool": "AfterTool",
     "BeforeAgent": "BeforeAgent",
+    "AfterAgent": "AfterAgent",
 }
 
 
@@ -265,6 +267,14 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
         return
 
     src_hooks = config["hooks"]
+    VALID_GEMINI_EVENTS = (
+        "SessionStart",
+        "BeforeAgent",
+        "AfterAgent",
+        "BeforeTool",
+        "AfterTool",
+        "SessionEnd",
+    )
     gemini_hooks: dict = {}
 
     for claude_event, hook_list in src_hooks.items():
@@ -272,53 +282,54 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
         if claude_event.endswith("-disabled"):
             continue
 
-        # Map event name
-        gemini_event = CLAUDE_TO_GEMINI_EVENTS.get(claude_event, claude_event)
+        # Map event name(s)
+        target_events = CLAUDE_TO_GEMINI_EVENTS.get(claude_event, [claude_event])
+        if isinstance(target_events, str):
+            target_events = [target_events]
 
-        # Skip events that don't exist in Gemini
-        # Valid Gemini events: SessionStart, BeforeAgent, BeforeTool, AfterTool, SessionEnd
-        # SubagentStop is NOT a valid Gemini event - do not include it
-        VALID_GEMINI_EVENTS = (
-            "SessionStart",
-            "BeforeAgent",
-            "BeforeTool",
-            "AfterTool",
-            "SessionEnd",
-        )
-        if gemini_event not in VALID_GEMINI_EVENTS:
-            print(f"  Skipping unsupported Gemini event: {claude_event}")
-            continue
+        for gemini_event in target_events:
+            # Skip events that don't exist in Gemini
+            if gemini_event not in VALID_GEMINI_EVENTS:
+                print(f"  Skipping unsupported Gemini event: {gemini_event} (from {claude_event})")
+                continue
 
-        # Transform hook commands
-        transformed_hooks = []
-        for hook_entry in hook_list:
-            new_entry = {}
-            for key, value in hook_entry.items():
-                if key == "hooks":
-                    new_hooks = []
-                    for hook in value:
-                        new_hook = dict(hook)
-                        if "command" in new_hook:
-                            # Replace Claude variable with Gemini variable
-                            cmd = new_hook["command"]
-                            cmd = cmd.replace("${CLAUDE_PLUGIN_ROOT}", "${extensionPath}")
-                            cmd = cmd.replace("router.py", "router.sh")
+            # Transform hook commands
+            transformed_hooks = []
+            for hook_entry in hook_list:
+                new_entry = {}
+                # Gemini CLI requires a 'matcher' key at the root of the hook entry
+                if "matcher" not in hook_entry:
+                    # SessionStart uses 'startup', AfterAgent/SessionEnd use '*', etc.
+                    new_entry["matcher"] = "startup" if gemini_event == "SessionStart" else "*"
 
-                            # Ensure we use the correct client flag for Gemini
-                            cmd = cmd.replace("--client claude", "--client gemini")
+                for key, value in hook_entry.items():
+                    if key == "hooks":
+                        new_hooks = []
+                        for hook in value:
+                            new_hook = dict(hook)
+                            if "command" in new_hook:
+                                # Replace Claude variable with Gemini variable
+                                cmd = new_hook["command"]
+                                cmd = cmd.replace("${CLAUDE_PLUGIN_ROOT}", "${extensionPath}")
+                                cmd = cmd.replace("router.py", "router.sh")
 
-                            # Gemini CLI doesn't pass hook_event_name in stdin payload like Claude does,
-                            # so we append it as a CLI argument for router.py to detect the event type
-                            cmd = f"{cmd} {gemini_event}"
+                                # Ensure we use the correct client flag for Gemini
+                                cmd = cmd.replace("--client claude", "--client gemini")
 
-                            new_hook["command"] = cmd
-                        new_hooks.append(new_hook)
-                    new_entry[key] = new_hooks
-                else:
-                    new_entry[key] = value
-            transformed_hooks.append(new_entry)
+                                # Gemini CLI doesn't pass hook_event_name in stdin payload like Claude does,
+                                # so we append it as a CLI argument for router.py to detect the event type
+                                cmd = f"{cmd} {gemini_event}"
 
-        gemini_hooks[gemini_event] = transformed_hooks
+                                new_hook["command"] = cmd
+                            new_hooks.append(new_hook)
+                        new_entry[key] = new_hooks
+                    else:
+                        new_entry[key] = value
+                transformed_hooks.append(new_entry)
+
+            if gemini_event not in gemini_hooks:
+                gemini_hooks[gemini_event] = []
+            gemini_hooks[gemini_event].extend(transformed_hooks)
 
     # Write Gemini-compatible hooks.json
     with open(dst_path, "w") as f:
