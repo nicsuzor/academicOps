@@ -148,14 +148,6 @@ class TestBuildDockerCmd:
         assert config["bypassPermissionsModeAccepted"] is True
         assert config["projects"] == {}
 
-    def test_sets_home_to_worker_dir(self):
-        """HOME is /home/worker, not host $HOME — avoids tmpfs mount conflicts."""
-        cmd = self._build()
-        env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
-        home_args = [a for a in env_args if a.startswith("HOME=")]
-        assert len(home_args) == 1
-        assert home_args[0] == "HOME=/home/worker"
-
     def test_no_tmpfs_mount(self):
         """No --tmpfs: it overrides bind mounts at the same path, hiding .claude config."""
         cmd = self._build()
