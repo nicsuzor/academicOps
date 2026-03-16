@@ -234,7 +234,7 @@ def _build_docker_cmd(
     # Docker --tmpfs mounts override bind mounts at the same path, hiding
     # .claude/ and .claude.json and causing Claude to hang on startup.
     container_home = "/home/worker"
-    # HOME is set in the image ENV; no need to pass it at runtime
+    cmd.extend(["-e", f"HOME={container_home}"])
 
     # Timezone — match host timezone for consistent timestamps in commits/logs
     tz = os.environ.get("TZ") or _detect_system_timezone()
