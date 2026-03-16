@@ -166,12 +166,8 @@ def test_claude_docker_produces_session_jsonl(claude_docker):
     )
     diag = _dump_diagnostics(result, session_id)
 
-    # Gate: Claude must have actually authenticated and run
-    init = result.get("init", {})
-    api_source = init.get("apiKeySource", "none")
-    assert api_source != "none", f"Claude has no API key source — cannot authenticate.\n{diag}"
-
-    # Gate: Claude must have produced actual output
+    # Gate: Claude must have produced actual output (proves auth worked).
+    # Note: apiKeySource may report "none" even with working OAuth — check tokens instead.
     res = result.get("result", {})
     usage = res.get("usage", {})
     assert usage.get("output_tokens", 0) > 0, (
@@ -202,9 +198,7 @@ def test_session_jsonl_contains_valid_entries(claude_docker):
     )
     diag = _dump_diagnostics(result, session_id)
 
-    # Gate: Claude must have authenticated and produced output
-    init = result.get("init", {})
-    assert init.get("apiKeySource", "none") != "none", f"Claude has no API key source.\n{diag}"
+    # Gate: Claude must have produced actual output (proves auth worked)
     res = result.get("result", {})
     assert res.get("usage", {}).get("output_tokens", 0) > 0, (
         f"Claude produced 0 output tokens.\n{diag}"

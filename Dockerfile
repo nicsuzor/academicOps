@@ -74,5 +74,14 @@ RUN uv run python scripts/build.py
 RUN HOME=/home/worker claude plugin marketplace add /app \
     && HOME=/home/worker claude plugin install aops-core@aops
 
+# Install the aops-core Gemini extension from local build artifacts.
+# HOME=/home/worker ensures .gemini/extensions/ is written to the container
+# home, consistent with the Claude plugin install above.
+# Pre-create .gemini directory (gemini CLI needs it for project registry).
+# Use a dummy GEMINI_API_KEY to bypass auth check during install.
+# --consent bypasses the interactive consent prompt.
+RUN mkdir -p /home/worker/.gemini \
+    && HOME=/home/worker GEMINI_API_KEY=dummy-for-install gemini extensions install /app/dist/aops-gemini --consent
+
 # Default command
 CMD ["/bin/bash"]

@@ -1713,6 +1713,16 @@ def claude_docker(tmp_path):
             session_dir=session_dir,
         )
 
+        # Disable plugin hooks in headless Docker tests. The aops-core plugin's
+        # router.sh sets UV_CACHE_DIR inside the root-owned plugin dir, which
+        # fails for non-root container users and silently blocks all prompts.
+        # Mount an empty settings.json to disable the plugin.
+        empty_settings = tmp_path / "empty-settings.json"
+        empty_settings.write_text("{}")
+        # Insert -v mount before the image name (just before agent_cmd in the cmd list)
+        insert_pos = len(cmd) - len(agent_cmd) - 1
+        cmd[insert_pos:insert_pos] = ["-v", f"{empty_settings}:/home/worker/.claude/settings.json"]
+
         log.debug("Docker command: %s", " ".join(str(x) for x in cmd))
 
         try:
