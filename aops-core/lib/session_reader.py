@@ -413,8 +413,8 @@ def build_audit_session_context(transcript_path: Path | str) -> str:
     # We split history into a historical summary and recent detailed activity
     _DETAILED_TURNS_LIMIT = 5
 
-    historical_turns = valid_turns[:-5] if len(valid_turns) > _DETAILED_TURNS_LIMIT else []
-    recent_turns = valid_turns[-5:] if len(valid_turns) > _DETAILED_TURNS_LIMIT else valid_turns
+    historical_turns = valid_turns[:-_DETAILED_TURNS_LIMIT]
+    recent_turns = valid_turns[-_DETAILED_TURNS_LIMIT:]
 
     if historical_turns:
         lines.append("### Historical User Intent")
