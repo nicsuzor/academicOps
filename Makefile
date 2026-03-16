@@ -196,13 +196,17 @@ release:
 # --- Docker ---
 
 DOCKER_IMAGE := aops-crew
+SANDBOX_IMAGE := $(DOCKER_IMAGE)
 
 # Build the Docker image used for crew/worker agent environments and Gemini sandboxing
 build-docker:
 	@echo "Building aops crew image..."
 	@docker build -t $(DOCKER_IMAGE) .
 	@echo "✓ Image built: $(DOCKER_IMAGE)"
-	@echo "  Use with: GEMINI_SANDBOX_IMAGE=$(SANDBOX_IMAGE) gemini --sandbox"
+	@echo "  Use with: GEMINI_SANDBOX_IMAGE=$(DOCKER_IMAGE) gemini --sandbox"
+
+# Alias for build-docker (referenced by ensure-docker)
+build-sandbox: build-docker
 
 # Drop into an interactive shell in the crew image (for local testing)
 shell: build-docker

@@ -924,6 +924,15 @@ def _run_claude_docker_simple(prompt: str, tmp_path: Path, **kwargs) -> dict[str
 
 def _run_gemini_docker(prompt: str, gemini_home: Path | None = None, **kwargs) -> dict[str, Any]:
     """Run Gemini with --sandbox (tool calls inside Docker container)."""
+    # Ensure polecat is importable (for _replicate_gemini_auth)
+    repo_root = get_repo_root()
+    polecat_dir = str(repo_root / "polecat")
+    aops_core_dir = str(repo_root / "aops-core")
+    if polecat_dir not in sys.path:
+        sys.path.insert(0, polecat_dir)
+    if aops_core_dir not in sys.path:
+        sys.path.insert(0, aops_core_dir)
+
     timeout_seconds = kwargs.get("timeout_seconds", 120)
     model = kwargs.get("model")
 
@@ -994,7 +1003,61 @@ def _run_gemini_docker(prompt: str, gemini_home: Path | None = None, **kwargs) -
                     "error": "Could not find valid JSON in gemini sandbox output",
                 }
 
-        return {"success": True, "output": result.stdout, "result": parsed}
+        response = {
+            "success": True,
+            "output": result.stdout,
+            "stderr": result.stderr,
+            "result": parsed,
+        }
+
+        # Capture session and hook logs before cleanup
+        cli_home = gemini_home or (tmp_gemini_home / ".gemini" if tmp_gemini_home else None)
+        if cli_home and cli_home.exists():
+            # Gemini session logs: ~/.gemini/tmp/<project>/chats/session-*.json
+            session_files = list(cli_home.rglob("session-*.json"))
+            hook_files = list(cli_home.rglob("*-hooks.jsonl"))
+            log_files = list(cli_home.rglob("*.jsonl"))
+
+            diag_lines = [
+                f"gemini_home: {cli_home}",
+                f"session files: {session_files}",
+                f"hook files: {hook_files}",
+                f"all jsonl: {log_files}",
+            ]
+            # Read hook log contents if found
+            for hf in hook_files:
+                try:
+                    diag_lines.append(f"--- {hf.name} ---")
+                    diag_lines.append(hf.read_text()[:2000])
+                except OSError:
+                    pass
+            # Read session transcript if found
+            for sf in session_files:
+                try:
+                    diag_lines.append(f"--- {sf.name} (first 1000 chars) ---")
+                    diag_lines.append(sf.read_text()[:1000])
+                except OSError:
+                    pass
+            log.debug("Gemini Docker session diagnostics:\n%s", "\n".join(diag_lines))
+
+        # Also log parsed result summary
+        stats = parsed.get("stats", {})
+        model_info = next(iter(stats.get("models", {}).items()), (None, {}))
+        model_name = model_info[0] or "unknown"
+        model_stats = model_info[1] if isinstance(model_info[1], dict) else {}
+        tokens = model_stats.get("tokens", {})
+        api = model_stats.get("api", {})
+        log.debug(
+            "Gemini result: response=%r model=%s tokens_in=%s tokens_out=%s latency=%sms stderr=%s",
+            str(parsed.get("response", ""))[:200],
+            model_name,
+            tokens.get("input", "?"),
+            tokens.get("candidates", "?"),
+            api.get("totalLatencyMs", "?"),
+            (result.stderr or "")[:500],
+        )
+
+        return response
     finally:
         if tmp_gemini_home and tmp_gemini_home.exists():
             shutil.rmtree(tmp_gemini_home)

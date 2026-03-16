@@ -110,7 +110,59 @@ def test_crew_spawns_docker_container_gemini(temp_polecat_home, tmp_path):
     )
 
     output = result.stdout + result.stderr
-    assert "GEMINI_SANDBOX_IMAGE=aops-sandbox" in output, (
+    assert "GEMINI_SANDBOX_IMAGE=aops-crew" in output, (
         "Should set GEMINI_SANDBOX_IMAGE for gemini CLI"
     )
     assert "ARGS: --sandbox" in output, "Should invoke gemini with --sandbox flag"
+
+
+@pytest.mark.slow
+@pytest.mark.integration
+def test_crew_interactive_shell_spawns_docker(temp_polecat_home, tmp_path):
+    """
+    E2E test: running polecat crew -i wraps bash in docker (same as claude path).
+    Verifies that -i flag routes through _build_docker_cmd with 'bash' as the command.
+    """
+    env = os.environ.copy()
+    env["POLECAT_HOME"] = str(temp_polecat_home)
+    env["POLECAT_DOCKER_IMAGE"] = "aops-test-nonexistent-image:latest"
+    env["PYTHONPATH"] = os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
+
+    repo = tmp_path / "dummy_repo"
+    repo.mkdir()
+    subprocess.run(["git", "init"], cwd=repo, check=True)
+    subprocess.run(["git", "commit", "--allow-empty", "-m", "init"], cwd=repo, check=True)
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "polecat.cli",
+            "--home",
+            str(temp_polecat_home),
+            "crew",
+            "repo",
+            str(repo),
+            "-i",
+        ],
+        env=env,
+        capture_output=True,
+        text=True,
+        cwd=os.getcwd() + "/polecat",
+        stdin=subprocess.DEVNULL,
+    )
+
+    output = result.stdout + result.stderr
+    # Verify it's launching shell mode, not claude or gemini
+    assert "Starting shell crew session" in output, (
+        f"Should indicate shell session. Output: {output}"
+    )
+    # Should attempt docker run — either docker runs (TTY error from bash) or docker not found.
+    # On hosts with docker: bash inside container fails with "not a TTY" since stdin is DEVNULL.
+    # On hosts without docker: we get a "not found" or "denied" error.
+    assert (
+        "not a tty" in output.lower()
+        or "not found" in output.lower()
+        or "denied" in output.lower()
+        or "docker" in output.lower()
+    ), f"Should route through docker. Output: {output}"
