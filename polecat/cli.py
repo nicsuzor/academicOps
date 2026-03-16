@@ -210,7 +210,8 @@ def _build_docker_cmd(
     If tmp_files is provided, any temporary files created (e.g. modified .claude.json)
     are appended to it so callers can clean them up.
     """
-    # Use environment variable for image, or default to the one built by test-docker
+    # Use POLECAT_DOCKER_IMAGE if set, otherwise default to the aops-sandbox image
+    # built from the repo root Dockerfile via `make build-sandbox`.
     image = os.environ.get("POLECAT_DOCKER_IMAGE", "aops-sandbox")
 
     cmd = ["docker", "run", "--rm"]
