@@ -6,6 +6,7 @@ ENV AOPS=/app \
     ACA_DATA=/data \
     HOME=/home/worker \
     UV_INSTALL_DIR=/usr/local/bin \
+    UV_CACHE_DIR=/tmp/uv-cache \
     PATH="/root/.local/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     NODE_VERSION=22
