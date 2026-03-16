@@ -10,6 +10,8 @@ DIST_DIR := $(AOPS_ROOT)/dist
 INSTALL_BIN := $(if $(USER_OPT),$(USER_OPT)/bin,$(HOME)/.local/bin)
 CRON_SCRIPT := $(AOPS_ROOT)/scripts/repo-sync-cron.sh
 DIST_REPO := nicsuzor/aops-dist
+DIST_REPO_URL := https://github.com/$(DIST_REPO)
+GEMINI_REMOTE_URL := git@github.com:nicsuzor/academicOps.git
 
 # Extension names
 GEMINI_EXT_NAME := aops-core
@@ -79,6 +81,9 @@ test-docker:
 # NOTE: This overrides the release marketplace with a local directory source.
 # Run `make uninstall-dev` to restore the release marketplace when done testing.
 install-dev:
+	@echo "Installing from local build artifacts..."
+	@echo "  Claude source: $(AOPS_ROOT) (local)"
+	@echo "  Gemini source: $(DIST_DIR)/aops-gemini (local build)"
 	@echo "Uninstalling existing local plugins/extensions..."
 	-command gemini extensions uninstall $(GEMINI_EXT_NAME)
 	-command claude plugin uninstall $(CLAUDE_PLUGIN_NAME)
@@ -118,11 +123,20 @@ install-hooks:
 # --- User Installation (Remote) ---
 
 # Standard user install from official releases
-install: install-claude install-gemini install-crontab
+install: ensure-docker install-claude install-gemini install-crontab
 	@$(MAKE) report-versions
 
+ensure-docker:
+	@if ! docker image inspect $(SANDBOX_IMAGE) >/dev/null 2>&1; then \
+		echo "Docker image '$(SANDBOX_IMAGE)' not found — building..."; \
+		$(MAKE) build-sandbox; \
+	else \
+		echo "✓ Docker image '$(SANDBOX_IMAGE)' already exists"; \
+	fi
+
 install-claude:
-	@echo "Installing aops plugin for Claude Code from $(DIST_REPO)..."
+	@echo "Installing aops plugin for Claude Code..."
+	@echo "  Source: $(DIST_REPO_URL)"
 	-command claude plugin uninstall $(CLAUDE_PLUGIN_NAME)
 	@command claude plugin marketplace add $(DIST_REPO) && \
 	command claude plugin marketplace update aops && \
@@ -130,17 +144,18 @@ install-claude:
 	echo "✓ Claude Code plugin installed"
 
 install-gemini:
-	@echo "Installing aops extension for Gemini CLI from GitHub..."
+	@echo "Installing aops extension for Gemini CLI..."
+	@echo "  Source: $(GEMINI_REMOTE_URL)"
 	-command gemini extensions uninstall $(GEMINI_EXT_NAME)
-	@command gemini extensions install git@github.com:nicsuzor/academicOps.git --consent --auto-update --pre-release && \
+	@command gemini extensions install $(GEMINI_REMOTE_URL) --consent --auto-update --pre-release && \
 	echo "✓ Gemini CLI extension installed"
 
 report-versions:
 	@echo "--- 📋 Installed Versions ---"
-	@echo -n "Gemini: "
-	@-gemini extensions list -o json 2>&1 | python3 -c "import sys, json; data=sys.stdin.read(); start=data.find('['); end=data.rfind(']')+1; print(next((e['version'] for e in json.loads(data[start:end]) if e.get('name') == '$(GEMINI_EXT_NAME)'), 'not found') if start != -1 else 'not found')"
-	@echo -n "Claude: "
-	@-claude plugin list --json 2>&1 | python3 -c "import sys, json; data=sys.stdin.read(); start=data.find('['); end=data.rfind(']')+1; print(next((p['version'] for p in json.loads(data[start:end]) if p.get('id') == '$(CLAUDE_PLUGIN_NAME)'), 'not found') if start != -1 else 'not found')"
+	@echo "Gemini extensions:"
+	@-gemini extensions list 2>&1 || true
+	@echo "Claude plugins:"
+	@-claude plugin list 2>&1 || true
 
 install-crontab:
 	@if crontab -l 2>/dev/null | grep -q "repo-sync-cron"; then \
