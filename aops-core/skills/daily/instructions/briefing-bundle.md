@@ -112,7 +112,7 @@ From all gathered items, classify each into exactly one bundle section:
 
 ### 3. Build coversheets
 
-For each **Decision** item, generate a coversheet using the template in [[references/coversheet-template]].
+For each **Decision** item, generate a coversheet using the template in [[references/briefing-bundle/coversheet-template]].
 
 **The editorial work happens here.** This is the step that makes the bundle different from the daily note. For each item:
 
@@ -135,7 +135,7 @@ For each **Decision** item, generate a coversheet using the template in [[refere
 
 **Calendar**: For each meeting today/tomorrow, include: time, title, attendee names with brief context (role/relationship), prep notes if applicable, and any documents to pre-read. Flag free blocks: "2hr free block 10am-12pm — suitable for deep work."
 
-**Emails**: For items needing replies that aren't tied to a decision coversheet, use the email draft template in [[references/email-template]]. Full drafts, not talking points.
+**Emails**: For items needing replies that aren't tied to a decision coversheet, use the email draft template in [[references/briefing-bundle/email-template]]. Full drafts, not talking points.
 
 **FYI**: Compress each to 2-3 sentences. Group by project (OSB, QUT, academic). Each gets `<!-- @nic: noted -->`. Items that might generate a task include a suggested title: `<!-- @nic: task: [suggested title] -->`.
 
@@ -170,7 +170,7 @@ Log issues in frontmatter `qa_issues`. If critical issues found (broken task IDs
 
 Write bundle to: `$ACA_DATA/daily/YYYYMMDD-bundle.md`
 
-Use the bundle template from [[references/bundle-template]] for the overall structure.
+Use the bundle template from [[references/briefing-bundle/bundle-template]] for the overall structure.
 
 Output to terminal:
 
@@ -211,6 +211,6 @@ Energy-intensive first, passive last:
 
 ## Templates
 
-See [[references/coversheet-template]] for the decision coversheet format.
-See [[references/email-template]] for the email draft format.
-See [[references/bundle-template]] for the overall bundle structure.
+See [[references/briefing-bundle/coversheet-template]] for the decision coversheet format.
+See [[references/briefing-bundle/email-template]] for the email draft format.
+See [[references/briefing-bundle/bundle-template]] for the overall bundle structure.

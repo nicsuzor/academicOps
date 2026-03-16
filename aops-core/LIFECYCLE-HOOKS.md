@@ -4,7 +4,7 @@ title: Lifecycle Hook Configuration
 type: index
 category: framework
 description: |
-    Configurable lifecycle trigger hooks for the swarm-supervisor workflow.
+    Configurable lifecycle trigger hooks. NOTE: swarm-supervisor was removed 2026-03-16.
     Minimal shell scripts that check preconditions and start agent sessions.
     All dispatch decisions (which runners, how many, which tasks) are made
     by the supervisor agent, not by these scripts.

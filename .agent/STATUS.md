@@ -169,21 +169,21 @@ The canonical index is `aops-core/SKILLS.md` with 36 entries (8 commands + 28 sk
 
 **Skills by domain**:
 
-| Domain            | Skills                                                                                           |
-| ----------------- | ------------------------------------------------------------------------------------------------ |
-| framework         | `audit`, `custodiet`, `framework`, `hydrator`                                                    |
+| Domain            | Skills                                                                               |
+| ----------------- | ------------------------------------------------------------------------------------ |
+| framework         | `audit`, `custodiet`, `framework`, `hydrator`                                        |
 | operations        | `daily`, `densify`, `garden`, `hypervisor`, `remember`, `session-insights`, `worker` |
-| academic          | `analyst`, `hdr`, `pdf`                                                                          |
-| email             | `email-triage`                                                                                   |
-| collaboration     | `annotations`, `critic`                                                                          |
-| planning          | `planning`, `strategy`                                                                           |
-| quality           | `qa`                                                                                             |
-| quality-assurance | `assess-hydrator`                                                                                |
-| development       | `python-dev`                                                                                     |
-| design            | `excalidraw`, `flowchart`                                                                        |
-| data processing   | `briefing-bundle`, `process-bundle`, `decision-extract`, `decision-apply`, `extract`             |
-| document          | `convert-to-md`                                                                                  |
-| multi-agent       | `swarm-supervisor`                                                                               |
+| academic          | `analyst`, `hdr`, `pdf`                                                              |
+| email             | `email-triage`                                                                       |
+| collaboration     | `annotations`, `critic`                                                              |
+| planning          | `planning`, `strategy`                                                               |
+| quality           | `qa`                                                                                 |
+| quality-assurance | `assess-hydrator`                                                                    |
+| development       | `python-dev`                                                                         |
+| design            | `excalidraw`, `flowchart`                                                            |
+| data processing   | `briefing-bundle`, `process-bundle`, `decision-extract`, `decision-apply`, `extract` |
+| document          | `convert-to-md`                                                                      |
+| multi-agent       | `swarm-supervisor`                                                                   |
 
 ### Specs System -- WORKING
 

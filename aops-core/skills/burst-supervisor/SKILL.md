@@ -350,12 +350,11 @@ This is advisory, not a hard lock.
 
 ## Relationship to Existing Patterns
 
-| Pattern                | Use case                         | Dispatch model                                           |
-| ---------------------- | -------------------------------- | -------------------------------------------------------- |
-| `polecat swarm`        | Parallel batch, drain queue      | Pull (workers claim from queue)                          |
-| `polecat supervise`    | LLM-driven parallel rounds       | Push (supervisor selects + dispatches)                   |
-| **burst-supervisor**   | Iterative long-running workflows | Push (supervisor creates tasks + dispatches via polecat) |
-| swarm-supervisor skill | Full lifecycle orchestration     | Push (decompose → review → dispatch)                     |
+| Pattern              | Use case                         | Dispatch model                                           |
+| -------------------- | -------------------------------- | -------------------------------------------------------- |
+| `polecat swarm`      | Parallel batch, drain queue      | Pull (workers claim from queue)                          |
+| `polecat supervise`  | LLM-driven parallel rounds       | Push (supervisor selects + dispatches)                   |
+| **burst-supervisor** | Iterative long-running workflows | Push (supervisor creates tasks + dispatches via polecat) |
 
 The burst-supervisor is for workflows that process N items iteratively across multiple sessions — spec audits, document reviews, email processing. It creates worker tasks in PKB and dispatches via `polecat run`, giving workers full worktree isolation and autonomous execution.
 
@@ -364,7 +363,7 @@ The burst-supervisor is for workflows that process N items iteratively across mu
 - `/pull` — Single task workflow (what each worker runs internally)
 - `polecat run` — Single autonomous polecat worker
 - `polecat supervise` — LLM-driven parallel dispatch (supervisor_loop.py)
-- `swarm-supervisor` — Full lifecycle orchestration skill
+
 - [[aops-f22cf622]] — State schema design
 - [[aops-174d3fb9]] — Burst lifecycle design
 - [[aops-c83f7a04]] — Result evaluation design

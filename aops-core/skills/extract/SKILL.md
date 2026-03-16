@@ -94,7 +94,7 @@ When invoked, analyze the input and route to the appropriate workflow:
 - Goal is to surface approval/choice items
 - Source is task queue
 
-**Route to**: Existing `aops-core/skills/decision-extract/SKILL.md`
+**Route to**: Existing `aops-core/skills/daily/instructions/decision-extract.md`
 
 **Storage**: Daily note with decision formatting
 
@@ -193,7 +193,7 @@ Delegate to `archived/skills/extractor/SKILL.md`.
 
 ## Workflow: Decision Extraction
 
-Delegate to `aops-core/skills/decision-extract/SKILL.md`.
+Delegate to `aops-core/skills/daily/instructions/decision-extract.md`.
 
 **Key principle**: Extract tasks requiring approval/choice that are blocking other work.
 

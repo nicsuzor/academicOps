@@ -171,7 +171,7 @@ When evaluating agent session performance (invoked as `/eval` or when asked to a
 ```bash
 cd "$AOPS"
 PYTHONPATH=aops-core uv run python \
-  aops-core/skills/eval/scripts/prepare_evaluation.py \
+  aops-core/skills/qa/scripts/prepare_evaluation.py \
   --recent 10 --pretty
 ```
 
@@ -181,7 +181,7 @@ For a specific session: `--session-id <id-prefix>`
 
 ```
 Agent(subagent_type="aops-core:qa", model="opus", prompt="
-Agent Session Evaluation mode. Read aops-core/skills/eval/references/dimensions.md first.
+Agent Session Evaluation mode. Read aops-core/skills/qa/references/dimensions.md first.
 
 The extracted sessions (JSON) are above. For each session:
 

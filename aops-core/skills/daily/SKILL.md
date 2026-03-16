@@ -200,9 +200,17 @@ The skill gathers information from multiple sources and composes the note. The o
 
 When a data source is unavailable, skip gracefully and continue. Note the gap in natural language ("Email unavailable today"), not with error codes or empty table structures. The note should always be useful even when incomplete.
 
+## Sub-Procedures
+
+These workflows are part of the daily skill and live in `instructions/`:
+
+- **Briefing bundle** (`/bundle`): Generate morning decision brief with coversheets, email drafts, and annotation targets from the daily note. See [[instructions/briefing-bundle]].
+- **Process bundle** (`/process-bundle`): Execute annotated bundle decisions — stage email drafts, update task statuses. See [[instructions/process-bundle]].
+- **Decision extract** (`/decision-extract`): Extract pending decisions from task queue, prioritized by blocking count. See [[instructions/decision-extract]].
+- **Decision apply** (`/decision-apply`): Process annotated decisions from daily note and update task statuses. See [[instructions/decision-apply]].
+
 ## Relationship to Other Skills
 
-- **Briefing bundle** (`/bundle`): The daily note surfaces information; the bundle adds editorial judgment for decision-making (coversheets, email drafts, annotation targets). See [[specs/daily-briefing-bundle.md]].
 - **Sleep cycle** (when implemented): Consolidates raw episodes into retrievable stores. The daily note should prefer reading consolidated state over re-processing raw sources.
 - **`/pull`**: Starts execution. The daily note plans; `/pull` acts.
 

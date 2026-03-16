@@ -5,8 +5,8 @@ type: index
 category: framework
 description: |
     Configurable worker types, capabilities, selection rules, and operational
-    thresholds for the swarm-supervisor skill. Modify this file to customize
-    worker dispatch behavior without changing the core skill prompt.
+    thresholds for worker dispatch. NOTE: swarm-supervisor was removed 2026-03-16.
+    This file needs review — see task created to examine supervisor consolidation.
 permalink: workers
 tags: [framework, routing, workers, swarm, index]
 ---
