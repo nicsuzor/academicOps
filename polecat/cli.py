@@ -691,7 +691,7 @@ def _sync_working_repo(
                 check=False,
             )
             if pull.returncode != 0:
-                # Auto-resolve conflicts by accepting remote
+                # Check for conflicts during rebase replay of local commits
                 unmerged = subprocess.run(
                     ["git", "diff", "--name-only", "--diff-filter=U"],
                     cwd=repo_path,
@@ -700,8 +700,31 @@ def _sync_working_repo(
                     check=False,
                 ).stdout.strip()
                 if unmerged:
+                    # In rebase, --theirs = local commit being replayed (keeps local),
+                    # --ours = remote HEAD (discards remote). We keep local, but first
+                    # save the remote version of each conflicting file to a backup so
+                    # nothing from the remote is silently lost.
                     resolved = True
-                    for conflict_file in unmerged.splitlines():
+                    conflict_files = unmerged.splitlines()
+                    backup_paths = []
+                    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+                    for conflict_file in conflict_files:
+                        # Capture remote version (stage 2 = ours = remote in rebase)
+                        remote_content = subprocess.run(
+                            ["git", "show", f":2:{conflict_file}"],
+                            cwd=repo_path,
+                            capture_output=True,
+                            text=True,
+                            check=False,
+                        )
+                        if remote_content.returncode == 0 and remote_content.stdout:
+                            backup_path = (
+                                Path(repo_path) / f"{conflict_file}.conflict-remote-{timestamp}"
+                            )
+                            backup_path.parent.mkdir(parents=True, exist_ok=True)
+                            backup_path.write_text(remote_content.stdout)
+                            backup_paths.append(str(backup_path.relative_to(repo_path)))
+
                         r = subprocess.run(
                             ["git", "checkout", "--theirs", "--", conflict_file],
                             cwd=repo_path,
@@ -720,6 +743,14 @@ def _sync_working_repo(
                             break
 
                     if resolved:
+                        # Stage backup files so they're committed and visible
+                        for bp in backup_paths:
+                            subprocess.run(
+                                ["git", "add", bp],
+                                cwd=repo_path,
+                                capture_output=True,
+                                check=False,
+                            )
                         cont = subprocess.run(
                             ["git", "rebase", "--continue"],
                             cwd=repo_path,
@@ -735,6 +766,16 @@ def _sync_working_repo(
                                 check=False,
                             )
                             return False, f"{name}: rebase --continue failed"
+                        conflict_summary = ", ".join(conflict_files)
+                        warn = (
+                            f"⚠ {name}: rebase conflict auto-resolved (kept local) in: {conflict_summary}. "
+                            f"Remote versions saved to: {', '.join(backup_paths) or 'none'}"
+                        )
+                        print(warn, file=sys.stderr)
+                        return (
+                            True,
+                            f"{name}: auto-synced with conflict resolution ({len(conflict_files)} file(s))",
+                        )
                     else:
                         subprocess.run(
                             ["git", "rebase", "--abort"],

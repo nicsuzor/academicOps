@@ -32,6 +32,8 @@ def test_crew_spawns_docker_container_claude(temp_polecat_home, tmp_path):
     repo = tmp_path / "dummy_repo"
     repo.mkdir()
     subprocess.run(["git", "init"], cwd=repo, check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.email", "test@test"], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.name", "Test"], check=True)
     subprocess.run(["git", "commit", "--allow-empty", "-m", "init"], cwd=repo, check=True)
 
     result = subprocess.run(
@@ -74,6 +76,8 @@ def test_crew_spawns_docker_container_gemini(temp_polecat_home, tmp_path):
     repo = tmp_path / "dummy_repo"
     repo.mkdir()
     subprocess.run(["git", "init"], cwd=repo, check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.email", "test@test"], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.name", "Test"], check=True)
     subprocess.run(["git", "commit", "--allow-empty", "-m", "init"], cwd=repo, check=True)
 
     # We write a fake 'gemini' executable in our PATH to intercept the call and echo the env vars
