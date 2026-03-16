@@ -321,9 +321,8 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
         gemini_hooks[gemini_event] = transformed_hooks
 
     # Write Gemini-compatible hooks.json
-    gemini_config = {"hooks": gemini_hooks}
     with open(dst_path, "w") as f:
-        json.dump(gemini_config, f, indent=2)
+        json.dump(gemini_hooks, f, indent=2)
     print(f"  ✓ Generated Gemini hooks.json with {len(gemini_hooks)} events")
 
 
