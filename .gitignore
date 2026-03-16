@@ -343,4 +343,4 @@ data/
 
 # UX audit screenshots (large binary artifacts, not tracked)
 screenshots/
-uv.lock
+# uv.lock removed from gitignore to allow frozen builds in CI
