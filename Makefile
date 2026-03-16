@@ -168,10 +168,10 @@ release:
 
 SANDBOX_IMAGE := aops-sandbox
 
-# Build the Gemini crew sandbox image from .gemini/sandbox.Dockerfile
+# Build the Docker image used for agent environments and Gemini sandboxing
 build-sandbox:
-	@echo "Building aops Gemini sandbox image..."
-	@docker build -f .gemini/sandbox.Dockerfile -t $(SANDBOX_IMAGE) .
+	@echo "Building aops sandbox image..."
+	@docker build -t $(SANDBOX_IMAGE) .
 	@echo "✓ Sandbox image built: $(SANDBOX_IMAGE)"
 	@echo "  Use with: GEMINI_SANDBOX_IMAGE=$(SANDBOX_IMAGE) gemini --sandbox"
 
