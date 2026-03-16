@@ -1,6 +1,6 @@
 [project]
 name = "academicops"
-version = "0.3.3"
+version = "0.3.4"
 description = "Academic Operations Framework"
 requires-python = ">=3.11"
 dependencies = [
@@ -52,7 +52,6 @@ dev = [
   "jsonschema>=4.26.0",
   # Git hooks
   "pre-commit>=4.5.1",
-  "bump-my-version>=1.2.6",
   "dprint-py>=0.51.1.0",
 ]
 
