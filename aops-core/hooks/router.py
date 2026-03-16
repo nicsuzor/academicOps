@@ -886,9 +886,11 @@ class HookRouter:
         if result.verdict:
             if result.verdict == "deny":
                 hso.permissionDecision = "deny"
+                hso.permissionDecisionReason = result.system_message
                 has_hso = True
             elif result.verdict == "ask":
                 hso.permissionDecision = "ask"
+                hso.permissionDecisionReason = result.system_message
                 has_hso = True
             elif result.verdict == "warn":
                 hso.permissionDecision = "allow"
