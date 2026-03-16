@@ -267,6 +267,14 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
         return
 
     src_hooks = config["hooks"]
+    VALID_GEMINI_EVENTS = (
+        "SessionStart",
+        "BeforeAgent",
+        "AfterAgent",
+        "BeforeTool",
+        "AfterTool",
+        "SessionEnd",
+    )
     gemini_hooks: dict = {}
 
     for claude_event, hook_list in src_hooks.items():
@@ -281,15 +289,6 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
 
         for gemini_event in target_events:
             # Skip events that don't exist in Gemini
-            # Valid Gemini events: SessionStart, BeforeAgent, AfterAgent, BeforeTool, AfterTool, SessionEnd
-            VALID_GEMINI_EVENTS = (
-                "SessionStart",
-                "BeforeAgent",
-                "AfterAgent",
-                "BeforeTool",
-                "AfterTool",
-                "SessionEnd",
-            )
             if gemini_event not in VALID_GEMINI_EVENTS:
                 print(f"  Skipping unsupported Gemini event: {gemini_event} (from {claude_event})")
                 continue

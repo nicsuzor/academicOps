@@ -38,8 +38,8 @@ def write_plugin_version(plugin_dir: Path, commit_sha: str) -> Path:
 
 def safe_copy(src: Path, dst: Path) -> None:
     """Copy file or directory, handling existing destinations."""
-    if dst.exists():
-        if dst.is_dir():
+    if dst.is_symlink() or dst.exists():
+        if dst.is_dir() and not dst.is_symlink():
             shutil.rmtree(dst)
         else:
             dst.unlink()
@@ -52,7 +52,9 @@ def safe_copy(src: Path, dst: Path) -> None:
 
 def safe_symlink(src: Path, dst: Path) -> None:
     """Create symlink, handling existing destinations."""
-    if dst.exists() or dst.is_symlink():
+    if dst.is_dir() and not dst.is_symlink():
+        shutil.rmtree(dst)
+    elif dst.exists() or dst.is_symlink():
         dst.unlink()
     dst.symlink_to(src)
 
@@ -115,6 +117,14 @@ def generate_gemini_hooks(
     }
     MATCHERS = {"SessionStart": "startup", "SessionEnd": "*", "BeforeAgent": "*", "AfterAgent": "*"}
 
+    VALID_GEMINI_EVENTS = (
+        "SessionStart",
+        "BeforeAgent",
+        "AfterAgent",
+        "BeforeTool",
+        "AfterTool",
+        "SessionEnd",
+    )
     gemini_hooks = {}
 
     for claude_event, hook_list in claude_hooks.items():
@@ -123,15 +133,6 @@ def generate_gemini_hooks(
 
         target_events = CLAUDE_TO_GEMINI.get(claude_event, [claude_event])
         for gemini_event in target_events:
-            # Valid Gemini events
-            VALID_GEMINI_EVENTS = (
-                "SessionStart",
-                "BeforeAgent",
-                "AfterAgent",
-                "BeforeTool",
-                "AfterTool",
-                "SessionEnd",
-            )
             if gemini_event not in VALID_GEMINI_EVENTS:
                 continue
 
