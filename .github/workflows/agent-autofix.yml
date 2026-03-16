@@ -54,15 +54,16 @@ jobs:
         if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]'
         id: pr-info
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
+          if [ -n "${{ inputs.pr_number }}" ]; then
+            # Called via workflow_call or workflow_dispatch — use inputs directly
+            echo "pr_number=${{ inputs.pr_number }}" >> "$GITHUB_OUTPUT"
+            echo "ref=${{ inputs.ref }}" >> "$GITHUB_OUTPUT"
+            SHA=$(gh pr view "${{ inputs.pr_number }}" --json headRefOid -q '.headRefOid')
+            echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          else
             echo "pr_number=${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
             echo "sha=${{ github.event.pull_request.head.sha }}" >> "$GITHUB_OUTPUT"
             echo "ref=${{ github.event.pull_request.head.ref }}" >> "$GITHUB_OUTPUT"
-          else
-            PR_DATA=$(gh pr view "${{ inputs.pr_number }}" --json number,headRefOid,headRefName)
-            echo "pr_number=${{ inputs.pr_number }}" >> "$GITHUB_OUTPUT"
-            echo "sha=$(echo "$PR_DATA" | jq -r '.headRefOid')" >> "$GITHUB_OUTPUT"
-            echo "ref=$(echo "$PR_DATA" | jq -r '.headRefName')" >> "$GITHUB_OUTPUT"
           fi
         env:
           GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}

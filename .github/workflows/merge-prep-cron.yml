@@ -42,7 +42,7 @@ jobs:
       actions: write
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      BAZAAR_WINDOW_SECONDS: 900  # 15 minutes
+      BAZAAR_WINDOW_SECONDS: 3600  # 1 hour — autofix handles immediate fixes; merge-prep runs once the PR has settled
     steps:
       # ── Manual override: process a specific PR immediately ──
       - name: Manual override
@@ -123,7 +123,7 @@ jobs:
               continue
             fi
 
-            # Check time gate: last commit must be >= 15 min ago
+            # Check time gate: last commit must be >= 1 hour ago
             LAST_COMMIT_DATE=$(gh pr view "$PR_NUM" --repo "$REPO" \
               --json commits --jq '.commits[-1].committedDate')
             LAST_COMMIT_TS=$(date -d "$LAST_COMMIT_DATE" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%SZ" "$LAST_COMMIT_DATE" +%s 2>/dev/null)
@@ -146,6 +146,18 @@ jobs:
 
             if [ "$MP_STATUS" = "failure" ]; then
               echo "  SKIP: merge-prep-status is failure (halted — needs manual retry)"
+              continue
+            fi
+
+            # Skip if all checks are green and no CHANGES_REQUESTED reviews remain
+            # (merge-prep is only needed when something is wrong or blocked)
+            CHECK_ROLLUP=$(gh pr view "$PR_NUM" --repo "$REPO" \
+              --json statusCheckRollup --jq '.statusCheckRollup | map(.conclusion // .status) | all(. == "SUCCESS" or . == "success")')
+            CHANGES_REQUESTED=$(gh api "repos/$REPO/pulls/$PR_NUM/reviews" \
+              --jq '[.[] | {state, login: .user.login}] | group_by(.login) | map(last) | map(select(.state == "CHANGES_REQUESTED")) | length')
+
+            if [ "$CHECK_ROLLUP" = "true" ] && [ "$CHANGES_REQUESTED" = "0" ]; then
+              echo "  SKIP: all checks green and no CHANGES_REQUESTED reviews (nothing to fix)"
               continue
             fi
 

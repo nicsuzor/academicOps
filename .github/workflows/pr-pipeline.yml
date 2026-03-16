@@ -21,12 +21,15 @@ jobs:
   # These run in parallel. If Lint autofixes and pushes, this workflow
   # run is cancelled and restarts.
   lint:
+    name: Lint
     uses: ./.github/workflows/lint.yml
     secrets: inherit
   pytest:
+    name: Pytest
     uses: ./.github/workflows/pytest.yml
     secrets: inherit
   typecheck:
+    name: Type Check
     uses: ./.github/workflows/typecheck.yml
     secrets: inherit
 
