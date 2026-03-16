@@ -210,8 +210,9 @@ def _build_docker_cmd(
     If tmp_files is provided, any temporary files created (e.g. modified .claude.json)
     are appended to it so callers can clean them up.
     """
-    # Use environment variable for image, or default to the one built by test-docker
-    image = os.environ.get("POLECAT_DOCKER_IMAGE", "aops-env-test")
+    # Use POLECAT_DOCKER_IMAGE if set, otherwise default to the aops-sandbox image
+    # built from the repo root Dockerfile via `make build-sandbox`.
+    image = os.environ.get("POLECAT_DOCKER_IMAGE", "aops-sandbox")
 
     cmd = ["docker", "run", "--rm"]
 
@@ -1618,7 +1619,7 @@ def crew(ctx, target, extra, name, gemini, resume, keep):
 
     if gemini:
         # Gemini: --sandbox runs tool calls inside the aops-sandbox Docker image.
-        # The image is built from .gemini/sandbox.Dockerfile via `make build-sandbox`.
+        # The image is built from Dockerfile via `make build-sandbox`.
         cmd = [
             "gemini",
             "--sandbox",
@@ -1649,8 +1650,8 @@ def crew(ctx, target, extra, name, gemini, resume, keep):
             print(f"   Auth: Replicated to {env['GEMINI_CLI_HOME']}")
 
         # Gemini --sandbox re-execs itself inside the container, so the image
-        # needs the Gemini CLI installed. Use aops-env-test (full image with AI CLIs).
-        env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-env-test")
+        # needs the Gemini CLI installed. Use aops-sandbox (full image with AI CLIs).
+        env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-sandbox")
         final_cmd = cmd
     else:
         # Claude Code: manually wrap in docker container
@@ -2038,8 +2039,8 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
             print(f"   Auth: Replicated to {env['GEMINI_CLI_HOME']}")
 
         # Gemini --sandbox re-execs itself inside the container, so the image
-        # needs the Gemini CLI installed. Use aops-env-test (full image with AI CLIs).
-        env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-env-test")
+        # needs the Gemini CLI installed. Use aops-sandbox (full image with AI CLIs).
+        env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-sandbox")
         final_cmd = cmd
     else:
         # Claude Code: manually wrap in docker container

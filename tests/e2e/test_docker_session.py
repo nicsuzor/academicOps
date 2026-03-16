@@ -34,7 +34,7 @@ class TestDockerAgentResponds:
         platform = request.param
 
         if not _docker_available():
-            pytest.skip("Docker not available or aops-env-test image not built")
+            pytest.skip("Docker not available or aops-sandbox image not built")
 
         if platform == "claude-docker":
             has_oauth = (Path.home() / ".claude" / ".credentials.json").exists()

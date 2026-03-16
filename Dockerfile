@@ -35,8 +35,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Using direct download for better compatibility with x86_64
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Install Gemini CLI and Claude Code globally
-RUN npm install -g @google/gemini-cli @anthropic-ai/claude-code && npm cache clean --force
+# Install Gemini CLI, Claude Code, and code quality tools globally
+RUN npm install -g @google/gemini-cli @anthropic-ai/claude-code markdownlint-cli2 dprint && npm cache clean --force
+
+# Install Python-based CLI tools
+RUN uv tool install ruff
 
 # Set workdir
 WORKDIR /app

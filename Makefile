@@ -10,6 +10,12 @@ DIST_DIR := $(AOPS_ROOT)/dist
 INSTALL_BIN := $(if $(USER_OPT),$(USER_OPT)/bin,$(HOME)/.local/bin)
 CRON_SCRIPT := $(AOPS_ROOT)/scripts/repo-sync-cron.sh
 DIST_REPO := nicsuzor/aops-dist
+DIST_REPO_URL := https://github.com/$(DIST_REPO)
+GEMINI_REMOTE_URL := git@github.com:nicsuzor/academicOps.git
+
+# Extension names
+GEMINI_EXT_NAME := aops-core
+CLAUDE_PLUGIN_NAME := aops-core@aops
 
 # Platform detection for binaries
 UNAME_S := $(shell uname -s)
@@ -74,23 +80,27 @@ build-dev:
 # NOTE: This overrides the release marketplace with a local directory source.
 # Run `make uninstall-dev` to restore the release marketplace when done testing.
 install-dev:
+	@echo "Installing from local build artifacts..."
+	@echo "  Claude source: $(AOPS_ROOT) (local)"
+	@echo "  Gemini source: $(DIST_DIR)/aops-gemini (local build)"
 	@echo "Uninstalling existing local plugins/extensions..."
-	-command gemini extensions uninstall aops-core
-	-command claude plugin uninstall aops-core
+	-command gemini extensions uninstall $(GEMINI_EXT_NAME)
+	-command claude plugin uninstall $(CLAUDE_PLUGIN_NAME)
 	@echo "Pruning old plugin cache versions..."
 	-python3 -c "\
 import json, shutil, pathlib; \
 f = pathlib.Path.home() / '.claude/plugins/installed_plugins.json'; \
-active = json.load(open(f))['plugins'].get('aops-core@aops', [{}])[-1].get('installPath', '') if f.exists() else ''; \
+active = json.load(open(f))['plugins'].get('$(CLAUDE_PLUGIN_NAME)', [{}])[-1].get('installPath', '') if f.exists() else ''; \
 cache = pathlib.Path.home() / '.claude/plugins/cache/aops/aops-core'; \
 [shutil.rmtree(v) or print(f'  removed {v.name}') for v in cache.iterdir() if v.is_dir() and str(v) != active] if cache.exists() else None \
 "
 	@echo "Configuring local Claude marketplace (overrides release source)..."
 	-command claude plugin marketplace add $(AOPS_ROOT)
 	@echo "Installing local build into Claude Code..."
-	@command claude plugin install aops-core@aops || echo "  ⚠️ Claude install failed"
+	@command claude plugin install $(CLAUDE_PLUGIN_NAME) || echo "  ⚠️ Claude install failed"
 	@echo "Installing local build into Gemini CLI..."
 	@command gemini extensions install $(DIST_DIR)/aops-gemini --consent || echo "  ⚠️ Gemini install failed"
+	@$(MAKE) report-versions
 	@echo "✓ Local installation complete"
 	@echo "  ⚠️  Marketplace 'aops' now points to $(AOPS_ROOT)"
 	@echo "  Run 'make uninstall-dev' to restore the release marketplace."
@@ -100,7 +110,7 @@ uninstall-dev:
 	@echo "Restoring release marketplace ($(DIST_REPO))..."
 	@command claude plugin marketplace add $(DIST_REPO)
 	@command claude plugin marketplace update aops
-	@command claude plugin install aops-core@aops
+	@command claude plugin install $(CLAUDE_PLUGIN_NAME)
 	@echo "✓ Release marketplace restored"
 
 # Install pre-commit hooks
@@ -112,19 +122,39 @@ install-hooks:
 # --- User Installation (Remote) ---
 
 # Standard user install from official releases
-install: install-claude install-gemini install-crontab
+install: ensure-docker install-claude install-gemini install-crontab
+	@$(MAKE) report-versions
+
+ensure-docker:
+	@if ! docker image inspect $(SANDBOX_IMAGE) >/dev/null 2>&1; then \
+		echo "Docker image '$(SANDBOX_IMAGE)' not found — building..."; \
+		$(MAKE) build-sandbox; \
+	else \
+		echo "✓ Docker image '$(SANDBOX_IMAGE)' already exists"; \
+	fi
 
 install-claude:
-	@echo "Installing aops plugin for Claude Code from $(DIST_REPO)..."
+	@echo "Installing aops plugin for Claude Code..."
+	@echo "  Source: $(DIST_REPO_URL)"
+	-command claude plugin uninstall $(CLAUDE_PLUGIN_NAME)
 	@command claude plugin marketplace add $(DIST_REPO) && \
 	command claude plugin marketplace update aops && \
-	command claude plugin install aops-core@aops && \
+	command claude plugin install $(CLAUDE_PLUGIN_NAME) && \
 	echo "✓ Claude Code plugin installed"
 
 install-gemini:
-	@echo "Installing aops extension for Gemini CLI from GitHub..."
-	@command gemini extensions install git@github.com:nicsuzor/academicOps.git --consent --auto-update --pre-release && \
+	@echo "Installing aops extension for Gemini CLI..."
+	@echo "  Source: $(GEMINI_REMOTE_URL)"
+	-command gemini extensions uninstall $(GEMINI_EXT_NAME)
+	@command gemini extensions install $(GEMINI_REMOTE_URL) --consent --auto-update --pre-release && \
 	echo "✓ Gemini CLI extension installed"
+
+report-versions:
+	@echo "--- 📋 Installed Versions ---"
+	@echo "Gemini extensions:"
+	@-gemini extensions list 2>&1 || true
+	@echo "Claude plugins:"
+	@-claude plugin list 2>&1 || true
 
 install-crontab:
 	@if crontab -l 2>/dev/null | grep -q "repo-sync-cron"; then \
@@ -167,11 +197,12 @@ release:
 
 DOCKER_IMAGE := aops-crew
 
-# Build the crew worker image from Dockerfile
+# Build the Docker image used for crew/worker agent environments and Gemini sandboxing
 build-docker:
 	@echo "Building aops crew image..."
 	@docker build -t $(DOCKER_IMAGE) .
 	@echo "✓ Image built: $(DOCKER_IMAGE)"
+	@echo "  Use with: GEMINI_SANDBOX_IMAGE=$(SANDBOX_IMAGE) gemini --sandbox"
 
 # Drop into an interactive shell in the crew image (for local testing)
 shell: build-docker
