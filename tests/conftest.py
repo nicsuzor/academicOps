@@ -924,6 +924,15 @@ def _run_claude_docker_simple(prompt: str, tmp_path: Path, **kwargs) -> dict[str
 
 def _run_gemini_docker(prompt: str, gemini_home: Path | None = None, **kwargs) -> dict[str, Any]:
     """Run Gemini with --sandbox (tool calls inside Docker container)."""
+    # Ensure polecat is importable (for _replicate_gemini_auth)
+    repo_root = get_repo_root()
+    polecat_dir = str(repo_root / "polecat")
+    aops_core_dir = str(repo_root / "aops-core")
+    if polecat_dir not in sys.path:
+        sys.path.insert(0, polecat_dir)
+    if aops_core_dir not in sys.path:
+        sys.path.insert(0, aops_core_dir)
+
     timeout_seconds = kwargs.get("timeout_seconds", 120)
     model = kwargs.get("model")
 
