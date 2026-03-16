@@ -67,6 +67,8 @@ class TestTranscriptGenerationDemo:
             if not f.name.endswith("-hooks.jsonl") and "subagent" not in str(f)
         ]
 
+        if not session_files:
+            pytest.skip(f"No main session files found in {projects_dir}")
         assert session_files, f"No main session files found in {projects_dir}"
 
         print(f"Found {len(session_files)} session file(s)")

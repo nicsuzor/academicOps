@@ -23,6 +23,8 @@ class TestRouterExitCodePropagation:
     def router_path(self) -> Path:
         """Path to the hook router script."""
         aops = os.environ.get("AOPS")
+        if not aops:
+            pytest.skip("AOPS environment variable not set")
         assert aops, "AOPS environment variable not set"
         return Path(aops) / "aops-core" / "hooks" / "router.py"
 
