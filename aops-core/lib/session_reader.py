@@ -383,8 +383,23 @@ def build_audit_session_context(transcript_path: Path | str) -> str:
     if not turns:
         return "(No conversation turns found)"
 
+    # Filter out non-conversation and meta-only turns first to get a clean list
+    valid_turns = []
+    for turn in turns:
+        turn_type = turn.get("type") if isinstance(turn, dict) else None
+        if turn_type in ("hook_context", "summary"):
+            continue
+
+        is_meta = turn.get("is_meta") if isinstance(turn, dict) else turn.is_meta
+        assistant_sequence = (
+            turn.get("assistant_sequence") if isinstance(turn, dict) else turn.assistant_sequence
+        )
+        if is_meta and not assistant_sequence:
+            continue
+
+        valid_turns.append(turn)
+
     lines: list[str] = []
-    turn_num = 0
 
     # Noise tools the critic doesn't need to see individually
     _SKIP_TOOLS = {"TodoWrite", "Skill"}
@@ -395,21 +410,41 @@ def build_audit_session_context(transcript_path: Path | str) -> str:
     # Max chars for tool results
     _TOOL_RESULT_LIMIT = 1000
 
-    for turn in turns:
-        # Skip non-conversation turns (hooks, summaries)
-        turn_type = turn.get("type") if isinstance(turn, dict) else None
-        if turn_type in ("hook_context", "summary"):
-            continue
+    # We split history into a historical summary and recent detailed activity
+    _DETAILED_TURNS_LIMIT = 5
 
+    historical_turns = valid_turns[:-5] if len(valid_turns) > _DETAILED_TURNS_LIMIT else []
+    recent_turns = valid_turns[-5:] if len(valid_turns) > _DETAILED_TURNS_LIMIT else valid_turns
+
+    if historical_turns:
+        lines.append("### Historical User Intent")
+        lines.append("These are the older prompts from the user establishing the overall goals:\n")
+
+        turn_num = 0
+        for turn in historical_turns:
+            turn_num += 1
+            user_msg = turn.get("user_message") if isinstance(turn, dict) else turn.user_message
+            is_meta = turn.get("is_meta") if isinstance(turn, dict) else turn.is_meta
+
+            if user_msg and not is_meta:
+                msg = user_msg.strip()
+                msg = _clean_prompt_text(msg)
+                if not _is_system_injected_context(msg):
+                    if len(msg) > 1000:
+                        msg = msg[:1000] + "..."
+                    lines.append(f"**User (Turn {turn_num})**: {msg}\n")
+
+        lines.append("---")
+        lines.append(f"### Recent Activity (Last {len(recent_turns)} Turns)")
+
+    turn_num = len(historical_turns)
+
+    for turn in recent_turns:
         user_msg = turn.get("user_message") if isinstance(turn, dict) else turn.user_message
         is_meta = turn.get("is_meta") if isinstance(turn, dict) else turn.is_meta
         assistant_sequence = (
             turn.get("assistant_sequence") if isinstance(turn, dict) else turn.assistant_sequence
         )
-
-        # Skip meta-only turns (system injections without user content)
-        if is_meta and not assistant_sequence:
-            continue
 
         turn_num += 1
 
@@ -423,7 +458,7 @@ def build_audit_session_context(transcript_path: Path | str) -> str:
                 # Generous truncation — user intent matters
                 if len(msg) > 1000:
                     msg = msg[:1000] + "..."
-                lines.append(f"### Turn {turn_num}")
+                lines.append(f"#### Turn {turn_num}")
                 lines.append(f"**User**: {msg}")
                 lines.append("")
 
