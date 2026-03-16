@@ -2,17 +2,23 @@
 name: garden
 type: skill
 category: instruction
-description: Incremental PKM and task graph maintenance - weeding, pruning, linking, consolidating, reparenting. Tends the knowledge base and task hierarchy bit by bit.
+description: Incremental PKM and task graph maintenance — weeding, pruning, linking, consolidating, reparenting, and graph edge densification.
 triggers:
   - "prune knowledge"
   - "consolidate notes"
   - "PKM maintenance"
+  - "densify tasks"
+  - "densify graph"
+  - "improve task relationships"
+  - "add task dependencies"
+  - "task graph densification"
 modifies_files: true
 needs_task: false
 mode: execution
 domain:
   - operations
-allowed-tools: Read,Grep,Glob,Edit,Write,Bash,Task,mcp__pkb__search,mcp__pkb__list_documents
+  - knowledge-management
+allowed-tools: Read,Grep,Glob,Edit,Write,Bash,Task,mcp__pkb__search,mcp__pkb__list_documents,mcp__pkb__task_search,mcp__pkb__get_task,mcp__pkb__update_task,mcp__pkb__list_tasks,mcp__pkb__pkb_context,mcp__pkb__get_network_metrics,mcp__pkb__pkb_orphans,AskUserQuestion
 version: 1.0.0
 permalink: skills-garden
 ---
@@ -360,3 +366,41 @@ Default: highest-activity areas (recent modifications).
 - Full transcript copies outside claude/ subdirectory
 
 **If valuable patterns exist:** Extract to HEURISTICS.md or create a task via `mcp__pkb__create_task()`, then delete the session log.
+
+---
+
+## Densify (Graph Edge Enrichment)
+
+Add dependency edges between related tasks to improve priority weighting. The graph is sparse — most tasks are isolated leaves with no `depends_on` edges, which means `downstream_weight` (the strongest priority signal) is near zero for most tasks.
+
+Densification is **strategic enrichment**, not structural cleanup. For hierarchy fixes and orphan reparenting, use the [[#reparent]] and [[#hierarchy]] modes above.
+
+### Modes
+
+**`/garden densify [strategy]`** — bounded session (~10 tasks, ~20 min)
+
+| Strategy               | What it targets                          |
+| ---------------------- | ---------------------------------------- |
+| `high-priority-sparse` | P0/P1 ready tasks with zero `depends_on` |
+| `project-cluster`      | Ready tasks within one project           |
+| `neighbourhood-expand` | Neighbours of high-weight tasks          |
+| `cross-project-bridge` | Tasks sharing tags across projects       |
+
+**`/garden densify scan`** — report graph density without changes
+
+**`/garden densify measure`** — compare against recorded baseline
+
+### Workflow
+
+1. Select candidates (5 min) using the strategy
+2. For each candidate: check missing `depends_on` (blocking), `soft_depends_on` (enabling), wrong parent, missing tags
+3. Apply obvious relationships autonomously; batch-present ambiguous ones via `AskUserQuestion`
+4. Verify: check `get_network_metrics` on modified tasks to confirm `downstream_weight` increased
+
+### Anti-patterns
+
+- Processing all tasks in one session (cap at 10)
+- Auto-deciding ambiguous dependencies without user approval
+- Adding `depends_on` when `soft_depends_on` is more accurate
+- Changing priorities (densify is about structure, not re-prioritising)
+- Using `pkb_context(hops=2)` on high-degree nodes (use `hops=1` instead)

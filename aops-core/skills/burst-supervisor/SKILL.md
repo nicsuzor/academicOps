@@ -1,12 +1,16 @@
 ---
 name: burst-supervisor
 type: skill
-description: Long-running iterative supervisor — dispatch work items to polecat workers across multiple bursts with state recovery.
+description: Supervisor for parallel polecat work — iterative batch processing across bursts, and full lifecycle orchestration (decompose → review → dispatch → PR → capture).
 triggers:
   - "burst supervisor"
   - "burst-supervisor"
   - "iterative supervisor"
   - "long-running supervisor"
+  - "parallel workers"
+  - "decompose and dispatch"
+  - "polecat swarm"
+  - "spawn polecats"
 modifies_files: true
 needs_task: false
 mode: batch
@@ -16,7 +20,12 @@ domain:
 
 # Burst Supervisor
 
-Iterative supervisor for long-running workflows. Dispatches work items to polecat workers in small batches across multiple invocations, with full state recovery between bursts.
+This skill covers two related supervisor patterns:
+
+1. **Burst batch** — iterative processing of N similar items (spec audits, document reviews, email batches) across multiple invocations with state recovery
+2. **Full lifecycle orchestration** — decompose → review → human approval → dispatch → PR review → knowledge capture for feature-level work
+
+Both patterns dispatch via `polecat run` and treat workers as autonomous fire-and-forget agents.
 
 ## Design Philosophy
 
@@ -363,7 +372,45 @@ The burst-supervisor is for workflows that process N items iteratively across mu
 - `/pull` — Single task workflow (what each worker runs internally)
 - `polecat run` — Single autonomous polecat worker
 - `polecat supervise` — LLM-driven parallel dispatch (supervisor_loop.py)
-
 - [[aops-f22cf622]] — State schema design
 - [[aops-174d3fb9]] — Burst lifecycle design
 - [[aops-c83f7a04]] — Result evaluation design
+
+---
+
+## Full Lifecycle Orchestration
+
+For feature-level work requiring human approval before dispatch. Lifecycle:
+
+```
+DECOMPOSE → REVIEW → APPROVE (human) → DISPATCH → PR REVIEW → CAPTURE
+```
+
+**Supervisor decides**: task curation, worker selection, batch composition.
+**Workers execute**: autonomously via polecat, no monitoring after dispatch.
+**GitHub handles**: PR review pipeline, merge gates, CI checks.
+
+> See [[instructions/decomposition-and-review]] for decomposition and multi-agent review protocols.
+> See [[instructions/worker-execution]] for worker types, selection, and dispatch commands.
+> See [[instructions/knowledge-capture]] for post-merge knowledge extraction.
+> See [[references/parallel-worker-orchestration]] for architecture and troubleshooting.
+
+### Human Approval Gate
+
+| Action          | Task State    | Notes                           |
+| --------------- | ------------- | ------------------------------- |
+| Approve         | → in_progress | Subtasks created, first claimed |
+| Request Changes | → decomposing | Feedback attached               |
+| Send Back       | → pending     | Assignee cleared                |
+| Backburner      | → dormant     | Preserved but inactive          |
+| Cancel          | → cancelled   | Reason required                 |
+
+### PR Review Pipeline
+
+The `pr-review-pipeline.yml` GitHub Action handles automated review with three jobs:
+
+1. **custodiet-and-qa** — scope/compliance + acceptance checks
+2. **claude-review** — bot comment triage (~3 min delay after job 1)
+3. **claude-lgtm-merge** — human-triggered merge agent (fires on LGTM comment)
+
+Auto-merge is enabled. Human LGTM comment (e.g., "lgtm", "merge", "@claude merge") triggers the merge agent. Admin bypass: `gh pr merge <PR> --squash --admin --delete-branch` for urgent/workflow PRs.
