@@ -11,6 +11,10 @@ INSTALL_BIN := $(if $(USER_OPT),$(USER_OPT)/bin,$(HOME)/.local/bin)
 CRON_SCRIPT := $(AOPS_ROOT)/scripts/repo-sync-cron.sh
 DIST_REPO := nicsuzor/aops-dist
 
+# Extension names
+GEMINI_EXT_NAME := aops-core
+CLAUDE_PLUGIN_NAME := aops-core@aops
+
 # Platform detection for binaries
 UNAME_S := $(shell uname -s)
 UNAME_M := $(shell uname -m)
@@ -76,22 +80,23 @@ test-docker:
 # Run `make uninstall-dev` to restore the release marketplace when done testing.
 install-dev:
 	@echo "Uninstalling existing local plugins/extensions..."
-	-command gemini extensions uninstall aops-core
-	-command claude plugin uninstall aops-core
+	-command gemini extensions uninstall $(GEMINI_EXT_NAME)
+	-command claude plugin uninstall $(CLAUDE_PLUGIN_NAME)
 	@echo "Pruning old plugin cache versions..."
 	-python3 -c "\
 import json, shutil, pathlib; \
 f = pathlib.Path.home() / '.claude/plugins/installed_plugins.json'; \
-active = json.load(open(f))['plugins'].get('aops-core@aops', [{}])[-1].get('installPath', '') if f.exists() else ''; \
+active = json.load(open(f))['plugins'].get('$(CLAUDE_PLUGIN_NAME)', [{}])[-1].get('installPath', '') if f.exists() else ''; \
 cache = pathlib.Path.home() / '.claude/plugins/cache/aops/aops-core'; \
 [shutil.rmtree(v) or print(f'  removed {v.name}') for v in cache.iterdir() if v.is_dir() and str(v) != active] if cache.exists() else None \
 "
 	@echo "Configuring local Claude marketplace (overrides release source)..."
 	-command claude plugin marketplace add $(AOPS_ROOT)
 	@echo "Installing local build into Claude Code..."
-	@command claude plugin install aops-core@aops || echo "  ⚠️ Claude install failed"
+	@command claude plugin install $(CLAUDE_PLUGIN_NAME) || echo "  ⚠️ Claude install failed"
 	@echo "Installing local build into Gemini CLI..."
 	@command gemini extensions install $(DIST_DIR)/aops-gemini --consent || echo "  ⚠️ Gemini install failed"
+	@$(MAKE) report-versions
 	@echo "✓ Local installation complete"
 	@echo "  ⚠️  Marketplace 'aops' now points to $(AOPS_ROOT)"
 	@echo "  Run 'make uninstall-dev' to restore the release marketplace."
@@ -101,7 +106,7 @@ uninstall-dev:
 	@echo "Restoring release marketplace ($(DIST_REPO))..."
 	@command claude plugin marketplace add $(DIST_REPO)
 	@command claude plugin marketplace update aops
-	@command claude plugin install aops-core@aops
+	@command claude plugin install $(CLAUDE_PLUGIN_NAME)
 	@echo "✓ Release marketplace restored"
 
 # Install pre-commit hooks
@@ -114,18 +119,28 @@ install-hooks:
 
 # Standard user install from official releases
 install: install-claude install-gemini install-crontab
+	@$(MAKE) report-versions
 
 install-claude:
 	@echo "Installing aops plugin for Claude Code from $(DIST_REPO)..."
+	-command claude plugin uninstall $(CLAUDE_PLUGIN_NAME)
 	@command claude plugin marketplace add $(DIST_REPO) && \
 	command claude plugin marketplace update aops && \
-	command claude plugin install aops-core@aops && \
+	command claude plugin install $(CLAUDE_PLUGIN_NAME) && \
 	echo "✓ Claude Code plugin installed"
 
 install-gemini:
 	@echo "Installing aops extension for Gemini CLI from GitHub..."
+	-command gemini extensions uninstall $(GEMINI_EXT_NAME)
 	@command gemini extensions install git@github.com:nicsuzor/academicOps.git --consent --auto-update --pre-release && \
 	echo "✓ Gemini CLI extension installed"
+
+report-versions:
+	@echo "--- 📋 Installed Versions ---"
+	@echo -n "Gemini: "
+	@-gemini extensions list -o json 2>&1 | python3 -c "import sys, json; data=sys.stdin.read(); start=data.find('['); end=data.rfind(']')+1; print(next((e['version'] for e in json.loads(data[start:end]) if e.get('name') == '$(GEMINI_EXT_NAME)'), 'not found') if start != -1 else 'not found')"
+	@echo -n "Claude: "
+	@-claude plugin list --json 2>&1 | python3 -c "import sys, json; data=sys.stdin.read(); start=data.find('['); end=data.rfind(']')+1; print(next((p['version'] for p in json.loads(data[start:end]) if p.get('id') == '$(CLAUDE_PLUGIN_NAME)'), 'not found') if start != -1 else 'not found')"
 
 install-crontab:
 	@if crontab -l 2>/dev/null | grep -q "repo-sync-cron"; then \
