@@ -40,11 +40,11 @@ After fixing or responding to each `CHANGES_REQUESTED` review:
 
 ```bash
 # Get review IDs
-gh api repos/{owner}/{repo}/pulls/{pr}/reviews \
+gh api repos/{repo}/pulls/{pr}/reviews \
   --jq '.[] | select(.state == "CHANGES_REQUESTED") | {id, login: .user.login}'
 
 # Dismiss after fixing or confirming false positive
-gh api -X PUT repos/{owner}/{repo}/pulls/{pr}/reviews/{id}/dismissals \
+gh api -X PUT repos/{repo}/pulls/{pr}/reviews/{id}/dismissals \
   -f message="Fixed: <explanation>" -f event="DISMISS"
 ```
 
