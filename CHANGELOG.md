@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.7](https://github.com/nicsuzor/academicOps/compare/v0.3.6...v0.3.7) (2026-03-16)
+
+
+### Bug Fixes
+
+* **tests:** remove redundant HOME env var test for Docker ([00c8b0c](https://github.com/nicsuzor/academicOps/commit/00c8b0c5944f65829f803664f1de46f3720f913b))
+* **tests:** remove redundant HOME env var test for Docker ([6254f0b](https://github.com/nicsuzor/academicOps/commit/6254f0ba9ae91413253b77a9e481c9a697a45654))
+
 ## [0.3.6](https://github.com/nicsuzor/academicOps/compare/v0.3.5...v0.3.6) (2026-03-16)
 
 
