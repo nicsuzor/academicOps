@@ -2,6 +2,10 @@
 
 ## [0.3.7](https://github.com/nicsuzor/academicOps/compare/v0.3.6...v0.3.7) (2026-03-16)
 
+### Code Refactoring
+
+- **skills:** consolidate and prune skill set — moved `briefing-bundle`, `process-bundle`, `decision-extract`, `decision-apply` into `daily/` sub-procedures; deleted `eval`, `reflect`, `swarm-supervisor`, and `hypervisor` stubs; rescued `dimensions.md` and `prepare_evaluation.py` into `qa/`
+
 ### Bug Fixes
 
 - **tests:** remove redundant HOME env var test for Docker ([00c8b0c](https://github.com/nicsuzor/academicOps/commit/00c8b0c5944f65829f803664f1de46f3720f913b))
