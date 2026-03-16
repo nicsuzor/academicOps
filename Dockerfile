@@ -4,25 +4,31 @@ FROM python:3.12-slim-bookworm
 # Set environment variables
 ENV AOPS=/app \
     ACA_DATA=/data \
+    HOME=/home/worker \
     UV_INSTALL_DIR=/usr/local/bin \
+    UV_CACHE_DIR=/tmp/uv-cache \
     PATH="/root/.local/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     NODE_VERSION=22
 
-# Install system dependencies (including Node.js for Claude/Gemini CLIs and GitHub CLI)
+# Install system dependencies (including Node.js for Claude/Gemini CLIs, GitHub CLI, Docker CLI)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     git \
+    gnupg \
     make \
     cron \
     ca-certificates \
     && curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash - \
     && apt-get install -y nodejs \
-    && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | gpg --dearmor -o /usr/share/keyrings/githubcli-archive-keyring.gpg \
     && chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+    && curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg \
+    && chmod go+r /usr/share/keyrings/docker-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian bookworm stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null \
     && apt-get update \
-    && apt-get install -y gh \
+    && apt-get install -y gh docker-ce-cli \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install uv (standard for aops framework per P#93)
@@ -57,6 +63,16 @@ RUN mkdir -p /data
 # as the host UID (non-root), which needs a writable HOME for .claude/ session data.
 # Open permissions (777) because the host UID varies per machine.
 RUN mkdir -p /home/worker && chmod 777 /home/worker
+
+# Build distribution artifacts (Claude plugin package)
+RUN uv run python scripts/build.py
+
+# Install the aops-core Claude plugin with HOME=/home/worker so that
+# known_marketplaces.json and all installLocation paths are written with the
+# correct container path from the start. The host's ~/.claude is NOT mounted
+# at build time, so these paths are stable and correct for all container runs.
+RUN HOME=/home/worker claude plugin marketplace add /app \
+    && HOME=/home/worker claude plugin install aops-core@aops
 
 # Default command
 CMD ["/bin/bash"]
