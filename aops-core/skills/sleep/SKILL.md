@@ -7,12 +7,15 @@ triggers:
   - "sleep cycle"
   - "consolidation"
   - "brain maintenance"
+  - "session summary"
+  - "generate insights"
+  - "session insights"
 modifies_files: true
 needs_task: false
 mode: execution
 domain:
   - operations
-allowed-tools: Bash,Read,Write,Grep,Glob,mcp__pkb__search,mcp__pkb__pkb_orphans,mcp__pkb__create_memory,mcp__pkb__list_tasks,mcp__pkb__graph_stats,mcp__pkb__get_network_metrics,mcp__pkb__update_task,mcp__pkb__get_task,mcp__pkb__task_search,mcp__pkb__pkb_context,mcp__pkb__bulk_reparent
+allowed-tools: Bash,Read,Write,Grep,Glob,mcp__pkb__search,mcp__pkb__pkb_orphans,mcp__pkb__create_memory,mcp__pkb__list_tasks,mcp__pkb__graph_stats,mcp__pkb__get_network_metrics,mcp__pkb__update_task,mcp__pkb__get_task,mcp__pkb__task_search,mcp__pkb__pkb_context,mcp__pkb__bulk_reparent,~~ai-assistant
 version: 0.1.0
 tags:
   - consolidation
@@ -43,15 +46,15 @@ gh workflow run sleep-cycle -R nicsuzor/brain -f focus="staleness only"
 
 The agent works through these in order, using judgment about what needs attention:
 
-| Phase | Name              | What it does                                            |
-| ----- | ----------------- | ------------------------------------------------------- |
-| 0     | Graph Health      | Run `graph_stats` — baseline measurement for this cycle |
-| 1     | Session Backfill  | Run `/session-insights batch` for pending transcripts   |
-| 2     | Episode Replay    | Scan recent activity, identify promotion candidates     |
-| 3     | Index Refresh     | Update mechanical framework indices (`SKILLS.md`, etc.) |
-| 4     | Staleness Sweep   | Detect orphans, stale docs, under-specified tasks       |
-| 4b    | Graph Maintenance | Densify, reparent, or connect — pick ONE strategy       |
-| 5     | Brain Sync        | Commit and push `$ACA_DATA`; re-run `graph_stats`       |
+| Phase | Name              | What it does                                                |
+| ----- | ----------------- | ----------------------------------------------------------- |
+| 0     | Graph Health      | Run `graph_stats` — baseline measurement for this cycle     |
+| 1     | Session Backfill  | Process pending transcripts with Gemini (see Phase 1 below) |
+| 2     | Episode Replay    | Scan recent activity, identify promotion candidates         |
+| 3     | Index Refresh     | Update mechanical framework indices (`SKILLS.md`, etc.)     |
+| 4     | Staleness Sweep   | Detect orphans, stale docs, under-specified tasks           |
+| 4b    | Graph Maintenance | Densify, reparent, or connect — pick ONE strategy           |
+| 5     | Brain Sync        | Commit and push `$ACA_DATA`; re-run `graph_stats`           |
 
 ## Phase 0: Graph Health Baseline
 
@@ -112,12 +115,63 @@ When running via `/loop` or `/active-loop`, the sleep cycle follows the active-l
 4. **Surfaces, doesn't decide** — flags candidates for human/supervised review
 5. **No moldy docs** — never creates knowledge docs without a named consumer
 
+## Phase 1: Session Backfill (Session Insights)
+
+Analyze Claude session transcripts with Gemini Flash 2.0 to produce structured insights (summary, accomplishments, learnings, skill compliance). Outputs saved to `$ACA_DATA/../sessions/summaries/YYYYMMDD-{session_id}.json`.
+
+### Find pending sessions
+
+```bash
+uv run python aops-core/skills/sleep/scripts/find_pending.py --limit 5
+```
+
+### For each pending session
+
+1. **Locate transcript**: `$ACA_DATA/../sessions/claude/YYYYMMDD-{project}-{session_id}-*.md`
+   - If missing, generate: `uv run python aops-core/scripts/transcript_push.py <session_path>`
+
+2. **Prepare prompt**:
+
+```bash
+PROMPT=$(PYTHONPATH=aops-core uv run python \
+    aops-core/skills/sleep/scripts/prepare_prompt.py "$TRANSCRIPT")
+```
+
+3. **Call Gemini** via `~~ai-assistant` with the prepared prompt + `@{transcript}` reference
+
+4. **Parse and validate**:
+
+```bash
+echo "$GEMINI_RESPONSE" | PYTHONPATH=aops-core uv run python \
+    aops-core/skills/sleep/scripts/process_response.py "$DATE" "$SESSION_ID"
+```
+
+5. **Merge insights**:
+
+```bash
+echo "$INSIGHTS_JSON" | PYTHONPATH=aops-core uv run python \
+    aops-core/skills/sleep/scripts/merge_insights.py "$INSIGHTS_FILE"
+```
+
+6. **Sync to PKB**:
+
+```python
+mcp__pkb__create_memory(
+    title=f"Session insights: {session_id}",
+    body=f"{summary}\n\nAccomplishments: {accomplishments}\nLearnings: {learnings}",
+    tags=["session-insights", f"session-{session_id}", project]
+)
+```
+
+Do NOT overwrite existing insights without user confirmation. Process up to 5 sessions per cycle. Prompt template: `aops-core/specs/session-insights-prompt.md`.
+
 ## Architecture
 
 ```
-templates/github-workflows/sleep-cycle.yml   ← workflow template (maintained in $AOPS)
-$ACA_DATA/.github/workflows/sleep-cycle.yml  ← installed copy (runs the agent)
-aops-core/skills/garden/scripts/triage_tasks.py  ← task quality tool (one signal among many)
+templates/github-workflows/sleep-cycle.yml        ← workflow template (maintained in $AOPS)
+$ACA_DATA/.github/workflows/sleep-cycle.yml       ← installed copy (runs the agent)
+aops-core/skills/garden/scripts/triage_tasks.py   ← task quality tool (Phase 4)
+aops-core/skills/sleep/scripts/                   ← session insights scripts (Phase 1)
 ```
 
 The workflow uses `anthropics/claude-code-action` to launch an agent with a consolidation prompt. The agent has access to the brain repo and academicOps tools.

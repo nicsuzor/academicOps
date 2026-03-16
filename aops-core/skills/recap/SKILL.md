@@ -210,6 +210,6 @@ Many sessions have `null` summaries (insights not generated). For these:
 
 ## See Also
 
-- `/session-insights` - Generate detailed insights for individual sessions
+- `/sleep` - Generate session insights (run Phase 1 directly or via batch)
 - `/daily` - Daily briefing and planning
 - `/path` - Narrative path reconstruction from session transcripts
