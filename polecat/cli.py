@@ -210,8 +210,9 @@ def _build_docker_cmd(
     If tmp_files is provided, any temporary files created (e.g. modified .claude.json)
     are appended to it so callers can clean them up.
     """
-    # Use environment variable for image, or default to the one built by test-docker
-    image = os.environ.get("POLECAT_DOCKER_IMAGE", "aops-env-test")
+    # Use POLECAT_DOCKER_IMAGE if set, otherwise default to the aops-sandbox image
+    # built from the repo root Dockerfile via `make build-sandbox`.
+    image = os.environ.get("POLECAT_DOCKER_IMAGE", "aops-sandbox")
 
     cmd = ["docker", "run", "--rm"]
 
@@ -229,7 +230,7 @@ def _build_docker_cmd(
     # Docker --tmpfs mounts override bind mounts at the same path, hiding
     # .claude/ and .claude.json and causing Claude to hang on startup.
     container_home = "/home/worker"
-    cmd.extend(["-e", f"HOME={container_home}"])
+    # HOME is set in the image ENV; no need to pass it at runtime
 
     # Timezone — match host timezone for consistent timestamps in commits/logs
     tz = os.environ.get("TZ") or _detect_system_timezone()
@@ -269,9 +270,23 @@ def _build_docker_cmd(
                 tmp_files.append(tmp_claude_json)
             cmd.extend(["-v", f"{tmp_claude_json}:{container_home}/.claude.json"])
         if claude_dir.exists():
-            # Read-write: Claude Code writes session data, plugin cache, etc.
-            # Container is ephemeral (--rm), so writes don't persist.
-            cmd.extend(["-v", f"{claude_dir}:{container_home}/.claude"])
+            # Mount only the auth files Claude needs at runtime — not the whole directory.
+            # The plugin installation is baked into the image (see Dockerfile), so mounting
+            # the full ~/.claude dir would override the image's plugin data with the host's
+            # (potentially stale or wrong-path) copy.
+            for auth_file in (".credentials.json", ".mcp.json"):
+                src = claude_dir / auth_file
+                if src.exists():
+                    cmd.extend(["-v", f"{src}:{container_home}/.claude/{auth_file}:ro"])
+
+    # Mount Docker socket for Docker-outside-of-Docker (build/test inside agents).
+    # Pass the socket's gid so the non-root container user can access it — the gid
+    # varies by host so we read it from the socket file rather than hardcoding.
+    docker_sock = Path("/var/run/docker.sock")
+    if docker_sock.exists():
+        docker_gid = docker_sock.stat().st_gid
+        cmd.extend(["--group-add", str(docker_gid)])
+        cmd.extend(["-v", "/var/run/docker.sock:/var/run/docker.sock"])
 
     # Mount pkb binary for MCP server (plugin config references 'pkb' from PATH)
     pkb_bin = shutil.which("pkb")
@@ -284,20 +299,6 @@ def _build_docker_cmd(
         cmd.extend(["-v", f"{aca_data}:{aca_data}"])
         cmd.extend(["-e", f"ACA_DATA={aca_data}"])
 
-    # Mount uv cache to speed up installs inside the container
-    # Use UV_CACHE_DIR from env if set (configurable location), otherwise default to ~/.cache/uv
-    host_uv_cache = env.get("UV_CACHE_DIR")
-    if host_uv_cache:
-        uv_cache_path = Path(host_uv_cache).expanduser().resolve()
-    else:
-        uv_cache_path = Path.home() / ".cache" / "uv"
-
-    if uv_cache_path.exists():
-        # Map to standard location in container
-        cmd.extend(["-v", f"{uv_cache_path}:/root/.cache/uv"])
-        # Ensure uv in container uses the mounted path (mapped to root's home)
-        cmd.extend(["-e", "UV_CACHE_DIR=/root/.cache/uv"])
-
     # Add host networking for MCPs running on localhost
     cmd.extend(["--add-host", "host.docker.internal:host-gateway"])
 
@@ -308,7 +309,6 @@ def _build_docker_cmd(
             "AOPS_BOT_GH_TOKEN",
             "GH_TOKEN",
             "GITHUB_TOKEN",
-            "GH_TOKEN",
             "ANTHROPIC_API_KEY",
             "COLORTERM",
             "FORCE_COLOR",
@@ -1660,7 +1660,7 @@ def crew(ctx, target, extra, name, gemini, resume, keep):
 
     if gemini:
         # Gemini: --sandbox runs tool calls inside the aops-sandbox Docker image.
-        # The image is built from .gemini/sandbox.Dockerfile via `make build-sandbox`.
+        # The image is built from Dockerfile via `make build-sandbox`.
         cmd = [
             "gemini",
             "--sandbox",
@@ -1691,8 +1691,8 @@ def crew(ctx, target, extra, name, gemini, resume, keep):
             print(f"   Auth: Replicated to {env['GEMINI_CLI_HOME']}")
 
         # Gemini --sandbox re-execs itself inside the container, so the image
-        # needs the Gemini CLI installed. Use aops-env-test (full image with AI CLIs).
-        env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-env-test")
+        # needs the Gemini CLI installed. Use aops-sandbox (full image with AI CLIs).
+        env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-sandbox")
         final_cmd = cmd
     else:
         # Claude Code: manually wrap in docker container
@@ -2080,8 +2080,8 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
             print(f"   Auth: Replicated to {env['GEMINI_CLI_HOME']}")
 
         # Gemini --sandbox re-execs itself inside the container, so the image
-        # needs the Gemini CLI installed. Use aops-env-test (full image with AI CLIs).
-        env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-env-test")
+        # needs the Gemini CLI installed. Use aops-sandbox (full image with AI CLIs).
+        env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-sandbox")
         final_cmd = cmd
     else:
         # Claude Code: manually wrap in docker container

@@ -499,7 +499,6 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         "28 USC § 1446(b)(3)",
         "Task MCP server",
         "Overwhelm dashboard",
-        "task-viz",
         "aops CLI",
         "auth-provider-comparison",
         # Axiom slugs (anchor references within AXIOMS.md)
@@ -737,7 +736,6 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         "STYLE.md",
         # Path references within specs (relative to aops-core)
         "skills/session-insights/SKILL.md",
-        "skills/task-viz/SKILL.md",
         "skills/hypervisor/SKILL.md",
         "skills/swarm-supervisor/SKILL.md",
         "skills/decision-extract/SKILL.md",
@@ -768,7 +766,6 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         "commands/q.md",
         "commands/learn.md",
         "hooks/session_env_setup.py",
-        "hooks/user_prompt_submit.py",
         "hooks/router.py",
         "hooks/hooks.json",
         "hooks/gate_registry.py",

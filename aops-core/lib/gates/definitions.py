@@ -49,7 +49,17 @@ GATE_CONFIGS = [
             # User Prompt (not ignored) -> Close
             GateTrigger(
                 condition=GateCondition(
-                    hook_event="UserPromptSubmit", custom_check="is_hydratable"
+                    hook_event="UserPromptSubmit",
+                    exclude_if_subagent=True,
+                    prompt_exclude_patterns=[
+                        r"^$",  # no/empty prompt: don't close gate
+                        r"^<agent-notification>",
+                        r"^<task-notification>",
+                        r"^\.",  # dot prefix: user ignore shortcut
+                        r"^/",  # slash prefix: skill invocations
+                        r"^# /",  # comment-style slash command expansion
+                        r"<command-name>/",  # expanded slash command
+                    ],
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,

@@ -932,7 +932,7 @@ def _run_gemini_docker(prompt: str, gemini_home: Path | None = None, **kwargs) -
         cmd.extend(["-m", model])
 
     env = os.environ.copy()
-    env["GEMINI_SANDBOX_IMAGE"] = os.environ.get("GEMINI_SANDBOX_IMAGE", "aops-env-test")
+    env["GEMINI_SANDBOX_IMAGE"] = os.environ.get("GEMINI_SANDBOX_IMAGE", "aops-sandbox")
 
     # When gemini_home is provided (e.g. from gemini_home fixture), use it directly.
     # Otherwise, replicate auth from ~/.gemini so sandbox can authenticate.
@@ -1018,7 +1018,7 @@ def cli_headless(request, tmp_path, gemini_home):
     Backends:
         - claude: Claude CLI on host
         - gemini: Gemini CLI on host
-        - claude-docker: Claude inside aops-env-test Docker container
+        - claude-docker: Claude inside aops-sandbox Docker container
         - gemini-docker: Gemini with --sandbox (tool calls in Docker)
     """
     platform = request.param
@@ -1039,7 +1039,7 @@ def cli_headless(request, tmp_path, gemini_home):
 
     elif platform == "claude-docker":
         if not _docker_available():
-            pytest.skip("Docker not available or aops-env-test image not built")
+            pytest.skip("Docker not available or aops-sandbox image not built")
         has_oauth = (Path.home() / ".claude" / ".credentials.json").exists()
         if not os.environ.get("ANTHROPIC_API_KEY") and not has_oauth:
             pytest.skip("No Claude auth for Docker")
@@ -1053,7 +1053,7 @@ def cli_headless(request, tmp_path, gemini_home):
         if not _gemini_cli_available():
             pytest.skip("gemini CLI not found in PATH")
         if not _docker_available():
-            pytest.skip("Docker not available or aops-env-test image not built")
+            pytest.skip("Docker not available or aops-sandbox image not built")
 
         def _run_gemini_in_docker(prompt, **kwargs):
             return _run_gemini_docker(prompt, gemini_home=gemini_home, **kwargs)
@@ -1601,15 +1601,15 @@ def check_blocked(result: dict) -> bool:
 
 
 def _docker_available() -> bool:
-    """Check if Docker is available and the aops-env-test image exists."""
+    """Check if Docker is available and the aops-sandbox image exists."""
     try:
         result = subprocess.run(
-            ["docker", "images", "aops-env-test", "--format", "{{.Repository}}"],
+            ["docker", "images", "aops-sandbox", "--format", "{{.Repository}}"],
             capture_output=True,
             text=True,
             timeout=10,
         )
-        return result.returncode == 0 and "aops-env-test" in result.stdout
+        return result.returncode == 0 and "aops-sandbox" in result.stdout
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return False
 
@@ -1625,14 +1625,14 @@ def claude_docker(tmp_path):
             timeout_seconds=60,
         )
 
-    Skips if: Docker unavailable, no Claude auth, or aops-env-test image not built.
+    Skips if: Docker unavailable, no Claude auth, or aops-sandbox image not built.
     Claude authenticates via OAuth (stored in ~/.claude/.credentials.json) which is
     bind-mounted into the container. Falls back to ANTHROPIC_API_KEY if set.
     """
     import uuid
 
     if not _docker_available():
-        pytest.skip("Docker not available or aops-env-test image not built")
+        pytest.skip("Docker not available or aops-sandbox image not built")
 
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     has_oauth = (Path.home() / ".claude" / ".credentials.json").exists()

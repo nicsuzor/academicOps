@@ -172,7 +172,7 @@ The canonical index is `aops-core/SKILLS.md` with 36 entries (8 commands + 28 sk
 | Domain            | Skills                                                                                           |
 | ----------------- | ------------------------------------------------------------------------------------------------ |
 | framework         | `audit`, `custodiet`, `framework`, `hydrator`                                                    |
-| operations        | `daily`, `densify`, `garden`, `hypervisor`, `remember`, `session-insights`, `task-viz`, `worker` |
+| operations        | `daily`, `densify`, `garden`, `hypervisor`, `remember`, `session-insights`, `worker` |
 | academic          | `analyst`, `hdr`, `pdf`                                                                          |
 | email             | `email-triage`                                                                                   |
 | collaboration     | `annotations`, `critic`                                                                          |
