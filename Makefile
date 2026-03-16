@@ -1,7 +1,7 @@
 # AcademicOps Makefile
 # Unified build and installation entry point
 
-.PHONY: help dev build-dev install-dev uninstall-dev install-remote install-claude install-gemini install-cli install-crontab install-hooks nextver release prerelease clean build-sandbox shell
+.PHONY: help dev build-dev install-dev uninstall-dev install-remote install-claude install-gemini install-cli install-crontab install-hooks nextver release prerelease clean build-docker shell
 
 # --- Configuration ---
 
@@ -48,6 +48,10 @@ help:
 	@echo "  make nextver        - Show next version number"
 	@echo "  make release        - Manually tag/push (prefer release-please PRs)"
 	@echo ""
+	@echo "Docker:"
+	@echo "  make build-docker   - Build the aops crew worker image"
+	@echo "  make shell          - Interactive shell in the crew image"
+	@echo ""
 	@echo "Detected Platform: $(or $(PLATFORM),unknown)"
 
 # --- Local Development ---
@@ -65,11 +69,6 @@ build-dev:
 	@echo "Building AcademicOps extension locally..."
 	@ACA_DATA=$(AOPS_ROOT) uv run python scripts/build.py
 	@echo "✓ Build artifacts in $(DIST_DIR)"
-
-# Verify the Docker environment for both Claude and Gemini
-test-docker:
-	@echo "Verifying Docker environment (multi-client support)..."
-	@./scripts/verify-docker-env.sh
 
 # Install local build artifacts into clients
 # NOTE: This overrides the release marketplace with a local directory source.
@@ -166,18 +165,17 @@ release:
 
 # --- Docker ---
 
-SANDBOX_IMAGE := aops-sandbox
+DOCKER_IMAGE := aops-crew
 
-# Build the Gemini crew sandbox image from .gemini/sandbox.Dockerfile
-build-sandbox:
-	@echo "Building aops Gemini sandbox image..."
-	@docker build -f .gemini/sandbox.Dockerfile -t $(SANDBOX_IMAGE) .
-	@echo "✓ Sandbox image built: $(SANDBOX_IMAGE)"
-	@echo "  Use with: GEMINI_SANDBOX_IMAGE=$(SANDBOX_IMAGE) gemini --sandbox"
+# Build the crew worker image from Dockerfile
+build-docker:
+	@echo "Building aops crew image..."
+	@docker build -t $(DOCKER_IMAGE) .
+	@echo "✓ Image built: $(DOCKER_IMAGE)"
 
-# Drop into an interactive shell in the sandbox image (for local testing)
-shell: build-sandbox
-	@docker run -it --rm -v $(AOPS_ROOT):/app -w /app $(SANDBOX_IMAGE)
+# Drop into an interactive shell in the crew image (for local testing)
+shell: build-docker
+	@docker run -it --rm -v $(AOPS_ROOT):/app -w /app $(DOCKER_IMAGE)
 
 # --- Utils ---
 
