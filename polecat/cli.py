@@ -204,15 +204,19 @@ def _build_docker_cmd(
     agent_cmd: list[str],
     is_interactive: bool,
     tmp_files: list[Path] | None = None,
+    session_dir: Path | None = None,
 ) -> list[str]:
     """Wraps an agent command in a Docker run command with appropriate mounts.
 
     If tmp_files is provided, any temporary files created (e.g. modified .claude.json)
     are appended to it so callers can clean them up.
+
+    If session_dir is provided and cli_tool is "claude" or "shell", mounts it at
+    /home/worker/.claude/projects so Claude session transcripts persist on the host.
     """
-    # Use POLECAT_DOCKER_IMAGE if set, otherwise default to the aops-sandbox image
-    # built from the repo root Dockerfile via `make build-sandbox`.
-    image = os.environ.get("POLECAT_DOCKER_IMAGE", "aops-sandbox")
+    # Use POLECAT_DOCKER_IMAGE if set, otherwise default to the aops-crew image
+    # built from the repo root Dockerfile via `make build-docker`.
+    image = os.environ.get("POLECAT_DOCKER_IMAGE", "aops-crew")
 
     cmd = ["docker", "run", "--rm"]
 
@@ -249,8 +253,9 @@ def _build_docker_cmd(
     cmd.extend(["-w", "/workspace"])
 
     # Mount authentication and plugin cache for Claude
+    # Also mount for "shell" mode so users can run claude interactively
     home = Path.home()
-    if cli_tool == "claude":
+    if cli_tool in ("claude", "shell"):
         claude_json = home / ".claude.json"
         claude_dir = home / ".claude"
         if claude_json.exists():
@@ -279,6 +284,26 @@ def _build_docker_cmd(
                 if src.exists():
                     cmd.extend(["-v", f"{src}:{container_home}/.claude/{auth_file}:ro"])
 
+    # Mount Gemini auth files for "shell" mode so users can run gemini interactively.
+    # Gemini normally handles its own sandbox, but in shell mode we're managing Docker.
+    if cli_tool == "shell":
+        gemini_dir = home / ".gemini"
+        if gemini_dir.exists():
+            for auth_file in (
+                "settings.json",
+                "google_accounts.json",
+                "oauth_creds.json",
+                "installation_id",
+                "trustedFolders.json",
+            ):
+                src = gemini_dir / auth_file
+                if src.exists():
+                    cmd.extend(["-v", f"{src}:{container_home}/.gemini/{auth_file}:ro"])
+            # Also forward GEMINI_API_KEY if set
+            gemini_key = env.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
+            if gemini_key:
+                cmd.extend(["-e", f"GEMINI_API_KEY={gemini_key}"])
+
     # Mount Docker socket for Docker-outside-of-Docker (build/test inside agents).
     # Pass the socket's gid so the non-root container user can access it — the gid
     # varies by host so we read it from the socket file rather than hardcoding.
@@ -302,8 +327,7 @@ def _build_docker_cmd(
     # Add host networking for MCPs running on localhost
     cmd.extend(["--add-host", "host.docker.internal:host-gateway"])
 
-    # Forward specific environment variables (Claude Docker path only —
-    # Gemini uses its own sandbox and doesn't go through _build_docker_cmd)
+    # Forward specific environment variables to the container
     for key, val in env.items():
         if key.startswith("POLECAT_") or key in (
             "AOPS_BOT_GH_TOKEN",
@@ -351,6 +375,12 @@ def _build_docker_cmd(
     # SSH isolation — no SSH auth inside container
     cmd.extend(["-e", "SSH_AUTH_SOCK="])
     cmd.extend(["-e", "GIT_TERMINAL_PROMPT=0"])
+
+    # Mount session directory so Claude transcripts persist on the host.
+    # Without this, --rm destroys all session data when the container exits.
+    if session_dir and cli_tool in ("claude", "shell"):
+        session_dir.mkdir(parents=True, exist_ok=True)
+        cmd.extend(["-v", f"{session_dir.resolve()}:{container_home}/.claude/projects"])
 
     cmd.append(image)
     cmd.extend(agent_cmd)
@@ -1539,12 +1569,22 @@ def _branch_has_open_pr(branch_name: str, repo_path: Path) -> bool:
 @click.argument("extra", required=False, default=None)
 @click.option("--name", "-n", help="Crew name (randomly generated if not specified)")
 @click.option("--gemini", "-g", is_flag=True, help="Use Gemini CLI instead of Claude")
+@click.option("--interactive", "-i", is_flag=True, help="Drop into an interactive shell (no agent)")
 @click.option("--resume", "-r", help="Resume existing crew worker by name")
 @click.option("--keep", "-k", is_flag=True, help="Keep worktree even if a PR is open")
 @click.pass_context
-def crew_alias(ctx, target, extra, name, gemini, resume, keep):
+def crew_alias(ctx, target, extra, name, gemini, interactive, resume, keep):
     """Shorthand for 'crew'. See 'polecat crew --help'."""
-    ctx.invoke(crew, target=target, extra=extra, name=name, gemini=gemini, resume=resume, keep=keep)
+    ctx.invoke(
+        crew,
+        target=target,
+        extra=extra,
+        name=name,
+        gemini=gemini,
+        interactive=interactive,
+        resume=resume,
+        keep=keep,
+    )
 
 
 @main.command()
@@ -1552,10 +1592,11 @@ def crew_alias(ctx, target, extra, name, gemini, resume, keep):
 @click.argument("extra", required=False, default=None)
 @click.option("--name", "-n", help="Crew name (randomly generated if not specified)")
 @click.option("--gemini", "-g", is_flag=True, help="Use Gemini CLI instead of Claude")
+@click.option("--interactive", "-i", is_flag=True, help="Drop into an interactive shell (no agent)")
 @click.option("--resume", "-r", help="Resume existing crew worker by name")
 @click.option("--keep", "-k", is_flag=True, help="Keep worktree even if a PR is open")
 @click.pass_context
-def crew(ctx, target, extra, name, gemini, resume, keep):
+def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
     """Start an interactive crew session with worker isolation.
 
     Crew workers are persistent, named agents for interactive collaboration.
@@ -1571,6 +1612,8 @@ def crew(ctx, target, extra, name, gemini, resume, keep):
         polecat crew bm               # Crew in buttermilk repo
         polecat crew repo /path/to/x  # Crew in arbitrary repo
         polecat crew -r audre         # Resume crew worker "audre"
+        polecat crew -i aops          # Interactive shell in crew container
+        polecat crew -g aops          # Gemini CLI in sandbox mode
         polecat crew                  # Crew with all projects (legacy)
     """
     import subprocess
@@ -1651,16 +1694,26 @@ def crew(ctx, target, extra, name, gemini, resume, keep):
         work_dir = manager.crew_dir / crew_name
 
     # Build agent command with isolation
-    cli_tool = "gemini" if gemini else "claude"
+    if interactive:
+        cli_tool = "shell"
+    elif gemini:
+        cli_tool = "gemini"
+    else:
+        cli_tool = "claude"
     print(f"\n\U0001f91d Starting {cli_tool} crew session...")
     print(f"   Crew: {crew_name}")
     print(f"   Projects: {', '.join(projects)}")
     print(f"   Working dir: {work_dir}")
     print("-" * 50)
 
-    if gemini:
-        # Gemini: --sandbox runs tool calls inside the aops-sandbox Docker image.
-        # The image is built from Dockerfile via `make build-sandbox`.
+    if interactive:
+        # Interactive shell: drop into bash inside the Docker container.
+        # Both claude and gemini CLIs are pre-installed in the image along
+        # with their aops plugins, so the user can run either manually.
+        cmd = ["bash"]
+    elif gemini:
+        # Gemini: --sandbox runs tool calls inside the aops-crew Docker image.
+        # The image is built from Dockerfile via `make build-docker`.
         cmd = [
             "gemini",
             "--sandbox",
@@ -1681,9 +1734,25 @@ def crew(ctx, target, extra, name, gemini, resume, keep):
     env["POLECAT_CREW_NAME"] = crew_name
     env["POLECAT_WORKTREE"] = str(work_dir)
 
+    # Compute session directory for Claude transcript persistence.
+    # Uses same 3-tier resolution as save_worker_transcript.
+    try:
+        from lib.paths import get_sessions_repo
+
+        sessions_base = get_sessions_repo()
+    except ImportError:
+        sessions_base = (
+            Path(
+                os.environ.get("AOPS_SESSIONS")
+                or os.environ.get("POLECAT_HOME", str(Path.home() / ".polecat"))
+            )
+            / "sessions"
+        )
+    session_dir = sessions_base / "crew" / crew_name / "claude-sessions"
+
     tmp_gemini_home = None
     tmp_files: list[Path] = []
-    if gemini:
+    if gemini and not interactive:
         # Replicate Gemini authentication if available.
         # Inject the work directory into trustedFolders.json to avoid trust prompts.
         tmp_gemini_home = _replicate_gemini_auth(env, work_dir=work_dir)
@@ -1691,14 +1760,32 @@ def crew(ctx, target, extra, name, gemini, resume, keep):
             print(f"   Auth: Replicated to {env['GEMINI_CLI_HOME']}")
 
         # Gemini --sandbox re-execs itself inside the container, so the image
-        # needs the Gemini CLI installed. Use aops-sandbox (full image with AI CLIs).
-        env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-sandbox")
+        # needs the Gemini CLI installed. Use aops-crew (full image with AI CLIs).
+        env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-crew")
         final_cmd = cmd
+    elif interactive:
+        # Interactive shell: wrap in Docker container (same as Claude path)
+        final_cmd = _build_docker_cmd(
+            "shell",
+            work_dir,
+            env,
+            cmd,
+            is_interactive=True,
+            tmp_files=tmp_files,
+            session_dir=session_dir,
+        )
     else:
         # Claude Code: manually wrap in docker container
         final_cmd = _build_docker_cmd(
-            cli_tool, work_dir, env, cmd, is_interactive=True, tmp_files=tmp_files
+            cli_tool,
+            work_dir,
+            env,
+            cmd,
+            is_interactive=True,
+            tmp_files=tmp_files,
+            session_dir=session_dir,
         )
+    print(f"   Sessions: {session_dir}")
 
     # Resolve CLI binary to absolute path so subprocess doesn't depend on PATH lookup
     resolved = shutil.which(final_cmd[0], path=env.get("PATH"))
@@ -2080,14 +2167,36 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
             print(f"   Auth: Replicated to {env['GEMINI_CLI_HOME']}")
 
         # Gemini --sandbox re-execs itself inside the container, so the image
-        # needs the Gemini CLI installed. Use aops-sandbox (full image with AI CLIs).
-        env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-sandbox")
+        # needs the Gemini CLI installed. Use aops-crew (full image with AI CLIs).
+        env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-crew")
         final_cmd = cmd
     else:
+        # Compute session directory for Claude transcript persistence.
+        try:
+            from lib.paths import get_sessions_repo
+
+            sessions_base = get_sessions_repo()
+        except ImportError:
+            sessions_base = (
+                Path(
+                    os.environ.get("AOPS_SESSIONS")
+                    or os.environ.get("POLECAT_HOME", str(Path.home() / ".polecat"))
+                )
+                / "sessions"
+            )
+        run_session_dir = sessions_base / "polecats" / task.id / "claude-sessions"
+
         # Claude Code: manually wrap in docker container
         final_cmd = _build_docker_cmd(
-            cli_tool, worktree_path, env, cmd, is_interactive=interactive, tmp_files=tmp_files
+            cli_tool,
+            worktree_path,
+            env,
+            cmd,
+            is_interactive=interactive,
+            tmp_files=tmp_files,
+            session_dir=run_session_dir,
         )
+        print(f"   Sessions: {run_session_dir}")
 
     # Resolve CLI binary to absolute path so subprocess doesn't depend on PATH lookup
     resolved = shutil.which(final_cmd[0], path=env.get("PATH"))

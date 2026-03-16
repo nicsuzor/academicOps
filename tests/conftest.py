@@ -932,7 +932,7 @@ def _run_gemini_docker(prompt: str, gemini_home: Path | None = None, **kwargs) -
         cmd.extend(["-m", model])
 
     env = os.environ.copy()
-    env["GEMINI_SANDBOX_IMAGE"] = os.environ.get("GEMINI_SANDBOX_IMAGE", "aops-sandbox")
+    env["GEMINI_SANDBOX_IMAGE"] = os.environ.get("GEMINI_SANDBOX_IMAGE", "aops-crew")
 
     # When gemini_home is provided (e.g. from gemini_home fixture), use it directly.
     # Otherwise, replicate auth from ~/.gemini so sandbox can authenticate.
@@ -1018,7 +1018,7 @@ def cli_headless(request, tmp_path, gemini_home):
     Backends:
         - claude: Claude CLI on host
         - gemini: Gemini CLI on host
-        - claude-docker: Claude inside aops-sandbox Docker container
+        - claude-docker: Claude inside aops-crew Docker container
         - gemini-docker: Gemini with --sandbox (tool calls in Docker)
     """
     platform = request.param
@@ -1039,7 +1039,7 @@ def cli_headless(request, tmp_path, gemini_home):
 
     elif platform == "claude-docker":
         if not _docker_available():
-            pytest.skip("Docker not available or aops-sandbox image not built")
+            pytest.skip("Docker not available or aops-crew image not built")
         has_oauth = (Path.home() / ".claude" / ".credentials.json").exists()
         if not os.environ.get("ANTHROPIC_API_KEY") and not has_oauth:
             pytest.skip("No Claude auth for Docker")
@@ -1053,7 +1053,7 @@ def cli_headless(request, tmp_path, gemini_home):
         if not _gemini_cli_available():
             pytest.skip("gemini CLI not found in PATH")
         if not _docker_available():
-            pytest.skip("Docker not available or aops-sandbox image not built")
+            pytest.skip("Docker not available or aops-crew image not built")
 
         def _run_gemini_in_docker(prompt, **kwargs):
             return _run_gemini_docker(prompt, gemini_home=gemini_home, **kwargs)
@@ -1074,20 +1074,30 @@ def aops_root():
 # --- Session tracking fixtures for E2E tool verification ---
 
 
-def find_session_jsonl(session_id: str) -> Path | None:
+def find_session_jsonl(session_id: str, search_dirs: list[Path] | None = None) -> Path | None:
     """Find session JSONL file by session ID.
 
     Args:
         session_id: UUID of the session
+        search_dirs: Extra directories to search first (e.g. mounted session dirs).
+            Searched via rglob before falling back to ~/.claude/projects/.
 
     Returns:
         Path to JSONL file if found, None otherwise
     """
+    # Search provided dirs first (these are the Docker-mounted session dirs)
+    if search_dirs:
+        for d in search_dirs:
+            if not d.exists():
+                continue
+            for match in d.rglob(f"{session_id}.jsonl"):
+                return match
+
+    # Fall back to host's Claude projects directory
     claude_dir = Path.home() / ".claude" / "projects"
     if not claude_dir.exists():
         return None
 
-    # Search all project directories for matching session file
     for project_dir in claude_dir.iterdir():
         if not project_dir.is_dir():
             continue
@@ -1601,15 +1611,15 @@ def check_blocked(result: dict) -> bool:
 
 
 def _docker_available() -> bool:
-    """Check if Docker is available and the aops-sandbox image exists."""
+    """Check if Docker is available and the aops-crew image exists."""
     try:
         result = subprocess.run(
-            ["docker", "images", "aops-sandbox", "--format", "{{.Repository}}"],
+            ["docker", "images", "aops-crew", "--format", "{{.Repository}}"],
             capture_output=True,
             text=True,
             timeout=10,
         )
-        return result.returncode == 0 and "aops-sandbox" in result.stdout
+        return result.returncode == 0 and "aops-crew" in result.stdout
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return False
 
@@ -1625,14 +1635,14 @@ def claude_docker(tmp_path):
             timeout_seconds=60,
         )
 
-    Skips if: Docker unavailable, no Claude auth, or aops-sandbox image not built.
+    Skips if: Docker unavailable, no Claude auth, or aops-crew image not built.
     Claude authenticates via OAuth (stored in ~/.claude/.credentials.json) which is
     bind-mounted into the container. Falls back to ANTHROPIC_API_KEY if set.
     """
     import uuid
 
     if not _docker_available():
-        pytest.skip("Docker not available or aops-sandbox image not built")
+        pytest.skip("Docker not available or aops-crew image not built")
 
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     has_oauth = (Path.home() / ".claude" / ".credentials.json").exists()
@@ -1663,7 +1673,12 @@ def claude_docker(tmp_path):
         workspace = tmp_path / f"docker-test-{session_id[:8]}"
         workspace.mkdir()
 
-        # Build agent command
+        # Create session directory so Claude transcripts persist on the host
+        session_dir = tmp_path / f"sessions-{session_id[:8]}"
+        session_dir.mkdir()
+
+        # Build agent command — use --verbose so stdout includes the init
+        # message (with apiKeySource, mcp_servers status, etc.) as a JSON array
         agent_cmd = [
             "claude",
             "--dangerously-skip-permissions",
@@ -1671,6 +1686,7 @@ def claude_docker(tmp_path):
             prompt,
             "--output-format",
             "json",
+            "--verbose",
             "--session-id",
             session_id,
             "--model",
@@ -1694,6 +1710,7 @@ def claude_docker(tmp_path):
             env=env,
             agent_cmd=agent_cmd,
             is_interactive=False,
+            session_dir=session_dir,
         )
 
         log.debug("Docker command: %s", " ".join(str(x) for x in cmd))
@@ -1708,7 +1725,7 @@ def claude_docker(tmp_path):
             )
         except subprocess.TimeoutExpired:
             # Try to extract partial progress from session file
-            session_file = find_session_jsonl(session_id)
+            session_file = find_session_jsonl(session_id, search_dirs=[session_dir])
             tool_calls = parse_tool_calls(session_file) if session_file else []
             error_msg = f"Docker session timed out after {timeout_seconds}s"
             if fail_on_error:
@@ -1720,7 +1737,7 @@ def claude_docker(tmp_path):
             )
 
         if result.returncode != 0:
-            session_file = find_session_jsonl(session_id)
+            session_file = find_session_jsonl(session_id, search_dirs=[session_dir])
             tool_calls = parse_tool_calls(session_file) if session_file else []
             error_msg = (
                 f"Docker session failed (exit {result.returncode}): "
@@ -1734,18 +1751,48 @@ def claude_docker(tmp_path):
                 tool_calls,
             )
 
-        # Parse JSON output
+        # Parse JSON output — Claude --output-format json writes a JSON array:
+        # [{"type":"system","subtype":"init",...}, {"type":"result",...}]
+        # or a single JSON object for the result.
         try:
             parsed = json.loads(result.stdout)
-            response = {"success": True, "output": result.stdout, "result": parsed}
+            # Normalise: extract the result message from an array if needed
+            if isinstance(parsed, list):
+                result_msg = next(
+                    (m for m in parsed if isinstance(m, dict) and m.get("type") == "result"),
+                    parsed[-1] if parsed else {},
+                )
+                init_msg = next(
+                    (m for m in parsed if isinstance(m, dict) and m.get("type") == "system"),
+                    {},
+                )
+            else:
+                result_msg = parsed
+                init_msg = {}
+            response = {
+                "success": True,
+                "output": result.stdout,
+                "stderr": result.stderr,
+                "result": result_msg,
+                "init": init_msg,
+            }
         except json.JSONDecodeError as e:
             error_msg = f"JSON parse error: {e}. stdout: {result.stdout[:200]}"
             if fail_on_error:
                 pytest.fail(error_msg)
-            response = {"success": False, "output": result.stdout, "result": {}, "error": error_msg}
+            response = {
+                "success": False,
+                "output": result.stdout,
+                "stderr": result.stderr,
+                "result": {},
+                "error": error_msg,
+            }
+
+        # Include session_dir in response so tests can find transcripts
+        response["session_dir"] = session_dir
 
         # Extract tool calls from session JSONL (written to bind-mounted ~/.claude/)
-        session_file = find_session_jsonl(session_id)
+        session_file = find_session_jsonl(session_id, search_dirs=[session_dir])
         tool_calls = parse_tool_calls(session_file) if session_file else []
 
         return response, session_id, tool_calls
