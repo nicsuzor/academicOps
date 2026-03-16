@@ -1,15 +1,19 @@
 # Use Python 3.12 with Debian Bookworm slim for a minimal, compatible base
 FROM python:3.12-slim-bookworm
 
-# Set environment variables
+# Create non-root user early so we can switch to it after system-level installs
+RUN useradd -m -d /home/worker -s /bin/bash worker
+
+# Set environment variables — HOME stays as /root during root-level installs
+# to avoid polluting /home/worker with root-owned files. Switched after USER.
 ENV AOPS=/app \
     ACA_DATA=/data \
-    HOME=/home/worker \
+    HOSTNAME=aops-crew \
     UV_INSTALL_DIR=/usr/local/bin \
-    UV_CACHE_DIR=/tmp/uv-cache \
-    PATH="/root/.local/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     NODE_VERSION=22
+
+# ── Root-only: system packages and global tooling ──────────────────────
 
 # Install system dependencies (including Node.js for Claude/Gemini CLIs, GitHub CLI, Docker CLI)
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -31,57 +35,59 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get install -y gh docker-ce-cli \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install uv (standard for aops framework per P#93)
-# Using direct download for better compatibility with x86_64
+# Install uv system-wide (standard for aops framework per P#93)
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Install Gemini CLI, Claude Code, and code quality tools globally
 RUN npm install -g @google/gemini-cli @anthropic-ai/claude-code markdownlint-cli2 dprint && npm cache clean --force
 
-# Install Python-based CLI tools
+# Create app and data directories, hand ownership to worker
+RUN mkdir -p /app /data && chown worker:worker /app /data
+
+# ── Switch to non-root user for all remaining operations ───────────────
+
+WORKDIR /app
+USER worker
+
+# Now set HOME and PATH for the worker user
+ENV HOME=/home/worker \
+    PATH="/home/worker/.local/bin:$PATH"
+
+# Install Python-based CLI tools as user (installs to ~/.local/bin)
 RUN uv tool install ruff
 
-# Set workdir
-WORKDIR /app
-
 # Copy dependency files for layer caching
-COPY pyproject.toml uv.lock ./
+COPY --chown=worker:worker pyproject.toml uv.lock ./
 
 # Pre-install project dependencies (no-dev for lightweight production-ready image)
 RUN uv sync --frozen --no-install-project --no-dev
 
 # Copy the rest of the application
-COPY . .
+COPY --chown=worker:worker . .
 
 # Final sync to install the project itself
 RUN uv sync --frozen --no-dev
 
-# Create data directory for persistence
-RUN mkdir -p /data
-
-# Create /home/worker with open permissions — polecat crew runs containers
-# as the host UID (non-root), which needs a writable HOME for .claude/ session data.
-# Open permissions (777) because the host UID varies per machine.
-RUN mkdir -p /home/worker && chmod 777 /home/worker
-
 # Build distribution artifacts (Claude plugin package)
 RUN uv run python scripts/build.py
 
-# Install the aops-core Claude plugin with HOME=/home/worker so that
-# known_marketplaces.json and all installLocation paths are written with the
-# correct container path from the start. The host's ~/.claude is NOT mounted
-# at build time, so these paths are stable and correct for all container runs.
-RUN HOME=/home/worker claude plugin marketplace add /app \
-    && HOME=/home/worker claude plugin install aops-core@aops
+# Install the aops-core Claude plugin. HOME is already /home/worker so
+# known_marketplaces.json and installLocation paths are correct from the start.
+RUN claude plugin marketplace add /app \
+    && claude plugin install aops-core@aops
 
 # Install the aops-core Gemini extension from local build artifacts.
-# HOME=/home/worker ensures .gemini/extensions/ is written to the container
-# home, consistent with the Claude plugin install above.
 # Pre-create .gemini directory (gemini CLI needs it for project registry).
 # Use a dummy GEMINI_API_KEY to bypass auth check during install.
 # --consent bypasses the interactive consent prompt.
 RUN mkdir -p /home/worker/.gemini \
-    && HOME=/home/worker GEMINI_API_KEY=dummy-for-install gemini extensions install /app/dist/aops-gemini --consent
+    && GEMINI_API_KEY=dummy-for-install gemini extensions install /app/dist/aops-gemini --consent
+
+# Make home dir and plugin dirs writable for any UID — polecat crew runs
+# containers as the host UID (non-root), which may differ from the worker
+# UID created above. Open permissions because the host UID varies per machine.
+RUN chmod 777 /home/worker \
+    && chmod -R a+w /home/worker/.claude/plugins/ 2>/dev/null || true
 
 # Default command
 CMD ["/bin/bash"]
