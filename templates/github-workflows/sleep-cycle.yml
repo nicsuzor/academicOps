@@ -67,6 +67,12 @@ jobs:
             - Brain repo (data): ${{ github.workspace }}
             - academicOps (code): ${{ github.workspace }}/_aops
             - Full spec: ${{ github.workspace }}/_aops/specs/sleep-cycle.md
+            - Sleep skill: ${{ github.workspace }}/_aops/aops-core/skills/sleep/SKILL.md
+
+            ## Phase 0: Graph Health Baseline
+            Run `graph_stats` (PKB tool) to get current graph health metrics.
+            Record: flat_tasks, disconnected_epics, projects_without_goals, orphan_count, stale_count.
+            This is the baseline — you'll re-run it in Phase 5 to measure what changed.
 
             ## Phase 1: Session Backfill
             Check for session transcripts without insights. If found, run:
@@ -93,7 +99,20 @@ jobs:
             - Knowledge docs that contradict recent evidence
             - Stale in_progress tasks (no update in 7+ days)
 
+            ## Phase 4b: Graph Maintenance
+            Pick ONE strategy based on what graph_stats showed needs the most work:
+            - disconnected_epics > 10 → find project parents for disconnected epics
+            - projects_without_goals > 10 → link projects to existing goals
+            - flat_tasks > 100 → find epic/project parents for orphaned tasks
+            - orphan_count > 20 → connect or archive truly disconnected nodes
+            - All healthy → densify edges (add depends_on between related tasks)
+
+            Process at most 30 items per cycle. For obvious connections (task title
+            mentions the project), apply autonomously. For ambiguous ones, flag in
+            the cycle summary for human review.
+
             ## Phase 5: Brain Sync
+            Re-run `graph_stats` and compare to Phase 0 baseline. Note what changed.
             Commit any changes and push. Use message: "sleep: periodic consolidation"
 
             ## Rules

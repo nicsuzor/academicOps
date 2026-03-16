@@ -2,27 +2,29 @@
 name: learn
 type: command
 category: instruction
-description: Rapid async knowledge capture for framework failures
+description: Diagnose framework failures, determine enforcement level, and create actionable follow-up
 triggers:
   - "framework issue"
   - "fix this pattern"
   - "improve the system"
   - "knowledge capture"
   - "bug report"
-modifies_files: false
+modifies_files: true
 needs_task: false
 mode: execution
 domain:
   - framework
-allowed-tools: Bash, Task
+allowed-tools: Bash, Read, Grep, Glob, mcp__pkb__search, mcp__pkb__task_search, mcp__pkb__create_task, mcp__pkb__update_task, mcp__pkb__retrieve_memory
 permalink: commands/learn
 ---
 
-# /learn - Rapid Knowledge Capture
+# /learn - Diagnose, Enforce, Track
 
-**Purpose**: Diagnose a framework failure and generate a high-quality, curated error report for submission to the `nicsuzor/academicOps` repository, without applying direct local fixes.
+**Purpose**: Diagnose a framework failure, determine the right enforcement level, and create trackable follow-up work so the fix actually gets implemented. This is NOT just a bug reporter — it's the framework's immune system.
 
-**Privacy rule**: NEVER include direct logs, session dumps, real people's names, email addresses, student details, or personal information in the curated error report or GitHub issues.
+**Privacy rule**: NEVER include direct logs, session dumps, real people's names, email addresses, student details, or personal information in reports or issues.
+
+**CRITICAL**: You MUST complete ALL 6 steps in order. Each step produces structured output that feeds into the next. Skipping steps means the learning rots — which is the exact failure this command exists to prevent.
 
 ## Workflow
 
@@ -33,8 +35,7 @@ permalink: commands/learn
 - Where did the mistake occur?
 - What was the trigger?
 
-**Generate Session Transcript**:
-To analyze the incident, you must first render the transcript of the current or failed session. Because the agent may be in a deployed or isolated session, use the framework's module-based path resolution rather than relying on the `$AOPS` environment variable.
+**Generate Session Transcript** (if analyzing a prior session):
 
 ```bash
 # Locate the session file (For Gemini or Claude)
@@ -49,70 +50,159 @@ else
 fi
 ```
 
-_Note: Since you might not be in the framework repository, adapt the script path discovery as needed using standard bash commands (`find`, etc.) to locate `transcript.py`._
+If analyzing the current session, use the conversation context directly — no transcript needed.
 
-### 2. Deep Root Cause Analysis (Crucial)
+### 2. Root Cause Analysis (MANDATORY structured output)
 
-Before recording the incident, investigate **why** the failure was not prevented by the framework. Do not stop at "agent execution failure." Exercise judgment based on the framework's `VISION.md` regarding how the system SHOULD have worked.
+**CRITICAL: Your output is parsed by downstream steps.** You MUST emit the structured block below. Do not skip fields. Do not summarize. Each field forces you to actually investigate — fabricating answers defeats the purpose.
 
-**Check the following layers**:
+Before filling this out, you MUST:
 
-1. **Discovery Gap**: Did the **Prompt Hydrator** have the necessary information?
-   - Check if local project workflows (`.agent/workflows/*.md`) were indexed.
-   - Check if relevant specifications were injected into the Hydrator's context.
-2. **Detection Failure**: Did the agent/hydrator see the information but fail to act on it?
-   - Was the "Intent Envelope" correctly identified?
-   - Did the "Execution Plan" include the necessary quality gates (CHECKPOINTs)?
-3. **Instruction Weighting**: Did the agent skip a mandated step in favor of a "shortcut"?
-4. **Index Lag**: Was the failure caused by an outdated `INDEX.md` or `graph.json`?
-5. **Cross-workflow enforcement gap**: Did one workflow detect a problem but lack the mechanism to block another workflow?
+1. Read the relevant framework files (AXIOMS.md, HEURISTICS.md, ENFORCEMENT.md, the skill/command that failed)
+2. Search PKB for prior incidents: `mcp__pkb__task_search(query="<failure keywords>")`
+3. Trace the causal chain: trigger → what should have happened → what actually happened → why
 
-### 3. Extract Minimal Bug Reproduction
+**Emit this block:**
 
-Review the abridged transcript and extract the minimum turns (ideally < 5) to demonstrate the bug.
-Identify:
-
-- **Expected**: What should have happened based on `VISION.md` (e.g., "Hydrator should have selected the local evaluation workflow")
-- **Actual**: What actually happened (e.g., "Hydrator fell back to generic investigation; Agent skipped visual step")
-
-### 4. Create Curated Diagnostic Report
-
-Draft a high-quality, privacy-scrubbed diagnostic report in Markdown format. The report should focus on the ROOT CAUSE and not just the specific fault.
-
-```markdown
-# Bug Report: [Brief summary]
-
-## Incident Context
-
-- **Trigger:** [What caused the issue]
-- **Root Cause Category:** [Clarity, Context, Blocking, Detection, Discovery Gap, Shortcut Bias]
-
+```yaml
 ## Root Cause Analysis
 
-[Detailed explanation of the framework failure, referencing VISION.md where applicable]
+**Failure**: [1-sentence description of what went wrong]
 
-## Minimal Bug Reproduction
+**Causal chain**:
+1. [Trigger event]
+2. [What the framework was supposed to do]
+3. [What actually happened instead]
+4. [Why — the root cause, not the symptom]
 
-- **Expected:** [What should have happened]
-- **Actual:** [What actually happened]
+**Root cause category**: [Discovery Gap | Detection Failure | Instruction Weighting | Index Lag | Cross-workflow Gap | Enforcement Gap | Dropped Thread]
 
-## Proposed Framework Fix
+**Framework layer that failed**:
+- Component: [skill/command/hook/workflow name]
+- File: [path to the file that should have prevented this]
+- Current enforcement level: [1a-7 from ENFORCEMENT.md, or "none"]
 
-- **Suggested target:** [Which component/file should be updated]
-- **Proposed change:** [Description of the necessary framework change]
+**Prior incidents**: [PKB task IDs of similar failures, or "none found"]
+
+**Expected vs Actual**:
+- Expected: [What VISION.md / AXIOMS.md says should happen]
+- Actual: [What happened]
 ```
 
-### 5. File Issue (or Output for User)
+**If you cannot fill a field**: Write "UNKNOWN — needs investigation" and flag it as a follow-up task in Step 5. Do NOT leave fields blank or skip the block.
 
-Instead of applying a fix directly to local files (since you may not be in the `academicOps` repository), your deliverable is to file this report as an issue on the `nicsuzor/academicOps` repository.
+### 3. Determine Enforcement Level
 
-If you have GitHub CLI access:
+Read `ENFORCEMENT.md` (specifically the Mechanism Ladder and Diagnosis → Solution Mapping table). Based on the root cause from Step 2, determine:
+
+**Emit this block:**
+
+```yaml
+## Enforcement Decision
+
+**Current level**: [What enforcement exists now — e.g., "Level 1b: rule in SKILL.md says 'must do X'"]
+**Why it failed**: [Why the current level was insufficient — e.g., "competes with task urgency, no task-specific reason given"]
+**Proposed level**: [Target level from the ladder — e.g., "Level 1c: emphatic + reasoned, with specific stakes"]
+**Why this level**: [Why this is the minimum effective level — reference the Diagnosis → Solution Mapping]
+**Why not lower**: [What was tried or why lower levels won't work]
+**Why not higher**: [Why we don't need to escalate further — or "escalation needed, see justification"]
+```
+
+**Key principle**: Start at the lowest effective level. Escalate only with evidence that lower levels have failed. If this is a repeat failure (prior incidents found in Step 2), escalate one level above the current enforcement.
+
+### 4. Propose Enforcement Change
+
+Using the Level 1d Structured Justification Format from ENFORCEMENT.md, draft the actual change. This is not a suggestion — it's the specific text/code that needs to be added.
+
+**Emit this block:**
+
+```yaml
+## Rule Change Justification
+
+**Scope**: [AXIOMS.md | HEURISTICS.md | skill file | command file | hook | settings.json]
+
+**Rules Loaded**:
+- AXIOMS.md: [P#X, P#Y — or "not relevant"]
+- HEURISTICS.md: [H#X, H#Y — or "not relevant"]
+- ENFORCEMENT.md: [entry name — or "not relevant"]
+
+**Prior Art**:
+- Search query: "[keywords used]"
+- Related tasks: [task IDs, or "none"]
+- Pattern: [existing pattern | novel pattern]
+
+**Intervention**:
+- Type: [corollary to P#X | new heuristic | enforcement hook | command strengthening | etc.]
+- Level: [1a-7]
+- Change: [THE EXACT TEXT OR CODE to add/modify — max 3 sentences for prompt changes, full snippet for hooks]
+- Target file: [exact path]
+
+**Minimality**:
+- Why not lower level: [explanation]
+- Why not narrower scope: [explanation]
+
+**Escalation**: [auto | critic | custodiet | human]
+```
+
+### 5. File Issue AND Create Trackable Work
+
+**CRITICAL**: Filing an issue alone is a dropped thread. You MUST create PKB tasks so the work gets pulled from the queue.
+
+#### 5a. File the GitHub issue
+
+Combine Steps 2-4 into a diagnostic report and file it:
 
 ```bash
-gh issue create --repo nicsuzor/academicOps --title "Bug: <brief-slug>" --body-file <path-to-your-report.md>
+gh issue create --repo nicsuzor/academicOps --title "Enforce: <brief-slug>" --body-file <path-to-report.md>
 ```
 
-If you do not have GitHub CLI access, output the curated report to the user and instruct them to file it manually.
+#### 5b. Create PKB work task
+
+Create a task for the actual enforcement change:
+
+```
+mcp__pkb__create_task(
+  title="[Enforce] <description of the change>",
+  type="task",
+  project="aops",
+  body="## Context\n<link to GH issue>\n\n## Change\n<exact change from Step 4>\n\n## Acceptance Criteria\n1. Change applied to <target file>\n2. Evidence of compliance in next 3 sessions",
+  tags=["enforcement", "learn"]
+)
+```
+
+#### 5c. Create PKB waiting task (if change requires review)
+
+If the escalation level is "critic", "custodiet", or "human":
+
+```
+mcp__pkb__create_task(
+  title="[Waiting] Review enforcement: <slug>",
+  type="task",
+  project="aops",
+  status="blocked",
+  depends_on=["<work-task-id>"],
+  body="Blocked on review of enforcement change. Verify compliance after 3 sessions.",
+  tags=["enforcement", "review"]
+)
+```
+
+### 6. Persist Learning
+
+Invoke `/remember` to capture the generalized pattern (not the specific incident):
+
+- **What to remember**: The generalizable principle — e.g., "Filing external work without PKB tasks drops the thread"
+- **What NOT to remember**: The specific incident details (those live in the GH issue and PKB tasks)
+- **Test**: Would this memory help an agent working on a DIFFERENT component? If not, it's too specific.
+
+## Anti-patterns (things this command must NOT do)
+
+| Anti-pattern                                       | Why it's wrong                                  | What to do instead                       |
+| :------------------------------------------------- | :---------------------------------------------- | :--------------------------------------- |
+| Skip root cause, jump to fix                       | Treats symptoms, failure recurs                 | Complete Step 2 structured output        |
+| File issue without PKB tasks                       | Work rots — nothing pulls from GH issues        | Always do Step 5b (and 5c if needed)     |
+| Propose enforcement without reading ENFORCEMENT.md | May duplicate or contradict existing mechanisms | Step 3 requires reading the file         |
+| Remember the specific incident                     | Too narrow to help future agents                | Remember the generalizable pattern       |
+| Stop after filing                                  | No one tracks whether the fix worked            | Create waiting task with verification AC |
 
 ## Framework Reflection
 
@@ -120,6 +210,8 @@ If you do not have GitHub CLI access, output the curated report to the user and 
 ## Framework Reflection
 **Prompts**: [The observation/feedback that triggered /learn]
 **Outcome**: success
-**Accomplishments**: Curated diagnostic report created and filed (or provided to user).
-**Root cause**: [Category]
+**Accomplishments**: Root cause diagnosed, enforcement level determined, GH issue filed, PKB tasks created.
+**Root cause**: [Category from Step 2]
+**Enforcement**: [Level proposed in Step 3]
+**Tasks created**: [task IDs from Step 5]
 ```
