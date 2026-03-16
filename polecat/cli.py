@@ -459,6 +459,37 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
         except OSError as e:
             print(f"   Warning: could not create trustedFolders.json: {e}", file=sys.stderr)
 
+    # Replicate extensions so that extension hooks fire in sandbox sessions.
+    # We symlink individual extension dirs (to avoid copying large venvs) but
+    # create a fresh extension-enablement.json with a wildcard override so the
+    # extension is active for any workspace path (the original restricts to
+    # /home/<user>/* which won't match test or CI workspaces).
+    src_extensions = gemini_dir / "extensions"
+    if src_extensions.is_dir():
+        dst_extensions = target_dir / "extensions"
+        dst_extensions.mkdir(parents=True, exist_ok=True)
+
+        # Symlink each extension subdirectory
+        for child in src_extensions.iterdir():
+            if child.is_dir():
+                try:
+                    (dst_extensions / child.name).symlink_to(child.resolve())
+                except OSError:
+                    shutil.copytree(child, dst_extensions / child.name)
+
+        # Build a permissive enablement file — allow all paths
+        enablement_src = src_extensions / "extension-enablement.json"
+        if enablement_src.exists():
+            try:
+                with open(enablement_src) as f:
+                    enablement = json.load(f)
+                for ext_name in enablement:
+                    enablement[ext_name]["overrides"] = ["*"]
+                with open(dst_extensions / "extension-enablement.json", "w") as f:
+                    json.dump(enablement, f, indent=2)
+            except (json.JSONDecodeError, OSError):
+                shutil.copy2(enablement_src, dst_extensions / "extension-enablement.json")
+
     # Set GEMINI_CLI_HOME to the parent directory — Gemini creates .gemini/
     # inside GEMINI_CLI_HOME (i.e. path.join(GEMINI_CLI_HOME, ".gemini", ...)).
     env["GEMINI_CLI_HOME"] = str(tmp_gemini_home)

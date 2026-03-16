@@ -5,10 +5,13 @@ JSONL transcript files via the session_dir mount in _build_docker_cmd().
 """
 
 import json
+import logging
 import sys
 from pathlib import Path
 
 import pytest
+
+log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Unit tests — no Docker required
@@ -165,6 +168,7 @@ def test_claude_docker_produces_session_jsonl(claude_docker):
         fail_on_error=False,
     )
     diag = _dump_diagnostics(result, session_id)
+    log.debug("Claude Docker session diagnostics:\n%s", diag)
 
     # Gate: Claude must have produced actual output (proves auth worked).
     # Note: apiKeySource may report "none" even with working OAuth — check tokens instead.
@@ -197,6 +201,7 @@ def test_session_jsonl_contains_valid_entries(claude_docker):
         fail_on_error=False,
     )
     diag = _dump_diagnostics(result, session_id)
+    log.debug("Claude Docker session diagnostics:\n%s", diag)
 
     # Gate: Claude must have produced actual output (proves auth worked)
     res = result.get("result", {})

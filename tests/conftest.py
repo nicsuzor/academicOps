@@ -1003,7 +1003,61 @@ def _run_gemini_docker(prompt: str, gemini_home: Path | None = None, **kwargs) -
                     "error": "Could not find valid JSON in gemini sandbox output",
                 }
 
-        return {"success": True, "output": result.stdout, "result": parsed}
+        response = {
+            "success": True,
+            "output": result.stdout,
+            "stderr": result.stderr,
+            "result": parsed,
+        }
+
+        # Capture session and hook logs before cleanup
+        cli_home = gemini_home or (tmp_gemini_home / ".gemini" if tmp_gemini_home else None)
+        if cli_home and cli_home.exists():
+            # Gemini session logs: ~/.gemini/tmp/<project>/chats/session-*.json
+            session_files = list(cli_home.rglob("session-*.json"))
+            hook_files = list(cli_home.rglob("*-hooks.jsonl"))
+            log_files = list(cli_home.rglob("*.jsonl"))
+
+            diag_lines = [
+                f"gemini_home: {cli_home}",
+                f"session files: {session_files}",
+                f"hook files: {hook_files}",
+                f"all jsonl: {log_files}",
+            ]
+            # Read hook log contents if found
+            for hf in hook_files:
+                try:
+                    diag_lines.append(f"--- {hf.name} ---")
+                    diag_lines.append(hf.read_text()[:2000])
+                except OSError:
+                    pass
+            # Read session transcript if found
+            for sf in session_files:
+                try:
+                    diag_lines.append(f"--- {sf.name} (first 1000 chars) ---")
+                    diag_lines.append(sf.read_text()[:1000])
+                except OSError:
+                    pass
+            log.debug("Gemini Docker session diagnostics:\n%s", "\n".join(diag_lines))
+
+        # Also log parsed result summary
+        stats = parsed.get("stats", {})
+        model_info = next(iter(stats.get("models", {}).items()), (None, {}))
+        model_name = model_info[0] or "unknown"
+        model_stats = model_info[1] if isinstance(model_info[1], dict) else {}
+        tokens = model_stats.get("tokens", {})
+        api = model_stats.get("api", {})
+        log.debug(
+            "Gemini result: response=%r model=%s tokens_in=%s tokens_out=%s latency=%sms stderr=%s",
+            str(parsed.get("response", ""))[:200],
+            model_name,
+            tokens.get("input", "?"),
+            tokens.get("candidates", "?"),
+            api.get("totalLatencyMs", "?"),
+            (result.stderr or "")[:500],
+        )
+
+        return response
     finally:
         if tmp_gemini_home and tmp_gemini_home.exists():
             shutil.rmtree(tmp_gemini_home)
@@ -1721,16 +1775,6 @@ def claude_docker(tmp_path):
             is_interactive=False,
             session_dir=session_dir,
         )
-
-        # Disable plugin hooks in headless Docker tests. The aops-core plugin's
-        # router.sh sets UV_CACHE_DIR inside the root-owned plugin dir, which
-        # fails for non-root container users and silently blocks all prompts.
-        # Mount an empty settings.json to disable the plugin.
-        empty_settings = tmp_path / "empty-settings.json"
-        empty_settings.write_text("{}")
-        # Insert -v mount before the image name (just before agent_cmd in the cmd list)
-        insert_pos = len(cmd) - len(agent_cmd) - 1
-        cmd[insert_pos:insert_pos] = ["-v", f"{empty_settings}:/home/worker/.claude/settings.json"]
 
         log.debug("Docker command: %s", " ".join(str(x) for x in cmd))
 
