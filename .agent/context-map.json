@@ -52,6 +52,50 @@
       "keywords": ["hook", "gate", "router", "event", "pretooluse", "userpromptsubmit", "sessionstart"]
     },
     {
+      "topic": "gate_config",
+      "path": "aops-core/hooks/gate_config.py",
+      "description": "Gate configuration source of truth - tool categories, compliance subagent types, gate modes, env var injection",
+      "keywords": [
+        "gate",
+        "config",
+        "tool category",
+        "compliance",
+        "hydration gate",
+        "custodiet gate",
+        "env var",
+        "gate mode"
+      ]
+    },
+    {
+      "topic": "gate_tests",
+      "path": "tests/hooks/test_gate_verdicts.py",
+      "description": "Gate verdict regression tests with JSON fixtures - covers all gate scenarios, block/warn/allow verdicts, env var overrides",
+      "keywords": [
+        "gate",
+        "test",
+        "verdict",
+        "regression",
+        "fixture",
+        "block",
+        "warn",
+        "allow",
+        "scenario",
+        "gate simulator"
+      ]
+    },
+    {
+      "topic": "hook_tests_directory",
+      "path": "tests/hooks/",
+      "description": "All hook tests - gate verdicts, gate config, router formatting, hydration, session env setup, autocommit, policy enforcer",
+      "keywords": ["hook", "test", "gate", "router", "hydration", "session", "policy", "enforcer"]
+    },
+    {
+      "topic": "hydrator_quality",
+      "path": "specs/hydrator-quality-escalation.md",
+      "description": "Hydrator quality escalation process - in-session correction feedback loop, gap taxonomy, root cause categories",
+      "keywords": ["hydrator", "quality", "escalation", "correction", "feedback", "gap", "jit", "context failure"]
+    },
+    {
       "topic": "core_loop_spec",
       "path": "specs/flow.md",
       "description": "v1.0 core loop specification - hydration, workflow execution, QA, and reflection flow",
