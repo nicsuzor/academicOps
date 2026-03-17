@@ -33,6 +33,7 @@ def write_plugin_version(plugin_dir: Path, commit_sha: str) -> Path:
     }
 
     version_file.write_text(json.dumps(version_data, indent=2))
+    return version_file
 
 
 def safe_copy(src: Path, dst: Path) -> None:
@@ -158,7 +159,6 @@ def generate_gemini_hooks(
                 gemini_hooks[gemini_event].append(new_entry)
 
     return gemini_hooks
-
 
 def check_installed_plugin_version(
     plugin_name: str,
