@@ -36,6 +36,14 @@ How the system works today. Required reading for understanding the framework.
 | [[constraint-checking-tests.md]] | 📋     | Test cases for constraint checking. Blocked on predicate-registry                                                                               |
 | [[command-intercept.md]]         | 📋     | PreToolUse tool parameter transformation                                                                                                        |
 
+## Tier 1.5: Engineering Methodology
+
+Cross-cutting practices for how agents approach technical work.
+
+| Spec                             | Status | Purpose                                                                                             |
+| -------------------------------- | ------ | --------------------------------------------------------------------------------------------------- |
+| [[evidence-driven-debugging.md]] | ✅     | Instrument → evidence → fix → formalise. Investigation artifacts are infrastructure, not throwaway. |
+
 ## Tier 2: Operational Workflows
 
 Procedures for specific work types that humans and agents follow.

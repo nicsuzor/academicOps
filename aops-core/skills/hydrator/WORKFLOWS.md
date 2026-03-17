@@ -19,7 +19,7 @@ Workflows are **composable step arrangements** that describe how to achieve an e
 3. **Which base patterns** to compose
 4. **Which skills** each step requires (implicitly or explicitly)
 
-Workflows are the Bazaar's quality guarantee. By structuring work into required steps — including verification — workflows ensure that work is good enough regardless of which agent performs it. A workflow achieves an epic; each step within a workflow corresponds to one or more tasks within that epic.
+Workflows are the Bazaar's quality guarantee. By structuring work into required steps -- including verification -- workflows ensure that work is good enough regardless of which agent performs it. A workflow achieves an epic; each step within a workflow corresponds to one or more tasks within that epic.
 
 ## Base Workflows (Composable Patterns)
 
@@ -107,7 +107,7 @@ These workflows help figure out what to do and how to do it. They live in the `p
 
 | Workflow             | When to Use                                          | Bases                         |
 | -------------------- | ---------------------------------------------------- | ----------------------------- |
-| [[strategic-intake]] | New idea, fragment, constraint → place in graph      | task-tracking, memory-capture |
+| [[strategic-intake]] | New idea, fragment, constraint -> place in graph     | task-tracking, memory-capture |
 | [[decompose]]        | Break down goals/epics into tasks via workflow steps | task-tracking, handover       |
 
 ### Development
@@ -186,11 +186,12 @@ Workflows applicable across domains.
 
 Workflows about the framework itself.
 
-| Workflow           | When to Use                              | Bases    |
-| ------------------ | ---------------------------------------- | -------- |
-| [[framework-gate]] | Detect and route framework modifications | -        |
-| [[dogfooding]]     | Framework self-improvement               | -        |
-| [[audit]]          | Framework governance audit               | handover |
+| Workflow               | When to Use                                                  | Bases          |
+| ---------------------- | ------------------------------------------------------------ | -------------- |
+| [[framework-gate]]     | Detect and route framework modifications                     | -              |
+| [[dogfooding]]         | Framework self-improvement                                   | -              |
+| [[audit]]              | Framework governance audit                                   | handover       |
+| [[correction-capture]] | Capture in-session human corrections as quality improvements | memory-capture |
 
 ### Git Operations
 
@@ -234,4 +235,4 @@ Projects can extend the global workflow catalog by defining local workflows in t
 
 ### Workflow vs Skill (Principle #0)
 
-A **workflow** orchestrates a sequence of steps. A **skill** provides the expertise to execute one step. A workflow may reference multiple skills. **A skill never contains a workflow** — if a skill file has a decision tree routing to different process sequences, those sequences should be extracted as separate workflows. See [[TAXONOMY.md]] and the workflow-system-spec in `specs/` for details.
+A **workflow** orchestrates a sequence of steps. A **skill** provides the expertise to execute one step. A workflow may reference multiple skills. **A skill never contains a workflow** -- if a skill file has a decision tree routing to different process sequences, those sequences should be extracted as separate workflows. See [[TAXONOMY.md]] and the workflow-system-spec in `specs/` for details.

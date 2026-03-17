@@ -82,14 +82,21 @@ def install_cron_jobs(aops_path: Path, aca_data_path: str):
             continue
         new_crontab_lines.append(line)
 
+    # Resolve uv's actual location at install time so cron can find it.
+    # install.py runs via `uv run`, so uv is guaranteed on PATH right now.
+    uv_bin = shutil.which("uv")
+    path_prefix = ""
+    if uv_bin:
+        uv_dir = str(Path(uv_bin).parent)
+        path_prefix = f"PATH={uv_dir}:$PATH "
+        print(f"  uv found at: {uv_bin}")
+
     new_crontab_lines.append("# aOps quick sync (brain + transcripts)")
-    quick_sync_cmd = f"*/5 * * * * {aops_path}/scripts/repo-sync-cron.sh --quick >> /tmp/repo-sync-quick.log 2>&1"
+    quick_sync_cmd = f"*/5 * * * * {path_prefix}{aops_path}/scripts/repo-sync-cron.sh --quick >> /tmp/repo-sync-quick.log 2>&1"
     new_crontab_lines.append(quick_sync_cmd)
 
     new_crontab_lines.append("# aOps full maintenance (viz + sessions)")
-    full_sync_cmd = (
-        f"0 * * * * {aops_path}/scripts/repo-sync-cron.sh >> /tmp/repo-sync-cron.log 2>&1"
-    )
+    full_sync_cmd = f"0 * * * * {path_prefix}{aops_path}/scripts/repo-sync-cron.sh >> /tmp/repo-sync-cron.log 2>&1"
     new_crontab_lines.append(full_sync_cmd)
 
     new_crontab = "\n".join(new_crontab_lines) + "\n"

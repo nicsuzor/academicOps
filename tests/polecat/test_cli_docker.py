@@ -19,7 +19,7 @@ REPO_ROOT = TESTS_DIR.parent.parent
 sys.path.insert(0, str(REPO_ROOT / "polecat"))
 sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 
-from cli import _build_docker_cmd, _node_version_key
+from cli import _build_docker_cmd, _node_version_key, _replicate_gemini_auth
 
 
 class TestNodeVersionKey:
@@ -106,6 +106,33 @@ class TestBuildDockerCmd:
         env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
         assert not any("MY_SECRET" in a for a in env_args)
         assert not any("DATABASE_URL" in a for a in env_args)
+
+    def test_forwards_gate_mode_vars(self):
+        """Gate mode env vars must reach the hook subprocess inside the container."""
+        env = {
+            "HYDRATION_GATE_MODE": "block",
+            "CUSTODIET_GATE_MODE": "block",
+            "HANDOVER_GATE_MODE": "warn",
+            "QA_GATE_MODE": "warn",
+            "COMMIT_GATE_MODE": "warn",
+            "CUSTODIET_TOOL_CALL_THRESHOLD": "50",
+        }
+        cmd = self._build(env=env)
+        env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
+        assert "HYDRATION_GATE_MODE=block" in env_args
+        assert "CUSTODIET_GATE_MODE=block" in env_args
+        assert "HANDOVER_GATE_MODE=warn" in env_args
+        assert "QA_GATE_MODE=warn" in env_args
+        assert "COMMIT_GATE_MODE=warn" in env_args
+        assert "CUSTODIET_TOOL_CALL_THRESHOLD=50" in env_args
+
+    def test_forwards_aops_prefixed_env(self):
+        """AOPS_* vars are forwarded (e.g. ACA_DATA, AOPS_SESSIONS)."""
+        env = {"AOPS_SESSIONS": "/tmp/sessions", "AOPS_CUSTOM_VAR": "value"}
+        cmd = self._build(env=env)
+        env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
+        assert "AOPS_SESSIONS=/tmp/sessions" in env_args
+        assert "AOPS_CUSTOM_VAR=value" in env_args
 
     def test_claude_mounts_config(self, tmp_path):
         """Claude config is mounted: .claude.json as temp copy with bypass flag, .claude dir read-write."""
@@ -314,3 +341,70 @@ class TestDetectSystemTimezone:
         with patch("cli.Path", side_effect=lambda p: mock_path):
             result = _detect_system_timezone()
         assert result == "UTC"
+
+
+class TestReplicateGeminiAuth:
+    """Tests for _replicate_gemini_auth extension replication."""
+
+    def test_extensions_are_copied_not_symlinked(self, tmp_path):
+        """Extensions must be copied (not symlinked) because symlinks break inside Docker.
+
+        Bug: symlinks to host paths (e.g. /home/debian/.gemini/extensions/aops-core)
+        don't resolve inside Docker containers, causing 'no extensions installed'.
+        """
+        # Create fake gemini home with extensions
+        gemini_dir = tmp_path / ".gemini"
+        ext_dir = gemini_dir / "extensions" / "aops-core"
+        ext_dir.mkdir(parents=True)
+        (ext_dir / "GEMINI.md").write_text("extension content")
+        (ext_dir / "hooks").mkdir()
+        (ext_dir / "hooks" / "router.sh").write_text("#!/bin/bash")
+
+        # Create enablement file
+        enablement = {"aops-core": {"overrides": ["/home/user/*"]}}
+        (gemini_dir / "extensions" / "extension-enablement.json").write_text(json.dumps(enablement))
+
+        # Create auth file so the function doesn't bail early
+        (gemini_dir / "settings.json").write_text("{}")
+
+        env = {}
+        with patch("cli.Path.home", return_value=tmp_path):
+            result = _replicate_gemini_auth(env)
+
+        assert result is not None
+
+        # Verify extensions were COPIED, not symlinked
+        replicated_ext = result / ".gemini" / "extensions" / "aops-core"
+        assert replicated_ext.exists()
+        assert not replicated_ext.is_symlink(), "Extension should be copied, not symlinked"
+        assert (replicated_ext / "GEMINI.md").read_text() == "extension content"
+        assert (replicated_ext / "hooks" / "router.sh").read_text() == "#!/bin/bash"
+
+        # Clean up
+        import shutil
+
+        shutil.rmtree(result)
+
+    def test_enablement_overrides_are_wildcarded(self, tmp_path):
+        """Extension enablement overrides should be set to '*' for any workspace path."""
+        gemini_dir = tmp_path / ".gemini"
+        ext_dir = gemini_dir / "extensions" / "aops-core"
+        ext_dir.mkdir(parents=True)
+        (ext_dir / "GEMINI.md").write_text("content")
+
+        enablement = {"aops-core": {"overrides": ["/home/user/*"]}}
+        (gemini_dir / "extensions" / "extension-enablement.json").write_text(json.dumps(enablement))
+        (gemini_dir / "settings.json").write_text("{}")
+
+        env = {}
+        with patch("cli.Path.home", return_value=tmp_path):
+            result = _replicate_gemini_auth(env)
+
+        enablement_file = result / ".gemini" / "extensions" / "extension-enablement.json"
+        assert enablement_file.exists()
+        data = json.loads(enablement_file.read_text())
+        assert data["aops-core"]["overrides"] == ["*"]
+
+        import shutil
+
+        shutil.rmtree(result)
