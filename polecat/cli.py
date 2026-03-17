@@ -329,13 +329,20 @@ def _build_docker_cmd(
 
     # Forward specific environment variables to the container
     for key, val in env.items():
-        if key.startswith("POLECAT_") or key in (
-            "AOPS_BOT_GH_TOKEN",
-            "GH_TOKEN",
-            "GITHUB_TOKEN",
-            "ANTHROPIC_API_KEY",
-            "COLORTERM",
-            "FORCE_COLOR",
+        if (
+            key.startswith("POLECAT_")
+            or key.startswith("AOPS_")
+            or key.endswith("_GATE_MODE")
+            or key
+            in (
+                "AOPS_BOT_GH_TOKEN",
+                "GH_TOKEN",
+                "GITHUB_TOKEN",
+                "ANTHROPIC_API_KEY",
+                "COLORTERM",
+                "FORCE_COLOR",
+                "CUSTODIET_TOOL_CALL_THRESHOLD",
+            )
         ):
             cmd.extend(["-e", f"{key}={val}"])
 

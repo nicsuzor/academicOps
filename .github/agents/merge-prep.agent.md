@@ -80,9 +80,9 @@ gh pr comment {pr} --repo {repo} --body "..."
 
 Include a table:
 
-| Source        | Comment         | Action                             |
-| ------------- | --------------- | ---------------------------------- |
-| [Source Name] | [Brief summary] | [Fixed / Dismissed / Deferred]     |
+| Source        | Comment         | Action                         |
+| ------------- | --------------- | ------------------------------ |
+| [Source Name] | [Brief summary] | [Fixed / Dismissed / Deferred] |
 
 ## 7. Approve the PR
 

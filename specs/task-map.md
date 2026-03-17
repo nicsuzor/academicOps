@@ -62,7 +62,7 @@ This means the graph shows: every actionable task, plus its full ancestor chain 
 | Edge style    | Per type (blue solid=parent, red bold=depends_on, gray dashed=soft, dotted=wikilink) | All identical gray                                                                 |
 | Weight label  | `downstream_weight` shown as text                                                    | Not shown                                                                          |
 | Interactivity | Pan/zoom only                                                                        | Pan/zoom, click (posts message but no visible effect), layout switching, filtering |
-| Generation    | Real-time from graph.json                                                           | Real-time from graph.json                                                          |
+| Generation    | Real-time from graph.json                                                            | Real-time from graph.json                                                          |
 
 ### Controls (Interactive Tab)
 
