@@ -22,5 +22,3 @@ Domain skills for academic work. All skills here are **fungible** — designed t
 | `excalidraw`    | `/excalidraw`, "hand-drawn diagram", "excalidraw"        | Hand-drawn diagram creation                         |
 | `flowchart`     | `/flowchart`, "mermaid", "create flowchart"              | Mermaid flowchart generation                        |
 | `extract`       | `/extract`, "extract from", "ingest document"            | General extraction and ingestion routing            |
-
-> Skills not yet migrated — currently in aops-core during transition.
