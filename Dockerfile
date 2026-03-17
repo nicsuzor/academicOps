@@ -44,12 +44,12 @@ RUN npm install -g @google/gemini-cli @anthropic-ai/claude-code markdownlint-cli
 # Install aops and pkb binaries from authoritative releases
 RUN TMPDIR=$(mktemp -d) \
     && PLATFORM="x86_64-linux" \
-    && MEM_LATEST=$(curl -s https://api.github.com/repos/nicsuzor/mem/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/') \
+    && MEM_LATEST=$(gh api repos/nicsuzor/mem/releases/latest --jq .tag_name) \
     && curl -fsSL "https://github.com/nicsuzor/mem/releases/download/${MEM_LATEST}/mem-${MEM_LATEST}-${PLATFORM}.tar.gz" -o "${TMPDIR}/mem.tar.gz" \
     && tar xzf "${TMPDIR}/mem.tar.gz" -C "${TMPDIR}" \
     && cp "${TMPDIR}/pkb" "/usr/local/bin/pkb" \
     && chmod +x "/usr/local/bin/pkb" \
-    && AOPS_LATEST=$(curl -s https://api.github.com/repos/nicsuzor/aops-dist/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/') \
+    && AOPS_LATEST=$(gh api repos/nicsuzor/aops-dist/releases/latest --jq .tag_name) \
     && curl -fsSL "https://github.com/nicsuzor/aops-dist/releases/download/${AOPS_LATEST}/aops-claude-linux-x86_64.tar.gz" -o "${TMPDIR}/aops.tar.gz" \
     && tar xzf "${TMPDIR}/aops.tar.gz" -C "${TMPDIR}" \
     && if [ -f "${TMPDIR}/aops" ]; then cp "${TMPDIR}/aops" "/usr/local/bin/aops"; chmod +x "/usr/local/bin/aops"; fi \
