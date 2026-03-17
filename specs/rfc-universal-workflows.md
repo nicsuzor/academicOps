@@ -36,14 +36,14 @@ These live in `aops-core/workflows/` and are the only workflows the hydrator rou
 
 **Steps**:
 
-1. `plan` — Clarify intent, scope, and audience
+1. `plan` — Clarify intent, scope, and audience `[[base-task-tracking]]`
 2. `draft` — Produce first version (skill-dependent: writing, analyst, hdr, etc.)
 3. `source-check` — Support all claims with appropriate sources `[[base-source-integrity]]`
 4. `self-review` — Evaluate against acceptance criteria
 5. `independent-review` — Get a second opinion before shipping `[[base-verification]]`
 6. `revise` — Address review findings
 7. `ship` — Submit/publish/merge `[[base-commit]]` `[[base-handoff]]`
-8. `capture` — Save what was learned `[[base-memory]]`
+8. `capture` — Save what was learned; mark task complete `[[base-memory]]` `[[base-task-tracking]]`
 
 ---
 
@@ -57,8 +57,8 @@ These live in `aops-core/workflows/` and are the only workflows the hydrator rou
 2. `gather` — Collect relevant information (skill-dependent: literature-search, read-code, recall-memory)
 3. `synthesize` — Integrate findings into a coherent picture
 4. `assess-confidence` — Identify gaps and uncertainty explicitly
-5. `document` — Record findings in appropriate location `[[base-task-tracking]]`
-6. `capture` — Save durable knowledge `[[base-memory]]`
+5. `document` — Record findings in appropriate location
+6. `capture` — Save durable knowledge; mark task complete `[[base-memory]]` `[[base-task-tracking]]`
 
 ---
 
@@ -70,10 +70,10 @@ These live in `aops-core/workflows/` and are the only workflows the hydrator rou
 
 1. `collect` — Gather all items in scope
 2. `classify` — Categorise by type and urgency
-3. `act-or-defer` — For each item: action now, delegate, or defer with explicit reason
-4. `capture-tasks` — Any new commitments go into task system `[[base-task-tracking]]`
+3. `act-or-defer` — For each actionable item: act now, delegate, or defer with explicit reason (non-actionable items — FYI, spam, notifications — pass directly to `archive`)
+4. `capture-tasks` — Any new commitments go into task system
 5. `archive` — Clear processed items
-6. `capture` — Save patterns noticed `[[base-memory]]`
+6. `capture` — Save patterns noticed; mark triage task complete `[[base-memory]]` `[[base-task-tracking]]`
 
 ---
 
