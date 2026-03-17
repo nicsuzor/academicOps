@@ -41,6 +41,20 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 # Install Gemini CLI, Claude Code, and code quality tools globally
 RUN npm install -g @google/gemini-cli @anthropic-ai/claude-code markdownlint-cli2 dprint && npm cache clean --force
 
+# Install aops and pkb binaries from authoritative releases
+RUN TMPDIR=$(mktemp -d) \
+    && PLATFORM="x86_64-linux" \
+    && MEM_LATEST=$(curl -s https://api.github.com/repos/nicsuzor/mem/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/') \
+    && curl -fsSL "https://github.com/nicsuzor/mem/releases/download/${MEM_LATEST}/mem-${MEM_LATEST}-${PLATFORM}.tar.gz" -o "${TMPDIR}/mem.tar.gz" \
+    && tar xzf "${TMPDIR}/mem.tar.gz" -C "${TMPDIR}" \
+    && cp "${TMPDIR}/pkb" "/usr/local/bin/pkb" \
+    && chmod +x "/usr/local/bin/pkb" \
+    && AOPS_LATEST=$(curl -s https://api.github.com/repos/nicsuzor/aops-dist/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/') \
+    && curl -fsSL "https://github.com/nicsuzor/aops-dist/releases/download/${AOPS_LATEST}/aops-claude-linux-x86_64.tar.gz" -o "${TMPDIR}/aops.tar.gz" \
+    && tar xzf "${TMPDIR}/aops.tar.gz" -C "${TMPDIR}" \
+    && if [ -f "${TMPDIR}/aops" ]; then cp "${TMPDIR}/aops" "/usr/local/bin/aops"; chmod +x "/usr/local/bin/aops"; fi \
+    && rm -rf "${TMPDIR}"
+
 # Create app and data directories, hand ownership to worker
 RUN mkdir -p /app /data && chown worker:worker /app /data
 
@@ -69,7 +83,7 @@ COPY --chown=worker:worker . .
 RUN uv sync --frozen --no-dev
 
 # Build distribution artifacts (Claude plugin package)
-RUN uv run python scripts/build.py
+RUN uv run python scripts/build.py --pkb-binary /usr/local/bin/pkb
 
 # Install the aops-core Claude plugin. HOME is already /home/worker so
 # known_marketplaces.json and installLocation paths are correct from the start.

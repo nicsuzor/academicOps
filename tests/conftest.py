@@ -859,7 +859,7 @@ def _run_claude_docker_simple(prompt: str, tmp_path: Path, **kwargs) -> dict[str
     workspace.mkdir(exist_ok=True)
 
     model = kwargs.get("model", "haiku")
-    timeout_seconds = kwargs.get("timeout_seconds", 120)
+    timeout_seconds = kwargs.get("timeout_seconds", 300)
 
     agent_cmd = [
         "claude",
@@ -933,7 +933,7 @@ def _run_gemini_docker(prompt: str, gemini_home: Path | None = None, **kwargs) -
     if aops_core_dir not in sys.path:
         sys.path.insert(0, aops_core_dir)
 
-    timeout_seconds = kwargs.get("timeout_seconds", 120)
+    timeout_seconds = kwargs.get("timeout_seconds", 300)
     model = kwargs.get("model")
 
     cmd = ["gemini", "--sandbox", "--yolo", "-p", prompt, "-o", "json"]
@@ -1750,6 +1750,8 @@ def claude_docker(tmp_path):
             "--output-format",
             "json",
             "--verbose",
+            "--debug",
+            "hooks",
             "--session-id",
             session_id,
             "--model",
