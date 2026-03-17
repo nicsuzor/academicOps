@@ -161,7 +161,7 @@ Break validated epics into structured task trees.
 
 **Workflow files**: `aops-core/skills/planner/workflows/decompose.md`
 
-**References**: `decomposition-patterns.md`, `spike-patterns.md`, `dependency-types.md`, `knowledge-flow.md`
+**References**: [[decomposition-patterns]], [[spike-patterns]], [[dependency-types]], [[knowledge-flow]]
 
 ### explore
 
