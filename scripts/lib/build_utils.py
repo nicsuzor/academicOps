@@ -33,6 +33,7 @@ def write_plugin_version(plugin_dir: Path, commit_sha: str) -> Path:
     }
 
     version_file.write_text(json.dumps(version_data, indent=2))
+    return version_file
 
 
 def safe_copy(src: Path, dst: Path) -> None:
@@ -83,13 +84,66 @@ def convert_gemini_to_antigravity(gemini_mcps: dict[str, Any]) -> dict[str, Any]
     return ag_mcps
 
 
+def check_installed_plugin_version(
+    plugin_name: str,
+    source_commit: str,
+    installed_plugins_path: Path | None = None,
+) -> tuple[bool, str | None]:
+    """Check if installed plugin matches source version.
+
+    Args:
+        plugin_name: Name of plugin (e.g., "aops-core")
+        source_commit: Current git commit SHA of source
+        installed_plugins_path: Path to installed_plugins.json.
+            Defaults to ~/.claude/plugins/installed_plugins.json
+
+    Returns:
+        Tuple of (version_matches: bool, installed_commit: Optional[str]).
+        If plugin is not installed, returns (True, None) — no mismatch to report.
+    """
+    if installed_plugins_path is None:
+        installed_plugins_path = Path.home() / ".claude" / "plugins" / "installed_plugins.json"
+
+    if not installed_plugins_path.exists():
+        return (True, None)
+
+    try:
+        with open(installed_plugins_path) as f:
+            data = json.load(f)
+
+        plugin_key = f"{plugin_name}@aops"
+        plugins = data.get("plugins", {})
+
+        if plugin_key not in plugins:
+            return (True, None)
+
+        installs = plugins[plugin_key]
+        if not installs:
+            return (True, None)
+
+        installed_commit = installs[0].get("gitCommitSha", "")
+        if not installed_commit:
+            return (True, None)
+
+        if installed_commit.startswith(source_commit) or source_commit.startswith(
+            installed_commit[:8]
+        ):
+            return (True, installed_commit)
+
+        return (False, installed_commit)
+
+    except (json.JSONDecodeError, KeyError, IndexError):
+        return (True, None)
+
+
 def emit_version_mismatch_warning(
+    plugin_name: str,
     source_commit: str,
     installed_commit: str,
 ) -> None:
     """Emit a warning about version mismatch between source and installed plugin."""
     print("", file=sys.stderr)
-    print("⚠️  PLUGIN VERSION MISMATCH", file=sys.stderr)
+    print(f"⚠️  PLUGIN VERSION MISMATCH: {plugin_name}", file=sys.stderr)
     print(f"   Source commit:    {source_commit}", file=sys.stderr)
     print(f"   Installed commit: {installed_commit[:8]}...", file=sys.stderr)
     print("   The installed Claude plugin may be outdated.", file=sys.stderr)
