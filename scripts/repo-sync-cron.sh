@@ -92,16 +92,13 @@ do_transcript() {
 do_sync() {
     # Sync all configured git repos and bare mirrors via polecat sync
     echo "==> Syncing repositories..."
-    uv run --directory "${AOPS}" polecat sync --quiet 2>&1 || echo "Warning: polecat sync failed"
+    uv run --project "${AOPS}" "${AOPS}/polecat/cli.py" sync --quiet 2>&1 || echo "Warning: polecat sync failed"
 }
 
 do_viz() {
-    echo "==> Generating PKB visualizations..."
-    if [[ -f "${SCRIPT_DIR}/generate-viz.sh" ]]; then
-        "${SCRIPT_DIR}/generate-viz.sh" --quick 2>&1 || echo "Warning: generate-viz failed"
-    else
-        echo "Warning: ${SCRIPT_DIR}/generate-viz.sh not found"
-    fi
+    # generate-viz.sh was removed in f54164d (task_graph scripts deleted).
+    # Placeholder for future viz generation if needed.
+    echo "==> Viz generation: skipped (no generate-viz.sh)"
 }
 
 # ============================================================================
