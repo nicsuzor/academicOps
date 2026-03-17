@@ -1,5 +1,7 @@
 # academicOps
 
+**Core value**: You can delegate execution to AI without delegating judgment. academicOps is the structural guarantee that academic integrity obligations are enforced at the right moments — even when the human isn't paying attention. The framework compensates for human non-meticulousness through structural enforcement.
+
 A constitutional framework for governing autonomous AI agents with:
 
 1. **_Ultra vires_ detection** ensures that agents operate within zones of autonomy bounded by their grant of authority — using public law theory to identify when discretionary choices become invalid.
@@ -122,7 +124,9 @@ The orchestration layer is separate from the work hierarchy:
 WORKFLOW  →  STEP  →  SKILL  →  PROCEDURE
 ```
 
-**Workflows** define WHAT to do and in WHAT order — they're the Bazaar's quality guarantee. **Skills** define HOW to execute a single step. Skills are **fungible**: you could swap the Outlook skill for the Gmail skill to satisfy "check email" and the workflow wouldn't change. This is what makes the Bazaar model work — different agents with different skills can fill different steps, and quality comes from the workflow structure, not from micromanaging agents. **Procedures** are skill-internal instructions that only make sense within their skill (stored in `skills/*/procedures/`, not `workflows/`).
+**Workflows** are integrity obligation profiles — they define what academic integrity obligations apply to a type of work, not what sequence of steps to follow. Workflow selection calibrates verification level to stakes: reversibility, audience, downstream use, and novelty determine which obligations apply. Workflows are the Bazaar's quality guarantee. **Skills** define HOW to execute a single step. Skills are **fungible**: you could swap the Outlook skill for the Gmail skill to satisfy "check email" and the workflow wouldn't change. **Procedures** are skill-internal instructions (stored in `skills/*/procedures/`, not `workflows/`).
+
+**Overlays** are obligations that must be satisfied — they do not mandate sequence. Only logical dependencies constrain when an obligation must be fulfilled. The Bazaar model supports creative reordering: post-publication peer review is as valid as pre-submission review; the traditional linear academic production sequence is one path, not the only one.
 
 ## Agent architecture
 
@@ -133,6 +137,17 @@ WORKFLOW  →  STEP  →  SKILL  →  PROCEDURE
 | **critic**            | Reviews execution plans for errors and hidden assumptions            |
 | **qa**                | Independent verification against acceptance criteria                 |
 | **effectual-planner** | Strategic planning under genuine uncertainty                         |
+
+## Two-layer architecture
+
+The framework has two layers with fundamentally different design principles:
+
+| Layer                             | Examples                                                                        | Design principle                                                   |
+| --------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| **Core epistemic infrastructure** | Planning/task graph, memory (PKB), calibrated QA, traceability, reflection loop | Non-fungible. Maintain deeply. Evolve carefully based on evidence. |
+| **Domain skills**                 | Email, Streamlit, PDF, reference letters, student supervision                   | Fungible. Design thin. Retire when external tools catch up.        |
+
+Domain skills exist only because no better external solution exists _yet_. The framework should be designed to shrink gracefully — when a better tool appears, drop the internal skill. Less maintenance is better, not worse.
 
 ## Skills and commands
 
