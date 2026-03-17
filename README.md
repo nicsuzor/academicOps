@@ -124,7 +124,7 @@ The orchestration layer is separate from the work hierarchy:
 WORKFLOW  →  STEP  →  SKILL  →  PROCEDURE
 ```
 
-**Workflows** are integrity obligation profiles — they define what academic integrity obligations apply to a type of work, not what sequence of steps to follow. Workflow selection calibrates verification level to stakes: reversibility, audience, downstream use, and novelty determine which obligations apply. Workflows are the Bazaar's quality guarantee. **Skills** define HOW to execute a single step. Skills are **fungible**: you could swap the Outlook skill for the Gmail skill to satisfy "check email" and the workflow wouldn't change. **Procedures** are skill-internal instructions (stored in `skills/*/procedures/`, not `workflows/`).
+**Workflows** are integrity obligation profiles — they define what academic integrity obligations apply to a type of work, but do not mandate a strict sequence for the steps involved. Workflow selection calibrates verification level to stakes: reversibility, audience, downstream use, and novelty determine which obligations apply. Workflows are the Bazaar's quality guarantee. **Skills** define HOW to execute a single step. Skills are **fungible**: you could swap the Outlook skill for the Gmail skill to satisfy "check email" and the workflow wouldn't change. **Procedures** are skill-internal instructions (stored in `skills/*/procedures/`, not `workflows/`).
 
 **Overlays** are obligations that must be satisfied — they do not mandate sequence. Only logical dependencies constrain when an obligation must be fulfilled. The Bazaar model supports creative reordering: post-publication peer review is as valid as pre-submission review; the traditional linear academic production sequence is one path, not the only one.
 
