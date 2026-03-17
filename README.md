@@ -194,7 +194,8 @@ export ACA_DATA="$HOME/brain"     # Your knowledge base (NOT in this repo)
 command claude plugin marketplace add nicsuzor/aops-dist
 
 # Domain tools (optional — fungible, retire when better tools exist)
-# aops-tools requires a separate plugin repo; see aops-tools/.claude-plugin/
+# Claude Code supports multiple simultaneous plugins; install alongside aops-core
+# command claude plugin marketplace add nicsuzor/aops-dist  # (aops-tools package)
 ```
 
 **Gemini CLI** — both packages install from aops-dist:
