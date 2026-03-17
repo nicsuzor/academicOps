@@ -219,6 +219,8 @@ make install-hooks         # activate pre-commit hooks
 
 Or use `make install-dev` to build, install the plugin locally, and activate hooks in one step.
 
+> **Note**: `scripts/build.py` auto-creates git tags (`vX.X.X`, `latest`) as a side effect. After test builds, clean them up: `git tag -d vX.X.X latest`.
+
 ## Project configuration
 
 Projects customise the framework by adding files to a `.agent/` directory:
