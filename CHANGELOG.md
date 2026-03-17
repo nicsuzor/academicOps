@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.10](https://github.com/nicsuzor/academicOps/compare/v0.3.9...v0.3.10) (2026-03-16)
+
+
+### Bug Fixes
+
+* **build:** restore hooks wrapper in Gemini hooks.json ([fbf083b](https://github.com/nicsuzor/academicOps/commit/fbf083b6d859b40b5b570ab07c6f18aefbbbd0ed))
+* **build:** restore hooks wrapper in Gemini hooks.json — hooks must be an object ([835b143](https://github.com/nicsuzor/academicOps/commit/835b1430b782d42643838e9ebba4daad8235002b))
+
 ## [0.3.9](https://github.com/nicsuzor/academicOps/compare/v0.3.8...v0.3.9) (2026-03-16)
 
 ### Bug Fixes

@@ -7,7 +7,6 @@
 #
 # Usage:
 #   ./scripts/repo-sync-cron.sh              # Full: transcript + sync
-#   ./scripts/repo-sync-cron.sh --quick      # Quick: transcript + sync (same as full)
 #   ./scripts/repo-sync-cron.sh transcript   # Just transcript
 #   ./scripts/repo-sync-cron.sh sync         # Just sync
 #   ./scripts/repo-sync-cron.sh transcript sync  # Specific combination
@@ -99,11 +98,6 @@ do_sync() {
 if [[ $# -eq 0 ]]; then
     # Full run: transcript + sync
     echo "${TS} repo-sync-cron starting (full)"
-    do_transcript
-    do_sync
-elif [[ "${1:-}" == "--quick" ]]; then
-    # Quick run: same as full
-    echo "${TS} repo-sync-cron starting (quick)"
     do_transcript
     do_sync
 else
