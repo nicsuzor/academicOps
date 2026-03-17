@@ -17,13 +17,13 @@ The roster is iterative. Agents are added as they prove useful, not designed upf
 
 ## Roster
 
-| Agent        | Charter                                                               | Local Skill       | GitHub Agent                                                             | Mechanical (Hook/Gate)                  |
-| ------------ | --------------------------------------------------------------------- | ----------------- | ------------------------------------------------------------------------ | --------------------------------------- |
-| **Hydrator** | Context enrichment: transform terse prompts into rich execution plans | `prompt-hydrator` | --                                                                       | hydration gate, `user_prompt_submit.py` |
-| **Auditor**  | Rule enforcement: check compliance with axioms and heuristics         | `custodiet`       | `auditor.agent.md`                                                       | `policy_enforcer.py`                    |
-| **Critic**   | Strategic review: evaluate plans, assumptions, and VISION alignment   | `critic`          | `critic.agent.md` (file: `assessor.agent.md`†), `summary-brief.agent.md` | --                                      |
-| **QA**       | Acceptance testing: prove things work, don't just review on paper     | `qa`              | `qa.agent.md`                                                            | QA gate                                 |
-| **Advocate** | Voice matching: ensure external-facing text sounds like the user      | -- (future)       | -- (future)                                                              | --                                      |
+| Agent        | Charter                                                               | Local Skill | GitHub Agent                                                             | Mechanical (Hook/Gate)                  |
+| ------------ | --------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------ | --------------------------------------- |
+| **Hydrator** | Context enrichment: transform terse prompts into rich execution plans | `hydrator`  | --                                                                       | hydration gate, `user_prompt_submit.py` |
+| **Auditor**  | Rule enforcement: check compliance with axioms and heuristics         | `custodiet` | `auditor.agent.md`                                                       | `policy_enforcer.py`                    |
+| **Critic**   | Strategic review: evaluate plans, assumptions, and VISION alignment   | `critic`    | `critic.agent.md` (file: `assessor.agent.md`†), `summary-brief.agent.md` | --                                      |
+| **QA**       | Acceptance testing: prove things work, don't just review on paper     | `qa`        | `qa.agent.md`                                                            | QA gate                                 |
+| **Advocate** | Voice matching: ensure external-facing text sounds like the user      | -- (future) | -- (future)                                                              | --                                      |
 
 Workers (polecats) execute bounded tasks. They use `worker` skill locally and `worker.agent.md` / `merge-prep.agent.md` on GitHub. They are not Curia governance agents.
 

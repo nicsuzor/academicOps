@@ -75,7 +75,7 @@ def test_get_spec_returns_correct_spec(registry):
     spec = registry.get_spec("hydration.block")
     assert spec.name == "hydration.block"
     assert spec.filename == "hydration-gate-block.md"
-    assert "temp_path" in spec.required_vars
+    assert spec.required_vars == ()
 
 
 def test_get_spec_unknown_raises(registry):

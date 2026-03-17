@@ -160,7 +160,7 @@ See `procedures/review-inline-comments.md` for detailed procedure.
 
 **Generalized patterns** → Framework (public repo):
 
-- `aops-core/workflows/peer-review.md` (update with principles)
+- `aops-core/skills/hydrator/workflows/peer-review.md` (update with principles)
 - `aops-core/skills/*/references/` (depersonalized examples)
 - No names, no specific unpublished content, no identifying details
 
@@ -296,7 +296,7 @@ When adding examples to public framework docs:
 3. Extracts 18 feedback units
 4. Identifies 10 generalisable principles
 5. Stores sensitive data in `$ACA_DATA/processed/review_training/aoir2026/`
-6. Updates `aops-core/workflows/peer-review.md` with depersonalized principles
+6. Updates `aops-core/skills/hydrator/workflows/peer-review.md` with depersonalized principles
 
 ### Example 2: Email Archive
 

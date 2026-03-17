@@ -73,7 +73,8 @@ Sort by Type (command first) then Name.
 
 **WORKFLOWS.md Validation**:
 
-- Every `[[workflow-id]]` in the index MUST have a corresponding file in `workflows/workflow-id.md`.
+- WORKFLOWS.md now lives in `skills/hydrator/WORKFLOWS.md` (owned by the hydrator skill).
+- Every `[[workflow-id]]` in the index MUST have a corresponding file in `skills/hydrator/workflows/workflow-id.md`.
 - Report any phantom workflows in the audit report.
 
 **Generated File Header**:

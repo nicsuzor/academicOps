@@ -41,4 +41,4 @@ jobs:
       - name: Run pytest
         env:
           AOPS: ${{ github.workspace }}
-        run: uv run pytest -m "not requires_local_env"
+        run: uv run pytest

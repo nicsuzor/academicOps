@@ -69,7 +69,7 @@ class TestAgentNameSeparation:
 class TestSpawnToolsInSpawnCategory:
     """All spawn tool names must be in spawn category (subject to hydration gate).
 
-    EXEMPTION: Compliance agents (e.g. prompt-hydrator) are spawning tools but
+    EXEMPTION: Compliance agents (e.g. hydrator) are spawning tools but
     must bypass gates as infrastructure.
     """
 
@@ -133,8 +133,7 @@ class TestComplianceSubagentTypes:
 
     def test_hydrator_variants(self):
         assert "hydrator" in COMPLIANCE_SUBAGENT_TYPES
-        assert "prompt-hydrator" in COMPLIANCE_SUBAGENT_TYPES
-        assert "aops-core:prompt-hydrator" in COMPLIANCE_SUBAGENT_TYPES
+        assert "aops-core:hydrator" in COMPLIANCE_SUBAGENT_TYPES
 
     def test_custodiet_variants(self):
         assert "custodiet" in COMPLIANCE_SUBAGENT_TYPES

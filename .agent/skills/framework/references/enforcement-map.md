@@ -25,7 +25,7 @@ This document tracks all enforcement mechanisms in the academicOps framework.
 
 | Hook                     | Mode       | Description                                  |
 | ------------------------ | ---------- | -------------------------------------------- |
-| `hydration_gate.py`      | warn/block | Blocks until prompt-hydrator invoked         |
+| `hydration_gate.py`      | warn/block | Blocks until hydrator invoked                |
 | `command_intercept.py`   | transform  | Transforms tool inputs (e.g., Glob excludes) |
 | `overdue_enforcement.py` | warn       | Injects reminders for overdue tasks          |
 

@@ -13,9 +13,7 @@ parent: overwhelm-dashboard
 
 ## Giving Effect
 
-- [[scripts/task_graph.py]] — DOT/SVG graph generation from `aops graph` output (Graphviz sfdp)
 - [[lib/overwhelm/dashboard.py]] — Streamlit rendering: D3 interactive graph
-- [[skills/task-viz/SKILL.md]] — Task visualization skill (JSON, GraphML, DOT output)
 - [[mcp__pkb__get_network_metrics]] — Graph metrics for dashboard
 - `aops graph` CLI — Computes graph.json, including `downstream_weight`, `stakeholder_exposure`, parent/child/dependency relationships
 
@@ -42,7 +40,7 @@ These constrain all design decisions for the task map:
 
 ## Current Implementation
 
-### Filtering: `filter_reachable` (in `scripts/task_graph.py`)
+### Filtering: `filter_reachable`
 
 The default view runs the `filter_reachable` algorithm:
 
@@ -64,7 +62,7 @@ This means the graph shows: every actionable task, plus its full ancestor chain 
 | Edge style    | Per type (blue solid=parent, red bold=depends_on, gray dashed=soft, dotted=wikilink) | All identical gray                                                                 |
 | Weight label  | `downstream_weight` shown as text                                                    | Not shown                                                                          |
 | Interactivity | Pan/zoom only                                                                        | Pan/zoom, click (posts message but no visible effect), layout switching, filtering |
-| Generation    | Requires running `/task-viz` skill; can go stale                                     | Real-time from graph.json                                                          |
+| Generation    | Real-time from graph.json                                                           | Real-time from graph.json                                                          |
 
 ### Controls (Interactive Tab)
 
@@ -310,7 +308,6 @@ The task map handles the **structural overview**. These adjacent needs belong to
 ## Related
 
 - [[Overwhelm Dashboard]] — Parent spec; the task map is one section of this dashboard
-- [[task-viz]] — Standalone graph visualization skill
 - `aops graph` CLI — Produces graph.json consumed by both SVG and interactive renderers
 - [[pkb-server-spec]] — PKB data model and MCP tools
 - [[effectual-planning-agent]] — Strategic planning vision that the task map supports

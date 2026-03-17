@@ -483,6 +483,7 @@ class TestCredentialBridgeHook:
 
 @pytest.mark.slow
 @pytest.mark.integration
+@pytest.mark.requires_local_env
 class TestClaudeCredentialIsolation:
     """E2E tests: verify Claude Code gets bot token via unified env mapping."""
 
@@ -550,6 +551,7 @@ class TestClaudeCredentialIsolation:
 
 @pytest.mark.slow
 @pytest.mark.integration
+@pytest.mark.requires_local_env
 class TestGeminiCredentialIsolation:
     """E2E tests: verify Gemini CLI gets bot token via unified env mapping.
 

@@ -139,7 +139,7 @@ class TestAskUserQuestionAlwaysAvailable:
 class TestComplianceSpawnBypassesHydration:
     """Compliance agents dispatched via spawn tools bypass hydration gate.
 
-    activate_skill(name='prompt-hydrator') extracts subagent_type='prompt-hydrator'
+    activate_skill(name='hydrator') extracts subagent_type='hydrator'
     which is a compliance type -> bypasses gate policies. This is the compliance
     bypass, NOT a property of activate_skill itself.
     """
@@ -150,13 +150,13 @@ class TestComplianceSpawnBypassesHydration:
             session_id="test-session-123",
             hook_event="PreToolUse",
             tool_name="activate_skill",
-            tool_input={"name": "prompt-hydrator"},
+            tool_input={"name": "hydrator"},
         )
 
     def test_compliance_skill_allowed_when_hydration_closed(
         self, mock_context, mock_session_state, hydration_mode
     ):
-        """activate_skill(prompt-hydrator) allowed via compliance bypass in any mode."""
+        """activate_skill(hydrator) allowed via compliance bypass in any mode."""
         state, _ = mock_session_state
         state.gates["hydration"].status = "closed"
         state.state["hydration_pending"] = True
@@ -219,7 +219,7 @@ class TestTaskHydratorSpawn:
             hook_event="PreToolUse",
             tool_name="Task",
             tool_input={
-                "subagent_type": "aops-core:prompt-hydrator",
+                "subagent_type": "aops-core:hydrator",
                 "prompt": "Hydrate this task",
             },
         )
@@ -240,7 +240,7 @@ class TestTaskHydratorSpawn:
             hook_event="PreToolUse",
             tool_name="Agent",
             tool_input={
-                "subagent_type": "aops-core:prompt-hydrator",
+                "subagent_type": "aops-core:hydrator",
                 "prompt": "Hydrate this task",
             },
         )
@@ -316,14 +316,14 @@ class TestReadToolSubjectToHydration:
 class TestAgentNamesNotInToolCategories:
     """Agent/skill names must NOT be in TOOL_CATEGORIES.
 
-    Agent names like 'prompt-hydrator' and 'custodiet' are subagent_type
+    Agent names like 'hydrator' and 'custodiet' are subagent_type
     values, not tool names. They should be in COMPLIANCE_SUBAGENT_TYPES
     instead of any tool category.
     """
 
     AGENT_NAMES = [
-        "prompt-hydrator",
-        "aops-core:prompt-hydrator",
+        "hydrator",
+        "aops-core:hydrator",
         "custodiet",
         "aops-core:custodiet",
         "qa",
@@ -345,7 +345,7 @@ class TestAgentNamesNotInToolCategories:
             )
 
     def test_compliance_subagent_types_has_expected_members(self):
-        expected = {"prompt-hydrator", "custodiet", "audit"}
+        expected = {"hydrator", "custodiet", "audit"}
         for name in expected:
             assert (
                 name in COMPLIANCE_SUBAGENT_TYPES

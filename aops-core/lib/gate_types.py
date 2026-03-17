@@ -54,6 +54,12 @@ class GateCondition(BaseModel):
     min_turns_since_open: int | None = None
     min_turns_since_close: int | None = None
 
+    # Declarative subagent/prompt filters (avoids custom_check for simple cases)
+    exclude_if_subagent: bool = False  # Skip if ctx.is_subagent is True
+    prompt_exclude_patterns: list[str] = Field(
+        default_factory=list
+    )  # Regex list: skip if any matches the prompt (stripped)
+
     # Custom logic key (resolved in engine)
     custom_check: str | None = None
 

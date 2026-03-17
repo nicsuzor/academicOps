@@ -37,9 +37,6 @@ on:
 jobs:
   axiom-review:
     name: Axiom Review
-    if: >-
-      github.event_name != 'pull_request' ||
-      github.event.pull_request.user.login != 'github-actions[bot]'
     runs-on: ubuntu-latest
     concurrency:
       group: axiom-review-${{ inputs.pr_number || github.event.pull_request.number }}
@@ -53,11 +50,13 @@ jobs:
       actions: read
     steps:
       - uses: actions/checkout@v4
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]'
         with:
           fetch-depth: 0
           ref: ${{ inputs.ref || github.event.pull_request.head.ref }}
 
       - name: Read agent instructions
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]'
         id: prompt
         run: |
           PROMPT=$(cat .github/agents/auditor.agent.md)
@@ -68,6 +67,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Determine PR info
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]'
         id: pr-info
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
@@ -82,6 +82,7 @@ jobs:
           GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
 
       - name: Run Axiom Review
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]'
         id: review
         uses: anthropics/claude-code-action@v1
         env:

@@ -1,6 +1,6 @@
 [project]
 name = "academicops"
-version = "0.3.2"
+version = "0.3.10"
 description = "Academic Operations Framework"
 requires-python = ">=3.11"
 dependencies = [
@@ -18,18 +18,6 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Visualization tools (streamlit dashboard, graph visualization)
-viz = [
-  "streamlit>=1.54.0",
-  "streamlit-agraph>=0.0.45",
-  "networkx>=3.6.1",
-  "matplotlib>=3.10.8",
-]
-# OGDF graph layout (C++ bindings, ~60MB)
-ogdf = [
-  "ogdf-python>=0.3.4",
-  "cppyy>=3.5.0",
-]
 # Statistical analysis (analyst skill)
 analysis = [
   "scipy>=1.17.0",
@@ -64,7 +52,6 @@ dev = [
   "jsonschema>=4.26.0",
   # Git hooks
   "pre-commit>=4.5.1",
-  "bump-my-version>=1.2.6",
   "dprint-py>=0.51.1.0",
 ]
 
@@ -172,11 +159,11 @@ log_cli = true
 log_cli_level = "INFO"
 log_cli_format = "%(asctime)s [%(levelname)8s] %(message)s (%(filename)s:%(lineno)s)"
 log_cli_date_format = "%Y-%m-%d %H:%M:%S"
-addopts = "-n 16 -m 'not slow and not integration and not requires_local_env'"
+addopts = "-n 16 -m 'not slow and not integration and not demo'"
 markers = [
   "slow: marks tests as slow (run with '-m slow')",
   "integration: marks tests as integration tests",
   "metrics: observability tests that report metrics (run with '-m metrics')",
   "demo: demo tests showing real behavior (run with '-k demo -v -s -n 0')",
-  "requires_local_env: marks tests that require a local environment/history (skipped in CI)",
+  "requires_local_env: tests needing local CLI tools or AOPS env (skipped in CI with '-m not requires_local_env')",
 ]

@@ -10,7 +10,7 @@ Usage:
     from lib.template_registry import TemplateRegistry
 
     registry = TemplateRegistry.instance()
-    content = registry.render("hydration.block", {"temp_path": "/path/to/ctx.md"})
+    content = registry.render("hydration.block", {})
 
 Exit behavior: Functions raise exceptions (fail-fast P#8). Callers handle graceful degradation.
 """
@@ -77,7 +77,7 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         name="hydration.block",
         category=TemplateCategory.USER_MESSAGE,
         filename="hydration-gate-block.md",
-        required_vars=("temp_path",),
+        required_vars=(),
         optional_vars=("session_id", "client_type"),
         description="Block message when hydration gate denies tool",
         env_override="HYDRATION_BLOCK_TEMPLATE",
@@ -86,52 +86,19 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         name="hydration.warn",
         category=TemplateCategory.USER_MESSAGE,
         filename="hydration-gate-warn.md",
-        required_vars=("temp_path",),
+        required_vars=(),
         optional_vars=("session_id", "client_type"),
         description="Warning when hydration gate is in warn mode",
         env_override="HYDRATION_WARN_TEMPLATE",
     ),
     # --- Prompt hydrator ---
-    "hydration.context": TemplateSpec(
-        name="hydration.context",
-        category=TemplateCategory.SUBAGENT_INSTRUCTION,
-        filename="prompt-hydrator-context.md",
-        required_vars=(
-            "session_context",
-            "axioms_content",
-            "heuristics_content",
-            "skills_content",
-        ),
-        optional_vars=(
-            "prompt",
-            "framework_paths",
-            "mcp_tools",
-            "env_vars",
-            "project_paths",
-            "project_context_index",
-            "project_rules",
-            "relevant_files",
-            "workflows_index",
-            "skills_index",
-            "axioms",
-            "heuristics",
-            "task_state",
-            "scripts_index",
-            "session_id",
-            "gate_name",
-            "tool_name",
-            "custodiet_mode",
-            "glossary",
-        ),
-        description="Unified context for hydration gate",
-    ),
     "hydrator.instruction": TemplateSpec(
         name="hydrator.instruction",
         category=TemplateCategory.CONTEXT_INJECTION,
         filename="prompt-hydration-instruction.md",
-        required_vars=("temp_path",),
+        required_vars=(),
         optional_vars=("client_type",),
-        description="Instruction to invoke prompt hydrator",
+        description="Instruction to invoke hydrator skill",
     ),
     # --- Hydration gate: trigger messages ---
     "hydration.opened": TemplateSpec(

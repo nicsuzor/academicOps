@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -19,7 +21,17 @@ from manager import PolecatManager
 from validation import TaskIDValidationError, validate_task_id_or_raise
 
 
-def _make_worker_env() -> dict[str, str]:
+def _node_version_key(p: Path) -> tuple[int, ...]:
+    """Sort key for NVM node version directories using semver comparison.
+
+    Lexicographic sorting gets v9.x.x > v20.x.x wrong because '9' > '2'.
+    This extracts numeric components for correct ordering.
+    """
+    m = re.match(r"v?(\d+)\.(\d+)\.(\d+)", p.name)
+    return tuple(int(x) for x in m.groups()) if m else (0, 0, 0)
+
+
+def _make_worker_env(interactive: bool = False) -> dict[str, str]:
     """Create a sanitized environment for polecat/crew worker subprocesses.
 
     Strips SSH credentials and maps git auth to the bot token, ensuring
@@ -27,20 +39,38 @@ def _make_worker_env() -> dict[str, str]:
     This runs agent-env-map.conf mappings eagerly (before subprocess launch)
     rather than relying on the SessionStart hook inside the child process.
     It also ensures 'uv' and other critical binaries are in the PATH.
+    It also enables 24-bit color mode if interactive is True.
     """
     env = os.environ.copy()
     apply_env_mappings(env)
+
+    if interactive:
+        # Enable 24-bit color (TrueColor) for interactive sessions
+        env["COLORTERM"] = "truecolor"
+        env["FORCE_COLOR"] = "3"  # 3 = 24-bit color for Node.js chalk and others
 
     # Ensure uv is in PATH for hooks and agent tools
     current_path = env.get("PATH", "")
     path_segments = [s for s in current_path.split(os.pathsep) if s]
 
     # Prepend common user-level bin paths if they exist and are not already in PATH.
-    # We only prepend user bin paths to avoid messing with system binary precedence.
+    # Include nvm-managed node bin (for gemini/claude CLIs installed via npm).
+    nvm_dir = os.environ.get("NVM_DIR", str(Path.home() / ".nvm"))
+    nvm_bin = os.environ.get("NVM_BIN", "")
     user_bin_paths = [
         str(Path.home() / ".local" / "bin"),
         str(Path.home() / "bin"),
     ]
+    # Add NVM bin if set, otherwise scan for nvm node versions
+    if nvm_bin:
+        user_bin_paths.append(nvm_bin)
+    elif os.path.isdir(nvm_dir):
+        versions_dir = Path(nvm_dir) / "versions" / "node"
+        if versions_dir.is_dir():
+            # Use the most recent node version's bin (semver sort, not lexicographic)
+            node_versions = sorted(versions_dir.iterdir(), key=_node_version_key, reverse=True)
+            if node_versions:
+                user_bin_paths.append(str(node_versions[0] / "bin"))
     for p in reversed(user_bin_paths):
         if os.path.isdir(p) and p not in path_segments:
             path_segments.insert(0, p)
@@ -145,12 +175,48 @@ def save_worker_transcript(
         raise OSError(f"Failed to save transcript for task {task_id}: {e}") from e
 
 
+def _detect_system_timezone() -> str:
+    """Detect system timezone from /etc/localtime or /etc/timezone. Returns 'UTC' if undetectable."""
+    try:
+        tz_link = Path("/etc/localtime")
+        if tz_link.is_symlink():
+            target = str(tz_link.resolve())
+            # /etc/localtime -> /usr/share/zoneinfo/Region/City
+            marker = "/zoneinfo/"
+            idx = target.find(marker)
+            if idx != -1:
+                return target[idx + len(marker) :]
+    except OSError:
+        pass
+    try:
+        tz_file = Path("/etc/timezone")
+        if tz_file.exists():
+            return tz_file.read_text().strip()
+    except OSError:
+        pass
+    return "UTC"
+
+
 def _build_docker_cmd(
-    cli_tool: str, work_dir: Path, env: dict, agent_cmd: list[str], is_interactive: bool
+    cli_tool: str,
+    work_dir: Path,
+    env: dict,
+    agent_cmd: list[str],
+    is_interactive: bool,
+    tmp_files: list[Path] | None = None,
+    session_dir: Path | None = None,
 ) -> list[str]:
-    """Wraps an agent command in a Docker run command with appropriate mounts."""
-    # Use environment variable for image, or default to the one built by test-docker
-    image = os.environ.get("POLECAT_DOCKER_IMAGE", "aops-env-test")
+    """Wraps an agent command in a Docker run command with appropriate mounts.
+
+    If tmp_files is provided, any temporary files created (e.g. modified .claude.json)
+    are appended to it so callers can clean them up.
+
+    If session_dir is provided and cli_tool is "claude" or "shell", mounts it at
+    /home/worker/.claude/projects so Claude session transcripts persist on the host.
+    """
+    # Use POLECAT_DOCKER_IMAGE if set, otherwise default to the aops-crew image
+    # built from the repo root Dockerfile via `make build-docker`.
+    image = os.environ.get("POLECAT_DOCKER_IMAGE", "aops-crew")
 
     cmd = ["docker", "run", "--rm"]
 
@@ -160,38 +226,275 @@ def _build_docker_cmd(
     else:
         cmd.append("-i")
 
-    # User / Permissions (run as root in container to avoid uid mapping issues for now, or match host)
-    # The sandbox image sets up /app, we mount into /workspace
+    # Run as current user — Claude Code refuses --dangerously-skip-permissions under root
+    uid = os.getuid()
+    gid = os.getgid()
+    cmd.extend(["--user", f"{uid}:{gid}"])
+    # Use /home/worker as container home — NOT --tmpfs on $HOME.
+    # Docker --tmpfs mounts override bind mounts at the same path, hiding
+    # .claude/ and .claude.json and causing Claude to hang on startup.
+    container_home = "/home/worker"
+    # HOME is set in the image ENV; no need to pass it at runtime
+
+    # Timezone — match host timezone for consistent timestamps in commits/logs
+    tz = os.environ.get("TZ") or _detect_system_timezone()
+    cmd.extend(["-e", f"TZ={tz}"])
+
+    # Git identity — required for git commit inside the container
+    git_name = os.environ.get("GIT_AUTHOR_NAME", "aops-bot")
+    git_email = os.environ.get("GIT_AUTHOR_EMAIL", "aops-bot@users.noreply.github.com")
+    cmd.extend(["-e", f"GIT_AUTHOR_NAME={git_name}"])
+    cmd.extend(["-e", f"GIT_AUTHOR_EMAIL={git_email}"])
+    cmd.extend(["-e", f"GIT_COMMITTER_NAME={git_name}"])
+    cmd.extend(["-e", f"GIT_COMMITTER_EMAIL={git_email}"])
 
     # Mount worktree
     cmd.extend(["-v", f"{work_dir.resolve()}:/workspace"])
     cmd.extend(["-w", "/workspace"])
 
-    # Mount authentication for Claude
+    # Mount authentication and plugin cache for Claude
+    # Also mount for "shell" mode so users can run claude interactively
     home = Path.home()
-    if cli_tool == "claude":
+    if cli_tool in ("claude", "shell"):
         claude_json = home / ".claude.json"
         claude_dir = home / ".claude"
         if claude_json.exists():
-            cmd.extend(["-v", f"{claude_json}:/root/.claude.json"])
+            # Claude needs bypassPermissionsModeAccepted=true for --dangerously-skip-permissions
+            # to work without an interactive prompt. Create a temp copy with this flag set
+            # rather than modifying the user's actual config.
+            with open(claude_json) as f:
+                config = json.load(f)
+            config["bypassPermissionsModeAccepted"] = True
+            # Use NamedTemporaryFile (not deprecated mktemp) with delete=False
+            # so the file persists for Docker to mount. Caller cleans up via tmp_files.
+            tmp_fd = tempfile.NamedTemporaryFile(suffix=".claude.json", delete=False, mode="w")
+            json.dump(config, tmp_fd)
+            tmp_fd.close()
+            tmp_claude_json = Path(tmp_fd.name)
+            if tmp_files is not None:
+                tmp_files.append(tmp_claude_json)
+            cmd.extend(["-v", f"{tmp_claude_json}:{container_home}/.claude.json"])
         if claude_dir.exists():
-            cmd.extend(["-v", f"{claude_dir}:/root/.claude"])
+            # Mount only the auth files Claude needs at runtime — not the whole directory.
+            # The plugin installation is baked into the image (see Dockerfile), so mounting
+            # the full ~/.claude dir would override the image's plugin data with the host's
+            # (potentially stale or wrong-path) copy.
+            for auth_file in (".credentials.json", ".mcp.json"):
+                src = claude_dir / auth_file
+                if src.exists():
+                    cmd.extend(["-v", f"{src}:{container_home}/.claude/{auth_file}:ro"])
+
+    # Mount Gemini auth files for "shell" mode so users can run gemini interactively.
+    # Gemini normally handles its own sandbox, but in shell mode we're managing Docker.
+    if cli_tool == "shell":
+        gemini_dir = home / ".gemini"
+        if gemini_dir.exists():
+            for auth_file in (
+                "settings.json",
+                "google_accounts.json",
+                "oauth_creds.json",
+                "installation_id",
+                "trustedFolders.json",
+            ):
+                src = gemini_dir / auth_file
+                if src.exists():
+                    cmd.extend(["-v", f"{src}:{container_home}/.gemini/{auth_file}:ro"])
+            # Also forward GEMINI_API_KEY if set
+            gemini_key = env.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
+            if gemini_key:
+                cmd.extend(["-e", f"GEMINI_API_KEY={gemini_key}"])
+
+    # Mount Docker socket for Docker-outside-of-Docker (build/test inside agents).
+    # Pass the socket's gid so the non-root container user can access it — the gid
+    # varies by host so we read it from the socket file rather than hardcoding.
+    docker_sock = Path("/var/run/docker.sock")
+    if docker_sock.exists():
+        docker_gid = docker_sock.stat().st_gid
+        cmd.extend(["--group-add", str(docker_gid)])
+        cmd.extend(["-v", "/var/run/docker.sock:/var/run/docker.sock"])
+
+    # Mount pkb binary for MCP server (plugin config references 'pkb' from PATH)
+    pkb_bin = shutil.which("pkb")
+    if pkb_bin:
+        cmd.extend(["-v", f"{pkb_bin}:/usr/local/bin/pkb:ro"])
+
+    # Mount ACA_DATA for PKB access (read-write — agents may update tasks)
+    aca_data = env.get("ACA_DATA") or os.environ.get("ACA_DATA")
+    if aca_data and os.path.isdir(aca_data):
+        cmd.extend(["-v", f"{aca_data}:{aca_data}"])
+        cmd.extend(["-e", f"ACA_DATA={aca_data}"])
 
     # Add host networking for MCPs running on localhost
     cmd.extend(["--add-host", "host.docker.internal:host-gateway"])
 
-    # Forward specific environment variables
+    # Forward specific environment variables to the container
     for key, val in env.items():
         if key.startswith("POLECAT_") or key in (
             "AOPS_BOT_GH_TOKEN",
+            "GH_TOKEN",
             "GITHUB_TOKEN",
             "ANTHROPIC_API_KEY",
+            "COLORTERM",
+            "FORCE_COLOR",
         ):
             cmd.extend(["-e", f"{key}={val}"])
+
+    # Git credential helper — use GH_TOKEN for HTTPS pushes.
+    # GH_TOKEN is set by agent-env-map.conf from AOPS_BOT_GH_TOKEN.
+    # SSH is disabled (SSH_AUTH_SOCK=""), so HTTPS is the only path.
+    gh_token = env.get("GH_TOKEN") or os.environ.get("AOPS_BOT_GH_TOKEN")
+    if gh_token:
+        cmd.extend(
+            [
+                "-e",
+                "GIT_ASKPASS=true",
+                "-e",
+                f"GH_TOKEN={gh_token}",
+            ]
+        )
+        # Configure git to use GH_TOKEN via credential helper inside the container
+        cmd.extend(
+            [
+                "-e",
+                "GIT_CONFIG_COUNT=3",
+                "-e",
+                "GIT_CONFIG_KEY_0=credential.helper",
+                "-e",
+                "GIT_CONFIG_VALUE_0=!f() { echo username=x-access-token; echo password=$GH_TOKEN; }; f",
+                "-e",
+                "GIT_CONFIG_KEY_1=url.https://github.com/.insteadOf",
+                "-e",
+                "GIT_CONFIG_VALUE_1=git@github.com:",
+                "-e",
+                "GIT_CONFIG_KEY_2=credential.https://github.com.helper",
+                "-e",
+                "GIT_CONFIG_VALUE_2=!f() { echo username=x-access-token; echo password=$GH_TOKEN; }; f",
+            ]
+        )
+
+    # SSH isolation — no SSH auth inside container
+    cmd.extend(["-e", "SSH_AUTH_SOCK="])
+    cmd.extend(["-e", "GIT_TERMINAL_PROMPT=0"])
+
+    # Mount session directory so Claude transcripts persist on the host.
+    # Without this, --rm destroys all session data when the container exits.
+    if session_dir and cli_tool in ("claude", "shell"):
+        session_dir.mkdir(parents=True, exist_ok=True)
+        cmd.extend(["-v", f"{session_dir.resolve()}:{container_home}/.claude/projects"])
 
     cmd.append(image)
     cmd.extend(agent_cmd)
     return cmd
+
+
+def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | None:
+    """Replicate Gemini authentication files to a temporary directory.
+
+    For headless sessions to authenticate properly in a sandbox, critical files
+    from the user's ~/.gemini/ directory must be replicated in the temporary
+    GEMINI_CLI_HOME:
+    - settings.json
+    - google_accounts.json
+    - oauth_creds.json
+    - installation_id
+    - trustedFolders.json
+
+    If work_dir is provided, it is added to the replicated trustedFolders.json
+    to avoid trust prompts in the sandbox.
+
+    Returns:
+        Path to the temporary directory containing the replicated files,
+        or None if authentication replication is disabled or fails.
+    """
+    if os.environ.get("POLECAT_GEMINI_AUTH_DISABLED") == "1":
+        return None
+
+    home = Path.home()
+    gemini_dir = home / ".gemini"
+
+    if not gemini_dir.exists():
+        return None
+
+    # Check if we have any auth-related files
+    auth_files = [
+        "settings.json",
+        "google_accounts.json",
+        "oauth_creds.json",
+        "installation_id",
+        "trustedFolders.json",
+    ]
+
+    existing_files = [f for f in auth_files if (gemini_dir / f).exists()]
+    if not existing_files:
+        return None
+
+    # Create a temporary directory for replicated configs
+    tmp_gemini_home = Path(tempfile.mkdtemp(prefix="polecat-gemini-auth-"))
+    target_dir = tmp_gemini_home / ".gemini"
+    target_dir.mkdir(parents=True)
+
+    for f in existing_files:
+        if f == "trustedFolders.json" and work_dir:
+            try:
+                with open(gemini_dir / f) as src_f:
+                    trust_data = json.load(src_f)
+                # Inject the work directory into trust data
+                # We use TRUST_FOLDER which is the most common entry type
+                trust_data[str(work_dir.resolve())] = "TRUST_FOLDER"
+                with open(target_dir / f, "w") as dest_f:
+                    json.dump(trust_data, dest_f, indent=2)
+                continue
+            except (json.JSONDecodeError, OSError) as e:
+                # Fall back to simple copy if processing fails
+                print(f"   Warning: could not process {gemini_dir / f}: {e}", file=sys.stderr)
+
+        shutil.copy2(gemini_dir / f, target_dir / f)
+
+    # If trustedFolders.json didn't exist but we have a work_dir, create it
+    if "trustedFolders.json" not in existing_files and work_dir:
+        try:
+            trust_data = {str(work_dir.resolve()): "TRUST_FOLDER"}
+            with open(target_dir / "trustedFolders.json", "w") as f:
+                json.dump(trust_data, f, indent=2)
+        except OSError as e:
+            print(f"   Warning: could not create trustedFolders.json: {e}", file=sys.stderr)
+
+    # Replicate extensions so that extension hooks fire in sandbox sessions.
+    # We symlink individual extension dirs (to avoid copying large venvs) but
+    # create a fresh extension-enablement.json with a wildcard override so the
+    # extension is active for any workspace path (the original restricts to
+    # /home/<user>/* which won't match test or CI workspaces).
+    src_extensions = gemini_dir / "extensions"
+    if src_extensions.is_dir():
+        dst_extensions = target_dir / "extensions"
+        dst_extensions.mkdir(parents=True, exist_ok=True)
+
+        # Symlink each extension subdirectory
+        for child in src_extensions.iterdir():
+            if child.is_dir():
+                try:
+                    (dst_extensions / child.name).symlink_to(child.resolve())
+                except OSError:
+                    shutil.copytree(child, dst_extensions / child.name)
+
+        # Build a permissive enablement file — allow all paths
+        enablement_src = src_extensions / "extension-enablement.json"
+        if enablement_src.exists():
+            try:
+                with open(enablement_src) as f:
+                    enablement = json.load(f)
+                for ext_name in enablement:
+                    enablement[ext_name]["overrides"] = ["*"]
+                with open(dst_extensions / "extension-enablement.json", "w") as f:
+                    json.dump(enablement, f, indent=2)
+            except (json.JSONDecodeError, OSError):
+                shutil.copy2(enablement_src, dst_extensions / "extension-enablement.json")
+
+    # Set GEMINI_CLI_HOME to the parent directory — Gemini creates .gemini/
+    # inside GEMINI_CLI_HOME (i.e. path.join(GEMINI_CLI_HOME, ".gemini", ...)).
+    env["GEMINI_CLI_HOME"] = str(tmp_gemini_home)
+
+    return tmp_gemini_home
 
 
 def is_interactive() -> bool:
@@ -211,6 +514,31 @@ def main(ctx, home):
     """Polecat: Ephemeral worker management system."""
     ctx.ensure_object(dict)
     ctx.obj["home"] = home
+
+
+@main.command()
+@click.pass_context
+def setup(ctx):
+    """Run full framework installation and extension linking.
+
+    This builds extensions and runs scripts/install.py to set up
+    cron jobs, symlinks, and link Gemini/Claude extensions.
+    Requires uv and should be run from the repository root.
+    """
+    repo_root = Path(__file__).parent.parent.resolve()
+    setup_script = repo_root / "setup.sh"
+
+    if not setup_script.exists():
+        print(f"Error: setup.sh not found at {setup_script}", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"Running framework setup from {setup_script}...")
+    try:
+        subprocess.run(["bash", str(setup_script)], check=True)
+        print("\n✓ Polecat setup complete")
+    except subprocess.CalledProcessError as e:
+        print(f"\nError: Setup failed with exit code {e.returncode}", file=sys.stderr)
+        sys.exit(1)
 
 
 @main.command()
@@ -249,22 +577,363 @@ def init(ctx, project):
         print("\n✓ All mirrors ready")
 
 
-@main.command()
-@click.pass_context
-def sync(ctx):
-    """Fetch latest from origin for all mirror repos.
+def _clear_stale_git_lock(repo_path: Path) -> bool:
+    """Remove stale .git/index.lock if no process holds it.
 
-    Updates existing bare mirrors with latest branches from origin.
-    Use before spawning polecats to ensure they have recent code.
+    Returns True if lock was cleared or didn't exist, False if held by a process.
+    """
+    lockfile = repo_path / ".git" / "index.lock"
+    if not lockfile.exists():
+        return True
+
+    # Check if a process holds the lock
+    lsof = shutil.which("lsof")
+    if lsof:
+        result = subprocess.run([lsof, str(lockfile)], capture_output=True, check=False)
+        if result.returncode == 0:
+            # Process holds the lock
+            return False
+
+    # No process holds it — stale lock, remove
+    lockfile.unlink(missing_ok=True)
+    return True
+
+
+def _sync_working_repo(
+    repo_path: Path, *, auto_commit: bool = False, quiet: bool = False
+) -> tuple[bool, str]:
+    """Sync a working repo: fetch, pull/push, auto-resolve conflicts.
+
+    Returns (success, message).
+    """
+    name = repo_path.name
+
+    if not (repo_path / ".git").exists():
+        return False, f"{name}: not a git repo"
+
+    if not _clear_stale_git_lock(repo_path):
+        return False, f"{name}: git lock held by active process"
+
+    # Fetch
+    subprocess.run(
+        ["git", "fetch", "--quiet"],
+        cwd=repo_path,
+        capture_output=True,
+        check=False,
+    )
+
+    # Check status
+    porcelain = subprocess.run(
+        ["git", "status", "--porcelain"],
+        cwd=repo_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    ).stdout.strip()
+    dirty = bool(porcelain)
+
+    # Check ahead/behind
+    tracking = subprocess.run(
+        ["git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
+        cwd=repo_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    ).stdout.strip()
+
+    ahead_count = behind_count = 0
+    if tracking:
+        counts = subprocess.run(
+            ["git", "rev-list", "--left-right", "--count", "HEAD...@{u}"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            check=False,
+        ).stdout.strip()
+        if counts:
+            parts = counts.split()
+            if len(parts) == 2:
+                ahead_count, behind_count = int(parts[0]), int(parts[1])
+
+    if dirty:
+        if auto_commit:
+            # Stage tracked files and commit
+            subprocess.run(["git", "add", "-u"], cwd=repo_path, capture_output=True, check=False)
+            has_staged = (
+                subprocess.run(
+                    ["git", "diff", "--cached", "--quiet"],
+                    cwd=repo_path,
+                    capture_output=True,
+                    check=False,
+                ).returncode
+                != 0
+            )
+
+            if has_staged:
+                subprocess.run(
+                    [
+                        "git",
+                        "commit",
+                        "-m",
+                        f"auto: sync {datetime.now():%Y-%m-%d %H:%M}",
+                        "--quiet",
+                    ],
+                    cwd=repo_path,
+                    capture_output=True,
+                    check=False,
+                )
+
+            # Pull with rebase
+            pull = subprocess.run(
+                ["git", "pull", "--rebase", "--quiet"],
+                cwd=repo_path,
+                capture_output=True,
+                check=False,
+            )
+            if pull.returncode != 0:
+                # Check for conflicts during rebase replay of local commits
+                unmerged = subprocess.run(
+                    ["git", "diff", "--name-only", "--diff-filter=U"],
+                    cwd=repo_path,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                ).stdout.strip()
+                if unmerged:
+                    # In rebase, --theirs = local commit being replayed (keeps local),
+                    # --ours = remote HEAD (discards remote). We keep local, but first
+                    # save the remote version of each conflicting file to a backup so
+                    # nothing from the remote is silently lost.
+                    resolved = True
+                    conflict_files = unmerged.splitlines()
+                    backup_paths = []
+                    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+                    for conflict_file in conflict_files:
+                        # Capture remote version (stage 2 = ours = remote in rebase)
+                        remote_content = subprocess.run(
+                            ["git", "show", f":2:{conflict_file}"],
+                            cwd=repo_path,
+                            capture_output=True,
+                            text=True,
+                            check=False,
+                        )
+                        if remote_content.returncode == 0 and remote_content.stdout:
+                            backup_path = (
+                                Path(repo_path) / f"{conflict_file}.conflict-remote-{timestamp}"
+                            )
+                            backup_path.parent.mkdir(parents=True, exist_ok=True)
+                            backup_path.write_text(remote_content.stdout)
+                            backup_paths.append(str(backup_path.relative_to(repo_path)))
+
+                        r = subprocess.run(
+                            ["git", "checkout", "--theirs", "--", conflict_file],
+                            cwd=repo_path,
+                            capture_output=True,
+                            check=False,
+                        )
+                        if r.returncode == 0:
+                            subprocess.run(
+                                ["git", "add", conflict_file],
+                                cwd=repo_path,
+                                capture_output=True,
+                                check=False,
+                            )
+                        else:
+                            resolved = False
+                            break
+
+                    if resolved:
+                        # Stage backup files so they're committed and visible
+                        for bp in backup_paths:
+                            subprocess.run(
+                                ["git", "add", bp],
+                                cwd=repo_path,
+                                capture_output=True,
+                                check=False,
+                            )
+                        cont = subprocess.run(
+                            ["git", "rebase", "--continue"],
+                            cwd=repo_path,
+                            capture_output=True,
+                            check=False,
+                            env={**os.environ, "GIT_EDITOR": "true"},
+                        )
+                        if cont.returncode != 0:
+                            subprocess.run(
+                                ["git", "rebase", "--abort"],
+                                cwd=repo_path,
+                                capture_output=True,
+                                check=False,
+                            )
+                            return False, f"{name}: rebase --continue failed"
+                        conflict_summary = ", ".join(conflict_files)
+                        warn = (
+                            f"⚠ {name}: rebase conflict auto-resolved (kept local) in: {conflict_summary}. "
+                            f"Remote versions saved to: {', '.join(backup_paths) or 'none'}"
+                        )
+                        print(warn, file=sys.stderr)
+                        return (
+                            True,
+                            f"{name}: auto-synced with conflict resolution ({len(conflict_files)} file(s))",
+                        )
+                    else:
+                        subprocess.run(
+                            ["git", "rebase", "--abort"],
+                            cwd=repo_path,
+                            capture_output=True,
+                            check=False,
+                        )
+                        return False, f"{name}: conflict needs manual resolution"
+                else:
+                    subprocess.run(
+                        ["git", "rebase", "--abort"],
+                        cwd=repo_path,
+                        capture_output=True,
+                        check=False,
+                    )
+                    return False, f"{name}: rebase failed"
+
+            # Push
+            push = subprocess.run(
+                ["git", "push", "--quiet"],
+                cwd=repo_path,
+                capture_output=True,
+                check=False,
+            )
+            if push.returncode != 0:
+                return False, f"{name}: push failed"
+            return True, f"{name}: auto-synced (committed + pushed)"
+        else:
+            status_parts = ["dirty"]
+            if ahead_count:
+                status_parts.append(f"{ahead_count} ahead")
+            if behind_count:
+                status_parts.append(f"{behind_count} behind")
+            return False, f"{name}: {', '.join(status_parts)} (skipped — not auto-commit)"
+
+    elif behind_count > 0:
+        pull = subprocess.run(
+            ["git", "pull", "--quiet"],
+            cwd=repo_path,
+            capture_output=True,
+            check=False,
+        )
+        if pull.returncode == 0:
+            return True, f"{name}: pulled {behind_count} commit(s)"
+        return False, f"{name}: pull failed"
+
+    elif ahead_count > 0:
+        push = subprocess.run(
+            ["git", "push", "--quiet"],
+            cwd=repo_path,
+            capture_output=True,
+            check=False,
+        )
+        if push.returncode == 0:
+            return True, f"{name}: pushed {ahead_count} commit(s)"
+        return False, f"{name}: push failed"
+
+    else:
+        return True, f"{name}: ok"
+
+
+@main.command()
+@click.option("--check", is_flag=True, help="Just show status, don't fix anything")
+@click.option("--quiet", "-q", is_flag=True, help="Only show repos needing attention")
+@click.option("--mirrors-only", is_flag=True, help="Only sync bare mirrors (skip working repos)")
+@click.pass_context
+def sync(ctx, check, quiet, mirrors_only):
+    """Sync all git repos: working repos and bare mirrors.
+
+    Fetches, pulls, and pushes working repos defined in polecat.yaml.
+    Also updates bare mirrors used by polecat workers.
+
+    The brain repo ($ACA_DATA) gets special treatment: dirty files are
+    auto-committed and pushed. Other repos are only pulled/pushed if clean.
 
     Examples:
-        polecat sync
+        polecat sync              # Sync everything
+        polecat sync --check      # Just show status
+        polecat sync --quiet      # Only show issues
+        polecat sync --mirrors-only  # Only sync bare mirrors
     """
     manager = PolecatManager(home_dir=ctx.obj.get("home"))
-    print(f"Syncing mirrors in {manager.repos_dir}...")
+
+    # --- Phase 1: Working repos ---
+    if not mirrors_only:
+        if not quiet:
+            print("Syncing working repos...")
+
+        brain_path = os.environ.get("ACA_DATA", str(Path.home() / "brain"))
+        try:
+            brain_path = str(Path(brain_path).resolve())
+        except OSError:
+            brain_path = ""
+
+        needs_attention = []
+        for project_name, project_cfg in manager.config.get("projects", {}).items():
+            repo_path_str = project_cfg.get("path", "")
+            if not repo_path_str:
+                continue
+            repo_path = Path(os.path.expanduser(repo_path_str))
+            if not repo_path.is_dir():
+                if not quiet:
+                    print(f"  {project_name}: path not found ({repo_path})")
+                continue
+
+            # Brain repo gets auto-commit; other repos don't
+            is_brain = False
+            try:
+                is_brain = str(repo_path.resolve()) == brain_path
+            except OSError:
+                pass
+
+            if is_brain and not check:
+                # Run aops lint --fix on brain before syncing
+                aops_bin = shutil.which("aops")
+                if aops_bin:
+                    subprocess.run(
+                        [aops_bin, "lint", "--fix"],
+                        capture_output=True,
+                        check=False,
+                    )
+
+            if check:
+                # Just report status
+                success, msg = _sync_working_repo(repo_path, auto_commit=False, quiet=quiet)
+                if not success or not quiet:
+                    print(f"  {msg}")
+                if not success:
+                    needs_attention.append(project_name)
+            else:
+                success, msg = _sync_working_repo(repo_path, auto_commit=is_brain, quiet=quiet)
+                if not success or not quiet:
+                    print(f"  {msg}")
+                if not success:
+                    needs_attention.append(project_name)
+
+        # Also sync AOPS_SESSIONS if defined
+        sessions_dir = os.environ.get("AOPS_SESSIONS")
+        if sessions_dir:
+            sessions_path = Path(os.path.expanduser(sessions_dir))
+            if sessions_path.is_dir():
+                success, msg = _sync_working_repo(sessions_path, auto_commit=True, quiet=quiet)
+                if not success or not quiet:
+                    print(f"  {msg}")
+
+        if not quiet:
+            if needs_attention:
+                print(f"\n⚠ {len(needs_attention)} repo(s) need attention")
+            else:
+                print()
+
+    # --- Phase 2: Bare mirrors ---
+    if not quiet:
+        print(f"Syncing mirrors in {manager.repos_dir}...")
     results = manager.sync_all_mirrors()
     successes = sum(1 for v in results.values() if v)
-    print(f"\n✓ Synced {successes}/{len(results)} mirrors")
+    if not quiet:
+        print(f"✓ Synced {successes}/{len(results)} mirrors")
 
 
 @main.command()
@@ -931,12 +1600,22 @@ def _branch_has_open_pr(branch_name: str, repo_path: Path) -> bool:
 @click.argument("extra", required=False, default=None)
 @click.option("--name", "-n", help="Crew name (randomly generated if not specified)")
 @click.option("--gemini", "-g", is_flag=True, help="Use Gemini CLI instead of Claude")
+@click.option("--interactive", "-i", is_flag=True, help="Drop into an interactive shell (no agent)")
 @click.option("--resume", "-r", help="Resume existing crew worker by name")
 @click.option("--keep", "-k", is_flag=True, help="Keep worktree even if a PR is open")
 @click.pass_context
-def crew_alias(ctx, target, extra, name, gemini, resume, keep):
+def crew_alias(ctx, target, extra, name, gemini, interactive, resume, keep):
     """Shorthand for 'crew'. See 'polecat crew --help'."""
-    ctx.invoke(crew, target=target, extra=extra, name=name, gemini=gemini, resume=resume, keep=keep)
+    ctx.invoke(
+        crew,
+        target=target,
+        extra=extra,
+        name=name,
+        gemini=gemini,
+        interactive=interactive,
+        resume=resume,
+        keep=keep,
+    )
 
 
 @main.command()
@@ -944,10 +1623,11 @@ def crew_alias(ctx, target, extra, name, gemini, resume, keep):
 @click.argument("extra", required=False, default=None)
 @click.option("--name", "-n", help="Crew name (randomly generated if not specified)")
 @click.option("--gemini", "-g", is_flag=True, help="Use Gemini CLI instead of Claude")
+@click.option("--interactive", "-i", is_flag=True, help="Drop into an interactive shell (no agent)")
 @click.option("--resume", "-r", help="Resume existing crew worker by name")
 @click.option("--keep", "-k", is_flag=True, help="Keep worktree even if a PR is open")
 @click.pass_context
-def crew(ctx, target, extra, name, gemini, resume, keep):
+def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
     """Start an interactive crew session with worker isolation.
 
     Crew workers are persistent, named agents for interactive collaboration.
@@ -963,6 +1643,8 @@ def crew(ctx, target, extra, name, gemini, resume, keep):
         polecat crew bm               # Crew in buttermilk repo
         polecat crew repo /path/to/x  # Crew in arbitrary repo
         polecat crew -r audre         # Resume crew worker "audre"
+        polecat crew -i aops          # Interactive shell in crew container
+        polecat crew -g aops          # Gemini CLI in sandbox mode
         polecat crew                  # Crew with all projects (legacy)
     """
     import subprocess
@@ -1010,49 +1692,59 @@ def crew(ctx, target, extra, name, gemini, resume, keep):
 
     print(f"\U0001f9d1\u200d\U0001f91d\u200d\U0001f9d1 Crew worker: {crew_name}")
 
-    # Setup worktrees for project(s)
-    worktree_paths = {}
+    # Setup isolated clones for project(s)
+    clone_paths = {}
     if resume:
-        # Recover worktree paths from existing crew directory
+        # Recover clone paths from existing crew directory
         crew_path = manager.crew_dir / crew_name
         for project_dir in crew_path.iterdir():
             if project_dir.is_dir():
-                worktree_paths[project_dir.name] = project_dir
+                clone_paths[project_dir.name] = project_dir
                 print(f"\U0001f4c1 {project_dir.name}: {project_dir}")
-        projects = list(worktree_paths.keys())
+        projects = list(clone_paths.keys())
     else:
         try:
             for proj in projects:
-                worktree_path = manager.setup_crew_worktree(crew_name, proj)
-                worktree_paths[proj] = worktree_path
-                print(f"\U0001f4c1 {proj}: {worktree_path}")
+                clone_path = manager.setup_crew_worktree(crew_name, proj)
+                clone_paths[proj] = clone_path
+                print(f"\U0001f4c1 {proj}: {clone_path}")
         except Exception as e:
-            print(f"Error setting up worktree: {e}", file=sys.stderr)
+            print(f"Error setting up crew clone: {e}", file=sys.stderr)
             sys.exit(1)
 
-    if not worktree_paths:
-        print("Error: No worktrees available.", file=sys.stderr)
+    if not clone_paths:
+        print("Error: No clones available.", file=sys.stderr)
         sys.exit(1)
 
     # Determine working directory:
-    # Single project -> drop directly into the project worktree
-    # Multiple projects -> use crew root (parent of all project worktrees)
-    if len(worktree_paths) == 1:
-        work_dir = next(iter(worktree_paths.values()))
+    # Single project -> drop directly into the project clone
+    # Multiple projects -> use crew root (parent of all project clones)
+    if len(clone_paths) == 1:
+        work_dir = next(iter(clone_paths.values()))
     else:
         work_dir = manager.crew_dir / crew_name
 
     # Build agent command with isolation
-    cli_tool = "gemini" if gemini else "claude"
+    if interactive:
+        cli_tool = "shell"
+    elif gemini:
+        cli_tool = "gemini"
+    else:
+        cli_tool = "claude"
     print(f"\n\U0001f91d Starting {cli_tool} crew session...")
     print(f"   Crew: {crew_name}")
     print(f"   Projects: {', '.join(projects)}")
     print(f"   Working dir: {work_dir}")
     print("-" * 50)
 
-    if gemini:
-        # Gemini: --sandbox runs tool calls inside the aops-sandbox Docker image.
-        # The image is built from .gemini/sandbox.Dockerfile via `make build-sandbox`.
+    if interactive:
+        # Interactive shell: drop into bash inside the Docker container.
+        # Both claude and gemini CLIs are pre-installed in the image along
+        # with their aops plugins, so the user can run either manually.
+        cmd = ["bash"]
+    elif gemini:
+        # Gemini: --sandbox runs tool calls inside the aops-crew Docker image.
+        # The image is built from Dockerfile via `make build-docker`.
         cmd = [
             "gemini",
             "--sandbox",
@@ -1068,18 +1760,68 @@ def crew(ctx, target, extra, name, gemini, resume, keep):
 
     # Set session type environment variable for hooks to detect
     # Use sanitized env: SSH stripped, git auth set to bot token only
-    env = _make_worker_env()
+    env = _make_worker_env(interactive=True)
     env["POLECAT_SESSION_TYPE"] = "crew"
     env["POLECAT_CREW_NAME"] = crew_name
     env["POLECAT_WORKTREE"] = str(work_dir)
-    if gemini:
-        # Use the aops-specific sandbox image so crew workers have uv, gh, etc.
-        # Falls back to Gemini's default sandbox image if aops-sandbox isn't built.
-        env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-sandbox")
+
+    # Compute session directory for Claude transcript persistence.
+    # Uses same 3-tier resolution as save_worker_transcript.
+    try:
+        from lib.paths import get_sessions_repo
+
+        sessions_base = get_sessions_repo()
+    except ImportError:
+        sessions_base = (
+            Path(
+                os.environ.get("AOPS_SESSIONS")
+                or os.environ.get("POLECAT_HOME", str(Path.home() / ".polecat"))
+            )
+            / "sessions"
+        )
+    session_dir = sessions_base / "crew" / crew_name / "claude-sessions"
+
+    tmp_gemini_home = None
+    tmp_files: list[Path] = []
+    if gemini and not interactive:
+        # Replicate Gemini authentication if available.
+        # Inject the work directory into trustedFolders.json to avoid trust prompts.
+        tmp_gemini_home = _replicate_gemini_auth(env, work_dir=work_dir)
+        if tmp_gemini_home:
+            print(f"   Auth: Replicated to {env['GEMINI_CLI_HOME']}")
+
+        # Gemini --sandbox re-execs itself inside the container, so the image
+        # needs the Gemini CLI installed. Use aops-crew (full image with AI CLIs).
+        env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-crew")
         final_cmd = cmd
+    elif interactive:
+        # Interactive shell: wrap in Docker container (same as Claude path)
+        final_cmd = _build_docker_cmd(
+            "shell",
+            work_dir,
+            env,
+            cmd,
+            is_interactive=True,
+            tmp_files=tmp_files,
+            session_dir=session_dir,
+        )
     else:
         # Claude Code: manually wrap in docker container
-        final_cmd = _build_docker_cmd(cli_tool, work_dir, env, cmd, is_interactive=True)
+        final_cmd = _build_docker_cmd(
+            cli_tool,
+            work_dir,
+            env,
+            cmd,
+            is_interactive=True,
+            tmp_files=tmp_files,
+            session_dir=session_dir,
+        )
+    print(f"   Sessions: {session_dir}")
+
+    # Resolve CLI binary to absolute path so subprocess doesn't depend on PATH lookup
+    resolved = shutil.which(final_cmd[0], path=env.get("PATH"))
+    if resolved:
+        final_cmd[0] = resolved
 
     set_terminal_title(f"crew:{crew_name}")
     try:
@@ -1091,22 +1833,28 @@ def crew(ctx, target, extra, name, gemini, resume, keep):
         print("\n\n\u26a0\ufe0f  Session interrupted")
     finally:
         reset_terminal_title()
+        # Clean up temporary Gemini home
+        if tmp_gemini_home and tmp_gemini_home.exists():
+            shutil.rmtree(tmp_gemini_home)
+        # Clean up temporary files created by _build_docker_cmd
+        for tmp_file in tmp_files:
+            tmp_file.unlink(missing_ok=True)
 
     print("-" * 50)
     print(f"\n\U0001f4cb Crew '{crew_name}' session ended.")
 
-    # Auto-cleanup: nuke worktree if a PR is open (work is safely on remote)
+    # Auto-cleanup: nuke clone if a PR is open (work is safely on remote)
     branch_name = f"crew/{crew_name}"
     if not keep and _branch_has_open_pr(branch_name, work_dir):
-        print(f"   PR open for {branch_name} — cleaning up worktree.")
+        print(f"   PR open for {branch_name} — cleaning up clone.")
         try:
             manager.nuke_crew(crew_name, force=True)
-            print(f"   Worktree removed. Use `polecat crew -r {crew_name}` after merge.")
+            print(f"   Clone removed. Use `polecat crew -r {crew_name}` after merge.")
         except (ValueError, RuntimeError) as e:
             print(f"   Cleanup failed: {e}", file=sys.stderr)
             print(f"   Manual cleanup: polecat nuke-crew {crew_name}")
     else:
-        print(f"   Worktrees preserved at: {manager.crew_dir / crew_name}")
+        print(f"   Clone preserved at: {manager.crew_dir / crew_name}")
         print(f"   To resume: polecat crew -r {crew_name}")
         print(f"   To nuke:   polecat nuke-crew {crew_name}")
 
@@ -1437,16 +2185,54 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
 
     # Set session type environment variable for hooks to detect
     # Use sanitized env: SSH stripped, git auth set to bot token only
-    env = _make_worker_env()
+    env = _make_worker_env(interactive=interactive)
     env["POLECAT_SESSION_TYPE"] = "polecat"
 
+    tmp_gemini_home = None
+    tmp_files: list[Path] = []
     if gemini:
-        # Use the aops-specific sandbox image so workers have uv, gh, etc.
-        env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-sandbox")
+        # Replicate Gemini authentication if available.
+        # Inject the work directory into trustedFolders.json to avoid trust prompts.
+        tmp_gemini_home = _replicate_gemini_auth(env, work_dir=worktree_path)
+        if tmp_gemini_home:
+            print(f"   Auth: Replicated to {env['GEMINI_CLI_HOME']}")
+
+        # Gemini --sandbox re-execs itself inside the container, so the image
+        # needs the Gemini CLI installed. Use aops-crew (full image with AI CLIs).
+        env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-crew")
         final_cmd = cmd
     else:
+        # Compute session directory for Claude transcript persistence.
+        try:
+            from lib.paths import get_sessions_repo
+
+            sessions_base = get_sessions_repo()
+        except ImportError:
+            sessions_base = (
+                Path(
+                    os.environ.get("AOPS_SESSIONS")
+                    or os.environ.get("POLECAT_HOME", str(Path.home() / ".polecat"))
+                )
+                / "sessions"
+            )
+        run_session_dir = sessions_base / "polecats" / task.id / "claude-sessions"
+
         # Claude Code: manually wrap in docker container
-        final_cmd = _build_docker_cmd(cli_tool, worktree_path, env, cmd, is_interactive=interactive)
+        final_cmd = _build_docker_cmd(
+            cli_tool,
+            worktree_path,
+            env,
+            cmd,
+            is_interactive=interactive,
+            tmp_files=tmp_files,
+            session_dir=run_session_dir,
+        )
+        print(f"   Sessions: {run_session_dir}")
+
+    # Resolve CLI binary to absolute path so subprocess doesn't depend on PATH lookup
+    resolved = shutil.which(final_cmd[0], path=env.get("PATH"))
+    if resolved:
+        final_cmd[0] = resolved
 
     if interactive:
         set_terminal_title(f"polecat:{task.id}")
@@ -1504,6 +2290,12 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
     finally:
         if interactive:
             reset_terminal_title()
+        # Clean up temporary Gemini home
+        if tmp_gemini_home and tmp_gemini_home.exists():
+            shutil.rmtree(tmp_gemini_home)
+        # Clean up temporary files created by _build_docker_cmd
+        for tmp_file in tmp_files:
+            tmp_file.unlink(missing_ok=True)
 
     print("-" * 50)
 

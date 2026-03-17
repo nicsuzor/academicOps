@@ -367,7 +367,7 @@
         "new_string": "## Status\ncomplete"
       },
       "is_subagent": true,
-      "subagent_type": "prompt-hydrator",
+      "subagent_type": "hydrator",
       "gate_overrides": {
         "hydration": {
           "status": "closed",
@@ -391,7 +391,7 @@
         "content": "# Hydration context\n## Project\nacademicOps\n"
       },
       "is_subagent": true,
-      "subagent_type": "aops-core:prompt-hydrator",
+      "subagent_type": "aops-core:hydrator",
       "gate_overrides": {
         "hydration": {
           "status": "closed",
@@ -436,7 +436,7 @@
         "content": "# Context injection\n"
       },
       "is_subagent": true,
-      "subagent_type": "aops-core:prompt-hydrator",
+      "subagent_type": "aops-core:hydrator",
       "gate_overrides": {
         "hydration": {
           "status": "closed",
@@ -534,7 +534,7 @@
         "command": "cat /Users/suzor/.gemini/tmp/brain/logs/20260303-a51fc272-hydration.md"
       },
       "is_subagent": true,
-      "subagent_type": "prompt-hydrator",
+      "subagent_type": "hydrator",
       "gate_overrides": {
         "hydration": {
           "status": "closed",
@@ -895,13 +895,13 @@
       "hook_event": "PreToolUse",
       "tool_name": "Agent",
       "tool_input": {
-        "subagent_type": "aops-core:prompt-hydrator",
+        "subagent_type": "aops-core:hydrator",
         "prompt": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-f45b1f80-hydration.md",
         "description": "Hydrate prompt",
         "run_in_background": true
       },
       "is_subagent": false,
-      "subagent_type": "aops-core:prompt-hydrator",
+      "subagent_type": "aops-core:hydrator",
       "gate_overrides": {
         "hydration": {
           "status": "closed",
@@ -922,12 +922,12 @@
       "description": "Gemini prompt-hydrator (bare agent name) on PreToolUse opens gate. Real session data from a51fc272.",
       "_synthetic": "real-tool-synthetic-gate",
       "hook_event": "PreToolUse",
-      "tool_name": "prompt-hydrator",
+      "tool_name": "hydrator",
       "tool_input": {
         "query": "/Users/suzor/.gemini/tmp/brain/logs/20260303-a51fc272-hydration.md"
       },
       "is_subagent": false,
-      "subagent_type": "prompt-hydrator",
+      "subagent_type": "hydrator",
       "gate_overrides": {
         "hydration": {
           "status": "closed",

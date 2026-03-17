@@ -165,18 +165,18 @@ Skills exist in two locations with different roles:
 1. **`.agent/skills/`** (17 skills): Agent-facing skill definitions loaded by Claude Code's native skill system. These are the skills that appear when Claude Code lists available skills.
 2. **`aops-core/skills/`** (28 skill definitions): Canonical skill definitions with `SKILL.md` frontmatter (triggers, domain, mode, allowed-tools). These are loaded by the hydration system via `SKILLS.md` for routing.
 
-The canonical index is `aops-core/SKILLS.md` with 36 entries (8 commands + 28 skills). Several skills in `aops-core/skills/` do not have corresponding entries in `.agent/skills/` (`assess-hydrator`, `briefing-bundle`, `convert-to-md`, `decision-apply`, `decision-extract`, `densify`, `email-triage`, `excalidraw`, `extract`, `flowchart`, `hdr`, `pdf`, `planning`, `process-bundle`, `strategy`, `swarm-supervisor`).
+The canonical index is `aops-core/SKILLS.md` with 36 entries (8 commands + 28 skills). Several skills in `aops-core/skills/` do not have corresponding entries in `.agent/skills/` (`assess-hydrator`, `briefing-bundle`, `convert-to-md`, `decision-apply`, `decision-extract`, `densify`, `email-triage`, `excalidraw`, `extract`, `flowchart`, `hdr`, `pdf`, `planning`, `process-bundle`, `strategy`, `swarm-supervisor`). Note: `effectual-planner` was retired as an agent and consolidated into `aops-core/skills/planning/` as a self-contained skill package (same pattern as `hydrator`).
 
 **Skills by domain**:
 
 | Domain            | Skills                                                                                           |
 | ----------------- | ------------------------------------------------------------------------------------------------ |
-| framework         | `audit`, `custodiet`, `framework`, `prompt-hydrator`                                             |
-| operations        | `daily`, `densify`, `garden`, `hypervisor`, `remember`, `session-insights`, `task-viz`, `worker` |
+| framework         | `audit`, `custodiet`, `framework`, `hydrator`                                                    |
+| operations        | `daily`, `densify`, `garden`, `hypervisor`, `remember`, `session-insights`, `worker` |
 | academic          | `analyst`, `hdr`, `pdf`                                                                          |
 | email             | `email-triage`                                                                                   |
 | collaboration     | `annotations`, `critic`                                                                          |
-| planning          | `effectual-planner`, `planning`, `strategy`                                                      |
+| planning          | `planning`, `strategy`                                                                           |
 | quality           | `qa`                                                                                             |
 | quality-assurance | `assess-hydrator`                                                                                |
 | development       | `python-dev`                                                                                     |
@@ -197,13 +197,13 @@ The Curia is the named agent team that operates across local sessions and GitHub
 
 **Roster** (see `.agent/curia/CURIA.md` for full details):
 
-| Agent        | Charter            | Local Skill       | GitHub Agent                                                         | Mechanical (Hook/Gate)                  |
-| ------------ | ------------------ | ----------------- | -------------------------------------------------------------------- | --------------------------------------- |
-| **Hydrator** | Context enrichment | `prompt-hydrator` | --                                                                   | hydration gate, `user_prompt_submit.py` |
-| **Auditor**  | Rule enforcement   | `custodiet`       | `auditor.agent.md`                                                   | `policy_enforcer.py`                    |
-| **Critic**   | Strategic review   | `critic`          | `assessor.agent.md` (→ `critic.agent.md`†), `summary-brief.agent.md` | --                                      |
-| **QA**       | Acceptance testing | `qa`              | `qa.agent.md`                                                        | QA gate                                 |
-| **Advocate** | Voice matching     | -- (future)       | -- (future)                                                          | --                                      |
+| Agent        | Charter            | Local Skill | GitHub Agent                                                         | Mechanical (Hook/Gate)                  |
+| ------------ | ------------------ | ----------- | -------------------------------------------------------------------- | --------------------------------------- |
+| **Hydrator** | Context enrichment | `hydrator`  | --                                                                   | hydration gate, `user_prompt_submit.py` |
+| **Auditor**  | Rule enforcement   | `custodiet` | `auditor.agent.md`                                                   | `policy_enforcer.py`                    |
+| **Critic**   | Strategic review   | `critic`    | `assessor.agent.md` (→ `critic.agent.md`†), `summary-brief.agent.md` | --                                      |
+| **QA**       | Acceptance testing | `qa`        | `qa.agent.md`                                                        | QA gate                                 |
+| **Advocate** | Voice matching     | -- (future) | -- (future)                                                          | --                                      |
 
 **Portability**: The QA agent is designed to work on any repo -- `qa.agent.md` includes an inline fallback methodology for repos without the aops framework installed.
 

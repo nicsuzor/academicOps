@@ -68,6 +68,7 @@ def test_skill_scripts_exist_via_symlink():
 
 @pytest.mark.integration
 @pytest.mark.slow
+@pytest.mark.integration
 def test_framework_script_runs_from_writing_repo(data_dir):
     """Test that framework scripts execute correctly from writing repo."""
     from lib.paths import get_skills_dir
@@ -100,6 +101,7 @@ def test_framework_script_runs_from_writing_repo(data_dir):
     assert "usage:" in result.stdout.lower(), "Should show usage information"
 
 
+@pytest.mark.integration
 @pytest.mark.integration
 def test_skill_self_contained_architecture():
     """Test that skills are self-contained with their own scripts."""

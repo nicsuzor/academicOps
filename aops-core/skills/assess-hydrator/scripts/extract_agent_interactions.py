@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Extract subagent interactions from Claude Code and Gemini session logs.
 
-Generic extraction tool — works for any subagent type (prompt-hydrator,
+Generic extraction tool — works for any subagent type (hydrator,
 custodiet, qa, etc.). Outputs JSON to stdout for downstream consumption.
 
 Usage:
@@ -12,7 +12,7 @@ Usage:
     extract_agent_interactions.py --recent 10
 
     # Filter by agent type (default: all)
-    extract_agent_interactions.py --recent 5 --agent-type prompt-hydrator
+    extract_agent_interactions.py --recent 5 --agent-type hydrator
 
     # Extract from a Gemini session
     extract_agent_interactions.py --gemini-session PATH
@@ -230,7 +230,7 @@ def _extract_from_gemini_session(
     """Extract agent interactions from a Gemini session JSON file.
 
     Gemini stores subagent calls in messages[i].toolCalls[j] with structure:
-      - name: agent name (e.g. "prompt-hydrator")
+      - name: agent name (e.g. "hydrator")
       - args: {query: "/path/to/context.md"}
       - result[0].functionResponse.response.output: the agent's full output text
     """
@@ -403,7 +403,7 @@ def main():
     )
     parser.add_argument(
         "--agent-type",
-        help="Filter by agent type substring (e.g. 'prompt-hydrator', 'custodiet')",
+        help="Filter by agent type substring (e.g. 'hydrator', 'custodiet')",
     )
     parser.add_argument(
         "--client",

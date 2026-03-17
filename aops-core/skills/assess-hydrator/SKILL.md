@@ -22,7 +22,7 @@ tags:
 
 # Assess Hydrator Quality
 
-Evaluate how well the prompt-hydrator is performing by examining real interactions from recent sessions.
+Evaluate how well the hydrator is performing by examining real interactions from recent sessions.
 
 ## Tools
 
@@ -32,7 +32,7 @@ Evaluate how well the prompt-hydrator is performing by examining real interactio
 cd "$AOPS"
 PYTHONPATH=aops-core uv run python \
   aops-core/skills/assess-hydrator/scripts/extract_agent_interactions.py \
-  --recent 10 --agent-type prompt-hydrator --pretty
+  --recent 10 --agent-type hydrator --pretty
 ```
 
 This outputs JSON with one record per hydrator invocation:

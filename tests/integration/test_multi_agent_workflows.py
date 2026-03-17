@@ -12,12 +12,11 @@ from tests.conftest import extract_task_calls
 pytestmark = [
     pytest.mark.integration,
     pytest.mark.slow,
+    pytest.mark.requires_local_env,
     pytest.mark.xdist_group("multi_agent"),
 ]
 
 
-@pytest.mark.integration
-@pytest.mark.slow
 def test_explore_agent_spawns_successfully(claude_headless_tracked) -> None:
     """Test that Explore agent can be spawned via Task tool."""
     result, session_id, tool_calls = claude_headless_tracked(

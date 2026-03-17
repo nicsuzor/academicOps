@@ -447,7 +447,7 @@ class TestTokenMetricsValidation:
                 },
                 "by_agent": {
                     "main": {"input": 35000, "output": 8000},
-                    "prompt-hydrator": {"input": 3000, "output": 1000},
+                    "hydrator": {"input": 3000, "output": 1000},
                 },
                 "efficiency": {
                     "cache_hit_rate": 0.67,
