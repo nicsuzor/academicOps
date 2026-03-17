@@ -1,22 +1,19 @@
 #!/usr/bin/env bash
-# repo-sync-cron.sh - Periodic maintenance: transcripts, repo sync, PKB visualizations
+# repo-sync-cron.sh - Periodic maintenance: transcripts and repo sync
 #
-# Three functions, composable via CLI:
+# Two functions, composable via CLI:
 #   do_transcript - Generate recent session transcripts
-#   do_sync       - Sync all git repositories (brain, dotfiles, sessions, etc.)
-#   do_viz        - Generate PKB visualizations (graph JSON, task map, etc.)
+#   do_sync       - Sync all git repositories via polecat sync
 #
 # Usage:
-#   ./scripts/repo-sync-cron.sh              # Full: transcript + sync + viz
-#   ./scripts/repo-sync-cron.sh --quick      # Quick: transcript + sync only
+#   ./scripts/repo-sync-cron.sh              # Full: transcript + sync
+#   ./scripts/repo-sync-cron.sh --quick      # Quick: transcript + sync (same as full)
 #   ./scripts/repo-sync-cron.sh transcript   # Just transcript
 #   ./scripts/repo-sync-cron.sh sync         # Just sync
-#   ./scripts/repo-sync-cron.sh viz          # Just viz
 #   ./scripts/repo-sync-cron.sh transcript sync  # Specific combination
 #
 # Crontab suggested setup:
-#   */5 * * * * /path/to/repo/scripts/repo-sync-cron.sh --quick >> /tmp/repo-sync-quick.log 2>&1
-#   0 * * * * /path/to/repo/scripts/repo-sync-cron.sh >> /tmp/repo-sync-cron.log 2>&1
+#   */5 * * * * /path/to/repo/scripts/repo-sync-cron.sh >> /tmp/repo-sync-cron.log 2>&1
 
 set -euo pipefail
 
@@ -95,24 +92,17 @@ do_sync() {
     uv run --project "${AOPS}" "${AOPS}/polecat/cli.py" sync --quiet 2>&1 || echo "Warning: polecat sync failed"
 }
 
-do_viz() {
-    # generate-viz.sh was removed in f54164d (task_graph scripts deleted).
-    # Placeholder for future viz generation if needed.
-    echo "==> Viz generation: skipped (no generate-viz.sh)"
-}
-
 # ============================================================================
 # Dispatch
 # ============================================================================
 
 if [[ $# -eq 0 ]]; then
-    # Full run: transcript -> sync -> viz
+    # Full run: transcript + sync
     echo "${TS} repo-sync-cron starting (full)"
     do_transcript
     do_sync
-    do_viz
 elif [[ "${1:-}" == "--quick" ]]; then
-    # Quick run: transcript -> sync only
+    # Quick run: same as full
     echo "${TS} repo-sync-cron starting (quick)"
     do_transcript
     do_sync
@@ -123,8 +113,7 @@ else
         case "$func" in
             transcript) do_transcript ;;
             sync)       do_sync ;;
-            viz)        do_viz ;;
-            *)          echo "Unknown function: $func (valid: transcript, sync, viz)" >&2; exit 1 ;;
+            *)          echo "Unknown function: $func (valid: transcript, sync)" >&2; exit 1 ;;
         esac
     done
 fi
