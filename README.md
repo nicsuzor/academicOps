@@ -151,17 +151,31 @@ Domain skills exist only because no better external solution exists _yet_. The f
 
 ## Skills and commands
 
-24 skills, 8 commands. Skills are fungible — swap one for another that does the same thing. Key examples:
+Two packages. **aops-core** is the non-fungible epistemic infrastructure — 23 skills covering planning, memory, QA, traceability, and reflection. **aops-tools** is the fungible domain layer — 6 academic tools designed to be retired when better external alternatives appear.
 
-|                      |                                                       |
-| -------------------- | ----------------------------------------------------- |
-| `/analyst`           | Research data analysis (dbt, Streamlit, stats)        |
-| `/strategy`          | Strategic thinking under uncertainty                  |
-| `/swarm-supervisor`  | Parallel worker orchestration with isolated worktrees |
-| `/hdr`               | Higher degree research supervision workflows          |
-| `/remember`          | Dual-write to markdown + memory server                |
-| `/learn`             | Capture failures as structured knowledge              |
-| `/pull` `/q` `/dump` | Task queue lifecycle                                  |
+**aops-core** (core epistemic infrastructure):
+
+|                      |                                                         |
+| -------------------- | ------------------------------------------------------- |
+| `/strategy`          | Strategic thinking under uncertainty                    |
+| `/planning`          | Epic decomposition and information-value prioritisation |
+| `/qa`                | Calibrated verification against acceptance criteria     |
+| `/swarm-supervisor`  | Parallel worker orchestration with isolated worktrees   |
+| `/hdr`               | Higher degree research supervision workflows            |
+| `/remember`          | Dual-write to markdown + memory server                  |
+| `/learn`             | Capture failures as structured knowledge                |
+| `/pull` `/q` `/dump` | Task queue lifecycle                                    |
+
+**aops-tools** (fungible domain skills — install separately, retire freely):
+
+|                  |                                                |
+| ---------------- | ---------------------------------------------- |
+| `/analyst`       | Research data analysis (dbt, Streamlit, stats) |
+| `/pdf`           | PDF generation with academic typography        |
+| `/convert-to-md` | Batch DOCX/PDF/XLSX → markdown conversion      |
+| `/excalidraw`    | Hand-drawn diagrams                            |
+| `/flowchart`     | Mermaid flowchart generation                   |
+| `/extract`       | General extraction and ingestion routing       |
 
 ## Installation
 
@@ -173,17 +187,26 @@ Set the data directory environment variable in `~/.bashrc` or `~/.zshrc`:
 export ACA_DATA="$HOME/brain"     # Your knowledge base (NOT in this repo)
 ```
 
-Claude Code:
+**Claude Code** — install core infrastructure (required) plus domain tools (optional):
 
 ```bash
+# Core (required)
 command claude plugin marketplace add nicsuzor/aops-dist
-command claude plugin marketplace update aops && command claude plugin install aops-core@aops && command claude plugin list
+
+# Domain tools (optional — fungible, retire when better tools exist)
+# aops-tools requires a separate plugin repo; see aops-tools/.claude-plugin/
 ```
 
-Gemini CLI:
+**Gemini CLI** — both packages install from aops-dist:
 
 ```bash
-(command gemini extensions uninstall aops-core || echo not installed) && command gemini extensions install git@github.com:nicsuzor/aops-dist.git --consent --auto-update --pre-release
+# Core (required)
+(command gemini extensions uninstall aops-core || echo not installed) && \
+  command gemini extensions install git@github.com:nicsuzor/aops-dist.git --consent --auto-update --pre-release
+
+# Domain tools (optional)
+(command gemini extensions uninstall aops-tools || echo not installed) && \
+  command gemini extensions install git@github.com:nicsuzor/aops-dist.git#aops-tools --consent --auto-update --pre-release
 ```
 
 ## Development setup
