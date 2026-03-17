@@ -82,7 +82,6 @@ Some conversation...
         # Ensure no raw code fences remain
         assert not any(acc.startswith("```") for acc in accomplishments)
 
-    @pytest.mark.integration
     def test_extract_reflection_from_live_logs(self, parser_module, original_env) -> None:
         """CRITICAL: Verify extraction works on actual live session logs.
 
@@ -115,10 +114,7 @@ Some conversation...
 
         # We must have at least one session with a reflection to test against
         if len(reflection_files) == 0:
-            pytest.skip(
-                f"No live session logs with Framework Reflections found in {sessions_dir}. "
-                "Ensure session transcripts exist for testing."
-            )
+            pytest.skip(f"No live session logs with Framework Reflections found in {sessions_dir}.")
 
         # Test extraction on each found file
         successful_extractions = 0

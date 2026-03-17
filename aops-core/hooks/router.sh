@@ -33,15 +33,7 @@ fi
 # correct environment resolution within the extension runtime.
 HOOK_DIR="$(cd "$(dirname "$(dirname "$0")")" && pwd)"
 
-# Set UV_CACHE_DIR to avoid Seatbelt permission errors outside the extension path.
-# In Docker containers the plugin dir may be root-owned, so fall back to a
-# user-specific temp dir. A shared /tmp/uv-cache causes permission errors when
-# different UIDs share the same container image cache.
-UV_CACHE_CANDIDATE="$HOOK_DIR/.uv-cache"
-if mkdir -p "$UV_CACHE_CANDIDATE" 2>/dev/null && [ -w "$UV_CACHE_CANDIDATE" ]; then
-    export UV_CACHE_DIR="$UV_CACHE_CANDIDATE"
-else
-    export UV_CACHE_DIR="${TMPDIR:-/tmp}/uv-cache-$(id -u)"
-fi
+# Set UV_CACHE_DIR to avoid Seatbelt permission errors outside the extension path
+export UV_CACHE_DIR="$HOOK_DIR/.uv-cache"
 
 exec uv --directory "$HOOK_DIR" run python "$HOOK_DIR/hooks/router.py" "$@"

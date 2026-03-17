@@ -12,7 +12,7 @@ needs_task: false
 mode: execution
 domain:
   - operations
-allowed-tools: Bash,Read,Write,Grep,Glob,mcp__pkb__search,mcp__pkb__pkb_orphans,mcp__pkb__create_memory,mcp__pkb__list_tasks,mcp__pkb__graph_stats,mcp__pkb__get_network_metrics,mcp__pkb__update_task,mcp__pkb__get_task,mcp__pkb__task_search,mcp__pkb__pkb_context,mcp__pkb__bulk_reparent
+allowed-tools: Bash,Read,Write,Grep,Glob,mcp__pkb__search,mcp__pkb__pkb_orphans,mcp__pkb__create_memory,mcp__pkb__list_tasks
 version: 0.1.0
 tags:
   - consolidation
@@ -43,27 +43,13 @@ gh workflow run sleep-cycle -R nicsuzor/brain -f focus="staleness only"
 
 The agent works through these in order, using judgment about what needs attention:
 
-| Phase | Name              | What it does                                            |
-| ----- | ----------------- | ------------------------------------------------------- |
-| 0     | Graph Health      | Run `graph_stats` — baseline measurement for this cycle |
-| 1     | Session Backfill  | Run `/session-insights batch` for pending transcripts   |
-| 2     | Episode Replay    | Scan recent activity, identify promotion candidates     |
-| 3     | Index Refresh     | Update mechanical framework indices (`SKILLS.md`, etc.) |
-| 4     | Staleness Sweep   | Detect orphans, stale docs, under-specified tasks       |
-| 4b    | Graph Maintenance | Densify, reparent, or connect — pick ONE strategy       |
-| 5     | Brain Sync        | Commit and push `$ACA_DATA`; re-run `graph_stats`       |
-
-## Phase 0: Graph Health Baseline
-
-Run `graph_stats` at the start of every cycle. Record:
-
-- `flat_tasks` — tasks with no parent or children
-- `disconnected_epics` — epics not connected to a project/goal
-- `projects_without_goals` — projects with no goal parent
-- `orphan_count` — truly disconnected nodes
-- `stale_count` — tasks not modified in 7+ days while in_progress
-
-This is the baseline. Phase 5 re-runs graph_stats to measure what changed.
+| Phase | Name             | What it does                                            |
+| ----- | ---------------- | ------------------------------------------------------- |
+| 1     | Session Backfill | Run `/session-insights batch` for pending transcripts   |
+| 2     | Episode Replay   | Scan recent activity, identify promotion candidates     |
+| 3     | Index Refresh    | Update mechanical framework indices (`SKILLS.md`, etc.) |
+| 4     | Staleness Sweep  | Detect orphans, stale docs, under-specified tasks       |
+| 5     | Brain Sync       | Commit and push `$ACA_DATA`                             |
 
 ## Phase 4: Tools Available
 
@@ -74,35 +60,6 @@ The agent uses these as **signals**, not as deterministic verdicts:
 - **PKB orphan detection**: `mcp__pkb__pkb_orphans()`
 - **Git log**: Recent commits, task changes since last cycle
 - **Own judgment**: The agent reads flagged tasks and decides whether they genuinely need attention. The script is a starting point, not the final word.
-
-## Phase 4b: Graph Maintenance
-
-Each cycle, pick ONE strategy based on what graph_stats shows needs the most attention:
-
-| Condition                     | Strategy            | Action                                              |
-| ----------------------------- | ------------------- | --------------------------------------------------- |
-| `disconnected_epics` > 10     | Connect epics       | Find natural project parents for disconnected epics |
-| `projects_without_goals` > 10 | Connect projects    | Link projects to existing goals                     |
-| `flat_tasks` > 100            | Reparent flat tasks | Find epic/project parents for orphaned tasks        |
-| `orphan_count` > 20           | Fix orphans         | Connect or archive truly disconnected nodes         |
-| All metrics healthy           | Densify edges       | Use densify strategies to add dependency edges      |
-
-**Bounded effort**: Process at most 30 items per cycle. Quality over quantity.
-
-**Autonomous vs. flagged**:
-
-- **Obvious**: Task title mentions the project/epic by name → reparent autonomously
-- **Ambiguous**: Flag for user review in the cycle log, don't apply
-
-**Measure after**: Re-run `graph_stats` in Phase 5 to confirm the metric improved.
-
-## Active Loop Integration
-
-When running via `/loop` or `/active-loop`, the sleep cycle follows the active-loop protocol:
-
-1. Read the DRAFT PR body for prior cycle learnings
-2. Use the "Next" field from the last cycle to inform this cycle's Phase 4b strategy
-3. After Phase 5, update the PR body with the cycle log entry
 
 ## Design Principles
 

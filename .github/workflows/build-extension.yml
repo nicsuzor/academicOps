@@ -15,7 +15,7 @@ on:
 
 concurrency:
   group: build-deploy-nicsuzor-aops-dist
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   # Step 1: Download PKB binaries from nicsuzor/mem releases

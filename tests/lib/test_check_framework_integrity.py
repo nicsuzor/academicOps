@@ -212,10 +212,8 @@ def test_skill_dir_without_skill_md_ignored(plugin_root: Path) -> None:
 
 def test_wikilinks_missing_workflow_caught(plugin_root: Path) -> None:
     """WORKFLOWS.md wikilink to nonexistent workflow file is an error."""
-    hydrator_dir = plugin_root / "skills" / "hydrator"
-    hydrator_dir.mkdir(parents=True, exist_ok=True)
-    (hydrator_dir / "WORKFLOWS.md").write_text("# Workflows\n\n[[ghost-workflow]]\n")
-    (hydrator_dir / "workflows").mkdir()
+    (plugin_root / "WORKFLOWS.md").write_text("# Workflows\n\n[[ghost-workflow]]\n")
+    (plugin_root / "workflows").mkdir()
 
     errors = check_index_wikilinks(plugin_root)
 
@@ -224,12 +222,10 @@ def test_wikilinks_missing_workflow_caught(plugin_root: Path) -> None:
 
 def test_wikilinks_existing_workflow_passes(plugin_root: Path) -> None:
     """WORKFLOWS.md wikilink to existing workflow file passes."""
-    hydrator_dir = plugin_root / "skills" / "hydrator"
-    hydrator_dir.mkdir(parents=True, exist_ok=True)
-    wf_dir = hydrator_dir / "workflows"
+    wf_dir = plugin_root / "workflows"
     wf_dir.mkdir()
     (wf_dir / "feature-dev.md").write_text("# feature-dev\n")
-    (hydrator_dir / "WORKFLOWS.md").write_text("# Workflows\n\n[[feature-dev]]\n")
+    (plugin_root / "WORKFLOWS.md").write_text("# Workflows\n\n[[feature-dev]]\n")
 
     errors = check_index_wikilinks(plugin_root)
 
@@ -243,8 +239,8 @@ def test_wikilinks_existing_workflow_passes(plugin_root: Path) -> None:
 
 def test_workflow_too_long_caught(plugin_root: Path) -> None:
     """Workflow file exceeding 100 lines is an error."""
-    wf_dir = plugin_root / "skills" / "hydrator" / "workflows"
-    wf_dir.mkdir(parents=True, exist_ok=True)
+    wf_dir = plugin_root / "workflows"
+    wf_dir.mkdir()
     long_content = "\n".join(f"line {i}" for i in range(101))
     (wf_dir / "too-long.md").write_text(long_content)
 
@@ -255,8 +251,8 @@ def test_workflow_too_long_caught(plugin_root: Path) -> None:
 
 def test_workflow_within_limit_passes(plugin_root: Path) -> None:
     """Workflow file at exactly 100 lines passes."""
-    wf_dir = plugin_root / "skills" / "hydrator" / "workflows"
-    wf_dir.mkdir(parents=True, exist_ok=True)
+    wf_dir = plugin_root / "workflows"
+    wf_dir.mkdir()
     content = "\n".join(f"line {i}" for i in range(100))
     (wf_dir / "short.md").write_text(content)
 

@@ -1,13 +1,6 @@
 name: release-please
-
 on:
   workflow_dispatch:
-    inputs:
-      release_as:
-        description: "Override next version (e.g. 1.2.4)"
-        required: true
-        type: string
-
   push:
     branches:
       - main
@@ -27,7 +20,6 @@ jobs:
           token: ${{ secrets.AOPS_DIST_PAT }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
-          release-as: ${{ inputs.release_as}}
 
       # GITHUB_TOKEN cannot trigger other workflows (tag push / release events
       # are ignored). Use a PAT with `gh workflow run` to trigger the build via

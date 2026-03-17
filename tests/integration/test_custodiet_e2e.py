@@ -8,22 +8,19 @@ Tests verify ACTUAL behavior (Task spawned, files created) not surface patterns.
 from pathlib import Path
 
 import pytest
-from lib.session_paths import get_gate_file_path
+from lib import hook_utils
 
 TOOL_CALL_THRESHOLD = 5
 SKIP_TOOLS = {"Read", "Glob", "Grep", "mcp__memory__retrieve_memory"}
 
 
 def get_audit_temp_dir() -> Path:
-    """Get the audit temp directory using session paths."""
-    # get_gate_file_path returns a file path; we need the parent directory
-    gate_path = get_gate_file_path("custodiet", "dummy")
-    return gate_path.parent
+    """Get the audit temp directory using shared logic."""
+    return hook_utils.get_hook_temp_dir("hydrator")
 
 
 @pytest.mark.slow
 @pytest.mark.integration
-@pytest.mark.requires_local_env
 def test_custodiet_temp_file_created_on_threshold(claude_headless) -> None:
     """Verify custodiet hook creates temp file when threshold reached.
 
@@ -63,7 +60,6 @@ def test_custodiet_temp_file_created_on_threshold(claude_headless) -> None:
 
 @pytest.mark.slow
 @pytest.mark.integration
-@pytest.mark.requires_local_env
 def test_custodiet_task_spawned(claude_headless_tracked) -> None:
     """Verify custodiet Task is actually spawned when threshold reached."""
     prompt = (

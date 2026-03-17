@@ -423,8 +423,9 @@ class TestComplianceSubagentTypesComplete:
 
     EXPECTED_TYPES = {
         "hydrator",
-        "aops-core:hydrator",
-        "aops_core_hydrator",
+        "prompt-hydrator",
+        "aops-core:prompt-hydrator",
+        "aops_core_prompt_hydrator",
         "custodiet",
         "aops-core:custodiet",
         "aops_core_custodiet",
@@ -1253,7 +1254,7 @@ _HYDRATOR_SEQUENCE_PLATFORMS = [
             "hydrator_input": {
                 "description": "Hydrate prompt",
                 "prompt": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-f45b1f80-hydration.md",
-                "subagent_type": "aops-core:hydrator",
+                "subagent_type": "aops-core:prompt-hydrator",
                 "run_in_background": True,
             },
         },
@@ -1269,7 +1270,7 @@ _HYDRATOR_SEQUENCE_PLATFORMS = [
             "read_input": {
                 "file_path": "/Users/suzor/.gemini/tmp/brain/logs/20260303-a51fc272-hydration.md"
             },
-            "hydrator_tool": "hydrator",
+            "hydrator_tool": "prompt-hydrator",
             "hydrator_input": {
                 "query": "/Users/suzor/.gemini/tmp/brain/logs/20260303-a51fc272-hydration.md"
             },
@@ -1283,7 +1284,7 @@ class TestHydrationGateSequence:
     """Three-step sequence: read denied -> hydrator allowed -> read allowed.
 
     Reproduces issue #710: in Gemini, the hydrator call doesn't open the gate
-    because tool_name='hydrator' (not 'delegate_to_agent'), so the
+    because tool_name='prompt-hydrator' (not 'delegate_to_agent'), so the
     router never extracts the subagent_type, the trigger never fires, and
     subsequent reads remain denied.
 

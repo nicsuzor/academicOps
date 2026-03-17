@@ -18,8 +18,6 @@ from pathlib import Path
 
 import pytest
 
-pytestmark = [pytest.mark.slow, pytest.mark.integration, pytest.mark.requires_local_env]
-
 
 def test_settings_json_discoverable_by_claude(bots_dir: Path) -> None:
     """Test that Claude Code can discover settings.json at expected locations.
@@ -38,7 +36,9 @@ def test_settings_json_discoverable_by_claude(bots_dir: Path) -> None:
         AssertionError: If settings.json is not discoverable or invalid
     """
     # Define expected locations where Claude Code looks for settings.json
-    user_settings = Path.home() / ".claude" / "settings.json"
+    from lib.paths import get_config_dir
+
+    user_settings = get_config_dir() / "settings.json"
     project_settings = bots_dir / ".claude" / "settings.json"
 
     # Check if either location exists

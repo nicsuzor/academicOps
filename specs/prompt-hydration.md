@@ -27,16 +27,14 @@ Transform a raw user prompt into a complete execution plan with workflow selecti
 
 ## Purpose
 
-As an extension of the Bazaar model, **Hydration is Task Enrichment** — something done TO tasks, not an ephemeral session artifact.
-
 Users type terse prompts. Agents need:
 
 - **Intent** - What does the user actually want?
 - **Workflow** - Which workflow template applies?
-- **Context** - What prior knowledge and related tasks are relevant?
-- **Guardrails** - What strict standards must be met for this work to be ratified?
+- **Steps** - What specific actions, in what order?
+- **Guardrails** - What constraints apply?
 
-Prompt Hydration bridges this gap by enriching Task Graph nodes with execution context. Given a terse prompt, the Hydrator creates or binds to a task and writes relevant memories, workflow steps, acceptance criteria, and guardrails into the task body. The enriched task is a durable artifact — any worker can pull it and execute without additional context gathering. See [[hydration-planning-merge]] for the full architectural specification.
+Prompt Hydration bridges this gap automatically on every prompt, outputting a complete execution plan the agent can follow.
 
 ## Architecture (Modular Workflow System)
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Integration tests for workflow constraint checking in hydrator.
+"""Integration tests for workflow constraint checking in prompt-hydrator.
 
 Tests verify that the hydrator correctly:
 1. Detects constraint violations in proposed plans
@@ -19,8 +19,6 @@ Run with demo output:
 """
 
 import pytest
-
-pytestmark = [pytest.mark.slow, pytest.mark.integration]
 
 # ============================================================================
 # CONSTRAINT TEST CASES

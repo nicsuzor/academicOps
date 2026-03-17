@@ -9,7 +9,7 @@
 
 set -e
 
-IMAGE_NAME="aops-crew"
+IMAGE_NAME="aops-env-test"
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m'

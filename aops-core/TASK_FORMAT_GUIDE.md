@@ -573,5 +573,5 @@ Examples:
 
 - **`aops` CLI** (Rust binary, nicsuzor/mem) - Generates `index.json` and graph exports from task files
 - **Task MCP Server** - CRUD operations on tasks
-
+- **task-viz** - Network visualization of task graph
 - **Dashboard** - Streamlit app for viewing overwhelm state

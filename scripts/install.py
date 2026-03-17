@@ -138,12 +138,7 @@ def uninstall_framework(aops_path: Path):
         run_command(["gemini", "extensions", "uninstall", "aops-core"], check=False)
         print("✓ Gemini extensions uninstalled")
 
-    # 3. Claude Plugins
-    if shutil.which("claude"):
-        run_command(["claude", "plugin", "uninstall", "aops-core"], check=False)
-        print("✓ Claude plugins uninstalled")
-
-    # 4. Cleanup Files
+    # 3. Cleanup Files
     gemini_dir = Path.home() / ".gemini"
 
     # Remove symlinks
@@ -319,29 +314,6 @@ def main():
             print("Warning: Gemini extension dist not found. Skipping link.")
     else:
         print("Warning: 'gemini' executable not found. Skipping extension linking.")
-
-    print("\n=== Phase 4: Install Claude Plugin ===")
-    if shutil.which("claude"):
-        # Install Claude plugin. New builds name the directory 'aops-claude'
-        dist_core_claude = None
-        for name in ("aops-core-claude", "aops-claude"):
-            candidate = aops_root / "dist" / name
-            if candidate.exists():
-                dist_core_claude = candidate
-                break
-
-        if dist_core_claude:
-            print(f"Installing Claude plugin from: {dist_core_claude}")
-            # Uninstall first to avoid "already installed" error
-            run_command(["claude", "plugin", "uninstall", "aops-core"], check=False)
-            # Use local repo as marketplace for source installs
-            run_command(["claude", "plugin", "marketplace", "add", str(aops_root)], check=False)
-            run_command(["claude", "plugin", "install", "aops-core@aops"], check=False)
-            print("✓ Claude plugin installed")
-        else:
-            print("Warning: Claude plugin dist not found. Skipping install.")
-    else:
-        print("Warning: 'claude' executable not found. Skipping plugin installation.")
 
 
 if __name__ == "__main__":

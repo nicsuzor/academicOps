@@ -30,8 +30,11 @@ from lib.transcript_parser import (
     normalize_gemini_project,
 )
 
+# Configuration constants for router context extraction
 _MAX_TURNS = 5
+_SKILL_LOOKBACK = 10
 _PROMPT_TRUNCATE = 400  # Increased from 100 to preserve more context (validated 2026-01-11)
+_MAX_TOOL_CALLS = 10  # Max recent tool calls to include in context
 
 
 def parse_todowrite_state(entries: list[Any]) -> TodoWriteState | None:
@@ -88,6 +91,29 @@ def parse_todowrite_state(entries: list[Any]) -> TodoWriteState | None:
     return None
 
 
+def extract_router_context(transcript_path: Path, max_turns: int = _MAX_TURNS) -> str:
+    """Extract compact context for intent router.
+
+    Parses the JSONL transcript and extracts:
+    - Last N user prompts (truncated)
+    - Most recent Skill invocation
+    - TodoWrite task status counts
+
+    Args:
+        transcript_path: Path to session JSONL file
+        max_turns: Maximum number of recent prompts to include
+
+    Returns:
+        Formatted markdown context or empty string if file doesn't exist/is empty
+
+    Raises:
+        Exception: On parsing errors (fail-fast per AXIOM #7)
+    """
+    if not transcript_path.exists():
+        return ""
+    return _extract_router_context_impl(transcript_path, max_turns)
+
+
 def _is_system_injected_context(text: str) -> bool:
     """Check if text is system-injected context (not actual user input).
 
@@ -125,6 +151,39 @@ def _clean_prompt_text(text: str) -> str:
 
     # Not a command, return as-is
     return text
+
+
+def _extract_questions_from_text(text: str) -> list[str]:
+    """Extract sentences ending with '?' from agent response text.
+
+    Identifies questions in agent messages to help hydrator understand
+    short user responses in context (e.g., user says "all" in response
+    to agent's "which tasks?").
+
+    Args:
+        text: Agent response text
+
+    Returns:
+        List of question sentences found, deduplicated
+    """
+    if not text:
+        return []
+
+    # Split on common sentence boundaries, preserving question marks
+    # Match sentences ending with ? (with possible punctuation/whitespace)
+    questions = []
+    # Look for text ending with ? - capture the full sentence leading up to it
+    # Using regex to find sentence-like patterns ending with ?
+    pattern = r"[^.!?\n]*\?"
+    matches = re.findall(pattern, text)
+
+    for match in matches:
+        # Clean up the match - remove leading/trailing whitespace
+        question = match.strip()
+        if question and question not in questions:  # Deduplicate
+            questions.append(question)
+
+    return questions
 
 
 def _extract_and_expand_prompts(turns: list, max_turns: int) -> list[str]:
@@ -176,6 +235,178 @@ def _extract_and_expand_prompts(turns: list, max_turns: int) -> list[str]:
             prompts.append(cleaned)
 
     return prompts[-max_turns:] if prompts else []
+
+
+def _extract_router_context_impl(transcript_path: Path, max_turns: int) -> str:
+    """Implementation of router context extraction."""
+    # Use SessionProcessor to parse and group turns (DRY compliant)
+    # Skip agents and hooks for speed - we only need main conversation
+    processor = SessionProcessor()
+    _, entries, _ = processor.parse_session_file(
+        transcript_path, load_agents=False, load_hooks=False
+    )
+
+    if not entries:
+        return ""
+
+    # Group into turns to handle command expansion properly
+    turns = processor.group_entries_into_turns(entries, full_mode=True)
+
+    # Extract user prompts, expanding commands
+    recent_prompts = _extract_and_expand_prompts(turns, max_turns)
+
+    # Find most recent Skill invocation
+    recent_skill: str | None = None
+
+    # Find active task (TodoWrite)
+    todowrite_state = parse_todowrite_state(entries)
+    todo_counts = todowrite_state.counts if todowrite_state else None
+    in_progress_task = todowrite_state.in_progress_task if todowrite_state else None
+
+    # Extract recent tool calls
+    recent_tools: list[str] = []
+    agent_responses: list[str] = []
+    agent_questions: list[str] = []  # Track questions separately for clarity
+
+    # Iterate reversed for recent tools/skills
+    # We iterate turns reversed
+    for turn in reversed(turns):
+        assistant_sequence = (
+            turn.get("assistant_sequence") if isinstance(turn, dict) else turn.assistant_sequence
+        )
+        if not assistant_sequence:
+            continue
+
+        # Collect response text for context (limit to 3 turns)
+        # IMPORTANT: We iterate reversed, so first responses found are MOST RECENT
+        if len(agent_responses) < 3:
+            # Join text parts
+            texts = [item["content"] for item in assistant_sequence if item.get("type") == "text"]
+            if texts:
+                full_text = " ".join(texts)
+                # Extract questions from this agent response (especially important for most recent)
+                # This helps hydrator understand short user responses like "yes" or "all"
+                questions = _extract_questions_from_text(full_text)
+                if questions:
+                    # For the most recent response, prioritize questions
+                    if len(agent_responses) == 0:
+                        # Most recent: add all unique questions found
+                        for q in questions:
+                            if q not in agent_questions:
+                                agent_questions.append(q)
+                    else:
+                        # Older responses: add just first question if any
+                        if questions[0] not in agent_questions:
+                            agent_questions.append(questions[0])
+
+                # Truncate - but preserve more for the most recent (first found)
+                # This ensures short user prompts like "yes" can see the question
+                #
+                # When user prompt is short (≤10 chars), it's likely a confirmation
+                # like "yes", "ok", "all", etc. Preserve much more context (2000 chars)
+                # so the hydrator can see what question the user is responding to.
+                current_prompt = recent_prompts[-1] if recent_prompts else ""
+                is_short_response = len(current_prompt.strip()) <= 10
+
+                if is_short_response and len(agent_responses) == 0:
+                    max_len = 2000  # Preserve full context for short responses
+                elif len(agent_responses) == 0:
+                    max_len = 500
+                else:
+                    max_len = 300
+                if len(full_text) > max_len:
+                    full_text = full_text[:max_len] + "..."
+                agent_responses.append(full_text)
+
+        # Scan for tools
+        for item in reversed(assistant_sequence):
+            if item.get("type") == "tool":
+                tool_call = item.get("content", "")
+
+                # Extract tool name from content "Name(args)" or similar
+                # group_entries_into_turns formats it as "Name(input)" or just "Name"
+                # But it provides 'tool_name' and 'tool_input' in the item dict too!
+                tool_name = item.get("tool_name", "")
+                tool_input = item.get("tool_input", {})
+
+                # If tool_name is missing from item (legacy parser might not add it?), try to parse content
+                if not tool_name and "(" in tool_call:
+                    tool_name = tool_call.split("(")[0]
+
+                if tool_name == "Skill":
+                    if not recent_skill:
+                        recent_skill = tool_input.get("skill")
+                    continue
+
+                if tool_name == "TodoWrite":
+                    continue
+
+                if len(recent_tools) < _MAX_TOOL_CALLS:
+                    recent_tools.append(tool_call)  # Use the pre-formatted content
+
+    # Reverse back to chronological
+    agent_responses.reverse()
+    agent_questions.reverse()
+    recent_tools.reverse()
+
+    # Format output (same as before)
+    if (
+        not recent_prompts
+        and not recent_skill
+        and not todo_counts
+        and not recent_tools
+        and not agent_responses
+        and not agent_questions
+    ):
+        return ""
+
+    lines = ["## Session Context", ""]
+
+    if recent_prompts:
+        lines.append("Recent prompts:")
+        for i, prompt in enumerate(recent_prompts, 1):
+            # Truncate long prompts
+            truncated = (
+                prompt[:_PROMPT_TRUNCATE] + "..." if len(prompt) > _PROMPT_TRUNCATE else prompt
+            )
+            # Escape backticks
+            truncated = truncated.replace("```", "'''")
+            lines.append(f'{i}. "{truncated}"')
+        lines.append("")
+
+    # Show agent questions separately for clarity when responding to short prompts
+    if agent_questions:
+        lines.append("Agent questions (recent):")
+        for i, question in enumerate(agent_questions, 1):
+            # Ensure question ends with ? for clarity
+            q = question if question.endswith("?") else question + "?"
+            lines.append(f"{i}. {q}")
+        lines.append("")
+
+    if agent_responses:
+        lines.append("Recent agent responses:")
+        for i, response in enumerate(agent_responses, 1):
+            lines.append(f'{i}. "{response}"')
+        lines.append("")
+
+    if recent_tools:
+        lines.append("Recent tools:")
+        for tool in recent_tools:
+            lines.append(f"  - {tool}")
+        lines.append("")
+
+    if recent_skill:
+        lines.append(f'Active: Skill("{recent_skill}") invoked recently')
+
+    if todo_counts:
+        task_desc = f' ("{in_progress_task}")' if in_progress_task else ""
+        lines.append(
+            f"Tasks: {todo_counts['pending']} pending, "
+            f"{todo_counts['in_progress']} in_progress{task_desc}, "
+            f"{todo_counts['completed']} completed"
+        )
+
+    return "\n".join(lines)
 
 
 def extract_gate_context(
@@ -383,23 +614,8 @@ def build_audit_session_context(transcript_path: Path | str) -> str:
     if not turns:
         return "(No conversation turns found)"
 
-    # Filter out non-conversation and meta-only turns first to get a clean list
-    valid_turns = []
-    for turn in turns:
-        turn_type = turn.get("type") if isinstance(turn, dict) else None
-        if turn_type in ("hook_context", "summary"):
-            continue
-
-        is_meta = turn.get("is_meta") if isinstance(turn, dict) else turn.is_meta
-        assistant_sequence = (
-            turn.get("assistant_sequence") if isinstance(turn, dict) else turn.assistant_sequence
-        )
-        if is_meta and not assistant_sequence:
-            continue
-
-        valid_turns.append(turn)
-
     lines: list[str] = []
+    turn_num = 0
 
     # Noise tools the critic doesn't need to see individually
     _SKIP_TOOLS = {"TodoWrite", "Skill"}
@@ -410,41 +626,21 @@ def build_audit_session_context(transcript_path: Path | str) -> str:
     # Max chars for tool results
     _TOOL_RESULT_LIMIT = 1000
 
-    # We split history into a historical summary and recent detailed activity
-    _DETAILED_TURNS_LIMIT = 5
+    for turn in turns:
+        # Skip non-conversation turns (hooks, summaries)
+        turn_type = turn.get("type") if isinstance(turn, dict) else None
+        if turn_type in ("hook_context", "summary"):
+            continue
 
-    historical_turns = valid_turns[:-_DETAILED_TURNS_LIMIT]
-    recent_turns = valid_turns[-_DETAILED_TURNS_LIMIT:]
-
-    if historical_turns:
-        lines.append("### Historical User Intent")
-        lines.append("These are the older prompts from the user establishing the overall goals:\n")
-
-        turn_num = 0
-        for turn in historical_turns:
-            turn_num += 1
-            user_msg = turn.get("user_message") if isinstance(turn, dict) else turn.user_message
-            is_meta = turn.get("is_meta") if isinstance(turn, dict) else turn.is_meta
-
-            if user_msg and not is_meta:
-                msg = user_msg.strip()
-                msg = _clean_prompt_text(msg)
-                if not _is_system_injected_context(msg):
-                    if len(msg) > 1000:
-                        msg = msg[:1000] + "..."
-                    lines.append(f"**User (Turn {turn_num})**: {msg}\n")
-
-        lines.append("---")
-        lines.append(f"### Recent Activity (Last {len(recent_turns)} Turns)")
-
-    turn_num = len(historical_turns)
-
-    for turn in recent_turns:
         user_msg = turn.get("user_message") if isinstance(turn, dict) else turn.user_message
         is_meta = turn.get("is_meta") if isinstance(turn, dict) else turn.is_meta
         assistant_sequence = (
             turn.get("assistant_sequence") if isinstance(turn, dict) else turn.assistant_sequence
         )
+
+        # Skip meta-only turns (system injections without user content)
+        if is_meta and not assistant_sequence:
+            continue
 
         turn_num += 1
 
@@ -458,7 +654,7 @@ def build_audit_session_context(transcript_path: Path | str) -> str:
                 # Generous truncation — user intent matters
                 if len(msg) > 1000:
                     msg = msg[:1000] + "..."
-                lines.append(f"#### Turn {turn_num}")
+                lines.append(f"### Turn {turn_num}")
                 lines.append(f"**User**: {msg}")
                 lines.append("")
 
@@ -797,7 +993,7 @@ def load_skill_scope(skill_name: str) -> str | None:
     the workflow section to provide context for compliance checking.
 
     Args:
-        skill_name: Name of the skill (e.g., "learn", "daily")
+        skill_name: Name of the skill (e.g., "learn", "daily", "task-viz")
 
     Returns:
         Brief description of what the skill authorizes, or None if not found.

@@ -30,15 +30,15 @@ GATE_CONFIGS = [
         description="Ensures prompts are hydrated with context.",
         initial_status=GateStatus.CLOSED,  # Starts CLOSED. Opens when hydrator is dispatched.
         triggers=[
-            # Hydrator skill invoked -> Open (JIT gate open)
-            # Fires on PreToolUse for Skill(skill='aops-core:hydrator'), opening the
-            # gate BEFORE the policy evaluates. This means: the Skill tool call itself is
+            # Hydrator dispatched or finishes -> Open (JIT gate open)
+            # Fires on PreToolUse for Agent(subagent_type=prompt-hydrator), opening the
+            # gate BEFORE the policy evaluates. This means: the Agent tool call itself is
             # always_available (bypasses policy), AND the trigger opens the gate so the
-            # hydrator skill's own tool calls (Read, PKB ops) are not blocked.
+            # hydrator subagent's own tool calls (Read, Glob, etc.) are not blocked.
             GateTrigger(
                 condition=GateCondition(
-                    hook_event="^PreToolUse$",
-                    subagent_type_pattern="^(aops-core:)?hydrator$",
+                    hook_event="^(SubagentStart|PreToolUse|SubagentStop|PostToolUse)$",
+                    subagent_type_pattern="^(aops-core:)?prompt-hydrator$",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
@@ -49,20 +49,11 @@ GATE_CONFIGS = [
             # User Prompt (not ignored) -> Close
             GateTrigger(
                 condition=GateCondition(
-                    hook_event="UserPromptSubmit",
-                    exclude_if_subagent=True,
-                    prompt_exclude_patterns=[
-                        r"^$",  # no/empty prompt: don't close gate
-                        r"^<agent-notification>",
-                        r"^<task-notification>",
-                        r"^\.",  # dot prefix: user ignore shortcut
-                        r"^/",  # slash prefix: skill invocations
-                        r"^# /",  # comment-style slash command expansion
-                        r"<command-name>/",  # expanded slash command
-                    ],
+                    hook_event="UserPromptSubmit", custom_check="is_hydratable"
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,
+                    custom_action="hydrate_prompt",
                     system_message_key="hydration.closed",
                     context_key="hydrator.instruction",
                 ),
