@@ -14,7 +14,7 @@ def test_gate_enforcement_e2e(cli_headless, gate, instruction, expected_behavior
     """E2E test for gate enforcement using real CLI agents."""
     runner, platform = cli_headless
 
-    model = "gemini-2.0-flash" if platform == "gemini" else "haiku"
+    model = "gemini-2.0-flash-exp" if platform == "gemini" else "haiku"
 
     result = runner(instruction, model=model)
 

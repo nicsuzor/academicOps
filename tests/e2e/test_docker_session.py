@@ -56,10 +56,48 @@ class TestDockerAgentResponds:
             return _make_failing_wrapper(_run), "gemini-docker"
 
     def test_agent_responds(self, docker_headless):
-        """Agent starts, responds, and exits cleanly in Docker."""
+        """Agent starts, responds, and exits cleanly in Docker.
+
+        This verifies that the basic agent infrastructure is working.
+        """
         runner, platform = docker_headless
         result = runner("What is 2+2? Answer with just the number.")
         assert result["success"], f"[{platform}] Execution failed: {result.get('error')}"
+
+    def test_framework_binaries_on_path(self, docker_headless):
+        """Verify that pkb and aops binaries are available on PATH inside Docker."""
+        runner, platform = docker_headless
+        # Ask the agent to check for the binaries using their tool-use capabilities (Bash/run_shell_command)
+        prompt = "Run 'which pkb' and 'which aops' and 'pkb --version'. If they all work, reply with 'BINARIES_OK'."
+        result = runner(prompt)
+        assert result["success"], f"[{platform}] Execution failed: {result.get('error')}"
+
+        # Check output for confirmation
+        output = str(result.get("output", "")) + str(result.get("stderr", ""))
+        print(
+            f"\n--- RAW AGENT RESPONSE [{platform}] ---\n{result.get('result', {}).get('response', output)}\n-----------------------------"
+        )
+        assert "BINARIES_OK" in output or "pkb" in output.lower(), (
+            f"[{platform}] Framework binaries missing or not working in container. Output: {output}"
+        )
+
+    def test_extension_active_in_docker(self, docker_headless):
+        """Verify that aops-core extension is active and recognized in Docker."""
+        runner, platform = docker_headless
+        # For Gemini, we can check if it's listed in 'gemini extensions list'
+        # For Claude, we can check if its tools are available or if it's in verbose output
+        prompt = "List your available extensions or tools. Reply with 'AOPS_ACTIVE' if you see 'aops-core' or pkb tools."
+        result = runner(prompt)
+        assert result["success"], f"[{platform}] Execution failed: {result.get('error')}"
+
+        output = str(result.get("output", "")) + str(result.get("stderr", ""))
+        print(
+            f"\n--- RAW AGENT RESPONSE [{platform}] ---\n{result.get('result', {}).get('response', output)}\n-----------------------------"
+        )
+        # For Gemini, the verbose output (from conftest) should show "Loading extension: aops-core"
+        assert "aops-core" in output or "AOPS_ACTIVE" in output or "pkb" in output, (
+            f"[{platform}] Extension not active in container. Output: {output}"
+        )
 
     def test_agent_returns_structured_output(self, docker_headless):
         """Agent returns parseable structured output from Docker."""

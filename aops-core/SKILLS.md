@@ -66,7 +66,6 @@ Quick reference for routing user requests to skills/commands. When a request mat
 | `/strategy`         | skill   | "strategic thinking", "planning session", "explore complexity"                                                                                                                                                       | no             | no         | conversational | planning                         | Strategic thinking partner for exploration and clarity                                                           |
 | `/swarm-supervisor` | skill   | "polecat swarm", "polecat herd", "spawn polecats", "run polecats", "parallel workers", "batch tasks", "parallel processing"                                                                                          | yes            | yes        | batch          | operations                       | Orchestrate parallel polecat workers                                                                             |
 
-
 ## Routing Rules
 
 1. **Explicit match**: User says "/daily" or "update my daily" → invoke `/daily` directly
