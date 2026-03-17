@@ -492,7 +492,7 @@ def commit_and_push_repo(
 ) -> tuple[bool, str]:
     """Commit and push changes in a repo (optionally scoped to subdir).
 
-    Syncs with remote before committing to prevent conflicts.
+    Commits local changes first, then syncs with remote via rebase.
     Will NOT auto-commit to main/master branches, UNLESS the repo
     is $ACA_DATA (which only uses main).
 
@@ -514,30 +514,8 @@ def commit_and_push_repo(
             f"Skipping auto-commit: protected branch '{current_branch or 'detached HEAD'}'",
         )
 
-    sync_warning = ""
-
-    # Step 1: Check if sync is possible
-    syncable, reason = can_sync(repo_path)
-    if not syncable:
-        # Skip sync but continue with commit
-        sync_warning = f"(sync skipped: {reason}) "
-    else:
-        # Step 2: Fetch and check divergence
-        is_behind, count, fetch_err = fetch_and_check_divergence(repo_path)
-        if fetch_err:
-            # Network issue - skip sync, continue with local commit
-            sync_warning = f"(sync skipped: {fetch_err}) "
-        elif is_behind:
-            # Step 3: Rebase to incorporate remote changes
-            sync_ok, sync_msg = pull_rebase_if_behind(repo_path)
-            if not sync_ok:
-                # CONFLICT - abort, don't commit, alert agent
-                return False, f"SYNC CONFLICT: {sync_msg}"
-            # Sync succeeded
-            sync_warning = f"(synced {count} commits) "
-
     try:
-        # Step 4: Add changes (scoped to subdir if provided)
+        # Step 1: Commit local changes FIRST — a dirty working tree blocks rebase.
         add_target = subdir if subdir else "."
         subprocess.run(
             ["git", "add", add_target],
@@ -547,7 +525,6 @@ def commit_and_push_repo(
             timeout=5,
         )
 
-        # Commit with descriptive message
         if commit_message:
             commit_msg = commit_message
         else:
@@ -561,29 +538,42 @@ def commit_and_push_repo(
             check=True,
             timeout=10,
         )
-
-        # Push to remote
-        push_result = subprocess.run(
-            ["git", "push"],
-            cwd=repo_path,
-            capture_output=True,
-            text=True,
-            timeout=30,
-            check=False,  # Don't fail if push fails (no remote, network issue)
-        )
-
-        if push_result.returncode != 0:
-            # Commit succeeded but push failed
-            return (
-                True,
-                f"{sync_warning}Changes committed but push failed: {push_result.stderr.strip()}",
-            )
-
-        return True, f"{sync_warning}State changes committed and pushed successfully"
-
     except subprocess.CalledProcessError as e:
         return False, f"Git operation failed: {e}"
     except subprocess.TimeoutExpired:
         return False, "Git operation timed out"
     except Exception as e:
         return False, f"Unexpected error: {e}"
+
+    # Step 2: Sync with remote (rebase on top of local commit)
+    sync_warning = ""
+    syncable, reason = can_sync(repo_path)
+    if not syncable:
+        sync_warning = f"(sync skipped: {reason}) "
+    else:
+        is_behind, count, fetch_err = fetch_and_check_divergence(repo_path)
+        if fetch_err:
+            sync_warning = f"(sync skipped: {fetch_err}) "
+        elif is_behind:
+            sync_ok, sync_msg = pull_rebase_if_behind(repo_path)
+            if not sync_ok:
+                return False, f"SYNC CONFLICT: {sync_msg}"
+            sync_warning = f"(synced {count} commits) "
+
+    # Step 3: Push to remote
+    push_result = subprocess.run(
+        ["git", "push"],
+        cwd=repo_path,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+
+    if push_result.returncode != 0:
+        return (
+            True,
+            f"{sync_warning}Changes committed but push failed: {push_result.stderr.strip()}",
+        )
+
+    return True, f"{sync_warning}State changes committed and pushed successfully"
