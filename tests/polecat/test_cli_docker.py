@@ -19,7 +19,11 @@ REPO_ROOT = TESTS_DIR.parent.parent
 sys.path.insert(0, str(REPO_ROOT / "polecat"))
 sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 
-from cli import _build_docker_cmd, _node_version_key, _replicate_gemini_auth
+from cli import (
+    _build_docker_cmd,
+    _node_version_key,
+    _replicate_gemini_auth,
+)
 
 
 class TestNodeVersionKey:
@@ -182,7 +186,10 @@ class TestBuildDockerCmd:
 
     def test_sets_timezone(self):
         """TZ is set in Docker env, detected from system when not in env."""
-        with patch("cli._detect_system_timezone", return_value="US/Eastern"):
+        with (
+            patch.dict(os.environ, {"TZ": ""}),
+            patch("cli._detect_system_timezone", return_value="US/Eastern"),
+        ):
             cmd = self._build()
         env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
         tz_args = [a for a in env_args if a.startswith("TZ=")]
