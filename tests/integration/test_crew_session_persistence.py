@@ -163,7 +163,7 @@ def _dump_diagnostics(result: dict, session_id: str) -> str:
 def test_claude_docker_produces_session_jsonl(claude_docker):
     """Claude writes a session JSONL transcript that persists via the session_dir mount."""
     result, session_id, tool_calls = claude_docker(
-        "Reply with exactly: hello world",
+        "Use the Bash tool to run: echo hello-world",
         timeout_seconds=90,
         fail_on_error=False,
     )
@@ -176,6 +176,12 @@ def test_claude_docker_produces_session_jsonl(claude_docker):
     usage = res.get("usage", {})
     assert usage.get("output_tokens", 0) > 0, (
         f"Claude produced 0 output tokens — session did not execute.\n{diag}"
+    )
+
+    # Verify tool calls were captured (consolidated from test_docker_session.py)
+    bash_calls = [c for c in tool_calls if c["name"] == "Bash"]
+    assert len(bash_calls) >= 1, (
+        f"Expected Bash tool call, got: {[c['name'] for c in tool_calls]}.\n{diag}"
     )
 
     # Now check session persistence

@@ -107,20 +107,3 @@ class TestDockerAgentResponds:
         assert result["result"], f"[{platform}] Result should have parsed JSON/output"
 
 
-@pytest.mark.slow
-@pytest.mark.integration
-class TestDockerSessionTracking:
-    """Claude Docker session log extraction (Claude-specific — needs session tracking)."""
-
-    def test_session_logs_extracted(self, claude_docker):
-        """Session JSONL is written to bind-mounted .claude/ and can be parsed."""
-        result, session_id, tool_calls = claude_docker(
-            "Use the Bash tool to run: echo hello-from-docker",
-            timeout_seconds=60,
-        )
-        assert result["success"], f"Session failed: {result.get('error')}"
-        assert session_id, "Session ID should be set"
-        bash_calls = [c for c in tool_calls if c["name"] == "Bash"]
-        assert len(bash_calls) >= 1, (
-            f"Expected Bash tool call, got: {[c['name'] for c in tool_calls]}"
-        )
