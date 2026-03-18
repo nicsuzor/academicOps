@@ -55,7 +55,7 @@ Even for detailed turns, strict truncation limits apply:
 
 - **Observation**: Multiple concurrent tool calls could theoretically invoke the hook router simultaneously.
 - **Mitigation**:
-  - `router.py` loads and saves `SessionState` atomically.
+  - `router.py` uses atomic file writes for `SessionState`, which mitigates data corruption, but a race condition in the read-modify-write cycle is still possible with concurrent hooks.
   - `create_audit_file` writes to a predictable path using `Path.write_text()`.
   - Most Claude Code tool executions are sequential, reducing the likelihood of concurrent hook router execution for the same session.
   - However, if two processes trigger `create_audit_file` at once, one might overwrite the other's work, but the content should be identical if based on the same JSONL state.
