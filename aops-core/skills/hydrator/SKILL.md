@@ -13,7 +13,7 @@ mode: execution
 domain:
   - operations
 allowed-tools: Read,mcp__pkb__search,mcp__pkb__task_search,mcp__pkb__get_task,mcp__pkb__create_task,mcp__pkb__update_task,mcp__pkb__append,mcp__pkb__retrieve_memory,mcp__pkb__get_dependency_tree
-version: 1.0.0
+version: 1.1.0
 ---
 
 # Hydrator Skill
@@ -33,26 +33,26 @@ Read WORKFLOWS.md first to select the right workflow, then read the workflow fil
 ## What You Do
 
 1. **Extract intent** from the current user prompt (base-extract: every atomic unit captured)
-2. **Bind to task** — find existing task via `mcp__pkb__task_search`, or create a new one
-3. **Gather context** — search PKB memories for relevant prior knowledge
-4. **Select workflow** — read `aops-core/WORKFLOWS.md`, select applicable workflow, read that workflow file
-5. **Write enriched task** — update the task body with structured execution context
+2. **Bind to task** -- find existing task via `mcp__pkb__task_search`, or create a new one
+3. **Gather context** -- search PKB memories for relevant prior knowledge
+4. **Select workflow** -- read `aops-core/WORKFLOWS.md`, select applicable workflow, read that workflow file
+5. **Write enriched task** -- update the task body with structured execution context
 
 ## What You Don't Do
 
 - Execute the task (that's the worker's job)
 - Explore the filesystem beyond reading workflow files
-- Decompose into subtasks (that's the Effectual Planner's job — flag when decomposition is needed)
+- Decompose into subtasks (that's the Effectual Planner's job -- flag when decomposition is needed)
 - Make strategic decisions (surface options for the user)
-- Search memory broadly (targeted queries only — ≤3 queries)
+- Search memory broadly (targeted queries only -- <=3 queries)
 
 ## Tool Restrictions
 
 **MUST NOT** use:
 
-- `Glob`, `Grep`, `Bash` — no filesystem exploration
-- `mcp__pkb__create_memory` — hydrator reads context, doesn't write memories
-- `mcp__pkb__decompose_task` — decomposition is the Planner's job
+- `Glob`, `Grep`, `Bash` -- no filesystem exploration
+- `mcp__pkb__create_memory` -- hydrator reads context, doesn't write memories
+- `mcp__pkb__decompose_task` -- decomposition is the Planner's job
 
 **MUST** use `Read` (Claude) / `read_file` (Gemini):
 
@@ -62,23 +62,23 @@ Read WORKFLOWS.md first to select the right workflow, then read the workflow fil
 
 **MUST** use for enriched output:
 
-- `mcp__pkb__append` — write enriched body content to the task (NOT `update_task`, which is frontmatter-only)
+- `mcp__pkb__append` -- write enriched body content to the task (NOT `update_task`, which is frontmatter-only)
 
 **MAY** use:
 
-- `mcp__pkb__search` — semantic search for relevant context
-- `mcp__pkb__retrieve_memory` — fetch relevant memories
-- `mcp__pkb__task_search` — find existing tasks by keywords
-- `mcp__pkb__get_dependency_tree` — find blocking/related tasks
-- `mcp__pkb__update_task` — ONLY for frontmatter fields (e.g., `needs_decomposition: true`)
+- `mcp__pkb__search` -- semantic search for relevant context
+- `mcp__pkb__retrieve_memory` -- fetch relevant memories
+- `mcp__pkb__task_search` -- find existing tasks by keywords
+- `mcp__pkb__get_dependency_tree` -- find blocking/related tasks
+- `mcp__pkb__update_task` -- ONLY for frontmatter fields (e.g., `needs_decomposition: true`)
 
-**Budget**: ≤5 PKB tool calls total. Speed matters.
+**Budget**: <=5 PKB tool calls total. Speed matters.
 
 ## Context Gathering Rules
 
 1. **PKB memories first**: `retrieve_memory` with 2-3 queries derived from intent keywords
 2. **Related tasks**: `task_search` for similar/blocking/dependent work
-3. **Workflow file**: `Read` on the selected workflow — extract process steps
+3. **Workflow file**: `Read` on the selected workflow -- extract process steps
 4. **Dependency tree**: `get_dependency_tree` only if task has known dependencies
 5. **Stop when sufficient**: Don't exhaust the budget if early queries give enough context
 
@@ -95,7 +95,7 @@ Write the enriched content via `mcp__pkb__append(id=task_id, content=enriched_ma
 
 ## Context
 
-[Relevant memories and prior knowledge — 3-5 bullet points max]
+[Relevant memories and prior knowledge -- 3-5 bullet points max]
 [If PKB search returns nothing: "No relevant prior knowledge found."]
 
 ## Workflow: [workflow-name]
@@ -128,10 +128,10 @@ If the task already has a body, the enrichment is PREPENDED. Omit Dependencies s
 
 ## Task Binding Rules
 
-1. **Prefer existing tasks** — search task list for matches before creating new
+1. **Prefer existing tasks** -- search task list for matches before creating new
 2. **Use parent** when work belongs to an existing project/epic
 3. **Task titles** must be specific and actionable
-4. **Always create a task** for file-modifying work — no orphan execution
+4. **Always create a task** for file-modifying work -- no orphan execution
 
 ## Base-Extract (MANDATORY)
 
@@ -142,6 +142,17 @@ Extract ALL valuable information from the user's prompt:
 | [quote/paraphrase] | decision/requirement/constraint/rejection/open-question | [where it goes: AC, context, guardrail, flag] |
 
 ## Detection Patterns
+
+### Hooks, Gates, or Framework Internals
+
+If task involves hooks, gates, enforcement, or the framework's own infrastructure:
+
+- **MUST** add to Context: "Existing test suite at `tests/hooks/test_gate_verdicts.py` covers gate verdict regression scenarios with JSON fixtures. Check before proposing new test infrastructure."
+- **MUST** add to Context: "Gate mode env vars (`HYDRATION_GATE_MODE`, `CUSTODIET_GATE_MODE`, etc.) are injected at session launch via `CLAUDE_ENV_FILE` by `session_env_setup.py`. They are NOT sourced inside hook subprocesses -- hooks read them from the inherited environment."
+- **MUST** add to Context: "Hook architecture reference: `.agent/skills/framework/references/hooks.md`. Gate config source of truth: `aops-core/hooks/gate_config.py`."
+- **MUST** add to Guardrails: "Check existing tests in `tests/hooks/` before proposing new test files or tools. Check `tests/integration/` for integration-level coverage."
+- **SHOULD** search for open tasks under epic `aops-fa32b8ad` (hydration gate reliability) to surface related ongoing work.
+- See [[hydrator-quality-escalation]] for the quality process governing hydrator self-improvement.
 
 ### Python Testing
 
@@ -161,7 +172,7 @@ If task involves sharing deliverables externally:
 If task is "check that X works", "verify X runs correctly":
 
 - Add to AC: "Task requires RUNNING the procedure end-to-end and confirming success."
-- Add to Guardrails: "Finding issues ≠ verification complete."
+- Add to Guardrails: "Finding issues does not equal verification complete."
 
 ### Simple Prompts
 

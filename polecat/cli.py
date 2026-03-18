@@ -329,13 +329,20 @@ def _build_docker_cmd(
 
     # Forward specific environment variables to the container
     for key, val in env.items():
-        if key.startswith("POLECAT_") or key in (
-            "AOPS_BOT_GH_TOKEN",
-            "GH_TOKEN",
-            "GITHUB_TOKEN",
-            "ANTHROPIC_API_KEY",
-            "COLORTERM",
-            "FORCE_COLOR",
+        if (
+            key.startswith("POLECAT_")
+            or key.startswith("AOPS_")
+            or key.endswith("_GATE_MODE")
+            or key
+            in (
+                "AOPS_BOT_GH_TOKEN",
+                "GH_TOKEN",
+                "GITHUB_TOKEN",
+                "ANTHROPIC_API_KEY",
+                "COLORTERM",
+                "FORCE_COLOR",
+                "CUSTODIET_TOOL_CALL_THRESHOLD",
+            )
         ):
             cmd.extend(["-e", f"{key}={val}"])
 
@@ -460,8 +467,10 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
             print(f"   Warning: could not create trustedFolders.json: {e}", file=sys.stderr)
 
     # Replicate extensions so that extension hooks fire in sandbox sessions.
-    # We symlink individual extension dirs (to avoid copying large venvs) but
-    # create a fresh extension-enablement.json with a wildcard override so the
+    # Copy (not symlink) extension dirs because Gemini's sandbox mounts
+    # GEMINI_CLI_HOME into a Docker container — symlinks to host paths
+    # break since the target paths don't exist inside the container.
+    # Create a fresh extension-enablement.json with a wildcard override so the
     # extension is active for any workspace path (the original restricts to
     # /home/<user>/* which won't match test or CI workspaces).
     src_extensions = gemini_dir / "extensions"
@@ -469,13 +478,10 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
         dst_extensions = target_dir / "extensions"
         dst_extensions.mkdir(parents=True, exist_ok=True)
 
-        # Symlink each extension subdirectory
+        # Copy each extension subdirectory (not symlink — breaks in Docker)
         for child in src_extensions.iterdir():
             if child.is_dir():
-                try:
-                    (dst_extensions / child.name).symlink_to(child.resolve())
-                except OSError:
-                    shutil.copytree(child, dst_extensions / child.name)
+                shutil.copytree(child, dst_extensions / child.name)
 
         # Build a permissive enablement file — allow all paths
         enablement_src = src_extensions / "extension-enablement.json"
@@ -1793,6 +1799,59 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
         # Gemini --sandbox re-execs itself inside the container, so the image
         # needs the Gemini CLI installed. Use aops-crew (full image with AI CLIs).
         env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-crew")
+
+        # Gemini sandbox only forwards a hardcoded allowlist of env vars into
+        # its Docker container. Use SANDBOX_FLAGS for simple -e flags and
+        # SANDBOX_MOUNTS for volumes. Git credentials use a mounted .gitconfig
+        # because shell-quote mangles the credential helper shell function.
+        extra_flags = []
+        for key, val in env.items():
+            if key.endswith("_GATE_MODE") or key in ("ACA_DATA", "GH_TOKEN"):
+                extra_flags.extend(["-e", f"{key}={val}"])
+
+        # Git credential helper — write a .gitconfig and mount it read-only.
+        # SANDBOX_FLAGS can't carry the credential helper because shell-quote
+        # interprets { } ; ( ) as operators, mangling the shell function.
+        gh_token = env.get("GH_TOKEN") or os.environ.get("AOPS_BOT_GH_TOKEN")
+        if gh_token:
+            extra_flags.extend(["-e", "GIT_ASKPASS=true"])
+            extra_flags.extend(["-e", f"GH_TOKEN={gh_token}"])
+            extra_flags.extend(["-e", "SSH_AUTH_SOCK="])
+            extra_flags.extend(["-e", "GIT_TERMINAL_PROMPT=0"])
+            gitconfig = tempfile.NamedTemporaryFile(
+                suffix=".gitconfig", delete=False, mode="w", prefix="polecat-"
+            )
+            gitconfig.write(
+                "[credential]\n"
+                '\thelper = !f() { echo username=x-access-token; echo "password=${GH_TOKEN}"; }; f\n'
+                '[credential "https://github.com"]\n'
+                '\thelper = !f() { echo username=x-access-token; echo "password=${GH_TOKEN}"; }; f\n'
+                '[url "https://github.com/"]\n'
+                "\tinsteadOf = git@github.com:\n"
+            )
+            gitconfig.close()
+            if tmp_files is not None:
+                tmp_files.append(Path(gitconfig.name))
+            # Mount via SANDBOX_MOUNTS (colon-separated from:to:opts).
+            # Gemini sandbox maps homedir() to the same path in the container,
+            # so mount .gitconfig at the host user's home path.
+            container_gitconfig = str(Path.home() / ".gitconfig")
+            mounts = env.get("SANDBOX_MOUNTS", "")
+            new_mount = f"{gitconfig.name}:{container_gitconfig}:ro"
+            env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
+
+        # Mount ACA_DATA via SANDBOX_MOUNTS (read-write for PKB updates)
+        aca_data = env.get("ACA_DATA") or os.environ.get("ACA_DATA")
+        if aca_data and os.path.isdir(aca_data):
+            mounts = env.get("SANDBOX_MOUNTS", "")
+            new_mount = f"{aca_data}:{aca_data}:rw"
+            env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
+
+        if extra_flags:
+            existing = env.get("SANDBOX_FLAGS", "")
+            new_flags = " ".join(extra_flags)
+            env["SANDBOX_FLAGS"] = f"{existing} {new_flags}".strip() if existing else new_flags
+
         final_cmd = cmd
     elif interactive:
         # Interactive shell: wrap in Docker container (same as Claude path)
