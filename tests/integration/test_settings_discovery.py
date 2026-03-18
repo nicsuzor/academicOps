@@ -34,8 +34,11 @@ def test_settings_json_discoverable_by_claude(bots_dir: Path) -> None:
     Args:
         bots_dir: Path to framework root $AOPS (from fixture)
 
+    Skips:
+        If no settings.json is found at any expected location.
+
     Raises:
-        AssertionError: If settings.json is not discoverable or invalid
+        AssertionError: If settings.json exists but is invalid
     """
     # Define expected locations where Claude Code looks for settings.json
     user_settings = Path.home() / ".claude" / "settings.json"

@@ -1,2 +1,0 @@
-#!/bin/bash
-uv run pytest tests/hooks/test_gate_replay.py::TestHookLogDiscovery::test_hook_logs_exist_and_parseable tests/hooks/test_gate_replay.py::TestHookLogDiscovery::test_replay_real_pretooluse_from_disk tests/hooks/test_gate_replay.py::TestHookLogDiscovery::test_compliance_events_from_disk_never_denied tests/integration/test_settings_discovery.py::test_settings_json_discoverable_by_claude -v

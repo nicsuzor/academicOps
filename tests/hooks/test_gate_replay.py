@@ -318,11 +318,13 @@ class TestHookLogDiscovery:
                     continue
         return events
 
+    _NO_HOOK_LOGS_MSG = "No hook log files found in ~/.claude/projects/ (expected in CI)"
+
     def test_hook_logs_exist_and_parseable(self):
         """Verify that hook log files exist and contain valid JSON."""
         hook_files = self._find_hook_logs()
         if not hook_files:
-            pytest.skip("No hook log files found in ~/.claude/projects/ (expected in CI)")
+            pytest.skip(self._NO_HOOK_LOGS_MSG)
 
         # At least one file should parse successfully
         parsed_any = False
@@ -338,8 +340,7 @@ class TestHookLogDiscovery:
                     assert "verdict" in event["output"]
                 break
 
-        if not parsed_any:
-            pytest.skip("No hook log files could be parsed")
+        assert parsed_any, "Hook log files exist but none could be parsed"
 
     def test_replay_real_pretooluse_from_disk(self, router):
         """Replay PreToolUse events from actual disk logs through gate system.
@@ -351,7 +352,7 @@ class TestHookLogDiscovery:
         """
         hook_files = self._find_hook_logs()
         if not hook_files:
-            pytest.skip("No hook log files found in ~/.claude/projects/ (expected in CI)")
+            pytest.skip(self._NO_HOOK_LOGS_MSG)
 
         # Find the richest file
         best_file = None
@@ -396,7 +397,7 @@ class TestHookLogDiscovery:
         """
         hook_files = self._find_hook_logs()
         if not hook_files:
-            pytest.skip("No hook log files found in ~/.claude/projects/ (expected in CI)")
+            pytest.skip(self._NO_HOOK_LOGS_MSG)
 
         compliance_events = []
         for f in hook_files[:10]:
