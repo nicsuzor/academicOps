@@ -213,6 +213,7 @@ def generate_gemini_hooks(
 
     return gemini_hooks
 
+
 def check_installed_plugin_version(
     plugin_name: str,
     source_commit: str,
