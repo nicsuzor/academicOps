@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e
 
 # Configure git identity if not already set in environment.
 # These variables are forwarded by polecat/cli.py but can be defaulted here.
