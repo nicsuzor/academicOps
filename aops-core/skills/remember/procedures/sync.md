@@ -8,7 +8,7 @@ category: maintenance
 
 Reconcile markdown files with PKB to ensure semantic search stays current.
 
-**When to Run**: After direct markdown edits, periodically as part of `/garden` maintenance, or when semantic search seems stale.
+**When to Run**: After direct markdown edits, periodically as part of `/planner` maintain mode, or when semantic search seems stale.
 
 ## Sync Modes
 
@@ -38,9 +38,9 @@ PKB handles deduplication via content hashing. Re-syncing the same content is sa
 
 ## Integration
 
-### With /garden
+### With /planner (maintain mode)
 
-The garden skill includes memory sync as part of its periodic maintenance (orphan detection, link repair, prune stale content).
+The planner skill's maintain mode includes memory sync as part of its periodic maintenance (orphan detection, link repair, prune stale content).
 
 ### With Remember Skill
 

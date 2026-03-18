@@ -2,27 +2,24 @@
 
 ## [0.3.11](https://github.com/nicsuzor/academicOps/compare/v0.3.10...v0.3.11) (2026-03-17)
 
-
 ### Features
 
-* **hydrator:** add JIT quality escalation process and hook gate context ([341fcf4](https://github.com/nicsuzor/academicOps/commit/341fcf4d2e4662a5be3df513442432490e2328a2))
-
+- **hydrator:** add JIT quality escalation process and hook gate context ([341fcf4](https://github.com/nicsuzor/academicOps/commit/341fcf4d2e4662a5be3df513442432490e2328a2))
 
 ### Bug Fixes
 
-* cron pipeline uses polecat sync correctly ([de9e919](https://github.com/nicsuzor/academicOps/commit/de9e91976d39fb10cde8bc3220da8cdd95778894))
-* cron pipeline uses polecat sync correctly, remove dead viz step ([efc1ccf](https://github.com/nicsuzor/academicOps/commit/efc1ccffa66f6fee6472c5e493b29b24748018cb))
-* **install:** resolve uv path at install time for cron jobs ([8930976](https://github.com/nicsuzor/academicOps/commit/893097639ecb6c03795f967f9b8794756488eabd))
-* **polecat:** forward gate mode env vars + hydrator JIT quality escalation ([4d52c36](https://github.com/nicsuzor/academicOps/commit/4d52c3648f7f88f809ede6b59f29bcb547c85e7a))
-* **polecat:** forward gate mode env vars into Docker crew containers ([3948148](https://github.com/nicsuzor/academicOps/commit/39481484280a7f5d3c7d149d7f1f42d493c2598b))
-* **polecat:** resolve crew container env forwarding, sync conflict, and extension replication ([d0bf8c3](https://github.com/nicsuzor/academicOps/commit/d0bf8c3631125c1ca1193f1dccb628fe1e080d7d))
-* resolve polecat crew container extension failure ([6d6187e](https://github.com/nicsuzor/academicOps/commit/6d6187e591e974a4ef1048bd2603683557e3a811))
-
+- cron pipeline uses polecat sync correctly ([de9e919](https://github.com/nicsuzor/academicOps/commit/de9e91976d39fb10cde8bc3220da8cdd95778894))
+- cron pipeline uses polecat sync correctly, remove dead viz step ([efc1ccf](https://github.com/nicsuzor/academicOps/commit/efc1ccffa66f6fee6472c5e493b29b24748018cb))
+- **install:** resolve uv path at install time for cron jobs ([8930976](https://github.com/nicsuzor/academicOps/commit/893097639ecb6c03795f967f9b8794756488eabd))
+- **polecat:** forward gate mode env vars + hydrator JIT quality escalation ([4d52c36](https://github.com/nicsuzor/academicOps/commit/4d52c3648f7f88f809ede6b59f29bcb547c85e7a))
+- **polecat:** forward gate mode env vars into Docker crew containers ([3948148](https://github.com/nicsuzor/academicOps/commit/39481484280a7f5d3c7d149d7f1f42d493c2598b))
+- **polecat:** resolve crew container env forwarding, sync conflict, and extension replication ([d0bf8c3](https://github.com/nicsuzor/academicOps/commit/d0bf8c3631125c1ca1193f1dccb628fe1e080d7d))
+- resolve polecat crew container extension failure ([6d6187e](https://github.com/nicsuzor/academicOps/commit/6d6187e591e974a4ef1048bd2603683557e3a811))
 
 ### Miscellaneous
 
-* configure release-please to update version in uv.lock ([a3b2754](https://github.com/nicsuzor/academicOps/commit/a3b2754b56a509339d5595e3504142b3ccdd32cc))
-* configure release-please to update version in uv.lock ([937d87e](https://github.com/nicsuzor/academicOps/commit/937d87e068449ac488dbdbcc81f59bd2d043963a))
+- configure release-please to update version in uv.lock ([a3b2754](https://github.com/nicsuzor/academicOps/commit/a3b2754b56a509339d5595e3504142b3ccdd32cc))
+- configure release-please to update version in uv.lock ([937d87e](https://github.com/nicsuzor/academicOps/commit/937d87e068449ac488dbdbcc81f59bd2d043963a))
 
 ## [0.3.10](https://github.com/nicsuzor/academicOps/compare/v0.3.9...v0.3.10) (2026-03-16)
 

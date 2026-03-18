@@ -69,23 +69,25 @@ This is the baseline. Phase 5 re-runs graph_stats to measure what changed.
 
 The agent uses these as **signals**, not as deterministic verdicts:
 
-- **`triage_tasks.py`**: Scans task files, flags under-specified tasks. Run via:
-  `uv run python aops-core/skills/garden/scripts/triage_tasks.py $ACA_DATA --recursive --format json`
 - **PKB orphan detection**: `mcp__pkb__pkb_orphans()`
 - **Git log**: Recent commits, task changes since last cycle
-- **Own judgment**: The agent reads flagged tasks and decides whether they genuinely need attention. The script is a starting point, not the final word.
+- **Own judgment**: The agent reads flagged tasks and decides whether they genuinely need attention.
 
 ## Phase 4b: Graph Maintenance
 
+**Delegates to the Planner agent's `maintain` mode.** Sleep selects the strategy based on graph_stats; Planner executes it.
+
 Each cycle, pick ONE strategy based on what graph_stats shows needs the most attention:
 
-| Condition                     | Strategy            | Action                                              |
-| ----------------------------- | ------------------- | --------------------------------------------------- |
-| `disconnected_epics` > 10     | Connect epics       | Find natural project parents for disconnected epics |
-| `projects_without_goals` > 10 | Connect projects    | Link projects to existing goals                     |
-| `flat_tasks` > 100            | Reparent flat tasks | Find epic/project parents for orphaned tasks        |
-| `orphan_count` > 20           | Fix orphans         | Connect or archive truly disconnected nodes         |
-| All metrics healthy           | Densify edges       | Use densify strategies to add dependency edges      |
+| Condition                     | Strategy            | Planner Activity                                       |
+| ----------------------------- | ------------------- | ------------------------------------------------------ |
+| `disconnected_epics` > 10     | Connect epics       | Reparent — find project parents for disconnected epics |
+| `projects_without_goals` > 10 | Connect projects    | Reparent — link projects to existing goals             |
+| `flat_tasks` > 100            | Reparent flat tasks | Reparent — find epic/project parents for orphans       |
+| `orphan_count` > 20           | Fix orphans         | Reparent — connect or archive disconnected nodes       |
+| All metrics healthy           | Densify edges       | Densify — use strategies to add dependency edges       |
+
+See `aops-core/skills/planner/SKILL.md` → `maintain` mode for full activity reference.
 
 **Bounded effort**: Process at most 30 items per cycle. Quality over quantity.
 
@@ -117,7 +119,6 @@ When running via `/loop` or `/active-loop`, the sleep cycle follows the active-l
 ```
 templates/github-workflows/sleep-cycle.yml   ← workflow template (maintained in $AOPS)
 $ACA_DATA/.github/workflows/sleep-cycle.yml  ← installed copy (runs the agent)
-aops-core/skills/garden/scripts/triage_tasks.py  ← task quality tool (one signal among many)
 ```
 
 The workflow uses `anthropics/claude-code-action` to launch an agent with a consolidation prompt. The agent has access to the brain repo and academicOps tools.
