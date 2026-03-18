@@ -50,7 +50,8 @@ def _redact_cmd(cmd: list[str]) -> list[str]:
         arg_str = str(arg)
 
         # 1. Redact env var values: KEY=VALUE
-        if "=" in arg_str:
+        # Exclude paths (containing "/") to avoid misidentifying mount args
+        if "=" in arg_str and "/" not in arg_str:
             key, val = arg_str.split("=", 1)
             if key in secret_keys:
                 redacted.append(f"{key}=[REDACTED]")
