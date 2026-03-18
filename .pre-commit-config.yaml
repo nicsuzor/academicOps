@@ -25,7 +25,7 @@ repos:
     rev: v1.7.11
     hooks:
       - id: actionlint
-        files: ^\.github/workflows/.*\.yml$
+        files: ^\.github/workflows/.*\.(?:yml|yaml)$
 
   # Standard hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
