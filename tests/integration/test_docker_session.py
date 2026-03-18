@@ -105,5 +105,3 @@ class TestDockerAgentResponds:
         result = runner("What is 2+2? Reply with just the number.")
         assert result["success"], f"[{platform}] Execution failed: {result.get('error')}"
         assert result["result"], f"[{platform}] Result should have parsed JSON/output"
-
-
