@@ -1,18 +1,20 @@
 #!/usr/bin/env bash
-# repo-sync-cron.sh - Periodic maintenance: transcripts and repo sync
+# repo-sync-cron.sh - Periodic maintenance: transcripts, dashboard, and repo sync
 #
-# Two functions, composable via CLI:
+# Three functions, composable via CLI:
 #   do_transcript - Generate recent session transcripts
+#   do_dashboard  - Synthesize dashboard data and task graph
 #   do_sync       - Sync all git repositories via polecat sync
 #
 # Usage:
-#   ./scripts/repo-sync-cron.sh              # Full: transcript + sync
+#   ./scripts/repo-sync-cron.sh              # Full: transcript + dashboard + sync
 #   ./scripts/repo-sync-cron.sh transcript   # Just transcript
+#   ./scripts/repo-sync-cron.sh dashboard    # Just dashboard
 #   ./scripts/repo-sync-cron.sh sync         # Just sync
-#   ./scripts/repo-sync-cron.sh transcript sync  # Specific combination
+#   ./scripts/repo-sync-cron.sh transcript dashboard sync  # Specific combination
 #
 # Crontab suggested setup:
-#   */5 * * * * /path/to/repo/scripts/repo-sync-cron.sh >> /tmp/repo-sync-cron.log 2>&1
+#   */15 * * * * /path/to/repo/scripts/repo-sync-cron.sh >> /tmp/repo-sync-cron.log 2>&1
 
 set -euo pipefail
 
@@ -85,6 +87,23 @@ do_transcript() {
     fi
 }
 
+do_dashboard() {
+    echo "==> Synthesizing dashboard data..."
+    # 1. Mechanical synthesis (no LLM)
+    if [[ -f "${AOPS}/scripts/synthesize_dashboard.py" ]]; then
+        uv run python "${AOPS}/scripts/synthesize_dashboard.py" > /dev/null 2>&1 || echo "Warning: dashboard synthesis failed"
+    else
+        echo "Warning: synthesize_dashboard.py not found"
+    fi
+
+    # 2. Update task graph for visualization (graph.json)
+    if command -v aops &>/dev/null; then
+        aops graph -f all --quiet || echo "Warning: aops graph failed"
+    else
+        echo "Warning: aops CLI not found, skipping graph update"
+    fi
+}
+
 do_sync() {
     # Sync all configured git repos and bare mirrors via polecat sync
     echo "==> Syncing repositories..."
@@ -96,18 +115,20 @@ do_sync() {
 # ============================================================================
 
 if [[ $# -eq 0 ]]; then
-    # Full run: transcript + sync
+    # Full run: transcript + dashboard + sync
     echo "${TS} repo-sync-cron starting (full)"
     do_transcript
+    do_dashboard
     do_sync
 else
-    # Named functions: ./repo-sync-cron.sh transcript sync
+    # Named functions: ./repo-sync-cron.sh transcript dashboard sync
     echo "${TS} repo-sync-cron starting ($*)"
     for func in "$@"; do
         case "$func" in
             transcript) do_transcript ;;
+            dashboard)  do_dashboard ;;
             sync)       do_sync ;;
-            *)          echo "Unknown function: $func (valid: transcript, sync)" >&2; exit 1 ;;
+            *)          echo "Unknown function: $func (valid: transcript, dashboard, sync)" >&2; exit 1 ;;
         esac
     done
 fi

@@ -22,6 +22,7 @@ Utility scripts for framework development and maintenance. These are NOT user-in
 | --------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------ |
 | `session_transcript.py`     | Save/export session transcript to markdown                | `uv run python $AOPS/scripts/session_transcript.py <session.jsonl> -o output.md`     |
 | `scan_session_summaries.py` | Scan session summaries for daily note/overwhelm dashboard | `uv run python $AOPS/scripts/scan_session_summaries.py [--days N] [--format FORMAT]` |
+| `synthesize_dashboard.py`   | Aggregate per-session insights into synthesis.json        | `uv run python $AOPS/scripts/synthesize_dashboard.py`                                |
 | `audit_framework_health.py` | Collect framework health metrics (orphans, broken links)  | `uv run python $AOPS/scripts/audit_framework_health.py`                              |
 | `generate_context_index.py` | Scan docs and generate project-context.md                 | `uv run python $AOPS/scripts/generate_context_index.py`                              |
 | `refinery.py`               | Run polecat refinery scan and merge                       | `uv run python $AOPS/scripts/refinery.py`                                            |
