@@ -521,18 +521,11 @@ class GenericGate:
         # Update metrics
         state = self._get_state(session_state)
 
-        # Determine if this call should increment the operation counter.
         # Subagent tool calls (is_subagent=True) do NOT increment the parent's counter.
         # The parent's Agent tool call increments by 1, and internal subagent calls
-        # are ignored (aops-d8ee59cc).
+        # are ignored (aops-d8ee59cc). The router already sets is_subagent=False for
+        # spawn tool calls in the parent session, so no special SPAWN_TOOLS handling needed.
         should_increment = not context.is_subagent
-
-        # Force increment for spawning tools even if they carry subagent metadata
-        # (they run in the main session context).
-        from hooks.gate_config import SPAWN_TOOLS
-
-        if context.tool_name in SPAWN_TOOLS:
-            should_increment = True
 
         if should_increment:
             if state.status == GateStatus.OPEN:
