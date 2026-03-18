@@ -871,7 +871,7 @@ def _run_claude_docker_simple(prompt: str, tmp_path: Path, **kwargs) -> dict[str
         "--model",
         model,
         "--max-turns",
-        "3",
+        "10",
     ]
 
     env = {}
@@ -1757,7 +1757,7 @@ def claude_docker(tmp_path):
             "--model",
             model,
             "--max-turns",
-            "3",
+            "10",
         ]
 
         # Build Docker command via polecat's builder

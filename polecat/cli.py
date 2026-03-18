@@ -2252,8 +2252,11 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
             # Interactive: just append the prompt as positional arg
             cmd.append(prompt)
         else:
-            # Headless: use -p for print mode
-            cmd.extend(["-p", prompt])
+            # Headless: use -p for print mode.
+            # Set max-turns high enough to accommodate hook overhead (hydration gate,
+            # custodiet compliance check) plus actual task work. Default of 3 is too
+            # low when hooks are active — they consume turns before reaching the task.
+            cmd.extend(["-p", prompt, "--max-turns", "30"])
 
     # Set session type environment variable for hooks to detect
     # Use sanitized env: SSH stripped, git auth set to bot token only
