@@ -56,7 +56,7 @@ class TestDockerTooling:
         """Verify Node.js and npm are on PATH."""
         runner, platform = docker_headless
         prompt = "Run 'node --version' and 'npm --version'. If both work, reply with 'NODE_OK'."
-        result = runner(prompt)
+        result, session_id, tool_calls = runner(prompt)
         assert result["success"], f"[{platform}] Execution failed: {result.get('error')}"
         output = str(result.get("output", "")) + str(result.get("stderr", ""))
         assert "NODE_OK" in output or "v22" in output, (
@@ -67,7 +67,7 @@ class TestDockerTooling:
         """Verify Rust (cargo/rustc) is on PATH."""
         runner, platform = docker_headless
         prompt = "Run 'cargo --version' and 'rustc --version'. If both work, reply with 'RUST_OK'."
-        result = runner(prompt)
+        result, session_id, tool_calls = runner(prompt)
         assert result["success"], f"[{platform}] Execution failed: {result.get('error')}"
         output = str(result.get("output", "")) + str(result.get("stderr", ""))
         assert "RUST_OK" in output or "cargo" in output.lower(), (

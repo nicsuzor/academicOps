@@ -16,7 +16,7 @@ def test_gate_enforcement_e2e(cli_headless, gate, instruction, expected_behavior
 
     model = "gemini-2.0-flash-exp" if platform == "gemini" else "haiku"
 
-    result = runner(instruction, model=model)
+    result, session_id, tool_calls = runner(instruction, model=model)
 
     assert result["success"], f"CLI execution failed: {result.get('error')}"
 

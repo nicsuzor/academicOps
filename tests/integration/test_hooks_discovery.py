@@ -14,7 +14,7 @@ from tests.conftest import extract_response_text
 @pytest.mark.integration
 def test_claude_hooks_registry_not_empty(claude_headless) -> None:
     """Test that Claude's hook registry has entries and hooks are firing."""
-    result = claude_headless(
+    result, session_id, tool_calls = claude_headless(
         "Check if any hooks fired at the start of this session. "
         "Look for system-reminder tags or hook notifications in the conversation.",
         timeout_seconds=600,

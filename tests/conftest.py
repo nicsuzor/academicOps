@@ -318,21 +318,6 @@ This is a sample task created by the test fixture.
     filepath.write_text(content, encoding="utf-8")
 
 
-#!/usr/bin/env python3
-"""Integration test configuration and fixtures.
-
-Provides:
-- claude_headless fixture for headless Claude Code execution
-- run_claude_headless function for direct CLI invocation
-- pytest configuration for integration/slow markers
-"""
-
-from pathlib import Path
-
-import pytest
-from lib.paths import get_plugin_root as get_aops_root
-
-
 def extract_response_text(result: dict[str, Any]) -> str:
     """Extract text response from claude_headless result.
 
@@ -438,59 +423,73 @@ def run_claude_headless(
     timeout_seconds: int = 300,
     permission_mode: str | None = None,
     cwd: Path | None = None,
-) -> dict[str, Any]:
-    """Execute Claude Code in headless mode.
+    session_id: str | None = None,
+) -> tuple[dict[str, Any], str, list[dict]]:
+    """Execute Claude Code in headless mode with session tracking.
 
     Args:
         prompt: Prompt to send to Claude
-        model: Optional model identifier (e.g., "claude-sonnet-4-5-20250929")
+        model: Optional model identifier
         timeout_seconds: Command timeout in seconds (default: 300)
         permission_mode: Optional permission mode (e.g., "disabled")
-        cwd: Working directory (defaults to /tmp/claude-test-XXXXXX)
+        cwd: Working directory
+        session_id: Optional session ID (generated if not provided)
 
     Returns:
-        Dictionary with keys:
-        - success (bool): Whether execution succeeded
-        - output (str): Raw JSON output from claude command
-        - result (dict): Parsed JSON result
-        - error (str, optional): Error message if execution failed
+        Tuple of (result_dict, session_id, tool_calls_list)
     """
     import os
+    import uuid
 
     # Check if claude CLI is available
     if not _claude_cli_available():
-        return {
-            "success": False,
-            "output": "",
-            "result": {},
-            "error": "claude CLI not found in PATH - these tests require Claude Code CLI installed",
-        }
+        return (
+            {
+                "success": False,
+                "output": "",
+                "result": {},
+                "error": "claude CLI not found in PATH",
+            },
+            "",
+            [],
+        )
+
+    if session_id is None:
+        session_id = str(uuid.uuid4())
 
     # Get built plugin directory for testing against correct artifact
     repo_root = get_repo_root()
     plugin_dir_core = str(repo_root / "dist" / "aops-claude")
+    plugin_dir_tools = str(repo_root / "dist" / "aops-tools")
 
-    # Build command with --debug flag and --no-session-persistence for test isolation
+    # Build command
     cmd = [
         "claude",
         "-p",
         prompt,
         "--output-format",
         "json",
+        "--session-id",
+        session_id,
         "--debug",
         "hooks",
         "--no-session-persistence",
         "--plugin-dir",
         plugin_dir_core,
     ]
+    if Path(plugin_dir_tools).exists():
+        cmd.extend(["--plugin-dir", plugin_dir_tools])
 
     if model:
         cmd.extend(["--model", model])
 
     if permission_mode:
         cmd.extend(["--permission-mode", permission_mode])
+    else:
+        # Default to bypassPermissions for tests
+        cmd.extend(["--permission-mode", "bypassPermissions"])
 
-    # Set working directory - use unique directory for each session to prevent state clobbering
+    # Set working directory
     if cwd:
         working_dir = cwd
     else:
@@ -498,28 +497,11 @@ def run_claude_headless(
 
         working_dir = Path(tempfile.mkdtemp(prefix="claude-test-"))
 
-    # Build environment - inherit current environment
+    # Build environment
     env = os.environ.copy()
     env["DEBUG_HOOKS"] = "1"
     env["CLAUDE_PLUGIN_ROOT"] = plugin_dir_core
     env["PWD"] = str(working_dir)
-
-    # FAIL FAST: Required environment variables must be set
-    if "AOPS" not in env:
-        return {
-            "success": False,
-            "output": "",
-            "result": {},
-            "error": "AOPS environment variable not set - required for tests",
-        }
-
-    if "ACA_DATA" not in env:
-        return {
-            "success": False,
-            "output": "",
-            "result": {},
-            "error": "ACA_DATA environment variable not set - required for memory server tests",
-        }
 
     # Apply agent-env-map.conf credential isolation mappings
     from lib.agent_env import apply_env_mappings
@@ -527,64 +509,86 @@ def run_claude_headless(
     apply_env_mappings(env)
 
     try:
-        # Execute command
         log.debug("Full Launch Command: %s", " ".join(str(x) for x in cmd))
-        log.debug("Working Directory: %s", working_dir)
-
         result = subprocess.run(
             cmd,
             cwd=working_dir,
             capture_output=True,
             text=True,
             timeout=timeout_seconds,
-            check=False,  # Don't raise on non-zero exit
-            env=env,  # Pass environment with AOPS set
+            check=False,
+            env=env,
         )
 
-        # Check for command failure
+        # Parse tool calls from session JSONL (even if failed)
+        session_file = find_session_jsonl(session_id)
+        tool_calls = parse_tool_calls(session_file) if session_file else []
+
         if result.returncode != 0:
-            return {
-                "success": False,
-                "output": result.stdout,
-                "result": {},
-                "error": f"Command failed with exit code {result.returncode}: {result.stderr}",
-            }
-        # Parse JSON output
+            return (
+                {
+                    "success": False,
+                    "output": result.stdout,
+                    "result": {},
+                    "error": f"Command failed with exit code {result.returncode}: {result.stderr}",
+                },
+                session_id,
+                tool_calls,
+            )
+
         try:
             parsed_output = json.loads(result.stdout)
-            return {
-                "success": True,
-                "output": result.stdout,
-                "result": parsed_output,
-                "stderr": result.stderr,
-            }
+            return (
+                {
+                    "success": True,
+                    "output": result.stdout,
+                    "result": parsed_output,
+                    "stderr": result.stderr,
+                },
+                session_id,
+                tool_calls,
+            )
         except json.JSONDecodeError as e:
-            return {
-                "success": False,
-                "output": result.stdout,
-                "result": {},
-                "error": f"JSON parse error: {e!s}",
-            }
+            return (
+                {
+                    "success": False,
+                    "output": result.stdout,
+                    "result": {},
+                    "error": f"JSON parse error: {e!s}",
+                },
+                session_id,
+                tool_calls,
+            )
 
     except subprocess.TimeoutExpired:
-        return {
-            "success": False,
-            "output": "",
-            "result": {},
-            "error": f"Command timed out after {timeout_seconds} seconds",
-        }
+        session_file = find_session_jsonl(session_id)
+        tool_calls = parse_tool_calls(session_file) if session_file else []
+        return (
+            {
+                "success": False,
+                "output": "",
+                "result": {},
+                "error": f"Command timed out after {timeout_seconds} seconds",
+            },
+            session_id,
+            tool_calls,
+        )
     except Exception as e:
-        return {
-            "success": False,
-            "output": "",
-            "result": {},
-            "error": f"Command execution failed: {e!s}",
-        }
+        return (
+            {
+                "success": False,
+                "output": "",
+                "result": {},
+                "error": f"Command execution failed: {e!s}",
+            },
+            session_id,
+            [],
+        )
 
 
 def _make_failing_wrapper(
-    runner: Callable[..., dict[str, Any]],
-) -> Callable[..., dict[str, Any]]:
+    runner: Callable[..., tuple[dict[str, Any], str, list[dict]]],
+) -> Callable[..., tuple[dict[str, Any], str, list[dict]]]:
     """Create a wrapper that fails tests on session failure.
 
     This enforces H37: tests must not pass when underlying functionality fails.
@@ -592,7 +596,7 @@ def _make_failing_wrapper(
     preventing Volkswagen tests that "pass by detecting failure correctly."
 
     Args:
-        runner: The underlying run function (run_claude_headless, etc.)
+        runner: The underlying run function
 
     Returns:
         Wrapped function that fails on session failure by default.
@@ -602,8 +606,8 @@ def _make_failing_wrapper(
         prompt: str,
         fail_on_error: bool = True,
         **kwargs,
-    ) -> dict[str, Any]:
-        result = runner(prompt, **kwargs)
+    ) -> tuple[dict[str, Any], str, list[dict]]:
+        result, session_id, tool_calls = runner(prompt, **kwargs)
 
         if not result["success"] and fail_on_error:
             error_msg = result.get("error", "Unknown error")
@@ -611,7 +615,7 @@ def _make_failing_wrapper(
                 f"Headless session failed (set fail_on_error=False to handle manually): {error_msg}"
             )
 
-        return result
+        return result, session_id, tool_calls
 
     return wrapper
 
@@ -621,22 +625,8 @@ def claude_headless():
     """Pytest fixture providing headless Claude Code execution.
 
     Returns:
-        Callable that executes claude command and returns parsed result.
+        Callable that executes claude command and returns (result, session_id, tool_calls).
         Automatically fails the test if the session fails (H37 enforcement).
-
-    Example:
-        def test_something(claude_headless):
-            result = claude_headless("What is 2+2?")
-            # No need to check result["success"] - fixture fails automatically
-
-    Args passed to callable:
-        prompt: The prompt to send
-        fail_on_error: If True (default), pytest.fail() on session failure.
-                       Set to False to handle errors manually.
-        **kwargs: Passed to run_claude_headless (model, timeout_seconds, etc.)
-
-    Note:
-        Tests using this fixture will be skipped if claude CLI is not in PATH.
     """
     # Skip test if claude CLI not available
     if not _claude_cli_available():
@@ -652,46 +642,45 @@ def run_gemini_headless(
     permission_mode: str | None = None,
     cwd: Path | None = None,
     gemini_home: Path | None = None,
-) -> dict[str, Any]:
-    """Execute Gemini CLI in headless mode.
+) -> tuple[dict[str, Any], str, list[dict]]:
+    """Execute Gemini CLI in headless mode with session tracking.
 
     Args:
         prompt: Prompt to send to Gemini
-        model: Optional model identifier (e.g., "gemini-2.0-flash")
+        model: Optional model identifier
         timeout_seconds: Command timeout in seconds (default: 600)
-        permission_mode: Optional permission mode ("yolo" maps to --yolo)
-        cwd: Working directory (defaults to /tmp/gemini-test)
-        gemini_home: Optional path to GEMINI_CLI_HOME (overrides system path)
+        permission_mode: Optional permission mode
+        cwd: Working directory
+        gemini_home: Optional path to GEMINI_CLI_HOME
 
     Returns:
-        Dictionary with keys:
-        - success (bool): Whether execution succeeded
-        - output (str): Raw JSON output from gemini command
-        - result (dict): Parsed JSON result
-        - error (str, optional): Error message if execution failed
+        Tuple of (result_dict, session_id, tool_calls_list)
     """
     # Check if gemini CLI is available
     if not _gemini_cli_available():
-        return {
-            "success": False,
-            "output": "",
-            "result": {},
-            "error": "gemini CLI not found in PATH - these tests require Gemini CLI installed",
-        }
+        return (
+            {
+                "success": False,
+                "output": "",
+                "result": {},
+                "error": "gemini CLI not found in PATH",
+            },
+            "",
+            [],
+        )
 
-    # Build command - use -p for non-interactive prompt with JSON output
+    # Build command
     cmd = ["gemini", "-p", prompt, "-o", "json"]
 
     if model:
         cmd.extend(["-m", model])
 
-    # Map permission_mode to Gemini flags
     if permission_mode in ("bypassPermissions", "yolo"):
         cmd.append("--yolo")
     elif permission_mode == "auto_edit":
         cmd.extend(["--approval-mode", "auto_edit"])
 
-    # Set working directory - use unique directory for each session to prevent state clobbering
+    # Set working directory
     if cwd:
         working_dir = cwd
     else:
@@ -699,37 +688,20 @@ def run_gemini_headless(
 
         working_dir = Path(tempfile.mkdtemp(prefix="gemini-test-"))
 
-    # Build environment - inherit current environment
+    # Build environment
     env = os.environ.copy()
-
-    # FAIL FAST: Required environment variables must be set
-    if "AOPS" not in env:
-        return {
-            "success": False,
-            "output": "",
-            "result": {},
-            "error": "AOPS environment variable not set - required for tests",
-        }
-
-    # Apply agent-env-map.conf credential isolation mappings
     from lib.agent_env import apply_env_mappings
 
     apply_env_mappings(env)
 
-    # Set GEMINI_CLI_HOME if provided (used by fixture-based tests)
     if gemini_home:
         env["GEMINI_CLI_HOME"] = str(gemini_home)
 
-    # Ensure CLAUDE_PLUGIN_ROOT is set for hooks.json variable expansion
-    if "CLAUDE_PLUGIN_ROOT" not in env:
-        # aops-core is the plugin root
+    if "CLAUDE_PLUGIN_ROOT" not in env and "AOPS" in env:
         env["CLAUDE_PLUGIN_ROOT"] = str(Path(env["AOPS"]) / "aops-core")
 
     try:
-        # Execute command
         log.debug("Full Launch Command: %s", " ".join(str(x) for x in cmd))
-        log.debug("Working Directory: %s", working_dir)
-
         result = subprocess.run(
             cmd,
             cwd=working_dir,
@@ -740,71 +712,86 @@ def run_gemini_headless(
             env=env,
         )
 
-        # Check for command failure
         if result.returncode != 0:
-            return {
-                "success": False,
-                "output": result.stdout,
-                "result": {},
-                "error": f"Command failed with exit code {result.returncode}: {result.stderr}",
-            }
+            return (
+                {
+                    "success": False,
+                    "output": result.stdout,
+                    "result": {},
+                    "error": f"Command failed with exit code {result.returncode}: {result.stderr}",
+                },
+                "",
+                [],
+            )
 
-        # Parse JSON output - robustly handle hook logging noise
+        # Parse JSON output robustly
+        parsed_output = {}
         try:
-            # Try direct parse first
             parsed_output = json.loads(result.stdout)
         except json.JSONDecodeError:
-            # Fallback: look for JSON object boundaries
-            # We want the LAST valid JSON object, as that's likely the CLI response
-            # (Hooks log earlier)
-
-            # Simple heuristic: Look for { ... } that parse successfully
             candidates = []
-            # This regex matches balanced braces is hard, so we'll try a simpler approach:
-            # Find all start braces '{'
             output = result.stdout
             for i, char in enumerate(output):
                 if char == "{":
-                    # Try to parse from here to end, then backtrack if needed
-                    # Actually, better to just try parsing substring starting at i
                     try:
                         obj, end_idx = json.JSONDecoder().raw_decode(output[i:])
                         candidates.append((i + end_idx, obj))
                     except json.JSONDecodeError:
                         continue
-
             if candidates:
-                # Use the last successfully parsed object
                 _, parsed_output = max(candidates, key=lambda x: x[0])
-            else:
-                return {
-                    "success": False,
-                    "output": result.stdout,
-                    "result": {},
-                    "error": "Could not find valid JSON in output",
-                }
 
-        return {
-            "success": True,
-            "output": result.stdout,
-            "result": parsed_output,
-            "stderr": result.stderr,
-        }
+        # Extract session info if possible
+        session_id = ""
+        tool_calls = []
+        if isinstance(parsed_output, dict):
+            # Gemini CLI sometimes includes session info in JSON output
+            session_id = parsed_output.get("sessionId", "")
+            # Try to extract tool calls from history if present
+            history = parsed_output.get("history", [])
+            for turn in history:
+                for msg in turn.get("messages", []):
+                    if msg.get("role") == "assistant":
+                        for part in msg.get("parts", []):
+                            if "toolCall" in part:
+                                tc = part["toolCall"]
+                                tool_calls.append(
+                                    {"name": tc.get("name"), "input": tc.get("args", {})}
+                                )
+
+        return (
+            {
+                "success": True,
+                "output": result.stdout,
+                "result": parsed_output,
+                "stderr": result.stderr,
+            },
+            session_id,
+            tool_calls,
+        )
 
     except subprocess.TimeoutExpired as e:
-        return {
-            "success": False,
-            "output": e.stdout if isinstance(e.stdout, str) else "",
-            "result": {},
-            "error": f"Command timed out after {timeout_seconds} seconds. Stderr: {e.stderr if isinstance(e.stderr, str) else ''}",
-        }
+        return (
+            {
+                "success": False,
+                "output": e.stdout if isinstance(e.stdout, str) else "",
+                "result": {},
+                "error": f"Command timed out after {timeout_seconds} seconds",
+            },
+            "",
+            [],
+        )
     except Exception as e:
-        return {
-            "success": False,
-            "output": "",
-            "result": {},
-            "error": f"Command execution failed: {e!s}",
-        }
+        return (
+            {
+                "success": False,
+                "output": "",
+                "result": {},
+                "error": f"Command execution failed: {e!s}",
+            },
+            "",
+            [],
+        )
 
 
 @pytest.fixture
@@ -812,12 +799,13 @@ def gemini_headless(gemini_home):
     """Pytest fixture providing headless Gemini CLI execution.
 
     Returns:
-        Callable that executes gemini command and returns parsed result.
+        Callable that executes gemini command and returns tuple of
+        (result_dict, session_id, tool_calls_list).
         Automatically fails the test if the session fails (H37 enforcement).
 
     Example:
         def test_something(gemini_headless):
-            result = gemini_headless("What is 2+2?")
+            result, session_id, tool_calls = gemini_headless("What is 2+2?")
             # No need to check result["success"] - fixture fails automatically
 
     Args passed to callable:
@@ -825,9 +813,6 @@ def gemini_headless(gemini_home):
         fail_on_error: If True (default), pytest.fail() on session failure.
                        Set to False to handle errors manually.
         **kwargs: Passed to run_gemini_headless (model, timeout_seconds, etc.)
-
-    Note:
-        Tests using this fixture will be skipped if gemini CLI is not in PATH.
     """
     # Skip test if gemini CLI not available
     if not _gemini_cli_available():
@@ -842,8 +827,12 @@ def gemini_headless(gemini_home):
 # --- Parameterized CLI fixture for cross-platform tests ---
 
 
-def _run_claude_docker_simple(prompt: str, tmp_path: Path, **kwargs) -> dict[str, Any]:
-    """Run Claude in Docker, returning simple result dict (no session tracking)."""
+def _run_claude_docker_simple(
+    prompt: str, tmp_path: Path, **kwargs
+) -> tuple[dict[str, Any], str, list[dict]]:
+    """Run Claude in Docker with session tracking."""
+    import uuid
+
     # Import _build_docker_cmd from polecat
     repo_root = get_repo_root()
     polecat_dir = str(repo_root / "polecat")
@@ -855,8 +844,12 @@ def _run_claude_docker_simple(prompt: str, tmp_path: Path, **kwargs) -> dict[str
 
     from cli import _build_docker_cmd
 
-    workspace = tmp_path / "docker-claude"
-    workspace.mkdir(exist_ok=True)
+    session_id = str(uuid.uuid4())
+    workspace = tmp_path / f"docker-test-{session_id[:8]}"
+    workspace.mkdir(exist_ok=True, parents=True)
+
+    session_dir = tmp_path / f"sessions-{session_id[:8]}"
+    session_dir.mkdir(exist_ok=True, parents=True)
 
     model = kwargs.get("model", "haiku")
     timeout_seconds = kwargs.get("timeout_seconds", 300)
@@ -868,6 +861,11 @@ def _run_claude_docker_simple(prompt: str, tmp_path: Path, **kwargs) -> dict[str
         prompt,
         "--output-format",
         "json",
+        "--verbose",
+        "--debug",
+        "hooks",
+        "--session-id",
+        session_id,
         "--model",
         model,
         "--max-turns",
@@ -888,6 +886,7 @@ def _run_claude_docker_simple(prompt: str, tmp_path: Path, **kwargs) -> dict[str
         env=env,
         agent_cmd=agent_cmd,
         is_interactive=False,
+        session_dir=session_dir,
     )
 
     try:
@@ -895,36 +894,69 @@ def _run_claude_docker_simple(prompt: str, tmp_path: Path, **kwargs) -> dict[str
             cmd, capture_output=True, text=True, timeout=timeout_seconds, check=False
         )
     except subprocess.TimeoutExpired:
-        return {
-            "success": False,
-            "output": "",
-            "result": {},
-            "error": f"Docker session timed out after {timeout_seconds}s",
-        }
+        session_file = find_session_jsonl(session_id, search_dirs=[session_dir])
+        tool_calls = parse_tool_calls(session_file) if session_file else []
+        return (
+            {
+                "success": False,
+                "output": "",
+                "result": {},
+                "error": f"Docker session timed out after {timeout_seconds}s",
+            },
+            session_id,
+            tool_calls,
+        )
 
     if result.returncode != 0:
-        return {
-            "success": False,
-            "output": result.stdout,
-            "result": {},
-            "error": f"Docker session failed (exit {result.returncode}): {result.stderr[:500]}",
-        }
+        session_file = find_session_jsonl(session_id, search_dirs=[session_dir])
+        tool_calls = parse_tool_calls(session_file) if session_file else []
+        return (
+            {
+                "success": False,
+                "output": result.stdout,
+                "result": {},
+                "error": f"Docker session failed (exit {result.returncode}): {result.stderr[:500]}",
+            },
+            session_id,
+            tool_calls,
+        )
+
+    # Parse tool calls
+    session_file = find_session_jsonl(session_id, search_dirs=[session_dir])
+    tool_calls = parse_tool_calls(session_file) if session_file else []
 
     try:
         parsed = json.loads(result.stdout)
-        return {"success": True, "output": result.stdout, "result": parsed}
+        if isinstance(parsed, list):
+            result_msg = next(
+                (m for m in parsed if isinstance(m, dict) and m.get("type") == "result"),
+                parsed[-1] if parsed else {},
+            )
+        else:
+            result_msg = parsed
+        return (
+            {"success": True, "output": result.stdout, "result": result_msg},
+            session_id,
+            tool_calls,
+        )
     except json.JSONDecodeError as e:
-        return {
-            "success": False,
-            "output": result.stdout,
-            "result": {},
-            "error": f"JSON parse error: {e}",
-        }
+        return (
+            {
+                "success": False,
+                "output": result.stdout,
+                "result": {},
+                "error": f"JSON parse error: {e}",
+            },
+            session_id,
+            tool_calls,
+        )
 
 
-def _run_gemini_docker(prompt: str, gemini_home: Path | None = None, **kwargs) -> dict[str, Any]:
+def _run_gemini_docker(
+    prompt: str, gemini_home: Path | None = None, **kwargs
+) -> tuple[dict[str, Any], str, list[dict]]:
     """Run Gemini with --sandbox (tool calls inside Docker container)."""
-    # Ensure polecat is importable (for _replicate_gemini_auth)
+    # Ensure polecat is importable
     repo_root = get_repo_root()
     polecat_dir = str(repo_root / "polecat")
     aops_core_dir = str(repo_root / "aops-core")
@@ -943,8 +975,6 @@ def _run_gemini_docker(prompt: str, gemini_home: Path | None = None, **kwargs) -
     env = os.environ.copy()
     env["GEMINI_SANDBOX_IMAGE"] = os.environ.get("GEMINI_SANDBOX_IMAGE", "aops-crew")
 
-    # When gemini_home is provided (e.g. from gemini_home fixture), use it directly.
-    # Otherwise, replicate auth from ~/.gemini so sandbox can authenticate.
     tmp_gemini_home = None
     if gemini_home:
         env["GEMINI_CLI_HOME"] = str(gemini_home)
@@ -964,26 +994,34 @@ def _run_gemini_docker(prompt: str, gemini_home: Path | None = None, **kwargs) -
                 cmd, capture_output=True, text=True, timeout=timeout_seconds, check=False, env=env
             )
         except subprocess.TimeoutExpired:
-            return {
-                "success": False,
-                "output": "",
-                "result": {},
-                "error": f"Gemini sandbox session timed out after {timeout_seconds}s",
-            }
+            return (
+                {
+                    "success": False,
+                    "output": "",
+                    "result": {},
+                    "error": f"Gemini sandbox session timed out after {timeout_seconds}s",
+                },
+                "",
+                [],
+            )
 
         if result.returncode != 0:
-            return {
-                "success": False,
-                "output": result.stdout,
-                "result": {},
-                "error": f"Gemini sandbox failed (exit {result.returncode}): {result.stderr[:500]}",
-            }
+            return (
+                {
+                    "success": False,
+                    "output": result.stdout,
+                    "result": {},
+                    "error": f"Gemini sandbox failed (exit {result.returncode}): {result.stderr[:500]}",
+                },
+                "",
+                [],
+            )
 
-        # Parse JSON — reuse the same robust parsing as run_gemini_headless
+        # Parse JSON
+        parsed = {}
         try:
             parsed = json.loads(result.stdout)
         except json.JSONDecodeError:
-            # Fallback: find last valid JSON object in output
             candidates = []
             output = result.stdout
             for i, char in enumerate(output):
@@ -995,75 +1033,38 @@ def _run_gemini_docker(prompt: str, gemini_home: Path | None = None, **kwargs) -
                         continue
             if candidates:
                 _, parsed = max(candidates, key=lambda x: x[0])
-            else:
-                return {
-                    "success": False,
-                    "output": result.stdout,
-                    "result": {},
-                    "error": "Could not find valid JSON in gemini sandbox output",
-                }
 
-        response = {
-            "success": True,
-            "output": result.stdout,
-            "stderr": result.stderr,
-            "result": parsed,
-        }
+        session_id = ""
+        tool_calls = []
+        if isinstance(parsed, dict):
+            session_id = parsed.get("sessionId", "")
+            history = parsed.get("history", [])
+            for turn in history:
+                for msg in turn.get("messages", []):
+                    if msg.get("role") == "assistant":
+                        for part in msg.get("parts", []):
+                            if "toolCall" in part:
+                                tc = part["toolCall"]
+                                tool_calls.append(
+                                    {"name": tc.get("name"), "input": tc.get("args", {})}
+                                )
 
-        # Capture session and hook logs before cleanup
-        cli_home = gemini_home or (tmp_gemini_home / ".gemini" if tmp_gemini_home else None)
-        if cli_home and cli_home.exists():
-            # Gemini session logs: ~/.gemini/tmp/<project>/chats/session-*.json
-            session_files = list(cli_home.rglob("session-*.json"))
-            hook_files = list(cli_home.rglob("*-hooks.jsonl"))
-            log_files = list(cli_home.rglob("*.jsonl"))
-
-            diag_lines = [
-                f"gemini_home: {cli_home}",
-                f"session files: {session_files}",
-                f"hook files: {hook_files}",
-                f"all jsonl: {log_files}",
-            ]
-            # Read hook log contents if found
-            for hf in hook_files:
-                try:
-                    diag_lines.append(f"--- {hf.name} ---")
-                    diag_lines.append(hf.read_text()[:2000])
-                except OSError:
-                    pass
-            # Read session transcript if found
-            for sf in session_files:
-                try:
-                    diag_lines.append(f"--- {sf.name} (first 1000 chars) ---")
-                    diag_lines.append(sf.read_text()[:1000])
-                except OSError:
-                    pass
-            log.debug("Gemini Docker session diagnostics:\n%s", "\n".join(diag_lines))
-
-        # Also log parsed result summary
-        stats = parsed.get("stats", {})
-        model_info = next(iter(stats.get("models", {}).items()), (None, {}))
-        model_name = model_info[0] or "unknown"
-        model_stats = model_info[1] if isinstance(model_info[1], dict) else {}
-        tokens = model_stats.get("tokens", {})
-        api = model_stats.get("api", {})
-        log.debug(
-            "Gemini result: response=%r model=%s tokens_in=%s tokens_out=%s latency=%sms stderr=%s",
-            str(parsed.get("response", ""))[:200],
-            model_name,
-            tokens.get("input", "?"),
-            tokens.get("candidates", "?"),
-            api.get("totalLatencyMs", "?"),
-            (result.stderr or "")[:500],
+        return (
+            {
+                "success": True,
+                "output": result.stdout,
+                "stderr": result.stderr,
+                "result": parsed,
+            },
+            session_id,
+            tool_calls,
         )
-
-        return response
     finally:
         if tmp_gemini_home and tmp_gemini_home.exists():
             shutil.rmtree(tmp_gemini_home)
 
 
-@pytest.fixture(params=["claude", "gemini", "claude-docker", "gemini-docker"])
+@pytest.fixture(params=["claude-host", "gemini-host", "claude-docker", "gemini-docker"])
 def cli_headless(request, tmp_path, gemini_home):
     """Parameterized fixture that yields headless runners across all backends.
 
@@ -1072,33 +1073,33 @@ def cli_headless(request, tmp_path, gemini_home):
     Example:
         def test_simple_math(cli_headless):
             runner, platform = cli_headless
-            result = runner("What is 2+2?")
+            result, session_id, tool_calls = runner("What is 2+2?")
             assert result["success"]
 
     Returns:
         Tuple of (runner_function, platform_name)
 
     Backends:
-        - claude: Claude CLI on host
-        - gemini: Gemini CLI on host
+        - claude-host: Claude CLI on host
+        - gemini-host: Gemini CLI on host
         - claude-docker: Claude inside aops-crew Docker container
         - gemini-docker: Gemini with --sandbox (tool calls in Docker)
     """
     platform = request.param
 
-    if platform == "claude":
+    if platform == "claude-host":
         if not _claude_cli_available():
             pytest.skip("claude CLI not found in PATH")
-        return _make_failing_wrapper(run_claude_headless), "claude"
+        return _make_failing_wrapper(run_claude_headless), "claude-host"
 
-    elif platform == "gemini":
+    elif platform == "gemini-host":
         if not _gemini_cli_available():
             pytest.skip("gemini CLI not found in PATH")
 
         def _run_gemini(prompt, **kwargs):
             return run_gemini_headless(prompt, gemini_home=gemini_home, **kwargs)
 
-        return _make_failing_wrapper(_run_gemini), "gemini"
+        return _make_failing_wrapper(_run_gemini), "gemini-host"
 
     elif platform == "claude-docker":
         if not _docker_available():
@@ -1131,7 +1132,7 @@ def aops_root():
     Returns:
         Path: Absolute path to aOps framework root ($AOPS)
     """
-    return get_aops_root()
+    return get_bots_dir()
 
 
 # --- Session tracking fixtures for E2E tool verification ---
@@ -1468,163 +1469,17 @@ def get_task_count():
 
 @pytest.fixture
 def claude_headless_tracked(tmp_path):
-    """Pytest fixture providing headless Claude Code with session tracking.
+    """Legacy fixture providing tracked headless Claude Code.
+
+    Alias for run_claude_headless with failure wrapper.
 
     Returns:
-        Callable that executes claude command with session ID tracking.
-        Returns tuple of (result dict, session_id, tool_calls list).
-        Automatically fails the test if the session fails (H37 enforcement).
-
-    Example:
-        def test_something(claude_headless_tracked):
-            result, session_id, tool_calls = claude_headless_tracked("What is 2+2?")
-            # No need to check result["success"] - fixture fails automatically
-            assert any(c["name"] == "Bash" for c in tool_calls)
-
-    Args passed to callable:
-        prompt: The prompt to send
-        fail_on_error: If True (default), pytest.fail() on session failure.
-                       Set to False to handle errors manually.
-        **kwargs: model, timeout_seconds, permission_mode, cwd
+        Callable returning (result_dict, session_id, tool_calls_list)
     """
-    import os
-    import subprocess
-    import uuid
-
-    # Skip test if claude CLI not available
     if not _claude_cli_available():
-        pytest.fail("claude CLI not found in PATH - requires Claude Code CLI installed")
+        pytest.fail("claude CLI not found in PATH")
 
-    def _run_tracked(
-        prompt: str,
-        model: str = "haiku",
-        timeout_seconds: int = 120,
-        permission_mode: str = "bypassPermissions",
-        cwd: Path | None = None,
-        fail_on_error: bool = True,
-    ) -> tuple[dict, str, list[dict]]:
-        """Run claude with session tracking."""
-        import json
-
-        session_id = str(uuid.uuid4())
-
-        # Get aops-core plugin directory for agent availability
-        aops_root = get_aops_root()
-        plugin_dir_core = aops_root / ".." / "aops-core"
-        plugin_dir_tools = aops_root / ".." / "aops-tools"
-
-        cmd = [
-            "claude",
-            "-p",
-            prompt,
-            "--output-format",
-            "json",
-            "--session-id",
-            session_id,
-            "--model",
-            model,
-            "--permission-mode",
-            permission_mode,
-            "--plugin-dir",
-            plugin_dir_core,
-            "--plugin-dir",
-            plugin_dir_tools,
-            "--no-session-persistence",
-        ]
-
-        env = os.environ.copy()
-
-        try:
-            # Use a safe temporary directory to avoid Seatbelt permission errors
-            if cwd:
-                test_dir = cwd
-            else:
-                test_dir = tmp_path / "claude-test"
-                test_dir.mkdir(parents=True, exist_ok=True)
-
-            log.debug("Full Launch Command: %s", " ".join(str(x) for x in cmd))
-            log.debug("Working Directory: %s", test_dir)
-
-            result = subprocess.run(
-                cmd,
-                cwd=test_dir,
-                capture_output=True,
-                text=True,
-                timeout=timeout_seconds,
-                check=False,
-                env=env,
-            )
-
-            if result.returncode != 0:
-                # Parse tool calls from session file - session may have made progress
-                session_file = find_session_jsonl(session_id)
-                tool_calls = parse_tool_calls(session_file) if session_file else []
-                error_msg = f"Command failed with exit code {result.returncode}: {result.stderr}"
-                if fail_on_error:
-                    pytest.fail(
-                        f"Headless session failed (set fail_on_error=False to handle manually): "
-                        f"{error_msg}. Session made {len(tool_calls)} tool calls."
-                    )
-                return (
-                    {
-                        "success": False,
-                        "output": result.stdout,
-                        "result": {},
-                        "error": error_msg,
-                    },
-                    session_id,
-                    tool_calls,
-                )
-
-            try:
-                parsed = json.loads(result.stdout)
-                response = {
-                    "success": True,
-                    "output": result.stdout,
-                    "result": parsed,
-                }
-            except json.JSONDecodeError as e:
-                error_msg = f"JSON parse error: {e}"
-                if fail_on_error:
-                    pytest.fail(
-                        f"Headless session failed (set fail_on_error=False to handle manually): "
-                        f"{error_msg}"
-                    )
-                response = {
-                    "success": False,
-                    "output": result.stdout,
-                    "result": {},
-                    "error": error_msg,
-                }
-
-            # Parse tool calls from session JSONL
-            session_file = find_session_jsonl(session_id)
-            tool_calls = parse_tool_calls(session_file) if session_file else []
-
-            return response, session_id, tool_calls
-
-        except subprocess.TimeoutExpired:
-            error_msg = f"Timeout after {timeout_seconds}s"
-            # Still parse tool calls from session file - session may have made progress
-            session_file = find_session_jsonl(session_id)
-            tool_calls = parse_tool_calls(session_file) if session_file else []
-            if fail_on_error:
-                pytest.fail(
-                    f"Headless session failed (set fail_on_error=False to handle manually): "
-                    f"{error_msg}. Session made {len(tool_calls)} tool calls before timeout."
-                )
-            return (
-                {
-                    "success": False,
-                    "output": "",
-                    "result": {},
-                    "error": error_msg,
-                },
-                session_id,
-                tool_calls,  # Return actual tool calls, not empty list
-            )
-
-    return _run_tracked
+    return _make_failing_wrapper(run_claude_headless)
 
 
 def pytest_configure(config):
@@ -1689,177 +1544,15 @@ def _docker_available() -> bool:
 
 @pytest.fixture
 def claude_docker(tmp_path):
-    """Run Claude inside Docker container, matching polecat crew behavior.
+    """Legacy fixture for Claude inside Docker container.
 
-    Returns callable with same API as claude_headless_tracked::
-
-        result, session_id, tool_calls = claude_docker(
-            "What is 2+2?",
-            timeout_seconds=60,
-        )
-
-    Skips if: Docker unavailable, no Claude auth, or aops-crew image not built.
-    Claude authenticates via OAuth (stored in ~/.claude/.credentials.json) which is
-    bind-mounted into the container. Falls back to ANTHROPIC_API_KEY if set.
+    Returns:
+        Callable returning (result_dict, session_id, tool_calls_list)
     """
-    import uuid
-
     if not _docker_available():
-        pytest.skip("Docker not available or aops-crew image not built")
+        pytest.skip("Docker not available")
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    has_oauth = (Path.home() / ".claude" / ".credentials.json").exists()
-    if not api_key and not has_oauth:
-        pytest.skip("No Claude auth: neither ANTHROPIC_API_KEY nor OAuth credentials found")
+    def _run(prompt, **kwargs):
+        return _run_claude_docker_simple(prompt, tmp_path=tmp_path, **kwargs)
 
-    # Import _build_docker_cmd from polecat
-    repo_root = get_repo_root()
-    polecat_dir = str(repo_root / "polecat")
-    aops_core_dir = str(repo_root / "aops-core")
-    if polecat_dir not in sys.path:
-        sys.path.insert(0, polecat_dir)
-    if aops_core_dir not in sys.path:
-        sys.path.insert(0, aops_core_dir)
-
-    from cli import _build_docker_cmd
-
-    def _run_in_docker(
-        prompt: str,
-        model: str = "haiku",
-        timeout_seconds: int = 120,
-        fail_on_error: bool = True,
-    ) -> tuple[dict, str, list[dict]]:
-        """Run Claude in Docker with session tracking."""
-        session_id = str(uuid.uuid4())
-
-        # Create workspace directory
-        workspace = tmp_path / f"docker-test-{session_id[:8]}"
-        workspace.mkdir()
-
-        # Create session directory so Claude transcripts persist on the host
-        session_dir = tmp_path / f"sessions-{session_id[:8]}"
-        session_dir.mkdir()
-
-        # Build agent command — use --verbose so stdout includes the init
-        # message (with apiKeySource, mcp_servers status, etc.) as a JSON array
-        agent_cmd = [
-            "claude",
-            "--dangerously-skip-permissions",
-            "-p",
-            prompt,
-            "--output-format",
-            "json",
-            "--verbose",
-            "--debug",
-            "hooks",
-            "--session-id",
-            session_id,
-            "--model",
-            model,
-            "--max-turns",
-            "3",
-        ]
-
-        # Build Docker command via polecat's builder
-        env = {}
-        if api_key:
-            env["ANTHROPIC_API_KEY"] = api_key
-        # Forward ACA_DATA if set
-        aca_data = os.environ.get("ACA_DATA")
-        if aca_data:
-            env["ACA_DATA"] = aca_data
-
-        cmd = _build_docker_cmd(
-            cli_tool="claude",
-            work_dir=workspace,
-            env=env,
-            agent_cmd=agent_cmd,
-            is_interactive=False,
-            session_dir=session_dir,
-        )
-
-        log.debug("Docker command: %s", " ".join(str(x) for x in cmd))
-
-        try:
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=timeout_seconds,
-                check=False,
-            )
-        except subprocess.TimeoutExpired:
-            # Try to extract partial progress from session file
-            session_file = find_session_jsonl(session_id, search_dirs=[session_dir])
-            tool_calls = parse_tool_calls(session_file) if session_file else []
-            error_msg = f"Docker session timed out after {timeout_seconds}s"
-            if fail_on_error:
-                pytest.fail(f"{error_msg}. Session made {len(tool_calls)} tool calls.")
-            return (
-                {"success": False, "output": "", "result": {}, "error": error_msg},
-                session_id,
-                tool_calls,
-            )
-
-        if result.returncode != 0:
-            session_file = find_session_jsonl(session_id, search_dirs=[session_dir])
-            tool_calls = parse_tool_calls(session_file) if session_file else []
-            error_msg = (
-                f"Docker session failed (exit {result.returncode}): "
-                f"{result.stderr[:500] if result.stderr else 'no stderr'}"
-            )
-            if fail_on_error:
-                pytest.fail(f"{error_msg}. Session made {len(tool_calls)} tool calls.")
-            return (
-                {"success": False, "output": result.stdout, "result": {}, "error": error_msg},
-                session_id,
-                tool_calls,
-            )
-
-        # Parse JSON output — Claude --output-format json writes a JSON array:
-        # [{"type":"system","subtype":"init",...}, {"type":"result",...}]
-        # or a single JSON object for the result.
-        try:
-            parsed = json.loads(result.stdout)
-            # Normalise: extract the result message from an array if needed
-            if isinstance(parsed, list):
-                result_msg = next(
-                    (m for m in parsed if isinstance(m, dict) and m.get("type") == "result"),
-                    parsed[-1] if parsed else {},
-                )
-                init_msg = next(
-                    (m for m in parsed if isinstance(m, dict) and m.get("type") == "system"),
-                    {},
-                )
-            else:
-                result_msg = parsed
-                init_msg = {}
-            response = {
-                "success": True,
-                "output": result.stdout,
-                "stderr": result.stderr,
-                "result": result_msg,
-                "init": init_msg,
-            }
-        except json.JSONDecodeError as e:
-            error_msg = f"JSON parse error: {e}. stdout: {result.stdout[:200]}"
-            if fail_on_error:
-                pytest.fail(error_msg)
-            response = {
-                "success": False,
-                "output": result.stdout,
-                "stderr": result.stderr,
-                "result": {},
-                "error": error_msg,
-            }
-
-        # Include session_dir in response so tests can find transcripts
-        response["session_dir"] = session_dir
-
-        # Extract tool calls from session JSONL (written to bind-mounted ~/.claude/)
-        session_file = find_session_jsonl(session_id, search_dirs=[session_dir])
-        tool_calls = parse_tool_calls(session_file) if session_file else []
-
-        return response, session_id, tool_calls
-
-    return _run_in_docker
+    return _make_failing_wrapper(_run)

@@ -88,7 +88,7 @@ print(f"Internal state after processing: {processor.state}")
 
 ```python
 # WRONG - continues despite session failure
-result = claude_headless(prompt)
+result, session_id, tool_calls = claude_headless(prompt)
 # ... proceeds to check other things ...
 
 # CORRECT - fixture handles this automatically

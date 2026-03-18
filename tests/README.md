@@ -230,7 +230,7 @@ Fails fast with `RuntimeError` if paths don't exist or can't be determined.
 Execute Claude Code in headless mode for integration testing:
 
 ```python
-result = claude_headless(
+result, session_id, tool_calls = claude_headless(
     prompt="What is 2+2?",
     model="claude-sonnet-4-5-20250929",  # Optional
     timeout_seconds=120,                  # Optional
@@ -238,11 +238,10 @@ result = claude_headless(
     cwd=writing_root,                     # Optional
 )
 
-# Returns dict with:
-# - success (bool): Whether execution succeeded
-# - output (str): Raw JSON output
+# Returns:
 # - result (dict): Parsed JSON result
-# - error (str, optional): Error message if failed
+# - session_id (str): UUID of the session
+# - tool_calls (list): List of parsed tool calls
 ```
 
 ## Test Coverage
@@ -354,7 +353,7 @@ def test_agent_behavior(claude_headless, writing_root: Path) -> None:
         claude_headless: Fixture for headless Claude execution
         writing_root: Path to repository root
     """
-    result = claude_headless(
+    result, session_id, tool_calls = claude_headless(
         prompt="What is my name?",
         timeout_seconds=60,
         cwd=writing_root,

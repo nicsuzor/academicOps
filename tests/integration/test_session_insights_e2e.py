@@ -18,7 +18,7 @@ def test_session_insights_skill_e2e(claude_headless) -> None:
     - Output mentions transcript generation
     - Output mentions daily summary
     """
-    result = claude_headless(
+    result, session_id, tool_calls = claude_headless(
         prompt='Skill(skill="session-insights")',
         timeout_seconds=300,  # 5 minutes - skill runs parallel agents
     )

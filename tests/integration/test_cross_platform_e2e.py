@@ -18,7 +18,7 @@ def test_simple_math_cross_platform(cli_headless) -> None:
     """Smoke test: both CLIs execute simple prompts and return structured JSON."""
     runner, platform = cli_headless
 
-    result = runner("What is 2+2? Reply with just the number.")
+    result, session_id, tool_calls = runner("What is 2+2? Reply with just the number.")
 
     assert result["success"], f"[{platform}] Execution failed: {result.get('error')}"
     assert "output" in result, f"[{platform}] Result should have output"

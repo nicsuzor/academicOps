@@ -61,7 +61,7 @@ class TestDockerAgentResponds:
         This verifies that the basic agent infrastructure is working.
         """
         runner, platform = docker_headless
-        result = runner("What is 2+2? Answer with just the number.")
+        result, session_id, tool_calls = runner("What is 2+2? Answer with just the number.")
         assert result["success"], f"[{platform}] Execution failed: {result.get('error')}"
 
     def test_framework_binaries_on_path(self, docker_headless):
@@ -69,7 +69,7 @@ class TestDockerAgentResponds:
         runner, platform = docker_headless
         # Ask the agent to check for the binaries using their tool-use capabilities (Bash/run_shell_command)
         prompt = "Run 'which pkb' and 'which aops' and 'pkb --version'. If they all work, reply with 'BINARIES_OK'."
-        result = runner(prompt)
+        result, session_id, tool_calls = runner(prompt)
         assert result["success"], f"[{platform}] Execution failed: {result.get('error')}"
 
         # Check output for confirmation
@@ -87,7 +87,7 @@ class TestDockerAgentResponds:
         # For Gemini, we can check if it's listed in 'gemini extensions list'
         # For Claude, we can check if its tools are available or if it's in verbose output
         prompt = "List your available extensions or tools. Reply with 'AOPS_ACTIVE' if you see 'aops-core' or pkb tools."
-        result = runner(prompt)
+        result, session_id, tool_calls = runner(prompt)
         assert result["success"], f"[{platform}] Execution failed: {result.get('error')}"
 
         output = str(result.get("output", "")) + str(result.get("stderr", ""))
@@ -102,7 +102,7 @@ class TestDockerAgentResponds:
     def test_agent_returns_structured_output(self, docker_headless):
         """Agent returns parseable structured output from Docker."""
         runner, platform = docker_headless
-        result = runner("What is 2+2? Reply with just the number.")
+        result, session_id, tool_calls = runner("What is 2+2? Reply with just the number.")
         assert result["success"], f"[{platform}] Execution failed: {result.get('error')}"
         assert result["result"], f"[{platform}] Result should have parsed JSON/output"
 
@@ -110,11 +110,15 @@ class TestDockerAgentResponds:
 @pytest.mark.slow
 @pytest.mark.integration
 class TestDockerSessionTracking:
-    """Claude Docker session log extraction (Claude-specific — needs session tracking)."""
+    """Agent Docker session log extraction."""
 
-    def test_session_logs_extracted(self, claude_docker):
-        """Session JSONL is written to bind-mounted .claude/ and can be parsed."""
-        result, session_id, tool_calls = claude_docker(
+    def test_session_logs_extracted(self, cli_headless):
+        """Session logs are written and can be parsed."""
+        runner, platform = cli_headless
+        if "docker" not in platform:
+            pytest.skip("Test requires docker backend")
+
+        result, session_id, tool_calls = runner(
             "Use the Bash tool to run: echo hello-from-docker",
             timeout_seconds=60,
         )

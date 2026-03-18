@@ -26,7 +26,7 @@ class TestHydrationGateE2E:
         """GIVEN: Fresh session. WHEN: Read tool. THEN: Blocked."""
         runner, platform = cli_headless
 
-        result = runner(
+        result, session_id, tool_calls = runner(
             "Read the file pyproject.toml and tell me what's in it. Do not use any other tools first.",
             model="haiku" if platform == "claude" else None,
             fail_on_error=False,
@@ -46,7 +46,7 @@ class TestHydrationGateE2E:
         """GIVEN: Fresh session. WHEN: git status. THEN: Allowed."""
         runner, platform = cli_headless
 
-        result = runner(
+        result, session_id, tool_calls = runner(
             "Run 'git status' using Bash. Just run that one command and show me the output.",
             model="haiku" if platform == "claude" else None,
             fail_on_error=False,
@@ -77,7 +77,7 @@ class TestHydrationExemptToolsE2E:
         """GIVEN: Fresh session. WHEN: Glob tool. THEN: Allowed."""
         runner, platform = cli_headless
 
-        result = runner(
+        result, session_id, tool_calls = runner(
             "Use the Glob tool with pattern '*.py' to find Python files in the current directory.",
             model="haiku" if platform == "claude" else None,
             fail_on_error=False,

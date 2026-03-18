@@ -16,7 +16,7 @@ def test_deny_rules_block_claude_dir_write(claude_headless):
         "you MUST use the Write tool on that exact path."
     )
 
-    result = claude_headless(prompt, timeout_seconds=90)
+    result, session_id, tool_calls = claude_headless(prompt, timeout_seconds=90)
 
     assert result["success"], f"Headless execution failed: {result.get('error')}"
 

@@ -160,9 +160,13 @@ def _dump_diagnostics(result: dict, session_id: str) -> str:
 
 @pytest.mark.slow
 @pytest.mark.integration
-def test_claude_docker_produces_session_jsonl(claude_docker):
+def test_claude_docker_produces_session_jsonl(cli_headless):
     """Claude writes a session JSONL transcript that persists via the session_dir mount."""
-    result, session_id, tool_calls = claude_docker(
+    runner, platform = cli_headless
+    if platform != "claude-docker":
+        pytest.skip("Test requires claude-docker backend")
+
+    result, session_id, tool_calls = runner(
         "Reply with exactly: hello world",
         timeout_seconds=90,
         fail_on_error=False,
@@ -193,9 +197,13 @@ def test_claude_docker_produces_session_jsonl(claude_docker):
 
 @pytest.mark.slow
 @pytest.mark.integration
-def test_session_jsonl_contains_valid_entries(claude_docker):
+def test_session_jsonl_contains_valid_entries(cli_headless):
     """Session JSONL contains parseable entries with user + assistant messages."""
-    result, session_id, _ = claude_docker(
+    runner, platform = cli_headless
+    if platform != "claude-docker":
+        pytest.skip("Test requires claude-docker backend")
+
+    result, session_id, _ = runner(
         "Reply with exactly: test persistence",
         timeout_seconds=90,
         fail_on_error=False,

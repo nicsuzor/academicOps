@@ -515,7 +515,7 @@ class TestClaudeCredentialIsolation:
 
         from tests.conftest import run_claude_headless
 
-        result = run_claude_headless(
+        result, session_id, tool_calls = run_claude_headless(
             prompt=prompt, model="haiku", timeout_seconds=120, cwd=tmp_path
         )
 
@@ -599,7 +599,7 @@ class TestGeminiCredentialIsolation:
 
         from tests.conftest import run_gemini_headless
 
-        result = run_gemini_headless(
+        result, session_id, tool_calls = run_gemini_headless(
             prompt=prompt, timeout_seconds=120, cwd=gemini_workdir, permission_mode="yolo"
         )
 

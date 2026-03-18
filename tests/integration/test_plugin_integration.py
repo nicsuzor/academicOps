@@ -57,7 +57,7 @@ class TestHookFunctionality:
         """Session should complete without hook errors when run from /tmp."""
         workdir = tmp_path / "plugin-test"
         workdir.mkdir()
-        result = claude_headless(
+        result, session_id, tool_calls = claude_headless(
             "What is 2+2? Answer with just the number.",
             cwd=workdir,
             timeout_seconds=60,
