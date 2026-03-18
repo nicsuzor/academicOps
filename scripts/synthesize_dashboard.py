@@ -2,7 +2,7 @@
 """Aggregate per-session insights into synthesis.json for the dashboard.
 
 Reads today's session summary files from $AOPS_SESSIONS/summaries/
-and produces $ACA_DATA/dashboard/synthesis.json — a pure aggregation
+and produces $AOPS_SESSIONS/synthesis.json — a pure aggregation
 with no LLM calls.
 
 Token metrics are NOT included here; the dashboard aggregates those
@@ -22,7 +22,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 
-from lib.paths import get_data_root, get_summaries_dir  # noqa: E402
+from lib.paths import get_summaries_dir  # noqa: E402
 
 
 def load_today_sessions(summaries_dir: Path, date_prefix: str) -> list[dict]:
@@ -248,9 +248,8 @@ def main() -> None:
 
     synthesis = synthesize(sessions, today)
 
-    # Write atomically
-    out_dir = get_data_root() / "dashboard"
-    out_dir.mkdir(parents=True, exist_ok=True)
+    # Write atomically to $AOPS_SESSIONS/synthesis.json
+    out_dir = summaries_dir.parent  # $AOPS_SESSIONS
     out_path = out_dir / "synthesis.json"
 
     fd, tmp_path = tempfile.mkstemp(dir=out_dir, suffix=".tmp")
