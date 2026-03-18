@@ -225,24 +225,13 @@ class TestBuildDockerCmd:
         assert "GIT_TERMINAL_PROMPT=0" in env_args
 
     def test_git_credential_helper_with_gh_token(self):
-        """Git credential helper is configured when GH_TOKEN is available."""
-        env = {"GH_TOKEN": "ghp_test123"}
-        cmd = self._build(env=env)
-        env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
-        assert "GIT_CONFIG_COUNT=3" in env_args
-        config_vals = [a for a in env_args if a.startswith("GIT_CONFIG_VALUE_0=")]
-        assert len(config_vals) == 1
-        assert "x-access-token" in config_vals[0]
-        # URL rewriting: git@github.com: → https://github.com/
-        insteadof_keys = [a for a in env_args if a.startswith("GIT_CONFIG_KEY_1=")]
-        assert insteadof_keys[0] == "GIT_CONFIG_KEY_1=url.https://github.com/.insteadOf"
-
-    def test_forwards_gh_token(self):
-        """GH_TOKEN is forwarded to Docker container."""
+        """GH_TOKEN and AOPS_BOT_GH_TOKEN are forwarded when available."""
         env = {"GH_TOKEN": "ghp_test123"}
         cmd = self._build(env=env)
         env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
         assert "GH_TOKEN=ghp_test123" in env_args
+        assert "AOPS_BOT_GH_TOKEN=ghp_test123" in env_args
+        assert "GIT_ASKPASS=true" in env_args
 
     def test_mounts_pkb_binary_when_available(self):
         """pkb binary is mounted read-only for MCP server access."""
