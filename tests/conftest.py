@@ -27,6 +27,10 @@ from .paths import (
 
 log = logging.getLogger(__name__)
 
+# Max turns for Claude in test fixtures — higher than the default of 3 to allow
+# for hook overhead (hydration gate, custodiet) before reaching the actual task.
+TEST_CLAUDE_MAX_TURNS = "10"
+
 
 def _is_xdist_worker() -> bool:
     """Check if running in an xdist worker process."""
@@ -871,7 +875,7 @@ def _run_claude_docker_simple(prompt: str, tmp_path: Path, **kwargs) -> dict[str
         "--model",
         model,
         "--max-turns",
-        "10",
+        TEST_CLAUDE_MAX_TURNS,
     ]
 
     env = {}
@@ -1757,7 +1761,7 @@ def claude_docker(tmp_path):
             "--model",
             model,
             "--max-turns",
-            "10",
+            TEST_CLAUDE_MAX_TURNS,
         ]
 
         # Build Docker command via polecat's builder
