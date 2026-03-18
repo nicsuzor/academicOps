@@ -148,13 +148,13 @@ Ensure `$ACA_DATA` is committed, pushed, and remote is pulled. This is already h
 
 ## Relationship to Existing Skills
 
-| Skill               | Current role                     | Sleep cycle relationship                                                                                                                                                                         |
-| ------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `/daily`            | Morning briefing + progress sync | **Complementary.** Daily handles the human-facing briefing (email, focus, recommendations). Sleep cycle handles the machine-facing consolidation (episode replay, index refresh, staleness).     |
-| `/session-insights` | Per-session analysis             | **Building block.** Sleep cycle Phase 1 calls session-insights batch.                                                                                                                            |
-| `/audit`            | Framework index curation         | **Scheduled.** Sleep cycle Phase 3 runs audit Phases 1-2 on a schedule. Full audit remains manual.                                                                                               |
-| `/planner`          | Planning, decomposition, graph maintenance | **Downstream.** Sleep cycle Phase 4b delegates graph maintenance to Planner's `maintain` mode. Phase 4 staleness candidates flow to Planner for processing. |
-| `/remember`         | Manual knowledge capture         | **Upstream.** Inline promotion during sessions. Sleep cycle catches what /remember missed.                                                                                                       |
+| Skill               | Current role                               | Sleep cycle relationship                                                                                                                                                                     |
+| ------------------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/daily`            | Morning briefing + progress sync           | **Complementary.** Daily handles the human-facing briefing (email, focus, recommendations). Sleep cycle handles the machine-facing consolidation (episode replay, index refresh, staleness). |
+| `/session-insights` | Per-session analysis                       | **Building block.** Sleep cycle Phase 1 calls session-insights batch.                                                                                                                        |
+| `/audit`            | Framework index curation                   | **Scheduled.** Sleep cycle Phase 3 runs audit Phases 1-2 on a schedule. Full audit remains manual.                                                                                           |
+| `/planner`          | Planning, decomposition, graph maintenance | **Downstream.** Sleep cycle Phase 4b delegates graph maintenance to Planner's `maintain` mode. Phase 4 staleness candidates flow to Planner for processing.                                  |
+| `/remember`         | Manual knowledge capture                   | **Upstream.** Inline promotion during sessions. Sleep cycle catches what /remember missed.                                                                                                   |
 
 ## What This Does NOT Replace
 

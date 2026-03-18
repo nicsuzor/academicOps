@@ -2,42 +2,38 @@
 
 ## [0.3.12](https://github.com/nicsuzor/academicOps/compare/v0.3.11...v0.3.12) (2026-03-18)
 
-
 ### Features
 
-* configure polecat containers for HTTPS git and bot identity ([0e1cac4](https://github.com/nicsuzor/academicOps/commit/0e1cac486d1536c2f1fbc1d76c1a342ea42ccd8b))
-* configure polecat containers for HTTPS git and bot identity ([f34c319](https://github.com/nicsuzor/academicOps/commit/f34c31982b34dad4f422b8c91c207c0686c7ae9e))
-* consolidate 6 skills into unified Planner agent ([2710c30](https://github.com/nicsuzor/academicOps/commit/2710c302a94d59e5808b8b445831512cc15fd94e))
-* consolidate 6 skills into unified Planner agent ([3390cd6](https://github.com/nicsuzor/academicOps/commit/3390cd67f9c9e4c49f4ae21e3bbfe5f9aaeb02f6))
-* ensure polecat init and worktrees always use HTTPS remotes ([7734a5d](https://github.com/nicsuzor/academicOps/commit/7734a5d921472178c5a0cdf082cd51844371ecaf))
-
+- configure polecat containers for HTTPS git and bot identity ([0e1cac4](https://github.com/nicsuzor/academicOps/commit/0e1cac486d1536c2f1fbc1d76c1a342ea42ccd8b))
+- configure polecat containers for HTTPS git and bot identity ([f34c319](https://github.com/nicsuzor/academicOps/commit/f34c31982b34dad4f422b8c91c207c0686c7ae9e))
+- consolidate 6 skills into unified Planner agent ([2710c30](https://github.com/nicsuzor/academicOps/commit/2710c302a94d59e5808b8b445831512cc15fd94e))
+- consolidate 6 skills into unified Planner agent ([3390cd6](https://github.com/nicsuzor/academicOps/commit/3390cd67f9c9e4c49f4ae21e3bbfe5f9aaeb02f6))
+- ensure polecat init and worktrees always use HTTPS remotes ([7734a5d](https://github.com/nicsuzor/academicOps/commit/7734a5d921472178c5a0cdf082cd51844371ecaf))
 
 ### Bug Fixes
 
-* add missing check_installed_plugin_version and return Path in write_plugin_version ([fb3495b](https://github.com/nicsuzor/academicOps/commit/fb3495b040de32c7aebd327f64145b74deceeb12))
-* add missing check_installed_plugin_version to build_utils ([9a1fc24](https://github.com/nicsuzor/academicOps/commit/9a1fc24c213130bad8586951441f4b0c87d87ef8))
-* add missing check_installed_plugin_version to build_utils ([db64ec8](https://github.com/nicsuzor/academicOps/commit/db64ec8e8c95045f607bf09bab5b1524b75d7336))
-* add permissionDecisionReason to PreToolUse hook output ([146dd39](https://github.com/nicsuzor/academicOps/commit/146dd399142bdabf4dedfb9862b34cc2bf14803f))
-* address remaining stale references and merge conflict ([5e2429a](https://github.com/nicsuzor/academicOps/commit/5e2429afde602d24c5ea71e2519d2e4744a96f82))
-* address review feedback on check_installed_plugin_version ([a939a9a](https://github.com/nicsuzor/academicOps/commit/a939a9a1cb37b59b01aeb7e335819f5f6ff521ff))
-* **ci:** add --repo flag to gh pr view before checkout ([2faff08](https://github.com/nicsuzor/academicOps/commit/2faff0856bd8c45f67d163be4902c0f4458c0d7e))
-* configure git identity in polecat docker isolation test ([7fabbae](https://github.com/nicsuzor/academicOps/commit/7fabbae082e540f7451f6521a260b33561bf0341))
-* correct build_utils type and logic issues ([d7fd8e8](https://github.com/nicsuzor/academicOps/commit/d7fd8e89904da9a55616cf4921fa3ff82626bef7))
-* move fallback credential helper to else block to avoid overwriting gh auth ([3c57ee9](https://github.com/nicsuzor/academicOps/commit/3c57ee93a04906e1f1c2505e6e7eb8e90284c02f))
-* remove references to deleted scripts in planner SKILL.md ([f5974ce](https://github.com/nicsuzor/academicOps/commit/f5974cece0ffee3d88ff2432dec16be4a5d389ba))
-* remove stale garden/densify/triage_tasks refs after skill consolidation ([7656542](https://github.com/nicsuzor/academicOps/commit/765654283095e6e86bdda7d32c8926d285a993b8))
-* resolve agent-autofix.yml git initialization error ([f6c598e](https://github.com/nicsuzor/academicOps/commit/f6c598ee09259afe9ec226fe5531eabc7b92ffd0))
-* **tests:** update core skill name from planning to planner ([0b2502e](https://github.com/nicsuzor/academicOps/commit/0b2502ed69dd15f1fdf8968ac632a6b6ecfece65))
-
+- add missing check_installed_plugin_version and return Path in write_plugin_version ([fb3495b](https://github.com/nicsuzor/academicOps/commit/fb3495b040de32c7aebd327f64145b74deceeb12))
+- add missing check_installed_plugin_version to build_utils ([9a1fc24](https://github.com/nicsuzor/academicOps/commit/9a1fc24c213130bad8586951441f4b0c87d87ef8))
+- add missing check_installed_plugin_version to build_utils ([db64ec8](https://github.com/nicsuzor/academicOps/commit/db64ec8e8c95045f607bf09bab5b1524b75d7336))
+- add permissionDecisionReason to PreToolUse hook output ([146dd39](https://github.com/nicsuzor/academicOps/commit/146dd399142bdabf4dedfb9862b34cc2bf14803f))
+- address remaining stale references and merge conflict ([5e2429a](https://github.com/nicsuzor/academicOps/commit/5e2429afde602d24c5ea71e2519d2e4744a96f82))
+- address review feedback on check_installed_plugin_version ([a939a9a](https://github.com/nicsuzor/academicOps/commit/a939a9a1cb37b59b01aeb7e335819f5f6ff521ff))
+- **ci:** add --repo flag to gh pr view before checkout ([2faff08](https://github.com/nicsuzor/academicOps/commit/2faff0856bd8c45f67d163be4902c0f4458c0d7e))
+- configure git identity in polecat docker isolation test ([7fabbae](https://github.com/nicsuzor/academicOps/commit/7fabbae082e540f7451f6521a260b33561bf0341))
+- correct build_utils type and logic issues ([d7fd8e8](https://github.com/nicsuzor/academicOps/commit/d7fd8e89904da9a55616cf4921fa3ff82626bef7))
+- move fallback credential helper to else block to avoid overwriting gh auth ([3c57ee9](https://github.com/nicsuzor/academicOps/commit/3c57ee93a04906e1f1c2505e6e7eb8e90284c02f))
+- remove references to deleted scripts in planner SKILL.md ([f5974ce](https://github.com/nicsuzor/academicOps/commit/f5974cece0ffee3d88ff2432dec16be4a5d389ba))
+- remove stale garden/densify/triage_tasks refs after skill consolidation ([7656542](https://github.com/nicsuzor/academicOps/commit/765654283095e6e86bdda7d32c8926d285a993b8))
+- resolve agent-autofix.yml git initialization error ([f6c598e](https://github.com/nicsuzor/academicOps/commit/f6c598ee09259afe9ec226fe5531eabc7b92ffd0))
+- **tests:** update core skill name from planning to planner ([0b2502e](https://github.com/nicsuzor/academicOps/commit/0b2502ed69dd15f1fdf8968ac632a6b6ecfece65))
 
 ### Documentation
 
-* realign framework around epistemic integrity under delegation ([f2fa55f](https://github.com/nicsuzor/academicOps/commit/f2fa55f0cd131facc92ae7e2505bb03201a6a60f))
-
+- realign framework around epistemic integrity under delegation ([f2fa55f](https://github.com/nicsuzor/academicOps/commit/f2fa55f0cd131facc92ae7e2505bb03201a6a60f))
 
 ### Miscellaneous
 
-* delete regex-based NLP scripts per review ([5b5ab21](https://github.com/nicsuzor/academicOps/commit/5b5ab2170d005851f41d76ee6448a5dfcf1da19d))
+- delete regex-based NLP scripts per review ([5b5ab21](https://github.com/nicsuzor/academicOps/commit/5b5ab2170d005851f41d76ee6448a5dfcf1da19d))
 
 ## [0.3.11](https://github.com/nicsuzor/academicOps/compare/v0.3.10...v0.3.11) (2026-03-17)
 

@@ -152,9 +152,9 @@ When resuming from a previous cycle:
 
 Active-loop is a protocol, not a domain skill. It composes with domain skills:
 
-| Domain               | Compose with                           |
-| -------------------- | -------------------------------------- |
-| Task graph health    | [[planner]] (maintain mode), graph_stats   |
-| Code quality         | linters, test coverage tools               |
+| Domain               | Compose with                                            |
+| -------------------- | ------------------------------------------------------- |
+| Task graph health    | [[planner]] (maintain mode), graph_stats                |
+| Code quality         | linters, test coverage tools                            |
 | Knowledge base       | [[planner]] (maintain mode), PKB search quality metrics |
-| Framework governance | [[audit]], compliance metrics          |
+| Framework governance | [[audit]], compliance metrics                           |
