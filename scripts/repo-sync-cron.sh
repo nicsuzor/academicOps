@@ -14,7 +14,7 @@
 #   ./scripts/repo-sync-cron.sh transcript dashboard sync  # Specific combination
 #
 # Crontab suggested setup:
-#   */15 * * * * /path/to/repo/scripts/repo-sync-cron.sh >> /tmp/repo-sync-cron.log 2>&1
+#   */5 * * * * /path/to/repo/scripts/repo-sync-cron.sh >> /tmp/repo-sync-cron.log 2>&1
 
 set -euo pipefail
 
