@@ -219,7 +219,7 @@ Incremental PKM and task graph maintenance. Small, regular attention beats massi
 
 | Activity       | What                                                |
 | -------------- | --------------------------------------------------- |
-| **Lint**       | Validate frontmatter YAML (`lint_frontmatter.py`)   |
+| **Lint**       | Validate frontmatter YAML (use PKB linter)          |
 | **Weed**       | Fix broken wikilinks, remove dead references        |
 | **Prune**      | Archive stale sessions (>30 days)                   |
 | **Compost**    | Merge fragments into richer notes                   |
@@ -232,16 +232,11 @@ Incremental PKM and task graph maintenance. Small, regular attention beats massi
 | **Hierarchy**  | Validate task→epic→project→goal structure           |
 | **Stale**      | Flag tasks with stale status or inconsistencies     |
 | **Dedup**      | Surface duplicate/overlapping tasks for review      |
-| **Triage**     | Detect under-specified tasks (`triage_tasks.py`)    |
+| **Triage**     | Detect under-specified tasks                        |
 | **Densify**    | Add dependency edges between related tasks          |
 | **Scan**       | Report graph density without changes                |
 
 **Session pattern**: 15–30 minutes max. Work in small batches (3–5 notes). Commit frequently.
-
-**Scripts**:
-
-- `aops-core/skills/planner/scripts/lint_frontmatter.py`
-- `aops-core/skills/planner/scripts/triage_tasks.py`
 
 **Health metrics**: Orphan rate <5%, link density >2 per note, zero broken links, zero DRY violations, zero hierarchy violations.
 
