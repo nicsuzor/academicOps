@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.3.13](https://github.com/nicsuzor/academicOps/compare/v0.3.12...v0.3.13) (2026-03-18)
+
+
+### Features
+
+* consolidate Butler logic into Framework skill ([8e6b433](https://github.com/nicsuzor/academicOps/commit/8e6b433a9d6715bc51edf438228f428b92d51dcd))
+* consolidate Butler logic into Framework skill (self-aware core) ([0dc1b4a](https://github.com/nicsuzor/academicOps/commit/0dc1b4a2fafbb511270d5fc98405e545d0e94389))
+* **hooks:** consolidate stop hook messages into single ephemeral-environment warning ([e955dae](https://github.com/nicsuzor/academicOps/commit/e955dae9a69b77a9b09647248c460bcc5c08fe8c))
+* **polecat:** Make crew target required and fix transcript discovery ([7e6f96a](https://github.com/nicsuzor/academicOps/commit/7e6f96ac2bed70cfd4482f996aaa2a9c0c3f6b97))
+* **polecat:** Make crew target required and fix transcript discovery ([faa2178](https://github.com/nicsuzor/academicOps/commit/faa217890d96d12899fd798bed0065e6c6e1a3fe))
+* restore dashboard synthesis via repo-sync-cron.sh ([07164f4](https://github.com/nicsuzor/academicOps/commit/07164f452831337f39b9a08e9439beaf5706c529))
+* restore dashboard synthesis via repo-sync-cron.sh ([be598e7](https://github.com/nicsuzor/academicOps/commit/be598e7bad70f24dff05483125d3b694f9bcea6c))
+
+
+### Bug Fixes
+
+* address Gemini review feedback on commit_check message construction ([43b935a](https://github.com/nicsuzor/academicOps/commit/43b935a6c4098f9373c101383e9befaddbe16e71))
+* **build:** prevent .gitignore generation in gemini commands dist ([1f4b35f](https://github.com/nicsuzor/academicOps/commit/1f4b35fc70aef50fcf3cc8ccc0ff28aef6c88c96))
+* **build:** prevent .gitignore generation in gemini commands dist ([55c19ce](https://github.com/nicsuzor/academicOps/commit/55c19cec240b0a910d73c8c1cde5fed9bdfb5ec8))
+* **cron:** pass --no-sync to transcript.py and log stderr ([42049e4](https://github.com/nicsuzor/academicOps/commit/42049e44dadb0820c04a49e9d0cb59c07b2412c9))
+* **cron:** pass --no-sync to transcript.py and log stderr ([97744af](https://github.com/nicsuzor/academicOps/commit/97744afb33f5a8a10e2f36fc7bdce05d9d175946))
+* **gemini-crew:** embed token in gitconfig and mount gh hosts.yml ([a0f4338](https://github.com/nicsuzor/academicOps/commit/a0f4338a5878399518aa954dfe04b108aed1f20e))
+* **gemini-crew:** embed token in gitconfig and mount gh hosts.yml ([92ad493](https://github.com/nicsuzor/academicOps/commit/92ad49362085996a60a52e7fda8afb8d36bdfe6d))
+* make test_session_start_content.sh portable by using dynamic REPO_ROOT ([45087bd](https://github.com/nicsuzor/academicOps/commit/45087bd90136aaaa749a8ad0f61b1d3467f9c4c8))
+* make timezone test a proper unit test per review feedback ([b934b47](https://github.com/nicsuzor/academicOps/commit/b934b47d736f8711feed5626fce5cfe43934050f))
+* **polecat:** remove gh auth login from entrypoint to fix crew session exit ([b67cf14](https://github.com/nicsuzor/academicOps/commit/b67cf14cf874c31f74ea867450f1541b58e3c911))
+* redirect warning messages to stderr in do_transcript ([8af9b3a](https://github.com/nicsuzor/academicOps/commit/8af9b3a085dd6529c8b43d3d11cd84428acc47f9))
+* remove redundant workflow dispatch step in release-please ([8cfd489](https://github.com/nicsuzor/academicOps/commit/8cfd48966026d353cc6bab3c8b93175258058e34))
+* remove redundant workflow dispatch step in release-please ([f0f758a](https://github.com/nicsuzor/academicOps/commit/f0f758abc324ea534863b04003c1883908ae65b1))
+* simplify polecat/crew path detection to avoid false positives ([5d741da](https://github.com/nicsuzor/academicOps/commit/5d741dac0c7397f43fe2a97234af7206d3beb995))
+
 ## [0.3.12](https://github.com/nicsuzor/academicOps/compare/v0.3.11...v0.3.12) (2026-03-18)
 
 ### Features
