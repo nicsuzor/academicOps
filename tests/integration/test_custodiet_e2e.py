@@ -8,7 +8,6 @@ Tests verify ACTUAL behavior (Task spawned, files created) not surface patterns.
 from pathlib import Path
 
 import pytest
-
 from lib.session_paths import get_gate_file_path
 
 TOOL_CALL_THRESHOLD = 5
