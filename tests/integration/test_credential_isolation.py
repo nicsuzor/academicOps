@@ -35,6 +35,7 @@ if str(aops_core_dir) not in sys.path:
 
 from hooks.schemas import HookContext
 from hooks.session_env_setup import run_session_env_setup
+
 from lib.agent_env import (
     EnvEntry,
     apply_env_mappings,
@@ -483,7 +484,6 @@ class TestCredentialBridgeHook:
 
 @pytest.mark.slow
 @pytest.mark.integration
-@pytest.mark.requires_local_env
 class TestClaudeCredentialIsolation:
     """E2E tests: verify Claude Code gets bot token via unified env mapping."""
 
@@ -550,7 +550,6 @@ class TestClaudeCredentialIsolation:
 
 @pytest.mark.slow
 @pytest.mark.integration
-@pytest.mark.requires_local_env
 class TestGeminiCredentialIsolation:
     """E2E tests: verify Gemini CLI gets bot token via unified env mapping.
 

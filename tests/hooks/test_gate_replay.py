@@ -34,6 +34,7 @@ if str(AOPS_CORE) not in sys.path:
 from hooks.gate_config import COMPLIANCE_SUBAGENT_TYPES, TOOL_CATEGORIES, get_tool_category
 from hooks.router import HookRouter
 from hooks.schemas import CanonicalHookOutput, HookContext
+
 from lib.gate_model import GateVerdict
 from lib.gate_types import GateState, GateStatus
 from lib.gates.registry import GateRegistry
@@ -280,13 +281,12 @@ class TestRealEventSequenceReplay:
 
 
 @pytest.mark.integration
-@pytest.mark.requires_local_env
 class TestHookLogDiscovery:
     """Discover and parse actual hook log files from the filesystem.
 
     This test verifies that real hook log files exist, are parseable,
     and contain events that can be replayed through the gate system.
-    Skipped in CI environments (requires_local_env marker).
+    Skipped in CI environments (slow marker).
     """
 
     @staticmethod

@@ -14,7 +14,7 @@ Do NOT fix lint, formatting, imports, or style — merge-prep handles those. You
 3. Apply the critique protocol below.
 4. Fix what you can (see Fix Categories). Run tests after any code changes:
    ```bash
-   uv run pytest -x -m "not requires_local_env"
+   uv run pytest -x -m "not slow"
    ```
 5. Commit and push fixes with a `Review-Fix-By: agent` trailer.
 6. File a `gh pr review` with your summary as the review body (do NOT post a separate PR comment).
