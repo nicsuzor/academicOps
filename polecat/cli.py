@@ -240,9 +240,12 @@ def _build_docker_cmd(
     tz = os.environ.get("TZ") or _detect_system_timezone()
     cmd.extend(["-e", f"TZ={tz}"])
 
-    # Git identity — required for git commit inside the container
-    git_name = os.environ.get("GIT_AUTHOR_NAME", "aops-bot")
-    git_email = os.environ.get("GIT_AUTHOR_EMAIL", "aops-bot@users.noreply.github.com")
+    # Git identity — required for git commit inside the container.
+    # Default to aops-bot if not provided in the environment.
+    git_name = env.get("GIT_AUTHOR_NAME") or os.environ.get("GIT_AUTHOR_NAME", "aops-bot")
+    git_email = env.get("GIT_AUTHOR_EMAIL") or os.environ.get(
+        "GIT_AUTHOR_EMAIL", "aops-bot@users.noreply.github.com"
+    )
     cmd.extend(["-e", f"GIT_AUTHOR_NAME={git_name}"])
     cmd.extend(["-e", f"GIT_AUTHOR_EMAIL={git_email}"])
     cmd.extend(["-e", f"GIT_COMMITTER_NAME={git_name}"])
@@ -346,9 +349,8 @@ def _build_docker_cmd(
         ):
             cmd.extend(["-e", f"{key}={val}"])
 
-    # Git credential helper — use GH_TOKEN for HTTPS pushes.
-    # GH_TOKEN is set by agent-env-map.conf from AOPS_BOT_GH_TOKEN.
-    # SSH is disabled (SSH_AUTH_SOCK=""), so HTTPS is the only path.
+    # GitHub authentication — forward tokens to the container.
+    # The container entrypoint handles git and gh CLI authentication.
     gh_token = env.get("GH_TOKEN") or os.environ.get("AOPS_BOT_GH_TOKEN")
     if gh_token:
         cmd.extend(
@@ -357,25 +359,8 @@ def _build_docker_cmd(
                 "GIT_ASKPASS=true",
                 "-e",
                 f"GH_TOKEN={gh_token}",
-            ]
-        )
-        # Configure git to use GH_TOKEN via credential helper inside the container
-        cmd.extend(
-            [
                 "-e",
-                "GIT_CONFIG_COUNT=3",
-                "-e",
-                "GIT_CONFIG_KEY_0=credential.helper",
-                "-e",
-                "GIT_CONFIG_VALUE_0=!f() { echo username=x-access-token; echo password=$GH_TOKEN; }; f",
-                "-e",
-                "GIT_CONFIG_KEY_1=url.https://github.com/.insteadOf",
-                "-e",
-                "GIT_CONFIG_VALUE_1=git@github.com:",
-                "-e",
-                "GIT_CONFIG_KEY_2=credential.https://github.com.helper",
-                "-e",
-                "GIT_CONFIG_VALUE_2=!f() { echo username=x-access-token; echo password=$GH_TOKEN; }; f",
+                f"AOPS_BOT_GH_TOKEN={gh_token}",
             ]
         )
 
