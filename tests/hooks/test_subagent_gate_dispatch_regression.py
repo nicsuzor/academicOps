@@ -167,7 +167,7 @@ class TestSubagentGateDispatch:
         assert state.get_gate("critic").ops_since_open == 0
 
     def test_subagent_triggers_run_on_post_tool_use(self, mock_session, test_registry):
-        """PostToolUse in subagent sessions must still increment ops counters."""
+        """PostToolUse in subagent sessions MUST NOT increment ops counters."""
         session_id, state = mock_session
 
         # Ensure gates start with known ops count
@@ -187,11 +187,12 @@ class TestSubagentGateDispatch:
         for gate in test_registry.get_all_gates():
             gate.on_tool_use(ctx, state)
 
-        # At least one gate should have incremented ops
+        # Unit test level: subagent tool calls MUST NOT increment ops counters
+        # (behavior enforced in GenericGate.on_tool_use)
         total_ops = sum(
             gs.ops_since_open for gs in state.gates.values() if gs.status == GateStatus.OPEN
         )
-        assert total_ops > 0
+        assert total_ops == 0
 
 
 class TestSubagentGateBypass:

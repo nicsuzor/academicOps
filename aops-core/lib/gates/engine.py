@@ -520,10 +520,25 @@ class GenericGate:
         """PostToolUse: Evaluate triggers."""
         # Update metrics
         state = self._get_state(session_state)
-        if state.status == GateStatus.OPEN:
-            state.ops_since_open += 1
-        else:
-            state.ops_since_close += 1
+
+        # Determine if this call should increment the operation counter.
+        # Subagent tool calls (is_subagent=True) do NOT increment the parent's counter.
+        # The parent's Agent tool call increments by 1, and internal subagent calls
+        # are ignored (aops-d8ee59cc).
+        should_increment = not context.is_subagent
+
+        # Force increment for spawning tools even if they carry subagent metadata
+        # (they run in the main session context).
+        from hooks.gate_config import SPAWN_TOOLS
+
+        if context.tool_name in SPAWN_TOOLS:
+            should_increment = True
+
+        if should_increment:
+            if state.status == GateStatus.OPEN:
+                state.ops_since_open += 1
+            else:
+                state.ops_since_close += 1
 
         return self._evaluate_triggers(context, session_state)
 
