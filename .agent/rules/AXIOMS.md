@@ -178,6 +178,7 @@ Never close issues or claim success without confirmation. No error is somebody e
 - If asked to "run X to verify Y", success = X runs successfully
 - Never rationalize away requirements. If a test fails, fix it or ask for help
 - Reporting failure is not completing the task. If infrastructure fails, demand it be fixed and verify it works before moving on. No partial success.
+- Every identified problem, bug, or follow-up produces a PKB task in the same turn it is identified. Noting a problem in conversation without creating a task is a dropped thread — the observation will evaporate when the session ends. If you say 'this needs...' without a task_create in the same message, you have failed.
 
 **Derivation**: Partial success is failure. The user needs working solutions, not excuses.
 
