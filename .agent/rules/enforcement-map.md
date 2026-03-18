@@ -196,6 +196,20 @@ These guardrails are applied by [[prompt-hydration]] based on task classificatio
 | `capture_insights`       | [[semantic-vs-episodic-storage]]                                                                     | Losing discoveries (bd for ops, remember for knowledge)     |
 | `zero_friction_capture`  | [[action-over-clarification]]                                                                        | Asking questions on exploratory ideas instead of capturing  |
 | `hook_docs_first`        | [[verify-first]]                                                                                     | Modifying hook output fields without reading hooks.md       |
+| `surface_observations`   | [[surface-observations-not-interpretations]] (P#117)                                                 | Encoding interpretations of unexpected behavior as doctrine |
+
+### Hydration Gate Scope — Design Decision (2026-03-17)
+
+**Decision**: Task management operations (TaskCreate, TaskUpdate) are correctly included in the hydration gate scope.
+
+This is a documented design choice, not a misconfiguration. Rationale:
+
+- Task creation is agentic state mutation, not a passive read. Creating a task without context produces orphan entries.
+- The gate is once-per-session: invoking `/hydrator` once unblocks subsequent task operations for the session.
+- Circularity is avoided in practice: the hydrator binds to existing tasks; it rarely creates new ones.
+- The friction is intentional — it ensures agents contextualize before writing to the task graph.
+
+If you observe this gate firing and think it's wrong: surface the observation (P#117), don't interpret it as a misconfiguration.
 
 ### Task Type → Guardrail Mapping
 
