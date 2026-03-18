@@ -58,6 +58,14 @@ jobs:
             # Called via workflow_call or workflow_dispatch — use inputs directly
             echo "pr_number=${{ inputs.pr_number }}" >> "$GITHUB_OUTPUT"
             echo "ref=${{ inputs.ref }}" >> "$GITHUB_OUTPUT"
+
+            # The 'gh pr view' command requires a local git repository.
+            # Initialize a bare one if necessary before running gh
+            if [ ! -d .git ]; then
+              git init
+              git remote add origin https://github.com/nicsuzor/academicOps || true
+            fi
+
             SHA=$(gh pr view "${{ inputs.pr_number }}" --repo "${{ github.repository }}" --json headRefOid -q '.headRefOid')
             echo "sha=$SHA" >> "$GITHUB_OUTPUT"
           else
