@@ -490,7 +490,7 @@ class TestCheckUncommittedWork:
         result = check_uncommitted_work("session123", "/tmp/transcript.jsonl")
         assert result.should_block is True
         assert result.has_reflection is True
-        assert "uncommitted changes" in result.message.lower()
+        assert "commit all changes" in result.message.lower()
 
     @patch("lib.commit_check.extract_recent_messages")
     @patch("lib.commit_check.has_framework_reflection")
@@ -578,7 +578,7 @@ class TestCheckUncommittedWork:
         result = check_uncommitted_work("session123", "/tmp/transcript.jsonl")
         # Now blocks because has_tracked_changes triggers blocking (fix for aops-579dcaeb)
         assert result.should_block is True
-        assert "Uncommitted changes detected" in result.message
+        assert "Commit all changes" in result.message
 
     @patch("lib.commit_check.extract_recent_messages")
     @patch("lib.commit_check.has_framework_reflection")
