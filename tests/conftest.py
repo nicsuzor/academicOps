@@ -574,6 +574,8 @@ def run_claude_headless(
             tool_calls,
         )
     except Exception as e:
+        session_file = find_session_jsonl(session_id)
+        tool_calls = parse_tool_calls(session_file) if session_file else []
         return (
             {
                 "success": False,
@@ -582,7 +584,7 @@ def run_claude_headless(
                 "error": f"Command execution failed: {e!s}",
             },
             session_id,
-            [],
+            tool_calls,
         )
 
 
