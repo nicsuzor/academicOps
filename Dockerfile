@@ -68,7 +68,7 @@ ENV HOME=/home/worker \
     PATH="/home/worker/.local/bin:/home/worker/.cargo/bin:$PATH"
 
 # Install Rust toolchain via rustup
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal
 
 # Install Python-based CLI tools as user (installs to ~/.local/bin)
 RUN uv tool install ruff
