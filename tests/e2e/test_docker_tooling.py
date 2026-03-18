@@ -19,6 +19,7 @@ class TestDockerTooling:
         """Filter to Docker backends only."""
         import os
         from pathlib import Path
+
         from tests.conftest import (
             _docker_available,
             _gemini_cli_available,
