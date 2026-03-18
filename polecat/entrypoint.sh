@@ -31,12 +31,12 @@ if [ -n "$TOKEN" ]; then
         echo "$GH_TOKEN" | gh auth login --with-token
         # Configure gh to act as a git credential helper.
         gh auth setup-git
+    else
+        # Fallback: Configure a universal git credential helper for HTTPS.
+        # This ensures that even tools not aware of 'gh' can still push/pull.
+        # We use $GH_TOKEN from the environment so the token isn't baked into the config file.
+        git config --global credential.helper "!f() { echo username=x-access-token; echo \"password=\$GH_TOKEN\"; }; f"
     fi
-
-    # Fallback: Configure a universal git credential helper for HTTPS.
-    # This ensures that even tools not aware of 'gh' can still push/pull.
-    # We use $GH_TOKEN from the environment so the token isn't baked into the config file.
-    git config --global credential.helper "!f() { echo username=x-access-token; echo \"password=\$GH_TOKEN\"; }; f"
 fi
 
 # Enforce isolation: Disable SSH and interactive prompts.
