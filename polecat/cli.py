@@ -1636,7 +1636,6 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
         polecat crew -r audre         # Resume crew worker "audre"
         polecat crew -i aops          # Interactive shell in crew container
         polecat crew -g aops          # Gemini CLI in sandbox mode
-        polecat crew                  # Crew with all projects (legacy)
     """
     import subprocess
 
@@ -1677,9 +1676,11 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
         projects = [slug]
         crew_name = name or manager.generate_crew_name()
     else:
-        # No target: legacy behaviour — all projects
-        projects = list(manager.projects.keys())
-        crew_name = name or manager.generate_crew_name()
+        # No target and not resuming
+        print("Error: 'crew' requires a target project or --resume.", file=sys.stderr)
+        print("Usage: polecat crew <project>  # e.g., 'polecat crew aops'", file=sys.stderr)
+        print("       polecat crew -r <name>  # resume existing crew", file=sys.stderr)
+        sys.exit(1)
 
     print(f"\U0001f9d1\u200d\U0001f91d\u200d\U0001f9d1 Crew worker: {crew_name}")
 
