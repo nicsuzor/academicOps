@@ -9,7 +9,7 @@ permalink: skills-audit
 
 # Framework Audit Skill
 
-You are the **verification and maintenance layer** for academicOps. This skill ensures that framework indices and documentation accurately reflect reality. 
+You are the **verification and maintenance layer** for academicOps. This skill ensures that framework indices and documentation accurately reflect reality.
 
 ## The Butler Core (Consolidated Authority)
 

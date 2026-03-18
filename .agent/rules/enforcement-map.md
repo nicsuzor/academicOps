@@ -109,6 +109,7 @@ tags: [framework, enforcement, moc]
 | [[methodology-belongs-to-researcher]]           | Methodology Belongs to Researcher                     | HEURISTICS.md, hydrator guidance                       | SessionStart, UserPromptSubmit |       |
 | [[qualitative-evaluation-over-quantitative]]    | Qualitative Evaluation Over Quantitative (P#115)      | HEURISTICS.md, /qa skill Qualitative Assessment mode   | SessionStart, /qa invocation   |       |
 | [[delegate-agency-to-capable-agents]]           | Delegate Agency to Capable Agents (P#116)             | HEURISTICS.md                                          | SessionStart                   |       |
+| [[butler-self-aware-core]]                      | Butler Self-Aware Core (Learn As You Go)              | Framework Skill (v7.2.0+)                              | During execution               |       |
 
 ## Enforcement Level Summary
 
