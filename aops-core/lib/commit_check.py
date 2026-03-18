@@ -361,7 +361,8 @@ def check_uncommitted_work(session_id: str, transcript_path: str | None) -> Unco
                 details.append("unstaged")
             if git_status.untracked_files:
                 details.append("untracked")
-            bullets.append(f"- Commit all changes ({'/'.join(details)} files detected)")
+            details_text = f" ({'/'.join(details)} files detected)" if details else ""
+            bullets.append(f"- Commit all changes{details_text}")
 
         if push_status.branch_ahead:
             branch = push_status.current_branch or "unknown branch"
@@ -377,7 +378,8 @@ def check_uncommitted_work(session_id: str, transcript_path: str | None) -> Unco
         if has_tracked_changes and not qa_invoked:
             bullets.append("- Consider running /qa for code verification")
 
-        message = f"{auto_commit_prefix}{header}\n" + "\n".join(bullets) + f"\n{footer}"
+        bullet_text = "\n".join(bullets)
+        message = f"{auto_commit_prefix}{header}\n{bullet_text}\n{footer}"
     elif auto_commit_prefix:
         # Auto-committed but no more changes or unpushed commits
         message = "Auto-committed. Session can proceed."
