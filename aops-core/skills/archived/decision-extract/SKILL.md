@@ -39,7 +39,7 @@ A **decision** is a task that:
 
 **Not decisions**: Write code, research topic, draft document, fix bug
 
-**Note on external dependencies**: Tasks waiting for others (e.g., "waiting for Elsa's examples") are included because you can still make decisions about them:
+**Note on external dependencies**: Tasks waiting for others (e.g., "waiting for Ella's examples") are included because you can still make decisions about them:
 
 - Report progress: "No update yet" / "Received, proceeding"
 - Follow up: "Sending reminder"

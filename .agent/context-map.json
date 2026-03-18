@@ -103,7 +103,7 @@
     },
     {
       "topic": "enforcement",
-      "path": "aops-core/framework/enforcement-map.md",
+      "path": "aops-core/skills/framework/enforcement-map.md",
       "description": "Maps rules to enforcement mechanisms - hard gates, soft gates, prompts, detection",
       "keywords": ["enforcement", "gate", "compliance", "rule", "mechanism", "blocking"]
     },
