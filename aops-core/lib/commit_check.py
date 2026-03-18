@@ -324,65 +324,63 @@ def check_uncommitted_work(session_id: str, transcript_path: str | None) -> Unco
     git_status = get_git_status()
     push_status = get_git_push_status()
 
-    reminder_parts = []
-
-    if git_status.has_changes:
-        if git_status.staged_changes:
-            reminder_parts.append("Staged changes detected")
-        if git_status.unstaged_changes:
-            reminder_parts.append("Unstaged changes detected")
-        if git_status.untracked_files:
-            reminder_parts.append("Untracked files detected")
-
-    if push_status.branch_ahead:
-        branch_display = (
-            push_status.current_branch if push_status.current_branch else "unknown branch"
-        )
-        reminder_parts.append(f"{push_status.commits_ahead} unpushed commit(s) on {branch_display}")
-
-    has_tracked_changes = git_status.staged_changes or git_status.unstaged_changes
-    if has_tracked_changes and not qa_invoked:
-        reminder_parts.append(
-            "Code modified without QA verification. Consider running /qa before completion."
-        )
-
+    # Determine if we should block
     should_block = False
-    reminder_needed = False
-    message = ""
+    has_tracked_changes = git_status.staged_changes or git_status.unstaged_changes
 
     if (reflection_found or tests_passed or has_tracked_changes) and git_status.has_changes:
         should_block = True
 
-        if git_status.staged_changes:
-            message = "Staged changes detected. Attempting auto-commit..."
-            if attempt_auto_commit():
-                should_block = False
-                message = "Auto-committed. Session can proceed."
-                if push_status.branch_ahead:
-                    reminder_needed = True
-                    branch_display = (
-                        push_status.current_branch
-                        if push_status.current_branch
-                        else "unknown branch"
-                    )
-                    message += f"\nReminder: Push {push_status.commits_ahead} unpushed commit(s) on {branch_display}"
-            else:
-                message = (
-                    "Commit staged changes before ending session, "
-                    "or use AskUserQuestion to request permission to end without committing."
-                )
-        else:
-            message = (
-                "Uncommitted changes detected. Commit before ending session, "
-                "or use AskUserQuestion to request permission to end without committing."
-            )
-    elif reminder_parts:
+    # Attempt auto-commit if staged changes exist and we are blocking
+    auto_commit_prefix = ""
+    if should_block and git_status.staged_changes:
+        if attempt_auto_commit():
+            should_block = False
+            auto_commit_prefix = "Auto-committed staged changes.\n\n"
+            # Refresh git status after auto-commit
+            git_status = get_git_status()
+            has_tracked_changes = git_status.staged_changes or git_status.unstaged_changes
+
+    # Determine if a reminder is needed
+    reminder_needed = git_status.has_changes or push_status.branch_ahead
+    if has_tracked_changes and not qa_invoked:
         reminder_needed = True
-        message = (
-            "Reminder: "
-            + " and ".join(reminder_parts)
-            + ". Consider committing and pushing before ending session."
-        )
+
+    # Build consolidated message if blocking or reminder needed
+    message = ""
+    if should_block or reminder_needed:
+        header = "⚠️ This environment will be destroyed on quit. To preserve your work:"
+        footer = "All local-only work will be lost."
+        bullets = []
+
+        if git_status.has_changes:
+            details = []
+            if git_status.staged_changes:
+                details.append("staged")
+            if git_status.unstaged_changes:
+                details.append("unstaged")
+            if git_status.untracked_files:
+                details.append("untracked")
+            bullets.append(f"- Commit all changes ({'/'.join(details)} files detected)")
+
+        if push_status.branch_ahead:
+            branch = push_status.current_branch or "unknown branch"
+            bullets.append(
+                f"- Push commits to remote ({push_status.commits_ahead} unpushed commit(s) on branch {branch})"
+            )
+
+        if not reflection_found:
+            bullets.append("- Run /dump to generate Framework Reflection and handover work")
+
+        bullets.append("- File a PR if not already done")
+
+        if has_tracked_changes and not qa_invoked:
+            bullets.append("- Consider running /qa for code verification")
+
+        message = f"{auto_commit_prefix}{header}\n" + "\n".join(bullets) + f"\n{footer}"
+    elif auto_commit_prefix:
+        # Auto-committed but no more changes or unpushed commits
+        message = "Auto-committed. Session can proceed."
 
     return UncommittedWorkCheck(
         should_block=should_block,
