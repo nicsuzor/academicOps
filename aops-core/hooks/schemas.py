@@ -77,6 +77,7 @@ class ClaudeHookSpecificOutput(BaseModel):
 
     hookEventName: str
     permissionDecision: Literal["allow", "deny", "ask"] | None = None
+    permissionDecisionReason: str | None = None
     additionalContext: str | None = None
     updatedInput: str | None = None
 

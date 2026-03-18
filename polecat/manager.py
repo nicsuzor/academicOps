@@ -173,6 +173,16 @@ def configure_git_credentials(repo_path: Path):
     )
 
 
+def _to_https_url(url: str) -> str:
+    """Converts a GitHub SSH URL to an HTTPS URL for bot compatibility.
+
+    Example: git@github.com:owner/repo.git -> https://github.com/owner/repo.git
+    """
+    if url.startswith("git@github.com:"):
+        return url.replace("git@github.com:", "https://github.com/")
+    return url
+
+
 class PolecatManager:
     def __init__(self, home_dir: Path | None = None):
         """Initialize the polecat manager.
@@ -361,7 +371,7 @@ class PolecatManager:
             capture_output=True,
             text=True,
         )
-        origin_url = result.stdout.strip()
+        origin_url = _to_https_url(result.stdout.strip())
         if origin_url:
             subprocess.run(
                 ["git", "remote", "set-url", "origin", origin_url], cwd=worktree_path, check=True
@@ -526,14 +536,23 @@ class PolecatManager:
         if mirror_path.exists():
             # Update existing mirror
             print(f"Fetching latest for {project}...")
+            # Ensure the origin URL is HTTPS for bot compatibility
+            remote_url = self._get_remote_url(source_path)
+            remote_url = _to_https_url(remote_url)
+            subprocess.run(
+                ["git", "remote", "set-url", "origin", remote_url],
+                cwd=mirror_path,
+                check=True,
+            )
             subprocess.run(
                 ["git", "fetch", "--all", "--prune"],
                 cwd=mirror_path,
                 check=True,
             )
         else:
-            # Derive remote URL from source repo
+            # Derive remote URL from source repo and force HTTPS
             remote_url = self._get_remote_url(source_path)
+            remote_url = _to_https_url(remote_url)
             print(f"Cloning {project} from {remote_url}...")
             subprocess.run(
                 ["git", "clone", "--bare", remote_url, str(mirror_path)],
@@ -1077,7 +1096,7 @@ class PolecatManager:
             capture_output=True,
             text=True,
         )
-        origin_url = result.stdout.strip()
+        origin_url = _to_https_url(result.stdout.strip())
         if origin_url:
             subprocess.run(
                 ["git", "remote", "set-url", "origin", origin_url], cwd=worktree_path, check=True

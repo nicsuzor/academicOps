@@ -85,6 +85,11 @@ RUN uv sync --frozen --no-dev
 # Build distribution artifacts (Claude plugin package)
 RUN uv run python scripts/build.py --pkb-binary /usr/local/bin/pkb
 
+# Set entrypoint script for worker configuration
+# COPY happened earlier in the worker layer, but we re-copy to ensure permissions.
+COPY --chown=worker:worker polecat/entrypoint.sh /app/polecat/entrypoint.sh
+RUN chmod +x /app/polecat/entrypoint.sh
+
 # Install the aops-core Claude plugin. HOME is already /home/worker so
 # known_marketplaces.json and installLocation paths are correct from the start.
 RUN claude plugin marketplace add /app \
@@ -103,5 +108,6 @@ RUN mkdir -p /home/worker/.gemini \
 RUN chmod 777 /home/worker \
     && chmod -R a+w /home/worker/.claude/plugins/ 2>/dev/null || true
 
-# Default command
+# Default command and entrypoint
+ENTRYPOINT ["/app/polecat/entrypoint.sh"]
 CMD ["/bin/bash"]
