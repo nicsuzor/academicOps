@@ -1797,8 +1797,16 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
         # Git credential helper — write a .gitconfig and mount it read-only.
         # SANDBOX_FLAGS can't carry the credential helper because shell-quote
         # interprets { } ; ( ) as operators, mangling the shell function.
-        # The token is embedded directly in the gitconfig (not via ${GH_TOKEN})
-        # because SANDBOX_FLAGS -e forwarding may not reliably reach the container.
+        #
+        # File-based credentials are preferred over SANDBOX_FLAGS -e for two reasons:
+        # 1. Security: env vars are visible in /proc/<pid>/environ and `ps auxe`;
+        #    mounted files are not leaked through process listings.
+        # 2. Reliability: Gemini sandbox only forwards a hardcoded allowlist of env
+        #    vars into the container. SANDBOX_FLAGS -e is kept as belt-and-suspenders
+        #    but cannot be the primary mechanism.
+        #
+        # The token is embedded directly in the gitconfig so git does not need
+        # $GH_TOKEN to be present in the container environment at push time.
         gh_token = env.get("GH_TOKEN") or os.environ.get("AOPS_BOT_GH_TOKEN")
         if gh_token:
             extra_flags.extend(["-e", "GIT_ASKPASS=true"])
