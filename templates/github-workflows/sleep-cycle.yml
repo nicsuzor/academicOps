@@ -89,12 +89,8 @@ jobs:
             Update mechanical indices only. Flag governance docs for human review via PR.
 
             ## Phase 4: Staleness Sweep
-            Run the task quality triage tool as ONE signal:
-            `uv run python _aops/aops-core/skills/garden/scripts/triage_tasks.py . --recursive --format json`
-
-            But also use your own judgment: look at the tasks it flags and decide
-            whether they genuinely need attention. The script is a starting point,
-            not the final word. Also check for:
+            Use your own judgment to identify tasks and docs that need attention.
+            Check for:
             - Orphan docs with no graph connections
             - Knowledge docs that contradict recent evidence
             - Stale in_progress tasks (no update in 7+ days)

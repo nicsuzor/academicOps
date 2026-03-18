@@ -179,7 +179,7 @@ templates/github-workflows/sleep-cycle.yml        ← GH Actions workflow templa
 $ACA_DATA/.github/workflows/sleep-cycle.yml       ← installed workflow (copy from template)
 ```
 
-There is no Python orchestrator. The workflow launches a **Claude agent** (`anthropics/claude-code-action`) with a consolidation prompt. The agent works through phases using judgment, calling tools like `triage_tasks.py` as signals — not deterministic scripts that make the decisions. Smart agents, not dumb code.
+There is no Python orchestrator. The workflow launches a **Claude agent** (`anthropics/claude-code-action`) with a consolidation prompt. The agent works through phases using judgment — not deterministic scripts that make the decisions. Smart agents, not dumb code.
 
 ## Open Questions
 

@@ -81,7 +81,7 @@ Test strategy and roadmap for improving test coverage across the academicOps fra
 
 6. **Large script coverage**
    - `analyst/scripts/assumption_checks.py` (16K LOC)
-   - `garden/scripts/lint_frontmatter.py` (12K LOC)
+   - (lint_frontmatter.py removed — PKB binary handles linting now)
    - `hypervisor/scripts/batch_worker.py` (12K LOC)
 
 ### P3 - Low (Nice to have)
