@@ -58,7 +58,7 @@ jobs:
             # Called via workflow_call or workflow_dispatch — use inputs directly
             echo "pr_number=${{ inputs.pr_number }}" >> "$GITHUB_OUTPUT"
             echo "ref=${{ inputs.ref }}" >> "$GITHUB_OUTPUT"
-            SHA=$(gh pr view "${{ inputs.pr_number }}" --json headRefOid -q '.headRefOid')
+            SHA=$(gh pr view "${{ inputs.pr_number }}" --repo "${{ github.repository }}" --json headRefOid -q '.headRefOid')
             echo "sha=$SHA" >> "$GITHUB_OUTPUT"
           else
             echo "pr_number=${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
