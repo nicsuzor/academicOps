@@ -21,7 +21,6 @@ sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 
 from cli import (
     _build_docker_cmd,
-    _detect_system_timezone,
     _node_version_key,
     _replicate_gemini_auth,
 )
@@ -187,12 +186,15 @@ class TestBuildDockerCmd:
 
     def test_sets_timezone(self):
         """TZ is set in Docker env, detected from system when not in env."""
-        cmd = self._build()
+        with (
+            patch.dict(os.environ, {"TZ": ""}),
+            patch("cli._detect_system_timezone", return_value="US/Eastern"),
+        ):
+            cmd = self._build()
         env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
         tz_args = [a for a in env_args if a.startswith("TZ=")]
         assert len(tz_args) == 1
-        expected = os.environ.get("TZ") or _detect_system_timezone()
-        assert tz_args[0] == f"TZ={expected}"
+        assert tz_args[0] == "TZ=US/Eastern"
 
     def test_timezone_from_env(self):
         """TZ can be overridden via environment variable."""
