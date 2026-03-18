@@ -160,7 +160,6 @@ def generate_gemini_hooks(
 
     return gemini_hooks
 
-
 def check_installed_plugin_version(
     plugin_name: str,
     source_commit: str,
@@ -185,7 +184,7 @@ def check_installed_plugin_version(
         return (True, None)  # No installed plugins file, nothing to compare
 
     try:
-        with installed_plugins_path.open(encoding="utf-8") as f:
+        with open(installed_plugins_path) as f:
             data = json.load(f)
 
         # Claude uses "aops-core@aops" format for plugin keys
@@ -206,10 +205,12 @@ def check_installed_plugin_version(
 
         # Compare: installed commit should start with source commit (or vice versa)
         # since one might be short and one long
-        if installed_commit.startswith(source_commit) or source_commit.startswith(installed_commit):
+        if installed_commit.startswith(source_commit) or source_commit.startswith(
+            installed_commit[:8]
+        ):
             return (True, installed_commit)
 
         return (False, installed_commit)
 
-    except (json.JSONDecodeError, KeyError, IndexError, OSError, TypeError, AttributeError):
+    except (json.JSONDecodeError, KeyError, IndexError):
         return (True, None)  # Can't determine, assume OK
