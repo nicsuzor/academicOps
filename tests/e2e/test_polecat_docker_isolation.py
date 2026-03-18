@@ -131,6 +131,8 @@ def test_crew_interactive_shell_spawns_docker(temp_polecat_home, tmp_path):
     repo = tmp_path / "dummy_repo"
     repo.mkdir()
     subprocess.run(["git", "init"], cwd=repo, check=True)
+    subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=repo, check=True)
+    subprocess.run(["git", "config", "user.name", "Test"], cwd=repo, check=True)
     subprocess.run(["git", "commit", "--allow-empty", "-m", "init"], cwd=repo, check=True)
 
     result = subprocess.run(
