@@ -331,6 +331,15 @@ This is advisory, not a hard lock.
 
 {Template for what each worker should do. Use {source} and {item.id} as placeholders.}
 
+**Default commit verification block** (MUST be included in all worker templates for Gemini workers):
+
+> Before finishing, verify your changes are committed:
+>
+> 1. `git add -A && git status` — check what's staged
+> 2. `git commit -m "feat: <description>"` — commit changes
+> 3. `git log --oneline main..HEAD` — confirm commits exist
+> 4. If no commits show, do NOT proceed to PR — something went wrong.
+
 ### Evaluation Criteria
 
 {Checklist the supervisor uses to evaluate worker output}

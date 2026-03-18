@@ -2,13 +2,12 @@
 # See https://pre-commit.com for more info
 
 repos:
-  # Markdown/JSON/TOML validation (dprint - check-only, no auto-fix)
-  # Ruff check --fix auto-fixes what it can; ruff-format checks formatting
+  # Markdown/JSON/TOML formatting (dprint auto-fix, like ruff --fix)
   - repo: local
     hooks:
       - id: dprint
-        name: dprint check
-        entry: uv run dprint check --allow-no-files
+        name: dprint fmt
+        entry: uv run dprint fmt --allow-no-files
         language: system
         types_or: [markdown, json, toml]
         pass_filenames: true
