@@ -1636,7 +1636,6 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
         polecat crew -r audre         # Resume crew worker "audre"
         polecat crew -i aops          # Interactive shell in crew container
         polecat crew -g aops          # Gemini CLI in sandbox mode
-        polecat crew                  # Crew with all projects (legacy)
     """
     import subprocess
 
@@ -1677,9 +1676,11 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
         projects = [slug]
         crew_name = name or manager.generate_crew_name()
     else:
-        # No target: legacy behaviour — all projects
-        projects = list(manager.projects.keys())
-        crew_name = name or manager.generate_crew_name()
+        # No target and not resuming
+        print("Error: 'crew' requires a target project or --resume.", file=sys.stderr)
+        print("Usage: polecat crew <project>  # e.g., 'polecat crew aops'", file=sys.stderr)
+        print("       polecat crew -r <name>  # resume existing crew", file=sys.stderr)
+        sys.exit(1)
 
     print(f"\U0001f9d1\u200d\U0001f91d\u200d\U0001f9d1 Crew worker: {crew_name}")
 
@@ -1797,20 +1798,33 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
         # Git credential helper — write a .gitconfig and mount it read-only.
         # SANDBOX_FLAGS can't carry the credential helper because shell-quote
         # interprets { } ; ( ) as operators, mangling the shell function.
+        #
+        # File-based credentials are preferred over SANDBOX_FLAGS -e for two reasons:
+        # 1. Security: env vars are visible in /proc/<pid>/environ and `ps auxe`;
+        #    mounted files are not leaked through process listings.
+        # 2. Reliability: Gemini sandbox only forwards a hardcoded allowlist of env
+        #    vars into the container. SANDBOX_FLAGS -e is kept as belt-and-suspenders
+        #    but cannot be the primary mechanism.
+        #
+        # The token is embedded directly in the gitconfig so git does not need
+        # $GH_TOKEN to be present in the container environment at push time.
         gh_token = env.get("GH_TOKEN") or os.environ.get("AOPS_BOT_GH_TOKEN")
         if gh_token:
             extra_flags.extend(["-e", "GIT_ASKPASS=true"])
             extra_flags.extend(["-e", f"GH_TOKEN={gh_token}"])
+            extra_flags.extend(["-e", f"GITHUB_TOKEN={gh_token}"])
             extra_flags.extend(["-e", "SSH_AUTH_SOCK="])
             extra_flags.extend(["-e", "GIT_TERMINAL_PROMPT=0"])
             gitconfig = tempfile.NamedTemporaryFile(
                 suffix=".gitconfig", delete=False, mode="w", prefix="polecat-"
             )
+            # Embed token value directly — does not rely on $GH_TOKEN being in
+            # the container environment (SANDBOX_FLAGS -e forwarding is unreliable).
             gitconfig.write(
                 "[credential]\n"
-                '\thelper = !f() { echo username=x-access-token; echo "password=${GH_TOKEN}"; }; f\n'
+                f'\thelper = !f() {{ echo username=x-access-token; echo "password={gh_token}"; }}; f\n'
                 '[credential "https://github.com"]\n'
-                '\thelper = !f() { echo username=x-access-token; echo "password=${GH_TOKEN}"; }; f\n'
+                f'\thelper = !f() {{ echo username=x-access-token; echo "password={gh_token}"; }}; f\n'
                 '[url "https://github.com/"]\n'
                 "\tinsteadOf = git@github.com:\n"
             )
@@ -1823,6 +1837,20 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
             container_gitconfig = str(Path.home() / ".gitconfig")
             mounts = env.get("SANDBOX_MOUNTS", "")
             new_mount = f"{gitconfig.name}:{container_gitconfig}:ro"
+            env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
+
+            # gh CLI hosts.yml — mount token so `gh pr create` works without
+            # needing GH_TOKEN in the container env (file-based auth fallback).
+            gh_hosts = tempfile.NamedTemporaryFile(
+                suffix=".yml", delete=False, mode="w", prefix="polecat-gh-hosts-"
+            )
+            gh_hosts.write(f"github.com:\n    oauth_token: {gh_token}\n    git_protocol: https\n")
+            gh_hosts.close()
+            if tmp_files is not None:
+                tmp_files.append(Path(gh_hosts.name))
+            container_gh_hosts = str(Path.home() / ".config" / "gh" / "hosts.yml")
+            mounts = env.get("SANDBOX_MOUNTS", "")
+            new_mount = f"{gh_hosts.name}:{container_gh_hosts}:ro"
             env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
 
         # Mount ACA_DATA via SANDBOX_MOUNTS (read-write for PKB updates)

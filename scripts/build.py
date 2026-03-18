@@ -885,6 +885,7 @@ def build_aops_core(
                     str(convert_script),
                     "--output-dir",
                     str(commands_dist),
+                    "--no-gitignore",
                 ],
                 env=os.environ,
                 check=False,

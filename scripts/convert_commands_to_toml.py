@@ -119,6 +119,11 @@ def main():
     output_dir = aops / "config" / "gemini" / "commands"
 
     # Parse args
+    write_gitignore = True
+    if "--no-gitignore" in sys.argv:
+        write_gitignore = False
+        sys.argv.remove("--no-gitignore")
+
     if "--output-dir" in sys.argv:
         idx = sys.argv.index("--output-dir")
         if idx + 1 < len(sys.argv):
@@ -128,9 +133,10 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Create .gitignore in output dir
-    gitignore = output_dir / ".gitignore"
-    if not gitignore.exists():
-        gitignore.write_text("# Generated TOML files\n*.toml\n")
+    if write_gitignore:
+        gitignore = output_dir / ".gitignore"
+        if not gitignore.exists():
+            gitignore.write_text("# Generated TOML files\n*.toml\n")
 
     # Find all commands directories in aops-* plugins
     command_dirs = list(aops.glob("aops-*/commands"))
