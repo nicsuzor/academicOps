@@ -98,7 +98,7 @@ do_dashboard() {
 
     # 2. Update task graph for visualization (graph.json)
     if command -v aops &>/dev/null; then
-        aops graph -f all --quiet || echo "Warning: aops graph failed"
+        aops graph -f all || echo "Warning: aops graph failed"
     else
         echo "Warning: aops CLI not found, skipping graph update"
     fi
