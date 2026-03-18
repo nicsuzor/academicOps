@@ -69,11 +69,9 @@ This is the baseline. Phase 5 re-runs graph_stats to measure what changed.
 
 The agent uses these as **signals**, not as deterministic verdicts:
 
-- **`triage_tasks.py`**: Scans task files, flags under-specified tasks. Run via:
-  `uv run python aops-core/skills/planner/scripts/triage_tasks.py $ACA_DATA --recursive --format json`
 - **PKB orphan detection**: `mcp__pkb__pkb_orphans()`
 - **Git log**: Recent commits, task changes since last cycle
-- **Own judgment**: The agent reads flagged tasks and decides whether they genuinely need attention. The script is a starting point, not the final word.
+- **Own judgment**: The agent reads flagged tasks and decides whether they genuinely need attention.
 
 ## Phase 4b: Graph Maintenance
 
@@ -121,7 +119,6 @@ When running via `/loop` or `/active-loop`, the sleep cycle follows the active-l
 ```
 templates/github-workflows/sleep-cycle.yml   ← workflow template (maintained in $AOPS)
 $ACA_DATA/.github/workflows/sleep-cycle.yml  ← installed copy (runs the agent)
-aops-core/skills/planner/scripts/triage_tasks.py  ← task quality tool (one signal among many)
 ```
 
 The workflow uses `anthropics/claude-code-action` to launch an agent with a consolidation prompt. The agent has access to the brain repo and academicOps tools.

@@ -132,25 +132,9 @@ Identify knowledge docs and memories that may be stale, and tasks that are under
 1. **Orphan detection**: `mcp__pkb__pkb_orphans()` — docs with no graph connections
 2. **Contradiction detection**: Compare knowledge doc claims against recent task/session evidence
 3. **Age heuristic**: Knowledge docs not modified in 60+ days with no inbound links
-4. **Task quality triage**: Detect under-specified tasks using `triage_tasks.py`
+4. **Task quality triage**: Scan tasks for under-specified bodies using PKB task search; flag candidates for decomposition or deletion
 
-##### Task Quality Triage
-
-Many tasks have been decomposed with titles but no actionable body content. The triage script (`aops-core/skills/garden/scripts/triage_tasks.py`) classifies active tasks by checking meaningful body content — stripping boilerplate (headings that repeat the title, `## Relationships` sections, parent/child links, `Project: [[x]]` lines). It also handles escaped `\n` in YAML scalars to avoid false positives.
-
-**Classification rules:**
-
-| Body content | Title quality          | Verdict               | Action                     |
-| ------------ | ---------------------- | --------------------- | -------------------------- |
-| ≥100 chars   | any                    | `ok`                  | Skip                       |
-| <100 chars   | self-explanatory†      | `ok`                  | Skip — title is sufficient |
-| <100 chars   | reasonable but unclear | `needs-decomposition` | Flag for decomposition     |
-| <100 chars   | vague‡                 | `needs-deletion`      | Flag for deletion          |
-
-† Self-explanatory: "X should Y", "Fix/Add/Implement + specific object (15+ chars)", "Respond to X"
-‡ Vague: single word, <15 chars, pure noun phrase with no verb
-
-**Output**: Candidates staged as a report for `/daily` or `/garden` to process. The sleep cycle does NOT auto-delete or auto-modify tasks — it surfaces them.
+**Output**: Candidates staged as a report for `/daily` or `/planner` (maintain mode) to process. The sleep cycle does NOT auto-delete or auto-modify tasks — it surfaces them.
 
 **Skip condition**: Sweep ran within the last 24 hours (no need to run every 4h).
 
@@ -169,9 +153,8 @@ Ensure `$ACA_DATA` is committed, pushed, and remote is pulled. This is already h
 | `/daily`            | Morning briefing + progress sync | **Complementary.** Daily handles the human-facing briefing (email, focus, recommendations). Sleep cycle handles the machine-facing consolidation (episode replay, index refresh, staleness).     |
 | `/session-insights` | Per-session analysis             | **Building block.** Sleep cycle Phase 1 calls session-insights batch.                                                                                                                            |
 | `/audit`            | Framework index curation         | **Scheduled.** Sleep cycle Phase 3 runs audit Phases 1-2 on a schedule. Full audit remains manual.                                                                                               |
-| `/garden`           | Incremental PKB maintenance      | **Downstream.** Sleep cycle Phase 4 produces staleness candidates that garden processes.                                                                                                         |
+| `/planner`          | Planning, decomposition, graph maintenance | **Downstream.** Sleep cycle Phase 4b delegates graph maintenance to Planner's `maintain` mode. Phase 4 staleness candidates flow to Planner for processing. |
 | `/remember`         | Manual knowledge capture         | **Upstream.** Inline promotion during sessions. Sleep cycle catches what /remember missed.                                                                                                       |
-| `densify`           | Task graph edge enrichment       | **Complementary.** Sleep cycle consolidates episodic knowledge; densify enriches task graph structure (dependency edges). Phase 2 may surface tasks that should be linked — hand off to densify. |
 
 ## What This Does NOT Replace
 
@@ -192,7 +175,6 @@ Ensure `$ACA_DATA` is committed, pushed, and remote is pulled. This is already h
 ```
 specs/sleep-cycle.md                              ← this spec
 aops-core/skills/sleep/SKILL.md                   ← skill definition (manual invocation)
-aops-core/skills/garden/scripts/triage_tasks.py   ← task quality detection (tool for Phase 4)
 templates/github-workflows/sleep-cycle.yml        ← GH Actions workflow template
 $ACA_DATA/.github/workflows/sleep-cycle.yml       ← installed workflow (copy from template)
 ```
