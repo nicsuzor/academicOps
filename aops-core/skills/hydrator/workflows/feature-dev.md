@@ -18,7 +18,7 @@ version: 1.1.0
 ## Core Feature-Dev Process
 
 1. **Understand Requirements**: Analyze the request to identify features, UX, and constraints.
-2. **Propose Plan**: Share a concise, high-level summary of the implementation strategy.
+2. **Propose Plan**: Share a concise, high-level summary of the implementation strategy. Before finalising, identify any observations that could be interpreted as design choices (unexpected constraints, ambiguous behaviour, unstated requirements). Surface the observation — not your interpretation — to the user.
 3. **Draft Tests**: Write tests for the first behavior before implementation.
 4. **Implement**: Build the feature following the TDD cycle (red-green-refactor).
 5. **Verify Feature**: Confirm behavioral correctness against the original request.

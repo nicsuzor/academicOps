@@ -23,6 +23,8 @@ We distinguish between **tool capability** (executing tasks) and **quality assur
 
 We are developing a **qualitative, context-sensitive review process**. Quantitative indicators of quality will always fail, because everything depends on context. There are a million ways to do something well. We embrace probabilistic generation (the "bazaar" model) rather than constraining it. We replace mechanical heuristics with LLM-driven evaluative judgment applied at the right moments.
 
+The key value the framework provides: **you can delegate execution to AI without delegating judgment**. The framework is the structural guarantee that academic integrity obligations are enforced at the right moments — even when the human isn't paying attention. This is what makes it distinctly academic: reputation rests on epistemic integrity in ways where a single unsupported claim or untested assumption can matter. The framework compensates for human non-meticulousness through structural enforcement, not through rules about how to work.
+
 The framework itself is the research instrument. We dogfood it daily, observe where quality assurance breaks down, and evolve the review process in response.
 
 ## What This Is
@@ -54,7 +56,7 @@ The framework provides infrastructure that every session and every project depen
 - **Memory server** — semantic search over institutional knowledge, persisted across sessions
 - **Knowledge architecture** — three-repo model (`$AOPS/` public framework, `$ACA_DATA/` private knowledge, project repos)
 
-### 4. Domain-specific academic tools
+### 4. Domain-specific academic tools (fungible)
 
 Generic but academically-focused capabilities that support research workflows:
 
@@ -66,6 +68,8 @@ Generic but academically-focused capabilities that support research workflows:
 
 **Scope**: Supports academic work across ALL repositories.
 
+**Design principle**: These are **fungible** — they exist only because no better external solution exists yet. They are explicitly designed to be replaced or retired when the external landscape improves. The framework should shrink gracefully: when a better tool exists, drop the internal skill. This is the bazaar model applied inward.
+
 ## Core Taxonomy
 
 > See [[TAXONOMY.md]] for canonical definitions of all concepts.
@@ -74,7 +78,9 @@ The framework organises work through a clear hierarchy and orchestration layer:
 
 **Hierarchy**: Goal → Project → Epic → Task → Action. Every task belongs to an epic. Epics are PR-sized units of verifiable work that include planning, execution, and verification steps.
 
-**Orchestration**: Workflows define WHAT steps to take and in WHAT order. Skills define HOW to execute each step. A workflow achieves an epic. In the Bazaar model, different agents may handle different steps — quality is guaranteed by the workflow structure, not by micromanaging agents.
+**Orchestration**: Workflows define what **academic integrity obligations** apply to a type of work. Skills define HOW to execute each step. A workflow achieves an epic. In the Bazaar model, different agents may handle different steps — quality is guaranteed by the workflow's obligation profile, not by micromanaging agents or prescribing sequence.
+
+Workflows are not activity taxonomies ("what kind of thing are you doing?") and not pipelines ("do these steps in this order"). They are **integrity obligation profiles**: the set of epistemic commitments that must be honoured for this type of work to meet academic standards. Selecting a workflow means calibrating verification level to stakes — reversibility, audience, downstream use, and novelty determine which obligations apply. Overlays encode obligations that must be satisfied; they do not mandate when. Only logical dependencies constrain sequence. The bazaar model supports creative reordering of non-necessary constraints.
 
 ## Core Architecture: Prompt Hydration
 
@@ -168,6 +174,8 @@ Session End   → Knowledge extracted → Memory persisted
 4. **Modular** - Each component works independently, composes into workflows
 5. **Minimal** - Fight bloat aggressively, one golden path
 6. **Dogfooding** - Use real research projects as test cases
+7. **Obligations over sequences** - Workflows enforce that integrity obligations are met; they do not prescribe when or in what order. Only logical dependencies constrain sequence. Creative reordering (post-publication review, iterative drafting) is valid. The bazaar model requires obligation fulfilment, not pipeline compliance.
+8. **Core vs. fungible** - Treat core epistemic infrastructure (planning, memory, QA, traceability) as constitutional: maintain it deeply, evolve it carefully. Treat domain skills as fungible: design them thin, design them to be replaced.
 
 ## Self-Curating Framework
 
@@ -179,3 +187,4 @@ The framework should become increasingly self-aware and self-improving:
 4. **Framework introspection** - The [[archived/specs/framework-skill.md|framework skill]] understands the whole system and enforces consistency before accepting additions
 5. **Bounded growth** - Logs don't grow forever; they consolidate into actionable diagnostics then archive
 6. **Session-end reflection** - At session end, automatically analyze behavior patterns and suggest heuristic updates. User approves with one click, no manual observation writing. Zero friction for framework improvement.
+7. **Obsolescence awareness** - Actively monitor the external landscape for tools and approaches that can replace internal skills. When an external solution is good enough, retire the internal version. The framework should be designed to shrink: less maintenance is better, not worse. This is the bazaar model applied inward — embrace external contributions that make internal work obsolete.

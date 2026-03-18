@@ -433,3 +433,25 @@ Instructions should delegate responsibility for HOW a task is fulfilled. Specify
 - When proposing automation, ask: "Can a Claude Code / Gemini CLI / GitHub agent do this directly?" If yes, design a skill or workflow — do not build a script that wraps LLM API calls (see P#49 agentic-first corollary)
 
 **Derivation**: Extends P#104 (Explain, Don't Ask) from single decisions to entire workflows. P#104 says agents should execute clearly superior choices rather than asking; P#116 says instructions should be written to enable this by specifying goals rather than procedures.
+
+<a id="P117"></a>
+
+## Surface Observations, Not Interpretations (P#117)
+
+When an agent observes unexpected behavior — a tool firing unexpectedly, a file missing, a hook blocking a call — the agent must surface the raw observation to the user before acting on an interpretation of it. Observations are facts. Interpretations are design choices. Only one of these belongs to the agent.
+
+**The failure pattern**: "The hook fired on TaskCreate → these are read tools, not file-modifying tools → the hook is misconfigured." Step 1 is an observation. Steps 2 and 3 are an interpretation that encodes an unexamined design assumption as doctrine.
+
+**The correct pattern**: "The hook fired on TaskCreate. This is unexpected. Is this intended behaviour or a misconfiguration?" Surface it. Don't interpret it.
+
+**Corollaries**:
+
+- "The hook fired unexpectedly" (observation) ≠ "The hook is misconfigured" (interpretation requiring design judgment)
+- "This test failed" (observation) ≠ "The test is wrong" (interpretation)
+- "This constraint blocks my plan" (observation) ≠ "This constraint is wrong" (interpretation)
+- Before encoding an unexpected observation as a task, fix, or guideline: ask "does this rest on a design assumption I haven't examined?"
+- P#104 (Explain, Don't Ask) applies to clearly superior implementation choices — it does not authorise interpreting system behavior as flawed without evidence
+
+**Why this gap matters**: P#104 and P#116 together push agents toward action and away from unnecessary clarification. This creates pressure to classify ambiguous observations as bugs rather than design questions. P#117 is the counterweight: act on clear choices, but surface ambiguous system observations before encoding interpretations as fact.
+
+**Derivation**: Emerged from a session process failure (2026-03-17) where an agent observed a hydration gate firing on task management operations, classified it as a misconfiguration, and was about to codify that interpretation as a framework improvement task — without surfacing the underlying design question. The correct answer was that the gate was working as intended.
