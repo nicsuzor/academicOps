@@ -1721,7 +1721,15 @@ def claude_docker(tmp_path):
     if aops_core_dir not in sys.path:
         sys.path.insert(0, aops_core_dir)
 
-    from cli import _build_docker_cmd
+    from cli import _build_docker_cmd, _container_to_host_path
+
+    # Detect DinD: in Docker-in-Docker environments the outer Docker daemon cannot
+    # reliably bind-mount paths from this container's overlay or remapped-uid
+    # filesystem.  Use Docker named volumes instead for session persistence.
+    _workspace_root = Path("/workspace")
+    _is_dind = (
+        _workspace_root.exists() and _container_to_host_path(_workspace_root) != _workspace_root
+    )
 
     def _run_in_docker(
         prompt: str,
@@ -1732,13 +1740,53 @@ def claude_docker(tmp_path):
         """Run Claude in Docker with session tracking."""
         session_id = str(uuid.uuid4())
 
-        # Create workspace directory
+        # Create workspace and session directories
         workspace = tmp_path / f"docker-test-{session_id[:8]}"
         workspace.mkdir()
-
-        # Create session directory so Claude transcripts persist on the host
         session_dir = tmp_path / f"sessions-{session_id[:8]}"
         session_dir.mkdir()
+
+        # In DinD environments, use a Docker named volume for session persistence.
+        # Bind-mounting paths from this container fails because:
+        #   - overlay paths are not accessible from the outer Docker daemon
+        #   - user-namespace remapping makes our uid=1000 appear as root in the
+        #     volume, so the inner container (no remapping) can't write to it
+        # Named volumes are managed by Docker and have correct permissions after
+        # a one-time chown step.
+        vol_name: str | None = None
+        if _is_dind:
+            vol_name = f"claude-test-sessions-{session_id[:8]}"
+            # Create the volume
+            subprocess.run(
+                ["docker", "volume", "create", vol_name],
+                check=True,
+                capture_output=True,
+                timeout=30,
+            )
+            # Fix permissions: new volumes are root-owned; chown to the UID that
+            # the inner container will run as (same value as os.getuid() here,
+            # which _build_docker_cmd passes as --user uid:gid).
+            uid = os.getuid()
+            gid = os.getgid()
+            subprocess.run(
+                [
+                    "docker",
+                    "run",
+                    "--rm",
+                    "-v",
+                    f"{vol_name}:/sessions",
+                    "--user",
+                    "root",
+                    "aops-crew",
+                    "chown",
+                    "-R",
+                    f"{uid}:{gid}",
+                    "/sessions",
+                ],
+                check=True,
+                capture_output=True,
+                timeout=30,
+            )
 
         # Build agent command — use --verbose so stdout includes the init
         # message (with apiKeySource, mcp_servers status, etc.) as a JSON array
@@ -1776,6 +1824,7 @@ def claude_docker(tmp_path):
             agent_cmd=agent_cmd,
             is_interactive=False,
             session_dir=session_dir,
+            session_volume=vol_name,
         )
 
         log.debug("Docker command: %s", " ".join(str(x) for x in cmd))
@@ -1853,6 +1902,41 @@ def claude_docker(tmp_path):
                 "error": error_msg,
             }
 
+        # Extract session files from the Docker volume (DinD) into session_dir.
+        # In native mode session_dir is already populated via the bind mount.
+        if vol_name:
+            try:
+                import io
+                import tarfile
+
+                tar_result = subprocess.run(
+                    [
+                        "docker",
+                        "run",
+                        "--rm",
+                        "-v",
+                        f"{vol_name}:/src",
+                        "alpine",
+                        "sh",
+                        "-c",
+                        "cd /src && find . -mindepth 1 | grep -q . && tar czf - . || true",
+                    ],
+                    capture_output=True,
+                    timeout=30,
+                )
+                if tar_result.returncode == 0 and tar_result.stdout:
+                    with tarfile.open(fileobj=io.BytesIO(tar_result.stdout)) as tar:
+                        tar.extractall(session_dir, filter="data")
+            except Exception as e:
+                log.warning("Failed to extract session files from volume %s: %s", vol_name, e)
+            finally:
+                subprocess.run(
+                    ["docker", "volume", "rm", vol_name],
+                    check=False,
+                    capture_output=True,
+                    timeout=30,
+                )
+
         # Include session_dir in response so tests can find transcripts
         response["session_dir"] = session_dir
 
@@ -1862,4 +1946,4 @@ def claude_docker(tmp_path):
 
         return response, session_id, tool_calls
 
-    return _run_in_docker
+    yield _run_in_docker

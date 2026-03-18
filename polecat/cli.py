@@ -197,6 +197,44 @@ def _detect_system_timezone() -> str:
     return "UTC"
 
 
+def _container_to_host_path(container_path: Path) -> Path:
+    """Resolve a container path to its host-visible path for Docker bind mounts.
+
+    In Docker-in-Docker (DinD) environments where the Docker socket is shared
+    with the host, bind-mount paths must be host-visible paths.  This function
+    reads /proc/self/mountinfo to find the host source path for a given
+    container-namespace destination path.
+
+    Returns the resolved host path if the path is a bind mount, otherwise
+    returns the original path unchanged (safe for non-DinD use).
+    """
+    container_str = str(container_path.resolve())
+    best_mount: tuple[str, str] | None = None
+    best_len = 0
+
+    try:
+        with open("/proc/self/mountinfo") as f:
+            for line in f:
+                parts = line.split()
+                if len(parts) < 5:
+                    continue
+                mount_point = parts[4]
+                root = parts[3]
+                if container_str == mount_point or container_str.startswith(mount_point + "/"):
+                    if len(mount_point) > best_len:
+                        best_len = len(mount_point)
+                        best_mount = (mount_point, root)
+    except (FileNotFoundError, OSError):
+        return container_path
+
+    if best_mount is None:
+        return container_path
+
+    mount_point, root = best_mount
+    rel = container_str[len(mount_point) :]  # includes leading "/" or empty
+    return Path(root + rel)
+
+
 def _build_docker_cmd(
     cli_tool: str,
     work_dir: Path,
@@ -205,13 +243,18 @@ def _build_docker_cmd(
     is_interactive: bool,
     tmp_files: list[Path] | None = None,
     session_dir: Path | None = None,
+    session_volume: str | None = None,
 ) -> list[str]:
     """Wraps an agent command in a Docker run command with appropriate mounts.
 
     If tmp_files is provided, any temporary files created (e.g. modified .claude.json)
     are appended to it so callers can clean them up.
 
-    If session_dir is provided and cli_tool is "claude" or "shell", mounts it at
+    If session_volume is provided and cli_tool is "claude" or "shell", uses it as a
+    Docker named volume mounted at /home/worker/.claude/projects.  This is the preferred
+    approach in DinD environments where bind-mounted paths may not be host-visible.
+
+    If session_dir is provided (and session_volume is not), mounts it as a bind mount at
     /home/worker/.claude/projects so Claude session transcripts persist on the host.
     """
     # Use POLECAT_DOCKER_IMAGE if set, otherwise default to the aops-crew image
@@ -263,29 +306,52 @@ def _build_docker_cmd(
         claude_dir = home / ".claude"
         if claude_json.exists():
             # Claude needs bypassPermissionsModeAccepted=true for --dangerously-skip-permissions
-            # to work without an interactive prompt. Create a temp copy with this flag set
-            # rather than modifying the user's actual config.
+            # to work without an interactive prompt.
+            #
+            # In DinD environments (Docker-in-Docker via socket), file bind mounts only work
+            # for paths that are host-visible.  _container_to_host_path resolves our container
+            # path to the underlying host path so the outer Docker daemon can find the file.
+            # In non-DinD environments the resolution returns the original path unchanged.
             with open(claude_json) as f:
                 config = json.load(f)
-            config["bypassPermissionsModeAccepted"] = True
-            # Use NamedTemporaryFile (not deprecated mktemp) with delete=False
-            # so the file persists for Docker to mount. Caller cleans up via tmp_files.
-            tmp_fd = tempfile.NamedTemporaryFile(suffix=".claude.json", delete=False, mode="w")
-            json.dump(config, tmp_fd)
-            tmp_fd.close()
-            tmp_claude_json = Path(tmp_fd.name)
-            if tmp_files is not None:
-                tmp_files.append(tmp_claude_json)
-            cmd.extend(["-v", f"{tmp_claude_json}:{container_home}/.claude.json"])
+            if not config.get("bypassPermissionsModeAccepted"):
+                # Set the flag in-place.  In DinD the file is already a temp copy that the
+                # outer polecat created; in native mode it is the user's config, but we also
+                # need to create a separate temp copy to avoid mutating it permanently.
+                host_json = _container_to_host_path(claude_json)
+                if host_json != claude_json:
+                    # DinD: the file is a temp copy — safe to update in-place and use directly.
+                    config["bypassPermissionsModeAccepted"] = True
+                    with open(claude_json, "w") as f:
+                        json.dump(config, f, indent=2)
+                    cmd.extend(["-v", f"{host_json}:{container_home}/.claude.json"])
+                else:
+                    # Native: create a temp copy so we don't modify the user's file.
+                    tmp_fd = tempfile.NamedTemporaryFile(
+                        suffix=".claude.json", delete=False, mode="w"
+                    )
+                    config["bypassPermissionsModeAccepted"] = True
+                    json.dump(config, tmp_fd)
+                    tmp_fd.close()
+                    tmp_claude_json = Path(tmp_fd.name)
+                    if tmp_files is not None:
+                        tmp_files.append(tmp_claude_json)
+                    cmd.extend(["-v", f"{tmp_claude_json}:{container_home}/.claude.json"])
+            else:
+                # Flag already set — just mount the file using the host-visible path.
+                host_json = _container_to_host_path(claude_json)
+                cmd.extend(["-v", f"{host_json}:{container_home}/.claude.json"])
         if claude_dir.exists():
             # Mount only the auth files Claude needs at runtime — not the whole directory.
             # The plugin installation is baked into the image (see Dockerfile), so mounting
             # the full ~/.claude dir would override the image's plugin data with the host's
             # (potentially stale or wrong-path) copy.
+            # Use _container_to_host_path so DinD bind mounts resolve to host-visible paths.
             for auth_file in (".credentials.json", ".mcp.json"):
                 src = claude_dir / auth_file
                 if src.exists():
-                    cmd.extend(["-v", f"{src}:{container_home}/.claude/{auth_file}:ro"])
+                    host_src = _container_to_host_path(src)
+                    cmd.extend(["-v", f"{host_src}:{container_home}/.claude/{auth_file}:ro"])
 
     # Mount Gemini auth files for "shell" mode so users can run gemini interactively.
     # Gemini normally handles its own sandbox, but in shell mode we're managing Docker.
@@ -316,10 +382,15 @@ def _build_docker_cmd(
         cmd.extend(["--group-add", str(docker_gid)])
         cmd.extend(["-v", "/var/run/docker.sock:/var/run/docker.sock"])
 
-    # Mount pkb binary for MCP server (plugin config references 'pkb' from PATH)
+    # Mount pkb binary for MCP server (plugin config references 'pkb' from PATH).
+    # In DinD environments the pkb binary may be on an ephemeral volume that the outer
+    # Docker daemon cannot reach.  Resolve to the host-visible path and only mount if
+    # that path actually exists; otherwise the image's built-in pkb is used instead.
     pkb_bin = shutil.which("pkb")
     if pkb_bin:
-        cmd.extend(["-v", f"{pkb_bin}:/usr/local/bin/pkb:ro"])
+        host_pkb = _container_to_host_path(Path(pkb_bin))
+        if host_pkb.exists():
+            cmd.extend(["-v", f"{host_pkb}:/usr/local/bin/pkb:ro"])
 
     # Mount ACA_DATA for PKB access (read-write — agents may update tasks)
     aca_data = env.get("ACA_DATA") or os.environ.get("ACA_DATA")
@@ -368,11 +439,19 @@ def _build_docker_cmd(
     cmd.extend(["-e", "SSH_AUTH_SOCK="])
     cmd.extend(["-e", "GIT_TERMINAL_PROMPT=0"])
 
-    # Mount session directory so Claude transcripts persist on the host.
+    # Mount session directory so Claude transcripts persist beyond the container lifetime.
     # Without this, --rm destroys all session data when the container exits.
-    if session_dir and cli_tool in ("claude", "shell"):
-        session_dir.mkdir(parents=True, exist_ok=True)
-        cmd.extend(["-v", f"{session_dir.resolve()}:{container_home}/.claude/projects"])
+    if cli_tool in ("claude", "shell"):
+        if session_volume:
+            # Named volume: preferred in DinD where bind-mount paths may not be accessible
+            # from the outer Docker daemon.  Callers are responsible for creating the volume
+            # with correct permissions before calling this function.
+            cmd.extend(["-v", f"{session_volume}:{container_home}/.claude/projects"])
+        elif session_dir:
+            # Bind mount: use _container_to_host_path so DinD paths resolve correctly.
+            session_dir.mkdir(parents=True, exist_ok=True)
+            host_session_dir = _container_to_host_path(session_dir)
+            cmd.extend(["-v", f"{host_session_dir}:{container_home}/.claude/projects"])
 
     cmd.append(image)
     cmd.extend(agent_cmd)
