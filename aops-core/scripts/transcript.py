@@ -542,25 +542,15 @@ def _infer_project(
         return "gemini"
 
     # Handle Polecat/Crew sessions
-    path_str = str(session_path)
-    if "/polecats/" in path_str or "/crew/" in path_str:
-        # Path structure: .../sessions/[polecats|crew]/[worker-id]/claude-sessions/session.jsonl
-        # Or: .../sessions/[polecats|crew]/[worker-id]/session.jsonl
-        parts = session_path.parts
-        try:
-            # Find [polecats|crew] in parts
-            idx = -1
-            if "polecats" in parts:
-                idx = parts.index("polecats")
-            elif "crew" in parts:
-                idx = parts.index("crew")
-
-            if idx != -1 and len(parts) > idx + 1:
-                category = parts[idx].rstrip("s")
+    # Use path parts directly to avoid false positives from partial string matches
+    parts = session_path.parts
+    for category_plural in ("polecats", "crew"):
+        if category_plural in parts:
+            idx = parts.index(category_plural)
+            if len(parts) > idx + 1:
+                category = category_plural.rstrip("s")
                 worker_name = parts[idx + 1]
                 return f"{category}-{worker_name}"
-        except ValueError:
-            pass
 
     # Handle Claude JSONL sessions
     project = session_path.parent.name
