@@ -116,6 +116,9 @@ After successful execution:
      This sets the task to `merge_ready`, which is the final worker state for PR-backed
      work. The governing system will close the task after the PR is merged. Do not call
      `complete_task` for PR-backed work.
+
+     **Do NOT wait for CI after filing a PR** — exit promptly after push + PR + reflection.
+
    - If no code changes (learn tasks, investigations, etc.):
      ```
      mcp__pkb__complete_task(id="{task_id}")

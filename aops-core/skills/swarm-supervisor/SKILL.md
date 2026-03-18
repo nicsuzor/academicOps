@@ -32,7 +32,7 @@ do the work, push branches, and create PRs. Everything between dispatch and
 PR is the worker's problem.
 
 - **Supervisor decides**: Task curation, worker selection, batch composition
-- **Workers execute**: Autonomously, with no supervisor monitoring
+- **Workers execute**: Autonomously, with no supervisor monitoring. Workers **MUST NOT wait for CI** after filing a PR — they must exit promptly after push + PR + reflection.
 - **GitHub handles**: PR review pipeline, merge gates, CI checks
 - **GitHub Actions closes the loop**: PR merge → task marked done
 
