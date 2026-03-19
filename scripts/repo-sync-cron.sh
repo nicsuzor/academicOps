@@ -51,6 +51,10 @@ fi
 
 export ACA_DATA="${ACA_DATA:-$HOME/brain}"
 export AOPS_SESSIONS="${AOPS_SESSIONS:-${POLECAT_HOME:-$HOME/.polecat}/sessions}"
+
+# 2b. Source system paths (CARGO_HOME, UV_CACHE_DIR, Homebrew, GOPATH, etc.)
+[[ -f "$HOME/.env.system-paths" ]] && source "$HOME/.env.system-paths"
+
 export PATH="${CARGO_HOME:-$HOME/.cargo}/bin:$HOME/.local/bin:/usr/local/bin:$PATH"
 
 # Git HTTPS auth for cron (no SSH agent available)
