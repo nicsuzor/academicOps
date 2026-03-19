@@ -380,7 +380,7 @@ def _build_docker_cmd(
 
 
 def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | None:
-    """Replicate Gemini authentication files to a temporary directory.
+    """Replicate Gemini authentication files to a directory.
 
     For headless sessions to authenticate properly in a sandbox, critical files
     from the user's ~/.gemini/ directory must be replicated in the temporary
@@ -395,7 +395,7 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
     to avoid trust prompts in the sandbox.
 
     Returns:
-        Path to the temporary directory containing the replicated files,
+        Path to the directory containing the replicated files,
         or None if authentication replication is disabled or fails.
     """
     if os.environ.get("POLECAT_GEMINI_AUTH_DISABLED") == "1":
@@ -420,8 +420,9 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
     if not existing_files:
         return None
 
-    # Create a temporary directory for replicated configs
+    # Create a temporary directory
     tmp_gemini_home = Path(tempfile.mkdtemp(prefix="polecat-gemini-auth-"))
+
     target_dir = tmp_gemini_home / ".gemini"
     target_dir.mkdir(parents=True)
 
@@ -1770,13 +1771,16 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
             )
             / "sessions"
         )
-    session_dir = sessions_base / "crew" / crew_name / "claude-sessions"
+    if gemini:
+        gemini_slug = target or work_dir.name
+        session_dir = sessions_base / "crew" / crew_name / gemini_slug
+    else:
+        session_dir = sessions_base / "crew" / crew_name / "claude-sessions"
 
     tmp_gemini_home = None
     tmp_files: list[Path] = []
     if gemini and not interactive:
         # Replicate Gemini authentication if available.
-        # Inject the work directory into trustedFolders.json to avoid trust prompts.
         tmp_gemini_home = _replicate_gemini_auth(env, work_dir=work_dir)
         if tmp_gemini_home:
             print(f"   Auth: Replicated to {env['GEMINI_CLI_HOME']}")
@@ -1785,45 +1789,22 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
         # needs the Gemini CLI installed. Use aops-crew (full image with AI CLIs).
         env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-crew")
 
-        # Gemini sandbox only forwards a hardcoded allowlist of env vars into
-        # its Docker container. Use SANDBOX_FLAGS for simple -e flags and
-        # SANDBOX_MOUNTS for volumes. Git credentials use a mounted .gitconfig
-        # because shell-quote mangles the credential helper shell function.
-        extra_flags = []
-        for key, val in env.items():
-            if key.endswith("_GATE_MODE") or key in ("ACA_DATA", "GH_TOKEN"):
-                extra_flags.extend(["-e", f"{key}={val}"])
+        # Set the hook state directory to Gemini's natural log path inside the container
+        if tmp_gemini_home:
+            container_sessions_dir = str(tmp_gemini_home / ".gemini" / "tmp" / gemini_slug)
+        else:
+            container_sessions_dir = str(Path.home() / ".gemini" / "tmp" / gemini_slug)
 
-        # Git credential helper — write a .gitconfig and mount it read-only.
-        # SANDBOX_FLAGS can't carry the credential helper because shell-quote
-        # interprets { } ; ( ) as operators, mangling the shell function.
-        gh_token = env.get("GH_TOKEN") or os.environ.get("AOPS_BOT_GH_TOKEN")
-        if gh_token:
-            extra_flags.extend(["-e", "GIT_ASKPASS=true"])
-            extra_flags.extend(["-e", f"GH_TOKEN={gh_token}"])
-            extra_flags.extend(["-e", "SSH_AUTH_SOCK="])
-            extra_flags.extend(["-e", "GIT_TERMINAL_PROMPT=0"])
-            gitconfig = tempfile.NamedTemporaryFile(
-                suffix=".gitconfig", delete=False, mode="w", prefix="polecat-"
-            )
-            gitconfig.write(
-                "[credential]\n"
-                '\thelper = !f() { echo username=x-access-token; echo "password=${GH_TOKEN}"; }; f\n'
-                '[credential "https://github.com"]\n'
-                '\thelper = !f() { echo username=x-access-token; echo "password=${GH_TOKEN}"; }; f\n'
-                '[url "https://github.com/"]\n'
-                "\tinsteadOf = git@github.com:\n"
-            )
-            gitconfig.close()
-            if tmp_files is not None:
-                tmp_files.append(Path(gitconfig.name))
-            # Mount via SANDBOX_MOUNTS (colon-separated from:to:opts).
-            # Gemini sandbox maps homedir() to the same path in the container,
-            # so mount .gitconfig at the host user's home path.
-            container_gitconfig = str(Path.home() / ".gitconfig")
-            mounts = env.get("SANDBOX_MOUNTS", "")
-            new_mount = f"{gitconfig.name}:{container_gitconfig}:ro"
-            env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
+        env["AOPS_SESSION_STATE_DIR"] = container_sessions_dir
+
+        # Mount the clean host session directory directly to Gemini's log path
+        session_dir.mkdir(parents=True, exist_ok=True)
+        mounts = env.get("SANDBOX_MOUNTS", "")
+        new_mount = f"{session_dir.resolve()}:{container_sessions_dir}:rw"
+        env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
+
+        # Provide a stable Gemini session ID based on the crew/task ID
+        env["GEMINI_SESSION_ID"] = f"gemini-{crew_name}"
 
         # Mount ACA_DATA via SANDBOX_MOUNTS (read-write for PKB updates)
         aca_data = env.get("ACA_DATA") or os.environ.get("ACA_DATA")
@@ -1831,6 +1812,22 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
             mounts = env.get("SANDBOX_MOUNTS", "")
             new_mount = f"{aca_data}:{aca_data}:rw"
             env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
+
+        # Gemini sandbox only forwards a hardcoded allowlist of env vars into
+        # its Docker container. Use SANDBOX_FLAGS for simple -e flags and
+        # SANDBOX_MOUNTS for volumes. Git credentials use a mounted .gitconfig
+        # because shell-quote mangles the credential helper shell function.
+        extra_flags = []
+        for key, val in env.items():
+            if key.endswith("_GATE_MODE") or key in (
+                "ACA_DATA",
+                "GH_TOKEN",
+                "GEMINI_SESSION_ID",
+                "AOPS_SESSION_STATE_DIR",
+            ):
+                extra_flags.extend(["-e", f"{key}={val}"])
+
+        # Git credential helper — write a .gitconfig and mount it read-only.
 
         if extra_flags:
             existing = env.get("SANDBOX_FLAGS", "")
@@ -2234,9 +2231,27 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
 
     tmp_gemini_home = None
     tmp_files: list[Path] = []
+    # Compute session directory for transcript persistence.
+    try:
+        from lib.paths import get_sessions_repo
+
+        sessions_base = get_sessions_repo()
+    except ImportError:
+        sessions_base = (
+            Path(
+                os.environ.get("AOPS_SESSIONS")
+                or os.environ.get("POLECAT_HOME", str(Path.home() / ".polecat"))
+            )
+            / "sessions"
+        )
+    if gemini:
+        gemini_slug = project or worktree_path.name
+        run_session_dir = sessions_base / "polecats" / task.id / gemini_slug
+    else:
+        run_session_dir = sessions_base / "polecats" / task.id / "claude-sessions"
+
     if gemini:
         # Replicate Gemini authentication if available.
-        # Inject the work directory into trustedFolders.json to avoid trust prompts.
         tmp_gemini_home = _replicate_gemini_auth(env, work_dir=worktree_path)
         if tmp_gemini_home:
             print(f"   Auth: Replicated to {env['GEMINI_CLI_HOME']}")
@@ -2244,23 +2259,43 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
         # Gemini --sandbox re-execs itself inside the container, so the image
         # needs the Gemini CLI installed. Use aops-crew (full image with AI CLIs).
         env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-crew")
+
+        # Set the hook state directory to Gemini's natural log path inside the container
+        if tmp_gemini_home:
+            container_sessions_dir = str(tmp_gemini_home / ".gemini" / "tmp" / gemini_slug)
+        else:
+            container_sessions_dir = str(Path.home() / ".gemini" / "tmp" / gemini_slug)
+
+        env["AOPS_SESSION_STATE_DIR"] = container_sessions_dir
+
+        # Mount the clean host session directory directly to Gemini's log path
+        run_session_dir.mkdir(parents=True, exist_ok=True)
+        mounts = env.get("SANDBOX_MOUNTS", "")
+        new_mount = f"{run_session_dir.resolve()}:{container_sessions_dir}:rw"
+        env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
+
+        # Provide a stable Gemini session ID based on the task ID
+        env["GEMINI_SESSION_ID"] = f"gemini-{task.id}"
+
+        # Gemini sandbox only forwards a hardcoded allowlist of env vars into
+        # its Docker container. Use SANDBOX_FLAGS for simple -e flags.
+        extra_flags = []
+        for key, val in env.items():
+            if key.endswith("_GATE_MODE") or key in (
+                "ACA_DATA",
+                "GH_TOKEN",
+                "GEMINI_SESSION_ID",
+                "AOPS_SESSION_STATE_DIR",
+            ):
+                extra_flags.extend(["-e", f"{key}={val}"])
+
+        if extra_flags:
+            existing = env.get("SANDBOX_FLAGS", "")
+            new_flags = " ".join(extra_flags)
+            env["SANDBOX_FLAGS"] = f"{existing} {new_flags}".strip() if existing else new_flags
+
         final_cmd = cmd
     else:
-        # Compute session directory for Claude transcript persistence.
-        try:
-            from lib.paths import get_sessions_repo
-
-            sessions_base = get_sessions_repo()
-        except ImportError:
-            sessions_base = (
-                Path(
-                    os.environ.get("AOPS_SESSIONS")
-                    or os.environ.get("POLECAT_HOME", str(Path.home() / ".polecat"))
-                )
-                / "sessions"
-            )
-        run_session_dir = sessions_base / "polecats" / task.id / "claude-sessions"
-
         # Claude Code: manually wrap in docker container
         final_cmd = _build_docker_cmd(
             cli_tool,
