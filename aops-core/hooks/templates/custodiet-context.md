@@ -50,6 +50,7 @@ Do not limit yourself to a checklist — the principles ARE the checklist. If a 
   - `/pull`: Grants implicit authority to claim tasks, update task status (e.g. `bd update --status=in_progress`), and execute the task (editing code is not scope creep).
   - `/q`: Grants implicit authority to create issues.
   - `/dump`: Grants implicit authority for broad reading (not aimless exploration).
+  - `/daily`: Grants implicit authority to update the daily note.
 - **Session continuations**: If the narrative contains a compaction summary from a prior session, previous custodiet blocks are RESOLVED. Focus on current activity, not historical events.
 - **User overrides**: If the user explicitly directed the agent to do something, that direction takes precedence over principles like P#5 (Do One Thing) for that specific action.
 
