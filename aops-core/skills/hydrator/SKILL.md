@@ -160,6 +160,14 @@ If task involves writing/modifying Python tests:
 
 - Add to Guardrails: "Use real captured data, not fabricated fixtures (H33). Assert on observable outcomes, not internal state. Mock only at system boundaries."
 
+### UI/UX and Visual Tasks
+
+If task involves UI, UX, diagrams, or visual artifacts:
+
+- **MUST** set task type to `ui_ux`.
+- **MUST** add to Guardrails: "Mandatory Qualitative Assessment (P#54): Visual quality requires autonomous evaluation via the `/qa` skill's visual-analysis protocol. Functional success is not sufficient."
+- **MUST** add to Acceptance Criteria: "Independent Qualitative Assessment completed via `/qa` with narrative evidence and persona immersion."
+
 ### Outbound Review
 
 If task involves sharing deliverables externally:

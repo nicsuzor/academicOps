@@ -109,6 +109,8 @@ Output: acceptance criteria for the spec + per-task QA + E2E evaluation suites.
 
 When evaluating an existing feature:
 
+**Mandatory for Visual Artifacts**: Under Axiom P#54, all tasks involving UI, UX, or visual artifacts **must** undergo this assessment via the visual-analysis protocol. Functional success is not sufficient for these tasks.
+
 ```
 Task(subagent_type="aops-core:qa", model="opus", prompt="
 Qualitative Assessment mode. Read references/qualitative-assessment.md first.

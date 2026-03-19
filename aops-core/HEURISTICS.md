@@ -414,8 +414,9 @@ Replace mechanical quality checks (word counts, structural checklists, format en
 - Instructions should define WHAT outcome is needed and WHY, not prescribe HOW to achieve it
 - When reviewing agent output, evaluate fitness-for-purpose in context, not compliance with procedural steps
 - Quantitative metrics (compliance rates, line counts, format scores) are useful only as signals that trigger qualitative review — never as verdicts
+- **UI/UX and Visual Artifacts**: Tasks involving UI, UX, or visual artifacts **must** undergo qualitative assessment via the `/qa` skill (P#54). Functional "it runs" is never sufficient for visual quality.
 
-**Derivation**: Extends P#92 (Probabilistic Methods, Deterministic Processes). P#92 establishes that we embrace probabilistic methods; P#115 draws the consequence for quality assurance — probabilistic outputs require qualitative evaluation, not quantitative measurement. The /qa skill's Qualitative Assessment mode operationalises this principle.
+**Derivation**: Extends P#92 (Probabilistic Methods, Deterministic Processes). P#92 establishes that we embrace probabilistic methods; P#115 draws the consequence for quality assurance — probabilistic outputs require qualitative evaluation, not quantitative measurement. The /qa skill's Qualitative Assessment mode operationalises this principle. See also P#54 for the visual domain mandate.
 
 <a id="P116"></a>
 
