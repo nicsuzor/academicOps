@@ -151,6 +151,7 @@ env = [
   "COMMIT_GATE_MODE=warn",
 ]
 testpaths = ["tests", "aops-core/tests"]
+norecursedirs = ["archived", "tests/archived"]
 pythonpath = [".", "aops-core", "aops-core/hooks", "aops-core/lib"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
