@@ -1863,3 +1863,119 @@ def claude_docker(tmp_path):
         return response, session_id, tool_calls
 
     return _run_in_docker
+
+
+@pytest.fixture
+def gemini_docker(tmp_path):
+    """Run Gemini inside Docker container with a mounted session_dir.
+
+    Returns callable with same API as claude_docker:
+        result, session_id, tool_calls = gemini_docker(
+            "Reply with hello", timeout_seconds=90
+        )
+    """
+    import json
+    import os
+    import subprocess
+    import sys
+    import uuid
+    from pathlib import Path
+
+    if not _docker_available():
+        pytest.skip("Docker not available or aops-crew image not built")
+    if not _gemini_cli_available():
+        pytest.skip("Gemini CLI not available")
+
+    # Import polecat helpers
+    repo_root = get_repo_root()
+    polecat_dir = str(repo_root / "polecat")
+    aops_core_dir = str(repo_root / "aops-core")
+    if polecat_dir not in sys.path:
+        sys.path.insert(0, polecat_dir)
+    if aops_core_dir not in sys.path:
+        sys.path.insert(0, aops_core_dir)
+
+    from cli import _replicate_gemini_auth
+
+    def _run_in_docker(
+        prompt: str,
+        timeout_seconds: int = 120,
+        fail_on_error: bool = True,
+    ) -> tuple[dict, str, list[dict]]:
+        session_id = str(uuid.uuid4())
+
+        workspace = tmp_path / f"docker-test-{session_id[:8]}"
+        workspace.mkdir(parents=True, exist_ok=True)
+
+        # The clean host directory where we expect logs to persist
+        session_dir = tmp_path / f"sessions-{session_id[:8]}"
+        session_dir.mkdir(parents=True, exist_ok=True)
+
+        env = os.environ.copy()
+
+        # Set up auth replication exactly as polecat/cli.py does
+        tmp_gemini_home = _replicate_gemini_auth(env, work_dir=workspace)
+        if not tmp_gemini_home:
+            pytest.skip("Gemini auth replication failed")
+
+        env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-crew")
+
+        gemini_slug = "docker-test"
+        # Match how polecat/cli.py mounts the volume using the native Gemini log path inside the sandbox
+        if tmp_gemini_home:
+            container_sessions_dir = str(tmp_gemini_home / ".gemini" / "tmp" / gemini_slug)
+        else:
+            container_sessions_dir = str(Path.home() / ".gemini" / "tmp" / gemini_slug)
+
+        env["AOPS_SESSION_STATE_DIR"] = container_sessions_dir
+
+        # In polecat/cli.py this goes in SANDBOX_MOUNTS
+        mounts = env.get("SANDBOX_MOUNTS", "")
+        new_mount = f"{session_dir.resolve()}:{container_sessions_dir}:rw"
+        env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
+        env["GEMINI_SESSION_ID"] = f"gemini-{session_id}"
+
+        from lib.agent_env import apply_env_mappings
+
+        apply_env_mappings(env)
+
+        cmd = ["gemini", "--sandbox", "--yolo", "-p", prompt, "-o", "json"]
+
+        try:
+            result = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=timeout_seconds, check=False, env=env
+            )
+        except subprocess.TimeoutExpired:
+            res = {
+                "success": False,
+                "output": "",
+                "result": {},
+                "error": "Timeout",
+                "session_dir": session_dir,
+            }
+            if fail_on_error:
+                pytest.fail("Timeout")
+            return res, session_id, []
+
+        try:
+            parsed = json.loads(result.stdout)
+            res = {
+                "success": True,
+                "output": result.stdout,
+                "result": parsed,
+                "session_dir": session_dir,
+            }
+        except json.JSONDecodeError as e:
+            res = {
+                "success": False,
+                "output": result.stdout,
+                "result": {},
+                "error": str(e),
+                "session_dir": session_dir,
+            }
+            if fail_on_error:
+                pytest.fail(f"JSON decode error: {e}")
+
+        return res, session_id, []
+
+    return _run_in_docker
