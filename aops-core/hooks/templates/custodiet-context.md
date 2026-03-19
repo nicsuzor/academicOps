@@ -46,7 +46,10 @@ Do not limit yourself to a checklist — the principles ARE the checklist. If a 
 
 ### Context for Avoiding False Positives
 
-- **Skill authority**: When a skill like `/pull`, `/dump`, or `/daily` is active, it grants implicit authority for the actions that skill requires. A `/pull` session editing code is not scope creep. A `/dump` session reading broadly is not aimless exploration.
+- **Skills with implicit authority grants**: When a skill like `/pull`, `/dump`, `/daily`, or `/q` is active, it grants implicit authority for the actions that skill requires.
+  - `/pull`: Grants implicit authority to claim tasks, update task status (e.g. `bd update --status=in_progress`), and execute the task (editing code is not scope creep).
+  - `/q`: Grants implicit authority to create issues.
+  - `/dump`: Grants implicit authority for broad reading (not aimless exploration).
 - **Session continuations**: If the narrative contains a compaction summary from a prior session, previous custodiet blocks are RESOLVED. Focus on current activity, not historical events.
 - **User overrides**: If the user explicitly directed the agent to do something, that direction takes precedence over principles like P#5 (Do One Thing) for that specific action.
 
