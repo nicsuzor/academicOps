@@ -24,7 +24,7 @@ Iterative supervisor for long-running workflows. Dispatches work items to poleca
 
 **Dispatch via polecat.** Workers are invoked through `polecat run -t <task-id>`, which provides worktree isolation, agent invocation (Claude or Gemini via `-g`), auto-finish, and transcript capture. The supervisor never calls agent CLIs directly.
 
-**Burst model.** Each invocation processes one burst: check active dispatches, evaluate results, dispatch new items, persist state, halt. Schedule recurring bursts with `/loop 30m /burst-supervisor <tracking-task-id>`.
+**Burst model.** Each invocation is idempotent: check active dispatches, evaluate completed results, dispatch new items, persist state, HALT. Workers run asynchronously — the supervisor never waits for them. Schedule recurring bursts with `/loop 20m /burst-supervisor <tracking-task-id>`. Each `/loop` tick re-enters the same phases and picks up wherever the last burst left off.
 
 ## Invocation
 
@@ -63,6 +63,7 @@ For each entry in `supervisor.active_dispatches`:
    - Not stale: skip (worker still running)
 4. **If worker task status is `active` or `ready`** (never claimed):
    - This means polecat dispatch failed silently. Log warning, set queue item back to `pending`.
+   - **Reuse the existing worker task** on next dispatch rather than creating a duplicate — the instructions are already correct. Only create a new worker task if the original needs different instructions (e.g., revision feedback).
 
 ### Phase 2a: Evaluate Worker Output
 
@@ -166,6 +167,8 @@ These apply regardless of workflow type:
 
 5. **Escalate early if the approach is wrong.** If a worker's output shows it fundamentally misunderstood the task (not just quality issues), don't waste retry budget. Escalate with a clear note about what went wrong so the human can adjust the worker instructions or handle it manually.
 
+6. **Own every problem you discover (P#30).** If a worker finds that a queue item was already completed, or that a task is malformed, or that the queue snapshot is stale — that is YOUR problem. Do not dismiss it as "a PKB issue" or "not a burst-supervisor bug." File a follow-up task to investigate the systemic cause (e.g., "why aren't completed tasks being finalized?"). Nothing is someone else's responsibility.
+
 ## Phase 3: Dispatch New Work
 
 Calculate available slots:
@@ -208,13 +211,15 @@ Use `config.worker_type` to determine the runner:
 - `"claude"` or `"claude-cli"` → `polecat run -t <id> -p <project> -c burst-supervisor`
 - `"gemini"` or `"gemini-cli"` → `polecat run -t <id> -p <project> -c burst-supervisor -g`
 
-If the burst dispatches multiple items, launch them in parallel using separate Bash tool calls (one per worker). Each `polecat run` is a blocking subprocess that handles the full lifecycle: claim, worktree setup, agent execution, auto-finish.
+Launch all workers in parallel using separate Bash tool calls with `run_in_background: true`. **Do not wait for workers to finish.** Each `polecat run` handles the full lifecycle (claim, worktree, agent, auto-finish) autonomously. The supervisor's job is to dispatch and HALT — the next `/loop` iteration will check results.
 
 **Do NOT call `gemini -p`, `claude -p`, or any agent CLI directly.** Always go through `polecat run`.
 
+> **Note:** In environments where shell aliases aren't loaded (e.g., non-interactive shells, Docker containers), `polecat` may not resolve. Use the full invocation: `uv run --project $AOPS $AOPS/polecat/cli.py run -t <id> ...` where `$AOPS` is the academicOps repo root.
+
 ### 3c. Update Queue State
 
-After dispatch (whether worker completes immediately or is still running):
+After dispatch (do not wait for completion):
 
 - Set queue item `status=in_progress`
 - Set `worker_task=<worker-task-id>`
@@ -262,20 +267,21 @@ Burst {N} complete.
 
 **If all items are done or failed**: Mark tracking task as `done`. Summarize final results.
 
-**If work remains**: Suggest next burst:
+**If work remains and no `/loop` is already scheduled**: Create one:
 
 ```
-Next burst: /burst-supervisor <tracking-task-id>
-Schedule: /loop 30m /burst-supervisor <tracking-task-id>
+/loop 20m /burst-supervisor <tracking-task-id>
 ```
 
-**HALT.** Do not loop — each invocation is one burst.
+If a `/loop` is already active (check with CronList), just HALT — the next tick will resume.
+
+**HALT.** Do not loop or wait — each invocation is one burst. The `/loop` handles recurrence.
 
 ## Init Flow
 
 When invoked with `init`:
 
-1. **Determine workflow**: Read user's description or use a workflow template
+1. **Determine workflow and worker type**: Read user's description or use a workflow template. **CRITICAL**: Extract the worker type (`claude` or `gemini`) from the user's instruction. If not specified, **ASK the user** — do not default silently. Dispatching the wrong runner type wastes all worker execution and cannot be recovered.
 2. **Populate queue**: Scan the source (e.g., `ls specs/*.md` for spec-audit) to build the item list
 3. **Create tracking task** in PKB with the state schema:
 
@@ -295,7 +301,7 @@ mcp__pkb__create_task(
    - `workflow: <name>`
    - `queue: [...]` (populated from scan)
    - `active_dispatches: []`
-   - `config: {max_attempts: 3, items_per_burst: 3, worker_type: "claude", review_mode: "auto"}`
+   - `config: {max_attempts: 3, items_per_burst: 3, worker_type: "<REQUIRED: claude or gemini — must match user's instruction, never default silently>", review_mode: "auto"}`
    - `plan: {total_items: N, completed: 0, failed: 0, in_progress: 0, remaining: N}`
      PKB strips unrecognized frontmatter fields — state MUST live in the body.
 
