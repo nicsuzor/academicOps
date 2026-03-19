@@ -97,8 +97,9 @@ do_dashboard() {
     fi
 
     # 2. Update task graph for visualization (graph.json)
+    #    Use flock to prevent accumulation if graph takes longer than cron interval
     if command -v aops &>/dev/null; then
-        aops graph -f all || echo "Warning: aops graph failed"
+        flock -n /tmp/aops-graph.lock aops graph -f all --no-layout || echo "Warning: aops graph skipped (locked or failed)"
     else
         echo "Warning: aops CLI not found, skipping graph update"
     fi
