@@ -215,7 +215,7 @@ Launch all workers in parallel using separate Bash tool calls with `run_in_backg
 
 **Do NOT call `gemini -p`, `claude -p`, or any agent CLI directly.** Always go through `polecat run`.
 
-> **Note:** In environments where shell aliases aren't loaded (e.g., non-interactive shells, Docker containers), `polecat` may not resolve. Use the full invocation: `uv run --project $AOPS $AOPS/polecat/cli.py run -t <id> ...` where `$AOPS` is the academicOps repo root.
+> **HALT if `polecat` does not resolve.** If the `polecat` command is not found (e.g., alias not loaded in a non-interactive shell), do NOT fall back to a direct invocation. Log the failure and HALT — this is an infrastructure bug that must be fixed, not worked around (P#25, P#9).
 
 ### 3c. Update Queue State
 
