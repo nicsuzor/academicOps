@@ -20,7 +20,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from lib.paths import get_sessions_repo, get_summaries_dir, get_transcripts_dir
+from lib.paths import get_summaries_dir, get_transcripts_dir
 from lib.transcript_parser import (
     SessionInfo,
     SessionProcessor,
