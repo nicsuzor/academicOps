@@ -36,9 +36,17 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.AOPS_DIST_PAT }}
         run: |
-          TAG=$(gh api repos/nicsuzor/mem/releases/latest --jq '.tag_name')
+          # Find the latest release that actually has binary assets
+          # (some releases may be created without artifacts)
+          TAG=$(gh api repos/nicsuzor/mem/releases --jq '
+            [.[] | select(.assets | length > 0)] | .[0].tag_name
+          ')
+          if [ -z "$TAG" ]; then
+            echo "::error::No mem release found with binary assets"
+            exit 1
+          fi
           echo "tag=$TAG" >> $GITHUB_OUTPUT
-          echo "Using latest release: $TAG"
+          echo "Using latest release with assets: $TAG"
 
       - name: Download release archive
         env:
