@@ -20,7 +20,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from lib.paths import get_summaries_dir, get_transcripts_dir
+from lib.paths import get_sessions_repo, get_summaries_dir, get_transcripts_dir
 from lib.transcript_parser import (
     SessionInfo,
     SessionProcessor,
@@ -1148,6 +1148,66 @@ def find_sessions(
                         source="antigravity",
                     )
                 )
+
+    # 4. Find Polecat/Crew sessions
+    sessions_repo = get_sessions_repo()
+    for category in ["polecats", "crew"]:
+        cat_dir = sessions_repo / category
+        if cat_dir.exists():
+            for worker_dir in cat_dir.iterdir():
+                if not worker_dir.is_dir():
+                    continue
+
+                # Each worker_dir is either a task-id or a crew-name
+                # Use prefix to avoid project name collisions
+                worker_project = f"{category.rstrip('s')}-{worker_dir.name}"
+
+                # Filter by project if specified
+                if project and project.lower() not in worker_project.lower():
+                    continue
+
+                # Claude session directory — mounted via -v ...:/home/worker/.claude/projects
+                claude_sessions_dir = worker_dir / "claude-sessions"
+                if not claude_sessions_dir.exists():
+                    # Fallback: maybe it's directly in the worker_dir?
+                    claude_sessions_dir = worker_dir
+
+                # Find session files in both project subdirs and directly in the dir
+                # (Support both standard Claude and flat layouts)
+                potential_session_files = []
+                if claude_sessions_dir.exists():
+                    # Check for sessions in project subdirs
+                    for project_dir in claude_sessions_dir.iterdir():
+                        if project_dir.is_dir() and not project_dir.name.endswith("-hooks"):
+                            potential_session_files.extend(project_dir.glob("*.jsonl"))
+                    # Check for sessions directly in the dir
+                    potential_session_files.extend(claude_sessions_dir.glob("*.jsonl"))
+
+                for session_file in potential_session_files:
+                    if session_file.name.startswith("agent-") or session_file.name.endswith(
+                        "-hooks.jsonl"
+                    ):
+                        continue
+
+                    # Determine session_id
+                    session_id = session_file.stem
+
+                    # Get modification time
+                    mtime = datetime.fromtimestamp(session_file.stat().st_mtime, tz=UTC)
+
+                    # Filter by time if specified
+                    if since and mtime < since:
+                        continue
+
+                    sessions.append(
+                        SessionInfo(
+                            path=session_file,
+                            project=worker_project,
+                            session_id=session_id,
+                            last_modified=mtime,
+                            source="claude",
+                        )
+                    )
 
     # Sort by last modified, newest first
     sessions.sort(key=lambda s: s.last_modified, reverse=True)

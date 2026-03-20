@@ -12,7 +12,7 @@ import json
 from pathlib import Path
 from typing import Any, TypedDict
 
-from lib.paths import get_data_root
+from lib.paths import get_summaries_dir
 from lib.session_paths import get_session_short_hash
 
 
@@ -37,12 +37,12 @@ def get_session_summary_dir() -> Path:
     """Get directory for session summary files.
 
     Returns:
-        Path to $ACA_DATA/dashboard/sessions/
+        Path to $AOPS_SESSIONS/summaries/
 
     Note:
-        Uses lib.paths.get_data_root() for canonical path resolution.
+        Uses lib.paths.get_summaries_dir() for canonical path resolution.
     """
-    return get_data_root() / "dashboard" / "sessions"
+    return get_summaries_dir()
 
 
 def get_session_summary_path(session_id: str) -> Path:

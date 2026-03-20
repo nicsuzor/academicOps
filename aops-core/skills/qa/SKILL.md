@@ -238,6 +238,6 @@ Varies by mode:
 - **Stop hook**: May require QA verification before session end
 - **Task completion**: QA should verify before `complete_task()`
 - **Gate tracking**: `post_qa_trigger()` detects QA invocation
-- **Spec writing**: SPEC-TEMPLATE.md references qa-planning.md for criteria design
+- **Spec writing**: templates/spec.md references qa-planning.md for criteria design
 - **Feature development**: Workflow 05 Phase 2 references qa-planning.md for requirements
 - **Spec development**: Workflow 06 Step 4 references qa-planning.md for acceptance criteria

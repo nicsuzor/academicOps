@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e
 
 # Configure git identity if not already set in environment.
 # These variables are forwarded by polecat/cli.py but can be defaulted here.
@@ -25,18 +24,10 @@ if [ -n "$TOKEN" ]; then
     export GH_TOKEN="$TOKEN"
     export GITHUB_TOKEN="$TOKEN"
 
-    # Authenticate GitHub CLI (gh).
-    # This enables 'gh pr create', 'gh issue view', etc. inside the agent.
-    if command -v gh >/dev/null 2>&1; then
-        echo "$GH_TOKEN" | gh auth login --with-token
-        # Configure gh to act as a git credential helper.
-        gh auth setup-git
-    else
-        # Fallback: Configure a universal git credential helper for HTTPS.
-        # This ensures that even tools not aware of 'gh' can still push/pull.
-        # We use $GH_TOKEN from the environment so the token isn't baked into the config file.
-        git config --global credential.helper "!f() { echo username=x-access-token; echo \"password=\$GH_TOKEN\"; }; f"
-    fi
+    # gh CLI uses GH_TOKEN from the environment automatically — no login needed.
+    # Configure a universal git credential helper for HTTPS so git push/pull
+    # works with the token. This covers both gh-aware and plain-git operations.
+    git config --global credential.helper "!f() { echo username=x-access-token; echo \"password=\$GH_TOKEN\"; }; f"
 fi
 
 # Enforce isolation: Disable SSH and interactive prompts.

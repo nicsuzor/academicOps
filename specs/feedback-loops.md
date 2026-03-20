@@ -167,7 +167,7 @@ The framework improves through structured feedback loops that connect observatio
 
 ## Key Workflows
 
-### /learn - Graduated Framework Improvement
+### /learn - Knowledge Capture & Bug Reporting
 
 The primary feedback workflow. Invoked when:
 
@@ -180,25 +180,17 @@ The primary feedback workflow. Invoked when:
 ```
 /learn [observation]
     │
-    ├── 0. Load governance context (AXIOMS, HEURISTICS, enforcement-map)
+    ├── 1. Identify failure and capture context
     │
-    ├── 0.5. Create/update task FIRST (non-negotiable documentation)
+    ├── 2. Anonymise transcript to remove PII
     │
-    ├── 1. Identify root cause (framework component, not agent behavior)
+    ├── 3. Search GitHub Issues for prior occurrences
     │
-    ├── 2. Check for prior occurrences (search existing tasks)
+    ├── 4. Add comment to existing issue (volume indicator)
+    │      OR
+    ├── 5. Determine criticality and file new GitHub Issue
     │
-    ├── 3. Choose intervention level (start at bottom)
-    │
-    ├── 4. Emit structured justification (MANDATORY format)
-    │
-    ├── 5. Make the fix (as an experiment)
-    │
-    ├── 6. Generalize the pattern (prevent future instances)
-    │
-    ├── 7. Create regression test (when testable)
-    │
-    └── 8. Report (Framework Reflection format)
+    └── 6. Stop. Do not fix the issue directly.
 ```
 
 ### /audit - Governance Verification

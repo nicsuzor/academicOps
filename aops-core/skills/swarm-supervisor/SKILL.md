@@ -182,13 +182,3 @@ Any runner that creates PRs from task work is compatible.
 Orchestrate multiple parallel polecat workers, each with isolated git worktrees. This replaces the deprecated hypervisor patterns.
 
 > See [[references/parallel-worker-orchestration]] for architecture, usage, and troubleshooting.
-
-## Related
-
-- `/pull` - Single task workflow (what each worker runs internally)
-- `polecat run` - Single autonomous polecat (no swarm)
-- `polecat crew` - Interactive, persistent workers
-- `hypervisor` - Deprecated; atomic lock pattern still useful for non-task batches
-- `/q` - Quick-queue tasks for swarm to implement
-- `LIFECYCLE-HOOKS.md` - Configurable trigger parameters (thresholds, notifications, runner)
-- `WORKERS.md` - Worker types, capabilities, sizing defaults

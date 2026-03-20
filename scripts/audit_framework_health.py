@@ -1056,7 +1056,6 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         "INSTALLATION.md",
         "METHODOLOGY.md",
         "skill.md",  # Alternate skill entry point name
-        "SPEC-TEMPLATE.md",  # Skill-level templates
         "conventions-summary.md",  # Reference summaries
     ]
     # Root-level files that are expected orphans
