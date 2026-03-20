@@ -150,7 +150,7 @@ def gemini_home(tmp_path_factory) -> Path:
         )
 
     if not shutil.which("gemini"):
-        pytest.fail("gemini CLI not found in PATH - requires Gemini CLI installed")
+        pytest.skip("gemini CLI not found in PATH - requires Gemini CLI installed")
 
     # Set GEMINI_CLI_HOME env for the link command
     env = os.environ.copy()
