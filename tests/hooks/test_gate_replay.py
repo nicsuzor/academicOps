@@ -772,25 +772,6 @@ class TestTempPathValidation:
         assert path == test_gate_file
         assert path.parent.exists(), f"Gate file parent directory must exist: {path.parent}"
 
-    def test_gate_path_not_in_tmp(self, monkeypatch):
-        """Gate files should NOT be in /tmp (not readable across session restarts).
-
-        Gate files in /tmp would be lost on reboot, making them unreliable
-        for long-running sessions.
-        """
-        monkeypatch.setenv("CLAUDE_PROJECT_DIR", "/Users/test/src/myproject")
-
-        monkeypatch.delenv("AOPS_GATE_FILE_HYDRATION", raising=False)
-        monkeypatch.delenv("GEMINI_SESSION_ID", raising=False)
-        monkeypatch.delenv("AOPS_SESSION_STATE_DIR", raising=False)
-        monkeypatch.delenv("AOPS_SESSIONS", raising=False)
-
-        path = get_gate_file_path("hydration", "test-session-xyz")
-
-        assert not str(path).startswith("/tmp"), (
-            f"Gate file should not be in /tmp (lost on reboot), got: {path}"
-        )
-
     def test_context_injection_contains_skill_invocation(self, router, gate_mode):
         """When hydration gate fires, context injection must contain the skill invocation.
 

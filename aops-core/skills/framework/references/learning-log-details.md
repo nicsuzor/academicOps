@@ -12,7 +12,7 @@ description: Document agent behavior patterns as learn-type tasks for later synt
 
 **Key principle**: Per AXIOMS #28 (Current State Machine) - episodic observations go to tasks, not direct file edits. Analysis happens later via workflow 05 (QA Verification).
 
-**IMPORTANT**: This workflow creates `type="learn"` tasks for **observational tracking only**. To make actual framework changes, use `/learn` instead - it combines logging with graduated fixes.
+**IMPORTANT**: This workflow creates `type="learn"` tasks for **observational tracking only**. To file high-quality bug reports directly to GitHub Issues for others to pick up, use `/learn` instead.
 
 **CRITICAL**: If you need to read session JSONL files, invoke `Skill(skill='transcript')` FIRST to convert to markdown. Raw JSONL wastes 10-70K tokens; transcripts are 90% smaller.
 
