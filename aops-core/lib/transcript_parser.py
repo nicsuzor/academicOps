@@ -200,17 +200,22 @@ def parse_framework_reflection(text: str) -> dict[str, Any] | None:
     """
     # Find the Framework Reflection section — try multiple heading styles in order.
     # Use [^\S\n]* (horizontal whitespace only) to avoid consuming newlines
-    # that the body terminator \n#{2,4}\s needs to detect next sections.
-    # \n\n is added to the lookahead to stop at blank lines for unstructured sections.
+    # that the body terminator needs to detect next sections.
+    #
+    # IMPORTANT: Do NOT use \n\n as a section terminator — agents routinely put
+    # blank lines between **Field**: value entries, and \n\n would truncate the
+    # capture at the first blank line. Instead, terminate at the next heading,
+    # horizontal rule (---), or end of text.
+    _SECTION_END = r"(?=\n#{1,4}\s|\n---|\Z)"
     patterns = [
         # Pattern 1: Markdown heading (## / ### / ####)
-        r"#{2,4}\s*Framework Reflection[^\S\n]*\n(.*?)(?=\n\n|\n#{2,4}\s|\Z)",
+        rf"#{{2,4}}\s*Framework Reflection[^\S\n]*\n(.*?){_SECTION_END}",
         # Pattern 2: Bold-text with body on next line (**Framework Reflection:**\n...)
-        r"(?:^|\n)\*\*Framework Reflection:?\*\*[^\S\n]*:?[^\S\n]*\n(.*?)(?=\n\n|\n#{2,4}\s|\Z)",
+        rf"(?:^|\n)\*\*Framework Reflection:?\*\*[^\S\n]*:?[^\S\n]*\n(.*?){_SECTION_END}",
         # Pattern 3: Bold-text with inline body (**Framework Reflection**: text...)
-        r"(?:^|\n)\*\*Framework Reflection:?\*\*[^\S\n]*:?[^\S\n]*(.+?)(?=\n\n|\n#{2,4}\s|\Z)",
+        rf"(?:^|\n)\*\*Framework Reflection:?\*\*[^\S\n]*:?[^\S\n]*(.+?){_SECTION_END}",
         # Pattern 4: Bare text (Framework Reflection: ...)
-        r"(?:^|\n)Framework Reflection[^\S\n]*:[^\S\n]*\n?(.*?)(?=\n\n|\n#{2,4}\s|\Z)",
+        rf"(?:^|\n)Framework Reflection[^\S\n]*:[^\S\n]*\n?(.*?){_SECTION_END}",
     ]
 
     reflection_match = None
