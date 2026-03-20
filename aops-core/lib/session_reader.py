@@ -20,7 +20,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from lib.paths import get_summaries_dir, get_transcripts_dir
+from lib.paths import get_sessions_repo, get_summaries_dir, get_transcripts_dir
 from lib.transcript_parser import (
     SessionInfo,
     SessionProcessor,
@@ -1060,12 +1060,7 @@ def find_sessions(
     # 2. Find Gemini sessions
     if include_gemini:
         # Search both standard location and framework-persisted locations
-        try:
-            from lib.paths import get_sessions_repo
-
-            search_dirs = [Path.home() / ".gemini" / "tmp", get_sessions_repo()]
-        except ImportError:
-            search_dirs = [Path.home() / ".gemini" / "tmp"]
+        search_dirs = [Path.home() / ".gemini" / "tmp", get_sessions_repo()]
 
         for base_dir in search_dirs:
             if not base_dir.exists():
