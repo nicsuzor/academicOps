@@ -117,6 +117,12 @@ def synthesize(sessions: list[dict], today: str) -> dict:
             "session_id": s.get("session_id", ""),
             "project": s.get("project", "unknown"),
             "summary": s.get("summary"),
+            "outcome": s.get("outcome"),
+            "date": s.get("date"),
+            "accomplishments": s.get("accomplishments", []),
+            "duration_minutes": (s.get("token_metrics") or {})
+            .get("efficiency", {})
+            .get("session_duration_minutes"),
         }
         for s in sessions[-5:]
     ]
