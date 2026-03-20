@@ -687,7 +687,7 @@ def claude_headless():
     """
     # Skip test if claude CLI not available
     if not _claude_cli_available():
-        pytest.fail("claude CLI not found in PATH - requires Claude Code CLI installed")
+        pytest.skip("claude CLI not found in PATH - requires Claude Code CLI installed")
 
     return _make_failing_wrapper(run_claude_headless)
 
@@ -878,7 +878,7 @@ def gemini_headless(gemini_home):
     """
     # Skip test if gemini CLI not available
     if not _gemini_cli_available():
-        pytest.fail("gemini CLI not found in PATH - requires Gemini CLI installed")
+        pytest.skip("gemini CLI not found in PATH - requires Gemini CLI installed")
 
     def _run(prompt, **kwargs):
         return run_gemini_headless(prompt, gemini_home=gemini_home, **kwargs)
@@ -1540,7 +1540,7 @@ def claude_headless_tracked(tmp_path):
 
     # Skip test if claude CLI not available
     if not _claude_cli_available():
-        pytest.fail("claude CLI not found in PATH - requires Claude Code CLI installed")
+        pytest.skip("claude CLI not found in PATH - requires Claude Code CLI installed")
 
     def _run_tracked(
         prompt: str,
