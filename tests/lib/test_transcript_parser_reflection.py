@@ -105,6 +105,57 @@ Some other content here.
         # Should not include content from "Next Section"
         assert "other content" not in str(result)
 
+    def test_blank_lines_between_fields(self):
+        """Agents routinely put blank lines between **Field**: value entries."""
+        text = """\
+## Framework Reflection
+
+**Outcome**: success
+
+**Accomplishments**:
+- Fixed the transcript parser regex
+- Added tests for blank-line tolerance
+
+**Friction points**: None
+
+**Next step**: None — PR merged, task complete
+"""
+        result = parse_framework_reflection(text)
+        assert result is not None
+        assert result["outcome"] == "success"
+        assert len(result["accomplishments"]) == 2
+        assert "Fixed the transcript parser regex" in result["accomplishments"]
+        assert result["next_step"] == "None — PR merged, task complete"
+
+    def test_blank_lines_between_fields_with_next_section(self):
+        """Blank lines between fields should not truncate before next heading."""
+        text = """\
+## Framework Reflection
+
+**Outcome**: success
+
+**Accomplishments**: Root cause diagnosed, GH issue filed, PKB task created
+
+**Friction points**: Repo sync script had stale lock
+
+**Proposed changes**: None
+
+**Next step**: Monitor cron job
+
+---
+## Session Complete
+
+**Task**: aops-abc123
+"""
+        result = parse_framework_reflection(text)
+        assert result is not None
+        assert result["outcome"] == "success"
+        assert len(result["accomplishments"]) == 3
+        assert result["friction_points"] == ["Repo sync script had stale lock"]
+        assert result["next_step"] == "Monitor cron job"
+        # Should not bleed into Session Complete
+        assert "aops-abc123" not in str(result)
+
 
 class TestBoldTextDrift:
     """Tests for **Framework Reflection**: format (common Claude drift)."""
