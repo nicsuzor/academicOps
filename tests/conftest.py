@@ -28,6 +28,53 @@ from .paths import (
 log = logging.getLogger(__name__)
 
 
+def _redact_cmd(cmd: list[str]) -> list[str]:
+    """Redact secrets and sensitive host paths from command for logging.
+
+    Redacts:
+    1. Environment variable values (GH_TOKEN=xxx, etc.)
+    2. Host paths in Docker mounts when the container side is sensitive
+       (e.g., /Users/nic/.claude.json -> [REDACTED_PATH]:/home/worker/.claude.json)
+    """
+    redacted = []
+    # Match strings like KEY=VALUE
+    secret_keys = {
+        "GH_TOKEN",
+        "GITHUB_TOKEN",
+        "AOPS_BOT_GH_TOKEN",
+        "ANTHROPIC_API_KEY",
+        "GEMINI_API_KEY",
+    }
+
+    for arg in cmd:
+        arg_str = str(arg)
+
+        # 1. Redact env var values: KEY=VALUE
+        # Exclude paths (containing "/") to avoid misidentifying mount args
+        if "=" in arg_str and "/" not in arg_str:
+            key, val = arg_str.split("=", 1)
+            if key in secret_keys:
+                redacted.append(f"{key}=[REDACTED]")
+                continue
+
+        # 2. Redact host paths in Docker mounts: src:dst[:mode]
+        # Only redact the host side if the container side is a known sensitive path
+        if ":" in arg_str:
+            parts = arg_str.split(":")
+            if len(parts) >= 2:
+                # Sensitive destination patterns in the container
+                sensitive_dst = [".claude.json", ".claude/", ".gemini/"]
+                if any(x in parts[1] for x in sensitive_dst):
+                    # Redact the host (source) path
+                    parts[0] = "[REDACTED_PATH]"
+                    redacted.append(":".join(parts))
+                    continue
+
+        redacted.append(arg_str)
+
+    return redacted
+
+
 def _is_xdist_worker() -> bool:
     """Check if running in an xdist worker process."""
     return os.environ.get("PYTEST_XDIST_WORKER") is not None
@@ -528,7 +575,7 @@ def run_claude_headless(
 
     try:
         # Execute command
-        log.debug("Full Launch Command: %s", " ".join(str(x) for x in cmd))
+        log.debug("Full Launch Command: %s", " ".join(_redact_cmd(cmd)))
         log.debug("Working Directory: %s", working_dir)
 
         result = subprocess.run(
@@ -727,7 +774,7 @@ def run_gemini_headless(
 
     try:
         # Execute command
-        log.debug("Full Launch Command: %s", " ".join(str(x) for x in cmd))
+        log.debug("Full Launch Command: %s", " ".join(_redact_cmd(cmd)))
         log.debug("Working Directory: %s", working_dir)
 
         result = subprocess.run(
@@ -1542,7 +1589,7 @@ def claude_headless_tracked(tmp_path):
                 test_dir = tmp_path / "claude-test"
                 test_dir.mkdir(parents=True, exist_ok=True)
 
-            log.debug("Full Launch Command: %s", " ".join(str(x) for x in cmd))
+            log.debug("Full Launch Command: %s", " ".join(_redact_cmd(cmd)))
             log.debug("Working Directory: %s", test_dir)
 
             result = subprocess.run(
@@ -1778,7 +1825,7 @@ def claude_docker(tmp_path):
             session_dir=session_dir,
         )
 
-        log.debug("Docker command: %s", " ".join(str(x) for x in cmd))
+        log.debug("Docker command: %s", " ".join(_redact_cmd(cmd)))
 
         try:
             result = subprocess.run(
