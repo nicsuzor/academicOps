@@ -3,7 +3,7 @@ name: qa
 description: Independent end-to-end verification before completion
 model: opus
 color: green
-tools: Read, Bash
+tools: Read, Bash, mcp__playwright__browser_navigate, mcp__playwright__browser_snapshot, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_click, mcp__playwright__browser_wait_for, mcp__playwright__browser_evaluate, mcp__playwright__browser_type, mcp__playwright__browser_resize
 ---
 
 # QA Agent
