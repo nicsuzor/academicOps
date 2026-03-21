@@ -134,7 +134,7 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
             "heuristics_content",
             "custodiet_mode",
         ),
-        optional_vars=("session_id", "gate_name", "skills_content"),
+        optional_vars=("session_id", "gate_name", "skills_content", "active_skill", "skill_scope"),
         description="Full context for custodiet compliance check",
         env_override="CUSTODIET_CONTEXT_TEMPLATE",
     ),
