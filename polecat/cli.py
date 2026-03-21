@@ -20,6 +20,10 @@ from lib.agent_env import apply_env_mappings
 from manager import PolecatManager
 from validation import TaskIDValidationError, validate_task_id_or_raise
 
+# Max turns for headless Claude runs — must be high enough to accommodate hook
+# overhead (hydration gate, custodiet compliance check) plus actual task work.
+HEADLESS_CLAUDE_MAX_TURNS = "30"
+
 
 def _node_version_key(p: Path) -> tuple[int, ...]:
     """Sort key for NVM node version directories using semver comparison.
@@ -2286,7 +2290,7 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
             cmd.append(prompt)
         else:
             # Headless: use -p for print mode
-            cmd.extend(["-p", prompt])
+            cmd.extend(["-p", prompt, "--max-turns", HEADLESS_CLAUDE_MAX_TURNS])
 
     # Set session type environment variable for hooks to detect
     # Use sanitized env: SSH stripped, git auth set to bot token only
