@@ -22,12 +22,32 @@ def create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path:
     """
     transcript_path = ctx.transcript_path or ctx.raw_input.get("transcript_path")
     session_context = ""
+    active_skill = None
+    skill_scope = None
     if transcript_path:
         if gate == "custodiet":
-            from lib.session_reader import build_audit_session_context
+            from lib.session_reader import (
+                SessionProcessor,
+                _extract_recent_skill,
+                build_audit_session_context,
+                load_skill_scope,
+            )
 
             try:
                 session_context = build_audit_session_context(transcript_path)
+            except Exception:
+                pass  # Degrade context, not the file creation
+
+            try:
+                processor = SessionProcessor()
+                _, entries, _ = processor.parse_session_file(
+                    Path(transcript_path), load_agents=False, load_hooks=False
+                )
+                active_skill = _extract_recent_skill(entries)
+                if active_skill:
+                    # Strip namespace prefix (e.g. "aops-core:learn" -> "learn")
+                    skill_short = active_skill.split(":")[-1]
+                    skill_scope = load_skill_scope(skill_short)
             except Exception:
                 pass  # Degrade context, not the file creation
         else:
@@ -60,6 +80,8 @@ def create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path:
                 "heuristics_content": heuristics,
                 "skills_content": skills,
                 "custodiet_mode": custodiet_mode,
+                "active_skill": active_skill or "none",
+                "skill_scope": skill_scope or "",
             },
         )
     except (KeyError, ValueError, FileNotFoundError) as e:
