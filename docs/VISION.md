@@ -23,6 +23,20 @@ We distinguish between **tool capability** (executing tasks) and **quality assur
 
 The key value the framework provides: **you can delegate execution to AI without delegating judgment**. The framework is the structural guarantee that academic integrity obligations are enforced at the right moments — even when the human isn't paying attention.
 
+### Academic QA is fundamentally different from code QA
+
+Code errors are cheap, testable, and reversible (revert the PR). Academic errors are expensive, hard to detect, and often irreversible (wrong methodology → wasted compute → wrong conclusions; hallucinated references → retracted paper). Agents default to "fast and plausible" — they'll justify a single-pass analysis, skip variance testing, and produce flowing prose with fabricated citations.
+
+**The framework's central QA mechanism is composable review.** Different types of academic work require different review lenses. A methodology design needs adversarial methodological critique. Citation-heavy writing needs systematic source verification. Draft emails need tone and alignment review. Student marking needs consistency and rubric fidelity review. No single review process fits all academic work.
+
+The framework provides:
+
+1. **A library of review lenses** — independent, composable review agents that each bring a specific critical perspective (methodology critique, citation verification, argument review, voice review, etc.)
+2. **Review-aware decomposition** — the planner always builds appropriate review tasks into the task graph based on the type of work being decomposed
+3. **Human judgment at decision points** — reviews surface issues; the human decides what to do about them
+
+This is not the old enforcement infrastructure (custodiet, gates, obligation profiles). Review lenses are invoked as tasks in the graph, not as hooks blocking execution. They compose like workflow steps, not like compliance checks.
+
 The framework itself is the research instrument. We dogfood it daily, observe where quality assurance breaks down, and evolve in response.
 
 ## What This Is
