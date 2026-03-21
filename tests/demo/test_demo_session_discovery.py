@@ -61,7 +61,9 @@ class TestSessionDiscoveryDemo:
         assert isinstance(sessions, list), "find_sessions() should return a list"
 
         if not sessions:
-            pytest.skip("No sessions found - find_sessions() returned empty list. Check configuration.")
+            pytest.skip(
+                "No sessions found - find_sessions() returned empty list. Check configuration."
+            )
 
         print(f"Sessions discovered: {len(sessions)}")
 
