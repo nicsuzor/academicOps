@@ -86,6 +86,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Full history for version detection
+          token: ${{ secrets.AOPS_DIST_PAT }}  # PAT required to push past branch protection
 
       - name: Determine release type
         id: release_type
