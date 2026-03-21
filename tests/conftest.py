@@ -1580,4 +1580,3 @@ def _docker_available() -> bool:
         return result.returncode == 0 and "aops-crew" in result.stdout
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return False
-
