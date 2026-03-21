@@ -27,7 +27,7 @@ Call `task_summary` to get pre-computed counts. Do NOT count tasks manually.
 
 ```python
 summary = mcp__pkb__task_summary()
-# Returns: { "ready": N, "blocked": N, "by_priority": { "p0": N, "p1": N, "p2": N, "p3": N } }
+# Returns: { "ready": N, "blocked": N, "by_priority": { "p0": N, "p1": N, "p2": N, "p3": N } }  # by_priority is a breakdown of ready tasks
 ```
 
 `ready` = leaf tasks with claimable types (task/bug/feature), active status, all dependencies met.
