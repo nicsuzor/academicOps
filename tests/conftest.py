@@ -687,6 +687,11 @@ def claude_headless():
     return _make_failing_wrapper(run_claude_headless)
 
 
+# Alias: claude_headless now returns (result, session_id, tool_calls) natively,
+# so the old _tracked variant is identical.
+claude_headless_tracked = claude_headless
+
+
 def run_gemini_headless(
     prompt: str,
     model: str | None = None,
