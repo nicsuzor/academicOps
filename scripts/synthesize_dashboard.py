@@ -16,7 +16,7 @@ import os
 import sys
 import tempfile
 from collections import Counter
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -245,12 +245,32 @@ def synthesize(sessions: list[dict], today: str) -> dict:
     }
 
 
+def load_recent_sessions(summaries_dir: Path, days: int = 6) -> list[dict]:
+    """Load session summary JSONs from the last N days."""
+    sessions = []
+    prefixes = []
+    for i in range(days):
+        d = datetime.now() - timedelta(days=i)
+        prefixes.append(d.strftime("%Y%m%d"))
+
+    for f in sorted(summaries_dir.glob("*.json")):
+        if any(f.name.startswith(p) for p in prefixes):
+            try:
+                with open(f) as fh:
+                    data = json.load(fh)
+                    data["_filename"] = f.name
+                    sessions.append(data)
+            except (json.JSONDecodeError, OSError) as e:
+                print(f"Warning: skipping malformed file {f.name}: {e}", file=sys.stderr)
+    return sessions
+
+
 def main() -> None:
     today = datetime.now().strftime("%Y%m%d")
 
     summaries_dir = get_summaries_dir()
-    sessions = load_today_sessions(summaries_dir, today)
-    print(f"Found {len(sessions)} session file(s) for {today}", file=sys.stderr)
+    sessions = load_recent_sessions(summaries_dir, days=6)
+    print(f"Found {len(sessions)} session file(s) for last 6 days", file=sys.stderr)
 
     synthesis = synthesize(sessions, today)
 
