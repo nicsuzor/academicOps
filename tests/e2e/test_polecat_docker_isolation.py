@@ -222,7 +222,8 @@ def test_gemini_crew_git_credentials_are_file_based(temp_polecat_home, tmp_path)
         return out.split(begin, 1)[1].split(end, 1)[0].strip()
 
     # Verify .gitconfig has token embedded (not ${GH_TOKEN})
-    gitconfig_content = extract_mount_content(output, "/home/worker/.gitconfig")
+    # Use home-relative path matching since home dir varies
+    gitconfig_content = extract_mount_content(output, str(Path.home() / ".gitconfig"))
     assert gitconfig_content, f".gitconfig mount content not found in output:\n{output}"
     assert "test-token-abc123" in gitconfig_content, (
         "Token must be embedded directly in .gitconfig (not via ${GH_TOKEN}). "
