@@ -236,3 +236,48 @@ def test_session_jsonl_contains_valid_entries(cli_headless):
     types = {e.get("type") for e in entries}
     assert "user" in types or "human" in types, f"No user message found. Types: {types}\n{diag}"
     assert "assistant" in types, f"No assistant message found. Types: {types}\n{diag}"
+
+
+@pytest.mark.slow
+@pytest.mark.integration
+def test_gemini_docker_produces_session_jsonl(gemini_docker, monkeypatch):
+    """Gemini writes a session JSONL transcript that persists via the session_dir mount.
+
+    This verifies that our _replicate_gemini_auth and _build_docker_cmd correctly map
+    the persistent host directory into Gemini's expected ~/.../chats/ structure.
+    """
+    # Force use of a test model to ensure test doesn't fail on complex output checks
+    monkeypatch.setenv("GEMINI_MODEL", "gemini-2.5-flash")
+
+    result, session_id, tool_calls = gemini_docker(
+        "Reply with exactly: hello gemini world",
+        timeout_seconds=90,
+        fail_on_error=False,
+    )
+    diag = _dump_diagnostics(result, session_id)
+    log.debug("Gemini Docker session diagnostics:\n%s", diag)
+
+    # Gate: Gemini must have produced actual output
+    res = result.get("result", {})
+    assert res.get("text"), f"Gemini produced no output text.\n{diag}"
+
+    # Now check session persistence
+    session_dir = result.get("session_dir")
+    actual_files = [p for p in session_dir.rglob("*") if p.is_file()]
+    assert len(actual_files) > 0, f"session_dir has no files.\n{diag}"
+
+    # Find the session JSONL specifically
+    # For Gemini, the session ID in the filename is the full UUID, but we might only have a hash
+    # in the session_id var, so we use rglob to find any session-*.json
+    session_files = list(session_dir.rglob("chats/session-*.json"))
+    assert len(session_files) > 0, f"No Gemini session JSON found in {session_dir}.\n{diag}"
+
+    session_file = session_files[0]
+    assert session_file.stat().st_size > 0, f"Session JSON exists but is empty.\n{diag}"
+
+    # Verify it has valid entries
+    with session_file.open() as f:
+        data = json.load(f)
+
+    assert isinstance(data, list), f"Gemini session JSON is not a list.\n{diag}"
+    assert len(data) > 0, f"Gemini session JSON has no entries.\n{diag}"

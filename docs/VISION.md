@@ -11,103 +11,81 @@ tags:
 
 # academicOps Vision
 
-**Last updated**: 2026-03-09
+**Last updated**: 2026-03-20
 
-> **Why this file matters**: Agents have no persistent memory. VISION.md defines the end state - what we're building and why. Update when fundamental direction changes (rare). Keep out: implementation details, current status.
+> **Why this file matters**: Agents have no persistent memory. VISION.md defines the end state — what we're building and why. Update when fundamental direction changes. Keep out: implementation details, current status.
 
 ## Research Programme
 
 We are studying how knowledge workers — academics in particular — integrate AI into daily professional life while maintaining epistemic integrity.
 
-We distinguish between **tool capability** (executing tasks) and **quality assurance** (evaluating and relying on generated outputs). Tool capabilities are improving rapidly and everyone is working on that problem. What doesn't go away, no matter how good tools get, is the need for the knowledge worker to assure themselves that the work is right and that the _right work_ is being done.
+We distinguish between **tool capability** (executing tasks) and **quality assurance** (evaluating and relying on generated outputs). Tool capabilities are improving rapidly. What doesn't go away is the need for the knowledge worker to assure themselves that the work is right and that the _right work_ is being done.
 
-We are developing a **qualitative, context-sensitive review process**. Quantitative indicators of quality will always fail, because everything depends on context. There are a million ways to do something well. We embrace probabilistic generation (the "bazaar" model) rather than constraining it. We replace mechanical heuristics with LLM-driven evaluative judgment applied at the right moments.
+The key value the framework provides: **you can delegate execution to AI without delegating judgment**. The framework is the structural guarantee that academic integrity obligations are enforced at the right moments — even when the human isn't paying attention.
 
-The key value the framework provides: **you can delegate execution to AI without delegating judgment**. The framework is the structural guarantee that academic integrity obligations are enforced at the right moments — even when the human isn't paying attention. This is what makes it distinctly academic: reputation rests on epistemic integrity in ways where a single unsupported claim or untested assumption can matter. The framework compensates for human non-meticulousness through structural enforcement, not through rules about how to work.
-
-The framework itself is the research instrument. We dogfood it daily, observe where quality assurance breaks down, and evolve the review process in response.
+The framework itself is the research instrument. We dogfood it daily, observe where quality assurance breaks down, and evolve in response.
 
 ## What This Is
 
-A constitutional automation framework for academic work. academicOps operates through four mechanisms:
+A lightweight automation framework for academic work. academicOps has four layers:
 
-### 1. Local session guardrails (real-time)
+### 1. Task management (the foundation)
 
-In every local session, the framework provides structural guardrails and task enrichment. Hooks enforce structural constraints (data boundaries, fail-fast). The hydrator enriches Task Graph nodes with execution context so workers have everything they need. Custodiet detects drift during execution. Quality of outputs is verified asynchronously at boundaries (see §2), not by controlling how agents execute.
+The task system is the backbone. Everything flows through it.
 
-- SessionStart loads principles ([[AXIOMS.md|AXIOMS]], [[HEURISTICS.md|HEURISTICS]])
-- Prompt hydration enriches Task Graph nodes with execution context (memories, workflow steps, acceptance criteria, guardrails)
-- Custodiet detects drift and scope violations during execution
-- Workflows embed quality gates appropriate to each task type
+- **Hierarchical task graph**: Goal → Project → Epic → Task → Action
+- **PKB server** (Rust): semantic search, graph store, task CRUD, memory — single binary, deployed everywhere
+- **Task lifecycle**: capture → decompose → prioritise → execute → verify → complete
+- **Zero-friction capture**: ideas flow from any input (voice, email, notes, conversation) into the task graph
 
-### 2. Asynchronous quality assurance (GitHub as automation hub)
+### 2. Skills (how work gets done)
 
-GitHub serves as the coordination layer for agents and humans. PR pipelines run automated review workflows — axiom compliance checking and strategic review — asynchronously after work is submitted. This catches what synchronous enforcement misses and provides the audit trail.
+Skills are Claude Code extensions that know how to do specific things. Core skills handle framework operations (daily notes, task management, planning, reflection). Domain skills handle academic work (citations, PDF generation, email triage, data analysis).
 
-- PR Pipeline: Setup → Axiom Review + Review & Fix → Merge Prep → Human Approval
-- Polecat workers execute tasks autonomously via GitHub Issues
-- CI/CD enforces linting, type checking, and gatekeeper checks
+- Skills are modular — each works independently
+- Domain skills are **fungible** — they exist only because no better external solution exists yet, and are designed to be replaced
+- Skills compose into workflows but don't prescribe sequence
 
-### 3. Baseline capabilities (tasks, memory, management)
+### 3. Async quality assurance (GitHub as coordination layer)
 
-The framework provides infrastructure that every session and every project depends on:
+GitHub serves as the coordination layer for agents and humans. PR pipelines run review workflows asynchronously after work is submitted. This catches what real-time enforcement misses and provides the audit trail.
 
-- **Task system** — hierarchical task graph with dependencies, decomposition, and lifecycle tracking
-- **Memory server** — semantic search over institutional knowledge, persisted across sessions
-- **Knowledge architecture** — three-repo model (`$AOPS/` public framework, `$ACA_DATA/` private knowledge, project repos)
+- PR pipeline: lint → agent review → merge prep → human approval
+- CI/CD enforces structural checks
+- Polecat workers can execute tasks via GitHub Issues (experimental)
 
-### 4. Domain-specific academic tools (fungible)
+### 4. Session infrastructure
 
-Generic but academically-focused capabilities that support research workflows:
+Hooks and configuration that make every Claude Code session framework-aware:
 
-- Citation management (zotmcp + Zotero)
-- Research data analysis (/analyst skill + dbt + Streamlit)
-- Document conversion and PDF generation
-- Email triage and task capture
-- Writing style enforcement
+- SessionStart loads principles and context
+- Autocommit keeps state synced
+- Session transcripts captured for reflection
+- Cross-device sync via git
 
-**Scope**: Supports academic work across ALL repositories.
+## What We've Learned
 
-**Design principle**: These are **fungible** — they exist only because no better external solution exists yet. They are explicitly designed to be replaced or retired when the external landscape improves. The framework should shrink gracefully: when a better tool exists, drop the internal skill. This is the bazaar model applied inward.
+The framework has a recurring failure mode: **over-engineering coordination mechanisms that cost more to maintain than the problems they solve.** We've reset twice now (Jan 2026, March 2026).
 
-## Core Taxonomy
+**The pattern**: Building elaborate coordination infrastructure to control agent behaviour, when the actual value comes from (a) good task management, (b) good skills, and (c) review at boundaries.
 
-> See [[TAXONOMY.md]] for canonical definitions of all concepts.
+**What we've definitively cut:**
 
-The framework organises work through a clear hierarchy and orchestration layer:
+- **Workflow obligation profiles**: The "integrity obligation profiles with composable overlays" framing. Academically interesting, practically unused.
+- **Enforcement ladder**: Graduated enforcement spec with 7 levels. Over-engineered for the problem.
 
-**Hierarchy**: Goal → Project → Epic → Task → Action. Every task belongs to an epic. Epics are PR-sized units of verifiable work that include planning, execution, and verification steps.
+**What we're re-evaluating (not cut, but need to earn their keep):**
 
-**Orchestration**: Workflows define what **academic integrity obligations** apply to a type of work. Skills define HOW to execute each step. A workflow achieves an epic. In the Bazaar model, different agents may handle different steps — quality is guaranteed by the workflow's obligation profile, not by micromanaging agents or prescribing sequence.
+- **Hydrator**: Good concept (enrich tasks with context before execution). Enforcement gate (blocking all tools until hydrated) is the problem, not the skill itself. Needs to be useful without being mandatory for simple tasks.
+- **Custodiet**: Drift detection concept is sound. Needs evidence it catches things that async PR review wouldn't.
+- **Gate system**: Per-gate assessment needed. Commit gate (preventing stranded work) is valuable. Hydration gate (blocking all tools) is too aggressive.
 
-Workflows are not activity taxonomies ("what kind of thing are you doing?") and not pipelines ("do these steps in this order"). They are **integrity obligation profiles**: the set of epistemic commitments that must be honoured for this type of work to meet academic standards. Selecting a workflow means calibrating verification level to stakes — reversibility, audience, downstream use, and novelty determine which obligations apply. Overlays encode obligations that must be satisfied; they do not mandate when. Only logical dependencies constrain sequence. The bazaar model supports creative reordering of non-necessary constraints.
+**How we prevent this recurring:**
 
-## Core Architecture: Prompt Hydration
-
-Every user prompt is hydrated before execution:
-
-```
-PROMPT → HYDRATE → EXECUTE (following plan)
-```
-
-### HYDRATE (task-hydrator agent)
-
-**Purpose**: Enrich Task Graph nodes with execution context
-
-The hydrator receives the user prompt along with session history and memory context, then creates or binds to a PKB task and enriches it with:
-
-1. **Intent**: What the user actually wants
-2. **Workflow**: Which workflow template applies (see [[WORKFLOWS.md]])
-3. **Context**: Relevant memories and prior knowledge from PKB
-4. **Acceptance Criteria**: Measurable outcomes for the task
-5. **Guardrails**: Constraints based on workflow + domain
-
-### Key Principles
-
-1. **Single decision point** — Hydrator makes all routing/skill decisions upfront
-2. **Skills match per-step** — Each step can invoke its own skill (see [[TAXONOMY.md]] for skill/workflow distinction)
-3. **Workflows define quality** — Each workflow embeds appropriate CHECKPOINTs
-4. **Agent follows plan** — Main agent executes steps without re-deciding
+- Every component has a feature node in the PKB with user stories, AC, and assessment criteria
+- Assessment criteria: used without enforcement? reduces real friction? agents understand it? survives neglect?
+- Components that fail assessment get flagged during normal work, not in dramatic resets
+- See epic `academicops-a442fd70` in PKB for the living component registry
 
 ## Knowledge Architecture
 
@@ -119,28 +97,18 @@ The hydrator receives the user prompt along with session history and memory cont
 | `$ACA_DATA/`  | Personal knowledge  | Never shared              |
 | Project repos | Code + docs         | Collaborators only        |
 
-### Information Flow
+### Design Principle: Dumb Server, Smart Agent
 
-```
-Session Start → AXIOMS + HEURISTICS + CORE loaded
-Every Prompt  → HYDRATE (context) → ROUTE (workflow) → ORCHESTRATE (steps)
-Each Step     → Skill matched JIT → Execute → Verify
-Session End   → Knowledge extracted → Memory persisted
-```
-
-- **Session start**: Principles and user context loaded via SessionStart hook
-- **Every prompt**: Three-stage pipeline ensures appropriate handling
-- **Each step**: Skills matched just-in-time based on step's domain
-- **Session end**: Decisions and learnings captured to knowledge base
+The PKB server does deterministic computation (search, CRUD, graph traversal). All judgment lives in the LLM. The server never decides what's important, relevant, or correct — it returns data and the agent interprets it.
 
 ## Success Criteria
 
-1. **Zero-friction capture** - Ideas flow from any input (voice, email, notes) to organized context
-2. **Fit-for-purpose output** - Work serves the person it was made for, evaluated qualitatively in context — not measured against templates or checklists
-3. **Nothing lost** - Tasks tracked, knowledge searchable, context surfaces when needed
-4. **Fail-fast** - Problems caught immediately, no silent failures
-5. **Minimal maintenance** - Framework doesn't require constant babysitting
-6. **Right work, done well** - The quality assurance layer ensures the right tasks are prioritised and outputs meet the actual need
+1. **Zero-friction capture** — Ideas flow from any input to organized context
+2. **Fit-for-purpose output** — Work serves the person it was made for, evaluated qualitatively
+3. **Nothing lost** — Tasks tracked, knowledge searchable, context surfaces when needed
+4. **Fail-fast** — Problems caught immediately, no silent failures
+5. **Minimal maintenance** — Framework doesn't require constant babysitting
+6. **Right work, done well** — Quality assured at boundaries, not by controlling execution
 
 ## Constraints
 
@@ -161,30 +129,20 @@ Session End   → Knowledge extracted → Memory persisted
 
 ## Non-Goals
 
-- ❌ Autonomous research decisions
-- ❌ Replacing expert judgment
-- ❌ Speed over quality
-- ❌ Generic/formulaic output
+- Autonomous research decisions
+- Replacing expert judgment
+- Speed over quality
+- Generic/formulaic output
+- Coordination infrastructure that costs more than it saves
 
 ## Design Philosophy
 
-1. **Qualitative over quantitative** - Evaluate fitness-for-purpose, not compliance with templates. Quantitative metrics are signals, never verdicts ([[HEURISTICS.md#P115|P#115]])
-2. **Delegate agency** - Specify WHAT and WHY, not HOW. Agents are more capable than instructions assume ([[HEURISTICS.md#P116|P#116]])
-3. **Fail-fast** - No defaults, no silent failures, demand explicit configuration
-4. **Modular** - Each component works independently, composes into workflows
-5. **Minimal** - Fight bloat aggressively, one golden path
-6. **Dogfooding** - Use real research projects as test cases
-7. **Obligations over sequences** - Workflows enforce that integrity obligations are met; they do not prescribe when or in what order. Only logical dependencies constrain sequence. Creative reordering (post-publication review, iterative drafting) is valid. The bazaar model requires obligation fulfilment, not pipeline compliance.
-8. **Core vs. fungible** - Treat core epistemic infrastructure (planning, memory, QA, traceability) as constitutional: maintain it deeply, evolve it carefully. Treat domain skills as fungible: design them thin, design them to be replaced.
-
-## Self-Curating Framework
-
-The framework should become increasingly self-aware and self-improving:
-
-1. **Agent-ready instructions** - Core docs ([[AXIOMS.md|AXIOMS]], [[HEURISTICS.md|HEURISTICS]]) contain only actionable rules, no explanations or evidence
-2. **Evidence-informed changes** - Framework changes are motivated by consolidated diagnostic data, not ad-hoc observations
-3. **Closed-loop learning** - Observations → bd issues → Diagnostics → Changes → Validation
-4. **Framework introspection** - The [[archived/specs/framework-skill.md|framework skill]] understands the whole system and enforces consistency before accepting additions
-5. **Bounded growth** - Logs don't grow forever; they consolidate into actionable diagnostics then archive
-6. **Session-end reflection** - At session end, automatically analyze behavior patterns and suggest heuristic updates. User approves with one click, no manual observation writing. Zero friction for framework improvement.
-7. **Obsolescence awareness** - Actively monitor the external landscape for tools and approaches that can replace internal skills. When an external solution is good enough, retire the internal version. The framework should be designed to shrink: less maintenance is better, not worse. This is the bazaar model applied inward — embrace external contributions that make internal work obsolete.
+1. **Qualitative over quantitative** — Evaluate fitness-for-purpose, not compliance with templates
+2. **Delegate agency** — Specify WHAT and WHY, not HOW. Trust agents.
+3. **Fail-fast** — No defaults, no silent failures
+4. **Modular** — Each component works independently, composes when needed
+5. **Minimal** — Fight bloat aggressively. A working simple system beats an elegant complex one.
+6. **Dogfooding** — Use real work as the test case. The framework improves as a side-effect of doing normal academic work, not through dedicated framework-building sessions.
+7. **Core vs. fungible** — Task management, memory, and QA infrastructure are core. Domain skills are replaceable. The framework should shrink when external tools improve.
+8. **Components earn their keep** — Every component is assessed against clear criteria (used voluntarily? reduces friction? agents understand it? survives neglect?). Components that fail get flagged and fixed or removed. See PKB epic `academicops-a442fd70`.
+9. **Learn from resets** — When the framework gets too complex, understand why. Document the pattern, not just the cut. The "What We've Learned" section is as important as the architecture.

@@ -1059,10 +1059,16 @@ def find_sessions(
 
     # 2. Find Gemini sessions
     if include_gemini:
-        gemini_tmp_dir = Path.home() / ".gemini" / "tmp"
-        if gemini_tmp_dir.exists():
+        # Search both standard location and framework-persisted locations
+        search_dirs = [Path.home() / ".gemini" / "tmp", get_sessions_repo()]
+
+        for base_dir in search_dirs:
+            if not base_dir.exists():
+                continue
+
             # Gemini structure: ~/.gemini/tmp/{hash}/chats/session-*.json
-            for chat_file in gemini_tmp_dir.glob("**/chats/session-*.json"):
+            # Or in framework: $AOPS_SESSIONS/**/.gemini/tmp/{slug}/chats/session-*.json
+            for chat_file in base_dir.glob("**/chats/session-*.json"):
                 # Determine session_id from filename or content
                 # session-2026-01-08T08-18-a5234d3e -> a5234d3e
                 session_id = chat_file.stem

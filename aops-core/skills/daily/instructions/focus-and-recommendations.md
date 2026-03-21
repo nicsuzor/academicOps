@@ -23,30 +23,23 @@ Parse task data to identify priority distribution, overdue tasks, and blocked ta
 
 #### Priority Distribution Counting (CRITICAL)
 
-**Both numerator AND denominator MUST use the same filter.**
+Call `task_summary` to get pre-computed counts. Do NOT count tasks manually.
 
 ```python
-# Actionable = excludes terminal (done, cancelled) and suspended/transient statuses
-ACTIONABLE_STATUSES = ["active", "inbox", "in_progress", "blocked", "waiting", "review", "merge_ready"]
-
-actionable_tasks = [t for t in tasks if t["status"] in ACTIONABLE_STATUSES]
-total_actionable = len(actionable_tasks)
-
-# Count by priority within actionable tasks
-priority_counts = {0: 0, 1: 0, 2: 0, 3: 0}
-for task in actionable_tasks:
-    p = task.get("priority", 2)  # default P2 if missing
-    if p in priority_counts:
-        priority_counts[p] += 1
+summary = mcp__pkb__task_summary()
+# Returns: { "ready": N, "blocked": N, "by_priority": { "p0": N, "p1": N, "p2": N, "p3": N } }  # by_priority is a breakdown of ready tasks
 ```
+
+`ready` = leaf tasks with claimable types (task/bug/feature), active status, all dependencies met.
+This is the ONLY consumer-facing view. Use `summary["ready"]` as the denominator for priority bars.
 
 **Format**: `P0 ░░░░░░░░░░ 9/333` where:
 
-- `9` = actionable P0 tasks
-- `333` = total actionable tasks (NOT total including done/cancelled)
+- `9` = `summary["by_priority"]["p0"]`
+- `333` = `summary["ready"]` (total ready tasks)
 
-**Wrong**: `P0 9/779` (numerator filtered, denominator unfiltered)
-**Right**: `P0 9/333` (both filtered consistently)
+**Wrong**: count by iterating all tasks and filtering by status strings
+**Right**: use `task_summary` — counts are canonical and consistent with `list_tasks(status='ready')`
 
 ### 3.1.5: Generate Task Tree
 

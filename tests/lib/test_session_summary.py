@@ -18,11 +18,12 @@ from lib.session_summary import (
 
 @pytest.fixture
 def temp_aca_data(tmp_path: Path) -> Path:
-    """Set up ACA_DATA env var pointing to tmp_path."""
-    data_dir = tmp_path / "data"
-    data_dir.mkdir()
-    with patch.dict("os.environ", {"ACA_DATA": str(data_dir)}):
-        yield data_dir
+    """Set up AOPS_SESSIONS env var pointing to tmp_path."""
+    sessions_dir = tmp_path / "sessions"
+    summaries_dir = sessions_dir / "summaries"
+    summaries_dir.mkdir(parents=True)
+    with patch.dict("os.environ", {"AOPS_SESSIONS": str(sessions_dir)}):
+        yield sessions_dir
 
 
 class TestTaskContributions:

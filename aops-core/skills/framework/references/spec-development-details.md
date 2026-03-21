@@ -10,7 +10,7 @@ description: Process for collaboratively developing task specifications before i
 
 **When**: User wants to automate a manual process or you've identified a good automation candidate.
 
-**Purpose**: Collaboratively develop a complete task specification using TASK-SPEC-TEMPLATE.md before implementation begins.
+**Purpose**: Collaboratively develop a complete task specification using TASK-templates/spec.md before implementation begins.
 
 **Steps**:
 
@@ -20,7 +20,7 @@ description: Process for collaboratively developing task specifications before i
    - Confirm this is actual pain point worth automating
 
 1. **Create specification document**
-   - Copy `$AOPS/aops-core/skills/framework/SPEC-TEMPLATE.md` to working location
+   - Copy `$AOPS/aops-core/skills/framework/templates/spec.md` to working location
    - Name: `$AOPS/specs/[descriptive-name].md`
    - This is a collaborative working document
 

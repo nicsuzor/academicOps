@@ -51,6 +51,10 @@ fi
 
 export ACA_DATA="${ACA_DATA:-$HOME/brain}"
 export AOPS_SESSIONS="${AOPS_SESSIONS:-${POLECAT_HOME:-$HOME/.polecat}/sessions}"
+
+# 2b. Source system paths (CARGO_HOME, UV_CACHE_DIR, Homebrew, GOPATH, etc.)
+[[ -f "$HOME/.env.system-paths" ]] && source "$HOME/.env.system-paths"
+
 export PATH="${CARGO_HOME:-$HOME/.cargo}/bin:$HOME/.local/bin:/usr/local/bin:$PATH"
 
 # Git HTTPS auth for cron (no SSH agent available)
@@ -97,8 +101,9 @@ do_dashboard() {
     fi
 
     # 2. Update task graph for visualization (graph.json)
+    #    Use flock to prevent accumulation if graph takes longer than cron interval
     if command -v aops &>/dev/null; then
-        aops graph -f all || echo "Warning: aops graph failed"
+        flock -n /tmp/aops-graph.lock aops graph -f all --no-layout || echo "Warning: aops graph skipped (locked or failed)"
     else
         echo "Warning: aops CLI not found, skipping graph update"
     fi
