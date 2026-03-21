@@ -9,7 +9,7 @@ AOPS_ROOT := $(shell pwd)
 DIST_DIR := $(AOPS_ROOT)/dist
 INSTALL_BIN := $(if $(USER_OPT),$(USER_OPT)/bin,$(HOME)/.local/bin)
 CRON_SCRIPT := $(AOPS_ROOT)/scripts/repo-sync-cron.sh
-DIST_REPO := nicsuzor/aops-dist
+DIST_REPO := nicsuzor/academicOps
 DIST_REPO_URL := https://github.com/$(DIST_REPO)
 GEMINI_REMOTE_URL := git@github.com:nicsuzor/academicOps.git
 

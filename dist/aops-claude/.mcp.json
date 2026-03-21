@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "pkb": {
+      "type": "stdio",
+      "command": "pkb",
+      "env": {
+        "ACA_DATA": "${ACA_DATA}",
+        "RUST_LOG": "warn"
+      }
+    }
+  }
+}
