@@ -102,6 +102,47 @@ The output MUST be **narrative prose**, not tables. Structure:
 | Checklist mindset | Can be executed without understanding the user     | Require persona immersion before evaluation    |
 | Identical weight  | Not all criteria matter equally                    | Weight by impact on user's actual experience   |
 
+## Browser-Driven UI Assessment
+
+When assessing a running web application, use Playwright MCP tools to drive a real browser session.
+
+### Workflow
+
+1. **Navigate** to the target URL (e.g., `mcp__playwright__browser_navigate`)
+2. **Wait** for the page to load (`browser_wait_for` with textGone for loading indicators)
+3. **Resize** to desktop resolution (`browser_resize` to 1920×1080)
+4. **Screenshot** each distinct view/section (`browser_take_screenshot`)
+5. **Interact** with UI elements to test functionality (`browser_click`, `browser_type`)
+6. **Snapshot** for accessibility tree analysis (`browser_snapshot`)
+7. **Assess** each screenshot against user stories and Visual Analysis Protocol
+
+### Screenshot Storage
+
+Save screenshots to `$AOPS_SESSIONS/qa-screenshots/YYYY-MM-DD/`. These are ephemeral session data, not repo artifacts.
+
+### Report Storage
+
+Write QA reports to `$ACA_DATA/eval/<project>-qa-YYYY-MM-DD.md`. Reports are PKB knowledge artifacts.
+
+### Spec Location
+
+Specs should be colocated with their code. Look for `spec.md` or `docs/spec.md` in the project directory.
+
+## Follow-Up Task Creation
+
+After completing an assessment, you MUST create a follow-up task in the PKB for any user story that received a FAIL or PARTIAL verdict. This is not optional — QA findings without tracked remediation are noise.
+
+### Task format
+
+- **Title**: `Address <project> QA findings — <N>/M user stories failing`
+- **Project**: The project that was assessed
+- **Priority**: p2 (unless findings include broken core functionality, then p1)
+- **Body**: Link to the QA report, list each FAIL/PARTIAL with one-line summary, acceptance criteria = re-run QA and achieve improved pass rate
+
+### Why
+
+The QA report is evidence. The task is the action. Without a task, findings rot in eval/ and nothing changes. The assessment workflow is: assess → report → file task → task gets worked → re-assess.
+
 ## Invocation
 
 ```
@@ -109,6 +150,10 @@ Task(subagent_type="qa",
      prompt="Qualitative assessment of [FEATURE] against user stories in [SPEC/TASK].
      Inhabit the user persona. Walk the scenarios.
      If the task involves UI changes or visual artifacts, you MUST apply the Visual Analysis Protocol in references/visual-analysis.md.
+     For running web apps, use Playwright to navigate, screenshot, and interact.
+     Save screenshots to $AOPS_SESSIONS/qa-screenshots/YYYY-MM-DD/.
+     Save report to $ACA_DATA/eval/.
+     After assessment, create a follow-up task in the PKB for FAIL/PARTIAL findings.
      Evaluate fitness-for-purpose
      in narrative prose. Is this good for the people it was designed for?"
 )
