@@ -60,10 +60,10 @@ jobs:
             --repo nicsuzor/mem \
             --pattern "$ARCHIVE"
 
-          # Extract binaries (pkb and aops)
+          # Extract binaries (aops CLI merged into pkb as of mem v0.3.0)
           mkdir -p output
           tar xzf "$ARCHIVE" -C output
-          chmod +x output/pkb output/aops
+          chmod +x output/pkb
           echo "Extracted binaries:"
           ls -la output/
 
@@ -73,7 +73,6 @@ jobs:
           name: ${{ matrix.output_name }}
           path: |
             output/pkb
-            output/aops
           if-no-files-found: error
 
   # Step 2: Build extension packages with platform-specific binaries
