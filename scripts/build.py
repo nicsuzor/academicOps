@@ -827,16 +827,12 @@ def build_aops_core(
             else:
                 mcp_config = mcp_template
 
-            # Write back to source .mcp.json for Claude
-            # This ensures dev-mode Claude has a valid config
-            mcp_json_path = src_dir / ".mcp.json"
-            claude_mcp_config = mcp_template.get("claude", mcp_template)
-            with open(mcp_json_path, "w") as f:
-                json.dump(claude_mcp_config, f, indent=2)
-
-            # If Claude dist, copy .mcp.json
+            # Write .mcp.json to dist only
             if platform == "claude":
-                safe_copy(mcp_json_path, dist_dir / ".mcp.json")
+                claude_mcp_config = mcp_template.get("claude", mcp_template)
+                dist_mcp_path = dist_dir / ".mcp.json"
+                with open(dist_mcp_path, "w") as f:
+                    json.dump(claude_mcp_config, f, indent=2)
 
             # Prepare for Gemini Extension
             if platform == "gemini":

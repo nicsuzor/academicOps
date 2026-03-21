@@ -52,9 +52,9 @@ def test_install_cron_jobs_idempotency(install_mod):
             [
                 "# some other cron",
                 "0 0 * * * /usr/bin/true",
-                "# aOps quick sync (brain + transcripts)",
+                "# pkb quick sync (brain + transcripts)",
                 f"*/5 * * * * {aops_path}/scripts/repo-sync-cron.sh --quick >> /tmp/repo-sync-quick.log 2>&1",
-                "# aOps full maintenance (viz + sessions)",
+                "# pkb full maintenance (viz + sessions)",
                 f"0 * * * * {aops_path}/scripts/repo-sync-cron.sh >> /tmp/repo-sync-cron.log 2>&1",
                 "# aOps refinery",
                 f"*/5 * * * * cd {aops_path} && ACA_DATA={aca_data_path} uv run python scripts/refinery.py > /dev/null 2>&1",
@@ -86,10 +86,10 @@ def test_install_cron_jobs_idempotency(install_mod):
     )
 
     # Comment markers must not be duplicated
-    quick_comments = [line for line in result_lines if "# aOps quick sync" in line]
-    full_comments = [line for line in result_lines if "# aOps full maintenance" in line]
-    assert len(quick_comments) == 1, f"Duplicate '# aOps quick sync' markers: {quick_comments}"
-    assert len(full_comments) == 1, f"Duplicate '# aOps full maintenance' markers: {full_comments}"
+    quick_comments = [line for line in result_lines if "# pkb quick sync" in line]
+    full_comments = [line for line in result_lines if "# pkb full maintenance" in line]
+    assert len(quick_comments) == 1, f"Duplicate '# pkb quick sync' markers: {quick_comments}"
+    assert len(full_comments) == 1, f"Duplicate '# pkb full maintenance' markers: {full_comments}"
 
     # Refinery must not be re-added (removed from install)
     refinery_lines = [
