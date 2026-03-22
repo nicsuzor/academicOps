@@ -514,7 +514,7 @@ class TaskStorage:
     def list_tasks(
         self,
         project: str | None = None,
-        status: TaskStatus | None = None,
+        status: TaskStatus | str | None = None,
         type: TaskType | None = None,
         priority: int | None = None,
         priority_max: int | None = None,
@@ -524,7 +524,7 @@ class TaskStorage:
 
         Args:
             project: Filter by project (None = all projects)
-            status: Filter by status
+            status: Filter by status (TaskStatus enum or "ready"/"blocked" strings)
             type: Filter by type
             priority: Filter by exact priority
             priority_max: Filter by priority <= max
@@ -533,6 +533,12 @@ class TaskStorage:
         Returns:
             List of matching tasks
         """
+        # Handle special virtual statuses
+        if status == "ready":
+            return self.get_ready_tasks(project=project)
+        if status == "blocked":
+            return self.get_blocked_tasks()
+
         tasks = []
         for task in self._iter_all_tasks():
             if project is not None and task.project != project:
@@ -679,9 +685,6 @@ class TaskStorage:
             return ancestors[-1]
         return task
 
-    # Task types that can be claimed by workers (actionable work items)
-    CLAIMABLE_TYPES = {TaskType.TASK, TaskType.ACTION, TaskType.BUG, TaskType.FEATURE}
-
     def get_ready_tasks(self, project: str | None = None) -> list[Task]:
         """Get tasks ready to work on.
 
@@ -694,35 +697,15 @@ class TaskStorage:
             List of ready tasks sorted by priority
         """
         # Get all completed task IDs for dependency checking
-        completed_ids = {
-            t.id
-            for t in self._iter_all_tasks()
-            if t.status in (TaskStatus.DONE, TaskStatus.CANCELLED)
-        }
+        completed_ids = {t.id for t in self._iter_all_tasks() if t.status.is_terminal}
 
         ready = []
         for task in self._iter_all_tasks():
             if project is not None and task.project != project:
                 continue
 
-            # Must be a leaf
-            if not task.leaf:
-                continue
-
-            # Must be a claimable type (not project/goal/epic/learn)
-            if task.type not in self.CLAIMABLE_TYPES:
-                continue
-
-            # Must be active (ready to claim)
-            if task.status != TaskStatus.ACTIVE:
-                continue
-
-            # All dependencies must be completed
-            unmet_deps = [d for d in task.depends_on if d not in completed_ids]
-            if unmet_deps:
-                continue
-
-            ready.append(task)
+            if task.is_ready(completed_ids):
+                ready.append(task)
 
         ready.sort(key=lambda t: (t.priority, t.order, t.title))
         return ready
@@ -733,24 +716,14 @@ class TaskStorage:
         Returns:
             List of blocked tasks
         """
-        completed_ids = {
-            t.id
-            for t in self._iter_all_tasks()
-            if t.status in (TaskStatus.DONE, TaskStatus.CANCELLED)
-        }
+        completed_ids = {t.id for t in self._iter_all_tasks() if t.status.is_terminal}
 
         blocked = []
         for task in self._iter_all_tasks():
-            if task.status == TaskStatus.BLOCKED:
+            if task.is_blocked(completed_ids):
                 blocked.append(task)
-                continue
 
-            # Check for unmet dependencies
-            if task.depends_on:
-                unmet = [d for d in task.depends_on if d not in completed_ids]
-                if unmet:
-                    blocked.append(task)
-
+        blocked.sort(key=lambda t: (t.priority, t.order, t.title))
         return blocked
 
     def decompose_task(

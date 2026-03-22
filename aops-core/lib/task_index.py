@@ -155,6 +155,38 @@ class TaskIndexEntry:
             assignee=task.assignee,
         )
 
+    def is_ready(self, completed_ids: set[str] | None = None) -> bool:
+        """Check if entry is ready.
+
+        Uses the same canonical logic as Task.is_ready().
+        """
+        from lib.task_model import is_task_ready
+
+        # Convert strings to Enums for evaluation
+        try:
+            task_type = TaskType(self.type)
+            task_status = TaskStatus(self.status)
+        except ValueError:
+            return False
+
+        return is_task_ready(task_type, task_status, self.leaf, self.depends_on, completed_ids)
+
+    def is_blocked(self, completed_ids: set[str] | None = None) -> bool:
+        """Check if entry is blocked.
+
+        Uses the same canonical logic as Task.is_blocked().
+        """
+        from lib.task_model import is_task_blocked
+
+        # Convert string to Enum for evaluation
+        try:
+            task_status = TaskStatus(self.status)
+        except ValueError:
+            # If status is invalid, treat as blocked/unavailable
+            return True
+
+        return is_task_blocked(task_status, self.depends_on, completed_ids)
+
 
 def _find_aops_binary() -> Path | None:
     """Find the `aops` CLI binary (from nicsuzor/mem).
@@ -286,23 +318,17 @@ class TaskIndex:
         ]
 
         # Compute ready and blocked
-        completed_statuses = {TaskStatus.DONE.value, TaskStatus.CANCELLED.value}
-        completed_ids = {tid for tid, e in self._tasks.items() if e.status in completed_statuses}
+        completed_ids = {tid for tid, e in self._tasks.items() if TaskStatus(e.status).is_terminal}
 
         for task_id, entry in self._tasks.items():
             # Skip completed tasks
-            if entry.status in completed_statuses:
+            if TaskStatus(entry.status).is_terminal:
                 continue
 
             # Check if blocked
-            unmet_deps = [d for d in entry.depends_on if d not in completed_ids]
-            if unmet_deps or entry.status == TaskStatus.BLOCKED.value:
+            if entry.is_blocked(completed_ids):
                 self._blocked.append(task_id)
-            elif (
-                entry.leaf
-                and entry.status == TaskStatus.ACTIVE.value
-                and entry.type in self.CLAIMABLE_TYPES
-            ):
+            elif entry.is_ready(completed_ids):
                 self._ready.append(task_id)
 
         # Sort ready by priority

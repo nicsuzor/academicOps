@@ -64,6 +64,11 @@ class TaskType(Enum):
     FEATURE = "feature"  # New functionality
     LEARN = "learn"  # Observational tracking (not actionable)
 
+    @property
+    def is_claimable(self) -> bool:
+        """True if this type can be worked on by a polecat worker."""
+        return self in {TaskType.TASK, TaskType.ACTION, TaskType.BUG, TaskType.FEATURE}
+
 
 class TaskStatus(Enum):
     """Task lifecycle states.
@@ -102,6 +107,11 @@ class TaskStatus(Enum):
     BLOCKED = "blocked"  # External dependency, with unblock_condition
     DORMANT = "dormant"  # User-initiated backburner
     FAILED = "failed"  # Unrecoverable error, with diagnostic
+
+    @property
+    def is_terminal(self) -> bool:
+        """True if this is a final state (DONE or CANCELLED)."""
+        return self in {TaskStatus.DONE, TaskStatus.CANCELLED}
 
 
 class TaskComplexity(Enum):
@@ -903,26 +913,27 @@ class Task:
         content = path.read_text(encoding="utf-8")
         return cls.from_markdown(content)
 
-    def is_ready(self) -> bool:
+    def is_ready(self, completed_ids: set[str] | None = None) -> bool:
         """Check if task is ready to work on.
 
-        A task is ready if:
-        - It's a leaf (has no children)
-        - It has no unmet dependencies
-        - Status is active (not in_progress, blocked, etc.)
-        - Type is not LEARN (observational, not actionable)
-        """
-        if not self.leaf:
-            return False
-        if self.depends_on:
-            return False  # Index should filter by completed deps
-        if self.type == TaskType.LEARN:
-            return False  # Learn tasks are observational, not actionable
-        return self.status == TaskStatus.ACTIVE
+        Ready = leaf + claimable type + no unmet dependencies + active status.
 
-    def is_blocked(self) -> bool:
-        """Check if task is blocked by dependencies."""
-        return bool(self.depends_on) or self.status == TaskStatus.BLOCKED
+        Args:
+            completed_ids: Optional set of completed task IDs to check dependencies.
+                          If provided, all depends_on must be in this set.
+                          If None, any depends_on makes it not ready.
+        """
+        return is_task_ready(self.type, self.status, self.leaf, self.depends_on, completed_ids)
+
+    def is_blocked(self, completed_ids: set[str] | None = None) -> bool:
+        """Check if task is blocked by dependencies.
+
+        Args:
+            completed_ids: Optional set of completed task IDs.
+                          If provided, checks if any depends_on is NOT in this set.
+                          If None, any depends_on counts as blocked.
+        """
+        return is_task_blocked(self.status, self.depends_on, completed_ids)
 
     def add_child(self, child_id: str) -> None:
         """Mark this task as having a child (no longer a leaf).
@@ -1207,6 +1218,81 @@ class Task:
 
     def __repr__(self) -> str:
         return f"Task(id={self.id!r}, title={self.title!r}, type={self.type.value})"
+
+
+def is_task_ready(
+    type: TaskType,
+    status: TaskStatus,
+    leaf: bool,
+    depends_on: list[str],
+    completed_ids: set[str] | None = None,
+) -> bool:
+    """Canonical ready filter logic.
+
+    A task is ready if:
+    - It is a leaf (no children)
+    - It is a claimable type (task, action, bug, feature)
+    - Status is ACTIVE
+    - All dependencies are completed
+
+    Args:
+        type: Task type
+        status: Task status
+        leaf: Whether it's a leaf node
+        depends_on: List of dependency IDs
+        completed_ids: Optional set of completed task IDs.
+                      If None, any depends_on makes it not ready.
+
+    Returns:
+        True if task is ready
+    """
+    if not leaf:
+        return False
+    if not type.is_claimable:
+        return False
+    if status != TaskStatus.ACTIVE:
+        return False
+
+    # Check dependencies
+    if depends_on:
+        if completed_ids is None:
+            return False
+        for dep_id in depends_on:
+            if dep_id not in completed_ids:
+                return False
+
+    return True
+
+
+def is_task_blocked(
+    status: TaskStatus,
+    depends_on: list[str],
+    completed_ids: set[str] | None = None,
+) -> bool:
+    """Canonical blocked filter logic.
+
+    A task is blocked if:
+    - Status is explicitly BLOCKED
+    - It has unmet dependencies
+
+    Args:
+        status: Task status
+        depends_on: List of dependency IDs
+        completed_ids: Optional set of completed task IDs.
+                      If None, any depends_on counts as blocked.
+
+    Returns:
+        True if task is blocked
+    """
+    if status == TaskStatus.BLOCKED:
+        return True
+    if depends_on:
+        if completed_ids is None:
+            return True
+        for dep_id in depends_on:
+            if dep_id not in completed_ids:
+                return True
+    return False
 
 
 # =============================================================================
