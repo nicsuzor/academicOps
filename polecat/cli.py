@@ -1633,7 +1633,9 @@ def sweep(ctx, stale_days):
         if state == "CLOSED":
             print("    ❌ PR Closed without merge. Moving to REVIEW.")
             task.status = TaskStatus.REVIEW
-            task.body += f"\n\n## 🧹 Sweep Report ({datetime.now().strftime('%Y-%m-%d %H:%M')})\n"
+            task.body += (
+                f"\n\n## 🧹 Sweep Report ({datetime.now(UTC).strftime('%Y-%m-%d %H:%M UTC')})\n"
+            )
             task.body += f"**PR Closed without merge**: {pr_status.get('url')}\n"
             manager.storage.save_task(task)
             continue
@@ -1654,7 +1656,9 @@ def sweep(ctx, stale_days):
         if changes_requested:
             print("    ❗ Changes requested. Moving to REVIEW.")
             task.status = TaskStatus.REVIEW
-            task.body += f"\n\n## 🧹 Sweep Report ({datetime.now().strftime('%Y-%m-%d %H:%M')})\n"
+            task.body += (
+                f"\n\n## 🧹 Sweep Report ({datetime.now(UTC).strftime('%Y-%m-%d %H:%M UTC')})\n"
+            )
             task.body += f"**Changes requested** on PR {pr_status.get('url') or pr_ref}:\n"
             for review in changes_requested:
                 author = review.get("author", {}).get("login", "unknown")
@@ -1673,7 +1677,7 @@ def sweep(ctx, stale_days):
                     print(f"    ⏳ PR is stale (> {stale_days} days). Flagging.")
                     # We don't change status, just add a note if not already flagged
                     if "PR is stale" not in (task.body or ""):
-                        task.body += f"\n\n## ⏳ Stale PR Alert ({datetime.now().strftime('%Y-%m-%d %H:%M')})\n"
+                        task.body += f"\n\n## ⏳ Stale PR Alert ({datetime.now(UTC).strftime('%Y-%m-%d %H:%M UTC')})\n"
                         task.body += (
                             f"This PR has been open and inactive for more than {stale_days} days.\n"
                         )
