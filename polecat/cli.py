@@ -653,8 +653,8 @@ def _sync_working_repo(
 
     if dirty:
         if auto_commit:
-            # Stage tracked files and commit
-            subprocess.run(["git", "add", "-u"], cwd=repo_path, capture_output=True, check=False)
+            # Stage all files (including new untracked) and commit
+            subprocess.run(["git", "add", "."], cwd=repo_path, capture_output=True, check=False)
             has_staged = (
                 subprocess.run(
                     ["git", "diff", "--cached", "--quiet"],
