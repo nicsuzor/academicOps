@@ -328,19 +328,6 @@ Session end is blocked until requirements are met. Two-phase validation ensures 
 5. If found and parseable: session ends
 6. If not found: blocks with format instructions, agent retries
 
-### Uncommitted Work Check
-
-**Enforcement**: `session_end_commit_check.py` Stop hook (legacy) + `commit` gate (Stop/SessionEnd events).
-
-The `commit` gate (`lib/gates/definitions.py`) enforces two policies on session exit:
-
-- **Block** (`COMMIT_GATE_MODE`, default required): fires `has_uncommitted_work` custom check — blocks Stop/SessionEnd if uncommitted changes exist.
-- **Warn**: fires `needs_commit_reminder` custom check — warns if unpushed commits exist on the branch.
-
-Gate mode is configured via `COMMIT_GATE_MODE` environment variable (required, no default — fail-fast).
-
-`SessionEnd` events are routed to `gate.on_stop()` via `_call_gate_method` in `router.py` (used by Gemini agents). `SubagentStop` is excluded — subagent completion is not a session end and must not trigger commit enforcement.
-
 ## Commit-Time Validation (Pre-commit)
 
 | Category         | Hook                                      | Purpose                | Axiom                      |
