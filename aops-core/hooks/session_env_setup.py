@@ -239,9 +239,13 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
         try:
             core_content = core_md_path.read_text().strip()
             if core_content:
-                messages.append("\n--- FRAMEWORK CORE ---\n")
-                messages.append(core_content)
-                messages.append("\n----------------------\n")
+                messages.extend([
+                    "",
+                    "--- FRAMEWORK CORE ---",
+                    core_content,
+                    "----------------------",
+                    "",
+                ])
         except Exception as e:
             print(f"WARNING: Failed to read CORE.md: {e}", file=sys.stderr)
 
