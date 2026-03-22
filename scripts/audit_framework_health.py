@@ -772,7 +772,6 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         "hooks/gate_config.py",
         "hooks/unified_logger.py",
         "hooks/policy_enforcer.py",
-        "hooks/session_end_commit_check.py",
         "hooks/task_binding.py",
         "hooks/templates/prompt-hydrator-context.md",
         "hooks/templates/custodiet-instruction.md",

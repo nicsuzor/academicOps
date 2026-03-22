@@ -195,14 +195,9 @@ def ensure_test_environment(monkeypatch, tmp_path):
 
     This provides a fallback test environment if ACA_DATA is not set externally.
     """
-    if not os.environ.get("ACA_DATA"):
-        # Use a stable temp dir for the session if possible, or tmp_path
-        # But tmp_path is unique per test.
-        # Ideally we want a shared one for the session, but per-test is safer for isolation.
-        data_dir = tmp_path / "aca_data"
-        monkeypatch.setenv("ACA_DATA", str(data_dir))
-    else:
-        data_dir = Path(os.environ["ACA_DATA"])
+    # ALWAYS use tmp_path for ACA_DATA to prevent tests from mutating host environment
+    data_dir = tmp_path / "aca_data"
+    monkeypatch.setenv("ACA_DATA", str(data_dir))
 
     # Ensure required structure exists
     (data_dir / "tasks").mkdir(parents=True, exist_ok=True)

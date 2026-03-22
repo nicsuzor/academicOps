@@ -175,7 +175,6 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
     # When missing, gate_config.py falls back to "warn"; we persist that
     # so subsequent hooks in this session also get the defaults.
     from hooks.gate_config import (
-        COMMIT_GATE_MODE,
         CUSTODIET_GATE_MODE,
         CUSTODIET_TOOL_CALL_THRESHOLD,
         HANDOVER_GATE_MODE,
@@ -189,7 +188,6 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
         "CUSTODIET_GATE_MODE": CUSTODIET_GATE_MODE,
         "CUSTODIET_TOOL_CALL_THRESHOLD": str(CUSTODIET_TOOL_CALL_THRESHOLD),
         "HYDRATION_GATE_MODE": HYDRATION_GATE_MODE,
-        "COMMIT_GATE_MODE": COMMIT_GATE_MODE,
     }
     for var, val in gate_mode_vars.items():
         if not os.environ.get(var):
