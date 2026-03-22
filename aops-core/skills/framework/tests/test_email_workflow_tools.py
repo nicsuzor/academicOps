@@ -25,7 +25,11 @@ def test_email_workflow_has_explicit_tool_examples() -> None:
 
     This ensures agents can directly invoke tools without guessing API structure.
     """
-    workflow_file = Path(AOPS) / "workflows/email-capture.md"
+    workflow_file = Path(AOPS) / "aops-core/skills/hydrator/workflows/email-capture.md"
+    if not workflow_file.exists():
+        # Fallback for different test environments
+        workflow_file = Path(AOPS) / "workflows/email-capture.md"
+
     assert workflow_file.exists(), f"Workflow file not found: {workflow_file}"
 
     content = workflow_file.read_text()
