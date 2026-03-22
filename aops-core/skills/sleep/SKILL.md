@@ -89,7 +89,7 @@ Each cycle, pick ONE strategy based on what graph_stats shows needs the most att
 
 See `aops-core/skills/planner/SKILL.md` → `maintain` mode for full activity reference.
 
-**Bounded effort**: Process at most 100 items per cycle. Use `mcp__pkb__bulk_reparent` for efficiency when processing multiple items with the same parent. Quality over quantity.
+**Bounded effort**: Process a configurable number of items per cycle (default 100, set via `batch_limit` workflow input). Use `mcp__pkb__bulk_reparent` for efficiency when processing multiple items with the same parent. Quality over quantity.
 
 **Autonomous vs. flagged**:
 
