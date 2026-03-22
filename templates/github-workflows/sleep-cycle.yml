@@ -76,7 +76,8 @@ jobs:
 
             ## Phase 0: Graph Health Baseline
             Run `graph_stats` (PKB tool) to get current graph health metrics.
-            Record: flat_tasks, disconnected_epics, projects_without_goals, orphan_count, stale_count.
+            Run `pkb_orphans` (PKB tool) for accurate orphan detection.
+            Record: flat_tasks, disconnected_epics, projects_without_goals, orphan_count (from pkb_orphans), stale_count.
             This is the baseline — you'll re-run it in Phase 5 to measure what changed.
 
             ## Phase 1: Session Backfill
@@ -95,7 +96,7 @@ jobs:
 
             ## Phase 4: Staleness Sweep
             Use your own judgment to identify tasks and docs that need attention. Check for:
-            - Orphan docs with no graph connections
+            - Orphan docs with no graph connections (use `pkb_orphans` results)
             - Knowledge docs that contradict recent evidence
             - Old or inactive tasks (no update in 7+ days)
             - Under-specified tasks (flag for decomposition or review)
@@ -105,11 +106,11 @@ jobs:
             Surface old tasks for human review instead.
 
             ## Phase 4b: Graph Maintenance
-            Pick ONE strategy based on what graph_stats showed needs the most work:
+            Pick ONE strategy based on what health metrics showed needs the most work:
             - disconnected_epics > 10 → find project parents for disconnected epics
             - projects_without_goals > 10 → link projects to existing goals
             - flat_tasks > 100 → find epic/project parents for orphaned tasks
-            - orphan_count > 20 → connect or flag truly disconnected nodes for review
+            - orphan_count > 20 → connect or flag truly disconnected nodes for review (from `pkb_orphans`)
             - All healthy → densify edges (add depends_on between related tasks)
 
             Process at most ${{ inputs.batch_limit || vars.SLEEP_BATCH_LIMIT || 100 }} items per cycle.
@@ -118,7 +119,7 @@ jobs:
             autonomously. For ambiguous ones, flag in the cycle summary for human review.
 
             ## Phase 5: Brain Sync
-            Re-run `graph_stats` and compare to Phase 0 baseline. Note what changed.
+            Re-run `graph_stats` and `pkb_orphans` and compare to Phase 0 baseline. Note what changed.
             Commit any changes and push. Use message: "sleep: periodic consolidation"
 
             ## Rules
