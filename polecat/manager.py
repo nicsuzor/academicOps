@@ -239,10 +239,10 @@ class PolecatManager:
         available = [n for n in self.crew_names if n not in active_crew]
 
         if not available:
-            # All names in use, add a suffix
-            base = random.choice(self.crew_names)
-            suffix = random.randint(1, 99)
-            return f"{base}_{suffix}"
+            raise RuntimeError(
+                f"All crew names are in use: {sorted(self.list_crew())}. "
+                "Run 'polecat nuke <name>' to clean up idle workers before creating a new one."
+            )
 
         return random.choice(available)
 
