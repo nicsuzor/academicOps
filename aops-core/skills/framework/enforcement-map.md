@@ -272,6 +272,8 @@ At threshold, spawns haiku subagent to review session transcript for:
 
 Uses `decision: "block"` output format to force agent attention. Insight capture is advisory only (no block).
 
+The subagent receives **active skill context** (`active_skill`, `skill_scope`) extracted from the transcript. Actions that fall within the active skill's authorized scope are not flagged as violations — e.g., `/dogfood` authorizes SKILL.md edits; `/pull` authorizes code changes.
+
 **Enforcement mode**: `block` (default). Custodiet violations halt the session. Override via `CUSTODIET_GATE_MODE=warn` env var. Changed from `warn` to `block` on 2026-02-14 after agent scope-drifted from user-specified URL without detection (see `$ACA_DATA/aops/fails/20260214-scope-drift-url-pivot.md`).
 
 ### Random Reminders (Between Checks)

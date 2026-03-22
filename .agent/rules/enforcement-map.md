@@ -251,6 +251,8 @@ At threshold, spawns haiku subagent to review session transcript for:
 
 Uses `decision: "block"` output format to force agent attention. Insight capture is advisory only (no block).
 
+The subagent receives **active skill context** (`active_skill`, `skill_scope`) extracted from the transcript. Actions that fall within the active skill's authorized scope are not flagged as violations — e.g., `/dogfood` authorizes SKILL.md edits; `/pull` authorizes code changes.
+
 ### Random Reminders (Between Checks)
 
 Between threshold checks, randomly injects soft reminders from `hooks/data/reminders.txt`.
