@@ -15,12 +15,17 @@ on:
         description: 'Optional focus area (e.g., "staleness only", "backfill and triage")'
         required: false
         type: string
+      batch_limit:
+        description: 'Max items to process in Phase 4b'
+        required: false
+        default: '100'
+        type: string
 
 jobs:
   sleep-cycle:
     name: Sleep Cycle
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     permissions:
       contents: write
       pull-requests: write
@@ -103,16 +108,17 @@ jobs:
             - orphan_count > 20 → connect or archive truly disconnected nodes
             - All healthy → densify edges (add depends_on between related tasks)
 
-            Process at most 30 items per cycle. For obvious connections (task title
-            mentions the project), apply autonomously. For ambiguous ones, flag in
-            the cycle summary for human review.
+            Process at most ${{ inputs.batch_limit || vars.SLEEP_BATCH_LIMIT || 100 }} items per cycle.
+            Use `mcp__pkb__bulk_reparent` for efficiency when processing multiple items with
+            the same parent. For obvious connections (task title mentions the project), apply
+            autonomously. For ambiguous ones, flag in the cycle summary for human review.
 
             ## Phase 5: Brain Sync
             Re-run `graph_stats` and compare to Phase 0 baseline. Note what changed.
             Commit any changes and push. Use message: "sleep: periodic consolidation"
 
             ## Rules
-            - You have a 15-minute time budget. Exit cleanly when time is up.
+            - You have a 20-minute time budget. Exit cleanly when time is up.
             - Surfaces > decisions. Flag things for human review, don't auto-fix judgment calls.
             - Be incremental. Only process what's new since the last sleep cycle.
             - Write a summary of what you did to $GITHUB_STEP_SUMMARY.
