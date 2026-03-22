@@ -696,11 +696,12 @@ class TaskStorage:
         Returns:
             List of ready tasks sorted by priority
         """
-        # Get all completed task IDs for dependency checking
-        completed_ids = {t.id for t in self._iter_all_tasks() if t.status.is_terminal}
+        # Collect all tasks once to avoid double iteration over disk
+        all_tasks = list(self._iter_all_tasks())
+        completed_ids = {t.id for t in all_tasks if t.status.is_terminal}
 
         ready = []
-        for task in self._iter_all_tasks():
+        for task in all_tasks:
             if project is not None and task.project != project:
                 continue
 
@@ -716,10 +717,12 @@ class TaskStorage:
         Returns:
             List of blocked tasks
         """
-        completed_ids = {t.id for t in self._iter_all_tasks() if t.status.is_terminal}
+        # Collect all tasks once to avoid double iteration over disk
+        all_tasks = list(self._iter_all_tasks())
+        completed_ids = {t.id for t in all_tasks if t.status.is_terminal}
 
         blocked = []
-        for task in self._iter_all_tasks():
+        for task in all_tasks:
             if task.is_blocked(completed_ids):
                 blocked.append(task)
 

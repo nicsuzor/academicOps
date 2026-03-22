@@ -321,8 +321,8 @@ class TaskIndex:
         completed_ids = {tid for tid, e in self._tasks.items() if TaskStatus(e.status).is_terminal}
 
         for task_id, entry in self._tasks.items():
-            # Skip completed tasks
-            if TaskStatus(entry.status).is_terminal:
+            # Skip completed tasks (reuse computed set instead of re-parsing enum)
+            if task_id in completed_ids:
                 continue
 
             # Check if blocked
