@@ -179,17 +179,16 @@ prerelease:
 
 # Show current and next version
 nextver:
-	@current=$$(uv run python scripts/build.py --version); \
-	next=$$(echo $$current | awk -F. '{print $$1 "." $$2 "." $$3+1}'); \
+	@current=$$(uv run python scripts/version.py --get); \
+	next=$$(uv run python scripts/version.py --next patch); \
 	echo "Current: v$$current → Suggested Next: v$$next"
 
 # Manual tag and push (Release-please is preferred)
 release:
-	@current=$$(uv run python scripts/build.py --version); \
-	next=$$(echo $$current | awk -F. '{print $$1 "." $$2 "." $$3+1}'); \
+	@next=$$(uv run python scripts/version.py --next patch); \
 	branch=$$(git rev-parse --abbrev-ref HEAD); \
 	echo "Manual Release v$$next on $$branch..."; \
-	git tag "v$$next" && \
+	git tag -a "v$$next" -m "release v$$next" && \
 	git push origin "$$branch" "v$$next" && \
 	echo "✓ Released v$$next (Note: Release-please PR might be out of sync)"
 

@@ -119,17 +119,23 @@ jobs:
       - name: Get project version
         id: version
         run: |
-          BASE_VERSION=$(uv run python scripts/build.py --version)
+          # Use scripts/version.py which is more robust than raw build.py calls
+          chmod +x scripts/version.py
+          BASE_VERSION=$(uv run python scripts/version.py --get)
           echo "base_version=$BASE_VERSION" >> $GITHUB_OUTPUT
 
           if [ "${{ steps.release_type.outputs.type }}" = "testing" ]; then
-            # Append pre-release suffix to the CURRENT stable version.
-            # Uses semver pre-release format: X.Y.Z-dev.N
-            # The next `make release` will bump to X.Y.(Z+1), which is
-            # strictly greater than any X.Y.Z-dev.N pre-release.
-            # Strip any existing pre-release suffix first (idempotent).
-            CLEAN_VERSION=$(echo "$BASE_VERSION" | sed -E 's/([-+\.]dev|[-+]).*//')
-            VERSION="${CLEAN_VERSION}-dev.${{ github.run_number }}"
+            # Ensure pre-release versions are strictly increasing and semver-compliant.
+            # If base version is already a dev version (e.g. 0.3.13-dev.49),
+            # append the run number to ensure uniqueness without losing the commit count.
+            if [[ "$BASE_VERSION" == *-dev.* ]]; then
+              # Already a dev version from git describe, append run number for CI uniqueness
+              VERSION="${BASE_VERSION}.${{ github.run_number }}"
+            else
+              # Stable base, start a new dev sequence
+              CLEAN_VERSION=$(echo "$BASE_VERSION" | sed -E 's/([-+\.]dev|[-+]).*//')
+              VERSION="${CLEAN_VERSION}-dev.${{ github.run_number }}"
+            fi
             echo "version=$VERSION" >> $GITHUB_OUTPUT
             echo "Testing version: $VERSION (base: $BASE_VERSION)"
           else
