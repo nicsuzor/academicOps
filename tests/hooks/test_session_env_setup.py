@@ -87,7 +87,6 @@ class TestSessionEnvSetup:
             "QA_GATE_MODE",
             "CUSTODIET_GATE_MODE",
             "HYDRATION_GATE_MODE",
-            "COMMIT_GATE_MODE",
         ]
         # Set gate mode vars to "" to simulate them being absent.
         # os.environ.get(var) returns "" which is falsy, triggering persistence.

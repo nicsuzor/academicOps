@@ -118,7 +118,6 @@ class TestBuildDockerCmd:
             "CUSTODIET_GATE_MODE": "block",
             "HANDOVER_GATE_MODE": "warn",
             "QA_GATE_MODE": "warn",
-            "COMMIT_GATE_MODE": "warn",
             "CUSTODIET_TOOL_CALL_THRESHOLD": "50",
         }
         cmd = self._build(env=env)
@@ -127,7 +126,6 @@ class TestBuildDockerCmd:
         assert "CUSTODIET_GATE_MODE=block" in env_args
         assert "HANDOVER_GATE_MODE=warn" in env_args
         assert "QA_GATE_MODE=warn" in env_args
-        assert "COMMIT_GATE_MODE=warn" in env_args
         assert "CUSTODIET_TOOL_CALL_THRESHOLD=50" in env_args
 
     def test_forwards_aops_prefixed_env(self):
