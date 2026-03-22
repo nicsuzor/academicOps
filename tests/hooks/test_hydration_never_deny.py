@@ -46,11 +46,11 @@ def _reinit_gates():
 def _pin_non_hydration_gate_modes(monkeypatch):
     """Pin non-hydration gate env vars to prevent leaks from other test files.
 
-    HYDRATION_GATE_MODE defaults to 'warn' here as a safe baseline.
+    HYDRATION_GATE_MODE defaults to 'off' here as a safe baseline.
     Tests that need both warn/block modes should use the hydration_mode
-    fixture (parameterized across warn/block), which overrides this default.
+    fixture (parameterized across off/warn/block), which overrides this default.
     """
-    monkeypatch.setenv("HYDRATION_GATE_MODE", "warn")
+    monkeypatch.setenv("HYDRATION_GATE_MODE", "off")
     monkeypatch.setenv("CUSTODIET_GATE_MODE", "block")
     monkeypatch.setenv("QA_GATE_MODE", "block")
     monkeypatch.setenv("HANDOVER_GATE_MODE", "warn")
@@ -60,9 +60,11 @@ def _pin_non_hydration_gate_modes(monkeypatch):
     _reinit_gates()
 
 
-@pytest.fixture(params=["warn", "block"], ids=["hydration=warn", "hydration=block"])
+@pytest.fixture(
+    params=["off", "warn", "block"], ids=["hydration=off", "hydration=warn", "hydration=block"]
+)
 def hydration_mode(request, monkeypatch):
-    """Run hydration gate tests in both warn and block modes."""
+    """Run hydration gate tests in off, warn, and block modes."""
     monkeypatch.setenv("HYDRATION_GATE_MODE", request.param)
     _reinit_gates()
     return request.param
@@ -264,6 +266,7 @@ class TestReadToolSubjectToHydration:
     ):
         """Read should get mode-appropriate verdict when hydration gate is closed.
 
+        off mode -> None (allow)
         warn mode -> WARN (tool allowed, agent warned to hydrate)
         block mode -> DENY (tool blocked until hydration)
         """
@@ -282,6 +285,10 @@ class TestReadToolSubjectToHydration:
 
         router = HookRouter()
         result = router._dispatch_gates(ctx, state)
+
+        if hydration_mode == "off":
+            assert result is None
+            return
 
         expected = GateVerdict.WARN if hydration_mode == "warn" else GateVerdict.DENY
         assert result is not None, (

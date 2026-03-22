@@ -385,7 +385,8 @@ HANDOVER_GATE_MODE = _gate_mode("HANDOVER_GATE_MODE")
 QA_GATE_MODE = _gate_mode("QA_GATE_MODE")
 CUSTODIET_GATE_MODE = _gate_mode("CUSTODIET_GATE_MODE")
 CUSTODIET_TOOL_CALL_THRESHOLD = int(os.environ.get("CUSTODIET_TOOL_CALL_THRESHOLD", "50"))
-HYDRATION_GATE_MODE = _gate_mode("HYDRATION_GATE_MODE")
+HYDRATION_GATE_MODE = os.environ.get("HYDRATION_GATE_MODE", "off")
+COMMIT_GATE_MODE = _gate_mode("COMMIT_GATE_MODE")
 
 # =============================================================================
 # PKB PREFIX NORMALIZATION

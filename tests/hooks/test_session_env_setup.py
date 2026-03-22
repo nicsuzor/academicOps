@@ -68,11 +68,15 @@ class TestSessionEnvSetup:
         assert "export AOPS_SESSION_STATE_DIR=/tmp/aops/sessions" in content
 
         # Gate mode env vars are set in pytest.ini_options env, so they are
-        # already in the environment — the hook should NOT re-persist them.
+        # already in the environment — the hook should NOT re-persist them
+        # (unless they are enforced by agent-env-map.conf literals).
         assert "CUSTODIET_GATE_MODE" not in content
-        assert "HYDRATION_GATE_MODE" not in content
         assert "QA_GATE_MODE" not in content
         assert "HANDOVER_GATE_MODE" not in content
+
+        # HYDRATION_GATE_MODE is now enforced by agent-env-map.conf literal
+        # to ensure friction is removed everywhere (aops-c255c989).
+        assert "export HYDRATION_GATE_MODE=off" in content
 
     def test_run_session_env_setup_persists_gate_mode_defaults_when_missing(self, tmp_path):
         """When gate mode env vars are absent, defaults should be persisted via CLAUDE_ENV_FILE.
@@ -114,6 +118,9 @@ class TestSessionEnvSetup:
         # Gate mode defaults should have been written since vars were absent.
         for var in gate_vars:
             assert var in content, f"{var} should be persisted when missing from env"
+
+        # Specifically verify hydration gate is off (aops-c255c989)
+        assert "export HYDRATION_GATE_MODE=off" in content
 
     def test_run_session_env_setup_ignored_for_other_events(self, temp_env_file):
         """Verify setup is ignored for non-SessionStart events."""
