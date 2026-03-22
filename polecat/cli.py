@@ -18,6 +18,7 @@ if str(REPO_ROOT / "aops-core") not in sys.path:
 import click
 from lib.agent_env import apply_env_mappings
 from manager import PolecatManager
+from observability import metrics
 from validation import TaskIDValidationError, validate_task_id_or_raise
 
 # Max turns for headless Claude runs — must be high enough to accommodate hook
@@ -3008,8 +3009,6 @@ def watch(ctx, interval, stall_threshold, project):
             )
 
             # Record periodic metrics for dashboard
-            from observability import metrics
-
             metrics.record_queue_depth("ready", count=ready_count, project=project)
             metrics.record_queue_depth("active", count=active_count, project=project)
             metrics.record_queue_depth("merge_ready", count=merge_ready_count, project=project)
