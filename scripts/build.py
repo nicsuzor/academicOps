@@ -718,6 +718,7 @@ def build_aops_core(
         "workflows",
         "framework",
         "AXIOMS.md",
+        "BUTLER.md",
         "CONSTRAINTS.md",
         "CORE.md",
         "HEURISTICS.md",

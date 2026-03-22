@@ -178,7 +178,6 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
         CUSTODIET_GATE_MODE,
         CUSTODIET_TOOL_CALL_THRESHOLD,
         HANDOVER_GATE_MODE,
-        HYDRATION_GATE_MODE,
         QA_GATE_MODE,
     )
 

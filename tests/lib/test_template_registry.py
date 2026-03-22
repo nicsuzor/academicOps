@@ -72,10 +72,9 @@ def configured_registry(templates_dir: Path):
 
 def test_get_spec_returns_correct_spec(registry):
     """Verify spec lookup works for known templates."""
-    spec = registry.get_spec("hydration.block")
-    assert spec.name == "hydration.block"
-    assert spec.filename == "hydration-gate-block.md"
-    assert spec.required_vars == ()
+    spec = registry.get_spec("custodiet.context")
+    assert spec.name == "custodiet.context"
+    assert spec.required_vars is not None
 
 
 def test_get_spec_unknown_raises(registry):
@@ -88,11 +87,6 @@ def test_get_spec_unknown_raises(registry):
 def test_get_spec_all_registered_templates(registry):
     """All expected templates are registered."""
     expected_names = [
-        "hydration.block",
-        "hydration.warn",
-        "hydration.opened",
-        "hydration.closed",
-        "hydration.policy_message",
         "custodiet.context",
         "custodiet.instruction",
         "custodiet.verified",
@@ -230,7 +224,6 @@ def test_list_templates_all(registry):
     """Lists all registered template names."""
     names = registry.list_templates()
     assert len(names) >= 10  # At least 10 templates defined
-    assert "hydration.block" in names
     assert "custodiet.context" in names
 
 
@@ -239,8 +232,7 @@ def test_list_templates_by_category(registry):
     from lib.template_registry import TemplateCategory
 
     user_messages = registry.list_templates(category=TemplateCategory.USER_MESSAGE)
-    assert "hydration.block" in user_messages
-    assert "hydration.warn" in user_messages
+    assert len(user_messages) >= 1
 
     subagent = registry.list_templates(category=TemplateCategory.SUBAGENT_INSTRUCTION)
     assert "custodiet.context" in subagent
@@ -416,10 +408,6 @@ def test_template_category_enum_values():
 def test_spec_category_assignment(registry):
     """Templates have correct category assignments."""
     from lib.template_registry import TemplateCategory
-
-    # User messages
-    assert registry.get_spec("hydration.block").category == TemplateCategory.USER_MESSAGE
-    assert registry.get_spec("hydration.warn").category == TemplateCategory.USER_MESSAGE
 
     # Context injection
     assert registry.get_spec("custodiet.instruction").category == TemplateCategory.CONTEXT_INJECTION

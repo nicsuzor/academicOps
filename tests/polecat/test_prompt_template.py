@@ -77,14 +77,14 @@ def test_build_polecat_prompt_basic():
     assert FINISH_LOCAL_TASK.format(task_id="task-123") in prompt
 
 
-def test_polecat_prompt_does_not_bypass_hydration():
-    """Polecat prompts must NOT start with '.' — hydration provides skill context.
+def test_polecat_prompt_does_not_start_with_dot():
+    """Polecat prompts must NOT start with '.' prefix.
 
-    The '.' prefix was removed so polecats receive hydration (e.g., testing
-    philosophy from python-dev skill for test-writing tasks).
+    The '.' prefix was removed so polecats receive proper skill context
+    (e.g., testing philosophy from python-dev skill for test-writing tasks).
     """
     prompt = build_polecat_prompt(task_id="task-1", task_title="Title")
-    assert not prompt.startswith("."), "Polecat prompt must not bypass hydration with '.' prefix"
+    assert not prompt.startswith("."), "Polecat prompt must not start with '.' prefix"
 
 
 def test_build_polecat_prompt_issue():

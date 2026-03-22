@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regression test for ToolSearch bypass in hydration gate."""
+"""Regression test for ToolSearch bypass in gates."""
 
 import sys
 from pathlib import Path
@@ -14,7 +14,6 @@ import os
 from hooks.router import HookRouter
 from hooks.schemas import HookContext
 from lib.gate_model import GateVerdict
-from lib.gate_types import GateStatus
 from lib.gates.registry import GateRegistry
 from lib.session_state import SessionState
 
@@ -23,8 +22,6 @@ def test_toolsearch_bypass():
     GateRegistry.initialize()
     router = HookRouter()
     state = SessionState.create("test-bypass")
-    state.gates["hydration"].status = GateStatus.CLOSED
-    state.gates["hydration"].metrics["temp_path"] = "/tmp/h.md"
 
     # 1. Infrastructure tool search (select:*) should be ALLOWED
     ctx_infra = HookContext(
@@ -65,7 +62,6 @@ def test_toolsearch_bypass():
     else:
         assert result_read is not None
         assert result_read.verdict in (GateVerdict.WARN, GateVerdict.DENY)
-
 
 if __name__ == "__main__":
     test_toolsearch_bypass()

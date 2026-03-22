@@ -65,7 +65,6 @@ class TestRouterExitCodePropagation:
             env={
                 **os.environ,
                 "PYTHONPATH": str(router_path.parent.parent),
-                "HYDRATION_GATE_MODE": "block",
             },
         )
 

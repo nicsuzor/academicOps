@@ -12,7 +12,7 @@ def _clear_env_vars(monkeypatch):
         "AOPS_SESSIONS",
         "AOPS_SESSION_STATE_DIR",
         "AOPS_HOOK_LOG_PATH",
-        "AOPS_GATE_FILE_HYDRATION",
+        "AOPS_GATE_FILE_CUSTODIET",
         "AOPS_GATE_FILE_CUSTODIET",
         "GEMINI_SESSION_ID",
     )
@@ -57,9 +57,9 @@ class TestGetGateFilePath:
 
     def test_env_override(self):
         """Test that AOPS_GATE_FILE_<GATE> environment variable overrides the path."""
-        with patch.dict(os.environ, {"AOPS_GATE_FILE_HYDRATION": "/tmp/override-hydration.md"}):
-            path = get_gate_file_path("hydration", "session-123")
-            assert str(path) == "/tmp/override-hydration.md"
+        with patch.dict(os.environ, {"AOPS_GATE_FILE_CUSTODIET": "/tmp/override-custodiet.md"}):
+            path = get_gate_file_path("custodiet", "session-123")
+            assert str(path) == "/tmp/override-custodiet.md"
 
     @patch("lib.session_paths.Path.home")
     @patch("lib.session_paths.get_claude_project_folder")
@@ -117,10 +117,10 @@ class TestGetGateFilePath:
 
         # Use AOPS_SESSION_STATE_DIR to trigger Gemini detection for a UUID session
         with patch.dict(os.environ, {"AOPS_SESSION_STATE_DIR": str(gemini_state_dir)}):
-            path = get_gate_file_path("hydration", session_id, date="2024-05-20")
+            path = get_gate_file_path("custodiet", session_id, date="2024-05-20")
 
             assert "/.gemini/tmp/fakehash/logs" in str(path)
-            assert "20240520-550e8400-hydration.md" in str(path)
+            assert "20240520-550e8400-custodiet.md" in str(path)
             assert path.parent == gemini_logs_dir
 
     def test_gemini_missing_logs_dir_raises_error(self):
@@ -130,4 +130,4 @@ class TestGetGateFilePath:
                 with pytest.raises(
                     ValueError, match="Gemini session detected but no logs directory configured"
                 ):
-                    get_gate_file_path("hydration", "some-id")
+                    get_gate_file_path("custodiet", "some-id")

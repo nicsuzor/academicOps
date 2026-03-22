@@ -1,299 +1,4 @@
 {
-  "legacy_fabricated_scenarios": [
-    {
-      "id": "legacy_placeholder",
-      "description": "Legacy fabricated scenario (deprecated). Use gate_scenarios_live.json for real coverage.",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "ls"
-      },
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed"
-        }
-      }
-    }
-  ],
-  "hydration_gate_blocks_write_tools": [
-    {
-      "id": "syn-hydration-bash-cmd",
-      "description": "Bash blocked by hydration gate (real tool name from Claude sessions)",
-      "_synthetic": "real-tool-synthetic-gate",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "uv run pytest tests/hooks/test_gate_verdicts.py -v",
-        "description": "Run gate verdict tests"
-      },
-      "is_subagent": false,
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      },
-      "expected": {
-        "verdict": "warn"
-      }
-    },
-    {
-      "id": "syn-hydration-edit-file",
-      "description": "Edit tool blocked by hydration gate (real file path pattern from live sessions)",
-      "_synthetic": "real-tool-synthetic-gate",
-      "hook_event": "PreToolUse",
-      "tool_name": "Edit",
-      "tool_input": {
-        "file_path": "/home/debian/aops/aops-core/hooks/gate_config.py",
-        "old_string": "# TODO",
-        "new_string": "# Fixed"
-      },
-      "is_subagent": false,
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      },
-      "expected": {
-        "verdict": "warn"
-      }
-    },
-    {
-      "id": "syn-hydration-write-file",
-      "description": "Write tool blocked by hydration gate",
-      "_synthetic": "real-tool-synthetic-gate",
-      "hook_event": "PreToolUse",
-      "tool_name": "Write",
-      "tool_input": {
-        "file_path": "/tmp/output.md",
-        "content": "# Output\n"
-      },
-      "is_subagent": false,
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      },
-      "expected": {
-        "verdict": "warn"
-      }
-    },
-    {
-      "id": "syn-hydration-run-shell",
-      "description": "Gemini run_shell_command blocked by hydration gate (real tool from Gemini sessions)",
-      "_synthetic": "real-tool-synthetic-gate",
-      "hook_event": "PreToolUse",
-      "tool_name": "run_shell_command",
-      "tool_input": {
-        "command": "grep -r 'infrastructure' /home/suzor/aops/aops-core/"
-      },
-      "is_subagent": false,
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      },
-      "expected": {
-        "verdict": "warn"
-      }
-    }
-  ],
-  "hydration_gate_warns_read_only": [
-    {
-      "id": "syn-hydration-read-gate-closed",
-      "description": "Read tool subject to hydration gate (not exempt unlike infrastructure)",
-      "_synthetic": "real-tool-synthetic-gate",
-      "hook_event": "PreToolUse",
-      "tool_name": "Read",
-      "tool_input": {
-        "file_path": "/home/debian/aops/aops-core/hooks/gate_config.py"
-      },
-      "is_subagent": false,
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      },
-      "expected": {
-        "verdict": "warn"
-      }
-    },
-    {
-      "id": "syn-hydration-glob-gate-closed",
-      "description": "Glob tool subject to hydration gate (forces hydration before exploration)",
-      "_synthetic": "real-tool-synthetic-gate",
-      "hook_event": "PreToolUse",
-      "tool_name": "Glob",
-      "tool_input": {
-        "pattern": "**/*.py"
-      },
-      "is_subagent": false,
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      },
-      "expected": {
-        "verdict": "warn"
-      }
-    },
-    {
-      "id": "syn-hydration-read-file-gemini",
-      "description": "Gemini read_file subject to hydration gate",
-      "_synthetic": "real-tool-synthetic-gate",
-      "hook_event": "PreToolUse",
-      "tool_name": "read_file",
-      "tool_input": {
-        "file_path": "/Users/suzor/.gemini/tmp/brain/logs/20260303-a51fc272-hydration.md"
-      },
-      "is_subagent": false,
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      },
-      "expected": {
-        "verdict": "warn"
-      }
-    }
-  ],
-  "hydration_gate_allows_always_available": [
-    {
-      "id": "syn-infra-pkb-get-task",
-      "description": "PKB get_task bypasses hydration gate (infrastructure category)",
-      "_synthetic": "real-tool-synthetic-gate",
-      "hook_event": "PreToolUse",
-      "tool_name": "mcp__pkb__get_task",
-      "tool_input": {
-        "task_id": "task-aops-001"
-      },
-      "is_subagent": false,
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      },
-      "expected": {
-        "verdict": "allow"
-      }
-    },
-    {
-      "id": "syn-infra-ask-user-question",
-      "description": "AskUserQuestion bypasses hydration gate (always_available)",
-      "_synthetic": "real-tool-synthetic-gate",
-      "hook_event": "PreToolUse",
-      "tool_name": "AskUserQuestion",
-      "tool_input": {
-        "questions": [
-          { "question": "Which task should I work on?", "header": "Task", "options": [], "multiSelect": false }
-        ]
-      },
-      "is_subagent": false,
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      },
-      "expected": {
-        "verdict": "allow"
-      }
-    },
-    {
-      "id": "syn-infra-pkb-create-task",
-      "description": "PKB create_task bypasses hydration gate (infrastructure)",
-      "_synthetic": "real-tool-synthetic-gate",
-      "hook_event": "PreToolUse",
-      "tool_name": "mcp__plugin_aops-core_pkb__create_task",
-      "tool_input": {
-        "title": "Gate hardening test task",
-        "description": "Manufactured from live session patterns"
-      },
-      "is_subagent": false,
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      },
-      "expected": {
-        "verdict": "allow"
-      }
-    }
-  ],
-  "hydration_gate_allows_when_open": [
-    {
-      "id": "syn-open-bash-allowed",
-      "description": "Bash allowed when hydration gate is open",
-      "_synthetic": "real-tool-synthetic-gate",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "git status"
-      },
-      "is_subagent": false,
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      },
-      "expected": {
-        "verdict": "allow"
-      }
-    },
-    {
-      "id": "syn-open-edit-allowed",
-      "description": "Edit allowed when hydration gate is open",
-      "_synthetic": "real-tool-synthetic-gate",
-      "hook_event": "PreToolUse",
-      "tool_name": "Edit",
-      "tool_input": {
-        "file_path": "/home/debian/aops/aops-core/lib/gates/definitions.py",
-        "old_string": "# TODO",
-        "new_string": "# Done"
-      },
-      "is_subagent": false,
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      },
-      "expected": {
-        "verdict": "allow"
-      }
-    }
-  ],
   "read_only_bypasses_custodiet": [
     {
       "id": "syn-custodiet-read-bypass",
@@ -368,14 +73,7 @@
       },
       "is_subagent": true,
       "subagent_type": "hydrator",
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      },
+      "gate_overrides": {},
       "expected": {
         "verdict": "allow"
       }
@@ -392,14 +90,7 @@
       },
       "is_subagent": true,
       "subagent_type": "aops-core:hydrator",
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      },
+      "gate_overrides": {},
       "expected": {
         "verdict": "allow"
       }
@@ -438,12 +129,6 @@
       "is_subagent": true,
       "subagent_type": "aops-core:hydrator",
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 75
         }
@@ -465,12 +150,6 @@
       "is_subagent": true,
       "subagent_type": "aops-core:audit",
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 75
         }
@@ -490,14 +169,7 @@
       },
       "is_subagent": true,
       "subagent_type": "butler",
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      },
+      "gate_overrides": {},
       "expected": {
         "verdict": "allow"
       }
@@ -535,14 +207,7 @@
       },
       "is_subagent": true,
       "subagent_type": "hydrator",
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      },
+      "gate_overrides": {},
       "expected": {
         "verdict": "allow"
       }
@@ -560,14 +225,7 @@
       },
       "is_subagent": true,
       "subagent_type": "explorer",
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      },
+      "gate_overrides": {},
       "expected": {
         "verdict": "warn"
       }
@@ -585,14 +243,7 @@
       },
       "is_subagent": true,
       "subagent_type": "worker",
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      },
+      "gate_overrides": {},
       "expected": {
         "verdict": "warn"
       }
@@ -610,9 +261,6 @@
       },
       "is_subagent": false,
       "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        },
         "custodiet": {
           "ops_since_open": 75
         }
@@ -634,9 +282,6 @@
       },
       "is_subagent": false,
       "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        },
         "custodiet": {
           "ops_since_open": 75
         }
@@ -656,9 +301,6 @@
       },
       "is_subagent": false,
       "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        },
         "custodiet": {
           "ops_since_open": 75
         }
@@ -759,7 +401,7 @@
   "combined_gate_interactions": [
     {
       "id": "syn-combined-both-gates-bash-deny",
-      "description": "Bash blocked DENY when both hydration(warn)+custodiet(block) fire: deny>warn. Real command from live sessions.",
+      "description": "Bash blocked DENY when custodiet(block) fires. Real command from live sessions.",
       "_synthetic": "real-tool-synthetic-gate",
       "hook_event": "PreToolUse",
       "tool_name": "Bash",
@@ -769,12 +411,6 @@
       },
       "is_subagent": false,
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 75
         }
@@ -785,7 +421,7 @@
     },
     {
       "id": "syn-combined-both-gates-edit-deny",
-      "description": "Edit blocked DENY when both hydration+custodiet fire. Real file path from live sessions.",
+      "description": "Edit blocked DENY when custodiet fires. Real file path from live sessions.",
       "_synthetic": "real-tool-synthetic-gate",
       "hook_event": "PreToolUse",
       "tool_name": "Edit",
@@ -796,12 +432,6 @@
       },
       "is_subagent": false,
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 75
         }
@@ -812,7 +442,7 @@
     },
     {
       "id": "syn-combined-custodiet-only-deny",
-      "description": "Bash blocked DENY by custodiet when hydration gate is open (no hydration interference)",
+      "description": "Bash blocked DENY by custodiet (custodiet at threshold)",
       "_synthetic": "real-tool-synthetic-gate",
       "hook_event": "PreToolUse",
       "tool_name": "Bash",
@@ -821,9 +451,6 @@
       },
       "is_subagent": false,
       "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        },
         "custodiet": {
           "ops_since_open": 75
         }
@@ -831,34 +458,6 @@
       "expected": {
         "not_allow": true,
         "verdict": "deny"
-      }
-    },
-    {
-      "id": "syn-combined-hydration-only-warn",
-      "description": "Bash warned by hydration gate only (custodiet ok, hydration mode=warn in test env)",
-      "_synthetic": "real-tool-synthetic-gate",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "ls -la"
-      },
-      "is_subagent": false,
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
-        "custodiet": {
-          "ops_since_open": 5
-        }
-      },
-      "expected": {
-        "verdict_in": [
-          "warn",
-          "deny"
-        ]
       }
     },
     {
@@ -872,75 +471,12 @@
       },
       "is_subagent": false,
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 75
         }
       },
       "expected": {
         "verdict": "deny"
-      }
-    }
-  ],
-  "hydration_trigger_opens_gate": [
-    {
-      "id": "syn-trigger-hydrator-claude-pretooluse",
-      "description": "Claude Agent(prompt-hydrator) on PreToolUse opens hydration gate JIT. Real session data from 20260303-f45b1f80.",
-      "_synthetic": "real-tool-synthetic-gate",
-      "hook_event": "PreToolUse",
-      "tool_name": "Agent",
-      "tool_input": {
-        "subagent_type": "aops-core:hydrator",
-        "prompt": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-f45b1f80-hydration.md",
-        "description": "Hydrate prompt",
-        "run_in_background": true
-      },
-      "is_subagent": false,
-      "subagent_type": "aops-core:hydrator",
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      },
-      "expected": {
-        "verdict": "allow",
-        "gate_after": {
-          "hydration": "open"
-        }
-      }
-    },
-    {
-      "id": "syn-trigger-hydrator-gemini-pretooluse",
-      "description": "Gemini prompt-hydrator (bare agent name) on PreToolUse opens gate. Real session data from a51fc272.",
-      "_synthetic": "real-tool-synthetic-gate",
-      "hook_event": "PreToolUse",
-      "tool_name": "hydrator",
-      "tool_input": {
-        "query": "/Users/suzor/.gemini/tmp/brain/logs/20260303-a51fc272-hydration.md"
-      },
-      "is_subagent": false,
-      "subagent_type": "hydrator",
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      },
-      "expected": {
-        "verdict": "allow",
-        "gate_after": {
-          "hydration": "open"
-        }
       }
     }
   ],
@@ -1020,9 +556,6 @@
       },
       "is_subagent": false,
       "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        },
         "custodiet": {
           "ops_since_open": 75
         }
@@ -1045,9 +578,6 @@
       },
       "is_subagent": false,
       "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        },
         "custodiet": {
           "ops_since_open": 75
         }
@@ -1070,9 +600,6 @@
       },
       "is_subagent": false,
       "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        },
         "custodiet": {
           "ops_since_open": 75
         }
@@ -1093,12 +620,6 @@
       },
       "is_subagent": false,
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 75
         }
@@ -1106,136 +627,6 @@
       "expected": {
         "verdict": "allow",
         "gemini_decision": "allow"
-      }
-    }
-  ],
-  "hydration_output_format_synthetic": [
-    {
-      "id": "syn-hydration-output-bash",
-      "description": "Bash blocked by hydration gate: warn-mode→Claude allow/Gemini allow; block-mode→deny/deny. Real command from live sessions.",
-      "_synthetic": "real-tool-synthetic-gate",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "uv run pytest tests/hooks/test_gate_verdicts.py -v",
-        "description": "Run gate tests"
-      },
-      "is_subagent": false,
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      },
-      "expected": {
-        "warn_mode": {
-          "verdict": "warn",
-          "claude_permission_decision": "allow",
-          "gemini_decision": "allow"
-        },
-        "block_mode": {
-          "verdict": "deny",
-          "claude_permission_decision": "deny",
-          "gemini_decision": "deny"
-        }
-      }
-    },
-    {
-      "id": "syn-hydration-output-edit",
-      "description": "Edit blocked by hydration gate: warn→allow, block→deny. Real file path from live sessions.",
-      "_synthetic": "real-tool-synthetic-gate",
-      "hook_event": "PreToolUse",
-      "tool_name": "Edit",
-      "tool_input": {
-        "file_path": "/home/debian/aops/aops-core/hooks/gate_config.py",
-        "old_string": "infrastructure",
-        "new_string": "infrastructure"
-      },
-      "is_subagent": false,
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      },
-      "expected": {
-        "warn_mode": {
-          "verdict": "warn",
-          "claude_permission_decision": "allow",
-          "gemini_decision": "allow"
-        },
-        "block_mode": {
-          "verdict": "deny",
-          "claude_permission_decision": "deny",
-          "gemini_decision": "deny"
-        }
-      }
-    },
-    {
-      "id": "syn-hydration-output-run-shell",
-      "description": "Gemini run_shell_command blocked by hydration: warn→allow, block→deny",
-      "_synthetic": "real-tool-synthetic-gate",
-      "hook_event": "PreToolUse",
-      "tool_name": "run_shell_command",
-      "tool_input": {
-        "command": "grep -r 'always_available' /home/suzor/aops/"
-      },
-      "is_subagent": false,
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      },
-      "expected": {
-        "warn_mode": {
-          "verdict": "warn",
-          "claude_permission_decision": "allow",
-          "gemini_decision": "allow"
-        },
-        "block_mode": {
-          "verdict": "deny",
-          "claude_permission_decision": "deny",
-          "gemini_decision": "deny"
-        }
-      }
-    },
-    {
-      "id": "syn-hydration-output-write",
-      "description": "Write tool blocked by hydration: warn→allow, block→deny",
-      "_synthetic": "real-tool-synthetic-gate",
-      "hook_event": "PreToolUse",
-      "tool_name": "Write",
-      "tool_input": {
-        "file_path": "/tmp/output.py",
-        "content": "print('hello')"
-      },
-      "is_subagent": false,
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      },
-      "expected": {
-        "warn_mode": {
-          "verdict": "warn",
-          "claude_permission_decision": "allow",
-          "gemini_decision": "allow"
-        },
-        "block_mode": {
-          "verdict": "deny",
-          "claude_permission_decision": "deny",
-          "gemini_decision": "deny"
-        }
       }
     }
   ]

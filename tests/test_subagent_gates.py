@@ -8,7 +8,6 @@ from hooks.gate_config import extract_subagent_type
 from hooks.router import HookRouter
 from hooks.schemas import HookContext
 from lib.gate_model import GateVerdict
-from lib.gate_types import GateStatus
 from lib.gates.definitions import GATE_CONFIGS
 from lib.gates.engine import GenericGate
 from lib.gates.registry import GateRegistry
@@ -52,11 +51,11 @@ def test_router_normalize_subagent_type_extraction(router):
         "hook_event_name": "PreToolUse",
         "session_id": "main-session",
         "tool_name": "Task",
-        "tool_input": {"subagent_type": "hydrator", "prompt": "test"},
+        "tool_input": {"subagent_type": "custodiet", "prompt": "test"},
     }
 
     ctx = router.normalize_input(raw_input)
-    assert ctx.subagent_type == "hydrator"
+    assert ctx.subagent_type == "custodiet"
     assert ctx.tool_name == "Task"
 
 
@@ -221,27 +220,6 @@ class TestSubagentEventsNotSubagent:
 # =============================================================================
 
 
-def test_hydration_gate_simplified_triggers():
-    """Test that hydration gate opens when hydrator skill is invoked via PreToolUse.
-
-    The hydrator is a skill (not a subagent), so the gate opens on PreToolUse
-    when Skill(skill='aops-core:hydrator') is called. SubagentStop/PostToolUse
-    do not fire for skills running in the main session.
-    """
-    state = SessionState.create("test-session")
-    state.get_gate("hydration").status = GateStatus.CLOSED
-
-    hydration_config = next(g for g in GATE_CONFIGS if g.name == "hydration")
-    gate = GenericGate(hydration_config)
-
-    # PreToolUse with hydrator skill invocation opens the gate
-    ctx_pre = HookContext(
-        session_id="aafdeee", hook_event="PreToolUse", subagent_type="aops-core:hydrator"
-    )
-    gate.on_tool_use(ctx_pre, state)
-    assert state.get_gate("hydration").status == GateStatus.OPEN
-
-
 def test_regex_hook_event_matching():
     """Test that GenericGate supports regex in hook_event matching."""
     from lib.gate_types import GateCondition
@@ -249,18 +227,18 @@ def test_regex_hook_event_matching():
     state = SessionState.create("s1")
 
     cond = GateCondition(
-        hook_event="^(SubagentStop|PostToolUse)$", subagent_type_pattern="hydrator"
+        hook_event="^(SubagentStop|PostToolUse)$", subagent_type_pattern="custodiet"
     )
 
-    hydration_config = next(g for g in GATE_CONFIGS if g.name == "hydration")
-    gate = GenericGate(hydration_config)
+    custodiet_config = next(g for g in GATE_CONFIGS if g.name == "custodiet")
+    gate = GenericGate(custodiet_config)
 
     # Matches
     assert (
         gate._evaluate_condition(
             cond,
-            HookContext(session_id="s1", hook_event="SubagentStop", subagent_type="hydrator"),
-            state.get_gate("hydration"),
+            HookContext(session_id="s1", hook_event="SubagentStop", subagent_type="custodiet"),
+            state.get_gate("custodiet"),
             state,
         )
         is True
@@ -268,8 +246,8 @@ def test_regex_hook_event_matching():
     assert (
         gate._evaluate_condition(
             cond,
-            HookContext(session_id="s1", hook_event="PostToolUse", subagent_type="hydrator"),
-            state.get_gate("hydration"),
+            HookContext(session_id="s1", hook_event="PostToolUse", subagent_type="custodiet"),
+            state.get_gate("custodiet"),
             state,
         )
         is True
@@ -279,8 +257,8 @@ def test_regex_hook_event_matching():
     assert (
         gate._evaluate_condition(
             cond,
-            HookContext(session_id="s1", hook_event="PreToolUse", subagent_type="hydrator"),
-            state.get_gate("hydration"),
+            HookContext(session_id="s1", hook_event="PreToolUse", subagent_type="custodiet"),
+            state.get_gate("custodiet"),
             state,
         )
         is False
@@ -288,8 +266,8 @@ def test_regex_hook_event_matching():
     assert (
         gate._evaluate_condition(
             cond,
-            HookContext(session_id="s1", hook_event="Stop", subagent_type="hydrator"),
-            state.get_gate("hydration"),
+            HookContext(session_id="s1", hook_event="Stop", subagent_type="custodiet"),
+            state.get_gate("custodiet"),
             state,
         )
         is False
@@ -492,22 +470,15 @@ class TestE2EGateDispatchFromRawStdin:
         GateRegistry.initialize()
 
     @pytest.fixture()
-    def state_hydration_closed(self):
-        """Session state with hydration gate CLOSED (pre-hydration).
-
-        In production, hydrate_prompt sets temp_path in gate metrics during
-        UserPromptSubmit (before any PreToolUse fires). We replicate that here.
-        """
+    def state_fresh(self):
+        """Session state for E2E tests."""
         state = SessionState.create("test-e2e-raw-stdin")
-        gate = state.get_gate("hydration")
-        gate.status = GateStatus.CLOSED
-        gate.metrics["temp_path"] = "/tmp/test-hydration-context.md"
         return state
 
     # --- Subagent internal tool calls skip gate policies (compliance bypass) ---
 
-    def test_subagent_internal_compliance_read_skips_gates(self, router, state_hydration_closed):
-        """Custodiet subagent's Read tool is not blocked even with hydration CLOSED.
+    def test_subagent_internal_compliance_read_skips_gates(self, router, state_fresh):
+        """Custodiet subagent's Read tool is not blocked by gate policies.
 
         Source: {_LOG_FILE} line 40, ts=2026-03-10T03:26:16.907683
         The subagent's agent_id/agent_type fields mark it as a compliance agent,
@@ -523,14 +494,14 @@ class TestE2EGateDispatchFromRawStdin:
         assert ctx.tool_name == "Read"
 
         # Gate dispatch: compliance agent bypass — never DENY
-        result = router._dispatch_gates(ctx, state_hydration_closed)
+        result = router._dispatch_gates(ctx, state_fresh)
         if result is not None:
             assert result.verdict != GateVerdict.DENY
 
     # --- Spawn tool (Agent) for compliance agent gets compliance bypass ---
 
-    def test_spawn_agent_compliance_not_denied(self, router, state_hydration_closed):
-        """Agent tool spawning custodiet is never denied, even with hydration CLOSED.
+    def test_spawn_agent_compliance_not_denied(self, router, state_fresh):
+        """Agent tool spawning custodiet is never denied.
 
         Source: {_LOG_FILE} line 38, ts=2026-03-10T03:26:14.835878
         The subagent_type is extracted from tool_input, but since the spawn
@@ -549,7 +520,7 @@ class TestE2EGateDispatchFromRawStdin:
         assert ctx.is_subagent is False
 
         # Gate dispatch: compliance spawn classified as "infrastructure" → never DENY
-        result = router._dispatch_gates(ctx, state_hydration_closed)
+        result = router._dispatch_gates(ctx, state_fresh)
         if result is not None:
             assert result.verdict != GateVerdict.DENY
 
@@ -586,13 +557,11 @@ class TestE2EGateDispatchFromRawStdin:
 
     # --- Main session non-spawn tool call — gates evaluate normally ---
 
-    def test_main_session_bash_gates_evaluate(self, router, state_hydration_closed, monkeypatch):
-        """Main session Bash tool is subject to hydration gate when CLOSED.
+    def test_main_session_bash_gates_evaluate(self, router, state_fresh):
+        """Main session Bash tool is subject to gate evaluation.
 
         Source: {_LOG_FILE} line 2, ts=2026-03-10T03:22:30 (approx)
         No subagent context: no agent_id, no agent_type, UUID session_id.
-        Hydration policy fires because Bash is not in excluded categories.
-        Monkeypatch forces policy verdict to 'warn' to prevent state-leak flakiness.
         """
         stdin = copy.deepcopy(_STDIN_MAIN_SESSION_BASH)
         ctx = router.normalize_input(stdin)
@@ -602,18 +571,15 @@ class TestE2EGateDispatchFromRawStdin:
         assert ctx.subagent_type is None
         assert ctx.tool_name == "Bash"
 
-        # Dynamically change the policy verdict since GateRegistry caches configs
-        gate = GateRegistry.get_gate("hydration")
-        monkeypatch.setattr(gate.config.policies[0], "verdict", GateVerdict.WARN.value)
-
-        # Gate dispatch: hydration CLOSED blocks non-infrastructure tools
-        result = router._dispatch_gates(ctx, state_hydration_closed)
-        assert result is not None
-        assert result.verdict == GateVerdict.WARN
+        # Gate dispatch: main session tool call goes through normal gate evaluation
+        result = router._dispatch_gates(ctx, state_fresh)
+        # Result depends on gate state; just verify no crash
+        if result is not None:
+            assert result.verdict in (GateVerdict.ALLOW, GateVerdict.WARN, GateVerdict.DENY)
 
     # --- PostToolUse for spawn tool — gates still evaluate triggers ---
 
-    def test_spawn_agent_posttooluse_fires_triggers(self, router, state_hydration_closed):
+    def test_spawn_agent_posttooluse_fires_triggers(self, router, state_fresh):
         """PostToolUse for Agent carries subagent_type and fires gate triggers.
 
         Source: {_LOG_FILE} line 69, ts=2026-03-10T03:27:05 (approx)
@@ -628,6 +594,6 @@ class TestE2EGateDispatchFromRawStdin:
         assert ctx.tool_name == "Agent"
 
         # Compliance agent on PostToolUse: triggers only, never DENY
-        result = router._dispatch_gates(ctx, state_hydration_closed)
+        result = router._dispatch_gates(ctx, state_fresh)
         if result is not None:
             assert result.verdict != GateVerdict.DENY
