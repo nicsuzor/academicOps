@@ -93,6 +93,7 @@ jobs:
             - Orphan docs with no graph connections
             - Knowledge docs that contradict recent evidence
             - Old or inactive tasks (no update in 7+ days)
+            - Under-specified tasks (flag for decomposition or review)
 
             **CRITICAL**: Age is not staleness. Never set a task's status to "cancelled"
             based on age alone. Only irrelevance is grounds for cancellation.

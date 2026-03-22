@@ -31,9 +31,9 @@ repos:
     rev: v4.5.0
     hooks:
       - id: trailing-whitespace
-        exclude: '\.excalidraw$'
+        exclude: '\.excalidraw$|^dist/'
       - id: end-of-file-fixer
-        exclude: '\.excalidraw$'
+        exclude: '\.excalidraw$|^dist/'
       - id: check-yaml
       - id: check-json
       - id: check-added-large-files
