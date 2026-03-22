@@ -1,7 +1,10 @@
+import logging
 import os
 from pathlib import Path
 
 from hooks.schemas import HookContext
+
+logger = logging.getLogger(__name__)
 
 from lib import hook_utils
 from lib.gate_model import GateResult
@@ -22,14 +25,41 @@ def create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path:
     """
     transcript_path = ctx.transcript_path or ctx.raw_input.get("transcript_path")
     session_context = ""
+    active_skill = None
+    skill_scope = None
     if transcript_path:
         if gate == "custodiet":
-            from lib.session_reader import build_audit_session_context
+            from lib.session_reader import (
+                SessionProcessor,
+                _extract_recent_skill,
+                build_audit_session_context,
+                load_skill_scope,
+            )
+
+            # Parse transcript once, reuse for both context building and skill extraction
+            entries = None
+            try:
+                processor = SessionProcessor()
+                _, entries, _ = processor.parse_session_file(
+                    Path(transcript_path), load_agents=False, load_hooks=False
+                )
+            except Exception:
+                logger.warning("Failed to parse transcript for custodiet audit", exc_info=True)
 
             try:
-                session_context = build_audit_session_context(transcript_path)
+                session_context = build_audit_session_context(transcript_path, entries=entries)
             except Exception:
-                pass  # Degrade context, not the file creation
+                logger.warning("Failed to build audit session context", exc_info=True)
+
+            if entries:
+                try:
+                    active_skill = _extract_recent_skill(entries)
+                    if active_skill:
+                        # Strip namespace prefix (e.g. "aops-core:learn" -> "learn")
+                        skill_short = active_skill.split(":")[-1]
+                        skill_scope = load_skill_scope(skill_short)
+                except Exception:
+                    logger.warning("Failed to extract skill scope", exc_info=True)
         else:
             from lib.session_reader import build_rich_session_context
 
@@ -60,6 +90,8 @@ def create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path:
                 "heuristics_content": heuristics,
                 "skills_content": skills,
                 "custodiet_mode": custodiet_mode,
+                "active_skill": active_skill or "none",
+                "skill_scope": skill_scope or "",
             },
         )
     except (KeyError, ValueError, FileNotFoundError) as e:

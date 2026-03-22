@@ -653,8 +653,8 @@ def _sync_working_repo(
 
     if dirty:
         if auto_commit:
-            # Stage tracked files and commit
-            subprocess.run(["git", "add", "-u"], cwd=repo_path, capture_output=True, check=False)
+            # Stage all files (including new untracked) and commit
+            subprocess.run(["git", "add", "."], cwd=repo_path, capture_output=True, check=False)
             has_staged = (
                 subprocess.run(
                     ["git", "diff", "--cached", "--quiet"],
@@ -1776,11 +1776,11 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
             )
             / "sessions"
         )
+    project_slug = target or projects[0]
     if gemini:
-        gemini_slug = target or work_dir.name
-        session_dir = sessions_base / "crew" / crew_name / gemini_slug
+        session_dir = sessions_base / "crew" / crew_name / project_slug
     else:
-        session_dir = sessions_base / "crew" / crew_name / "claude-sessions"
+        session_dir = sessions_base / "crew" / crew_name / project_slug / "claude-sessions"
 
     tmp_gemini_home = None
     tmp_files: list[Path] = []
@@ -1796,9 +1796,9 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
 
         # Set the hook state directory to Gemini's natural log path inside the container
         if tmp_gemini_home:
-            container_sessions_dir = str(tmp_gemini_home / ".gemini" / "tmp" / gemini_slug)
+            container_sessions_dir = str(tmp_gemini_home / ".gemini" / "tmp" / project_slug)
         else:
-            container_sessions_dir = str(Path.home() / ".gemini" / "tmp" / gemini_slug)
+            container_sessions_dir = str(Path.home() / ".gemini" / "tmp" / project_slug)
 
         env["AOPS_SESSION_STATE_DIR"] = container_sessions_dir
 
@@ -2312,11 +2312,11 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
             )
             / "sessions"
         )
+    project_slug = task.project or project or worktree_path.name
     if gemini:
-        gemini_slug = project or worktree_path.name
-        run_session_dir = sessions_base / "polecats" / task.id / gemini_slug
+        run_session_dir = sessions_base / "polecats" / task.id / project_slug
     else:
-        run_session_dir = sessions_base / "polecats" / task.id / "claude-sessions"
+        run_session_dir = sessions_base / "polecats" / task.id / project_slug / "claude-sessions"
 
     if gemini:
         # Replicate Gemini authentication if available.
@@ -2330,9 +2330,9 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
 
         # Set the hook state directory to Gemini's natural log path inside the container
         if tmp_gemini_home:
-            container_sessions_dir = str(tmp_gemini_home / ".gemini" / "tmp" / gemini_slug)
+            container_sessions_dir = str(tmp_gemini_home / ".gemini" / "tmp" / project_slug)
         else:
-            container_sessions_dir = str(Path.home() / ".gemini" / "tmp" / gemini_slug)
+            container_sessions_dir = str(Path.home() / ".gemini" / "tmp" / project_slug)
 
         env["AOPS_SESSION_STATE_DIR"] = container_sessions_dir
 

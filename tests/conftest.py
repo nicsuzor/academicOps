@@ -195,14 +195,9 @@ def ensure_test_environment(monkeypatch, tmp_path):
 
     This provides a fallback test environment if ACA_DATA is not set externally.
     """
-    if not os.environ.get("ACA_DATA"):
-        # Use a stable temp dir for the session if possible, or tmp_path
-        # But tmp_path is unique per test.
-        # Ideally we want a shared one for the session, but per-test is safer for isolation.
-        data_dir = tmp_path / "aca_data"
-        monkeypatch.setenv("ACA_DATA", str(data_dir))
-    else:
-        data_dir = Path(os.environ["ACA_DATA"])
+    # ALWAYS use tmp_path for ACA_DATA to prevent tests from mutating host environment
+    data_dir = tmp_path / "aca_data"
+    monkeypatch.setenv("ACA_DATA", str(data_dir))
 
     # Ensure required structure exists
     (data_dir / "tasks").mkdir(parents=True, exist_ok=True)
@@ -691,7 +686,7 @@ def claude_headless():
     """
     # Skip test if claude CLI not available
     if not _claude_cli_available():
-        pytest.fail("claude CLI not found in PATH - requires Claude Code CLI installed")
+        pytest.skip("claude CLI not found in PATH - requires Claude Code CLI installed")
 
     return _make_failing_wrapper(run_claude_headless)
 
@@ -882,7 +877,7 @@ def gemini_headless(gemini_home):
     """
     # Skip test if gemini CLI not available
     if not _gemini_cli_available():
-        pytest.fail("gemini CLI not found in PATH - requires Gemini CLI installed")
+        pytest.skip("gemini CLI not found in PATH - requires Gemini CLI installed")
 
     def _run(prompt, **kwargs):
         return run_gemini_headless(prompt, gemini_home=gemini_home, **kwargs)
@@ -1544,7 +1539,7 @@ def claude_headless_tracked(tmp_path):
 
     # Skip test if claude CLI not available
     if not _claude_cli_available():
-        pytest.fail("claude CLI not found in PATH - requires Claude Code CLI installed")
+        pytest.skip("claude CLI not found in PATH - requires Claude Code CLI installed")
 
     def _run_tracked(
         prompt: str,

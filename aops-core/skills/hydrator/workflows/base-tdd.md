@@ -41,10 +41,6 @@ Red-green-refactor cycle for any testable code change.
 - Tests must still pass after refactoring
 - Can only refactor when tests are green
 
-### Commit Gates
-
-- Cannot commit while tests fail or without implementation (incomplete cycle)
-
 ### Always True
 
 - One behavior per cycle; test before code.
