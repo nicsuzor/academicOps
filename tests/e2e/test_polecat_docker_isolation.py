@@ -118,6 +118,125 @@ def test_crew_spawns_docker_container_gemini(temp_polecat_home, tmp_path):
 
 @pytest.mark.slow
 @pytest.mark.integration
+def test_crew_gemini_mounts_aca_data_when_exists(temp_polecat_home, tmp_path):
+    """
+    Gemini crew: when ACA_DATA exists on host, it is mounted via SANDBOX_MOUNTS
+    AND forwarded as an env var via SANDBOX_FLAGS.
+    """
+    brain_dir = tmp_path / "brain"
+    brain_dir.mkdir()
+
+    env = os.environ.copy()
+    env["POLECAT_HOME"] = str(temp_polecat_home)
+    env["PYTHONPATH"] = os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
+    env["ACA_DATA"] = str(brain_dir)
+
+    repo = tmp_path / "dummy_repo"
+    repo.mkdir()
+    subprocess.run(["git", "init"], cwd=repo, check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.email", "test@test"], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.name", "Test"], check=True)
+    subprocess.run(["git", "commit", "--allow-empty", "-m", "init"], cwd=repo, check=True)
+
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    fake_gemini = fake_bin / "gemini"
+    fake_gemini.write_text("#!/bin/sh\nprintenv\necho 'ARGS:' $@\n")
+    fake_gemini.chmod(0o755)
+
+    env["PATH"] = f"{fake_bin}:{env.get('PATH', '')}"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "polecat.cli",
+            "--home",
+            str(temp_polecat_home),
+            "crew",
+            "repo",
+            str(repo),
+            "-n",
+            "gemini-worker",
+            "-g",
+        ],
+        env=env,
+        capture_output=True,
+        text=True,
+        cwd=os.getcwd() + "/polecat",
+    )
+
+    output = result.stdout + result.stderr
+    brain = str(brain_dir)
+    assert f"ACA_DATA={brain}" in output, (
+        f"ACA_DATA should be forwarded via SANDBOX_FLAGS. Output:\n{output}"
+    )
+    assert f"{brain}:{brain}:rw" in output, (
+        f"ACA_DATA should be mounted via SANDBOX_MOUNTS. Output:\n{output}"
+    )
+
+
+@pytest.mark.slow
+@pytest.mark.integration
+def test_crew_gemini_skips_aca_data_when_missing(temp_polecat_home, tmp_path):
+    """
+    Gemini crew: when ACA_DATA points to a non-existent directory, neither the
+    env var nor the mount is forwarded, and a warning is printed.
+    """
+    env = os.environ.copy()
+    env["POLECAT_HOME"] = str(temp_polecat_home)
+    env["PYTHONPATH"] = os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
+    env["ACA_DATA"] = "/nonexistent/brain"
+
+    repo = tmp_path / "dummy_repo"
+    repo.mkdir()
+    subprocess.run(["git", "init"], cwd=repo, check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.email", "test@test"], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.name", "Test"], check=True)
+    subprocess.run(["git", "commit", "--allow-empty", "-m", "init"], cwd=repo, check=True)
+
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    fake_gemini = fake_bin / "gemini"
+    fake_gemini.write_text("#!/bin/sh\nprintenv\necho 'ARGS:' $@\n")
+    fake_gemini.chmod(0o755)
+
+    env["PATH"] = f"{fake_bin}:{env.get('PATH', '')}"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "polecat.cli",
+            "--home",
+            str(temp_polecat_home),
+            "crew",
+            "repo",
+            str(repo),
+            "-n",
+            "gemini-worker",
+            "-g",
+        ],
+        env=env,
+        capture_output=True,
+        text=True,
+        cwd=os.getcwd() + "/polecat",
+    )
+
+    output = result.stdout + result.stderr
+    assert "ACA_DATA=/nonexistent/brain" not in output, (
+        f"ACA_DATA should not be forwarded when dir missing. Output:\n{output}"
+    )
+    assert "/nonexistent/brain:/nonexistent/brain" not in output, (
+        f"ACA_DATA should not be mounted when dir missing. Output:\n{output}"
+    )
+    assert "Warning" in output and "ACA_DATA" in output, (
+        f"Should warn that ACA_DATA is missing. Output:\n{output}"
+    )
+
+
+@pytest.mark.slow
+@pytest.mark.integration
 def test_crew_interactive_shell_spawns_docker(temp_polecat_home, tmp_path):
     """
     E2E test: running polecat crew -i wraps bash in docker (same as claude path).

@@ -508,6 +508,80 @@ def is_interactive() -> bool:
     return sys.stdin.isatty()
 
 
+def _configure_gemini_sandbox(env: dict, tmp_files: list[Path] | None = None) -> None:
+    """Configure SANDBOX_FLAGS and SANDBOX_MOUNTS for a Gemini --sandbox session.
+
+    Gemini's sandbox only forwards a hardcoded allowlist of env vars into its
+    Docker container. This function sets up:
+    - SANDBOX_FLAGS: -e flags for ACA_DATA, GH_TOKEN, and git credential helpers
+    - SANDBOX_MOUNTS: bind mounts for ACA_DATA (rw) and a temp .gitconfig (ro)
+
+    Must be called after _replicate_gemini_auth so GEMINI_CLI_HOME is already set.
+    Mutates env in place; appends any temp files created to tmp_files.
+    """
+    env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-crew")
+
+    extra_flags: list[str] = []
+    for key, val in env.items():
+        if key.endswith("_GATE_MODE"):
+            extra_flags.extend(["-e", f"{key}={val}"])
+
+    # Git credential helper — write a .gitconfig and mount it read-only.
+    # SANDBOX_FLAGS can't carry the credential helper because shell-quote
+    # interprets { } ; ( ) as operators, mangling the shell function.
+    gh_token = env.get("GH_TOKEN") or os.environ.get("AOPS_BOT_GH_TOKEN")
+    if gh_token:
+        extra_flags.extend(["-e", "GIT_ASKPASS=true"])
+        extra_flags.extend(["-e", f"GH_TOKEN={gh_token}"])
+        extra_flags.extend(["-e", "SSH_AUTH_SOCK="])
+        extra_flags.extend(["-e", "GIT_TERMINAL_PROMPT=0"])
+        gitconfig = tempfile.NamedTemporaryFile(
+            suffix=".gitconfig", delete=False, mode="w", prefix="polecat-"
+        )
+        gitconfig.write(
+            "[credential]\n"
+            '\thelper = !f() { echo username=x-access-token; echo "password=${GH_TOKEN}"; }; f\n'
+            '[credential "https://github.com"]\n'
+            '\thelper = !f() { echo username=x-access-token; echo "password=${GH_TOKEN}"; }; f\n'
+            '[url "https://github.com/"]\n'
+            "\tinsteadOf = git@github.com:\n"
+        )
+        gitconfig.close()
+        if tmp_files is not None:
+            tmp_files.append(Path(gitconfig.name))
+        # Mount via SANDBOX_MOUNTS (colon-separated from:to:opts).
+        # Gemini sandbox maps homedir() to the same path in the container,
+        # so mount .gitconfig at the host user's home path.
+        container_gitconfig = str(Path.home() / ".gitconfig")
+        mounts = env.get("SANDBOX_MOUNTS", "")
+        new_mount = f"{gitconfig.name}:{container_gitconfig}:ro"
+        env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
+
+    # Mount ACA_DATA via SANDBOX_MOUNTS (read-write for PKB updates).
+    # Also forward as -e so the MCP server inside the container finds it.
+    # Only do both if the directory actually exists on the host — Docker
+    # bind mounts require the source path to exist, and forwarding the env
+    # var without the mount causes the PKB server to fail silently.
+    aca_data = env.get("ACA_DATA") or os.environ.get("ACA_DATA")
+    if aca_data:
+        if os.path.isdir(aca_data):
+            mounts = env.get("SANDBOX_MOUNTS", "")
+            new_mount = f"{aca_data}:{aca_data}:rw"
+            env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
+            extra_flags.extend(["-e", f"ACA_DATA={aca_data}"])
+        else:
+            print(
+                f"   Warning: ACA_DATA={aca_data} does not exist on host — "
+                "PKB/task tools will be unavailable in this session.",
+                file=sys.stderr,
+            )
+
+    if extra_flags:
+        existing = env.get("SANDBOX_FLAGS", "")
+        new_flags = " ".join(extra_flags)
+        env["SANDBOX_FLAGS"] = f"{existing} {new_flags}".strip() if existing else new_flags
+
+
 @click.group()
 @click.option(
     "--home",
@@ -1797,60 +1871,9 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
             print(f"   Auth: Replicated to {env['GEMINI_CLI_HOME']}")
 
         # Gemini --sandbox re-execs itself inside the container, so the image
-        # needs the Gemini CLI installed. Use aops-crew (full image with AI CLIs).
-        env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-crew")
-
-        # Gemini sandbox only forwards a hardcoded allowlist of env vars into
-        # its Docker container. Use SANDBOX_FLAGS for simple -e flags and
-        # SANDBOX_MOUNTS for volumes. Git credentials use a mounted .gitconfig
-        # because shell-quote mangles the credential helper shell function.
-        extra_flags = []
-        for key, val in env.items():
-            if key.endswith("_GATE_MODE") or key in ("ACA_DATA", "GH_TOKEN"):
-                extra_flags.extend(["-e", f"{key}={val}"])
-
-        # Git credential helper — write a .gitconfig and mount it read-only.
-        # SANDBOX_FLAGS can't carry the credential helper because shell-quote
-        # interprets { } ; ( ) as operators, mangling the shell function.
-        gh_token = env.get("GH_TOKEN") or os.environ.get("AOPS_BOT_GH_TOKEN")
-        if gh_token:
-            extra_flags.extend(["-e", "GIT_ASKPASS=true"])
-            extra_flags.extend(["-e", f"GH_TOKEN={gh_token}"])
-            extra_flags.extend(["-e", "SSH_AUTH_SOCK="])
-            extra_flags.extend(["-e", "GIT_TERMINAL_PROMPT=0"])
-            gitconfig = tempfile.NamedTemporaryFile(
-                suffix=".gitconfig", delete=False, mode="w", prefix="polecat-"
-            )
-            gitconfig.write(
-                "[credential]\n"
-                '\thelper = !f() { echo username=x-access-token; echo "password=${GH_TOKEN}"; }; f\n'
-                '[credential "https://github.com"]\n'
-                '\thelper = !f() { echo username=x-access-token; echo "password=${GH_TOKEN}"; }; f\n'
-                '[url "https://github.com/"]\n'
-                "\tinsteadOf = git@github.com:\n"
-            )
-            gitconfig.close()
-            if tmp_files is not None:
-                tmp_files.append(Path(gitconfig.name))
-            # Mount via SANDBOX_MOUNTS (colon-separated from:to:opts).
-            # Gemini sandbox maps homedir() to the same path in the container,
-            # so mount .gitconfig at the host user's home path.
-            container_gitconfig = str(Path.home() / ".gitconfig")
-            mounts = env.get("SANDBOX_MOUNTS", "")
-            new_mount = f"{gitconfig.name}:{container_gitconfig}:ro"
-            env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
-
-        # Mount ACA_DATA via SANDBOX_MOUNTS (read-write for PKB updates)
-        aca_data = env.get("ACA_DATA") or os.environ.get("ACA_DATA")
-        if aca_data and os.path.isdir(aca_data):
-            mounts = env.get("SANDBOX_MOUNTS", "")
-            new_mount = f"{aca_data}:{aca_data}:rw"
-            env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
-
-        if extra_flags:
-            existing = env.get("SANDBOX_FLAGS", "")
-            new_flags = " ".join(extra_flags)
-            env["SANDBOX_FLAGS"] = f"{existing} {new_flags}".strip() if existing else new_flags
+        # needs the Gemini CLI installed. Configure SANDBOX_FLAGS/SANDBOX_MOUNTS
+        # for the Gemini sandbox (ACA_DATA, git credentials, etc.).
+        _configure_gemini_sandbox(env, tmp_files)
 
         final_cmd = cmd
     elif interactive:
@@ -2257,8 +2280,10 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
             print(f"   Auth: Replicated to {env['GEMINI_CLI_HOME']}")
 
         # Gemini --sandbox re-execs itself inside the container, so the image
-        # needs the Gemini CLI installed. Use aops-crew (full image with AI CLIs).
-        env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-crew")
+        # needs the Gemini CLI installed. Configure SANDBOX_FLAGS/SANDBOX_MOUNTS
+        # for the Gemini sandbox (ACA_DATA, git credentials, etc.).
+        _configure_gemini_sandbox(env, tmp_files)
+
         final_cmd = cmd
     else:
         # Compute session directory for Claude transcript persistence.
