@@ -84,7 +84,11 @@ if [[ -n "$REPO_SLUG" ]]; then
     echo ""
     echo "Configuring secrets for $REPO_SLUG..."
 
-    if [[ -n "${AOPS_BOT_GH_TOKEN:-}" ]]; then
+    EXISTING=$(gh secret list --repo "$REPO_SLUG" --json name -q '.[].name' 2>/dev/null || true)
+
+    if echo "$EXISTING" | grep -q 'AOPS_BOT_GH_TOKEN'; then
+        echo "  [OK]      AOPS_BOT_GH_TOKEN already set"
+    elif [[ -n "${AOPS_BOT_GH_TOKEN:-}" ]]; then
         echo "$AOPS_BOT_GH_TOKEN" | gh secret set AOPS_BOT_GH_TOKEN --repo "$REPO_SLUG"
         echo "  [SECRET]  AOPS_BOT_GH_TOKEN set from environment"
     else
@@ -92,8 +96,6 @@ if [[ -n "$REPO_SLUG" ]]; then
         echo "              gh secret set AOPS_BOT_GH_TOKEN --repo $REPO_SLUG"
     fi
 
-    # Check if CLAUDE_CODE_OAUTH_TOKEN already exists; set from env if not
-    EXISTING=$(gh secret list --repo "$REPO_SLUG" --json name -q '.[].name' 2>/dev/null || true)
     if echo "$EXISTING" | grep -q 'CLAUDE_CODE_OAUTH_TOKEN'; then
         echo "  [OK]      CLAUDE_CODE_OAUTH_TOKEN already set"
     elif [[ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]]; then

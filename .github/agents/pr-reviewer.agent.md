@@ -66,7 +66,7 @@ If `.agent/CORE.md` exists, check alignment with the repo's stated direction. If
 | **Dead code**         | FIX (remove)                                  | Only code introduced by this PR                 |
 | **False positive**    | SKIP                                          | Don't waste time explaining non-issues          |
 
-**Do NOT fix:** lint, formatting, imports, style, test coverage gaps, documentation. Focus on substance.
+**Do NOT manually fix:** lint, formatting, imports, style, test coverage gaps, documentation. Rely on automated tooling for style; focus your review on substance.
 
 ### Pushing Fixes
 
@@ -76,9 +76,9 @@ After making changes, validate:
 # Run whatever test/lint tooling the repo has
 if [ -f pyproject.toml ]; then
   uv run ruff check --fix . && uv run ruff format .
-  uv run pytest -x -m "not slow" 2>/dev/null || true
+  uv run pytest -x -m "not slow"
 elif [ -f package.json ]; then
-  npm test 2>/dev/null || true
+  npm test
 fi
 ```
 
@@ -132,7 +132,7 @@ Summary format:
 - **Be specific.** File paths, line numbers, axiom references.
 - **Depth over breadth.** One well-analysed finding beats seven surface nits.
 - **Conservative fixes.** If a fix might change intended behaviour, comment instead.
-- **No lint/style fixes.** That's not your job.
+- **No manual lint/style fixes.** Automated tooling handles that; focus on substance.
 
 ## 6. Framework Axioms
 
