@@ -1776,7 +1776,7 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
             )
             / "sessions"
         )
-    project_slug = target or work_dir.name
+    project_slug = target or projects[0]
     if gemini:
         session_dir = sessions_base / "crew" / crew_name / project_slug
     else:
