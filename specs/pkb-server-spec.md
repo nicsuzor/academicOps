@@ -131,9 +131,13 @@ Target: 18 tools across 6 groups. Each tool has one clear purpose.
 | `append_to_document` renamed to `append` | Shorter                                                           |
 | `delete_document` renamed to `delete`    | Shorter                                                           |
 
-### Future research: episodic memories
+### Episodic memories — resolved design
 
-`create_memory` may evolve to handle **episodic memories** — short observations or facts stored as dot-point lists grouped within existing markdown files, rather than one-file-per-memory. Research needed into optimal PKB structures for this pattern.
+See [[pkb-episodic-content-model]] for the full spec. Summary:
+
+`create_memory` stays as-is. Episodic records (meeting notes, diary entries, field observations) use **one file per entry** in dedicated directories (`meetings/`, `journal/`, `<project>/observations/`). This keeps whole-file embedding accurate and avoids the sub-document chunking complexity that aggregated dot-point lists would require.
+
+**Near-term addition needed**: temporal filtering in `search` — `--since YYYY-MM-DD` / `--before YYYY-MM-DD` using the `date:` frontmatter field as a pre-filter before semantic scoring.
 
 ## Core Functions
 

@@ -22,16 +22,20 @@ version: 2.0.0
 
 Persist knowledge to markdown + PKB. **Both writes required** for semantic search.
 
-## Current State Machine
+## What $ACA_DATA Is
 
-`$ACA_DATA` contains ONLY semantic memory - timeless truths, always up-to-date:
+`$ACA_DATA` is the **personal knowledge corpus** — all persistent, personal knowledge artifacts deliberately kept. It contains three tiers:
 
-- **Semantic memory** (current state): What IS true now. Understandable without history. Lives in `$ACA_DATA`.
-- **Episodic memory** (observations): Time-stamped events. Lives in **tasks** (`data/tasks/`, managed via tasks MCP).
-- **Episodic content includes**: Bug investigations, experiment observations, development logs, code change discussions, decision rationales, any observation at a point in time
-- **Synthesis flow**: Observations accumulate in tasks → patterns emerge → synthesize to semantic docs (HEURISTICS, specs) → complete task with link to synthesized content
-- If you must read multiple files or piece together history to understand truth, it's not properly synthesized
-- Git history preserves the record; `$ACA_DATA` reflects only what's current
+- **Episodic records**: Time-stamped content kept verbatim for reference (diary, meeting notes, observations, reading notes). Lives in `meetings/`, `journal/`, `reviews/`, `<project>/observations/`.
+- **Synthesized knowledge**: Timeless, atomic, maintained notes. Lives in `knowledge/`, `context/`, `projects/`, `goals/`.
+- **Navigation/index**: MEMORY.md, project hubs, Maps of Content.
+
+What does NOT live in `$ACA_DATA`:
+
+- Active work items and agent activity logs → tasks MCP
+- Unreviewed raw session transcripts → `sessions/transcripts/` (excluded from indexing)
+
+**Synthesis flow**: Episodic records accumulate → patterns emerge → synthesize to knowledge docs (HEURISTICS, specs) → link back to source records. Synthesis is a bonus, not a requirement — episodic records have permanent retrieval value on their own.
 
 ## Storage Hierarchy (Critical)
 
@@ -49,53 +53,90 @@ See [[base-memory-capture]] workflow for when and how to invoke this skill.
 ## Decision Tree
 
 ```
-Is this a time-stamped observation? (what agent did, found, tried)
-  → YES: Use tasks MCP (create_task or update_task) - NOT this skill
-  → NO: Continue...
+Is this agent activity from a work session?
+  (what the agent did, found, tried, decided during a task)
+  → YES: Update task body via tasks MCP. NOT this skill.
 
-Is this about the framework (axioms, heuristics)?
+Is this a work item to be done?
+  (has status, lifecycle, dependencies)
+  → YES: Create/update task via tasks MCP. NOT this skill.
+
+Is this observational tracking of a pattern (not actionable)?
+  → YES: Create learn-type task via tasks MCP. NOT this skill.
+
+Is this a meeting note, diary entry, or field observation?
+  (time-stamped, human-authored, kept verbatim)
+  → YES: Write to $ACA_DATA as episodic record (see File Locations).
+
+Is this a reading note or literature annotation?
+  (extracted ideas from a source)
+  → YES: $ACA_DATA/reviews/<slug>.md, type: review
+
+Is this about the framework (axioms, heuristics, conventions)?
   → YES: HALT and invoke /framework skill to add properly to $AOPS
-  → NO: Continue...
 
-Is this about the user? (projects, goals, context, tasks)
-  → YES: Use appropriate location below
-  → NO: Use `knowledge/<topic>/` for general facts
+Is this a synthesized, timeless fact or concept?
+  → YES: $ACA_DATA/knowledge/<topic>/<slug>.md, type: knowledge, max 200 words
+
+Is this about the user (projects, goals, context)?
+  → YES: Use appropriate location below (projects/, goals/, context/)
 ```
 
 ## File Locations
 
-| Content               | Location              | Notes                |
-| --------------------- | --------------------- | -------------------- |
-| Project metadata      | `projects/<name>.md`  | Hub file             |
-| Project details       | `projects/<name>/`    | Subdirectory         |
-| Goals                 | `goals/`              | Strategic objectives |
-| Context (about user)  | `context/`            | Preferences, history |
-| Sessions/daily        | `sessions/`           | Daily notes only     |
-| Tasks                 | Delegate to [[tasks]] | Use scripts          |
-| **General knowledge** | `knowledge/<topic>/`  | Facts NOT about user |
+| Content              | Location                                     | Type        | Notes                                              |
+| -------------------- | -------------------------------------------- | ----------- | -------------------------------------------------- |
+| Meeting notes        | `meetings/YYYY-MM-DD-topic.md`               | `note`      | `date:` frontmatter required; one file per meeting |
+| Diary/journal        | `journal/YYYY-MM-DD.md`                      | `note`      | `date:` frontmatter required                       |
+| Project observations | `<project>/observations/YYYY-MM-DD-topic.md` | `note`      | `date:` frontmatter required                       |
+| Reading/review notes | `reviews/<slug>.md`                          | `review`    | Source, extracted ideas                            |
+| Daily notes          | `sessions/YYYY-MM-DD.md`                     | `daily`     | `sync: false` unless content promoted              |
+| Project metadata     | `projects/<name>.md`                         | `project`   | Hub file; "standup level" only                     |
+| Project details      | `projects/<name>/`                           | —           | Subdirectory for specs, detailed notes             |
+| Goals                | `goals/`                                     | `goal`      | Strategic objectives                               |
+| Context (about user) | `context/`                                   | `note`      | Preferences, history, biographical                 |
+| General knowledge    | `knowledge/<topic>/`                         | `knowledge` | Synthesized facts; max 200 words                   |
+| Tasks                | Delegate to [[tasks]]                        | —           | Use tasks MCP, not this skill                      |
 
-## PROHIBITED → Use Tasks MCP Instead
+## Tasks MCP — for agent activity and work items only
 
-**NEVER create files for:**
+Use tasks MCP (NOT this skill) for:
 
 - What an agent did: "Completed X on DATE" → `mcp__pkb__create_task(task_title="...", type="task", project="<project>", parent="<parent-id>")`
 - What an agent found: "Discovered bug in Y" → `mcp__pkb__create_task(task_title="...", type="task", project="<project>", parent="<parent-id>", tags=["bug"])`
-- Observations: "Noticed pattern Z" → `mcp__pkb__create_task(task_title="Learning: Z", project="<project>", parent="<parent-id>")`
+- Observational tracking: "Noticed pattern Z" → `mcp__pkb__create_task(task_title="Learning: Z", type="learn", project="<project>", parent="<parent-id>")`
 - Experiments: "Tried approach A" → `mcp__pkb__update_task(id="...", body="...")`
-- Decisions: "Chose B over C" → update task body, synthesize to HEURISTICS.md later
+- Decisions during work: "Chose B over C" → update task body, synthesize to HEURISTICS.md later
 
-**Rule**: If it has a timestamp or describes agent activity, it's episodic → tasks MCP.
+**Rule**: Tasks MCP is for work items (things with actionable status, lifecycle, and graph hierarchy) and agent activity logs. It is NOT the home for human-authored meeting notes, diary entries, or field observations — those go to `$ACA_DATA` as episodic records.
 
 ## Workflow
 
 1. **Search first**: `mcp__pkb__search(query="topic")` + `Glob` under `$ACA_DATA/`
-2. **If match**: Augment existing file
-3. **If no match**: Create new file with frontmatter:
+2. **If match**: Augment existing file (for semantic notes). For episodic records, create a new dated file — never append a new entry to an existing episodic file.
+3. **If no match**: Create new file with appropriate frontmatter:
+
+**Episodic record** (meeting, diary, observation):
+
+```markdown
+---
+title: "Meeting: Topic (YYYY-MM-DD)"
+type: note
+date: YYYY-MM-DD
+tags: [meeting, project-name]
+---
+
+# Meeting: Topic (YYYY-MM-DD)
+
+Content.
+```
+
+**Synthesized knowledge**:
 
 ```markdown
 ---
 title: Descriptive Title
-type: note|project|knowledge
+type: knowledge
 tags: [relevant, tags]
 created: YYYY-MM-DD
 ---

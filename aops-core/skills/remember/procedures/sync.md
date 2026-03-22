@@ -29,8 +29,9 @@ Process only files changed since the last sync (e.g., using `git diff` to find r
 
 ## File Filtering
 
-- **Include**: `$ACA_DATA/projects/**/*.md`, `goals/*.md`, `context/*.md`, `knowledge/**/*.md`.
-- **Exclude**: Daily notes outside `$ACA_DATA`, files with `sync: false` in frontmatter, and empty files.
+- **Include**: `$ACA_DATA/projects/**/*.md`, `goals/*.md`, `context/*.md`, `knowledge/**/*.md`, `meetings/**/*.md`, `reviews/**/*.md`, `journal/**/*.md`, `**/observations/**/*.md`.
+- **Exclude**: Files with `sync: false` in frontmatter (including daily notes, which default to `sync: false`), empty files, and raw session transcripts.
+- **Daily notes** (`type: daily`): Excluded by default. Content worth long-term retrieval should be promoted to a meeting note or knowledge entry before indexing.
 
 ## Deduplication
 
