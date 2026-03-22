@@ -176,7 +176,6 @@ def get_project_version(aops_root: Path) -> str:
                     "-beta",
                     "-rc",
                     "-alpha",
-                    "-testing",
                 ]
             )
         ]

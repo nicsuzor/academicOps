@@ -30,7 +30,7 @@ def get_current_version(aops_root: Path) -> str:
             match = re.search(r'^version\s*=\s*"([^"]+)"', content, re.MULTILINE)
             if match:
                 return match.group(1)
-    return "0.1.0"
+    raise RuntimeError("Could not determine version from build.py or pyproject.toml")
 
 
 def bump_semver(version: str, part: str = "patch") -> str:
