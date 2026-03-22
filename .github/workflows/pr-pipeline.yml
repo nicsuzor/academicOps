@@ -45,29 +45,30 @@ jobs:
       - name: Wait for branch to settle
         run: sleep 120
 
-  # ─── PHASE 2: Agent Review & Fix ───────────────────────────────────
-  # Runs after settle delay. Uses `always()` so it runs even if Pytest
-  # or Typecheck failed, allowing agent to attempt a fix. If it pushes
-  # a fix, the pipeline restarts.
-  agent-fix:
-    name: Agent Fix
+  # ─── PHASE 2: Axiom Review (read-only) ─────────────────────────────
+  # Auditor checks compliance against axioms, heuristics, and project
+  # rules. Posts CHANGES_REQUESTED if violations found, but never
+  # pushes code. Runs before the fix agent so the assessor can act on
+  # auditor findings.
+  axiom-review:
+    name: Axiom Review
     needs: [settle]
     if: always() && !cancelled()
-    uses: ./.github/workflows/agent-autofix.yml
+    uses: ./.github/workflows/agent-auditor.yml
     with:
       pr_number: "${{ github.event.pull_request.number }}"
       ref: ${{ github.event.pull_request.head.ref }}
     secrets: inherit
 
-  # ─── PHASE 3: Higher-Level Reviews ─────────────────────────────────
-  # Only run if the code is structurally sound or the fix agent succeeded/skipped.
-  # Using `!failure() && !cancelled()` ensures it runs even if Phase 2 was skipped
-  # (e.g. on bot PRs), which satisfies the required status check.
-  axiom-review:
-    name: Axiom Review
-    needs: [agent-fix]
+  # ─── PHASE 3: Agent Review & Fix ───────────────────────────────────
+  # Assessor reviews the diff, CI results, and any review comments
+  # (including auditor findings from Phase 2). Can push fixes directly.
+  # If it pushes, the pipeline restarts from Phase 1.
+  agent-fix:
+    name: Agent Fix
+    needs: [axiom-review]
     if: ${{ !failure() && !cancelled() }}
-    uses: ./.github/workflows/agent-auditor.yml
+    uses: ./.github/workflows/agent-autofix.yml
     with:
       pr_number: "${{ github.event.pull_request.number }}"
       ref: ${{ github.event.pull_request.head.ref }}
