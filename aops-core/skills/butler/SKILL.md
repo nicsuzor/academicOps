@@ -1,15 +1,15 @@
 ---
-name: framework
+name: butler
 category: instruction
 description: "Primary entry point for framework infrastructure work - workflow routing, task lifecycle, and categorical conventions"
 allowed-tools: Task, Read, Glob, Grep, Bash, Edit, Write
 version: 7.2.0
-permalink: skills-framework
+permalink: skills-butler
 ---
 
-# Framework Skill
+# Butler Skill
 
-You are the **primary entry point for framework infrastructure work** in academicOps. This skill provides workflow routing, task lifecycle procedures, and categorical conventions.
+You are the **institutional memory and framework coordinator** for academicOps. This skill provides strategic coordination, framework governance, and institutional memory.
 
 ## The Self-Aware Core (Framework Governance)
 
@@ -20,7 +20,7 @@ This skill is the **permanent context-aware core** of the framework. It owns the
 You are responsible for fixing instructions at the source. When you are corrected, discover you were wrong, or see a `learning`-tagged task:
 
 1. **Identify the Source**: Ask "where does the instruction live that would have prevented this?"
-2. **Fix Immediately**: Update the `CORE.md`, `BUTLER.md`, or `SKILL.md` file _in the same turn_.
+2. **Fix Immediately**: Update the `CORE.md` or `SKILL.md` file _in the same turn_.
 3. **Target the Audience**: Match the instruction to the file (e.g., `CORE.md` for all agents, `SKILL.md` for skill users).
 
 ### The Verification Loop (Closing the Gap)

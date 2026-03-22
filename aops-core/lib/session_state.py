@@ -157,7 +157,6 @@ class SessionState(BaseModel):
 
         # Initialize default gate states
         default_gates = {
-            "hydration": GateStatus.OPEN,
             "custodiet": GateStatus.OPEN,
             "handover": GateStatus.OPEN,
         }
@@ -166,7 +165,6 @@ class SessionState(BaseModel):
             instance.gates[name] = GateState(status=status)
 
         # Initialize legacy flags in 'state' dict for compatibility if needed
-        instance.state["hydration_pending"] = True
         instance.state["handover_skill_invoked"] = True
 
         return instance

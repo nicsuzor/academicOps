@@ -179,7 +179,6 @@ After classifying PRs, recommend specific agent actions for each. The available 
 | **Merge Prep**     | `agent-merge-prep.yml` | `workflow_dispatch` with `pr_number`, `ref`                    | Reads ALL review feedback, pushes fixes, sets Merge Prep status      |
 | **`@claude`**      | `claude.yml`           | Comment `@claude <instruction>` on PR                          | Ad-hoc fixes. General-purpose                                        |
 | **Copilot Worker** | Copilot Coding Agent   | `@copilot` comment or issue assignment                         | Autonomous task execution following `.github/agents/worker.agent.md` |
-| **Hydrator**       | `agent-hydrator.yml`   | `workflow_dispatch`                                            | Workflow alignment review                                            |
 | **QA**             | `agent-qa.yml`         | `workflow_dispatch`                                            | End-to-end verification                                              |
 
 **Typical pipeline for a new PR**:
@@ -188,16 +187,6 @@ After classifying PRs, recommend specific agent actions for each. The available 
 2. If CHANGES_REQUESTED → trigger Merge Prep to fix feedback
 3. Merge Prep pushes fixes → CI re-runs → sets "Merge Prep" status
 4. PR auto-merges when all checks pass
-
-**When recommending actions**, use the agent names:
-
-```markdown
-### Recommended Actions
-
-- **aops #640, #637, #631**: trigger merge-prep — custodiet requested changes, merge-prep will fix
-- **aops #636**: approved by custodiet — ready for human review
-- **mem #21-29**: approve + merge — CI green, all passing
-```
 
 **Merge infrastructure awareness**: Different repos have different merge mechanics. When merge operations fail, note the blocker (merge queue, auto-merge disabled, token permissions) rather than retrying. Common blockers:
 

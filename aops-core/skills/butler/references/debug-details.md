@@ -258,13 +258,13 @@ Look for these patterns:
 
 ### 4. Common Failure Patterns
 
-| Symptom                          | Likely Cause                      | Fix                                                     |
-| -------------------------------- | --------------------------------- | ------------------------------------------------------- |
-| **Timeout with few tool calls**  | Stuck in subagent/hook loop       | Check if hydrator/custodiet spawning recursively        |
-| **Timeout with many tool calls** | Over-engineered workflow          | Hydrator prescribed overkill; add "trivial task" bypass |
-| **Tool error cascade**           | First error caused confusion      | Fix the first error; later ones are symptoms            |
-| **Custodiet CANNOT_ASSESS**      | Audit file has incomplete context | Expected for short sessions; not a real failure         |
-| **Write "file not read" error**  | Tried to create new file          | Use Bash heredoc or fix Write tool handling             |
+| Symptom                          | Likely Cause                      | Fix                                             |
+| -------------------------------- | --------------------------------- | ----------------------------------------------- |
+| **Timeout with few tool calls**  | Stuck in loop                     | Check for recursive spawns                      |
+| **Timeout with many tool calls** | Over-engineered workflow          | Prescribed overkill; add "trivial task" bypass  |
+| **Tool error cascade**           | First error caused confusion      | Fix the first error; later ones are symptoms    |
+| **Custodiet CANNOT_ASSESS**      | Audit file has incomplete context | Expected for short sessions; not a real failure |
+| **Write "file not read" error**  | Tried to create new file          | Use Bash heredoc or fix Write tool handling     |
 
 ### 5. Example: Demo Test Timeout Investigation
 
@@ -285,16 +285,14 @@ cd $AOPS && uv run python scripts/session_transcript.py \
 **Transcript revealed**:
 
 1. Turn 1 took **2 minutes 34 seconds** (way too long)
-2. Hydrator made **3 memory retrieval calls** for a one-liner function
-3. Hydrator prescribed full **TDD workflow with 5 todo items**
-4. Custodiet spawned but returned `CANNOT_ASSESS` (incomplete context)
-5. Write tool failed ("file not read"), Bash heredoc also failed ("file exists")
-6. Session timed out before completing
+2. Prescribed full **TDD workflow with 5 todo items**
+3. Custodiet spawned but returned `CANNOT_ASSESS` (incomplete context)
+4. Write tool failed ("file not read"), Bash heredoc also failed ("file exists")
+5. Session timed out before completing
 
-**Root cause**: Framework overhead (hydration + TDD prescription + custodiet) consumed all time on a trivial task.
+**Root cause**: Framework overhead (TDD prescription + custodiet) consumed all time on a trivial task.
 
 **Axiom violations identified**:
 
-- Over-hydration: 3 memory queries for "add two numbers"
 - TDD overkill: Full test cycle for trivial utility function
 - Tool friction: Write tool requires pre-read even for new files

@@ -5,8 +5,8 @@ type: index
 category: framework
 description: |
     Quick reference for routing user requests to skills and commands.
-    Hydrator uses this to immediately recognize skill invocations
-    without memory search, reducing latency for known workflows.
+    The [[BUTLER.md]] guide defines how this index is used for
+    non-blocking routing hints.
 permalink: skills
 tags: [framework, routing, skills, index]
 ---

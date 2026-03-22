@@ -21,8 +21,8 @@ from typing import Any
 # Categorize TOOL NAMES by their side effects. This determines which gates
 # must pass before the tool can be used.
 #
-# IMPORTANT: Only TOOL NAMES go here. Agent/skill names (hydrator,
-# custodiet, etc.) are subagent_type values, not tool names. They belong in
+# IMPORTANT: Only TOOL NAMES go here. Agent/skill names (custodiet, etc.)
+# are subagent_type values, not tool names. They belong in
 # COMPLIANCE_SUBAGENT_TYPES below.
 #
 # MCP tool names vary by platform and plugin registration method:
@@ -37,7 +37,7 @@ from typing import Any
 # by the _PKB_PREFIX_RE fallback in get_tool_category().
 
 TOOL_CATEGORIES: dict[str, set[str]] = {
-    # Always available: bypass ALL gates, including hydration.
+    # Always available: bypass ALL gates.
     # These are Claude Code built-in meta/control tools that have no substantive
     # side effects on user data. They must never be blocked — e.g. AskUserQuestion
     # is needed to communicate with the user during any gate state.
@@ -50,7 +50,7 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "ExitPlanMode",
         "KillShell",
     },
-    # Infrastructure: bypass ALL gates, including hydration.
+    # Infrastructure: bypass ALL gates.
     # These are tools required for the framework itself to function (PKB ops).
     "infrastructure": {
         # --- PKB task management: mcp__pkb__* (Claude Code short form) ---
@@ -140,8 +140,7 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "save_memory",
     },
     # Spawn: tools that invoke subagents or skills.
-    # Subject to hydration gate (must hydrate before doing substantive work).
-    # Always allowed if the target subagent is a compliance agent (hydrator, custodiet, etc).
+    # Always allowed if the target subagent is a compliance agent (custodiet, etc).
     "spawn": {
         "Agent",  # Claude Code: spawn subagent (current tool name)
         "Task",  # Claude Code: spawn subagent (legacy/alias)
@@ -157,8 +156,7 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "aops_core_audit",
         "aops_core_butler",
     },
-    # Read-only tools: no side effects. Exempt from custodiet gate (not hydration).
-    # Hydration gate blocks these until hydrator is dispatched (JIT gate open).
+    # Read-only tools: no side effects. Exempt from custodiet gate.
     # Custodiet gate exempts them because compliance only tracks write operations.
     "read_only": {
         # --- Claude Code built-in ---
@@ -304,9 +302,6 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
 
 COMPLIANCE_SUBAGENT_TYPES: frozenset[str] = frozenset(
     {
-        "hydrator",
-        "aops-core:hydrator",
-        "aops_core_hydrator",
         "custodiet",
         "aops-core:custodiet",
         "aops_core_custodiet",
@@ -347,7 +342,6 @@ SPAWN_TOOLS: dict[str, tuple[tuple[str, ...], bool]] = {
     "delegate_to_agent": (("name", "agent_name"), False),
     "activate_skill": (("skill", "name"), True),
     # Gemini: bare agent tools (Strategy 2)
-    # Note: hydrator is a skill — invoked via activate_skill(name='aops-core:hydrator')
     "aops_core_custodiet": ((), False),
     "aops_core_qa": ((), False),
     "aops_core_audit": ((), False),
@@ -463,7 +457,7 @@ def get_tool_category(tool_name: str, tool_input: dict[str, Any] | None = None) 
     """
     # 1. ToolSearch with select: prefix is a pure tool-loading operation (infrastructure).
     # Blocking it creates an unresolvable loop: the agent needs ToolSearch to load
-    # tools, but ToolSearch is blocked until hydration, which also requires tools.
+    # tools, but ToolSearch is sometimes blocked.
     if tool_name == "ToolSearch" and tool_input:
         query = tool_input.get("query", "")
         if isinstance(query, str) and query.startswith("select:"):
@@ -471,7 +465,7 @@ def get_tool_category(tool_name: str, tool_input: dict[str, Any] | None = None) 
 
     # 2. Compliance agent spawns (Agent/Task + compliance subagent_type, or tool_name
     # is the compliance agent name directly) are infrastructure.
-    # This ensures dispatching the hydrator or custodiet is never blocked by any gate,
+    # This ensures dispatching the custodiet is never blocked by any gate,
     # including custodiet's own ops-threshold policy.
     extracted_st, _ = extract_subagent_type(tool_name, tool_input or {})
     if extracted_st and extracted_st in COMPLIANCE_SUBAGENT_TYPES:
@@ -506,14 +500,14 @@ def extract_subagent_type(
 
     Two extraction strategies:
     1. Direct match: tool_name IS the agent name (e.g. Gemini reports
-       tool_name="hydrator" rather than "delegate_to_agent").
+       tool_name="custodiet" rather than "delegate_to_agent").
        Matched against COMPLIANCE_SUBAGENT_TYPES.
     2. SPAWN_TOOLS table: tool_name is a spawning tool (e.g. "Agent",
        "delegate_to_agent") and the agent name is in tool_input.
 
     Args:
         tool_name: The tool being called (e.g. "Task", "delegate_to_agent",
-            or the agent name directly like "hydrator").
+            or the agent name directly like "custodiet").
         tool_input: The tool's input parameters.
 
     Returns:

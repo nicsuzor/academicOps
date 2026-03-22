@@ -111,7 +111,6 @@ def format_gate_status_icons(state: SessionState) -> str:
     """Format current gate statuses as a lifecycle-aware icon strip.
 
     Only shows gates when they need attention:
-    - 💧  hydration gate is CLOSED (pre-hydration)
     - ◇ N  custodiet countdown active
     - ◇    custodiet overdue (past threshold)
     - ≡    handover complete (gate OPEN + handover invoked)
@@ -121,11 +120,6 @@ def format_gate_status_icons(state: SessionState) -> str:
     from lib.gates.registry import GateRegistry
 
     parts: list[str] = []
-
-    # Hydration: show only when CLOSED (needs hydration)
-    hydration = state.gates.get("hydration")
-    if not hydration or hydration.status == "closed":
-        parts.append("💧")
 
     # Custodiet: countdown or overdue
     custodiet = state.gates.get("custodiet")
@@ -404,6 +398,38 @@ class HookRouter:
         prompt = ctx.raw_input.get("prompt", "")
         return isinstance(prompt, str) and prompt.lstrip().startswith("<task-notification>")
 
+    def _run_lightweight_hydrator(
+        self, ctx: HookContext, state: SessionState, merged_result: CanonicalHookOutput
+    ) -> None:
+        """Inject lightweight hydrator skills-routing hint.
+
+        Delivery: via the UserPromptSubmit hook hint (non-blocking).
+        Template: hydration.warn (repurposed for routing table).
+        """
+        if ctx.is_subagent:
+            return
+
+        # Skip for background notifications
+        if self._is_task_notification(ctx):
+            return
+
+        # Render routing table hint
+        try:
+            from lib.template_registry import TemplateRegistry
+
+            variables = {
+                "session_id": ctx.session_id,
+                "client_type": os.environ.get("AOPS_CLIENT_TYPE", "unknown"),
+            }
+            hint = TemplateRegistry.instance().render("hydration.warn", variables)
+            if hint:
+                if merged_result.context_injection:
+                    merged_result.context_injection = f"{merged_result.context_injection}\n\n{hint}"
+                else:
+                    merged_result.context_injection = hint
+        except Exception as e:
+            print(f"WARNING: lightweight_hydrator error: {e}", file=sys.stderr)
+
     def execute_hooks(self, ctx: HookContext) -> CanonicalHookOutput:
         """Run all configured gates for the event and merge results.
 
@@ -438,6 +464,10 @@ class HookRouter:
 
         # Run special handlers first (unified_logger, ntfy, etc.) then gates
         self._run_special_handlers(ctx, state, merged_result)
+
+        # Lightweight hydrator hint (non-blocking)
+        if ctx.hook_event == "UserPromptSubmit":
+            self._run_lightweight_hydrator(ctx, state, merged_result)
 
         # Dispatch to GenericGate methods based on event type.
         # Subagent sessions return early (gates only evaluate in main session).

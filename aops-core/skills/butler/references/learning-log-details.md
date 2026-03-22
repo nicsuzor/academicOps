@@ -117,7 +117,7 @@ We don't control agents - they're probabilistic. Root causes must be framework c
 | Category          | Definition                                         | Fix Location                              |
 | ----------------- | -------------------------------------------------- | ----------------------------------------- |
 | Clarity Failure   | Instruction ambiguous or insufficiently emphasized | AXIOMS, skill text, guardrail instruction |
-| Context Failure   | Component didn't provide relevant information      | Intent router, hydration                  |
+| Context Failure   | Component didn't provide relevant information      | Intent router                             |
 | Blocking Failure  | Should have blocked but didn't                     | PreToolUse hook, deny rule                |
 | Detection Failure | Should have caught but didn't                      | PostToolUse hook                          |
 | Gap               | No component exists for this case                  | Create new enforcement                    |

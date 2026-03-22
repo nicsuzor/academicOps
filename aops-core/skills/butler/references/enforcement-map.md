@@ -24,11 +24,10 @@ This document tracks all enforcement mechanisms in the academicOps framework.
 
 ### PreToolUse Hooks
 
-| Hook                     | Mode       | Description                                  |
-| ------------------------ | ---------- | -------------------------------------------- |
-| `hydration_gate.py`      | warn/block | Blocks until hydrator invoked                |
-| `command_intercept.py`   | transform  | Transforms tool inputs (e.g., Glob excludes) |
-| `overdue_enforcement.py` | warn       | Injects reminders for overdue tasks          |
+| Hook                     | Mode      | Description                                  |
+| ------------------------ | --------- | -------------------------------------------- |
+| `command_intercept.py`   | transform | Transforms tool inputs (e.g., Glob excludes) |
+| `overdue_enforcement.py` | warn      | Injects reminders for overdue tasks          |
 
 ### PostToolUse Hooks
 
@@ -72,7 +71,6 @@ To switch from warn to block mode:
 ```bash
 # In settings.local.json or CLAUDE_ENV_FILE
 export CUSTODIET_GATE_MODE=block
-export HYDRATION_GATE_MODE=block
 export QA_GATE_MODE=block
 export HANDOVER_GATE_MODE=block
 ```
