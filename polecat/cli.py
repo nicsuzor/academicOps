@@ -1560,6 +1560,129 @@ def list_polecats(ctx):
 
 
 @main.command()
+@click.option("--stale-days", default=3, help="Days before flagging a PR as stale (default: 3)")
+@click.pass_context
+def sweep(ctx, stale_days):
+    """Scan 'merge_ready' tasks and update status based on GitHub PR state.
+
+    Checks each task in 'merge_ready' status for its corresponding PR.
+    - If merged: sets task to 'done', cleans up worktree/branch.
+    - If closed (not merged): sets task back to 'review'.
+    - If changes requested: sets task back to 'review' and appends comments.
+    - If stale (>N days): flags for attention in task body.
+    """
+    from datetime import timedelta
+
+    import github
+
+    try:
+        from lib.task_model import TaskStatus
+    except ImportError:
+        print("Error: Task management libraries not found.", file=sys.stderr)
+        sys.exit(1)
+
+    manager = PolecatManager(home_dir=ctx.obj.get("home"))
+    tasks = manager.storage.list_tasks(status=TaskStatus.MERGE_READY)
+
+    if not tasks:
+        print("No tasks in MERGE_READY status.")
+        return
+
+    print(f"Sweeping {len(tasks)} tasks in MERGE_READY status...")
+
+    for task in tasks:
+        pr_ref = task.pr_url or (str(task.pr) if task.pr else None)
+
+        # If no PR metadata in task fields, try to extract from body
+        if not pr_ref:
+            # Look for PR URL pattern
+            match = re.search(r"https://github\.com/[^/]+/[^/]+/pull/(\d+)", task.body or "")
+            if match:
+                pr_ref = match.group(0)
+
+        if not pr_ref:
+            print(f"  ⚠ Skipping {task.id}: No PR metadata found in task.")
+            continue
+
+        print(f"  Checking {task.id} (PR {pr_ref})...")
+        pr_status = github.get_pr_status(pr_ref)
+
+        if not pr_status:
+            print(f"    ❌ Could not get status for PR {pr_ref}")
+            continue
+
+        state = pr_status.get("state")
+        merged_at = pr_status.get("mergedAt")
+        updated_at_str = pr_status.get("updatedAt")
+        reviews = pr_status.get("reviews", [])
+
+        # 1. PR Merged
+        if state == "MERGED" or merged_at:
+            print("    ✅ PR Merged! Marking task as DONE.")
+            task.status = TaskStatus.DONE
+            manager.storage.save_task(task)
+            # Cleanup worktree
+            try:
+                manager.nuke_worktree(task.id, force=True)
+                print("    🧹 Worktree and branch cleaned up.")
+            except Exception as e:
+                print(f"    ⚠ Cleanup failed: {e}")
+            continue
+
+        # 2. PR Closed (but not merged)
+        if state == "CLOSED":
+            print("    ❌ PR Closed without merge. Moving to REVIEW.")
+            task.status = TaskStatus.REVIEW
+            task.body += f"\n\n## 🧹 Sweep Report ({datetime.now().strftime('%Y-%m-%d %H:%M')})\n"
+            task.body += f"**PR Closed without merge**: {pr_status.get('url')}\n"
+            manager.storage.save_task(task)
+            continue
+
+        # 3. Changes Requested
+        # Check if ANY active reviewer has CHANGES_REQUESTED
+        # (GitHub PR view returns all reviews; we care about the latest state)
+        latest_reviews = {}
+        for r in reviews:
+            login = r.get("author", {}).get("login")
+            if login:
+                latest_reviews[login] = r
+
+        changes_requested = [
+            r for r in latest_reviews.values() if r.get("state") == "CHANGES_REQUESTED"
+        ]
+
+        if changes_requested:
+            print("    ❗ Changes requested. Moving to REVIEW.")
+            task.status = TaskStatus.REVIEW
+            task.body += f"\n\n## 🧹 Sweep Report ({datetime.now().strftime('%Y-%m-%d %H:%M')})\n"
+            task.body += f"**Changes requested** on PR {pr_status.get('url') or pr_ref}:\n"
+            for review in changes_requested:
+                author = review.get("author", {}).get("login", "unknown")
+                review_body = review.get("body", "No comment")
+                task.body += f"- **{author}**: {review_body}\n"
+            manager.storage.save_task(task)
+            continue
+
+        # 4. Stale check
+        if updated_at_str:
+            # fromisoformat handles 'Z' in Python 3.11+, for older we might need a workaround
+            # but usually polecat runs on modern python.
+            try:
+                updated_at = datetime.fromisoformat(updated_at_str.replace("Z", "+00:00"))
+                if datetime.now(UTC) - updated_at > timedelta(days=stale_days):
+                    print(f"    ⏳ PR is stale (> {stale_days} days). Flagging.")
+                    # We don't change status, just add a note if not already flagged
+                    if "PR is stale" not in (task.body or ""):
+                        task.body += f"\n\n## ⏳ Stale PR Alert ({datetime.now().strftime('%Y-%m-%d %H:%M')})\n"
+                        task.body += (
+                            f"This PR has been open and inactive for more than {stale_days} days.\n"
+                        )
+                        manager.storage.save_task(task)
+            except Exception as e:
+                print(f"    ⚠ Could not parse updatedAt '{updated_at_str}': {e}")
+
+
+@main.command()
 def merge():
     """Scan for tasks in REVIEW status and merge them to main.
 
