@@ -605,7 +605,7 @@ def build_audit_session_context(
 
     result_text = "\n".join(lines)
     if len(result_text) > _MAX_OUTPUT_CHARS:
-        # Truncate from the end of the historical section, preserving recent turns
+        # As a final safeguard, truncate the entire output if it exceeds the budget. This will primarily affect the historical section.
         result_text = result_text[:_MAX_OUTPUT_CHARS] + "\n... [truncated to fit budget]"
     return result_text
 
