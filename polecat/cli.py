@@ -1845,16 +1845,31 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
                 print(f"\U0001f4c1 {project_dir.name}: {project_dir}")
                 # Sync with upstream so we don't resume on stale code
                 print(f"   Syncing {project_dir.name} with origin...")
-                subprocess.run(
+                fetch_result = subprocess.run(
                     ["git", "fetch", "origin"],
                     cwd=project_dir,
                     check=False,
                     capture_output=True,
+                    text=True,
                 )
-                # Try fast-forward merge from default branch
-                default_branch = manager.projects.get(project_dir.name, {}).get(
-                    "default_branch", "main"
+                if fetch_result.returncode != 0:
+                    print(f"   \u26a0 git fetch failed: {fetch_result.stderr.strip()}")
+                    continue
+                # Detect default branch from remote HEAD, fall back to project config
+                head_result = subprocess.run(
+                    ["git", "symbolic-ref", "refs/remotes/origin/HEAD"],
+                    cwd=project_dir,
+                    check=False,
+                    capture_output=True,
+                    text=True,
                 )
+                if head_result.returncode == 0:
+                    # refs/remotes/origin/HEAD -> refs/remotes/origin/main
+                    default_branch = head_result.stdout.strip().split("/")[-1]
+                else:
+                    default_branch = manager.projects.get(project_dir.name, {}).get(
+                        "default_branch", "main"
+                    )
                 merge_result = subprocess.run(
                     ["git", "merge", "--ff-only", f"origin/{default_branch}"],
                     cwd=project_dir,
@@ -1866,9 +1881,11 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
                     print(f"   \u2705 Up to date with origin/{default_branch}")
                 else:
                     print(
-                        "   \u26a0 Could not fast-forward (local changes?). "
-                        "Manual merge may be needed."
+                        f"   \u26a0 Could not fast-forward to origin/{default_branch} "
+                        f"(local changes?). Manual merge may be needed."
                     )
+                    if merge_result.stderr:
+                        print(f"      Git error: {merge_result.stderr.strip()}")
         projects = list(clone_paths.keys())
     else:
         try:
