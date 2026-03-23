@@ -12,25 +12,14 @@ from pathlib import Path
 
 
 def get_current_version(aops_root: Path) -> str:
-    # Try to get version from scripts/build.py
     script_path = aops_root / "scripts" / "build.py"
-    try:
-        result = subprocess.run(
-            [sys.executable, str(script_path), "--version"],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        return result.stdout.strip()
-    except Exception:
-        # Fallback to reading pyproject.toml directly
-        pyproject_path = aops_root / "pyproject.toml"
-        if pyproject_path.exists():
-            content = pyproject_path.read_text()
-            match = re.search(r'^version\s*=\s*"([^"]+)"', content, re.MULTILINE)
-            if match:
-                return match.group(1)
-    raise RuntimeError("Could not determine version from build.py or pyproject.toml")
+    result = subprocess.run(
+        [sys.executable, str(script_path), "--version"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return result.stdout.strip()
 
 
 def bump_semver(version: str, part: str = "patch") -> str:
