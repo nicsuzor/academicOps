@@ -1837,12 +1837,38 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
     # Setup isolated clones for project(s)
     clone_paths = {}
     if resume:
-        # Recover clone paths from existing crew directory
+        # Recover clone paths from existing crew directory and sync with upstream
         crew_path = manager.crew_dir / crew_name
         for project_dir in crew_path.iterdir():
-            if project_dir.is_dir():
+            if project_dir.is_dir() and (project_dir / ".git").exists():
                 clone_paths[project_dir.name] = project_dir
                 print(f"\U0001f4c1 {project_dir.name}: {project_dir}")
+                # Sync with upstream so we don't resume on stale code
+                print(f"   Syncing {project_dir.name} with origin...")
+                subprocess.run(
+                    ["git", "fetch", "origin"],
+                    cwd=project_dir,
+                    check=False,
+                    capture_output=True,
+                )
+                # Try fast-forward merge from default branch
+                default_branch = manager.projects.get(project_dir.name, {}).get(
+                    "default_branch", "main"
+                )
+                merge_result = subprocess.run(
+                    ["git", "merge", "--ff-only", f"origin/{default_branch}"],
+                    cwd=project_dir,
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                )
+                if merge_result.returncode == 0:
+                    print(f"   \u2705 Up to date with origin/{default_branch}")
+                else:
+                    print(
+                        "   \u26a0 Could not fast-forward (local changes?). "
+                        "Manual merge may be needed."
+                    )
         projects = list(clone_paths.keys())
     else:
         try:
@@ -1850,6 +1876,9 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
                 clone_path = manager.setup_crew_worktree(crew_name, proj)
                 clone_paths[proj] = clone_path
                 print(f"\U0001f4c1 {proj}: {clone_path}")
+        except FileExistsError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
         except Exception as e:
             print(f"Error setting up crew clone: {e}", file=sys.stderr)
             sys.exit(1)
