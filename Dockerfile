@@ -108,8 +108,15 @@ RUN mkdir -p /home/worker/.gemini \
 # Make home dir and plugin dirs writable for any UID — polecat crew runs
 # containers as the host UID (non-root), which may differ from the worker
 # UID created above. Open permissions because the host UID varies per machine.
+# Make home dir writable for any UID — polecat crew runs containers as the
+# host UID (non-root), which may differ from worker UID 1000.
+# Remove .claude.json so the entrypoint can create it fresh with correct ownership.
+# Make home dir and .claude writable for any UID — polecat crew runs containers
+# as the host UID (non-root), which may differ from worker UID 1000.
+# Remove .claude.json so the entrypoint can create it fresh with correct ownership.
 RUN chmod 777 /home/worker \
-    && chmod -R a+w /home/worker/.claude/plugins/ 2>/dev/null || true
+    && chmod -R 777 /home/worker/.claude/ 2>/dev/null || true \
+    && rm -f /home/worker/.claude.json
 
 # Default command and entrypoint
 ENTRYPOINT ["/app/polecat/entrypoint.sh"]

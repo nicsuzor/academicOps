@@ -266,37 +266,42 @@ def _build_docker_cmd(
     if cli_tool in ("claude", "shell"):
         claude_json = home / ".claude.json"
         claude_dir = home / ".claude"
+        # Create a staging directory under $HOME so Colima/Docker VMs can access it
+        # (macOS VMs only share /Users, not /var/folders or /tmp).
+        staging_dir = home / ".aops" / "tmp" / f"staging-{os.getpid()}"
+        staging_dir.mkdir(parents=True, exist_ok=True)
+        if tmp_files is not None:
+            tmp_files.append(staging_dir)
         if claude_json.exists():
             # Claude needs bypassPermissionsModeAccepted=true for --dangerously-skip-permissions
-            # to work without an interactive prompt. Create a temp copy with this flag set
+            # to work without an interactive prompt. Create a copy with this flag set
             # rather than modifying the user's actual config.
             with open(claude_json) as f:
                 config = json.load(f)
             config["bypassPermissionsModeAccepted"] = True
-            # Use NamedTemporaryFile (not deprecated mktemp) with delete=False
-            # so the file persists for Docker to mount. Caller cleans up via tmp_files.
-            tmp_fd = tempfile.NamedTemporaryFile(suffix=".claude.json", delete=False, mode="w")
-            json.dump(config, tmp_fd)
-            tmp_fd.close()
-            tmp_claude_json = Path(tmp_fd.name)
-            if tmp_files is not None:
-                tmp_files.append(tmp_claude_json)
-            cmd.extend(["-v", f"{tmp_claude_json}:{container_home}/.claude.json"])
+            staged_claude_json = staging_dir / ".claude.json"
+            with open(staged_claude_json, "w") as f:
+                json.dump(config, f)
         if claude_dir.exists():
-            # Mount only the auth files Claude needs at runtime — not the whole directory.
+            # Copy only the auth files Claude needs at runtime — not the whole directory.
             # The plugin installation is baked into the image (see Dockerfile), so mounting
             # the full ~/.claude dir would override the image's plugin data with the host's
             # (potentially stale or wrong-path) copy.
+            staged_claude_dir = staging_dir / ".claude"
+            staged_claude_dir.mkdir(exist_ok=True)
             for auth_file in (".credentials.json", ".mcp.json"):
                 src = claude_dir / auth_file
                 if src.exists():
-                    cmd.extend(["-v", f"{src}:{container_home}/.claude/{auth_file}:ro"])
+                    shutil.copy2(src, staged_claude_dir / auth_file)
+        cmd.extend(["-v", f"{staging_dir}:/tmp/staging:ro"])
 
-    # Mount Gemini auth files for "shell" mode so users can run gemini interactively.
+    # Stage Gemini auth files for "shell" mode so users can run gemini interactively.
     # Gemini normally handles its own sandbox, but in shell mode we're managing Docker.
     if cli_tool == "shell":
         gemini_dir = home / ".gemini"
         if gemini_dir.exists():
+            staged_gemini_dir = staging_dir / ".gemini"
+            staged_gemini_dir.mkdir(exist_ok=True)
             for auth_file in (
                 "settings.json",
                 "google_accounts.json",
@@ -306,7 +311,7 @@ def _build_docker_cmd(
             ):
                 src = gemini_dir / auth_file
                 if src.exists():
-                    cmd.extend(["-v", f"{src}:{container_home}/.gemini/{auth_file}:ro"])
+                    shutil.copy2(src, staged_gemini_dir / auth_file)
             # Also forward GEMINI_API_KEY if set
             gemini_key = env.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
             if gemini_key:
@@ -2075,7 +2080,10 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
             shutil.rmtree(tmp_gemini_home)
         # Clean up temporary files created by _build_docker_cmd
         for tmp_file in tmp_files:
-            tmp_file.unlink(missing_ok=True)
+            if tmp_file.is_dir():
+                shutil.rmtree(tmp_file, ignore_errors=True)
+            else:
+                tmp_file.unlink(missing_ok=True)
 
     print("-" * 50)
     print(f"\n\U0001f4cb Crew '{crew_name}' session ended.")
@@ -2570,7 +2578,10 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
             shutil.rmtree(tmp_gemini_home)
         # Clean up temporary files created by _build_docker_cmd
         for tmp_file in tmp_files:
-            tmp_file.unlink(missing_ok=True)
+            if tmp_file.is_dir():
+                shutil.rmtree(tmp_file, ignore_errors=True)
+            else:
+                tmp_file.unlink(missing_ok=True)
 
     print("-" * 50)
 
