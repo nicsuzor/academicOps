@@ -1911,16 +1911,18 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
     # Worker session data lives in $POLECAT_HOME (outside the sessions git repo)
     # to avoid polluting the tracked sessions working tree.
     try:
-        from lib.paths import get_local_cache_root
+        from lib.paths import get_sessions_repo
 
-        worker_base = get_local_cache_root()
+        sessions_base = get_sessions_repo()
     except ImportError:
-        worker_base = Path(os.environ.get("POLECAT_HOME", str(Path.home() / ".polecat")))
+        aops_sessions = os.environ.get("AOPS_SESSIONS")
+        sessions_base = (
+            Path(aops_sessions)
+            if aops_sessions
+            else Path(os.environ.get("POLECAT_HOME", str(Path.home() / ".polecat"))) / "sessions"
+        )
     project_slug = target or projects[0]
-    if gemini:
-        session_dir = worker_base / "crew" / crew_name / project_slug
-    else:
-        session_dir = worker_base / "crew" / crew_name / project_slug / "claude-sessions"
+    session_dir = sessions_base / "crew" / crew_name / project_slug
 
     tmp_gemini_home = None
     tmp_files: list[Path] = []
@@ -2440,19 +2442,20 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
     tmp_gemini_home = None
     tmp_files: list[Path] = []
     # Compute session directory for transcript persistence.
-    # Worker session data lives in $POLECAT_HOME (outside the sessions git repo)
-    # to avoid polluting the tracked sessions working tree.
+    # Session data lives in $AOPS_SESSIONS so it is tracked in the sessions git repo.
     try:
-        from lib.paths import get_local_cache_root
+        from lib.paths import get_sessions_repo
 
-        worker_base = get_local_cache_root()
+        sessions_base = get_sessions_repo()
     except ImportError:
-        worker_base = Path(os.environ.get("POLECAT_HOME", str(Path.home() / ".polecat")))
+        aops_sessions = os.environ.get("AOPS_SESSIONS")
+        sessions_base = (
+            Path(aops_sessions)
+            if aops_sessions
+            else Path(os.environ.get("POLECAT_HOME", str(Path.home() / ".polecat"))) / "sessions"
+        )
     project_slug = task.project or project or worktree_path.name
-    if gemini:
-        run_session_dir = worker_base / "polecats" / task.id / project_slug
-    else:
-        run_session_dir = worker_base / "polecats" / task.id / project_slug / "claude-sessions"
+    run_session_dir = sessions_base / "polecats" / task.id / project_slug
 
     if gemini:
         # Replicate Gemini authentication if available.
