@@ -346,9 +346,22 @@ Session end is blocked until requirements are met. Two-phase validation ensures 
 | Workflow               | Purpose                                                      | Axiom                             |
 | ---------------------- | ------------------------------------------------------------ | --------------------------------- |
 | agent-axiom-review.yml | Axiom/heuristic compliance; `CHANGES_REQUESTED` blocks merge | All axioms/heuristics             |
+| agent-merge-prep.yml   | Agent fixes CI failures + review feedback before merge       | [[verify-first]]                  |
 | test-setup.yml         | Validate symlinks exist and are relative                     | [[fail-fast-code]]                |
 | framework-health.yml   | Framework health metrics and enforcement                     | [[maintain-relational-integrity]] |
 | claude.yml             | Claude Code bot integration                                  | -                                 |
+
+### Merge-Prep Agent CI Enforcement
+
+The merge-prep agent (`.github/agents/merge-prep.agent.md`) is instructed to:
+
+1. **Check CI status first** (step 2) — `gh pr checks` before reading reviews
+2. **Treat CI failures as primary concern** — reviews are secondary if CI is red
+3. **Discover repo-specific checks** — reads `.github/workflows/` to find exact commands; no hardcoded tool assumptions
+4. **Mandatory local validation** (step 5) — must run checks locally and pass before committing
+5. **Block on failure** — if checks cannot pass, agent must NOT approve or set success status
+
+**Enforcement level**: Prompt (agent instructions). No mechanical gate — the agent can still skip validation. Workflow-level CI gate enforcement is tracked in GH #166.
 
 ## Agent Tool Permissions
 
