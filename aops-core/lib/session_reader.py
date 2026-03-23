@@ -373,12 +373,13 @@ def build_audit_session_context(
     Returns:
         Formatted markdown context suitable for critic agent consumption
     """
+    processor = SessionProcessor()
+
     if entries is None:
         path = Path(transcript_path)
         if not path.exists():
             return "(No transcript path available)"
 
-        processor = SessionProcessor()
         _, entries, _ = processor.parse_session_file(path, load_agents=False, load_hooks=False)
 
     if not entries:
