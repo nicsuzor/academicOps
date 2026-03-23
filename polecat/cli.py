@@ -180,6 +180,23 @@ def save_worker_transcript(
         raise OSError(f"Failed to save transcript for task {task_id}: {e}") from e
 
 
+def _get_sessions_base() -> Path:
+    """Return the base directory for session transcript storage.
+
+    Uses ``get_sessions_repo()`` from ``lib.paths`` when available, falling
+    back to ``$AOPS_SESSIONS`` or ``$POLECAT_HOME/sessions``.
+    """
+    try:
+        from lib.paths import get_sessions_repo
+
+        return get_sessions_repo()
+    except ImportError:
+        aops_sessions = os.environ.get("AOPS_SESSIONS")
+        if aops_sessions:
+            return Path(aops_sessions)
+        return Path(os.environ.get("POLECAT_HOME", str(Path.home() / ".polecat"))) / "sessions"
+
+
 def _detect_system_timezone() -> str:
     """Detect system timezone from /etc/localtime or /etc/timezone. Returns 'UTC' if undetectable."""
     try:
@@ -1977,19 +1994,8 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
     env["POLECAT_WORKTREE"] = str(work_dir)
 
     # Compute session directory for Claude transcript persistence.
-    # Worker session data lives in $POLECAT_HOME (outside the sessions git repo)
-    # to avoid polluting the tracked sessions working tree.
-    try:
-        from lib.paths import get_local_cache_root
-
-        worker_base = get_local_cache_root()
-    except ImportError:
-        worker_base = Path(os.environ.get("POLECAT_HOME", str(Path.home() / ".polecat")))
     project_slug = target or projects[0]
-    if gemini:
-        session_dir = worker_base / "crew" / crew_name / project_slug
-    else:
-        session_dir = worker_base / "crew" / crew_name / project_slug / "claude-sessions"
+    session_dir = _get_sessions_base() / "crew" / crew_name / project_slug
 
     tmp_gemini_home = None
     tmp_files: list[Path] = []
@@ -2500,19 +2506,8 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
     tmp_gemini_home = None
     tmp_files: list[Path] = []
     # Compute session directory for transcript persistence.
-    # Worker session data lives in $POLECAT_HOME (outside the sessions git repo)
-    # to avoid polluting the tracked sessions working tree.
-    try:
-        from lib.paths import get_local_cache_root
-
-        worker_base = get_local_cache_root()
-    except ImportError:
-        worker_base = Path(os.environ.get("POLECAT_HOME", str(Path.home() / ".polecat")))
     project_slug = task.project or project or worktree_path.name
-    if gemini:
-        run_session_dir = worker_base / "polecats" / task.id / project_slug
-    else:
-        run_session_dir = worker_base / "polecats" / task.id / project_slug / "claude-sessions"
+    run_session_dir = _get_sessions_base() / "polecats" / task.id / project_slug
 
     if gemini:
         # Replicate Gemini authentication if available.
