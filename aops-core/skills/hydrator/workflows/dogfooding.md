@@ -95,5 +95,5 @@ Follow-up tasks are durable; session notes evaporate.
 
 **Fix-vs-defer boundary**:
 
-- **Fix inline**: Obvious bugs, wrong API calls, missing edge cases — clear and localized fixes.
+- **Fix inline**: Obvious bugs, wrong API calls, missing edge cases, incorrect guidance — clear and localized fixes.
 - **Defer**: Design changes, structural rethinking, new features. Log in `### Dogfooding observations` section and create follow-up tasks.
