@@ -408,12 +408,14 @@ def build_audit_session_context(
 
     # Noise tools the critic doesn't need to see individually
     _SKIP_TOOLS = {"TodoWrite", "Skill"}
+    # Total output budget to keep audit files readable by subagents
+    _MAX_OUTPUT_CHARS = 30_000
     # Max chars for agent reasoning text per turn
-    _AGENT_TEXT_LIMIT = 2000
+    _AGENT_TEXT_LIMIT = 1000
     # Max chars for tool arguments
     _TOOL_ARG_LIMIT = 300
     # Max chars for tool results
-    _TOOL_RESULT_LIMIT = 1000
+    _TOOL_RESULT_LIMIT = 500
 
     # We split history into a historical summary and recent detailed activity
     _DETAILED_TURNS_LIMIT = 5
@@ -425,8 +427,10 @@ def build_audit_session_context(
         lines.append("### Historical User Intent")
         lines.append("These are the older prompts from the user establishing the overall goals:\n")
 
+        char_count = 0
+        _HISTORICAL_BUDGET = int(_MAX_OUTPUT_CHARS * 0.8)  # 80% budget threshold
         turn_num = 0
-        for turn in historical_turns:
+        for idx, turn in enumerate(historical_turns):
             turn_num += 1
             user_msg = turn.get("user_message") if isinstance(turn, dict) else turn.user_message
             is_meta = turn.get("is_meta") if isinstance(turn, dict) else turn.is_meta
@@ -435,9 +439,14 @@ def build_audit_session_context(
                 msg = user_msg.strip()
                 msg = _clean_prompt_text(msg)
                 if not _is_system_injected_context(msg):
-                    if len(msg) > 1000:
-                        msg = msg[:1000] + "..."
-                    lines.append(f"**User (Turn {turn_num})**: {msg}\n")
+                    first_line = msg.split("\n")[0].strip()[:150]
+                    entry = f"**Turn {turn_num}**: {first_line}"
+                    if char_count + len(entry) > _HISTORICAL_BUDGET:
+                        remaining = len(historical_turns) - idx
+                        lines.append(f"... [{remaining} earlier turns omitted for size]")
+                        break
+                    lines.append(entry)
+                    char_count += len(entry)
 
         lines.append("---")
         lines.append(f"### Recent Activity (Last {len(recent_turns)} Turns)")
@@ -594,7 +603,11 @@ def build_audit_session_context(
     if not lines:
         return "(No meaningful session content extracted)"
 
-    return "\n".join(lines)
+    result_text = "\n".join(lines)
+    if len(result_text) > _MAX_OUTPUT_CHARS:
+        # Truncate from the end of the historical section, preserving recent turns
+        result_text = result_text[:_MAX_OUTPUT_CHARS] + "\n... [truncated to fit budget]"
+    return result_text
 
 
 def _extract_gate_context_impl(

@@ -760,3 +760,82 @@ class TestSessionBoundaryValidation:
         # The processor should preserve timestamps so filtering is possible
         # Verify we have at least the 2 valid session entries
         assert len(conversation_turns) >= 2, "Should have at least the 2 valid session entries"
+
+
+class TestBuildAuditSessionContextBudget:
+    """Test that build_audit_session_context stays within size budget (#228)."""
+
+    def test_50_turn_session_within_budget(self, tmp_path: Path) -> None:
+        """A 50-turn session must produce output <= 30,000 chars."""
+        from lib.session_reader import build_audit_session_context
+
+        transcript = tmp_path / "session.jsonl"
+        entries = []
+        for i in range(50):
+            # User message with realistic length (~200 chars)
+            user_text = f"Turn {i}: Please implement the feature described in ticket FOO-{i}. " + (
+                "This involves updating the parser module to handle edge cases "
+                "and adding comprehensive test coverage for all new branches. "
+            )
+            entries.append(_create_user_entry(user_text, i * 20))
+
+            # Assistant with tool use and text
+            entries.append(
+                {
+                    "type": "assistant",
+                    "uuid": f"assistant-{i}",
+                    "timestamp": _make_timestamp(i * 20 + 5),
+                    "message": {
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": f"I'll work on ticket FOO-{i}. Let me start by reading the relevant files and understanding the current implementation. "
+                                * 5,
+                            },
+                            {
+                                "type": "tool_use",
+                                "id": f"tool-{i}",
+                                "name": "Bash",
+                                "input": {"command": f"pytest tests/test_foo_{i}.py -x -q"},
+                            },
+                        ]
+                    },
+                }
+            )
+
+            # Tool result
+            entries.append(
+                _create_tool_result_entry(
+                    f"tool-{i}",
+                    f"PASSED: 5 tests in test_foo_{i}.py\n" + "ok " * 100,
+                    offset=i * 20 + 10,
+                )
+            )
+
+        _write_jsonl(transcript, entries)
+
+        result = build_audit_session_context(transcript)
+
+        assert len(result) <= 30_000, (
+            f"Audit context is {len(result)} chars, exceeds 30,000 char budget"
+        )
+
+    def test_recent_turns_preserved_in_detail(self, tmp_path: Path) -> None:
+        """The most recent 5 turns must still appear in detailed form."""
+        from lib.session_reader import build_audit_session_context
+
+        transcript = tmp_path / "session.jsonl"
+        entries = []
+        for i in range(10):
+            entries.append(_create_user_entry(f"Unique prompt number {i}", i * 20))
+            entries.append(_create_assistant_entry(i * 20 + 5))
+
+        _write_jsonl(transcript, entries)
+
+        result = build_audit_session_context(transcript)
+
+        # The last 5 user prompts should appear in detailed form
+        for i in range(5, 10):
+            assert f"Unique prompt number {i}" in result, (
+                f"Recent turn {i} missing from audit context"
+            )

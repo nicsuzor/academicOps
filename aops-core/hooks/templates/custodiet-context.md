@@ -44,6 +44,10 @@ If an active skill is shown above (not "none"), the agent has implicit authority
 
 ## Framework Principles
 
+<!-- NOTE: axioms + heuristics add ~15-25KB. They are NOT in agents/custodiet.md,
+     so they must stay here. If custodiet agent definition ever inlines them,
+     remove these sections to save size. See issue #228. -->
+
 {axioms_content}
 
 {heuristics_content}
