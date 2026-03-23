@@ -144,6 +144,8 @@ Identify knowledge docs and memories that may be stale, and tasks that are under
 
 **Consumer**: All (infrastructure)
 
+Re-run `graph_stats` and `pkb_orphans` and compare against the Phase 0 baseline. Note what changed.
+
 Ensure `$ACA_DATA` is committed, pushed, and remote is pulled. This is already handled by `repo-sync-cron.sh` but making it explicit as the final phase ensures the sleep cycle's outputs are durable.
 
 **Skip condition**: Never — always runs.
