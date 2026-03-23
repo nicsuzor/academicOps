@@ -352,8 +352,10 @@ class PolecatManager:
         branch_name = f"crew/{name}"
 
         if worktree_path.exists():
-            # Already exists, just return it
-            return worktree_path
+            raise FileExistsError(
+                f"Crew worktree already exists at {worktree_path}. "
+                f"Use 'polecat crew -r {name}' to resume, or 'polecat nuke {name}' to start fresh."
+            )
 
         print(f"Creating crew clone at {worktree_path} from local repo {local_repo_path}...")
 
