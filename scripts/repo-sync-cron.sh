@@ -1,15 +1,19 @@
 #!/usr/bin/env bash
-# repo-sync-cron.sh - Periodic maintenance: transcripts and repo sync
+# repo-sync-cron.sh - Periodic maintenance: transcripts, dashboard, repo sync, and sweep
 #
-# Two functions, composable via CLI:
+# Four functions, composable via CLI:
 #   do_transcript - Generate recent session transcripts
+#   do_dashboard  - Synthesize dashboard data and task graph
 #   do_sync       - Sync all git repositories via polecat sync
+#   do_sweep      - Sweep merge_ready tasks for PR status updates
 #
 # Usage:
-#   ./scripts/repo-sync-cron.sh              # Full: transcript + sync
+#   ./scripts/repo-sync-cron.sh              # Full: transcript + dashboard + sync + sweep
 #   ./scripts/repo-sync-cron.sh transcript   # Just transcript
+#   ./scripts/repo-sync-cron.sh dashboard    # Just dashboard
 #   ./scripts/repo-sync-cron.sh sync         # Just sync
-#   ./scripts/repo-sync-cron.sh transcript sync  # Specific combination
+#   ./scripts/repo-sync-cron.sh sweep        # Just sweep
+#   ./scripts/repo-sync-cron.sh transcript dashboard sync sweep # Specific combination
 #
 # Crontab suggested setup:
 #   */5 * * * * /path/to/repo/scripts/repo-sync-cron.sh >> /tmp/repo-sync-cron.log 2>&1
@@ -49,6 +53,12 @@ fi
 
 export ACA_DATA="${ACA_DATA:-$HOME/brain}"
 export AOPS_SESSIONS="${AOPS_SESSIONS:-${POLECAT_HOME:-$HOME/.polecat}/sessions}"
+
+# 2b. Source system paths (CARGO_HOME, UV_CACHE_DIR, Homebrew, GOPATH, etc.)
+# Cron doesn't set $USER; .env.system-paths needs it for /opt/$USER paths
+export USER="${USER:-$(whoami)}"
+[[ -f "$HOME/.env.system-paths" ]] && source "$HOME/.env.system-paths"
+
 export PATH="${CARGO_HOME:-$HOME/.cargo}/bin:$HOME/.local/bin:/usr/local/bin:$PATH"
 
 # Git HTTPS auth for cron (no SSH agent available)
@@ -79,9 +89,27 @@ TS="$(date '+%Y-%m-%d %H:%M:%S')"
 do_transcript() {
     echo "==> Generating recent transcripts..."
     if [[ -f "${AOPS}/aops-core/scripts/transcript.py" ]]; then
-        uv run python "${AOPS}/aops-core/scripts/transcript.py" --recent > /dev/null 2>&1 || echo "Warning: transcript generation failed"
+        uv run python "${AOPS}/aops-core/scripts/transcript.py" --recent --no-sync || echo "Warning: transcript generation failed" >&2
     else
-        echo "Warning: transcript.py not found"
+        echo "Warning: transcript.py not found" >&2
+    fi
+}
+
+do_dashboard() {
+    echo "==> Synthesizing dashboard data..."
+    # 1. Mechanical synthesis (no LLM)
+    if [[ -f "${AOPS}/scripts/synthesize_dashboard.py" ]]; then
+        uv run python "${AOPS}/scripts/synthesize_dashboard.py" > /dev/null 2>&1 || echo "Warning: dashboard synthesis failed"
+    else
+        echo "Warning: synthesize_dashboard.py not found"
+    fi
+
+    # 2. Update task graph for visualization (graph.json)
+    #    Use flock to prevent accumulation if graph takes longer than cron interval
+    if command -v pkb &>/dev/null; then
+        flock -n /tmp/pkb-graph.lock pkb graph -f all --no-layout || echo "Warning: pkb graph skipped (locked or failed)"
+    else
+        echo "Warning: pkb CLI not found, skipping graph update"
     fi
 }
 
@@ -91,23 +119,34 @@ do_sync() {
     uv run --project "${AOPS}" "${AOPS}/polecat/cli.py" sync --quiet 2>&1 || echo "Warning: polecat sync failed"
 }
 
+do_sweep() {
+    # Sweep merge_ready tasks for PR status updates
+    echo "==> Sweeping task PR statuses..."
+    uv run --project "${AOPS}" "${AOPS}/polecat/cli.py" sweep 2>&1 || echo "Warning: polecat sweep failed"
+}
+
 # ============================================================================
 # Dispatch
 # ============================================================================
 
 if [[ $# -eq 0 ]]; then
-    # Full run: transcript + sync
+    # Full run: transcript + dashboard + sync + sweep
     echo "${TS} repo-sync-cron starting (full)"
     do_transcript
+    do_dashboard
     do_sync
+    do_sweep
 else
-    # Named functions: ./repo-sync-cron.sh transcript sync
+    # Named functions: ./repo-sync-cron.sh transcript dashboard sync sweep
     echo "${TS} repo-sync-cron starting ($*)"
     for func in "$@"; do
         case "$func" in
             transcript) do_transcript ;;
+            dashboard)  do_dashboard ;;
             sync)       do_sync ;;
-            *)          echo "Unknown function: $func (valid: transcript, sync)" >&2; exit 1 ;;
+            sweep)      do_sweep ;;
+            --quick)    do_transcript; do_sync ;;
+            *)          echo "Unknown function: $func (valid: transcript, dashboard, sync, sweep, --quick)" >&2; exit 1 ;;
         esac
     done
 fi

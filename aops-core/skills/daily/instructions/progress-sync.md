@@ -4,6 +4,16 @@
 
 Update daily note from session JSON files and narrative path reconstruction.
 
+### Step 4.0: PR Status Sweep
+
+Before syncing progress, run a sweep of all tasks in `merge_ready` status to synchronize with GitHub PR states. This ensures the task graph accurately reflects merged or blocked work.
+
+```bash
+polecat sweep
+```
+
+**Outcome**: Tasks for merged PRs move to `done`, tasks with requested changes move back to `review`, and stale PRs are flagged.
+
 ### Step 4.1: Narrative Path Reconstruction (Compass Model)
 
 Instead of a mechanical table, build a narrative timeline of the day's work using the `show_path.py` script. This helps the user recover context and identify "where they are" in the day's story.

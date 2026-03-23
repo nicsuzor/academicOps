@@ -12,31 +12,30 @@ This document tracks all enforcement mechanisms in the academicOps framework.
 
 ## Environment Variables
 
-| Variable              | Default | Values          | Description                                     |
-| --------------------- | ------- | --------------- | ----------------------------------------------- |
-| `CUSTODIET_GATE_MODE` | `block` | `warn`, `block` | Controls custodiet compliance audit enforcement |
-| `HYDRATION_GATE_MODE` | `block` | `warn`, `block` | Controls hydration gate enforcement             |
-| `QA_GATE_MODE`        | `block` | `warn`, `block` | Controls QA gate enforcement                    |
-| `HANDOVER_GATE_MODE`  | `warn`  | `warn`, `block` | Controls handover (finalization) gate           |
+| Variable              | Default | Values                 | Description                                       |
+| --------------------- | ------- | ---------------------- | ------------------------------------------------- |
+| `CUSTODIET_GATE_MODE` | `block` | `warn`, `block`        | Controls custodiet compliance audit enforcement   |
+| `HYDRATION_GATE_MODE` | `off`   | `off`, `warn`, `block` | Controls hydration gate enforcement               |
+| `QA_GATE_MODE`        | `block` | `warn`, `block`        | Controls QA gate enforcement                      |
+| `COMMIT_GATE_MODE`    | `warn`  | `warn`, `block`        | Controls commit gate enforcement                  |
+| `HANDOVER_GATE_MODE`  | `warn`  | `warn`, `block`        | Controls handover (finalization) gate enforcement |
 
 ## Enforcement Hooks
 
 ### PreToolUse Hooks
 
-| Hook                     | Mode         | Description                                                          |
-| ------------------------ | ------------ | -------------------------------------------------------------------- |
-| `hydration_gate.py`      | warn/block   | Blocks until hydrator invoked                                        |
-| `axiom_enforcer`         | **DISABLED** | Real-time detection of P#8 (Fail-Fast) and P#26 (Write-Without-Read) |
-| `command_intercept.py`   | transform    | Transforms tool inputs (e.g., Glob excludes)                         |
-| `overdue_enforcement.py` | warn         | Injects reminders for overdue tasks                                  |
+| Hook                     | Mode       | Description                                  |
+| ------------------------ | ---------- | -------------------------------------------- |
+| `hydration_gate.py`      | warn/block | Blocks until hydrator invoked                |
+| `command_intercept.py`   | transform  | Transforms tool inputs (e.g., Glob excludes) |
+| `overdue_enforcement.py` | warn       | Injects reminders for overdue tasks          |
 
 ### PostToolUse Hooks
 
-| Hook
-| Mode | Description |
-| ----------------------------------- | ------- | --------------------------------------------------------------- |
-| `gate_registry.py:accountant` | passive | General state tracking (hydration, custodiet, handover) |
-| `gate_registry.py:skill_activation` | passive | Clears hydration pending on non-infrastructure skill activation |
+| Hook                | Mode         | Description                                     |
+| ------------------- | ------------ | ----------------------------------------------- |
+| `custodiet_gate.py` | configurable | Periodic compliance audit (every ~7 tool calls) |
+| `handover_gate.py`  | passive      | Clears stop gate when /dump invoked             |
 
 ## Custodiet Compliance Audit
 
@@ -47,17 +46,6 @@ Custodiet runs periodically (every ~7 tool calls) to check for:
 - Infrastructure failure workarounds (violates P#9, P#25)
 - SSOT violations
 
-## Axiom Enforcement (axiom_enforcer)
-
-**Status**: **DISABLED** (as of 2026-02-04)
-
-The `axiom_enforcer` gate provided real-time detection of axiom violations during `Edit`/`Write` operations:
-
-- **P#8 (Fail-Fast)**: Detected code patterns like `except: pass`, `os.environ.get(..., default)`, and other silent fallbacks.
-- **P#26 (Verify First)**: Detected "Write-Without-Read" violations, blocking writes to files that hadn't been read in the current session.
-
-**Rationale for Disabling**: Delegated responsibility for these checks to the agent software (Gemini CLI / Claude Code) to reduce framework overhead and friction during interactive sessions.
-
 ### Output Formats
 
 | Output  | Mode  | Effect                                       |
@@ -66,7 +54,7 @@ The `axiom_enforcer` gate provided real-time detection of axiom violations durin
 | `WARN`  | warn  | Issues found, advisory warning surfaced      |
 | `BLOCK` | block | Issues found, session halted until addressed |
 
-**Mode control**: Set `CUSTODIET_GATE_MODE=block` to enable blocking (default: `warn`)
+**Mode control**: Set `CUSTODIET_GATE_MODE=block` to enable blocking (default: `block`)
 
 ### Block Flag Mechanism
 
@@ -84,6 +72,9 @@ To switch from warn to block mode:
 ```bash
 # In settings.local.json or CLAUDE_ENV_FILE
 export CUSTODIET_GATE_MODE=block
+export HYDRATION_GATE_MODE=block
+export QA_GATE_MODE=block
+export HANDOVER_GATE_MODE=block
 ```
 
 Or set at session start in `session_env_setup.sh`.

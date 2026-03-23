@@ -11,7 +11,7 @@ Reconcile markdown files with memory server to ensure semantic search stays curr
 ## When to Run
 
 - After direct markdown edits (bypassing remember skill)
-- Periodically as part of `/garden` maintenance
+- Periodically as part of `/planner` maintain mode
 - When semantic search seems stale or incomplete
 - After memory server recovery/rebuild
 
@@ -91,12 +91,12 @@ Memory server handles deduplication via content hashing. Re-syncing the same con
 
 ## Integration
 
-### With /garden
+### With /planner (maintain mode)
 
-The garden skill should include memory sync as part of periodic maintenance:
+The planner's maintain mode should include memory sync as part of periodic maintenance:
 
 ```markdown
-## Garden Maintenance Includes
+## Maintain Mode Includes
 
 - Orphan detection
 - Link repair

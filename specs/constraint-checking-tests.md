@@ -136,7 +136,7 @@ TodoWrite(todos=[
 
 ---
 
-### Test 3: Missing Commit Gate
+### Test 3: Missing Test Verification before Commit
 
 **Scenario**: User requests "Fix login bug"
 
@@ -386,7 +386,7 @@ TodoWrite(todos=[
 | ----------- | -------------------------- | ------- | ---------- |
 | feature-dev | Valid plan                 | ✅ Pass | 0          |
 | feature-dev | Missing test-first         | ❌ Fail | 3          |
-| feature-dev | Missing commit gate        | ❌ Fail | 2          |
+| feature-dev | Missing test verification  | ❌ Fail | 2          |
 | decompose   | Valid plan                 | ✅ Pass | 0          |
 | decompose   | Missing assumptions        | ❌ Fail | 3          |
 | tdd-cycle   | Valid plan                 | ✅ Pass | 0          |

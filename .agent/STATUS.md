@@ -238,6 +238,7 @@ Gemini CLI extension installed at `~/.gemini/extensions/aops-core/`. Missing 7 o
 
 | Decision                                                 | Rationale                                                                                                                                                                                                                 | Date       |
 | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| Butler/Framework consolidation                           | Merged framework and audit skills with the Butler to create a context-aware core (Framework Skill v7.2.0+) that holds institutional knowledge and owns the verification layer.                                            | 2026-03-18 |
 | Delete qa.agent.md and strategic-review.agent.md         | Neither was invoked by any workflow; dead weight. Conceptual-review and custodiet-reviewer cover these concerns. (New portable qa.agent.md created 2026-03-09 with different purpose: PR verification, not issue review.) | 2026-03-03 |
 | custodiet-reviewer reads AXIOMS.md dynamically           | Hardcoded axiom list missed new axioms (e.g. P#45 Feedback Loops). Dynamic reading ensures full coverage.                                                                                                                 | 2026-03-03 |
 | conceptual-review uses assumption audit lens             | Effectual reasoning: treat all unvalidated parameters as assumptions requiring feedback loops, not settled decisions.                                                                                                     | 2026-03-03 |
@@ -276,6 +277,7 @@ Gemini CLI extension installed at `~/.gemini/extensions/aops-core/`. Missing 7 o
 
 ### Recently Completed
 
+- **Butler/Framework consolidation** -- Merged framework and audit skills with the Butler to create a context-aware core. Core operational logic (Learn As You Go, Verification Loops) migrated to **Framework Skill (v7.2.0+)**.
 - **Curia agent team legibility** -- Named agent team ("The Curia") with roster at `.agent/curia/CURIA.md`. Renamed GitHub agents (axiom-review -> auditor, review-and-fix -> critic). Cross-references added to all skills, agents, and hooks. Portable QA agent (`qa.agent.md`) works on any repo. Curia alias "auditor" added to gate config (assessor/advocate removed — not compliance bypass agents).
 - **Review agent consolidation** (PR #705) -- deleted qa.agent.md and strategic-review.agent.md (both unused); custodiet-reviewer now reads AXIOMS.md dynamically; conceptual-review refocused on assumption audit + effectual reasoning.
 - **Conceptual review agent** -- Replaced gatekeeper/custodiet/hydrator-reviewer issue-review pattern with strategic-review and conceptual-review agents.

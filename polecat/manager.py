@@ -173,6 +173,16 @@ def configure_git_credentials(repo_path: Path):
     )
 
 
+def _to_https_url(url: str) -> str:
+    """Converts a GitHub SSH URL to an HTTPS URL for bot compatibility.
+
+    Example: git@github.com:owner/repo.git -> https://github.com/owner/repo.git
+    """
+    if url.startswith("git@github.com:"):
+        return url.replace("git@github.com:", "https://github.com/")
+    return url
+
+
 class PolecatManager:
     def __init__(self, home_dir: Path | None = None):
         """Initialize the polecat manager.
@@ -229,10 +239,10 @@ class PolecatManager:
         available = [n for n in self.crew_names if n not in active_crew]
 
         if not available:
-            # All names in use, add a suffix
-            base = random.choice(self.crew_names)
-            suffix = random.randint(1, 99)
-            return f"{base}_{suffix}"
+            raise RuntimeError(
+                f"All crew names are in use: {sorted(self.list_crew())}. "
+                "Run 'polecat nuke <name>' to clean up idle workers before creating a new one."
+            )
 
         return random.choice(available)
 
@@ -361,7 +371,7 @@ class PolecatManager:
             capture_output=True,
             text=True,
         )
-        origin_url = result.stdout.strip()
+        origin_url = _to_https_url(result.stdout.strip())
         if origin_url:
             subprocess.run(
                 ["git", "remote", "set-url", "origin", origin_url], cwd=worktree_path, check=True
@@ -526,14 +536,23 @@ class PolecatManager:
         if mirror_path.exists():
             # Update existing mirror
             print(f"Fetching latest for {project}...")
+            # Ensure the origin URL is HTTPS for bot compatibility
+            remote_url = self._get_remote_url(source_path)
+            remote_url = _to_https_url(remote_url)
+            subprocess.run(
+                ["git", "remote", "set-url", "origin", remote_url],
+                cwd=mirror_path,
+                check=True,
+            )
             subprocess.run(
                 ["git", "fetch", "--all", "--prune"],
                 cwd=mirror_path,
                 check=True,
             )
         else:
-            # Derive remote URL from source repo
+            # Derive remote URL from source repo and force HTTPS
             remote_url = self._get_remote_url(source_path)
+            remote_url = _to_https_url(remote_url)
             print(f"Cloning {project} from {remote_url}...")
             subprocess.run(
                 ["git", "clone", "--bare", remote_url, str(mirror_path)],
@@ -592,9 +611,16 @@ class PolecatManager:
                 # This allows fetching unpushed commits from local working copy
                 self._ensure_local_remote(mirror_path, local_path)
 
+                # Build negative refspecs to exclude branches checked out in
+                # worktrees — git refuses to fetch into checked-out branches
+                exclude_refspecs = self._worktree_exclude_refspecs(mirror_path)
+                if exclude_refspecs:
+                    branches = [r.removeprefix("^refs/heads/") for r in exclude_refspecs]
+                    print(f"  Skipping worktree branches during fetch: {', '.join(branches)}")
+
                 # Fetch from origin (may fail if offline - that's OK)
                 origin_result = subprocess.run(
-                    ["git", "fetch", "origin"],
+                    ["git", "fetch", "origin", *exclude_refspecs],
                     cwd=mirror_path,
                     capture_output=True,
                 )
@@ -603,7 +629,7 @@ class PolecatManager:
 
                 # Fetch from local repo (should always succeed)
                 subprocess.run(
-                    ["git", "fetch", "local"],
+                    ["git", "fetch", "local", *exclude_refspecs],
                     cwd=mirror_path,
                     check=True,
                     capture_output=True,
@@ -616,6 +642,33 @@ class PolecatManager:
             # Network errors, etc - non-fatal for offline operation
             print(f"⚠ Mirror sync failed for {project}: {e}", file=sys.stderr)
             return False
+
+    def _worktree_exclude_refspecs(self, mirror_path: Path) -> list[str]:
+        """Return negative refspecs to exclude branches checked out in worktrees.
+
+        Git refuses to fetch into a branch that is checked out in any worktree.
+        This method returns refspecs like '^refs/heads/branch' so that fetch
+        silently skips those branches instead of failing.
+        """
+        result = subprocess.run(
+            ["git", "worktree", "list", "--porcelain"],
+            cwd=mirror_path,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            return []
+
+        branches: set[str] = set()
+        for line in result.stdout.splitlines():
+            if line.startswith("branch refs/heads/"):
+                raw_branch = line[len("branch refs/heads/") :]
+                branch = raw_branch.strip()
+                if branch:
+                    branches.add(branch)
+
+        return [f"^refs/heads/{branch}" for branch in sorted(branches)]
 
     def _ensure_local_remote(self, mirror_path: Path, local_path: Path) -> None:
         """Ensure mirror has a 'local' remote pointing to local repo.
@@ -1077,7 +1130,7 @@ class PolecatManager:
             capture_output=True,
             text=True,
         )
-        origin_url = result.stdout.strip()
+        origin_url = _to_https_url(result.stdout.strip())
         if origin_url:
             subprocess.run(
                 ["git", "remote", "set-url", "origin", origin_url], cwd=worktree_path, check=True

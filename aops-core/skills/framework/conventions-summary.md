@@ -75,11 +75,14 @@ Information surfaces when relevant. Missing context = framework bug.
 
 - Never create backup files (.bak, _old)
 - Edit directly, git tracks changes
-- Commit, PUSH, AND file a Pull Request after completing work
+- Commit AND push after completing work
 
 ### Mandatory Critic Review
 
+Before presenting any plan or conclusion, invoke the critic agent:
+
 ```
+Task(subagent_type="critic", model="opus", prompt="Review this for errors and hidden assumptions: [SUMMARY]")
 ```
 
 ### File Categories

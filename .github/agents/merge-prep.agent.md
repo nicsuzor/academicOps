@@ -55,7 +55,7 @@ Always run the full suite after any edits:
 ```bash
 uv run ruff check --fix && uv run ruff format
 uv run basedpyright
-uv run pytest -x -m "not requires_local_env"
+uv run pytest -x -m "not slow"
 ```
 
 ## 5. Commit

@@ -1,36 +1,96 @@
 # Changelog
 
-## [0.3.11](https://github.com/nicsuzor/academicOps/compare/v0.3.10...v0.3.11) (2026-03-17)
-
+## [0.3.13](https://github.com/nicsuzor/academicOps/compare/v0.3.12...v0.3.13) (2026-03-18)
 
 ### Features
 
-* **hydrator:** add JIT quality escalation process and hook gate context ([341fcf4](https://github.com/nicsuzor/academicOps/commit/341fcf4d2e4662a5be3df513442432490e2328a2))
-
+- consolidate Butler logic into Framework skill ([8e6b433](https://github.com/nicsuzor/academicOps/commit/8e6b433a9d6715bc51edf438228f428b92d51dcd))
+- consolidate Butler logic into Framework skill (self-aware core) ([0dc1b4a](https://github.com/nicsuzor/academicOps/commit/0dc1b4a2fafbb511270d5fc98405e545d0e94389))
+- **hooks:** consolidate stop hook messages into single ephemeral-environment warning ([e955dae](https://github.com/nicsuzor/academicOps/commit/e955dae9a69b77a9b09647248c460bcc5c08fe8c))
+- **polecat:** Make crew target required and fix transcript discovery ([7e6f96a](https://github.com/nicsuzor/academicOps/commit/7e6f96ac2bed70cfd4482f996aaa2a9c0c3f6b97))
+- **polecat:** Make crew target required and fix transcript discovery ([faa2178](https://github.com/nicsuzor/academicOps/commit/faa217890d96d12899fd798bed0065e6c6e1a3fe))
+- restore dashboard synthesis via repo-sync-cron.sh ([07164f4](https://github.com/nicsuzor/academicOps/commit/07164f452831337f39b9a08e9439beaf5706c529))
+- restore dashboard synthesis via repo-sync-cron.sh ([be598e7](https://github.com/nicsuzor/academicOps/commit/be598e7bad70f24dff05483125d3b694f9bcea6c))
 
 ### Bug Fixes
 
-* cron pipeline uses polecat sync correctly ([de9e919](https://github.com/nicsuzor/academicOps/commit/de9e91976d39fb10cde8bc3220da8cdd95778894))
-* cron pipeline uses polecat sync correctly, remove dead viz step ([efc1ccf](https://github.com/nicsuzor/academicOps/commit/efc1ccffa66f6fee6472c5e493b29b24748018cb))
-* **install:** resolve uv path at install time for cron jobs ([8930976](https://github.com/nicsuzor/academicOps/commit/893097639ecb6c03795f967f9b8794756488eabd))
-* **polecat:** forward gate mode env vars + hydrator JIT quality escalation ([4d52c36](https://github.com/nicsuzor/academicOps/commit/4d52c3648f7f88f809ede6b59f29bcb547c85e7a))
-* **polecat:** forward gate mode env vars into Docker crew containers ([3948148](https://github.com/nicsuzor/academicOps/commit/39481484280a7f5d3c7d149d7f1f42d493c2598b))
-* **polecat:** resolve crew container env forwarding, sync conflict, and extension replication ([d0bf8c3](https://github.com/nicsuzor/academicOps/commit/d0bf8c3631125c1ca1193f1dccb628fe1e080d7d))
-* resolve polecat crew container extension failure ([6d6187e](https://github.com/nicsuzor/academicOps/commit/6d6187e591e974a4ef1048bd2603683557e3a811))
+- address Gemini review feedback on commit_check message construction ([43b935a](https://github.com/nicsuzor/academicOps/commit/43b935a6c4098f9373c101383e9befaddbe16e71))
+- **build:** prevent .gitignore generation in gemini commands dist ([1f4b35f](https://github.com/nicsuzor/academicOps/commit/1f4b35fc70aef50fcf3cc8ccc0ff28aef6c88c96))
+- **build:** prevent .gitignore generation in gemini commands dist ([55c19ce](https://github.com/nicsuzor/academicOps/commit/55c19cec240b0a910d73c8c1cde5fed9bdfb5ec8))
+- **cron:** pass --no-sync to transcript.py and log stderr ([42049e4](https://github.com/nicsuzor/academicOps/commit/42049e44dadb0820c04a49e9d0cb59c07b2412c9))
+- **cron:** pass --no-sync to transcript.py and log stderr ([97744af](https://github.com/nicsuzor/academicOps/commit/97744afb33f5a8a10e2f36fc7bdce05d9d175946))
+- **gemini-crew:** embed token in gitconfig and mount gh hosts.yml ([a0f4338](https://github.com/nicsuzor/academicOps/commit/a0f4338a5878399518aa954dfe04b108aed1f20e))
+- **gemini-crew:** embed token in gitconfig and mount gh hosts.yml ([92ad493](https://github.com/nicsuzor/academicOps/commit/92ad49362085996a60a52e7fda8afb8d36bdfe6d))
+- make test_session_start_content.sh portable by using dynamic REPO_ROOT ([45087bd](https://github.com/nicsuzor/academicOps/commit/45087bd90136aaaa749a8ad0f61b1d3467f9c4c8))
+- make timezone test a proper unit test per review feedback ([b934b47](https://github.com/nicsuzor/academicOps/commit/b934b47d736f8711feed5626fce5cfe43934050f))
+- **polecat:** remove gh auth login from entrypoint to fix crew session exit ([b67cf14](https://github.com/nicsuzor/academicOps/commit/b67cf14cf874c31f74ea867450f1541b58e3c911))
+- redirect warning messages to stderr in do_transcript ([8af9b3a](https://github.com/nicsuzor/academicOps/commit/8af9b3a085dd6529c8b43d3d11cd84428acc47f9))
+- remove redundant workflow dispatch step in release-please ([8cfd489](https://github.com/nicsuzor/academicOps/commit/8cfd48966026d353cc6bab3c8b93175258058e34))
+- remove redundant workflow dispatch step in release-please ([f0f758a](https://github.com/nicsuzor/academicOps/commit/f0f758abc324ea534863b04003c1883908ae65b1))
+- simplify polecat/crew path detection to avoid false positives ([5d741da](https://github.com/nicsuzor/academicOps/commit/5d741dac0c7397f43fe2a97234af7206d3beb995))
 
+## [0.3.12](https://github.com/nicsuzor/academicOps/compare/v0.3.11...v0.3.12) (2026-03-18)
+
+### Features
+
+- configure polecat containers for HTTPS git and bot identity ([0e1cac4](https://github.com/nicsuzor/academicOps/commit/0e1cac486d1536c2f1fbc1d76c1a342ea42ccd8b))
+- configure polecat containers for HTTPS git and bot identity ([f34c319](https://github.com/nicsuzor/academicOps/commit/f34c31982b34dad4f422b8c91c207c0686c7ae9e))
+- consolidate 6 skills into unified Planner agent ([2710c30](https://github.com/nicsuzor/academicOps/commit/2710c302a94d59e5808b8b445831512cc15fd94e))
+- consolidate 6 skills into unified Planner agent ([3390cd6](https://github.com/nicsuzor/academicOps/commit/3390cd67f9c9e4c49f4ae21e3bbfe5f9aaeb02f6))
+- ensure polecat init and worktrees always use HTTPS remotes ([7734a5d](https://github.com/nicsuzor/academicOps/commit/7734a5d921472178c5a0cdf082cd51844371ecaf))
+
+### Bug Fixes
+
+- add missing check_installed_plugin_version and return Path in write_plugin_version ([fb3495b](https://github.com/nicsuzor/academicOps/commit/fb3495b040de32c7aebd327f64145b74deceeb12))
+- add missing check_installed_plugin_version to build_utils ([9a1fc24](https://github.com/nicsuzor/academicOps/commit/9a1fc24c213130bad8586951441f4b0c87d87ef8))
+- add missing check_installed_plugin_version to build_utils ([db64ec8](https://github.com/nicsuzor/academicOps/commit/db64ec8e8c95045f607bf09bab5b1524b75d7336))
+- add permissionDecisionReason to PreToolUse hook output ([146dd39](https://github.com/nicsuzor/academicOps/commit/146dd399142bdabf4dedfb9862b34cc2bf14803f))
+- address remaining stale references and merge conflict ([5e2429a](https://github.com/nicsuzor/academicOps/commit/5e2429afde602d24c5ea71e2519d2e4744a96f82))
+- address review feedback on check_installed_plugin_version ([a939a9a](https://github.com/nicsuzor/academicOps/commit/a939a9a1cb37b59b01aeb7e335819f5f6ff521ff))
+- **ci:** add --repo flag to gh pr view before checkout ([2faff08](https://github.com/nicsuzor/academicOps/commit/2faff0856bd8c45f67d163be4902c0f4458c0d7e))
+- configure git identity in polecat docker isolation test ([7fabbae](https://github.com/nicsuzor/academicOps/commit/7fabbae082e540f7451f6521a260b33561bf0341))
+- correct build_utils type and logic issues ([d7fd8e8](https://github.com/nicsuzor/academicOps/commit/d7fd8e89904da9a55616cf4921fa3ff82626bef7))
+- move fallback credential helper to else block to avoid overwriting gh auth ([3c57ee9](https://github.com/nicsuzor/academicOps/commit/3c57ee93a04906e1f1c2505e6e7eb8e90284c02f))
+- remove references to deleted scripts in planner SKILL.md ([f5974ce](https://github.com/nicsuzor/academicOps/commit/f5974cece0ffee3d88ff2432dec16be4a5d389ba))
+- remove stale garden/densify/triage_tasks refs after skill consolidation ([7656542](https://github.com/nicsuzor/academicOps/commit/765654283095e6e86bdda7d32c8926d285a993b8))
+- resolve agent-autofix.yml git initialization error ([f6c598e](https://github.com/nicsuzor/academicOps/commit/f6c598ee09259afe9ec226fe5531eabc7b92ffd0))
+- **tests:** update core skill name from planning to planner ([0b2502e](https://github.com/nicsuzor/academicOps/commit/0b2502ed69dd15f1fdf8968ac632a6b6ecfece65))
+
+### Documentation
+
+- realign framework around epistemic integrity under delegation ([f2fa55f](https://github.com/nicsuzor/academicOps/commit/f2fa55f0cd131facc92ae7e2505bb03201a6a60f))
 
 ### Miscellaneous
 
-* configure release-please to update version in uv.lock ([a3b2754](https://github.com/nicsuzor/academicOps/commit/a3b2754b56a509339d5595e3504142b3ccdd32cc))
-* configure release-please to update version in uv.lock ([937d87e](https://github.com/nicsuzor/academicOps/commit/937d87e068449ac488dbdbcc81f59bd2d043963a))
+- delete regex-based NLP scripts per review ([5b5ab21](https://github.com/nicsuzor/academicOps/commit/5b5ab2170d005851f41d76ee6448a5dfcf1da19d))
 
-## [0.3.10](https://github.com/nicsuzor/academicOps/compare/v0.3.9...v0.3.10) (2026-03-16)
+## [0.3.11](https://github.com/nicsuzor/academicOps/compare/v0.3.10...v0.3.11) (2026-03-17)
 
+### Features
+
+- **hydrator:** add JIT quality escalation process and hook gate context ([341fcf4](https://github.com/nicsuzor/academicOps/commit/341fcf4d2e4662a5be3df513442432490e2328a2))
 
 ### Bug Fixes
 
-* **build:** restore hooks wrapper in Gemini hooks.json ([fbf083b](https://github.com/nicsuzor/academicOps/commit/fbf083b6d859b40b5b570ab07c6f18aefbbbd0ed))
-* **build:** restore hooks wrapper in Gemini hooks.json — hooks must be an object ([835b143](https://github.com/nicsuzor/academicOps/commit/835b1430b782d42643838e9ebba4daad8235002b))
+- cron pipeline uses polecat sync correctly ([de9e919](https://github.com/nicsuzor/academicOps/commit/de9e91976d39fb10cde8bc3220da8cdd95778894))
+- cron pipeline uses polecat sync correctly, remove dead viz step ([efc1ccf](https://github.com/nicsuzor/academicOps/commit/efc1ccffa66f6fee6472c5e493b29b24748018cb))
+- **install:** resolve uv path at install time for cron jobs ([8930976](https://github.com/nicsuzor/academicOps/commit/893097639ecb6c03795f967f9b8794756488eabd))
+- **polecat:** forward gate mode env vars + hydrator JIT quality escalation ([4d52c36](https://github.com/nicsuzor/academicOps/commit/4d52c3648f7f88f809ede6b59f29bcb547c85e7a))
+- **polecat:** forward gate mode env vars into Docker crew containers ([3948148](https://github.com/nicsuzor/academicOps/commit/39481484280a7f5d3c7d149d7f1f42d493c2598b))
+- **polecat:** resolve crew container env forwarding, sync conflict, and extension replication ([d0bf8c3](https://github.com/nicsuzor/academicOps/commit/d0bf8c3631125c1ca1193f1dccb628fe1e080d7d))
+- resolve polecat crew container extension failure ([6d6187e](https://github.com/nicsuzor/academicOps/commit/6d6187e591e974a4ef1048bd2603683557e3a811))
+
+### Miscellaneous
+
+- configure release-please to update version in uv.lock ([a3b2754](https://github.com/nicsuzor/academicOps/commit/a3b2754b56a509339d5595e3504142b3ccdd32cc))
+- configure release-please to update version in uv.lock ([937d87e](https://github.com/nicsuzor/academicOps/commit/937d87e068449ac488dbdbcc81f59bd2d043963a))
+
+## [0.3.10](https://github.com/nicsuzor/academicOps/compare/v0.3.9...v0.3.10) (2026-03-16)
+
+### Bug Fixes
+
+- **build:** restore hooks wrapper in Gemini hooks.json ([fbf083b](https://github.com/nicsuzor/academicOps/commit/fbf083b6d859b40b5b570ab07c6f18aefbbbd0ed))
+- **build:** restore hooks wrapper in Gemini hooks.json — hooks must be an object ([835b143](https://github.com/nicsuzor/academicOps/commit/835b1430b782d42643838e9ebba4daad8235002b))
 
 ## [0.3.9](https://github.com/nicsuzor/academicOps/compare/v0.3.8...v0.3.9) (2026-03-16)
 

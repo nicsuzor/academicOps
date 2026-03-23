@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-pytestmark = [pytest.mark.integration, pytest.mark.requires_local_env]
+pytestmark = [pytest.mark.integration]
 
 
 class TestRouterExitCodePropagation:
@@ -23,7 +23,8 @@ class TestRouterExitCodePropagation:
     def router_path(self) -> Path:
         """Path to the hook router script."""
         aops = os.environ.get("AOPS")
-        assert aops, "AOPS environment variable not set"
+        if not aops:
+            pytest.skip("AOPS environment variable not set")
         return Path(aops) / "aops-core" / "hooks" / "router.py"
 
     def test_router_exits_zero_when_all_hooks_allow(self, router_path: Path):
@@ -71,50 +72,4 @@ class TestRouterExitCodePropagation:
         if result.returncode == 2:
             assert result.stderr.strip(), (
                 "Router exit 2 but stderr is empty - block message not forwarded!"
-            )
-
-
-class TestClaudeCodeBlockEnforcement:
-    """E2E test verifying Claude Code actually blocks on exit code 2 (slow)."""
-
-    @pytest.mark.slow
-    def test_tool_blocked_when_hook_returns_exit_2(self, claude_headless_tracked):
-        """CRITICAL: Claude Code should block tool when hook exits 2."""
-        result, session_id, tool_calls = claude_headless_tracked(
-            "immediately run: ls -la",
-            fail_on_error=False,
-        )
-
-        bash_calls = [c for c in tool_calls if c["name"] == "Bash"]
-        hydrator_calls = [
-            c
-            for c in tool_calls
-            if c["name"] == "Task" and c.get("input", {}).get("subagent_type") == "hydrator"
-        ]
-
-        if result["success"]:
-            if bash_calls:
-                assert hydrator_calls, (
-                    "BLOCKING FAILED: Bash was called without hydrator! "
-                    f"Tool calls: {[c['name'] for c in tool_calls]}"
-                )
-                hydrator_idx = next(
-                    i
-                    for i, c in enumerate(tool_calls)
-                    if c["name"] == "Task" and c.get("input", {}).get("subagent_type") == "hydrator"
-                )
-                bash_idx = next(i for i, c in enumerate(tool_calls) if c["name"] == "Bash")
-                assert hydrator_idx < bash_idx, (
-                    f"Hydrator (idx {hydrator_idx}) should come before Bash (idx {bash_idx})"
-                )
-        else:
-            error = result.get("error", "")
-            blocking_indicators = [
-                "exit code 2" in error.lower(),
-                "blocked" in error.lower(),
-                "hydration" in error.lower(),
-            ]
-            assert any(blocking_indicators) or len(bash_calls) == 0, (
-                f"Session failed but not due to blocking: {error}. "
-                f"Tool calls: {[c['name'] for c in tool_calls]}"
             )

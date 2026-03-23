@@ -19,7 +19,11 @@ REPO_ROOT = TESTS_DIR.parent.parent
 sys.path.insert(0, str(REPO_ROOT / "polecat"))
 sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 
-from cli import _build_docker_cmd, _node_version_key, _replicate_gemini_auth
+from cli import (
+    _build_docker_cmd,
+    _node_version_key,
+    _replicate_gemini_auth,
+)
 
 
 class TestNodeVersionKey:
@@ -114,7 +118,6 @@ class TestBuildDockerCmd:
             "CUSTODIET_GATE_MODE": "block",
             "HANDOVER_GATE_MODE": "warn",
             "QA_GATE_MODE": "warn",
-            "COMMIT_GATE_MODE": "warn",
             "CUSTODIET_TOOL_CALL_THRESHOLD": "50",
         }
         cmd = self._build(env=env)
@@ -123,7 +126,6 @@ class TestBuildDockerCmd:
         assert "CUSTODIET_GATE_MODE=block" in env_args
         assert "HANDOVER_GATE_MODE=warn" in env_args
         assert "QA_GATE_MODE=warn" in env_args
-        assert "COMMIT_GATE_MODE=warn" in env_args
         assert "CUSTODIET_TOOL_CALL_THRESHOLD=50" in env_args
 
     def test_forwards_aops_prefixed_env(self):
@@ -182,7 +184,10 @@ class TestBuildDockerCmd:
 
     def test_sets_timezone(self):
         """TZ is set in Docker env, detected from system when not in env."""
-        with patch("cli._detect_system_timezone", return_value="US/Eastern"):
+        with (
+            patch.dict(os.environ, {"TZ": ""}),
+            patch("cli._detect_system_timezone", return_value="US/Eastern"),
+        ):
             cmd = self._build()
         env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
         tz_args = [a for a in env_args if a.startswith("TZ=")]
@@ -225,24 +230,13 @@ class TestBuildDockerCmd:
         assert "GIT_TERMINAL_PROMPT=0" in env_args
 
     def test_git_credential_helper_with_gh_token(self):
-        """Git credential helper is configured when GH_TOKEN is available."""
-        env = {"GH_TOKEN": "ghp_test123"}
-        cmd = self._build(env=env)
-        env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
-        assert "GIT_CONFIG_COUNT=3" in env_args
-        config_vals = [a for a in env_args if a.startswith("GIT_CONFIG_VALUE_0=")]
-        assert len(config_vals) == 1
-        assert "x-access-token" in config_vals[0]
-        # URL rewriting: git@github.com: → https://github.com/
-        insteadof_keys = [a for a in env_args if a.startswith("GIT_CONFIG_KEY_1=")]
-        assert insteadof_keys[0] == "GIT_CONFIG_KEY_1=url.https://github.com/.insteadOf"
-
-    def test_forwards_gh_token(self):
-        """GH_TOKEN is forwarded to Docker container."""
+        """GH_TOKEN and AOPS_BOT_GH_TOKEN are forwarded when available."""
         env = {"GH_TOKEN": "ghp_test123"}
         cmd = self._build(env=env)
         env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
         assert "GH_TOKEN=ghp_test123" in env_args
+        assert "AOPS_BOT_GH_TOKEN=ghp_test123" in env_args
+        assert "GIT_ASKPASS=true" in env_args
 
     def test_mounts_pkb_binary_when_available(self):
         """pkb binary is mounted read-only for MCP server access."""

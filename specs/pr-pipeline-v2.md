@@ -106,7 +106,7 @@ All four jobs run concurrently and independently on every `pull_request` push. N
 | ------------ | ------------------ | -------------- | ------------------- | ------------------------------------------------------------- |
 | Lint         | `lint.yml`         | `Lint`         | Yes                 | `ruff check --fix` + `ruff format`. Autofix + push if needed. |
 | Type Check   | `typecheck.yml`    | `Type Check`   | Yes                 | `basedpyright`. Read-only.                                    |
-| Pytest       | `pytest.yml`       | `Pytest`       | Yes                 | `pytest -m "not requires_local_env"`. Read-only.              |
+| Pytest       | `pytest.yml`       | `Pytest`       | Yes                 | `pytest -m "not slow"`. Read-only.                            |
 | Agent Review | `agent-review.yml` | `Agent Review` | Via required review | Advisory + judgment. Posts `gh pr review`.                    |
 
 **Lint autofix loop:** When Lint pushes a fix commit, the new push re-triggers all four workflows on the new commit. Type Check and Pytest were never waiting for Lint — they re-run on the fixed commit naturally.

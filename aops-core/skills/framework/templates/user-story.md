@@ -19,12 +19,6 @@ tags: [template, feature-dev, requirements, user-story]
 
 [1-3 sentence summary of what this feature does and why it matters]
 
-## The User
-
-_Write a paragraph inhabiting the user's situation when they encounter this feature. Not demographics — their cognitive/emotional state, what just happened, what they're trying to do, what constraints are active, what success feels like. This paragraph anchors all acceptance criteria. See [[skills/qa/references/qa-planning.md]] Phase 1._
-
-[Persona paragraph here]
-
 ## Requirements
 
 ### Functional Requirements
@@ -52,30 +46,19 @@ _Write a paragraph inhabiting the user's situation when they encounter this feat
 
 [Explicitly list what this feature will NOT do]
 
-## Acceptance Criteria
+## Success Criteria
 
-_Design guidance: Consult [[skills/qa/references/qa-planning.md]] Phase 2. Write qualitative dimensions (questions requiring judgment) traced to user stories. Define what excellent and poor look like._
+[Measurable, objective criteria that define "done"]
 
-### Qualitative Acceptance Criteria
+1. **[Criterion name]**: [How to measure]
+2. **[Criterion name]**: [How to measure]
+3. **[Criterion name]**: [How to measure]
 
-1. **[Dimension as question]** — serves [which user story/need]
-   - _Excellent_: [What this looks and feels like when it works well]
-   - _Poor_: [What this looks and feels like when it fails the user]
+**Acceptance**:
 
-2. **[Dimension as question]** — serves [which user story/need]
-   - _Excellent_: [description]
-   - _Poor_: [description]
-
-### Regression Checks
-
-- [ ] [Binary check that prevents backsliding after acceptance]
-- [ ] [Another regression guard]
-
-**Acceptance gate**:
-
-- [ ] All qualitative acceptance criteria evaluated (narrative, not pass/fail)
 - [ ] All functional requirements met
-- [ ] All regression checks pass
+- [ ] All non-functional requirements met
+- [ ] All success criteria verified
 - [ ] Integration tests pass
 - [ ] No regressions introduced
 

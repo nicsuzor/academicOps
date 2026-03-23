@@ -1,6 +1,8 @@
 import os
+import re
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -178,15 +180,26 @@ def test_crew_gemini_mounts_aca_data_when_exists(temp_polecat_home, tmp_path):
 
 @pytest.mark.slow
 @pytest.mark.integration
-def test_crew_gemini_skips_aca_data_when_missing(temp_polecat_home, tmp_path):
+def test_gemini_crew_git_credentials_are_file_based(temp_polecat_home, tmp_path):
     """
-    Gemini crew: when ACA_DATA points to a non-existent directory, neither the
-    env var nor the mount is forwarded, and a warning is printed.
+    Regression test: Gemini crew must set up file-based git/gh credentials.
+
+    SANDBOX_FLAGS -e env forwarding is unreliable in the Gemini sandbox (the
+    sandbox only forwards a hardcoded allowlist). Credentials must be mounted
+    as files via SANDBOX_MOUNTS so they work regardless of env forwarding.
+
+    Verifies:
+    - SANDBOX_MOUNTS contains a .gitconfig mount
+    - SANDBOX_MOUNTS contains a gh hosts.yml mount
+    - The mounted .gitconfig has the token embedded (not ${GH_TOKEN})
+    - The mounted hosts.yml has the token embedded
     """
     env = os.environ.copy()
     env["POLECAT_HOME"] = str(temp_polecat_home)
     env["PYTHONPATH"] = os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
-    env["ACA_DATA"] = "/nonexistent/brain"
+    env["AOPS_BOT_GH_TOKEN"] = "test-token-abc123"
+    # Suppress Gemini auth replication (no ~/.gemini in test env)
+    env["POLECAT_GEMINI_AUTH_DISABLED"] = "1"
 
     repo = tmp_path / "dummy_repo"
     repo.mkdir()
@@ -195,10 +208,25 @@ def test_crew_gemini_skips_aca_data_when_missing(temp_polecat_home, tmp_path):
     subprocess.run(["git", "-C", str(repo), "config", "user.name", "Test"], check=True)
     subprocess.run(["git", "commit", "--allow-empty", "-m", "init"], cwd=repo, check=True)
 
+    # Fake gemini that prints SANDBOX_MOUNTS and cats mounted credential files
+    # so the test can verify content before polecat cleans up the temp files.
     fake_bin = tmp_path / "bin"
     fake_bin.mkdir()
     fake_gemini = fake_bin / "gemini"
-    fake_gemini.write_text("#!/bin/sh\nprintenv\necho 'ARGS:' $@\n")
+    fake_gemini.write_text(
+        "#!/bin/sh\n"
+        "echo SANDBOX_MOUNTS=$SANDBOX_MOUNTS\n"
+        "echo SANDBOX_FLAGS=$SANDBOX_FLAGS\n"
+        "echo 'ARGS:' $@\n"
+        # Print each mounted file's contents so the test can verify token embedding
+        "IFS=, ; for mount in $SANDBOX_MOUNTS; do\n"
+        "  src=$(echo $mount | cut -d: -f1)\n"
+        "  dst=$(echo $mount | cut -d: -f2)\n"
+        "  echo MOUNT_CONTENT_BEGIN:$dst\n"
+        "  cat $src\n"
+        "  echo MOUNT_CONTENT_END:$dst\n"
+        "done\n"
+    )
     fake_gemini.chmod(0o755)
 
     env["PATH"] = f"{fake_bin}:{env.get('PATH', '')}"
@@ -214,7 +242,7 @@ def test_crew_gemini_skips_aca_data_when_missing(temp_polecat_home, tmp_path):
             "repo",
             str(repo),
             "-n",
-            "gemini-worker",
+            "gemini-cred-worker",
             "-g",
         ],
         env=env,
@@ -224,14 +252,55 @@ def test_crew_gemini_skips_aca_data_when_missing(temp_polecat_home, tmp_path):
     )
 
     output = result.stdout + result.stderr
-    assert "ACA_DATA=/nonexistent/brain" not in output, (
-        f"ACA_DATA should not be forwarded when dir missing. Output:\n{output}"
+
+    # Extract SANDBOX_MOUNTS value from fake gemini output.
+    # The line may be prefixed by an OSC terminal-title escape sequence
+    # (set_terminal_title writes \033]0;...\007 to stdout), so use regex.
+    sandbox_mounts = ""
+    m = re.search(r"SANDBOX_MOUNTS=(\S+)", output)
+    if m:
+        sandbox_mounts = m.group(1)
+
+    assert sandbox_mounts, f"SANDBOX_MOUNTS should be set. Output:\n{output}"
+
+    # Verify .gitconfig mount is present
+    assert ".gitconfig" in sandbox_mounts, (
+        f"SANDBOX_MOUNTS should include a .gitconfig mount. Got: {sandbox_mounts}"
     )
-    assert "/nonexistent/brain:/nonexistent/brain" not in output, (
-        f"ACA_DATA should not be mounted when dir missing. Output:\n{output}"
+
+    # Verify gh hosts.yml mount is present
+    assert "hosts.yml" in sandbox_mounts, (
+        f"SANDBOX_MOUNTS should include a gh hosts.yml mount. Got: {sandbox_mounts}"
     )
-    assert "Warning" in output and "ACA_DATA" in output, (
-        f"Should warn that ACA_DATA is missing. Output:\n{output}"
+
+    # Extract mounted file contents from fake gemini output (printed before cleanup)
+    def extract_mount_content(out: str, dst_path: str) -> str:
+        begin = f"MOUNT_CONTENT_BEGIN:{dst_path}"
+        end = f"MOUNT_CONTENT_END:{dst_path}"
+        if begin not in out:
+            return ""
+        return out.split(begin, 1)[1].split(end, 1)[0].strip()
+
+    # Verify .gitconfig has token embedded (not ${GH_TOKEN})
+    # Use Path.home() to build the absolute destination path dynamically
+    gitconfig_content = extract_mount_content(output, str(Path.home() / ".gitconfig"))
+    assert gitconfig_content, f".gitconfig mount content not found in output:\n{output}"
+    assert "test-token-abc123" in gitconfig_content, (
+        "Token must be embedded directly in .gitconfig (not via ${GH_TOKEN}). "
+        f"Content: {gitconfig_content!r}"
+    )
+    assert "${GH_TOKEN}" not in gitconfig_content, (
+        ".gitconfig must not use ${GH_TOKEN} — token must be embedded for sandbox reliability"
+    )
+
+    # Verify gh hosts.yml has token embedded
+    # Use Path.home() to build the absolute destination path dynamically
+    gh_hosts_content = extract_mount_content(
+        output, str(Path.home() / ".config" / "gh" / "hosts.yml")
+    )
+    assert gh_hosts_content, f"gh hosts.yml mount content not found in output:\n{output}"
+    assert "test-token-abc123" in gh_hosts_content, (
+        f"Token must be embedded directly in gh hosts.yml. Content: {gh_hosts_content!r}"
     )
 
 
@@ -250,6 +319,8 @@ def test_crew_interactive_shell_spawns_docker(temp_polecat_home, tmp_path):
     repo = tmp_path / "dummy_repo"
     repo.mkdir()
     subprocess.run(["git", "init"], cwd=repo, check=True)
+    subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=repo, check=True)
+    subprocess.run(["git", "config", "user.name", "Test"], cwd=repo, check=True)
     subprocess.run(["git", "commit", "--allow-empty", "-m", "init"], cwd=repo, check=True)
 
     result = subprocess.run(

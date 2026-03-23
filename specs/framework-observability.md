@@ -217,7 +217,7 @@ These feed into the [[/learn|learn]] workflow for root cause analysis.
 
 | Workflow   | Consumes                             | Produces                                  |
 | ---------- | ------------------------------------ | ----------------------------------------- |
-| [[/learn]] | Insights JSON, learning_observations | Heuristic/axiom updates, tasks            |
+| [[/learn]] | Insights JSON, learning_observations | GitHub Issues                             |
 | [[audit]]  | Insights JSON, skill_compliance      | Compliance reports, enforcement proposals |
 | [[qa]]     | Insights JSON, friction_points       | Root cause analysis, fix proposals        |
 

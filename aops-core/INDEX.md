@@ -19,6 +19,7 @@ Master index for aops-core. Sub-indices provide focused context for different co
 | Index                 | Purpose                                 | When to Load                     |
 | --------------------- | --------------------------------------- | -------------------------------- |
 | [[SKILLS.md]]         | Skill invocation patterns and triggers  | Skill-related prompts, routing   |
+| [[CORE.md]]           | Framework tool inventory and workflows  | SessionStart (Tier 1)            |
 | [[WORKFLOWS.md]]      | Workflow decision tree (Global + Local) | All prompts (workflow selection) |
 | [[.agent/workflows/]] | Project-specific procedures             | Project-scoped work              |
 | [[indices/FILES.md]]  | Key files by category                   | File discovery, navigation       |

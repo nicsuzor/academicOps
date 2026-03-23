@@ -541,6 +541,17 @@ def _infer_project(
             return normalize_gemini_project(session_path.parent.parent.name)
         return "gemini"
 
+    # Handle Polecat/Crew sessions
+    # Use path parts directly to avoid false positives from partial string matches
+    parts = session_path.parts
+    for category_plural in ("polecats", "crew"):
+        if category_plural in parts:
+            idx = parts.index(category_plural)
+            if len(parts) > idx + 1:
+                category = category_plural.rstrip("s")
+                worker_name = parts[idx + 1]
+                return f"{category}-{worker_name}"
+
     # Handle Claude JSONL sessions
     project = session_path.parent.name
 

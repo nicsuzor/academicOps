@@ -1,7 +1,7 @@
 #!/usr/bin/env -S uv run python
 """
-Build script for AcademicOps Gemini extensions.
-Generates dist/aops-core and dist/antigravity.
+Build script for AcademicOps extensions.
+Generates dist/aops-gemini, dist/aops-claude, dist/aops-tools-gemini, dist/aops-tools-claude, and dist/antigravity.
 """
 
 import argparse
@@ -103,7 +103,7 @@ def get_project_version(aops_root: Path) -> str:
 
     # 2. Try git describe for a more accurate dev version
     try:
-        # Exclude common meta-tags like 'latest' or 'testing'
+        # Exclude common meta-tags and ALL pre-release tags to find the base stable version
         result = subprocess.run(
             [
                 "git",
@@ -117,6 +117,14 @@ def get_project_version(aops_root: Path) -> str:
                 "testing",
                 "--exclude",
                 "*.dev*",
+                "--exclude",
+                "*-dev.*",
+                "--exclude",
+                "*-alpha*",
+                "--exclude",
+                "*-beta*",
+                "--exclude",
+                "*-rc*",
                 "--match",
                 "v[0-9]*",
             ],
@@ -132,9 +140,11 @@ def get_project_version(aops_root: Path) -> str:
                 return f"0.1.0-dev.0+g{desc}"
 
             # Convert git describe format (0.2.1-5-gabc123) to semver (0.2.1-dev.5+gabc123)
+            # This logic assumes the stable tag was found because we excluded pre-releases.
             if "-" in desc:
                 parts = desc.split("-")
                 base = parts[0]
+                # parts[1] is the number of commits since the tag
                 if len(parts) >= 2 and parts[1].isdigit():
                     dev_num = parts[1]
                     sha = parts[2] if len(parts) > 2 else ""
@@ -157,7 +167,17 @@ def get_project_version(aops_root: Path) -> str:
         stable_tags = [
             t
             for t in tags
-            if not any(s in t for s in ["-testing", ".dev", "-dev.", "-beta", "-rc", "-alpha"])
+            if not any(
+                s in t
+                for s in [
+                    "-testing",
+                    ".dev",
+                    "-dev.",
+                    "-beta",
+                    "-rc",
+                    "-alpha",
+                ]
+            )
         ]
         if stable_tags:
             return stable_tags[0].lstrip("v")
@@ -698,21 +718,15 @@ def build_aops_core(
         "workflows",
         "framework",
         "AXIOMS.md",
-        "CONNECTORS.md",
         "CONSTRAINTS.md",
-        "GLOSSARY.md",
+        "CORE.md",
         "HEURISTICS.md",
         "INDEX.md",
-        "INSTALLATION.md",
-        "LIFECYCLE-HOOKS.md",
-        "REMINDERS.md",
         "RULES.md",
         "SCRIPTS.md",
         "SKILLS.md",
-        "TASK_FORMAT_GUIDE.md",
         "TAXONOMY.md",
         "TOOLS.md",
-        "WORKERS.md",
         "uv.lock",
     ]
 
@@ -834,16 +848,12 @@ def build_aops_core(
             else:
                 mcp_config = mcp_template
 
-            # Write back to source .mcp.json for Claude
-            # This ensures dev-mode Claude has a valid config
-            mcp_json_path = src_dir / ".mcp.json"
-            claude_mcp_config = mcp_template.get("claude", mcp_template)
-            with open(mcp_json_path, "w") as f:
-                json.dump(claude_mcp_config, f, indent=2)
-
-            # If Claude dist, copy .mcp.json
+            # Write .mcp.json to dist only
             if platform == "claude":
-                safe_copy(mcp_json_path, dist_dir / ".mcp.json")
+                claude_mcp_config = mcp_template.get("claude", mcp_template)
+                dist_mcp_path = dist_dir / ".mcp.json"
+                with open(dist_mcp_path, "w") as f:
+                    json.dump(claude_mcp_config, f, indent=2)
 
             # Prepare for Gemini Extension
             if platform == "gemini":
@@ -885,6 +895,7 @@ def build_aops_core(
                     str(convert_script),
                     "--output-dir",
                     str(commands_dist),
+                    "--no-gitignore",
                 ],
                 env=os.environ,
                 check=False,
@@ -899,6 +910,84 @@ def build_aops_core(
 
     print(f"✓ Built {plugin_name} ({platform})")
     return gemini_mcps
+
+
+def build_aops_tools(
+    aops_root: Path,
+    dist_root: Path,
+    platform: str = "gemini",
+    version: str = "0.1.0",
+):
+    """Build the aops-tools extension for a specific platform.
+
+    aops-tools is a lightweight package of fungible domain skills.
+    It has no hooks, agents, commands, or MCP servers — just skills and manifests.
+    """
+    print(f"Building aops-tools for {platform} (v{version})...")
+    plugin_name = "aops-tools"
+    src_dir = aops_root / plugin_name
+
+    if not src_dir.exists():
+        print(f"  ⚠️  {src_dir} not found, skipping aops-tools build")
+        return
+
+    dist_dir = dist_root / f"aops-tools-{platform}"
+    content_dir = dist_dir
+
+    if dist_dir.exists():
+        shutil.rmtree(dist_dir)
+    dist_dir.mkdir(parents=True)
+
+    # Copy skills and index files
+    items_to_copy = ["skills", "SKILLS.md"]
+    if platform == "gemini":
+        items_to_copy.append("GEMINI.md")
+
+    for item in items_to_copy:
+        src = src_dir / item
+        if src.exists():
+            safe_copy(src, content_dir / item)
+
+    # Gemini: generate extension manifest with version injection
+    if platform == "gemini":
+        src_extension_json = src_dir / "gemini-extension.json"
+        dist_extension_json = dist_dir / "gemini-extension.json"
+        if src_extension_json.exists():
+            try:
+                manifest = json.loads(src_extension_json.read_text())
+                manifest["version"] = version
+                with open(dist_extension_json, "w") as f:
+                    json.dump(manifest, f, indent=2)
+                print(f"  ✓ Generated gemini-extension.json (v{version})")
+            except Exception as e:
+                print(f"Error processing extension manifest: {e}", file=sys.stderr)
+                raise
+        else:
+            print(f"  ⚠️  No gemini-extension.json found in {src_dir}")
+
+    # Claude: copy plugin.json with version injection
+    if platform == "claude":
+        src_plugin_json = src_dir / ".claude-plugin" / "plugin.json"
+        dist_plugin_dir = dist_dir / ".claude-plugin"
+        dist_plugin_json = dist_plugin_dir / "plugin.json"
+        if src_plugin_json.exists():
+            try:
+                dist_plugin_dir.mkdir(parents=True, exist_ok=True)
+                manifest = json.loads(src_plugin_json.read_text())
+                manifest["version"] = version
+                with open(dist_plugin_json, "w") as f:
+                    json.dump(manifest, f, indent=2)
+                print(f"  ✓ Updated and copied plugin.json -> {dist_plugin_json}")
+            except Exception as e:
+                print(f"Error processing plugin.json: {e}", file=sys.stderr)
+        else:
+            print(f"Error: {src_plugin_json} not found.", file=sys.stderr)
+            sys.exit(1)
+
+    # Generate FILES.md dynamically
+    generate_files_md(dist_dir, platform)
+
+    print(f"✓ Built {plugin_name} ({platform})")
 
 
 def build_antigravity(aops_root: Path, dist_root: Path, all_mcps: dict):
@@ -1032,6 +1121,10 @@ def main():
 
     # Build components (Claude)
     build_aops_core(aops_root, dist_root, aca_data_path, "claude", version)
+
+    # Build aops-tools (domain skills package)
+    build_aops_tools(aops_root, dist_root, "gemini", version)
+    build_aops_tools(aops_root, dist_root, "claude", version)
 
     # Install PKB binary if provided
     pkb_binary = Path(args.pkb_binary) if args.pkb_binary else None

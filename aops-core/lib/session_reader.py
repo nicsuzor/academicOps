@@ -20,7 +20,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from lib.paths import get_summaries_dir, get_transcripts_dir
+from lib.paths import get_sessions_repo, get_summaries_dir, get_transcripts_dir
 from lib.transcript_parser import (
     SessionInfo,
     SessionProcessor,
@@ -345,7 +345,9 @@ def build_rich_session_context(transcript_path: Path | str, max_turns: int = 15)
     return "\n".join(lines)
 
 
-def build_audit_session_context(transcript_path: Path | str) -> str:
+def build_audit_session_context(
+    transcript_path: Path | str, *, entries: list[Any] | None = None
+) -> str:
     """Build deep session context for audit and compliance review.
 
     Unlike build_rich_session_context (designed for scope-drift detection with
@@ -365,16 +367,20 @@ def build_audit_session_context(transcript_path: Path | str) -> str:
 
     Args:
         transcript_path: Path to session transcript JSONL file
+        entries: Pre-parsed session entries to avoid redundant file I/O.
+            If not provided, the transcript is parsed from disk.
 
     Returns:
         Formatted markdown context suitable for critic agent consumption
     """
-    path = Path(transcript_path)
-    if not path.exists():
-        return "(No transcript path available)"
-
     processor = SessionProcessor()
-    _, entries, _ = processor.parse_session_file(path, load_agents=False, load_hooks=False)
+
+    if entries is None:
+        path = Path(transcript_path)
+        if not path.exists():
+            return "(No transcript path available)"
+
+        _, entries, _ = processor.parse_session_file(path, load_agents=False, load_hooks=False)
 
     if not entries:
         return "(Empty session)"
@@ -1059,10 +1065,16 @@ def find_sessions(
 
     # 2. Find Gemini sessions
     if include_gemini:
-        gemini_tmp_dir = Path.home() / ".gemini" / "tmp"
-        if gemini_tmp_dir.exists():
+        # Search both standard location and framework-persisted locations
+        search_dirs = [Path.home() / ".gemini" / "tmp", get_sessions_repo()]
+
+        for base_dir in search_dirs:
+            if not base_dir.exists():
+                continue
+
             # Gemini structure: ~/.gemini/tmp/{hash}/chats/session-*.json
-            for chat_file in gemini_tmp_dir.glob("**/chats/session-*.json"):
+            # Or in framework: $AOPS_SESSIONS/**/.gemini/tmp/{slug}/chats/session-*.json
+            for chat_file in base_dir.glob("**/chats/session-*.json"):
                 # Determine session_id from filename or content
                 # session-2026-01-08T08-18-a5234d3e -> a5234d3e
                 session_id = chat_file.stem
@@ -1137,6 +1149,66 @@ def find_sessions(
                         source="antigravity",
                     )
                 )
+
+    # 4. Find Polecat/Crew sessions
+    sessions_repo = get_sessions_repo()
+    for category in ["polecats", "crew"]:
+        cat_dir = sessions_repo / category
+        if cat_dir.exists():
+            for worker_dir in cat_dir.iterdir():
+                if not worker_dir.is_dir():
+                    continue
+
+                # Each worker_dir is either a task-id or a crew-name
+                # Use prefix to avoid project name collisions
+                worker_project = f"{category.rstrip('s')}-{worker_dir.name}"
+
+                # Filter by project if specified
+                if project and project.lower() not in worker_project.lower():
+                    continue
+
+                # Claude session directory — mounted via -v ...:/home/worker/.claude/projects
+                claude_sessions_dir = worker_dir / "claude-sessions"
+                if not claude_sessions_dir.exists():
+                    # Fallback: maybe it's directly in the worker_dir?
+                    claude_sessions_dir = worker_dir
+
+                # Find session files in both project subdirs and directly in the dir
+                # (Support both standard Claude and flat layouts)
+                potential_session_files = []
+                if claude_sessions_dir.exists():
+                    # Check for sessions in project subdirs
+                    for project_dir in claude_sessions_dir.iterdir():
+                        if project_dir.is_dir() and not project_dir.name.endswith("-hooks"):
+                            potential_session_files.extend(project_dir.glob("*.jsonl"))
+                    # Check for sessions directly in the dir
+                    potential_session_files.extend(claude_sessions_dir.glob("*.jsonl"))
+
+                for session_file in potential_session_files:
+                    if session_file.name.startswith("agent-") or session_file.name.endswith(
+                        "-hooks.jsonl"
+                    ):
+                        continue
+
+                    # Determine session_id
+                    session_id = session_file.stem
+
+                    # Get modification time
+                    mtime = datetime.fromtimestamp(session_file.stat().st_mtime, tz=UTC)
+
+                    # Filter by time if specified
+                    if since and mtime < since:
+                        continue
+
+                    sessions.append(
+                        SessionInfo(
+                            path=session_file,
+                            project=worker_project,
+                            session_id=session_id,
+                            last_modified=mtime,
+                            source="claude",
+                        )
+                    )
 
     # Sort by last modified, newest first
     sessions.sort(key=lambda s: s.last_modified, reverse=True)

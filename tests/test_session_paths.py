@@ -110,6 +110,7 @@ class TestSessionPaths(unittest.TestCase):
         result = session_paths._is_gemini_session(None, None)
         self.assertTrue(result)
 
+    @patch.dict(os.environ, {}, clear=True)
     def test_is_gemini_session_claude(self):
         """_is_gemini_session returns False for Claude sessions."""
         result = session_paths._is_gemini_session(

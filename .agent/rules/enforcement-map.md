@@ -109,6 +109,7 @@ tags: [framework, enforcement, moc]
 | [[methodology-belongs-to-researcher]]           | Methodology Belongs to Researcher                     | HEURISTICS.md, hydrator guidance                       | SessionStart, UserPromptSubmit |       |
 | [[qualitative-evaluation-over-quantitative]]    | Qualitative Evaluation Over Quantitative (P#115)      | HEURISTICS.md, /qa skill Qualitative Assessment mode   | SessionStart, /qa invocation   |       |
 | [[delegate-agency-to-capable-agents]]           | Delegate Agency to Capable Agents (P#116)             | HEURISTICS.md                                          | SessionStart                   |       |
+| [[butler-self-aware-core]]                      | Butler Self-Aware Core (Learn As You Go)              | Framework Skill (v7.2.0+)                              | During execution               |       |
 
 ## Enforcement Level Summary
 
@@ -196,6 +197,20 @@ These guardrails are applied by [[prompt-hydration]] based on task classificatio
 | `capture_insights`       | [[semantic-vs-episodic-storage]]                                                                     | Losing discoveries (bd for ops, remember for knowledge)     |
 | `zero_friction_capture`  | [[action-over-clarification]]                                                                        | Asking questions on exploratory ideas instead of capturing  |
 | `hook_docs_first`        | [[verify-first]]                                                                                     | Modifying hook output fields without reading hooks.md       |
+| `surface_observations`   | [[surface-observations-not-interpretations]] (P#117)                                                 | Encoding interpretations of unexpected behavior as doctrine |
+
+### Hydration Gate Scope — Design Decision (2026-03-17)
+
+**Decision**: Task management operations (TaskCreate, TaskUpdate) are correctly included in the hydration gate scope.
+
+This is a documented design choice, not a misconfiguration. Rationale:
+
+- Task creation is agentic state mutation, not a passive read. Creating a task without context produces orphan entries.
+- The gate is once-per-session: invoking `/hydrator` once unblocks subsequent task operations for the session.
+- Circularity is avoided in practice: the hydrator binds to existing tasks; it rarely creates new ones.
+- The friction is intentional — it ensures agents contextualize before writing to the task graph.
+
+If you observe this gate firing and think it's wrong: surface the observation (P#117), don't interpret it as a misconfiguration.
 
 ### Task Type → Guardrail Mapping
 
@@ -312,19 +327,6 @@ Session end is blocked until requirements are met. Two-phase validation ensures 
 4. Hook reads transcript, finds reflection in earlier message
 5. If found and parseable: session ends
 6. If not found: blocks with format instructions, agent retries
-
-### Uncommitted Work Check
-
-**Enforcement**: `session_end_commit_check.py` Stop hook (legacy) + `commit` gate (Stop/SessionEnd events).
-
-The `commit` gate (`lib/gates/definitions.py`) enforces two policies on session exit:
-
-- **Block** (`COMMIT_GATE_MODE`, default required): fires `has_uncommitted_work` custom check — blocks Stop/SessionEnd if uncommitted changes exist.
-- **Warn**: fires `needs_commit_reminder` custom check — warns if unpushed commits exist on the branch.
-
-Gate mode is configured via `COMMIT_GATE_MODE` environment variable (required, no default — fail-fast).
-
-`SessionEnd` events are routed to `gate.on_stop()` via `_call_gate_method` in `router.py` (used by Gemini agents). `SubagentStop` is excluded — subagent completion is not a session end and must not trigger commit enforcement.
 
 ## Commit-Time Validation (Pre-commit)
 

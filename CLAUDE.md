@@ -11,6 +11,11 @@ This directory contains the academicOps framework for managing complex workflows
 - **specs/**: Framework specifications and architecture
 - **tests/**: All tests (at repo root, NOT in aops-core/). Subdirs: `hooks/`, `integration/`, `lib/`, `e2e/`
 
+## Project Resources
+
+- @README.md - Framework usage, concepts, and command reference
+- @.agent/CORE.md - Instructions for framework development and contribution
+
 ## Pre-commit Hooks
 
 This project uses pre-commit hooks that run on every commit. Before committing, run the formatter to avoid failures:

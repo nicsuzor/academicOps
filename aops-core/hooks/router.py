@@ -529,7 +529,7 @@ class HookRouter:
 
         # Generate transcript on stop
         if ctx.hook_event == "Stop":
-            transcript_path = ctx.raw_input.get("transcript_path")
+            transcript_path = ctx.transcript_path
             if transcript_path:
                 self._run_generate_transcript(transcript_path)
 
@@ -886,9 +886,11 @@ class HookRouter:
         if result.verdict:
             if result.verdict == "deny":
                 hso.permissionDecision = "deny"
+                hso.permissionDecisionReason = result.system_message
                 has_hso = True
             elif result.verdict == "ask":
                 hso.permissionDecision = "ask"
+                hso.permissionDecisionReason = result.system_message
                 has_hso = True
             elif result.verdict == "warn":
                 hso.permissionDecision = "allow"
