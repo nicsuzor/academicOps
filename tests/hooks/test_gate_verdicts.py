@@ -1256,6 +1256,10 @@ class TestLiveWriteTools:
             expected = GateVerdict.WARN if hydration_mode == "warn" else GateVerdict.DENY
             assert result is not None, (
                 f"[{scenario['id']}] {scenario['tool_name']}: expected {expected.value} "
+                f"in {hydration_mode} mode (hydration closed), got None (allow)"
+            )
+            assert result.verdict == expected, (
+                f"[{scenario['id']}] {scenario['tool_name']}: expected {expected.value} "
                 f"in {hydration_mode} mode (hydration closed), got {result.verdict.value}"
             )
         elif custodiet_at_threshold:

@@ -17,6 +17,7 @@ This document tracks all enforcement mechanisms in the academicOps framework.
 | `CUSTODIET_GATE_MODE` | `block` | `warn`, `block`        | Controls custodiet compliance audit enforcement   |
 | `HYDRATION_GATE_MODE` | `off`   | `off`, `warn`, `block` | Controls hydration gate enforcement               |
 | `QA_GATE_MODE`        | `block` | `warn`, `block`        | Controls QA gate enforcement                      |
+| `COMMIT_GATE_MODE`    | `warn`  | `warn`, `block`        | Controls commit gate enforcement                  |
 | `HANDOVER_GATE_MODE`  | `warn`  | `warn`, `block`        | Controls handover (finalization) gate enforcement |
 
 ## Enforcement Hooks
