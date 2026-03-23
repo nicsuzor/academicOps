@@ -148,7 +148,7 @@ jobs:
         if: steps.loop-check.outputs.skip != 'true' && steps.ceiling-check.outputs.exceeded != 'true'
         id: prompt
         run: |
-          PROMPT=$(git show main:.github/agents/merge-prep.agent.md)
+          PROMPT=$(git show origin/main:.github/agents/merge-prep.agent.md)
           {
             echo "prompt<<AGENT_EOF"
             echo "$PROMPT"
