@@ -149,10 +149,14 @@ class TestBuildDockerCmd:
         vol_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-v"]
         # Staging dir is mounted read-only at /tmp/staging
         staging_vols = [v for v in vol_args if ":/tmp/staging:ro" in v]
-        assert len(staging_vols) == 1, f"Expected one staging mount at /tmp/staging:ro, got: {vol_args}"
+        assert len(staging_vols) == 1, (
+            f"Expected one staging mount at /tmp/staging:ro, got: {vol_args}"
+        )
         # The original .claude.json should NOT be mounted directly
         direct_json_vols = [v for v in vol_args if ":/home/worker/.claude.json" in v]
-        assert len(direct_json_vols) == 0, f"Expected no direct .claude.json mount, got: {direct_json_vols}"
+        assert len(direct_json_vols) == 0, (
+            f"Expected no direct .claude.json mount, got: {direct_json_vols}"
+        )
         # Staging dir must exist and contain .claude.json
         staging_host = Path(staging_vols[0].split(":")[0])
         assert (staging_host / ".claude.json").exists()
