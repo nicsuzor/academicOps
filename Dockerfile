@@ -105,11 +105,12 @@ RUN claude plugin marketplace add /app \
 RUN mkdir -p /home/worker/.gemini \
     && GEMINI_API_KEY=dummy-for-install gemini extensions install /app/dist/aops-gemini --consent
 
-# Make home dir and plugin dirs writable for any UID — polecat crew runs
-# containers as the host UID (non-root), which may differ from the worker
-# UID created above. Open permissions because the host UID varies per machine.
+# Make home dir and .claude writable for any UID — polecat crew runs containers
+# as the host UID (non-root), which may differ from worker UID 1000.
+# Remove .claude.json so the entrypoint can populate it from staging with correct ownership.
 RUN chmod 777 /home/worker \
-    && chmod -R a+w /home/worker/.claude/plugins/ 2>/dev/null || true
+    && (chmod -R 777 /home/worker/.claude/ 2>/dev/null || true) \
+    && rm -f /home/worker/.claude.json
 
 # Default command and entrypoint
 ENTRYPOINT ["/app/polecat/entrypoint.sh"]

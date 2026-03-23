@@ -137,7 +137,7 @@ class TestBuildDockerCmd:
         assert "AOPS_CUSTOM_VAR=value" in env_args
 
     def test_claude_mounts_config(self, tmp_path):
-        """Claude config is mounted: .claude.json as temp copy with bypass flag, .claude dir read-write."""
+        """Claude auth files are staged into a temp dir and mounted as /tmp/staging:ro."""
         claude_json = tmp_path / ".claude.json"
         claude_json.write_text("{}")
         claude_dir = tmp_path / ".claude"
@@ -147,19 +147,22 @@ class TestBuildDockerCmd:
             cmd = self._build(cli_tool="claude")
 
         vol_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-v"]
-        json_vols = [v for v in vol_args if ".claude.json" in v]
-        dir_vols = [v for v in vol_args if ".claude" in v and ".claude.json" not in v]
-        # .claude.json is a temp copy (not the original) — mounted without :ro
-        assert len(json_vols) == 1, f"Expected one .claude.json mount, got: {json_vols}"
-        assert ":/home/worker/.claude.json" in json_vols[0]
-        # The temp copy should NOT be the original file
-        assert str(tmp_path / ".claude.json") not in json_vols[0].split(":")[0]
-        assert all(not v.endswith(":ro") for v in dir_vols), (
-            f".claude dir should be read-write for session data, got: {dir_vols}"
+        # Staging dir is mounted read-only at /tmp/staging
+        staging_vols = [v for v in vol_args if ":/tmp/staging:ro" in v]
+        assert len(staging_vols) == 1, (
+            f"Expected one staging mount at /tmp/staging:ro, got: {vol_args}"
         )
+        # The original .claude.json should NOT be mounted directly
+        direct_json_vols = [v for v in vol_args if ":/home/worker/.claude.json" in v]
+        assert len(direct_json_vols) == 0, (
+            f"Expected no direct .claude.json mount, got: {direct_json_vols}"
+        )
+        # Staging dir must exist and contain .claude.json
+        staging_host = Path(staging_vols[0].split(":")[0])
+        assert (staging_host / ".claude.json").exists()
 
     def test_claude_json_has_bypass_flag(self, tmp_path):
-        """Temp .claude.json copy has bypassPermissionsModeAccepted=true."""
+        """Staged .claude.json copy has bypassPermissionsModeAccepted=true."""
         claude_json = tmp_path / ".claude.json"
         claude_json.write_text('{"projects": {}}')
         claude_dir = tmp_path / ".claude"
@@ -169,10 +172,9 @@ class TestBuildDockerCmd:
             cmd = self._build(cli_tool="claude")
 
         vol_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-v"]
-        json_vols = [v for v in vol_args if ".claude.json" in v]
-        # Read the temp file to verify bypass flag was injected
-        tmp_file = json_vols[0].split(":")[0]
-        with open(tmp_file) as f:
+        staging_vols = [v for v in vol_args if ":/tmp/staging:ro" in v]
+        staging_host = Path(staging_vols[0].split(":")[0])
+        with open(staging_host / ".claude.json") as f:
             config = json.load(f)
         assert config["bypassPermissionsModeAccepted"] is True
         assert config["projects"] == {}
