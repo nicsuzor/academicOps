@@ -199,19 +199,6 @@ These guardrails are applied by [[prompt-hydration]] based on task classificatio
 | `hook_docs_first`        | [[verify-first]]                                                                                     | Modifying hook output fields without reading hooks.md       |
 | `surface_observations`   | [[surface-observations-not-interpretations]] (P#117)                                                 | Encoding interpretations of unexpected behavior as doctrine |
 
-### Hydration Gate Scope — Design Decision (2026-03-17)
-
-**Decision**: Task management operations (TaskCreate, TaskUpdate) are correctly included in the hydration gate scope.
-
-This is a documented design choice, not a misconfiguration. Rationale:
-
-- Task creation is agentic state mutation, not a passive read. Creating a task without context produces orphan entries.
-- The gate is once-per-session: invoking `/hydrator` once unblocks subsequent task operations for the session.
-- Circularity is avoided in practice: the hydrator binds to existing tasks; it rarely creates new ones.
-- The friction is intentional — it ensures agents contextualize before writing to the task graph.
-
-If you observe this gate firing and think it's wrong: surface the observation (P#117), don't interpret it as a misconfiguration.
-
 ### Task Type → Guardrail Mapping
 
 | Task Type   | Guardrails Applied                                                                                                                        |
@@ -415,7 +402,7 @@ Context injected via CORE.md at SessionStart. Guides where agents place files.
 | ---------------- | ----------------------------------------------------------------------------------------- |
 | Deny rules       | `$AOPS/config/claude/settings.json` → `permissions.deny`                                  |
 | Agent tools      | `$AOPS/aops-core/agents/*.md` → `tools:` frontmatter                                      |
-| PreToolUse       | `$AOPS/aops-core/hooks/hydration_gate.py`, `policy_enforcer.py`                           |
+| PreToolUse       | `$AOPS/aops-core/hooks/router.py` (custodiet, subagent_restrictions), `policy_enforcer.py` |
 | PostToolUse      | `$AOPS/aops-core/hooks/fail_fast_watchdog.py`, `autocommit_state.py`, `custodiet_gate.py` |
 | SubagentStop     | `$AOPS/aops-core/hooks/unified_logger.py` (sets `critic_invoked` flag)                    |
 | UserPromptSubmit | `$AOPS/aops-core/hooks/user_prompt_submit.py`                                             |
