@@ -229,14 +229,6 @@ class TaskIndex:
 
     VERSION = 2
 
-    # Task types that can be claimed by workers (actionable work items)
-    CLAIMABLE_TYPES = {
-        TaskType.TASK.value,
-        TaskType.ACTION.value,
-        TaskType.BUG.value,
-        TaskType.FEATURE.value,
-    }
-
     def __init__(self, data_root: Path | None = None):
         """Initialize task index.
 
