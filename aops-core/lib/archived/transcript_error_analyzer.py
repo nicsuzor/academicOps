@@ -2,7 +2,7 @@
 
 Identifies context gaps by analyzing tool errors in Claude Code session JSONL files.
 Key insight: "file does not exist" errors from Read/Glob indicate the agent was
-searching for information not provided by context context.
+searching for information not provided by context.
 
 Error taxonomy:
 - context_gap: Agent searching for context that should have been provided
