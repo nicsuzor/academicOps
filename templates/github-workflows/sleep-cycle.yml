@@ -89,18 +89,22 @@ jobs:
             Update mechanical indices only. Flag governance docs for human review via PR.
 
             ## Phase 4: Staleness Sweep
-            Use your own judgment to identify tasks and docs that need attention.
-            Check for:
+            Use your own judgment to identify tasks and docs that need attention. Check for:
             - Orphan docs with no graph connections
             - Knowledge docs that contradict recent evidence
-            - Stale in_progress tasks (no update in 7+ days)
+            - Old or inactive tasks (no update in 7+ days)
+            - Under-specified tasks (flag for decomposition or review)
+
+            **CRITICAL**: Age is not staleness. Never set a task's status to "cancelled"
+            based on age alone. Only irrelevance is grounds for cancellation.
+            Surface old tasks for human review instead.
 
             ## Phase 4b: Graph Maintenance
             Pick ONE strategy based on what graph_stats showed needs the most work:
             - disconnected_epics > 10 → find project parents for disconnected epics
             - projects_without_goals > 10 → link projects to existing goals
             - flat_tasks > 100 → find epic/project parents for orphaned tasks
-            - orphan_count > 20 → connect or archive truly disconnected nodes
+            - orphan_count > 20 → connect or flag truly disconnected nodes for review
             - All healthy → densify edges (add depends_on between related tasks)
 
             Process at most 30 items per cycle. For obvious connections (task title
@@ -114,8 +118,10 @@ jobs:
             ## Rules
             - You have a 15-minute time budget. Exit cleanly when time is up.
             - Surfaces > decisions. Flag things for human review, don't auto-fix judgment calls.
+            - **No Auto-Cancellation**: Never cancel a task based on age alone. Age is not staleness.
             - Be incremental. Only process what's new since the last sleep cycle.
             - Write a summary of what you did to $GITHUB_STEP_SUMMARY.
+
 
             ## Repo Topology (CRITICAL)
             This repo is a DATA repo — it contains tasks, notes, and memories, NOT code.

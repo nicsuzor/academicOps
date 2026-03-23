@@ -132,7 +132,9 @@ Identify knowledge docs and memories that may be stale, and tasks that are under
 1. **Orphan detection**: `mcp__pkb__pkb_orphans()` — docs with no graph connections
 2. **Contradiction detection**: Compare knowledge doc claims against recent task/session evidence
 3. **Age heuristic**: Knowledge docs not modified in 60+ days with no inbound links
-4. **Task quality triage**: Scan tasks for under-specified bodies using PKB task search; flag candidates for decomposition or deletion
+4. **Task quality triage**: Scan tasks for under-specified bodies using PKB task search; flag candidates for decomposition or review
+
+**Age is not staleness.** The sleep cycle must never automatically set task status to "cancelled" based on age or lack of activity alone. Only irrelevance is grounds for cancellation, which requires human judgment.
 
 **Output**: Candidates staged as a report for `/daily` or `/planner` (maintain mode) to process. The sleep cycle does NOT auto-delete or auto-modify tasks — it surfaces them.
 
