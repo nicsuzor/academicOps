@@ -151,7 +151,7 @@ def _deterministic_gate_modes(monkeypatch):
     This prevents test flakiness from env var leakage when tests run
     inside a live Claude Code session.
     """
-    monkeypatch.setenv("HYDRATION_GATE_MODE", "warn")
+    monkeypatch.setenv("HYDRATION_GATE_MODE", "off")
     monkeypatch.setenv("CUSTODIET_GATE_MODE", "block")
     monkeypatch.setenv("QA_GATE_MODE", "block")
     monkeypatch.setenv("HANDOVER_GATE_MODE", "warn")
@@ -168,9 +168,11 @@ def router(monkeypatch):
     return HookRouter()
 
 
-@pytest.fixture(params=["warn", "block"], ids=["hydration=warn", "hydration=block"])
+@pytest.fixture(
+    params=["off", "warn", "block"], ids=["hydration=off", "hydration=warn", "hydration=block"]
+)
 def hydration_mode(request, monkeypatch):
-    """Run hydration gate tests in both warn and block modes."""
+    """Run hydration gate tests in off, warn, and block modes."""
     monkeypatch.setenv("HYDRATION_GATE_MODE", request.param)
     _reinit_gates_with_defaults()
     return request.param
@@ -200,6 +202,12 @@ class TestHydrationGateBlocksWriteTools:
         ctx = _make_context(scenario)
 
         result = router._dispatch_gates(ctx, state)
+
+        if hydration_mode == "off":
+            assert result is None, (
+                f"[{scenario['id']}] Expected None (allow) in 'off' mode, got {result.verdict.value if result else 'N/A'}"
+            )
+            return
 
         expected = GateVerdict.WARN if hydration_mode == "warn" else GateVerdict.DENY
         assert result is not None, (
@@ -237,6 +245,12 @@ class TestHydrationGateReadOnlyTools:
         ctx = _make_context(scenario)
 
         result = router._dispatch_gates(ctx, state)
+
+        if hydration_mode == "off":
+            assert result is None, (
+                f"[{scenario['id']}] Expected None (allow) in 'off' mode, got {result.verdict.value if result else 'N/A'}"
+            )
+            return
 
         expected = GateVerdict.WARN if hydration_mode == "warn" else GateVerdict.DENY
         assert result is not None, (
@@ -341,11 +355,15 @@ class TestHydrationGateBlocksSpawn:
         SCENARIOS,
         ids=[s["id"] for s in SCENARIOS],
     )
-    def test_spawn_blocked(self, router, scenario):
+    def test_spawn_blocked(self, router, hydration_mode, scenario):
         state = _make_session_state(scenario)
         ctx = _make_context(scenario)
 
         result = router._dispatch_gates(ctx, state)
+
+        if hydration_mode == "off":
+            assert result is None, f"[{scenario['id']}] Expected None (allow) in 'off' mode"
+            return
 
         # Spawn tools must be BLOCKED/WARNED
         assert result is not None
@@ -720,11 +738,15 @@ class TestCombinedGateInteractions:
         SCENARIOS,
         ids=[s["id"] for s in SCENARIOS],
     )
-    def test_combined_verdict(self, router, scenario):
+    def test_combined_verdict(self, router, hydration_mode, scenario):
         state = _make_session_state(scenario)
         ctx = _make_context(scenario)
 
         result = router._dispatch_gates(ctx, state)
+
+        if hydration_mode == "off" and scenario["id"] == "syn-combined-hydration-only-warn":
+            assert result is None, f"[{scenario['id']}] Expected None (allow) in 'off' mode"
+            return
 
         expected = scenario["expected"]
 
@@ -787,6 +809,11 @@ class TestHydrationOutputFormat:
         ctx = _make_context(scenario)
 
         gate_result = router._dispatch_gates(ctx, state)
+
+        if hydration_mode == "off":
+            assert gate_result is None, f"[{scenario['id']}] Expected None (allow) in 'off' mode"
+            return
+
         assert gate_result is not None, (
             f"[{scenario['id']}] Expected gate result but got None (allow) in {hydration_mode} mode"
         )
@@ -823,6 +850,11 @@ class TestHydrationOutputFormat:
         ctx = _make_context(scenario)
 
         gate_result = router._dispatch_gates(ctx, state)
+
+        if hydration_mode == "off":
+            assert gate_result is None, f"[{scenario['id']}] Expected None (allow) in 'off' mode"
+            return
+
         assert gate_result is not None
 
         expected = scenario["expected"][f"{hydration_mode}_mode"]
@@ -866,6 +898,10 @@ class TestLiveHydrationGateBlocks:
         ctx = _make_context(scenario)
 
         result = router._dispatch_gates(ctx, state)
+
+        if hydration_mode == "off":
+            assert result is None, f"[{scenario['id']}] Expected None (allow) in 'off' mode"
+            return
 
         expected = GateVerdict.WARN if hydration_mode == "warn" else GateVerdict.DENY
         assert result is not None, (
@@ -1214,8 +1250,14 @@ class TestLiveWriteTools:
                 f"expected DENY (custodiet=block), got {result.verdict.value}"
             )
         elif hydration_closed:
+            if hydration_mode == "off":
+                assert result is None, f"[{scenario['id']}] Expected None (allow) in 'off' mode"
+                return
             expected = GateVerdict.WARN if hydration_mode == "warn" else GateVerdict.DENY
-            assert result is not None
+            assert result is not None, (
+                f"[{scenario['id']}] {scenario['tool_name']}: expected {expected.value} "
+                f"in {hydration_mode} mode (hydration closed), got None (allow)"
+            )
             assert result.verdict == expected, (
                 f"[{scenario['id']}] {scenario['tool_name']}: expected {expected.value} "
                 f"in {hydration_mode} mode (hydration closed), got {result.verdict.value}"
@@ -1400,13 +1442,14 @@ class TestBashHeredocBypass:
         ),
     ]
 
-    @pytest.mark.parametrize("hydration_mode", ["warn", "block"])
+    @pytest.mark.parametrize("hydration_mode", ["off", "warn", "block"])
     @pytest.mark.parametrize("cmd", HEREDOC_COMMANDS)
     def test_bash_heredoc_blocked_when_hydration_closed(
         self, router, hydration_mode, cmd, monkeypatch
     ):
         """Bash with file-writing commands must be denied in block mode.
 
+        In off mode, the gate allows through (no verdict).
         In warn mode, the gate only warns (the agent can still proceed).
         In block mode, the gate denies (the agent cannot proceed).
         This is the key difference that issue #710 exposed.
@@ -1426,6 +1469,10 @@ class TestBashHeredocBypass:
         )
 
         result = router._dispatch_gates(ctx, state)
+
+        if hydration_mode == "off":
+            assert result is None, f"Bash({cmd['description']}) should be allowed in 'off' mode"
+            return
 
         assert result is not None, (
             f"Bash({cmd['description']}) should not be allowed when hydration is closed"
@@ -1589,7 +1636,8 @@ def _make_gate_trigger_context(gate_name: str) -> HookContext:
 # Parameterized scenarios: (gate_name, env_var, mode, expected_verdict)
 # "block" and "deny" both map to GateVerdict.DENY in the engine (engine.py:334)
 _GATE_MODE_CASES = [
-    # Hydration: default=warn
+    # Hydration: default=off (aops-c255c989)
+    ("hydration", "HYDRATION_GATE_MODE", "off", None),
     ("hydration", "HYDRATION_GATE_MODE", "warn", GateVerdict.WARN),
     ("hydration", "HYDRATION_GATE_MODE", "block", GateVerdict.DENY),
     ("hydration", "HYDRATION_GATE_MODE", "deny", GateVerdict.DENY),
@@ -1631,6 +1679,13 @@ class TestGateModeEnvVarOverrides:
         ctx = _make_gate_trigger_context(gate_name)
 
         result = router._dispatch_gates(ctx, state)
+
+        if expected_verdict is None:
+            assert result is None, (
+                f"{gate_name} gate with {env_var}={mode} should be ALLOW (None), "
+                f"got {result.verdict.value if result else 'N/A'}"
+            )
+            return
 
         assert result is not None, (
             f"{gate_name} gate with {env_var}={mode} should produce a verdict, got None (allow)"

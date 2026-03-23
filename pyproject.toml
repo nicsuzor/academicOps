@@ -147,7 +147,8 @@ env = [
   "HANDOVER_GATE_MODE=deny",
   "QA_GATE_MODE=warn",
   "CUSTODIET_GATE_MODE=deny",
-  "HYDRATION_GATE_MODE=deny",
+  "HYDRATION_GATE_MODE=off",
+  "COMMIT_GATE_MODE=warn",
 ]
 testpaths = ["tests", "aops-core/tests"]
 norecursedirs = ["archived", "tests/archived"]

@@ -112,7 +112,8 @@ Blocks/warns when agent attempts to use tools before invoking prompt-hydrator su
 
 **Gate Behavior**:
 
-- **Warn mode** (default, `HYDRATION_GATE_MODE=warn`): Logs warning to stderr, allows tool use
+- **Off mode** (default, `HYDRATION_GATE_MODE=off`): Gate is disabled; no tools are blocked or warned.
+- **Warn mode** (`HYDRATION_GATE_MODE=warn`): Logs warning to stderr, allows tool use
 - **Block mode** (`HYDRATION_GATE_MODE=block`): Blocks all tools (exit code 2) until hydrator invoked
 
 **Bypass Conditions**:
