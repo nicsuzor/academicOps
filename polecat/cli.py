@@ -132,7 +132,7 @@ def save_worker_transcript(
     """Save worker output to transcript file.
 
     Writes a JSONL entry with metadata and full output to
-    $AOPS_SESSIONS/polecats/<task-id>.jsonl
+    $POLECAT_HOME/polecats/<task-id>.jsonl
 
     Args:
         task_id: The task identifier
@@ -701,26 +701,43 @@ def _sync_working_repo(
                     # --ours = remote HEAD (discards remote). We keep local, but first
                     # save the remote version of each conflicting file to a backup so
                     # nothing from the remote is silently lost.
+                    #
+                    # Expendable files: generated artifacts where conflicts are
+                    # meaningless — just accept latest, no backup needed.
+                    import fnmatch
+
+                    expendable_patterns = [
+                        "synthesis.json",
+                        "graph*.json",
+                        "graph*.dot",
+                        "graph*.svg",
+                    ]
+
+                    def _is_expendable(filepath: str) -> bool:
+                        basename = Path(filepath).name
+                        return any(fnmatch.fnmatch(basename, p) for p in expendable_patterns)
+
                     resolved = True
                     conflict_files = unmerged.splitlines()
                     backup_paths = []
                     timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
                     for conflict_file in conflict_files:
-                        # Capture remote version (stage 2 = ours = remote in rebase)
-                        remote_content = subprocess.run(
-                            ["git", "show", f":2:{conflict_file}"],
-                            cwd=repo_path,
-                            capture_output=True,
-                            text=True,
-                            check=False,
-                        )
-                        if remote_content.returncode == 0 and remote_content.stdout:
-                            backup_path = (
-                                Path(repo_path) / f"{conflict_file}.conflict-remote-{timestamp}"
+                        if not _is_expendable(conflict_file):
+                            # Capture remote version (stage 2 = ours = remote in rebase)
+                            remote_content = subprocess.run(
+                                ["git", "show", f":2:{conflict_file}"],
+                                cwd=repo_path,
+                                capture_output=True,
+                                text=True,
+                                check=False,
                             )
-                            backup_path.parent.mkdir(parents=True, exist_ok=True)
-                            backup_path.write_text(remote_content.stdout)
-                            backup_paths.append(str(backup_path.relative_to(repo_path)))
+                            if remote_content.returncode == 0 and remote_content.stdout:
+                                backup_path = (
+                                    Path(repo_path) / f"{conflict_file}.conflict-remote-{timestamp}"
+                                )
+                                backup_path.parent.mkdir(parents=True, exist_ok=True)
+                                backup_path.write_text(remote_content.stdout)
+                                backup_paths.append(str(backup_path.relative_to(repo_path)))
 
                         r = subprocess.run(
                             ["git", "checkout", "--theirs", "--", conflict_file],
@@ -1891,24 +1908,19 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
     env["POLECAT_WORKTREE"] = str(work_dir)
 
     # Compute session directory for Claude transcript persistence.
-    # Uses same 3-tier resolution as save_worker_transcript.
+    # Worker session data lives in $POLECAT_HOME (outside the sessions git repo)
+    # to avoid polluting the tracked sessions working tree.
     try:
-        from lib.paths import get_sessions_repo
+        from lib.paths import get_local_cache_root
 
-        sessions_base = get_sessions_repo()
+        worker_base = get_local_cache_root()
     except ImportError:
-        sessions_base = (
-            Path(
-                os.environ.get("AOPS_SESSIONS")
-                or os.environ.get("POLECAT_HOME", str(Path.home() / ".polecat"))
-            )
-            / "sessions"
-        )
+        worker_base = Path(os.environ.get("POLECAT_HOME", str(Path.home() / ".polecat")))
     project_slug = target or projects[0]
     if gemini:
-        session_dir = sessions_base / "crew" / crew_name / project_slug
+        session_dir = worker_base / "crew" / crew_name / project_slug
     else:
-        session_dir = sessions_base / "crew" / crew_name / project_slug / "claude-sessions"
+        session_dir = worker_base / "crew" / crew_name / project_slug / "claude-sessions"
 
     tmp_gemini_home = None
     tmp_files: list[Path] = []
@@ -2428,23 +2440,19 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
     tmp_gemini_home = None
     tmp_files: list[Path] = []
     # Compute session directory for transcript persistence.
+    # Worker session data lives in $POLECAT_HOME (outside the sessions git repo)
+    # to avoid polluting the tracked sessions working tree.
     try:
-        from lib.paths import get_sessions_repo
+        from lib.paths import get_local_cache_root
 
-        sessions_base = get_sessions_repo()
+        worker_base = get_local_cache_root()
     except ImportError:
-        sessions_base = (
-            Path(
-                os.environ.get("AOPS_SESSIONS")
-                or os.environ.get("POLECAT_HOME", str(Path.home() / ".polecat"))
-            )
-            / "sessions"
-        )
+        worker_base = Path(os.environ.get("POLECAT_HOME", str(Path.home() / ".polecat")))
     project_slug = task.project or project or worktree_path.name
     if gemini:
-        run_session_dir = sessions_base / "polecats" / task.id / project_slug
+        run_session_dir = worker_base / "polecats" / task.id / project_slug
     else:
-        run_session_dir = sessions_base / "polecats" / task.id / project_slug / "claude-sessions"
+        run_session_dir = worker_base / "polecats" / task.id / project_slug / "claude-sessions"
 
     if gemini:
         # Replicate Gemini authentication if available.
@@ -2537,7 +2545,7 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
             if result.stderr:
                 print(result.stderr, file=sys.stderr)
 
-            # Save transcript to $AOPS_SESSIONS/polecats/<task-id>.jsonl
+            # Save transcript to $POLECAT_HOME/polecats/<task-id>.jsonl
             try:
                 transcript_path = save_worker_transcript(
                     task_id=task.id,
@@ -2769,19 +2777,9 @@ def analyze(ctx, task_id, transcript_lines):
     # --- Section 3: Transcript (if available) ---
     print("\n📜 TRANSCRIPT")
     try:
-        from lib.paths import get_polecat_transcripts_dir, get_sessions_repo
+        from lib.paths import find_polecat_transcript
 
-        sessions = get_sessions_repo()
-        # Try primary location
-        transcript_path = sessions / "polecats" / f"{task_id}.jsonl"
-        if not transcript_path.exists():
-            # Try fallback location
-            fallback_path = sessions / "transcripts" / "polecats" / f"{task_id}.jsonl"
-            if fallback_path.exists():
-                transcript_path = fallback_path
-            else:
-                # Default to canonical directory
-                transcript_path = get_polecat_transcripts_dir() / f"{task_id}.jsonl"
+        transcript_path = find_polecat_transcript(task_id)
     except ImportError:
         transcript_path = manager.home_dir / "transcripts" / f"{task_id}.jsonl"
 
