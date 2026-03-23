@@ -268,8 +268,11 @@ def _build_docker_cmd(
         claude_dir = home / ".claude"
         # Create a staging directory under $HOME so Colima/Docker VMs can access it
         # (macOS VMs only share /Users, not /var/folders or /tmp).
-        staging_dir = home / ".aops" / "tmp" / f"staging-{os.getpid()}"
-        staging_dir.mkdir(parents=True, exist_ok=True)
+        # Use mkdtemp for a unique, non-guessable path; restrict to 0o700 since it holds auth material.
+        tmp_root = home / ".aops" / "tmp"
+        tmp_root.mkdir(parents=True, exist_ok=True)
+        staging_dir = Path(tempfile.mkdtemp(prefix="staging-", dir=tmp_root))
+        os.chmod(staging_dir, 0o700)
         if tmp_files is not None:
             tmp_files.append(staging_dir)
         if claude_json.exists():
@@ -280,7 +283,8 @@ def _build_docker_cmd(
                 config = json.load(f)
             config["bypassPermissionsModeAccepted"] = True
             staged_claude_json = staging_dir / ".claude.json"
-            with open(staged_claude_json, "w") as f:
+            fd = os.open(staged_claude_json, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            with os.fdopen(fd, "w") as f:
                 json.dump(config, f)
         if claude_dir.exists():
             # Copy only the auth files Claude needs at runtime — not the whole directory.

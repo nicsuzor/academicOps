@@ -42,7 +42,10 @@ if [ -d /tmp/staging ]; then
     find /tmp/staging -type f | while read -r src; do
         dest="$HOME/${src#/tmp/staging/}"
         mkdir -p "$(dirname "$dest")"
-        cp --no-preserve=mode,ownership "$src" "$dest" 2>/dev/null || true
+        if ! cp --no-preserve=mode,ownership "$src" "$dest"; then
+            echo "Error: failed to copy staged file '$src' to '$dest'" >&2
+            exit 1
+        fi
     done
 fi
 
