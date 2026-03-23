@@ -180,6 +180,23 @@ def save_worker_transcript(
         raise OSError(f"Failed to save transcript for task {task_id}: {e}") from e
 
 
+def _get_sessions_base() -> Path:
+    """Return the base directory for session transcript storage.
+
+    Uses ``get_sessions_repo()`` from ``lib.paths`` when available, falling
+    back to ``$AOPS_SESSIONS`` or ``$POLECAT_HOME/sessions``.
+    """
+    try:
+        from lib.paths import get_sessions_repo
+
+        return get_sessions_repo()
+    except ImportError:
+        aops_sessions = os.environ.get("AOPS_SESSIONS")
+        if aops_sessions:
+            return Path(aops_sessions)
+        return Path(os.environ.get("POLECAT_HOME", str(Path.home() / ".polecat"))) / "sessions"
+
+
 def _detect_system_timezone() -> str:
     """Detect system timezone from /etc/localtime or /etc/timezone. Returns 'UTC' if undetectable."""
     try:
@@ -1908,21 +1925,8 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
     env["POLECAT_WORKTREE"] = str(work_dir)
 
     # Compute session directory for Claude transcript persistence.
-    # Worker session data lives in $POLECAT_HOME (outside the sessions git repo)
-    # to avoid polluting the tracked sessions working tree.
-    try:
-        from lib.paths import get_sessions_repo
-
-        sessions_base = get_sessions_repo()
-    except ImportError:
-        aops_sessions = os.environ.get("AOPS_SESSIONS")
-        sessions_base = (
-            Path(aops_sessions)
-            if aops_sessions
-            else Path(os.environ.get("POLECAT_HOME", str(Path.home() / ".polecat"))) / "sessions"
-        )
     project_slug = target or projects[0]
-    session_dir = sessions_base / "crew" / crew_name / project_slug
+    session_dir = _get_sessions_base() / "crew" / crew_name / project_slug
 
     tmp_gemini_home = None
     tmp_files: list[Path] = []
@@ -2442,20 +2446,8 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
     tmp_gemini_home = None
     tmp_files: list[Path] = []
     # Compute session directory for transcript persistence.
-    # Session data lives in $AOPS_SESSIONS so it is tracked in the sessions git repo.
-    try:
-        from lib.paths import get_sessions_repo
-
-        sessions_base = get_sessions_repo()
-    except ImportError:
-        aops_sessions = os.environ.get("AOPS_SESSIONS")
-        sessions_base = (
-            Path(aops_sessions)
-            if aops_sessions
-            else Path(os.environ.get("POLECAT_HOME", str(Path.home() / ".polecat"))) / "sessions"
-        )
     project_slug = task.project or project or worktree_path.name
-    run_session_dir = sessions_base / "polecats" / task.id / project_slug
+    run_session_dir = _get_sessions_base() / "polecats" / task.id / project_slug
 
     if gemini:
         # Replicate Gemini authentication if available.
