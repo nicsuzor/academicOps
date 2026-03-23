@@ -611,9 +611,16 @@ class PolecatManager:
                 # This allows fetching unpushed commits from local working copy
                 self._ensure_local_remote(mirror_path, local_path)
 
+                # Build negative refspecs to exclude branches checked out in
+                # worktrees — git refuses to fetch into checked-out branches
+                exclude_refspecs = self._worktree_exclude_refspecs(mirror_path)
+                if exclude_refspecs:
+                    branches = [r.removeprefix("^refs/heads/") for r in exclude_refspecs]
+                    print(f"  Skipping worktree branches during fetch: {', '.join(branches)}")
+
                 # Fetch from origin (may fail if offline - that's OK)
                 origin_result = subprocess.run(
-                    ["git", "fetch", "origin"],
+                    ["git", "fetch", "origin", *exclude_refspecs],
                     cwd=mirror_path,
                     capture_output=True,
                 )
@@ -622,7 +629,7 @@ class PolecatManager:
 
                 # Fetch from local repo (should always succeed)
                 subprocess.run(
-                    ["git", "fetch", "local"],
+                    ["git", "fetch", "local", *exclude_refspecs],
                     cwd=mirror_path,
                     check=True,
                     capture_output=True,
@@ -635,6 +642,33 @@ class PolecatManager:
             # Network errors, etc - non-fatal for offline operation
             print(f"⚠ Mirror sync failed for {project}: {e}", file=sys.stderr)
             return False
+
+    def _worktree_exclude_refspecs(self, mirror_path: Path) -> list[str]:
+        """Return negative refspecs to exclude branches checked out in worktrees.
+
+        Git refuses to fetch into a branch that is checked out in any worktree.
+        This method returns refspecs like '^refs/heads/branch' so that fetch
+        silently skips those branches instead of failing.
+        """
+        result = subprocess.run(
+            ["git", "worktree", "list", "--porcelain"],
+            cwd=mirror_path,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            return []
+
+        branches: set[str] = set()
+        for line in result.stdout.splitlines():
+            if line.startswith("branch refs/heads/"):
+                raw_branch = line[len("branch refs/heads/") :]
+                branch = raw_branch.strip()
+                if branch:
+                    branches.add(branch)
+
+        return [f"^refs/heads/{branch}" for branch in sorted(branches)]
 
     def _ensure_local_remote(self, mirror_path: Path, local_path: Path) -> None:
         """Ensure mirror has a 'local' remote pointing to local repo.
