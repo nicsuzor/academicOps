@@ -280,7 +280,6 @@ TDD_CYCLE_TEST_CASES = [
             "Commit work so far",  # VIOLATION: Tests still failing
         ],
         "expected_violations": [
-            "Cannot commit while tests fail",
             "Never commit with a failing test",
         ],
         "expected_pass": False,
@@ -418,7 +417,6 @@ def test_tdd_cycle_has_coverage():
     key_patterns = [
         "test must exist",  # Test before implementation
         "must fail",  # Verify failure
-        "commit",  # Commit gates
     ]
 
     for pattern in key_patterns:

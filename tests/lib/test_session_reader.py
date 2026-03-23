@@ -760,3 +760,47 @@ class TestSessionBoundaryValidation:
         # The processor should preserve timestamps so filtering is possible
         # Verify we have at least the 2 valid session entries
         assert len(conversation_turns) >= 2, "Should have at least the 2 valid session entries"
+
+
+class TestBuildAuditSessionContext:
+    """Tests for build_audit_session_context."""
+
+    def test_pre_parsed_entries_path(self, tmp_path):
+        """Regression: pre-parsed entries caused UnboundLocalError on processor.
+
+        When create_audit_file passes pre-parsed entries, build_audit_session_context
+        skipped processor creation, causing an UnboundLocalError on
+        processor.group_entries_into_turns(). Fixed by creating processor unconditionally.
+        See: nicsuzor/academicOps#228
+        """
+        from lib.session_reader import SessionProcessor, build_audit_session_context
+
+        # Create a minimal JSONL transcript
+        jsonl_path = tmp_path / "test-session.jsonl"
+        entries_data = [
+            {
+                "type": "user",
+                "uuid": "u1",
+                "timestamp": _make_timestamp(0),
+                "message": {"content": [{"type": "text", "text": "Hello world"}]},
+            },
+            {
+                "type": "assistant",
+                "uuid": "a1",
+                "timestamp": _make_timestamp(1),
+                "message": {"content": [{"type": "text", "text": "Hi, how can I help?"}]},
+            },
+        ]
+        jsonl_path.write_text("\n".join(json.dumps(e) for e in entries_data) + "\n")
+
+        # Parse entries separately (simulating create_audit_file's pattern)
+        processor = SessionProcessor()
+        _, entries, _ = processor.parse_session_file(
+            jsonl_path, load_agents=False, load_hooks=False
+        )
+        assert entries  # sanity check
+
+        # This was the failing call — entries passed but processor not created
+        result = build_audit_session_context(str(jsonl_path), entries=entries)
+        assert len(result) > 0
+        assert "Hello world" in result

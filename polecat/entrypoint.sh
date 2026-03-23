@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e
 
 # Configure git identity if not already set in environment.
 # These variables are forwarded by polecat/cli.py but can be defaulted here.
@@ -34,6 +33,21 @@ fi
 # Enforce isolation: Disable SSH and interactive prompts.
 export SSH_AUTH_SOCK=""
 export GIT_TERMINAL_PROMPT=0
+
+# Copy staged auth files into $HOME (avoids overlayfs file-mount bug on macOS
+# where chmod 777 on $HOME causes runc to treat file mounts as directories).
+# Copy staged files, overwriting image defaults. Use --no-preserve to avoid
+# permission errors when running as a different UID than the image's worker user.
+if [ -d /tmp/staging ]; then
+    find /tmp/staging -type f | while read -r src; do
+        dest="$HOME/${src#/tmp/staging/}"
+        mkdir -p "$(dirname "$dest")"
+        if ! cp --no-preserve=mode,ownership "$src" "$dest"; then
+            echo "Error: failed to copy staged file '$src' to '$dest'" >&2
+            exit 1
+        fi
+    done
+fi
 
 # Execute the agent command (e.g., claude, gemini, bash).
 exec "$@"

@@ -529,7 +529,7 @@ class HookRouter:
 
         # Generate transcript on stop
         if ctx.hook_event == "Stop":
-            transcript_path = ctx.raw_input.get("transcript_path")
+            transcript_path = ctx.transcript_path
             if transcript_path:
                 self._run_generate_transcript(transcript_path)
 

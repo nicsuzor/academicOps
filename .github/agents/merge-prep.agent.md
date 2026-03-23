@@ -18,7 +18,23 @@ git merge origin/main --no-edit
 
 If conflicts are too complex to resolve safely, stop and post a comment explaining why.
 
-## 2. Feedback Triage
+## 2. Check CI Status
+
+Before reading reviews, check what CI checks exist and whether any are failing:
+
+```bash
+gh pr checks {pr} --repo {repo}
+```
+
+If any checks are failing, read the failure logs to understand what's wrong:
+
+```bash
+gh run view {run_id} --log-failed
+```
+
+CI failures are your **primary** concern — a PR with passing reviews but failing CI cannot merge. Treat every CI failure as a problem you must fix or explain why you cannot.
+
+## 3. Feedback Triage
 
 Read ALL reviews from every source — our agents, Gemini, Copilot, human reviewers. Every `CHANGES_REQUESTED` review **must** be resolved before approving.
 
@@ -29,12 +45,13 @@ Read ALL reviews from every source — our agents, Gemini, Copilot, human review
 | **Genuine Bug**    | FIX immediately | Type mismatches, logic errors, Axiom violations.                                    |
 | **Improvement**    | FIX if safe     | Refactors, better error handling, imports — only if clearly correct.                |
 | **False Positive** | DISMISS review  | Explain why in the triage table. Dismiss with a clear message.                      |
+| **CI Failure**     | FIX             | Read the logs, fix the code. This is not optional.                                  |
 | **Failing Tests**  | INVESTIGATE     | Fix code if bug; fix test ONLY if test is wrong. **Never** blindly flip assertions. |
 | **Scope Creep**    | DEFER           | Comment explaining why deferred. Do not implement unless clearly within PR intent.  |
 
 Do not make changes that alter the PR's original intent.
 
-## 3. Dismissing CHANGES_REQUESTED Reviews
+## 4. Dismissing CHANGES_REQUESTED Reviews
 
 After fixing or responding to each `CHANGES_REQUESTED` review:
 
@@ -48,19 +65,23 @@ gh api -X PUT repos/{repo}/pulls/{pr}/reviews/{id}/dismissals \
   -f message="Fixed: <explanation>" -f event="DISMISS"
 ```
 
-## 4. Validation
+## 5. Validate — MANDATORY
 
-Always run the full suite after any edits:
+After making any edits, you MUST verify that CI will pass before committing. Run the same checks that CI runs. Discover what those are by reading the workflow files:
 
 ```bash
-uv run ruff check --fix && uv run ruff format
-uv run basedpyright
-uv run pytest -x -m "not slow"
+ls .github/workflows/
 ```
 
-## 5. Commit
+Read the relevant CI workflow(s) to find the exact commands, then run them locally. Common patterns include linting, type checking, and tests — but **do not assume**; read the workflows.
 
-If any fixes were made, commit with the required trailer:
+**If any check fails after your edits, fix the issue and re-run.** Repeat until all checks pass locally.
+
+**If you cannot make all checks pass, do NOT proceed to commit.** Jump to "If blocked and cannot proceed" instead.
+
+## 6. Commit
+
+If fixes were made AND local validation passes, commit with the required trailer:
 
 ```bash
 git add -A
@@ -70,7 +91,7 @@ Merge-Prep-By: agent"
 git push
 ```
 
-## 6. Post Triage Summary
+## 7. Post Triage Summary
 
 Post a comment summarising what was done:
 
@@ -84,7 +105,7 @@ Include a table:
 | ------------- | --------------- | ------------------------------ |
 | [Source Name] | [Brief summary] | [Fixed / Dismissed / Deferred] |
 
-## 7. Approve the PR
+## 8. Approve the PR
 
 ```bash
 gh pr review {pr} --repo {repo} --approve \
@@ -93,7 +114,7 @@ gh pr review {pr} --repo {repo} --approve \
 
 (If self-approval or Actions-cannot-approve errors occur, log the warning and continue — do not fail.)
 
-## 8. Set merge-prep-status: success
+## 9. Set merge-prep-status: success
 
 ```bash
 HEAD_SHA=$(gh pr view {pr} --repo {repo} --json headRefOid --jq '.headRefOid')
@@ -104,7 +125,7 @@ gh api repos/{repo}/statuses/$HEAD_SHA \
   -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
 ```
 
-## 9. Trigger summary-and-merge
+## 10. Trigger summary-and-merge
 
 ```bash
 gh api repos/{repo}/dispatches \

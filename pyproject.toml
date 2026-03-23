@@ -1,6 +1,6 @@
 [project]
 name = "academicops"
-version = "0.3.12"
+version = "0.3.13"
 description = "Academic Operations Framework"
 requires-python = ">=3.11"
 dependencies = [
@@ -144,13 +144,14 @@ reportMissingTypeStubs = false
 # Required by gate_config.py, which intentionally has no defaults (fail-fast design).
 # Values must match valid gate engine verdicts: warn, deny, or block.
 env = [
-  "HANDOVER_GATE_MODE=warn",
-  "QA_GATE_MODE=block",
-  "CUSTODIET_GATE_MODE=block",
-  "HYDRATION_GATE_MODE=warn",
-  "COMMIT_GATE_MODE=deny",
+  "HANDOVER_GATE_MODE=deny",
+  "QA_GATE_MODE=warn",
+  "CUSTODIET_GATE_MODE=deny",
+  "HYDRATION_GATE_MODE=off",
+  "COMMIT_GATE_MODE=warn",
 ]
 testpaths = ["tests", "aops-core/tests"]
+norecursedirs = ["archived", "tests/archived"]
 pythonpath = [".", "aops-core", "aops-core/hooks", "aops-core/lib"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]

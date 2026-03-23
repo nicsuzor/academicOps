@@ -38,7 +38,7 @@ jobs:
   review-and-fix:
     name: Review & Fix
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 90
     concurrency:
       group: agent-review-fix-${{ inputs.pr_number || github.event.pull_request.number }}
       cancel-in-progress: true
@@ -54,27 +54,32 @@ jobs:
         if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]'
         id: pr-info
         run: |
-          if [ -n "${{ inputs.pr_number }}" ]; then
+          if [ -n "$INPUT_PR_NUMBER" ]; then
             # Called via workflow_call or workflow_dispatch — use inputs directly
-            echo "pr_number=${{ inputs.pr_number }}" >> "$GITHUB_OUTPUT"
-            echo "ref=${{ inputs.ref }}" >> "$GITHUB_OUTPUT"
+            echo "pr_number=$INPUT_PR_NUMBER" >> "$GITHUB_OUTPUT"
+            echo "ref=$INPUT_REF" >> "$GITHUB_OUTPUT"
 
             # The 'gh pr view' command requires a local git repository.
             # Initialize a bare one if necessary before running gh
             if [ ! -d .git ]; then
               git init
-              git remote add origin https://github.com/nicsuzor/academicOps || true
+              git remote add origin ${{ github.server_url }}/${{ github.repository }} || true
             fi
 
-            SHA=$(gh pr view "${{ inputs.pr_number }}" --repo "${{ github.repository }}" --json headRefOid -q '.headRefOid')
+            SHA=$(gh pr view "$INPUT_PR_NUMBER" --repo "${{ github.repository }}" --json headRefOid -q '.headRefOid')
             echo "sha=$SHA" >> "$GITHUB_OUTPUT"
           else
-            echo "pr_number=${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
-            echo "sha=${{ github.event.pull_request.head.sha }}" >> "$GITHUB_OUTPUT"
-            echo "ref=${{ github.event.pull_request.head.ref }}" >> "$GITHUB_OUTPUT"
+            echo "pr_number=$EVENT_PR_NUMBER" >> "$GITHUB_OUTPUT"
+            echo "sha=$EVENT_HEAD_SHA" >> "$GITHUB_OUTPUT"
+            echo "ref=$EVENT_HEAD_REF" >> "$GITHUB_OUTPUT"
           fi
         env:
           GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+          INPUT_PR_NUMBER: ${{ inputs.pr_number }}
+          INPUT_REF: ${{ inputs.ref }}
+          EVENT_PR_NUMBER: ${{ github.event.pull_request.number }}
+          EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          EVENT_HEAD_REF: ${{ github.event.pull_request.head.ref }}
 
       - uses: actions/checkout@v4
         if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]'
@@ -128,9 +133,18 @@ jobs:
         uses: anthropics/claude-code-action@v1
         env:
           GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+          # Explicit env var so the action's post-step (token revocation) can find it
+          # even if the main step is canceled before saving action state.
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
         with:
           allowed_bots: "claude[bot]"
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
             ${{ steps.prompt.outputs.prompt }}
+
+            ---
+
+            Review and fix PR #${{ steps.pr-info.outputs.pr_number }} in repository ${{ github.repository }}.
+            PR ref: ${{ steps.pr-info.outputs.ref }}
+            PR head SHA: ${{ steps.pr-info.outputs.sha }}
           claude_args: '--model claude-opus-4-6 --allowed-tools "Bash,Edit,Read,Write"'

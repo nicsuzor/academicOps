@@ -18,7 +18,12 @@ if str(REPO_ROOT / "aops-core") not in sys.path:
 import click
 from lib.agent_env import apply_env_mappings
 from manager import PolecatManager
+from observability import metrics
 from validation import TaskIDValidationError, validate_task_id_or_raise
+
+# Max turns for headless Claude runs — must be high enough to accommodate hook
+# overhead (hydration gate, custodiet compliance check) plus actual task work.
+HEADLESS_CLAUDE_MAX_TURNS = "30"
 
 
 def _node_version_key(p: Path) -> tuple[int, ...]:
@@ -127,7 +132,7 @@ def save_worker_transcript(
     """Save worker output to transcript file.
 
     Writes a JSONL entry with metadata and full output to
-    $AOPS_SESSIONS/polecats/<task-id>.jsonl
+    $POLECAT_HOME/polecats/<task-id>.jsonl
 
     Args:
         task_id: The task identifier
@@ -173,6 +178,23 @@ def save_worker_transcript(
         return transcript_file
     except OSError as e:
         raise OSError(f"Failed to save transcript for task {task_id}: {e}") from e
+
+
+def _get_sessions_base() -> Path:
+    """Return the base directory for session transcript storage.
+
+    Uses ``get_sessions_repo()`` from ``lib.paths`` when available, falling
+    back to ``$AOPS_SESSIONS`` or ``$POLECAT_HOME/sessions``.
+    """
+    try:
+        from lib.paths import get_sessions_repo
+
+        return get_sessions_repo()
+    except ImportError:
+        aops_sessions = os.environ.get("AOPS_SESSIONS")
+        if aops_sessions:
+            return Path(aops_sessions)
+        return Path(os.environ.get("POLECAT_HOME", str(Path.home() / ".polecat"))) / "sessions"
 
 
 def _detect_system_timezone() -> str:
@@ -261,37 +283,46 @@ def _build_docker_cmd(
     if cli_tool in ("claude", "shell"):
         claude_json = home / ".claude.json"
         claude_dir = home / ".claude"
+        # Create a staging directory under $HOME so Colima/Docker VMs can access it
+        # (macOS VMs only share /Users, not /var/folders or /tmp).
+        # Use mkdtemp for a unique, non-guessable path; restrict to 0o700 since it holds auth material.
+        tmp_root = home / ".aops" / "tmp"
+        tmp_root.mkdir(parents=True, exist_ok=True)
+        staging_dir = Path(tempfile.mkdtemp(prefix="staging-", dir=tmp_root))
+        os.chmod(staging_dir, 0o700)
+        if tmp_files is not None:
+            tmp_files.append(staging_dir)
         if claude_json.exists():
             # Claude needs bypassPermissionsModeAccepted=true for --dangerously-skip-permissions
-            # to work without an interactive prompt. Create a temp copy with this flag set
+            # to work without an interactive prompt. Create a copy with this flag set
             # rather than modifying the user's actual config.
             with open(claude_json) as f:
                 config = json.load(f)
             config["bypassPermissionsModeAccepted"] = True
-            # Use NamedTemporaryFile (not deprecated mktemp) with delete=False
-            # so the file persists for Docker to mount. Caller cleans up via tmp_files.
-            tmp_fd = tempfile.NamedTemporaryFile(suffix=".claude.json", delete=False, mode="w")
-            json.dump(config, tmp_fd)
-            tmp_fd.close()
-            tmp_claude_json = Path(tmp_fd.name)
-            if tmp_files is not None:
-                tmp_files.append(tmp_claude_json)
-            cmd.extend(["-v", f"{tmp_claude_json}:{container_home}/.claude.json"])
+            staged_claude_json = staging_dir / ".claude.json"
+            fd = os.open(staged_claude_json, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            with os.fdopen(fd, "w") as f:
+                json.dump(config, f)
         if claude_dir.exists():
-            # Mount only the auth files Claude needs at runtime — not the whole directory.
+            # Copy only the auth files Claude needs at runtime — not the whole directory.
             # The plugin installation is baked into the image (see Dockerfile), so mounting
             # the full ~/.claude dir would override the image's plugin data with the host's
             # (potentially stale or wrong-path) copy.
+            staged_claude_dir = staging_dir / ".claude"
+            staged_claude_dir.mkdir(exist_ok=True)
             for auth_file in (".credentials.json", ".mcp.json"):
                 src = claude_dir / auth_file
                 if src.exists():
-                    cmd.extend(["-v", f"{src}:{container_home}/.claude/{auth_file}:ro"])
+                    shutil.copy2(src, staged_claude_dir / auth_file)
+        cmd.extend(["-v", f"{staging_dir}:/tmp/staging:ro"])
 
-    # Mount Gemini auth files for "shell" mode so users can run gemini interactively.
+    # Stage Gemini auth files for "shell" mode so users can run gemini interactively.
     # Gemini normally handles its own sandbox, but in shell mode we're managing Docker.
     if cli_tool == "shell":
         gemini_dir = home / ".gemini"
         if gemini_dir.exists():
+            staged_gemini_dir = staging_dir / ".gemini"
+            staged_gemini_dir.mkdir(exist_ok=True)
             for auth_file in (
                 "settings.json",
                 "google_accounts.json",
@@ -301,7 +332,7 @@ def _build_docker_cmd(
             ):
                 src = gemini_dir / auth_file
                 if src.exists():
-                    cmd.extend(["-v", f"{src}:{container_home}/.gemini/{auth_file}:ro"])
+                    shutil.copy2(src, staged_gemini_dir / auth_file)
             # Also forward GEMINI_API_KEY if set
             gemini_key = env.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
             if gemini_key:
@@ -379,8 +410,22 @@ def _build_docker_cmd(
     return cmd
 
 
+def _mount_aca_data_sandbox(env: dict) -> None:
+    """Mount ACA_DATA read-write into the Gemini sandbox via SANDBOX_MOUNTS.
+
+    Forwarding ACA_DATA as an env var alone (via SANDBOX_FLAGS) is insufficient —
+    without the bind mount the PKB server starts with a missing/empty path inside
+    the container.  This helper is called from both ``crew -g`` and ``run -g``.
+    """
+    aca_data = env.get("ACA_DATA") or os.environ.get("ACA_DATA")
+    if aca_data and os.path.isdir(aca_data):
+        mounts = env.get("SANDBOX_MOUNTS", "")
+        new_mount = f"{aca_data}:{aca_data}:rw"
+        env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
+
+
 def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | None:
-    """Replicate Gemini authentication files to a temporary directory.
+    """Replicate Gemini authentication files to a directory.
 
     For headless sessions to authenticate properly in a sandbox, critical files
     from the user's ~/.gemini/ directory must be replicated in the temporary
@@ -395,7 +440,7 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
     to avoid trust prompts in the sandbox.
 
     Returns:
-        Path to the temporary directory containing the replicated files,
+        Path to the directory containing the replicated files,
         or None if authentication replication is disabled or fails.
     """
     if os.environ.get("POLECAT_GEMINI_AUTH_DISABLED") == "1":
@@ -420,8 +465,9 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
     if not existing_files:
         return None
 
-    # Create a temporary directory for replicated configs
+    # Create a temporary directory
     tmp_gemini_home = Path(tempfile.mkdtemp(prefix="polecat-gemini-auth-"))
+
     target_dir = tmp_gemini_home / ".gemini"
     target_dir.mkdir(parents=True)
 
@@ -648,8 +694,8 @@ def _sync_working_repo(
 
     if dirty:
         if auto_commit:
-            # Stage tracked files and commit
-            subprocess.run(["git", "add", "-u"], cwd=repo_path, capture_output=True, check=False)
+            # Stage all files (including new untracked) and commit
+            subprocess.run(["git", "add", "."], cwd=repo_path, capture_output=True, check=False)
             has_staged = (
                 subprocess.run(
                     ["git", "diff", "--cached", "--quiet"],
@@ -695,26 +741,43 @@ def _sync_working_repo(
                     # --ours = remote HEAD (discards remote). We keep local, but first
                     # save the remote version of each conflicting file to a backup so
                     # nothing from the remote is silently lost.
+                    #
+                    # Expendable files: generated artifacts where conflicts are
+                    # meaningless — just accept latest, no backup needed.
+                    import fnmatch
+
+                    expendable_patterns = [
+                        "synthesis.json",
+                        "graph*.json",
+                        "graph*.dot",
+                        "graph*.svg",
+                    ]
+
+                    def _is_expendable(filepath: str) -> bool:
+                        basename = Path(filepath).name
+                        return any(fnmatch.fnmatch(basename, p) for p in expendable_patterns)
+
                     resolved = True
                     conflict_files = unmerged.splitlines()
                     backup_paths = []
                     timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
                     for conflict_file in conflict_files:
-                        # Capture remote version (stage 2 = ours = remote in rebase)
-                        remote_content = subprocess.run(
-                            ["git", "show", f":2:{conflict_file}"],
-                            cwd=repo_path,
-                            capture_output=True,
-                            text=True,
-                            check=False,
-                        )
-                        if remote_content.returncode == 0 and remote_content.stdout:
-                            backup_path = (
-                                Path(repo_path) / f"{conflict_file}.conflict-remote-{timestamp}"
+                        if not _is_expendable(conflict_file):
+                            # Capture remote version (stage 2 = ours = remote in rebase)
+                            remote_content = subprocess.run(
+                                ["git", "show", f":2:{conflict_file}"],
+                                cwd=repo_path,
+                                capture_output=True,
+                                text=True,
+                                check=False,
                             )
-                            backup_path.parent.mkdir(parents=True, exist_ok=True)
-                            backup_path.write_text(remote_content.stdout)
-                            backup_paths.append(str(backup_path.relative_to(repo_path)))
+                            if remote_content.returncode == 0 and remote_content.stdout:
+                                backup_path = (
+                                    Path(repo_path) / f"{conflict_file}.conflict-remote-{timestamp}"
+                                )
+                                backup_path.parent.mkdir(parents=True, exist_ok=True)
+                                backup_path.write_text(remote_content.stdout)
+                                backup_paths.append(str(backup_path.relative_to(repo_path)))
 
                         r = subprocess.run(
                             ["git", "checkout", "--theirs", "--", conflict_file],
@@ -1555,6 +1618,133 @@ def list_polecats(ctx):
 
 
 @main.command()
+@click.option("--stale-days", default=3, help="Days before flagging a PR as stale (default: 3)")
+@click.pass_context
+def sweep(ctx, stale_days):
+    """Scan 'merge_ready' tasks and update status based on GitHub PR state.
+
+    Checks each task in 'merge_ready' status for its corresponding PR.
+    - If merged: sets task to 'done', cleans up worktree/branch.
+    - If closed (not merged): sets task back to 'review'.
+    - If changes requested: sets task back to 'review' and appends comments.
+    - If stale (>N days): flags for attention in task body.
+    """
+    from datetime import timedelta
+
+    import github
+
+    try:
+        from lib.task_model import TaskStatus
+    except ImportError:
+        print("Error: Task management libraries not found.", file=sys.stderr)
+        sys.exit(1)
+
+    manager = PolecatManager(home_dir=ctx.obj.get("home"))
+    tasks = manager.storage.list_tasks(status=TaskStatus.MERGE_READY)
+
+    if not tasks:
+        print("No tasks in MERGE_READY status.")
+        return
+
+    print(f"Sweeping {len(tasks)} tasks in MERGE_READY status...")
+
+    for task in tasks:
+        pr_ref = task.pr_url or (str(task.pr) if task.pr else None)
+
+        # If no PR metadata in task fields, try to extract from body
+        if not pr_ref:
+            # Look for PR URL pattern
+            match = re.search(r"https://github\.com/[^/]+/[^/]+/pull/(\d+)", task.body or "")
+            if match:
+                pr_ref = match.group(0)
+
+        if not pr_ref:
+            print(f"  ⚠ Skipping {task.id}: No PR metadata found in task.")
+            continue
+
+        print(f"  Checking {task.id} (PR {pr_ref})...")
+        pr_status = github.get_pr_status(pr_ref)
+
+        if not pr_status:
+            print(f"    ❌ Could not get status for PR {pr_ref}")
+            continue
+
+        state = pr_status.get("state")
+        merged_at = pr_status.get("mergedAt")
+        updated_at_str = pr_status.get("updatedAt")
+        reviews = pr_status.get("reviews", [])
+
+        # 1. PR Merged
+        if state == "MERGED" or merged_at:
+            print("    ✅ PR Merged! Marking task as DONE.")
+            task.status = TaskStatus.DONE
+            manager.storage.save_task(task)
+            # Cleanup worktree
+            try:
+                manager.nuke_worktree(task.id, force=True)
+                print("    🧹 Worktree and branch cleaned up.")
+            except Exception as e:
+                print(f"    ⚠ Cleanup failed: {e}")
+            continue
+
+        # 2. PR Closed (but not merged)
+        if state == "CLOSED":
+            print("    ❌ PR Closed without merge. Moving to REVIEW.")
+            task.status = TaskStatus.REVIEW
+            task.body += (
+                f"\n\n## 🧹 Sweep Report ({datetime.now(UTC).strftime('%Y-%m-%d %H:%M UTC')})\n"
+            )
+            task.body += f"**PR Closed without merge**: {pr_status.get('url')}\n"
+            manager.storage.save_task(task)
+            continue
+
+        # 3. Changes Requested
+        # Check if ANY active reviewer has CHANGES_REQUESTED
+        # (GitHub PR view returns all reviews; we care about the latest state)
+        latest_reviews = {}
+        for r in reviews:
+            login = r.get("author", {}).get("login")
+            if login:
+                latest_reviews[login] = r
+
+        changes_requested = [
+            r for r in latest_reviews.values() if r.get("state") == "CHANGES_REQUESTED"
+        ]
+
+        if changes_requested:
+            print("    ❗ Changes requested. Moving to REVIEW.")
+            task.status = TaskStatus.REVIEW
+            task.body += (
+                f"\n\n## 🧹 Sweep Report ({datetime.now(UTC).strftime('%Y-%m-%d %H:%M UTC')})\n"
+            )
+            task.body += f"**Changes requested** on PR {pr_status.get('url') or pr_ref}:\n"
+            for review in changes_requested:
+                author = review.get("author", {}).get("login", "unknown")
+                review_body = review.get("body", "No comment")
+                task.body += f"- **{author}**: {review_body}\n"
+            manager.storage.save_task(task)
+            continue
+
+        # 4. Stale check
+        if updated_at_str:
+            # fromisoformat handles 'Z' in Python 3.11+, for older we might need a workaround
+            # but usually polecat runs on modern python.
+            try:
+                updated_at = datetime.fromisoformat(updated_at_str.replace("Z", "+00:00"))
+                if datetime.now(UTC) - updated_at > timedelta(days=stale_days):
+                    print(f"    ⏳ PR is stale (> {stale_days} days). Flagging.")
+                    # We don't change status, just add a note if not already flagged
+                    if "PR is stale" not in (task.body or ""):
+                        task.body += f"\n\n## ⏳ Stale PR Alert ({datetime.now(UTC).strftime('%Y-%m-%d %H:%M UTC')})\n"
+                        task.body += (
+                            f"This PR has been open and inactive for more than {stale_days} days.\n"
+                        )
+                        manager.storage.save_task(task)
+            except Exception as e:
+                print(f"    ⚠ Could not parse updatedAt '{updated_at_str}': {e}")
+
+
+@main.command()
 def merge():
     """Scan for tasks in REVIEW status and merge them to main.
 
@@ -1636,7 +1826,6 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
         polecat crew -r audre         # Resume crew worker "audre"
         polecat crew -i aops          # Interactive shell in crew container
         polecat crew -g aops          # Gemini CLI in sandbox mode
-        polecat crew                  # Crew with all projects (legacy)
     """
     import subprocess
 
@@ -1677,21 +1866,66 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
         projects = [slug]
         crew_name = name or manager.generate_crew_name()
     else:
-        # No target: legacy behaviour — all projects
-        projects = list(manager.projects.keys())
-        crew_name = name or manager.generate_crew_name()
+        # No target and not resuming
+        print("Error: 'crew' requires a target project or --resume.", file=sys.stderr)
+        print("Usage: polecat crew <project>  # e.g., 'polecat crew aops'", file=sys.stderr)
+        print("       polecat crew -r <name>  # resume existing crew", file=sys.stderr)
+        sys.exit(1)
 
     print(f"\U0001f9d1\u200d\U0001f91d\u200d\U0001f9d1 Crew worker: {crew_name}")
 
     # Setup isolated clones for project(s)
     clone_paths = {}
     if resume:
-        # Recover clone paths from existing crew directory
+        # Recover clone paths from existing crew directory and sync with upstream
         crew_path = manager.crew_dir / crew_name
         for project_dir in crew_path.iterdir():
-            if project_dir.is_dir():
+            if project_dir.is_dir() and (project_dir / ".git").exists():
                 clone_paths[project_dir.name] = project_dir
                 print(f"\U0001f4c1 {project_dir.name}: {project_dir}")
+                # Sync with upstream so we don't resume on stale code
+                print(f"   Syncing {project_dir.name} with origin...")
+                fetch_result = subprocess.run(
+                    ["git", "fetch", "origin"],
+                    cwd=project_dir,
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                )
+                if fetch_result.returncode != 0:
+                    print(f"   \u26a0 git fetch failed: {fetch_result.stderr.strip()}")
+                    continue
+                # Detect default branch from remote HEAD, fall back to project config
+                head_result = subprocess.run(
+                    ["git", "symbolic-ref", "refs/remotes/origin/HEAD"],
+                    cwd=project_dir,
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                )
+                if head_result.returncode == 0:
+                    # refs/remotes/origin/HEAD -> refs/remotes/origin/main
+                    default_branch = head_result.stdout.strip().split("/")[-1]
+                else:
+                    default_branch = manager.projects.get(project_dir.name, {}).get(
+                        "default_branch", "main"
+                    )
+                merge_result = subprocess.run(
+                    ["git", "merge", "--ff-only", f"origin/{default_branch}"],
+                    cwd=project_dir,
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                )
+                if merge_result.returncode == 0:
+                    print(f"   \u2705 Up to date with origin/{default_branch}")
+                else:
+                    print(
+                        f"   \u26a0 Could not fast-forward to origin/{default_branch} "
+                        f"(local changes?). Manual merge may be needed."
+                    )
+                    if merge_result.stderr:
+                        print(f"      Git error: {merge_result.stderr.strip()}")
         projects = list(clone_paths.keys())
     else:
         try:
@@ -1699,6 +1933,9 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
                 clone_path = manager.setup_crew_worktree(crew_name, proj)
                 clone_paths[proj] = clone_path
                 print(f"\U0001f4c1 {proj}: {clone_path}")
+        except FileExistsError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
         except Exception as e:
             print(f"Error setting up crew clone: {e}", file=sys.stderr)
             sys.exit(1)
@@ -1757,26 +1994,13 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
     env["POLECAT_WORKTREE"] = str(work_dir)
 
     # Compute session directory for Claude transcript persistence.
-    # Uses same 3-tier resolution as save_worker_transcript.
-    try:
-        from lib.paths import get_sessions_repo
-
-        sessions_base = get_sessions_repo()
-    except ImportError:
-        sessions_base = (
-            Path(
-                os.environ.get("AOPS_SESSIONS")
-                or os.environ.get("POLECAT_HOME", str(Path.home() / ".polecat"))
-            )
-            / "sessions"
-        )
-    session_dir = sessions_base / "crew" / crew_name / "claude-sessions"
+    project_slug = target or projects[0]
+    session_dir = _get_sessions_base() / "crew" / crew_name / project_slug
 
     tmp_gemini_home = None
     tmp_files: list[Path] = []
     if gemini and not interactive:
         # Replicate Gemini authentication if available.
-        # Inject the work directory into trustedFolders.json to avoid trust prompts.
         tmp_gemini_home = _replicate_gemini_auth(env, work_dir=work_dir)
         if tmp_gemini_home:
             print(f"   Auth: Replicated to {env['GEMINI_CLI_HOME']}")
@@ -1785,32 +2009,69 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
         # needs the Gemini CLI installed. Use aops-crew (full image with AI CLIs).
         env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-crew")
 
+        # Set the hook state directory to Gemini's natural log path inside the container
+        if tmp_gemini_home:
+            container_sessions_dir = str(tmp_gemini_home / ".gemini" / "tmp" / project_slug)
+        else:
+            container_sessions_dir = str(Path.home() / ".gemini" / "tmp" / project_slug)
+
+        env["AOPS_SESSION_STATE_DIR"] = container_sessions_dir
+
+        # Mount the clean host session directory directly to Gemini's log path
+        session_dir.mkdir(parents=True, exist_ok=True)
+        mounts = env.get("SANDBOX_MOUNTS", "")
+        new_mount = f"{session_dir.resolve()}:{container_sessions_dir}:rw"
+        env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
+
+        # Provide a stable Gemini session ID based on the crew/task ID
+        env["GEMINI_SESSION_ID"] = f"gemini-{crew_name}"
+
+        _mount_aca_data_sandbox(env)
+
         # Gemini sandbox only forwards a hardcoded allowlist of env vars into
         # its Docker container. Use SANDBOX_FLAGS for simple -e flags and
         # SANDBOX_MOUNTS for volumes. Git credentials use a mounted .gitconfig
         # because shell-quote mangles the credential helper shell function.
         extra_flags = []
         for key, val in env.items():
-            if key.endswith("_GATE_MODE") or key in ("ACA_DATA", "GH_TOKEN"):
+            if key.endswith("_GATE_MODE") or key in (
+                "ACA_DATA",
+                "GH_TOKEN",
+                "GEMINI_SESSION_ID",
+                "AOPS_SESSION_STATE_DIR",
+            ):
                 extra_flags.extend(["-e", f"{key}={val}"])
 
         # Git credential helper — write a .gitconfig and mount it read-only.
         # SANDBOX_FLAGS can't carry the credential helper because shell-quote
         # interprets { } ; ( ) as operators, mangling the shell function.
+        #
+        # File-based credentials are preferred over SANDBOX_FLAGS -e for two reasons:
+        # 1. Security: env vars are visible in /proc/<pid>/environ and `ps auxe`;
+        #    mounted files are not leaked through process listings.
+        # 2. Reliability: Gemini sandbox only forwards a hardcoded allowlist of env
+        #    vars into the container. SANDBOX_FLAGS -e is kept as belt-and-suspenders
+        #    but cannot be the primary mechanism.
+        #
+        # The token is embedded directly in the gitconfig so git does not need
+        # $GH_TOKEN to be present in the container environment at push time.
         gh_token = env.get("GH_TOKEN") or os.environ.get("AOPS_BOT_GH_TOKEN")
         if gh_token:
             extra_flags.extend(["-e", "GIT_ASKPASS=true"])
             extra_flags.extend(["-e", f"GH_TOKEN={gh_token}"])
+            extra_flags.extend(["-e", f"GITHUB_TOKEN={gh_token}"])
             extra_flags.extend(["-e", "SSH_AUTH_SOCK="])
             extra_flags.extend(["-e", "GIT_TERMINAL_PROMPT=0"])
             gitconfig = tempfile.NamedTemporaryFile(
                 suffix=".gitconfig", delete=False, mode="w", prefix="polecat-"
             )
+            # Embed token value directly — does not rely on $GH_TOKEN being in
+            # the container environment (SANDBOX_FLAGS -e forwarding is unreliable).
             gitconfig.write(
                 "[credential]\n"
-                '\thelper = !f() { echo username=x-access-token; echo "password=${GH_TOKEN}"; }; f\n'
+                f'\thelper = !f() {{ echo username=x-access-token; echo "password={gh_token}"; }}; f\n'
                 '[credential "https://github.com"]\n'
-                '\thelper = !f() { echo username=x-access-token; echo "password=${GH_TOKEN}"; }; f\n'
+                f'\thelper = !f() {{ echo username=x-access-token; echo "password={gh_token}"; }}; f\n'
                 '[url "https://github.com/"]\n'
                 "\tinsteadOf = git@github.com:\n"
             )
@@ -1825,11 +2086,18 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
             new_mount = f"{gitconfig.name}:{container_gitconfig}:ro"
             env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
 
-        # Mount ACA_DATA via SANDBOX_MOUNTS (read-write for PKB updates)
-        aca_data = env.get("ACA_DATA") or os.environ.get("ACA_DATA")
-        if aca_data and os.path.isdir(aca_data):
+            # gh CLI hosts.yml — mount token so `gh pr create` works without
+            # needing GH_TOKEN in the container env (file-based auth fallback).
+            gh_hosts = tempfile.NamedTemporaryFile(
+                suffix=".yml", delete=False, mode="w", prefix="polecat-gh-hosts-"
+            )
+            gh_hosts.write(f"github.com:\n    oauth_token: {gh_token}\n    git_protocol: https\n")
+            gh_hosts.close()
+            if tmp_files is not None:
+                tmp_files.append(Path(gh_hosts.name))
+            container_gh_hosts = str(Path.home() / ".config" / "gh" / "hosts.yml")
             mounts = env.get("SANDBOX_MOUNTS", "")
-            new_mount = f"{aca_data}:{aca_data}:rw"
+            new_mount = f"{gh_hosts.name}:{container_gh_hosts}:ro"
             env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
 
         if extra_flags:
@@ -1882,7 +2150,10 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
             shutil.rmtree(tmp_gemini_home)
         # Clean up temporary files created by _build_docker_cmd
         for tmp_file in tmp_files:
-            tmp_file.unlink(missing_ok=True)
+            if tmp_file.is_dir():
+                shutil.rmtree(tmp_file, ignore_errors=True)
+            else:
+                tmp_file.unlink(missing_ok=True)
 
     print("-" * 50)
     print(f"\n\U0001f4cb Crew '{crew_name}' session ended.")
@@ -2225,7 +2496,7 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
             cmd.append(prompt)
         else:
             # Headless: use -p for print mode
-            cmd.extend(["-p", prompt])
+            cmd.extend(["-p", prompt, "--max-turns", HEADLESS_CLAUDE_MAX_TURNS])
 
     # Set session type environment variable for hooks to detect
     # Use sanitized env: SSH stripped, git auth set to bot token only
@@ -2234,9 +2505,12 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
 
     tmp_gemini_home = None
     tmp_files: list[Path] = []
+    # Compute session directory for transcript persistence.
+    project_slug = task.project or project or worktree_path.name
+    run_session_dir = _get_sessions_base() / "polecats" / task.id / project_slug
+
     if gemini:
         # Replicate Gemini authentication if available.
-        # Inject the work directory into trustedFolders.json to avoid trust prompts.
         tmp_gemini_home = _replicate_gemini_auth(env, work_dir=worktree_path)
         if tmp_gemini_home:
             print(f"   Auth: Replicated to {env['GEMINI_CLI_HOME']}")
@@ -2244,23 +2518,45 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
         # Gemini --sandbox re-execs itself inside the container, so the image
         # needs the Gemini CLI installed. Use aops-crew (full image with AI CLIs).
         env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-crew")
+
+        # Set the hook state directory to Gemini's natural log path inside the container
+        if tmp_gemini_home:
+            container_sessions_dir = str(tmp_gemini_home / ".gemini" / "tmp" / project_slug)
+        else:
+            container_sessions_dir = str(Path.home() / ".gemini" / "tmp" / project_slug)
+
+        env["AOPS_SESSION_STATE_DIR"] = container_sessions_dir
+
+        # Mount the clean host session directory directly to Gemini's log path
+        run_session_dir.mkdir(parents=True, exist_ok=True)
+        mounts = env.get("SANDBOX_MOUNTS", "")
+        new_mount = f"{run_session_dir.resolve()}:{container_sessions_dir}:rw"
+        env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
+
+        # Provide a stable Gemini session ID based on the task ID
+        env["GEMINI_SESSION_ID"] = f"gemini-{task.id}"
+
+        _mount_aca_data_sandbox(env)
+
+        # Gemini sandbox only forwards a hardcoded allowlist of env vars into
+        # its Docker container. Use SANDBOX_FLAGS for simple -e flags.
+        extra_flags = []
+        for key, val in env.items():
+            if key.endswith("_GATE_MODE") or key in (
+                "ACA_DATA",
+                "GH_TOKEN",
+                "GEMINI_SESSION_ID",
+                "AOPS_SESSION_STATE_DIR",
+            ):
+                extra_flags.extend(["-e", f"{key}={val}"])
+
+        if extra_flags:
+            existing = env.get("SANDBOX_FLAGS", "")
+            new_flags = " ".join(extra_flags)
+            env["SANDBOX_FLAGS"] = f"{existing} {new_flags}".strip() if existing else new_flags
+
         final_cmd = cmd
     else:
-        # Compute session directory for Claude transcript persistence.
-        try:
-            from lib.paths import get_sessions_repo
-
-            sessions_base = get_sessions_repo()
-        except ImportError:
-            sessions_base = (
-                Path(
-                    os.environ.get("AOPS_SESSIONS")
-                    or os.environ.get("POLECAT_HOME", str(Path.home() / ".polecat"))
-                )
-                / "sessions"
-            )
-        run_session_dir = sessions_base / "polecats" / task.id / "claude-sessions"
-
         # Claude Code: manually wrap in docker container
         final_cmd = _build_docker_cmd(
             cli_tool,
@@ -2306,7 +2602,7 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
             if result.stderr:
                 print(result.stderr, file=sys.stderr)
 
-            # Save transcript to $AOPS_SESSIONS/polecats/<task-id>.jsonl
+            # Save transcript to $POLECAT_HOME/polecats/<task-id>.jsonl
             try:
                 transcript_path = save_worker_transcript(
                     task_id=task.id,
@@ -2339,7 +2635,10 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
             shutil.rmtree(tmp_gemini_home)
         # Clean up temporary files created by _build_docker_cmd
         for tmp_file in tmp_files:
-            tmp_file.unlink(missing_ok=True)
+            if tmp_file.is_dir():
+                shutil.rmtree(tmp_file, ignore_errors=True)
+            else:
+                tmp_file.unlink(missing_ok=True)
 
     print("-" * 50)
 
@@ -2538,19 +2837,9 @@ def analyze(ctx, task_id, transcript_lines):
     # --- Section 3: Transcript (if available) ---
     print("\n📜 TRANSCRIPT")
     try:
-        from lib.paths import get_polecat_transcripts_dir, get_sessions_repo
+        from lib.paths import find_polecat_transcript
 
-        sessions = get_sessions_repo()
-        # Try primary location
-        transcript_path = sessions / "polecats" / f"{task_id}.jsonl"
-        if not transcript_path.exists():
-            # Try fallback location
-            fallback_path = sessions / "transcripts" / "polecats" / f"{task_id}.jsonl"
-            if fallback_path.exists():
-                transcript_path = fallback_path
-            else:
-                # Default to canonical directory
-                transcript_path = get_polecat_transcripts_dir() / f"{task_id}.jsonl"
+        transcript_path = find_polecat_transcript(task_id)
     except ImportError:
         transcript_path = manager.home_dir / "transcripts" / f"{task_id}.jsonl"
 
@@ -2879,6 +3168,9 @@ def watch(ctx, interval, stall_threshold, project):
                     if task_mod > last_activity:
                         last_activity = task_mod
 
+            # Get leaf-ready tasks (actually pullable work)
+            leaf_ready = manager.storage.get_ready_tasks(project=project)
+
             # Check for stall
             stall_cutoff = now - timedelta(minutes=stall_threshold)
             if last_activity < stall_cutoff:
@@ -2891,14 +3183,21 @@ def watch(ctx, interval, stall_threshold, project):
                 # Reset to avoid spamming alerts
                 last_activity = now
 
-            # Status line
+            # Status line (leaf-ready is the primary queue metric)
+            ready_count = len(leaf_ready)
             active_count = len(in_progress)
-            ready_count = len(merge_ready_tasks)
+            merge_ready_count = len(merge_ready_tasks)
             review_count = len(review_tasks)
             timestamp = now.strftime("%H:%M:%S")
             print(
-                f"[{timestamp}] active={active_count} merge_ready={ready_count} review={review_count}"
+                f"[{timestamp}] ready={ready_count} active={active_count} merge_ready={merge_ready_count} review={review_count}"
             )
+
+            # Record periodic metrics for dashboard
+            metrics.record_queue_depth("ready", count=ready_count, project=project)
+            metrics.record_queue_depth("active", count=active_count, project=project)
+            metrics.record_queue_depth("merge_ready", count=merge_ready_count, project=project)
+            metrics.record_queue_depth("review", count=review_count, project=project)
 
         except Exception as e:
             print(f"Error during poll: {e}")

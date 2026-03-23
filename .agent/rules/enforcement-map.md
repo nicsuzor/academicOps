@@ -109,6 +109,7 @@ tags: [framework, enforcement, moc]
 | [[methodology-belongs-to-researcher]]           | Methodology Belongs to Researcher                     | HEURISTICS.md, hydrator guidance                       | SessionStart, UserPromptSubmit |       |
 | [[qualitative-evaluation-over-quantitative]]    | Qualitative Evaluation Over Quantitative (P#115)      | HEURISTICS.md, /qa skill Qualitative Assessment mode   | SessionStart, /qa invocation   |       |
 | [[delegate-agency-to-capable-agents]]           | Delegate Agency to Capable Agents (P#116)             | HEURISTICS.md                                          | SessionStart                   |       |
+| [[butler-self-aware-core]]                      | Butler Self-Aware Core (Learn As You Go)              | Framework Skill (v7.2.0+)                              | During execution               |       |
 
 ## Enforcement Level Summary
 
@@ -327,19 +328,6 @@ Session end is blocked until requirements are met. Two-phase validation ensures 
 5. If found and parseable: session ends
 6. If not found: blocks with format instructions, agent retries
 
-### Uncommitted Work Check
-
-**Enforcement**: `session_end_commit_check.py` Stop hook (legacy) + `commit` gate (Stop/SessionEnd events).
-
-The `commit` gate (`lib/gates/definitions.py`) enforces two policies on session exit:
-
-- **Block** (`COMMIT_GATE_MODE`, default required): fires `has_uncommitted_work` custom check — blocks Stop/SessionEnd if uncommitted changes exist.
-- **Warn**: fires `needs_commit_reminder` custom check — warns if unpushed commits exist on the branch.
-
-Gate mode is configured via `COMMIT_GATE_MODE` environment variable (required, no default — fail-fast).
-
-`SessionEnd` events are routed to `gate.on_stop()` via `_call_gate_method` in `router.py` (used by Gemini agents). `SubagentStop` is excluded — subagent completion is not a session end and must not trigger commit enforcement.
-
 ## Commit-Time Validation (Pre-commit)
 
 | Category         | Hook                                      | Purpose                | Axiom                      |
@@ -358,9 +346,22 @@ Gate mode is configured via `COMMIT_GATE_MODE` environment variable (required, n
 | Workflow               | Purpose                                                      | Axiom                             |
 | ---------------------- | ------------------------------------------------------------ | --------------------------------- |
 | agent-axiom-review.yml | Axiom/heuristic compliance; `CHANGES_REQUESTED` blocks merge | All axioms/heuristics             |
+| agent-merge-prep.yml   | Agent fixes CI failures + review feedback before merge       | [[verify-first]]                  |
 | test-setup.yml         | Validate symlinks exist and are relative                     | [[fail-fast-code]]                |
 | framework-health.yml   | Framework health metrics and enforcement                     | [[maintain-relational-integrity]] |
 | claude.yml             | Claude Code bot integration                                  | -                                 |
+
+### Merge-Prep Agent CI Enforcement
+
+The merge-prep agent (`.github/agents/merge-prep.agent.md`) is instructed to:
+
+1. **Check CI status first** (step 2) — `gh pr checks` before reading reviews
+2. **Treat CI failures as primary concern** — reviews are secondary if CI is red
+3. **Discover repo-specific checks** — reads `.github/workflows/` to find exact commands; no hardcoded tool assumptions
+4. **Mandatory local validation** (step 5) — must run checks locally and pass before committing
+5. **Block on failure** — if checks cannot pass, agent must NOT approve or set success status
+
+**Enforcement level**: Prompt (agent instructions). No mechanical gate — the agent can still skip validation. Workflow-level CI gate enforcement is tracked in GH #166.
 
 ## Agent Tool Permissions
 

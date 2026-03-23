@@ -177,7 +177,7 @@ if [[ -n "${ACA_DATA:-}" && -d "${ACA_DATA}/.git" ]]; then
         fi
     fi
 
-    for hook in post-commit post-merge; do
+    for hook in post-commit; do
         if [[ -x "${ACA_DATA}/.githooks/${hook}" ]]; then
             ok "${hook} hook exists and is executable"
         else

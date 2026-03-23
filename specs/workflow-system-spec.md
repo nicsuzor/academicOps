@@ -444,7 +444,7 @@ The workflow system is part of a larger **self-reflexive framework** that observ
    See: [[framework-observability]]
 
 2. **Feedback loops** - Observations flow into improvement processes:
-   - `/learn` analyzes root causes and makes targeted fixes
+   - `/learn` analyzes root causes and files anonymised bug reports to GitHub Issues
    - `/audit` verifies governance health
    - Humans review insights and tune workflows
 

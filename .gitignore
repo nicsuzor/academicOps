@@ -335,8 +335,10 @@ reference-graph.csv
 # Plugin-specific MCP configs (generated from templates)
 aops-core/.mcp.json
 
-# Distribution artifacts - built by CI, stored in aops-dist repo
-dist/
+# Distribution artifacts - built by CI
+# Claude plugin dist is tracked (served directly from this repo)
+dist/*
+!dist/aops-claude/
 
 streamlit_log.txt
 data/

@@ -15,7 +15,6 @@ tags: []
 - [[hooks/user_prompt_submit.py]] - UserPromptSubmit hook: triggers hydration
 - [[agents/prompt-hydrator.md]] - Prompt hydration agent
 - [[agents/qa.md]] - QA verification agent
-- [[hooks/session_end_commit_check.py]] - Stop hook: uncommitted work check
 - [[WORKFLOWS.md]] - Workflow catalog
 - [[workflows/]] - Workflow definitions
 

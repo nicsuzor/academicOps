@@ -32,11 +32,7 @@ Framework self-improvement through deliberate learning cycles.
 
 ## The Loop
 
-```
-EXECUTE → REFLECT → CODIFY → (repeat per step)
-```
-
-**Per-step, not per-session.** Reflect after every step, not batched at session end.
+`EXECUTE → REFLECT → CODIFY` (per step, not per session)
 
 ### 1. Execute (One Step)
 
@@ -74,9 +70,16 @@ Before the next step: Did the process work as designed? Did you need human input
 3. **Blockers → Tasks.** Wire as blockers.
 4. **Cross-project links → Wire them** with `soft_blocks` or `related`.
 
-## Notice List
+## Post-Run Assessment (MANDATORY)
 
-Watch for: routing friction, missing context, instruction gaps, guardrail failures, user friction, tool gaps, permission-seeking.
+After a dogfood run completes, file structured follow-ups — these ARE the output:
+
+1. **"Pre-next-run fixes" epic** — everything to fix before repeating (infra + process issues)
+2. **Blocked "repeat and reassess" task** — depends on fixes epic, includes baseline metrics and AC for improvement
+3. **GitHub Issues** (`/learn`) for systemic problems — especially wasted work on wrong targets (wrong repo, deprecated code)
+4. **Update these instructions** with new limitations or patterns
+
+Follow-up tasks are durable; session notes evaporate.
 
 ## Key Rules
 
@@ -88,9 +91,9 @@ Watch for: routing friction, missing context, instruction gaps, guardrail failur
 
 ## Scope
 
-**Dual scope authorization**: When a user explicitly requests dogfooding (e.g., "dogfood this skill", `/pull <id> -- dogfood`), the agent has scope over both the task being executed AND the tooling/skill being tested. This is not scope expansion — it is the task. Custodiet should not flag inline fixes to the dogfooded artifact as out-of-scope.
+**Dual scope authorization**: When dogfooding is requested, the agent has scope over both the task AND the tooling being tested. Custodiet should not flag inline fixes to the dogfooded artifact as out-of-scope.
 
 **Fix-vs-defer boundary**:
 
-- **Fix inline**: Obvious bugs, wrong API calls, missing edge cases, incorrect guidance — anything where the correct fix is clear and localized. Commit alongside task work with a descriptive message (e.g., `fix(densify): handle missing dependency field`).
-- **Defer**: Design changes, structural rethinking, new features surfaced by the dogfooding. Log as a numbered observation in a `### Dogfooding observations` section of the task body, and create a follow-up task if warranted.
+- **Fix inline**: Obvious bugs, wrong API calls, missing edge cases, incorrect guidance — clear and localized fixes.
+- **Defer**: Design changes, structural rethinking, new features. Log in `### Dogfooding observations` section and create follow-up tasks.
