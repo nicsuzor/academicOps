@@ -53,6 +53,8 @@ The framework improves as a side-effect of doing normal work. When agents hit fr
 
 Hierarchical task graph with semantic search, powered by a Rust MCP server (`pkb-search`). Everything flows through it — task capture, knowledge storage, memory, context recovery.
 
+Tasks are stored as markdown files within the `data/tasks/` directory of your knowledge base (`$ACA_DATA`). The workflow typically follows: `inbox/` -> `active/` -> `completed/` -> `archived/`.
+
 ```
 GOAL  →  PROJECT  →  EPIC  →  TASK  →  ACTION
 ```

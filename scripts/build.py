@@ -699,6 +699,7 @@ def build_aops_core(
         "framework",
         "AXIOMS.md",
         "CONSTRAINTS.md",
+        "CORE.md",
         "HEURISTICS.md",
         "INDEX.md",
         "RULES.md",

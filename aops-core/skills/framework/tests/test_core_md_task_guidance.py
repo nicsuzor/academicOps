@@ -7,7 +7,7 @@ for task-related operations to use the task skill.
 import os
 from pathlib import Path
 
-AOPS = os.environ.get("AOPS", os.path.expanduser("~/src/academicOps"))
+AOPS = os.environ.get("AOPS") or str(Path(__file__).resolve().parents[4])
 
 
 def test_core_md_references_task_skill():

@@ -5,7 +5,7 @@ description = "Core academicOps framework - skills, agents, and hooks for resear
 requires-python = ">=3.11"
 license = "MIT"
 authors = [
-  { name = "Nicolas Suzor" }
+  { name = "Nicolas Suzor" },
 ]
 keywords = ["academicOps", "research", "framework", "workflow", "mcp"]
 dependencies = [

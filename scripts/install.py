@@ -224,6 +224,11 @@ def main():
         shutil.copy2(src_gemini_md, gemini_dir / "GEMINI.md")
         print("✓ Copied GEMINI.md to ~/.gemini/GEMINI.md")
 
+    src_core_md = aops_root / "aops-core" / "CORE.md"
+    if src_core_md.exists():
+        shutil.copy2(src_core_md, gemini_dir / "CORE.md")
+        print("✓ Copied CORE.md to ~/.gemini/CORE.md")
+
     ag_dir = gemini_dir / "antigravity"
     ag_dir.mkdir(parents=True, exist_ok=True)
     global_workflows = ag_dir / "global_workflows"
