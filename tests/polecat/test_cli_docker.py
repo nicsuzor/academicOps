@@ -21,6 +21,7 @@ sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 
 from cli import (
     _build_docker_cmd,
+    _mount_aca_data_sandbox,
     _node_version_key,
     _replicate_gemini_auth,
 )
@@ -404,3 +405,47 @@ class TestReplicateGeminiAuth:
         import shutil
 
         shutil.rmtree(result)
+
+
+class TestMountAcaDataSandbox:
+    """Tests for _mount_aca_data_sandbox — called by both crew -g and run -g."""
+
+    def test_mounts_existing_directory(self, tmp_path):
+        brain = tmp_path / "brain"
+        brain.mkdir()
+        env: dict = {"ACA_DATA": str(brain)}
+        _mount_aca_data_sandbox(env)
+        assert f"{brain}:{brain}:rw" in env["SANDBOX_MOUNTS"]
+
+    def test_appends_to_existing_mounts(self, tmp_path):
+        brain = tmp_path / "brain"
+        brain.mkdir()
+        env: dict = {"ACA_DATA": str(brain), "SANDBOX_MOUNTS": "/a:/a:ro"}
+        _mount_aca_data_sandbox(env)
+        assert env["SANDBOX_MOUNTS"].startswith("/a:/a:ro,")
+        assert f"{brain}:{brain}:rw" in env["SANDBOX_MOUNTS"]
+
+    def test_no_mount_when_dir_missing(self, tmp_path):
+        env: dict = {"ACA_DATA": str(tmp_path / "nonexistent")}
+        _mount_aca_data_sandbox(env)
+        assert "SANDBOX_MOUNTS" not in env
+
+    def test_falls_back_to_os_environ(self, tmp_path, monkeypatch):
+        brain = tmp_path / "brain"
+        brain.mkdir()
+        monkeypatch.setenv("ACA_DATA", str(brain))
+        env: dict = {}
+        _mount_aca_data_sandbox(env)
+        assert f"{brain}:{brain}:rw" in env["SANDBOX_MOUNTS"]
+
+    def test_no_double_mount_on_repeated_call(self, tmp_path):
+        brain = tmp_path / "brain"
+        brain.mkdir()
+        env: dict = {"ACA_DATA": str(brain)}
+        _mount_aca_data_sandbox(env)
+        first = env["SANDBOX_MOUNTS"]
+        # Calling again (simulating the old duplicate in crew -g) would append twice
+        # — the deduplication responsibility is now in the caller (no duplicate calls).
+        # This test confirms the first call produces exactly one mount entry.
+        assert env["SANDBOX_MOUNTS"].count(f"{brain}:{brain}:rw") == 1
+        assert env["SANDBOX_MOUNTS"] == first

@@ -393,6 +393,20 @@ def _build_docker_cmd(
     return cmd
 
 
+def _mount_aca_data_sandbox(env: dict) -> None:
+    """Mount ACA_DATA read-write into the Gemini sandbox via SANDBOX_MOUNTS.
+
+    Forwarding ACA_DATA as an env var alone (via SANDBOX_FLAGS) is insufficient —
+    without the bind mount the PKB server starts with a missing/empty path inside
+    the container.  This helper is called from both ``crew -g`` and ``run -g``.
+    """
+    aca_data = env.get("ACA_DATA") or os.environ.get("ACA_DATA")
+    if aca_data and os.path.isdir(aca_data):
+        mounts = env.get("SANDBOX_MOUNTS", "")
+        new_mount = f"{aca_data}:{aca_data}:rw"
+        env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
+
+
 def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | None:
     """Replicate Gemini authentication files to a directory.
 
@@ -2006,12 +2020,7 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
         # Provide a stable Gemini session ID based on the crew/task ID
         env["GEMINI_SESSION_ID"] = f"gemini-{crew_name}"
 
-        # Mount ACA_DATA via SANDBOX_MOUNTS (read-write for PKB updates)
-        aca_data = env.get("ACA_DATA") or os.environ.get("ACA_DATA")
-        if aca_data and os.path.isdir(aca_data):
-            mounts = env.get("SANDBOX_MOUNTS", "")
-            new_mount = f"{aca_data}:{aca_data}:rw"
-            env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
+        _mount_aca_data_sandbox(env)
 
         # Gemini sandbox only forwards a hardcoded allowlist of env vars into
         # its Docker container. Use SANDBOX_FLAGS for simple -e flags and
@@ -2083,13 +2092,6 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
             container_gh_hosts = str(Path.home() / ".config" / "gh" / "hosts.yml")
             mounts = env.get("SANDBOX_MOUNTS", "")
             new_mount = f"{gh_hosts.name}:{container_gh_hosts}:ro"
-            env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
-
-        # Mount ACA_DATA via SANDBOX_MOUNTS (read-write for PKB updates)
-        aca_data = env.get("ACA_DATA") or os.environ.get("ACA_DATA")
-        if aca_data and os.path.isdir(aca_data):
-            mounts = env.get("SANDBOX_MOUNTS", "")
-            new_mount = f"{aca_data}:{aca_data}:rw"
             env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
 
         if extra_flags:
@@ -2538,6 +2540,8 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
 
         # Provide a stable Gemini session ID based on the task ID
         env["GEMINI_SESSION_ID"] = f"gemini-{task.id}"
+
+        _mount_aca_data_sandbox(env)
 
         # Gemini sandbox only forwards a hardcoded allowlist of env vars into
         # its Docker container. Use SANDBOX_FLAGS for simple -e flags.
