@@ -18,6 +18,7 @@ if str(REPO_ROOT / "aops-core") not in sys.path:
 import click
 from lib.agent_env import apply_env_mappings
 from manager import PolecatManager
+from observability import metrics
 from validation import TaskIDValidationError, validate_task_id_or_raise
 
 # Max turns for headless Claude runs — must be high enough to accommodate hook
@@ -3109,6 +3110,9 @@ def watch(ctx, interval, stall_threshold, project):
                     if task_mod > last_activity:
                         last_activity = task_mod
 
+            # Get leaf-ready tasks (actually pullable work)
+            leaf_ready = manager.storage.get_ready_tasks(project=project)
+
             # Check for stall
             stall_cutoff = now - timedelta(minutes=stall_threshold)
             if last_activity < stall_cutoff:
@@ -3121,14 +3125,21 @@ def watch(ctx, interval, stall_threshold, project):
                 # Reset to avoid spamming alerts
                 last_activity = now
 
-            # Status line
+            # Status line (leaf-ready is the primary queue metric)
+            ready_count = len(leaf_ready)
             active_count = len(in_progress)
-            ready_count = len(merge_ready_tasks)
+            merge_ready_count = len(merge_ready_tasks)
             review_count = len(review_tasks)
             timestamp = now.strftime("%H:%M:%S")
             print(
-                f"[{timestamp}] active={active_count} merge_ready={ready_count} review={review_count}"
+                f"[{timestamp}] ready={ready_count} active={active_count} merge_ready={merge_ready_count} review={review_count}"
             )
+
+            # Record periodic metrics for dashboard
+            metrics.record_queue_depth("ready", count=ready_count, project=project)
+            metrics.record_queue_depth("active", count=active_count, project=project)
+            metrics.record_queue_depth("merge_ready", count=merge_ready_count, project=project)
+            metrics.record_queue_depth("review", count=review_count, project=project)
 
         except Exception as e:
             print(f"Error during poll: {e}")
