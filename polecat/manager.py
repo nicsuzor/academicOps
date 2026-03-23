@@ -614,6 +614,9 @@ class PolecatManager:
                 # Build negative refspecs to exclude branches checked out in
                 # worktrees — git refuses to fetch into checked-out branches
                 exclude_refspecs = self._worktree_exclude_refspecs(mirror_path)
+                if exclude_refspecs:
+                    branches = [r.removeprefix("^refs/heads/") for r in exclude_refspecs]
+                    print(f"  Skipping worktree branches during fetch: {', '.join(branches)}")
 
                 # Fetch from origin (may fail if offline - that's OK)
                 origin_result = subprocess.run(
