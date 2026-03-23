@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import json
 import re
 import subprocess
 import sys
@@ -104,3 +105,43 @@ def check_gh_installed() -> bool:
         return result.returncode == 0
     except (subprocess.CalledProcessError, FileNotFoundError):
         return False
+
+
+def get_pr_status(pr_ref: str, repo_path: Path | None = None) -> dict[str, Any] | None:
+    """Get PR status using gh CLI.
+
+    Args:
+        pr_ref: PR number or URL
+        repo_path: Optional path to run command in
+
+    Returns:
+        Dict with PR info (state, mergedAt, reviews, updatedAt) or None if failed
+    """
+    try:
+        # We want: state, mergedAt, reviews, updatedAt
+        # reviews contains: author, state, submittedAt, body
+        cmd = [
+            "gh",
+            "pr",
+            "view",
+            pr_ref,
+            "--json",
+            "state,mergedAt,reviews,updatedAt,url,number,title",
+        ]
+        result = subprocess.run(
+            cmd,
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+        if result.returncode == 0:
+            return json.loads(result.stdout)
+    except (
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+        json.JSONDecodeError,
+        FileNotFoundError,
+    ):
+        pass
+    return None

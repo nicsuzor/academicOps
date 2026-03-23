@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
-# repo-sync-cron.sh - Periodic maintenance: transcripts, dashboard, and repo sync
+# repo-sync-cron.sh - Periodic maintenance: transcripts, dashboard, repo sync, and sweep
 #
-# Three functions, composable via CLI:
+# Four functions, composable via CLI:
 #   do_transcript - Generate recent session transcripts
 #   do_dashboard  - Synthesize dashboard data and task graph
 #   do_sync       - Sync all git repositories via polecat sync
+#   do_sweep      - Sweep merge_ready tasks for PR status updates
 #
 # Usage:
-#   ./scripts/repo-sync-cron.sh              # Full: transcript + dashboard + sync
+#   ./scripts/repo-sync-cron.sh              # Full: transcript + dashboard + sync + sweep
 #   ./scripts/repo-sync-cron.sh transcript   # Just transcript
 #   ./scripts/repo-sync-cron.sh dashboard    # Just dashboard
 #   ./scripts/repo-sync-cron.sh sync         # Just sync
-#   ./scripts/repo-sync-cron.sh transcript dashboard sync  # Specific combination
+#   ./scripts/repo-sync-cron.sh sweep        # Just sweep
+#   ./scripts/repo-sync-cron.sh transcript dashboard sync sweep # Specific combination
 #
 # Crontab suggested setup:
 #   */5 * * * * /path/to/repo/scripts/repo-sync-cron.sh >> /tmp/repo-sync-cron.log 2>&1
@@ -115,25 +117,34 @@ do_sync() {
     uv run --project "${AOPS}" "${AOPS}/polecat/cli.py" sync --quiet 2>&1 || echo "Warning: polecat sync failed"
 }
 
+do_sweep() {
+    # Sweep merge_ready tasks for PR status updates
+    echo "==> Sweeping task PR statuses..."
+    uv run --project "${AOPS}" "${AOPS}/polecat/cli.py" sweep 2>&1 || echo "Warning: polecat sweep failed"
+}
+
 # ============================================================================
 # Dispatch
 # ============================================================================
 
 if [[ $# -eq 0 ]]; then
-    # Full run: transcript + dashboard + sync
+    # Full run: transcript + dashboard + sync + sweep
     echo "${TS} repo-sync-cron starting (full)"
     do_transcript
     do_dashboard
     do_sync
+    do_sweep
 else
-    # Named functions: ./repo-sync-cron.sh transcript dashboard sync
+    # Named functions: ./repo-sync-cron.sh transcript dashboard sync sweep
     echo "${TS} repo-sync-cron starting ($*)"
     for func in "$@"; do
         case "$func" in
             transcript) do_transcript ;;
             dashboard)  do_dashboard ;;
             sync)       do_sync ;;
-            *)          echo "Unknown function: $func (valid: transcript, dashboard, sync)" >&2; exit 1 ;;
+            sweep)      do_sweep ;;
+            --quick)    do_transcript; do_sync ;;
+            *)          echo "Unknown function: $func (valid: transcript, dashboard, sync, sweep, --quick)" >&2; exit 1 ;;
         esac
     done
 fi
