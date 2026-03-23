@@ -537,7 +537,7 @@ class TaskStorage:
         if status == "ready":
             return self.get_ready_tasks(project=project)
         if status == "blocked":
-            return self.get_blocked_tasks()
+            return self.get_blocked_tasks(project=project)
 
         tasks = []
         for task in self._iter_all_tasks():
@@ -711,8 +711,11 @@ class TaskStorage:
         ready.sort(key=lambda t: (t.priority, t.order, t.title))
         return ready
 
-    def get_blocked_tasks(self) -> list[Task]:
+    def get_blocked_tasks(self, project: str | None = None) -> list[Task]:
         """Get tasks blocked by dependencies.
+
+        Args:
+            project: Filter by project (e.g., 'academicops')
 
         Returns:
             List of blocked tasks
@@ -723,6 +726,8 @@ class TaskStorage:
 
         blocked = []
         for task in all_tasks:
+            if project is not None and task.project != project:
+                continue
             if task.is_blocked(completed_ids):
                 blocked.append(task)
 
