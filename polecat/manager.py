@@ -657,12 +657,15 @@ class PolecatManager:
         if result.returncode != 0:
             return []
 
-        exclude = []
+        branches: set[str] = set()
         for line in result.stdout.splitlines():
             if line.startswith("branch refs/heads/"):
-                branch = line[len("branch refs/heads/") :]
-                exclude.append(f"^refs/heads/{branch}")
-        return exclude
+                raw_branch = line[len("branch refs/heads/") :]
+                branch = raw_branch.strip()
+                if branch:
+                    branches.add(branch)
+
+        return [f"^refs/heads/{branch}" for branch in sorted(branches)]
 
     def _ensure_local_remote(self, mirror_path: Path, local_path: Path) -> None:
         """Ensure mirror has a 'local' remote pointing to local repo.
