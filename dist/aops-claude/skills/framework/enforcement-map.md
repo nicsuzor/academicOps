@@ -393,17 +393,6 @@ The stop gate requires TWO conditions for session completion:
 9. If all flags set: session ends
 10. If any flag missing: blocks with instructions for the missing step
 
-### Uncommitted Work Check
-
-**Enforcement**: `session_end_commit_check.py` Stop hook.
-
-Blocks session end if:
-
-- Framework Reflection or test success detected in transcript
-- AND uncommitted changes exist in git
-
-Auto-commits staged changes. Blocks if unstaged changes require manual commit.
-
 ## Commit-Time Validation (Pre-commit)
 
 | Category         | Hook                                      | Purpose                                         | Axiom                             |
@@ -495,7 +484,7 @@ Context injected via CORE.md at SessionStart. Guides where agents place files.
 | SubagentStop     | `$AOPS/aops-core/hooks/unified_logger.py`                                                                    |
 | UserPromptSubmit | `$AOPS/aops-core/hooks/user_prompt_submit.py`                                                                |
 | SessionStart     | `$AOPS/aops-core/hooks/sessionstart_load_axioms.py`                                                          |
-| Stop             | `$AOPS/aops-core/hooks/reflection_check.py`, `session_end_commit_check.py`                                   |
+| Stop             | `$AOPS/aops-core/hooks/reflection_check.py`                                                                  |
 | Pre-commit       | `$AOPS/.pre-commit-config.yaml`                                                                              |
 | CI/CD            | `$AOPS/.github/workflows/`                                                                                   |
 | Remember skill   | `$AOPS/aops-core/skills/remember/SKILL.md`                                                                   |

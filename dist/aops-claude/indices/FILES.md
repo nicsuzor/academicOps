@@ -12,7 +12,7 @@ Auto-generated during build. Lists all files in this plugin distribution.
 
 ## File Count
 
-Total files: 230
+Total files: 224
 
 ## File Tree
 
@@ -49,13 +49,8 @@ hooks/policy_enforcer.py
 hooks/router.py
 hooks/router.sh
 hooks/schemas.py
-hooks/session_end_commit_check.py
 hooks/session_env_setup.py
 hooks/templates/README.md
-hooks/templates/commit-uncommitted-block.md
-hooks/templates/commit-uncommitted-context.md
-hooks/templates/commit-unpushed-context.md
-hooks/templates/commit-unpushed-reminder.md
 hooks/templates/custodiet-audit.md
 hooks/templates/custodiet-context.md
 hooks/templates/custodiet-countdown.md
@@ -87,7 +82,6 @@ lib/archived/session_analyzer.py
 lib/archived/task_sync.py
 lib/archived/transcript_error_analyzer.py
 lib/binary_install.py
-lib/commit_check.py
 lib/event_detector.py
 lib/gate_model.py
 lib/gate_types.py

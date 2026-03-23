@@ -345,7 +345,9 @@ def build_rich_session_context(transcript_path: Path | str, max_turns: int = 15)
     return "\n".join(lines)
 
 
-def build_audit_session_context(transcript_path: Path | str) -> str:
+def build_audit_session_context(
+    transcript_path: Path | str, *, entries: list[Any] | None = None
+) -> str:
     """Build deep session context for audit and compliance review.
 
     Unlike build_rich_session_context (designed for scope-drift detection with
@@ -365,16 +367,19 @@ def build_audit_session_context(transcript_path: Path | str) -> str:
 
     Args:
         transcript_path: Path to session transcript JSONL file
+        entries: Pre-parsed session entries to avoid redundant file I/O.
+            If not provided, the transcript is parsed from disk.
 
     Returns:
         Formatted markdown context suitable for critic agent consumption
     """
-    path = Path(transcript_path)
-    if not path.exists():
-        return "(No transcript path available)"
+    if entries is None:
+        path = Path(transcript_path)
+        if not path.exists():
+            return "(No transcript path available)"
 
-    processor = SessionProcessor()
-    _, entries, _ = processor.parse_session_file(path, load_agents=False, load_hooks=False)
+        processor = SessionProcessor()
+        _, entries, _ = processor.parse_session_file(path, load_agents=False, load_hooks=False)
 
     if not entries:
         return "(Empty session)"
