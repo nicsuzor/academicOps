@@ -38,8 +38,7 @@ def setup_mock_home(tmp_path):
             # Replace butler_scripts with symlink
             import shutil
 
-            shutil.rmtree(butler_scripts.parent)
-            butler_scripts.parent.mkdir(parents=True, exist_ok=True)
+            shutil.rmtree(butler_scripts)
             butler_scripts.symlink_to(aops_scripts)
 
     return patch.object(Path, "home", return_value=tmp_path)
