@@ -4,10 +4,9 @@
 These tests complement test_gate_verdicts.py by:
 1. Replaying REAL hook events extracted from production sessions
 2. Testing PostToolUse counter increments
-3. Testing UserPromptSubmit gate closure
-4. Testing countdown warnings
-5. Validating temp_path locations are readable by clients
-6. Smoke-testing the full execute_hooks() path
+3. Testing countdown warnings
+4. Validating temp_path locations are readable by clients
+5. Smoke-testing the full execute_hooks() path
 
 The real events fixture (real_hook_events.json) was extracted from actual
 Claude Code hook logs at ~/.claude/projects/<project>/*-hooks.jsonl.
@@ -35,7 +34,7 @@ from hooks.gate_config import COMPLIANCE_SUBAGENT_TYPES, TOOL_CATEGORIES, get_to
 from hooks.router import HookRouter
 from hooks.schemas import CanonicalHookOutput, HookContext
 from lib.gate_model import GateVerdict
-from lib.gate_types import GateState, GateStatus
+from lib.gate_types import GateStatus
 from lib.gates.registry import GateRegistry
 from lib.session_paths import get_gate_file_path
 from lib.session_state import SessionState
@@ -70,27 +69,18 @@ def _reinit_gates_with_defaults():
     GateRegistry.initialize()
 
 
-@pytest.fixture(autouse=True, params=["warn", "deny"], ids=["hydration=warn", "hydration=deny"])
-def gate_mode(monkeypatch, request):
-    """Run ALL tests under both warn and deny hydration modes.
+@pytest.fixture(autouse=True)
+def gate_mode(monkeypatch):
+    """Set gate modes for all tests.
 
-    Yields a SimpleNamespace with:
-    - hydration_mode: "warn" or "deny"
-    - hydration_verdict: the GateVerdict the hydration policy should produce
-    - hydration_verdict_str: same as string for CanonicalHookOutput comparisons
+    Yields a SimpleNamespace with gate configuration info.
     """
-    mode = request.param
-    monkeypatch.setenv("HYDRATION_GATE_MODE", mode)
     monkeypatch.setenv("CUSTODIET_GATE_MODE", "block")
     monkeypatch.setenv("QA_GATE_MODE", "block")
     monkeypatch.setenv("HANDOVER_GATE_MODE", "warn")
     monkeypatch.setenv("CUSTODIET_TOOL_CALL_THRESHOLD", "50")
     _reinit_gates_with_defaults()
-    yield SimpleNamespace(
-        hydration_mode=mode,
-        hydration_verdict=GateVerdict.DENY if mode == "deny" else GateVerdict.WARN,
-        hydration_verdict_str="deny" if mode == "deny" else "warn",
-    )
+    yield SimpleNamespace()
     _reinit_gates_with_defaults()
 
 
@@ -134,12 +124,6 @@ class TestRealEventInvariants:
         e for e in PRETOOLUSE_EVENTS if e.get("subagent_type") in COMPLIANCE_SUBAGENT_TYPES
     ]
 
-    WRITE_TOOL_EVENTS = [
-        e
-        for e in PRETOOLUSE_EVENTS
-        if e.get("tool_name") in TOOL_CATEGORIES["write"] and not e.get("is_subagent")
-    ]
-
     ALWAYS_AVAILABLE_EVENTS = [
         e for e in PRETOOLUSE_EVENTS if e.get("tool_name") in TOOL_CATEGORIES["infrastructure"]
     ]
@@ -155,9 +139,7 @@ class TestRealEventInvariants:
     def test_compliance_spawn_always_allowed(self, router, event):
         """Real compliance agent spawns must always be allowed."""
         state = SessionState.create("test-replay")
-        # Hostile state: all gates closed, custodiet at threshold
-        state.gates["hydration"].status = GateStatus.CLOSED
-        state.gates["hydration"].metrics["temp_path"] = "/tmp/h.md"
+        # Hostile state: custodiet at threshold
         state.gates["custodiet"].ops_since_open = 100
         ctx = _make_context(event)
 
@@ -178,8 +160,6 @@ class TestRealEventInvariants:
     def test_always_available_tools_from_real_logs(self, router, event):
         """Real always-available tool calls must pass even with hostile state."""
         state = SessionState.create("test-replay")
-        state.gates["hydration"].status = GateStatus.CLOSED
-        state.gates["hydration"].metrics["temp_path"] = "/tmp/h.md"
         state.gates["custodiet"].ops_since_open = 100
         ctx = _make_context(event)
 
@@ -190,88 +170,6 @@ class TestRealEventInvariants:
                 f"Always-available tool '{event['tool_name']}' (seq {event['sequence_index']}) "
                 f"should be ALLOW, got {result.verdict.value}"
             )
-
-    @pytest.mark.parametrize(
-        "event",
-        WRITE_TOOL_EVENTS,
-        ids=[
-            f"seq{e['sequence_index']}_{e['tool_name']}_{e['recorded_verdict']}"
-            for e in WRITE_TOOL_EVENTS
-        ],
-    )
-    def test_write_tools_blocked_when_hydration_closed(self, router, event, gate_mode):
-        """Real write tool calls must get the mode-appropriate verdict when hydration is closed."""
-        state = SessionState.create("test-replay")
-        state.gates["hydration"].status = GateStatus.CLOSED
-        state.gates["hydration"].metrics["temp_path"] = "/tmp/h.md"
-        ctx = _make_context(event)
-
-        result = router._dispatch_gates(ctx, state)
-
-        assert result is not None, (
-            f"Write tool '{event['tool_name']}' (seq {event['sequence_index']}) "
-            f"should not be ALLOW when hydration closed (mode={gate_mode.hydration_mode})"
-        )
-        assert result.verdict == gate_mode.hydration_verdict, (
-            f"Write tool '{event['tool_name']}' (seq {event['sequence_index']}) "
-            f"expected {gate_mode.hydration_verdict.value} in {gate_mode.hydration_mode} mode, "
-            f"got {result.verdict.value}"
-        )
-
-
-class TestRealEventSequenceReplay:
-    """Replay a full session sequence from real hook logs.
-
-    Processes events in order, maintaining gate state across events,
-    to verify the gate system produces correct verdicts for the
-    complete lifecycle: UserPromptSubmit -> tool calls -> hydrator
-    spawn -> gate opens -> tool calls succeed.
-    """
-
-    def test_full_session_lifecycle(self, router):
-        """Replay the real session lifecycle and verify key transitions.
-
-        The session follows this arc:
-        1. UserPromptSubmit closes hydration gate
-        2. Write tools get warned/denied (gate closed)
-        3. Task(hydrator) spawns -> gate opens via trigger
-        4. Write tools succeed after hydration
-        """
-        state = SessionState.create("test-replay-seq")
-
-        # Track key verdicts through the session
-        hydration_was_closed = False
-        hydration_opened_by_trigger = False
-
-        for event in REAL_EVENTS:
-            ctx = _make_context(event)
-            router._dispatch_gates(ctx, state)
-
-            # Track hydration gate state transitions
-            hydration_status = state.gates.get("hydration", GateState()).status
-
-            if event["hook_event"] == "UserPromptSubmit":
-                # After UserPromptSubmit, hydration should be closed
-                # (trigger uses declarative exclude_if_subagent + prompt_exclude_patterns
-                # so just track if it was already closed)
-                if hydration_status == GateStatus.CLOSED:
-                    hydration_was_closed = True
-
-            # Check if hydrator trigger opened the gate
-            if event.get("subagent_type") in (
-                "aops-core:hydrator",
-                "hydrator",
-            ):
-                if hydration_status == GateStatus.OPEN:
-                    hydration_opened_by_trigger = True
-
-        # At least some of these lifecycle stages should have occurred
-        # (the real log shows this complete arc)
-        assert hydration_was_closed or True, "Hydration gate was never closed"
-        assert hydration_opened_by_trigger, (
-            "Hydrator trigger never opened the gate — "
-            "this means compliance agent triggers are broken"
-        )
 
 
 # ===========================================================================
@@ -422,8 +320,6 @@ class TestHookLogDiscovery:
             pytest.skip("No compliance agent PreToolUse events found in logs")
 
         state = SessionState.create("test-compliance-disk")
-        state.gates["hydration"].status = GateStatus.CLOSED
-        state.gates["hydration"].metrics["temp_path"] = "/tmp/h.md"
         state.gates["custodiet"].ops_since_open = 100
 
         for event in compliance_events:
@@ -455,7 +351,6 @@ class TestPostToolUseCounter:
     def test_ops_counter_increments_on_write_tool(self, router):
         """PostToolUse for write tools must increment ops_since_open."""
         state = SessionState.create("test-counter")
-        state.gates["hydration"].status = GateStatus.OPEN
         state.gates["custodiet"].status = GateStatus.OPEN
         state.gates["custodiet"].ops_since_open = 0
 
@@ -478,7 +373,6 @@ class TestPostToolUseCounter:
     def test_ops_counter_increments_multiple_times(self, router):
         """Multiple PostToolUse events should increment the counter each time."""
         state = SessionState.create("test-counter-multi")
-        state.gates["hydration"].status = GateStatus.OPEN
         state.gates["custodiet"].status = GateStatus.OPEN
         state.gates["custodiet"].ops_since_open = 0
 
@@ -499,7 +393,6 @@ class TestPostToolUseCounter:
     def test_custodiet_counter_resets_after_compliance_check(self, router):
         """Counter should reset to 0 when custodiet SubagentStop fires."""
         state = SessionState.create("test-counter-reset")
-        state.gates["hydration"].status = GateStatus.OPEN
         state.gates["custodiet"].status = GateStatus.OPEN
         state.gates["custodiet"].ops_since_open = 42
 
@@ -520,131 +413,6 @@ class TestPostToolUseCounter:
 
 
 # ===========================================================================
-# UserPromptSubmit: Hydration gate closure
-# ===========================================================================
-
-
-class TestUserPromptSubmitClosesGate:
-    """Verify UserPromptSubmit closes the hydration gate.
-
-    The hydration gate's UserPromptSubmit trigger uses declarative
-    exclude_if_subagent + prompt_exclude_patterns to skip slash commands,
-    dot-prefixed prompts, agent/task notifications, and subagent sessions.
-    """
-
-    def test_hydration_gate_config_initial_status_is_closed(self):
-        """Hydration gate config declares initial_status=CLOSED.
-
-        Note: SessionState.create() pre-populates all gates as OPEN for
-        backwards compatibility. The gate config's initial_status is used
-        as a fallback by _get_state() when a gate isn't pre-populated.
-        This test verifies both the config declaration AND the fallback.
-        """
-        from lib.gates.definitions import GATE_CONFIGS
-
-        # 1. Verify the gate config declares initial_status=CLOSED
-        hydration_config = next(c for c in GATE_CONFIGS if c.name == "hydration")
-        assert hydration_config.initial_status == GateStatus.CLOSED, (
-            f"Hydration gate config should declare initial_status=CLOSED, "
-            f"got {hydration_config.initial_status}"
-        )
-
-        # 2. Verify _get_state() uses initial_status when gate not pre-populated
-        from lib.gates.engine import GenericGate
-
-        gate = GenericGate(hydration_config)
-        bare_state = SessionState.create("test-ups-bare")
-        # Remove the pre-populated hydration gate to test fallback
-        del bare_state.gates["hydration"]
-        gate_state = gate._get_state(bare_state)
-        assert gate_state.status == GateStatus.CLOSED, (
-            f"_get_state() should use config initial_status=CLOSED when gate "
-            f"not pre-populated, got {gate_state.status}"
-        )
-
-    def test_hydrator_trigger_opens_then_prompt_can_close(self, router):
-        """After hydrator opens gate, a UserPromptSubmit for a normal prompt closes it."""
-        state = SessionState.create("test-ups-lifecycle")
-
-        # 1. Open gate via hydrator trigger
-        ctx_open = HookContext(
-            session_id="test-ups-lifecycle",
-            hook_event="SubagentStop",
-            tool_name=None,
-            tool_input={},
-            subagent_type="aops-core:hydrator",
-        )
-        router._dispatch_gates(ctx_open, state)
-        assert state.gates["hydration"].status == GateStatus.OPEN
-
-        # 2. A normal (non-skipped) UserPromptSubmit should close the gate.
-        ctx_prompt = HookContext(
-            session_id="test-ups-lifecycle",
-            hook_event="UserPromptSubmit",
-            is_subagent=False,
-            raw_input={"prompt": "Fix the bug in auth.py"},
-        )
-        router._dispatch_gates(ctx_prompt, state)
-        assert state.gates["hydration"].status == GateStatus.CLOSED, (
-            "Normal UserPromptSubmit should close the hydration gate"
-        )
-
-    def test_hydrator_trigger_skips_slash_command(self, router):
-        """UserPromptSubmit with a slash command should NOT close the hydration gate."""
-        state = SessionState.create("test-ups-slash")
-
-        # Pre-open the gate
-        ctx_open = HookContext(
-            session_id="test-ups-slash",
-            hook_event="SubagentStop",
-            tool_name=None,
-            tool_input={},
-            subagent_type="aops-core:hydrator",
-        )
-        router._dispatch_gates(ctx_open, state)
-        assert state.gates["hydration"].status == GateStatus.OPEN
-
-        # Slash command should NOT close the gate
-        ctx_prompt = HookContext(
-            session_id="test-ups-slash",
-            hook_event="UserPromptSubmit",
-            is_subagent=False,
-            raw_input={"prompt": "/commit"},
-        )
-        router._dispatch_gates(ctx_prompt, state)
-        assert state.gates["hydration"].status == GateStatus.OPEN, (
-            "Slash command UserPromptSubmit should NOT close the hydration gate"
-        )
-
-    def test_hydrator_trigger_skips_subagent_session(self, router):
-        """UserPromptSubmit in a subagent session should NOT close the hydration gate."""
-        state = SessionState.create("test-ups-subagent")
-
-        # Pre-open the gate
-        ctx_open = HookContext(
-            session_id="test-ups-subagent",
-            hook_event="SubagentStop",
-            tool_name=None,
-            tool_input={},
-            subagent_type="aops-core:hydrator",
-        )
-        router._dispatch_gates(ctx_open, state)
-        assert state.gates["hydration"].status == GateStatus.OPEN
-
-        # Subagent session UserPromptSubmit should NOT close the gate
-        ctx_prompt = HookContext(
-            session_id="test-ups-subagent",
-            hook_event="UserPromptSubmit",
-            is_subagent=True,
-            raw_input={"prompt": "Fix the bug in auth.py"},
-        )
-        router._dispatch_gates(ctx_prompt, state)
-        assert state.gates["hydration"].status == GateStatus.OPEN, (
-            "Subagent UserPromptSubmit should NOT close the hydration gate"
-        )
-
-
-# ===========================================================================
 # Countdown Warning: Ops approaching threshold
 # ===========================================================================
 
@@ -655,7 +423,6 @@ class TestCountdownWarning:
     def test_countdown_warning_in_range(self, router):
         """Ops at 45 (within 43-49 range) should produce countdown message."""
         state = SessionState.create("test-countdown")
-        state.gates["hydration"].status = GateStatus.OPEN
         state.gates["custodiet"].status = GateStatus.OPEN
         state.gates["custodiet"].ops_since_open = 45  # threshold=50, start_before=7
 
@@ -677,7 +444,6 @@ class TestCountdownWarning:
     def test_no_countdown_below_range(self, router):
         """Ops at 10 (well below range) should not produce countdown."""
         state = SessionState.create("test-no-countdown")
-        state.gates["hydration"].status = GateStatus.OPEN
         state.gates["custodiet"].status = GateStatus.OPEN
         state.gates["custodiet"].ops_since_open = 10
 
@@ -696,7 +462,6 @@ class TestCountdownWarning:
     def test_no_countdown_at_threshold(self, router):
         """Ops at 50 (at threshold) should produce policy block, not countdown."""
         state = SessionState.create("test-at-threshold")
-        state.gates["hydration"].status = GateStatus.OPEN
         state.gates["custodiet"].status = GateStatus.OPEN
         state.gates["custodiet"].ops_since_open = 50
 
@@ -722,7 +487,7 @@ class TestCountdownWarning:
 class TestTempPathValidation:
     """Verify gate temp_path is in a readable, predictable location.
 
-    Gate context files (hydration.md, custodiet.md) must be:
+    Gate context files (custodiet.md, etc.) must be:
     1. Under a directory that exists (or can be created)
     2. In the Claude/Gemini project directory (readable by the client)
     3. Named with a predictable pattern for session isolation
@@ -735,13 +500,12 @@ class TestTempPathValidation:
 
         monkeypatch.setenv("CLAUDE_PROJECT_DIR", "/Users/test/src/myproject")
         # Clear any cached env vars
-        monkeypatch.delenv("AOPS_GATE_FILE_HYDRATION", raising=False)
         monkeypatch.delenv("AOPS_GATE_FILE_CUSTODIET", raising=False)
         monkeypatch.delenv("GEMINI_SESSION_ID", raising=False)
         monkeypatch.delenv("AOPS_SESSION_STATE_DIR", raising=False)
         monkeypatch.delenv("AOPS_SESSIONS", raising=False)
 
-        path = get_gate_file_path("hydration", "test-session-abc123")
+        path = get_gate_file_path("custodiet", "test-session-abc123")
 
         # Path should be under ~/.claude/projects/
         assert str(path).startswith(str(Path.home() / ".claude" / "projects")), (
@@ -749,8 +513,8 @@ class TestTempPathValidation:
         )
 
         # Path should end with the gate name
-        assert path.name.endswith("-hydration.md"), (
-            f"Gate file should end with -hydration.md, got: {path.name}"
+        assert path.name.endswith("-custodiet.md"), (
+            f"Gate file should end with -custodiet.md, got: {path.name}"
         )
 
         # Path should contain session hash for isolation
@@ -765,47 +529,16 @@ class TestTempPathValidation:
         """Gate file parent directory must exist or be creatable."""
         # Use AOPS_GATE_FILE env var override to test with temp path
         test_gate_file = tmp_path / "test-gate.md"
-        monkeypatch.setenv("AOPS_GATE_FILE_HYDRATION", str(test_gate_file))
+        monkeypatch.setenv("AOPS_GATE_FILE_CUSTODIET", str(test_gate_file))
 
-        path = get_gate_file_path("hydration", "test-session")
+        path = get_gate_file_path("custodiet", "test-session")
 
         assert path == test_gate_file
         assert path.parent.exists(), f"Gate file parent directory must exist: {path.parent}"
 
-    def test_context_injection_contains_skill_invocation(self, router, gate_mode):
-        """When hydration gate fires, context injection must contain the skill invocation.
-
-        Since the hydrator was converted from agent to skill (PR #67), the gate
-        instructs the agent to call Skill(skill='aops-core:hydrator') rather than
-        Agent(..., prompt=temp_path). No temp_path is required.
-        """
-        state = SessionState.create("test-temp-path-ctx")
-        state.gates["hydration"].status = GateStatus.CLOSED
-
-        ctx = HookContext(
-            session_id="test-temp-path-ctx",
-            hook_event="PreToolUse",
-            tool_name="Edit",
-            tool_input={"file_path": "/f.py", "old_string": "a", "new_string": "b"},
-        )
-        result = router._dispatch_gates(ctx, state)
-
-        assert result is not None
-        assert result.verdict == gate_mode.hydration_verdict, (
-            f"Expected {gate_mode.hydration_verdict.value} in {gate_mode.hydration_mode} mode, "
-            f"got {result.verdict.value}"
-        )
-        assert result.context_injection is not None, (
-            "Hydration gate should produce context injection"
-        )
-        assert "hydrator" in result.context_injection, (
-            f"Context injection should reference the hydrator skill, got: {result.context_injection[:200]}"
-        )
-
     def test_custodiet_context_injection_contains_temp_path(self, router):
         """When custodiet gate fires, context injection must contain temp_path."""
         state = SessionState.create("test-custodiet-path")
-        state.gates["hydration"].status = GateStatus.OPEN
         state.gates["custodiet"].status = GateStatus.OPEN
         state.gates["custodiet"].ops_since_open = 55
 
@@ -839,48 +572,6 @@ class TestTempPathValidation:
 
 
 # ===========================================================================
-# Combined gate interaction: Tightened assertion
-# ===========================================================================
-
-
-class TestCombinedGateInteractionsTightened:
-    """When both hydration and custodiet fire, DENY MUST always win.
-
-    This replaces the loose verdict_in assertion from the original tests.
-    Verdict precedence is deterministic: DENY > WARN > ALLOW.
-    Under hydration=warn: WARN + DENY → DENY (custodiet wins).
-    Under hydration=deny: DENY + DENY → DENY (both deny).
-    """
-
-    def test_deny_always_wins_when_both_gates_fire(self, router, gate_mode):
-        """Both hydration and custodiet fire: result must always be DENY."""
-        state = SessionState.create("test-combined")
-        state.gates["hydration"].status = GateStatus.CLOSED
-        state.gates["hydration"].metrics["temp_path"] = "/tmp/h.md"
-        state.gates["custodiet"].status = GateStatus.OPEN
-        state.gates["custodiet"].ops_since_open = 55
-
-        ctx = HookContext(
-            session_id="test-combined",
-            hook_event="PreToolUse",
-            tool_name="Edit",
-            tool_input={"file_path": "/f.py", "old_string": "a", "new_string": "b"},
-        )
-
-        with patch(
-            "lib.gates.custom_actions.create_audit_file",
-            return_value=Path("/tmp/custodiet-test.md"),
-        ):
-            result = router._dispatch_gates(ctx, state)
-
-        assert result is not None
-        assert result.verdict == GateVerdict.DENY, (
-            f"When custodiet (block) and hydration ({gate_mode.hydration_mode}) both fire, "
-            f"DENY must win. Got {result.verdict.value}"
-        )
-
-
-# ===========================================================================
 # Smoke test through execute_hooks() public API
 # ===========================================================================
 
@@ -895,17 +586,15 @@ class TestExecuteHooksSmoke:
     - Output canonical conversion
     """
 
-    def test_pretooluse_through_full_pipeline(self, router, tmp_path, monkeypatch, gate_mode):
+    def test_pretooluse_through_full_pipeline(self, router, tmp_path, monkeypatch):
         """PreToolUse for a write tool through full pipeline.
 
-        SessionState.create() pre-populates hydration as OPEN, so with a fresh
-        state dir, the hydration policy (current_status=CLOSED) won't match.
-        The expected verdict is 'allow' regardless of mode.
+        With a fresh state dir, no gates fire (custodiet ops=0).
+        The expected verdict is 'allow'.
         """
         # Isolate state storage
         monkeypatch.setenv("AOPS_SESSION_STATE_DIR", str(tmp_path))
         monkeypatch.setenv("AOPS_HOOK_LOG_PATH", str(tmp_path / "hooks.jsonl"))
-        monkeypatch.setenv("AOPS_GATE_FILE_HYDRATION", str(tmp_path / "hydration.md"))
 
         ctx = HookContext(
             session_id="test-smoke-pipeline",
@@ -917,17 +606,15 @@ class TestExecuteHooksSmoke:
         result = router.execute_hooks(ctx)
 
         assert isinstance(result, CanonicalHookOutput)
-        # Fresh state has hydration=OPEN, custodiet ops=0 — no gates fire
+        # Fresh state has custodiet ops=0 — no gates fire
         assert result.verdict == "allow", (
-            f"Fresh state should produce 'allow' (hydration=OPEN, custodiet ops=0), "
-            f"got '{result.verdict}' in {gate_mode.hydration_mode} mode"
+            f"Fresh state should produce 'allow' (custodiet ops=0), got '{result.verdict}'"
         )
 
     def test_infrastructure_through_full_pipeline(self, router, tmp_path, monkeypatch):
         """Infrastructure tool through full pipeline should always be allowed.
 
         Always_available (AskUserQuestion, etc.) and infrastructure (PKB ops) tools bypass all gates.
-        Spawn tools (Agent, Task, Skill) are subject to hydration gate.
         """
         monkeypatch.setenv("AOPS_SESSION_STATE_DIR", str(tmp_path))
         monkeypatch.setenv("AOPS_HOOK_LOG_PATH", str(tmp_path / "hooks.jsonl"))
@@ -955,8 +642,8 @@ class TestExecuteHooksSmoke:
 # expected_category is what gate_config SHOULD return for this tool.
 # "always_available" tools bypass ALL gates (meta/control tools: AskUserQuestion, etc.).
 # "infrastructure" tools bypass ALL gates (PKB ops).
-# "spawn" tools are subject to hydration gate (Agent, Task, Skill, etc.).
-# "read_only" tools bypass custodiet gate but are subject to hydration.
+# "spawn" tools are subject to gate policies (Agent, Task, Skill, etc.).
+# "read_only" tools bypass custodiet gate.
 # "write" tools are subject to ALL gate policies.
 #
 # Sourced from 170 hook log files spanning 7 days of production usage.
@@ -976,7 +663,7 @@ REAL_TOOL_NAMES: list[tuple[str, str, str]] = [
     ("TaskOutput", "read_only", "Claude: task output"),
     ("TaskStop", "read_only", "Claude: stop task"),
     ("ToolSearch", "read_only", "Claude: tool search"),
-    # Claude Code spawn tools (subject to hydration gate)
+    # Claude Code spawn tools (subject to gate policies)
     ("Agent", "spawn", "Claude: spawn subagent"),
     ("Task", "spawn", "Claude: spawn subagent (legacy)"),
     ("Skill", "spawn", "Claude: invoke skill"),
@@ -1110,7 +797,6 @@ REAL_TOOL_NAMES: list[tuple[str, str, str]] = [
     ("shell", "write", "Gemini: shell"),
     ("cli_help", "read_only", "Gemini: cli help"),
     # ===== Agent/subagent type names that appeared as tool_name (bug/edge case) =====
-    ("hydrator", "infrastructure", "subagent name as tool (hydrator)"),
     ("qa", "infrastructure", "subagent name as tool (qa)"),
 ]
 
@@ -1186,18 +872,13 @@ class TestRealToolNameCategorization:
         [t for t in REAL_TOOL_NAMES if t[1] == "infrastructure"],
         ids=[f"{t[2]}:{t[0]}" for t in REAL_TOOL_NAMES if t[1] == "infrastructure"],
     )
-    def test_infrastructure_never_blocked_by_hydration(
-        self, router, tool_name, expected_category, desc, gate_mode
-    ):
-        """Infrastructure tools bypass the hydration gate entirely.
+    def test_infrastructure_never_blocked(self, router, tool_name, expected_category, desc):
+        """Infrastructure tools bypass all gates.
 
         PKB ops (mcp__pkb__*, create_task, etc.) are in the infrastructure category and bypass
         all gates. Meta/control tools (AskUserQuestion, TodoWrite, etc.) are in always_available.
-        This allows the framework to function even while hydration is pending.
         """
         state = SessionState.create("test-tool-categorization")
-        state.gates["hydration"].status = GateStatus.CLOSED
-        state.gates["hydration"].metrics["temp_path"] = "/tmp/h.md"
 
         ctx = HookContext(
             session_id="test-tool-categorization",
@@ -1210,89 +891,8 @@ class TestRealToolNameCategorization:
         if result is not None:
             assert result.verdict == GateVerdict.ALLOW, (
                 f"infrastructure tool '{tool_name}' ({desc}) should be ALLOW, "
-                f"got {result.verdict.value} in {gate_mode.hydration_mode} mode. "
+                f"got {result.verdict.value}. "
                 f"get_tool_category() returned '{get_tool_category(tool_name)}'"
-            )
-
-    @pytest.mark.parametrize(
-        "tool_name,expected_category,desc",
-        [t for t in REAL_TOOL_NAMES if t[1] == "read_only"],
-        ids=[f"{t[2]}:{t[0]}" for t in REAL_TOOL_NAMES if t[1] == "read_only"],
-    )
-    def test_read_only_blocked_before_hydration(
-        self, router, tool_name, expected_category, desc, gate_mode
-    ):
-        """Read-only tools ARE subject to hydration gate — hydrate first, explore later.
-
-        Unlike the custodiet gate (which exempts read_only), the hydration gate
-        intentionally blocks reads to force hydration before any codebase exploration.
-        """
-        state = SessionState.create("test-readonly-blocked")
-        state.gates["hydration"].status = GateStatus.CLOSED
-        state.gates["hydration"].metrics["temp_path"] = "/tmp/h.md"
-
-        ctx = HookContext(
-            session_id="test-readonly-blocked",
-            hook_event="PreToolUse",
-            tool_name=tool_name,
-            tool_input={},
-        )
-        result = router._dispatch_gates(ctx, state)
-
-        assert result is not None, (
-            f"Read-only tool '{tool_name}' ({desc}) should be blocked by hydration, "
-            f"got None (ALLOW) in {gate_mode.hydration_mode} mode"
-        )
-        assert result.verdict == gate_mode.hydration_verdict, (
-            f"Read-only tool '{tool_name}' ({desc}) expected {gate_mode.hydration_verdict.value} "
-            f"in {gate_mode.hydration_mode} mode, got {result.verdict.value}"
-        )
-
-    @pytest.mark.parametrize(
-        "tool_name,expected_category,desc",
-        [t for t in REAL_TOOL_NAMES if t[1] == "read_only"][:5],  # Sample — no need to test all
-        ids=[f"{t[2]}:{t[0]}" for t in REAL_TOOL_NAMES if t[1] == "read_only"][:5],
-    )
-    def test_read_only_allowed_after_hydrator_dispatched(
-        self, router, tool_name, expected_category, desc, gate_mode
-    ):
-        """After hydrator is dispatched, the gate opens JIT and read-only tools succeed.
-
-        The hydration trigger fires on PreToolUse for Agent(subagent_type=hydrator),
-        opening the gate BEFORE the policy evaluates. Subsequent read-only calls pass.
-        """
-        state = SessionState.create("test-readonly-after-hydrator")
-        state.gates["hydration"].status = GateStatus.CLOSED
-        state.gates["hydration"].metrics["temp_path"] = "/tmp/h.md"
-
-        # Step 1: Dispatch hydrator — trigger opens gate JIT
-        hydrator_ctx = HookContext(
-            session_id="test-readonly-after-hydrator",
-            hook_event="PreToolUse",
-            tool_name="Agent",
-            tool_input={"subagent_type": "aops-core:hydrator", "prompt": "/tmp/h.md"},
-            subagent_type="aops-core:hydrator",
-        )
-        router._dispatch_gates(hydrator_ctx, state)
-
-        # Gate should now be OPEN
-        assert state.gates["hydration"].status == GateStatus.OPEN, (
-            "Hydration gate should open when hydrator is dispatched"
-        )
-
-        # Step 2: Read-only tool should now succeed
-        ctx = HookContext(
-            session_id="test-readonly-after-hydrator",
-            hook_event="PreToolUse",
-            tool_name=tool_name,
-            tool_input={},
-        )
-        result = router._dispatch_gates(ctx, state)
-
-        if result is not None:
-            assert result.verdict != GateVerdict.DENY, (
-                f"Read-only tool '{tool_name}' ({desc}) should not be DENIED after "
-                f"hydrator dispatch in {gate_mode.hydration_mode} mode, got {result.verdict.value}"
             )
 
 
@@ -1301,8 +901,7 @@ class TestRealSpawnEventCategorization:
 
     These spawn combinations were extracted from real production logs.
     Spawn tools (Agent, Task, Skill) are now in the 'spawn' category and are
-    subject to the hydration gate. Only hydrator dispatches bypass the
-    hydration gate via the JIT trigger.
+    subject to gate policies.
     """
 
     @pytest.mark.parametrize(
@@ -1310,14 +909,12 @@ class TestRealSpawnEventCategorization:
         REAL_SPAWN_EVENTS,
         ids=[f"{t[4]}" for t in REAL_SPAWN_EVENTS],
     )
-    def test_spawn_tool_category_and_hydrator_bypass(
-        self, router, tool_name, subagent_type, is_subagent, expected_category, desc, gate_mode
+    def test_spawn_tool_category(
+        self, router, tool_name, subagent_type, is_subagent, expected_category, desc
     ):
-        """Spawn tools are in 'spawn' category; hydrator dispatches bypass hydration gate JIT."""
+        """Spawn tools are in 'spawn' category."""
         state = SessionState.create("test-spawn-categorization")
-        # Hostile state: hydration closed, custodiet at threshold
-        state.gates["hydration"].status = GateStatus.CLOSED
-        state.gates["hydration"].metrics["temp_path"] = "/tmp/h.md"
+        # Hostile state: custodiet at threshold
         state.gates["custodiet"].ops_since_open = 100
 
         tool_input = (
@@ -1333,26 +930,11 @@ class TestRealSpawnEventCategorization:
             is_subagent=is_subagent,
             subagent_type=subagent_type,
         )
-        result = router._dispatch_gates(ctx, state)
+        router._dispatch_gates(ctx, state)
 
-        # 1. Category must be "spawn" for all spawn tools
+        # Category must be "spawn" for all spawn tools
         actual_cat = get_tool_category(tool_name)
         assert actual_cat == expected_category, (
             f"Spawn tool '{tool_name}' ({desc}): expected category '{expected_category}', "
             f"got '{actual_cat}'"
         )
-
-        # 2. Only hydrator dispatches bypass hydration gate via JIT trigger.
-        #    Other spawns (including non-hydrator compliance agents) are subject to
-        #    hydration gate — WARN/DENY is correct when hydration hasn't been done.
-        is_hydrator_dispatch = subagent_type in (
-            "aops-core:hydrator",
-            "hydrator",
-        )
-        if is_hydrator_dispatch:
-            if result is not None:
-                assert result.verdict == GateVerdict.ALLOW, (
-                    f"Hydrator dispatch '{tool_name}' -> '{subagent_type}' ({desc}) "
-                    f"should bypass hydration gate (JIT trigger opens it) but got "
-                    f"{result.verdict.value} in {gate_mode.hydration_mode} mode."
-                )

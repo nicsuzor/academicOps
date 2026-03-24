@@ -2,7 +2,6 @@ from hooks.gate_config import (
     CUSTODIET_GATE_MODE,
     CUSTODIET_TOOL_CALL_THRESHOLD,
     HANDOVER_GATE_MODE,
-    HYDRATION_GATE_MODE,
     QA_GATE_MODE,
 )
 
@@ -23,69 +22,6 @@ from lib.gate_types import (
 # to gate.on_subagent_start() (fixed in aops-55bcf1a2).
 
 GATE_CONFIGS = [
-    # --- Hydration ---
-    GateConfig(
-        name="hydration",
-        description="Ensures prompts are hydrated with context.",
-        initial_status=GateStatus.CLOSED,  # Starts CLOSED. Opens when hydrator is dispatched.
-        triggers=[
-            # Hydrator skill invoked -> Open (JIT gate open)
-            # Fires on PreToolUse for Skill(skill='aops-core:hydrator'), opening the
-            # gate BEFORE the policy evaluates. This means: the Skill tool call itself is
-            # always_available (bypasses policy), AND the trigger opens the gate so the
-            # hydrator skill's own tool calls (Read, PKB ops) are not blocked.
-            GateTrigger(
-                condition=GateCondition(
-                    hook_event="^PreToolUse$",
-                    subagent_type_pattern="^(aops-core:)?hydrator$",
-                ),
-                transition=GateTransition(
-                    target_status=GateStatus.OPEN,
-                    reset_ops_counter=True,
-                    system_message_key="hydration.opened",
-                ),
-            ),
-            # User Prompt (not ignored) -> Close
-            GateTrigger(
-                condition=GateCondition(
-                    hook_event="UserPromptSubmit",
-                    exclude_if_subagent=True,
-                    prompt_exclude_patterns=[
-                        r"^$",  # no/empty prompt: don't close gate
-                        r"^<agent-notification>",
-                        r"^<task-notification>",
-                        r"^\.",  # dot prefix: user ignore shortcut
-                        r"^/",  # slash prefix: skill invocations
-                        r"^# /",  # comment-style slash command expansion
-                        r"<command-name>/",  # expanded slash command
-                    ],
-                ),
-                transition=GateTransition(
-                    target_status=GateStatus.CLOSED,
-                    system_message_key="hydration.closed",
-                    context_key="hydrator.instruction",
-                ),
-            ),
-        ],
-        policies=[
-            # If Closed, Block/Warn ALL tools except infrastructure.
-            # Read-only tools ARE subject to hydration — the intent is to force hydration
-            # before ANY exploration. The gate opens JIT when the hydrator is dispatched
-            # (via PreToolUse trigger above), so the hydrator's own reads succeed.
-            # Compare with custodiet which excludes ["infrastructure", "read_only"].
-            GatePolicy(
-                condition=GateCondition(
-                    current_status=GateStatus.CLOSED,
-                    hook_event="PreToolUse",
-                    excluded_tool_categories=["infrastructure", "always_available"],
-                    custom_check="is_not_safe_toolsearch",
-                ),
-                verdict=HYDRATION_GATE_MODE,
-                message_key="hydration.policy_message",
-                context_key="hydration.block",
-            )
-        ],
-    ),
     # --- Custodiet ---
     GateConfig(
         name="custodiet",

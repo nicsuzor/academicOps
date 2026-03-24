@@ -71,7 +71,7 @@ When adding enforcement measures, update enforcement-map.md to document the new 
 
 ## Just-In-Time Information (P#66)
 
-Never present information not necessary to the task at hand. When hydrator provides specific guidance, follow that guidance rather than investigating from first principles.
+Never present information not necessary to the task at hand.
 
 ## Extract Implies Persist in PKM Context (P#67)
 
@@ -454,4 +454,4 @@ When an agent observes unexpected behavior — a tool firing unexpectedly, a fil
 
 **Why this gap matters**: P#104 and P#116 together push agents toward action and away from unnecessary clarification. This creates pressure to classify ambiguous observations as bugs rather than design questions. P#117 is the counterweight: act on clear choices, but surface ambiguous system observations before encoding interpretations as fact.
 
-**Derivation**: Emerged from a session process failure (2026-03-17) where an agent observed a hydration gate firing on task management operations, classified it as a misconfiguration, and was about to codify that interpretation as a framework improvement task — without surfacing the underlying design question. The correct answer was that the gate was working as intended.
+**Derivation**: Emerged from a session process failure (2026-03-17).

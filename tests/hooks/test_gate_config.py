@@ -4,7 +4,7 @@
 Ensures:
 - No tool appears in multiple categories (prevents ambiguous matching)
 - Agent/skill names are NOT in tool categories (they're subagent_type values)
-- All spawn tools are in spawn category (subject to hydration gate, not infrastructure)
+- All spawn tools are in spawn category (not infrastructure)
 - COMPLIANCE_SUBAGENT_TYPES and SPAWN_TOOLS are internally consistent
 """
 
@@ -67,25 +67,24 @@ class TestAgentNameSeparation:
 
 
 class TestSpawnToolsInSpawnCategory:
-    """All spawn tool names must be in spawn category (subject to hydration gate).
+    """All spawn tool names must be in spawn category.
 
-    EXEMPTION: Compliance agents (e.g. hydrator) are spawning tools but
+    EXEMPTION: Compliance agents are spawning tools but
     must bypass gates as infrastructure.
     """
 
     def test_all_spawn_tools_in_spawn_category(self):
         """Every tool in SPAWN_TOOLS should be in spawn category OR COMPLIANCE_SUBAGENT_TYPES.
 
-        Spawn tools (Agent, Task, Skill, etc.) are subject to the hydration gate —
-        they cannot dispatch subagents until hydration is complete. This is distinct
-        from infrastructure tools (PKB ops) which bypass all gates entirely.
+        Spawn tools (Agent, Task, Skill, etc.) are subject to gate policies.
+        This is distinct from infrastructure tools (PKB ops) which bypass all gates entirely.
         """
         spawn_cat = TOOL_CATEGORIES["spawn"]
         for tool_name in SPAWN_TOOLS:
             is_compliance = tool_name in COMPLIANCE_SUBAGENT_TYPES
             assert tool_name in spawn_cat or is_compliance, (
                 f"Spawn tool '{tool_name}' not in spawn category. "
-                f"Non-compliance spawn tools must be subject to hydration gate."
+                f"Non-compliance spawn tools must be in spawn category."
             )
 
     def test_get_tool_category_for_spawn_tools(self):
@@ -131,10 +130,6 @@ class TestExtractSubagentType:
 class TestComplianceSubagentTypes:
     """Verify COMPLIANCE_SUBAGENT_TYPES has expected members."""
 
-    def test_hydrator_variants(self):
-        assert "hydrator" in COMPLIANCE_SUBAGENT_TYPES
-        assert "aops-core:hydrator" in COMPLIANCE_SUBAGENT_TYPES
-
     def test_custodiet_variants(self):
         assert "custodiet" in COMPLIANCE_SUBAGENT_TYPES
         assert "aops-core:custodiet" in COMPLIANCE_SUBAGENT_TYPES
@@ -145,10 +140,10 @@ class TestComplianceSubagentTypes:
 
 
 class TestToolSearchSelectBypass:
-    """ToolSearch with select: prefix must bypass the hydration gate.
+    """ToolSearch with select: prefix must bypass gate policies.
 
     select: queries are pure tool-loading operations (infrastructure), not new
-    task prompts. They must not trigger the hydration gate.
+    task prompts. They must not trigger gate policies.
 
     Test taxonomy:
     - [RED]   Tests that fail because the behavior does not yet exist.
@@ -176,7 +171,7 @@ class TestToolSearchSelectBypass:
     # ------------------------------------------------------------------
 
     def test_keyword_query_stays_read_only(self):
-        """[GREEN] Keyword search queries remain read_only (subject to hydration)."""
+        """[GREEN] Keyword search queries remain read_only (subject to gate policies)."""
         assert get_tool_category("ToolSearch", {"query": "slack message"}) == "read_only"
 
     def test_empty_query_stays_read_only(self):

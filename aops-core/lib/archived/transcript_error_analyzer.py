@@ -1,11 +1,11 @@
 """Transcript Error Analyzer - Extract and classify errors from session transcripts.
 
-Identifies hydration gaps by analyzing tool errors in Claude Code session JSONL files.
+Identifies context gaps by analyzing tool errors in Claude Code session JSONL files.
 Key insight: "file does not exist" errors from Read/Glob indicate the agent was
-searching for information not provided by hydration context.
+searching for information not provided by context.
 
 Error taxonomy:
-- hydration_gap: Agent searching for context that should have been provided
+- context_gap: Agent searching for context that should have been provided
 - exploration_miss: Agent checking if something exists (benign convention checks)
 - stuck_pattern: Repeated attempts at same resource
 - hook_denial: Framework hook blocked the tool use
@@ -72,7 +72,7 @@ _FILE_NOT_FOUND_RE = re.compile(
 # Higher = more urgent to investigate.
 _SEVERITY: dict[str, tuple[str, int]] = {
     "stuck_pattern": ("high", 3),
-    "hydration_gap": ("high", 3),
+    "context_gap": ("high", 3),
     "tool_failure": ("medium", 2),
     "hook_denial": ("low", 1),
     "exploration_miss": ("low", 1),
@@ -111,7 +111,7 @@ class TranscriptError:
     tool_input: dict[str, Any]
     tool_input_summary: str
     error_content: str
-    hydration_state: HydrationState
+    context_state: HydrationState
     category: str = ""  # Populated by classify_errors
 
 
@@ -122,7 +122,7 @@ class ErrorAnalysisReport:
     session_path: str
     total_errors: int
     errors_by_category: dict[str, int]
-    hydration_gap_score: float
+    context_gap_score: float
     severity_score: float
     errors: list[TranscriptError]
 
@@ -132,7 +132,7 @@ class ErrorAnalysisReport:
             "session_path": self.session_path,
             "total_errors": self.total_errors,
             "errors_by_category": dict(self.errors_by_category),
-            "hydration_gap_score": self.hydration_gap_score,
+            "context_gap_score": self.context_gap_score,
             "severity_score": self.severity_score,
             "errors": [
                 {
@@ -141,10 +141,10 @@ class ErrorAnalysisReport:
                     "tool_input_summary": e.tool_input_summary,
                     "error_content": e.error_content[:300],
                     "category": e.category,
-                    "hydration_state": {
-                        "active_skill": e.hydration_state.active_skill,
-                        "recent_prompts": e.hydration_state.recent_prompts,
-                        "recent_tool_calls": e.hydration_state.recent_tool_calls,
+                    "context_state": {
+                        "active_skill": e.context_state.active_skill,
+                        "recent_prompts": e.context_state.recent_prompts,
+                        "recent_tool_calls": e.context_state.recent_tool_calls,
                     },
                 }
                 for e in self.errors
@@ -156,7 +156,7 @@ class ErrorAnalysisReport:
 class IssuePattern:
     """A recurring issue aggregated across multiple sessions."""
 
-    grouping_key: str  # e.g. "hydration_gap:Read:auth.py"
+    grouping_key: str  # e.g. "context_gap:Read:auth.py"
     category: str
     severity_label: str
     severity_weight: int
@@ -319,8 +319,8 @@ def _build_tool_use_map(entries: list[dict[str, Any]]) -> dict[str, dict[str, An
     return tool_map
 
 
-def _build_hydration_state(entries: list[dict[str, Any]], error_index: int) -> HydrationState:
-    """Build the hydration state at the point of an error.
+def _build_context_state(entries: list[dict[str, Any]], error_index: int) -> HydrationState:
+    """Build the context state at the point of an error.
 
     Looks backward from error_index to find:
     - Most recent Skill invocation (active skill)
@@ -396,7 +396,7 @@ def extract_transcript_errors(session_path: Path) -> list[TranscriptError]:
 
     Each error is enriched with:
     - The tool name and input that caused it
-    - The hydration state at time of error (active skill, recent prompts, recent tools)
+    - The context state at time of error (active skill, recent prompts, recent tools)
 
     Args:
         session_path: Path to session .jsonl file
@@ -433,7 +433,7 @@ def extract_transcript_errors(session_path: Path) -> list[TranscriptError]:
             tool_input = tool_info.get("input", {})
             error_content = str(item.get("content", ""))
 
-            hydration_state = _build_hydration_state(entries, idx)
+            context_state = _build_context_state(entries, idx)
 
             errors.append(
                 TranscriptError(
@@ -442,7 +442,7 @@ def extract_transcript_errors(session_path: Path) -> list[TranscriptError]:
                     tool_input=tool_input,
                     tool_input_summary=_summarize_tool_input(tool_name, tool_input),
                     error_content=error_content,
-                    hydration_state=hydration_state,
+                    context_state=context_state,
                 )
             )
 
@@ -461,8 +461,8 @@ def classify_errors(
     3. Repeated same-resource errors → stuck_pattern
     4. File-not-found errors:
        a. Filename is a common convention file (README, etc.) → exploration_miss
-       b. Filename/path mentioned in recent user prompts → hydration_gap
-       c. Default for file-not-found → hydration_gap (agent shouldn't be guessing)
+       b. Filename/path mentioned in recent user prompts → context_gap
+       c. Default for file-not-found → context_gap (agent shouldn't be guessing)
     5. Everything else → tool_failure
 
     Args:
@@ -524,7 +524,7 @@ def _classify_single_error(
 
 
 def _classify_file_not_found(error: TranscriptError) -> str:
-    """Sub-classify file-not-found errors into exploration_miss or hydration_gap."""
+    """Sub-classify file-not-found errors into exploration_miss or context_gap."""
     file_path = error.tool_input.get("file_path", "")
     filename = file_path.split("/")[-1] if "/" in file_path else file_path
 
@@ -533,21 +533,21 @@ def _classify_file_not_found(error: TranscriptError) -> str:
         return "exploration_miss"
 
     # If the filename or a significant part of the path appears in recent prompts,
-    # that's a strong signal the hydration should have provided it
-    for prompt in error.hydration_state.recent_prompts:
+    # that's a strong signal the context should have provided it
+    for prompt in error.context_state.recent_prompts:
         prompt_lower = prompt.lower()
         if filename and filename.lower() in prompt_lower:
-            return "hydration_gap"
+            return "context_gap"
         # Check if path segments appear in the prompt
         if file_path:
             segments = [s for s in file_path.split("/") if s and len(s) > 3]
             for seg in segments[-3:]:  # Check last 3 meaningful segments
                 if seg.lower() in prompt_lower:
-                    return "hydration_gap"
+                    return "context_gap"
 
-    # Default for file-not-found: still a hydration gap.
-    # The agent shouldn't be guessing paths if hydration worked properly.
-    return "hydration_gap"
+    # Default for file-not-found: still a context gap.
+    # The agent shouldn't be guessing paths if context worked properly.
+    return "context_gap"
 
 
 def _compute_severity_score(errors: list[TranscriptError]) -> float:
@@ -588,21 +588,21 @@ def analyze_transcript(session_path: Path) -> ErrorAnalysisReport:
     classified = classify_errors(errors, entries)
 
     category_counts: dict[str, int] = {}
-    hydration_related = 0
+    context_related = 0
     for error in classified:
         category_counts[error.category] = category_counts.get(error.category, 0) + 1
-        if error.category in ("hydration_gap", "stuck_pattern", "exploration_miss"):
-            hydration_related += 1
+        if error.category in ("context_gap", "stuck_pattern", "exploration_miss"):
+            context_related += 1
 
     total = len(classified)
-    gap_score = hydration_related / total if total > 0 else 0.0
+    gap_score = context_related / total if total > 0 else 0.0
     sev_score = _compute_severity_score(classified)
 
     return ErrorAnalysisReport(
         session_path=str(session_path),
         total_errors=total,
         errors_by_category=category_counts,
-        hydration_gap_score=gap_score,
+        context_gap_score=gap_score,
         severity_score=sev_score,
         errors=classified,
     )
@@ -722,7 +722,7 @@ def scan_recent_sessions(
                 "count": 0,
                 "session_ids": [],
                 "sample_error_content": error.error_content,
-                "sample_prompts": error.hydration_state.recent_prompts[:2],
+                "sample_prompts": error.context_state.recent_prompts[:2],
             }
         p = pattern_map[key]
         p["count"] += 1

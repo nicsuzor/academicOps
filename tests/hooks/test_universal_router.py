@@ -176,7 +176,7 @@ class TestSubagentTypeExtraction:
     Gemini uses delegate_to_agent(name='...'), Claude uses Task(subagent_type='...').
     Both should correctly extract subagent_type for gate triggers.
 
-    Bug fix: aops-91e4c3f2 - Gemini polecat workers stuck in hydration gate loop
+    Bug fix: aops-91e4c3f2 - Gemini polecat workers stuck in gate loop
     """
 
     @pytest.fixture
@@ -191,10 +191,10 @@ class TestSubagentTypeExtraction:
             "hook_event_name": "PreToolUse",
             "session_id": "test-123",
             "tool_name": "Task",
-            "tool_input": {"subagent_type": "hydrator", "prompt": "Hydrate this"},
+            "tool_input": {"subagent_type": "custodiet", "prompt": "Check compliance"},
         }
         ctx = router_instance.normalize_input(raw)
-        assert ctx.subagent_type == "hydrator"
+        assert ctx.subagent_type == "custodiet"
 
     def test_gemini_delegate_to_agent_name(self, router_instance):
         """Gemini delegate_to_agent with name= extracts correctly."""
@@ -202,10 +202,10 @@ class TestSubagentTypeExtraction:
             "hook_event_name": "PreToolUse",
             "session_id": "test-123",
             "tool_name": "delegate_to_agent",
-            "tool_input": {"name": "hydrator", "query": "Hydrate this"},
+            "tool_input": {"name": "custodiet", "query": "Check compliance"},
         }
         ctx = router_instance.normalize_input(raw)
-        assert ctx.subagent_type == "hydrator"
+        assert ctx.subagent_type == "custodiet"
 
     def test_gemini_delegate_to_agent_agent_name(self, router_instance):
         """Gemini delegate_to_agent with agent_name= also works."""
@@ -224,10 +224,10 @@ class TestSubagentTypeExtraction:
             "hook_event_name": "PreToolUse",
             "session_id": "test-123",
             "tool_name": "activate_skill",
-            "tool_input": {"name": "hydrator"},
+            "tool_input": {"name": "custodiet"},
         }
         ctx = router_instance.normalize_input(raw)
-        assert ctx.subagent_type == "hydrator"
+        assert ctx.subagent_type == "custodiet"
 
     def test_skill_tool_uses_skill_param(self, router_instance):
         """Skill tool extracts from 'skill' param (not 'subagent_type')."""
@@ -269,7 +269,7 @@ class TestSubagentTypeExtraction:
             "hook_event_name": "PreToolUse",
             "session_id": "test-123",
             "tool_name": "delegate_to_agent",
-            "tool_input": {"name": "aops-core:hydrator", "query": "Hydrate"},
+            "tool_input": {"name": "aops-core:custodiet", "query": "Check compliance"},
         }
         ctx = router_instance.normalize_input(raw)
-        assert ctx.subagent_type == "aops-core:hydrator"
+        assert ctx.subagent_type == "aops-core:custodiet"
