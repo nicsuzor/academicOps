@@ -116,14 +116,26 @@ gh pr review {pr} --repo {repo} --approve \
 
 ## 9. Set merge-prep-status: success
 
+**CRITICAL**: `merge-prep-status` is a commit status — it is pinned to a specific SHA. If ANY commit is pushed after this step, the status does NOT carry over to the new HEAD and the PR will be blocked.
+
+You MUST:
+
+1. Confirm your push from step 6 has landed and no further pushes are pending
+2. Get the HEAD SHA **fresh** (do not reuse a cached value)
+3. Set the status as the **absolute last write operation**
+
 ```bash
+# Verify push landed — HEAD should match what we pushed
 HEAD_SHA=$(gh pr view {pr} --repo {repo} --json headRefOid --jq '.headRefOid')
+echo "Setting merge-prep-status on $HEAD_SHA"
 gh api repos/{repo}/statuses/$HEAD_SHA \
   -f state="success" \
   -f context="merge-prep-status" \
   -f description="Merge prep complete — ready for summary" \
   -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
 ```
+
+Do NOT push any more commits after this step.
 
 ## 10. Trigger summary-and-merge
 
