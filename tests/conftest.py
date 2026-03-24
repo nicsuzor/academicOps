@@ -786,12 +786,16 @@ def run_gemini_headless(
             env=env,
         )
 
+        # Gemini may write JSON to stdout or stderr (stderr when extension
+        # validation warnings cause non-zero exit, e.g. exit 41).
+        raw_output = result.stdout or result.stderr or ""
+
         # Check for command failure — but Gemini may exit non-zero (e.g. 41 for
         # extension validation warnings) while still producing valid JSON output.
-        if result.returncode != 0 and not result.stdout.strip():
+        if result.returncode != 0 and not raw_output.strip():
             return {
                 "success": False,
-                "output": result.stdout,
+                "output": "",
                 "result": {},
                 "error": f"Command failed with exit code {result.returncode}: {result.stderr}",
             }
@@ -799,23 +803,16 @@ def run_gemini_headless(
         # Parse JSON output - robustly handle hook logging noise
         try:
             # Try direct parse first
-            parsed_output = json.loads(result.stdout)
+            parsed_output = json.loads(raw_output)
         except json.JSONDecodeError:
             # Fallback: look for JSON object boundaries
             # We want the LAST valid JSON object, as that's likely the CLI response
             # (Hooks log earlier)
-
-            # Simple heuristic: Look for { ... } that parse successfully
             candidates = []
-            # This regex matches balanced braces is hard, so we'll try a simpler approach:
-            # Find all start braces '{'
-            output = result.stdout
-            for i, char in enumerate(output):
+            for i, char in enumerate(raw_output):
                 if char == "{":
-                    # Try to parse from here to end, then backtrack if needed
-                    # Actually, better to just try parsing substring starting at i
                     try:
-                        obj, end_idx = json.JSONDecoder().raw_decode(output[i:])
+                        obj, end_idx = json.JSONDecoder().raw_decode(raw_output[i:])
                         candidates.append((i + end_idx, obj))
                     except json.JSONDecodeError:
                         continue
@@ -826,14 +823,14 @@ def run_gemini_headless(
             else:
                 return {
                     "success": False,
-                    "output": result.stdout,
+                    "output": raw_output,
                     "result": {},
                     "error": "Could not find valid JSON in output",
                 }
 
         return {
             "success": True,
-            "output": result.stdout,
+            "output": raw_output,
             "result": parsed_output,
             "stderr": result.stderr,
         }
