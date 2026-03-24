@@ -139,7 +139,7 @@ def get_project_version(aops_root: Path) -> str:
             if len(desc) == 8 and all(c in "0123456789abcdef" for c in desc):
                 return f"0.1.0-dev.0+g{desc}"
 
-            # Convert git describe format (0.2.1-5-gabc123) to semver (0.2.1-dev.5+gabc123)
+            # Convert git describe format (0.2.1-5-gabc123) to semver (0.2.2-dev.5+gabc123)
             # This logic assumes the stable tag was found because we excluded pre-releases.
             if "-" in desc:
                 parts = desc.split("-")
@@ -149,6 +149,14 @@ def get_project_version(aops_root: Path) -> str:
                     dev_num = parts[1]
                     sha = parts[2] if len(parts) > 2 else ""
                     dirty = ".dirty" if "dirty" in desc else ""
+
+                    # BUMP base version to ensure dev is > stable in semver
+                    # (e.g., 0.3.14-5-gabc -> 0.3.15-dev.5+gabc)
+                    v_parts = base.split(".")
+                    if len(v_parts) == 3:
+                        major, minor, patch = v_parts
+                        base = f"{major}.{minor}.{int(patch) + 1}"
+
                     return f"{base}-dev.{dev_num}+{sha}{dirty}"
             return sanitize_version(desc)
     except FileNotFoundError:
