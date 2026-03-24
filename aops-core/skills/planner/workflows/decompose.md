@@ -23,23 +23,45 @@ version: 2.0.0
 
 2. **Search for Context** (P52) — Query PKB for existing related work, prior decompositions of similar scope, and established patterns. Use `pkb_context(id, hops=2)` to understand the neighbourhood.
 
-3. **Select Workflow** — If the target is an epic, identify which workflow will achieve it (e.g., `feature-dev`, `peer-review`, `experiment-design`). The workflow's steps become the decomposition skeleton. If no existing workflow fits, the epic may need a custom step sequence.
+3. **Map Unknowns** — Before planning execution, identify what you _don't_ know. For each unknown, classify:
 
-4. **Derive the Epic Shape** — Every epic needs three phases:
+   - **Known-unknown (researchable)**: Others may have solved this. Build an evidence-gathering task: web research, academic literature search, or consultation.
+   - **Known-unknown (internal)**: We have data but haven't analysed it. Build an audit/survey task against our own projects, transcripts, or prior work.
+   - **Unknown-unknown (probeable)**: We don't know what we don't know. Build a spike or probe task with a time-box.
 
-   - **Planning tasks** (before): acceptance criteria, methodology, approach design
+   **Do not skip this step.** Decompositions that jump straight to execution without evidence-gathering produce generic solutions that miss domain knowledge. Research tasks (web, academic literature, internal audit) are first-class citizens of a decomposition, not overhead.
+
+4. **Select Workflow** — If the target is an epic, identify which workflow will achieve it (e.g., `feature-dev`, `peer-review`, `experiment-design`). The workflow's steps become the decomposition skeleton. If no existing workflow fits, the epic may need a custom step sequence.
+
+5. **Derive the Epic Shape** — Every epic needs phases, but the phases depend on the type of work:
+
+   **For academic/research outputs** (papers, reports, methodology):
+   - **Evidence gathering** (first): web research, literature review, internal audit, data survey — run in parallel
+   - **Decision support** (blocked on evidence): synthesise findings into decision-ready briefings
+   - **Decisions** (human judgment): user makes informed choices, blocked on decision support
+   - **Execution** (blocked on decisions): implement the decisions
+   - **Integration** (blocked on execution): reconcile parallel tracks
+   - **Verification** (terminal): dogfood, QA, audit with receipts
+
+   **For framework/engineering work:**
+   - **Planning tasks** (before): acceptance criteria, approach design
    - **Execution tasks** (during): the actual work, one task per workflow step
    - **Verification tasks** (after): QA, testing, cross-referencing, review
 
+   **Self-check rules** (apply after creating any task):
+   - After creating a **decision** task: "What information does the user need to make this decision?" → Create a prep task and block the decision on it.
+   - After creating an **execution** task: "Is this conditional on a decision that hasn't been made?" → If yes, add dependency on the decision task.
+   - After creating a **writing** task: "What analysis/data needs to be final before this can be written?" → Block on the data task.
+
    Map workflow steps to tasks. Each step becomes one or more tasks. See [[decomposition-patterns]] for temporal, functional, and complexity patterns.
 
-5. **Define Deliverables** — For each task, specify the concrete output. A task without a clear deliverable isn't actionable.
+6. **Define Deliverables** — For each task, specify the concrete output. A task without a clear deliverable isn't actionable.
 
-6. **Identify Dependencies** — Which tasks must complete before others can start? Use the [[planning]] skill's dependency-type heuristic: "What happens if the dependency never completes?" If impossible → hard dependency. If less informed → soft dependency.
+7. **Identify Dependencies** — Which tasks must complete before others can start? Use the [[planning]] skill's dependency-type heuristic: "What happens if the dependency never completes?" If impossible → hard dependency. If less informed → soft dependency.
 
-7. **Estimate Effort** — Assign rough complexity (XS, S, M, L). Tasks over M probably need further decomposition. Single-session tasks (1–4 hours) are the right granularity.
+8. **Estimate Effort** — Assign rough complexity (XS, S, M, L). Tasks over M probably need further decomposition. Single-session tasks (1–4 hours) are the right granularity.
 
-8. **Create in PKB** — Use `mcp__pkb__decompose_task(parent_id, subtasks)` for batch creation under the epic. Include dependencies, complexity, and deliverable descriptions.
+9. **Create in PKB** — Use `mcp__pkb__decompose_task(parent_id, subtasks)` for batch creation under the epic. Include dependencies, complexity, and deliverable descriptions.
 
 ## Hierarchy and Depth
 
@@ -77,3 +99,5 @@ Tasks created during decomposition will often be picked up by a **different agen
 - **Actionability**: Every task must be completable in a single session.
 - **Verification**: Every epic must include at least one QA/review task.
 - **Conservative expansion**: If a task can be done in one sitting, don't decompose further.
+- **Graph placement**: Every created task must be connected to the graph — parented under a live (not done) epic, with dependencies to related work. A task with zero downstream weight and a completed parent is effectively invisible to prioritisation. Check: is the parent epic still active? Do any other tasks depend on this work?
+- **Scope drift tracking**: When a PR or decision changes the scope of existing tasks, update the affected task bodies. Decomposition is not fire-and-forget — if upstream work narrows or shifts the problem, downstream tasks must be refreshed or they become stale.
