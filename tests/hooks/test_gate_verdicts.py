@@ -330,19 +330,6 @@ class TestLiveHydrationGateBlocks:
         )
 
 
-            # Custodiet mode is block in test env
-            assert result is not None, (
-                f"[{scenario['id']}] Expected non-allow at custodiet threshold"
-            )
-            assert result.verdict != GateVerdict.ALLOW, (
-                f"[{scenario['id']}] {scenario['tool_name']}: should be blocked/warned "
-                f"at custodiet threshold, got ALLOW"
-            )
-        else:
-            if result is not None:
-                assert result.verdict == GateVerdict.ALLOW
-
-
 # ===========================================================================
 # HYDRATION GATE SEQUENCE: Trigger opens gate for subsequent tools (issue #710)
 # ===========================================================================
@@ -584,6 +571,10 @@ class TestBashHeredocBypass:
 
 
 # ===========================================================================
+# GATE MODE ENV VAR CASES: non-hydration gates
+# ===========================================================================
+
+_GATE_MODE_CASES = [
     # Custodiet: default=block
     ("custodiet", "CUSTODIET_GATE_MODE", "warn", GateVerdict.WARN),
     ("custodiet", "CUSTODIET_GATE_MODE", "block", GateVerdict.DENY),
