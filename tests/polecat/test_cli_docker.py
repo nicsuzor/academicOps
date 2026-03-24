@@ -9,6 +9,7 @@ Covers:
 
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 from unittest.mock import patch
@@ -21,6 +22,7 @@ sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 
 from cli import (
     _build_docker_cmd,
+    _clone_has_changes,
     _mount_aca_data_sandbox,
     _node_version_key,
     _replicate_gemini_auth,
@@ -177,6 +179,58 @@ class TestBuildDockerCmd:
             config = json.load(f)
         assert config["bypassPermissionsModeAccepted"] is True
         assert config["projects"] == {}
+
+    def test_claude_stages_settings_json(self, tmp_path):
+        """settings.json is staged for Claude containers.
+
+        Regression test: Claude Code requires skipDangerousModePermissionPrompt
+        and enabledPlugins from settings.json. Without it, --dangerously-skip-permissions
+        hangs waiting for an interactive prompt in headless mode.
+        """
+        claude_json = tmp_path / ".claude.json"
+        claude_json.write_text("{}")
+        claude_dir = tmp_path / ".claude"
+        claude_dir.mkdir()
+        settings = {
+            "enabledPlugins": {"aops-core@aops": True},
+            "skipDangerousModePermissionPrompt": True,
+        }
+        (claude_dir / "settings.json").write_text(json.dumps(settings))
+
+        with patch("cli.Path.home", return_value=tmp_path):
+            cmd = self._build(cli_tool="claude")
+
+        vol_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-v"]
+        staging_vols = [v for v in vol_args if ":/tmp/staging:ro" in v]
+        staging_host = Path(staging_vols[0].split(":")[0])
+        staged_settings = staging_host / ".claude" / "settings.json"
+        assert staged_settings.exists(), "settings.json must be staged for Claude containers"
+        data = json.loads(staged_settings.read_text())
+        assert data["skipDangerousModePermissionPrompt"] is True
+        assert data["enabledPlugins"]["aops-core@aops"] is True
+
+    def test_claude_does_not_stage_settings_local(self, tmp_path):
+        """settings.local.json must NOT be staged — it contains the user's personal GH_TOKEN.
+
+        Container uses bot token via env vars, not the user's personal token.
+        """
+        claude_json = tmp_path / ".claude.json"
+        claude_json.write_text("{}")
+        claude_dir = tmp_path / ".claude"
+        claude_dir.mkdir()
+        (claude_dir / "settings.local.json").write_text(
+            '{"env": {"GH_TOKEN": "personal-token-DO-NOT-STAGE"}}'
+        )
+
+        with patch("cli.Path.home", return_value=tmp_path):
+            cmd = self._build(cli_tool="claude")
+
+        vol_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-v"]
+        staging_vols = [v for v in vol_args if ":/tmp/staging:ro" in v]
+        staging_host = Path(staging_vols[0].split(":")[0])
+        assert not (staging_host / ".claude" / "settings.local.json").exists(), (
+            "settings.local.json must NOT be staged — contains user's personal token"
+        )
 
     def test_no_tmpfs_mount(self):
         """No --tmpfs: it overrides bind mounts at the same path, hiding .claude config."""
@@ -447,3 +501,62 @@ class TestMountAcaDataSandbox:
         # This test confirms the first call produces exactly one mount entry.
         assert env["SANDBOX_MOUNTS"].count(f"{brain}:{brain}:rw") == 1
         assert env["SANDBOX_MOUNTS"] == first
+
+
+class TestCloneHasChanges:
+    """Tests for _clone_has_changes — used for auto-nuke of crew with no work."""
+
+    def _init_repo(self, path):
+        """Create a git repo with one commit and a remote-like ref."""
+        subprocess.run(["git", "init"], cwd=path, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "config", "user.email", "test@test"], cwd=path, check=True, capture_output=True
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "Test"], cwd=path, check=True, capture_output=True
+        )
+        (path / "file.txt").write_text("initial")
+        subprocess.run(["git", "add", "."], cwd=path, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "init"], cwd=path, check=True, capture_output=True)
+        # Create a fake origin/main ref pointing at HEAD
+        subprocess.run(
+            ["git", "update-ref", "refs/remotes/origin/main", "HEAD"],
+            cwd=path,
+            check=True,
+            capture_output=True,
+        )
+        # Set symbolic HEAD for origin
+        subprocess.run(
+            ["git", "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main"],
+            cwd=path,
+            check=True,
+            capture_output=True,
+        )
+
+    def test_no_changes_returns_false(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        self._init_repo(repo)
+        assert _clone_has_changes(repo) is False
+
+    def test_uncommitted_changes_returns_true(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        self._init_repo(repo)
+        (repo / "new_file.txt").write_text("uncommitted")
+        assert _clone_has_changes(repo) is True
+
+    def test_committed_changes_returns_true(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        self._init_repo(repo)
+        (repo / "new_file.txt").write_text("committed")
+        subprocess.run(["git", "add", "."], cwd=repo, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-m", "new work"], cwd=repo, check=True, capture_output=True
+        )
+        assert _clone_has_changes(repo) is True
+
+    def test_nonexistent_path_returns_true(self, tmp_path):
+        """Safe default: if path doesn't exist, assume changes (don't auto-nuke)."""
+        assert _clone_has_changes(tmp_path / "nonexistent") is True

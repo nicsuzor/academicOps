@@ -310,7 +310,7 @@ def _build_docker_cmd(
             # (potentially stale or wrong-path) copy.
             staged_claude_dir = staging_dir / ".claude"
             staged_claude_dir.mkdir(exist_ok=True)
-            for auth_file in (".credentials.json", ".mcp.json"):
+            for auth_file in (".credentials.json", ".mcp.json", "settings.json"):
                 src = claude_dir / auth_file
                 if src.exists():
                     shutil.copy2(src, staged_claude_dir / auth_file)
@@ -1797,6 +1797,53 @@ def merge():
     eng.scan_and_merge()
 
 
+def _clone_has_changes(repo_path: Path) -> bool:
+    """Check if a crew clone has any changes (committed or uncommitted) vs its upstream.
+
+    Returns True if:
+    - There are uncommitted changes in the working tree
+    - The content of the current branch differs from the upstream default branch
+    Returns False if the clone is clean and identical to origin/HEAD.
+    """
+    try:
+        # Check for uncommitted changes (staged or unstaged)
+        status = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if status.returncode == 0 and status.stdout.strip():
+            return True
+
+        # Check for commits beyond the merge base with origin's default branch
+        # First, determine the default branch
+        head_result = subprocess.run(
+            ["git", "symbolic-ref", "refs/remotes/origin/HEAD"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if head_result.returncode == 0:
+            default_branch = head_result.stdout.strip()  # e.g., refs/remotes/origin/main
+        else:
+            default_branch = "origin/main"
+
+        # git diff --quiet returns 0 if no differences, 1 if there are differences
+        diff = subprocess.run(
+            ["git", "diff", "--quiet", default_branch, "HEAD"],
+            cwd=repo_path,
+            capture_output=True,
+            timeout=10,
+        )
+        return diff.returncode != 0
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        # If we can't determine, assume there are changes (safe default)
+        return True
+
+
 def _branch_has_open_pr(branch_name: str, repo_path: Path) -> bool:
     """Check if a branch has an open PR on GitHub."""
     try:
@@ -2197,13 +2244,23 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
     print("-" * 50)
     print(f"\n\U0001f4cb Crew '{crew_name}' session ended.")
 
-    # Auto-cleanup: nuke clone if a PR is open (work is safely on remote)
+    # Auto-cleanup: nuke clone if no changes were made or a PR is open
     branch_name = f"crew/{crew_name}"
-    if not keep and _branch_has_open_pr(branch_name, work_dir):
-        print(f"   PR open for {branch_name} — cleaning up clone.")
+    auto_nuke = False
+    nuke_reason = ""
+    if not keep:
+        if not _clone_has_changes(work_dir):
+            auto_nuke = True
+            nuke_reason = "no changes made"
+        elif _branch_has_open_pr(branch_name, work_dir):
+            auto_nuke = True
+            nuke_reason = f"PR open for {branch_name}"
+
+    if auto_nuke:
+        print(f"   {nuke_reason} — cleaning up clone.")
         try:
             manager.nuke_crew(crew_name, force=True)
-            print(f"   Clone removed. Use `polecat crew -r {crew_name}` after merge.")
+            print("   Clone removed.")
         except (ValueError, RuntimeError) as e:
             print(f"   Cleanup failed: {e}", file=sys.stderr)
             print(f"   Manual cleanup: polecat nuke-crew {crew_name}")
