@@ -8,7 +8,7 @@ tags: [spec, planning-web, moved]
 
 # Planning Web — Moved to nicsuzor/mem
 
-This spec has been split into per-view specs and moved to the `nicsuzor/mem` repo at `/opt/nic/mem/docs/specs/`:
+This spec has been split into per-view specs and moved to the `nicsuzor/mem` repo at `docs/specs/`:
 
 - `planning-web.md` — Umbrella spec (vision, architecture, data model, design principles)
 - `view-focus.md` — Focus View (default landing)

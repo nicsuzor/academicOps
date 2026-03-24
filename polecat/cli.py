@@ -513,7 +513,7 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
         # Copy each extension subdirectory (not symlink — breaks in Docker)
         for child in src_extensions.iterdir():
             if child.is_dir():
-                shutil.copytree(child, dst_extensions / child.name)
+                shutil.copytree(child, dst_extensions / child.name, ignore_dangling_symlinks=True)
 
         # Build a permissive enablement file — allow all paths
         enablement_src = src_extensions / "extension-enablement.json"

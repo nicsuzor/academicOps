@@ -716,7 +716,6 @@ def build_aops_core(
         "lib",
         "mcp_servers",
         "workflows",
-        "framework",
         "AXIOMS.md",
         "BUTLER.md",
         "CONSTRAINTS.md",
