@@ -637,6 +637,146 @@ def _clear_stale_git_lock(repo_path: Path) -> bool:
     return True
 
 
+def _auto_resolve_rebase(repo_path: Path, name: str, ahead_count: int) -> tuple[bool, str]:
+    """Auto-resolve conflicts during an in-progress rebase.
+
+    Checks for unmerged files, resolves them (keeping local/--theirs),
+    backs up remote versions of non-expendable files, and loops through
+    rebase --continue until complete or unresolvable.
+
+    Returns (success, message).
+    """
+    import fnmatch
+
+    expendable_patterns = [
+        "synthesis.json",
+        "graph*.json",
+        "graph*.dot",
+        "graph*.svg",
+        "graph*.graphml",
+    ]
+
+    def _is_expendable(filepath: str) -> bool:
+        basename = Path(filepath).name
+        return any(fnmatch.fnmatch(basename, p) for p in expendable_patterns)
+
+    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    all_conflict_files: list[str] = []
+    backup_paths: list[str] = []
+    max_rounds = ahead_count + 5
+
+    for _round in range(max_rounds):
+        unmerged = subprocess.run(
+            ["git", "diff", "--name-only", "--diff-filter=U"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            check=False,
+        ).stdout.strip()
+
+        if not unmerged:
+            # No conflicts — try continuing (may be a non-conflict failure)
+            cont = subprocess.run(
+                ["git", "rebase", "--continue"],
+                cwd=repo_path,
+                capture_output=True,
+                check=False,
+                env={**os.environ, "GIT_EDITOR": "true"},
+            )
+            if cont.returncode == 0:
+                break
+            # rebase failed for non-conflict reason
+            subprocess.run(
+                ["git", "rebase", "--abort"],
+                cwd=repo_path,
+                capture_output=True,
+                check=False,
+            )
+            return False, f"{name}: rebase failed"
+
+        # Resolve conflicts: keep local (--theirs in rebase), backup remote for non-expendable
+        resolved = True
+        for cf in unmerged.splitlines():
+            all_conflict_files.append(cf)
+            if not _is_expendable(cf):
+                rc = subprocess.run(
+                    ["git", "show", f":2:{cf}"],
+                    cwd=repo_path,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                if rc.returncode == 0 and rc.stdout:
+                    bp = Path(repo_path) / f"{cf}.conflict-remote-{timestamp}"
+                    bp.parent.mkdir(parents=True, exist_ok=True)
+                    bp.write_text(rc.stdout)
+                    backup_paths.append(str(bp.relative_to(repo_path)))
+
+            r = subprocess.run(
+                ["git", "checkout", "--theirs", "--", cf],
+                cwd=repo_path,
+                capture_output=True,
+                check=False,
+            )
+            if r.returncode == 0:
+                subprocess.run(
+                    ["git", "add", cf],
+                    cwd=repo_path,
+                    capture_output=True,
+                    check=False,
+                )
+            else:
+                resolved = False
+                break
+
+        if not resolved:
+            subprocess.run(
+                ["git", "rebase", "--abort"],
+                cwd=repo_path,
+                capture_output=True,
+                check=False,
+            )
+            return False, f"{name}: conflict needs manual resolution"
+
+        # Stage backup files
+        for bp in backup_paths:
+            subprocess.run(
+                ["git", "add", bp],
+                cwd=repo_path,
+                capture_output=True,
+                check=False,
+            )
+
+        cont = subprocess.run(
+            ["git", "rebase", "--continue"],
+            cwd=repo_path,
+            capture_output=True,
+            check=False,
+            env={**os.environ, "GIT_EDITOR": "true"},
+        )
+        if cont.returncode == 0:
+            break
+        # If continue failed, loop back to check for new conflicts
+    else:
+        subprocess.run(
+            ["git", "rebase", "--abort"],
+            cwd=repo_path,
+            capture_output=True,
+            check=False,
+        )
+        return False, f"{name}: rebase exceeded max rounds ({max_rounds})"
+
+    if all_conflict_files:
+        conflict_summary = ", ".join(set(all_conflict_files))
+        warn = (
+            f"⚠ {name}: rebase conflict auto-resolved (kept local) in: {conflict_summary}. "
+            f"Remote versions saved to: {', '.join(backup_paths) or 'none'}"
+        )
+        print(warn, file=sys.stderr)
+
+    return True, f"{name}: auto-resolved {len(set(all_conflict_files))} conflict(s)"
+
+
 def _sync_working_repo(
     repo_path: Path, *, auto_commit: bool = False, quiet: bool = False
 ) -> tuple[bool, str]:
@@ -729,124 +869,9 @@ def _sync_working_repo(
                 check=False,
             )
             if pull.returncode != 0:
-                # Check for conflicts during rebase replay of local commits
-                unmerged = subprocess.run(
-                    ["git", "diff", "--name-only", "--diff-filter=U"],
-                    cwd=repo_path,
-                    capture_output=True,
-                    text=True,
-                    check=False,
-                ).stdout.strip()
-                if unmerged:
-                    # In rebase, --theirs = local commit being replayed (keeps local),
-                    # --ours = remote HEAD (discards remote). We keep local, but first
-                    # save the remote version of each conflicting file to a backup so
-                    # nothing from the remote is silently lost.
-                    #
-                    # Expendable files: generated artifacts where conflicts are
-                    # meaningless — just accept latest, no backup needed.
-                    import fnmatch
-
-                    expendable_patterns = [
-                        "synthesis.json",
-                        "graph*.json",
-                        "graph*.dot",
-                        "graph*.svg",
-                    ]
-
-                    def _is_expendable(filepath: str) -> bool:
-                        basename = Path(filepath).name
-                        return any(fnmatch.fnmatch(basename, p) for p in expendable_patterns)
-
-                    resolved = True
-                    conflict_files = unmerged.splitlines()
-                    backup_paths = []
-                    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-                    for conflict_file in conflict_files:
-                        if not _is_expendable(conflict_file):
-                            # Capture remote version (stage 2 = ours = remote in rebase)
-                            remote_content = subprocess.run(
-                                ["git", "show", f":2:{conflict_file}"],
-                                cwd=repo_path,
-                                capture_output=True,
-                                text=True,
-                                check=False,
-                            )
-                            if remote_content.returncode == 0 and remote_content.stdout:
-                                backup_path = (
-                                    Path(repo_path) / f"{conflict_file}.conflict-remote-{timestamp}"
-                                )
-                                backup_path.parent.mkdir(parents=True, exist_ok=True)
-                                backup_path.write_text(remote_content.stdout)
-                                backup_paths.append(str(backup_path.relative_to(repo_path)))
-
-                        r = subprocess.run(
-                            ["git", "checkout", "--theirs", "--", conflict_file],
-                            cwd=repo_path,
-                            capture_output=True,
-                            check=False,
-                        )
-                        if r.returncode == 0:
-                            subprocess.run(
-                                ["git", "add", conflict_file],
-                                cwd=repo_path,
-                                capture_output=True,
-                                check=False,
-                            )
-                        else:
-                            resolved = False
-                            break
-
-                    if resolved:
-                        # Stage backup files so they're committed and visible
-                        for bp in backup_paths:
-                            subprocess.run(
-                                ["git", "add", bp],
-                                cwd=repo_path,
-                                capture_output=True,
-                                check=False,
-                            )
-                        cont = subprocess.run(
-                            ["git", "rebase", "--continue"],
-                            cwd=repo_path,
-                            capture_output=True,
-                            check=False,
-                            env={**os.environ, "GIT_EDITOR": "true"},
-                        )
-                        if cont.returncode != 0:
-                            subprocess.run(
-                                ["git", "rebase", "--abort"],
-                                cwd=repo_path,
-                                capture_output=True,
-                                check=False,
-                            )
-                            return False, f"{name}: rebase --continue failed"
-                        conflict_summary = ", ".join(conflict_files)
-                        warn = (
-                            f"⚠ {name}: rebase conflict auto-resolved (kept local) in: {conflict_summary}. "
-                            f"Remote versions saved to: {', '.join(backup_paths) or 'none'}"
-                        )
-                        print(warn, file=sys.stderr)
-                        return (
-                            True,
-                            f"{name}: auto-synced with conflict resolution ({len(conflict_files)} file(s))",
-                        )
-                    else:
-                        subprocess.run(
-                            ["git", "rebase", "--abort"],
-                            cwd=repo_path,
-                            capture_output=True,
-                            check=False,
-                        )
-                        return False, f"{name}: conflict needs manual resolution"
-                else:
-                    subprocess.run(
-                        ["git", "rebase", "--abort"],
-                        cwd=repo_path,
-                        capture_output=True,
-                        check=False,
-                    )
-                    return False, f"{name}: rebase failed"
+                ok, resolve_msg = _auto_resolve_rebase(repo_path, name, ahead_count)
+                if not ok:
+                    return False, resolve_msg
 
             # Push
             push = subprocess.run(
@@ -866,7 +891,7 @@ def _sync_working_repo(
                 status_parts.append(f"{behind_count} behind")
             return False, f"{name}: {', '.join(status_parts)} (skipped — not auto-commit)"
 
-    elif behind_count > 0:
+    elif behind_count > 0 and ahead_count == 0:
         pull = subprocess.run(
             ["git", "pull", "--quiet"],
             cwd=repo_path,
@@ -878,6 +903,19 @@ def _sync_working_repo(
         return False, f"{name}: pull failed"
 
     elif ahead_count > 0:
+        # If also behind, rebase local commits on top of remote before pushing
+        if behind_count > 0:
+            pull = subprocess.run(
+                ["git", "pull", "--rebase", "--quiet"],
+                cwd=repo_path,
+                capture_output=True,
+                check=False,
+            )
+            if pull.returncode != 0:
+                # Attempt to auto-resolve rebase conflicts (same logic as dirty path)
+                ok, resolve_msg = _auto_resolve_rebase(repo_path, name, ahead_count)
+                if not ok:
+                    return False, resolve_msg
         push = subprocess.run(
             ["git", "push", "--quiet"],
             cwd=repo_path,
