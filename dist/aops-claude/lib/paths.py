@@ -132,8 +132,8 @@ def get_config_dir() -> Path:
 
 
 def get_workflows_dir() -> Path:
-    """Get workflows directory (now inside hydrator skill package)."""
-    return get_plugin_root() / "skills" / "hydrator" / "workflows"
+    """Get workflows directory (inside butler skill package)."""
+    return get_plugin_root() / "skills" / "butler" / "workflows"
 
 
 def get_indices_dir() -> Path:
@@ -178,18 +178,37 @@ def get_transcripts_dir() -> Path:
 
 
 def get_polecat_transcripts_dir() -> Path:
-    """Get polecat transcripts directory.
+    """Get polecat transcripts directory for writing new transcripts.
 
-    Primary: $AOPS_SESSIONS/polecats/
-    Fallback: $AOPS_SESSIONS/transcripts/polecats/
+    Always returns $POLECAT_HOME/polecats/ — worker session data lives outside
+    the sessions git repo to avoid polluting the tracked working tree.
+
+    Use find_polecat_transcript() for reading, which checks legacy locations.
     """
-    sessions = get_sessions_repo()
-    primary = sessions / "polecats"
+    cache = get_local_cache_root()
+    return cache / "polecats"
 
-    if not primary.exists():
-        fallback = sessions / "transcripts" / "polecats"
-        if fallback.exists():
-            return fallback
+
+def find_polecat_transcript(task_id: str) -> Path:
+    """Find a polecat transcript file, checking current and legacy locations.
+
+    Checks in order:
+    1. $POLECAT_HOME/polecats/<task_id>.jsonl
+    2. $AOPS_SESSIONS/polecats/<task_id>.jsonl (legacy)
+    3. $AOPS_SESSIONS/transcripts/polecats/<task_id>.jsonl (legacy)
+
+    Returns the first existing path, or the primary path if none exist.
+    """
+    filename = f"{task_id}.jsonl"
+    primary = get_polecat_transcripts_dir() / filename
+    if primary.exists():
+        return primary
+
+    sessions = get_sessions_repo()
+    for legacy_dir in (sessions / "polecats", sessions / "transcripts" / "polecats"):
+        legacy = legacy_dir / filename
+        if legacy.exists():
+            return legacy
 
     return primary
 

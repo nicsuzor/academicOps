@@ -283,7 +283,6 @@ def extract_context_from_session_state(
     session_id = state.get("session_id", "")
     insights = state.get("insights") or {}
     main_agent = state.get("main_agent") or {}
-    hydration = state.get("hydration") or {}
 
     # Get project from insights or state
     project = insights.get("project") or state.get("project") or ""
@@ -299,12 +298,6 @@ def extract_context_from_session_state(
         started=started,
         last_activity=last_activity,
     )
-
-    # Extract from hydration if available (preferred source)
-    if hydration:
-        context.initial_prompt = hydration.get("original_prompt") or ""
-        if hydration.get("hydrated_intent"):
-            context.current_status = f"Intent: {hydration['hydrated_intent']}"
 
     # Get current task from main_agent
     current_task = main_agent.get("current_task")

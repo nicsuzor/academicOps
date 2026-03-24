@@ -95,6 +95,7 @@ monitoring — the supervisor's job ends here.
 - Gemini polecats are slow (15-20+ min before first commit). Don't poll — let them work autonomously.
 - `polecat.yaml` `default_branch` must match reality (e.g., buttermilk uses `dev`, not `main`). Wrong config causes worktree creation failures.
 - Mirror SSH failures are non-fatal if `local` remote exists (points to `/opt/nic/<repo>`). `polecat sync` warns but recovers.
+- **Pre-dispatch validation is critical.** With hydration gate off, the supervisor's pre-dispatch check (§4.2 in worker-execution.md) is the last chance to catch tasks targeting deprecated code or wrong repos. The 2026-03-22 run lost a full worker cycle to this (GH #224).
 
 ### Phase 5: PR Review & Merge
 

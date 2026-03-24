@@ -36,9 +36,8 @@ GATE_CONFIGS = [
             # Custodiet check -> Reset
             # PreToolUse is included so the trigger fires (resetting the counter)
             # BEFORE the policy evaluates. Without it, Agent(custodiet) is itself
-            # blocked when ops >= threshold (deadlock: can't dispatch the agent
-            # that would reset the counter). This mirrors how the hydration gate
-            # opens on PreToolUse for the hydrator so the hydrator call is allowed.
+            # is blocked when ops >= threshold (deadlock: can't dispatch the agent
+            # that would reset the counter).
             GateTrigger(
                 condition=GateCondition(
                     hook_event="^(PreToolUse|SubagentStart|SubagentStop)$",

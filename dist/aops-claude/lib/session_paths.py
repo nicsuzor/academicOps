@@ -386,7 +386,7 @@ def find_recent_hooks_logs(n: int) -> list[Path]:
     return [path for _, path in hooks_logs[:n]]
 
 
-GATE_NAMES = ("hydration", "custodiet")
+GATE_NAMES = ("custodiet",)
 
 
 def get_gate_file_path(
@@ -404,7 +404,7 @@ def get_gate_file_path(
     Checks AOPS_GATE_FILE_<GATE> env var first for session-stable path.
 
     Args:
-        gate: Gate name (hydration, custodiet)
+        gate: Gate name (custodiet, qa, handover)
         session_id: Session ID from Claude Code or Gemini CLI
         input_data: Optional input data dict for Gemini detection
         date: Optional date in YYYY-MM-DD format (defaults to today)
