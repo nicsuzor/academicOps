@@ -2,7 +2,7 @@
 title: Statistical Assumptions and Diagnostic Procedures
 type: reference
 category: ref
-permalink: analyst-ref-assumptions-diagnostics
+permalink: research-ref-assumptions-diagnostics
 description: Guidance on checking and validating statistical assumptions for various analyses across test types and handling violations.
 ---
 

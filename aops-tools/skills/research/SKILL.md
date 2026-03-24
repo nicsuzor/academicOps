@@ -23,6 +23,7 @@ domain:
   - academic
 allowed-tools: Read,Grep,Glob,Bash
 version: 0.1.0
+permalink: skills-research-skill
 ---
 
 # Research Methodology
@@ -128,7 +129,7 @@ our research question?" Not: "Did the code run without errors?"
 
 - Declaring a dry run "successful" because N responses were returned with
   no errors
-- Summarising results with aggregate statistics before anyone has read
+- Summarizing results with aggregate statistics before anyone has read
   the actual content
 - Proceeding to the full run without the user having reviewed a
   representative sample of actual outputs
@@ -199,13 +200,13 @@ This skill should be active whenever:
    to include
 3. Reviewing dry-run or pilot results before a full run
 4. Making any decision about what to include or exclude from an analysis
-5. An agent proposes to simplify, optimise, or shortcut a research process
+5. An agent proposes to simplify, optimize, or shortcut a research process
 
 ## What This Skill Does NOT Cover
 
 - Specific tool workflows (dbt, Streamlit, notebooks) — that's the analyst
   skill or project-specific CLAUDE.md
-- Statistical test selection and reporting — see references/
+- Statistical test selection and reporting — see references/statistical-analysis.md
 - Writing or drafting — that's a separate review lens
 - Project management or task decomposition — that's the planner
 

@@ -2,7 +2,7 @@
 title: Statistical Analysis
 type: reference
 category: ref
-permalink: skills-analyst-statistical-analysis
+permalink: skills-research-statistical-analysis
 description: Comprehensive guide to statistical hypothesis testing, regression, and Bayesian methods for academic research
 tags: [statistics, testing, analysis, reference]
 ---
@@ -121,9 +121,10 @@ Use [[test_selection_guide.md]] for comprehensive guidance. Quick reference:
 
 **ALWAYS check assumptions before interpreting test results.**
 
-Use the provided `scripts/assumption_checks.py` module for automated checking:
+You may optionally create a project-level helper module (e.g., `scripts/assumption_checks.py`) for automated checking:
 
 ```python
+# Example: project-level helper (not provided by academicOps)
 from scripts.assumption_checks import comprehensive_assumption_check
 
 # Comprehensive check with visualizations
@@ -144,7 +145,7 @@ This performs:
 
 ### Individual Assumption Checks
 
-For targeted checks, use individual functions:
+For targeted checks, use individual functions from a project-level helper:
 
 ```python
 from scripts.assumption_checks import (

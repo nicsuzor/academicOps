@@ -2,7 +2,7 @@
 title: Experiment Logging Structure
 type: note
 category: instruction
-permalink: analyst-chunk-experiment-logging
+permalink: research-chunk-experiment-logging
 description: Standards for organizing, documenting, and managing experimental work in research projects
 ---
 
