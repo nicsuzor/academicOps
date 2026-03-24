@@ -23,7 +23,7 @@ domain:
   - academic
 allowed-tools: Read,Grep,Glob,Bash
 version: 0.1.0
-permalink: skills-research-skill
+permalink: skill-research
 ---
 
 # Research Methodology

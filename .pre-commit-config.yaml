@@ -51,6 +51,16 @@ repos:
         args: [--check]
         exclude: '^archived/'
 
+  # Framework integrity checks (index wikilinks, skill entries, workflow length)
+  # Consolidates check-workflow-length + new index integrity validation
+  - repo: local
+    hooks:
+      - id: check-framework-integrity
+        name: framework integrity check
+        entry: uv run python scripts/check_framework_integrity.py
+        language: system
+        pass_filenames: false
+        files: '(WORKFLOWS|SKILLS)\.md$|workflows/.*\.md$|skills/.*/SKILL\.md$|commands/.*\.md$'
 
   # Type checking and full framework health checks run in CI only
   # (see .github/workflows/framework-health.yml)

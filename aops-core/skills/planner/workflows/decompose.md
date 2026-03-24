@@ -29,8 +29,6 @@ version: 2.0.0
    - **Known-unknown (internal)**: We have data but haven't analysed it. Build an audit/survey task against our own projects, transcripts, or prior work.
    - **Unknown-unknown (probeable)**: We don't know what we don't know. Build a spike or probe task with a time-box.
 
-   **Do not skip this step.** Decompositions that jump straight to execution without evidence-gathering produce generic solutions that miss domain knowledge. Research tasks (web, academic literature, internal audit) are first-class citizens of a decomposition, not overhead.
-
 4. **Select Workflow** — If the target is an epic, identify which workflow will achieve it (e.g., `feature-dev`, `peer-review`, `experiment-design`). The workflow's steps become the decomposition skeleton. If no existing workflow fits, the epic may need a custom step sequence.
 
 5. **Derive the Epic Shape** — Every epic needs phases, but the phases depend on the type of work:
