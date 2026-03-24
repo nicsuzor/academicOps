@@ -1764,7 +1764,7 @@ def _clone_has_changes(repo_path: Path) -> bool:
 
     Returns True if:
     - There are uncommitted changes in the working tree
-    - There are commits on the current branch beyond the upstream default branch
+    - The content of the current branch differs from the upstream default branch
     Returns False if the clone is clean and identical to origin/HEAD.
     """
     try:
