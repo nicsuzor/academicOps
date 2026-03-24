@@ -786,8 +786,9 @@ def run_gemini_headless(
             env=env,
         )
 
-        # Check for command failure
-        if result.returncode != 0:
+        # Check for command failure — but Gemini may exit non-zero (e.g. 41 for
+        # extension validation warnings) while still producing valid JSON output.
+        if result.returncode != 0 and not result.stdout.strip():
             return {
                 "success": False,
                 "output": result.stdout,
@@ -987,7 +988,34 @@ def _run_gemini_docker(prompt: str, gemini_home: Path | None = None, **kwargs) -
         cmd.extend(["-m", model])
 
     env = os.environ.copy()
-    env["GEMINI_SANDBOX_IMAGE"] = os.environ.get("GEMINI_SANDBOX_IMAGE", "aops-crew")
+    image = os.environ.get("GEMINI_SANDBOX_IMAGE", "aops-crew")
+    env["GEMINI_SANDBOX_IMAGE"] = image
+
+    # Clean up stopped sandbox containers to avoid name collisions when Gemini's
+    # sequential naming (e.g. aops-crew-0, aops-crew-1) scans `docker ps -a`.
+    try:
+        stopped = subprocess.run(
+            [
+                "docker",
+                "ps",
+                "-a",
+                "--filter",
+                f"ancestor={image}",
+                "--filter",
+                "status=exited",
+                "--format",
+                "{{.ID}}",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+        for cid in stopped.stdout.strip().split("\n"):
+            if cid:
+                subprocess.run(["docker", "rm", cid], capture_output=True, timeout=5, check=False)
+    except (subprocess.TimeoutExpired, OSError):
+        pass
 
     # When gemini_home is provided (e.g. from gemini_home fixture), use it directly.
     # Otherwise, replicate auth from ~/.gemini so sandbox can authenticate.
@@ -1017,25 +1045,30 @@ def _run_gemini_docker(prompt: str, gemini_home: Path | None = None, **kwargs) -
                 "error": f"Gemini sandbox session timed out after {timeout_seconds}s",
             }
 
-        if result.returncode != 0:
+        # Gemini may write JSON to stdout or stderr (stderr when extension
+        # validation warnings cause non-zero exit, e.g. exit 41).
+        raw_output = result.stdout or result.stderr or ""
+
+        if result.returncode != 0 and not raw_output.strip():
             return {
                 "success": False,
-                "output": result.stdout,
+                "output": "",
                 "result": {},
                 "error": f"Gemini sandbox failed (exit {result.returncode}): {result.stderr[:500]}",
             }
 
         # Parse JSON — reuse the same robust parsing as run_gemini_headless
+        # Note: Gemini may exit non-zero (e.g. 41 for extension validation warnings)
+        # while still producing valid JSON output.
         try:
-            parsed = json.loads(result.stdout)
+            parsed = json.loads(raw_output)
         except json.JSONDecodeError:
             # Fallback: find last valid JSON object in output
             candidates = []
-            output = result.stdout
-            for i, char in enumerate(output):
+            for i, char in enumerate(raw_output):
                 if char == "{":
                     try:
-                        obj, end_idx = json.JSONDecoder().raw_decode(output[i:])
+                        obj, end_idx = json.JSONDecoder().raw_decode(raw_output[i:])
                         candidates.append((i + end_idx, obj))
                     except json.JSONDecodeError:
                         continue
@@ -1044,17 +1077,25 @@ def _run_gemini_docker(prompt: str, gemini_home: Path | None = None, **kwargs) -
             else:
                 return {
                     "success": False,
-                    "output": result.stdout,
+                    "output": raw_output,
                     "result": {},
                     "error": "Could not find valid JSON in gemini sandbox output",
                 }
 
+        # Detect Gemini error responses (e.g. auth failures) that return valid
+        # JSON with an "error" key but no actual model response.
+        is_error_response = (
+            isinstance(parsed, dict) and "error" in parsed and "response" not in parsed
+        )
         response = {
-            "success": True,
-            "output": result.stdout,
+            "success": not is_error_response,
+            "output": raw_output,
             "stderr": result.stderr,
             "result": parsed,
         }
+        if is_error_response:
+            err = parsed.get("error", {})
+            response["error"] = err.get("message", str(err)) if isinstance(err, dict) else str(err)
 
         # Capture session and hook logs before cleanup
         cli_home = gemini_home or (tmp_gemini_home / ".gemini" if tmp_gemini_home else None)
