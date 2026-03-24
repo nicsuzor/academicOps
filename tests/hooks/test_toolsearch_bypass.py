@@ -63,6 +63,7 @@ def test_toolsearch_bypass():
         assert result_read is not None
         assert result_read.verdict in (GateVerdict.WARN, GateVerdict.DENY)
 
+
 if __name__ == "__main__":
     test_toolsearch_bypass()
     print("Regression test PASSED")
