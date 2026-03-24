@@ -107,7 +107,7 @@ do_dashboard() {
     # 2. Update task graph for visualization (graph.json)
     #    Use flock to prevent accumulation if graph takes longer than cron interval
     if command -v pkb &>/dev/null; then
-        flock -n /tmp/pkb-graph.lock pkb graph -f all --no-layout || echo "Warning: pkb graph skipped (locked or failed)"
+        flock -n /tmp/pkb-graph.lock pkb graph -f all || echo "Warning: pkb graph skipped (locked or failed)"
     else
         echo "Warning: pkb CLI not found, skipping graph update"
     fi
