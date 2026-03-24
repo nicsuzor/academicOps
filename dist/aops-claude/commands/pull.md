@@ -119,8 +119,6 @@ Triage instead of executing when:
 
 ### Step 3A: Execute (EXECUTE Path)
 
-> **Hydration gate**: If this session will involve file modifications or task management tool calls, invoke `Skill(skill='aops-core:hydrator')` now — before the first tool call. The gate fires on every file-modifying tool and blocks mid-execution if hydration hasn't been performed. One invocation per session is sufficient.
-
 Follow the task's workflow or use standard execution pattern:
 
 1. Read task body for context and acceptance criteria
