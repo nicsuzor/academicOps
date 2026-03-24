@@ -316,27 +316,28 @@ def _build_docker_cmd(
                     shutil.copy2(src, staged_claude_dir / auth_file)
         cmd.extend(["-v", f"{staging_dir}:/tmp/staging:ro"])
 
-    # Stage Gemini auth files for "shell" mode so users can run gemini interactively.
-    # Gemini normally handles its own sandbox, but in shell mode we're managing Docker.
-    if cli_tool == "shell":
-        gemini_dir = home / ".gemini"
-        if gemini_dir.exists():
-            staged_gemini_dir = staging_dir / ".gemini"
-            staged_gemini_dir.mkdir(exist_ok=True)
-            for auth_file in (
-                "settings.json",
-                "google_accounts.json",
-                "oauth_creds.json",
-                "installation_id",
-                "trustedFolders.json",
-            ):
-                src = gemini_dir / auth_file
-                if src.exists():
-                    shutil.copy2(src, staged_gemini_dir / auth_file)
-            # Also forward GEMINI_API_KEY if set
-            gemini_key = env.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
-            if gemini_key:
-                cmd.extend(["-e", f"GEMINI_API_KEY={gemini_key}"])
+        # Stage Gemini auth files for "shell" mode so users can run gemini interactively.
+        # Gemini normally handles its own sandbox, but in shell mode we're managing Docker.
+        # (Nested here because staging_dir is only defined when cli_tool in ("claude", "shell"))
+        if cli_tool == "shell":
+            gemini_dir = home / ".gemini"
+            if gemini_dir.exists():
+                staged_gemini_dir = staging_dir / ".gemini"
+                staged_gemini_dir.mkdir(exist_ok=True)
+                for auth_file in (
+                    "settings.json",
+                    "google_accounts.json",
+                    "oauth_creds.json",
+                    "installation_id",
+                    "trustedFolders.json",
+                ):
+                    src = gemini_dir / auth_file
+                    if src.exists():
+                        shutil.copy2(src, staged_gemini_dir / auth_file)
+                # Also forward GEMINI_API_KEY if set
+                gemini_key = env.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
+                if gemini_key:
+                    cmd.extend(["-e", f"GEMINI_API_KEY={gemini_key}"])
 
     # Mount Docker socket for Docker-outside-of-Docker (build/test inside agents).
     # Pass the socket's gid so the non-root container user can access it — the gid
