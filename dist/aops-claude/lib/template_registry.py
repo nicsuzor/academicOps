@@ -10,7 +10,7 @@ Usage:
     from lib.template_registry import TemplateRegistry
 
     registry = TemplateRegistry.instance()
-    content = registry.render("hydration.block", {})
+    content = registry.render("custodiet.policy_message", {})
 
 Exit behavior: Functions raise exceptions (fail-fast P#8). Callers handle graceful degradation.
 """
@@ -39,9 +39,9 @@ class TemplateSpec:
     """Specification for a gate template.
 
     Attributes:
-        name: Unique identifier, e.g., "hydration.block"
+        name: Unique identifier, e.g., "custodiet.policy_message"
         category: What kind of template (user message, context, subagent)
-        filename: Template file name, e.g., "hydration-gate-block.md"
+        filename: Template file name, e.g., "custodiet-policy-message.md"
         required_vars: Variables that MUST be provided to render
         optional_vars: Variables that MAY be provided (default to empty string)
         description: Human-readable purpose
@@ -72,55 +72,14 @@ class RenderedTemplate:
 # All gate templates defined here. This is the single source of truth.
 
 TEMPLATE_SPECS: dict[str, TemplateSpec] = {
-    # --- Hydration gate ---
-    "hydration.block": TemplateSpec(
-        name="hydration.block",
-        category=TemplateCategory.USER_MESSAGE,
-        filename="hydration-gate-block.md",
-        required_vars=(),
-        optional_vars=("session_id", "client_type"),
-        description="Block message when hydration gate denies tool",
-        env_override="HYDRATION_BLOCK_TEMPLATE",
-    ),
     "hydration.warn": TemplateSpec(
         name="hydration.warn",
         category=TemplateCategory.USER_MESSAGE,
         filename="hydration-gate-warn.md",
         required_vars=(),
         optional_vars=("session_id", "client_type"),
-        description="Warning when hydration gate is in warn mode",
+        description="Lightweight skills-routing hint (formerly hydration warning)",
         env_override="HYDRATION_WARN_TEMPLATE",
-    ),
-    # --- Prompt hydrator ---
-    "hydrator.instruction": TemplateSpec(
-        name="hydrator.instruction",
-        category=TemplateCategory.CONTEXT_INJECTION,
-        filename="prompt-hydration-instruction.md",
-        required_vars=(),
-        optional_vars=("client_type",),
-        description="Instruction to invoke hydrator skill",
-    ),
-    # --- Hydration gate: trigger messages ---
-    "hydration.opened": TemplateSpec(
-        name="hydration.opened",
-        category=TemplateCategory.USER_MESSAGE,
-        filename="hydration-opened.md",
-        required_vars=(),
-        description="Status message when hydration gate opens",
-    ),
-    "hydration.closed": TemplateSpec(
-        name="hydration.closed",
-        category=TemplateCategory.USER_MESSAGE,
-        filename="hydration-closed.md",
-        required_vars=(),
-        description="Status message when hydration gate closes on new prompt",
-    ),
-    "hydration.policy_message": TemplateSpec(
-        name="hydration.policy_message",
-        category=TemplateCategory.USER_MESSAGE,
-        filename="hydration-policy-message.md",
-        required_vars=(),
-        description="Short message when hydration gate blocks a tool call",
     ),
     # --- Custodiet gate ---
     "custodiet.context": TemplateSpec(

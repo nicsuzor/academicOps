@@ -1,5 +1,1 @@
-# Workflow 06: Develop Specification
-
-Drafting and refining technical specifications.
-
-**Detailed procedures**: See [[spec-development-details]]
+# Workflow 06: Develop Specification\n\nDrafting and refining technical specifications.\n\n**Detailed procedures**: See [[spec-development-details]]

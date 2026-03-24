@@ -1,5 +1,1 @@
-# Workflow 08: Decision Briefing
-
-Structured analysis for complex decisions.
-
-**Detailed procedures**: See [[decision-briefing-details]]
+# Workflow 08: Decision Briefing\n\nStructured analysis for complex decisions.\n\n**Detailed procedures**: See [[decision-briefing-details]]
