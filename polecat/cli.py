@@ -180,6 +180,23 @@ def save_worker_transcript(
         raise OSError(f"Failed to save transcript for task {task_id}: {e}") from e
 
 
+def _get_sessions_base() -> Path:
+    """Return the base directory for session transcript storage.
+
+    Uses ``get_sessions_repo()`` from ``lib.paths`` when available, falling
+    back to ``$AOPS_SESSIONS`` or ``$POLECAT_HOME/sessions``.
+    """
+    try:
+        from lib.paths import get_sessions_repo
+
+        return get_sessions_repo()
+    except ImportError:
+        aops_sessions = os.environ.get("AOPS_SESSIONS")
+        if aops_sessions:
+            return Path(aops_sessions)
+        return Path(os.environ.get("POLECAT_HOME", str(Path.home() / ".polecat"))) / "sessions"
+
+
 def _detect_system_timezone() -> str:
     """Detect system timezone from /etc/localtime or /etc/timezone. Returns 'UTC' if undetectable."""
     try:
@@ -301,6 +318,7 @@ def _build_docker_cmd(
 
         # Stage Gemini auth files for "shell" mode so users can run gemini interactively.
         # Gemini normally handles its own sandbox, but in shell mode we're managing Docker.
+        # (Nested here because staging_dir is only defined when cli_tool in ("claude", "shell"))
         if cli_tool == "shell":
             gemini_dir = home / ".gemini"
             if gemini_dir.exists():
@@ -391,6 +409,20 @@ def _build_docker_cmd(
     cmd.append(image)
     cmd.extend(agent_cmd)
     return cmd
+
+
+def _mount_aca_data_sandbox(env: dict) -> None:
+    """Mount ACA_DATA read-write into the Gemini sandbox via SANDBOX_MOUNTS.
+
+    Forwarding ACA_DATA as an env var alone (via SANDBOX_FLAGS) is insufficient —
+    without the bind mount the PKB server starts with a missing/empty path inside
+    the container.  This helper is called from both ``crew -g`` and ``run -g``.
+    """
+    aca_data = env.get("ACA_DATA") or os.environ.get("ACA_DATA")
+    if aca_data and os.path.isdir(aca_data):
+        mounts = env.get("SANDBOX_MOUNTS", "")
+        new_mount = f"{aca_data}:{aca_data}:rw"
+        env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
 
 
 def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | None:
@@ -1963,19 +1995,8 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
     env["POLECAT_WORKTREE"] = str(work_dir)
 
     # Compute session directory for Claude transcript persistence.
-    # Worker session data lives in $POLECAT_HOME (outside the sessions git repo)
-    # to avoid polluting the tracked sessions working tree.
-    try:
-        from lib.paths import get_local_cache_root
-
-        worker_base = get_local_cache_root()
-    except ImportError:
-        worker_base = Path(os.environ.get("POLECAT_HOME", str(Path.home() / ".polecat")))
     project_slug = target or projects[0]
-    if gemini:
-        session_dir = worker_base / "crew" / crew_name / project_slug
-    else:
-        session_dir = worker_base / "crew" / crew_name / project_slug / "claude-sessions"
+    session_dir = _get_sessions_base() / "crew" / crew_name / project_slug
 
     tmp_gemini_home = None
     tmp_files: list[Path] = []
@@ -2006,12 +2027,7 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
         # Provide a stable Gemini session ID based on the crew/task ID
         env["GEMINI_SESSION_ID"] = f"gemini-{crew_name}"
 
-        # Mount ACA_DATA via SANDBOX_MOUNTS (read-write for PKB updates)
-        aca_data = env.get("ACA_DATA") or os.environ.get("ACA_DATA")
-        if aca_data and os.path.isdir(aca_data):
-            mounts = env.get("SANDBOX_MOUNTS", "")
-            new_mount = f"{aca_data}:{aca_data}:rw"
-            env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
+        _mount_aca_data_sandbox(env)
 
         # Gemini sandbox only forwards a hardcoded allowlist of env vars into
         # its Docker container. Use SANDBOX_FLAGS for simple -e flags and
@@ -2083,13 +2099,6 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
             container_gh_hosts = str(Path.home() / ".config" / "gh" / "hosts.yml")
             mounts = env.get("SANDBOX_MOUNTS", "")
             new_mount = f"{gh_hosts.name}:{container_gh_hosts}:ro"
-            env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
-
-        # Mount ACA_DATA via SANDBOX_MOUNTS (read-write for PKB updates)
-        aca_data = env.get("ACA_DATA") or os.environ.get("ACA_DATA")
-        if aca_data and os.path.isdir(aca_data):
-            mounts = env.get("SANDBOX_MOUNTS", "")
-            new_mount = f"{aca_data}:{aca_data}:rw"
             env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
 
         if extra_flags:
@@ -2498,19 +2507,8 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
     tmp_gemini_home = None
     tmp_files: list[Path] = []
     # Compute session directory for transcript persistence.
-    # Worker session data lives in $POLECAT_HOME (outside the sessions git repo)
-    # to avoid polluting the tracked sessions working tree.
-    try:
-        from lib.paths import get_local_cache_root
-
-        worker_base = get_local_cache_root()
-    except ImportError:
-        worker_base = Path(os.environ.get("POLECAT_HOME", str(Path.home() / ".polecat")))
     project_slug = task.project or project or worktree_path.name
-    if gemini:
-        run_session_dir = worker_base / "polecats" / task.id / project_slug
-    else:
-        run_session_dir = worker_base / "polecats" / task.id / project_slug / "claude-sessions"
+    run_session_dir = _get_sessions_base() / "polecats" / task.id / project_slug
 
     if gemini:
         # Replicate Gemini authentication if available.
@@ -2538,6 +2536,8 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
 
         # Provide a stable Gemini session ID based on the task ID
         env["GEMINI_SESSION_ID"] = f"gemini-{task.id}"
+
+        _mount_aca_data_sandbox(env)
 
         # Gemini sandbox only forwards a hardcoded allowlist of env vars into
         # its Docker container. Use SANDBOX_FLAGS for simple -e flags.

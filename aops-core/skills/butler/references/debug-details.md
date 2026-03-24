@@ -296,3 +296,109 @@ cd $AOPS && uv run python scripts/session_transcript.py \
 
 - TDD overkill: Full test cycle for trivial utility function
 - Tool friction: Write tool requires pre-read even for new files
+
+## Debugging Gemini CLI / Crew Sessions
+
+When debugging Gemini-based crew or polecat sessions (as opposed to Claude Code sessions), different tools and log locations apply.
+
+### 1. Check MCP Server Status
+
+```bash
+# List all configured MCP servers and their connection state
+gemini mcp list
+
+# Expected output for healthy PKB:
+# ✓ pkb (from aops-core): pkb mcp (stdio) - Connected
+
+# If pkb shows "disconnected" or is missing, the server binary failed to start.
+```
+
+### 2. Get Debug Logs from Gemini CLI
+
+```bash
+# Run with --debug flag (opens debug console, shows verbose extension/MCP loading)
+gemini --debug
+
+# Extension loading errors appear on stderr:
+# [ExtensionManager] Error loading agent from aops-core: ...
+
+# Capture stderr to a file for analysis:
+gemini --sandbox 2>gemini-debug.log
+```
+
+### 3. Enable Verbose PKB Server Logging
+
+The PKB MCP server respects `RUST_LOG` env var. Change from `warn` to `debug` in the extension config:
+
+```json
+"env": {
+  "ACA_DATA": "${ACA_DATA}",
+  "RUST_LOG": "debug"
+}
+```
+
+Config locations:
+
+- **Gemini extension**: `~/.gemini/extensions/aops-core/gemini-extension.json`
+- **Claude plugin**: `~/.claude/plugins/cache/aops/aops-core/<version>/.mcp.json`
+- **Source template**: `aops-core/mcp.json.template`
+
+### 4. Crew Session Transcripts
+
+| Session Type          | Transcript Location                                     |
+| --------------------- | ------------------------------------------------------- |
+| Claude crew           | `$AOPS_SESSIONS/crew/<crew-name>/claude-sessions/`      |
+| Polecat task (Claude) | `$AOPS_SESSIONS/polecats/<task-id>.jsonl`               |
+| Gemini crew           | `$GEMINI_CLI_HOME/.gemini/` (temp dir, cleaned on exit) |
+| Polecat task (Gemini) | stdout/stderr captured in polecat transcript JSONL      |
+
+### 5. Diagnose MCP Server Startup Failures
+
+```bash
+# Step 1: Verify pkb binary exists and is the right version
+which pkb
+pkb --version
+
+# Step 2: Verify the MCP subcommand works
+echo '{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test"}},"id":1}' | pkb mcp
+# Should return JSON-RPC response. If pkb exits with task list output,
+# the "mcp" subcommand arg is missing from the config.
+
+# Step 3: Check ACA_DATA is set and valid
+echo "ACA_DATA=$ACA_DATA"
+ls "$ACA_DATA" | head -5
+
+# Step 4: Check the extension config has correct args
+cat ~/.gemini/extensions/aops-core/gemini-extension.json | python3 -m json.tool
+# Verify: "args": ["mcp"] must be present in the pkb server config.
+# Without it, Gemini runs bare "pkb" which outputs a task list and exits.
+```
+
+### 6. Gemini Sandbox Environment Variables
+
+In sandbox mode (`gemini --sandbox`), env vars are forwarded via special mechanisms:
+
+| Mechanism              | Purpose                                  | Limitation                          |
+| ---------------------- | ---------------------------------------- | ----------------------------------- |
+| `SANDBOX_FLAGS`        | Extra `-e KEY=VAL` Docker flags          | Shell-quote mangles shell functions |
+| `SANDBOX_MOUNTS`       | Extra volume mounts (`from:to:opts`)     | Must be comma-separated             |
+| `GEMINI_SANDBOX_IMAGE` | Docker image name (default: `aops-crew`) | Must have pkb on PATH               |
+
+```bash
+# Check what env vars are forwarded to sandbox
+# (set by polecat/cli.py _make_worker_env)
+echo "SANDBOX_FLAGS: $SANDBOX_FLAGS"
+echo "SANDBOX_MOUNTS: $SANDBOX_MOUNTS"
+echo "GEMINI_SANDBOX_IMAGE: $GEMINI_SANDBOX_IMAGE"
+echo "GEMINI_CLI_HOME: $GEMINI_CLI_HOME"
+```
+
+### 7. Common Gemini MCP Failure Patterns
+
+| Symptom                                 | Likely Cause                                   | Fix                                                    |
+| --------------------------------------- | ---------------------------------------------- | ------------------------------------------------------ |
+| PKB server "disconnected"               | Missing `"args": ["mcp"]` in extension config  | Add `"args": ["mcp"]` to gemini-extension.json         |
+| `${ACA_DATA}` unresolved                | Env var not forwarded into sandbox             | Check `SANDBOX_FLAGS` includes `-e ACA_DATA=...`       |
+| `pkb` not found                         | Binary not in container PATH                   | Rebuild Docker image (`make build-docker`)             |
+| Agent load errors (`Invalid tool name`) | Claude-specific tool names in Gemini agent def | Fix build script tool name mapping                     |
+| Extension not loaded                    | `GEMINI_CLI_HOME` temp dir missing extensions  | Check `_replicate_gemini_auth()` copied extension dirs |
