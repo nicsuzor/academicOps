@@ -420,6 +420,7 @@ def _mount_aca_data_sandbox(env: dict) -> None:
     """
     aca_data = env.get("ACA_DATA") or os.environ.get("ACA_DATA")
     if aca_data and os.path.isdir(aca_data):
+        env.setdefault("ACA_DATA", aca_data)
         mounts = env.get("SANDBOX_MOUNTS", "")
         new_mount = f"{aca_data}:{aca_data}:rw"
         env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
@@ -2123,6 +2124,7 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
             if key.endswith("_GATE_MODE") or key in (
                 "ACA_DATA",
                 "GH_TOKEN",
+                "GEMINI_SANDBOX_IMAGE",
                 "GEMINI_SESSION_ID",
                 "AOPS_SESSION_STATE_DIR",
             ):
@@ -2641,6 +2643,7 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
             if key.endswith("_GATE_MODE") or key in (
                 "ACA_DATA",
                 "GH_TOKEN",
+                "GEMINI_SANDBOX_IMAGE",
                 "GEMINI_SESSION_ID",
                 "AOPS_SESSION_STATE_DIR",
             ):

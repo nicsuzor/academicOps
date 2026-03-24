@@ -20,23 +20,23 @@ def mock_home(tmp_path, monkeypatch):
     skills_dir = tmp_path / ".claude" / "skills"
     skills_dir.mkdir(parents=True, exist_ok=True)
 
-    # Create framework skill
-    framework_scripts = skills_dir / "framework" / "scripts"
-    framework_scripts.mkdir(parents=True, exist_ok=True)
+    # Create butler skill
+    butler_scripts = skills_dir / "butler" / "scripts"
+    butler_scripts.mkdir(parents=True, exist_ok=True)
 
     # Create required scripts
-    (framework_scripts / "validate_docs.py").touch()
+    (butler_scripts / "validate_docs.py").touch()
 
     # Setup symlink to real AOPS if available
     aops = os.environ.get("AOPS")
     if aops:
-        aops_scripts = Path(aops) / "aops-core" / "skills" / "framework" / "scripts"
+        aops_scripts = Path(aops) / "aops-core" / "skills" / "butler" / "scripts"
         if aops_scripts.exists():
             import shutil
 
-            shutil.rmtree(framework_scripts.parent)
-            framework_scripts.parent.mkdir(parents=True, exist_ok=True)
-            framework_scripts.symlink_to(aops_scripts)
+            shutil.rmtree(butler_scripts.parent)
+            butler_scripts.parent.mkdir(parents=True, exist_ok=True)
+            butler_scripts.symlink_to(aops_scripts)
 
     with patch.object(Path, "home", return_value=tmp_path):
         yield
@@ -51,12 +51,11 @@ def test_skill_scripts_exist_via_symlink():
         "~/.claude/skills/ should be symlink or directory"
     )
 
-    framework_skill_path = skills_path / "framework"
-    assert framework_skill_path.exists(), "~/.claude/skills/framework/ not found"
-    assert framework_skill_path.exists(), "~/.claude/skills/framework/ should exist"
+    butler_skill_path = skills_path / "butler"
+    assert butler_skill_path.exists(), "~/.claude/skills/butler/ not found"
 
-    scripts_path = framework_skill_path / "scripts"
-    assert scripts_path.exists(), "~/.claude/skills/framework/scripts/ should exist"
+    scripts_path = butler_skill_path / "scripts"
+    assert scripts_path.exists(), "~/.claude/skills/butler/scripts/ should exist"
 
     required_scripts = ["validate_docs.py"]
     for script_name in required_scripts:
@@ -69,7 +68,7 @@ def test_skill_scripts_exist_via_symlink():
 @pytest.mark.integration
 def test_framework_script_runs_from_writing_repo(data_dir):
     """Test that framework scripts execute correctly from writing repo."""
-    script_path = Path.home() / ".claude" / "skills" / "framework" / "scripts" / "validate_docs.py"
+    script_path = Path.home() / ".claude" / "skills" / "butler" / "scripts" / "validate_docs.py"
     assert script_path.exists(), f"Script not found at {script_path}"
 
     aops = os.environ.get("AOPS")
@@ -105,10 +104,10 @@ def test_skill_self_contained_architecture():
         pytest.skip("AOPS environment variable not set")
 
     aops_path = Path(aops)
-    scripts_in_aops = aops_path / "aops-core" / "skills" / "framework" / "scripts"
+    scripts_in_aops = aops_path / "aops-core" / "skills" / "butler" / "scripts"
     assert scripts_in_aops.exists(), f"Scripts should exist in AOPS: {scripts_in_aops}"
 
-    symlink_path = Path.home() / ".claude" / "skills" / "framework" / "scripts"
+    symlink_path = Path.home() / ".claude" / "skills" / "butler" / "scripts"
     assert symlink_path.exists(), f"Symlink path not found at {symlink_path}"
 
     symlink_resolved = symlink_path.resolve()
