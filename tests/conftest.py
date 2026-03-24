@@ -27,6 +27,57 @@ from .paths import (
 
 log = logging.getLogger(__name__)
 
+# Max turns for Claude in test fixtures — higher than the default of 3 to allow
+# for hook overhead (hydration gate, custodiet) before reaching the actual task.
+TEST_CLAUDE_MAX_TURNS = "10"
+
+
+def _redact_cmd(cmd: list[str]) -> list[str]:
+    """Redact secrets and sensitive host paths from command for logging.
+
+    Redacts:
+    1. Environment variable values (GH_TOKEN=xxx, etc.)
+    2. Host paths in Docker mounts when the container side is sensitive
+       (e.g., /Users/nic/.claude.json -> [REDACTED_PATH]:/home/worker/.claude.json)
+    """
+    redacted = []
+    # Match strings like KEY=VALUE
+    secret_keys = {
+        "GH_TOKEN",
+        "GITHUB_TOKEN",
+        "AOPS_BOT_GH_TOKEN",
+        "ANTHROPIC_API_KEY",
+        "GEMINI_API_KEY",
+    }
+
+    for arg in cmd:
+        arg_str = str(arg)
+
+        # 1. Redact env var values: KEY=VALUE
+        # Exclude paths (containing "/") to avoid misidentifying mount args
+        if "=" in arg_str and "/" not in arg_str:
+            key, val = arg_str.split("=", 1)
+            if key in secret_keys:
+                redacted.append(f"{key}=[REDACTED]")
+                continue
+
+        # 2. Redact host paths in Docker mounts: src:dst[:mode]
+        # Only redact the host side if the container side is a known sensitive path
+        if ":" in arg_str:
+            parts = arg_str.split(":")
+            if len(parts) >= 2:
+                # Sensitive destination patterns in the container
+                sensitive_dst = [".claude.json", ".claude/", ".gemini/"]
+                if any(x in parts[1] for x in sensitive_dst):
+                    # Redact the host (source) path
+                    parts[0] = "[REDACTED_PATH]"
+                    redacted.append(":".join(parts))
+                    continue
+
+        redacted.append(arg_str)
+
+    return redacted
+
 
 def _is_xdist_worker() -> bool:
     """Check if running in an xdist worker process."""
@@ -144,14 +195,9 @@ def ensure_test_environment(monkeypatch, tmp_path):
 
     This provides a fallback test environment if ACA_DATA is not set externally.
     """
-    if not os.environ.get("ACA_DATA"):
-        # Use a stable temp dir for the session if possible, or tmp_path
-        # But tmp_path is unique per test.
-        # Ideally we want a shared one for the session, but per-test is safer for isolation.
-        data_dir = tmp_path / "aca_data"
-        monkeypatch.setenv("ACA_DATA", str(data_dir))
-    else:
-        data_dir = Path(os.environ["ACA_DATA"])
+    # ALWAYS use tmp_path for ACA_DATA to prevent tests from mutating host environment
+    data_dir = tmp_path / "aca_data"
+    monkeypatch.setenv("ACA_DATA", str(data_dir))
 
     # Ensure required structure exists
     (data_dir / "tasks").mkdir(parents=True, exist_ok=True)
@@ -528,7 +574,7 @@ def run_claude_headless(
 
     try:
         # Execute command
-        log.debug("Full Launch Command: %s", " ".join(str(x) for x in cmd))
+        log.debug("Full Launch Command: %s", " ".join(_redact_cmd(cmd)))
         log.debug("Working Directory: %s", working_dir)
 
         result = subprocess.run(
@@ -640,7 +686,7 @@ def claude_headless():
     """
     # Skip test if claude CLI not available
     if not _claude_cli_available():
-        pytest.fail("claude CLI not found in PATH - requires Claude Code CLI installed")
+        pytest.skip("claude CLI not found in PATH - requires Claude Code CLI installed")
 
     return _make_failing_wrapper(run_claude_headless)
 
@@ -727,7 +773,7 @@ def run_gemini_headless(
 
     try:
         # Execute command
-        log.debug("Full Launch Command: %s", " ".join(str(x) for x in cmd))
+        log.debug("Full Launch Command: %s", " ".join(_redact_cmd(cmd)))
         log.debug("Working Directory: %s", working_dir)
 
         result = subprocess.run(
@@ -831,7 +877,7 @@ def gemini_headless(gemini_home):
     """
     # Skip test if gemini CLI not available
     if not _gemini_cli_available():
-        pytest.fail("gemini CLI not found in PATH - requires Gemini CLI installed")
+        pytest.skip("gemini CLI not found in PATH - requires Gemini CLI installed")
 
     def _run(prompt, **kwargs):
         return run_gemini_headless(prompt, gemini_home=gemini_home, **kwargs)
@@ -871,7 +917,7 @@ def _run_claude_docker_simple(prompt: str, tmp_path: Path, **kwargs) -> dict[str
         "--model",
         model,
         "--max-turns",
-        "3",
+        TEST_CLAUDE_MAX_TURNS,
     ]
 
     env = {}
@@ -1493,7 +1539,7 @@ def claude_headless_tracked(tmp_path):
 
     # Skip test if claude CLI not available
     if not _claude_cli_available():
-        pytest.fail("claude CLI not found in PATH - requires Claude Code CLI installed")
+        pytest.skip("claude CLI not found in PATH - requires Claude Code CLI installed")
 
     def _run_tracked(
         prompt: str,
@@ -1542,7 +1588,7 @@ def claude_headless_tracked(tmp_path):
                 test_dir = tmp_path / "claude-test"
                 test_dir.mkdir(parents=True, exist_ok=True)
 
-            log.debug("Full Launch Command: %s", " ".join(str(x) for x in cmd))
+            log.debug("Full Launch Command: %s", " ".join(_redact_cmd(cmd)))
             log.debug("Working Directory: %s", test_dir)
 
             result = subprocess.run(
@@ -1805,7 +1851,7 @@ def claude_docker(tmp_path):
             "--model",
             model,
             "--max-turns",
-            "3",
+            TEST_CLAUDE_MAX_TURNS,
         ]
 
         # Build Docker command via polecat's builder
@@ -1827,7 +1873,7 @@ def claude_docker(tmp_path):
             session_volume=vol_name,
         )
 
-        log.debug("Docker command: %s", " ".join(str(x) for x in cmd))
+        log.debug("Docker command: %s", " ".join(_redact_cmd(cmd)))
 
         try:
             result = subprocess.run(
@@ -1947,3 +1993,119 @@ def claude_docker(tmp_path):
         return response, session_id, tool_calls
 
     yield _run_in_docker
+
+
+@pytest.fixture
+def gemini_docker(tmp_path):
+    """Run Gemini inside Docker container with a mounted session_dir.
+
+    Returns callable with same API as claude_docker:
+        result, session_id, tool_calls = gemini_docker(
+            "Reply with hello", timeout_seconds=90
+        )
+    """
+    import json
+    import os
+    import subprocess
+    import sys
+    import uuid
+    from pathlib import Path
+
+    if not _docker_available():
+        pytest.skip("Docker not available or aops-crew image not built")
+    if not _gemini_cli_available():
+        pytest.skip("Gemini CLI not available")
+
+    # Import polecat helpers
+    repo_root = get_repo_root()
+    polecat_dir = str(repo_root / "polecat")
+    aops_core_dir = str(repo_root / "aops-core")
+    if polecat_dir not in sys.path:
+        sys.path.insert(0, polecat_dir)
+    if aops_core_dir not in sys.path:
+        sys.path.insert(0, aops_core_dir)
+
+    from cli import _replicate_gemini_auth
+
+    def _run_in_docker(
+        prompt: str,
+        timeout_seconds: int = 120,
+        fail_on_error: bool = True,
+    ) -> tuple[dict, str, list[dict]]:
+        session_id = str(uuid.uuid4())
+
+        workspace = tmp_path / f"docker-test-{session_id[:8]}"
+        workspace.mkdir(parents=True, exist_ok=True)
+
+        # The clean host directory where we expect logs to persist
+        session_dir = tmp_path / f"sessions-{session_id[:8]}"
+        session_dir.mkdir(parents=True, exist_ok=True)
+
+        env = os.environ.copy()
+
+        # Set up auth replication exactly as polecat/cli.py does
+        tmp_gemini_home = _replicate_gemini_auth(env, work_dir=workspace)
+        if not tmp_gemini_home:
+            pytest.skip("Gemini auth replication failed")
+
+        env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-crew")
+
+        gemini_slug = "docker-test"
+        # Match how polecat/cli.py mounts the volume using the native Gemini log path inside the sandbox
+        if tmp_gemini_home:
+            container_sessions_dir = str(tmp_gemini_home / ".gemini" / "tmp" / gemini_slug)
+        else:
+            container_sessions_dir = str(Path.home() / ".gemini" / "tmp" / gemini_slug)
+
+        env["AOPS_SESSION_STATE_DIR"] = container_sessions_dir
+
+        # In polecat/cli.py this goes in SANDBOX_MOUNTS
+        mounts = env.get("SANDBOX_MOUNTS", "")
+        new_mount = f"{session_dir.resolve()}:{container_sessions_dir}:rw"
+        env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
+        env["GEMINI_SESSION_ID"] = f"gemini-{session_id}"
+
+        from lib.agent_env import apply_env_mappings
+
+        apply_env_mappings(env)
+
+        cmd = ["gemini", "--sandbox", "--yolo", "-p", prompt, "-o", "json"]
+
+        try:
+            result = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=timeout_seconds, check=False, env=env
+            )
+        except subprocess.TimeoutExpired:
+            res = {
+                "success": False,
+                "output": "",
+                "result": {},
+                "error": "Timeout",
+                "session_dir": session_dir,
+            }
+            if fail_on_error:
+                pytest.fail("Timeout")
+            return res, session_id, []
+
+        try:
+            parsed = json.loads(result.stdout)
+            res = {
+                "success": True,
+                "output": result.stdout,
+                "result": parsed,
+                "session_dir": session_dir,
+            }
+        except json.JSONDecodeError as e:
+            res = {
+                "success": False,
+                "output": result.stdout,
+                "result": {},
+                "error": str(e),
+                "session_dir": session_dir,
+            }
+            if fail_on_error:
+                pytest.fail(f"JSON decode error: {e}")
+
+        return res, session_id, []
+
+    return _run_in_docker
