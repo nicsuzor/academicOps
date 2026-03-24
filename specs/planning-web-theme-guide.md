@@ -8,4 +8,4 @@ tags: [spec, themes, moved]
 
 # Planning Web Theme Guide — Moved to nicsuzor/mem
 
-This spec has been moved to `/opt/nic/mem/docs/specs/theme-guide.md` alongside the planning web specs.
+This spec has been moved to `docs/specs/theme-guide.md` in the `nicsuzor/mem` repo.
