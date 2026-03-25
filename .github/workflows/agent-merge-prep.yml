@@ -22,6 +22,10 @@ on:
         description: 'PR number to prepare'
         type: string
         required: true
+      force:
+        description: 'Skip self-loop detection (for explicit re-invocation)'
+        type: boolean
+        default: false
 
 # Global concurrency: serialise merge-prep across all PRs to prevent API rate limits
 concurrency:
@@ -83,6 +87,11 @@ jobs:
       - name: Check if last push was from merge-prep
         id: loop-check
         run: |
+          if [ "${{ inputs.force }}" = "true" ]; then
+            echo "Force flag set — skipping loop detection"
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           LAST_MSG=$(git log -1 --format='%B')
           if echo "$LAST_MSG" | grep -q 'Merge-Prep-By:'; then
             echo "Last commit was from merge-prep — skipping to avoid loop"
@@ -139,7 +148,7 @@ jobs:
         if: steps.loop-check.outputs.skip != 'true' && steps.ceiling-check.outputs.exceeded != 'true'
         id: prompt
         run: |
-          PROMPT=$(cat .github/agents/merge-prep.agent.md)
+          PROMPT=$(git show origin/main:.github/agents/merge-prep.agent.md)
           {
             echo "prompt<<AGENT_EOF"
             echo "$PROMPT"
@@ -215,6 +224,9 @@ jobs:
             }
 
           # Set merge-prep-status commit status
+          # Re-fetch HEAD SHA — the agent may have pushed new commits during its run
+          HEAD_SHA=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json headRefOid --jq '.headRefOid')
+          echo "Setting merge-prep-status on HEAD: $HEAD_SHA"
           gh api "repos/$REPO/statuses/$HEAD_SHA" \
             -f state="success" \
             -f context="merge-prep-status" \

@@ -103,7 +103,7 @@ def get_project_version(aops_root: Path) -> str:
 
     # 2. Try git describe for a more accurate dev version
     try:
-        # Exclude common meta-tags like 'latest' or 'testing'
+        # Exclude common meta-tags and ALL pre-release tags to find the base stable version
         result = subprocess.run(
             [
                 "git",
@@ -117,6 +117,14 @@ def get_project_version(aops_root: Path) -> str:
                 "testing",
                 "--exclude",
                 "*.dev*",
+                "--exclude",
+                "*-dev.*",
+                "--exclude",
+                "*-alpha*",
+                "--exclude",
+                "*-beta*",
+                "--exclude",
+                "*-rc*",
                 "--match",
                 "v[0-9]*",
             ],
@@ -131,14 +139,24 @@ def get_project_version(aops_root: Path) -> str:
             if len(desc) == 8 and all(c in "0123456789abcdef" for c in desc):
                 return f"0.1.0-dev.0+g{desc}"
 
-            # Convert git describe format (0.2.1-5-gabc123) to semver (0.2.1-dev.5+gabc123)
+            # Convert git describe format (0.2.1-5-gabc123) to semver (0.2.2-dev.5+gabc123)
+            # This logic assumes the stable tag was found because we excluded pre-releases.
             if "-" in desc:
                 parts = desc.split("-")
                 base = parts[0]
+                # parts[1] is the number of commits since the tag
                 if len(parts) >= 2 and parts[1].isdigit():
                     dev_num = parts[1]
                     sha = parts[2] if len(parts) > 2 else ""
                     dirty = ".dirty" if "dirty" in desc else ""
+
+                    # BUMP base version to ensure dev is > stable in semver
+                    # (e.g., 0.3.14-5-gabc -> 0.3.15-dev.5+gabc)
+                    v_parts = base.split(".")
+                    if len(v_parts) == 3:
+                        major, minor, patch = v_parts
+                        base = f"{major}.{minor}.{int(patch) + 1}"
+
                     return f"{base}-dev.{dev_num}+{sha}{dirty}"
             return sanitize_version(desc)
     except FileNotFoundError:
@@ -157,7 +175,17 @@ def get_project_version(aops_root: Path) -> str:
         stable_tags = [
             t
             for t in tags
-            if not any(s in t for s in ["-testing", ".dev", "-dev.", "-beta", "-rc", "-alpha"])
+            if not any(
+                s in t
+                for s in [
+                    "-testing",
+                    ".dev",
+                    "-dev.",
+                    "-beta",
+                    "-rc",
+                    "-alpha",
+                ]
+            )
         ]
         if stable_tags:
             return stable_tags[0].lstrip("v")
@@ -696,23 +724,17 @@ def build_aops_core(
         "lib",
         "mcp_servers",
         "workflows",
-        "framework",
         "AXIOMS.md",
-        "CONNECTORS.md",
+        "BUTLER.md",
         "CONSTRAINTS.md",
-        "GLOSSARY.md",
+        "CORE.md",
         "HEURISTICS.md",
         "INDEX.md",
-        "INSTALLATION.md",
-        "LIFECYCLE-HOOKS.md",
-        "REMINDERS.md",
         "RULES.md",
         "SCRIPTS.md",
         "SKILLS.md",
-        "TASK_FORMAT_GUIDE.md",
         "TAXONOMY.md",
         "TOOLS.md",
-        "WORKERS.md",
         "uv.lock",
     ]
 
@@ -834,16 +856,12 @@ def build_aops_core(
             else:
                 mcp_config = mcp_template
 
-            # Write back to source .mcp.json for Claude
-            # This ensures dev-mode Claude has a valid config
-            mcp_json_path = src_dir / ".mcp.json"
-            claude_mcp_config = mcp_template.get("claude", mcp_template)
-            with open(mcp_json_path, "w") as f:
-                json.dump(claude_mcp_config, f, indent=2)
-
-            # If Claude dist, copy .mcp.json
+            # Write .mcp.json to dist only
             if platform == "claude":
-                safe_copy(mcp_json_path, dist_dir / ".mcp.json")
+                claude_mcp_config = mcp_template.get("claude", mcp_template)
+                dist_mcp_path = dist_dir / ".mcp.json"
+                with open(dist_mcp_path, "w") as f:
+                    json.dump(claude_mcp_config, f, indent=2)
 
             # Prepare for Gemini Extension
             if platform == "gemini":

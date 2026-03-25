@@ -120,6 +120,66 @@ def test_crew_spawns_docker_container_gemini(temp_polecat_home, tmp_path):
 
 @pytest.mark.slow
 @pytest.mark.integration
+def test_crew_gemini_mounts_aca_data_when_exists(temp_polecat_home, tmp_path):
+    """
+    Gemini crew: when ACA_DATA exists on host, it is mounted via SANDBOX_MOUNTS
+    AND forwarded as an env var via SANDBOX_FLAGS.
+    """
+    brain_dir = tmp_path / "brain"
+    brain_dir.mkdir()
+
+    env = os.environ.copy()
+    env["POLECAT_HOME"] = str(temp_polecat_home)
+    env["PYTHONPATH"] = os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
+    env["ACA_DATA"] = str(brain_dir)
+
+    repo = tmp_path / "dummy_repo"
+    repo.mkdir()
+    subprocess.run(["git", "init"], cwd=repo, check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.email", "test@test"], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.name", "Test"], check=True)
+    subprocess.run(["git", "commit", "--allow-empty", "-m", "init"], cwd=repo, check=True)
+
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    fake_gemini = fake_bin / "gemini"
+    fake_gemini.write_text("#!/bin/sh\nprintenv\necho 'ARGS:' $@\n")
+    fake_gemini.chmod(0o755)
+
+    env["PATH"] = f"{fake_bin}:{env.get('PATH', '')}"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "polecat.cli",
+            "--home",
+            str(temp_polecat_home),
+            "crew",
+            "repo",
+            str(repo),
+            "-n",
+            "gemini-worker",
+            "-g",
+        ],
+        env=env,
+        capture_output=True,
+        text=True,
+        cwd=os.getcwd() + "/polecat",
+    )
+
+    output = result.stdout + result.stderr
+    brain = str(brain_dir)
+    assert f"ACA_DATA={brain}" in output, (
+        f"ACA_DATA should be forwarded via SANDBOX_FLAGS. Output:\n{output}"
+    )
+    assert f"{brain}:{brain}:rw" in output, (
+        f"ACA_DATA should be mounted via SANDBOX_MOUNTS. Output:\n{output}"
+    )
+
+
+@pytest.mark.slow
+@pytest.mark.integration
 def test_gemini_crew_git_credentials_are_file_based(temp_polecat_home, tmp_path):
     """
     Regression test: Gemini crew must set up file-based git/gh credentials.
@@ -222,7 +282,8 @@ def test_gemini_crew_git_credentials_are_file_based(temp_polecat_home, tmp_path)
         return out.split(begin, 1)[1].split(end, 1)[0].strip()
 
     # Verify .gitconfig has token embedded (not ${GH_TOKEN})
-    gitconfig_content = extract_mount_content(output, "/home/worker/.gitconfig")
+    # Use Path.home() to build the absolute destination path dynamically
+    gitconfig_content = extract_mount_content(output, str(Path.home() / ".gitconfig"))
     assert gitconfig_content, f".gitconfig mount content not found in output:\n{output}"
     assert "test-token-abc123" in gitconfig_content, (
         "Token must be embedded directly in .gitconfig (not via ${GH_TOKEN}). "
@@ -233,7 +294,7 @@ def test_gemini_crew_git_credentials_are_file_based(temp_polecat_home, tmp_path)
     )
 
     # Verify gh hosts.yml has token embedded
-    # Use home-relative path matching since home dir varies
+    # Use Path.home() to build the absolute destination path dynamically
     gh_hosts_content = extract_mount_content(
         output, str(Path.home() / ".config" / "gh" / "hosts.yml")
     )

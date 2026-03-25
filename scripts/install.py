@@ -76,6 +76,8 @@ def install_cron_jobs(aops_path: Path, aca_data_path: str):
             continue
         if "# aOps quick sync" in line or "# aOps full maintenance" in line:
             continue
+        if "# pkb quick sync" in line or "# pkb full maintenance" in line:
+            continue
         if "scripts/repo-sync-cron.sh" in line:
             continue
         if "# aOps refinery" in line or "scripts/refinery.py" in line:
@@ -91,11 +93,11 @@ def install_cron_jobs(aops_path: Path, aca_data_path: str):
         path_prefix = f"PATH={uv_dir}:$PATH "
         print(f"  uv found at: {uv_bin}")
 
-    new_crontab_lines.append("# aOps quick sync (brain + transcripts)")
+    new_crontab_lines.append("# pkb quick sync (brain + transcripts)")
     quick_sync_cmd = f"*/5 * * * * {path_prefix}{aops_path}/scripts/repo-sync-cron.sh --quick >> /tmp/repo-sync-quick.log 2>&1"
     new_crontab_lines.append(quick_sync_cmd)
 
-    new_crontab_lines.append("# aOps full maintenance (viz + sessions)")
+    new_crontab_lines.append("# pkb full maintenance (viz + sessions)")
     full_sync_cmd = f"0 * * * * {path_prefix}{aops_path}/scripts/repo-sync-cron.sh >> /tmp/repo-sync-cron.log 2>&1"
     new_crontab_lines.append(full_sync_cmd)
 
@@ -221,6 +223,11 @@ def main():
     if src_gemini_md.exists():
         shutil.copy2(src_gemini_md, gemini_dir / "GEMINI.md")
         print("✓ Copied GEMINI.md to ~/.gemini/GEMINI.md")
+
+    src_core_md = aops_root / "aops-core" / "CORE.md"
+    if src_core_md.exists():
+        shutil.copy2(src_core_md, gemini_dir / "CORE.md")
+        print("✓ Copied CORE.md to ~/.gemini/CORE.md")
 
     ag_dir = gemini_dir / "antigravity"
     ag_dir.mkdir(parents=True, exist_ok=True)

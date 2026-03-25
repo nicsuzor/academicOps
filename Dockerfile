@@ -33,13 +33,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian bookworm stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null \
     && apt-get update \
     && apt-get install -y gh docker-ce-cli \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+    ripgrep fd-find bat jq less tree \
+    && apt-get clean && rm -rf /var/lib/apt/lists/* \
+    && ln -s /usr/bin/fdfind /usr/local/bin/fd \
+    && ln -s /usr/bin/batcat /usr/local/bin/bat
 
 # Install uv system-wide (standard for aops framework per P#93)
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Install Gemini CLI, Claude Code, and code quality tools globally
-RUN npm install -g @google/gemini-cli @anthropic-ai/claude-code markdownlint-cli2 dprint && npm cache clean --force
+RUN npm install -g @google/gemini-cli @anthropic-ai/claude-code markdownlint-cli2 dprint ccstatusline && npm cache clean --force
 
 # Install aops and pkb binaries from authoritative releases
 RUN TMPDIR=$(mktemp -d) \
@@ -65,7 +68,10 @@ USER worker
 
 # Now set HOME and PATH for the worker user
 ENV HOME=/home/worker \
-    PATH="/home/worker/.local/bin:$PATH"
+    PATH="/home/worker/.local/bin:/home/worker/.cargo/bin:$PATH"
+
+# Install Rust toolchain via rustup
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal
 
 # Install Python-based CLI tools as user (installs to ~/.local/bin)
 RUN uv tool install ruff
@@ -102,11 +108,17 @@ RUN claude plugin marketplace add /app \
 RUN mkdir -p /home/worker/.gemini \
     && GEMINI_API_KEY=dummy-for-install gemini extensions install /app/dist/aops-gemini --consent
 
-# Make home dir and plugin dirs writable for any UID — polecat crew runs
-# containers as the host UID (non-root), which may differ from the worker
-# UID created above. Open permissions because the host UID varies per machine.
+# Install default ccstatusline and Claude Code settings.
+# These defaults are overridden at runtime if the host stages replacements.
+COPY --chown=worker:worker polecat/defaults/ccstatusline-settings.json /home/worker/.config/ccstatusline/settings.json
+COPY --chown=worker:worker polecat/defaults/claude-settings.json /home/worker/.claude/settings.json
+
+# Make home dir and .claude writable for any UID — polecat crew runs containers
+# as the host UID (non-root), which may differ from worker UID 1000.
+# Remove .claude.json so the entrypoint can populate it from staging with correct ownership.
 RUN chmod 777 /home/worker \
-    && chmod -R a+w /home/worker/.claude/plugins/ 2>/dev/null || true
+    && (chmod -R 777 /home/worker/.claude/ 2>/dev/null || true) \
+    && rm -f /home/worker/.claude.json
 
 # Default command and entrypoint
 ENTRYPOINT ["/app/polecat/entrypoint.sh"]

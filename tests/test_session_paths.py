@@ -110,6 +110,7 @@ class TestSessionPaths(unittest.TestCase):
         result = session_paths._is_gemini_session(None, None)
         self.assertTrue(result)
 
+    @patch.dict(os.environ, {}, clear=True)
     def test_is_gemini_session_claude(self):
         """_is_gemini_session returns False for Claude sessions."""
         result = session_paths._is_gemini_session(
@@ -179,7 +180,7 @@ class TestSessionPaths(unittest.TestCase):
             ):
                 try:
                     gate_path = session_paths.get_gate_file_path(
-                        "hydration",
+                        "custodiet",
                         "07328230-44d4-414b-9fec-191a6eec0948",
                         {},  # No transcript_path - simulating polecat worker
                     )
@@ -190,7 +191,7 @@ class TestSessionPaths(unittest.TestCase):
 
                 self.assertIsNotNone(gate_path, "get_gate_file_path should return a path")
                 self.assertIsInstance(gate_path, Path, "Expected Path object")
-                self.assertIn("hydration", str(gate_path), "Gate name should appear in path")
+                self.assertIn("custodiet", str(gate_path), "Gate name should appear in path")
                 self.assertIn(".gemini", str(gate_path), "Path should be in Gemini directory")
 
     def test_get_gate_file_path_claude(self):
@@ -203,17 +204,16 @@ class TestSessionPaths(unittest.TestCase):
                 with patch("lib.session_paths.get_claude_project_folder", return_value="-project"):
                     # Clear env vars that leak from live sessions
                     with patch.dict(os.environ, {}, clear=False):
-                        os.environ.pop("AOPS_GATE_FILE_HYDRATION", None)
                         os.environ.pop("AOPS_GATE_FILE_CUSTODIET", None)
                         os.environ.pop("AOPS_SESSIONS", None)
                         os.environ.pop("GEMINI_SESSION_ID", None)
                         os.environ.pop("AOPS_SESSION_STATE_DIR", None)
                         gate_path = session_paths.get_gate_file_path(
-                            "hydration", "07328230-44d4-414b-9fec-191a6eec0948", date="2026-01-24"
+                            "custodiet", "07328230-44d4-414b-9fec-191a6eec0948", date="2026-01-24"
                         )
 
                         self.assertIn(".claude/projects/-project", str(gate_path))
-                        self.assertIn("20260124-07328230-hydration.md", str(gate_path))
+                        self.assertIn("20260124-07328230-custodiet.md", str(gate_path))
 
     def test_get_gate_file_path_gemini_prefix(self):
         """get_gate_file_path returns a valid path for Gemini sessions via prefix."""
@@ -232,17 +232,16 @@ class TestSessionPaths(unittest.TestCase):
                 patch.object(Path, "home", return_value=Path(tmpdir)),
                 patch.dict(os.environ, env_overrides, clear=False),
             ):
-                os.environ.pop("AOPS_GATE_FILE_HYDRATION", None)
                 os.environ.pop("AOPS_GATE_FILE_CUSTODIET", None)
                 os.environ.pop("AOPS_SESSIONS", None)
                 gate_path = session_paths.get_gate_file_path(
-                    "hydration", "gemini-2026-01-24-abc12345", date="2026-01-24"
+                    "custodiet", "gemini-2026-01-24-abc12345", date="2026-01-24"
                 )
 
                 self.assertIn(".gemini/tmp", str(gate_path))
                 # gemini-20... doesn't match alphanumeric prefix, so it uses hash fallback for short hash
                 expected_hash = hashlib.sha256(b"gemini-2026-01-24-abc12345").hexdigest()[:8]
-                self.assertIn(f"20260124-{expected_hash}-hydration.md", str(gate_path))
+                self.assertIn(f"20260124-{expected_hash}-custodiet.md", str(gate_path))
 
     def test_get_gate_file_path_gemini_polecat(self):
         """get_gate_file_path returns a valid path for Gemini sessions (polecat style - UUID ID)."""
@@ -256,15 +255,14 @@ class TestSessionPaths(unittest.TestCase):
                 patch.object(Path, "home", return_value=Path(tmpdir)),
                 patch.dict(os.environ, {"AOPS_SESSION_STATE_DIR": str(state_dir)}, clear=False),
             ):
-                os.environ.pop("AOPS_GATE_FILE_HYDRATION", None)
                 os.environ.pop("AOPS_GATE_FILE_CUSTODIET", None)
                 os.environ.pop("AOPS_SESSIONS", None)
                 gate_path = session_paths.get_gate_file_path(
-                    "hydration", "07328230-44d4-414b-9fec-191a6eec0948", date="2026-01-24"
+                    "custodiet", "07328230-44d4-414b-9fec-191a6eec0948", date="2026-01-24"
                 )
 
                 self.assertIn(".gemini/tmp/abc123hash", str(gate_path))
-                self.assertIn("logs/20260124-07328230-hydration.md", str(gate_path))
+                self.assertIn("logs/20260124-07328230-custodiet.md", str(gate_path))
 
 
 if __name__ == "__main__":

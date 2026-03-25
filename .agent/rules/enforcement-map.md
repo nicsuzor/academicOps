@@ -23,6 +23,7 @@ tags: [framework, enforcement, moc]
 | [[do-one-thing]]                            | Do One Thing                     | TodoWrite visibility, custodiet drift detection, verbatim prompt comparison                  | During execution          |        |
 | [[data-boundaries]]                         | Data Boundaries                  | settings.json deny rules                                                                     | PreToolUse                |        |
 | [[project-independence]]                    | Project Independence             | AXIOMS.md                                                                                    | SessionStart              |        |
+| [[project-independence]]                    | Cross-Repository Safety          | `.agent/CORE.md` context injection — prohibits edits outside current git repo                | SessionStart              |        |
 | [[fail-fast-code]]                          | Fail-Fast (Code)                 | policy_enforcer.py blocks destructive git                                                    | PreToolUse                |        |
 | [[fail-fast-code]]                          | Fail-Fast (Code) - No Fallbacks  | check_no_fallbacks.py AST visitor detects `.get(..., "")`, `.get(..., [])`, `or ""` patterns | Pre-commit (active)       |        |
 | [[fail-fast-agents]]                        | Fail-Fast (Agents)               | fail_fast_watchdog.py injects reminder                                                       | PostToolUse               |        |
@@ -199,19 +200,6 @@ These guardrails are applied by [[prompt-hydration]] based on task classificatio
 | `hook_docs_first`        | [[verify-first]]                                                                                     | Modifying hook output fields without reading hooks.md       |
 | `surface_observations`   | [[surface-observations-not-interpretations]] (P#117)                                                 | Encoding interpretations of unexpected behavior as doctrine |
 
-### Hydration Gate Scope — Design Decision (2026-03-17)
-
-**Decision**: Task management operations (TaskCreate, TaskUpdate) are correctly included in the hydration gate scope.
-
-This is a documented design choice, not a misconfiguration. Rationale:
-
-- Task creation is agentic state mutation, not a passive read. Creating a task without context produces orphan entries.
-- The gate is once-per-session: invoking `/hydrator` once unblocks subsequent task operations for the session.
-- Circularity is avoided in practice: the hydrator binds to existing tasks; it rarely creates new ones.
-- The friction is intentional — it ensures agents contextualize before writing to the task graph.
-
-If you observe this gate firing and think it's wrong: surface the observation (P#117), don't interpret it as a misconfiguration.
-
 ### Task Type → Guardrail Mapping
 
 | Task Type   | Guardrails Applied                                                                                                                        |
@@ -328,19 +316,6 @@ Session end is blocked until requirements are met. Two-phase validation ensures 
 5. If found and parseable: session ends
 6. If not found: blocks with format instructions, agent retries
 
-### Uncommitted Work Check
-
-**Enforcement**: `session_end_commit_check.py` Stop hook (legacy) + `commit` gate (Stop/SessionEnd events).
-
-The `commit` gate (`lib/gates/definitions.py`) enforces two policies on session exit:
-
-- **Block** (`COMMIT_GATE_MODE`, default required): fires `has_uncommitted_work` custom check — blocks Stop/SessionEnd if uncommitted changes exist.
-- **Warn**: fires `needs_commit_reminder` custom check — warns if unpushed commits exist on the branch.
-
-Gate mode is configured via `COMMIT_GATE_MODE` environment variable (required, no default — fail-fast).
-
-`SessionEnd` events are routed to `gate.on_stop()` via `_call_gate_method` in `router.py` (used by Gemini agents). `SubagentStop` is excluded — subagent completion is not a session end and must not trigger commit enforcement.
-
 ## Commit-Time Validation (Pre-commit)
 
 | Category         | Hook                                      | Purpose                | Axiom                      |
@@ -359,9 +334,22 @@ Gate mode is configured via `COMMIT_GATE_MODE` environment variable (required, n
 | Workflow               | Purpose                                                      | Axiom                             |
 | ---------------------- | ------------------------------------------------------------ | --------------------------------- |
 | agent-axiom-review.yml | Axiom/heuristic compliance; `CHANGES_REQUESTED` blocks merge | All axioms/heuristics             |
+| agent-merge-prep.yml   | Agent fixes CI failures + review feedback before merge       | [[verify-first]]                  |
 | test-setup.yml         | Validate symlinks exist and are relative                     | [[fail-fast-code]]                |
 | framework-health.yml   | Framework health metrics and enforcement                     | [[maintain-relational-integrity]] |
 | claude.yml             | Claude Code bot integration                                  | -                                 |
+
+### Merge-Prep Agent CI Enforcement
+
+The merge-prep agent (`.github/agents/merge-prep.agent.md`) is instructed to:
+
+1. **Check CI status first** (step 2) — `gh pr checks` before reading reviews
+2. **Treat CI failures as primary concern** — reviews are secondary if CI is red
+3. **Discover repo-specific checks** — reads `.github/workflows/` to find exact commands; no hardcoded tool assumptions
+4. **Mandatory local validation** (step 5) — must run checks locally and pass before committing
+5. **Block on failure** — if checks cannot pass, agent must NOT approve or set success status
+
+**Enforcement level**: Prompt (agent instructions). No mechanical gate — the agent can still skip validation. Workflow-level CI gate enforcement is tracked in GH #166.
 
 ## Agent Tool Permissions
 
@@ -424,19 +412,19 @@ Context injected via CORE.md at SessionStart. Guides where agents place files.
 
 ## Source Files
 
-| Mechanism        | Authoritative Source                                                                      |
-| ---------------- | ----------------------------------------------------------------------------------------- |
-| Deny rules       | `$AOPS/config/claude/settings.json` → `permissions.deny`                                  |
-| Agent tools      | `$AOPS/aops-core/agents/*.md` → `tools:` frontmatter                                      |
-| PreToolUse       | `$AOPS/aops-core/hooks/hydration_gate.py`, `policy_enforcer.py`                           |
-| PostToolUse      | `$AOPS/aops-core/hooks/fail_fast_watchdog.py`, `autocommit_state.py`, `custodiet_gate.py` |
-| SubagentStop     | `$AOPS/aops-core/hooks/unified_logger.py` (sets `critic_invoked` flag)                    |
-| UserPromptSubmit | `$AOPS/aops-core/hooks/user_prompt_submit.py`                                             |
-| SessionStart     | `$AOPS/aops-core/hooks/sessionstart_load_axioms.py`                                       |
-| Stop             |                                                                                           |
-| Pre-commit       | `~/writing/.pre-commit-config.yaml`                                                       |
-| CI/CD            | `$AOPS/.github/workflows/`                                                                |
-| Remember skill   | `$AOPS/aops-core/skills/remember/SKILL.md`                                                |
-| Memory sync      | `$AOPS/aops-core/skills/remember/procedures/sync.md`                                      |
-| Session insights | `$AOPS/aops-core/skills/session-insights/SKILL.md`                                        |
-| Session state    | `$AOPS/aops-core/lib/session_state.py` (gate flags: critic_invoked, todo_with_handover)   |
+| Mechanism        | Authoritative Source                                                                       |
+| ---------------- | ------------------------------------------------------------------------------------------ |
+| Deny rules       | `$AOPS/config/claude/settings.json` → `permissions.deny`                                   |
+| Agent tools      | `$AOPS/aops-core/agents/*.md` → `tools:` frontmatter                                       |
+| PreToolUse       | `$AOPS/aops-core/hooks/router.py` (custodiet, subagent_restrictions), `policy_enforcer.py` |
+| PostToolUse      | `$AOPS/aops-core/hooks/fail_fast_watchdog.py`, `autocommit_state.py`, `custodiet_gate.py`  |
+| SubagentStop     | `$AOPS/aops-core/hooks/unified_logger.py` (sets `critic_invoked` flag)                     |
+| UserPromptSubmit | `$AOPS/aops-core/hooks/user_prompt_submit.py`                                              |
+| SessionStart     | `$AOPS/aops-core/hooks/sessionstart_load_axioms.py`                                        |
+| Stop             |                                                                                            |
+| Pre-commit       | `~/writing/.pre-commit-config.yaml`                                                        |
+| CI/CD            | `$AOPS/.github/workflows/`                                                                 |
+| Remember skill   | `$AOPS/aops-core/skills/remember/SKILL.md`                                                 |
+| Memory sync      | `$AOPS/aops-core/skills/remember/procedures/sync.md`                                       |
+| Session insights | `$AOPS/aops-core/skills/session-insights/SKILL.md`                                         |
+| Session state    | `$AOPS/aops-core/lib/session_state.py` (gate flags: critic_invoked, todo_with_handover)    |

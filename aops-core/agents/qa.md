@@ -6,6 +6,14 @@ color: green
 tools:
   - read_file
   - run_shell_command
+  - browser_navigate
+  - browser_snapshot
+  - browser_take_screenshot
+  - browser_click
+  - browser_wait_for
+  - browser_evaluate
+  - browser_type
+  - browser_resize
 ---
 
 # QA Agent
@@ -67,7 +75,7 @@ Output your assessment starting with one of these keywords:
 Task(subagent_type="qa", model="opus", prompt="
 Verify the work is complete.
 
-**Original request**: [hydrated prompt]
+**Original request**:
 
 **Acceptance criteria**:
 1. [criterion 1]

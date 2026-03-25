@@ -42,11 +42,9 @@ def _reinit_gates():
 
 @pytest.fixture(autouse=True)
 def _pin_gate_modes(monkeypatch):
-    monkeypatch.setenv("HYDRATION_GATE_MODE", "block")
     monkeypatch.setenv("CUSTODIET_GATE_MODE", "block")
     monkeypatch.setenv("QA_GATE_MODE", "block")
     monkeypatch.setenv("HANDOVER_GATE_MODE", "block")
-    monkeypatch.setenv("COMMIT_GATE_MODE", "deny")
     monkeypatch.setenv("CUSTODIET_TOOL_CALL_THRESHOLD", "50")
     _reinit_gates()
     yield
@@ -204,97 +202,13 @@ class TestStopBlockHasContextInjection:
             f"context_injection={result.context_injection!r}"
         )
 
-    def test_commit_stop_block_has_context(self, router, monkeypatch):
-        """Commit gate blocking Stop must include context_injection."""
-        state = SessionState.create("test-stop-ctx")
-        # Open handover so only commit fires
-        state.gates["handover"].status = GateStatus.OPEN
-
-        # Mock has_uncommitted_work to return True
-        monkeypatch.setattr(
-            "lib.gates.custom_conditions.check_custom_condition",
-            lambda name, ctx, state, ss: name == "has_uncommitted_work",
-        )
-
-        ctx = HookContext(
-            session_id="test-stop-ctx",
-            hook_event="Stop",
-            tool_name=None,
-            tool_input={},
-        )
-
-        result = router._dispatch_gates(ctx, state)
-
-        assert result is not None, "Commit gate should block Stop with uncommitted work"
-        assert result.verdict != GateVerdict.ALLOW
-        assert result.context_injection and len(result.context_injection) > 0, (
-            f"Commit stop block has no context_injection. "
-            f"Agent sees 'Blocked by hook' with no guidance on what to commit. "
-            f"verdict={result.verdict.value}, "
-            f"context_injection={result.context_injection!r}"
-        )
-
-    def test_commit_stop_warn_has_context(self, router, monkeypatch):
-        """Commit gate warning Stop (unpushed commits) must include context_injection."""
-        state = SessionState.create("test-stop-ctx")
-        # Open handover so only commit fires
-        state.gates["handover"].status = GateStatus.OPEN
-
-        # Mock needs_commit_reminder to return True, has_uncommitted_work to False
-        monkeypatch.setattr(
-            "lib.gates.custom_conditions.check_custom_condition",
-            lambda name, ctx, state, ss: name == "needs_commit_reminder",
-        )
-
-        ctx = HookContext(
-            session_id="test-stop-ctx",
-            hook_event="Stop",
-            tool_name=None,
-            tool_input={},
-        )
-
-        result = router._dispatch_gates(ctx, state)
-
-        assert result is not None, "Commit gate should warn Stop with unpushed commits"
-        assert result.verdict == GateVerdict.WARN
-        assert result.context_injection and len(result.context_injection) > 0, (
-            f"Commit stop warn has no context_injection. "
-            f"Agent sees 'Blocked by hook' with no guidance on what to push. "
-            f"verdict={result.verdict.value}, "
-            f"context_injection={result.context_injection!r}"
-        )
-
 
 class TestPreToolUseBlockHasContextInjection:
     """PreToolUse blocks must always produce non-empty context_injection."""
 
-    def test_hydration_block_has_context(self, router):
-        """Hydration gate blocking a write tool must include context_injection."""
-        state = SessionState.create("test-ptu-ctx")
-        state.gates["hydration"].status = GateStatus.CLOSED
-        state.gates["hydration"].metrics["temp_path"] = "/tmp/hydration.md"
-
-        ctx = HookContext(
-            session_id="test-ptu-ctx",
-            hook_event="PreToolUse",
-            tool_name="Edit",
-            tool_input={"file_path": "/f.py", "old_string": "a", "new_string": "b"},
-        )
-
-        result = router._dispatch_gates(ctx, state)
-
-        assert result is not None
-        assert result.verdict != GateVerdict.ALLOW
-        assert result.context_injection and len(result.context_injection) > 0, (
-            f"Hydration block has no context_injection. "
-            f"verdict={result.verdict.value}, "
-            f"context_injection={result.context_injection!r}"
-        )
-
     def test_custodiet_block_has_context(self, router):
         """Custodiet gate blocking at threshold must include context_injection."""
         state = SessionState.create("test-ptu-ctx")
-        state.gates["hydration"].status = GateStatus.OPEN
         state.gates["custodiet"].ops_since_open = 75
 
         ctx = HookContext(

@@ -34,5 +34,24 @@ fi
 export SSH_AUTH_SOCK=""
 export GIT_TERMINAL_PROMPT=0
 
+# Copy staged auth files into $HOME (avoids overlayfs file-mount bug on macOS
+# where chmod 777 on $HOME causes runc to treat file mounts as directories).
+# Copy staged files, overwriting image defaults. Use --no-preserve to avoid
+# permission errors when running as a different UID than the image's worker user.
+#
+# NOTE: Uses process substitution (< <(find ...)) instead of a pipe so the
+# while loop runs in the current shell. A piped `| while` runs in a subshell,
+# where `exit 1` only exits the subshell — the script would continue silently.
+if [ -d /tmp/staging ]; then
+    while read -r src; do
+        dest="$HOME/${src#/tmp/staging/}"
+        mkdir -p "$(dirname "$dest")"
+        if ! cp --no-preserve=mode,ownership "$src" "$dest"; then
+            echo "Error: failed to copy staged file '$src' to '$dest'" >&2
+            exit 1
+        fi
+    done < <(find /tmp/staging -type f)
+fi
+
 # Execute the agent command (e.g., claude, gemini, bash).
 exec "$@"

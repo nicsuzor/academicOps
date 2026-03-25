@@ -17,7 +17,7 @@ academicOps/
 +-- .agent/           # Agent instructions, commands, skills, rules
 |   +-- rules/        # AXIOMS.md, HEURISTICS.md, protected_paths
 |   +-- commands/     # Slash commands (learn, email, aops, q, bump, pull, dump, path)
-|   +-- skills/       # 17 agent-facing skills (see Skills System below)
+|   +-- skills/       # 7 agent-facing skills (see Skills System below)
 |   +-- workflows/    # Workflow definitions
 +-- .github/
 |   +-- agents/       # 5 agent prompts (axiom-review, review-and-fix, merge-prep, worker, summary-brief)
@@ -25,10 +25,10 @@ academicOps/
 +-- aops-core/        # Framework core (installed as plugin)
 |   +-- hooks/        # Session hooks (router, policy_enforcer, gate_config, etc.)
 |   +-- lib/          # Shared libraries (gates, hydration, sessions, tasks, etc.)
-|   +-- skills/       # 28 skill definitions with SKILL.md frontmatter (canonical source)
+|   +-- skills/       # 7 skill definitions with SKILL.md frontmatter (canonical source)
 |   +-- mcp_servers/  # MCP server stubs (legacy; task/PKB ops now handled by Rust PKB server)
 |   +-- scripts/      # Utility scripts
-|   +-- SKILLS.md     # Canonical skills index (36 entries: 8 commands + 28 skills)
+|   +-- SKILLS.md     # Canonical skills index (25 entries: 8 commands + 17 skills)
 |   +-- GLOSSARY.md   # Framework terminology for hydrator context
 |   +-- WORKFLOWS.md  # Workflow decision tree and routing
 +-- scripts/          # Build, sync, visualization, and maintenance scripts
@@ -162,28 +162,22 @@ Task management has migrated from the Python task model (`aops-core/lib/task_mod
 
 Skills exist in two locations with different roles:
 
-1. **`.agent/skills/`** (17 skills): Agent-facing skill definitions loaded by Claude Code's native skill system. These are the skills that appear when Claude Code lists available skills.
-2. **`aops-core/skills/`** (28 skill definitions): Canonical skill definitions with `SKILL.md` frontmatter (triggers, domain, mode, allowed-tools). These are loaded by the hydration system via `SKILLS.md` for routing.
+1. **`.agent/skills/`** (7 skills): Agent-facing skill definitions loaded by Claude Code's native skill system. These are the skills that appear when Claude Code lists available skills.
+2. **`aops-core/skills/`** (7 skill definitions): Canonical skill definitions with `SKILL.md` frontmatter (triggers, domain, mode, allowed-tools). These are loaded by the hydration system via `SKILLS.md` for routing.
+3. **`aops-tools/skills/`** (7 skill definitions): Domain-specific tool skills (analyst, convert-to-md, excalidraw, extract, flowchart, pdf, research).
 
-The canonical index is `aops-core/SKILLS.md` with 36 entries (8 commands + 28 skills). Several skills in `aops-core/skills/` do not have corresponding entries in `.agent/skills/` (`assess-hydrator`, `briefing-bundle`, `convert-to-md`, `decision-apply`, `decision-extract`, `densify`, `email-triage`, `excalidraw`, `extract`, `flowchart`, `hdr`, `pdf`, `planning`, `process-bundle`, `strategy`, `swarm-supervisor`). Note: `effectual-planner` was retired as an agent and consolidated into `aops-core/skills/planning/` as a self-contained skill package (same pattern as `hydrator`).
+The canonical index is `aops-core/SKILLS.md` with 25 entries (8 commands + 17 skills). Skills are distributed across three locations: `aops-core/skills/` (framework core), `.agent/skills/` (project-local agent skills), and `aops-tools/skills/` (domain tools).
 
 **Skills by domain**:
 
-| Domain            | Skills                                                                               |
-| ----------------- | ------------------------------------------------------------------------------------ |
-| framework         | `audit`, `custodiet`, `framework`, `hydrator`                                        |
-| operations        | `daily`, `densify`, `garden`, `hypervisor`, `remember`, `session-insights`, `worker` |
-| academic          | `analyst`, `hdr`, `pdf`                                                              |
-| email             | `email-triage`                                                                       |
-| collaboration     | `annotations`, `critic`                                                              |
-| planning          | `planning`, `strategy`                                                               |
-| quality           | `qa`                                                                                 |
-| quality-assurance | `assess-hydrator`                                                                    |
-| development       | `python-dev`                                                                         |
-| design            | `excalidraw`, `flowchart`                                                            |
-| data processing   | `briefing-bundle`, `process-bundle`, `decision-extract`, `decision-apply`, `extract` |
-| document          | `convert-to-md`                                                                      |
-| multi-agent       | `swarm-supervisor`                                                                   |
+| Domain            | Skills                                                       |
+| ----------------- | ------------------------------------------------------------ |
+| framework         | `butler`, `critic`, `enforcer`                               |
+| operations        | `daily`, `planner`, `remember`, `sleep`, `worker`            |
+| academic          | `analyst`, `research`                                        |
+| quality-assurance | `qa`                                                         |
+| tools             | `convert-to-md`, `excalidraw`, `extract`, `flowchart`, `pdf` |
+| multi-agent       | `swarm-supervisor`                                           |
 
 ### Specs System -- WORKING
 
@@ -270,7 +264,7 @@ Gemini CLI extension installed at `~/.gemini/extensions/aops-core/`. Missing 7 o
 4. **Autonomous automation readiness**: Most workflows are at "supervised" maturity. No workflows have been validated for fully autonomous operation yet.
 5. **STATUS.md as bot input**: Bots (axiom-review, review-and-fix) read this document as authoritative context. Stale information here causes false positives in reviews. This document MUST be kept accurate.
 6. **Hydrator acceptance test harness gap**: The hydrator subagent cannot be tested in isolation because the test harness does not construct the input file that `builder.py` normally provides during session hooks. Both v1.1 and v0.3 acceptance tests are blocked on this.
-7. **Skills duplication across locations**: 17 skills in `.agent/skills/` and 28 in `aops-core/skills/` with incomplete overlap. The relationship between these two locations needs clarification -- which is authoritative, and should the `.agent/skills/` set be generated from `aops-core/skills/`?
+7. **Skills duplication across locations**: 7 skills in `.agent/skills/`, 7 in `aops-core/skills/`, and 7 in `aops-tools/skills/` with some overlap (daily, qa, remember, analyst appear in multiple locations). The relationship between these locations needs clarification -- which is authoritative, and should the `.agent/skills/` set be generated from `aops-core/skills/`?
 8. **Knowledge diffusion**: Butler specialist knowledge (in MEMORY.md, butler system prompt) is not systematically transferred to framework-accessible locations (GLOSSARY.md, context_loaders, specs). See strategic analysis in this session's conversation.
 
 ## Roadmap

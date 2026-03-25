@@ -2,7 +2,7 @@
 """Aggregate per-session insights into synthesis.json for the dashboard.
 
 Reads today's session summary files from $AOPS_SESSIONS/summaries/
-and produces $ACA_DATA/dashboard/synthesis.json — a pure aggregation
+and produces $AOPS_SESSIONS/synthesis.json — a pure aggregation
 with no LLM calls.
 
 Token metrics are NOT included here; the dashboard aggregates those
@@ -16,13 +16,13 @@ import os
 import sys
 import tempfile
 from collections import Counter
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 
-from lib.paths import get_data_root, get_summaries_dir  # noqa: E402
+from lib.paths import get_summaries_dir  # noqa: E402
 
 
 def load_today_sessions(summaries_dir: Path, date_prefix: str) -> list[dict]:
@@ -117,6 +117,13 @@ def synthesize(sessions: list[dict], today: str) -> dict:
             "session_id": s.get("session_id", ""),
             "project": s.get("project", "unknown"),
             "summary": s.get("summary"),
+            "outcome": s.get("outcome"),
+            "date": s.get("date"),
+            "accomplishments": s.get("accomplishments", []),
+            "duration_minutes": (s.get("token_metrics") or {})
+            .get("efficiency", {})
+            .get("session_duration_minutes"),
+            "user_prompts": s.get("user_prompts", []),
         }
         for s in sessions[-5:]
     ]
@@ -239,18 +246,37 @@ def synthesize(sessions: list[dict], today: str) -> dict:
     }
 
 
+def load_recent_sessions(summaries_dir: Path, days: int = 6) -> list[dict]:
+    """Load session summary JSONs from the last N days."""
+    sessions = []
+    prefixes = []
+    for i in range(days):
+        d = datetime.now() - timedelta(days=i)
+        prefixes.append(d.strftime("%Y%m%d"))
+
+    for f in sorted(summaries_dir.glob("*.json")):
+        if any(f.name.startswith(p) for p in prefixes):
+            try:
+                with open(f) as fh:
+                    data = json.load(fh)
+                    data["_filename"] = f.name
+                    sessions.append(data)
+            except (json.JSONDecodeError, OSError) as e:
+                print(f"Warning: skipping malformed file {f.name}: {e}", file=sys.stderr)
+    return sessions
+
+
 def main() -> None:
     today = datetime.now().strftime("%Y%m%d")
 
     summaries_dir = get_summaries_dir()
-    sessions = load_today_sessions(summaries_dir, today)
-    print(f"Found {len(sessions)} session file(s) for {today}", file=sys.stderr)
+    sessions = load_recent_sessions(summaries_dir, days=6)
+    print(f"Found {len(sessions)} session file(s) for last 6 days", file=sys.stderr)
 
     synthesis = synthesize(sessions, today)
 
-    # Write atomically
-    out_dir = get_data_root() / "dashboard"
-    out_dir.mkdir(parents=True, exist_ok=True)
+    # Write atomically to $AOPS_SESSIONS/synthesis.json
+    out_dir = summaries_dir.parent  # $AOPS_SESSIONS
     out_path = out_dir / "synthesis.json"
 
     fd, tmp_path = tempfile.mkstemp(dir=out_dir, suffix=".tmp")

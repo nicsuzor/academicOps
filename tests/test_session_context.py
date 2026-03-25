@@ -111,16 +111,12 @@ class TestSessionContextDataclass:
 class TestExtractContextFromSessionState:
     """Tests for extract_context_from_session_state()."""
 
-    def test_extracts_from_hydration(self):
-        """Extracts initial prompt from hydration.original_prompt."""
+    def test_extracts_from_insights(self):
+        """Extracts project from insights."""
         state = {
             "session_id": "abc-123",
             "started_at": "2026-02-03T10:00:00Z",
-            "hydration": {
-                "original_prompt": "Help me write tests",
-                "hydrated_intent": "Write unit tests for session_context.py",
-            },
-            "main_agent": {},
+            "main_agent": {"last_prompt": "Help me write tests"},
             "insights": {"project": "aops"},
         }
 
@@ -128,7 +124,6 @@ class TestExtractContextFromSessionState:
 
         assert ctx.session_id == "abc-123"
         assert ctx.initial_prompt == "Help me write tests"
-        assert "Write unit tests" in ctx.current_status
         assert ctx.project == "aops"
 
     def test_extracts_from_main_agent(self):
@@ -136,7 +131,6 @@ class TestExtractContextFromSessionState:
         state = {
             "session_id": "abc-123",
             "started_at": "2026-02-03T10:00:00Z",
-            "hydration": {},
             "main_agent": {
                 "current_task": "aops-12345",
                 "last_prompt": "Fix the failing test",

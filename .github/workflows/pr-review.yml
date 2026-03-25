@@ -1,0 +1,142 @@
+# Agent: PR Reviewer (aops-pr-bot)
+# Portable axiom-driven PR reviewer — installable on any repo.
+# Prompt: .github/agents/pr-reviewer.agent.md
+#
+# Install via: scripts/install-pr-reviewer.sh <target-repo-path>
+# Secrets required: CLAUDE_CODE_OAUTH_TOKEN, AOPS_BOT_GH_TOKEN
+
+name: "Agent: PR Review"
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to review (leave empty for all open PRs)'
+        type: string
+        required: false
+      ref:
+        description: 'Git ref to checkout (required if pr_number is set)'
+        type: string
+        required: false
+  workflow_call:
+    inputs:
+      pr_number:
+        description: 'PR number to review'
+        type: string
+        required: true
+      ref:
+        description: 'Git ref to checkout'
+        type: string
+        required: true
+
+jobs:
+  discover-prs:
+    name: Discover PRs
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.prs.outputs.matrix }}
+      count: ${{ steps.prs.outputs.count }}
+    steps:
+      - name: List open PRs or use input
+        id: prs
+        run: |
+          if [ -n "$INPUT_PR_NUMBER" ]; then
+            # Single PR specified — get its ref
+            if [ -n "$INPUT_REF" ]; then
+              REF="$INPUT_REF"
+            else
+              REF=$(gh pr view "$INPUT_PR_NUMBER" --repo "${{ github.repository }}" --json headRefName -q '.headRefName')
+            fi
+            MATRIX=$(jq -nc --arg pr "$INPUT_PR_NUMBER" --arg ref "$REF" '[{pr_number: $pr, ref: $ref}]')
+            echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+            echo "count=1" >> "$GITHUB_OUTPUT"
+          else
+            # No PR specified — find all open PRs
+            PRS=$(gh pr list --repo "${{ github.repository }}" --state open --json number,headRefName \
+              --jq '[.[] | {pr_number: (.number | tostring), ref: .headRefName}]')
+            COUNT=$(echo "$PRS" | jq 'length')
+            if [ "$COUNT" -eq 0 ]; then
+              echo "No open PRs found"
+              echo "matrix=[]" >> "$GITHUB_OUTPUT"
+              echo "count=0" >> "$GITHUB_OUTPUT"
+            else
+              echo "Found $COUNT open PRs"
+              echo "matrix=$PRS" >> "$GITHUB_OUTPUT"
+              echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+          INPUT_PR_NUMBER: ${{ inputs.pr_number }}
+          INPUT_REF: ${{ inputs.ref }}
+
+  review:
+    name: "Review PR #${{ matrix.item.pr_number }}"
+    needs: discover-prs
+    if: needs.discover-prs.outputs.count != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        item: ${{ fromJson(needs.discover-prs.outputs.matrix) }}
+      max-parallel: 2
+      fail-fast: false
+    concurrency:
+      group: pr-review-${{ matrix.item.pr_number }}
+      cancel-in-progress: true
+    permissions:
+      contents: write
+      pull-requests: write
+      statuses: write
+      id-token: write
+      issues: write
+      actions: read
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ matrix.item.ref }}
+          token: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+
+      - name: Loop detection
+        id: loop-check
+        run: |
+          LAST_MSG=$(git log -1 --format='%B')
+          if echo "$LAST_MSG" | grep -q 'Review-By: aops-pr-bot'; then
+            echo "Last commit was from pr-reviewer — skipping to avoid loop"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Read agent instructions
+        if: steps.loop-check.outputs.skip != 'true'
+        id: prompt
+        run: |
+          PROMPT=$(cat .github/agents/pr-reviewer.agent.md)
+          {
+            echo "prompt<<AGENT_EOF"
+            echo "$PROMPT"
+            echo "AGENT_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run PR Review
+        if: steps.loop-check.outputs.skip != 'true'
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        with:
+          allowed_bots: "claude[bot]"
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            ${{ steps.prompt.outputs.prompt }}
+
+            ---
+
+            Review PR #${{ matrix.item.pr_number }} in repository ${{ github.repository }}.
+            PR ref: ${{ matrix.item.ref }}
+
+            Set PR_NUMBER=${{ matrix.item.pr_number }} for use in your commands.
+          claude_args: '--model claude-sonnet-4-6 --allowed-tools "Bash,Edit,Read,Write,Glob,Grep"'
