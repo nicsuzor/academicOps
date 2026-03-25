@@ -88,12 +88,24 @@ def check_index_skills(plugin_root: Path) -> list[str]:
 
     # Build set of existing skills and commands
     skills_dir = plugin_root / "skills"
+    project_local_skills_dir = plugin_root.parent / ".agent" / "skills"
+    tools_skills_dir = plugin_root.parent / "aops-tools" / "skills"
     commands_dir = plugin_root / "commands"
 
     existing: set[str] = set()
     if skills_dir.exists():
         existing |= {
             d.name for d in skills_dir.iterdir() if d.is_dir() and (d / "SKILL.md").exists()
+        }
+    if project_local_skills_dir.exists():
+        existing |= {
+            d.name
+            for d in project_local_skills_dir.iterdir()
+            if d.is_dir() and (d / "SKILL.md").exists()
+        }
+    if tools_skills_dir.exists():
+        existing |= {
+            d.name for d in tools_skills_dir.iterdir() if d.is_dir() and (d / "SKILL.md").exists()
         }
     if commands_dir.exists():
         existing |= {f.stem for f in commands_dir.glob("*.md")}
