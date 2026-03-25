@@ -20,7 +20,8 @@ try:
     from lib.task_model import TaskStatus
     from lib.task_storage import TaskStorage
 except ImportError:
-    pass
+    TaskStatus = None
+    TaskStorage = None
 
 
 def get_polecat_home() -> Path:
@@ -229,7 +230,7 @@ class PolecatManager:
         self.project_aliases = load_project_aliases(self.config_path)
 
         # We still need access to the task DB
-        self.storage = TaskStorage()
+        self.storage = TaskStorage() if TaskStorage is not None else None
 
     def generate_crew_name(self) -> str:
         """Generate a random crew name, avoiding active crew names."""
