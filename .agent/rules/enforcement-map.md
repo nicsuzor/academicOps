@@ -23,6 +23,7 @@ tags: [framework, enforcement, moc]
 | [[do-one-thing]]                            | Do One Thing                     | TodoWrite visibility, custodiet drift detection, verbatim prompt comparison                  | During execution          |        |
 | [[data-boundaries]]                         | Data Boundaries                  | settings.json deny rules                                                                     | PreToolUse                |        |
 | [[project-independence]]                    | Project Independence             | AXIOMS.md                                                                                    | SessionStart              |        |
+| [[project-independence]]                    | Cross-Repository Safety          | `.agent/CORE.md` context injection — prohibits edits outside current git repo                | SessionStart              |        |
 | [[fail-fast-code]]                          | Fail-Fast (Code)                 | policy_enforcer.py blocks destructive git                                                    | PreToolUse                |        |
 | [[fail-fast-code]]                          | Fail-Fast (Code) - No Fallbacks  | check_no_fallbacks.py AST visitor detects `.get(..., "")`, `.get(..., [])`, `or ""` patterns | Pre-commit (active)       |        |
 | [[fail-fast-agents]]                        | Fail-Fast (Agents)               | fail_fast_watchdog.py injects reminder                                                       | PostToolUse               |        |
