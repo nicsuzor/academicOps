@@ -99,14 +99,14 @@ jobs:
         with:
           version: "latest"
 
-      # Self-loop detection
-      - name: Check if last push was from merge-prep
+      # Self-loop detection: skip if last commit was from autofix OR merge-prep
+      - name: Check if last push was from an agent
         if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]'
         id: loop-check
         run: |
           LAST_MSG=$(git log -1 --format='%B')
-          if echo "$LAST_MSG" | grep -q 'Merge-Prep-By:'; then
-            echo "Last commit was from merge-prep — skipping to avoid loop"
+          if echo "$LAST_MSG" | grep -qE '(Autofix-By|Merge-Prep-By):'; then
+            echo "Last commit was from an agent — skipping to avoid loop"
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"

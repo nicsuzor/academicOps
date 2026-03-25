@@ -9,6 +9,7 @@ import pytest
 
 @pytest.mark.slow
 @pytest.mark.integration
+@pytest.mark.xdist_group("gemini-docker")
 class TestDockerTooling:
     """Node.js and Rust are available in the Docker environment."""
 
