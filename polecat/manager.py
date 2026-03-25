@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 import yaml
 from observability import metrics
@@ -15,13 +16,17 @@ SCRIPT_DIR = Path(__file__).parent.resolve()
 REPO_ROOT = SCRIPT_DIR.parent
 sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 
-# These imports will fail here but work when moved to academicOps
+# lib.task_storage and lib.task_model are deprecated and removed.
+# Task management has migrated to the PKB MCP server (nicsuzor/mem).
+_TaskStatus: Any = None
+_TaskStorage: Any = None
 try:
-    from lib.task_model import TaskStatus
-    from lib.task_storage import TaskStorage
+    from lib.task_model import TaskStatus as _TaskStatus  # pyright: ignore[reportMissingImports]
+    from lib.task_storage import (  # pyright: ignore[reportMissingImports]
+        TaskStorage as _TaskStorage,
+    )
 except ImportError:
-    TaskStatus = None
-    TaskStorage = None
+    pass
 
 
 def get_polecat_home() -> Path:
@@ -229,8 +234,9 @@ class PolecatManager:
         # Load project aliases (shorthand -> slug mapping)
         self.project_aliases = load_project_aliases(self.config_path)
 
-        # We still need access to the task DB
-        self.storage = TaskStorage() if TaskStorage is not None else None
+        # We still need access to the task DB (deprecated — migrated to PKB MCP server)
+        self.storage: Any = _TaskStorage() if _TaskStorage is not None else None
+        self.task_status: Any = _TaskStatus
 
     def generate_crew_name(self) -> str:
         """Generate a random crew name, avoiding active crew names."""
@@ -945,7 +951,7 @@ class PolecatManager:
 
                     try:
                         fresh_task = self.storage.get_task(task.id)
-                        if fresh_task is None or fresh_task.status != TaskStatus.ACTIVE:
+                        if fresh_task is None or fresh_task.status != self.task_status.ACTIVE:
                             continue
                         if fresh_task.assignee and fresh_task.assignee != caller:
                             continue
@@ -959,7 +965,7 @@ class PolecatManager:
                             )
                             continue
 
-                        fresh_task.status = TaskStatus.IN_PROGRESS
+                        fresh_task.status = self.task_status.IN_PROGRESS
                         fresh_task.assignee = caller
                         self.storage.save_task(fresh_task)
                         return fresh_task

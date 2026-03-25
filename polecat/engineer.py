@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
 import subprocess
 import sys
 import time
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 # Add aops-core to path
 SCRIPT_DIR = Path(__file__).parent.resolve()
@@ -12,20 +15,35 @@ sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 
 from observability import metrics
 
+# lib.task_storage and lib.task_model are deprecated and removed.
+# Task management has migrated to the PKB MCP server (nicsuzor/mem).
+_TaskStatus: Any = None
+_TaskStorage: Any = None
 try:
-    from lib.task_model import TaskStatus
-    from lib.task_storage import TaskStorage
+    from lib.task_model import TaskStatus as _TaskStatus  # pyright: ignore[reportMissingImports]
+    from lib.task_storage import (  # pyright: ignore[reportMissingImports]
+        TaskStorage as _TaskStorage,
+    )
 except ImportError:
-    # lib.task_storage and lib.task_model are deprecated and removed.
-    # Task management has migrated to the PKB MCP server (nicsuzor/mem).
-    TaskStatus = None
-    TaskStorage = None
+    pass
+
 from manager import PolecatManager
+
+_DEPRECATED_MSG = (
+    "Engineer requires lib.task_model and lib.task_storage which have been removed. "
+    "Task management has migrated to the PKB MCP server."
+)
 
 
 class Engineer:
+    storage: Any
+    task_status: Any
+
     def __init__(self):
-        self.storage = TaskStorage()
+        if _TaskStorage is None or _TaskStatus is None:
+            raise RuntimeError(_DEPRECATED_MSG)
+        self.storage = _TaskStorage()
+        self.task_status = _TaskStatus
         self.polecat_mgr = PolecatManager()
 
     def scan_and_merge(self):
@@ -35,13 +53,13 @@ class Engineer:
         This serializes merges to prevent conflicts and ensure orderly integration.
         """
         # Check if another task is already merging (merge slot occupied)
-        merging_tasks = self.storage.list_tasks(status=TaskStatus.MERGING)
+        merging_tasks = self.storage.list_tasks(status=self.task_status.MERGING)
         if merging_tasks:
             print(f"Merge slot occupied by {merging_tasks[0].id}. Waiting for it to complete.")
             metrics.record_queue_depth("merging", count=len(merging_tasks))
             return
 
-        tasks = self.storage.list_tasks(status=TaskStatus.MERGE_READY)
+        tasks = self.storage.list_tasks(status=self.task_status.MERGE_READY)
 
         # Record merge queue depth
         metrics.record_queue_depth("merge_ready", count=len(tasks))
@@ -101,7 +119,7 @@ class Engineer:
         """
         # Claim merge slot by transitioning to MERGING
         print("  Claiming merge slot...")
-        task.status = TaskStatus.MERGING
+        task.status = self.task_status.MERGING
         self.storage.save_task(task)
 
         repo_path = self.polecat_mgr.get_repo_path(task)
@@ -176,7 +194,7 @@ class Engineer:
 
         # 7. Update Task (Success)
         print("  Marking task as DONE...")
-        task.status = TaskStatus.DONE
+        task.status = self.task_status.DONE
         self.storage.save_task(task)
 
         # 8. Nuke Worktree
@@ -187,7 +205,7 @@ class Engineer:
         """Kickback workflow: Set status to review for human intervention."""
         print("  ↪ Kickback: Setting status to REVIEW.")
 
-        task.status = TaskStatus.REVIEW
+        task.status = self.task_status.REVIEW
 
         # Append report
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
