@@ -1007,7 +1007,11 @@ def _run_gemini_docker(prompt: str, gemini_home: Path | None = None, **kwargs) -
 
     # Prepare prompt to write output to a file for robust extraction
     # This bypasses all CLI noise (warnings, ANSI, etc.)
-    result_file_name = "test_result.json"
+    # Use a unique filename per invocation to avoid cross-test pollution
+    # when parallel xdist workers share the same CWD.
+    import uuid as _uuid
+
+    result_file_name = f"test_result_{_uuid.uuid4().hex[:8]}.json"
     staged_prompt = (
         f"{prompt}\n\nIMPORTANT: When you have the final answer, YOU MUST "
         f"write it as a JSON object to the file '{result_file_name}' in the "
@@ -1032,12 +1036,28 @@ def _run_gemini_docker(prompt: str, gemini_home: Path | None = None, **kwargs) -
     image = os.environ.get("GEMINI_SANDBOX_IMAGE", "aops-crew")
     env["GEMINI_SANDBOX_IMAGE"] = image
 
-    # Clean up ANY existing sandbox containers to avoid name collisions.
+    # Clean up STOPPED sandbox containers to avoid name collisions.
     # Gemini uses sequential naming (e.g. aops-crew-0, aops-crew-1) which is
-    # prone to collisions if previous test runs crashed or are still hanging.
+    # prone to collisions if previous test runs crashed.
+    # Only remove exited containers — never kill running ones (they may belong
+    # to parallel xdist workers).
     try:
         result = subprocess.run(
-            ["docker", "ps", "-a", "--filter", f"name={image}", "--format", "{{.Names}}"],
+            [
+                "docker",
+                "ps",
+                "-a",
+                "--filter",
+                f"name={image}",
+                "--filter",
+                "status=exited",
+                "--filter",
+                "status=created",
+                "--filter",
+                "status=dead",
+                "--format",
+                "{{.Names}}",
+            ],
             capture_output=True,
             text=True,
             timeout=5,
@@ -1104,6 +1124,8 @@ def _run_gemini_docker(prompt: str, gemini_home: Path | None = None, **kwargs) -
                 }
             except json.JSONDecodeError:
                 pass
+            finally:
+                result_file.unlink(missing_ok=True)
 
         # Fallback: Parse from stdout
         # Gemini may write JSON to stdout or stderr (stderr when extension
@@ -1209,6 +1231,9 @@ def _run_gemini_docker(prompt: str, gemini_home: Path | None = None, **kwargs) -
     finally:
         if tmp_gemini_home and tmp_gemini_home.exists():
             shutil.rmtree(tmp_gemini_home)
+        # Clean up result file to avoid polluting subsequent test runs.
+        result_file = Path(workspace) / result_file_name
+        result_file.unlink(missing_ok=True)
 
 
 @pytest.fixture(params=["claude", "gemini", "claude-docker", "gemini-docker"])
