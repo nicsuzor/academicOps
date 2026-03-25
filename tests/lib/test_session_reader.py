@@ -884,11 +884,12 @@ class TestExtractGateContextExceptionHandling:
         from lib.session_reader import extract_gate_context
 
         transcript = tmp_path / "corrupt.jsonl"
-        # Write content that will pass the exists() check but may cause parse errors
-        transcript.write_text('{"type": "user"}\n')
+        # message: null triggers AttributeError in Entry.from_dict
+        transcript.write_text('{"type": "user", "message": null}\n')
 
         with caplog.at_level(logging.ERROR, logger="lib.session_reader"):
             result = extract_gate_context(transcript, include={"prompts"})
 
-        # Should return gracefully (either empty or with partial results)
-        assert isinstance(result, dict)
+        # Should return empty dict gracefully and log the error
+        assert result == {}
+        assert any("extract_gate_context failed" in r.message for r in caplog.records)
