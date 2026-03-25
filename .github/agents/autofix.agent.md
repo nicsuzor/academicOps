@@ -75,7 +75,7 @@ uv run pytest -x -m "not slow"
 ```bash
 git commit -m "fix: address review feedback
 
-Merge-Prep-By: agent"
+Autofix-By: agent"
 ```
 
 ## 6. Finalization
