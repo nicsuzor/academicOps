@@ -165,7 +165,12 @@ if _aops_core_path not in sys.path:
 
 def get_ready_tasks(project: str) -> str:
     """Get ready task queue as formatted text. Raises on failure."""
-    from lib.task_storage import TaskStorage
+    try:
+        from lib.task_storage import TaskStorage
+    except ImportError as e:
+        raise RuntimeError(
+            "lib.task_storage has been removed. Task management has migrated to the PKB MCP server (nicsuzor/mem)."
+        ) from e
 
     storage = TaskStorage()
     tasks = storage.get_ready_tasks(project=project)
@@ -218,7 +223,12 @@ def get_recent_prs() -> str:
 
 def get_in_progress_tasks(project: str) -> str:
     """Get tasks currently in progress. Raises on failure."""
-    from lib.task_storage import TaskStatus, TaskStorage
+    try:
+        from lib.task_storage import TaskStatus, TaskStorage
+    except ImportError as e:
+        raise RuntimeError(
+            "lib.task_storage has been removed. Task management has migrated to the PKB MCP server (nicsuzor/mem)."
+        ) from e
 
     storage = TaskStorage()
     tasks = storage.list_tasks(project=project, status=TaskStatus.IN_PROGRESS)

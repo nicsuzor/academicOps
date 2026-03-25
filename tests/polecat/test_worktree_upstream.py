@@ -30,6 +30,7 @@ confirm the other tests are not vacuous.
 
 import subprocess
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
@@ -40,8 +41,17 @@ sys.path.insert(0, str(REPO_ROOT / "polecat"))
 sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 
 # These imports require the path insertions above.
-from lib.task_model import Task  # noqa: E402
 from manager import PolecatManager  # noqa: E402
+
+
+@dataclass
+class Task:
+    """Minimal Task stub — lib.task_model has been deleted, polecat migrates to MCP."""
+
+    id: str
+    title: str = ""
+    project: str | None = None
+
 
 # ---------------------------------------------------------------------------
 # Helpers
