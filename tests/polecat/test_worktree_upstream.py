@@ -32,7 +32,6 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 import pytest
 import yaml
@@ -51,7 +50,8 @@ class Task:
 
     id: str
     title: str = ""
-    project: Optional[str] = None
+    project: str | None = None
+
 
 # ---------------------------------------------------------------------------
 # Helpers
