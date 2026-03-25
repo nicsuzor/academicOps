@@ -10,6 +10,10 @@ This project contains the **academicOps** framework itself. You are currently wo
 - **specs/**: Framework specifications and architecture
 - **tests/**: All tests (at repo root, NOT in aops-core/). Subdirs: `hooks/`, `integration/`, `lib/`, `e2e/`
 
+## Cross-Repository Safety
+
+**NEVER modify files outside the current working directory without explicit user authorization.** If a bug is found in an upstream dependency, report it and file a task — do not edit the dependency directly. This applies to all skills, all agent types, and all platforms.
+
 ## Development Procedures
 
 - **Pre-commit Hooks**: Run `./scripts/format.sh` before committing to avoid failures.
