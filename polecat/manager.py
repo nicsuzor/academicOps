@@ -234,7 +234,7 @@ class PolecatManager:
         # Load project aliases (shorthand -> slug mapping)
         self.project_aliases = load_project_aliases(self.config_path)
 
-        # We still need access to the task DB (deprecated — migrated to PKB MCP server)
+        # lib.task_storage is deprecated; None when running against PKB MCP server
         self.storage: Any = _TaskStorage() if _TaskStorage is not None else None
         self.task_status: Any = _TaskStatus
 
