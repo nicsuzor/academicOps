@@ -15,7 +15,7 @@ backend: scripts
 
 **Purpose**: Automatically extract action items from emails and create properly categorized tasks with full context linking.
 
-**When to invoke**: User says "check my email for tasks", "process emails", "any new tasks from email?", or similar phrases indicating email-to-task workflow.
+**When to invoke**: User says "check my email for tasks", "process emails", "any new tasks from email?", "email triage", "check email", "triage my inbox", or "what's in my inbox?".
 
 ## Summary Checklist
 
