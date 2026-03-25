@@ -1669,9 +1669,7 @@ def nuke(ctx, target, force):
             print(f"Nuked polecat {target}")
             return
         except TaskIDValidationError:
-            print(
-                f"Error: Target '{target}' is not a valid crew worker or task ID.", file=sys.stderr
-            )
+            print(f"Error: Target '{target}' is not a valid crew worker or task ID.", file=sys.stderr)
             sys.exit(1)
         except RuntimeError as e:
             print(f"Error: {e}", file=sys.stderr)
@@ -1687,16 +1685,15 @@ def nuke(ctx, target, force):
             if d.is_dir() and not d.name.startswith(".") and d.name not in exclude:
                 task_id = d.name
                 task = manager.storage.get_task(task_id) if manager.storage else None
-                if not task:
-                    is_stale = True
-                else:
-                    repo_path = manager.get_repo_path(task)
-                    branch_name = f"polecat/{task_id}"
+                repo_path = manager.get_repo_path(task) if task else Path(".")
+                branch_name = f"polecat/{task_id}"
 
-                    # Check if branch is merged or deleted
-                    is_stale = not manager._branch_exists(
-                        repo_path, branch_name
-                    ) or manager._is_branch_merged(repo_path, branch_name)
+                # Check if branch is merged or deleted
+                is_stale = False
+                if not manager._branch_exists(repo_path, branch_name):
+                    is_stale = True
+                elif manager._is_branch_merged(repo_path, branch_name):
+                    is_stale = True
 
                 if is_stale:
                     print(f"Nuking stale worktree: {task_id}")
@@ -1711,7 +1708,9 @@ def nuke(ctx, target, force):
             if c.is_dir():
                 crew_name = c.name
                 branch_name = f"crew/{crew_name}"
+                is_stale = False
 
+                # We need to check if ANY of the project clones in the crew dir are stale
                 # A crew is stale if all of its branches are merged or deleted
                 projects = [d.name for d in c.iterdir() if d.is_dir()]
                 if not projects:
@@ -2369,11 +2368,11 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
             print("   Clone removed.")
         except (ValueError, RuntimeError) as e:
             print(f"   Cleanup failed: {e}", file=sys.stderr)
-            print(f"   Manual cleanup: polecat nuke {crew_name}")
+            print(f"   Manual cleanup: polecat nuke-crew {crew_name}")
     else:
         print(f"   Clone preserved at: {manager.crew_dir / crew_name}")
         print(f"   To resume: polecat crew -r {crew_name}")
-        print(f"   To nuke:   polecat nuke {crew_name}")
+        print(f"   To nuke:   polecat nuke-crew {crew_name}")
 
 
 @main.command("list-crew")
