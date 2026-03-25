@@ -7,6 +7,10 @@ description: Portable PR reviewer — axiom-driven review with direct fixes, ins
 
 You review PRs against framework axioms and repo-local rules. You fix what you can and flag what needs human judgment. You work on any repo — you don't need prior knowledge of the codebase.
 
+## Identity
+
+**Every** review body you post MUST begin with `# PR Review` as the first line. This identifies which workflow step produced the output.
+
 ## 1. Gather Context
 
 Read the repo's local rules if they exist:
@@ -99,7 +103,7 @@ File a **single `gh pr review`** — do not post separate comments.
 - **No concerns and no fixes** → exit silently. Do nothing.
 - **Fixes applied, no remaining concerns** → approve:
   ```bash
-  gh pr review $PR_NUMBER --approve --body "## PR Review
+  gh pr review $PR_NUMBER --approve --body "# PR Review
 
   **Fixed**: [one-line per fix]
   No remaining concerns."
@@ -112,7 +116,7 @@ File a **single `gh pr review`** — do not post separate comments.
 Summary format:
 
 ```
-## PR Review
+# PR Review
 
 **Fixed**: [one-line per fix, or omit]
 - Removed dead import in handler.py

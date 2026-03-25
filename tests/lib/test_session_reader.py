@@ -804,3 +804,92 @@ class TestBuildAuditSessionContext:
         result = build_audit_session_context(str(jsonl_path), entries=entries)
         assert len(result) > 0
         assert "Hello world" in result
+
+    def test_pre_parsed_entries_multi_turn_conversation(self, tmp_path):
+        """Pre-parsed entries with multiple turns produce correct audit context.
+
+        Verifies the entries= path handles a realistic multi-turn session
+        with tool calls and multiple user prompts.
+        """
+        from lib.session_reader import SessionProcessor, build_audit_session_context
+
+        jsonl_path = tmp_path / "multi-turn.jsonl"
+        entries_data = [
+            _create_user_entry("Implement the login feature", 0),
+            _create_assistant_entry(1),
+            _create_tool_use_entry("Read", {"file_path": "/src/auth.py"}, 5),
+            _create_tool_result_entry("tool-5", "class Auth: ...", offset=6),
+            _create_user_entry("Now add tests for it", 10),
+            _create_assistant_entry(11),
+            _create_tool_use_entry("Write", {"file_path": "/tests/test_auth.py"}, 15),
+            _create_tool_result_entry("tool-15", "File written", offset=16),
+            _create_user_entry("Run the tests", 20),
+            _create_assistant_entry(21),
+            _create_tool_use_entry("Bash", {"command": "pytest tests/"}, 25),
+            _create_tool_result_entry("tool-25", "3 passed", offset=26),
+        ]
+        _write_jsonl(jsonl_path, entries_data)
+
+        processor = SessionProcessor()
+        _, entries, _ = processor.parse_session_file(
+            jsonl_path, load_agents=False, load_hooks=False
+        )
+
+        result = build_audit_session_context(str(jsonl_path), entries=entries)
+
+        # All user prompts should appear in the context
+        assert "Implement the login feature" in result
+        assert "Now add tests for it" in result
+        assert "Run the tests" in result
+
+    def test_pre_parsed_entries_empty_list(self, tmp_path):
+        """Pre-parsed empty entries list returns empty session marker."""
+        from lib.session_reader import build_audit_session_context
+
+        jsonl_path = tmp_path / "empty.jsonl"
+        jsonl_path.write_text("")
+
+        result = build_audit_session_context(str(jsonl_path), entries=[])
+        assert result == "(Empty session)"
+
+    def test_pre_parsed_entries_none_falls_back_to_file(self, tmp_path):
+        """When entries=None, function reads from disk (default path)."""
+        from lib.session_reader import build_audit_session_context
+
+        jsonl_path = tmp_path / "fallback.jsonl"
+        entries_data = [
+            _create_user_entry("Disk-read prompt", 0),
+            _create_assistant_entry(1),
+        ]
+        _write_jsonl(jsonl_path, entries_data)
+
+        result = build_audit_session_context(str(jsonl_path), entries=None)
+        assert "Disk-read prompt" in result
+
+    def test_missing_transcript_no_entries(self, tmp_path):
+        """Missing transcript with no entries returns appropriate message."""
+        from lib.session_reader import build_audit_session_context
+
+        result = build_audit_session_context(str(tmp_path / "nonexistent.jsonl"))
+        assert result == "(No transcript path available)"
+
+
+class TestExtractGateContextExceptionHandling:
+    """Tests for extract_gate_context exception handling."""
+
+    def test_corrupt_jsonl_logs_error(self, tmp_path, caplog):
+        """Corrupt JSONL that passes existence check but fails parsing logs error."""
+        import logging
+
+        from lib.session_reader import extract_gate_context
+
+        transcript = tmp_path / "corrupt.jsonl"
+        # message: null triggers AttributeError in Entry.from_dict
+        transcript.write_text('{"type": "user", "message": null}\n')
+
+        with caplog.at_level(logging.ERROR, logger="lib.session_reader"):
+            result = extract_gate_context(transcript, include={"prompts"})
+
+        # Should return empty dict gracefully and log the error
+        assert result == {}
+        assert any("extract_gate_context failed" in r.message for r in caplog.records)
