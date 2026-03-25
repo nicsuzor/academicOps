@@ -33,13 +33,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian bookworm stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null \
     && apt-get update \
     && apt-get install -y gh docker-ce-cli \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+    ripgrep fd-find bat jq less tree \
+    && apt-get clean && rm -rf /var/lib/apt/lists/* \
+    && ln -s /usr/bin/fdfind /usr/local/bin/fd \
+    && ln -s /usr/bin/batcat /usr/local/bin/bat
 
 # Install uv system-wide (standard for aops framework per P#93)
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Install Gemini CLI, Claude Code, and code quality tools globally
-RUN npm install -g @google/gemini-cli @anthropic-ai/claude-code markdownlint-cli2 dprint && npm cache clean --force
+RUN npm install -g @google/gemini-cli @anthropic-ai/claude-code markdownlint-cli2 dprint ccstatusline && npm cache clean --force
 
 # Install aops and pkb binaries from authoritative releases
 RUN TMPDIR=$(mktemp -d) \
@@ -104,6 +107,17 @@ RUN claude plugin marketplace add /app \
 # --consent bypasses the interactive consent prompt.
 RUN mkdir -p /home/worker/.gemini \
     && GEMINI_API_KEY=dummy-for-install gemini extensions install /app/dist/aops-gemini --consent
+
+# Install default ccstatusline config and wire it into Claude Code settings.
+# These defaults are overridden at runtime if CREW_DOTFILES provides replacements.
+COPY --chown=worker:worker polecat/defaults/ccstatusline-settings.json /home/worker/.config/ccstatusline/settings.json
+RUN node -e " \
+  const fs = require('fs'); \
+  const p = '/home/worker/.claude/settings.json'; \
+  const s = fs.existsSync(p) ? JSON.parse(fs.readFileSync(p)) : {}; \
+  s.statusLine = { type: 'command', command: 'ccstatusline', padding: 0 }; \
+  fs.writeFileSync(p, JSON.stringify(s, null, 2)); \
+"
 
 # Make home dir and .claude writable for any UID — polecat crew runs containers
 # as the host UID (non-root), which may differ from worker UID 1000.
