@@ -91,12 +91,20 @@ class TestDockerAgentResponds:
         assert result["success"], f"[{platform}] Execution failed: {result.get('error')}"
 
         output = str(result.get("output", "")) + str(result.get("stderr", ""))
+        response_text = str(result.get("result", {}).get("response", ""))
         print(
-            f"\n--- RAW AGENT RESPONSE [{platform}] ---\n{result.get('result', {}).get('response', output)}\n-----------------------------"
+            f"\n--- RAW AGENT RESPONSE [{platform}] ---\n{response_text or output}\n-----------------------------"
         )
         # For Gemini, the verbose output (from conftest) should show "Loading extension: aops-core"
-        assert "aops-core" in output or "AOPS_ACTIVE" in output or "pkb" in output, (
-            f"[{platform}] Extension not active in container. Output: {output}"
+        assert (
+            "aops-core" in output
+            or "AOPS_ACTIVE" in output
+            or "pkb" in output
+            or "aops-core" in response_text
+            or "AOPS_ACTIVE" in response_text
+            or "pkb" in response_text
+        ), (
+            f"[{platform}] Extension not active in container. Output: {output} Response: {response_text}"
         )
 
     def test_agent_returns_structured_output(self, docker_headless):

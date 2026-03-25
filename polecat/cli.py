@@ -494,6 +494,29 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
                 # Fall back to simple copy if processing fails
                 print(f"   Warning: could not process {gemini_dir / f}: {e}", file=sys.stderr)
 
+        if f == "settings.json":
+            try:
+                with open(gemini_dir / f) as src_f:
+                    settings_data = json.load(src_f)
+
+                # Force sandbox with network access to prevent OAuth failures
+                # The gemini-cli sandbox requires network access to verify the token,
+                # otherwise it falls back to interactive auth which fails in CI.
+                if "tools" not in settings_data:
+                    settings_data["tools"] = {}
+                if "sandbox" not in settings_data["tools"] or not isinstance(
+                    settings_data["tools"]["sandbox"], dict
+                ):
+                    settings_data["tools"]["sandbox"] = {}
+                settings_data["tools"]["sandbox"]["enabled"] = True
+                settings_data["tools"]["sandbox"]["networkAccess"] = True
+
+                with open(target_dir / f, "w") as dst_f:
+                    json.dump(settings_data, dst_f, indent=2)
+                continue
+            except (json.JSONDecodeError, OSError):
+                pass  # fallback to simple copy
+
         # Follow symlinks to copy the actual file content, not the link itself.
         # This is critical for ~/.gemini/settings.json which is often symlinked.
         shutil.copy2(gemini_dir / f, target_dir / f, follow_symlinks=True)
@@ -2066,11 +2089,11 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
         # with their aops plugins, so the user can run either manually.
         cmd = ["bash"]
     elif gemini:
-        # Gemini: --sandbox runs tool calls inside the aops-crew Docker image.
+        # Gemini: sandbox is enabled via the replicated settings.json to avoid
+        # CLI bugs where --sandbox forces an internal network without internet access.
         # The image is built from Dockerfile via `make build-docker`.
         cmd = [
             "gemini",
-            "--sandbox",
         ]
     else:
         # Claude Code: sandbox via project settings.json + setting-sources
