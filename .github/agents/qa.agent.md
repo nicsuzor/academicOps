@@ -74,12 +74,16 @@ The agent that wrote this code may have unconsciously substituted easier-to-veri
 5. Verify all three dimensions against the PR's stated intent.
 6. Post your verdict as a PR review.
 
+## Identity
+
+**Every** review body you post MUST begin with `# QA Verification` as the first line. This identifies which workflow step produced the output.
+
 ## Output Format
 
 **If everything verifies** → approve:
 
 ```
-gh pr review {pr} --approve --body "## QA Verification
+gh pr review {pr} --approve --body "# QA Verification
 
 **Verdict**: VERIFIED
 
@@ -93,7 +97,7 @@ gh pr review {pr} --approve --body "## QA Verification
 **If issues found** → request changes:
 
 ```
-gh pr review {pr} --request-changes --body "## QA Verification
+gh pr review {pr} --request-changes --body "# QA Verification
 
 **Verdict**: ISSUES
 
