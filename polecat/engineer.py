@@ -15,11 +15,12 @@ from observability import metrics
 try:
     from lib.task_model import TaskStatus
     from lib.task_storage import TaskStorage
-    from manager import PolecatManager
-except ImportError as e:
-    # These imports may fail when running outside academicOps context
-    # but are required for actual operation
-    raise ImportError(f"Required task management modules not found: {e}") from e
+except ImportError:
+    # lib.task_storage and lib.task_model are deprecated and removed.
+    # Task management has migrated to the PKB MCP server (nicsuzor/mem).
+    TaskStatus = None
+    TaskStorage = None
+from manager import PolecatManager
 
 
 class Engineer:
