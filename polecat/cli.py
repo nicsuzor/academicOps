@@ -1645,25 +1645,110 @@ def finish(ctx, no_push, do_nuke, force, force_done):
 
 
 @main.command()
-@click.argument("task_id")
+@click.argument("target", required=False)
 @click.option("--force", "-f", is_flag=True, help="Delete even if work is not merged")
 @click.pass_context
-def nuke(ctx, task_id, force):
-    """Destroy a polecat (remove worktree and branch)."""
-    # Validate task ID before any operations
-    try:
-        validate_task_id_or_raise(task_id)
-    except TaskIDValidationError as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
-
+def nuke(ctx, target, force):
+    """Destroy a polecat or crew worker, or clean up stale branches when run without args."""
     manager = PolecatManager(home_dir=ctx.obj.get("home"))
-    try:
-        manager.nuke_worktree(task_id, force=force)
-        print(f"Nuked polecat {task_id}")
-    except RuntimeError as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
+
+    if target:
+        crew_path = manager.crew_dir / target
+        if crew_path.exists():
+            try:
+                manager.nuke_crew(target, force=force)
+                return
+            except (ValueError, RuntimeError) as e:
+                print(f"Error: {e}", file=sys.stderr)
+                sys.exit(1)
+
+        # Fallback to worktree logic
+        try:
+            validate_task_id_or_raise(target)
+            manager.nuke_worktree(target, force=force)
+            print(f"Nuked polecat {target}")
+            return
+        except TaskIDValidationError:
+            print(
+                f"Error: Target '{target}' is not a valid crew worker or task ID.", file=sys.stderr
+            )
+            sys.exit(1)
+        except RuntimeError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+
+    # Target not provided, run stale cleanup
+    print("No target provided. Cleaning up stale branches...")
+
+    # 1. Cleanup stale worktrees
+    if manager.polecats_dir.exists():
+        exclude = {".repos", "crew"}
+        for d in manager.polecats_dir.iterdir():
+            if d.is_dir() and not d.name.startswith(".") and d.name not in exclude:
+                task_id = d.name
+                if not manager.storage:
+                    print(
+                        "Error: storage unavailable — cannot determine staleness",
+                        file=sys.stderr,
+                    )
+                    sys.exit(1)
+                task = manager.storage.get_task(task_id)
+                if not task:
+                    is_stale = True
+                else:
+                    repo_path = manager.get_repo_path(task)
+                    branch_name = f"polecat/{task_id}"
+
+                    # Check if branch is merged or deleted
+                    is_stale = False
+                    if not manager._branch_exists(repo_path, branch_name):
+                        is_stale = True
+                    elif manager._is_branch_merged(repo_path, branch_name):
+                        is_stale = True
+
+                if is_stale:
+                    print(f"Nuking stale worktree: {task_id}")
+                    try:
+                        manager.nuke_worktree(task_id, force=True)
+                    except (RuntimeError, ValueError) as e:
+                        print(f"Warning: Failed to nuke {task_id}: {e}", file=sys.stderr)
+
+    # 2. Cleanup stale crew clones
+    if manager.crew_dir.exists():
+        for c in manager.crew_dir.iterdir():
+            if c.is_dir():
+                crew_name = c.name
+                branch_name = f"crew/{crew_name}"
+
+                # A crew is stale if all of its branches are merged or deleted
+                projects = [d.name for d in c.iterdir() if d.is_dir()]
+                if not projects:
+                    continue
+
+                any_repo_checked = False
+                all_stale = True
+                for project in projects:
+                    repo_path = manager.projects.get(project, {}).get("path")
+                    if not repo_path:
+                        repo_path = manager.repos_dir / f"{project}.git"
+
+                    if not repo_path.exists():
+                        continue
+
+                    any_repo_checked = True
+                    if manager._branch_exists(repo_path, branch_name):
+                        if not manager._is_branch_merged(repo_path, branch_name):
+                            all_stale = False
+                            break
+
+                if not any_repo_checked:
+                    continue
+                if all_stale:
+                    print(f"Nuking stale crew: {crew_name}")
+                    try:
+                        manager.nuke_crew(crew_name, force=True)
+                    except (RuntimeError, ValueError) as e:
+                        print(f"Warning: Failed to nuke crew {crew_name}: {e}", file=sys.stderr)
 
 
 @main.command("list")
@@ -2296,25 +2381,11 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
             print("   Clone removed.")
         except (ValueError, RuntimeError) as e:
             print(f"   Cleanup failed: {e}", file=sys.stderr)
-            print(f"   Manual cleanup: polecat nuke-crew {crew_name}")
+            print(f"   Manual cleanup: polecat nuke {crew_name}")
     else:
         print(f"   Clone preserved at: {manager.crew_dir / crew_name}")
         print(f"   To resume: polecat crew -r {crew_name}")
-        print(f"   To nuke:   polecat nuke-crew {crew_name}")
-
-
-@main.command("nuke-crew")
-@click.argument("name")
-@click.option("--force", "-f", is_flag=True, help="Delete even if work is not merged")
-@click.pass_context
-def nuke_crew(ctx, name, force):
-    """Remove a crew worker and their worktrees."""
-    manager = PolecatManager(home_dir=ctx.obj.get("home"))
-    try:
-        manager.nuke_crew(name, force=force)
-    except (ValueError, RuntimeError) as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
+        print(f"   To nuke:   polecat nuke {crew_name}")
 
 
 @main.command("list-crew")
