@@ -152,7 +152,7 @@ def _make_manager(tmp_path: Path):
         patch("manager.load_config", return_value=config),
         patch("manager.load_projects", return_value={}),
         patch("manager.load_crew_names", return_value=["test"]),
-        patch("manager.TaskStorage"),
+        patch("manager._TaskStorage"),
     ):
         from manager import PolecatManager
 
