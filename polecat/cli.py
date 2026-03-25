@@ -1669,7 +1669,9 @@ def nuke(ctx, target, force):
             print(f"Nuked polecat {target}")
             return
         except TaskIDValidationError:
-            print(f"Error: Target '{target}' is not a valid crew worker or task ID.", file=sys.stderr)
+            print(
+                f"Error: Target '{target}' is not a valid crew worker or task ID.", file=sys.stderr
+            )
             sys.exit(1)
         except RuntimeError as e:
             print(f"Error: {e}", file=sys.stderr)

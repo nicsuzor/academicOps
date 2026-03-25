@@ -1,4 +1,4 @@
-with open("polecat/cli.py", "r") as f:
+with open("polecat/cli.py") as f:
     content = f.read()
 
 cleanup_code = """    # Target not provided, run stale cleanup
@@ -63,7 +63,10 @@ cleanup_code = """    # Target not provided, run stale cleanup
                     except (RuntimeError, ValueError) as e:
                         print(f"Warning: Failed to nuke crew {crew_name}: {e}", file=sys.stderr)"""
 
-content = content.replace("    # Target not provided, run stale cleanup\n    print(\"No target provided. Cleaning up stale branches...\")", cleanup_code)
+content = content.replace(
+    '    # Target not provided, run stale cleanup\n    print("No target provided. Cleaning up stale branches...")',
+    cleanup_code,
+)
 
 with open("polecat/cli.py", "w") as f:
     f.write(content)
