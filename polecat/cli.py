@@ -479,10 +479,6 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
     target_dir = tmp_gemini_home / ".gemini"
     target_dir.mkdir(parents=True)
 
-    # Debug: what are we replicating?
-    # We use stderr so it doesn't interfere with stdout capturing in some tests
-    # sys.stderr.write(f"DEBUG: Replicating Gemini auth files: {existing_files}\n")
-
     for f in existing_files:
         if f == "trustedFolders.json" and work_dir:
             try:

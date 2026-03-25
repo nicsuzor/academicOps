@@ -1002,15 +1002,24 @@ def _run_gemini_docker(prompt: str, gemini_home: Path | None = None, **kwargs) -
     env["GEMINI_SANDBOX_IMAGE"] = image
 
     # Clean up ANY existing sandbox containers to avoid name collisions.
-    # Gemini's sequential naming (e.g. aops-crew-0, aops-crew-1) is prone to
-    # collisions if previous test runs crashed or are still hanging.
+    # Gemini uses sequential naming (e.g. aops-crew-0, aops-crew-1) which is
+    # prone to collisions if previous test runs crashed or are still hanging.
     try:
-        subprocess.run(
-            ["docker", "rm", "-f", "aops-crew-0", "aops-crew-1", "aops-crew-2"],
+        result = subprocess.run(
+            ["docker", "ps", "-a", "--filter", f"name={image}", "--format", "{{.Names}}"],
             capture_output=True,
+            text=True,
             timeout=5,
             check=False,
         )
+        stale = [name.strip() for name in result.stdout.splitlines() if name.strip()]
+        if stale:
+            subprocess.run(
+                ["docker", "rm", "-f", *stale],
+                capture_output=True,
+                timeout=10,
+                check=False,
+            )
     except (subprocess.TimeoutExpired, OSError):
         pass
 
