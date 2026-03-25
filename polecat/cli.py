@@ -514,8 +514,8 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
                 with open(target_dir / f, "w") as dst_f:
                     json.dump(settings_data, dst_f, indent=2)
                 continue
-            except (json.JSONDecodeError, OSError):
-                pass  # fallback to simple copy
+            except (json.JSONDecodeError, OSError) as e:
+                print(f"   Warning: could not process {gemini_dir / f}: {e}", file=sys.stderr)
 
         # Follow symlinks to copy the actual file content, not the link itself.
         # This is critical for ~/.gemini/settings.json which is often symlinked.
