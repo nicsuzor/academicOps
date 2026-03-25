@@ -129,6 +129,8 @@ def gemini_home(tmp_path_factory) -> Path:
         "oauth_creds.json",
         "installation_id",
         "trustedFolders.json",
+        "projects.json",
+        "state.json",
     ]:
         src = orig_gemini / filename
         if src.exists():
@@ -980,7 +982,18 @@ def _run_gemini_docker(prompt: str, gemini_home: Path | None = None, **kwargs) -
     timeout_seconds = kwargs.get("timeout_seconds", 300)
     model = kwargs.get("model")
 
-    cmd = ["gemini", "--sandbox", "--yolo", "-p", prompt, "-o", "json"]
+    cmd = [
+        "gemini",
+        "--sandbox",
+        "--approval-mode",
+        "yolo",
+        "--raw-output",
+        "--accept-raw-output-risk",
+        "-p",
+        prompt,
+        "-o",
+        "json",
+    ]
     if model:
         cmd.extend(["-m", model])
 
@@ -988,29 +1001,16 @@ def _run_gemini_docker(prompt: str, gemini_home: Path | None = None, **kwargs) -
     image = os.environ.get("GEMINI_SANDBOX_IMAGE", "aops-crew")
     env["GEMINI_SANDBOX_IMAGE"] = image
 
-    # Clean up stopped sandbox containers to avoid name collisions when Gemini's
-    # sequential naming (e.g. aops-crew-0, aops-crew-1) scans `docker ps -a`.
+    # Clean up ANY existing sandbox containers to avoid name collisions.
+    # Gemini's sequential naming (e.g. aops-crew-0, aops-crew-1) is prone to
+    # collisions if previous test runs crashed or are still hanging.
     try:
-        stopped = subprocess.run(
-            [
-                "docker",
-                "ps",
-                "-a",
-                "--filter",
-                f"ancestor={image}",
-                "--filter",
-                "status=exited",
-                "--format",
-                "{{.ID}}",
-            ],
+        subprocess.run(
+            ["docker", "rm", "-f", "aops-crew-0", "aops-crew-1", "aops-crew-2"],
             capture_output=True,
-            text=True,
             timeout=5,
             check=False,
         )
-        for cid in stopped.stdout.strip().split("\n"):
-            if cid:
-                subprocess.run(["docker", "rm", cid], capture_output=True, timeout=5, check=False)
     except (subprocess.TimeoutExpired, OSError):
         pass
 
@@ -2023,7 +2023,18 @@ def gemini_docker(tmp_path):
 
         apply_env_mappings(env)
 
-        cmd = ["gemini", "--sandbox", "--yolo", "-p", prompt, "-o", "json"]
+        cmd = [
+            "gemini",
+            "--sandbox",
+            "--approval-mode",
+            "yolo",
+            "--raw-output",
+            "--accept-raw-output-risk",
+            "-p",
+            prompt,
+            "-o",
+            "json",
+        ]
 
         try:
             result = subprocess.run(

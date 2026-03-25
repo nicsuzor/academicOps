@@ -461,17 +461,27 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
         "oauth_creds.json",
         "installation_id",
         "trustedFolders.json",
+        "projects.json",
+        "state.json",
     ]
 
     existing_files = [f for f in auth_files if (gemini_dir / f).exists()]
     if not existing_files:
         return None
 
-    # Create a temporary directory
-    tmp_gemini_home = Path(tempfile.mkdtemp(prefix="polecat-gemini-auth-"))
+    # Create a temporary directory under $HOME/.aops/tmp so Docker can access it.
+    # macOS VMs (Colima/Docker) only share /Users, not /var/folders or /tmp.
+    tmp_root = home / ".aops" / "tmp"
+    tmp_root.mkdir(parents=True, exist_ok=True)
+    tmp_gemini_home = Path(tempfile.mkdtemp(prefix="polecat-gemini-auth-", dir=tmp_root))
+    os.chmod(tmp_gemini_home, 0o700)
 
     target_dir = tmp_gemini_home / ".gemini"
     target_dir.mkdir(parents=True)
+
+    # Debug: what are we replicating?
+    # We use stderr so it doesn't interfere with stdout capturing in some tests
+    # sys.stderr.write(f"DEBUG: Replicating Gemini auth files: {existing_files}\n")
 
     for f in existing_files:
         if f == "trustedFolders.json" and work_dir:
@@ -488,7 +498,9 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
                 # Fall back to simple copy if processing fails
                 print(f"   Warning: could not process {gemini_dir / f}: {e}", file=sys.stderr)
 
-        shutil.copy2(gemini_dir / f, target_dir / f)
+        # Follow symlinks to copy the actual file content, not the link itself.
+        # This is critical for ~/.gemini/settings.json which is often symlinked.
+        shutil.copy2(gemini_dir / f, target_dir / f, follow_symlinks=True)
 
     # If trustedFolders.json didn't exist but we have a work_dir, create it
     if "trustedFolders.json" not in existing_files and work_dir:
