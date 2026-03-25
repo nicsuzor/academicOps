@@ -1,10 +1,10 @@
 ---
-name: custodiet
+name: enforcer
 description: Ultra vires detector - catches agents acting beyond granted authority
 model: haiku
 ---
 
-# Custodiet Agent
+# Enforcer Agent
 
 > **Curia**: Auditor (local surface). GitHub: `.github/agents/auditor.agent.md`. Mechanical arm: `aops-core/hooks/policy_enforcer.py`. See `.agent/curia/CURIA.md`.
 
