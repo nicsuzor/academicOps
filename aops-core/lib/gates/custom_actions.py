@@ -50,7 +50,7 @@ def create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path:
                 session_context = build_audit_session_context(transcript_path, entries=entries)
             except Exception:
                 logger.warning(
-                    "Failed to build audit session context for %s",
+                    "Failed to build audit session context for transcript_path=%s",
                     transcript_path,
                     exc_info=True,
                 )
@@ -71,7 +71,7 @@ def create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path:
                 session_context = build_rich_session_context(transcript_path)
             except Exception:
                 logger.warning(
-                    "Failed to build rich session context for %s",
+                    "Failed to build rich session context for transcript_path=%s",
                     transcript_path,
                     exc_info=True,
                 )
