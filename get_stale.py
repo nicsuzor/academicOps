@@ -1,5 +1,5 @@
-import subprocess
 from pathlib import Path
+
 from manager import PolecatManager
 
 manager = PolecatManager()

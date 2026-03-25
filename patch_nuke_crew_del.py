@@ -1,6 +1,6 @@
 import re
 
-with open("polecat/cli.py", "r") as f:
+with open("polecat/cli.py") as f:
     content = f.read()
 
 # Delete nuke-crew
@@ -22,10 +22,7 @@ if nuke_crew_code in content:
 else:
     print("Could not find nuke-crew code exactly. Using regex.")
     content = re.sub(
-        r'@main\.command\("nuke-crew"\).*?sys\.exit\(1\)\n\n\n',
-        '',
-        content,
-        flags=re.DOTALL
+        r'@main\.command\("nuke-crew"\).*?sys\.exit\(1\)\n\n\n', "", content, flags=re.DOTALL
     )
 
 with open("polecat/cli.py", "w") as f:

@@ -1,6 +1,4 @@
-import re
-
-with open("polecat/cli.py", "r") as f:
+with open("polecat/cli.py") as f:
     content = f.read()
 
 # Replace the nuke function logic
@@ -53,7 +51,7 @@ new_nuke = '''def nuke(ctx, target, force):
 
 # Find the end of nuke function (before list command)
 start_idx = content.find("def nuke(ctx, target, force):")
-end_idx = content.find("@main.command(\"list\")")
+end_idx = content.find('@main.command("list")')
 
 content = content[:start_idx] + new_nuke + "\n\n\n" + content[end_idx:]
 
