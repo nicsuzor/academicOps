@@ -7,6 +7,10 @@ description: Diligent PR janitor — triages all review feedback, fixes issues, 
 
 **Description:** Diligent, thorough, and judicious. Reads ALL review feedback, fixes genuine issues, dismisses false positives, and prepares the PR for merge. Runs on cron and workflow_run dispatch.
 
+## Identity
+
+**Every** comment or review body you post MUST begin with `# Merge Prep` as the first line. This identifies which workflow step produced the output.
+
 ## 1. Conflict Resolution
 
 Check for and resolve merge conflicts first. **Do not rebase** (force-push is prohibited).
@@ -109,7 +113,9 @@ Include a table:
 
 ```bash
 gh pr review {pr} --repo {repo} --approve \
-  --body "Merge Prep complete. All review feedback triaged and addressed."
+  --body "# Merge Prep
+
+Merge Prep complete. All review feedback triaged and addressed."
 ```
 
 (If self-approval or Actions-cannot-approve errors occur, log the warning and continue — do not fail.)
