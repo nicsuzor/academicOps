@@ -108,16 +108,10 @@ RUN claude plugin marketplace add /app \
 RUN mkdir -p /home/worker/.gemini \
     && GEMINI_API_KEY=dummy-for-install gemini extensions install /app/dist/aops-gemini --consent
 
-# Install default ccstatusline config and wire it into Claude Code settings.
-# These defaults are overridden at runtime if CREW_DOTFILES provides replacements.
+# Install default ccstatusline and Claude Code settings.
+# These defaults are overridden at runtime if the host stages replacements.
 COPY --chown=worker:worker polecat/defaults/ccstatusline-settings.json /home/worker/.config/ccstatusline/settings.json
-RUN node -e " \
-  const fs = require('fs'); \
-  const p = '/home/worker/.claude/settings.json'; \
-  const s = fs.existsSync(p) ? JSON.parse(fs.readFileSync(p)) : {}; \
-  s.statusLine = { type: 'command', command: 'ccstatusline', padding: 0 }; \
-  fs.writeFileSync(p, JSON.stringify(s, null, 2)); \
-"
+COPY --chown=worker:worker polecat/defaults/claude-settings.json /home/worker/.claude/settings.json
 
 # Make home dir and .claude writable for any UID — polecat crew runs containers
 # as the host UID (non-root), which may differ from worker UID 1000.
