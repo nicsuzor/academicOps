@@ -56,8 +56,10 @@ Hierarchical task graph with semantic search, powered by a Rust MCP server (`pkb
 Tasks are stored as markdown files within the `data/tasks/` directory of your knowledge base (`$ACA_DATA`). The workflow typically follows: `inbox/` -> `active/` -> `completed/` -> `archived/`.
 
 ```
-GOAL  →  PROJECT  →  EPIC  →  TASK  →  ACTION
+PROJECT  →  EPIC  →  TASK  →  ACTION
 ```
+
+Goals are linked to projects via the `goals: []` metadata field (many-to-many), not via the tree hierarchy.
 
 ### 2. Skills (how work gets done)
 

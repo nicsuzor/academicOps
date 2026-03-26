@@ -47,7 +47,7 @@ A lightweight automation framework for academic work. academicOps has four layer
 
 The task system is the backbone. Everything flows through it.
 
-- **Hierarchical task graph**: Goal → Project → Epic → Task → Action
+- **Hierarchical task graph**: Project → Epic → Task → Action (goals link via `goals: []` metadata)
 - **PKB server** (Rust): semantic search, graph store, task CRUD, memory — single binary, deployed everywhere
 - **Task lifecycle**: capture → decompose → prioritise → execute → verify → complete
 - **Zero-friction capture**: ideas flow from any input (voice, email, notes, conversation) into the task graph

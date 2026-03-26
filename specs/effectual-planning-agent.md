@@ -134,10 +134,10 @@ The agent uses graph topology to rank work by learning potential: which tasks un
 **Work hierarchy** (see [[TAXONOMY.md]])
 
 ```
-GOAL → PROJECT → EPIC → TASK → ACTION
+PROJECT → EPIC → TASK → ACTION
 ```
 
-Goals are desired future states. Projects are bounded efforts. Epics are PR-sized units of verifiable work (planning + execution + verification). Tasks are single-session deliverables within epics. Every task belongs to an epic.
+Projects are bounded efforts (tree roots). Epics are PR-sized units of verifiable work (planning + execution + verification). Tasks are single-session deliverables within epics. Every task belongs to an epic. Goals are linked to projects via the `goals: []` metadata field (many-to-many), not via the tree hierarchy.
 
 **Node lifecycle**
 
