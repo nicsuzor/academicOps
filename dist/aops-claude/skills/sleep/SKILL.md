@@ -58,8 +58,8 @@ The agent works through these in order, using judgment about what needs attentio
 Run `graph_stats` at the start of every cycle. Record:
 
 - `flat_tasks` — tasks with no parent or children
-- `disconnected_epics` — epics not connected to a project/goal
-- `projects_without_goals` — projects with no goal parent
+- `disconnected_epics` — epics not connected to a project
+- `projects_without_goal_linkage` — projects with no `goals: []` field populated
 - `orphan_count` — truly disconnected nodes
 - `stale_count` — tasks not modified in 7+ days while in_progress
 
@@ -79,13 +79,15 @@ The agent uses these as **signals**, not as deterministic verdicts:
 
 Each cycle, pick ONE strategy based on what graph_stats shows needs the most attention:
 
-| Condition                     | Strategy            | Planner Activity                                       |
-| ----------------------------- | ------------------- | ------------------------------------------------------ |
-| `disconnected_epics` > 10     | Connect epics       | Reparent — find project parents for disconnected epics |
-| `projects_without_goals` > 10 | Connect projects    | Reparent — link projects to existing goals             |
-| `flat_tasks` > 100            | Reparent flat tasks | Reparent — find epic/project parents for orphans       |
-| `orphan_count` > 20           | Fix orphans         | Reparent — connect or archive disconnected nodes       |
-| All metrics healthy           | Densify edges       | Densify — use strategies to add dependency edges       |
+| Condition                            | Strategy            | Planner Activity                                                              |
+| ------------------------------------ | ------------------- | ----------------------------------------------------------------------------- |
+| `disconnected_epics` > 10            | Connect epics       | Reparent — find project parents for disconnected epics                        |
+| `projects_without_goal_linkage` > 10 | Link projects       | Add `goals: []` metadata — link projects to existing goals via metadata field |
+| `flat_tasks` > 100                   | Reparent flat tasks | Reparent — find epic/project parents for orphans                              |
+| `orphan_count` > 20                  | Fix orphans         | Reparent — connect or archive disconnected nodes                              |
+| All metrics healthy                  | Densify edges       | Densify — use strategies to add dependency edges                              |
+
+**Type-aware orphan detection**: `pkb_orphans` now reports both missing-parent AND wrong-type-parent orphans (e.g., a task parented directly to a project instead of an epic). Phase 4b should treat wrong-type-parent orphans the same as missing-parent orphans when selecting a reparent strategy.
 
 See `aops-core/skills/planner/SKILL.md` → `maintain` mode for full activity reference.
 
