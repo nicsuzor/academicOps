@@ -1953,20 +1953,6 @@ def sweep(ctx, stale_days):
                 print(f"    ⚠ Could not parse updatedAt '{updated_at_str}': {e}")
 
 
-@main.command()
-def merge():
-    """Scan for tasks in REVIEW status and merge them to main.
-
-    This runs the Refinery: finds all tasks marked 'review',
-    squash-merges their polecat branches, runs tests, and
-    marks them 'done' on success.
-    """
-    from engineer import Engineer
-
-    eng = Engineer()
-    eng.scan_and_merge()
-
-
 def _clone_has_changes(repo_path: Path) -> bool:
     """Check if a crew clone has any changes (committed or uncommitted) vs its upstream.
 

@@ -4,25 +4,15 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from lib.task_model import Task
+from typing import Any
 
 # Add aops-core to path
 SCRIPT_DIR = Path(__file__).parent.resolve()
 REPO_ROOT = SCRIPT_DIR.parent
 sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 
-try:
-    from lib.task_model import Task
-except ImportError:
-    # Fallback for runtime if paths not set
-    if "Task" not in locals() and "Task" not in globals():
-        Task = Any  # type: ignore[reportInvalidTypeForm]
 
-
-def generate_pr_body(task: Task) -> str:  # type: ignore[reportInvalidTypeForm]
+def generate_pr_body(task: Any) -> str:
     """Generate a Pull Request body from a Task object.
 
     Extracts the description and acceptance criteria from the task body.

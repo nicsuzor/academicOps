@@ -157,23 +157,12 @@ def format_history_for_prompt(state: dict) -> str:
 # Context gathering
 # ---------------------------------------------------------------------------
 
-# Set up aops-core imports once at module level
-_aops_core_path = os.path.join(os.path.dirname(__file__), "..", "aops-core")
-if _aops_core_path not in sys.path:
-    sys.path.insert(0, _aops_core_path)
-
 
 def get_ready_tasks(project: str) -> str:
     """Get ready task queue as formatted text. Raises on failure."""
-    try:
-        from lib.task_storage import TaskStorage
-    except ImportError as e:
-        raise RuntimeError(
-            "lib.task_storage has been removed. Task management has migrated to the PKB MCP server (nicsuzor/mem)."
-        ) from e
+    from polecat.pkb_bridge import get_ready_tasks as _pkb_ready
 
-    storage = TaskStorage()
-    tasks = storage.get_ready_tasks(project=project)
+    tasks = _pkb_ready(project=project)
 
     if not tasks:
         return "No ready tasks in queue."
@@ -223,15 +212,9 @@ def get_recent_prs() -> str:
 
 def get_in_progress_tasks(project: str) -> str:
     """Get tasks currently in progress. Raises on failure."""
-    try:
-        from lib.task_storage import TaskStatus, TaskStorage
-    except ImportError as e:
-        raise RuntimeError(
-            "lib.task_storage has been removed. Task management has migrated to the PKB MCP server (nicsuzor/mem)."
-        ) from e
+    from polecat.pkb_bridge import list_tasks as _pkb_list
 
-    storage = TaskStorage()
-    tasks = storage.list_tasks(project=project, status=TaskStatus.IN_PROGRESS)
+    tasks = _pkb_list(status="in_progress", project=project)
 
     if not tasks:
         return "No tasks currently in progress."
