@@ -54,9 +54,9 @@ Read last 3 daily notes to show project activity summary:
 Skill(skill="email", args="--daily")
 ```
 
-The `/email` skill handles everything: fetching, sent-mail cross-referencing, classification, task creation with full email content, attachment processing, and duplicate prevention. See [[workflows/email-capture]] for details.
+The `/email` skill handles everything: fetching, sent-mail cross-referencing, classification, task creation with full email content, and duplicate prevention. See [[workflows/email-capture]] for details.
 
-**Why delegate**: Inline email processing leads to shallow task bodies — missing quoted text, unprocessed attachments, no links. The `/email` skill enforces the quality bar defined in [[workflows/email-capture]].
+**Why delegate**: Inline email processing leads to shallow task bodies — missing quoted text, no links, no entry_id. The `/email` skill enforces the quality bar defined in [[workflows/email-capture]].
 
 ### 2.1: After /email completes
 
@@ -68,12 +68,11 @@ The `/email` skill returns:
 
 **Integrate results into the daily note**:
 
-1. **FYI section**: Write FYI items into the daily note's "What Needs Attention" section. The user reads content in the note itself, not by opening emails. Include:
-   - Thread participants and who said what
-   - Actual content — quote directly for short emails, summarize for long ones
-   - Task links for any actionable FYI items (created by `/email`)
+1. **FYI section**: Write FYI items into the daily note's "What Needs Attention" section. The user reads content in the note itself, not by opening emails.
 
 2. **Thread grouping**: Group emails by conversation thread (same subject minus Re:/Fwd:). Present threads as unified summaries, not individual emails.
+
+**Semantic chunking rule**: Each FYI item must be a **single self-contained unit** — either an h3 heading or a list item — with full actual text (selected but verbatim). The PKB indexes daily notes, so each chunk must make sense in isolation without surrounding context.
 
 **Format in briefing**:
 
@@ -82,15 +81,19 @@ The `/email` skill returns:
 
 ### [Thread Topic]
 
-[Participants] discussed [topic]. [Key content/decision/info].
+From [sender] to [recipients], [date]:
 
-> [Direct quote if short]
+> [Verbatim quote of the key content — selected paragraphs, not paraphrase]
+
+[1 sentence summary of what this means / why it matters]
 
 - **→ Task**: [task-id] Task title (if action required)
 
 ### [Single Email Topic]
 
-From [sender]: [Actual content or summary]
+From [sender], [date]:
+
+> [Actual email content — verbatim, not summarised]
 ```
 
 **Incremental**: Cross-reference against the existing FYI section in today's note. If an email thread is already summarised there, skip it. Preserve any user annotations below existing FYI items.
@@ -112,8 +115,8 @@ From [sender]: [Actual content or summary]
 Before moving to section 3, verify:
 
 - [ ] Each action-requiring email has a task created (by `/email`)
-- [ ] Each task body contains quoted email text, links, and processed attachments
-- [ ] FYI items are written into the daily note with actual content (not just subject lines)
+- [ ] Each task body contains quoted email text, links, and entry_id
+- [ ] FYI items in daily note are self-contained chunks with verbatim email content (not just subject lines)
 - [ ] Relevant existing tasks updated with new info
 
 **Rule**: Information captured but not persisted is information lost. Daily note is ephemeral; memory and tasks are durable.

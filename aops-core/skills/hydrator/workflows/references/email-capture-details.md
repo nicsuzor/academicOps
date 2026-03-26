@@ -66,7 +66,7 @@ Every email-derived task body MUST include:
 
 5. **Deadline**: Extracted or inferred deadline, prominently placed.
 
-**Anti-pattern** (what task-221f3189 got wrong): A task that says "Review the attached document and provide feedback by Friday" without quoting the email, without the document converted to markdown, and without the actual links. This is useless — the person pulling the task has no context.
+**Anti-pattern** (what task-221f3189 got wrong): A task that says "Review the attached document and provide feedback by Friday" without quoting the email and without the actual links. This is useless — the person pulling the task has no context.
 
 **Template**:
 
@@ -89,8 +89,8 @@ Entry ID: [entry_id]
 
 ## Attachments
 
-- [[path/to/converted.md]] (converted from original.docx)
-- [[path/to/file.pdf]]
+- original.docx (attached to email — retrieve when actioning)
+- report.pdf (attached to email)
 
 ## Action Required
 
@@ -98,13 +98,11 @@ Entry ID: [entry_id]
 - [ ] [Deadline: YYYY-MM-DD]
 ```
 
-#### Resource Processing (MANDATORY for all attachments and linked docs)
+#### Resource Handling
 
-- **Attachments**: Download to `$ACA_DATA/resources/email/` using `~~email.messages_download_attachments`.
-- **Linked Docs**: Scan email body for document links (Google Docs, Dropbox, SharePoint, OneDrive). Download where possible.
-- **Conversion**: Convert `.docx`, `.doc`, `.rtf` to markdown using pandoc. Store converted markdown alongside the original.
-- **PDF files**: Keep as-is but note in the task body with a link.
-- **If download fails**: Note the failure in the task body and preserve the original link. Do not silently drop resources.
+- **Links**: Preserve all URLs from the email body in the task's `## Links` section. Never silently drop links.
+- **Attachments**: Note attachment filenames in the task body. Do NOT download attachments to the PKB during email triage — attachment processing (download, conversion) happens later via the daily briefing workflow when the task is actioned.
+- **If the task depends on an attachment**: Flag this clearly in the Action Required section so the person pulling the task knows to retrieve it.
 
 ## Step 8: Presentation and Summary
 

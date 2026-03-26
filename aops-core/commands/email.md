@@ -41,8 +41,7 @@ This command routes to the **[[workflows/email-capture]]** workflow.
    - All links from the email body
    - Entry ID for retrieval
    - Sender, recipients, date
-5. **Resources**: Download attachments and convert documents to markdown. Never silently drop resources.
-6. **Summarize**: Present Important FYI content and created tasks to the user.
+5. **Summarize**: Present Important FYI content and created tasks to the user.
 
 ## Quality Bar
 

@@ -32,8 +32,8 @@ backend: scripts
 
 - **Mandatory First Step**: Always check for existing tasks before creation.
 - **Mandatory Parent Linkage**: Every created task MUST have a `parent` (epic or project task).
-- **Mandatory Task Body Quality**: Every task MUST contain quoted email text, all links, processed attachments, and entry_id. See [[email-capture-details]] § "Task Body Quality Requirements". A task without the actual email content is non-compliant.
-- **Mandatory Resource Processing**: Attachments MUST be downloaded. Documents (.docx, .doc, .rtf) MUST be converted to markdown. Links MUST be preserved. Failures noted, never silently dropped.
+- **Mandatory Task Body Quality**: Every task MUST contain quoted email text, all links, and entry_id. See [[email-capture-details]] § "Task Body Quality Requirements". A task without the actual email content is non-compliant.
+- **Mandatory Link Preservation**: All URLs from the email body MUST appear in the task. Attachment filenames noted but NOT downloaded during triage — retrieval happens when the task is actioned.
 - **Verification of Tool**: To check if `~~email` is available, CALL THE TOOL. Don't check configs.
 - **Confidence Scoring**: High confidence auto-categorizes; low confidence flags for review.
 - **Fail-Fast**: Halt immediately if the email connector is unavailable.
@@ -55,7 +55,7 @@ For step-by-step instructions and technical configurations, see **[[email-captur
 
 1. **Task Creation**: Check that tasks for legitimate action items are created.
 2. **Task Body Quality**: Every task body contains quoted email text, all links, entry_id, and sender/date metadata. A task that paraphrases without quoting is non-compliant.
-3. **Resource Processing**: Attachments downloaded, documents converted to markdown, links preserved. No silently dropped resources.
+3. **Link Preservation**: All URLs from the email appear in the task. Attachment filenames noted. No silently dropped links.
 4. **Duplication**: Ensure no duplicate tasks are created for the same email.
 5. **Categorization**: Verify high-confidence tasks have correct projects and priority.
 6. **Daily Note Integration**: When invoked with `--daily`, FYI items contain actual email content (not just subject lines) for inclusion in the daily note.
