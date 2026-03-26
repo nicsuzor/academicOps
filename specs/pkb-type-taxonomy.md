@@ -64,13 +64,16 @@ Three categories, exhaustive and mutually exclusive:
 
 These appear in task operations (`list_tasks`, `task_search`, ready/blocked queues, task trees, treemap layouts).
 
-| Type      | Graph role             | Parent requirement |
-| --------- | ---------------------- | ------------------ |
-| `goal`    | Top of hierarchy       | None (root-level)  |
-| `project` | Body of work           | Goal or project    |
-| `epic`    | Milestone group        | Project or epic    |
-| `task`    | Discrete deliverable   | Epic or project    |
-| `learn`   | Observational tracking | Epic or project    |
+| Type      | Graph role             | Parent requirement           |
+| --------- | ---------------------- | ---------------------------- |
+| `project` | Body of work           | None (root-level) or project |
+| `epic`    | Milestone group        | Project or epic              |
+| `task`    | Discrete deliverable   | Epic or project              |
+| `learn`   | Observational tracking | Epic or project              |
+
+**`goal` is not a tree node.** Goal nodes (type: goal) remain valid as standalone planning documents but are excluded from the work-item tree hierarchy. Projects link to goals via the `goals` metadata field (see below). Existing goal nodes are not deleted — they serve as reference/planning artifacts but do not participate in tree traversal, orphan detection, or task operations.
+
+**Removed from actionable types:** `goal` (now a reference/planning node, see above).
 
 **Removed from type, moved to `classification`:** `bug`, `feature`, `action`, `subproject`, `milestone`.
 
@@ -86,17 +89,18 @@ These appear in task operations (`list_tasks`, `task_search`, ready/blocked queu
 
 These never appear in task operations. They are knowledge artifacts, not work to be done.
 
-| Type        | Content                                   |
-| ----------- | ----------------------------------------- |
-| `note`      | General knowledge, observations, insights |
-| `memory`    | Agent/system memories                     |
-| `contact`   | People                                    |
-| `document`  | Generic documents                         |
-| `reference` | External reference material               |
-| `review`    | Review notes, reading notes               |
-| `case`      | Case studies, legal cases                 |
-| `spec`      | Specifications                            |
-| `knowledge` | Synthesised knowledge articles            |
+| Type        | Content                                                             |
+| ----------- | ------------------------------------------------------------------- |
+| `goal`      | Planning objectives (linked via `goals` metadata field on projects) |
+| `note`      | General knowledge, observations, insights                           |
+| `memory`    | Agent/system memories                                               |
+| `contact`   | People                                                              |
+| `document`  | Generic documents                                                   |
+| `reference` | External reference material                                         |
+| `review`    | Review notes, reading notes                                         |
+| `case`      | Case studies, legal cases                                           |
+| `spec`      | Specifications                                                      |
+| `knowledge` | Synthesised knowledge articles                                      |
 
 **Alias resolution** (linter auto-fixes):
 
@@ -132,13 +136,46 @@ Optional frontmatter field for content classification of work items. Free-form s
 
 This field is for display and filtering only. It has no effect on graph behaviour.
 
+### The `goals` field
+
+Optional frontmatter field on **project** nodes. Links a project to one or more goal nodes, establishing a many-to-many relationship between projects and goals without embedding goals in the tree hierarchy.
+
+```yaml
+---
+type: project
+goals:
+  - goal-abc123
+  - goal-def456
+---
+```
+
+**Semantics:**
+
+- `goals` is a `Vec<String>` of goal node IDs
+- Only meaningful on `type: project` nodes (ignored on other types)
+- Many-to-many: a project can serve multiple goals; a goal can be served by multiple projects
+- Goal linkage is **metadata, not structure** — it does not affect parent-child relationships, tree traversal, or orphan detection
+- Agents and dashboards can query goal→project relationships by searching for projects with a given goal ID in their `goals` field
+
+**Tree hierarchy (strict parent-child):**
+
+```
+PROJECT → EPIC → TASK
+```
+
+**Goal linkage (many-to-many, via metadata):**
+
+```
+Projects link to goals via goals: [id1, id2] frontmatter field
+```
+
 ### Single source of truth: `ACTIONABLE_TYPES`
 
 All layers must use the same constant for determining what is a work item:
 
 ```rust
 pub const ACTIONABLE_TYPES: &[&str] = &[
-    "goal", "project", "epic", "task", "learn",
+    "project", "epic", "task", "learn",
 ];
 ```
 
@@ -150,7 +187,7 @@ Every place that currently has its own hardcoded type filter must reference this
 | `mcp_server.rs` (`all_tasks()` via `list_tasks`) | `task_id.is_some()`   | Add `ACTIONABLE_TYPES` check                       |
 | `layout.rs:608` (`is_treemap_type`)              | 10 hardcoded types    | Use `ACTIONABLE_TYPES`                             |
 | `task_index.rs:234`                              | Inline `!= "learn"`   | Keep (behavioural exception within actionable set) |
-| `task_model.py:55` (`TaskType`)                  | 8 values              | Reduce to 5: goal, project, epic, task, learn      |
+| `task_model.py:55` (`TaskType`)                  | 8 values              | Reduce to 4: project, epic, task, learn            |
 
 ### `all_tasks()` must filter by type
 
@@ -181,12 +218,13 @@ pub fn all_tasks(&self) -> Vec<&GraphNode> {
 
 ### Phase 1: Code changes (mem repo)
 
-1. Update `ACTIONABLE_TYPES` to the 5-type list: `goal, project, epic, task, learn`
+1. Update `ACTIONABLE_TYPES` to the 4-type list: `project, epic, task, learn`
 2. Fix `task_search` to use `ACTIONABLE_TYPES.contains()` instead of hardcoded filter
 3. Fix `all_tasks()` to filter by `ACTIONABLE_TYPES`
 4. Fix `is_treemap_type()` to use `ACTIONABLE_TYPES`
 5. Update Python `TaskType` enum to match
 6. Add `classification` field to `GraphNode` struct (optional string, read from frontmatter)
+7. Add `goals` field to `GraphNode` struct (optional `Vec<String>`, read from frontmatter)
 
 ### Phase 2: Data migration (PKB)
 
