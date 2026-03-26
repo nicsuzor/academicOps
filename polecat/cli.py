@@ -16,10 +16,11 @@ if str(REPO_ROOT / "aops-core") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 
 import click
-from lib.agent_env import apply_env_mappings
 from manager import PolecatManager
 from observability import metrics
 from validation import TaskIDValidationError, validate_task_id_or_raise
+
+from lib.agent_env import apply_env_mappings
 
 # Max turns for headless Claude runs — must be high enough to accommodate hook
 # overhead (hydration gate, custodiet compliance check) plus actual task work.
@@ -2669,70 +2670,37 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
             print(f"Error: {e}", file=sys.stderr)
             sys.exit(1)
 
-        if manager.storage is not None:
-            task = manager.storage.get_task(task_id)
-        else:
-            from polecat.pkb_bridge import get_task as pkb_get_task
-
-            task = pkb_get_task(task_id)
+        task = manager.get_task(task_id)
         if not task:
             print(f"Task not found: {task_id}", file=sys.stderr)
             sys.exit(1)
 
-        # Claim if not already in progress
-        try:
-            from lib.task_model import TaskStatus
+        # Normalize status to a plain string for uniform handling
+        status_str = task.status.value if hasattr(task.status, "value") else str(task.status or "")
 
-            if task.status in (TaskStatus.DONE, TaskStatus.CANCELLED):
-                print(f"✅ Task {task_id} is already '{task.status.value}'.")
-                sys.exit(0)
+        _DONE_STATUSES = ("done", "cancelled")
+        _LOCKED_STATUSES = ("merge_ready", "review", "merging")
 
-            # Refuse to re-dispatch tasks locked by an open PR (not yet merged).
-            # MERGE_READY/REVIEW/MERGING all mean a PR was filed and is pending.
-            # Even if status somehow reverted to ACTIVE, a pr_url/pr field signals prior work.
-            _LOCKED_STATUSES = (TaskStatus.MERGE_READY, TaskStatus.REVIEW, TaskStatus.MERGING)
-            pr_ref = task.pr_url or (f"#{task.pr}" if task.pr else None)
-            if task.status in _LOCKED_STATUSES or pr_ref:
-                print(
-                    f"🔒 Task {task_id} is locked "
-                    f"(status: {task.status.value}"
-                    + (f", PR: {pr_ref}" if pr_ref else "")
-                    + "). A PR already exists for this task — refusing to re-dispatch.",
-                    file=sys.stderr,
-                )
-                sys.exit(2)  # Exit 2 = locked; distinct from exit 1 (error) / exit 3 (empty queue)
+        if status_str in _DONE_STATUSES:
+            print(f"✅ Task {task_id} is already '{status_str}'.")
+            sys.exit(0)
 
-            if task.status == TaskStatus.ACTIVE:
-                task.status = TaskStatus.IN_PROGRESS
-                task.assignee = caller
-                manager.storage.save_task(task)
-        except ImportError:
-            # PKB bridge path: status is a plain string, not an enum
-            _DONE_STATUSES = ("done", "cancelled")
-            _LOCKED_STATUSES_STR = ("merge_ready", "review", "merging")
-            status_str = task.status or ""
+        # Refuse to re-dispatch tasks locked by an open PR (not yet merged).
+        pr_ref = task.pr_url or (f"#{task.pr}" if task.pr else None)
+        if status_str in _LOCKED_STATUSES or pr_ref:
+            print(
+                f"🔒 Task {task_id} is locked "
+                f"(status: {status_str}"
+                + (f", PR: {pr_ref}" if pr_ref else "")
+                + "). A PR already exists for this task — refusing to re-dispatch.",
+                file=sys.stderr,
+            )
+            sys.exit(2)  # Exit 2 = locked; distinct from exit 1 (error) / exit 3 (empty queue)
 
-            if status_str in _DONE_STATUSES:
-                print(f"✅ Task {task_id} is already '{status_str}'.")
-                sys.exit(0)
-
-            pr_ref = task.pr_url or (f"#{task.pr}" if task.pr else None)
-            if status_str in _LOCKED_STATUSES_STR or pr_ref:
-                print(
-                    f"🔒 Task {task_id} is locked "
-                    f"(status: {status_str}"
-                    + (f", PR: {pr_ref}" if pr_ref else "")
-                    + "). A PR already exists for this task — refusing to re-dispatch.",
-                    file=sys.stderr,
-                )
-                sys.exit(2)
-
-            if status_str == "active":
-                from polecat.pkb_bridge import update_task as pkb_update_task
-
-                pkb_update_task(task_id, status="in_progress", assignee=caller)
-                task.status = "in_progress"
-                task.assignee = caller
+        if status_str == "active":
+            manager.update_task(task_id, status="in_progress", assignee=caller)
+            task.status = "in_progress"
+            task.assignee = caller
     else:
         print(f"Looking for ready tasks{' in project ' + project if project else ''}...")
         task = manager.claim_next_task(caller, project)
@@ -2767,12 +2735,7 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
     if not is_issue and task.soft_depends_on:
         soft_deps = []
         for dep_id in task.soft_depends_on:
-            if manager.storage is not None:
-                dep_task = manager.storage.get_task(dep_id)
-            else:
-                from polecat.pkb_bridge import get_task as pkb_get_task
-
-                dep_task = pkb_get_task(dep_id)
+            dep_task = manager.get_task(dep_id)
             if dep_task:
                 soft_deps.append(
                     {

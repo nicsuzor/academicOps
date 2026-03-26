@@ -29,9 +29,9 @@ class PkbTask:
         self.status: str | None = fm.get("status")  # plain string, not enum
         self.parent: str | None = fm.get("parent")
         self.priority: int | None = fm.get("priority")
-        self.tags: list = fm.get("tags", []) or []
-        self.depends_on: list = data.get("depends_on", []) or []
-        self.soft_depends_on: list = fm.get("soft_depends_on", []) or []
+        self.tags: list = fm.get("tags") or []
+        self.depends_on: list = data.get("depends_on") or []
+        self.soft_depends_on: list = fm.get("soft_depends_on") or []
         self.assignee: str | None = fm.get("assignee")
         self.pr_url: str | None = fm.get("pr_url")
         self.pr: str | None = fm.get("pr")
@@ -111,7 +111,10 @@ class PkbClient:
             return None
         result = resp.get("result", {})
         if result.get("isError"):
-            err_text = result.get("content", [{}])[0].get("text", "unknown error")
+            content = result.get("content")
+            err_text = "unknown error"
+            if content:
+                err_text = content[0].get("text", "unknown error")
             print(f"PKB error ({name}): {err_text}", file=sys.stderr)
             return None
         content = result.get("content", [])

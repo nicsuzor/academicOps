@@ -238,6 +238,45 @@ class PolecatManager:
         self.storage: Any = _TaskStorage() if _TaskStorage is not None else None
         self.task_status: Any = _TaskStatus
 
+    def get_task(self, task_id: str) -> Any:
+        """Retrieve a task by ID, routing to storage or PKB bridge."""
+        if self.storage is not None:
+            return self.storage.get_task(task_id)
+        from polecat.pkb_bridge import get_task as pkb_get_task
+
+        return pkb_get_task(task_id)
+
+    def save_task(self, task: Any) -> None:
+        """Save a task, routing to storage or PKB bridge."""
+        if self.storage is not None:
+            self.storage.save_task(task)
+            return
+        from polecat.pkb_bridge import save_task as pkb_save_task
+
+        pkb_save_task(task)
+
+    def update_task(self, task_id: str, **kwargs: Any) -> bool:
+        """Update task fields, routing to storage or PKB bridge.
+
+        When using legacy storage, mutates the task object and saves it.
+        String status values are converted to TaskStatus enums automatically.
+        When using PKB bridge, calls update_task directly.
+        """
+        if self.storage is not None:
+            task = self.storage.get_task(task_id)
+            if task is None:
+                return False
+            for key, value in kwargs.items():
+                # Convert string status values to TaskStatus enums for legacy storage
+                if key == "status" and isinstance(value, str) and _TaskStatus is not None:
+                    value = _TaskStatus(value)
+                setattr(task, key, value)
+            self.storage.save_task(task)
+            return True
+        from polecat.pkb_bridge import update_task as pkb_update_task
+
+        return pkb_update_task(task_id, **kwargs)
+
     def generate_crew_name(self) -> str:
         """Generate a random crew name, avoiding active crew names."""
         import random
