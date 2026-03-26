@@ -337,18 +337,41 @@ In the Project Accomplishments section, add task links:
 
 ### Step 4.7: Update synthesis.json
 
-Write `$ACA_DATA/dashboard/synthesis.json`:
+**Read-merge-write** to `$AOPS_SESSIONS/synthesis.json` (same file the cron mechanical synthesis writes to, and the dashboard reads from). Preserve any existing fields from the cron-generated version that you don't have data for.
+
+**4.7.1: Generate qualitative narrative (`daily_story`)**
+
+Using the data gathered in Steps 4.1–4.6, generate 3-5 bullet points that tell the story of today's work:
+
+- **Second person**: "You started...", "You got pulled into...", "Still waiting from yesterday:..."
+- **Each bullet under 80 characters**
+- **Cover**: what work started today, where context switches or distractions occurred, what remains undone (from today and yesterday)
+- **Match lived experience** — this is a narrative, not a task list reformatting. If the user set morning goals, note alignment or drift. If sessions show project-hopping, say so.
+- **Order**: chronological or by impact, whichever tells a clearer story
+
+Bad: `"[aops] Fix tests failed"` (mechanical, not narrative)
+Good: `"You spent the morning debugging test failures in aops"` (story)
+
+**4.7.2: Assemble and write synthesis.json**
+
+Read existing `$AOPS_SESSIONS/synthesis.json` if it exists, then merge your data on top:
 
 ```json
 {
   "generated": "ISO timestamp",
   "date": "YYYYMMDD",
+  "daily_story": [
+    "You started the morning reviewing the HDR extension request",
+    "Got pulled into dashboard debugging around 10am",
+    "HDR admin tasks still waiting, plus OSB review from yesterday"
+  ],
+  "narrative_generated": "ISO timestamp",
   "sessions": {
     "total": N,
     "by_project": {"aops": 2, "writing": 1},
     "recent": [{"session_id": "...", "project": "...", "summary": "..."}]
   },
-  "narrative": ["Session summary 1", "Session summary 2"],
+  "narrative": ["[project] Session summary 1", "[project] Session summary 2"],
   "accomplishments": {
     "count": N,
     "summary": "brief text",
@@ -372,3 +395,16 @@ Write `$ACA_DATA/dashboard/synthesis.json`:
   "session_timeline": [{"time": "10:15", "session": "...", "activity": "..."}]
 }
 ```
+
+**Key fields**:
+
+| Field                 | Source                            | Notes                                  |
+| --------------------- | --------------------------------- | -------------------------------------- |
+| `daily_story`         | Generated in 4.7.1                | Qualitative narrative for dashboard    |
+| `narrative_generated` | Current timestamp                 | Lets dashboard show freshness          |
+| `narrative`           | Mechanical from session summaries | Backward compat; cron also writes this |
+| `merged_prs`          | From Step 4.2.5                   | Not available in cron version          |
+| `next_action`         | From Step 3 recommendations       | Highest priority ready task            |
+| `session_timeline`    | From session JSONs                | Chronological activity log             |
+
+**Write atomically**: Read existing file, deep-merge your fields on top (don't discard fields you don't have data for like `skill_insights` from cron), write to temp file, then rename.

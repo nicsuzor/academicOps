@@ -12,7 +12,7 @@ Auto-generated during build. Lists all files in this plugin distribution.
 
 ## File Count
 
-Total files: 162
+Total files: 164
 
 ## File Tree
 
@@ -149,6 +149,8 @@ skills/daily/instructions/reflect.md
 skills/daily/instructions/sync-workflow.md
 skills/daily/instructions/work-summary.md
 skills/daily/references/note-template.md
+skills/hydrator/workflows/email-capture.md
+skills/hydrator/workflows/references/email-capture-details.md
 skills/planner/SKILL.md
 skills/planner/WORKFLOWS.md
 skills/planner/references/decomposition-patterns.md

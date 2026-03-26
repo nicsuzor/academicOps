@@ -46,49 +46,33 @@ Read last 3 daily notes to show project activity summary:
 - Which projects had work recently
 - Current state/blockers per project
 
-## 2. Update daily briefing
+## 2. Email triage (delegate to /email)
 
-### 2.0: Load User Context for Email Classification
-
-Before classifying emails, load domain context to filter by relevance:
-
-```bash
-Read $ACA_DATA/CORE.md        # User profile, research focus
-Read $ACA_DATA/context/strategy.md  # Active projects and domains
-```
-
-**Use this context during classification**: Emails about funding, CFPs, conferences, or opportunities OUTSIDE the user's research domains should be classified as **Skip** (domain-irrelevant), not FYI. The user's domains are visible in strategy.md under "Projects" and "Strategic Logic Model".
-
-### 2.1: Email Triage
-
-Fetch recent emails via ~~email connector:
+**MANDATORY**: Email processing is handled by the `/email` skill, not inline. Invoke it:
 
 ```
-~~email.messages_list_recent(limit=50, folder="inbox")
+Skill(skill="email", args="--daily")
 ```
 
-**CRITICAL - Check sent mail FIRST**: Before classifying ANY inbox email, you MUST fetch sent mail and cross-reference to avoid flagging already-handled items:
+The `/email` skill handles everything: fetching, sent-mail cross-referencing, classification, task creation with full email content, and duplicate prevention. See [[workflows/email-capture]] for details.
 
-```
-~~email.messages_list_recent(limit=20, folder="sent")
-```
+**Why delegate**: Inline email processing leads to shallow task bodies — missing quoted text, no links, no entry_id. The `/email` skill enforces the quality bar defined in [[workflows/email-capture]].
 
-**For EACH inbox email**: Compare subject line (ignoring Re:/Fwd: prefixes) against sent mail subjects. If a matching sent reply exists, classify as **Skip** (already handled). This cross-reference is MANDATORY - skipping it causes duplicate task creation.
+### 2.1: After /email completes
 
-**Incremental**: Also cross-reference against the existing FYI section in today's note. If an email thread is already summarised there, skip it.
+The `/email` skill returns:
 
-**Classify each email** using [[workflows/triage-email]] criteria (LLM semantic classification, not keyword matching).
+- **Created tasks** (actionable emails → tasks with full context)
+- **FYI items** (informational emails with content summaries)
+- **Archive candidates** (already-handled or low-signal emails)
 
-### 2.2: FYI Content in Daily Note
+**Integrate results into the daily note**:
 
-**Goal**: User reads FYI content in the daily note itself, not by opening emails.
+1. **FYI section**: Write FYI items into the daily note's "What Needs Attention" section. The user reads content in the note itself, not by opening emails.
 
-**Thread grouping**: Group emails by conversation thread (same subject minus Re:/Fwd:). Present threads as unified summaries, not individual emails.
+2. **Thread grouping**: Group emails by conversation thread (same subject minus Re:/Fwd:). Present threads as unified summaries, not individual emails.
 
-**For each FYI thread/item**, fetch full content with `~~email.messages_get` and include:
-
-- Thread participants and who said what (if multiple contributors)
-- **Actual content**: The key information - quote directly for short emails, summarize for long ones
+**Semantic chunking rule**: Each FYI item must be a **single self-contained unit** — either an h3 heading or a list item — with full actual text (selected but verbatim). The PKB indexes daily notes, so each chunk must make sense in isolation without surrounding context.
 
 **Format in briefing**:
 
@@ -97,46 +81,44 @@ Fetch recent emails via ~~email connector:
 
 ### [Thread Topic]
 
-[Participants] discussed [topic]. [Key content/decision/info].
+From [sender] to [recipients], [date]:
 
-> [Direct quote if short]
+> [Verbatim quote of the key content — selected paragraphs, not paraphrase]
+
+[1 sentence summary of what this means / why it matters]
+
+- **→ Task**: [task-id] Task title (if action required)
 
 ### [Single Email Topic]
 
-From [sender]: [Actual content or summary]
+From [sender], [date]:
+
+> [Actual email content — verbatim, not summarised]
 ```
 
-**CRITICAL - For each FYI item, IMMEDIATELY after writing it:**
-
-1. **If action required** (feedback, review, response, decision) → `mcp__pkb__create_task()` NOW
-   - Include deadline if mentioned or implied
-   - **MANDATORY**: resolve parent per [[references/hierarchy-quality-rules]] before creating
-   - **Then add task link to FYI content**: `- **→ Task**: [task-id] Task title`
-2. **If links to existing task** → `mcp__pkb__update_task()` with the info
-3. **If worth future recall** → `mcp__pkb__create_memory()` with tags
-
-Do NOT batch these to a later step. Task creation happens AS you process each email, not after.
+**Incremental**: Cross-reference against the existing FYI section in today's note. If an email thread is already summarised there, skip it. Preserve any user annotations below existing FYI items.
 
 **Archive flow (user confirmation required)**:
 
-1. Present FYI content in daily note (complete section 2.2)
-2. **DO NOT offer to archive yet** - user needs time to read and process the content
-3. **Wait for user signal** - user will indicate when they've read the content (e.g., responds to the briefing, asks a question, or says "ok" / "got it")
-4. Only AFTER user has acknowledged the content, use `AskUserQuestion` to ask which to archive
-5. Exception: Obvious spam (promotional, irrelevant newsletters) can be offered for archive immediately
+1. Present FYI content in daily note first
+2. **DO NOT offer to archive yet** — user needs time to read and process
+3. **Wait for user signal** — user will indicate when they've read the content
+4. Only AFTER user has acknowledged, use `AskUserQuestion` to ask which to archive
+5. Exception: Obvious spam can be offered for archive immediately
 
-**Archiving emails**: Use `messages_move` with `folder_path="Archive"` (not "Deleted Items" - that's trash, not archive). If the Archive folder doesn't exist for an account, ask the user which folder to use.
+**Archiving emails**: Use `messages_move` with `folder_path="Archive"` (not "Deleted Items"). If the Archive folder doesn't exist for an account, ask the user which folder to use.
 
-**Empty state**: If no new FYI emails, leave existing FYI content unchanged.
+**Empty state**: If no new emails, leave existing FYI content unchanged and note "No new emails" in terminal output.
 
-### 2.3: Verify FYI Persistence (Checkpoint)
+### 2.2: Verify FYI Persistence (Checkpoint)
 
-Before moving to section 3, verify you completed the inline persistence from 2.2:
+Before moving to section 3, verify:
 
-- [ ] Each action-requiring FYI has a task created
+- [ ] Each action-requiring email has a task created (by `/email`)
+- [ ] Each task body contains quoted email text, links, and entry_id
+- [ ] FYI items in daily note are self-contained chunks with verbatim email content (not just subject lines)
 - [ ] Relevant existing tasks updated with new info
-- [ ] High-value FYI items stored in memory
 
 **Rule**: Information captured but not persisted is information lost. Daily note is ephemeral; memory and tasks are durable.
 
-If you skipped any, go back and create tasks NOW before proceeding.
+If `/email` missed any actionable items, create tasks NOW before proceeding.

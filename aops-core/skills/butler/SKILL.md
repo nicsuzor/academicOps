@@ -262,6 +262,8 @@ IF git operations fail:
 5. COMPLETE TASK (if tracking with task)
    mcp__plugin_aops-core_tasks__complete_task(id="<id>")
 
+   **Do NOT wait for CI after filing a PR** — exit promptly after push + PR + reflection.
+
 6. PERSIST LEARNINGS (if applicable)
    Task(subagent_type="general-purpose", model="haiku",
         run_in_background=true,

@@ -14,7 +14,7 @@ needs_task: false
 mode: execution
 domain:
   - operations
-allowed-tools: Read,Bash,Grep,Write,Edit,AskUserQuestion,~~email
+allowed-tools: Read,Bash,Grep,Write,Edit,AskUserQuestion,Skill,~~email
 version: 3.0.0
 permalink: skills-daily
 ---
@@ -189,7 +189,7 @@ The daily note is a _shared document_ between the agent and the user. The owners
 The skill gathers information from multiple sources and composes the note. The order below is a typical sequence, not a rigid pipeline — the agent may adjust based on what's available:
 
 1. **Create or open** the note (verify carryover tasks against live PKB state)
-2. **Triage email and captures** (cross-ref against sent mail; create tasks for actionable items)
+2. **Invoke `/email`** to triage inbox (creates tasks with full context; returns FYI items for the daily note)
 3. **Compose Focus** (load task data, reason about recommendations, engage user on priorities)
 4. **Sync progress** (session JSONs, merged PRs, task completions → Work Log + Today's Story)
 5. **Output** terminal briefing and halt
