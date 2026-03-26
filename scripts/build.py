@@ -727,7 +727,6 @@ def build_aops_core(
         "AXIOMS.md",
         "BUTLER.md",
         "CONSTRAINTS.md",
-        "CORE.md",
         "HEURISTICS.md",
         "INDEX.md",
         "RULES.md",

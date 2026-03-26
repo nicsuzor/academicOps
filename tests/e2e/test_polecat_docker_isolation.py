@@ -122,16 +122,16 @@ def test_crew_spawns_docker_container_gemini(temp_polecat_home, tmp_path):
     # Verify the replicated gemini home has sandbox enabled in settings.
     # The fake gemini prints all GEMINI_* env vars — GEMINI_CLI_HOME tells us where to look.
     gemini_home_match = re.search(r"GEMINI_CLI_HOME=(.*)", output)
-    if gemini_home_match:
-        settings_path = Path(gemini_home_match.group(1).strip()) / "settings.json"
-        if settings_path.exists():
-            import json
+    assert gemini_home_match, f"GEMINI_CLI_HOME not found in output:\n{output}"
+    settings_path = Path(gemini_home_match.group(1).strip()) / "settings.json"
+    assert settings_path.exists(), f"settings.json not found at {settings_path}"
+    import json
 
-            settings = json.loads(settings_path.read_text())
-            sandbox_cfg = settings.get("tools", {}).get("sandbox", {})
-            assert sandbox_cfg.get("enabled") is True, (
-                f"Sandbox should be enabled in settings.json. Got: {sandbox_cfg}"
-            )
+    settings = json.loads(settings_path.read_text())
+    sandbox_cfg = settings.get("tools", {}).get("sandbox", {})
+    assert sandbox_cfg.get("enabled") is True, (
+        f"Sandbox should be enabled in settings.json. Got: {sandbox_cfg}"
+    )
 
 
 @pytest.mark.slow
