@@ -82,11 +82,13 @@ def test_crew_spawns_docker_container_gemini(temp_polecat_home, tmp_path):
     subprocess.run(["git", "-C", str(repo), "config", "user.name", "Test"], check=True)
     subprocess.run(["git", "commit", "--allow-empty", "-m", "init"], cwd=repo, check=True)
 
-    # We write a fake 'gemini' executable in our PATH to intercept the call and echo the env vars
+    # We write a fake 'gemini' executable in our PATH to intercept the call.
+    # Polecat crew now configures sandbox via settings.json (not --sandbox flag),
+    # so the fake gemini just needs to succeed — we verify settings.json afterwards.
     fake_bin = tmp_path / "bin"
     fake_bin.mkdir()
     fake_gemini = fake_bin / "gemini"
-    fake_gemini.write_text("#!/bin/sh\nprintenv | grep GEMINI_SANDBOX_IMAGE\necho 'ARGS:' $@\n")
+    fake_gemini.write_text("#!/bin/sh\nprintenv | grep GEMINI\necho 'ARGS:' $@\n")
     fake_gemini.chmod(0o755)
 
     env["PATH"] = f"{fake_bin}:{env.get('PATH', '')}"
@@ -115,7 +117,21 @@ def test_crew_spawns_docker_container_gemini(temp_polecat_home, tmp_path):
     assert "GEMINI_SANDBOX_IMAGE=aops-crew" in output, (
         "Should set GEMINI_SANDBOX_IMAGE for gemini CLI"
     )
-    assert "ARGS: --sandbox" in output, "Should invoke gemini with --sandbox flag"
+
+    # Sandbox is now configured via settings.json, not --sandbox flag.
+    # Verify the replicated gemini home has sandbox enabled in settings.
+    # The fake gemini prints all GEMINI_* env vars — GEMINI_CLI_HOME tells us where to look.
+    gemini_home_match = re.search(r"GEMINI_CLI_HOME=(.*)", output)
+    if gemini_home_match:
+        settings_path = Path(gemini_home_match.group(1).strip()) / "settings.json"
+        if settings_path.exists():
+            import json
+
+            settings = json.loads(settings_path.read_text())
+            sandbox_cfg = settings.get("tools", {}).get("sandbox", {})
+            assert sandbox_cfg.get("enabled") is True, (
+                f"Sandbox should be enabled in settings.json. Got: {sandbox_cfg}"
+            )
 
 
 @pytest.mark.slow

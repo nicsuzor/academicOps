@@ -695,7 +695,7 @@ def claude_headless():
 
 def run_gemini_headless(
     prompt: str,
-    model: str | None = None,
+    model: str | None = "gemini-2.5-flash",
     timeout_seconds: int = 600,
     permission_mode: str | None = None,
     cwd: Path | None = None,
@@ -705,7 +705,7 @@ def run_gemini_headless(
 
     Args:
         prompt: Prompt to send to Gemini
-        model: Optional model identifier (e.g., "gemini-2.0-flash")
+        model: Optional model identifier (e.g., "gemini-2.5-flash")
         timeout_seconds: Command timeout in seconds (default: 600)
         permission_mode: Optional permission mode ("yolo" maps to --yolo)
         cwd: Working directory (defaults to /tmp/gemini-test)
@@ -1003,7 +1003,7 @@ def _run_gemini_docker(prompt: str, gemini_home: Path | None = None, **kwargs) -
         sys.path.insert(0, aops_core_dir)
 
     timeout_seconds = kwargs.get("timeout_seconds", 300)
-    model = kwargs.get("model")
+    model = kwargs.get("model", "gemini-2.5-flash")
 
     # Prepare prompt to write output to a file for robust extraction
     # This bypasses all CLI noise (warnings, ANSI, etc.)
