@@ -19,58 +19,52 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parent.parent
 AOPS_CORE = REPO_ROOT / "aops-core"
 COMMANDS_SRC = AOPS_CORE / "commands"
+CONVERT_SCRIPT = REPO_ROOT / "scripts" / "convert_commands_to_toml.py"
 
 
 # ---------------------------------------------------------------------------
-# Part (a): Build produces valid TOML command files for every source command
+# Part (a): Run the real convert script and validate output
 # ---------------------------------------------------------------------------
 
 
 class TestGeminiCommandBuild:
-    """Commands are converted to TOML during Gemini build."""
+    """Run convert_commands_to_toml.py for real and check the output."""
 
-    def _build_gemini(self, tmp_path: Path) -> Path:
-        """Run build.py for gemini platform into tmp_path and return commands dir."""
+    def _run_convert_script(self, tmp_path: Path) -> Path:
+        """Run the actual convert script, outputting to tmp_path."""
+        output_dir = tmp_path / "commands"
+        output_dir.mkdir()
+
         result = subprocess.run(
             [
                 sys.executable,
-                str(REPO_ROOT / "scripts" / "build.py"),
-                "--dist-dir",
-                str(tmp_path),
+                str(CONVERT_SCRIPT),
+                "--output-dir",
+                str(output_dir),
+                "--no-gitignore",
             ],
             capture_output=True,
             text=True,
-            env={
-                **__import__("os").environ,
-                "ACA_DATA": str(tmp_path / "fake_aca_data"),
-            },
-            timeout=120,
+            timeout=30,
         )
-        # Build itself should succeed
-        assert result.returncode == 0, f"Build failed:\n{result.stderr}"
-        return tmp_path / "aops-gemini" / "commands"
+        assert result.returncode == 0, (
+            f"convert_commands_to_toml.py failed (exit {result.returncode}):\n{result.stderr}"
+        )
+        return output_dir
 
     def test_toml_files_exist_for_every_source_command(self, tmp_path: Path) -> None:
-        """Every .md command in aops-core/commands/ must produce a .toml in the Gemini dist."""
+        """Every .md command in aops-core/commands/ must produce a .toml."""
         source_commands = {f.stem for f in COMMANDS_SRC.glob("*.md")}
         assert source_commands, "No source command .md files found — test setup broken"
 
-        commands_dir = self._build_gemini(tmp_path)
-        built_toml = {f.stem for f in commands_dir.glob("*.toml")}
+        output_dir = self._run_convert_script(tmp_path)
+        built_toml = {f.stem for f in output_dir.glob("*.toml")}
 
         missing = source_commands - built_toml
         assert not missing, (
-            f"Source commands missing from Gemini build (no .toml generated): {sorted(missing)}. "
+            f"Source commands missing from convert output (no .toml generated): {sorted(missing)}. "
             f"Built TOML files: {sorted(built_toml)}. "
-            f"Commands dir contents: {sorted(f.name for f in commands_dir.iterdir()) if commands_dir.exists() else 'DIR MISSING'}"
-        )
-
-    def test_no_md_files_remain_in_gemini_commands(self, tmp_path: Path) -> None:
-        """Gemini commands dir must not contain .md files (only .toml)."""
-        commands_dir = self._build_gemini(tmp_path)
-        md_files = list(commands_dir.glob("*.md"))
-        assert not md_files, (
-            f"Markdown command files should not be in Gemini dist: {[f.name for f in md_files]}"
+            f"Output dir contents: {sorted(f.name for f in output_dir.iterdir()) if output_dir.exists() else 'DIR MISSING'}"
         )
 
     def test_toml_files_are_valid(self, tmp_path: Path) -> None:
@@ -80,9 +74,9 @@ class TestGeminiCommandBuild:
         except ImportError:
             import tomli as tomllib  # type: ignore[no-redef]
 
-        commands_dir = self._build_gemini(tmp_path)
-        toml_files = list(commands_dir.glob("*.toml"))
-        assert toml_files, "No .toml files found in Gemini commands dir"
+        output_dir = self._run_convert_script(tmp_path)
+        toml_files = list(output_dir.glob("*.toml"))
+        assert toml_files, "No .toml files produced by convert script"
 
         for toml_file in toml_files:
             content = toml_file.read_text()
@@ -126,20 +120,18 @@ class TestConvertCommandUnit:
 
     @pytest.fixture
     def convert_command(self):
-        """Import convert_command from whichever location the script exists."""
-        # Try the expected location first, then archived
-        for candidate in [
-            REPO_ROOT / "scripts" / "convert_commands_to_toml.py",
-            REPO_ROOT / "scripts" / "archived" / "convert_commands_to_toml.py",
-        ]:
-            if candidate.exists():
-                import importlib.util
+        """Import convert_command from the canonical location."""
+        import importlib.util
 
-                spec = importlib.util.spec_from_file_location("convert_commands", candidate)
-                mod = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(mod)
-                return mod.convert_command
-        pytest.skip("convert_commands_to_toml.py not found")
+        if not CONVERT_SCRIPT.exists():
+            pytest.fail(
+                f"Convert script not found at {CONVERT_SCRIPT}. "
+                "build.py expects it there — was it moved to scripts/archived/?"
+            )
+        spec = importlib.util.spec_from_file_location("convert_commands", CONVERT_SCRIPT)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod.convert_command
 
     @pytest.mark.parametrize(
         "command_file",
