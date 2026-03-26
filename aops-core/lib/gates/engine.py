@@ -520,10 +520,18 @@ class GenericGate:
         """PostToolUse: Evaluate triggers."""
         # Update metrics
         state = self._get_state(session_state)
-        if state.status == GateStatus.OPEN:
-            state.ops_since_open += 1
-        else:
-            state.ops_since_close += 1
+
+        # Subagent tool calls (is_subagent=True) do NOT increment the parent's counter.
+        # The parent's Agent tool call increments by 1, and internal subagent calls
+        # are ignored (aops-d8ee59cc). The router already sets is_subagent=False for
+        # spawn tool calls in the parent session, so no special SPAWN_TOOLS handling needed.
+        should_increment = not context.is_subagent
+
+        if should_increment:
+            if state.status == GateStatus.OPEN:
+                state.ops_since_open += 1
+            else:
+                state.ops_since_close += 1
 
         return self._evaluate_triggers(context, session_state)
 
