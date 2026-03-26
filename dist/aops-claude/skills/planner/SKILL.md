@@ -304,10 +304,10 @@ User prompt
 ## Work Hierarchy
 
 ```
-GOAL → PROJECT → EPIC → TASK → ACTION
+PROJECT → EPIC → TASK → ACTION
 ```
 
-Goals: desired future states. Projects: bounded efforts. Epics: PR-sized verifiable work. Tasks: single-session deliverables within an epic.
+Projects: bounded efforts (tree roots). Epics: PR-sized verifiable work. Tasks: single-session deliverables within an epic. Goals are linked via `goals: []` field, not via parent hierarchy.
 
 ## Status Values
 
