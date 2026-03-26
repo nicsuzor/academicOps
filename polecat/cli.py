@@ -1109,7 +1109,12 @@ def checkout(ctx, task_id, caller):
 
     manager = PolecatManager(home_dir=ctx.obj.get("home"))
 
-    task = manager.storage.get_task(task_id)
+    if manager.storage is not None:
+        task = manager.storage.get_task(task_id)
+    else:
+        from polecat.pkb_bridge import get_task as pkb_get_task
+
+        task = pkb_get_task(task_id)
     if not task:
         print(f"Task not found: {task_id}", file=sys.stderr)
         sys.exit(1)
@@ -1124,7 +1129,13 @@ def checkout(ctx, task_id, caller):
             manager.storage.save_task(task)
             print(f"Claimed: {task.title}", file=sys.stderr)
     except ImportError:
-        pass
+        if task.status == "active":
+            from polecat.pkb_bridge import update_task as pkb_update_task
+
+            pkb_update_task(task_id, status="in_progress", assignee=caller)
+            task.status = "in_progress"
+            task.assignee = caller
+            print(f"Claimed: {task.title}", file=sys.stderr)
 
     try:
         worktree_path = manager.setup_worktree(task)
@@ -1171,7 +1182,12 @@ def finish(ctx, no_push, do_nuke, force, force_done):
 
     # Extract task ID from directory name
     task_id = cwd.relative_to(manager.polecats_dir).parts[0]
-    task = manager.storage.get_task(task_id)
+    if manager.storage is not None:
+        task = manager.storage.get_task(task_id)
+    else:
+        from polecat.pkb_bridge import get_task as pkb_get_task
+
+        task = pkb_get_task(task_id)
 
     if not task:
         print(f"Error: Task {task_id} not found in task database", file=sys.stderr)
@@ -1180,6 +1196,7 @@ def finish(ctx, no_push, do_nuke, force, force_done):
     # --- SAFEGUARD 0: Completion Protection ---
     # If the task is already DONE, or in review/merge phase, do NOT override it.
     # This prevents the "infinite retry loop" where auto-finish resets a manually completed task.
+    _TERMINAL_STATUSES = ("done", "review", "merge_ready", "merging", "cancelled")
     try:
         from lib.task_model import TaskStatus
 
@@ -1202,7 +1219,15 @@ def finish(ctx, no_push, do_nuke, force, force_done):
                 print("Worktree removed")
             return
     except ImportError:
-        pass
+        status_str = task.status or ""
+        if status_str in _TERMINAL_STATUSES:
+            print(f"✅ Task {task_id} is in status '{status_str}'. Skipping auto-retry reset.")
+            if do_nuke:
+                print("Nuking worktree...")
+                os.chdir(Path.home())
+                manager.nuke_worktree(task_id, force=False)
+                print("Worktree removed")
+            return
 
     print(f"Finishing task: {task.title} ({task_id})")
 
@@ -1256,9 +1281,12 @@ def finish(ctx, no_push, do_nuke, force, force_done):
 
                     task.status = TaskStatus.DONE
                     manager.storage.save_task(task)
-                    print(f"✅ Task {task_id} marked as DONE.")
                 except ImportError:
-                    print("Warning: Could not update task status (lib.task_model not available)")
+                    from polecat.pkb_bridge import save_task as pkb_save
+
+                    task.status = "done"
+                    pkb_save(task)
+                print(f"✅ Task {task_id} marked as DONE.")
 
                 # Optionally nuke
                 if do_nuke:
@@ -1276,22 +1304,25 @@ def finish(ctx, no_push, do_nuke, force, force_done):
                 )
                 # Mark task as REVIEW, NOT active (avoid infinite re-queue for non-code tasks)
                 # Zero changes needs human/supervisor judgment — could be failure OR legitimate
+                task.status = "review"
+                task.assignee = None
+                task.body = (
+                    (task.body or "")
+                    + "\n\n## ⚠️ Review needed (zero changes detected)\n"
+                    + "Worker finished without making changes. Needs investigation:\n"
+                    + "- If the task legitimately requires no code changes, re-run with `--force-done`\n"
+                    + "- If the worker failed silently, check transcript and retry\n"
+                )
                 try:
                     from lib.task_model import TaskStatus
 
                     task.status = TaskStatus.REVIEW
-                    task.assignee = None  # Clear assignee for review
-                    task.body = (
-                        (task.body or "")
-                        + "\n\n## ⚠️ Review needed (zero changes detected)\n"
-                        + "Worker finished without making changes. Needs investigation:\n"
-                        + "- If the task legitimately requires no code changes, re-run with `--force-done`\n"
-                        + "- If the worker failed silently, check transcript and retry\n"
-                    )
                     manager.storage.save_task(task)
-                    print("📋 Task sent to review queue")
                 except ImportError:
-                    print("Warning: Could not update task status (lib.task_model not available)")
+                    from polecat.pkb_bridge import save_task as pkb_save
+
+                    pkb_save(task)
+                print("📋 Task sent to review queue")
 
                 # Optionally nuke
                 if do_nuke:
@@ -1324,11 +1355,12 @@ def finish(ctx, no_push, do_nuke, force, force_done):
 
                         task.status = TaskStatus.DONE
                         manager.storage.save_task(task)
-                        print(f"✅ Task {task_id} marked as DONE.")
                     except ImportError:
-                        print(
-                            "Warning: Could not update task status (lib.task_model not available)"
-                        )
+                        from polecat.pkb_bridge import save_task as pkb_save
+
+                        task.status = "done"
+                        pkb_save(task)
+                    print(f"✅ Task {task_id} marked as DONE.")
                     if do_nuke:
                         print("Nuking worktree...")
                         os.chdir(Path.home())
@@ -1344,24 +1376,25 @@ def finish(ctx, no_push, do_nuke, force, force_done):
                     print(
                         "⚠️  Marking as 'review' for investigation (use --force-done for legitimate zero-change tasks)."
                     )
+                    task.assignee = None
+                    task.body = (
+                        (task.body or "")
+                        + "\n\n## ⚠️ Review needed (zero changes detected)\n"
+                        + "Worker finished without making changes. Needs investigation:\n"
+                        + "- If the task legitimately requires no code changes, re-run with `--force-done`\n"
+                        + "- If the worker failed silently, check transcript and retry\n"
+                    )
                     try:
                         from lib.task_model import TaskStatus
 
                         task.status = TaskStatus.REVIEW
-                        task.assignee = None
-                        task.body = (
-                            (task.body or "")
-                            + "\n\n## ⚠️ Review needed (zero changes detected)\n"
-                            + "Worker finished without making changes. Needs investigation:\n"
-                            + "- If the task legitimately requires no code changes, re-run with `--force-done`\n"
-                            + "- If the worker failed silently, check transcript and retry\n"
-                        )
                         manager.storage.save_task(task)
-                        print("📋 Task sent to review queue")
                     except ImportError:
-                        print(
-                            "Warning: Could not update task status (lib.task_model not available)"
-                        )
+                        from polecat.pkb_bridge import save_task as pkb_save
+
+                        task.status = "review"
+                        pkb_save(task)
+                    print("📋 Task sent to review queue")
                     if do_nuke:
                         print("Nuking worktree...")
                         os.chdir(Path.home())
@@ -1375,22 +1408,25 @@ def finish(ctx, no_push, do_nuke, force, force_done):
             print(f"Warning: Fallback change detection also failed: {e2}")
             # Both origin/main and local main failed — needs human investigation
             print("⚠️  Cannot verify changes exist. Marking as 'review' (safe default).")
+            task.assignee = None
+            task.body = (
+                (task.body or "")
+                + "\n\n## ⚠️ Review needed (change detection failed)\n"
+                + "Could not compare against main to determine if worker made changes.\n"
+                + "- If the task legitimately requires no code changes, re-run with `--force-done`\n"
+                + "- If the worker failed silently, check transcript and retry\n"
+            )
             try:
                 from lib.task_model import TaskStatus
 
                 task.status = TaskStatus.REVIEW
-                task.assignee = None
-                task.body = (
-                    (task.body or "")
-                    + "\n\n## ⚠️ Review needed (change detection failed)\n"
-                    + "Could not compare against main to determine if worker made changes.\n"
-                    + "- If the task legitimately requires no code changes, re-run with `--force-done`\n"
-                    + "- If the worker failed silently, check transcript and retry\n"
-                )
                 manager.storage.save_task(task)
-                print("📋 Task sent to review queue")
             except ImportError:
-                print("Warning: Could not update task status (lib.task_model not available)")
+                from polecat.pkb_bridge import save_task as pkb_save
+
+                task.status = "review"
+                pkb_save(task)
+            print("📋 Task sent to review queue")
             if do_nuke:
                 print("Nuking worktree...")
                 os.chdir(Path.home())
@@ -1480,16 +1516,19 @@ def finish(ctx, no_push, do_nuke, force, force_done):
                     print(f"  {rebase_result.stderr}", file=sys.stderr)
                     print("  Task will be marked for review.", file=sys.stderr)
                     # Don't exit - let it fall through to mark as review
+                    task.body += (
+                        "\n\n## ⚠️ Rebase Failed\nConflicts detected during rebase onto main.\n"
+                    )
                     try:
                         from lib.task_model import TaskStatus
 
                         task.status = TaskStatus.REVIEW
-                        task.body += (
-                            "\n\n## ⚠️ Rebase Failed\nConflicts detected during rebase onto main.\n"
-                        )
                         manager.storage.save_task(task)
                     except ImportError:
-                        pass
+                        from polecat.pkb_bridge import save_task as pkb_save
+
+                        task.status = "review"
+                        pkb_save(task)
                     sys.exit(1)
                 print("  ✅ Rebase successful")
             else:
@@ -1625,13 +1664,15 @@ def finish(ctx, no_push, do_nuke, force, force_done):
 
         task.status = TaskStatus.MERGE_READY
         manager.storage.save_task(task)
-        print("✅ Task marked as 'merge_ready'")
-        print(
-            "📋 If a PR was created, the review pipeline will handle merge. See logs above for PR status."
-        )
-
     except ImportError:
-        print("Warning: Could not update task status (lib.task_model not available)")
+        from polecat.pkb_bridge import save_task as pkb_save
+
+        task.status = "merge_ready"
+        pkb_save(task)
+    print("✅ Task marked as 'merge_ready'")
+    print(
+        "📋 If a PR was created, the review pipeline will handle merge. See logs above for PR status."
+    )
 
     # Optionally nuke
     if do_nuke:
@@ -1686,13 +1727,12 @@ def nuke(ctx, target, force):
         for d in manager.polecats_dir.iterdir():
             if d.is_dir() and not d.name.startswith(".") and d.name not in exclude:
                 task_id = d.name
-                if not manager.storage:
-                    print(
-                        "Error: storage unavailable — cannot determine staleness",
-                        file=sys.stderr,
-                    )
-                    sys.exit(1)
-                task = manager.storage.get_task(task_id)
+                if manager.storage is not None:
+                    task = manager.storage.get_task(task_id)
+                else:
+                    from polecat.pkb_bridge import get_task as pkb_get_task
+
+                    task = pkb_get_task(task_id)
                 if not task:
                     is_stale = True
                 else:
@@ -1789,18 +1829,31 @@ def sweep(ctx, stale_days):
 
     import github
 
-    try:
-        from lib.task_model import TaskStatus
-    except ImportError:
-        print("Error: Task management libraries not found.", file=sys.stderr)
-        sys.exit(1)
-
     manager = PolecatManager(home_dir=ctx.obj.get("home"))
-    tasks = manager.storage.list_tasks(status=TaskStatus.MERGE_READY)
+
+    if manager.storage is not None:
+        try:
+            from lib.task_model import TaskStatus
+
+            tasks = manager.storage.list_tasks(status=TaskStatus.MERGE_READY)
+        except ImportError:
+            tasks = []
+    else:
+        from polecat.pkb_bridge import list_tasks as pkb_list_tasks
+
+        tasks = pkb_list_tasks(status="merge_ready")
 
     if not tasks:
         print("No tasks in MERGE_READY status.")
         return
+
+    def _save(t):
+        if manager.storage is not None:
+            manager.storage.save_task(t)
+        else:
+            from polecat.pkb_bridge import save_task as pkb_save
+
+            pkb_save(t)
 
     print(f"Sweeping {len(tasks)} tasks in MERGE_READY status...")
 
@@ -1833,8 +1886,8 @@ def sweep(ctx, stale_days):
         # 1. PR Merged
         if state == "MERGED" or merged_at:
             print("    ✅ PR Merged! Marking task as DONE.")
-            task.status = TaskStatus.DONE
-            manager.storage.save_task(task)
+            task.status = "done"
+            _save(task)
             # Cleanup worktree
             try:
                 manager.nuke_worktree(task.id, force=True)
@@ -1846,12 +1899,12 @@ def sweep(ctx, stale_days):
         # 2. PR Closed (but not merged)
         if state == "CLOSED":
             print("    ❌ PR Closed without merge. Moving to REVIEW.")
-            task.status = TaskStatus.REVIEW
+            task.status = "review"
             task.body += (
                 f"\n\n## 🧹 Sweep Report ({datetime.now(UTC).strftime('%Y-%m-%d %H:%M UTC')})\n"
             )
             task.body += f"**PR Closed without merge**: {pr_status.get('url')}\n"
-            manager.storage.save_task(task)
+            _save(task)
             continue
 
         # 3. Changes Requested
@@ -1869,7 +1922,7 @@ def sweep(ctx, stale_days):
 
         if changes_requested:
             print("    ❗ Changes requested. Moving to REVIEW.")
-            task.status = TaskStatus.REVIEW
+            task.status = "review"
             task.body += (
                 f"\n\n## 🧹 Sweep Report ({datetime.now(UTC).strftime('%Y-%m-%d %H:%M UTC')})\n"
             )
@@ -1878,7 +1931,7 @@ def sweep(ctx, stale_days):
                 author = review.get("author", {}).get("login", "unknown")
                 review_body = review.get("body", "No comment")
                 task.body += f"- **{author}**: {review_body}\n"
-            manager.storage.save_task(task)
+            _save(task)
             continue
 
         # 4. Stale check
@@ -1895,7 +1948,7 @@ def sweep(ctx, stale_days):
                         task.body += (
                             f"This PR has been open and inactive for more than {stale_days} days.\n"
                         )
-                        manager.storage.save_task(task)
+                        _save(task)
             except Exception as e:
                 print(f"    ⚠ Could not parse updatedAt '{updated_at_str}': {e}")
 
@@ -2976,7 +3029,12 @@ def analyze(ctx, task_id, transcript_lines):
     manager = PolecatManager(home_dir=ctx.obj.get("home"))
 
     # Load task
-    task = manager.storage.get_task(task_id)
+    if manager.storage is not None:
+        task = manager.storage.get_task(task_id)
+    else:
+        from polecat.pkb_bridge import get_task as pkb_get_task
+
+        task = pkb_get_task(task_id)
     if not task:
         print(f"❌ Task not found: {task_id}", file=sys.stderr)
         sys.exit(1)
@@ -3173,15 +3231,11 @@ def reset_stalled(ctx, project, hours, dry_run, force):
     """
     from datetime import datetime, timedelta
 
+    _TaskIndex = None
     try:
-        from lib.task_index import TaskIndex
-        from lib.task_model import TaskStatus
+        from lib.task_index import TaskIndex as _TaskIndex
     except ImportError:
-        print(
-            "Error: Could not import task libraries. Ensure aops-core is available.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
+        pass
 
     manager = PolecatManager(home_dir=ctx.obj.get("home"))
 
@@ -3191,7 +3245,17 @@ def reset_stalled(ctx, project, hours, dry_run, force):
     print(f"Checking for tasks stalled since {cutoff.isoformat()}...")
 
     # List tasks
-    candidates = manager.storage.list_tasks(status=TaskStatus.IN_PROGRESS, project=project)
+    if manager.storage is not None:
+        try:
+            from lib.task_model import TaskStatus
+
+            candidates = manager.storage.list_tasks(status=TaskStatus.IN_PROGRESS, project=project)
+        except ImportError:
+            candidates = []
+    else:
+        from polecat.pkb_bridge import list_tasks as pkb_list_tasks
+
+        candidates = pkb_list_tasks(status="in_progress", project=project)
 
     stalled = []
     pr_locked = []
@@ -3233,19 +3297,29 @@ def reset_stalled(ctx, project, hours, dry_run, force):
     reset_count = 0
     for task in stalled:
         try:
-            task.status = TaskStatus.ACTIVE
+            task.status = "active"
             task.assignee = None
-            manager.storage.save_task(task)
+            if manager.storage is not None:
+                try:
+                    from lib.task_model import TaskStatus
+
+                    task.status = TaskStatus.ACTIVE
+                except ImportError:
+                    pass
+                manager.storage.save_task(task)
+            else:
+                from polecat.pkb_bridge import save_task as pkb_save
+
+                pkb_save(task)
             reset_count += 1
         except Exception as e:
             print(f"Failed to reset {task.id}: {e}", file=sys.stderr)
 
-    # Rebuild index
-    if reset_count > 0:
+    # Rebuild index (only relevant for legacy TaskIndex)
+    if reset_count > 0 and _TaskIndex is not None and manager.storage is not None:
         try:
-            # Try to get data root from storage or use default
             data_root = manager.storage.data_root
-            index = TaskIndex(data_root)
+            index = _TaskIndex(data_root)
             index.rebuild_fast()
             print("Index rebuilt.")
         except Exception as e:
@@ -3312,11 +3386,13 @@ def watch(ctx, interval, stall_threshold, project):
     import time
     from datetime import datetime, timedelta
 
+    _use_legacy = False
     try:
         from lib.task_model import TaskStatus
+
+        _use_legacy = True
     except ImportError:
-        print("Error: Could not import task libraries.", file=sys.stderr)
-        sys.exit(1)
+        pass
 
     manager = PolecatManager(home_dir=ctx.obj.get("home"))
 
@@ -3342,15 +3418,29 @@ def watch(ctx, interval, stall_threshold, project):
     print(f"  Project filter: {project or 'all'}")
     print("  Press Ctrl+C to stop.\n")
 
+    def _list(status, proj=project):
+        if manager.storage is not None and _use_legacy:
+            return manager.storage.list_tasks(
+                status=getattr(TaskStatus, status.upper()), project=proj
+            )
+        from polecat.pkb_bridge import list_tasks as pkb_list_tasks
+
+        return pkb_list_tasks(status=status, project=proj)
+
+    def _ready(proj=project):
+        if manager.storage is not None and _use_legacy:
+            return manager.storage.get_ready_tasks(project=proj)
+        from polecat.pkb_bridge import get_ready_tasks as pkb_ready
+
+        return pkb_ready(project=proj)
+
     # Initial scan to populate seen sets (don't alert on startup)
     try:
-        merge_ready_tasks = manager.storage.list_tasks(
-            status=TaskStatus.MERGE_READY, project=project
-        )
+        merge_ready_tasks = _list("merge_ready")
         for task in merge_ready_tasks:
             seen_merge_ready.add(task.id)
 
-        review_tasks = manager.storage.list_tasks(status=TaskStatus.REVIEW, project=project)
+        review_tasks = _list("review")
         for task in review_tasks:
             seen_review.add(task.id)
 
@@ -3363,9 +3453,7 @@ def watch(ctx, interval, stall_threshold, project):
             now = datetime.now().astimezone()
 
             # Check for new merge_ready tasks (new PRs filed)
-            merge_ready_tasks = manager.storage.list_tasks(
-                status=TaskStatus.MERGE_READY, project=project
-            )
+            merge_ready_tasks = _list("merge_ready")
             for task in merge_ready_tasks:
                 if task.id not in seen_merge_ready:
                     seen_merge_ready.add(task.id)
@@ -3377,7 +3465,7 @@ def watch(ctx, interval, stall_threshold, project):
                     )
 
             # Check for new review tasks (merge failures)
-            review_tasks = manager.storage.list_tasks(status=TaskStatus.REVIEW, project=project)
+            review_tasks = _list("review")
             for task in review_tasks:
                 if task.id not in seen_review:
                     seen_review.add(task.id)
@@ -3389,23 +3477,23 @@ def watch(ctx, interval, stall_threshold, project):
                     )
 
             # Check for completed tasks (mark as activity)
-            manager.storage.list_tasks(status=TaskStatus.DONE, project=project)
+            _list("done")
             # We don't track done tasks, but finding new ones means progress
             # This is a simplification - in production you'd track these too
 
             # Check for in_progress tasks (active work)
-            in_progress = manager.storage.list_tasks(status=TaskStatus.IN_PROGRESS, project=project)
+            in_progress = _list("in_progress")
             if in_progress:
                 # Check if any were modified recently
                 for task in in_progress:
                     task_mod = task.modified
-                    if task_mod.tzinfo is None:
+                    if task_mod and task_mod.tzinfo is None:
                         task_mod = task_mod.replace(tzinfo=UTC)
-                    if task_mod > last_activity:
+                    if task_mod and task_mod > last_activity:
                         last_activity = task_mod
 
             # Get leaf-ready tasks (actually pullable work)
-            leaf_ready = manager.storage.get_ready_tasks(project=project)
+            leaf_ready = _ready()
 
             # Check for stall
             stall_cutoff = now - timedelta(minutes=stall_threshold)
@@ -3587,16 +3675,33 @@ def summary(ctx, since, project):
     import subprocess
     from datetime import datetime, timedelta
 
-    try:
-        from lib.task_model import TaskStatus
-    except ImportError:
-        print(
-            "Error: Could not import task libraries. Ensure aops-core is available.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
     manager = PolecatManager(home_dir=ctx.obj.get("home"))
+
+    def _list(status, proj=project):
+        if manager.storage is not None:
+            try:
+                from lib.task_model import TaskStatus
+
+                return manager.storage.list_tasks(
+                    status=getattr(TaskStatus, status.upper()), project=proj
+                )
+            except ImportError:
+                pass
+        from polecat.pkb_bridge import list_tasks as pkb_list_tasks
+
+        return pkb_list_tasks(status=status, project=proj)
+
+    def _ready(proj=project):
+        if manager.storage is not None:
+            try:
+                from lib.task_model import TaskStatus  # noqa: F401, F811
+
+                return manager.storage.get_ready_tasks(project=proj)
+            except ImportError:
+                pass
+        from polecat.pkb_bridge import get_ready_tasks as pkb_ready
+
+        return pkb_ready(project=proj)
 
     # Parse the duration
     try:
@@ -3690,7 +3795,7 @@ def summary(ctx, since, project):
     completed_tasks = []
     try:
         # Get all done tasks and filter by modified time
-        all_done = manager.storage.list_tasks(status=TaskStatus.DONE, project=project)
+        all_done = _list("done")
 
         for task in all_done:
             task_mod = task.modified
@@ -3727,11 +3832,11 @@ def summary(ctx, since, project):
 
     try:
         # Count tasks by status
-        ready_tasks = manager.storage.get_ready_tasks(project=project)
-        in_progress = manager.storage.list_tasks(status=TaskStatus.IN_PROGRESS, project=project)
-        blocked = manager.storage.list_tasks(status=TaskStatus.BLOCKED, project=project)
-        review = manager.storage.list_tasks(status=TaskStatus.REVIEW, project=project)
-        merge_ready = manager.storage.list_tasks(status=TaskStatus.MERGE_READY, project=project)
+        ready_tasks = _ready()
+        in_progress = _list("in_progress")
+        blocked = _list("blocked")
+        review = _list("review")
+        merge_ready = _list("merge_ready")
 
         print(f"- **Ready**: {len(ready_tasks)} tasks")
         print(f"- **In Progress**: {len(in_progress)} tasks")

@@ -12,11 +12,12 @@ import json
 import shutil
 import subprocess
 import sys
+from datetime import datetime
 from typing import Any
 
 
 class PkbTask:
-    """Duck-types the task attributes needed by polecat run."""
+    """Duck-types the task attributes needed by polecat commands."""
 
     def __init__(self, data: dict[str, Any]):
         fm = data.get("frontmatter", {})
@@ -34,6 +35,17 @@ class PkbTask:
         self.assignee: str | None = fm.get("assignee")
         self.pr_url: str | None = fm.get("pr_url")
         self.pr: str | None = fm.get("pr")
+        # Parse modified timestamp
+        mod_raw = fm.get("modified")
+        self.modified: datetime | None = None
+        if mod_raw:
+            if isinstance(mod_raw, datetime):
+                self.modified = mod_raw
+            elif isinstance(mod_raw, str):
+                try:
+                    self.modified = datetime.fromisoformat(mod_raw)
+                except ValueError:
+                    pass
 
 
 class PkbClient:
@@ -131,6 +143,26 @@ def _get_client() -> PkbClient:
     return _client
 
 
+def _parse_task_ids_from_markdown(text: str) -> list[str]:
+    """Extract task IDs from the markdown table returned by list_tasks.
+
+    The table has columns: #, ID, Pri, Status/Weight, Title.
+    We extract the ID column values.
+    """
+    ids = []
+    for line in text.splitlines():
+        if not line.startswith("|"):
+            continue
+        cells = [c.strip() for c in line.split("|")]
+        # cells[0] is empty (before first |), cells[1] is #, cells[2] is ID
+        if len(cells) >= 3:
+            candidate = cells[2]
+            # Skip header row and separator
+            if candidate and candidate != "ID" and not candidate.startswith("-"):
+                ids.append(candidate)
+    return ids
+
+
 def get_task(task_id: str) -> PkbTask | None:
     """Retrieve a task by ID via the PKB MCP server."""
     data = _get_client().call_tool("get_task", {"id": task_id})
@@ -139,11 +171,68 @@ def get_task(task_id: str) -> PkbTask | None:
     return PkbTask(data)
 
 
-def update_task(task_id: str, **kwargs: str) -> bool:
+def update_task(task_id: str, **kwargs: Any) -> bool:
     """Update task fields via the PKB MCP server.
 
-    Supported kwargs: status, assignee, priority, project, tags.
+    Supported kwargs: status, assignee, priority, project, tags, body, pr_url.
+    Pass ``None`` to remove a field.
     """
-    updates = {k: v for k, v in kwargs.items() if v is not None}
+    updates = dict(kwargs)
     result = _get_client().call_tool("update_task", {"id": task_id, "updates": updates})
     return result is not None
+
+
+def save_task(task: PkbTask) -> bool:
+    """Persist a mutated PkbTask back to PKB.
+
+    Writes all mutable fields via update_task. This mirrors the old
+    ``storage.save_task(task)`` pattern where callers mutate attributes
+    then save the whole object.
+    """
+    updates: dict[str, Any] = {
+        "status": task.status,
+        "assignee": task.assignee,
+    }
+    # Only include body if it was set (avoid overwriting with empty)
+    if task.body is not None:
+        updates["body"] = task.body
+    if task.pr_url is not None:
+        updates["pr_url"] = task.pr_url
+    return update_task(task.id, **updates)
+
+
+def list_tasks(
+    status: str | None = None,
+    project: str | None = None,
+    limit: int = 200,
+) -> list[PkbTask]:
+    """List tasks, returning hydrated PkbTask objects.
+
+    Calls the MCP list_tasks tool (which returns a markdown table),
+    extracts IDs, then hydrates each via get_task.
+    """
+    args: dict[str, Any] = {"limit": limit}
+    if status:
+        args["status"] = status
+    if project:
+        # list_tasks doesn't have a project filter — we filter client-side
+        pass
+
+    text = _get_client().call_tool("list_tasks", args)
+    if not text or not isinstance(text, str):
+        return []
+
+    ids = _parse_task_ids_from_markdown(text)
+    tasks = []
+    for tid in ids:
+        t = get_task(tid)
+        if t is not None:
+            if project and t.project != project:
+                continue
+            tasks.append(t)
+    return tasks
+
+
+def get_ready_tasks(project: str | None = None) -> list[PkbTask]:
+    """Get actionable leaf tasks sorted by priority + weight."""
+    return list_tasks(status="ready", project=project)
