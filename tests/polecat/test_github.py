@@ -1,13 +1,6 @@
-import sys
-from pathlib import Path
 from types import SimpleNamespace
 
-# Add repo root to path so we can import polecat
-REPO_ROOT = Path(__file__).parents[2].resolve()
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
-
-from polecat.github import generate_pr_body
+from polecat.cli import _generate_pr_body as generate_pr_body
 
 
 # Mock Task object

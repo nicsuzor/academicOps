@@ -66,7 +66,7 @@ Every email-derived task body MUST include:
 
 5. **Deadline**: Extracted or inferred deadline, prominently placed.
 
-**Anti-pattern** (what task-221f3189 got wrong): A task that says "Review the attached document and provide feedback by Friday" without quoting the email and without the actual links. This is useless — the person pulling the task has no context.
+**Anti-pattern**: A task that says "Review the attached document and provide feedback by Friday" without quoting the email and without the actual links. This is useless — the person pulling the task has no context.
 
 **Template**:
 

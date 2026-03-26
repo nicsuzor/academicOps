@@ -238,6 +238,45 @@ class PolecatManager:
         self.storage: Any = _TaskStorage() if _TaskStorage is not None else None
         self.task_status: Any = _TaskStatus
 
+    def get_task(self, task_id: str) -> Any:
+        """Retrieve a task by ID, routing to storage or PKB bridge."""
+        if self.storage is not None:
+            return self.storage.get_task(task_id)
+        from polecat.pkb_bridge import get_task as pkb_get_task
+
+        return pkb_get_task(task_id)
+
+    def save_task(self, task: Any) -> None:
+        """Save a task, routing to storage or PKB bridge."""
+        if self.storage is not None:
+            self.storage.save_task(task)
+            return
+        from polecat.pkb_bridge import save_task as pkb_save_task
+
+        pkb_save_task(task)
+
+    def update_task(self, task_id: str, **kwargs: Any) -> bool:
+        """Update task fields, routing to storage or PKB bridge.
+
+        When using legacy storage, mutates the task object and saves it.
+        String status values are converted to TaskStatus enums automatically.
+        When using PKB bridge, calls update_task directly.
+        """
+        if self.storage is not None:
+            task = self.storage.get_task(task_id)
+            if task is None:
+                return False
+            for key, value in kwargs.items():
+                # Convert string status values to TaskStatus enums for legacy storage
+                if key == "status" and isinstance(value, str) and _TaskStatus is not None:
+                    value = _TaskStatus(value)
+                setattr(task, key, value)
+            self.storage.save_task(task)
+            return True
+        from polecat.pkb_bridge import update_task as pkb_update_task
+
+        return pkb_update_task(task_id, **kwargs)
+
     def generate_crew_name(self) -> str:
         """Generate a random crew name, avoiding active crew names."""
         import random
@@ -920,6 +959,12 @@ class PolecatManager:
 
     def claim_next_task(self, caller: str, project: str | None = None):
         """Finds and claims the highest priority ready task."""
+        if self.storage is not None:
+            return self._claim_next_task_legacy(caller, project)
+        return self._claim_next_task_pkb(caller, project)
+
+    def _claim_next_task_legacy(self, caller: str, project: str | None = None):
+        """Claim via legacy TaskStorage with file locking."""
         tasks = self.storage.get_ready_tasks(project=project)
 
         # Record queue depth of ready tasks
@@ -982,6 +1027,41 @@ class PolecatManager:
                 except OSError:
                     # Lock file cleanup is best-effort; may fail if already removed
                     pass
+
+        return None
+
+    def _claim_next_task_pkb(self, caller: str, project: str | None = None):
+        """Claim via PKB MCP server."""
+        from polecat.pkb_bridge import get_ready_tasks, get_task, update_task
+
+        tasks = get_ready_tasks(project=project)
+        metrics.record_queue_depth("ready", count=len(tasks), project=project)
+
+        if not tasks:
+            return None
+
+        for task in tasks:
+            # Re-fetch to get fresh status (avoid race)
+            fresh = get_task(task.id)
+            if fresh is None or fresh.status != "active":
+                continue
+            if fresh.assignee and fresh.assignee != caller:
+                continue
+            if fresh.pr_url or fresh.pr:
+                print(
+                    f"[claim] Skipping {fresh.id}: locked by existing PR "
+                    f"({fresh.pr_url or f'#{fresh.pr}'})",
+                    file=sys.stderr,
+                )
+                continue
+
+            # Claim via MCP update_task (atomic at server level)
+            update_task(fresh.id, status="in_progress", assignee=caller)
+            fresh.status = "in_progress"
+            fresh.assignee = caller
+            return fresh
+
+        return None
 
         return None
 
@@ -1477,7 +1557,12 @@ class PolecatManager:
         # We need the task to know which repo it came from, but if we don't have it
         # (e.g. CLI just passed an ID), we might have to guess or search.
         # For simplicity, let's look up the task.
-        task = self.storage.get_task(task_id)
+        if self.storage is not None:
+            task = self.storage.get_task(task_id)
+        else:
+            from polecat.pkb_bridge import get_task as pkb_get_task
+
+            task = pkb_get_task(task_id)
         if task:
             repo_path = self.get_repo_path(task)
         else:
