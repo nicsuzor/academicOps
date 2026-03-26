@@ -88,7 +88,12 @@ def test_crew_spawns_docker_container_gemini(temp_polecat_home, tmp_path):
     fake_bin = tmp_path / "bin"
     fake_bin.mkdir()
     fake_gemini = fake_bin / "gemini"
-    fake_gemini.write_text("#!/bin/sh\nprintenv | grep GEMINI\necho 'ARGS:' $@\n")
+    fake_gemini.write_text(
+        "#!/bin/sh\n"
+        'echo "GEMINI_SANDBOX_IMAGE=${GEMINI_SANDBOX_IMAGE:-}"\n'
+        'echo "GEMINI_CLI_HOME=${GEMINI_CLI_HOME:-}"\n'
+        "echo 'ARGS:' $@\n"
+    )
     fake_gemini.chmod(0o755)
 
     env["PATH"] = f"{fake_bin}:{env.get('PATH', '')}"

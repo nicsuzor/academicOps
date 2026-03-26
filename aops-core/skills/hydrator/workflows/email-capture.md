@@ -3,7 +3,7 @@ id: email-capture
 name: email-task-capture
 category: instruction
 bases: [base-task-tracking, base-handover]
-description: Extract action items from emails and create "ready for action" tasks with summaries, downloaded documents, and clear response requirements
+description: Extract action items from emails and create "ready for action" tasks with summaries, linked resources, and clear response requirements
 permalink: workflows/email-capture
 tags: [workflow, email, task-capture, automation, memory, documents]
 version: 2.1.0
@@ -24,7 +24,7 @@ backend: scripts
 3. **Step 2: Analyze and Classify** - Categorize into Actionable, Important FYI, or Safe to ignore.
 4. **Step 3 & 4: Context and Categorization** - Query PKB for project matching and confidence scoring.
 5. **Step 5: Infer Priority** - Assign P0-P3 based on deadlines and signals.
-6. **Step 6: Create "Ready for Action" Tasks** - Generate summaries, download resources, and create tasks.
+6. **Step 6: Create "Ready for Action" Tasks** - Generate summaries, note attachment filenames, preserve links, and create tasks.
 7. **Step 7: Duplicate Prevention** - Handled automatically by `task_add.py`.
 8. **Step 8: Present Information and Summary** - Show Important FYI content and created tasks.
 
