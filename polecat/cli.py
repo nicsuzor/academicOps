@@ -1208,7 +1208,7 @@ def checkout(ctx, task_id, caller):
         from lib.task_model import TaskStatus
 
         if task.status == TaskStatus.ACTIVE:
-            task.status = TaskStatus.IN_PROGRESS
+            task.status = TaskStatus.IN_PROGRESS.value
             task.assignee = caller
             manager.storage.save_task(task)
             print(f"Claimed: {task.title}", file=sys.stderr)
@@ -1293,9 +1293,7 @@ def finish(ctx, no_push, do_nuke, force, force_done):
         )
 
         if task.status in terminal_or_pr_statuses:
-            print(
-                f"✅ Task {task_id} is in status '{task.status.value}'. Skipping auto-retry reset."
-            )
+            print(f"✅ Task {task_id} is in status '{task.status}'. Skipping auto-retry reset.")
             if do_nuke:
                 print("Nuking worktree...")
                 os.chdir(Path.home())  # Move out of worktree before nuking
@@ -1363,7 +1361,7 @@ def finish(ctx, no_push, do_nuke, force, force_done):
                 try:
                     from lib.task_model import TaskStatus
 
-                    task.status = TaskStatus.DONE
+                    task.status = TaskStatus.DONE.value
                     manager.storage.save_task(task)
                 except ImportError:
                     from polecat.pkb_bridge import save_task as pkb_save
@@ -1471,7 +1469,7 @@ def finish(ctx, no_push, do_nuke, force, force_done):
                     try:
                         from lib.task_model import TaskStatus
 
-                        task.status = TaskStatus.REVIEW
+                        task.status = TaskStatus.REVIEW.value
                         manager.storage.save_task(task)
                     except ImportError:
                         from polecat.pkb_bridge import save_task as pkb_save
@@ -1503,7 +1501,7 @@ def finish(ctx, no_push, do_nuke, force, force_done):
             try:
                 from lib.task_model import TaskStatus
 
-                task.status = TaskStatus.REVIEW
+                task.status = TaskStatus.REVIEW.value
                 manager.storage.save_task(task)
             except ImportError:
                 from polecat.pkb_bridge import save_task as pkb_save
@@ -1606,7 +1604,7 @@ def finish(ctx, no_push, do_nuke, force, force_done):
                     try:
                         from lib.task_model import TaskStatus
 
-                        task.status = TaskStatus.REVIEW
+                        task.status = TaskStatus.REVIEW.value
                         manager.storage.save_task(task)
                     except ImportError:
                         from polecat.pkb_bridge import save_task as pkb_save
@@ -1737,7 +1735,7 @@ def finish(ctx, no_push, do_nuke, force, force_done):
     try:
         from lib.task_model import TaskStatus
 
-        task.status = TaskStatus.MERGE_READY
+        task.status = TaskStatus.MERGE_READY.value
         manager.storage.save_task(task)
     except ImportError:
         from polecat.pkb_bridge import save_task as pkb_save
@@ -2757,9 +2755,7 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
             "parent": task.parent,
             "priority": task.priority,
             "tags": task.tags,
-            "status": (task.status.value if hasattr(task.status, "value") else str(task.status))
-            if task.status is not None
-            else None,
+            "status": task.status,
             "pr_url": getattr(task, "pr_url", None),
             "pr": getattr(task, "pr", None),
         },
@@ -3066,7 +3062,7 @@ def analyze(ctx, task_id, transcript_lines):
     # --- Section 1: Task Metadata ---
     print("\n📋 TASK METADATA")
     print(f"   Title:    {task.title}")
-    print(f"   Status:   {task.status.value if hasattr(task.status, 'value') else task.status}")
+    print(f"   Status:   {task.status}")
     print(f"   Assignee: {task.assignee or '(none)'}")
     print(f"   Project:  {task.project or 'aops'}")
     print(f"   Priority: P{task.priority}")
@@ -3194,7 +3190,7 @@ def analyze(ctx, task_id, transcript_lines):
     # --- Section 4: Suggested Remediation ---
     print("\n💡 SUGGESTED ACTIONS")
 
-    status_str = task.status.value if hasattr(task.status, "value") else str(task.status)
+    status_str = task.status or ""
 
     if status_str == "in_progress":
         if not worktree_path.exists():
@@ -3283,6 +3279,8 @@ def reset_stalled(ctx, project, hours, dry_run, force):
     for task in candidates:
         # Ensure timezone awareness
         task_mod = task.modified
+        if task_mod is None:
+            continue
         if task_mod.tzinfo is None:
             task_mod = task_mod.replace(tzinfo=UTC)
 
@@ -3324,7 +3322,7 @@ def reset_stalled(ctx, project, hours, dry_run, force):
                 try:
                     from lib.task_model import TaskStatus
 
-                    task.status = TaskStatus.ACTIVE
+                    task.status = TaskStatus.ACTIVE.value
                 except ImportError:
                     pass
                 manager.storage.save_task(task)
@@ -3781,6 +3779,8 @@ def summary(ctx, since, project):
 
         for task in all_done:
             task_mod = task.modified
+            if task_mod is None:
+                continue
             # Handle both date and datetime objects
             if hasattr(task_mod, "tzinfo"):
                 # It's a datetime
