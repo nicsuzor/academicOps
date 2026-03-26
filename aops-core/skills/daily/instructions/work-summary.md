@@ -40,6 +40,20 @@ Write a 2-4 sentence natural language summary to the `## Today's Story` section.
 - Mention specific PR numbers and task IDs for traceability
 - If goals were set in Focus, note alignment or drift briefly
 
+### Step 5.3.1: Update synthesis.json with narrative
+
+After writing Today's Story to the daily note, also update the `daily_story` field in `$AOPS_SESSIONS/synthesis.json`. This ensures the dashboard narrative reflects the latest work summary, even if Step 4.7 ran earlier with less data.
+
+1. Adapt Today's Story from prose (Step 5.3) into 3-5 bullet points:
+   - Second person ("you started...", "you got pulled into...")
+   - Each bullet under 80 characters
+   - Cover: what started, what got sidetracked, what remains undone
+2. Read existing `$AOPS_SESSIONS/synthesis.json`
+3. Update `daily_story` array and `narrative_generated` timestamp
+4. Write back atomically (preserve all other fields)
+
+If `$AOPS_SESSIONS` is not set or synthesis.json doesn't exist, skip silently.
+
 ### Step 5.4: Terminal Briefing Output
 
 After updating the daily note, output a concise briefing to the terminal:
