@@ -1811,6 +1811,11 @@ def pytest_configure(config):
 
 def pytest_collection_modifyitems(config, items):
     """Auto-mark integration tests and configure slow test execution."""
+    # First: auto-mark tests in integration/ directory so all_slow check sees them
+    for item in items:
+        if "integration" in str(item.fspath):
+            item.add_marker(pytest.mark.integration)
+
     # If ALL collected tests are slow/integration, disable xdist parallelism.
     # These tests spawn Docker containers and LLM sessions that compete for
     # resources and hit the global pytest-timeout when run in parallel.
@@ -1827,10 +1832,6 @@ def pytest_collection_modifyitems(config, items):
             pass
 
     for item in items:
-        # Mark all tests in integration/ directory as integration tests
-        if "integration" in str(item.fspath):
-            item.add_marker(pytest.mark.integration)
-
         # Give slow tests a generous timeout (10 min) instead of the global default
         if any(m.name == "slow" for m in item.iter_markers()):
             # Don't override an explicit timeout marker already on the test
