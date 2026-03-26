@@ -64,8 +64,8 @@ class TestSemverRegression:
         with patch("subprocess.run", side_effect=mock_run):
             version = get_project_version(aops_root)
 
-        # Must be based on 0.3.13, not 0.3.1
-        assert version == "0.3.13-dev.5+gabc1234"
+        # Must be based on 0.3.13 (bumped to 0.3.14 so dev > stable), not 0.3.1
+        assert version == "0.3.14-dev.5+gabc1234"
 
     def test_stable_tag_returns_clean_version(self, aops_root: Path):
         """When HEAD is exactly on a stable tag, return the clean version."""

@@ -181,11 +181,10 @@ description: Working hypotheses validated by evidence.
 
 ## Task Sequencing on Insert (P#73)
 
-**Statement**: The creating agent is responsible for inserting tasks onto the work graph. Every task MUST connect to the hierarchy: `action → task → epic → project → goal`. Disconnected tasks are violations.
+**Statement**: The creating agent is responsible for inserting tasks onto the work graph. Every task MUST connect to the hierarchy: `action → task → epic → project`. Disconnected tasks are violations. Goals link to projects via the `goals: []` metadata field (many-to-many), not via tree hierarchy.
 
 **Hierarchy definitions**:
 
-- **Goal**: Long-term outcome (months/years) - "Finish PhD", "Launch product"
 - **Project**: Bounded initiative with deliverables (weeks/months) - "Migrate to tasks-mcp"
 - **Epic**: Group of tasks toward a milestone (days/weeks) - "Implement batch processing"
 - **Task**: Discrete piece of work (hours/days) - "Fix hydrator bug"
