@@ -27,7 +27,30 @@ permalink: commands/email
 /email --daily    # Called by /daily — returns structured results for daily note integration
 ```
 
-When invoked with `--daily`, return results as structured data (created tasks, FYI items, archive candidates) rather than presenting interactively. The `/daily` skill integrates these into the daily note.
+When invoked with `--daily`, return results using these markdown sections so `/daily` can parse them:
+
+```markdown
+## Created Tasks
+
+- [[task-id]] Task title (P1, due YYYY-MM-DD)
+- [[task-id]] Task title (P2)
+
+## FYI Items
+
+### [Thread/Email Topic]
+
+From [sender] to [recipients], [date]:
+
+> [Verbatim quote of key content]
+
+[1 sentence on why this matters]
+
+## Archive Candidates
+
+- [subject] — [reason] (entry_id: [id])
+```
+
+The `/daily` skill integrates FYI items into the daily note and presents archive candidates for user confirmation.
 
 ## Workflow
 
