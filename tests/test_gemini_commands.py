@@ -16,6 +16,11 @@ from pathlib import Path
 
 import pytest
 
+try:
+    import tomllib
+except ImportError:
+    import tomli as tomllib  # type: ignore[no-redef]
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 AOPS_CORE = REPO_ROOT / "aops-core"
 COMMANDS_SRC = AOPS_CORE / "commands"
@@ -30,9 +35,11 @@ CONVERT_SCRIPT = REPO_ROOT / "scripts" / "convert_commands_to_toml.py"
 class TestGeminiCommandBuild:
     """Run convert_commands_to_toml.py for real and check the output."""
 
-    def _run_convert_script(self, tmp_path: Path) -> Path:
-        """Run the actual convert script, outputting to tmp_path."""
-        output_dir = tmp_path / "commands"
+    @pytest.fixture(scope="class")
+    def built_commands_dir(self, tmp_path_factory):
+        """Run the convert script once for the class and return the output directory."""
+        class_tmp_path = tmp_path_factory.mktemp("gemini_build")
+        output_dir = class_tmp_path / "commands"
         output_dir.mkdir()
 
         result = subprocess.run(
@@ -52,30 +59,23 @@ class TestGeminiCommandBuild:
         )
         return output_dir
 
-    def test_toml_files_exist_for_every_source_command(self, tmp_path: Path) -> None:
+    def test_toml_files_exist_for_every_source_command(self, built_commands_dir: Path) -> None:
         """Every .md command in aops-core/commands/ must produce a .toml."""
         source_commands = {f.stem for f in COMMANDS_SRC.glob("*.md")}
         assert source_commands, "No source command .md files found — test setup broken"
 
-        output_dir = self._run_convert_script(tmp_path)
-        built_toml = {f.stem for f in output_dir.glob("*.toml")}
+        built_toml = {f.stem for f in built_commands_dir.glob("*.toml")}
 
         missing = source_commands - built_toml
         assert not missing, (
             f"Source commands missing from convert output (no .toml generated): {sorted(missing)}. "
             f"Built TOML files: {sorted(built_toml)}. "
-            f"Output dir contents: {sorted(f.name for f in output_dir.iterdir()) if output_dir.exists() else 'DIR MISSING'}"
+            f"Output dir contents: {sorted(f.name for f in built_commands_dir.iterdir()) if built_commands_dir.exists() else 'DIR MISSING'}"
         )
 
-    def test_toml_files_are_valid(self, tmp_path: Path) -> None:
+    def test_toml_files_are_valid(self, built_commands_dir: Path) -> None:
         """Each generated .toml must parse and contain required fields."""
-        try:
-            import tomllib
-        except ImportError:
-            import tomli as tomllib  # type: ignore[no-redef]
-
-        output_dir = self._run_convert_script(tmp_path)
-        toml_files = list(output_dir.glob("*.toml"))
+        toml_files = list(built_commands_dir.glob("*.toml"))
         assert toml_files, "No .toml files produced by convert script"
 
         for toml_file in toml_files:
@@ -140,11 +140,6 @@ class TestConvertCommandUnit:
     )
     def test_each_command_converts_to_valid_toml(self, convert_command, command_file: Path) -> None:
         """Each source command must produce parseable TOML with description and prompt."""
-        try:
-            import tomllib
-        except ImportError:
-            import tomli as tomllib  # type: ignore[no-redef]
-
         toml_content = convert_command(command_file)
         assert toml_content, f"{command_file.name} produced empty TOML"
 
