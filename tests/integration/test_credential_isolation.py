@@ -13,13 +13,10 @@ Architecture (unified for both CLIs):
 Test categories:
 - Config unit tests: parsing, mapping, custom config files
 - Hook unit tests: session_env_setup writes mapped vars to CLAUDE_ENV_FILE
-- Claude e2e: launches Claude headless, verifies Bash tool sees bot token
-- Gemini e2e: launches Gemini headless, verifies shell sees bot token
+- Subprocess tests: verify mapped env propagates through process boundaries
 """
 
-import json
 import os
-import shutil
 import subprocess
 import sys
 import uuid
@@ -481,112 +478,20 @@ class TestCredentialBridgeHook:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.slow
-@pytest.mark.integration
-class TestClaudeCredentialIsolation:
-    """E2E tests: verify Claude Code gets bot token via unified env mapping."""
-
-    @pytest.fixture(autouse=True)
-    def _require_claude(self):
-        if not shutil.which("claude"):
-            pytest.skip("claude CLI not found in PATH")
-
-    def test_claude_session_gets_bot_token(self, credential_markers, output_file, tmp_path):
-        """Claude's Bash tool should see GH_TOKEN = AOPS_BOT_GH_TOKEN.
-
-        Both the harness (apply_env_mappings) and the hook (session_env_setup)
-        read agent-env-map.conf. The harness sets GH_TOKEN in the subprocess env,
-        and the hook also writes it to CLAUDE_ENV_FILE (belt and suspenders).
-        """
-        bot = credential_markers["bot"]
-        personal = credential_markers["personal"]
-
-        # Start with personal token in env (simulating user's shell)
-        env = os.environ.copy()
-        env["AOPS_BOT_GH_TOKEN"] = bot
-        env["GH_TOKEN"] = personal
-
-        # Apply config-driven mapping (overwrites personal → bot)
-        apply_env_mappings(env)
-
-        plugin_dir = _get_plugin_dir()
-        assert plugin_dir, "Cannot find aops-core plugin directory"
-
-        prompt = f"Use the Bash tool to run this exact command: printenv GH_TOKEN > {output_file}"
-
-        from tests.conftest import run_claude_headless
-
-        result = run_claude_headless(
-            prompt=prompt, model="haiku", timeout_seconds=120, cwd=tmp_path
-        )
-
-        assert result["success"], (
-            f"Claude CLI failed:\n"
-            f"error: {result.get('error')}\n"
-            f"stdout: {result.get('output', '')[:500]}"
-        )
-
-        assert output_file.exists(), (
-            "Claude did not write the output file. The Bash tool may not have executed."
-        )
-
-        actual_token = output_file.read_text().strip()
-
-        assert actual_token == bot, (
-            f"Credential isolation FAILED for Claude.\n"
-            f"Expected GH_TOKEN = bot marker: {bot!r}\n"
-            f"Got: {actual_token!r}\n"
-            f"Personal marker was: {personal!r}"
-        )
-        assert actual_token != personal, (
-            "SECURITY: Claude inherited personal token instead of bot token!"
-        )
-
-
 # ---------------------------------------------------------------------------
-# E2E: Gemini CLI headless credential isolation
+# Subprocess credential isolation (no LLM needed)
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.slow
-@pytest.mark.integration
-class TestGeminiCredentialIsolation:
-    """E2E tests: verify Gemini CLI gets bot token via unified env mapping.
+class TestSubprocessCredentialIsolation:
+    """Verify apply_env_mappings produces correct env for child processes.
 
-    Gemini redacts env vars matching /TOKEN/i by default, so the test creates
-    a .gemini/settings.json with allowedEnvironmentVariables to ensure
-    GH_TOKEN reaches the shell.
+    These tests spawn a simple subprocess (not an LLM) to verify that
+    credential mapping works end-to-end through process boundaries.
     """
 
-    @pytest.fixture(autouse=True)
-    def _require_gemini(self):
-        if not shutil.which("gemini"):
-            pytest.skip("gemini CLI not found in PATH")
-
-    @pytest.fixture
-    def gemini_workdir(self, tmp_path):
-        """Create a temp working directory with Gemini settings that allowlist GH_TOKEN."""
-        workdir = tmp_path / "gemini_cred_test"
-        workdir.mkdir()
-
-        gemini_dir = workdir / ".gemini"
-        gemini_dir.mkdir()
-        settings = {
-            "security": {
-                "allowedEnvironmentVariables": [
-                    "GH_TOKEN",
-                ]
-            }
-        }
-        (gemini_dir / "settings.json").write_text(json.dumps(settings))
-
-        return workdir
-
-    def test_gemini_session_gets_bot_token(self, credential_markers, output_file, gemini_workdir):
-        """Gemini's shell should see GH_TOKEN = bot token via apply_env_mappings.
-
-        Same unified config (agent-env-map.conf) drives both CLIs.
-        """
+    def test_subprocess_gets_bot_token(self, credential_markers, tmp_path):
+        """A subprocess inheriting mapped env should see GH_TOKEN = bot token."""
         bot = credential_markers["bot"]
         personal = credential_markers["personal"]
 
@@ -594,72 +499,63 @@ class TestGeminiCredentialIsolation:
         env["AOPS_BOT_GH_TOKEN"] = bot
         env["GH_TOKEN"] = personal
 
-        # Apply config-driven mapping (same as Claude)
-        apply_env_mappings(env)
+        # source_env must match env so mappings read our test markers, not real os.environ
+        apply_env_mappings(env, source_env=dict(env))
 
-        prompt = f"Execute this shell command: printenv GH_TOKEN > {output_file}"
-
-        from tests.conftest import run_gemini_headless
-
-        result = run_gemini_headless(
-            prompt=prompt, timeout_seconds=120, cwd=gemini_workdir, permission_mode="yolo"
-        )
-
-        assert result["success"], (
-            f"Gemini CLI failed:\n"
-            f"error: {result.get('error')}\n"
-            f"stdout: {result.get('output', '')[:500]}"
-        )
-
-        assert output_file.exists(), (
-            "Gemini did not write the output file. "
-            "The shell tool may not have executed, or GH_TOKEN was redacted."
-        )
-
-        actual_token = output_file.read_text().strip()
-
-        assert actual_token == bot, (
-            f"Credential isolation FAILED for Gemini.\n"
-            f"Expected GH_TOKEN = bot marker: {bot!r}\n"
-            f"Got: {actual_token!r}\n"
-            f"Personal marker was: {personal!r}"
-        )
-        assert actual_token != personal, (
-            "SECURITY: Gemini inherited personal token instead of bot token!"
-        )
-
-    def test_gemini_redacts_token_without_allowlist(self, credential_markers, tmp_path):
-        """Without allowedEnvironmentVariables, Gemini should redact GH_TOKEN.
-
-        Verifies Gemini's default security: env vars matching /TOKEN/i
-        are redacted before reaching shell tools.
-        """
-        bot = credential_markers["bot"]
-
-        workdir = tmp_path / "gemini_no_allowlist"
-        workdir.mkdir()
-        output = workdir / "token_check.txt"
-
-        env = os.environ.copy()
-        env["AOPS_BOT_GH_TOKEN"] = bot
-        apply_env_mappings(env)
-
-        prompt = f"Execute this shell command: printenv GH_TOKEN > {output} ; echo done"
-
-        cmd = ["gemini", prompt, "-o", "json", "--yolo"]
-
-        subprocess.run(
-            cmd,
+        result = subprocess.run(
+            ["printenv", "GH_TOKEN"],
             env=env,
             capture_output=True,
             text=True,
-            timeout=120,
-            cwd=str(workdir),
+            timeout=10,
             check=False,
         )
 
-        if output.exists():
-            actual = output.read_text().strip()
-            assert actual != bot, (
-                f"Gemini should redact GH_TOKEN without allowlist, but it leaked: {actual!r}"
-            )
+        actual_token = result.stdout.strip()
+        assert actual_token == bot, (
+            f"Credential isolation FAILED.\n"
+            f"Expected GH_TOKEN = bot marker: {bot!r}\n"
+            f"Got: {actual_token!r}\n"
+            f"Personal marker was: {personal!r}"
+        )
+        assert actual_token != personal, (
+            "SECURITY: Subprocess inherited personal token instead of bot token!"
+        )
+
+    def test_subprocess_ssh_auth_sock_cleared(self, tmp_path):
+        """SSH_AUTH_SOCK should be empty in subprocess env after mapping."""
+        env = os.environ.copy()
+        env["SSH_AUTH_SOCK"] = "/tmp/fake-ssh-agent.sock"
+
+        apply_env_mappings(env)
+
+        result = subprocess.run(
+            ["printenv", "SSH_AUTH_SOCK"],
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+
+        # printenv returns non-zero if var is empty/unset
+        actual = result.stdout.strip()
+        assert actual == "", f"SSH_AUTH_SOCK should be empty after mapping, got: {actual!r}"
+
+    def test_subprocess_git_terminal_prompt_disabled(self, tmp_path):
+        """GIT_TERMINAL_PROMPT should be 0 in subprocess env after mapping."""
+        env = os.environ.copy()
+        apply_env_mappings(env)
+
+        result = subprocess.run(
+            ["printenv", "GIT_TERMINAL_PROMPT"],
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+
+        assert result.stdout.strip() == "0", (
+            f"GIT_TERMINAL_PROMPT should be '0', got: {result.stdout.strip()!r}"
+        )

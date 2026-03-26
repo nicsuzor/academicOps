@@ -695,7 +695,7 @@ def claude_headless():
 
 def run_gemini_headless(
     prompt: str,
-    model: str | None = None,
+    model: str | None = "gemini-2.5-flash",
     timeout_seconds: int = 600,
     permission_mode: str | None = None,
     cwd: Path | None = None,
@@ -705,7 +705,7 @@ def run_gemini_headless(
 
     Args:
         prompt: Prompt to send to Gemini
-        model: Optional model identifier (e.g., "gemini-2.0-flash")
+        model: Optional model identifier (e.g., "gemini-2.5-flash")
         timeout_seconds: Command timeout in seconds (default: 600)
         permission_mode: Optional permission mode ("yolo" maps to --yolo)
         cwd: Working directory (defaults to /tmp/gemini-test)
@@ -1003,7 +1003,7 @@ def _run_gemini_docker(prompt: str, gemini_home: Path | None = None, **kwargs) -
         sys.path.insert(0, aops_core_dir)
 
     timeout_seconds = kwargs.get("timeout_seconds", 300)
-    model = kwargs.get("model")
+    model = kwargs.get("model", "gemini-2.5-flash")
 
     # Prepare prompt to write output to a file for robust extraction
     # This bypasses all CLI noise (warnings, ANSI, etc.)
@@ -1809,12 +1809,33 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "slow: mark test as slow (may take minutes to complete)")
 
 
-def pytest_collection_modifyitems(config, items):  # noqa: ARG001
-    """Auto-mark integration tests based on location."""
+def pytest_collection_modifyitems(config, items):
+    """Auto-mark integration tests and configure slow test execution."""
+    # If ALL collected tests are slow/integration, disable xdist parallelism.
+    # These tests spawn Docker containers and LLM sessions that compete for
+    # resources and hit the global pytest-timeout when run in parallel.
+    all_slow = all(
+        any(m.name in ("slow", "integration") for m in item.iter_markers()) for item in items
+    )
+    if all_slow and items:
+        try:
+            workercount = config.getoption("numprocesses", default=None)
+            if workercount and workercount != 0:
+                config.option.numprocesses = 0
+                log.info("All tests are slow/integration — disabled xdist parallelism")
+        except (ValueError, AttributeError):
+            pass
+
     for item in items:
         # Mark all tests in integration/ directory as integration tests
         if "integration" in str(item.fspath):
             item.add_marker(pytest.mark.integration)
+
+        # Give slow tests a generous timeout (10 min) instead of the global default
+        if any(m.name == "slow" for m in item.iter_markers()):
+            # Don't override an explicit timeout marker already on the test
+            if not any(m.name == "timeout" for m in item.iter_markers()):
+                item.add_marker(pytest.mark.timeout(600))
 
 
 def check_blocked(result: dict) -> bool:
