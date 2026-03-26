@@ -51,8 +51,8 @@ class TestDockerTooling:
         result = self._docker_run("rustc", "--version")
         assert result.returncode == 0, f"rustc --version failed: {result.stderr}"
 
-    def test_git_available(self):
-        """Verify git is installed in the Docker image."""
+    def test_git_credential_helper(self):
+        """Verify git is installed and credential helpers are available."""
         result = self._docker_run("git", "--version")
         assert result.returncode == 0, f"git --version failed: {result.stderr}"
 

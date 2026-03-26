@@ -1815,7 +1815,7 @@ def pytest_collection_modifyitems(config, items):
     for item in items:
         if "integration" in str(item.fspath):
             item.add_marker(pytest.mark.integration)
-
+            
     # If ALL collected tests are slow/integration, disable xdist parallelism.
     # These tests spawn Docker containers and LLM sessions that compete for
     # resources and hit the global pytest-timeout when run in parallel.

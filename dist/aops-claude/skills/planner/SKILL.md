@@ -142,7 +142,7 @@ Break validated epics into structured task trees.
 
 **Workflow**:
 
-1. Understand the target (goal → needs projects/epics; epic → needs tasks; task → needs actions)
+1. Understand the target (project → needs epics; epic → needs tasks; task → needs actions)
 2. Search for context (P52)
 3. Select workflow — identify which workflow achieves this epic
 4. Derive epic shape: planning tasks (before) → execution tasks (during) → verification tasks (after)
@@ -207,30 +207,30 @@ Incremental PKM and task graph maintenance. Small, regular attention beats massi
 
 **Activities**:
 
-| Activity       | What                                                |
-| -------------- | --------------------------------------------------- |
-| **Lint**       | Validate frontmatter YAML (use PKB linter)          |
-| **Weed**       | Fix broken wikilinks, remove dead references        |
-| **Prune**      | Archive stale sessions (>30 days)                   |
-| **Compost**    | Merge fragments into richer notes                   |
-| **Cultivate**  | Enrich sparse notes, add context                    |
-| **Link**       | Connect orphans, add missing wikilinks              |
-| **Map**        | Create/update MoCs for navigation                   |
-| **DRY**        | Remove restated content, replace with links         |
-| **Synthesize** | Strip deliberation artifacts from implemented specs |
-| **Reparent**   | Fix orphaned tasks, enforce hierarchy rules         |
-| **Hierarchy**  | Validate task→epic→project→goal structure           |
-| **Stale**      | Flag tasks with stale status or inconsistencies     |
-| **Dedup**      | Surface duplicate/overlapping tasks for review      |
-| **Triage**     | Detect under-specified tasks                        |
-| **Densify**    | Add dependency edges between related tasks          |
-| **Scan**       | Report graph density without changes                |
+| Activity       | What                                                                               |
+| -------------- | ---------------------------------------------------------------------------------- |
+| **Lint**       | Validate frontmatter YAML (use PKB linter)                                         |
+| **Weed**       | Fix broken wikilinks, remove dead references                                       |
+| **Prune**      | Archive stale sessions (>30 days)                                                  |
+| **Compost**    | Merge fragments into richer notes                                                  |
+| **Cultivate**  | Enrich sparse notes, add context                                                   |
+| **Link**       | Connect orphans, add missing wikilinks                                             |
+| **Map**        | Create/update MoCs for navigation                                                  |
+| **DRY**        | Remove restated content, replace with links                                        |
+| **Synthesize** | Strip deliberation artifacts from implemented specs                                |
+| **Reparent**   | Fix orphaned tasks (missing-parent AND wrong-type-parent), enforce hierarchy rules |
+| **Hierarchy**  | Validate task→epic→project structure, goal-linkage via `goals: []` metadata        |
+| **Stale**      | Flag tasks with stale status or inconsistencies                                    |
+| **Dedup**      | Surface duplicate/overlapping tasks for review                                     |
+| **Triage**     | Detect under-specified tasks                                                       |
+| **Densify**    | Add dependency edges between related tasks                                         |
+| **Scan**       | Report graph density without changes                                               |
 
 **Session pattern**: 15–30 minutes max. Work in small batches (3–5 notes). Commit frequently.
 
-**Health metrics**: Orphan rate <5%, link density >2 per note, zero broken links, zero DRY violations, zero hierarchy violations.
+**Health metrics**: Orphan rate <5% (including wrong-type-parent orphans), link density >2 per note, zero broken links, zero DRY violations, zero hierarchy violations.
 
-**Hierarchy rules** (P#73): Every task MUST have a parent. Tasks → epic, epics → project/epic, projects → project/goal. No star patterns (>5 children → create intermediate epic).
+**Hierarchy rules** (P#73): Every task MUST have a parent of the correct type. Tasks → epic, epics → project/epic, projects = root level (no required parent, or parent is another project). Goals link via `goals: []` metadata, not parent hierarchy. No star patterns (>5 children → create intermediate epic). `pkb_orphans` detects both missing-parent AND wrong-type-parent violations (e.g., task parented to a project instead of an epic).
 
 **Densify strategies** (rotate across sessions when densifying):
 
@@ -293,10 +293,10 @@ User prompt
 ## Work Hierarchy
 
 ```
-GOAL → PROJECT → EPIC → TASK → ACTION
+PROJECT → EPIC → TASK → ACTION
 ```
 
-Goals: desired future states. Projects: bounded efforts. Epics: PR-sized verifiable work. Tasks: single-session deliverables within an epic.
+Projects: bounded efforts (tree roots). Epics: PR-sized verifiable work. Tasks: single-session deliverables within an epic. Goals are linked via `goals: []` field, not via parent hierarchy.
 
 ## Status Values
 
