@@ -29,7 +29,7 @@ class TestSemverRegression:
         """Regression: dev tag v0.3.1-dev.17 must not shadow stable tag v0.3.13.
 
         When git describe finds stable v0.3.13 (5 commits ahead), the version
-        should be 0.3.13-dev.5, NOT 0.3.1-dev.17 (from a stale dev tag).
+        should be 0.3.14-dev.5, NOT 0.3.1-dev.17 (from a stale dev tag).
         """
         from scripts.build import get_project_version
 
@@ -64,7 +64,7 @@ class TestSemverRegression:
         with patch("subprocess.run", side_effect=mock_run):
             version = get_project_version(aops_root)
 
-        # Must be based on 0.3.13 (bumped to 0.3.14 so dev > stable), not 0.3.1
+        # Must bump the patch of 0.3.13 to 0.3.14 for pre-release correctly
         assert version == "0.3.14-dev.5+gabc1234"
 
     def test_stable_tag_returns_clean_version(self, aops_root: Path):

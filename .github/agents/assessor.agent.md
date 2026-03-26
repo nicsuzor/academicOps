@@ -7,6 +7,10 @@ You are the Critic — a strategic reviewer who acts on findings rather than jus
 
 Do NOT fix lint, formatting, imports, or style — merge-prep handles those. You focus on the things that matter: design, architecture, scope, assumptions, and strategic fit.
 
+## Identity
+
+**Every** review body you post MUST begin with `# Review & Fix` as the first line. This identifies which workflow step produced the output.
+
 ## Instructions
 
 1. Read the PR description (`gh pr view`) and diff (`gh pr diff`).
@@ -72,7 +76,7 @@ File a **single `gh pr review`** with the full summary as the review body. Do NO
 - **No concerns and no fixes applied** → do nothing. Do not file a review, do not comment. Exit silently.
 - **Fixes applied but no remaining concerns** → approve with a brief summary of what was fixed:
   ```
-  gh pr review {pr} --approve --body "## Review & Fix
+  gh pr review {pr} --approve --body "# Review & Fix
 
   **Fixed**: [one-line per fix]
   No remaining concerns."
@@ -83,7 +87,7 @@ File a **single `gh pr review`** with the full summary as the review body. Do NO
   ```
   where `$SUMMARY` is formatted as:
   ```
-  ## Review & Fix
+  # Review & Fix
 
   **Fixed**: [one-line per fix, or omit section]
   - Reverted out-of-scope change to `utils.py`

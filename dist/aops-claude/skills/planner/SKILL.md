@@ -195,17 +195,7 @@ Facilitated strategic thinking. Thinking partner, NOT a doing agent.
 - Avoid prescriptive language: "You should...", "Best practice is..."
 - Let synthesis emerge naturally
 
-**Strategic questioning framework** (not a rigid checklist):
-Vision, Constraints, Momentum, Fears, Energy, Alignment
-
-**Hydration gate**: Explore mode should be **excluded from hydration requirements**. It is a thinking session with no file modifications and no task execution — requiring hydration adds friction that defeats the purpose. Gate configuration should treat explore-mode invocations as read-only.
-
-**Handoff**: When thinking is done, offer to transition:
-
-- "Ready to place these insights?" → switch to `plan` mode (strategic intake)
-- "Ready to break this down?" → switch to `decompose` mode
-
-### maintain
+**Facilitation approach**:
 
 > Absorbed from: `/garden` + `/densify`
 
@@ -285,7 +275,6 @@ User prompt
 
 | Agent             | Relationship                                                                                                                                                                    |
 | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Hydrator**      | Hydrator detects `needs_decomposition: true` → Planner runs `decompose` mode. Planner does NOT hydrate.                                                                         |
 | **Butler**        | Butler governs framework changes. Planner shapes work, not framework.                                                                                                           |
 | **QA**            | Planner includes verification tasks in decompositions. QA executes them independently.                                                                                          |
 | **Daily/Reflect** | `/daily` calls Planner's `plan` mode for recommendations. `/reflect` reads graph state but doesn't invoke Planner. Planner provides data; orchestrators decide what to surface. |

@@ -15,10 +15,13 @@ Used by:
 from __future__ import annotations
 
 import glob
+import logging
 import re
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 from lib.paths import get_sessions_repo, get_summaries_dir, get_transcripts_dir
 from lib.transcript_parser import (
@@ -209,7 +212,8 @@ def extract_gate_context(
 
     try:
         return _extract_gate_context_impl(transcript_path, include, max_turns)
-    except Exception:
+    except (OSError, ValueError, KeyError, AttributeError) as exc:
+        logger.error("extract_gate_context failed for %s: %s", transcript_path, exc, exc_info=True)
         return {}
 
 
@@ -373,12 +377,13 @@ def build_audit_session_context(
     Returns:
         Formatted markdown context suitable for critic agent consumption
     """
+    processor = SessionProcessor()
+
     if entries is None:
         path = Path(transcript_path)
         if not path.exists():
             return "(No transcript path available)"
 
-        processor = SessionProcessor()
         _, entries, _ = processor.parse_session_file(path, load_agents=False, load_hooks=False)
 
     if not entries:

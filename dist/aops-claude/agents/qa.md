@@ -66,7 +66,7 @@ Output your assessment starting with one of these keywords:
 Task(subagent_type="qa", model="opus", prompt="
 Verify the work is complete.
 
-**Original request**: [hydrated prompt]
+**Original request**:
 
 **Acceptance criteria**:
 1. [criterion 1]

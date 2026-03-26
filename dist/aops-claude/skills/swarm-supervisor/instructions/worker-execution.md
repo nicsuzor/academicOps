@@ -21,7 +21,24 @@ Load worker registry before dispatch. Each worker has:
 
 ---
 
-### 4.2 Worker Selection Protocol
+### 4.2 Pre-Dispatch Validation (MANDATORY)
+
+Before dispatching ANY task to a worker, the supervisor must validate:
+
+1. **Target currency**: Are the files/modules the task will touch still current? Check for:
+   - Deprecated code (superseded by another implementation, possibly in a different repo)
+   - Files that no longer exist on the default branch
+   - Components that have been rewritten or moved
+
+2. **Repo correctness**: Does the task belong in this repository? Check the task body and AC for references to other repos. If the task's deliverable lives elsewhere, redirect it — don't dispatch.
+
+3. **AC implementability**: Can the acceptance criteria be met with the current codebase? If AC references APIs, tools, or patterns that no longer exist, the task needs updating before dispatch.
+
+**If validation fails**: Update the task with findings, set status to `blocked`, and skip it. Do NOT dispatch tasks that will produce wasted work.
+
+**Why this matters**: Without runtime hydration (gate is off), this pre-dispatch check is the last opportunity to catch tasks aimed at deprecated code. The 2026-03-22 dogfood run lost a full worker cycle to a task targeting superseded Python files (GH #224).
+
+### 4.3 Worker Selection Protocol
 
 **Step 1: Assess Task Requirements**
 
@@ -84,7 +101,7 @@ Capacity overflow actions are worker-specific (some allow substitution, others q
 
 ---
 
-### 4.3 Dispatch Protocol
+### 4.4 Dispatch Protocol
 
 **Single Task Dispatch**:
 
@@ -159,7 +176,7 @@ Calculate swarm composition from:
 
 ---
 
-### 4.4 Post-Dispatch (fire and forget)
+### 4.5 Post-Dispatch (fire and forget)
 
 **The supervisor does not actively monitor workers.** After dispatch, the
 supervisor's job is done. Workers are autonomous — they work, push, and
@@ -187,7 +204,7 @@ mark the task `done` and kill the swarm. See `aops-fdc9d0e2`.
 
 ---
 
-### 4.5 Parallel Execution Coordination
+### 4.6 Parallel Execution Coordination
 
 Workers coordinate through the task system, not through the supervisor:
 

@@ -49,7 +49,11 @@ def create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path:
             try:
                 session_context = build_audit_session_context(transcript_path, entries=entries)
             except Exception:
-                logger.warning("Failed to build audit session context", exc_info=True)
+                logger.warning(
+                    "Failed to build audit session context for transcript_path=%s",
+                    transcript_path,
+                    exc_info=True,
+                )
 
             if entries:
                 try:
@@ -66,8 +70,18 @@ def create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path:
             try:
                 session_context = build_rich_session_context(transcript_path)
             except Exception:
-                pass  # Degrade context, not the file creation
+                logger.warning(
+                    "Failed to build rich session context for transcript_path=%s",
+                    transcript_path,
+                    exc_info=True,
+                )
 
+    logger.info(
+        "create_audit_file: gate=%s transcript_path=%s session_context_len=%d",
+        gate,
+        transcript_path,
+        len(session_context),
+    )
     axioms, heuristics, skills = hook_utils.load_framework_content()
     custodiet_mode = os.environ["CUSTODIET_GATE_MODE"].lower()
 

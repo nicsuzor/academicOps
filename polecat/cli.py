@@ -310,33 +310,34 @@ def _build_docker_cmd(
             # (potentially stale or wrong-path) copy.
             staged_claude_dir = staging_dir / ".claude"
             staged_claude_dir.mkdir(exist_ok=True)
-            for auth_file in (".credentials.json", ".mcp.json"):
+            for auth_file in (".credentials.json", ".mcp.json", "settings.json"):
                 src = claude_dir / auth_file
                 if src.exists():
                     shutil.copy2(src, staged_claude_dir / auth_file)
         cmd.extend(["-v", f"{staging_dir}:/tmp/staging:ro"])
 
-    # Stage Gemini auth files for "shell" mode so users can run gemini interactively.
-    # Gemini normally handles its own sandbox, but in shell mode we're managing Docker.
-    if cli_tool == "shell":
-        gemini_dir = home / ".gemini"
-        if gemini_dir.exists():
-            staged_gemini_dir = staging_dir / ".gemini"
-            staged_gemini_dir.mkdir(exist_ok=True)
-            for auth_file in (
-                "settings.json",
-                "google_accounts.json",
-                "oauth_creds.json",
-                "installation_id",
-                "trustedFolders.json",
-            ):
-                src = gemini_dir / auth_file
-                if src.exists():
-                    shutil.copy2(src, staged_gemini_dir / auth_file)
-            # Also forward GEMINI_API_KEY if set
-            gemini_key = env.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
-            if gemini_key:
-                cmd.extend(["-e", f"GEMINI_API_KEY={gemini_key}"])
+        # Stage Gemini auth files for "shell" mode so users can run gemini interactively.
+        # Gemini normally handles its own sandbox, but in shell mode we're managing Docker.
+        # (Nested here because staging_dir is only defined when cli_tool in ("claude", "shell"))
+        if cli_tool == "shell":
+            gemini_dir = home / ".gemini"
+            if gemini_dir.exists():
+                staged_gemini_dir = staging_dir / ".gemini"
+                staged_gemini_dir.mkdir(exist_ok=True)
+                for auth_file in (
+                    "settings.json",
+                    "google_accounts.json",
+                    "oauth_creds.json",
+                    "installation_id",
+                    "trustedFolders.json",
+                ):
+                    src = gemini_dir / auth_file
+                    if src.exists():
+                        shutil.copy2(src, staged_gemini_dir / auth_file)
+                # Also forward GEMINI_API_KEY if set
+                gemini_key = env.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
+                if gemini_key:
+                    cmd.extend(["-e", f"GEMINI_API_KEY={gemini_key}"])
 
     # Mount Docker socket for Docker-outside-of-Docker (build/test inside agents).
     # Pass the socket's gid so the non-root container user can access it — the gid
@@ -419,6 +420,7 @@ def _mount_aca_data_sandbox(env: dict) -> None:
     """
     aca_data = env.get("ACA_DATA") or os.environ.get("ACA_DATA")
     if aca_data and os.path.isdir(aca_data):
+        env.setdefault("ACA_DATA", aca_data)
         mounts = env.get("SANDBOX_MOUNTS", "")
         new_mount = f"{aca_data}:{aca_data}:rw"
         env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
@@ -459,14 +461,20 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
         "oauth_creds.json",
         "installation_id",
         "trustedFolders.json",
+        "projects.json",
+        "state.json",
     ]
 
     existing_files = [f for f in auth_files if (gemini_dir / f).exists()]
     if not existing_files:
         return None
 
-    # Create a temporary directory
-    tmp_gemini_home = Path(tempfile.mkdtemp(prefix="polecat-gemini-auth-"))
+    # Create a temporary directory under $HOME/.aops/tmp so Docker can access it.
+    # macOS VMs (Colima/Docker) only share /Users, not /var/folders or /tmp.
+    tmp_root = home / ".aops" / "tmp"
+    tmp_root.mkdir(parents=True, exist_ok=True)
+    tmp_gemini_home = Path(tempfile.mkdtemp(prefix="polecat-gemini-auth-", dir=tmp_root))
+    os.chmod(tmp_gemini_home, 0o700)
 
     target_dir = tmp_gemini_home / ".gemini"
     target_dir.mkdir(parents=True)
@@ -486,7 +494,32 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
                 # Fall back to simple copy if processing fails
                 print(f"   Warning: could not process {gemini_dir / f}: {e}", file=sys.stderr)
 
-        shutil.copy2(gemini_dir / f, target_dir / f)
+        if f == "settings.json":
+            try:
+                with open(gemini_dir / f) as src_f:
+                    settings_data = json.load(src_f)
+
+                # Force sandbox with network access to prevent OAuth failures
+                # The gemini-cli sandbox requires network access to verify the token,
+                # otherwise it falls back to interactive auth which fails in CI.
+                if "tools" not in settings_data:
+                    settings_data["tools"] = {}
+                if "sandbox" not in settings_data["tools"] or not isinstance(
+                    settings_data["tools"]["sandbox"], dict
+                ):
+                    settings_data["tools"]["sandbox"] = {}
+                settings_data["tools"]["sandbox"]["enabled"] = True
+                settings_data["tools"]["sandbox"]["networkAccess"] = True
+
+                with open(target_dir / f, "w") as dst_f:
+                    json.dump(settings_data, dst_f, indent=2)
+                continue
+            except (json.JSONDecodeError, OSError) as e:
+                print(f"   Warning: could not process {gemini_dir / f}: {e}", file=sys.stderr)
+
+        # Follow symlinks to copy the actual file content, not the link itself.
+        # This is critical for ~/.gemini/settings.json which is often symlinked.
+        shutil.copy2(gemini_dir / f, target_dir / f, follow_symlinks=True)
 
     # If trustedFolders.json didn't exist but we have a work_dir, create it
     if "trustedFolders.json" not in existing_files and work_dir:
@@ -512,7 +545,7 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
         # Copy each extension subdirectory (not symlink — breaks in Docker)
         for child in src_extensions.iterdir():
             if child.is_dir():
-                shutil.copytree(child, dst_extensions / child.name)
+                shutil.copytree(child, dst_extensions / child.name, ignore_dangling_symlinks=True)
 
         # Build a permissive enablement file — allow all paths
         enablement_src = src_extensions / "extension-enablement.json"
@@ -636,6 +669,146 @@ def _clear_stale_git_lock(repo_path: Path) -> bool:
     return True
 
 
+def _auto_resolve_rebase(repo_path: Path, name: str, ahead_count: int) -> tuple[bool, str]:
+    """Auto-resolve conflicts during an in-progress rebase.
+
+    Checks for unmerged files, resolves them (keeping local/--theirs),
+    backs up remote versions of non-expendable files, and loops through
+    rebase --continue until complete or unresolvable.
+
+    Returns (success, message).
+    """
+    import fnmatch
+
+    expendable_patterns = [
+        "synthesis.json",
+        "graph*.json",
+        "graph*.dot",
+        "graph*.svg",
+        "graph*.graphml",
+    ]
+
+    def _is_expendable(filepath: str) -> bool:
+        basename = Path(filepath).name
+        return any(fnmatch.fnmatch(basename, p) for p in expendable_patterns)
+
+    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    all_conflict_files: list[str] = []
+    backup_paths: list[str] = []
+    max_rounds = ahead_count + 5
+
+    for _round in range(max_rounds):
+        unmerged = subprocess.run(
+            ["git", "diff", "--name-only", "--diff-filter=U"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            check=False,
+        ).stdout.strip()
+
+        if not unmerged:
+            # No conflicts — try continuing (may be a non-conflict failure)
+            cont = subprocess.run(
+                ["git", "rebase", "--continue"],
+                cwd=repo_path,
+                capture_output=True,
+                check=False,
+                env={**os.environ, "GIT_EDITOR": "true"},
+            )
+            if cont.returncode == 0:
+                break
+            # rebase failed for non-conflict reason
+            subprocess.run(
+                ["git", "rebase", "--abort"],
+                cwd=repo_path,
+                capture_output=True,
+                check=False,
+            )
+            return False, f"{name}: rebase failed"
+
+        # Resolve conflicts: keep local (--theirs in rebase), backup remote for non-expendable
+        resolved = True
+        for cf in unmerged.splitlines():
+            all_conflict_files.append(cf)
+            if not _is_expendable(cf):
+                rc = subprocess.run(
+                    ["git", "show", f":2:{cf}"],
+                    cwd=repo_path,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                if rc.returncode == 0 and rc.stdout:
+                    bp = Path(repo_path) / f"{cf}.conflict-remote-{timestamp}"
+                    bp.parent.mkdir(parents=True, exist_ok=True)
+                    bp.write_text(rc.stdout)
+                    backup_paths.append(str(bp.relative_to(repo_path)))
+
+            r = subprocess.run(
+                ["git", "checkout", "--theirs", "--", cf],
+                cwd=repo_path,
+                capture_output=True,
+                check=False,
+            )
+            if r.returncode == 0:
+                subprocess.run(
+                    ["git", "add", cf],
+                    cwd=repo_path,
+                    capture_output=True,
+                    check=False,
+                )
+            else:
+                resolved = False
+                break
+
+        if not resolved:
+            subprocess.run(
+                ["git", "rebase", "--abort"],
+                cwd=repo_path,
+                capture_output=True,
+                check=False,
+            )
+            return False, f"{name}: conflict needs manual resolution"
+
+        # Stage backup files
+        for bp in backup_paths:
+            subprocess.run(
+                ["git", "add", bp],
+                cwd=repo_path,
+                capture_output=True,
+                check=False,
+            )
+
+        cont = subprocess.run(
+            ["git", "rebase", "--continue"],
+            cwd=repo_path,
+            capture_output=True,
+            check=False,
+            env={**os.environ, "GIT_EDITOR": "true"},
+        )
+        if cont.returncode == 0:
+            break
+        # If continue failed, loop back to check for new conflicts
+    else:
+        subprocess.run(
+            ["git", "rebase", "--abort"],
+            cwd=repo_path,
+            capture_output=True,
+            check=False,
+        )
+        return False, f"{name}: rebase exceeded max rounds ({max_rounds})"
+
+    if all_conflict_files:
+        conflict_summary = ", ".join(set(all_conflict_files))
+        warn = (
+            f"⚠ {name}: rebase conflict auto-resolved (kept local) in: {conflict_summary}. "
+            f"Remote versions saved to: {', '.join(backup_paths) or 'none'}"
+        )
+        print(warn, file=sys.stderr)
+
+    return True, f"{name}: auto-resolved {len(set(all_conflict_files))} conflict(s)"
+
+
 def _sync_working_repo(
     repo_path: Path, *, auto_commit: bool = False, quiet: bool = False
 ) -> tuple[bool, str]:
@@ -728,124 +901,9 @@ def _sync_working_repo(
                 check=False,
             )
             if pull.returncode != 0:
-                # Check for conflicts during rebase replay of local commits
-                unmerged = subprocess.run(
-                    ["git", "diff", "--name-only", "--diff-filter=U"],
-                    cwd=repo_path,
-                    capture_output=True,
-                    text=True,
-                    check=False,
-                ).stdout.strip()
-                if unmerged:
-                    # In rebase, --theirs = local commit being replayed (keeps local),
-                    # --ours = remote HEAD (discards remote). We keep local, but first
-                    # save the remote version of each conflicting file to a backup so
-                    # nothing from the remote is silently lost.
-                    #
-                    # Expendable files: generated artifacts where conflicts are
-                    # meaningless — just accept latest, no backup needed.
-                    import fnmatch
-
-                    expendable_patterns = [
-                        "synthesis.json",
-                        "graph*.json",
-                        "graph*.dot",
-                        "graph*.svg",
-                    ]
-
-                    def _is_expendable(filepath: str) -> bool:
-                        basename = Path(filepath).name
-                        return any(fnmatch.fnmatch(basename, p) for p in expendable_patterns)
-
-                    resolved = True
-                    conflict_files = unmerged.splitlines()
-                    backup_paths = []
-                    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-                    for conflict_file in conflict_files:
-                        if not _is_expendable(conflict_file):
-                            # Capture remote version (stage 2 = ours = remote in rebase)
-                            remote_content = subprocess.run(
-                                ["git", "show", f":2:{conflict_file}"],
-                                cwd=repo_path,
-                                capture_output=True,
-                                text=True,
-                                check=False,
-                            )
-                            if remote_content.returncode == 0 and remote_content.stdout:
-                                backup_path = (
-                                    Path(repo_path) / f"{conflict_file}.conflict-remote-{timestamp}"
-                                )
-                                backup_path.parent.mkdir(parents=True, exist_ok=True)
-                                backup_path.write_text(remote_content.stdout)
-                                backup_paths.append(str(backup_path.relative_to(repo_path)))
-
-                        r = subprocess.run(
-                            ["git", "checkout", "--theirs", "--", conflict_file],
-                            cwd=repo_path,
-                            capture_output=True,
-                            check=False,
-                        )
-                        if r.returncode == 0:
-                            subprocess.run(
-                                ["git", "add", conflict_file],
-                                cwd=repo_path,
-                                capture_output=True,
-                                check=False,
-                            )
-                        else:
-                            resolved = False
-                            break
-
-                    if resolved:
-                        # Stage backup files so they're committed and visible
-                        for bp in backup_paths:
-                            subprocess.run(
-                                ["git", "add", bp],
-                                cwd=repo_path,
-                                capture_output=True,
-                                check=False,
-                            )
-                        cont = subprocess.run(
-                            ["git", "rebase", "--continue"],
-                            cwd=repo_path,
-                            capture_output=True,
-                            check=False,
-                            env={**os.environ, "GIT_EDITOR": "true"},
-                        )
-                        if cont.returncode != 0:
-                            subprocess.run(
-                                ["git", "rebase", "--abort"],
-                                cwd=repo_path,
-                                capture_output=True,
-                                check=False,
-                            )
-                            return False, f"{name}: rebase --continue failed"
-                        conflict_summary = ", ".join(conflict_files)
-                        warn = (
-                            f"⚠ {name}: rebase conflict auto-resolved (kept local) in: {conflict_summary}. "
-                            f"Remote versions saved to: {', '.join(backup_paths) or 'none'}"
-                        )
-                        print(warn, file=sys.stderr)
-                        return (
-                            True,
-                            f"{name}: auto-synced with conflict resolution ({len(conflict_files)} file(s))",
-                        )
-                    else:
-                        subprocess.run(
-                            ["git", "rebase", "--abort"],
-                            cwd=repo_path,
-                            capture_output=True,
-                            check=False,
-                        )
-                        return False, f"{name}: conflict needs manual resolution"
-                else:
-                    subprocess.run(
-                        ["git", "rebase", "--abort"],
-                        cwd=repo_path,
-                        capture_output=True,
-                        check=False,
-                    )
-                    return False, f"{name}: rebase failed"
+                ok, resolve_msg = _auto_resolve_rebase(repo_path, name, ahead_count)
+                if not ok:
+                    return False, resolve_msg
 
             # Push
             push = subprocess.run(
@@ -865,7 +923,7 @@ def _sync_working_repo(
                 status_parts.append(f"{behind_count} behind")
             return False, f"{name}: {', '.join(status_parts)} (skipped — not auto-commit)"
 
-    elif behind_count > 0:
+    elif behind_count > 0 and ahead_count == 0:
         pull = subprocess.run(
             ["git", "pull", "--quiet"],
             cwd=repo_path,
@@ -877,6 +935,19 @@ def _sync_working_repo(
         return False, f"{name}: pull failed"
 
     elif ahead_count > 0:
+        # If also behind, rebase local commits on top of remote before pushing
+        if behind_count > 0:
+            pull = subprocess.run(
+                ["git", "pull", "--rebase", "--quiet"],
+                cwd=repo_path,
+                capture_output=True,
+                check=False,
+            )
+            if pull.returncode != 0:
+                # Attempt to auto-resolve rebase conflicts (same logic as dirty path)
+                ok, resolve_msg = _auto_resolve_rebase(repo_path, name, ahead_count)
+                if not ok:
+                    return False, resolve_msg
         push = subprocess.run(
             ["git", "push", "--quiet"],
             cwd=repo_path,
@@ -1574,25 +1645,110 @@ def finish(ctx, no_push, do_nuke, force, force_done):
 
 
 @main.command()
-@click.argument("task_id")
+@click.argument("target", required=False)
 @click.option("--force", "-f", is_flag=True, help="Delete even if work is not merged")
 @click.pass_context
-def nuke(ctx, task_id, force):
-    """Destroy a polecat (remove worktree and branch)."""
-    # Validate task ID before any operations
-    try:
-        validate_task_id_or_raise(task_id)
-    except TaskIDValidationError as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
-
+def nuke(ctx, target, force):
+    """Destroy a polecat or crew worker, or clean up stale branches when run without args."""
     manager = PolecatManager(home_dir=ctx.obj.get("home"))
-    try:
-        manager.nuke_worktree(task_id, force=force)
-        print(f"Nuked polecat {task_id}")
-    except RuntimeError as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
+
+    if target:
+        crew_path = manager.crew_dir / target
+        if crew_path.exists():
+            try:
+                manager.nuke_crew(target, force=force)
+                return
+            except (ValueError, RuntimeError) as e:
+                print(f"Error: {e}", file=sys.stderr)
+                sys.exit(1)
+
+        # Fallback to worktree logic
+        try:
+            validate_task_id_or_raise(target)
+            manager.nuke_worktree(target, force=force)
+            print(f"Nuked polecat {target}")
+            return
+        except TaskIDValidationError:
+            print(
+                f"Error: Target '{target}' is not a valid crew worker or task ID.", file=sys.stderr
+            )
+            sys.exit(1)
+        except RuntimeError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+
+    # Target not provided, run stale cleanup
+    print("No target provided. Cleaning up stale branches...")
+
+    # 1. Cleanup stale worktrees
+    if manager.polecats_dir.exists():
+        exclude = {".repos", "crew"}
+        for d in manager.polecats_dir.iterdir():
+            if d.is_dir() and not d.name.startswith(".") and d.name not in exclude:
+                task_id = d.name
+                if not manager.storage:
+                    print(
+                        "Error: storage unavailable — cannot determine staleness",
+                        file=sys.stderr,
+                    )
+                    sys.exit(1)
+                task = manager.storage.get_task(task_id)
+                if not task:
+                    is_stale = True
+                else:
+                    repo_path = manager.get_repo_path(task)
+                    branch_name = f"polecat/{task_id}"
+
+                    # Check if branch is merged or deleted
+                    is_stale = False
+                    if not manager._branch_exists(repo_path, branch_name):
+                        is_stale = True
+                    elif manager._is_branch_merged(repo_path, branch_name):
+                        is_stale = True
+
+                if is_stale:
+                    print(f"Nuking stale worktree: {task_id}")
+                    try:
+                        manager.nuke_worktree(task_id, force=True)
+                    except (RuntimeError, ValueError) as e:
+                        print(f"Warning: Failed to nuke {task_id}: {e}", file=sys.stderr)
+
+    # 2. Cleanup stale crew clones
+    if manager.crew_dir.exists():
+        for c in manager.crew_dir.iterdir():
+            if c.is_dir():
+                crew_name = c.name
+                branch_name = f"crew/{crew_name}"
+
+                # A crew is stale if all of its branches are merged or deleted
+                projects = [d.name for d in c.iterdir() if d.is_dir()]
+                if not projects:
+                    continue
+
+                any_repo_checked = False
+                all_stale = True
+                for project in projects:
+                    repo_path = manager.projects.get(project, {}).get("path")
+                    if not repo_path:
+                        repo_path = manager.repos_dir / f"{project}.git"
+
+                    if not repo_path.exists():
+                        continue
+
+                    any_repo_checked = True
+                    if manager._branch_exists(repo_path, branch_name):
+                        if not manager._is_branch_merged(repo_path, branch_name):
+                            all_stale = False
+                            break
+
+                if not any_repo_checked:
+                    continue
+                if all_stale:
+                    print(f"Nuking stale crew: {crew_name}")
+                    try:
+                        manager.nuke_crew(crew_name, force=True)
+                    except (RuntimeError, ValueError) as e:
+                        print(f"Warning: Failed to nuke crew {crew_name}: {e}", file=sys.stderr)
 
 
 @main.command("list")
@@ -1756,6 +1912,53 @@ def merge():
 
     eng = Engineer()
     eng.scan_and_merge()
+
+
+def _clone_has_changes(repo_path: Path) -> bool:
+    """Check if a crew clone has any changes (committed or uncommitted) vs its upstream.
+
+    Returns True if:
+    - There are uncommitted changes in the working tree
+    - The content of the current branch differs from the upstream default branch
+    Returns False if the clone is clean and identical to origin/HEAD.
+    """
+    try:
+        # Check for uncommitted changes (staged or unstaged)
+        status = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if status.returncode == 0 and status.stdout.strip():
+            return True
+
+        # Check for commits beyond the merge base with origin's default branch
+        # First, determine the default branch
+        head_result = subprocess.run(
+            ["git", "symbolic-ref", "refs/remotes/origin/HEAD"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if head_result.returncode == 0:
+            default_branch = head_result.stdout.strip()  # e.g., refs/remotes/origin/main
+        else:
+            default_branch = "origin/main"
+
+        # git diff --quiet returns 0 if no differences, 1 if there are differences
+        diff = subprocess.run(
+            ["git", "diff", "--quiet", default_branch, "HEAD"],
+            cwd=repo_path,
+            capture_output=True,
+            timeout=10,
+        )
+        return diff.returncode != 0
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        # If we can't determine, assume there are changes (safe default)
+        return True
 
 
 def _branch_has_open_pr(branch_name: str, repo_path: Path) -> bool:
@@ -1971,11 +2174,11 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
         # with their aops plugins, so the user can run either manually.
         cmd = ["bash"]
     elif gemini:
-        # Gemini: --sandbox runs tool calls inside the aops-crew Docker image.
+        # Gemini: sandbox is enabled via the replicated settings.json to avoid
+        # CLI bugs where --sandbox forces an internal network without internet access.
         # The image is built from Dockerfile via `make build-docker`.
         cmd = [
             "gemini",
-            "--sandbox",
         ]
     else:
         # Claude Code: sandbox via project settings.json + setting-sources
@@ -2037,6 +2240,7 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
             if key.endswith("_GATE_MODE") or key in (
                 "ACA_DATA",
                 "GH_TOKEN",
+                "GEMINI_SANDBOX_IMAGE",
                 "GEMINI_SESSION_ID",
                 "AOPS_SESSION_STATE_DIR",
             ):
@@ -2158,34 +2362,30 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
     print("-" * 50)
     print(f"\n\U0001f4cb Crew '{crew_name}' session ended.")
 
-    # Auto-cleanup: nuke clone if a PR is open (work is safely on remote)
+    # Auto-cleanup: nuke clone if no changes were made or a PR is open
     branch_name = f"crew/{crew_name}"
-    if not keep and _branch_has_open_pr(branch_name, work_dir):
-        print(f"   PR open for {branch_name} — cleaning up clone.")
+    auto_nuke = False
+    nuke_reason = ""
+    if not keep:
+        if not _clone_has_changes(work_dir):
+            auto_nuke = True
+            nuke_reason = "no changes made"
+        elif _branch_has_open_pr(branch_name, work_dir):
+            auto_nuke = True
+            nuke_reason = f"PR open for {branch_name}"
+
+    if auto_nuke:
+        print(f"   {nuke_reason} — cleaning up clone.")
         try:
             manager.nuke_crew(crew_name, force=True)
-            print(f"   Clone removed. Use `polecat crew -r {crew_name}` after merge.")
+            print("   Clone removed.")
         except (ValueError, RuntimeError) as e:
             print(f"   Cleanup failed: {e}", file=sys.stderr)
-            print(f"   Manual cleanup: polecat nuke-crew {crew_name}")
+            print(f"   Manual cleanup: polecat nuke {crew_name}")
     else:
         print(f"   Clone preserved at: {manager.crew_dir / crew_name}")
         print(f"   To resume: polecat crew -r {crew_name}")
-        print(f"   To nuke:   polecat nuke-crew {crew_name}")
-
-
-@main.command("nuke-crew")
-@click.argument("name")
-@click.option("--force", "-f", is_flag=True, help="Delete even if work is not merged")
-@click.pass_context
-def nuke_crew(ctx, name, force):
-    """Remove a crew worker and their worktrees."""
-    manager = PolecatManager(home_dir=ctx.obj.get("home"))
-    try:
-        manager.nuke_crew(name, force=force)
-    except (ValueError, RuntimeError) as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
+        print(f"   To nuke:   polecat nuke {crew_name}")
 
 
 @main.command("list-crew")
@@ -2545,6 +2745,7 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
             if key.endswith("_GATE_MODE") or key in (
                 "ACA_DATA",
                 "GH_TOKEN",
+                "GEMINI_SANDBOX_IMAGE",
                 "GEMINI_SESSION_ID",
                 "AOPS_SESSION_STATE_DIR",
             ):

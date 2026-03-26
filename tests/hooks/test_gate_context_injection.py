@@ -42,7 +42,6 @@ def _reinit_gates():
 
 @pytest.fixture(autouse=True)
 def _pin_gate_modes(monkeypatch):
-    monkeypatch.setenv("HYDRATION_GATE_MODE", "block")
     monkeypatch.setenv("CUSTODIET_GATE_MODE", "block")
     monkeypatch.setenv("QA_GATE_MODE", "block")
     monkeypatch.setenv("HANDOVER_GATE_MODE", "block")
@@ -207,33 +206,9 @@ class TestStopBlockHasContextInjection:
 class TestPreToolUseBlockHasContextInjection:
     """PreToolUse blocks must always produce non-empty context_injection."""
 
-    def test_hydration_block_has_context(self, router):
-        """Hydration gate blocking a write tool must include context_injection."""
-        state = SessionState.create("test-ptu-ctx")
-        state.gates["hydration"].status = GateStatus.CLOSED
-        state.gates["hydration"].metrics["temp_path"] = "/tmp/hydration.md"
-
-        ctx = HookContext(
-            session_id="test-ptu-ctx",
-            hook_event="PreToolUse",
-            tool_name="Edit",
-            tool_input={"file_path": "/f.py", "old_string": "a", "new_string": "b"},
-        )
-
-        result = router._dispatch_gates(ctx, state)
-
-        assert result is not None
-        assert result.verdict != GateVerdict.ALLOW
-        assert result.context_injection and len(result.context_injection) > 0, (
-            f"Hydration block has no context_injection. "
-            f"verdict={result.verdict.value}, "
-            f"context_injection={result.context_injection!r}"
-        )
-
     def test_custodiet_block_has_context(self, router):
         """Custodiet gate blocking at threshold must include context_injection."""
         state = SessionState.create("test-ptu-ctx")
-        state.gates["hydration"].status = GateStatus.OPEN
         state.gates["custodiet"].ops_since_open = 75
 
         ctx = HookContext(

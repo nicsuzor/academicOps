@@ -224,6 +224,9 @@ jobs:
             }
 
           # Set merge-prep-status commit status
+          # Re-fetch HEAD SHA — the agent may have pushed new commits during its run
+          HEAD_SHA=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json headRefOid --jq '.headRefOid')
+          echo "Setting merge-prep-status on HEAD: $HEAD_SHA"
           gh api "repos/$REPO/statuses/$HEAD_SHA" \
             -f state="success" \
             -f context="merge-prep-status" \

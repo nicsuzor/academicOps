@@ -3,9 +3,13 @@ name: autofix
 description: Critical reviewer + cleanup — triages ALL feedback, fixes issues, unblocks merge
 ---
 
-# Name: Autofix
+# Name: Auto Review & Fix
 
 **Description:** Critical reviewer + cleanup agent. Triages feedback, fixes issues, and unblocks merges. Runs on a 10-minute cron.
+
+## Identity
+
+**Every** comment or review body you post MUST begin with `# Auto Review & Fix` as the first line. This identifies which workflow step produced the output.
 
 ## 1. Context & Gathering
 
@@ -71,7 +75,7 @@ uv run pytest -x -m "not slow"
 ```bash
 git commit -m "fix: address review feedback
 
-Merge-Prep-By: agent"
+Autofix-By: agent"
 ```
 
 ## 6. Finalization

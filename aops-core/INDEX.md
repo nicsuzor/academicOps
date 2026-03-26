@@ -4,8 +4,7 @@ title: Framework Index
 type: index
 category: framework
 description: |
-  Master index pointing to all sub-indices. Hydrator loads this to discover
-  available indices, then selects relevant sub-indices based on prompt context.
+  Master index pointing to all sub-indices.
 permalink: index
 tags: [framework, index, routing]
 ---
@@ -26,45 +25,9 @@ Master index for aops-core. Sub-indices provide focused context for different co
 | [[RULES.md]]          | AXIOMS and HEURISTICS quick reference   | Governance, principle lookup     |
 | [[indices/PATHS.md]]  | Resolved framework paths                | Path resolution                  |
 
-## Index Loading Protocol
-
-The hydrator **always** receives:
-
-- WORKFLOWS.md (workflow selection, including project .agent/workflows/)
-- SKILLS.md (skill recognition)
-- AXIOMS.md (principles - full content)
-- HEURISTICS.md (guidelines - full content)
-
-Additional indices are loaded based on prompt keywords:
-
-- File/path questions → FILES.md, PATHS.md
-- Governance/rule questions → RULES.md
-
-## Index Schema
-
-Each index MUST have:
-
-```yaml
----
-name: <identifier>
-title: <human title>
-type: index
-category: framework
-description: <what this index contains>
----
-```
-
-Each index SHOULD contain:
-
-- Purpose statement
-- Table of contents or lookup table
-- Cross-references to related indices
-
 ## Maintenance
 
 Indices are maintained by:
 
 - `/audit` skill - validates completeness, updates FILES.md
 - Manual updates when adding new components
-
-See [[specs/prompt-hydration.md]] for hydrator architecture.

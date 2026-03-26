@@ -1,63 +1,21 @@
-# Hook Templates
+# Hook Message Templates
 
-This directory contains message templates used by framework hooks. Templates allow agent-facing messages to be edited without modifying Python code.
+Templates for user-facing messages and context injections.
 
-## Format
+## Template Index
 
-Templates are markdown files with YAML frontmatter:
+| Template                      | Used By             | Purpose                               |
+| ----------------------------- | ------------------- | ------------------------------------- |
+| `hydration-gate-warn.md`      | `router.py`         | Lightweight skills-routing hint       |
+| `custodiet-policy-message.md` | `custodiet_gate.py` | Message when custodiet blocks/warns   |
+| `custodiet-context.md`        | `custodiet_gate.py` | Instructions for custodiet subagent   |
+| `handover-policy-message.md`  | `handover_gate.py`  | Message when stop blocked by handover |
+| `qa-policy-message.md`        | `qa_gate.py`        | Message when stop blocked by QA       |
+| `qa-context.md`               | `qa_gate.py`        | Instructions for QA subagent          |
+| `stop-handover-block.md`      | `router.py`         | Context injection when stop blocked   |
 
-```markdown
----
-name: template-name
-title: Human-readable Title
-category: template
-description: |
-  What this template is used for.
-  Variables: {var_name} - Description of variable
----
+## Editing Templates
 
-Template content goes here. Use {variable_name} for interpolation.
-```
-
-## Usage
-
-Templates are loaded using `lib.template_loader.load_template()`:
-
-```python
-from pathlib import Path
-from lib.template_loader import load_template
-
-# Load without variables
-content = load_template(Path("hooks/templates/my-template.md"))
-
-# Load with variable interpolation
-content = load_template(
-    Path("hooks/templates/my-template.md"),
-    {"var_name": "value"}
-)
-```
-
-## Current Templates
-
-| Template                          | Used By                  | Purpose                                    |
-| --------------------------------- | ------------------------ | ------------------------------------------ |
-| `custodiet-context.md`            | `custodiet_gate.py`      | Full context for compliance checks         |
-| `custodiet-instruction.md`        | `custodiet_gate.py`      | Short instruction to spawn custodiet       |
-| `hydration-gate-block.md`         | `hydration_gate.py`      | Message when blocking without hydration    |
-| `hydration-gate-warn.md`          | `hydration_gate.py`      | Warning when hydration skipped (warn mode) |
-| `prompt-hydration-instruction.md` | `user_prompt_submit.py`  | Short instruction to invoke hydrator skill |
-| `fail-fast-reminder.md`           | `fail_fast_watchdog.py`  | Reminder when tool returns error           |
-| `overdue-enforcement-block.md`    | `overdue_enforcement.py` | Block when compliance check overdue        |
-
-## Adding New Templates
-
-1. Create a `.md` file with YAML frontmatter
-2. Document any variables in the frontmatter description
-3. Update the hook to use `load_template()` from `lib.template_loader`
-4. Add the template to the table above
-
-## Error Handling
-
-- `FileNotFoundError` is raised if template is missing (fail-fast)
-- `KeyError` is raised if template references undefined variables
-- Hooks should catch and handle errors appropriately for their use case
+1. Templates use standard `{{placeholder}}` syntax.
+2. Placeholders must be defined in `TemplateSpec` in `lib/template_registry.py`.
+3. Keep messages concise and action-oriented.

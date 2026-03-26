@@ -132,8 +132,8 @@ def get_config_dir() -> Path:
 
 
 def get_workflows_dir() -> Path:
-    """Get workflows directory (now inside hydrator skill package)."""
-    return get_plugin_root() / "skills" / "hydrator" / "workflows"
+    """Get workflows directory (inside butler skill package)."""
+    return get_plugin_root() / "skills" / "butler" / "workflows"
 
 
 def get_indices_dir() -> Path:

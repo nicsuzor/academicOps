@@ -47,10 +47,7 @@ echo "Expected: Exit code 0 (warn mode), warning message present"
 # Unset CLAUDE_AGENT_TYPE
 unset CLAUDE_AGENT_TYPE
 
-# Set warn mode
-export HYDRATION_GATE_MODE="warn"
-
-# Create session state file to simulate hydration pending
+# Create session state file to simulate gate pending
 SESSION_STATE_DIR="/tmp/test-claude-sessions"
 mkdir -p "$SESSION_STATE_DIR"
 echo '{"hydration_pending": "test"}' > "$SESSION_STATE_DIR/test-session.json"

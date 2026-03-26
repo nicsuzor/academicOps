@@ -1,3 +1,6 @@
 [submodule "lib/markdown-links"]
 	path = lib/markdown-links
 	url = https://github.com/tchayen/markdown-links.git
+[submodule "lib/omcp"]
+	path = lib/omcp
+	url = https://github.com/nicsuzor/omcp.git

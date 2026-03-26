@@ -2042,11 +2042,7 @@
         "event_hash": "1a2ffcce12a487ca",
         "extracted_at": "2026-03-04T04:44:33.474077+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-agent-L129",
@@ -2070,11 +2066,7 @@
         "event_hash": "4d3bb19f2f3426a1",
         "extracted_at": "2026-03-04T04:44:33.474193+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-agent-L2",
@@ -2099,11 +2091,7 @@
         "event_hash": "2f4c81244bbab983",
         "extracted_at": "2026-03-04T04:44:33.703913+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-agent-L69",
@@ -2128,11 +2116,7 @@
         "event_hash": "615749246e15d381",
         "extracted_at": "2026-03-04T04:44:33.703986+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-taskcreate-L36",
@@ -2156,11 +2140,7 @@
         "event_hash": "3d18ac24d21a60ee",
         "extracted_at": "2026-03-04T04:44:33.850401+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-taskcreate-L38",
@@ -2184,11 +2164,7 @@
         "event_hash": "e7b0e6f09383c5d7",
         "extracted_at": "2026-03-04T04:44:33.850443+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-taskcreate-L40",
@@ -2212,11 +2188,7 @@
         "event_hash": "7bd158cba76976c5",
         "extracted_at": "2026-03-04T04:44:33.850484+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-taskcreate-L42",
@@ -2240,11 +2212,7 @@
         "event_hash": "c783d528138d929f",
         "extracted_at": "2026-03-04T04:44:33.850524+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-taskcreate-L44",
@@ -2268,11 +2236,7 @@
         "event_hash": "d1bd5198f0ac4e39",
         "extracted_at": "2026-03-04T04:44:33.850565+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-taskcreate-L46",
@@ -2296,11 +2260,7 @@
         "event_hash": "47a5fc8d72ac0a03",
         "extracted_at": "2026-03-04T04:44:33.850606+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-taskupdate-L48",
@@ -2326,11 +2286,7 @@
         "event_hash": "375690c6ca2cb352",
         "extracted_at": "2026-03-04T04:44:33.850646+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-taskupdate-L50",
@@ -2353,11 +2309,7 @@
         "event_hash": "cf07f6eebbcb42e1",
         "extracted_at": "2026-03-04T04:44:33.850684+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-agent-L54",
@@ -2382,11 +2334,7 @@
         "event_hash": "d3f7eaac3ef111f9",
         "extracted_at": "2026-03-04T04:44:33.850724+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-taskupdate-L59",
@@ -2409,11 +2357,7 @@
         "event_hash": "a8f554df9f799b0a",
         "extracted_at": "2026-03-04T04:44:33.850766+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-taskupdate-L60",
@@ -2436,11 +2380,7 @@
         "event_hash": "792f422e2e2ce532",
         "extracted_at": "2026-03-04T04:44:33.850804+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-taskupdate-L62",
@@ -2463,11 +2403,7 @@
         "event_hash": "7e72054025657eb5",
         "extracted_at": "2026-03-04T04:44:33.850844+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-taskupdate-L65",
@@ -2490,11 +2426,7 @@
         "event_hash": "3fffcaed5170a2cd",
         "extracted_at": "2026-03-04T04:44:33.850883+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-taskupdate-L67",
@@ -2517,11 +2449,7 @@
         "event_hash": "1f101bf26c74b8bc",
         "extracted_at": "2026-03-04T04:44:33.850924+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-taskupdate-L110",
@@ -2544,11 +2472,7 @@
         "event_hash": "59c39c26dc739dfc",
         "extracted_at": "2026-03-04T04:44:33.850979+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-taskupdate-L111",
@@ -2571,11 +2495,7 @@
         "event_hash": "d64697152afb965d",
         "extracted_at": "2026-03-04T04:44:33.851017+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-taskupdate-L114",
@@ -2598,11 +2518,7 @@
         "event_hash": "1f1f96c0288d47fa",
         "extracted_at": "2026-03-04T04:44:33.851054+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-taskupdate-L115",
@@ -2625,11 +2541,7 @@
         "event_hash": "4c9b3bae4ae0d7de",
         "extracted_at": "2026-03-04T04:44:33.851091+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-taskupdate-L116",
@@ -2652,11 +2564,7 @@
         "event_hash": "6773a5414def4cc0",
         "extracted_at": "2026-03-04T04:44:33.851129+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-agent-L144",
@@ -2681,11 +2589,7 @@
         "event_hash": "a459e6caa7b81d11",
         "extracted_at": "2026-03-04T04:44:33.851199+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-taskupdate-L193",
@@ -2708,11 +2612,7 @@
         "event_hash": "53595554e7d5a892",
         "extracted_at": "2026-03-04T04:44:33.851314+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-agent-L225",
@@ -2737,11 +2637,7 @@
         "event_hash": "d86da1e7350d3c43",
         "extracted_at": "2026-03-04T04:44:33.851365+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-askuserquestion-L268",
@@ -2806,11 +2702,7 @@
         "event_hash": "e771c943e9c4a5bf",
         "extracted_at": "2026-03-04T04:44:33.851498+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-agent-L341",
@@ -2835,11 +2727,7 @@
         "event_hash": "170a7d1a1c15649f",
         "extracted_at": "2026-03-04T04:44:33.851561+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-agent-L3",
@@ -2863,11 +2751,7 @@
         "event_hash": "79878115661ddb3b",
         "extracted_at": "2026-03-04T04:44:33.868693+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-agent-L12",
@@ -2891,11 +2775,7 @@
         "event_hash": "352508ab4d2f7f26",
         "extracted_at": "2026-03-04T04:44:33.885956+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-taskcreate-L122",
@@ -2919,11 +2799,7 @@
         "event_hash": "d060a5584344ae87",
         "extracted_at": "2026-03-04T04:44:33.886064+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-taskupdate-L124",
@@ -2946,11 +2822,7 @@
         "event_hash": "329e92ee1be34d77",
         "extracted_at": "2026-03-04T04:44:33.886102+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-taskupdate-L154",
@@ -2973,11 +2845,7 @@
         "event_hash": "43b1d7a79e85c0bd",
         "extracted_at": "2026-03-04T04:44:33.886149+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-agent-L6",
@@ -3002,11 +2870,7 @@
         "event_hash": "70f3c9955b627d22",
         "extracted_at": "2026-03-04T04:44:33.958378+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-taskcreate-L47",
@@ -3030,11 +2894,7 @@
         "event_hash": "95b58f5b859befb5",
         "extracted_at": "2026-03-04T04:44:33.958433+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-taskcreate-L49",
@@ -3058,11 +2918,7 @@
         "event_hash": "c57ac555db81bab0",
         "extracted_at": "2026-03-04T04:44:33.958478+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-taskcreate-L51",
@@ -3086,11 +2942,7 @@
         "event_hash": "9f270163b505d177",
         "extracted_at": "2026-03-04T04:44:33.958529+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-taskcreate-L53",
@@ -3114,11 +2966,7 @@
         "event_hash": "8fc28abca649c704",
         "extracted_at": "2026-03-04T04:44:33.958575+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-taskupdate-L55",
@@ -3141,11 +2989,7 @@
         "event_hash": "7201bb5dacf5583f",
         "extracted_at": "2026-03-04T04:44:33.958618+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-agent-L69",
@@ -3170,11 +3014,7 @@
         "event_hash": "cba629b99bcfb9da",
         "extracted_at": "2026-03-04T04:44:33.958670+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-taskupdate-L99",
@@ -3197,11 +3037,7 @@
         "event_hash": "a064c6574066bb39",
         "extracted_at": "2026-03-04T04:44:33.958744+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-taskupdate-L101",
@@ -3224,11 +3060,7 @@
         "event_hash": "e7dbe3d515e3d719",
         "extracted_at": "2026-03-04T04:44:33.958798+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-agent-L115",
@@ -3253,11 +3085,7 @@
         "event_hash": "9eb61255030900e3",
         "extracted_at": "2026-03-04T04:44:33.958852+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-taskupdate-L127",
@@ -3280,11 +3108,7 @@
         "event_hash": "f8d404b6913028f7",
         "extracted_at": "2026-03-04T04:44:33.958899+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-taskupdate-L128",
@@ -3307,11 +3131,7 @@
         "event_hash": "8f75137ce7866b6d",
         "extracted_at": "2026-03-04T04:44:33.958943+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-taskupdate-L213",
@@ -3334,11 +3154,7 @@
         "event_hash": "72f4a3ab7ff7740b",
         "extracted_at": "2026-03-04T04:44:33.959013+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-taskupdate-L214",
@@ -3361,11 +3177,7 @@
         "event_hash": "98a24811cbb27485",
         "extracted_at": "2026-03-04T04:44:33.959044+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-agent-L239",
@@ -3390,11 +3202,7 @@
         "event_hash": "f30be12710a8b20b",
         "extracted_at": "2026-03-04T04:44:33.959086+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-taskupdate-L299",
@@ -3417,11 +3225,7 @@
         "event_hash": "6ac5432a08ab4663",
         "extracted_at": "2026-03-04T04:44:33.959137+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     }
   ],
   "claude_custodiet_threshold": [
@@ -3740,12 +3544,6 @@
         "extracted_at": "2026-03-04T04:44:33.704095+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -3773,12 +3571,6 @@
         "extracted_at": "2026-03-04T04:44:33.704148+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -3806,12 +3598,6 @@
         "extracted_at": "2026-03-04T04:44:33.704243+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -3839,12 +3625,6 @@
         "extracted_at": "2026-03-04T04:44:33.704301+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -3872,12 +3652,6 @@
         "extracted_at": "2026-03-04T04:44:33.704351+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -3905,12 +3679,6 @@
         "extracted_at": "2026-03-04T04:44:33.704401+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -3938,12 +3706,6 @@
         "extracted_at": "2026-03-04T04:44:33.704455+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -3971,12 +3733,6 @@
         "extracted_at": "2026-03-04T04:44:33.704511+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -4004,12 +3760,6 @@
         "extracted_at": "2026-03-04T04:44:33.704568+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -4037,12 +3787,6 @@
         "extracted_at": "2026-03-04T04:44:33.704654+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -4070,12 +3814,6 @@
         "extracted_at": "2026-03-04T04:44:33.704724+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -4103,12 +3841,6 @@
         "extracted_at": "2026-03-04T04:44:33.704784+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -4136,12 +3868,6 @@
         "extracted_at": "2026-03-04T04:44:33.704974+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -4169,12 +3895,6 @@
         "extracted_at": "2026-03-04T04:44:33.705045+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -4202,12 +3922,6 @@
         "extracted_at": "2026-03-04T04:44:33.705133+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -4235,12 +3949,6 @@
         "extracted_at": "2026-03-04T04:44:33.705280+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -4268,12 +3976,6 @@
         "extracted_at": "2026-03-04T04:44:33.705350+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -4301,12 +4003,6 @@
         "extracted_at": "2026-03-04T04:44:33.705456+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -4334,12 +4030,6 @@
         "extracted_at": "2026-03-04T04:44:33.705533+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -4367,12 +4057,6 @@
         "extracted_at": "2026-03-04T04:44:33.705587+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -4400,12 +4084,6 @@
         "extracted_at": "2026-03-04T04:44:33.705655+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -4433,12 +4111,6 @@
         "extracted_at": "2026-03-04T04:44:33.705761+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -4466,12 +4138,6 @@
         "extracted_at": "2026-03-04T04:44:33.705839+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -4499,12 +4165,6 @@
         "extracted_at": "2026-03-04T04:44:33.705894+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -4532,12 +4192,6 @@
         "extracted_at": "2026-03-04T04:44:33.705984+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -4565,12 +4219,6 @@
         "extracted_at": "2026-03-04T04:44:33.706080+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -4598,12 +4246,6 @@
         "extracted_at": "2026-03-04T04:44:33.706136+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -4631,12 +4273,6 @@
         "extracted_at": "2026-03-04T04:44:33.706208+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -4664,12 +4300,6 @@
         "extracted_at": "2026-03-04T04:44:33.706335+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -4697,12 +4327,6 @@
         "extracted_at": "2026-03-04T04:44:33.706410+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -4730,12 +4354,6 @@
         "extracted_at": "2026-03-04T04:44:33.706462+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -4763,12 +4381,6 @@
         "extracted_at": "2026-03-04T04:44:33.706547+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -4796,12 +4408,6 @@
         "extracted_at": "2026-03-04T04:44:33.706643+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -4829,12 +4435,6 @@
         "extracted_at": "2026-03-04T04:44:33.706702+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -4862,12 +4462,6 @@
         "extracted_at": "2026-03-04T04:44:33.706767+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -4895,12 +4489,6 @@
         "extracted_at": "2026-03-04T04:44:33.706866+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -4928,12 +4516,6 @@
         "extracted_at": "2026-03-04T04:44:33.706946+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -4961,12 +4543,6 @@
         "extracted_at": "2026-03-04T04:44:33.707006+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -4994,12 +4570,6 @@
         "extracted_at": "2026-03-04T04:44:33.707100+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 50
         }
@@ -6755,14 +6325,7 @@
         "event_hash": "f2f0e8f9d746602e",
         "extracted_at": "2026-03-04T04:44:33.710472+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-bash-L6",
@@ -6785,14 +6348,7 @@
         "event_hash": "ab378f59cf59c371",
         "extracted_at": "2026-03-04T04:44:33.710516+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-bash-L8",
@@ -6815,14 +6371,7 @@
         "event_hash": "de48011eff55cffc",
         "extracted_at": "2026-03-04T04:44:33.710591+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-bash-L10",
@@ -6845,14 +6394,7 @@
         "event_hash": "1441b8a99c2b47bf",
         "extracted_at": "2026-03-04T04:44:33.710645+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-bash-L12",
@@ -6875,14 +6417,7 @@
         "event_hash": "278d3e6ef5aa0f3d",
         "extracted_at": "2026-03-04T04:44:33.710722+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-bash-L13",
@@ -6905,14 +6440,7 @@
         "event_hash": "37382fd51cb27d37",
         "extracted_at": "2026-03-04T04:44:33.710773+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-bash-L18",
@@ -6935,14 +6463,7 @@
         "event_hash": "027c4978a8665690",
         "extracted_at": "2026-03-04T04:44:33.710818+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-bash-L20",
@@ -6965,14 +6486,7 @@
         "event_hash": "6e0d4dbffa54eb64",
         "extracted_at": "2026-03-04T04:44:33.710906+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-bash-L26",
@@ -6995,14 +6509,7 @@
         "event_hash": "e965eff82ddf4553",
         "extracted_at": "2026-03-04T04:44:33.710970+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-bash-L28",
@@ -7025,14 +6532,7 @@
         "event_hash": "fdead217c540eec5",
         "extracted_at": "2026-03-04T04:44:33.711015+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-bash-L32",
@@ -7055,14 +6555,7 @@
         "event_hash": "c20eacdd1a23e164",
         "extracted_at": "2026-03-04T04:44:33.711058+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-bash-L34",
@@ -7086,12 +6579,6 @@
         "extracted_at": "2026-03-04T04:44:33.711110+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 15
         }
@@ -7119,12 +6606,6 @@
         "extracted_at": "2026-03-04T04:44:33.711177+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 15
         }
@@ -7152,12 +6633,6 @@
         "extracted_at": "2026-03-04T04:44:33.711295+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 15
         }
@@ -7185,12 +6660,6 @@
         "extracted_at": "2026-03-04T04:44:33.711347+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 15
         }
@@ -7218,12 +6687,6 @@
         "extracted_at": "2026-03-04T04:44:33.711397+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 15
         }
@@ -7251,12 +6714,6 @@
         "extracted_at": "2026-03-04T04:44:33.711448+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 15
         }
@@ -7284,12 +6741,6 @@
         "extracted_at": "2026-03-04T04:44:33.711501+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 15
         }
@@ -7317,12 +6768,6 @@
         "extracted_at": "2026-03-04T04:44:33.711552+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 15
         }
@@ -7350,12 +6795,6 @@
         "extracted_at": "2026-03-04T04:44:33.711600+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 15
         }
@@ -7383,12 +6822,6 @@
         "extracted_at": "2026-03-04T04:44:33.711650+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 15
         }
@@ -7416,12 +6849,6 @@
         "extracted_at": "2026-03-04T04:44:33.711699+00:00"
       },
       "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        },
         "custodiet": {
           "ops_since_open": 15
         }
@@ -7723,11 +7150,7 @@
         "event_hash": "3e11ccee4cb3731f",
         "extracted_at": "2026-03-04T04:44:33.608752+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-taskcreate-L194",
@@ -7751,11 +7174,7 @@
         "event_hash": "c3e6e62b575ed3b2",
         "extracted_at": "2026-03-04T04:44:33.608793+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-taskcreate-L196",
@@ -7779,11 +7198,7 @@
         "event_hash": "8ee8d8ca9bc5184a",
         "extracted_at": "2026-03-04T04:44:33.608835+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-taskcreate-L198",
@@ -7807,11 +7222,7 @@
         "event_hash": "1c8ccca58fce41e5",
         "extracted_at": "2026-03-04T04:44:33.608903+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-taskupdate-L200",
@@ -7834,11 +7245,7 @@
         "event_hash": "6be57ccbf47dc52e",
         "extracted_at": "2026-03-04T04:44:33.608938+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-taskupdate-L201",
@@ -7861,11 +7268,7 @@
         "event_hash": "3abc4b694982454b",
         "extracted_at": "2026-03-04T04:44:33.608972+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-taskupdate-L221",
@@ -7888,11 +7291,7 @@
         "event_hash": "bfaad717278ff813",
         "extracted_at": "2026-03-04T04:44:33.609011+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-taskupdate-L253",
@@ -7915,11 +7314,7 @@
         "event_hash": "12e194851523b182",
         "extracted_at": "2026-03-04T04:44:33.609058+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-taskcreate-L255",
@@ -7943,11 +7338,7 @@
         "event_hash": "7a16d14594c81b73",
         "extracted_at": "2026-03-04T04:44:33.609094+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-taskcreate-L257",
@@ -7971,11 +7362,7 @@
         "event_hash": "1e592ac4e01cc6aa",
         "extracted_at": "2026-03-04T04:44:33.609131+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-taskcreate-L261",
@@ -7999,11 +7386,7 @@
         "event_hash": "04d7014a8cf63ad3",
         "extracted_at": "2026-03-04T04:44:33.609176+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-taskupdate-L491",
@@ -8026,11 +7409,7 @@
         "event_hash": "bd675e62868cee3c",
         "extracted_at": "2026-03-04T04:44:33.609320+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-taskupdate-L493",
@@ -8053,11 +7432,7 @@
         "event_hash": "ede54d57e6a3211f",
         "extracted_at": "2026-03-04T04:44:33.609359+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-taskupdate-L497",
@@ -8081,11 +7456,7 @@
         "event_hash": "90c86f7e5978ce28",
         "extracted_at": "2026-03-04T04:44:33.609395+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-taskupdate-L498",
@@ -8108,11 +7479,7 @@
         "event_hash": "8ac2c292130787a6",
         "extracted_at": "2026-03-04T04:44:33.609427+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-taskupdate-L981",
@@ -8136,11 +7503,7 @@
         "event_hash": "bedaf37e42c0d6ae",
         "extracted_at": "2026-03-04T04:44:33.609604+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-taskupdate-L984",
@@ -8163,11 +7526,7 @@
         "event_hash": "abb273239f760416",
         "extracted_at": "2026-03-04T04:44:33.609641+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-taskupdate-L1011",
@@ -8191,11 +7550,7 @@
         "event_hash": "4ca8e172e20c9496",
         "extracted_at": "2026-03-04T04:44:33.609685+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-taskupdate-L1082",
@@ -8218,11 +7573,7 @@
         "event_hash": "a9c39b6f5ec16dc5",
         "extracted_at": "2026-03-04T04:44:33.609739+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-taskupdate-L1084",
@@ -8246,11 +7597,7 @@
         "event_hash": "920196f8fcf0f3d9",
         "extracted_at": "2026-03-04T04:44:33.609773+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-taskupdate-L1085",
@@ -8274,11 +7621,7 @@
         "event_hash": "157b383e5c5cf5c4",
         "extracted_at": "2026-03-04T04:44:33.609807+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-taskupdate-L1086",
@@ -8302,11 +7645,7 @@
         "event_hash": "722abb0edb686973",
         "extracted_at": "2026-03-04T04:44:33.609846+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-taskcreate-L34",
@@ -8330,11 +7669,7 @@
         "event_hash": "12ed63bb19f06c69",
         "extracted_at": "2026-03-04T04:44:33.743735+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-taskcreate-L36",
@@ -8358,11 +7693,7 @@
         "event_hash": "421f6cfb33376748",
         "extracted_at": "2026-03-04T04:44:33.743779+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-taskcreate-L38",
@@ -8386,11 +7717,7 @@
         "event_hash": "4c4c26141740d024",
         "extracted_at": "2026-03-04T04:44:33.743837+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-taskupdate-L40",
@@ -8413,11 +7740,7 @@
         "event_hash": "e92109f428c75451",
         "extracted_at": "2026-03-04T04:44:33.743908+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-taskupdate-L48",
@@ -8440,11 +7763,7 @@
         "event_hash": "f55c93744c614094",
         "extracted_at": "2026-03-04T04:44:33.743953+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-taskupdate-L49",
@@ -8467,11 +7786,7 @@
         "event_hash": "57c75838a2246303",
         "extracted_at": "2026-03-04T04:44:33.743985+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-taskupdate-L51",
@@ -8494,11 +7809,7 @@
         "event_hash": "018ceed20f654e3b",
         "extracted_at": "2026-03-04T04:44:33.744016+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-taskupdate-L56",
@@ -8521,11 +7832,7 @@
         "event_hash": "ae8c720ad19255fd",
         "extracted_at": "2026-03-04T04:44:33.744048+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-askuserquestion-L667",
@@ -8591,11 +7898,7 @@
         "event_hash": "49474ca130e2c552",
         "extracted_at": "2026-03-04T04:44:34.889460+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-agent-L42",
@@ -8620,11 +7923,7 @@
         "event_hash": "8ed28ca8b9273f07",
         "extracted_at": "2026-03-04T04:44:34.889507+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-agent-L229",
@@ -8648,11 +7947,7 @@
         "event_hash": "0fa64af0d50cb097",
         "extracted_at": "2026-03-04T04:44:34.889604+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-askuserquestion-L271",
@@ -8717,11 +8012,7 @@
         "event_hash": "91182005f4bc5a9c",
         "extracted_at": "2026-03-04T04:44:34.889705+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-taskcreate-L304",
@@ -8745,11 +8036,7 @@
         "event_hash": "4cddab33c97ac40f",
         "extracted_at": "2026-03-04T04:44:34.889748+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-taskcreate-L306",
@@ -8773,11 +8060,7 @@
         "event_hash": "6d1de76f8b2f6cec",
         "extracted_at": "2026-03-04T04:44:34.889782+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-taskcreate-L308",
@@ -8801,11 +8084,7 @@
         "event_hash": "27fc440af4209049",
         "extracted_at": "2026-03-04T04:44:34.889816+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-taskupdate-L310",
@@ -8828,11 +8107,7 @@
         "event_hash": "867687293de1ed1c",
         "extracted_at": "2026-03-04T04:44:34.889847+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-taskupdate-L320",
@@ -8855,11 +8130,7 @@
         "event_hash": "805bb9da64d8f25c",
         "extracted_at": "2026-03-04T04:44:34.889882+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-taskupdate-L321",
@@ -8882,11 +8153,7 @@
         "event_hash": "ae5fc1b4f2eec202",
         "extracted_at": "2026-03-04T04:44:34.889912+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-taskupdate-L326",
@@ -8909,11 +8176,7 @@
         "event_hash": "90c7795f9dd0db24",
         "extracted_at": "2026-03-04T04:44:34.889945+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-taskupdate-L327",
@@ -8936,11 +8199,7 @@
         "event_hash": "9c9262ebd9474949",
         "extracted_at": "2026-03-04T04:44:34.889977+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-taskupdate-L346",
@@ -8963,11 +8222,7 @@
         "event_hash": "cc27e36ad1bbaff5",
         "extracted_at": "2026-03-04T04:44:34.890012+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-agent-L411",
@@ -8991,11 +8246,7 @@
         "event_hash": "c0ebc1fcaa73180f",
         "extracted_at": "2026-03-04T04:44:34.890070+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-agent-L413",
@@ -9019,11 +8270,7 @@
         "event_hash": "b9680940ecae0f47",
         "extracted_at": "2026-03-04T04:44:34.890108+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-agent-L493",
@@ -9047,11 +8294,7 @@
         "event_hash": "2f4b401d3b37211f",
         "extracted_at": "2026-03-04T04:44:34.890166+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-pretooluse-agent-L499",
@@ -9075,11 +8318,7 @@
         "event_hash": "6896cd2d44e9925e",
         "extracted_at": "2026-03-04T04:44:34.890227+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "open"
-        }
-      }
+      "gate_overrides": {}
     }
   ],
   "gemini_custodiet_threshold": [
@@ -12413,14 +11652,7 @@
         "event_hash": "708c31cc668d14c0",
         "extracted_at": "2026-03-04T04:44:33.642448+00:00"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "gemini-userpromptsubmit-none-L776",
@@ -15705,2955 +14937,6 @@
       }
     }
   ],
-  "claude_hydration_gate_blocks_tools": [
-    {
-      "id": "claude-pretooluse-bash-L4",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "git log --since=\"2026-03-04\" --all --oneline --grep=\"review\\|PR\\|workflow\" 2>/dev/null | head -20",
-        "description": "Search git log for review/PR workflow commits today"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 4,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:18:52+00:00",
-        "event_hash": "f2f0e8f9d746602e",
-        "extracted_at": "2026-03-04T04:44:33.697370+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-bash-L6",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "find /opt/nic/brain -name \"*2026-03-04*\" -o -name \"*20260304*\" 2>/dev/null | head -20",
-        "description": "Find daily notes for 2026-03-04"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 6,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:18:54+00:00",
-        "event_hash": "ab378f59cf59c371",
-        "extracted_at": "2026-03-04T04:44:33.697429+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-bash-L8",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "git log --since=\"2026-03-04 00:00:00\" --until=\"2026-03-04 23:59:59\" --oneline --all 2>/dev/null | head -30",
-        "description": "Git commits from today"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 8,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:18:56+00:00",
-        "event_hash": "de48011eff55cffc",
-        "extracted_at": "2026-03-04T04:44:33.697480+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-bash-L10",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "gh issue list --state open --label \"pr-review\" --json number,title,updatedAt 2>/dev/null; gh issue list --state open --search \"PR review workflow\" --json number,title,updatedAt 2>/dev/null; gh issue list --state open --search \"review workflow\" --json number,title,updatedAt 2>/dev/null",
-        "description": "GitHub issues about PR review workflow"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 10,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:18:58+00:00",
-        "event_hash": "1441b8a99c2b47bf",
-        "extracted_at": "2026-03-04T04:44:33.697560+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-bash-L12",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "ls /opt/nic/.aops/crew/pamela_89/aops/.agent/ 2>/dev/null",
-        "description": "List .agent directory contents"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 12,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:19:01+00:00",
-        "event_hash": "278d3e6ef5aa0f3d",
-        "extracted_at": "2026-03-04T04:44:33.697605+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-bash-L13",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "ls -la .github/workflows/ 2>/dev/null | head -30",
-        "description": "List review-related workflows"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 13,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:19:01+00:00",
-        "event_hash": "37382fd51cb27d37",
-        "extracted_at": "2026-03-04T04:44:33.697675+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-read-L16",
-      "hook_event": "PreToolUse",
-      "tool_name": "Read",
-      "tool_input": {
-        "file_path": "/opt/nic/brain/daily/20260304-daily.md"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 16,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:19:05+00:00",
-        "event_hash": "da6880ad5e20ef84",
-        "extracted_at": "2026-03-04T04:44:33.697759+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-bash-L18",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "ls /opt/nic/.aops/crew/pamela_89/aops/.agent/workflows/ 2>/dev/null",
-        "description": "List workflow docs in .agent/workflows"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 18,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:19:06+00:00",
-        "event_hash": "027c4978a8665690",
-        "extracted_at": "2026-03-04T04:44:33.697813+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-bash-L20",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "gh issue list --state all --search \"PR review\" --json number,title,updatedAt,createdAt,state 2>/dev/null | python3 -c \"import json,sys; items=json.load(sys.stdin); [print(i['state'], i['number'], i['updatedAt'], i['title']) for i in items]\"",
-        "description": "List all PR review related issues with dates"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 20,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:19:08+00:00",
-        "event_hash": "6e0d4dbffa54eb64",
-        "extracted_at": "2026-03-04T04:44:33.697896+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-read-L22",
-      "hook_event": "PreToolUse",
-      "tool_name": "Read",
-      "tool_input": {
-        "file_path": "/opt/nic/.aops/crew/pamela_89/aops/.github/workflows/agent-conceptual-review.yml"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 22,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:19:14+00:00",
-        "event_hash": "cf858d0b4479c396",
-        "extracted_at": "2026-03-04T04:44:33.697942+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-read-L23",
-      "hook_event": "PreToolUse",
-      "tool_name": "Read",
-      "tool_input": {
-        "file_path": "/opt/nic/.aops/crew/pamela_89/aops/.github/workflows/agent-merge-prep.yml"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 23,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:19:14+00:00",
-        "event_hash": "cac65b63da9d467a",
-        "extracted_at": "2026-03-04T04:44:33.697985+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-bash-L26",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "gh issue view 681 --json number,title,body,comments,updatedAt,createdAt 2>/dev/null",
-        "description": "Get full details of issue 681 about review findings"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 26,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:19:16+00:00",
-        "event_hash": "e965eff82ddf4553",
-        "extracted_at": "2026-03-04T04:44:33.698048+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-bash-L28",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "gh issue view 686 --json number,title,body,comments,updatedAt,createdAt 2>/dev/null",
-        "description": "Get full details of issue 686 about agent misread user intent re gate merge"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 28,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:19:18+00:00",
-        "event_hash": "fdead217c540eec5",
-        "extracted_at": "2026-03-04T04:44:33.698120+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-glob-L30",
-      "hook_event": "PreToolUse",
-      "tool_name": "Glob",
-      "tool_input": {
-        "pattern": ".github/agents/*.md",
-        "path": "/opt/nic/.aops/crew/pamela_89/aops"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 30,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:19:23+00:00",
-        "event_hash": "a9c9ddcc8fa3c9b4",
-        "extracted_at": "2026-03-04T04:44:33.698201+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-bash-L32",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "gh pr list --state all --search \"review\" --json number,title,state,updatedAt,createdAt 2>/dev/null | python3 -c \"import json,sys; items=json.load(sys.stdin); [print(i['state'], i['number'], i['updatedAt'][:10], i['title']) for i in items if '2026-03' in i['updatedAt'] or '2026-02' in i['updatedAt']]\" | head -30",
-        "description": "List recent PRs about review"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 32,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:19:26+00:00",
-        "event_hash": "c20eacdd1a23e164",
-        "extracted_at": "2026-03-04T04:44:33.698276+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-bash-L34",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "gh pr view 692 --json number,title,body,state,updatedAt 2>/dev/null; echo \"---\"; gh pr view 693 --json number,title,body,state,updatedAt 2>/dev/null",
-        "description": "Get spec PRs 692 and 693 details"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 34,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:19:27+00:00",
-        "event_hash": "23b1184c238d3e55",
-        "extracted_at": "2026-03-04T04:44:33.698352+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-read-L36",
-      "hook_event": "PreToolUse",
-      "tool_name": "Read",
-      "tool_input": {
-        "file_path": "/opt/nic/.aops/crew/pamela_89/aops/.github/agents/conceptual-review.agent.md"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 36,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:19:33+00:00",
-        "event_hash": "bccb4341a0e1ce2b",
-        "extracted_at": "2026-03-04T04:44:33.698434+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-read-L37",
-      "hook_event": "PreToolUse",
-      "tool_name": "Read",
-      "tool_input": {
-        "file_path": "/opt/nic/.aops/crew/pamela_89/aops/.github/agents/merge-prep.agent.md"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 37,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:19:33+00:00",
-        "event_hash": "43285f61025235d2",
-        "extracted_at": "2026-03-04T04:44:33.698502+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-bash-L40",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "gh pr view 717 --json number,title,body,state,updatedAt,comments 2>/dev/null | python3 -c \"import json,sys; d=json.load(sys.stdin); print('Title:', d['title']); print('State:', d['state']); print('Updated:', d['updatedAt']); print('Body:', d['body'][:2000])\"",
-        "description": "Get PR 717 details - review-related from today"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 40,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:19:36+00:00",
-        "event_hash": "ccc3c54f9fd322e0",
-        "extracted_at": "2026-03-04T04:44:33.698559+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-bash-L42",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "gh pr view 705 --json number,title,body,state,updatedAt 2>/dev/null | python3 -c \"import json,sys; d=json.load(sys.stdin); print('Title:', d['title']); print('State:', d['state']); print('Updated:', d['updatedAt']); print('Body:', d['body'][:2000])\"",
-        "description": "Get PR 705 - consolidated review agents"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 42,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:19:38+00:00",
-        "event_hash": "4f04477d332b2736",
-        "extracted_at": "2026-03-04T04:44:33.698629+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-mcp__zot__search-L44",
-      "hook_event": "PreToolUse",
-      "tool_name": "mcp__zot__search",
-      "tool_input": {
-        "query": "PR review workflow improvement",
-        "n_results": 5
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 44,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:19:43+00:00",
-        "event_hash": "23d98929b3504898",
-        "extracted_at": "2026-03-04T04:44:33.698700+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-bash-L46",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "find /opt/nic/.aops/crew/pamela_89/aops -name \"*.md\" -newer /opt/nic/brain/daily/20260303-daily.md 2>/dev/null | grep -v \".git\" | head -30",
-        "description": "Find repo files modified today"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 46,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:19:48+00:00",
-        "event_hash": "f06ab2f1e223aa40",
-        "extracted_at": "2026-03-04T04:44:33.698790+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-bash-L47",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "find /opt/nic/brain -name \"*.md\" -newer /opt/nic/brain/daily/20260303-daily.md 2>/dev/null | grep -i -E \"review|pr|aops\" | head -20",
-        "description": "Find brain files modified after yesterday related to PR review"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 47,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:19:48+00:00",
-        "event_hash": "a23e5b0eb7ee815d",
-        "extracted_at": "2026-03-04T04:44:33.698851+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-bash-L50",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "gh issue view 726 --json number,title,body,comments,updatedAt 2>/dev/null",
-        "description": "Get issue 726 which was updated today"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 50,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:19:49+00:00",
-        "event_hash": "3f48a026d5f31dbb",
-        "extracted_at": "2026-03-04T04:44:33.698926+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-read-L52",
-      "hook_event": "PreToolUse",
-      "tool_name": "Read",
-      "tool_input": {
-        "file_path": "/opt/nic/brain/aops/tasks/aops-f1x7r3m7-independent-review-protocol.md"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 52,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:19:56+00:00",
-        "event_hash": "57df55913c782dc9",
-        "extracted_at": "2026-03-04T04:44:33.699009+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-read-L54",
-      "hook_event": "PreToolUse",
-      "tool_name": "Read",
-      "tool_input": {
-        "file_path": "/opt/nic/brain/memories/mem-abf06896-dogfood-finding-2-review-protocol-needs-mandatory-resolution-proposals.md"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 54,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:19:57+00:00",
-        "event_hash": "a0cf213f66519560",
-        "extracted_at": "2026-03-04T04:44:33.699075+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-read-L56",
-      "hook_event": "PreToolUse",
-      "tool_name": "Read",
-      "tool_input": {
-        "file_path": "/opt/nic/brain/memories/mem-e82f7558-pr-658-dogfood-strategic-alignment-lens-must-specify-which-sources-to-consult.md"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 56,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:19:58+00:00",
-        "event_hash": "102d3c55d2e547c4",
-        "extracted_at": "2026-03-04T04:44:33.699115+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-read-L58",
-      "hook_event": "PreToolUse",
-      "tool_name": "Read",
-      "tool_input": {
-        "file_path": "/opt/nic/brain/memories/mem-518cb64b-pr-658-dogfood-reviewer-must-not-rationalize-away-strategic-misalignment.md"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 58,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:19:59+00:00",
-        "event_hash": "66c96cb1b716864f",
-        "extracted_at": "2026-03-04T04:44:33.699152+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-read-L60",
-      "hook_event": "PreToolUse",
-      "tool_name": "Read",
-      "tool_input": {
-        "file_path": "/opt/nic/brain/memories/mem-dfc49573-pr-658-dogfood-convergence-protocol-has-no-trigger-mechanism-for-async-review.md"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 60,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:20:00+00:00",
-        "event_hash": "fc01f45df0a44c13",
-        "extracted_at": "2026-03-04T04:44:33.699241+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-bash-L64",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "gh issue list --repo nicsuzor/academicOps --search \"PR review workflow\" --limit 10 2>/dev/null; echo \"---\"; gh pr list --repo nicsuzor/academicOps --search \"review workflow\" --limit 10 2>/dev/null",
-        "description": "Search GitHub for PR review workflow issues/PRs"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 64,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:21:04+00:00",
-        "event_hash": "c723fd4d09337bcf",
-        "extracted_at": "2026-03-04T04:44:33.699343+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-bash-L71",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "find /opt/nic/brain -newer /opt/nic/brain/daily/20260303-daily.md -name \"*.md\" 2>/dev/null | head -50",
-        "description": "Find files modified more recently than yesterday's daily note"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 71,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:28:35+00:00",
-        "event_hash": "85f11586e8e270bc",
-        "extracted_at": "2026-03-04T04:44:33.699418+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-bash-L72",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "ls -la /opt/nic/brain/daily/ 2>/dev/null | tail -10",
-        "description": "List recent daily notes"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 72,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:28:35+00:00",
-        "event_hash": "58fa05af2d917240",
-        "extracted_at": "2026-03-04T04:44:33.699491+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-read-L75",
-      "hook_event": "PreToolUse",
-      "tool_name": "Read",
-      "tool_input": {
-        "file_path": "/opt/nic/brain/daily/20260304-daily.md"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 75,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:28:51+00:00",
-        "event_hash": "2dc1a32d81294169",
-        "extracted_at": "2026-03-04T04:44:33.699571+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-bash-L77",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "grep -rl \"environment\" /opt/nic/brain --include=\"*.md\" -l 2>/dev/null | xargs grep -l \"workflow\\|github\\|review\" 2>/dev/null | head -20",
-        "description": "Find files mentioning both \"environment\" and workflow/github/review"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 77,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:28:52+00:00",
-        "event_hash": "14ab5bc04108849d",
-        "extracted_at": "2026-03-04T04:44:33.699653+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-bash-L79",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "grep -rl \"environment\" /opt/nic/brain/aops --include=\"*.md\" 2>/dev/null | head -20",
-        "description": "Search aops PKB directory for files mentioning environment"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 79,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:28:58+00:00",
-        "event_hash": "14ab46489999f103",
-        "extracted_at": "2026-03-04T04:44:33.699707+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-bash-L80",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "grep -rl \"environment\" /opt/nic/brain/memories --include=\"*.md\" 2>/dev/null | head -20",
-        "description": "Search memories directory for files mentioning environment"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 80,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:28:58+00:00",
-        "event_hash": "ccc3688983170234",
-        "extracted_at": "2026-03-04T04:44:33.699782+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-bash-L83",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "grep -rl \"environment\" /opt/nic/brain/knowledge --include=\"*.md\" 2>/dev/null | head -20",
-        "description": "Search knowledge directory for files mentioning environment"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 83,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:28:59+00:00",
-        "event_hash": "9372c11e2672bae1",
-        "extracted_at": "2026-03-04T04:44:33.699885+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-bash-L85",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "grep -rl \"environment\\|approval.gate\\|workflow.*trigger\\|trigger.*review\" /opt/nic/brain/aops --include=\"*.md\" 2>/dev/null | xargs grep -l \"github\\|GitHub\\|review\" 2>/dev/null | head -20",
-        "description": "Find aops PKB files combining environment/approval gate with github/review"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 85,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:29:05+00:00",
-        "event_hash": "a2589fbbaf550c87",
-        "extracted_at": "2026-03-04T04:44:33.699960+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-bash-L87",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "find /opt/nic/brain -name \"*.md\" -newer /opt/nic/brain/daily/20260303-daily.md 2>/dev/null | xargs grep -l \"environment\\|approval.gate\\|workflow\" 2>/dev/null | head -20",
-        "description": "Find files modified today that mention environment, approval gate, or workflow"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 87,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:29:07+00:00",
-        "event_hash": "d611f95aa324ef25",
-        "extracted_at": "2026-03-04T04:44:33.700041+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-mcp__zot__search-L89",
-      "hook_event": "PreToolUse",
-      "tool_name": "mcp__zot__search",
-      "tool_input": {
-        "query": "environments github workflow review"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 89,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:29:09+00:00",
-        "event_hash": "53dd6e37a41dd7ef",
-        "extracted_at": "2026-03-04T04:44:33.700113+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-read-L91",
-      "hook_event": "PreToolUse",
-      "tool_name": "Read",
-      "tool_input": {
-        "file_path": "/opt/nic/brain/aops/tasks/aops-bf30d378-review-and-restructure-pr-pipeline-workflows-with-.md"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 91,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:29:18+00:00",
-        "event_hash": "29288f4c8f82d5d4",
-        "extracted_at": "2026-03-04T04:44:33.700173+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-read-L93",
-      "hook_event": "PreToolUse",
-      "tool_name": "Read",
-      "tool_input": {
-        "file_path": "/opt/nic/brain/aops/tasks/aops-678d9e53-replace-wait-for-reviews-workflow-with-event-drive.md"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 93,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:29:19+00:00",
-        "event_hash": "dbc58c906fe74bb5",
-        "extracted_at": "2026-03-04T04:44:33.700274+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-read-L95",
-      "hook_event": "PreToolUse",
-      "tool_name": "Read",
-      "tool_input": {
-        "file_path": "/opt/nic/brain/aops/tasks/aops-d1a0a151-fix-pr-pipeline-workflow-prevent-bot-self-triggeri.md"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 95,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:29:20+00:00",
-        "event_hash": "e90ccdcebe96bb96",
-        "extracted_at": "2026-03-04T04:44:33.700319+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-read-L97",
-      "hook_event": "PreToolUse",
-      "tool_name": "Read",
-      "tool_input": {
-        "file_path": "/opt/nic/brain/memories/mem-c9304df2-claude-code-action-workflow-validation-requires-matching-default-branch.md"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 97,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:29:26+00:00",
-        "event_hash": "ea55c4c49dbc5c7d",
-        "extracted_at": "2026-03-04T04:44:33.700375+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-bash-L99",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "grep -rn \"environment\\b\" /opt/nic/brain/aops --include=\"*.md\" -i 2>/dev/null | grep -i \"github\\|workflow\\|trigger\\|approval\\|review\" | grep -v \"Binary\" | head -40",
-        "description": "Search for \"environment\" in aops PKB files with workflow/github context"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 99,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:29:27+00:00",
-        "event_hash": "3867ff3611e5c031",
-        "extracted_at": "2026-03-04T04:44:33.700471+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-bash-L101",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "grep -rn \"environment\\b\" /opt/nic/brain/memories --include=\"*.md\" -i 2>/dev/null | grep -v \"Binary\" | head -30",
-        "description": "Search memory files for \"environment\""
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 101,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:29:28+00:00",
-        "event_hash": "11b57f701cc563c5",
-        "extracted_at": "2026-03-04T04:44:33.700551+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-bash-L103",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "grep -rn \"environment:\" /opt/nic/brain --include=\"*.md\" 2>/dev/null | grep -v \"Binary\\|^Binary\" | head -30",
-        "description": "Search PKB for YAML \"environment:\" key which is how GitHub Actions environments are declared"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 103,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:29:35+00:00",
-        "event_hash": "67eb24eef41b5fad",
-        "extracted_at": "2026-03-04T04:44:33.700605+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-bash-L105",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "grep -rn \"environment:\" /opt/nic/.aops/crew/pamela_89/aops/.github --include=\"*.yml\" 2>/dev/null | head -20",
-        "description": "Check current workflow files for environment declarations"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 105,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:29:36+00:00",
-        "event_hash": "d3da5b3e9e0b6237",
-        "extracted_at": "2026-03-04T04:44:33.700682+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-bash-L107",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "find /opt/nic/brain -name \"*.md\" -newer /opt/nic/brain/daily/20260303-daily.md 2>/dev/null | xargs grep -l \"environment\\|approval\\|gate\\|concurrency\\|protection\" 2>/dev/null | head -20",
-        "description": "Find today's new files mentioning environment, approval, gate, or concurrency"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 107,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:29:38+00:00",
-        "event_hash": "e03f1cdc7d5b4497",
-        "extracted_at": "2026-03-04T04:44:33.700783+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "claude-pretooluse-read-L109",
-      "hook_event": "PreToolUse",
-      "tool_name": "Read",
-      "tool_input": {
-        "file_path": "/opt/nic/brain/projects/mcp-remote-deployment/PLAN.md",
-        "offset": 90,
-        "limit": 60
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
-        "line_index": 109,
-        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
-        "logged_at": "2026-03-04T04:29:44+00:00",
-        "event_hash": "65038a8b4826fd18",
-        "extracted_at": "2026-03-04T04:44:33.700903+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    }
-  ],
-  "gemini_hydration_gate_blocks_tools": [
-    {
-      "id": "gemini-pretooluse-write_file-L2",
-      "hook_event": "PreToolUse",
-      "tool_name": "write_file",
-      "tool_input": {
-        "content": "test\n",
-        "file_path": "test.txt"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "deny"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-245bc627-hooks.jsonl",
-        "line_index": 2,
-        "session_id": "245bc627-eeff-4545-a993-32d1ed9a80ee",
-        "logged_at": "2026-03-03T11:16:24+00:00",
-        "event_hash": "91a4ae14df6e635f",
-        "extracted_at": "2026-03-04T04:44:33.795992+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-run_shell_command-L1",
-      "hook_event": "PreToolUse",
-      "tool_name": "run_shell_command",
-      "tool_input": {
-        "command": "git diff"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260304-0b4dc167-hooks.jsonl",
-        "line_index": 1,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-04T00:03:02+00:00",
-        "event_hash": "505fb863a121a7ad",
-        "extracted_at": "2026-03-04T04:44:33.865299+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-run_shell_command-L3",
-      "hook_event": "PreToolUse",
-      "tool_name": "run_shell_command",
-      "tool_input": {
-        "command": "git diff lib/overwhelm/dashboard.py lib/overwhelm/task_graph_d3.py"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260304-0b4dc167-hooks.jsonl",
-        "line_index": 3,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-04T00:03:08+00:00",
-        "event_hash": "2fe0c5a1808e950b",
-        "extracted_at": "2026-03-04T04:44:33.865364+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-run_shell_command-L5",
-      "hook_event": "PreToolUse",
-      "tool_name": "run_shell_command",
-      "tool_input": {
-        "command": "git add lib/overwhelm/d3_component/index.html lib/overwhelm/dashboard.py lib/overwhelm/task_graph_d3.py && git commit -m \"feat(overwhelm): support new precomputed layouts and focus scope in task graph\" && git push origin main"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260304-0b4dc167-hooks.jsonl",
-        "line_index": 5,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-04T00:03:14+00:00",
-        "event_hash": "9a79f1595d7d0d01",
-        "extracted_at": "2026-03-04T04:44:33.865416+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-run_shell_command-L7",
-      "hook_event": "PreToolUse",
-      "tool_name": "run_shell_command",
-      "tool_input": {
-        "command": "git add lib/overwhelm/d3_component/index.html lib/overwhelm/dashboard.py lib/overwhelm/task_graph_d3.py && git commit -m \"feat(overwhelm): support new precomputed layouts and focus scope in task graph\" && git push origin main"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260304-0b4dc167-hooks.jsonl",
-        "line_index": 7,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-04T00:03:21+00:00",
-        "event_hash": "056734ccb7779d0f",
-        "extracted_at": "2026-03-04T04:44:33.865465+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-run_shell_command-L9",
-      "hook_event": "PreToolUse",
-      "tool_name": "run_shell_command",
-      "tool_input": {
-        "command": "git pull origin main --rebase && git push origin main"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260304-0b4dc167-hooks.jsonl",
-        "line_index": 9,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-04T00:03:30+00:00",
-        "event_hash": "b5f1c1e0d3cac2f8",
-        "extracted_at": "2026-03-04T04:44:33.865512+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-run_shell_command-L11",
-      "hook_event": "PreToolUse",
-      "tool_name": "run_shell_command",
-      "tool_input": {
-        "command": "git checkout -b feat/overwhelm-layouts && git push origin feat/overwhelm-layouts"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260304-0b4dc167-hooks.jsonl",
-        "line_index": 11,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-04T00:03:39+00:00",
-        "event_hash": "56e77ee92f935f56",
-        "extracted_at": "2026-03-04T04:44:33.865564+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-run_shell_command-L22",
-      "hook_event": "PreToolUse",
-      "tool_name": "run_shell_command",
-      "tool_input": {
-        "command": "git fetch origin main && git checkout feat/overwhelm-layouts && git rebase origin/main"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260304-0b4dc167-hooks.jsonl",
-        "line_index": 22,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-04T00:04:37+00:00",
-        "event_hash": "9f5cafa3faee26aa",
-        "extracted_at": "2026-03-04T04:44:33.865620+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-run_shell_command-L24",
-      "hook_event": "PreToolUse",
-      "tool_name": "run_shell_command",
-      "tool_input": {
-        "command": "git log -n 5 --oneline"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260304-0b4dc167-hooks.jsonl",
-        "line_index": 24,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-04T00:04:45+00:00",
-        "event_hash": "e233a724894b9ded",
-        "extracted_at": "2026-03-04T04:44:33.865706+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-run_shell_command-L26",
-      "hook_event": "PreToolUse",
-      "tool_name": "run_shell_command",
-      "tool_input": {
-        "command": "git rebase origin/main"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260304-0b4dc167-hooks.jsonl",
-        "line_index": 26,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-04T00:04:52+00:00",
-        "event_hash": "0260db261eada6b7",
-        "extracted_at": "2026-03-04T04:44:33.865767+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-run_shell_command-L28",
-      "hook_event": "PreToolUse",
-      "tool_name": "run_shell_command",
-      "tool_input": {
-        "command": "git branch -vv"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260304-0b4dc167-hooks.jsonl",
-        "line_index": 28,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-04T00:04:59+00:00",
-        "event_hash": "03660ec9e52c27db",
-        "extracted_at": "2026-03-04T04:44:33.865815+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-run_shell_command-L30",
-      "hook_event": "PreToolUse",
-      "tool_name": "run_shell_command",
-      "tool_input": {
-        "command": "git checkout main && git reset --hard origin/main && git checkout feat/overwhelm-layouts && git rebase main"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260304-0b4dc167-hooks.jsonl",
-        "line_index": 30,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-04T00:05:05+00:00",
-        "event_hash": "f08186d362fc58b6",
-        "extracted_at": "2026-03-04T04:44:33.865862+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-run_shell_command-L32",
-      "hook_event": "PreToolUse",
-      "tool_name": "run_shell_command",
-      "tool_input": {
-        "command": "git checkout feat/overwhelm-layouts && git rebase main"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260304-0b4dc167-hooks.jsonl",
-        "line_index": 32,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-04T00:05:12+00:00",
-        "event_hash": "45c77300d66e014a",
-        "extracted_at": "2026-03-04T04:44:33.865908+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-run_shell_command-L34",
-      "hook_event": "PreToolUse",
-      "tool_name": "run_shell_command",
-      "tool_input": {
-        "command": "git push origin feat/overwhelm-layouts --force-with-lease"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260304-0b4dc167-hooks.jsonl",
-        "line_index": 34,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-04T00:05:17+00:00",
-        "event_hash": "55dcf3c15d6f3351",
-        "extracted_at": "2026-03-04T04:44:33.865953+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-run_shell_command-L37",
-      "hook_event": "PreToolUse",
-      "tool_name": "run_shell_command",
-      "tool_input": {
-        "command": "gh pr create --title \"feat(overwhelm): support new precomputed layouts and focus scope in task graph\" --body \"Updates the overwhelm dashboard to support new precomputed layouts (Treemap, Circle Pack, Arc Diagram) and the Focus scope variant.\" --base main --head feat/overwhelm-layouts"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260304-0b4dc167-hooks.jsonl",
-        "line_index": 37,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-04T00:07:10+00:00",
-        "event_hash": "248149e0cf1db3ef",
-        "extracted_at": "2026-03-04T04:44:33.866000+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-write_file-L2",
-      "hook_event": "PreToolUse",
-      "tool_name": "write_file",
-      "tool_input": {
-        "file_path": "test.txt",
-        "content": "This is a test file.\n"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-b85551c2-hooks.jsonl",
-        "line_index": 2,
-        "session_id": "b85551c2-fc22-4fc8-8b14-06303337cec6",
-        "logged_at": "2026-03-03T11:14:04+00:00",
-        "event_hash": "c94e3559434ddc9e",
-        "extracted_at": "2026-03-04T04:44:34.031174+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-read_file-L2",
-      "hook_event": "PreToolUse",
-      "tool_name": "read_file",
-      "tool_input": {
-        "file_path": "lib/overwhelm/dashboard.py"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-0b4dc167-hooks.jsonl",
-        "line_index": 2,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-03T11:25:05+00:00",
-        "event_hash": "46a475b866837a5e",
-        "extracted_at": "2026-03-04T04:44:34.343839+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-read_file-L3",
-      "hook_event": "PreToolUse",
-      "tool_name": "read_file",
-      "tool_input": {
-        "file_path": "lib/overwhelm/d3_component/index.html"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-0b4dc167-hooks.jsonl",
-        "line_index": 3,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-03T11:25:05+00:00",
-        "event_hash": "4581d65834b3c923",
-        "extracted_at": "2026-03-04T04:44:34.343910+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-grep_search-L6",
-      "hook_event": "PreToolUse",
-      "tool_name": "grep_search",
-      "tool_input": {
-        "pattern": "layout_mode"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-0b4dc167-hooks.jsonl",
-        "line_index": 6,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-03T11:25:12+00:00",
-        "event_hash": "0ae20863d1556f77",
-        "extracted_at": "2026-03-04T04:44:34.343952+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-read_file-L7",
-      "hook_event": "PreToolUse",
-      "tool_name": "read_file",
-      "tool_input": {
-        "file_path": "lib/overwhelm/task_graph_d3.py"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-0b4dc167-hooks.jsonl",
-        "line_index": 7,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-03T11:25:12+00:00",
-        "event_hash": "009f62ff1ee82699",
-        "extracted_at": "2026-03-04T04:44:34.343989+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-read_file-L10",
-      "hook_event": "PreToolUse",
-      "tool_name": "read_file",
-      "tool_input": {
-        "end_line": 3800,
-        "file_path": "lib/overwhelm/dashboard.py",
-        "start_line": 3730
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-0b4dc167-hooks.jsonl",
-        "line_index": 10,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-03T11:25:16+00:00",
-        "event_hash": "814f386630ef38a6",
-        "extracted_at": "2026-03-04T04:44:34.344028+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-grep_search-L12",
-      "hook_event": "PreToolUse",
-      "tool_name": "grep_search",
-      "tool_input": {
-        "pattern": "def run_task_graph_viz"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-0b4dc167-hooks.jsonl",
-        "line_index": 12,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-03T11:25:24+00:00",
-        "event_hash": "61f5f042e55e07b7",
-        "extracted_at": "2026-03-04T04:44:34.344066+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-grep_search-L14",
-      "hook_event": "PreToolUse",
-      "tool_name": "grep_search",
-      "tool_input": {
-        "pattern": "prepare_embedded_graph_data"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-0b4dc167-hooks.jsonl",
-        "line_index": 14,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-03T11:25:28+00:00",
-        "event_hash": "197862f0ab3b4cb7",
-        "extracted_at": "2026-03-04T04:44:34.344101+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-read_file-L16",
-      "hook_event": "PreToolUse",
-      "tool_name": "read_file",
-      "tool_input": {
-        "end_line": 3780,
-        "file_path": "lib/overwhelm/dashboard.py",
-        "start_line": 3650
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-0b4dc167-hooks.jsonl",
-        "line_index": 16,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-03T11:25:33+00:00",
-        "event_hash": "4de6edf945e8ea31",
-        "extracted_at": "2026-03-04T04:44:34.344138+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-grep_search-L18",
-      "hook_event": "PreToolUse",
-      "tool_name": "grep_search",
-      "tool_input": {
-        "pattern": "def _load_merged_graph"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-0b4dc167-hooks.jsonl",
-        "line_index": 18,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-03T11:25:39+00:00",
-        "event_hash": "1c408cc3d9502c4f",
-        "extracted_at": "2026-03-04T04:44:34.344177+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-read_file-L20",
-      "hook_event": "PreToolUse",
-      "tool_name": "read_file",
-      "tool_input": {
-        "start_line": 3400,
-        "end_line": 3470,
-        "file_path": "lib/overwhelm/dashboard.py"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-0b4dc167-hooks.jsonl",
-        "line_index": 20,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-03T11:25:44+00:00",
-        "event_hash": "a81f73d001c83741",
-        "extracted_at": "2026-03-04T04:44:34.344255+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-read_file-L22",
-      "hook_event": "PreToolUse",
-      "tool_name": "read_file",
-      "tool_input": {
-        "end_line": 3400,
-        "start_line": 3330,
-        "file_path": "lib/overwhelm/dashboard.py"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-0b4dc167-hooks.jsonl",
-        "line_index": 22,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-03T11:25:49+00:00",
-        "event_hash": "5b5992d4af84fd3b",
-        "extracted_at": "2026-03-04T04:44:34.344300+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-run_shell_command-L24",
-      "hook_event": "PreToolUse",
-      "tool_name": "run_shell_command",
-      "tool_input": {
-        "command": "head -n 20 /opt/nic/.aops/sessions/graph-tree.json"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-0b4dc167-hooks.jsonl",
-        "line_index": 24,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-03T11:26:02+00:00",
-        "event_hash": "b01f4e319ec2bea6",
-        "extracted_at": "2026-03-04T04:44:34.344344+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-run_shell_command-L26",
-      "hook_event": "PreToolUse",
-      "tool_name": "run_shell_command",
-      "tool_input": {
-        "command": "grep -E '\"x\"| \"y\"| \"r\"| \"w\"| \"h\"' /opt/nic/.aops/sessions/graph-tree.json | head -n 20"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-0b4dc167-hooks.jsonl",
-        "line_index": 26,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-03T11:26:08+00:00",
-        "event_hash": "b1029527e2ab272a",
-        "extracted_at": "2026-03-04T04:44:34.344385+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-run_shell_command-L28",
-      "hook_event": "PreToolUse",
-      "tool_name": "run_shell_command",
-      "tool_input": {
-        "command": "grep -E '\"x\"| \"y\"| \"r\"| \"w\"| \"h\"' /opt/nic/.aops/sessions/graph-circle.json | head -n 20"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-0b4dc167-hooks.jsonl",
-        "line_index": 28,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-03T11:26:13+00:00",
-        "event_hash": "e1611a5bd8b180b8",
-        "extracted_at": "2026-03-04T04:44:34.344428+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-glob-L30",
-      "hook_event": "PreToolUse",
-      "tool_name": "glob",
-      "tool_input": {
-        "pattern": "scripts/task_graph*.py"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-0b4dc167-hooks.jsonl",
-        "line_index": 30,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-03T11:26:28+00:00",
-        "event_hash": "106152b314f09428",
-        "extracted_at": "2026-03-04T04:44:34.344469+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-read_file-L32",
-      "hook_event": "PreToolUse",
-      "tool_name": "read_file",
-      "tool_input": {
-        "file_path": "scripts/task_graph.py"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-0b4dc167-hooks.jsonl",
-        "line_index": 32,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-03T11:26:34+00:00",
-        "event_hash": "b67c963f74fe76e7",
-        "extracted_at": "2026-03-04T04:44:34.344507+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-list_directory-L34",
-      "hook_event": "PreToolUse",
-      "tool_name": "list_directory",
-      "tool_input": {
-        "dir_path": "aops-core/framework"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-0b4dc167-hooks.jsonl",
-        "line_index": 34,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-03T11:26:40+00:00",
-        "event_hash": "ff1770caa89e817e",
-        "extracted_at": "2026-03-04T04:44:34.344545+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-read_file-L36",
-      "hook_event": "PreToolUse",
-      "tool_name": "read_file",
-      "tool_input": {
-        "file_path": "pyproject.toml"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-0b4dc167-hooks.jsonl",
-        "line_index": 36,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-03T11:26:45+00:00",
-        "event_hash": "2f36d27b6b6fae99",
-        "extracted_at": "2026-03-04T04:44:34.344584+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-list_directory-L38",
-      "hook_event": "PreToolUse",
-      "tool_name": "list_directory",
-      "tool_input": {
-        "dir_path": "scripts/bin"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-0b4dc167-hooks.jsonl",
-        "line_index": 38,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-03T11:26:51+00:00",
-        "event_hash": "5c69f4e909978850",
-        "extracted_at": "2026-03-04T04:44:34.344623+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-run_shell_command-L40",
-      "hook_event": "PreToolUse",
-      "tool_name": "run_shell_command",
-      "tool_input": {
-        "command": "cat aops-core/pyproject.toml"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-0b4dc167-hooks.jsonl",
-        "line_index": 40,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-03T11:27:00+00:00",
-        "event_hash": "4e56621ba7ffbc4e",
-        "extracted_at": "2026-03-04T04:44:34.344676+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-run_shell_command-L42",
-      "hook_event": "PreToolUse",
-      "tool_name": "run_shell_command",
-      "tool_input": {
-        "command": "ls -F aops-core/"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-0b4dc167-hooks.jsonl",
-        "line_index": 42,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-03T11:27:06+00:00",
-        "event_hash": "bf56a85a75b0f1e7",
-        "extracted_at": "2026-03-04T04:44:34.344728+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-run_shell_command-L44",
-      "hook_event": "PreToolUse",
-      "tool_name": "run_shell_command",
-      "tool_input": {
-        "command": "grep -A 2 '\\[\\[package\\]\\]' uv.lock | head -n 100"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-0b4dc167-hooks.jsonl",
-        "line_index": 44,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-03T11:27:12+00:00",
-        "event_hash": "03ba2f0317235055",
-        "extracted_at": "2026-03-04T04:44:34.344777+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-run_shell_command-L46",
-      "hook_event": "PreToolUse",
-      "tool_name": "run_shell_command",
-      "tool_input": {
-        "command": "grep -C 5 '\\[project.scripts\\]' pyproject.toml"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-0b4dc167-hooks.jsonl",
-        "line_index": 46,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-03T11:27:19+00:00",
-        "event_hash": "1ca4b56c739de6c5",
-        "extracted_at": "2026-03-04T04:44:34.344826+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-read_file-L48",
-      "hook_event": "PreToolUse",
-      "tool_name": "read_file",
-      "tool_input": {
-        "file_path": "Makefile"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-0b4dc167-hooks.jsonl",
-        "line_index": 48,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-03T11:27:24+00:00",
-        "event_hash": "620be169091f4b94",
-        "extracted_at": "2026-03-04T04:44:34.344899+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-read_file-L50",
-      "hook_event": "PreToolUse",
-      "tool_name": "read_file",
-      "tool_input": {
-        "file_path": "scripts/generate-viz.sh"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-0b4dc167-hooks.jsonl",
-        "line_index": 50,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-03T11:27:31+00:00",
-        "event_hash": "dda8153f37344d9d",
-        "extracted_at": "2026-03-04T04:44:34.344940+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-run_shell_command-L52",
-      "hook_event": "PreToolUse",
-      "tool_name": "run_shell_command",
-      "tool_input": {
-        "command": "grep -A 10 '\"edges\":' /opt/nic/.aops/sessions/graph-tree.json | head -n 20"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-0b4dc167-hooks.jsonl",
-        "line_index": 52,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-03T11:27:45+00:00",
-        "event_hash": "5c247b06db9342b2",
-        "extracted_at": "2026-03-04T04:44:34.344990+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-run_shell_command-L54",
-      "hook_event": "PreToolUse",
-      "tool_name": "run_shell_command",
-      "tool_input": {
-        "command": "tail -n 20 /opt/nic/.aops/sessions/graph-tree.json"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-0b4dc167-hooks.jsonl",
-        "line_index": 54,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-03T11:27:53+00:00",
-        "event_hash": "04ce97b9b0b82cca",
-        "extracted_at": "2026-03-04T04:44:34.345037+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-run_shell_command-L56",
-      "hook_event": "PreToolUse",
-      "tool_name": "run_shell_command",
-      "tool_input": {
-        "command": "ls -F /opt/nic/.aops/sessions/"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-0b4dc167-hooks.jsonl",
-        "line_index": 56,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-03T11:28:00+00:00",
-        "event_hash": "62f728dc8b06ceaf",
-        "extracted_at": "2026-03-04T04:44:34.345085+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-run_shell_command-L58",
-      "hook_event": "PreToolUse",
-      "tool_name": "run_shell_command",
-      "tool_input": {
-        "command": "ls -F ~/.aops/sessions/"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-0b4dc167-hooks.jsonl",
-        "line_index": 58,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-03T11:28:08+00:00",
-        "event_hash": "8b7aed6522d392b1",
-        "extracted_at": "2026-03-04T04:44:34.345133+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-run_shell_command-L60",
-      "hook_event": "PreToolUse",
-      "tool_name": "run_shell_command",
-      "tool_input": {
-        "command": "find /opt/nic/.aops/sessions/ -name \"graph-*.json\""
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-0b4dc167-hooks.jsonl",
-        "line_index": 60,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-03T11:28:17+00:00",
-        "event_hash": "9fee472660d8cd91",
-        "extracted_at": "2026-03-04T04:44:34.345182+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-run_shell_command-L62",
-      "hook_event": "PreToolUse",
-      "tool_name": "run_shell_command",
-      "tool_input": {
-        "command": "ls -a /opt/nic/.aops/sessions/"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-0b4dc167-hooks.jsonl",
-        "line_index": 62,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-03T11:28:33+00:00",
-        "event_hash": "6c3e7a279ce5d888",
-        "extracted_at": "2026-03-04T04:44:34.345260+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-run_shell_command-L64",
-      "hook_event": "PreToolUse",
-      "tool_name": "run_shell_command",
-      "tool_input": {
-        "command": "ls -F /opt/nic/.aops/sessions/graph-tree.json"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-0b4dc167-hooks.jsonl",
-        "line_index": 64,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-03T11:28:40+00:00",
-        "event_hash": "bb6eb6b82fb8474a",
-        "extracted_at": "2026-03-04T04:44:34.345311+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-run_shell_command-L66",
-      "hook_event": "PreToolUse",
-      "tool_name": "run_shell_command",
-      "tool_input": {
-        "command": "ls -R /opt/nic/.aops/sessions/"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-0b4dc167-hooks.jsonl",
-        "line_index": 66,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-03T11:28:49+00:00",
-        "event_hash": "e17a2966e61563f8",
-        "extracted_at": "2026-03-04T04:44:34.345359+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    },
-    {
-      "id": "gemini-pretooluse-run_shell_command-L68",
-      "hook_event": "PreToolUse",
-      "tool_name": "run_shell_command",
-      "tool_input": {
-        "command": "find / -name \"graph-tree.json\" 2>/dev/null"
-      },
-      "subagent_type": null,
-      "is_subagent": false,
-      "expected": {
-        "verdict": "warn"
-      },
-      "_provenance": {
-        "source_log": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-0b4dc167-hooks.jsonl",
-        "line_index": 68,
-        "session_id": "0b4dc167-96cb-40d2-b7b9-49d2f6998deb",
-        "logged_at": "2026-03-03T11:29:05+00:00",
-        "event_hash": "d5b9bfb9f080e665",
-        "extracted_at": "2026-03-04T04:44:34.345407+00:00"
-      },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
-    }
-  ],
   "claude_compliance_agent_allowed": [
     {
       "id": "claude-pretooluse-agent-L54",
@@ -19853,14 +16136,7 @@
         "extracted_at": "2026-03-05T04:00:00.000000+00:00",
         "note": "ToolSearch must not be blocked by hydration gate \u2014 aops-86528f6c"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-toolsearch-L6",
@@ -19884,14 +16160,7 @@
         "extracted_at": "2026-03-05T04:00:00.000000+00:00",
         "note": "ToolSearch must not be blocked by hydration gate \u2014 aops-86528f6c"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-toolsearch-L54",
@@ -19915,14 +16184,7 @@
         "extracted_at": "2026-03-05T04:00:00.000000+00:00",
         "note": "ToolSearch must not be blocked by hydration gate \u2014 aops-86528f6c"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
+      "gate_overrides": {}
     },
     {
       "id": "claude-pretooluse-toolsearch-L87",
@@ -19946,14 +16208,7 @@
         "extracted_at": "2026-03-05T04:00:00.000000+00:00",
         "note": "ToolSearch must not be blocked by hydration gate \u2014 aops-86528f6c"
       },
-      "gate_overrides": {
-        "hydration": {
-          "status": "closed",
-          "metrics": {
-            "temp_path": "/tmp/hydration.md"
-          }
-        }
-      }
+      "gate_overrides": {}
     }
   ],
   "claude_spawn_in_main_session": [

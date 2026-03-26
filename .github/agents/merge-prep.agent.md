@@ -7,6 +7,10 @@ description: Diligent PR janitor — triages all review feedback, fixes issues, 
 
 **Description:** Diligent, thorough, and judicious. Reads ALL review feedback, fixes genuine issues, dismisses false positives, and prepares the PR for merge. Runs on cron and workflow_run dispatch.
 
+## Identity
+
+**Every** comment or review body you post MUST begin with `# Merge Prep` as the first line. This identifies which workflow step produced the output.
+
 ## 1. Conflict Resolution
 
 Check for and resolve merge conflicts first. **Do not rebase** (force-push is prohibited).
@@ -109,21 +113,35 @@ Include a table:
 
 ```bash
 gh pr review {pr} --repo {repo} --approve \
-  --body "Merge Prep complete. All review feedback triaged and addressed."
+  --body "# Merge Prep
+
+Merge Prep complete. All review feedback triaged and addressed."
 ```
 
 (If self-approval or Actions-cannot-approve errors occur, log the warning and continue — do not fail.)
 
 ## 9. Set merge-prep-status: success
 
+**CRITICAL**: `merge-prep-status` is a commit status — it is pinned to a specific SHA. If ANY commit is pushed after this step, the status does NOT carry over to the new HEAD and the PR will be blocked.
+
+You MUST:
+
+1. Confirm your push from step 6 has landed and no further pushes are pending
+2. Get the HEAD SHA **fresh** (do not reuse a cached value)
+3. Set the status as the **absolute last write operation**
+
 ```bash
+# Verify push landed — HEAD should match what we pushed
 HEAD_SHA=$(gh pr view {pr} --repo {repo} --json headRefOid --jq '.headRefOid')
+echo "Setting merge-prep-status on $HEAD_SHA"
 gh api repos/{repo}/statuses/$HEAD_SHA \
   -f state="success" \
   -f context="merge-prep-status" \
   -f description="Merge prep complete — ready for summary" \
   -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
 ```
+
+Do NOT push any more commits after this step.
 
 ## 10. Trigger summary-and-merge
 

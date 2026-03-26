@@ -129,6 +129,8 @@ def gemini_home(tmp_path_factory) -> Path:
         "oauth_creds.json",
         "installation_id",
         "trustedFolders.json",
+        "projects.json",
+        "state.json",
     ]:
         src = orig_gemini / filename
         if src.exists():
@@ -693,7 +695,7 @@ def claude_headless():
 
 def run_gemini_headless(
     prompt: str,
-    model: str | None = None,
+    model: str | None = "gemini-2.5-flash",
     timeout_seconds: int = 600,
     permission_mode: str | None = None,
     cwd: Path | None = None,
@@ -703,7 +705,7 @@ def run_gemini_headless(
 
     Args:
         prompt: Prompt to send to Gemini
-        model: Optional model identifier (e.g., "gemini-2.0-flash")
+        model: Optional model identifier (e.g., "gemini-2.5-flash")
         timeout_seconds: Command timeout in seconds (default: 600)
         permission_mode: Optional permission mode ("yolo" maps to --yolo)
         cwd: Working directory (defaults to /tmp/gemini-test)
@@ -786,11 +788,16 @@ def run_gemini_headless(
             env=env,
         )
 
-        # Check for command failure
-        if result.returncode != 0:
+        # Gemini may write JSON to stdout or stderr (stderr when extension
+        # validation warnings cause non-zero exit, e.g. exit 41).
+        raw_output = result.stdout or result.stderr or ""
+
+        # Check for command failure — but Gemini may exit non-zero (e.g. 41 for
+        # extension validation warnings) while still producing valid JSON output.
+        if result.returncode != 0 and not raw_output.strip():
             return {
                 "success": False,
-                "output": result.stdout,
+                "output": "",
                 "result": {},
                 "error": f"Command failed with exit code {result.returncode}: {result.stderr}",
             }
@@ -798,23 +805,16 @@ def run_gemini_headless(
         # Parse JSON output - robustly handle hook logging noise
         try:
             # Try direct parse first
-            parsed_output = json.loads(result.stdout)
+            parsed_output = json.loads(raw_output)
         except json.JSONDecodeError:
             # Fallback: look for JSON object boundaries
             # We want the LAST valid JSON object, as that's likely the CLI response
             # (Hooks log earlier)
-
-            # Simple heuristic: Look for { ... } that parse successfully
             candidates = []
-            # This regex matches balanced braces is hard, so we'll try a simpler approach:
-            # Find all start braces '{'
-            output = result.stdout
-            for i, char in enumerate(output):
+            for i, char in enumerate(raw_output):
                 if char == "{":
-                    # Try to parse from here to end, then backtrack if needed
-                    # Actually, better to just try parsing substring starting at i
                     try:
-                        obj, end_idx = json.JSONDecoder().raw_decode(output[i:])
+                        obj, end_idx = json.JSONDecoder().raw_decode(raw_output[i:])
                         candidates.append((i + end_idx, obj))
                     except json.JSONDecodeError:
                         continue
@@ -825,14 +825,14 @@ def run_gemini_headless(
             else:
                 return {
                     "success": False,
-                    "output": result.stdout,
+                    "output": raw_output,
                     "result": {},
                     "error": "Could not find valid JSON in output",
                 }
 
         return {
             "success": True,
-            "output": result.stdout,
+            "output": raw_output,
             "result": parsed_output,
             "stderr": result.stderr,
         }
@@ -907,11 +907,20 @@ def _run_claude_docker_simple(prompt: str, tmp_path: Path, **kwargs) -> dict[str
     model = kwargs.get("model", "haiku")
     timeout_seconds = kwargs.get("timeout_seconds", 300)
 
+    # Prepare prompt to write output to a file for robust extraction
+    # This bypasses all CLI noise (warnings, ANSI, etc.)
+    result_file_name = "test_result.json"
+    staged_prompt = (
+        f"{prompt}\n\nIMPORTANT: When you have the final answer, YOU MUST "
+        f"write it as a JSON object to the file '{result_file_name}' in the "
+        "current directory. The JSON object must have a 'response' field."
+    )
+
     agent_cmd = [
         "claude",
         "--dangerously-skip-permissions",
         "-p",
-        prompt,
+        staged_prompt,
         "--output-format",
         "json",
         "--model",
@@ -948,6 +957,20 @@ def _run_claude_docker_simple(prompt: str, tmp_path: Path, **kwargs) -> dict[str
             "error": f"Docker session timed out after {timeout_seconds}s",
         }
 
+    # First attempt: Read result from file (most robust)
+    result_file = workspace / result_file_name
+    if result_file.exists():
+        try:
+            parsed = json.loads(result_file.read_text())
+            return {
+                "success": True,
+                "output": result.stdout,
+                "stderr": result.stderr,
+                "result": parsed,
+            }
+        except json.JSONDecodeError:
+            pass
+
     if result.returncode != 0:
         return {
             "success": False,
@@ -980,24 +1003,89 @@ def _run_gemini_docker(prompt: str, gemini_home: Path | None = None, **kwargs) -
         sys.path.insert(0, aops_core_dir)
 
     timeout_seconds = kwargs.get("timeout_seconds", 300)
-    model = kwargs.get("model")
+    model = kwargs.get("model", "gemini-2.5-flash")
 
-    cmd = ["gemini", "--sandbox", "--yolo", "-p", prompt, "-o", "json"]
+    # Prepare prompt to write output to a file for robust extraction
+    # This bypasses all CLI noise (warnings, ANSI, etc.)
+    # Use a unique filename per invocation to avoid cross-test pollution
+    # when parallel xdist workers share the same CWD.
+    import uuid as _uuid
+
+    result_file_name = f"test_result_{_uuid.uuid4().hex[:8]}.json"
+    staged_prompt = (
+        f"{prompt}\n\nIMPORTANT: When you have the final answer, YOU MUST "
+        f"write it as a JSON object to the file '{result_file_name}' in the "
+        "current directory. The JSON object must have a 'response' field."
+    )
+
+    cmd = [
+        "gemini",
+        "--approval-mode",
+        "yolo",
+        "--raw-output",
+        "--accept-raw-output-risk",
+        "-p",
+        staged_prompt,
+        "-o",
+        "json",
+    ]
     if model:
         cmd.extend(["-m", model])
 
     env = os.environ.copy()
-    env["GEMINI_SANDBOX_IMAGE"] = os.environ.get("GEMINI_SANDBOX_IMAGE", "aops-crew")
+    image = os.environ.get("GEMINI_SANDBOX_IMAGE", "aops-crew")
+    env["GEMINI_SANDBOX_IMAGE"] = image
+
+    # Clean up STOPPED sandbox containers to avoid name collisions.
+    # Gemini uses sequential naming (e.g. aops-crew-0, aops-crew-1) which is
+    # prone to collisions if previous test runs crashed.
+    # Only remove exited containers — never kill running ones (they may belong
+    # to parallel xdist workers).
+    try:
+        result = subprocess.run(
+            [
+                "docker",
+                "ps",
+                "-a",
+                "--filter",
+                f"name={image}",
+                "--filter",
+                "status=exited",
+                "--filter",
+                "status=created",
+                "--filter",
+                "status=dead",
+                "--format",
+                "{{.Names}}",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+        stale = [name.strip() for name in result.stdout.splitlines() if name.strip()]
+        if stale:
+            subprocess.run(
+                ["docker", "rm", "-f", *stale],
+                capture_output=True,
+                timeout=10,
+                check=False,
+            )
+    except (subprocess.TimeoutExpired, OSError):
+        pass
 
     # When gemini_home is provided (e.g. from gemini_home fixture), use it directly.
     # Otherwise, replicate auth from ~/.gemini so sandbox can authenticate.
     tmp_gemini_home = None
+    workspace = kwargs.get("cwd") or Path.cwd()
     if gemini_home:
         env["GEMINI_CLI_HOME"] = str(gemini_home)
     else:
         from cli import _replicate_gemini_auth
 
-        tmp_gemini_home = _replicate_gemini_auth(env)
+        tmp_gemini_home = _replicate_gemini_auth(env, work_dir=workspace)
+        if tmp_gemini_home:
+            env["GEMINI_CLI_HOME"] = str(tmp_gemini_home)
 
     # Apply credential isolation
     from lib.agent_env import apply_env_mappings
@@ -1007,7 +1095,13 @@ def _run_gemini_docker(prompt: str, gemini_home: Path | None = None, **kwargs) -
     try:
         try:
             result = subprocess.run(
-                cmd, capture_output=True, text=True, timeout=timeout_seconds, check=False, env=env
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=timeout_seconds,
+                check=False,
+                env=env,
+                cwd=workspace,
             )
         except subprocess.TimeoutExpired:
             return {
@@ -1017,25 +1111,47 @@ def _run_gemini_docker(prompt: str, gemini_home: Path | None = None, **kwargs) -
                 "error": f"Gemini sandbox session timed out after {timeout_seconds}s",
             }
 
-        if result.returncode != 0:
+        # First attempt: Read result from file (most robust)
+        result_file = Path(workspace) / result_file_name
+        if result_file.exists():
+            try:
+                parsed = json.loads(result_file.read_text())
+                return {
+                    "success": True,
+                    "output": result.stdout,
+                    "stderr": result.stderr,
+                    "result": parsed,
+                }
+            except json.JSONDecodeError:
+                pass
+            finally:
+                result_file.unlink(missing_ok=True)
+
+        # Fallback: Parse from stdout
+        # Gemini may write JSON to stdout or stderr (stderr when extension
+        # validation warnings cause non-zero exit, e.g. exit 41).
+        raw_output = result.stdout or result.stderr or ""
+
+        if result.returncode != 0 and not raw_output.strip():
             return {
                 "success": False,
-                "output": result.stdout,
+                "output": "",
                 "result": {},
                 "error": f"Gemini sandbox failed (exit {result.returncode}): {result.stderr[:500]}",
             }
 
         # Parse JSON — reuse the same robust parsing as run_gemini_headless
+        # Note: Gemini may exit non-zero (e.g. 41 for extension validation warnings)
+        # while still producing valid JSON output.
         try:
-            parsed = json.loads(result.stdout)
+            parsed = json.loads(raw_output)
         except json.JSONDecodeError:
             # Fallback: find last valid JSON object in output
             candidates = []
-            output = result.stdout
-            for i, char in enumerate(output):
+            for i, char in enumerate(raw_output):
                 if char == "{":
                     try:
-                        obj, end_idx = json.JSONDecoder().raw_decode(output[i:])
+                        obj, end_idx = json.JSONDecoder().raw_decode(raw_output[i:])
                         candidates.append((i + end_idx, obj))
                     except json.JSONDecodeError:
                         continue
@@ -1044,17 +1160,25 @@ def _run_gemini_docker(prompt: str, gemini_home: Path | None = None, **kwargs) -
             else:
                 return {
                     "success": False,
-                    "output": result.stdout,
+                    "output": raw_output,
                     "result": {},
                     "error": "Could not find valid JSON in gemini sandbox output",
                 }
 
+        # Detect Gemini error responses (e.g. auth failures) that return valid
+        # JSON with an "error" key but no actual model response.
+        is_error_response = (
+            isinstance(parsed, dict) and "error" in parsed and "response" not in parsed
+        )
         response = {
-            "success": True,
-            "output": result.stdout,
+            "success": not is_error_response,
+            "output": raw_output,
             "stderr": result.stderr,
             "result": parsed,
         }
+        if is_error_response:
+            err = parsed.get("error", {})
+            response["error"] = err.get("message", str(err)) if isinstance(err, dict) else str(err)
 
         # Capture session and hook logs before cleanup
         cli_home = gemini_home or (tmp_gemini_home / ".gemini" if tmp_gemini_home else None)
@@ -1107,6 +1231,9 @@ def _run_gemini_docker(prompt: str, gemini_home: Path | None = None, **kwargs) -
     finally:
         if tmp_gemini_home and tmp_gemini_home.exists():
             shutil.rmtree(tmp_gemini_home)
+        # Clean up result file to avoid polluting subsequent test runs.
+        result_file = Path(workspace) / result_file_name
+        result_file.unlink(missing_ok=True)
 
 
 @pytest.fixture(params=["claude", "gemini", "claude-docker", "gemini-docker"])
@@ -1682,12 +1809,33 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "slow: mark test as slow (may take minutes to complete)")
 
 
-def pytest_collection_modifyitems(config, items):  # noqa: ARG001
-    """Auto-mark integration tests based on location."""
+def pytest_collection_modifyitems(config, items):
+    """Auto-mark integration tests and configure slow test execution."""
+    # If ALL collected tests are slow/integration, disable xdist parallelism.
+    # These tests spawn Docker containers and LLM sessions that compete for
+    # resources and hit the global pytest-timeout when run in parallel.
+    all_slow = all(
+        any(m.name in ("slow", "integration") for m in item.iter_markers()) for item in items
+    )
+    if all_slow and items:
+        try:
+            workercount = config.getoption("numprocesses", default=None)
+            if workercount and workercount != 0:
+                config.option.numprocesses = 0
+                log.info("All tests are slow/integration — disabled xdist parallelism")
+        except (ValueError, AttributeError):
+            pass
+
     for item in items:
         # Mark all tests in integration/ directory as integration tests
         if "integration" in str(item.fspath):
             item.add_marker(pytest.mark.integration)
+
+        # Give slow tests a generous timeout (10 min) instead of the global default
+        if any(m.name == "slow" for m in item.iter_markers()):
+            # Don't override an explicit timeout marker already on the test
+            if not any(m.name == "timeout" for m in item.iter_markers()):
+                item.add_marker(pytest.mark.timeout(600))
 
 
 def check_blocked(result: dict) -> bool:
@@ -1985,11 +2133,36 @@ def gemini_docker(tmp_path):
 
         apply_env_mappings(env)
 
-        cmd = ["gemini", "--sandbox", "--yolo", "-p", prompt, "-o", "json"]
+        # Prepare prompt to write output to a file for robust extraction
+        # This bypasses all CLI noise (warnings, ANSI, etc.)
+        result_file_name = "test_result.json"
+        staged_prompt = (
+            f"{prompt}\n\nIMPORTANT: When you have the final answer, YOU MUST "
+            f"write it as a JSON object to the file '{result_file_name}' in the "
+            "current directory. The JSON object must have a 'response' field."
+        )
+
+        cmd = [
+            "gemini",
+            "--approval-mode",
+            "yolo",
+            "--raw-output",
+            "--accept-raw-output-risk",
+            "-p",
+            staged_prompt,
+            "-o",
+            "json",
+        ]
 
         try:
             result = subprocess.run(
-                cmd, capture_output=True, text=True, timeout=timeout_seconds, check=False, env=env
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=timeout_seconds,
+                check=False,
+                env=env,
+                cwd=workspace,
             )
         except subprocess.TimeoutExpired:
             res = {
@@ -2002,6 +2175,25 @@ def gemini_docker(tmp_path):
             if fail_on_error:
                 pytest.fail("Timeout")
             return res, session_id, []
+
+        # First attempt: Read result from file (most robust)
+        result_file = workspace / result_file_name
+        if result_file.exists():
+            try:
+                parsed = json.loads(result_file.read_text())
+                return (
+                    {
+                        "success": True,
+                        "output": result.stdout,
+                        "stderr": result.stderr,
+                        "result": parsed,
+                        "session_dir": session_dir,
+                    },
+                    session_id,
+                    [],
+                )
+            except json.JSONDecodeError:
+                pass
 
         try:
             parsed = json.loads(result.stdout)
