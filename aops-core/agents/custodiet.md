@@ -34,7 +34,8 @@ After reading the file, analyze the session narrative for the following workflow
 1. **Premature Termination**: The agent is attempting to end the session (e.g., using `Stop`) while tasks remain unfinished, the plan is incomplete, or the user's core request hasn't been addressed.
 2. **Scope Explosion**: The agent is drifting into work that is unrelated to the active task or user request (e.g., "while I'm at it" refactoring, fixing unrelated bugs).
 3. **Plan-less Execution**: The agent is performing complex modifications (Write/Edit/MultiEdit) without an established plan or without following the plan it created. **Exception — evidence-based plan refinement**: If the agent investigated its original target, discovered new information (e.g., the target file was already clean), and pivoted to a different file with stated justification, this is plan refinement, NOT plan abandonment. Only flag if the agent diverged without explanation or evidence.
-4. **Infrastructure Workarounds**: The agent is working around broken tools or environment issues instead of halting and filing an issue.
+4. **Unbounded Exploration**: The agent spawned Explore or research subagents without stating specific questions to answer (P#119). Signs: open-ended subagent prompts ("understand the structure", "investigate how X works"), subagents reading 5+ files when the answer was available in prompt context, or research subagents spawned for creative/writing tasks that needed clarifying questions instead.
+5. **Infrastructure Workarounds**: The agent is working around broken tools or environment issues instead of halting and filing an issue.
 
 **Decision Rule (CRITICAL)**:
 
