@@ -202,6 +202,52 @@ The typical sequencing above is a default, not a mandate. Common deviations:
 4. **Collaboration gates.** Any step requiring human judgment or external input is a separate task marked as a gate.
 5. **Artifact-aware.** Each task specifies its output type: document, dataset, code, presentation, decision.
 
+## Agent Execution Failure Modes
+
+Research decomposition doesn't end when the task graph is created. Three failure modes emerge when agents execute decomposed work. These are structural problems — they recur regardless of how good the individual agent is, because agents are biased toward action and away from the kind of slow, iterative, laborious work that research demands.
+
+### Failure Mode 1: Momentum Decay
+
+**The problem**: Threads go cold. A task completes, but nobody picks up the downstream work. Ground truth review prep gets done but the follow-up discussion sits for weeks because no agent checks what's unblocked.
+
+**Root cause**: Agents see the task in front of them, not the graph around it. When they complete a task, they move on — they don't check what they just unblocked.
+
+**Mitigation (decomposition-time)**:
+
+- Every task that unblocks judgment-required work should have an explicit follow-up mechanism: either a supervisor task that periodically checks readiness, or a `soft_depends_on` from the downstream task to the session/daily pipeline so it gets surfaced.
+- When decomposing, ask: "When this task completes, what happens next? Who notices?" If the answer is "nobody until someone looks at the graph," add a convergence check.
+
+### Failure Mode 2: Convergence Failure
+
+**The problem**: Parallel threads never get pulled back together. The reliability analysis runs in one workstream, ground truth review in another, self-contradictory prediction investigation in a third — but no single task exists where these threads converge and someone synthesises the combined findings.
+
+**Root cause**: Decomposition creates divergence (breaking work into parallel tracks) but doesn't always create the matching convergence (bringing findings together). Software decomposition gets away with this because integration is mechanical (merge the code). Research convergence requires judgment — findings from one thread reshape interpretation of another.
+
+**Mitigation (decomposition-time)**:
+
+- **Every decomposition that creates parallel tracks MUST include an explicit convergence task** that depends on all parallel tracks. This task's job is to synthesise findings across threads and present them as a coherent picture.
+- The convergence task should be assigned to a human or to a judgment-requiring review, not to an unsupervised agent. Convergence is where the "delegate execution without delegating judgment" principle is most critical.
+- When decomposing, ask: "Where do these threads meet? What task brings the findings together?" If parallel threads have no convergence point, the decomposition is incomplete.
+
+### Failure Mode 3: Premature Execution (Inappropriate Decomposition Level)
+
+**The problem**: An agent picks up a task and rushes through it — producing a first-pass analysis where a rigorous multi-step investigation was needed. The task said "compute inter-judge agreement metrics" and the agent computed them in one pass without validating assumptions, checking edge cases, or documenting methodology decisions. The output looks complete but isn't research-quality.
+
+**Root cause**: Agents are optimised for task completion, not for research rigor. A task like "compute inter-judge agreement metrics" can be done in 20 minutes or 2 days — the difference is the depth of investigation, the validation, the documentation. If the task body doesn't specify the expected depth, the agent defaults to fast.
+
+**Mitigation (decomposition-time)**:
+
+- **Decompose to the level of rigor, not just the level of action.** A research task that requires careful work should be broken into: (1) methodology decision (how to compute), (2) implementation (compute it), (3) validation (check it), (4) documentation (write it up). Don't hand an agent a single task that requires all four.
+- **Acceptance criteria must specify quality, not just completion.** "Metrics computed" is insufficient. "Metrics computed using modal predictions, validated against known baselines, edge cases documented, methodology justified in report" is actionable.
+- **Include explicit "slow down" signals in task bodies.** For research-quality work, add: "This task requires careful, methodical work. Do not optimise for speed. Expected depth: [describe]. If you find yourself completing this in under [time], you're probably not being thorough enough."
+- When decomposing, ask: "If an agent rushed through this task in 15 minutes, would the output be usable?" If no, decompose further or add explicit quality constraints.
+
+### The Meta-Principle
+
+These three failure modes share a root cause: **agents default to the execution mode of software engineering, not research.** Software work is: understand task → implement → test → done. Research work is: investigate → deliberate → decide → implement → validate → synthesise → present for judgment. The decomposition must encode the research workflow's additional steps as explicit tasks, not leave them implicit for the executing agent to discover (or skip).
+
+The framework's job is to ensure that by the time an agent picks up a task, the task has already been decomposed to a level where "just do it" produces research-quality output. The planning layer does the hard thinking about what rigor requires; the executing agent does the (still laborious, but now well-scoped) work.
+
 ## Output
 
 The decomposition produces:

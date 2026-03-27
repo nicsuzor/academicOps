@@ -23,6 +23,14 @@ We distinguish between **tool capability** (executing tasks) and **quality assur
 
 The key value the framework provides: **you can delegate execution to AI without delegating judgment**. The framework is the structural guarantee that academic integrity obligations are enforced at the right moments — even when the human isn't paying attention.
 
+### The planning insight
+
+The framework's distinctive contribution is **rigorous, emergent, just-in-time planning in environments of high uncertainty**. Academic research operates under genuine uncertainty — not risk (known probability distribution) but uncertainty (unknown unknowns). Traditional project management assumes you know what needs doing and just need to schedule it. Research doesn't work like that. The question changes as you learn. The methodology adapts to what the data reveals. Parallel threads converge in ways you couldn't predict at the start.
+
+AI agents make this worse, not better, by default. Agents are biased toward action — they want to DO things, fast. Research requires the opposite: careful, laborious, iterative decomposition where you figure out what you don't know before you commit to a path. The framework's job is to ensure that planning is at least as rigorous as execution — that tasks are decomposed to an appropriate level _before_ an agent picks them up, that parallel threads are brought back together, and that momentum is maintained without sacrificing depth.
+
+This means the decomposition and planning layer is not overhead — it IS the value. A well-decomposed task graph, where every decision is gated on evidence and every thread has a convergence point, is the primary mechanism by which the framework ensures research quality. The QA lenses verify after the fact; the planning prevents errors before they happen.
+
 ### Academic QA is fundamentally different from code QA
 
 Code errors are cheap, testable, and reversible (revert the PR). Academic errors are expensive, hard to detect, and often irreversible (wrong methodology → wasted compute → wrong conclusions; hallucinated references → retracted paper). Agents default to "fast and plausible" — they'll justify a single-pass analysis, skip variance testing, and produce flowing prose with fabricated citations.
