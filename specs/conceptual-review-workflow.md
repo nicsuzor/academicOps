@@ -22,7 +22,7 @@ The conceptual review pattern is implemented through the following framework com
 - **Asynchronous PR Review**: The [[.github/workflows/agent-assessor.yml|Assessor Agent]] performs strategic review on pull requests, evaluating alignment and assumptions.
 - **Axiom Compliance**: The [[.github/workflows/agent-auditor.yml|Auditor Agent]] performs mechanical rule-checking (Axioms/Heuristics).
 - **In-Session Criticality**: The [[.agent/skills/critic/SKILL.md|Critic Skill]] provides skeptical second-opinion review of plans and conclusions during interactive sessions.
-- **Orchestration**: [[specs/pr-pipeline-v2.md|PR Pipeline v2]] manages the convergence loop via GitHub's native PR review system.
+- **Orchestration**: [[specs/pr-pipeline.md|PR Pipeline]] manages the convergence loop via GitHub's native PR review system.
 - **Upstream/Downstream**:
   - [[specs/effectual-planning-agent.md]] -- upstream; strategic planning under uncertainty.
   - [[specs/research-decomposition.md]] -- downstream; domain-specific application of the review pattern.

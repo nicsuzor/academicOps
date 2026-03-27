@@ -1,7 +1,7 @@
 # Type Check: basedpyright. Read-only, no autofix.
 # Runs independently — does not depend on Lint.
 #
-# See specs/pr-pipeline-v2.md for the full process documentation.
+# See specs/pr-pipeline.md for the full process documentation.
 
 name: Type Check
 

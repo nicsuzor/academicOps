@@ -4,7 +4,7 @@
 # Triggered by merge-prep on success via repository_dispatch (or manually via workflow_dispatch).
 # Merge happens via GitHub auto-merge (checks + human approval), not this workflow.
 #
-# See specs/pr-pipeline-v2.md for the full process documentation.
+# See specs/pr-pipeline.md for the full process documentation.
 
 name: "Decision Brief"
 

@@ -25,7 +25,7 @@ Lists 9 of 42 files. Categories ("Core Framework", "Workflow", "Integration") do
 
 ### 2. Superseded specs still live alongside active ones
 
-`pr-process.md` is superseded by `pr-pipeline-v2.md` but both sit in the same folder with no indication of which is canonical. Same risk exists for any spec that's been revised — readers (including agents) can't tell which version to follow.
+`pr-process.md` is superseded by `pr-pipeline.md` but both sit in the same folder with no indication of which is canonical. Same risk exists for any spec that's been revised — readers (including agents) can't tell which version to follow.
 
 ### 3. Spec chains create invisible coupling
 
@@ -81,7 +81,7 @@ These are the specs agents and humans need to understand the current system:
 
 | Spec                     | Status | Purpose                              |
 | ------------------------ | ------ | ------------------------------------ |
-| pr-pipeline-v2.md        | Active | PR lifecycle (supersedes pr-process) |
+| pr-pipeline.md           | Active | PR lifecycle (supersedes pr-process) |
 | collaborate-workflow.md  | Active | Interactive collaboration sessions   |
 | decision-queue-spec.md   | Active | Batch decision processing            |
 | daily-briefing-bundle.md | Draft  | Morning briefing document            |
@@ -140,18 +140,18 @@ These form a coherent subsystem and could live in their own subfolder:
 
 ### Should be reclassified (not specs)
 
-| File                               | What it actually is          | Suggested action              |
-| ---------------------------------- | ---------------------------- | ----------------------------- |
-| session-insights-prompt.md         | Prompt template              | Move to agents/ or skills/    |
-| session-insights-metrics-schema.md | Schema definition            | Move alongside implementation |
-| constraint-checking-tests.md       | Test cases                   | Move to tests/                |
-| pr-process.md                      | Superseded by pr-pipeline-v2 | Archive                       |
+| File                               | What it actually is       | Suggested action              |
+| ---------------------------------- | ------------------------- | ----------------------------- |
+| session-insights-prompt.md         | Prompt template           | Move to agents/ or skills/    |
+| session-insights-metrics-schema.md | Schema definition         | Move alongside implementation |
+| constraint-checking-tests.md       | Test cases                | Move to tests/                |
+| pr-process.md                      | Superseded by pr-pipeline | Archive                       |
 
 ## Proposed refactoring actions
 
 ### Quick wins (file moves, no content changes)
 
-1. **Archive** `pr-process.md` → `specs/archived/pr-process.md` with a note that pr-pipeline-v2 supersedes it
+1. **Archive** `pr-process.md` → `specs/archived/pr-process.md` with a note that pr-pipeline supersedes it
 2. **Reclassify** `session-insights-prompt.md`, `session-insights-metrics-schema.md`, `constraint-checking-tests.md` — move to appropriate locations
 3. **Create** `specs/archived/` directory for superseded specs
 

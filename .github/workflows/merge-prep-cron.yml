@@ -7,7 +7,7 @@
 #   - No in-progress merge-prep run (checked via gh run list)
 #   - Not permanently halted (checked via merge-prep-status commit status)
 #
-# See specs/pr-pipeline-v2.md for the full process documentation.
+# See specs/pr-pipeline.md for the full process documentation.
 
 name: Merge Prep Dispatcher
 

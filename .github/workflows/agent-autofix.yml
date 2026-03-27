@@ -8,7 +8,7 @@
 # Prompt: .github/agents/assessor.agent.md
 # Curia: Assessor (GitHub surface). Local: .agent/skills/critic/SKILL.md
 #
-# See specs/pr-pipeline-v2.md for the full process documentation.
+# See specs/pr-pipeline.md for the full process documentation.
 
 name: "Agent: Auto Review & Fix"
 
@@ -56,8 +56,6 @@ jobs:
         run: |
           if [ -n "$INPUT_PR_NUMBER" ]; then
             # Called via workflow_call or workflow_dispatch — use inputs directly
-            echo "pr_number=$INPUT_PR_NUMBER" >> "$GITHUB_OUTPUT"
-            echo "ref=$INPUT_REF" >> "$GITHUB_OUTPUT"
 
             # The 'gh pr view' command requires a local git repository.
             # Initialize a bare one if necessary before running gh
@@ -67,11 +65,17 @@ jobs:
             fi
 
             SHA=$(gh pr view "$INPUT_PR_NUMBER" --repo "${{ github.repository }}" --json headRefOid -q '.headRefOid')
-            echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+            {
+              echo "pr_number=$INPUT_PR_NUMBER"
+              echo "ref=$INPUT_REF"
+              echo "sha=$SHA"
+            } >> "$GITHUB_OUTPUT"
           else
-            echo "pr_number=$EVENT_PR_NUMBER" >> "$GITHUB_OUTPUT"
-            echo "sha=$EVENT_HEAD_SHA" >> "$GITHUB_OUTPUT"
-            echo "ref=$EVENT_HEAD_REF" >> "$GITHUB_OUTPUT"
+            {
+              echo "pr_number=$EVENT_PR_NUMBER"
+              echo "sha=$EVENT_HEAD_SHA"
+              echo "ref=$EVENT_HEAD_REF"
+            } >> "$GITHUB_OUTPUT"
           fi
         env:
           GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}

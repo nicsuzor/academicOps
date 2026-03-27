@@ -11,7 +11,7 @@
 #
 # Trigger: workflow_dispatch only (cron dispatcher calls this)
 #
-# See specs/pr-pipeline-v2.md for the full process documentation.
+# See specs/pr-pipeline.md for the full process documentation.
 
 name: "Agent: Merge Prep"
 

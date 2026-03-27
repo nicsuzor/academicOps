@@ -50,7 +50,7 @@ Procedures for specific work types that humans and agents follow.
 
 | Spec                              | Status | Purpose                                                                        |
 | --------------------------------- | ------ | ------------------------------------------------------------------------------ |
-| [[pr-pipeline-v2.md]]             | ✅     | PR lifecycle: bots prepare, human decides. Supersedes `archived/pr-process.md` |
+| [[pr-pipeline.md]]                | ✅     | PR lifecycle: bots prepare, human decides. Supersedes `archived/pr-process.md` |
 | [[collaborate-workflow.md]]       | ✅     | Interactive collaboration sessions with transcript processing                  |
 | [[decision-queue-spec.md]]        | ✅     | Batch decision processing (extract → annotate → apply)                         |
 | [[daily-briefing-bundle.md]]      | 📋     | Morning briefing document (Chief of Staff metaphor)                            |
@@ -114,10 +114,10 @@ How tasks are surfaced, scored, and visualised for the human.
 
 Superseded or unowned specs moved to `specs/archived/`:
 
-| Spec                                      | Reason                              | Notes                                     |
-| ----------------------------------------- | ----------------------------------- | ----------------------------------------- |
-| [[archived/pr-process.md]]                | Superseded by [[pr-pipeline-v2.md]] | v1 PR lifecycle                           |
-| [[archived/project-context-schema-v1.md]] | Unowned                             | Worker context schema — revisit if needed |
+| Spec                                      | Reason                           | Notes                                     |
+| ----------------------------------------- | -------------------------------- | ----------------------------------------- |
+| [[archived/pr-process.md]]                | Superseded by [[pr-pipeline.md]] | v1 PR lifecycle                           |
+| [[archived/project-context-schema-v1.md]] | Unowned                          | Worker context schema — revisit if needed |
 
 **Merged into other specs** (files deleted):
 

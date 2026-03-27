@@ -1,5 +1,5 @@
 ---
-title: PR Pipeline v2
+title: PR Pipeline
 type: spec
 status: active
 tier: workflow
@@ -8,7 +8,7 @@ tags: [workflow, pr-pipeline]
 supersedes: pr-process.md
 ---
 
-# PR Pipeline v2
+# PR Pipeline
 
 ## Giving Effect
 
@@ -46,35 +46,51 @@ The previous pipeline ([[specs/pr-process.md]]) required a human LGTM to trigger
 flowchart TD
     PR["PR opened / push"]
 
-    %% Phase 1: On every push — independent, deterministic
+    %% Phase 1a: Deterministic CI (parallel)
     PR --> Lint["<b>Lint</b><br/>Autofix + push if needed<br/><i>Required status check</i>"]
     PR --> TC["<b>Type Check</b><br/>basedpyright<br/><i>Required status check</i>"]
     PR --> Test["<b>Pytest</b><br/>Unit tests<br/><i>Required status check</i>"]
-    PR --> SR["<b>Agent Review</b><br/>gh pr review: APPROVE or REQUEST_CHANGES"]
 
     Lint --> LintFix{Issues?}
     LintFix -- Yes --> AutoFix["Autofix + push commit"]
     AutoFix --> PR
-    LintFix -- No --> Phase2
+    LintFix -- No --> Settle
 
-    TC --> Phase2
-    Test --> Phase2
-    SR --> SRV{Verdict}
-    SRV -- REQUEST_CHANGES --> Blocked["<b>Merge blocked</b><br/>Author revises"]
-    SRV -- APPROVE --> Phase2["<b>Bazaar window</b><br/>External reviews arrive naturally<br/>(Gemini, Copilot, commenters)"]
+    TC --> Settle
+    Test --> Settle
+
+    %% Phase 1b: Settle + Axiom Review
+    Settle["<b>Settle</b><br/>120s delay<br/>Absorbs rapid pushes"]
+    Settle --> AR["<b>Axiom Review</b><br/>Auditor agent<br/>gh pr review: APPROVE or REQUEST_CHANGES"]
+
+    %% Phase 1c: Agent Fix (failure-only)
+    AR --> CICheck{CI failed?}
+    CICheck -- Yes --> AgentFix["<b>Agent Fix</b><br/>Read CI logs + reviews<br/>Push fixes → restart"]
+    AgentFix --> PR
+    CICheck -- No --> Phase2["<b>Bazaar window</b><br/>External reviews arrive<br/>(Gemini, Copilot, commenters)"]
+
+    AR --> ARV{Verdict}
+    ARV -- REQUEST_CHANGES --> Blocked["<b>Merge blocked</b><br/>Author or agent revises"]
+    ARV -- APPROVE --> Phase2
 
     %% Phase 2: Cron — no human trigger needed
     Phase2 --> Cron
 
-    Cron["<b>Dispatcher</b><br/>workflow_run + cron every 30 min<br/>Finds PRs ≥ 15 min old<br/>No in-progress run"]
+    Cron["<b>Merge-Prep Dispatcher</b><br/>workflow_run + cron every 30 min<br/>Qualifies PRs ≥ 15 min old<br/>No in-progress run<br/>No merge-prep-status<br/>No Merge-Prep-By trailer"]
 
-    Cron --> MP["<b>Merge Prep</b><br/>Triage ALL review feedback<br/>Fix issues, resolve conflicts<br/>Run lint + typecheck + tests<br/>Push fixes"]
+    Cron --> MPCheck{Agent needed?}
+    MPCheck -- "All green,<br/>no CR reviews,<br/>no conflicts" --> FastPath["<b>Fast-path</b><br/>Skip Claude agent"]
+    MPCheck -- "Failing checks,<br/>CR reviews, or<br/>conflicts" --> MP["<b>Merge-Prep Agent</b><br/>Triage ALL review feedback<br/>Fix issues, resolve conflicts<br/>Run lint + typecheck + tests<br/>Push fixes"]
+
     MP --> MPV{Outcome}
     MPV -- Failure --> RetryOrEscalate["Retry next cron tick<br/>After 3 failures: set commit<br/>status failure, notify"]
-    MPV -- Success --> Trigger["<b>Trigger summary-and-merge.yml</b><br/>Posts decision brief"]
+    MPV -- Success --> Graduate
+    FastPath --> Graduate
+
+    Graduate["<b>Graduation</b><br/>Approve PR + set status<br/>Trigger summary-and-merge"]
 
     %% Phase 3: Environment gate
-    Trigger --> EnvGate{"<b>Environment: production</b><br/>Maintainer clicks Approve<br/>in GitHub UI"}
+    Graduate --> EnvGate{"<b>Environment: production</b><br/>Maintainer clicks Approve<br/>in GitHub UI"}
     EnvGate -- "Approve" --> Merge
     EnvGate -- "Reject" --> Blocked
 
@@ -88,14 +104,15 @@ flowchart TD
     classDef success fill:#e8f5e9,stroke:#4caf50,stroke-width:2px
     classDef fail fill:#ffebee,stroke:#f44336
     classDef cron fill:#f3e5f5,stroke:#9c27b0
-    classDef env fill:#fce4ec,stroke:#e91e63
+    classDef settle fill:#f5f5f5,stroke:#9e9e9e
 
     class Lint,TC,Test check
-    class SR,MP agent
+    class AR,MP,AgentFix agent
     class EnvGate human
-    class Merge success
-    class Blocked fail
+    class Merge,Graduate success
+    class Blocked,RetryOrEscalate fail
     class Cron cron
+    class Settle settle
 ```
 
 ## Phase 1: On Every Push (CI + Agent Fix)
@@ -203,14 +220,16 @@ All merge-prep runs share a global concurrency group `merge-prep-global` to prev
 
 ### Failure handling (label-free)
 
-| Failure count | Action                                                                                                                                                                                                                                                                                        |
-| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1st failure   | Workflow run shows as failed in Actions tab. Retry on next cron tick (≤30 min) or next Phase 1 completion.                                                                                                                                                                                    |
-| 2nd failure   | Same.                                                                                                                                                                                                                                                                                         |
-| 3rd failure   | (1) Dismiss any prior merge-prep approval. (2) Set `merge-prep-status: failure` commit status on latest commit via GitHub API. (3) Post notification comment for human visibility. Subsequent cron ticks skip this PR (detected via commit status API, not comment text).                     |
-| Manual retry  | Human uses Actions → Agent: Merge Prep → Run workflow (with PR number). The workflow_dispatch trigger already exists. Merge-prep re-runs; if successful, posts `gh pr review --approve`, sets `merge-prep-status: success`, and triggers summary-and-merge (same as a normal successful run). |
+Failure counting uses `gh run list --workflow=agent-merge-prep.yml` filtered by PR branch — no comment-text parsing.
 
-No `merge-prep-failed` label. No `merge-prep-running` label. No comment-text scanning. State is read from run history (in-progress check) and the commit status API (halt check).
+| Failure count | Action                                                                                                                                                                                                                                                                                                  |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1st failure   | Workflow run shows as failed in Actions tab. Retry on next cron tick (≤30 min) or next Phase 1 completion.                                                                                                                                                                                              |
+| 2nd failure   | Same.                                                                                                                                                                                                                                                                                                   |
+| 3rd failure   | (1) Dismiss any prior merge-prep approval. (2) Set `merge-prep-status: failure` commit status on latest commit via GitHub API. (3) Post notification comment for human visibility. Subsequent cron ticks skip this PR (detected via commit status API, not comment text).                               |
+| Manual retry  | Human uses Actions → Agent: Merge Prep → Run workflow (with PR number). The workflow_dispatch trigger already exists. The Merge-Prep Agent re-runs; if successful, posts `gh pr review --approve`, sets `merge-prep-status: success`, and triggers summary-and-merge (same as a normal successful run). |
+
+No `merge-prep-failed` label. No `merge-prep-running` label. No comment-text scanning. State is read from run history (in-progress check via `gh run list`) and the commit status API (halt check).
 
 ### Runaway loop protection
 
