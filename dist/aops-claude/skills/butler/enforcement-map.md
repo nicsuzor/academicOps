@@ -132,6 +132,7 @@ tags: [framework, enforcement, moc]
 | [[qa-independent-evidence]] | QA Must Produce Independent Evidence | HEURISTICS.md, /pull Step 3A.V | Before completion | 1c |
 | [[qualitative-evaluation-over-quantitative]] | Qualitative Evaluation Over Quantitative (P#115) | HEURISTICS.md, /qa skill Qualitative Assessment mode | SessionStart, /qa invocation | |
 | [[delegate-agency-to-capable-agents]] | Delegate Agency to Capable Agents (P#116) | HEURISTICS.md | SessionStart | |
+| [[bound-subagent-scope-before-dispatch]] | Bound Subagent Scope Before Dispatch (P#119) | HEURISTICS.md, custodiet periodic check | SessionStart, PostToolUse | |
 | [[standard-tooling-over-framework-gates]] | Standard Tooling Over Framework Gates (P#105) | HEURISTICS.md | SessionStart | 1a |
 | [[user-sign-off-required]] | User Sign-Off Required (P#111) | HEURISTICS.md | Stop | |
 | [[receipts-on-qa]] | Receipts on QA (P#112) | HEURISTICS.md | QA execution | |

@@ -32,12 +32,6 @@ if str(AOPS_CORE_DIR) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE_DIR))
 
 try:
-    from lib.gate_model import GateResult, GateVerdict
-    from lib.gates.registry import GateRegistry
-    from lib.hook_utils import is_subagent_session
-    from lib.session_paths import get_pid_session_map_path, get_session_short_hash
-    from lib.session_state import SessionState
-
     from hooks.gate_config import SPAWN_TOOLS, extract_subagent_type
     from hooks.schemas import (
         CanonicalHookOutput,
@@ -49,6 +43,11 @@ try:
         HookContext,
     )
     from hooks.unified_logger import log_event_to_session, log_hook_event
+    from lib.gate_model import GateResult, GateVerdict
+    from lib.gates.registry import GateRegistry
+    from lib.hook_utils import is_subagent_session
+    from lib.session_paths import get_pid_session_map_path, get_session_short_hash
+    from lib.session_state import SessionState
 except ImportError as e:
     # Fail fast if schemas missing
     print(f"CRITICAL: Failed to import: {e}", file=sys.stderr)
@@ -476,16 +475,19 @@ class HookRouter:
             hook_output = self._gate_result_to_canonical(result)
             self._merge_result(merged_result, hook_output)
 
-        # Append gate status icons to system message
-        try:
-            gate_status = format_gate_status_icons(state)
-            if gate_status:
-                if merged_result.system_message:
-                    merged_result.system_message = f"{merged_result.system_message} {gate_status}"
-                else:
-                    merged_result.system_message = gate_status
-        except Exception as e:
-            print(f"WARNING: Gate status icons failed: {e}", file=sys.stderr)
+            # Append gate status icons to system message
+            # but only if we were already going to print system message
+            try:
+                gate_status = format_gate_status_icons(state)
+                if gate_status:
+                    if merged_result.system_message:
+                        merged_result.system_message = (
+                            f"{merged_result.system_message} {gate_status}"
+                        )
+                    else:
+                        merged_result.system_message = gate_status
+            except Exception as e:
+                print(f"WARNING: Gate status icons failed: {e}", file=sys.stderr)
 
         # Safety: auto-approve if Stop blocked >= 4 times within 2 minutes (aops-c67313ef)
         if ctx.hook_event in ("Stop", "SessionEnd") and merged_result.verdict == "deny":

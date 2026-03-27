@@ -455,3 +455,26 @@ When an agent observes unexpected behavior — a tool firing unexpectedly, a fil
 **Why this gap matters**: P#104 and P#116 together push agents toward action and away from unnecessary clarification. This creates pressure to classify ambiguous observations as bugs rather than design questions. P#117 is the counterweight: act on clear choices, but surface ambiguous system observations before encoding interpretations as fact.
 
 **Derivation**: Emerged from a session process failure (2026-03-17).
+
+<a id="P119"></a>
+
+## Bound Subagent Scope Before Dispatch (P#119)
+
+Before spawning an Explore subagent or any research-oriented subagent, the main agent MUST state a bounded investigation plan: what specific questions need answering (3-5 bullet points max). Subagents without a scoped mandate default to exhaustive exploration, wasting tokens on information that is summarized but never used.
+
+**The failure pattern**: User asks for a simple creative or implementation task → agent converts it into a research project → spawns Explore subagent with open-ended prompt → subagent reads 8+ files across multiple directories → most findings are not directly used in the output.
+
+**The correct pattern**:
+
+1. State what you need to learn (3-5 specific questions)
+2. Check whether the answer is already available (prompt context, indices, glossary — per P#58)
+3. Only spawn a subagent for questions that remain unanswered, with the specific questions as its mandate
+4. If the task is creative/writing (not investigation), ask the user clarifying questions instead of researching
+
+**Corollaries**:
+
+- An Explore subagent's prompt MUST include the specific questions it should answer, not open-ended instructions like "understand the codebase structure"
+- If the user's prompt already contains the information needed (error messages, file paths, function names), do NOT spawn a subagent to re-discover that information
+- When the answer is evident from context, act directly — exploration is not a prerequisite for action
+
+**Derivation**: Extends P#58 (Indices Before Exploration) from search strategy to subagent dispatch. P#58 says prefer indices over filesystem searches; P#119 says prefer direct action over subagent research when context is sufficient. Addresses systematic over-exploration documented in #356.
