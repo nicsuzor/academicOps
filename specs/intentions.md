@@ -1,13 +1,15 @@
 ---
 title: Intentions
 type: spec
-status: active
+status: deprecated
 tier: ux
 depends_on: [task-focus-scoring, effectual-planning-agent]
 tags: [spec, ux, intentions, focus]
 ---
 
 # Intentions
+
+> **Deprecated 2026-03-27.** Intentions infrastructure removed — PKB priority (P0-P4) is the sole ranking signal. Daily note "My priorities" is the SSoT for today-specific focus. `intentions.yaml` deleted from brain. See `task-2b6b20d2` for implementation. Kept for historical reference.
 
 ## Giving Effect
 
