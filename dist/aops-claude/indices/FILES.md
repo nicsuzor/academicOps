@@ -12,7 +12,7 @@ Auto-generated during build. Lists all files in this plugin distribution.
 
 ## File Count
 
-Total files: 233
+Total files: 243
 
 ## File Tree
 
@@ -243,6 +243,16 @@ skills/remember/procedures/sync.md
 skills/remember/procedures/validate.md
 skills/remember/references/detail-level-guide.md
 skills/remember/references/obsidian-format-spec.md
+skills/research/SKILL.md
+skills/research/instructions/experiment-logging.md
+skills/research/instructions/methodology-files.md
+skills/research/instructions/methods-vs-methodology.md
+skills/research/references/assumptions_and_diagnostics.md
+skills/research/references/bayesian_statistics.md
+skills/research/references/effect_sizes_and_power.md
+skills/research/references/reporting_standards.md
+skills/research/references/statistical-analysis.md
+skills/research/references/test_selection_guide.md
 skills/sleep/SKILL.md
 skills/swarm-supervisor/SKILL.md
 skills/swarm-supervisor/instructions/decomposition-and-review.md
