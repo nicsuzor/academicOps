@@ -98,52 +98,93 @@ flowchart TD
     class Cron cron
 ```
 
-## Phase 1: On Every Push (Deterministic Checks)
+## Phase 1: On Every Push (CI + Agent Fix)
 
-All four jobs run concurrently and independently on every `pull_request` push. No job waits for another.
+The PR Review Pipeline (`pr-pipeline.yml`) orchestrates Phase 1 in three sub-phases:
 
-| Workflow     | File               | Job name       | Required check?     | Action                                                        |
-| ------------ | ------------------ | -------------- | ------------------- | ------------------------------------------------------------- |
-| Lint         | `lint.yml`         | `Lint`         | Yes                 | `ruff check --fix` + `ruff format`. Autofix + push if needed. |
-| Type Check   | `typecheck.yml`    | `Type Check`   | Yes                 | `basedpyright`. Read-only.                                    |
-| Pytest       | `pytest.yml`       | `Pytest`       | Yes                 | `pytest -m "not slow"`. Read-only.                            |
-| Agent Review | `agent-review.yml` | `Agent Review` | Via required review | Advisory + judgment. Posts `gh pr review`.                    |
+### Phase 1a: Deterministic CI (parallel)
 
-**Lint autofix loop:** When Lint pushes a fix commit, the new push re-triggers all four workflows on the new commit. Type Check and Pytest were never waiting for Lint — they re-run on the fixed commit naturally.
+Three CI jobs run concurrently on every `pull_request` push:
 
-**Agent Review uses `gh pr review`, not commit status.** PR reviews are GitHub's native mechanism for "does this change look right?" A `REQUEST_CHANGES` review blocks merge natively via branch protection, with no custom status machinery needed.
+| Workflow   | File            | Job name     | Required check? | Action                                                        |
+| ---------- | --------------- | ------------ | --------------- | ------------------------------------------------------------- |
+| Lint       | `lint.yml`      | `Lint`       | Yes             | `ruff check --fix` + `ruff format`. Autofix + push if needed. |
+| Type Check | `typecheck.yml` | `Type Check` | Yes             | `basedpyright`. Read-only.                                    |
+| Pytest     | `pytest.yml`    | `Pytest`     | Yes             | `pytest -m "not slow"`. Read-only.                            |
 
-**Note on Axiom Review (custodiet-reviewer):** The Auditor agent (`agent-axiom-review.yml`) runs during Phase 1 and submits `gh pr review --request-changes` when axiom or heuristic violations are found. This blocks merge via the same `CHANGES_REQUESTED` mechanism as Agent Review — merge-prep must fix the violation or document it as unresolvable. The Auditor remains a separate workflow from Agent Review because it is mechanical (rule-checking) rather than strategic (judgment calls).
+**Lint autofix loop:** When Lint pushes a fix commit, the new push re-triggers all workflows on the new commit via the `cancel-in-progress` concurrency group. Type Check and Pytest re-run on the fixed commit naturally.
+
+### Phase 1b: Settle + Axiom Review
+
+**Settle delay (120s):** After Phase 1a completes, the pipeline sleeps 120 seconds. This absorbs rapid pushes — cancelling the cheap sleep (via `cancel-in-progress`) is much cheaper than cancelling an expensive agent run. Settle runs on `always() && !cancelled()` so it proceeds regardless of CI pass/fail.
+
+**Axiom Review:** The Auditor agent (`agent-auditor.yml`) runs after settle. It checks compliance against axioms, heuristics, and project rules. Posts `gh pr review --request-changes` if violations are found. Read-only — never pushes code. The Auditor is mechanical (rule-checking) rather than strategic (judgment calls).
+
+### Phase 1c: Agent Fix (failure-only)
+
+**Agent Fix** (`agent-autofix.yml`) runs ONLY when at least one Phase 1a CI check failed:
+
+```yaml
+if: >-
+  !cancelled() &&
+  (needs.lint.result == 'failure' ||
+   needs.pytest.result == 'failure' ||
+   needs.typecheck.result == 'failure')
+```
+
+Agent Fix is the **fast-path fixer**: it reads CI failure logs, review comments (including Axiom Review findings), and pushes fixes directly. If it pushes, the pipeline restarts from Phase 1a.
+
+When all Phase 1a checks pass, Agent Fix is skipped — there is nothing to fix. The Merge-Prep Agent (Phase 2) handles the graduation path.
+
+**Agent Fix does NOT trigger on Axiom Review failures alone.** If the auditor crashes (infrastructure failure) but CI is green, Agent Fix does not run. This prevents confused autofix attempts when only the review agent had an issue.
+
+**Note on Axiom Review (custodiet-reviewer):** The Auditor submits `gh pr review --request-changes` for violations, blocking merge via the same `CHANGES_REQUESTED` mechanism as any other review — the Merge-Prep Agent must fix the violation or document it as unresolvable.
 
 ## Phase 2: Merge Prep (Cron-Driven)
 
-Merge Prep dispatch is event-driven (fires when Phase 1 checks complete via `workflow_run`) with a 30-minute cron as safety net. The dispatcher finds all qualifying PRs and processes each one.
+Phase 2 has two components:
 
-### Qualification criteria (label-free)
+- **Merge-Prep Dispatcher** (`merge-prep-cron.yml`) — finds qualifying PRs and dispatches the agent. Runs on `workflow_run` (when PR Review Pipeline completes) + 30-minute cron as safety net.
+- **Merge-Prep Agent** (`agent-merge-prep.yml` + `merge-prep.agent.md`) — the Claude agent that does the actual work: triaging reviews, fixing CI failures, resolving conflicts, and gating graduation.
 
-A PR qualifies for merge-prep if ALL of the following are true:
+### Dispatcher qualification criteria (label-free)
 
-1. **Age gate:** Last commit was >= 15 minutes ago. This preserves a bazaar window for external reviews (Gemini, Copilot) to arrive before merge-prep triages them.
-2. **No in-progress run:** `gh run list --workflow=agent-merge-prep.yml --json status` shows no `in_progress` or `queued` run for this PR. Replaces the `merge-prep-running` label.
-3. **Not already completed or permanently halted:** The latest commit does not have a `merge-prep-status` commit status (via `gh api repos/{owner}/{repo}/commits/{sha}/statuses`) with `state: success` or `state: failure`. Merge-prep sets `success` at the end of every successful run (preventing redundant re-processing if no new commits have arrived); it sets `failure` after 3 consecutive failures. A new commit from any actor clears this automatically — the new SHA has no status yet, so merge-prep will re-run. Replaces the `merge-prep-failed` label and comment-text scanning.
+A PR qualifies for dispatch if ALL of the following are true:
 
-The cron dispatcher does not check whether checks are passing. Merge-prep runs regardless — it will fix what it can and post an honest outcome.
+1. **Age gate:** Last commit was >= 15 minutes ago. This preserves a bazaar window for external reviews (Gemini, Copilot) to arrive before the Merge-Prep Agent triages them.
+2. **No in-progress run:** `gh run list --workflow=agent-merge-prep.yml --json status` shows no `in_progress` or `queued` run. Replaces the `merge-prep-running` label.
+3. **Not already completed or permanently halted:** The latest commit does not have a `merge-prep-status` commit status with `state: success` or `state: failure`. The Merge-Prep Agent sets `success` at the end of every successful run; it sets `failure` after 3 consecutive failures. A new commit from any actor clears this automatically — the new SHA has no status yet, so the agent will re-run.
+4. **Not a merge-prep commit:** The HEAD commit message does not contain a `Merge-Prep-By:` trailer. This is a race-condition guard: the `workflow_run` trigger can fire before the agent workflow sets `merge-prep-status: success` on a freshly pushed commit. The trailer check prevents wasteful re-dispatch.
 
-### What Merge Prep does
+The dispatcher does not check whether checks are passing. The Merge-Prep Agent runs regardless — it will fix what it can and post an honest outcome.
+
+### What the Merge-Prep Agent does
+
+The agent workflow (`agent-merge-prep.yml`) performs pre-checks, then either invokes the Claude agent or takes the fast-path:
+
+**Pre-checks (always run):**
 
 1. **Dismiss prior merge-prep approval** — `gh pr review --dismiss` any existing approval from `github-actions[bot]` on this PR (ensures approval always reflects the latest code state, not a prior run).
-2. Checks for a self-loop (last commit has `Merge-Prep-By:` trailer — skip if so).
-3. Checks the runaway loop ceiling (see below) — halt if exceeded.
+2. **Self-loop detection** — if the last commit has a `Merge-Prep-By:` trailer, skip (prior run's work is still valid; set `merge-prep-status: success` and exit).
+3. **Runaway loop ceiling** (see below) — halt if exceeded.
+
+**Fast-path (no Claude call):** If all CI checks pass, no `CHANGES_REQUESTED` reviews remain, and the PR has no merge conflicts, the Claude agent is skipped entirely. The workflow proceeds directly to the graduation steps (approve, set status, trigger summary-and-merge). This preserves the architectural invariant — the Merge-Prep Agent always gates graduation — while avoiding expensive Claude API calls when nothing needs fixing.
+
+**Full agent path (Claude call):** When there is work to do (failing checks, unresolved reviews, or conflicts):
+
 4. Resolves merge conflicts if present (`git merge origin/main --no-edit`).
-5. Reads ALL GitHub PR review feedback: Agent Review, external bots (Gemini, Copilot), human reviewers. Triages each piece: fix, dismiss, or defer.
+5. Reads ALL GitHub PR review feedback: Axiom Review, external bots (Gemini, Copilot), human reviewers. Triages each piece: fix, dismiss, or defer.
 6. Runs `ruff check --fix && ruff format`, `basedpyright`, `pytest` locally.
 7. Commits and pushes fixes with `Merge-Prep-By: agent` trailer (if any fixes are needed).
 8. Posts a triage summary comment.
+
+**Graduation (both paths):**
+
 9. Posts `gh pr review --approve` (satisfies `required_approving_review_count: 1` in branch protection, and ensures approval always reflects this run's output).
 10. Sets `merge-prep-status: success` commit status on the latest commit.
-11. Triggers `summary-and-merge.yml` via `gh workflow run` (or `workflow_dispatch`).
+11. Triggers `summary-and-merge.yml` via `repository_dispatch`.
 
-**No comment parsing.** Merge-prep reads GitHub PR _reviews_ (step 5) — a structured, native GitHub mechanism. It does not scan arbitrary comment text for instructions. Human direction comes through the review mechanism (REQUEST_CHANGES with notes), not freeform comments.
+**No comment parsing.** The Merge-Prep Agent reads GitHub PR _reviews_ (step 5) — a structured, native GitHub mechanism. It does not scan arbitrary comment text for instructions. Human direction comes through the review mechanism (REQUEST_CHANGES with notes), not freeform comments. Failure counting uses `gh run list` (run history), not comment text.
 
 ### Graduation mechanism: Environment gate
 

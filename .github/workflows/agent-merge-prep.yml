@@ -144,8 +144,37 @@ jobs:
           )"
           exit 1
 
-      - name: Read agent instructions
+      # Fast-path: if all checks pass, no CHANGES_REQUESTED reviews, and
+      # no merge conflicts, skip the expensive Claude agent call and go
+      # straight to approve/status/graduation.
+      - name: Check if agent is needed
         if: steps.loop-check.outputs.skip != 'true' && steps.ceiling-check.outputs.exceeded != 'true'
+        id: fast-path
+        run: |
+          REPO="${{ github.repository }}"
+
+          # Count failing checks (grep -c returns 1 if no matches, so use || true)
+          FAIL_COUNT=$(gh pr checks "$PR_NUMBER" --repo "$REPO" 2>/dev/null | grep -ci "fail" || echo "0")
+
+          # Count unresolved CHANGES_REQUESTED reviews (latest per author)
+          CR_COUNT=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" \
+            --jq '[.[] | {state, login: .user.login}] | group_by(.login) | map(last) | map(select(.state == "CHANGES_REQUESTED")) | length')
+
+          # Check mergeability (conflicts?)
+          MERGEABLE=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json mergeable --jq '.mergeable' 2>/dev/null || echo "UNKNOWN")
+
+          echo "Failing checks: $FAIL_COUNT, CHANGES_REQUESTED: $CR_COUNT, Mergeable: $MERGEABLE"
+
+          if [ "$FAIL_COUNT" = "0" ] && [ "$CR_COUNT" = "0" ] && [ "$MERGEABLE" = "MERGEABLE" ]; then
+            echo "Fast-path: nothing to fix — skipping Claude agent"
+            echo "skip_agent=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Agent needed: checks=$FAIL_COUNT CR=$CR_COUNT mergeable=$MERGEABLE"
+            echo "skip_agent=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Read agent instructions
+        if: steps.loop-check.outputs.skip != 'true' && steps.ceiling-check.outputs.exceeded != 'true' && steps.fast-path.outputs.skip_agent != 'true'
         id: prompt
         run: |
           PROMPT=$(git show origin/main:.github/agents/merge-prep.agent.md)
@@ -156,7 +185,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Run Merge Prep
-        if: steps.loop-check.outputs.skip != 'true' && steps.ceiling-check.outputs.exceeded != 'true'
+        if: steps.loop-check.outputs.skip != 'true' && steps.ceiling-check.outputs.exceeded != 'true' && steps.fast-path.outputs.skip_agent != 'true'
         id: claude
         continue-on-error: true
         uses: anthropics/claude-code-action@v1
@@ -185,7 +214,7 @@ jobs:
       # ── Post-agent: success path ──
 
       - name: Handle success
-        if: steps.loop-check.outputs.skip != 'true' && steps.ceiling-check.outputs.exceeded != 'true' && steps.claude.outcome == 'success'
+        if: steps.loop-check.outputs.skip != 'true' && steps.ceiling-check.outputs.exceeded != 'true' && (steps.claude.outcome == 'success' || steps.fast-path.outputs.skip_agent == 'true')
         run: |
           REPO="${{ github.repository }}"
           HEAD_SHA=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json headRefOid --jq '.headRefOid')
@@ -261,15 +290,16 @@ jobs:
       # ── Post-agent: failure path ──
 
       - name: Handle failure
-        if: steps.loop-check.outputs.skip != 'true' && steps.ceiling-check.outputs.exceeded != 'true' && steps.claude.outcome != 'success'
+        if: steps.loop-check.outputs.skip != 'true' && steps.ceiling-check.outputs.exceeded != 'true' && steps.fast-path.outputs.skip_agent != 'true' && steps.claude.outcome != 'success'
         run: |
           REPO="${{ github.repository }}"
           HEAD_SHA=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json headRefOid --jq '.headRefOid')
 
-          # Count prior failures by checking existing PR comments from github-actions[bot]
-          # We treat previous "Merge Prep: Failed" comments as failure markers.
-          FAIL_COUNT=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
-            --jq '[.[] | select(.user.login == "github-actions[bot]" and ((.body | contains("## Merge Prep: Failed (giving up)")) or (.body | contains("## Merge Prep: Failed"))))] | length')
+          # Count recent failed merge-prep runs for this PR branch (no comment parsing)
+          HEAD_REF=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json headRefName --jq '.headRefName')
+          FAIL_COUNT=$(gh run list --workflow=agent-merge-prep.yml --repo "$REPO" \
+            --branch "$HEAD_REF" --json conclusion \
+            --jq '[.[] | select(.conclusion == "failure")] | length')
 
           if [ "$FAIL_COUNT" -ge 2 ]; then
             # This is the 3rd+ failure — halt permanently

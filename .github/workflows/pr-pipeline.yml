@@ -60,14 +60,20 @@ jobs:
       ref: ${{ github.event.pull_request.head.ref }}
     secrets: inherit
 
-  # ─── PHASE 3: Agent Review & Fix ───────────────────────────────────
-  # Assessor reviews the diff, CI results, and any review comments
-  # (including auditor findings from Phase 2). Can push fixes directly.
+  # ─── PHASE 3: Agent Fix (failure-only) ─────────────────────────────
+  # Runs ONLY when a Phase 1 CI check failed. Reads CI failure logs,
+  # review comments (including auditor findings), and pushes fixes.
   # If it pushes, the pipeline restarts from Phase 1.
+  # When all checks are green, this is skipped — merge-prep handles
+  # the graduation path (approve, set status, trigger summary-and-merge).
   agent-fix:
     name: Agent Fix
-    needs: [axiom-review]
-    if: ${{ !failure() && !cancelled() }}
+    needs: [axiom-review, lint, pytest, typecheck]
+    if: >-
+      !cancelled() &&
+      (needs.lint.result == 'failure' ||
+       needs.pytest.result == 'failure' ||
+       needs.typecheck.result == 'failure')
     uses: ./.github/workflows/agent-autofix.yml
     with:
       pr_number: "${{ github.event.pull_request.number }}"

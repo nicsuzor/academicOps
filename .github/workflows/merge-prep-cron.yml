@@ -42,7 +42,7 @@ jobs:
       actions: write
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      BAZAAR_WINDOW_SECONDS: 3600  # 1 hour — autofix handles immediate fixes; merge-prep runs once the PR has settled
+      BAZAAR_WINDOW_SECONDS: 900  # 15 min — bazaar window for external reviews (Gemini, Copilot) to arrive
     steps:
       # ── Manual override: process a specific PR immediately ──
       - name: Manual override
@@ -149,15 +149,11 @@ jobs:
               continue
             fi
 
-            # Skip if all checks are green and no CHANGES_REQUESTED reviews remain
-            # (merge-prep is only needed when something is wrong or blocked)
-            CHECK_ROLLUP=$(gh pr view "$PR_NUM" --repo "$REPO" \
-              --json statusCheckRollup --jq '.statusCheckRollup | map(.conclusion // .status) | all(. == "SUCCESS" or . == "success")')
-            CHANGES_REQUESTED=$(gh api "repos/$REPO/pulls/$PR_NUM/reviews" \
-              --jq '[.[] | {state, login: .user.login}] | group_by(.login) | map(last) | map(select(.state == "CHANGES_REQUESTED")) | length')
-
-            if [ "$CHECK_ROLLUP" = "true" ] && [ "$CHANGES_REQUESTED" = "0" ]; then
-              echo "  SKIP: all checks green and no CHANGES_REQUESTED reviews (nothing to fix)"
+            # Check if last commit was from merge-prep (race condition guard:
+            # workflow_run can fire before the agent workflow sets merge-prep-status)
+            HEAD_MSG=$(gh api "repos/$REPO/commits/$HEAD_SHA" --jq '.commit.message' 2>/dev/null || echo "")
+            if echo "$HEAD_MSG" | grep -q 'Merge-Prep-By:'; then
+              echo "  SKIP: last commit was from merge-prep (trailer detected)"
               continue
             fi
 
