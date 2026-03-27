@@ -123,7 +123,29 @@ Run the audit skill's structure check for mechanical indices. This keeps `SKILLS
 **Output**: Updated mechanical index files, committed and pushed. PR for governance docs if stale.
 **Skip condition**: No files changed in `aops-core/` since last run.
 
-#### Phase 4: Staleness Sweep
+#### Phase 4: Data Quality Reconciliation
+
+**Consumer**: Task graph actionability, PKB search quality
+
+The task graph accumulates data quality problems over time: duplicate tasks (the same action captured multiple times from different sessions or email runs), stale tasks (completed in the real world but never marked done), and misclassified content (email subject lines captured as tasks but never triaged into actions). These problems inflate structural metrics and make the graph unreliable.
+
+**Why this precedes structural work**: Structural maintenance (Phase 5b) operates on metrics like orphan counts, flat task counts, and container sizes. When the graph contains hundreds of duplicates and stale items, these metrics are meaningless — the gardener rearranges garbage into neater piles. Data quality must be addressed first so structural work operates on clean data.
+
+**Design principle**: Exhaust available evidence before escalating. The system has access to email (Outlook MCP), calendar, git history, and the PKB itself. Agents should verify task completion against these sources autonomously. Only genuinely ambiguous cases should reach the human. This prevents review lists from accumulating.
+
+Three activities:
+
+1. **Deduplication** — mechanical, fully autonomous. Uses `find_duplicates` (title + semantic similarity) and `batch_merge`. No human judgment needed for high-confidence matches.
+2. **Staleness verification** — evidence-based. Cross-references old active tasks against sent email, calendar, and git to find completion evidence. Autonomous when evidence is clear; flags ambiguous cases.
+3. **Misclassification detection** — pattern-based. Identifies content captured as tasks but never triaged (e.g., "Email:" prefix items older than 60 days with no children).
+
+**Environment constraint**: Email/calendar verification requires local MCP servers (not available on GitHub Actions CI). On CI, staleness verification degrades to flagging candidates only. Full verification runs during manual `/sleep` invocations.
+
+**Skip condition**: None — always runs. The backlog is large enough that every cycle should chip away at it.
+
+See `aops-core/skills/sleep/SKILL.md` Phase 4 for detailed procedures and batch limits.
+
+#### Phase 5: Staleness Sweep
 
 **Consumer**: PKB search quality, task graph actionability
 
@@ -140,7 +162,7 @@ Identify knowledge docs and memories that may be stale, and tasks that are under
 
 **Skip condition**: Sweep ran within the last 24 hours (no need to run every 4h).
 
-#### Phase 5: Brain Sync
+#### Phase 6: Brain Sync
 
 **Consumer**: All (infrastructure)
 
@@ -157,7 +179,7 @@ Ensure `$ACA_DATA` is committed, pushed, and remote is pulled. This is already h
 | `/daily`            | Morning briefing + progress sync           | **Complementary.** Daily handles the human-facing briefing (email, focus, recommendations). Sleep cycle handles the machine-facing consolidation (episode replay, index refresh, staleness). |
 | `/session-insights` | Per-session analysis                       | **Building block.** Sleep cycle Phase 1 calls session-insights batch.                                                                                                                        |
 | `/audit`            | Framework index curation                   | **Scheduled.** Sleep cycle Phase 3 runs audit Phases 1-2 on a schedule. Full audit remains manual.                                                                                           |
-| `/planner`          | Planning, decomposition, graph maintenance | **Downstream.** Sleep cycle Phase 4b delegates graph maintenance to Planner's `maintain` mode. Phase 4 staleness candidates flow to Planner for processing.                                  |
+| `/planner`          | Planning, decomposition, graph maintenance | **Downstream.** Sleep cycle Phase 5b delegates graph maintenance to Planner's `maintain` mode. Phase 4 data quality and Phase 5 staleness candidates flow to Planner for processing.         |
 | `/remember`         | Manual knowledge capture                   | **Upstream.** Inline promotion during sessions. Sleep cycle catches what /remember missed.                                                                                                   |
 
 ## What This Does NOT Replace

@@ -195,7 +195,7 @@ Facilitated strategic thinking. Thinking partner, NOT a doing agent.
 - Avoid prescriptive language: "You should...", "Best practice is..."
 - Let synthesis emerge naturally
 
-**Facilitation approach**:
+### maintain
 
 > Absorbed from: `/garden` + `/densify`
 
@@ -203,7 +203,7 @@ Incremental PKM and task graph maintenance. Small, regular attention beats massi
 
 **When**: "prune knowledge", "consolidate notes", "PKM maintenance", "garden", "reparent", "lint", "densify tasks", "add dependencies"
 
-**Allowed tools**: `Read`, `Grep`, `Glob`, `Edit`, `Write`, `Bash`, `AskUserQuestion`, `mcp__pkb__search`, `mcp__pkb__list_documents`, `mcp__pkb__list_tasks`, `mcp__pkb__update_task`, `mcp__pkb__get_task`, `mcp__pkb__task_search`, `mcp__pkb__pkb_orphans`, `mcp__pkb__bulk_reparent`, `mcp__pkb__pkb_context`, `mcp__pkb__get_network_metrics`
+**Allowed tools**: `Read`, `Grep`, `Glob`, `Edit`, `Write`, `Bash`, `AskUserQuestion`, `mcp__pkb__search`, `mcp__pkb__list_documents`, `mcp__pkb__list_tasks`, `mcp__pkb__update_task`, `mcp__pkb__get_task`, `mcp__pkb__task_search`, `mcp__pkb__pkb_orphans`, `mcp__pkb__bulk_reparent`, `mcp__pkb__pkb_context`, `mcp__pkb__get_network_metrics`, `mcp__pkb__find_duplicates`, `mcp__pkb__batch_merge`, `mcp__pkb__merge_node`, `mcp__pkb__complete_task`, `mcp__pkb__batch_reclassify`, `mcp__pkb__batch_archive`, `mcp__pkb__batch_update`, `mcp__omcp__messages_search`, `mcp__omcp__messages_query`, `mcp__omcp__calendar_list_events`
 
 **Activities**:
 
@@ -221,10 +221,40 @@ Incremental PKM and task graph maintenance. Small, regular attention beats massi
 | **Reparent**   | Fix orphaned tasks (missing-parent AND wrong-type-parent), enforce hierarchy rules |
 | **Hierarchy**  | Validate task→epic→project structure, goal-linkage via `goals: []` metadata        |
 | **Stale**      | Flag tasks with stale status or inconsistencies                                    |
-| **Dedup**      | Surface duplicate/overlapping tasks for review                                     |
+| **Dedup**      | Find and merge duplicate tasks                                                     |
 | **Triage**     | Detect under-specified tasks                                                       |
 | **Densify**    | Add dependency edges between related tasks                                         |
 | **Scan**       | Report graph density without changes                                               |
+
+### Data Quality Procedures (Dedup, Stale, Misclassification)
+
+These are the interactive counterpart to sleep Phase 4. In maintain mode, the human is in the loop — no batch limits, can ask questions, always has email tools available.
+
+**Dedup procedure**:
+
+1. `find_duplicates(mode="both")` — get all clusters by title + semantic similarity
+2. Review clusters. For each: examine titles, creation dates, content
+3. Select canonical (prefer: has parent, has children, has more content, is older)
+4. `batch_merge(canonical=<id>, merge_ids=[...], dry_run=true)` first to preview
+5. Review dry_run output, then `dry_run=false` to apply
+6. Report: clusters merged, items deduplicated
+
+**Staleness verification procedure**:
+
+1. `list_tasks(status="active", stale_days=90)` — get candidates
+2. For each: read task, search email/calendar for completion evidence
+   - `messages_search` for sent mail matching task subject/keywords
+   - `calendar_list_events` for past meetings matching task context
+3. Evidence of completion → `complete_task(id=<id>)` with note
+4. Confirmed irrelevant → `batch_archive(ids=[<id>], reason="superseded")`
+5. Ambiguous → present to user via `AskUserQuestion`
+
+**Misclassification procedure**:
+
+1. `list_tasks(title_contains="Email:")` — find email subjects captured as tasks
+2. For each: check if actionable or purely informational
+3. Informational → `batch_reclassify(ids=[<id>], new_type="memory")` or `batch_archive`
+4. Actionable but poorly formed → flag for triage
 
 **Session pattern**: 15–30 minutes max. Work in small batches (3–5 notes). Commit frequently.
 

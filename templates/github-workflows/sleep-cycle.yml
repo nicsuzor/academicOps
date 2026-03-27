@@ -16,7 +16,7 @@ on:
         required: false
         type: string
       batch_limit:
-        description: 'Max items to process in Phase 4b'
+        description: 'Max items to process per phase'
         required: false
         default: '100'
         type: string
@@ -62,82 +62,32 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
-            You are the Sleep Cycle consolidation agent. Your job is to do periodic
-            offline maintenance of the brain repo — like neural sleep consolidation.
+            You are the Sleep Cycle consolidation agent. Read the sleep skill for
+            full phase instructions:
+              ${{ github.workspace }}/_aops/aops-core/skills/sleep/SKILL.md
 
-            Work through these phases in order. Use your judgment about what needs
+            Also read the full spec for design rationale:
+              ${{ github.workspace }}/_aops/specs/sleep-cycle.md
+
+            Work through the phases in order. Use your judgment about what needs
             attention. Skip phases where there's nothing to do.
 
             ## Environment
             - Brain repo (data): ${{ github.workspace }}
             - academicOps (code): ${{ github.workspace }}/_aops
-            - Full spec: ${{ github.workspace }}/_aops/specs/sleep-cycle.md
-            - Sleep skill: ${{ github.workspace }}/_aops/aops-core/skills/sleep/SKILL.md
+            - Batch limit: ${{ inputs.batch_limit || vars.SLEEP_BATCH_LIMIT || 100 }} items per phase
 
-            ## Phase 0: Graph Health Baseline
-            Run `graph_stats` (PKB tool) to get current graph health metrics.
-            Run `pkb_orphans` (PKB tool) for accurate orphan detection.
-            Record: flat_tasks, disconnected_epics, projects_without_goals, orphan_count (from pkb_orphans), stale_count.
-            This is the baseline — you'll re-run it in Phase 5 to measure what changed.
-
-            ## Phase 1: Session Backfill
-            Check for session transcripts without insights. If found, run:
-            `uv run python _aops/aops-core/scripts/transcript.py --recent`
-
-            ## Phase 2: Episode Replay
-            Scan recent git activity (commits, task changes since last run).
-            Identify knowledge that should be promoted to a named consumer
-            (MEMORY.md, PKB, framework files). Stage candidates — don't auto-create
-            knowledge docs from unverified fragments.
-
-            ## Phase 3: Framework Index Refresh
-            Check if _aops/aops-core/ index files (SKILLS.md, INDEX.md) are stale.
-            Update mechanical indices only. Flag governance docs for human review via PR.
-
-            ## Phase 4: Staleness Sweep
-            Use your own judgment to identify tasks and docs that need attention. Check for:
-            - Orphan docs with no graph connections (use `pkb_orphans` results)
-            - Knowledge docs that contradict recent evidence
-            - Old or inactive tasks (no update in 7+ days)
-            - Under-specified tasks (flag for decomposition or review)
-
-            **CRITICAL**: Age is not staleness. Never set a task's status to "cancelled"
-            based on age alone. Only irrelevance is grounds for cancellation.
-            Surface old tasks for human review instead.
-
-            ## Phase 4b: Graph Maintenance
-            Pick ONE strategy based on what health metrics showed needs the most work:
-            - disconnected_epics > 10 → find project parents for disconnected epics
-            - projects_without_goals > 10 → link projects to existing goals
-            - flat_tasks > 100 → find epic/project parents for orphaned tasks
-            - orphan_count > 20 → connect or flag truly disconnected nodes for review (from `pkb_orphans`)
-            - All healthy → densify edges (add depends_on between related tasks)
-
-            Process at most ${{ inputs.batch_limit || vars.SLEEP_BATCH_LIMIT || 100 }} items per cycle.
-            Use `mcp__pkb__bulk_reparent` for efficiency when processing multiple items with
-            the same parent. For obvious connections (task title mentions the project), apply
-            autonomously. For ambiguous ones, flag in the cycle summary for human review.
-
-            ## Phase 5: Brain Sync
-            Re-run `graph_stats` and `pkb_orphans` and compare to Phase 0 baseline. Note what changed.
-            Commit any changes and push. Use message: "sleep: periodic consolidation"
-
-            ## Rules
-            - You have a 20-minute time budget. Exit cleanly when time is up.
-            - Surfaces > decisions. Flag things for human review, don't auto-fix judgment calls.
-            - **No Auto-Cancellation**: Never cancel a task based on age alone. Age is not staleness.
-            - Be incremental. Only process what's new since the last sleep cycle.
+            ## CI-Specific Rules
+            - Time budget: 20 minutes. Exit cleanly when time is up.
+            - Email/calendar MCP tools are NOT available on GitHub Actions.
+              Degrade gracefully per the skill instructions (flag instead of verify).
             - Write a summary of what you did to $GITHUB_STEP_SUMMARY.
-
+            - Commit message: "sleep: periodic consolidation"
 
             ## Repo Topology (CRITICAL)
-            This repo is a DATA repo — it contains tasks, notes, and memories, NOT code.
-            Code lives in separate repositories (e.g., academicOps at _aops/).
-
-            When evaluating whether a feature exists or a task is obsolete:
-            - NEVER conclude a feature "doesn't exist" because you can't find code HERE
-            - Search the code repo (_aops/) and any installed plugin paths for implementations
-            - If you can't locate code in the code repo either, flag for human review — do NOT auto-cancel
-            - Tasks referencing features, skills, or tools are about code that lives ELSEWHERE
+            This is a DATA repo (tasks, notes, memories), NOT code.
+            Code lives in _aops/. Never conclude a feature "doesn't exist" because
+            you can't find it here. Search _aops/ first. If still not found, flag
+            for human review — do NOT auto-cancel.
 
             ${{ inputs.focus && format('## Focus\nThe operator asked you to focus on: {0}', inputs.focus) || '' }}
