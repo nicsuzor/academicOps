@@ -66,18 +66,36 @@ class TestDockerAgentResponds:
         assert result["success"], f"[{platform}] Execution failed: {result.get('error')}"
 
     def test_framework_binaries_on_path(self, docker_headless):
-        """Verify that pkb and aops binaries are available on PATH inside Docker."""
+        """Verify that pkb and aops binaries are available on PATH inside Docker.
+
+        Retries up to 2 times on timeout (flaky), but assertion failures are
+        always hard failures — if the sandbox responds and binaries are missing,
+        that's a real regression.
+        """
         runner, platform = docker_headless
-        # Ask the agent to check for the binaries using a single combined command
-        # to minimize tool-call round-trips (each sandbox tool call is expensive).
         prompt = "Run: which pkb && which aops && pkb --version"
-        result = runner(prompt, fail_on_error=False, timeout_seconds=480)
+
+        max_attempts = 2
+        last_error = None
+        result = None
+        for attempt in range(1, max_attempts + 1):
+            result = runner(prompt, fail_on_error=False, timeout_seconds=480)
+            if result["success"]:
+                break
+            last_error = result.get("error", "")
+            if attempt < max_attempts:
+                print(
+                    f"[{platform}] Attempt {attempt}/{max_attempts} failed "
+                    f"(timeout/error), retrying: {last_error[:100]}"
+                )
+
         if not result["success"]:
             pytest.skip(
-                f"[{platform}] Sandbox timed out or failed: {result.get('error', '')[:100]}"
+                f"[{platform}] Sandbox timed out after {max_attempts} attempts: {last_error[:100]}"
             )
 
-        # Check output for confirmation
+        # Sandbox responded — assertion failures below are hard failures,
+        # not skips.  If binaries are missing, we must catch the regression.
         output = str(result.get("output", "")) + str(result.get("stderr", ""))
         response_text = str(result.get("result", {}).get("response", ""))
         combined = output + response_text
