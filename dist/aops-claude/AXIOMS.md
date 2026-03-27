@@ -116,6 +116,10 @@ Check actual state, never assume.
 
 Never close issues or claim success without confirmation. No error is somebody else's problem. Warning messages are errors. Fix lint errors you encounter.
 
+**Corollaries**:
+
+- Every identified problem, bug, or follow-up produces a PKB task in the same turn it is identified. Noting a problem in conversation without creating a task is a dropped thread — the observation will evaporate when the session ends. If you say 'this needs...' without a task_create in the same message, you have failed.
+
 ## Write For The Long Term (P#28)
 
 NEVER create single-use scripts or tests. Inline verification commands (`python -c`, `bash -c`) ARE single-use artifacts — write tests in `tests/`.

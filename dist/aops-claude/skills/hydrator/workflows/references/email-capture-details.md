@@ -2,13 +2,19 @@
 
 Detailed procedures, tool configurations, and classification logic for the email-to-task workflow.
 
-## Step 0: Check Existing Tasks
+## Step 0: Check Existing Tasks (MANDATORY)
 
-Before fetching emails, check existing tasks to prevent duplicates. Emails persist in inbox and get re-read by this workflow.
+Before creating any task from an email, search the PKB to prevent duplicates. Emails persist in inbox and get re-read by this workflow — without this check, the same email generates a new task every time.
 
-- If task exists in inbox: Skip creating, note in summary
-- If task exists in archive: Already completed, definitely skip
-- Match by: email subject, sender name, or key action phrase
+For EACH email that would generate a task:
+
+1. `task_search(query="<email subject or key action phrase>")` — search for existing task
+2. If match found: compare titles and content. If clearly the same action → **SKIP creation**, note "already tracked as `<matched_id>`" in summary
+3. If ambiguous match (similar but not identical): present both to user before creating
+4. If task exists in archive/completed: already handled, definitely skip
+5. Match by: email subject, sender name, or key action phrase
+
+There is no server-side dedup on task creation — this step is the only duplicate prevention mechanism.
 
 ## Step 1: Fetch and Check Responses
 
@@ -66,7 +72,7 @@ Every email-derived task body MUST include:
 
 5. **Deadline**: Extracted or inferred deadline, prominently placed.
 
-**Anti-pattern** (what task-221f3189 got wrong): A task that says "Review the attached document and provide feedback by Friday" without quoting the email and without the actual links. This is useless — the person pulling the task has no context.
+**Anti-pattern**: A task that says "Review the attached document and provide feedback by Friday" without quoting the email and without the actual links. This is useless — the person pulling the task has no context.
 
 **Template**:
 

@@ -19,14 +19,23 @@ backend: scripts
 
 ## Summary Checklist
 
-1. **Step 0: Check Existing Tasks** - Prevent duplicates for emails already processed.
+1. **Step 0: Check Existing Tasks** - Search PKB before creating to prevent duplicates (see procedure below).
 2. **Step 1: Fetch and Check Responses** - Get recent emails and check if already responded to.
 3. **Step 2: Analyze and Classify** - Categorize into Actionable, Important FYI, or Safe to ignore.
 4. **Step 3 & 4: Context and Categorization** - Query PKB for project matching and confidence scoring.
 5. **Step 5: Infer Priority** - Assign P0-P3 based on deadlines and signals.
 6. **Step 6: Create "Ready for Action" Tasks** - Generate summaries, note attachment filenames, preserve links, and create tasks.
-7. **Step 7: Duplicate Prevention** - Handled automatically by `task_add.py`.
+7. **Step 7: Duplicate Prevention** - Handled by Step 0 above. There is no server-side dedup on creation.
 8. **Step 8: Present Information and Summary** - Show Important FYI content and created tasks.
+
+### Step 0 Procedure (MANDATORY before any task creation)
+
+For EACH email that would generate a task:
+
+1. `task_search(query="<email subject or key action phrase>")` — check for existing task
+2. If match found: compare titles and content. If clearly the same action → **SKIP creation**, note "already tracked as `<matched_id>`"
+3. If ambiguous match (similar but not identical): present both to user before creating
+4. If no match: proceed with creation
 
 ## Critical Guardrails
 

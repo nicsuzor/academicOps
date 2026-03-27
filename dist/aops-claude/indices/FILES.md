@@ -12,7 +12,7 @@ Auto-generated during build. Lists all files in this plugin distribution.
 
 ## File Count
 
-Total files: 164
+Total files: 165
 
 ## File Tree
 
@@ -38,6 +38,7 @@ commands/intend.md
 commands/learn.md
 commands/path.md
 commands/pull.md
+commands/retro.md
 hooks/__init__.py
 hooks/autocommit_state.py
 hooks/gate_config.py
