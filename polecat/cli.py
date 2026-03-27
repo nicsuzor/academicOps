@@ -585,11 +585,14 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
                 # baggage (MCP servers, hooks, UI prefs) into sandbox sessions.
                 with open(gemini_dir / f) as src_f:
                     user_settings = json.load(src_f)
-                auth_type = (
-                    user_settings.get("security", {})
-                    .get("auth", {})
-                    .get("selectedType", "oauth-personal")
-                )
+                auth_type = user_settings.get("security", {}).get("auth", {}).get("selectedType")
+                if not auth_type:
+                    print(
+                        "   Warning: no security.auth.selectedType in user settings.json — "
+                        "sandbox auth may fail",
+                        file=sys.stderr,
+                    )
+                    continue
 
                 template_path = SCRIPT_DIR / "defaults" / "gemini-settings.json"
                 with open(template_path) as tpl_f:
@@ -600,7 +603,8 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
                     json.dump(minimal, dst_f, indent=2)
                 continue
             except (json.JSONDecodeError, OSError) as e:
-                print(f"   Warning: could not process {gemini_dir / f}: {e}", file=sys.stderr)
+                print(f"   Warning: could not process user settings.json: {e}", file=sys.stderr)
+                continue
 
         # Follow symlinks to copy the actual file content, not the link itself.
         # This is critical for ~/.gemini/settings.json which is often symlinked.

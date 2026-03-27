@@ -501,6 +501,45 @@ class TestReplicateGeminiAuth:
 
         shutil.rmtree(result)
 
+    def test_missing_auth_type_skips_settings(self, tmp_path):
+        """Settings without security.auth.selectedType should be skipped, not defaulted."""
+        gemini_dir = tmp_path / ".gemini"
+        gemini_dir.mkdir(parents=True)
+
+        # Settings with no auth type
+        (gemini_dir / "settings.json").write_text(json.dumps({"tools": {}}))
+
+        env = {}
+        with patch("cli.Path.home", return_value=tmp_path):
+            result = _replicate_gemini_auth(env)
+
+        assert result is not None
+        # settings.json should not exist — skipped due to missing auth type
+        assert not (result / ".gemini" / "settings.json").exists()
+
+        import shutil
+
+        shutil.rmtree(result)
+
+    def test_corrupt_settings_skipped(self, tmp_path):
+        """Unparseable settings.json should be skipped, not copied raw."""
+        gemini_dir = tmp_path / ".gemini"
+        gemini_dir.mkdir(parents=True)
+
+        (gemini_dir / "settings.json").write_text("not valid json{{{")
+
+        env = {}
+        with patch("cli.Path.home", return_value=tmp_path):
+            result = _replicate_gemini_auth(env)
+
+        assert result is not None
+        # settings.json should not exist — skipped due to parse error
+        assert not (result / ".gemini" / "settings.json").exists()
+
+        import shutil
+
+        shutil.rmtree(result)
+
 
 class TestMountAcaDataSandbox:
     """Tests for _mount_aca_data_sandbox — called by both crew -g and run -g."""
