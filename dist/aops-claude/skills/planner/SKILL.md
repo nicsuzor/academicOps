@@ -158,6 +158,8 @@ Break validated epics into structured task trees.
 - Every task must be completable in a single session (actionability)
 - Every epic must include at least one QA/review task (verification)
 - Tasks must be self-contained for handoff (P#120) — include context, decisions, constraints, data findings
+- **Cross-cutting impact**: Every decomposition must check what other projects consume or depend on what's changing (Step 3). Create tasks in affected projects, not just under this epic.
+- **Prerequisites**: Every decomposition must identify what must be true before the change is useful (Step 4). Prerequisites often live in different projects.
 
 **Workflow files**: `aops-core/skills/planner/workflows/decompose.md`
 

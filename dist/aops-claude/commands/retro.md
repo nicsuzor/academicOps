@@ -201,6 +201,46 @@ If the transcript has already been reviewed (frontmatter contains `reviewed_by`)
 **Issues filed**: [GitHub Issue URLs from /learn invocations]
 ```
 
+## Batch Mode
+
+When processing multiple sessions (e.g., via `/loop`), follow these additional guidelines:
+
+### Triage First
+
+Don't retro every session. Have a fast pass (read first/last 50 lines) and prioritise:
+
+- Sessions where the user corrected the agent ("no", "stop", "that's wrong")
+- Sessions > 1hr that produced no PR or task
+- Sessions rated POOR by their own /dump reflection
+- Sessions with interesting new patterns (not just re-confirming known issues)
+
+Skip automated sessions (cron, task notifications) and trivially short sessions with no meaningful interaction.
+
+### Issue Budget
+
+Cap at **3 filed issues per session**: 1 critical, 1 warning, 1 observation. More findings dilute signal. If a pattern is already filed as a GitHub issue, **comment on the existing issue** with the new occurrence rather than filing a duplicate. Volume bumps on existing issues are more valuable than 10 new issues saying the same thing.
+
+### Deduplication
+
+Before filing, check the repo's open issues for existing coverage. The orchestrator should pass a list of already-known issues to each retro agent so they can comment rather than duplicate. Common recurring themes that are likely already filed:
+
+- Subagent over-exploration / token waste
+- Push to main bypassing PR pipeline
+- Jumping to solutions without diagnosis
+- No task tracking for multi-hour sessions
+- Scope expansion without user approval
+- Custodiet overhead / false positives
+
+### Orchestrator Setup
+
+When running batch retros, the orchestrator should:
+
+1. Create a task list for all sessions to process
+2. Maintain max 4 parallel agents
+3. Track progress via TaskUpdate
+4. Set `CUSTODIET_GATE_MODE=off` to avoid ~200K tokens of compliance overhead on a user-directed loop
+5. After all sessions complete, produce a summary with verdict distribution and top recurring themes
+
 ## What This Command Does NOT Do
 
 - **Does not fix issues** — it identifies and files them. Fixes are separate work.
@@ -210,10 +250,13 @@ If the transcript has already been reviewed (frontmatter contains `reviewed_by`)
 
 ## Anti-patterns
 
-| Anti-pattern                     | Why it's wrong              | What to do instead                |
-| :------------------------------- | :-------------------------- | :-------------------------------- |
-| Skimming the transcript          | Misses subtle issues        | Read every line                   |
-| "Overall good with minor issues" | Lazy review, not useful     | Be specific, quote the transcript |
-| Filing one mega-issue            | Can't track or prioritize   | One /learn per distinct finding   |
-| Inventing praise                 | Dishonest, wastes attention | Only note genuine strengths       |
-| Reviewing your own session       | Conflict of interest        | Review a DIFFERENT session        |
+| Anti-pattern                       | Why it's wrong                 | What to do instead                  |
+| :--------------------------------- | :----------------------------- | :---------------------------------- |
+| Skimming the transcript            | Misses subtle issues           | Read every line                     |
+| "Overall good with minor issues"   | Lazy review, not useful        | Be specific, quote the transcript   |
+| Filing one mega-issue              | Can't track or prioritize      | One /learn per distinct finding     |
+| Inventing praise                   | Dishonest, wastes attention    | Only note genuine strengths         |
+| Reviewing your own session         | Conflict of interest           | Review a DIFFERENT session          |
+| Batch-reviewing 20+ sessions       | Diminishing returns after ~8   | Triage first, review selectively    |
+| Filing 10 issues from one session  | Noise, can't prioritise        | Cap at 3: 1 critical, 1 warn, 1 obs |
+| Filing new issue for known pattern | Duplicates clutter the tracker | Comment on existing issue instead   |
