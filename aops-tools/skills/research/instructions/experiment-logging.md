@@ -23,14 +23,14 @@ Experiments are **work-in-progress** that may or may not make it into final anal
 
 ## Experiments vs. Production Analysis
 
-| Aspect              | Experiments                            | Production Analysis                                                     |
-| ------------------- | -------------------------------------- | ----------------------------------------------------------------------- |
-| **Location**        | `experiments/YYYYMMDD-description/`    | `dbt/models/`, `streamlit/`, `methods/`                                 |
-| **Purpose**         | Exploration, testing, validation       | Final analysis for publication                                          |
-| **Quality**         | Can be messy, incomplete               | Must be production-quality                                              |
-| **Documentation**   | Inline notes, README in experiment dir | Full documentation in [[methodology-files]], [[methods-vs-methodology]] |
-| **Git tracking**    | May or may not be committed            | Always committed and reviewed                                           |
-| **Reproducibility** | Best effort                            | Mandatory                                                               |
+| Aspect              | Experiments                            | Production Analysis                                                           |
+| ------------------- | -------------------------------------- | ----------------------------------------------------------------------------- |
+| **Location**        | `experiments/YYYYMMDD-description/`    | `dbt/models/`, `streamlit/`, `methods/`                                       |
+| **Purpose**         | Exploration, testing, validation       | Final analysis for publication                                                |
+| **Quality**         | Can be messy, incomplete               | Must be production-quality                                                    |
+| **Documentation**   | Inline notes, README in experiment dir | Full documentation in [[methodology-files.md]], [[methods-vs-methodology.md]] |
+| **Git tracking**    | May or may not be committed            | Always committed and reviewed                                                 |
+| **Reproducibility** | Best effort                            | Mandatory                                                                     |
 
 ## Mandatory Experiment Directory Structure
 
@@ -190,7 +190,7 @@ jupyter notebook notebook.ipynb
 **If experiment was successful:**
 
 1. **Extract production code** to appropriate location:
-   - New analytical method → `methods/method_name.md` (see [[methods-vs-methodology]])
+   - New analytical method → `methods/method_name.md` (see [[methods-vs-methodology.md]])
    - New dbt model → `dbt/models/*/model_name.sql`
    - New visualization → `streamlit/dashboard.py`
 
@@ -225,7 +225,7 @@ jupyter notebook notebook.ipynb
 
 - dbt models (go in `dbt/models/`)
 - Production dashboards (go in `streamlit/`)
-- Documented methods (see [[methods-vs-methodology]])
+- Documented methods (see [[methods-vs-methodology.md]])
 - Reusable analysis scripts (go in `scripts/` or `analyses/`)
 
 **Rule of thumb**: If it works and you'll use it again, move it out of experiments.
