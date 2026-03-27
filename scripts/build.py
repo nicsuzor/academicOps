@@ -766,6 +766,9 @@ def build_aops_core(
     if platform == "gemini":
         translated_count = 0
         for md_file in content_dir.rglob("*.md"):
+            # Agent files are already translated in the special-cased loop above, skip them here.
+            if md_file.relative_to(content_dir).parts and md_file.relative_to(content_dir).parts[0] == "agents":
+                continue
             original = md_file.read_text()
             translated = translate_tool_calls(original, platform)
             if translated != original:
