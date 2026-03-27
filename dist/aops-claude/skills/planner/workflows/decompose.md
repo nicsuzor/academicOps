@@ -23,9 +23,13 @@ version: 2.0.0
 
 2. **Search for Context** (P52) — Query PKB for existing related work, prior decompositions of similar scope, and established patterns. Use `pkb_context(id, hops=2)` to understand the neighbourhood.
 
-3. **Select Workflow** — If the target is an epic, identify which workflow will achieve it (e.g., `feature-dev`, `peer-review`, `experiment-design`). The workflow's steps become the decomposition skeleton. If no existing workflow fits, the epic may need a custom step sequence.
+3. **Cross-cutting Impact Scan** — For the change being decomposed, ask: "What other projects, tools, or components consume or depend on what's changing?" Search PKB (`task_search`, `search`) for tasks/epics that reference affected concepts, APIs, or data structures. For each affected project, create a task in THAT project (not under this epic) with `depends_on` pointing back to relevant tasks here. These are sibling tasks, not children — they belong to the projects they affect.
 
-4. **Derive the Epic Shape** — Every epic needs three phases:
+4. **Prerequisite Discovery** — Ask: "What must be true in the world for this change to actually work?" For each prerequisite, check if it's already true (search PKB, check current state). If not, create a prep task that the implementation tasks `depends_on`. Prerequisites often live in different projects — that's expected and important.
+
+5. **Select Workflow** — If the target is an epic, identify which workflow will achieve it (e.g., `feature-dev`, `peer-review`, `experiment-design`). The workflow's steps become the decomposition skeleton. If no existing workflow fits, the epic may need a custom step sequence.
+
+6. **Derive the Epic Shape** — Every epic needs three phases:
 
    - **Planning tasks** (before): acceptance criteria, methodology, approach design
    - **Execution tasks** (during): the actual work, one task per workflow step
@@ -33,13 +37,13 @@ version: 2.0.0
 
    Map workflow steps to tasks. Each step becomes one or more tasks. See [[decomposition-patterns]] for temporal, functional, and complexity patterns.
 
-5. **Define Deliverables** — For each task, specify the concrete output. A task without a clear deliverable isn't actionable.
+7. **Define Deliverables** — For each task, specify the concrete output. A task without a clear deliverable isn't actionable.
 
-6. **Identify Dependencies** — Which tasks must complete before others can start? Use the [[planning]] skill's dependency-type heuristic: "What happens if the dependency never completes?" If impossible → hard dependency. If less informed → soft dependency.
+8. **Identify Dependencies** — Which tasks must complete before others can start? Use the [[planning]] skill's dependency-type heuristic: "What happens if the dependency never completes?" If impossible → hard dependency. If less informed → soft dependency.
 
-7. **Estimate Effort** — Assign rough complexity (XS, S, M, L). Tasks over M probably need further decomposition. Single-session tasks (1–4 hours) are the right granularity.
+9. **Estimate Effort** — Assign rough complexity (XS, S, M, L). Tasks over M probably need further decomposition. Single-session tasks (1–4 hours) are the right granularity.
 
-8. **Create in PKB** — Use `mcp__pkb__decompose_task(parent_id, subtasks)` for batch creation under the epic. Include dependencies, complexity, and deliverable descriptions.
+10. **Create in PKB** — Use `mcp__pkb__decompose_task(parent_id, subtasks)` for batch creation under the epic. Include dependencies, complexity, and deliverable descriptions.
 
 ## Hierarchy and Depth
 
