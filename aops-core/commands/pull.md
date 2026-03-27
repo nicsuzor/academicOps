@@ -23,23 +23,9 @@ permalink: commands/pull
 
 ## Workflow
 
-### Step 0: Check Active Intentions
-
-Read `$ACA_DATA/intentions.yaml`. If active intentions exist, they scope the task selection in Step 1.
-
 ### Step 1: Get and Claim a Task
 
-**Default (intention-scoped)**: When active intentions exist:
-
-1. For each active intention root, call `mcp__pkb__get_task_children(id="<root-id>", recursive=True)` to get the subgraph.
-2. Filter to ready tasks (leaf, `status: ready`, all `depends_on` met, claimable type).
-3. Select the highest priority task from the union of intention subgraphs.
-4. Present with intention context: `From "Get OSB study out": [task-id] [title]`
-5. **Claim task**: Call `mcp__pkb__update_task(id="<task-id>", status="in_progress", assignee="polecat")` to claim it.
-
-**If no ready tasks within intentions**: Report the status per intention (all done? blocked?), then ask if the user wants to pull from the full queue (`--all`).
-
-**Fallback (no intentions or `--all`)**: When no intentions are active, or `/pull --all`:
+**Default**: Pull from the global ready queue sorted by priority + downstream weight:
 
 1. **List ready tasks**: Call `mcp__pkb__list_tasks(status="ready", limit=10)` to find ready tasks.
 2. **Select task**: Review the list and select the highest priority task (lowest priority number, e.g., P0).
@@ -296,9 +282,8 @@ This directly marks the task as `done` since there's no branch to merge.
 
 ## Arguments
 
-- `/pull` - Get highest priority ready task from active intention subgraphs (or full queue if no intentions)
+- `/pull` - Get highest priority ready task from the global ready queue
 - `/pull <task-id>` - Claim a specific task (or its first ready leaf if it has children)
-- `/pull --all` - Pull from full ready queue, ignoring intention scope
 
 ## Implementation Note
 
