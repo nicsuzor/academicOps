@@ -23,17 +23,31 @@ version: 2.0.0
 
 2. **Search for Context** (P52) — Query PKB for existing related work, prior decompositions of similar scope, and established patterns. Use `pkb_context(id, hops=2)` to understand the neighbourhood.
 
-3. **Cross-cutting Impact Scan** — For the change being decomposed, ask: "What other projects, tools, or components consume or depend on what's changing?" Search PKB (`task_search`, `search`) for tasks/epics that reference affected concepts, APIs, or data structures. For each affected project, create a task in THAT project (not under this epic) with `depends_on` pointing back to relevant tasks here. These are sibling tasks, not children — they belong to the projects they affect.
+3. **Map Unknowns** — Before planning execution, identify what you _don't_ know. Classify each as: **researchable** (others may have solved it → evidence-gathering task), **internal** (we have unanalysed data → audit/survey task), or **probeable** (unknown-unknown → time-boxed spike).
 
-4. **Prerequisite Discovery** — Ask: "What must be true in the world for this change to actually work?" For each prerequisite, check if it's already true (search PKB, check current state). If not, create a prep task that the implementation tasks `depends_on`. Prerequisites often live in different projects — that's expected and important.
+4. **Cross-cutting Impact & Prerequisites** — Ask two questions: (a) "What other projects consume or depend on what's changing?" Search PKB for affected tasks/epics; create sibling tasks in THOSE projects with `depends_on` pointing back here. (b) "What must be true for this change to work?" For each unmet prerequisite, create a prep task that implementation `depends_on`. Both often live in different projects.
 
 5. **Select Workflow** — If the target is an epic, identify which workflow will achieve it (e.g., `feature-dev`, `peer-review`, `experiment-design`). The workflow's steps become the decomposition skeleton. If no existing workflow fits, the epic may need a custom step sequence.
 
-6. **Derive the Epic Shape** — Every epic needs three phases:
+6. **Derive the Epic Shape** — Every epic needs phases, but the phases depend on the type of work:
 
-   - **Planning tasks** (before): acceptance criteria, methodology, approach design
+   **For academic/research outputs** (papers, reports, methodology):
+   - **Evidence gathering** (first): web research, literature review, internal audit, data survey — run in parallel
+   - **Decision support** (blocked on evidence): synthesise findings into decision-ready briefings
+   - **Decisions** (human judgment): user makes informed choices, blocked on decision support
+   - **Execution** (blocked on decisions): implement the decisions
+   - **Integration** (blocked on execution): reconcile parallel tracks
+   - **Verification** (terminal): dogfood, QA, audit with receipts
+
+   **For framework/engineering work:**
+   - **Planning tasks** (before): acceptance criteria, approach design
    - **Execution tasks** (during): the actual work, one task per workflow step
    - **Verification tasks** (after): QA, testing, cross-referencing, review
+
+   **Self-check rules** (apply after creating any task):
+   - After creating a **decision** task: "What information does the user need to make this decision?" → Create a prep task and block the decision on it.
+   - After creating an **execution** task: "Is this conditional on a decision that hasn't been made?" → If yes, add dependency on the decision task.
+   - After creating a **writing** task: "What analysis/data needs to be final before this can be written?" → Block on the data task.
 
    Map workflow steps to tasks. Each step becomes one or more tasks. See [[decomposition-patterns]] for temporal, functional, and complexity patterns.
 
@@ -81,3 +95,5 @@ Tasks created during decomposition will often be picked up by a **different agen
 - **Actionability**: Every task must be completable in a single session.
 - **Verification**: Every epic must include at least one QA/review task.
 - **Conservative expansion**: If a task can be done in one sitting, don't decompose further.
+- **Graph placement**: Every created task must be connected to the graph — parented under a live (not done) epic, with dependencies to related work. A task with zero downstream weight and a completed parent is effectively invisible to prioritisation. Check: is the parent epic still active? Do any other tasks depend on this work?
+- **Scope drift tracking**: When a PR or decision changes the scope of existing tasks, update the affected task bodies. Decomposition is not fire-and-forget — if upstream work narrows or shifts the problem, downstream tasks must be refreshed or they become stale.
