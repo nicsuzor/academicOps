@@ -15,8 +15,8 @@ Find today's daily note at `$ACA_DATA/daily/YYYYMMDD-daily.md`. Read the `## Foc
 Query PKB for tasks completed today:
 
 ```python
-# Get tasks modified today with done status
-completed_today = mcp__pkb__list_tasks(status="done", limit=50)
+# Get tasks completed — use a high limit to avoid missing any
+completed_today = mcp__pkb__list_tasks(status="done", limit=200)
 # Filter to tasks with modified date matching today
 ```
 
@@ -77,7 +77,7 @@ Ask: "Are your current priorities still the right focus for tomorrow?"
 
 Options: "Yes, keep them" | "Adjust" | "Need a reset"
 
-**If "Adjust"**: Update `### My priorities` in tomorrow's daily note (or today's if tomorrow's doesn't exist yet).
+**If "Adjust"**: Update `### My priorities` in tomorrow's daily note. If tomorrow's note does not exist, create it before updating.
 **If "Need a reset"**: Suggest `/strategy` session for strategic replanning.
 
 ### Step 6: Write Reflection
