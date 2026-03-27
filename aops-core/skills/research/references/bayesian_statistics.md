@@ -155,7 +155,7 @@ for name, prior in priors:
     with pm.Model():
         effect = pm.Normal("effect", mu=prior.mu, sigma=prior.sigma)
         # ... rest of model
-        trace = pm.sample()
+        trace = pm.sample(2000, tune=1000, return_inferencedata=True)
         results[name] = trace
 ```
 
@@ -501,7 +501,7 @@ with pm.Model() as hierarchical_model:
     # Likelihood
     y_obs = pm.Normal("y_obs", mu=alpha[group_idx], sigma=sigma_within, observed=y)
 
-    trace = pm.sample()
+    trace = pm.sample(2000, tune=1000, return_inferencedata=True)
 ```
 
 ## Model Comparison

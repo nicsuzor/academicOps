@@ -103,12 +103,12 @@ How the framework watches itself and improves.
 
 How tasks are surfaced, scored, and visualised for the human.
 
-| Spec                       | Status | Purpose                                                         |
-| -------------------------- | ------ | --------------------------------------------------------------- |
-| [[intentions.md]]          | ✅     | Declaration-of-focus for intention-driven workflow              |
-| [[overwhelm-dashboard.md]] | ✅     | Streamlit dashboard for cognitive load management               |
-| [[task-focus-scoring.md]]  | ✅     | Hot/cold classification and ready-queue ranking                 |
-| [[task-map.md]]            | ✅     | Network graph visualisation (subsection of overwhelm-dashboard) |
+| Spec                       | Status | Purpose                                                                        |
+| -------------------------- | ------ | ------------------------------------------------------------------------------ |
+| [[intentions.md]]          | 🗄️      | ~~Intentions~~ Deprecated 2026-03-27. PKB priority is the sole ranking signal. |
+| [[overwhelm-dashboard.md]] | ✅     | Streamlit dashboard for cognitive load management                              |
+| [[task-focus-scoring.md]]  | ✅     | Hot/cold classification and ready-queue ranking                                |
+| [[task-map.md]]            | ✅     | Network graph visualisation (subsection of overwhelm-dashboard)                |
 
 ## Archived
 
@@ -132,7 +132,7 @@ Major spec dependency chains (changing upstream specs may invalidate downstream)
 
 ```
 Planning:     effectual-planning-agent → conceptual-review → research-decomposition
-Intentions:   task-focus-scoring + effectual-planning-agent → intentions
+Intentions:   (deprecated — intentions.md archived 2026-03-27)
 Scheduling:   effectual-planning-agent → strategic-triage → daily (recommendations)
               sleep-cycle ↔ strategic-triage (sibling scheduled agents)
 Constraints:  workflow-system-spec → workflow-constraints → predicate-registry → constraint-checking-tests

@@ -9,12 +9,9 @@ description: >
   compromise validity are caught and refused.
 category: instruction
 triggers:
-  - "research project"
-  - "methodology"
-  - "research question"
-  - "data collection"
-  - "empirical analysis"
-  - "dry run"
+  - "research methodology"
+  - "empirical research"
+  - "methodological integrity"
   - "pilot study"
 modifies_files: false
 needs_task: false
@@ -23,7 +20,7 @@ domain:
   - academic
 allowed-tools: Read,Grep,Glob,Bash
 version: 0.1.0
-permalink: skills-research-skill
+permalink: skill-research
 ---
 
 # Research Methodology

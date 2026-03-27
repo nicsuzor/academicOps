@@ -16,7 +16,6 @@ tags: [spec, planning, agent, effectuation]
 - [[skills/planning/SKILL.md]] - Planning skill definition with strategic planning capabilities
 - [[strategic-intake]] - Workflow for placing fragments in the planning hierarchy
 - [[decompose]] - Workflow for breaking epics into tasks via workflow steps
-- [[intentions.md]] - Intention-driven decomposition trigger (Mode 2 invoked by `/intend`)
 - [[mcp__pkb__get_network_metrics]] - Graph centrality and topology metrics
 - [[mcp__pkb__get_dependency_tree]] - Upstream/downstream dependency traversal
 - [[mcp__pkb__pkb_context]] - Node neighbourhood within N hops
@@ -107,11 +106,6 @@ These expectations define the verifiable behaviour of the Effectual Planning Age
 - **Testable**: The agent's prioritization response explicitly mentions metrics like "downstream weight" or "blocks X tasks" for the top recommended items.
 - **Expectation**: Recommended next steps must prioritize unblocking convergent threads (nodes where multiple dependency paths meet).
 - **Testable**: In a graph with a bottleneck task (blocking multiple descendants), the agent identifies it as a higher priority than leaf tasks with no descendants.
-
-### 4. Intention-Driven Focus
-
-- **Expectation**: When intentions are active (defined in `$ACA_DATA/intentions.yaml`), the agent must prioritize tasks within those intention subgraphs.
-- **Testable**: When an intention is active, the agent's recommended "next actions" are members of the intention's descendant set (verifiable via `get_task_children(root_id, recursive=True)`).
 
 ## Three Operational Modes
 
@@ -280,39 +274,6 @@ The Effectual Planning Agent is one component of a broader academicOps toolkit.
 - Tool-agnostic, human-readable, AI-parseable
 - Markdown + YAML + wikilinks as common substrate
 
-## Intention-Driven Decomposition
-
-When a user declares an intention (via `/intend`) on a node that has no leaf tasks, the effectual planner's Mode 2 (DOWN) is triggered to decompose the intention root into actionable work.
-
-### Trigger
-
-The `/intend` command detects that the intention root has no actionable descendants (no leaf tasks with active/ready status). It offers to invoke the planner:
-
-```
-This epic has no actionable tasks yet. Shall I decompose it?
-```
-
-If the user confirms, `/intend` invokes the planner via `/planning`.
-
-### Behaviour
-
-The planner operates in standard Mode 2 (Epic Decomposition) with one addition: it reports the intention subgraph statistics after decomposition so `/intend` can display:
-
-```
-Intention set: "Get the OSB benchmarking study out"
-Created 8 tasks. 3 are ready to start.
-Next task: [ns-abc] Write methods section (P1)
-```
-
-### Connection to Intentions
-
-The planner does NOT need to know about intentions directly. It decomposes epics/projects into tasks as normal. The intention system is a lens on the graph, not a modification to it. The planner creates tasks; the intention system scopes which tasks are visible.
-
-However, the planner benefits from intention context:
-
-- When prioritising (Mode 3), tasks in active intention subgraphs score higher via `intention_alignment` in focus scoring (see [[task-focus-scoring.md]])
-- When proposing next steps, awareness of active intentions helps the planner recommend work that advances declared goals
-
 ## Open Questions
 
 Things we don't know yet and are planning to find out:
@@ -325,6 +286,6 @@ Things we don't know yet and are planning to find out:
 
 4. **Historical value.** How much should we preserve vs. archive vs. delete? When is a dead project worth keeping?
 
-5. ~~**Daily skill alignment.**~~ **Resolved by [[intentions.md]].** When intentions are active, the daily note leads with intention-scoped next actions instead of SHOULD/DEEP/ENJOY/QUICK/UNBLOCK categories. Within an intention's subgraph, the agent still applies judgment about what advances the intention most — combining the planner's information-value lens with the daily skill's operational awareness.
+5. ~~**Daily skill alignment.**~~ **Resolved 2026-03-27.** The daily skill uses category-based recommendations (SHOULD/DEEP/ENJOY/QUICK/UNBLOCK) with PKB priority (P0-P4) as the ranking signal. Daily note "My priorities" is the SSoT for today-specific focus. Intentions infrastructure was removed — see [[intentions.md]] (deprecated) for historical context.
 
 These are the assumptions we're testing by building and using the system.

@@ -87,6 +87,7 @@ The framework has a recurring failure mode: **over-engineering coordination mech
 
 - **Workflow obligation profiles**: The "integrity obligation profiles with composable overlays" framing. Academically interesting, practically unused.
 - **Enforcement ladder**: Graduated enforcement spec with 7 levels. Over-engineered for the problem.
+- **Intentions infrastructure**: Three disconnected priority systems (P0-P4 priority, `intentions.yaml`, daily "My priorities") caused confusion. Consolidated to one signal: PKB priority is the sole ranking signal, daily note "My priorities" is the SSoT for today-specific focus. `/intend` command removed, `intentions.yaml` deleted.
 
 **What we're re-evaluating (not cut, but need to earn their keep):**
 

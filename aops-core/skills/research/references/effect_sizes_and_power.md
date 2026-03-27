@@ -421,11 +421,8 @@ ci = np.exp(model.conf_int())  # Exponentiate CIs
 import pingouin as pg
 
 # Bayesian t-test
-result = pg.ttest(group1, group2, correction=False)
-# Note: pingouin doesn't include BF; use other packages
-
-# Using JASP or BayesFactor (R) via rpy2
-# Or implement using numerical integration
+bf_result = pg.bayesfactor_ttest(group1, group2)
+print(bf_result)
 ```
 
 ## Power Analysis

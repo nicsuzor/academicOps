@@ -2,7 +2,7 @@
 title: Test Selection Guide
 type: reference
 category: ref
-permalink: skills-research-test-selection-guide
+permalink: research-ref-test-selection-guide
 description: Decision tree and guidance for selecting appropriate statistical tests based on research design and data type
 tags: [statistics, testing, test-selection, reference]
 ---

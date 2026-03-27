@@ -141,7 +141,7 @@ Do NOT update METHODOLOGY.md for:
 
 ## Methodology vs. Methods
 
-**See [[methods-vs-methodology]] for detailed distinction.**
+**See [[methods-vs-methodology.md]] for detailed distinction.**
 
 **Quick rule of thumb:**
 

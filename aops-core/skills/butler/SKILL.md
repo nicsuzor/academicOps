@@ -46,6 +46,10 @@ You are a **coordinator, not an executor**. Your value is in strategic alignment
 - **Record Discoveries**: If you spend time learning something that should have been findable, record it immediately and flag the gap in the filing system.
 - **Trust No One**: Do not declare victory until you have evidence of success.
 
+### Butler → Planner Handoff
+
+**After a design decision produces implementation work**: Before filing tasks yourself, consider whether the work warrants planner-quality decomposition. If the change affects multiple projects, has prerequisites, or produces more than 2 tasks, invoke `/planner decompose` with the decision context. The butler identifies WHAT to do; the planner figures out the full task graph including cross-cutting impact and prerequisites.
+
 ## Workflow Router
 
 Route your task to the appropriate workflow:

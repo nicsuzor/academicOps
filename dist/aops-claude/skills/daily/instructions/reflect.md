@@ -1,6 +1,6 @@
 # Daily Note: Reflection
 
-Structured end-of-day and weekly reflection on intention progress. This is a subset of the `/daily` skill — reflection is how intentions become learning.
+Structured end-of-day and weekly reflection on work progress. This is a subset of the `/daily` skill — reflection is how work becomes learning.
 
 Invoked when the user says "reflect", "end of day", "how did today go", "weekly review", or similar.
 
@@ -8,26 +8,52 @@ Invoked when the user says "reflect", "end of day", "how did today go", "weekly 
 
 ### Step 1: Load Context
 
-Read `$ACA_DATA/intentions.yaml` to get active intentions and their root IDs. Note today's date. Find today's daily note at `$ACA_DATA/daily/YYYYMMDD-daily.md`.
+Find today's daily note at `$ACA_DATA/daily/YYYYMMDD-daily.md`. Read the `## Focus` section (including `### My priorities` if present) and the `## Today's Story` section.
 
-### Step 2: Per-Intention Progress
+### Step 2: Gather Today's Progress
 
-For each active intention, use `mcp__pkb__get_task_children(id=root_id, recursive=True)` to get all descendants. Identify tasks that were completed today (status `done` and `modified` date matching today). Compute the progress delta (tasks done today and cumulative %). Identify what's ready for tomorrow.
+Query PKB for tasks completed today:
 
-Present per intention:
+```python
+# Get tasks completed — use a high limit to avoid missing any
+completed_today = mcp__pkb__list_tasks(status="done", limit=200)
+# Filter to tasks with modified date matching today
+```
+
+Also check the daily note's work log for merged PRs and session summaries.
+
+### Step 3: Compare Against Priorities
+
+Compare completed work against the `### My priorities` subsection in today's Focus section:
+
+- Which stated priorities got attention?
+- Which were neglected?
+- What unplanned work happened instead?
+
+Present per-project progress:
 
 ```markdown
 ## Reflection: 2026-03-10
 
-### Get the OSB benchmarking study out
+### Progress by project
 
-**Today's progress**: 3 tasks completed (+15%, now 75%)
+**OSB Benchmarking** — 3 tasks completed (+15%)
 
 - [ns-abc] Write methods section
 - [ns-def] Run benchmark suite
 - [ns-ghi] Clean dataset B
 
-**Tomorrow's next actions**:
+**academicOps** — 1 task completed
+
+- [task-xyz] Fix CI pipeline
+
+### Against priorities
+
+- ✅ OSB study — strong progress
+- ⏳ ARC report — started but not submitted
+- ❌ Student feedback — didn't get to it
+
+### Tomorrow's next actions
 
 1. [ns-jkl] Draft results section — P1
 2. [ns-mno] Create figures for Chapter 4 — P2
@@ -35,9 +61,9 @@ Present per intention:
 **Blockers**: [ns-pqr] Ethics approval — still waiting
 ```
 
-### Step 3: Intention Health Check
+### Step 4: Attention Check
 
-For each intention, ask: "Did '[label]' get the attention it deserved today?"
+Ask: "Did your stated priorities get the attention they deserved today?"
 
 Options: "Yes" | "Some" | "No"
 
@@ -45,18 +71,14 @@ Options: "Yes" | "Some" | "No"
 
 If "Stuck": offer to create a blocker task or decompose further.
 
-### Step 4: Intention Relevance
+### Step 5: Priority Relevance
 
-Ask: "Are your current intentions still the right focus?"
+Ask: "Are your current priorities still the right focus for tomorrow?"
 
-Options: "Yes, keep them" | "Adjust" | "One is done"
+Options: "Yes, keep them" | "Adjust" | "Need a reset"
 
-**If "One is done"**: Trigger `/intend done` flow.
-**If "Adjust"**: Suggest `/intend` to modify.
-
-### Step 5: Unplanned Work
-
-Look at tasks completed today (status `done`, modified today). Identify which ones fall outside all active intention subgraphs by comparing their project/parent chain against the intention root IDs and their descendants. Report any tasks completed outside intentions and ask: "Should any of this become an intention?"
+**If "Adjust"**: Update `### My priorities` in tomorrow's daily note. If tomorrow's note does not exist, create it before updating.
+**If "Need a reset"**: Suggest `/strategy` session for strategic replanning.
 
 ### Step 6: Write Reflection
 
@@ -64,11 +86,11 @@ Append the reflection summary to the daily note's `## Today's Story` section. Wr
 
 ```markdown
 Good progress on OSB study — methods section done, benchmark suite run. 75% complete.
-Didn't touch the intentions feature today; interrupted by CI fixes and student emails.
+Didn't touch the ARC report; interrupted by CI fixes and student emails.
 Ethics approval still blocking dataset C work.
 ```
 
-Include: per-intention progress with delta, attention assessment, blockers encountered, any intention changes, unplanned work noted.
+Include: per-project progress, priority comparison, blockers encountered, any priority changes, unplanned work noted.
 
 ## Weekly Review
 
@@ -76,41 +98,46 @@ Invoked with "weekly review" or similar.
 
 ### Step 1: Load Week's Data
 
-Read daily notes from the past 7 days from `$ACA_DATA/daily/`. Load current intentions. Review task completions across the week.
+Read daily notes from the past 7 days from `$ACA_DATA/daily/`. Review task completions across the week by project.
 
-### Step 2: Per-Intention Weekly Summary
+### Step 2: Per-Project Weekly Summary
 
-For each intention (including any completed or replaced during the week), present:
+Summarise progress by project:
 
 ```markdown
 ## Weekly Review: 2026-03-03 to 2026-03-10
 
-### Get the OSB benchmarking study out
+### OSB Benchmarking
 
-**Weekly progress**: 45% → 75% (+30%)
 **Tasks completed**: 8
 **Days with attention**: 5/7
 **Current blockers**: Ethics approval (7 days waiting)
 **Assessment**: Strong week. On track for completion by March 20.
+
+### academicOps
+
+**Tasks completed**: 3
+**Days with attention**: 3/7
+**Assessment**: Maintenance mode — CI fixes and graph health.
 ```
 
 ### Step 3: Time Allocation
 
-Estimate how sessions were distributed across intentions and outside work:
+Estimate how sessions were distributed across projects:
 
 ```markdown
 ### Time Allocation
 
 - OSB study: ~60% (5 days)
-- Intentions feature: ~20% (2 days)
-- Outside intentions: ~20% (CI fixes, admin, email)
+- academicOps: ~20% (2 days)
+- Admin/email: ~20% (ad hoc)
 ```
 
 ### Step 4: Next Week Planning
 
-Ask: "Are these still the right intentions for next week?"
+Ask: "What are your priorities for next week?"
 
-Options: "Keep same" | "Swap one" | "Fresh start"
+Options: "Same as this week" | "Shift focus" | "Need to think"
 
 ### Step 5: Write Weekly Summary
 
@@ -121,8 +148,8 @@ Write to `$ACA_DATA/daily/YYYYMMDD-weekly-review.md` with the weekly summary.
 Reflection is not surveillance. It's about:
 
 1. **Noticing patterns** — What keeps getting in the way? What energises you?
-2. **Adjusting intentions** — Are you working on the right things? Has something changed?
-3. **Celebrating progress** — 3 tasks completed toward a meaningful intention is a good day.
+2. **Adjusting priorities** — Are you working on the right things? Has something changed?
+3. **Celebrating progress** — 3 tasks completed toward a meaningful goal is a good day.
 4. **Honest assessment** — "I didn't have the energy" is a valid answer. The system adapts.
 
 The reflection should feel like a brief conversation with a supportive colleague, not a performance review.
