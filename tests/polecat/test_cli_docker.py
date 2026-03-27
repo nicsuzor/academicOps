@@ -458,6 +458,88 @@ class TestReplicateGeminiAuth:
 
         shutil.rmtree(result)
 
+    def test_replicated_settings_is_minimal(self, tmp_path):
+        """Replicated settings.json should contain only auth + sandbox config.
+
+        User baggage (MCP servers, UI prefs, hooks, shell config) must not leak
+        into sandbox sessions — it causes hangs, non-reproducible behavior, and
+        host-path references that don't exist inside the container.
+        """
+        gemini_dir = tmp_path / ".gemini"
+        gemini_dir.mkdir(parents=True)
+
+        settings = {
+            "security": {"auth": {"selectedType": "oauth-personal"}},
+            "tools": {"shell": {"showColor": True}},
+            "mcpServers": {
+                "playwright": {"command": "npx", "args": ["playwright"]},
+            },
+            "ui": {"showCitations": True},
+            "hooks": {"some_hook": {}},
+        }
+        (gemini_dir / "settings.json").write_text(json.dumps(settings))
+
+        env = {}
+        with patch("cli.Path.home", return_value=tmp_path):
+            result = _replicate_gemini_auth(env)
+
+        assert result is not None
+        replicated = json.loads((result / ".gemini" / "settings.json").read_text())
+
+        # Auth config preserved
+        assert replicated["security"]["auth"]["selectedType"] == "oauth-personal"
+        # Sandbox forced on
+        assert replicated["tools"]["sandbox"]["enabled"] is True
+        assert replicated["tools"]["sandbox"]["networkAccess"] is True
+        # User baggage stripped
+        assert "mcpServers" not in replicated
+        assert "ui" not in replicated
+        assert "hooks" not in replicated
+        assert "shell" not in replicated.get("tools", {})
+
+        import shutil
+
+        shutil.rmtree(result)
+
+    def test_missing_auth_type_skips_settings(self, tmp_path):
+        """Settings without security.auth.selectedType should be skipped, not defaulted."""
+        gemini_dir = tmp_path / ".gemini"
+        gemini_dir.mkdir(parents=True)
+
+        # Settings with no auth type
+        (gemini_dir / "settings.json").write_text(json.dumps({"tools": {}}))
+
+        env = {}
+        with patch("cli.Path.home", return_value=tmp_path):
+            result = _replicate_gemini_auth(env)
+
+        assert result is not None
+        # settings.json should not exist — skipped due to missing auth type
+        assert not (result / ".gemini" / "settings.json").exists()
+
+        import shutil
+
+        shutil.rmtree(result)
+
+    def test_corrupt_settings_skipped(self, tmp_path):
+        """Unparseable settings.json should be skipped, not copied raw."""
+        gemini_dir = tmp_path / ".gemini"
+        gemini_dir.mkdir(parents=True)
+
+        (gemini_dir / "settings.json").write_text("not valid json{{{")
+
+        env = {}
+        with patch("cli.Path.home", return_value=tmp_path):
+            result = _replicate_gemini_auth(env)
+
+        assert result is not None
+        # settings.json should not exist — skipped due to parse error
+        assert not (result / ".gemini" / "settings.json").exists()
+
+        import shutil
+
+        shutil.rmtree(result)
+
 
 class TestMountAcaDataSandbox:
     """Tests for _mount_aca_data_sandbox — called by both crew -g and run -g."""
