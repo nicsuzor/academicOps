@@ -14,8 +14,6 @@ Auto-generated during build. Lists all files in this plugin distribution.
 
 Total files: 175
 
-<!-- ns: this is useless; an index requires a second field that explains what the file is FOR. -->
-
 ## File Tree
 
 ```
