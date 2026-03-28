@@ -15,6 +15,7 @@ AOPS_CORE_DIR = Path(__file__).resolve().parent.parent / "aops-core"
 
 # Files that are intentionally NOT deployed (generated, dev-only, or platform-specific)
 EXCLUDED_FILES = {
+    "BUTLER.md",  # Intentionally not deployed — content moved to enforcement-map.md and /butler skill
     "GEMINI.md",  # Added conditionally for gemini platform only (line 602 of build.py)
 }
 

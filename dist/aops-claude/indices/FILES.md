@@ -19,7 +19,6 @@ Total files: 175
 ```
 .claude-plugin/plugin.json
 AXIOMS.md
-BUTLER.md
 CONSTRAINTS.md
 HEURISTICS.md
 INDEX.md
