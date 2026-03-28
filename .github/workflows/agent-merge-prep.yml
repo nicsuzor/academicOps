@@ -295,11 +295,12 @@ jobs:
           REPO="${{ github.repository }}"
           HEAD_SHA=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json headRefOid --jq '.headRefOid')
 
-          # Count recent failed merge-prep runs for this PR branch (no comment parsing)
-          HEAD_REF=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json headRefName --jq '.headRefName')
-          FAIL_COUNT=$(gh run list --workflow=agent-merge-prep.yml --repo "$REPO" \
-            --branch "$HEAD_REF" --json conclusion \
-            --jq '[.[] | select(.conclusion == "failure")] | length')
+          # Count prior failures by counting "Merge Prep: Failed" comments from this bot.
+          # We cannot use `gh run list --conclusion failure` because continue-on-error
+          # on the Claude step makes the workflow conclude as "success" even when the
+          # agent fails — so the run-level conclusion is never "failure".
+          FAIL_COUNT=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
+            --jq '[.[] | select(.user.login == "github-actions[bot]" and (.body | test("## Merge Prep: Failed")))] | length')
 
           if [ "$FAIL_COUNT" -ge 2 ]; then
             # This is the 3rd+ failure — halt permanently
