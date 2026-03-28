@@ -12,6 +12,39 @@ tags: [framework, enforcement, moc]
 
 **Purpose**: Current state of what's protected and how. For mechanism selection guidance, see [[ENFORCEMENT]]. For architectural philosophy, see [[enforcement]].
 
+## Axiom Registry: Tiered Architecture
+
+Axioms are organized into tiers, each enforced by a distinct agent personality. This section is the **manifest** — agents read it to discover which rule files to load for their context.
+
+### Tier 1: Universal Axioms (always active)
+
+**File**: `$AOPS/aops-core/AXIOMS.md`
+**Agent**: Integrity enforcer
+**Scope**: All work, all contexts, all platforms
+
+Contains: P#3 (Don't Make Shit Up), P#5 (Do One Thing), P#6 (Data Boundaries), P#9 (Fail-Fast Agents), P#26 (Verify First), P#27 (No Excuses), P#30 (Nothing Is Someone Else's Responsibility), P#31 (Acceptance Criteria Own Success), P#48 (Human Tasks), P#50 (Explicit Approval), P#99 (Delegated Authority Only).
+
+### Tier 2: Contextual Rules (activated by project context)
+
+| Context     | File                                        | Agent                          | Activates when                       |
+| ----------- | ------------------------------------------- | ------------------------------ | ------------------------------------ |
+| Academic    | `$AOPS/aops-core/skills/research/axioms.md` | Academic standards enforcer    | Research, teaching, publication work |
+| Development | `$AOPS/aops-core/RULES-DEV.md`              | Engineering standards enforcer | Code, infrastructure, CI/CD work     |
+| Framework   | `$AOPS/aops-core/RULES-FRAMEWORK.md`        | Framework operations enforcer  | Working on/within academicOps        |
+
+### Tier 3: Heuristics (advisory)
+
+**File**: `$AOPS/aops-core/HEURISTICS.md`
+**Scope**: Inform but don't block. Checked periodically by custodiet.
+
+### How agents consume the registry
+
+1. Agent reads this manifest to identify which tier files apply to current context
+2. Agent always loads Tier 1 (universal axioms)
+3. Agent loads relevant Tier 2 file(s) based on project context
+4. Agent exercises semantic judgment about which specific axioms apply to the current task and phase
+5. No programmatic lookup — agents read and decide (P#49)
+
 ## Axiom → Enforcement Mapping
 
 | Axiom                                       | Rule                                | Enforcement                                                                                   | Point                     | Level  |
@@ -168,12 +201,15 @@ Context loading follows a **three-tier architecture** (see [[session-start-injec
 
 ### File Loading Summary
 
-| File                  | Purpose                         | Loaded Via                    |
-| --------------------- | ------------------------------- | ----------------------------- |
-| `$AOPS/CORE.md`       | Framework tool inventory (~2KB) | SessionStart hook             |
-| `$cwd/.agent/CORE.md` | Project conventions             | SessionStart hook (if exists) |
-| `AXIOMS.md`           | Inviolable principles           | SessionStart (some) or manual |
-| `HEURISTICS.md`       | Operational defaults            | SessionStart (some) or manual |
+| File                        | Purpose                           | Loaded Via                    |
+| --------------------------- | --------------------------------- | ----------------------------- |
+| `$AOPS/CORE.md`             | Framework tool inventory (~2KB)   | SessionStart hook             |
+| `$cwd/.agent/CORE.md`       | Project conventions               | SessionStart hook (if exists) |
+| `AXIOMS.md`                 | Tier 1: Universal axioms          | SessionStart (always)         |
+| `RULES-DEV.md`              | Tier 2: Development context rules | JIT (when writing code)       |
+| `RULES-FRAMEWORK.md`        | Tier 2: Framework context rules   | JIT (when on framework work)  |
+| `skills/research/axioms.md` | Tier 2: Academic context rules    | JIT (when on academic work)   |
+| `HEURISTICS.md`             | Tier 3: Advisory heuristics       | JIT via hints                 |
 
 ## MCP Tool Injection Requirements
 
