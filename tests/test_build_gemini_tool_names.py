@@ -96,16 +96,25 @@ class TestGeminiDistToolNames:
 
         # Python files like gate_config.py legitimately list both formats for matching
         # (e.g. a translation table that maps double→single). Only flag a .py file if
-        # it contains double-underscore MCP names but ZERO single-underscore equivalents
+        # it contains double-underscore MCP names but ZERO Gemini-format equivalents
         # — that indicates an untranslated file, not a legitimate dual-format reference.
-        mcp_single_underscore = re.compile(r"mcp_(?!_)[a-zA-Z0-9-]+_[a-zA-Z0-9_-]+")
+        # Gemini equivalents: mcp_server_tool (single-underscore), pkb:tool (colon
+        # format), bare tool names, normalization infra (_PKB_PREFIX_RE), or
+        # conceptual_terms (reference strings in audit scripts, not tool invocations).
+        gemini_or_reference = re.compile(
+            r"mcp_(?!_)[a-zA-Z0-9-]+_[a-zA-Z0-9_-]+"  # mcp_server_tool
+            r"|pkb:[a-zA-Z0-9_-]+"  # pkb:tool colon format
+            r"|_PKB_PREFIX"  # normalization infrastructure
+            r"|conceptual_terms"  # exclusion list context (audit scripts)
+            r'|"(?:update_task|complete_task|complete_tasks|create_task|list_tasks|reindex)"'
+        )
 
         flagged: list[str] = []
         for py_file in py_files:
             text = py_file.read_text()
             has_double = bool(MCP_DOUBLE_UNDERSCORE.search(text))
-            has_single = bool(mcp_single_underscore.search(text))
-            if has_double and not has_single:
+            has_context = bool(gemini_or_reference.search(text))
+            if has_double and not has_context:
                 rel = py_file.relative_to(gemini_dist)
                 flagged.append(str(rel))
 
