@@ -616,7 +616,12 @@ def test_crew_gemini_sandbox_config(temp_polecat_home, tmp_path):
         return out.split(begin, 1)[1].split(end, 1)[0].strip()
 
     gitconfig_content = extract_mount_content(output, str(Path.home() / ".gitconfig"))
-    if gitconfig_content:  # Only check if gitconfig was mounted
+    assert gitconfig_content, (
+        ".gitconfig mount not found in sandbox output — token embedding is unverified. "
+        "If apply_env_mappings() failed to map AOPS_BOT_GH_TOKEN to GH_TOKEN, "
+        "no gitconfig would be mounted and this security property is untested."
+    )
+    if gitconfig_content:
         assert "test-token-sandbox-config" in gitconfig_content, (
             "Token must be embedded in .gitconfig, not via ${GH_TOKEN}. "
             f"Content: {gitconfig_content!r}"
