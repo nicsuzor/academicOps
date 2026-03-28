@@ -175,6 +175,19 @@ def gemini_home(tmp_path_factory) -> Path:
             f"Failed to link Gemini extension (exit {result.returncode}). Stderr: {result.stderr}"
         )
 
+    # 4. Set permissive extension enablement so hooks fire for any workspace path.
+    # `gemini extensions link` restricts overrides to /home/<user>/* which won't
+    # match test tmp dirs, crew worktrees, or CI workspaces.
+    enablement_path = ext_dir / "extension-enablement.json"
+    if enablement_path.exists():
+        try:
+            enablement = json.loads(enablement_path.read_text())
+            for ext_name in enablement:
+                enablement[ext_name]["overrides"] = ["*"]
+            enablement_path.write_text(json.dumps(enablement, indent=2))
+        except (json.JSONDecodeError, OSError):
+            pass  # Best effort — test will fail downstream if this matters
+
     return tmp_home
 
 
@@ -378,6 +391,7 @@ Provides:
 from pathlib import Path
 
 import pytest
+
 from lib.paths import get_plugin_root as get_aops_root
 
 
