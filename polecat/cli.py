@@ -16,10 +16,11 @@ if str(REPO_ROOT / "aops-core") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 
 import click
-from lib.agent_env import apply_env_mappings
 from manager import PolecatManager
 from observability import metrics
 from validation import TaskIDValidationError, validate_task_id_or_raise
+
+from lib.agent_env import apply_env_mappings
 
 # Max turns for headless Claude runs — must be high enough to accommodate hook
 # overhead (hydration gate, custodiet compliance check) plus actual task work.
