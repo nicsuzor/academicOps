@@ -9,6 +9,10 @@
           "ACA_DATA": "${ACA_DATA}",
           "RUST_LOG": "warn"
         }
+      },
+      "pkb-http": {
+        "type": "http",
+        "url": "${PKB_MCP_URL}"
       }
     }
   },
