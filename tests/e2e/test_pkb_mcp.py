@@ -185,15 +185,15 @@ class HttpPkbClient(PkbClient):
     """
 
     def __init__(self, port: int, proc: subprocess.Popen):
-        self._port = port
-        self._proc = proc
+        self.port = port
+        self.proc = proc
         self._session_id: str | None = None
         self._next_id = 1
         self._initialized = False
 
     def _post(self, body: dict, session_id: str | None = None) -> tuple[int, dict, list[dict]]:
         """POST to /mcp, return (status, headers, parsed_sse_messages)."""
-        conn = http.client.HTTPConnection("127.0.0.1", self._port, timeout=15)
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=15)
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json, text/event-stream",
@@ -259,7 +259,7 @@ class HttpPkbClient(PkbClient):
 
     def raw_post_string(self, raw_body: str) -> tuple[int, dict, str]:
         """POST raw string (for malformed JSON tests)."""
-        conn = http.client.HTTPConnection("127.0.0.1", self._port, timeout=15)
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=15)
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json, text/event-stream",
@@ -276,16 +276,40 @@ class HttpPkbClient(PkbClient):
         return "http"
 
     def close(self) -> None:
-        if self._proc.poll() is None:
-            self._proc.send_signal(signal.SIGTERM)
+        if self.proc.poll() is None:
+            self.proc.send_signal(signal.SIGTERM)
             try:
-                self._proc.wait(timeout=5)
+                self.proc.wait(timeout=5)
             except subprocess.TimeoutExpired:
-                self._proc.kill()
-                self._proc.wait()
+                self.proc.kill()
+                self.proc.wait()
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────
+
+
+def _start_http_server(port: int) -> subprocess.Popen:
+    """Start pkb mcp --http on the given port and wait until it accepts connections."""
+    proc = subprocess.Popen(
+        ["pkb", "mcp", "--http", "--port", str(port)],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    deadline = time.time() + 30
+    while time.time() < deadline:
+        try:
+            s = socket.create_connection(("127.0.0.1", port), timeout=0.5)
+            s.close()
+            time.sleep(0.5)  # Give server a moment after port opens
+            return proc
+        except (ConnectionRefusedError, OSError):
+            if proc.poll() is not None:
+                stderr = proc.stderr.read().decode() if proc.stderr else ""
+                pytest.fail(f"pkb mcp --http exited early: {stderr}")
+            time.sleep(0.3)
+    proc.kill()
+    pytest.fail("pkb mcp --http did not start within 30s")
 
 
 @pytest.fixture(params=["stdio", "http"])
@@ -305,29 +329,7 @@ def pkb_server(request):
         client.close()
     else:
         port = _free_port()
-        proc = subprocess.Popen(
-            ["pkb", "mcp", "--http", "--port", str(port)],
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-        # Wait for server to be ready
-        deadline = time.time() + 30
-        while time.time() < deadline:
-            try:
-                s = socket.create_connection(("127.0.0.1", port), timeout=0.5)
-                s.close()
-                time.sleep(0.5)  # Give server a moment after port opens
-                break
-            except (ConnectionRefusedError, OSError):
-                if proc.poll() is not None:
-                    stderr = proc.stderr.read().decode() if proc.stderr else ""
-                    pytest.fail(f"pkb mcp --http exited early: {stderr}")
-                time.sleep(0.3)
-        else:
-            proc.kill()
-            pytest.fail("pkb mcp --http did not start within 30s")
-
+        proc = _start_http_server(port)
         client = HttpPkbClient(port, proc)
         yield client
         client.close()
@@ -340,28 +342,7 @@ def pkb_http_server():
         pytest.skip("pkb binary not available or ACA_DATA not set")
 
     port = _free_port()
-    proc = subprocess.Popen(
-        ["pkb", "mcp", "--http", "--port", str(port)],
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-    deadline = time.time() + 30
-    while time.time() < deadline:
-        try:
-            s = socket.create_connection(("127.0.0.1", port), timeout=0.5)
-            s.close()
-            time.sleep(0.5)
-            break
-        except (ConnectionRefusedError, OSError):
-            if proc.poll() is not None:
-                stderr = proc.stderr.read().decode() if proc.stderr else ""
-                pytest.fail(f"pkb mcp --http exited early: {stderr}")
-            time.sleep(0.3)
-    else:
-        proc.kill()
-        pytest.fail("pkb mcp --http did not start within 30s")
-
+    proc = _start_http_server(port)
     client = HttpPkbClient(port, proc)
     yield client
     client.close()
@@ -445,7 +426,7 @@ class TestPkbHttpOnly:
         pkb_http_server.initialize()
         status, _, _ = pkb_http_server.raw_post(_tool_call(99, "graph_stats"), session_id=None)
         assert 400 <= status < 500, f"expected 4xx for missing session ID, got {status}"
-        assert pkb_http_server._proc.poll() is None, "server crashed"
+        assert pkb_http_server.proc.poll() is None, "server crashed"
 
     def test_invalid_session_id_rejected(self, pkb_http_server: HttpPkbClient):
         """Request with bogus session ID returns error."""
@@ -454,23 +435,23 @@ class TestPkbHttpOnly:
             _tool_call(99, "graph_stats"), session_id="bogus-id-12345"
         )
         assert 400 <= status < 500, f"expected 4xx for invalid session ID, got {status}"
-        assert pkb_http_server._proc.poll() is None, "server crashed"
+        assert pkb_http_server.proc.poll() is None, "server crashed"
 
     def test_malformed_json_rejected(self, pkb_http_server: HttpPkbClient):
         """Malformed JSON returns error, server stays alive."""
         pkb_http_server.initialize()
         status, _, _ = pkb_http_server.raw_post_string("{not valid json!!")
         assert status >= 400, f"expected error for malformed JSON, got {status}"
-        assert pkb_http_server._proc.poll() is None, "server crashed"
+        assert pkb_http_server.proc.poll() is None, "server crashed"
 
     def test_concurrent_sessions(self, pkb_http_server: HttpPkbClient):
         """Two independent sessions get different IDs, both work."""
-        port = pkb_http_server._port
+        port = pkb_http_server.port
 
         results = {}
 
         def _run_session(name: str, tool: str):
-            client = HttpPkbClient(port, pkb_http_server._proc)
+            client = HttpPkbClient(port, pkb_http_server.proc)
             client.initialize()
             result = client.call_tool(tool)
             results[name] = {
