@@ -3,10 +3,7 @@ name: skills
 title: Skills Index
 type: index
 category: framework
-description: |
-    Quick reference for routing user requests to skills and commands.
-    The [[BUTLER.md]] guide defines how this index is used for
-    non-blocking routing hints.
+description: Quick reference for routing user requests to skills and commands.
 permalink: skills
 tags: [framework, routing, skills, index]
 ---

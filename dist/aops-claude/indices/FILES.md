@@ -14,12 +14,13 @@ Auto-generated during build. Lists all files in this plugin distribution.
 
 Total files: 175
 
+<!-- ns: this is useless; an index requires a second field that explains what the file is FOR. -->
+
 ## File Tree
 
 ```
 .claude-plugin/plugin.json
 AXIOMS.md
-BUTLER.md
 CONSTRAINTS.md
 HEURISTICS.md
 INDEX.md
