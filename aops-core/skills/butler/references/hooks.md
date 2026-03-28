@@ -386,27 +386,29 @@ The SessionStart hook script can then load external instruction files into conte
 
 ## Gemini CLI compatibility and differences
 
-Gemini CLI **does not currently have a SessionStart hook system**. This is a fundamental architectural difference and the most significant compatibility gap. GitHub issues #2779 and #9070 track feature requests for hooks in Gemini CLI, with #9070 proposing a comprehensive design that would mirror Claude Code's JSON-over-stdin contract and exit code semantics, including migration tooling to convert Claude Code hooks. As of October 2025, this remains unimplemented.
+Gemini CLI **now supports hooks** via extensions and user/project settings. The hook system was implemented after v0.30 and supports 11 lifecycle events: `SessionStart`, `SessionEnd`, `BeforeAgent`, `AfterAgent`, `BeforeTool`, `AfterTool`, `BeforeModel`, `AfterModel`, `BeforeToolSelection`, `PreCompress`, and `Notification`.
+
+Extension hooks are defined in `<extension>/hooks/hooks.json` and are auto-discovered. User/project hooks go in `settings.json` under the `hooks` key. Hooks are enabled by default (`hooksConfig.enabled: true`).
 
 **Configuration comparison:**
 
-| Aspect                   | Claude Code CLI                                      | Gemini CLI                            |
-| ------------------------ | ---------------------------------------------------- | ------------------------------------- |
-| **Hooks system**         | 8 lifecycle events implemented                       | Not implemented (requested)           |
-| **SessionStart**         | Fully functional                                     | Not available                         |
-| **Configuration file**   | `~/.claude/settings.json`                            | `~/.gemini/settings.json`             |
-| **Context/memory**       | `CLAUDE.md`                                          | `GEMINI.md`                           |
-| **MCP servers**          | Separate `.mcp.json` (git-friendly)                  | In main settings.json                 |
-| **Discovery precedence** | Enterprise → Project local → Project → User → Legacy | System → User → Project → Environment |
-| **Philosophy**           | Hybrid deterministic + probabilistic                 | Purely probabilistic context-driven   |
+| Aspect                   | Claude Code CLI                     | Gemini CLI                                         |
+| ------------------------ | ----------------------------------- | -------------------------------------------------- |
+| **Hooks system**         | 10 lifecycle events                 | 11 lifecycle events (includes BeforeToolSelection) |
+| **Extension hooks**      | `hooks` in plugin settings          | `hooks/hooks.json` in extension directory          |
+| **Hook priority**        | Merged by settings hierarchy        | Runtime > Project > User > System > Extension      |
+| **Configuration file**   | `~/.claude/settings.json`           | `~/.gemini/settings.json`                          |
+| **Context/memory**       | `CLAUDE.md`                         | `GEMINI.md`                                        |
+| **MCP servers**          | Separate `.mcp.json` (git-friendly) | In `gemini-extension.json` or settings             |
+| **Path variable**        | `${CLAUDE_PLUGIN_ROOT}`             | `${extensionPath}`                                 |
+| **Sandbox scope**        | N/A (uses Docker via polecat)       | Tool subprocesses only; hooks run outside sandbox  |
+| **Extension enablement** | Plugin marketplace                  | `extension-enablement.json` with path overrides    |
 
-Gemini CLI relies entirely on **probabilistic AI following instructions** in GEMINI.md files rather than guaranteed deterministic hook execution. This makes it suitable for exploratory work and individual development but less reliable for production automation requiring guaranteed actions like formatting, linting, or quality gates.
+**Important**: When using `GEMINI_CLI_HOME` to redirect Gemini's config directory (as polecat crew does), the `settings.json` must not set `security.auth.selectedType` — Gemini exits before hooks fire if the auth type doesn't match available credentials. Let Gemini auto-detect. Similarly, `tools.sandbox.enabled: true` in settings can cause Gemini to crash writing state files to the temp directory. The safe template is `{"hooksConfig":{"enabled":true}}`.
 
 **Both CLIs can coexist** on the same system without conflicts—they use different configuration directories (`~/.claude/` vs `~/.gemini/`), different context files, and different command namespaces. MCP servers are fully compatible since both implement the Model Context Protocol standard; the same server works with both CLIs despite different configuration formats.
 
-**Migration path**: Currently manual. When Gemini implements hooks, the proposed design includes a `gemini hooks migrate --from-claude` command for automatic conversion of hook configurations and environment variable mappings.
-
-**When to use each**: Choose Claude Code for production environments requiring deterministic automation, team collaboration with shared configurations, CI/CD integration, and quality gate enforcement. Choose Gemini CLI for exploratory development, personal projects, situations where the generous free tier matters, or when you prefer open-source tools (Gemini CLI is Apache 2.0 licensed). The fundamental trade-off is deterministic control vs. probabilistic instruction-following.
+**Migration path**: `gemini hooks migrate --from-claude` converts Claude Code hook configurations to Gemini CLI format.
 
 ## Known limitations and issues
 

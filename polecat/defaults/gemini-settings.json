@@ -1,13 +1,5 @@
 {
-  "security": {
-    "auth": {
-      "selectedType": "__AUTH_TYPE__"
-    }
-  },
-  "tools": {
-    "sandbox": {
-      "enabled": true,
-      "networkAccess": true
-    }
+  "hooksConfig": {
+    "enabled": true
   }
 }

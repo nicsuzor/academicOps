@@ -5,6 +5,7 @@ Replaces setup.sh logic.
 """
 
 import argparse
+import json
 import os
 import shutil
 import subprocess
@@ -329,6 +330,19 @@ def main():
                 ],
                 check=False,
             )
+            # Set permissive extension enablement so hooks fire for any workspace path.
+            # `gemini extensions link` restricts overrides to /home/<user>/* which doesn't
+            # match mounted worktrees or deeply nested crew paths.
+            enablement_path = Path.home() / ".gemini" / "extensions" / "extension-enablement.json"
+            if enablement_path.exists():
+                try:
+                    enablement = json.loads(enablement_path.read_text())
+                    for ext_name in enablement:
+                        enablement[ext_name]["overrides"] = ["*"]
+                    enablement_path.write_text(json.dumps(enablement, indent=2))
+                    print("✓ Set permissive extension enablement for hooks")
+                except (json.JSONDecodeError, OSError) as e:
+                    print(f"Warning: could not update extension enablement: {e}")
         else:
             print("Warning: Gemini extension dist not found. Skipping link.")
     else:

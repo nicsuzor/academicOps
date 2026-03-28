@@ -16,10 +16,11 @@ if str(REPO_ROOT / "aops-core") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 
 import click
-from lib.agent_env import apply_env_mappings
 from manager import PolecatManager
 from observability import metrics
 from validation import TaskIDValidationError, validate_task_id_or_raise
+
+from lib.agent_env import apply_env_mappings
 
 # Max turns for headless Claude runs — must be high enough to accommodate hook
 # overhead (hydration gate, custodiet compliance check) plus actual task work.
@@ -580,30 +581,21 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
 
         if f == "settings.json":
             try:
-                # Read only the auth type from the user's settings — everything
-                # else comes from our controlled template to avoid leaking user
-                # baggage (MCP servers, hooks, UI prefs) into sandbox sessions.
-                with open(gemini_dir / f) as src_f:
-                    user_settings = json.load(src_f)
-                auth_type = user_settings.get("security", {}).get("auth", {}).get("selectedType")
-                if not auth_type:
-                    print(
-                        "   Warning: no security.auth.selectedType in user settings.json — "
-                        "sandbox auth may fail",
-                        file=sys.stderr,
-                    )
-                    continue
-
+                # Use our controlled template WITHOUT the user's auth selectedType.
+                # Gemini CLI auto-detects auth from available credentials (API key env
+                # var, OAuth files, etc.). Injecting selectedType causes Gemini to exit
+                # immediately if the auth type doesn't match available credentials
+                # (e.g. user logged in via Google Account but crew session has API key),
+                # which prevents hooks from firing at all.
                 template_path = SCRIPT_DIR / "defaults" / "gemini-settings.json"
                 with open(template_path) as tpl_f:
                     minimal = json.load(tpl_f)
-                minimal["security"]["auth"]["selectedType"] = auth_type
 
                 with open(target_dir / f, "w") as dst_f:
                     json.dump(minimal, dst_f, indent=2)
                 continue
             except (json.JSONDecodeError, OSError) as e:
-                print(f"   Warning: could not process user settings.json: {e}", file=sys.stderr)
+                print(f"   Warning: could not process settings.json template: {e}", file=sys.stderr)
                 continue
 
         # Follow symlinks to copy the actual file content, not the link itself.
