@@ -111,8 +111,7 @@ class TestGeminiDistToolNames:
 
         assert not flagged, (
             "Python files contain double-underscore MCP tool names with no single-underscore "
-            f"equivalents (likely untranslated):\n"
-            + "\n".join(f"  {f}" for f in flagged)
+            "equivalents (likely untranslated):\n" + "\n".join(f"  {f}" for f in flagged)
         )
 
     def test_agents_have_valid_tool_names(self, gemini_dist: Path) -> None:
