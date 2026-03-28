@@ -1,7 +1,7 @@
 # AcademicOps Makefile
 # Unified build and installation entry point
 
-.PHONY: help dev build-dev install-dev uninstall-dev install-remote install-claude install-gemini install-cli install-crontab install-hooks nextver release prerelease clean build-docker shell
+.PHONY: help dev build-dev install-dev uninstall-dev install-remote install-claude install-gemini install-cli install-crontab install-hooks nextver release prerelease clean build-docker shell prove
 
 # --- Configuration ---
 
@@ -210,6 +210,12 @@ build-sandbox: build-docker
 # Drop into an interactive shell in the crew image (for local testing)
 shell: build-docker
 	@docker run -it --rm -v $(AOPS_ROOT):/app -w /app $(DOCKER_IMAGE)
+
+# Build the image and prove it works end-to-end (run before release)
+prove: build-docker
+	@echo "=== Proving container works end-to-end ==="
+	uv run pytest tests/e2e/test_docker_tooling.py tests/e2e/test_polecat_docker_isolation.py -v -n 0 --timeout=300
+	@echo "=== All container tests passed ==="
 
 # --- Utils ---
 

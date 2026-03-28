@@ -1,3 +1,4 @@
+import json
 import os
 import re
 import subprocess
@@ -5,6 +6,8 @@ import sys
 from pathlib import Path
 
 import pytest
+
+from tests.conftest import _docker_available
 
 
 @pytest.fixture
@@ -16,6 +19,40 @@ def temp_polecat_home(tmp_path):
     config = {"projects": {}}
     (home / "polecat.yaml").write_text(yaml.dump(config))
     return home
+
+
+def _init_test_repo(tmp_path):
+    """Create a minimal git repo suitable for polecat crew."""
+    repo = tmp_path / "test_repo"
+    repo.mkdir()
+    subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "-C", str(repo), "config", "user.email", "test@test"],
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "-C", str(repo), "config", "user.name", "Test"],
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "commit", "--allow-empty", "-m", "init"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    return repo
+
+
+def _crew_env(polecat_home):
+    """Build an env dict for running polecat crew."""
+    env = os.environ.copy()
+    env["POLECAT_HOME"] = str(polecat_home)
+    # PYTHONPATH must include the repo root (not polecat/ itself) so that
+    # `python -m polecat.cli` can resolve `polecat` as a package.
+    env["PYTHONPATH"] = os.getcwd() + ":" + os.getcwd() + "/aops-core"
+    return env
 
 
 @pytest.mark.slow
@@ -377,3 +414,301 @@ def test_crew_interactive_shell_spawns_docker(temp_polecat_home, tmp_path):
         or "denied" in output.lower()
         or "docker" in output.lower()
     ), f"Should route through docker. Output: {output}"
+
+
+# ---------------------------------------------------------------------------
+# Real-image tests: prove the full CLI → Docker → agent path works
+# ---------------------------------------------------------------------------
+
+
+def _has_claude_auth():
+    """Check if Claude auth is available (API key or OAuth)."""
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        return True
+    creds = Path.home() / ".claude" / ".credentials.json"
+    return creds.exists()
+
+
+@pytest.mark.slow
+@pytest.mark.integration
+def test_crew_claude_real_image(temp_polecat_home, tmp_path):
+    """Full E2E: polecat crew repo <path> starts Claude in the real aops-crew image.
+
+    Proves the complete path: CLI → manager → _make_worker_env() →
+    _build_docker_cmd() → entrypoint → Claude agent responds.
+
+    Sends a prompt that asks about credential setup and pkb availability, then
+    verifies that the crew session started and exited cleanly. It does NOT parse
+    the agent's reply to confirm those specific resources; that is covered by
+    test_pkb_binary_available and test_entrypoint_configures_git_auth.
+    """
+    if not _docker_available():
+        pytest.skip("aops-crew image not built")
+    if not _has_claude_auth():
+        pytest.skip("No Claude auth (need ANTHROPIC_API_KEY or OAuth)")
+
+    repo = _init_test_repo(tmp_path)
+    env = _crew_env(temp_polecat_home)
+    # Do NOT set POLECAT_DOCKER_IMAGE — use the real aops-crew image
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "polecat.cli",
+            "--home",
+            str(temp_polecat_home),
+            "crew",
+            "repo",
+            str(repo),
+        ],
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=120,
+        cwd=os.getcwd(),
+        input=(
+            "Run these three commands and reply with their exact output:\n"
+            "1. git config --global credential.helper\n"
+            "2. which pkb\n"
+            "3. echo SSH_AUTH_SOCK=$SSH_AUTH_SOCK\n"
+        ),
+    )
+
+    output = result.stdout + result.stderr
+
+    # The CLI should have created a crew session
+    assert "Crew worker:" in output, f"polecat crew did not start. Output:\n{output}"
+
+    # The agent should have responded and the session should exit cleanly
+    assert result.returncode == 0, f"polecat crew exited with {result.returncode}:\n{output}"
+
+
+@pytest.mark.slow
+@pytest.mark.integration
+def test_crew_gemini_sandbox_config(temp_polecat_home, tmp_path):
+    """Full E2E: polecat crew -g configures Gemini sandbox with correct settings.
+
+    The Gemini path does NOT use _build_docker_cmd() — it configures
+    SANDBOX_FLAGS, SANDBOX_MOUNTS, and _replicate_gemini_auth(), then
+    delegates to gemini CLI. This test intercepts the gemini call and
+    verifies the sandbox configuration is correct.
+
+    Checks:
+    - GEMINI_SANDBOX_IMAGE=aops-crew
+    - Replicated settings.json has sandbox enabled + networkAccess
+    - No mcpServers or hooks leaked into replicated settings
+    - .gitconfig has embedded token (not ${GH_TOKEN} placeholder)
+    """
+    env = _crew_env(temp_polecat_home)
+    env["AOPS_BOT_GH_TOKEN"] = "test-token-sandbox-config"
+
+    # Create a fake ~/.gemini/settings.json so _replicate_gemini_auth runs
+    # and sets GEMINI_CLI_HOME. Without this, auth replication is skipped.
+    fake_home = tmp_path / "fakehome"
+    fake_home.mkdir()
+    gemini_dir = fake_home / ".gemini"
+    gemini_dir.mkdir(parents=True)
+    (gemini_dir / "settings.json").write_text(
+        json.dumps(
+            {
+                "security": {"auth": {"selectedType": "oauth-personal"}},
+                "mcpServers": {"should-be-stripped": {}},
+            }
+        )
+    )
+    # Create minimal extension dir so replication has something to copy
+    ext_dir = gemini_dir / "extensions" / "aops-core"
+    ext_dir.mkdir(parents=True)
+    (ext_dir / "GEMINI.md").write_text("fake extension")
+    (gemini_dir / "extensions" / "extension-enablement.json").write_text(
+        json.dumps({"aops-core": {"overrides": ["/fake/*"]}})
+    )
+    env["HOME"] = str(fake_home)
+
+    repo = _init_test_repo(tmp_path)
+
+    # Fake gemini that dumps env and settings for verification.
+    # The replicated GEMINI_CLI_HOME dir is cleaned up after the gemini process
+    # exits, so we must dump settings.json content from inside the fake gemini.
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    fake_gemini = fake_bin / "gemini"
+    fake_gemini.write_text(
+        "#!/bin/sh\n"
+        'echo "GEMINI_SANDBOX_IMAGE=${GEMINI_SANDBOX_IMAGE:-}"\n'
+        'echo "GEMINI_CLI_HOME=${GEMINI_CLI_HOME:-}"\n'
+        'echo "SANDBOX_MOUNTS=${SANDBOX_MOUNTS:-}"\n'
+        'echo "SANDBOX_FLAGS=${SANDBOX_FLAGS:-}"\n'
+        # Dump settings.json before polecat cleans up the temp dir
+        'if [ -f "${GEMINI_CLI_HOME}/.gemini/settings.json" ]; then\n'
+        '  echo "SETTINGS_JSON_BEGIN"\n'
+        '  cat "${GEMINI_CLI_HOME}/.gemini/settings.json"\n'
+        '  echo "SETTINGS_JSON_END"\n'
+        "fi\n"
+        # Dump credential file contents
+        "IFS=, ; for mount in $SANDBOX_MOUNTS; do\n"
+        "  src=$(echo $mount | cut -d: -f1)\n"
+        "  dst=$(echo $mount | cut -d: -f2)\n"
+        '  echo "MOUNT_CONTENT_BEGIN:$dst"\n'
+        "  cat $src 2>/dev/null\n"
+        '  echo "MOUNT_CONTENT_END:$dst"\n'
+        "done\n"
+    )
+    fake_gemini.chmod(0o755)
+    env["PATH"] = f"{fake_bin}:{env.get('PATH', '')}"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "polecat.cli",
+            "--home",
+            str(temp_polecat_home),
+            "crew",
+            "repo",
+            str(repo),
+            "-n",
+            "gemini-config-test",
+            "-g",
+        ],
+        env=env,
+        capture_output=True,
+        text=True,
+        cwd=os.getcwd(),
+    )
+
+    output = result.stdout + result.stderr
+
+    # 1. Sandbox image set correctly
+    assert "GEMINI_SANDBOX_IMAGE=aops-crew" in output, (
+        f"GEMINI_SANDBOX_IMAGE not set. Output:\n{output}"
+    )
+
+    # 2. Settings.json has sandbox enabled + networkAccess, no baggage
+    # Parse settings from stdout (file is cleaned up after gemini exits)
+    gemini_home_match = re.search(r"GEMINI_CLI_HOME=(\S+)", output)
+    assert gemini_home_match, f"GEMINI_CLI_HOME not found. Output:\n{output}"
+
+    assert "SETTINGS_JSON_BEGIN" in output, (
+        f"Settings.json not dumped by fake gemini. Output:\n{output}"
+    )
+    settings_raw = output.split("SETTINGS_JSON_BEGIN")[1].split("SETTINGS_JSON_END")[0].strip()
+    settings = json.loads(settings_raw)
+
+    sandbox_cfg = settings.get("tools", {}).get("sandbox", {})
+    assert sandbox_cfg.get("enabled") is True, f"Sandbox not enabled. Got: {sandbox_cfg}"
+    assert sandbox_cfg.get("networkAccess") is True, (
+        f"networkAccess not enabled (needed for OAuth). Got: {sandbox_cfg}"
+    )
+
+    # No user baggage leaked
+    assert "mcpServers" not in settings, (
+        f"mcpServers leaked into sandbox settings: {list(settings.get('mcpServers', {}).keys())}"
+    )
+
+    # 3. Token embedded in .gitconfig (not env var placeholder)
+    def extract_mount_content(out: str, dst_path: str) -> str:
+        begin = f"MOUNT_CONTENT_BEGIN:{dst_path}"
+        end = f"MOUNT_CONTENT_END:{dst_path}"
+        if begin not in out:
+            return ""
+        return out.split(begin, 1)[1].split(end, 1)[0].strip()
+
+    gitconfig_content = extract_mount_content(output, str(Path.home() / ".gitconfig"))
+    assert gitconfig_content, (
+        ".gitconfig mount not found in sandbox output — token embedding is unverified. "
+        "If apply_env_mappings() failed to map AOPS_BOT_GH_TOKEN to GH_TOKEN, "
+        "no gitconfig would be mounted and this security property is untested."
+    )
+    if gitconfig_content:
+        assert "test-token-sandbox-config" in gitconfig_content, (
+            "Token must be embedded in .gitconfig, not via ${GH_TOKEN}. "
+            f"Content: {gitconfig_content!r}"
+        )
+        assert "${GH_TOKEN}" not in gitconfig_content, (
+            ".gitconfig must not use ${GH_TOKEN} placeholder"
+        )
+
+
+@pytest.mark.slow
+@pytest.mark.integration
+def test_crew_env_reaches_container(temp_polecat_home, tmp_path):
+    """Full E2E: env vars from _make_worker_env() reach the docker command.
+
+    Uses a fake docker binary to intercept the docker command that polecat
+    crew constructs, then verifies the -e flags contain the critical
+    security and configuration variables. No API key or real Docker needed.
+
+    This catches bugs where crew() or _make_worker_env() drops an env var
+    that _build_docker_cmd() would have forwarded correctly in isolation.
+    """
+    repo = _init_test_repo(tmp_path)
+    env = _crew_env(temp_polecat_home)
+    # Set both GH_TOKEN and AOPS_BOT_GH_TOKEN — apply_env_mappings() maps
+    # AOPS_BOT_GH_TOKEN → GH_TOKEN, so the test token must be set on both.
+    env["GH_TOKEN"] = "ghp_test_env_reaches_container"
+    env["AOPS_BOT_GH_TOKEN"] = "ghp_test_env_reaches_container"
+
+    # Create a fake docker that dumps its arguments to a file
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    args_file = tmp_path / "docker_args.txt"
+    fake_docker = fake_bin / "docker"
+    fake_docker.write_text(
+        "#!/bin/sh\n"
+        # Write all args to file for inspection
+        f'echo "$@" > {args_file}\n'
+        # Also print env vars passed via -e flags
+        'for arg in "$@"; do\n'
+        '  echo "ARG:$arg"\n'
+        "done\n"
+    )
+    fake_docker.chmod(0o755)
+    env["PATH"] = f"{fake_bin}:{env.get('PATH', '')}"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "polecat.cli",
+            "--home",
+            str(temp_polecat_home),
+            "crew",
+            "repo",
+            str(repo),
+        ],
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        cwd=os.getcwd(),
+        stdin=subprocess.DEVNULL,
+    )
+
+    output = result.stdout + result.stderr
+
+    # Verify the docker command was intercepted
+    assert args_file.exists(), f"Fake docker was not invoked. Output:\n{output}"
+    docker_args = args_file.read_text()
+
+    # SSH must be disabled (empty SSH_AUTH_SOCK)
+    assert "SSH_AUTH_SOCK=" in docker_args, f"SSH_AUTH_SOCK not in docker -e flags:\n{docker_args}"
+
+    # Git terminal prompt must be disabled
+    assert "GIT_TERMINAL_PROMPT=0" in docker_args, (
+        f"GIT_TERMINAL_PROMPT=0 not in docker -e flags:\n{docker_args}"
+    )
+
+    # GH_TOKEN must be forwarded
+    assert "GH_TOKEN=ghp_test_env_reaches_container" in docker_args, (
+        f"GH_TOKEN not forwarded to docker:\n{docker_args}"
+    )
+
+    # Polecat session type must be set
+    assert "POLECAT_SESSION_TYPE=crew" in docker_args, (
+        f"POLECAT_SESSION_TYPE not in docker -e flags:\n{docker_args}"
+    )
+
+    # GIT_ASKPASS must be set (enables credential helper)
+    assert "GIT_ASKPASS=true" in docker_args, f"GIT_ASKPASS not in docker -e flags:\n{docker_args}"
