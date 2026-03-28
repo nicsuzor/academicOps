@@ -6,7 +6,6 @@ JSONL transcript files via the session_dir mount in _build_docker_cmd().
 
 import json
 import logging
-import os
 import sys
 from pathlib import Path
 
@@ -212,81 +211,9 @@ def test_claude_docker_auth_and_session_persistence(claude_docker):
     assert "assistant" in types, f"No assistant message found. Types: {types}\n{diag}"
 
 
-@pytest.mark.slow
-@pytest.mark.integration
-def test_docker_git_auth_via_entrypoint(tmp_path):
-    """E2E: entrypoint.sh configures git credentials so git operations authenticate.
-
-    Runs a lightweight shell command inside aops-crew (no Claude/Gemini needed).
-    Verifies the credential helper is configured and resolves to the expected token.
-    """
-    import subprocess
-
-    # Skip if Docker or image unavailable
-    try:
-        result = subprocess.run(
-            ["docker", "images", "aops-crew", "--format", "{{.Repository}}"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-        if "aops-crew" not in result.stdout:
-            pytest.skip("aops-crew image not built")
-    except (FileNotFoundError, subprocess.TimeoutExpired):
-        pytest.skip("Docker not available")
-
-    test_token = "ghp_test_e2e_credential_check_12345"
-    uid = os.getuid()
-    gid = os.getgid()
-
-    # Run a shell command inside the container that:
-    # 1. Verifies the credential helper is configured
-    # 2. Invokes the credential helper to check the token is resolved
-    # 3. Checks that SSH is disabled
-    # 4. Checks that git remote URLs are rewritten to HTTPS
-    result = subprocess.run(
-        [
-            "docker",
-            "run",
-            "--rm",
-            "--user",
-            f"{uid}:{gid}",
-            "-e",
-            f"GH_TOKEN={test_token}",
-            "-e",
-            "SSH_AUTH_SOCK=",
-            "aops-crew",
-            "bash",
-            "-c",
-            "echo HELPER=$(git config --global credential.helper) && "
-            'echo CRED=$(printf "protocol=https\\nhost=github.com\\n" | git credential fill 2>/dev/null | grep password) && '
-            "echo SSH=$SSH_AUTH_SOCK && "
-            "echo REWRITE=$(git config --global --get url.https://github.com/.insteadOf)",
-        ],
-        capture_output=True,
-        text=True,
-        timeout=30,
-    )
-
-    output = result.stdout + result.stderr
-    assert result.returncode == 0, f"Container exited {result.returncode}:\n{output}"
-
-    # Credential helper is configured
-    assert "HELPER=" in output, f"No credential helper configured:\n{output}"
-    helper_line = [ln for ln in output.splitlines() if ln.startswith("HELPER=")][0]
-    assert "credential" in helper_line.lower() or "!" in helper_line, (
-        f"Credential helper not set up:\n{output}"
-    )
-
-    # Token resolves through the credential helper
-    assert f"password={test_token}" in output, f"Credential helper did not resolve token:\n{output}"
-
-    # SSH is disabled
-    assert "SSH=" in output  # SSH_AUTH_SOCK should be empty
-
-    # Git URL rewriting to HTTPS
-    assert "REWRITE=git@github.com:" in output, f"SSH→HTTPS URL rewrite not configured:\n{output}"
-
+## test_docker_git_auth_via_entrypoint moved to test_docker_tooling.py
+## (TestDockerTooling.test_entrypoint_configures_git_auth) where it belongs
+## alongside other container environment tests.
 
 ## test_gemini_docker_produces_session_jsonl removed — fragile (Gemini Docker
 ## session persistence) and the Claude variant provides sufficient coverage.
