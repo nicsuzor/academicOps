@@ -49,7 +49,9 @@ def _crew_env(polecat_home):
     """Build an env dict for running polecat crew."""
     env = os.environ.copy()
     env["POLECAT_HOME"] = str(polecat_home)
-    env["PYTHONPATH"] = os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
+    # PYTHONPATH must include the repo root (not polecat/ itself) so that
+    # `python -m polecat.cli` can resolve `polecat` as a package.
+    env["PYTHONPATH"] = os.getcwd() + ":" + os.getcwd() + "/aops-core"
     return env
 
 
@@ -435,8 +437,10 @@ def test_crew_claude_real_image(temp_polecat_home, tmp_path):
     Proves the complete path: CLI → manager → _make_worker_env() →
     _build_docker_cmd() → entrypoint → Claude agent responds.
 
-    Sends a prompt that exercises git credential config and verifies pkb is
-    available, so a passing test proves the container is production-ready.
+    Sends a prompt that asks about credential setup and pkb availability, then
+    verifies that the crew session started and exited cleanly. It does NOT parse
+    the agent's reply to confirm those specific resources; that is covered by
+    test_pkb_binary_available and test_entrypoint_configures_git_auth.
     """
     if not _docker_available():
         pytest.skip("aops-crew image not built")
@@ -462,7 +466,7 @@ def test_crew_claude_real_image(temp_polecat_home, tmp_path):
         capture_output=True,
         text=True,
         timeout=120,
-        cwd=os.getcwd() + "/polecat",
+        cwd=os.getcwd(),
         input=(
             "Run these three commands and reply with their exact output:\n"
             "1. git config --global credential.helper\n"
@@ -476,8 +480,7 @@ def test_crew_claude_real_image(temp_polecat_home, tmp_path):
     # The CLI should have created a crew session
     assert "Crew worker:" in output, f"polecat crew did not start. Output:\n{output}"
 
-    # The agent should have responded — check for signs of credential setup
-    # and pkb availability in the agent's output
+    # The agent should have responded and the session should exit cleanly
     assert result.returncode == 0, f"polecat crew exited with {result.returncode}:\n{output}"
 
 
@@ -572,7 +575,7 @@ def test_crew_gemini_sandbox_config(temp_polecat_home, tmp_path):
         env=env,
         capture_output=True,
         text=True,
-        cwd=os.getcwd() + "/polecat",
+        cwd=os.getcwd(),
     )
 
     output = result.stdout + result.stderr
@@ -674,7 +677,7 @@ def test_crew_env_reaches_container(temp_polecat_home, tmp_path):
         capture_output=True,
         text=True,
         timeout=30,
-        cwd=os.getcwd() + "/polecat",
+        cwd=os.getcwd(),
         stdin=subprocess.DEVNULL,
     )
 
