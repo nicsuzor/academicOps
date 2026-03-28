@@ -717,7 +717,7 @@ def build_aops_core(
     # Note: pyproject.toml is generated, not copied (version from root)
     # Note: hooks/ is handled separately in section 2 (Gemini hooks.json transform)
     # Note: indices/ excluded - FILES.md is generated dynamically, PATHS.md is user config
-    # <!-- ns: why can't we just copy everything? -->
+    # ns: why can't we just copy everything?
     items_to_copy = [
         "skills",
         "agents",
@@ -730,6 +730,8 @@ def build_aops_core(
         "HEURISTICS.md",
         "INDEX.md",
         "RULES.md",
+        "RULES-DEV.md",
+        "RULES-FRAMEWORK.md",
         "SCRIPTS.md",
         "SKILLS.md",
         "TAXONOMY.md",
