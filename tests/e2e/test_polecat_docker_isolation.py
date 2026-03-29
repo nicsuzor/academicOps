@@ -7,8 +7,6 @@ from pathlib import Path
 
 import pytest
 
-from tests.conftest import _docker_available
-
 
 @pytest.fixture
 def temp_polecat_home(tmp_path):
@@ -68,7 +66,9 @@ def test_crew_spawns_docker_container_claude(temp_polecat_home, tmp_path):
     env = os.environ.copy()
     env["POLECAT_HOME"] = str(temp_polecat_home)
     env["POLECAT_DOCKER_IMAGE"] = "aops-test-nonexistent-image:latest"
-    env["PYTHONPATH"] = os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
+    env["PYTHONPATH"] = (
+        os.getcwd() + ":" + os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
+    )
 
     repo = tmp_path / "dummy_repo"
     repo.mkdir()
@@ -112,7 +112,9 @@ def test_crew_spawns_docker_container_gemini(temp_polecat_home, tmp_path):
     """
     env = os.environ.copy()
     env["POLECAT_HOME"] = str(temp_polecat_home)
-    env["PYTHONPATH"] = os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
+    env["PYTHONPATH"] = (
+        os.getcwd() + ":" + os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
+    )
 
     repo = tmp_path / "dummy_repo"
     repo.mkdir()
@@ -127,6 +129,8 @@ def test_crew_spawns_docker_container_gemini(temp_polecat_home, tmp_path):
     fake_bin = tmp_path / "bin"
     fake_bin.mkdir()
     fake_gemini = fake_bin / "gemini"
+    # Dump settings.json from inside fake gemini because polecat cleans up
+    # the temp GEMINI_CLI_HOME after the gemini process exits.
     fake_gemini.write_text(
         "#!/bin/sh\n"
         'echo "GEMINI_SANDBOX_IMAGE=${GEMINI_SANDBOX_IMAGE:-}"\n'
@@ -192,7 +196,9 @@ def test_crew_gemini_mounts_aca_data_when_exists(temp_polecat_home, tmp_path):
 
     env = os.environ.copy()
     env["POLECAT_HOME"] = str(temp_polecat_home)
-    env["PYTHONPATH"] = os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
+    env["PYTHONPATH"] = (
+        os.getcwd() + ":" + os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
+    )
     env["ACA_DATA"] = str(brain_dir)
 
     repo = tmp_path / "dummy_repo"
@@ -258,7 +264,9 @@ def test_gemini_crew_git_credentials_are_file_based(temp_polecat_home, tmp_path)
     """
     env = os.environ.copy()
     env["POLECAT_HOME"] = str(temp_polecat_home)
-    env["PYTHONPATH"] = os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
+    env["PYTHONPATH"] = (
+        os.getcwd() + ":" + os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
+    )
     env["AOPS_BOT_GH_TOKEN"] = "test-token-abc123"
     # Suppress Gemini auth replication (no ~/.gemini in test env)
     env["POLECAT_GEMINI_AUTH_DISABLED"] = "1"
@@ -344,7 +352,7 @@ def test_gemini_crew_git_credentials_are_file_based(temp_polecat_home, tmp_path)
         return out.split(begin, 1)[1].split(end, 1)[0].strip()
 
     # Verify .gitconfig has token embedded (not ${GH_TOKEN})
-    # Use Path.home() to build the absolute destination path dynamically
+    # This test doesn't override HOME, so use Path.home() for the mount destination
     gitconfig_content = extract_mount_content(output, str(Path.home() / ".gitconfig"))
     assert gitconfig_content, f".gitconfig mount content not found in output:\n{output}"
     assert "test-token-abc123" in gitconfig_content, (
@@ -356,7 +364,6 @@ def test_gemini_crew_git_credentials_are_file_based(temp_polecat_home, tmp_path)
     )
 
     # Verify gh hosts.yml has token embedded
-    # Use Path.home() to build the absolute destination path dynamically
     gh_hosts_content = extract_mount_content(
         output, str(Path.home() / ".config" / "gh" / "hosts.yml")
     )
@@ -376,7 +383,9 @@ def test_crew_interactive_shell_spawns_docker(temp_polecat_home, tmp_path):
     env = os.environ.copy()
     env["POLECAT_HOME"] = str(temp_polecat_home)
     env["POLECAT_DOCKER_IMAGE"] = "aops-test-nonexistent-image:latest"
-    env["PYTHONPATH"] = os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
+    env["PYTHONPATH"] = (
+        os.getcwd() + ":" + os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
+    )
 
     repo = tmp_path / "dummy_repo"
     repo.mkdir()
@@ -420,72 +429,9 @@ def test_crew_interactive_shell_spawns_docker(temp_polecat_home, tmp_path):
     ), f"Should route through docker. Output: {output}"
 
 
-# ---------------------------------------------------------------------------
-# Real-image tests: prove the full CLI → Docker → agent path works
-# ---------------------------------------------------------------------------
-
-
-def _has_claude_auth():
-    """Check if Claude auth is available (API key or OAuth)."""
-    if os.environ.get("ANTHROPIC_API_KEY"):
-        return True
-    creds = Path.home() / ".claude" / ".credentials.json"
-    return creds.exists()
-
-
-@pytest.mark.slow
-@pytest.mark.integration
-def test_crew_claude_real_image(temp_polecat_home, tmp_path):
-    """Full E2E: polecat crew repo <path> starts Claude in the real aops-crew image.
-
-    Proves the complete path: CLI → manager → _make_worker_env() →
-    _build_docker_cmd() → entrypoint → Claude agent responds.
-
-    Sends a prompt that asks about credential setup and pkb availability, then
-    verifies that the crew session started and exited cleanly. It does NOT parse
-    the agent's reply to confirm those specific resources; that is covered by
-    test_pkb_binary_available and test_entrypoint_configures_git_auth.
-    """
-    if not _docker_available():
-        pytest.skip("aops-crew image not built")
-    if not _has_claude_auth():
-        pytest.skip("No Claude auth (need ANTHROPIC_API_KEY or OAuth)")
-
-    repo = _init_test_repo(tmp_path)
-    env = _crew_env(temp_polecat_home)
-    # Do NOT set POLECAT_DOCKER_IMAGE — use the real aops-crew image
-
-    result = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "polecat.cli",
-            "--home",
-            str(temp_polecat_home),
-            "crew",
-            "repo",
-            str(repo),
-        ],
-        env=env,
-        capture_output=True,
-        text=True,
-        timeout=120,
-        cwd=os.getcwd(),
-        input=(
-            "Run these three commands and reply with their exact output:\n"
-            "1. git config --global credential.helper\n"
-            "2. which pkb\n"
-            "3. echo SSH_AUTH_SOCK=$SSH_AUTH_SOCK\n"
-        ),
-    )
-
-    output = result.stdout + result.stderr
-
-    # The CLI should have created a crew session
-    assert "Crew worker:" in output, f"polecat crew did not start. Output:\n{output}"
-
-    # The agent should have responded and the session should exit cleanly
-    assert result.returncode == 0, f"polecat crew exited with {result.returncode}:\n{output}"
+# Real-image Claude crew test moved to test_crew_docker_session.py
+# (TestCrewDockerSession) which shares a single LLM invocation with
+# other Docker session assertions (binaries, extensions, hooks, persistence).
 
 
 @pytest.mark.slow
@@ -601,7 +547,9 @@ def test_crew_gemini_sandbox_config(temp_polecat_home, tmp_path):
     settings = json.loads(settings_raw)
 
     hooks_cfg = settings.get("hooksConfig", {})
-    assert hooks_cfg.get("enabled") is True, f"hooksConfig not enabled. Got: {hooks_cfg}"
+    assert hooks_cfg.get("enabled") is True, (
+        f"hooksConfig not enabled in replicated settings. Got: {hooks_cfg}"
+    )
 
     # No user baggage leaked
     assert "mcpServers" not in settings, (

@@ -293,15 +293,20 @@ class TestBuildDockerCmd:
         assert "AOPS_BOT_GH_TOKEN=ghp_test123" in env_args
         assert "GIT_ASKPASS=true" in env_args
 
-    def test_mounts_pkb_binary_when_available(self):
+    def test_mounts_pkb_binary_when_available(self, tmp_path):
         """pkb binary is mounted read-only for MCP server access."""
-        with patch(
-            "cli.shutil.which",
-            side_effect=lambda name, **kw: "/usr/bin/pkb" if name == "pkb" else None,
+        pkb_path = tmp_path / "pkb"
+        pkb_path.touch()
+        with (
+            patch(
+                "cli.shutil.which",
+                side_effect=lambda name, **kw: str(pkb_path) if name == "pkb" else None,
+            ),
+            patch("cli._container_to_host_path", return_value=pkb_path),
         ):
             cmd = self._build()
         vol_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-v"]
-        assert any("/usr/bin/pkb:/usr/local/bin/pkb:ro" in v for v in vol_args)
+        assert any(f"{pkb_path}:/usr/local/bin/pkb:ro" in v for v in vol_args)
 
     def test_no_pkb_mount_when_missing(self):
         """No pkb mount when binary is not found on host."""
