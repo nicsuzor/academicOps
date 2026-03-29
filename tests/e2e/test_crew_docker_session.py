@@ -282,7 +282,10 @@ class TestCrewDockerSession:
                     )
                     if tar_result.returncode == 0 and tar_result.stdout:
                         with tarfile.open(fileobj=io.BytesIO(tar_result.stdout)) as tar:
-                            tar.extractall(session_dir, filter="data")
+                            if hasattr(tarfile, "data_filter"):
+                                tar.extractall(session_dir, filter="data")
+                            else:
+                                tar.extractall(session_dir)
                 except Exception as e:
                     log.warning("Failed to extract sessions from volume %s: %s", vol_name, e)
                 finally:

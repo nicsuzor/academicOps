@@ -725,11 +725,12 @@ def build_aops_core(
         "mcp_servers",
         "workflows",
         "AXIOMS.md",
-        "BUTLER.md",
         "CONSTRAINTS.md",
         "HEURISTICS.md",
         "INDEX.md",
         "RULES.md",
+        "RULES-DEV.md",
+        "RULES-FRAMEWORK.md",
         "SCRIPTS.md",
         "SKILLS.md",
         "TAXONOMY.md",
@@ -759,7 +760,28 @@ def build_aops_core(
             else:
                 safe_copy(src, content_dir / item)
 
-    # 1a. Generate pyproject.toml with version from root
+    # 1a. Post-copy: translate tool names in all .md files for Gemini
+    # Agents get transform_agent_for_platform above (frontmatter + body);
+    # this pass catches skills, commands, lib, and top-level .md files
+    # that were copied verbatim by safe_copy.
+    if platform == "gemini":
+        translated_count = 0
+        for md_file in content_dir.rglob("*.md"):
+            # Agent files are already translated in the special-cased loop above, skip them here.
+            if (
+                md_file.relative_to(content_dir).parts
+                and md_file.relative_to(content_dir).parts[0] == "agents"
+            ):
+                continue
+            original = md_file.read_text()
+            translated = translate_tool_calls(original, platform)
+            if translated != original:
+                md_file.write_text(translated)
+                translated_count += 1
+        if translated_count:
+            print(f"  ✓ Translated tool names in {translated_count} .md files")
+
+    # 1b. Generate pyproject.toml with version from root
     pyproject_content = generate_aops_core_pyproject(version)
     pyproject_path = content_dir / "pyproject.toml"
     pyproject_path.write_text(pyproject_content)

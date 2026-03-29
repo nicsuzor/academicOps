@@ -404,7 +404,7 @@ Extension hooks are defined in `<extension>/hooks/hooks.json` and are auto-disco
 | **Sandbox scope**        | N/A (uses Docker via polecat)       | Tool subprocesses only; hooks run outside sandbox  |
 | **Extension enablement** | Plugin marketplace                  | `extension-enablement.json` with path overrides    |
 
-**Important**: Extension hooks only fire when `extension.isActive` is true for the current workspace. Activity is controlled by `extension-enablement.json` overrides. The default override (`/home/<user>/*`) uses single-level glob matching, which may not cover deeply nested worktree paths or mounted directories. Set overrides to `["*"]` for universal activation.
+**Important**: When using `GEMINI_CLI_HOME` to redirect Gemini's config directory (as polecat crew does), the `settings.json` must not set `security.auth.selectedType` — Gemini exits before hooks fire if the auth type doesn't match available credentials. Let Gemini auto-detect. Similarly, `tools.sandbox.enabled: true` in settings can cause Gemini to crash writing state files to the temp directory. The safe template is `{"hooksConfig":{"enabled":true}}`.
 
 **Both CLIs can coexist** on the same system without conflicts—they use different configuration directories (`~/.claude/` vs `~/.gemini/`), different context files, and different command namespaces. MCP servers are fully compatible since both implement the Model Context Protocol standard; the same server works with both CLIs despite different configuration formats.
 

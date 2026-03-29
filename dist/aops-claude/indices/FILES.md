@@ -12,17 +12,18 @@ Auto-generated during build. Lists all files in this plugin distribution.
 
 ## File Count
 
-Total files: 206
+Total files: 177
 
 ## File Tree
 
 ```
 .claude-plugin/plugin.json
 AXIOMS.md
-BUTLER.md
 CONSTRAINTS.md
 HEURISTICS.md
 INDEX.md
+RULES-DEV.md
+RULES-FRAMEWORK.md
 RULES.md
 SCRIPTS.md
 SKILLS.md
@@ -40,15 +41,6 @@ commands/pull.md
 commands/q.md
 commands/retro.md
 hooks/__init__.py
-hooks/__pycache__/__init__.cpython-312.pyc
-hooks/__pycache__/autocommit_state.cpython-312.pyc
-hooks/__pycache__/gate_config.cpython-312.pyc
-hooks/__pycache__/internal_models.cpython-312.pyc
-hooks/__pycache__/policy_enforcer.cpython-312.pyc
-hooks/__pycache__/router.cpython-312.pyc
-hooks/__pycache__/schemas.cpython-312.pyc
-hooks/__pycache__/session_env_setup.cpython-312.pyc
-hooks/__pycache__/unified_logger.cpython-312.pyc
 hooks/autocommit_state.py
 hooks/gate_config.py
 hooks/generate_transcript.py
@@ -79,23 +71,6 @@ hooks/templates/qa-policy-message.md
 hooks/templates/stop-gate-handover-block.md
 hooks/unified_logger.py
 lib/__init__.py
-lib/__pycache__/__init__.cpython-312.pyc
-lib/__pycache__/agent_env.cpython-312.pyc
-lib/__pycache__/binary_install.cpython-312.pyc
-lib/__pycache__/event_detector.cpython-312.pyc
-lib/__pycache__/gate_model.cpython-312.pyc
-lib/__pycache__/gate_types.cpython-312.pyc
-lib/__pycache__/hook_utils.cpython-312.pyc
-lib/__pycache__/insights_generator.cpython-312.pyc
-lib/__pycache__/paths.cpython-312.pyc
-lib/__pycache__/session_context.cpython-312.pyc
-lib/__pycache__/session_paths.cpython-312.pyc
-lib/__pycache__/session_reader.cpython-312.pyc
-lib/__pycache__/session_state.cpython-312.pyc
-lib/__pycache__/session_summary.cpython-312.pyc
-lib/__pycache__/template_loader.cpython-312.pyc
-lib/__pycache__/template_registry.cpython-312.pyc
-lib/__pycache__/transcript_parser.cpython-312.pyc
 lib/agent_env.py
 lib/archived/extract_labor.py
 lib/archived/path_reconstructor.py
@@ -107,11 +82,6 @@ lib/event_detector.py
 lib/gate_model.py
 lib/gate_types.py
 lib/gates/__init__.py
-lib/gates/__pycache__/__init__.cpython-312.pyc
-lib/gates/__pycache__/custom_actions.cpython-312.pyc
-lib/gates/__pycache__/definitions.cpython-312.pyc
-lib/gates/__pycache__/engine.cpython-312.pyc
-lib/gates/__pycache__/registry.cpython-312.pyc
 lib/gates/custom_actions.py
 lib/gates/custom_conditions.py
 lib/gates/definitions.py
@@ -207,6 +177,7 @@ skills/remember/procedures/validate.md
 skills/remember/references/detail-level-guide.md
 skills/remember/references/obsidian-format-spec.md
 skills/research/SKILL.md
+skills/research/axioms.md
 skills/research/instructions/experiment-logging.md
 skills/research/instructions/methodology-files.md
 skills/research/instructions/methods-vs-methodology.md

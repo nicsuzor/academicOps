@@ -1,5 +1,37 @@
 # Changelog
 
+## [0.3.16](https://github.com/nicsuzor/academicOps/compare/v0.3.15...v0.3.16) (2026-03-28)
+
+### Features
+
+- **axioms:** tiered axiom registry with separate enforcement files ([#378](https://github.com/nicsuzor/academicOps/issues/378)) ([a8cb637](https://github.com/nicsuzor/academicOps/commit/a8cb6370e5a4b15af37d0620b9e067ff47f25e5a))
+- **plugin:** add pkb-http MCP server for Cowork ([c48c5c1](https://github.com/nicsuzor/academicOps/commit/c48c5c17516037e7b03a5ead944978adc84fd9ff))
+- **plugin:** add pkb-http MCP server for Cowork VM compatibility ([deb8e9e](https://github.com/nicsuzor/academicOps/commit/deb8e9ea3f5f044804ea122a6f734411d8d7fbb5))
+- **skills:** reintroduce /q as alias for planner capture mode ([#369](https://github.com/nicsuzor/academicOps/issues/369)) ([d88e5c3](https://github.com/nicsuzor/academicOps/commit/d88e5c352aadf50919790bc2eb3f05a98bb73fc2))
+
+### Bug Fixes
+
+- assert gitconfig mount exists before checking content (P[#8](https://github.com/nicsuzor/academicOps/issues/8)) ([9803a27](https://github.com/nicsuzor/academicOps/commit/9803a27df114f5fd58714017412a8499f3e516f9))
+- **build:** translate tool names in all Gemini dist .md files ([#370](https://github.com/nicsuzor/academicOps/issues/370)) ([a77497f](https://github.com/nicsuzor/academicOps/commit/a77497f6ad6b62ac984a184449a11996b5312ade))
+- correct PYTHONPATH and cwd in new E2E test helpers ([c8ec8be](https://github.com/nicsuzor/academicOps/commit/c8ec8be6b49e63979f6d116d0255293e3a13e089))
+- crew E2E tests for gemini sandbox cleanup and env mapping ([d4cd99b](https://github.com/nicsuzor/academicOps/commit/d4cd99bbfe38186944a643e90053c107022e3714))
+- strip user settings baggage from gemini sandbox sessions ([#372](https://github.com/nicsuzor/academicOps/issues/372)) ([9d32754](https://github.com/nicsuzor/academicOps/commit/9d32754481712708fcd88d7cdbcb7d8b591550f0))
+
+### Code Refactoring
+
+- **tests:** address gemini review comments on pkb MCP e2e tests ([e04cf5c](https://github.com/nicsuzor/academicOps/commit/e04cf5c84bad05eac8da0d95bfe22c7c02e24875))
+
+### Tests
+
+- add pkb MCP e2e tests with parameterized stdio/HTTP fixture ([0c6cd01](https://github.com/nicsuzor/academicOps/commit/0c6cd01a9e1a30f7015c69a27d311f3f13b62784))
+- add real-image container E2E tests for polecat crew ([3878c51](https://github.com/nicsuzor/academicOps/commit/3878c51f508ca21dee457e74c9ac1c1a02041b18))
+- add real-image container E2E tests for polecat crew ([5a9dec1](https://github.com/nicsuzor/academicOps/commit/5a9dec13a2ed06d911e041cfab12f84a45072aae))
+- pkb MCP e2e tests with parameterized transport fixture ([2a30f1b](https://github.com/nicsuzor/academicOps/commit/2a30f1b9ed74623066c9e3e93f17ffe85ee7f1e3))
+
+### Miscellaneous
+
+- Testing release v0.3.15-dev.59 [skip ci] ([9d77609](https://github.com/nicsuzor/academicOps/commit/9d776092f572e790e9824988e7705085bedcdf39))
+
 ## [0.3.15](https://github.com/nicsuzor/academicOps/compare/v0.3.14...v0.3.15) (2026-03-27)
 
 ### Features

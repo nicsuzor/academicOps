@@ -115,7 +115,9 @@ RUN if [ -f /home/worker/.gemini/extensions/extension-enablement.json ]; then \
     python3 -c "import json, pathlib; \
 p = pathlib.Path('/home/worker/.gemini/extensions/extension-enablement.json'); \
 d = json.loads(p.read_text()); \
-[d.__setitem__(k, {**v, 'overrides': ['*']}) for k, v in d.items()]; \
+for k in d: \
+    if isinstance(d[k], dict): \
+        d[k]['overrides'] = ['*']; \
 p.write_text(json.dumps(d, indent=2))" ; \
     fi
 
