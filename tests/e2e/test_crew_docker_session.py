@@ -203,6 +203,15 @@ class TestCrewDockerSession:
                     f"Exit {proc.returncode}: {proc.stderr[:500] if proc.stderr else 'no stderr'}"
                 )
 
+            # Detect auth failures — Claude returns valid JSON but with
+            # 'Not logged in' and 0 output tokens
+            result_msg = result.get("result", {})
+            if isinstance(result_msg, dict):
+                usage = result_msg.get("usage", {})
+                result_text = str(result_msg.get("result", ""))
+                if usage.get("output_tokens", 0) == 0 or "not logged in" in result_text.lower():
+                    pytest.skip(f"Claude auth not working in Docker: {result_text[:200]}")
+
             # Extract session data
             session_file = find_session_jsonl(session_id, search_dirs=[session_dir])
             tool_calls = parse_tool_calls(session_file) if session_file else []
