@@ -83,14 +83,45 @@ The output MUST be **narrative prose**, not tables. Structure:
 3. **Synthesis**: A holistic judgment. The whole may be more or less than sum of parts.
 4. **Recommendations**: Specific, actionable, empathetic to both user AND developer.
 
+## Data Pipeline Verification
+
+For data-driven UIs and features that display computed or aggregated information, visual inspection is necessary but insufficient. You must trace the data pipeline end-to-end to verify **correctness**, not just **presence**.
+
+### When to Apply
+
+- Dashboards showing aggregated or computed data
+- Features displaying data from external sources (APIs, files, databases)
+- Any UI where the data shown could be plausible but wrong
+
+### Methodology: Forensic Data Tracing
+
+For each data-driven section of the feature:
+
+1. **Identify the data source.** Read the source code to find where the displayed data originates — what file, API, database query, or computation produces it?
+2. **Verify the source exists and is populated.** Don't assume. Check: does the file exist? Does the API return data? Is the query valid?
+3. **Cross-verify displayed values.** Independently query the data source (curl the API, read the file, run the query) and compare against what the UI shows. Do the numbers match? Are timestamps correct? Are labels accurate?
+4. **Check edge cases.** What happens when the data source is empty, stale, or missing? Does the feature degrade gracefully or silently show wrong data?
+5. **Document discrepancies with precision.** When data is wrong, note: the file path and line where the data is fetched, what it should show vs. what it actually shows, and the root cause.
+
+### The Key Question
+
+> "Is this the RIGHT data?" — not just "Does data appear?"
+
+A dashboard can render beautifully, pass all visual checks, and still be fundamentally broken if it's reading from the wrong source, misinterpreting data, or showing stale values as current. Data that looks plausible is the most dangerous kind of incorrect data.
+
+### Anti-Pattern: Breadth-First Visual Sweeps
+
+Taking 30 screenshots and noting "data appears populated" for each section is not verification. Go deep on each section before moving to the next. One section thoroughly verified is more valuable than ten sections visually inspected.
+
 ## Executing the Assessment
 
 1. **Read the spec and user stories.** Understand the INTENT.
 2. **Immerse in the persona.** Spend real time understanding who this is for.
 3. **Walk each scenario.** Use the feature as the persona would. Notice your reactions.
-4. **Evaluate each dimension in prose.** Cite specific evidence.
-5. **Synthesize.** Step back. Does this feature fundamentally serve its purpose?
-6. **Recommend.** Be specific and constructive.
+4. **For data-driven sections: trace the pipeline.** After visual inspection, follow the data from source → server → component → display. Cross-verify against actual data sources.
+5. **Evaluate each dimension in prose.** Cite specific evidence.
+6. **Synthesize.** Step back. Does this feature fundamentally serve its purpose?
+7. **Recommend.** Be specific and constructive.
 
 ## Assessment Plan Anti-Patterns
 

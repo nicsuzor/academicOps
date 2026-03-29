@@ -85,6 +85,28 @@ Evaluate fitness-for-purpose. Cite specific evidence. Report honestly.
 ")
 ```
 
+### Delegation Guidance for Callers
+
+**Preserve qualitative framing.** The delegation prompt determines output quality. Never reframe QA as pass/fail or checklist compliance — this causes the agent to regress to mechanical evaluation. The prompt must ask for judgment, not tallying.
+
+**Anti-pattern**: "Check each user story and report pass/fail" → produces DOM element counting, loses all interpretive value.
+
+**Good pattern**: "Evaluate fitness-for-purpose. Is this serving the user it was built for? Cite evidence." → produces genuine qualitative assessment.
+
+**For data-driven features**, explicitly instruct the agent to trace data pipelines, not just screenshot:
+
+```
+Agent(subagent_type="aops-core:qa", model="opus", prompt="
+Qualitative assessment of [FEATURE] against user stories in [SPEC].
+
+For each data-driven section: trace the data pipeline from source to display.
+Verify data correctness, not just rendering. Cross-verify against actual sources.
+Go deep on 2-3 critical sections rather than skimming everything.
+
+Evaluate fitness-for-purpose. Cite specific evidence. Report honestly.
+")
+```
+
 For agent session evaluation, extract sessions first:
 
 ```bash

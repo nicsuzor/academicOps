@@ -47,6 +47,17 @@ Output your assessment starting with one of these keywords:
 
 "Looks correct" ≠ "works correctly". If you cannot execute the code (no test environment, missing dependencies), explicitly note this as an **unverified gap** and do NOT pass without runtime evidence.
 
+## Data Correctness Verification
+
+**For data-driven UIs**: Visual rendering is INSUFFICIENT. You MUST verify data correctness, not just rendering:
+
+- Trace the data pipeline: where does each displayed value originate? Read the source code end-to-end.
+- Cross-verify: independently query the data source (curl the API, read the file, check the database) and compare against what the UI shows.
+- Go deep on each section before moving to the next. Breadth-first visual sweeps miss data correctness bugs.
+- If data looks plausible but you haven't verified it against the actual source, you haven't verified it.
+
+"Data appears" ≠ "correct data appears". A dashboard showing plausible but wrong data is worse than one showing an error.
+
 ## What You Do NOT Do
 
 - Trust agent self-reports without verification

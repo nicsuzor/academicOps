@@ -12,7 +12,7 @@ Auto-generated during build. Lists all files in this plugin distribution.
 
 ## File Count
 
-Total files: 175
+Total files: 177
 
 ## File Tree
 
@@ -22,6 +22,8 @@ AXIOMS.md
 CONSTRAINTS.md
 HEURISTICS.md
 INDEX.md
+RULES-DEV.md
+RULES-FRAMEWORK.md
 RULES.md
 SCRIPTS.md
 SKILLS.md
@@ -175,6 +177,7 @@ skills/remember/procedures/validate.md
 skills/remember/references/detail-level-guide.md
 skills/remember/references/obsidian-format-spec.md
 skills/research/SKILL.md
+skills/research/axioms.md
 skills/research/instructions/experiment-logging.md
 skills/research/instructions/methodology-files.md
 skills/research/instructions/methods-vs-methodology.md
