@@ -7,8 +7,6 @@ from pathlib import Path
 
 import pytest
 
-from tests.conftest import _docker_available
-
 
 @pytest.fixture
 def temp_polecat_home(tmp_path):
@@ -420,72 +418,9 @@ def test_crew_interactive_shell_spawns_docker(temp_polecat_home, tmp_path):
     ), f"Should route through docker. Output: {output}"
 
 
-# ---------------------------------------------------------------------------
-# Real-image tests: prove the full CLI → Docker → agent path works
-# ---------------------------------------------------------------------------
-
-
-def _has_claude_auth():
-    """Check if Claude auth is available (API key or OAuth)."""
-    if os.environ.get("ANTHROPIC_API_KEY"):
-        return True
-    creds = Path.home() / ".claude" / ".credentials.json"
-    return creds.exists()
-
-
-@pytest.mark.slow
-@pytest.mark.integration
-def test_crew_claude_real_image(temp_polecat_home, tmp_path):
-    """Full E2E: polecat crew repo <path> starts Claude in the real aops-crew image.
-
-    Proves the complete path: CLI → manager → _make_worker_env() →
-    _build_docker_cmd() → entrypoint → Claude agent responds.
-
-    Sends a prompt that asks about credential setup and pkb availability, then
-    verifies that the crew session started and exited cleanly. It does NOT parse
-    the agent's reply to confirm those specific resources; that is covered by
-    test_pkb_binary_available and test_entrypoint_configures_git_auth.
-    """
-    if not _docker_available():
-        pytest.skip("aops-crew image not built")
-    if not _has_claude_auth():
-        pytest.skip("No Claude auth (need ANTHROPIC_API_KEY or OAuth)")
-
-    repo = _init_test_repo(tmp_path)
-    env = _crew_env(temp_polecat_home)
-    # Do NOT set POLECAT_DOCKER_IMAGE — use the real aops-crew image
-
-    result = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "polecat.cli",
-            "--home",
-            str(temp_polecat_home),
-            "crew",
-            "repo",
-            str(repo),
-        ],
-        env=env,
-        capture_output=True,
-        text=True,
-        timeout=120,
-        cwd=os.getcwd(),
-        input=(
-            "Run these three commands and reply with their exact output:\n"
-            "1. git config --global credential.helper\n"
-            "2. which pkb\n"
-            "3. echo SSH_AUTH_SOCK=$SSH_AUTH_SOCK\n"
-        ),
-    )
-
-    output = result.stdout + result.stderr
-
-    # The CLI should have created a crew session
-    assert "Crew worker:" in output, f"polecat crew did not start. Output:\n{output}"
-
-    # The agent should have responded and the session should exit cleanly
-    assert result.returncode == 0, f"polecat crew exited with {result.returncode}:\n{output}"
+# Real-image Claude crew test moved to test_crew_docker_session.py
+# (TestCrewDockerSession) which shares a single LLM invocation with
+# other Docker session assertions (binaries, extensions, hooks, persistence).
 
 
 @pytest.mark.slow

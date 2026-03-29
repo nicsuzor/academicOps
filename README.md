@@ -160,6 +160,16 @@ make install-hooks         # activate pre-commit hooks
 
 Or use `make install-dev` to build, install the plugin locally, and activate hooks in one step.
 
+## Testing and release
+
+```bash
+uv run pytest                              # fast unit tests (default, CI)
+make build                                 # build Docker image
+uv run pytest -m slow -n 0 --timeout=300   # container e2e + live session tests
+```
+
+Before releasing, build the image and run slow tests on a Docker-capable host. Releases are cut via release-please PRs on `main`.
+
 ## Project configuration
 
 Projects customise the framework by adding files to a `.agent/` directory:
