@@ -62,7 +62,3 @@ Agents MUST NOT run commands that require interactive input. Always use non-inte
 - When scaffolding or installing, pass `-y` or similar flags.
 
 **Derivation**: Interactive prompts in terminal commands hang agent execution loops, causing timeouts and requiring manual intervention to unblock. Agents must operate purely asynchronously.
-
-## One Spec Per Feature (P#29 corollary)
-
-Each feature has exactly one canonical spec file. Experiment tracking (tasks) is episodic; specs are timeless. After validation, merge implementation knowledge into the spec — never create a second spec for the same feature.

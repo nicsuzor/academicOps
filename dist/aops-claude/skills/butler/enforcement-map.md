@@ -199,15 +199,15 @@ Context loading follows a **three-tier architecture** (see [[session-start-injec
 
 ### File Loading Summary
 
-| File                              | Purpose                           | Loaded Via                    |
-| --------------------------------- | --------------------------------- | ----------------------------- |
-| `$AOPS/CORE.md`                   | Framework tool inventory (~2KB)   | SessionStart hook             |
-| `$cwd/.agent/CORE.md`             | Project conventions               | SessionStart hook (if exists) |
-| `$AOPS/AXIOMS.md`                 | Tier 1: Universal axioms          | SessionStart (always)         |
-| `$AOPS/RULES-DEV.md`              | Tier 2: Development context rules | JIT (when writing code)       |
-| `$AOPS/RULES-FRAMEWORK.md`        | Tier 2: Framework context rules   | JIT (when on framework work)  |
-| `$AOPS/skills/research/axioms.md` | Tier 2: Academic context rules    | JIT (when on academic work)   |
-| `$AOPS/HEURISTICS.md`             | Tier 3: Advisory heuristics       | JIT via hints                 |
+| File                        | Purpose                           | Loaded Via                    |
+| --------------------------- | --------------------------------- | ----------------------------- |
+| `$AOPS/CORE.md`             | Framework tool inventory (~2KB)   | SessionStart hook             |
+| `$cwd/.agent/CORE.md`       | Project conventions               | SessionStart hook (if exists) |
+| `AXIOMS.md`                 | Tier 1: Universal axioms          | SessionStart (always)         |
+| `RULES-DEV.md`              | Tier 2: Development context rules | JIT (when writing code)       |
+| `RULES-FRAMEWORK.md`        | Tier 2: Framework context rules   | JIT (when on framework work)  |
+| `skills/research/axioms.md` | Tier 2: Academic context rules    | JIT (when on academic work)   |
+| `HEURISTICS.md`             | Tier 3: Advisory heuristics       | JIT via hints                 |
 
 ## MCP Tool Injection Requirements
 
