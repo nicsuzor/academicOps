@@ -51,7 +51,9 @@ def _crew_env(polecat_home):
     env["POLECAT_HOME"] = str(polecat_home)
     # PYTHONPATH must include the repo root (not polecat/ itself) so that
     # `python -m polecat.cli` can resolve `polecat` as a package.
-    env["PYTHONPATH"] = os.getcwd() + ":" + os.getcwd() + "/aops-core"
+    env["PYTHONPATH"] = (
+        os.getcwd() + ":" + os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
+    )
     return env
 
 
@@ -120,8 +122,8 @@ def test_crew_spawns_docker_container_gemini(temp_polecat_home, tmp_path):
     subprocess.run(["git", "commit", "--allow-empty", "-m", "init"], cwd=repo, check=True)
 
     # We write a fake 'gemini' executable in our PATH to intercept the call.
-    # Polecat crew now configures sandbox via settings.json (not --sandbox flag),
-    # so the fake gemini just needs to succeed — we verify settings.json afterwards.
+    # Polecat crew configures hooks via the replicated settings.json template.
+    # The fake gemini dumps settings.json to stdout before polecat cleans up the temp dir.
     fake_bin = tmp_path / "bin"
     fake_bin.mkdir()
     fake_gemini = fake_bin / "gemini"
@@ -130,6 +132,11 @@ def test_crew_spawns_docker_container_gemini(temp_polecat_home, tmp_path):
         'echo "GEMINI_SANDBOX_IMAGE=${GEMINI_SANDBOX_IMAGE:-}"\n'
         'echo "GEMINI_CLI_HOME=${GEMINI_CLI_HOME:-}"\n'
         "echo 'ARGS:' $@\n"
+        'if [ -f "${GEMINI_CLI_HOME}/.gemini/settings.json" ]; then\n'
+        '  echo "SETTINGS_JSON_BEGIN"\n'
+        '  cat "${GEMINI_CLI_HOME}/.gemini/settings.json"\n'
+        '  echo "SETTINGS_JSON_END"\n'
+        "fi\n"
     )
     fake_gemini.chmod(0o755)
 
@@ -160,19 +167,16 @@ def test_crew_spawns_docker_container_gemini(temp_polecat_home, tmp_path):
         "Should set GEMINI_SANDBOX_IMAGE for gemini CLI"
     )
 
-    # Sandbox is now configured via settings.json, not --sandbox flag.
-    # Verify the replicated gemini home has sandbox enabled in settings.
-    # The fake gemini prints all GEMINI_* env vars — GEMINI_CLI_HOME tells us where to look.
-    gemini_home_match = re.search(r"GEMINI_CLI_HOME=(.*)", output)
-    assert gemini_home_match, f"GEMINI_CLI_HOME not found in output:\n{output}"
-    settings_path = Path(gemini_home_match.group(1).strip()) / "settings.json"
-    assert settings_path.exists(), f"settings.json not found at {settings_path}"
-    import json
-
-    settings = json.loads(settings_path.read_text())
-    sandbox_cfg = settings.get("tools", {}).get("sandbox", {})
-    assert sandbox_cfg.get("enabled") is True, (
-        f"Sandbox should be enabled in settings.json. Got: {sandbox_cfg}"
+    # Verify the replicated settings.json has hooksConfig enabled.
+    # The fake gemini dumps settings.json to stdout before polecat cleans up the temp dir.
+    assert "SETTINGS_JSON_BEGIN" in output, (
+        f"settings.json not dumped by fake gemini. Output:\n{output}"
+    )
+    settings_raw = output.split("SETTINGS_JSON_BEGIN")[1].split("SETTINGS_JSON_END")[0].strip()
+    settings = json.loads(settings_raw)
+    hooks_cfg = settings.get("hooksConfig", {})
+    assert hooks_cfg.get("enabled") is True, (
+        f"hooksConfig should be enabled in settings.json. Got: {hooks_cfg}"
     )
 
 
@@ -596,15 +600,16 @@ def test_crew_gemini_sandbox_config(temp_polecat_home, tmp_path):
     settings_raw = output.split("SETTINGS_JSON_BEGIN")[1].split("SETTINGS_JSON_END")[0].strip()
     settings = json.loads(settings_raw)
 
-    sandbox_cfg = settings.get("tools", {}).get("sandbox", {})
-    assert sandbox_cfg.get("enabled") is True, f"Sandbox not enabled. Got: {sandbox_cfg}"
-    assert sandbox_cfg.get("networkAccess") is True, (
-        f"networkAccess not enabled (needed for OAuth). Got: {sandbox_cfg}"
-    )
+    hooks_cfg = settings.get("hooksConfig", {})
+    assert hooks_cfg.get("enabled") is True, f"hooksConfig not enabled. Got: {hooks_cfg}"
 
     # No user baggage leaked
     assert "mcpServers" not in settings, (
         f"mcpServers leaked into sandbox settings: {list(settings.get('mcpServers', {}).keys())}"
+    )
+    # Auth selectedType must NOT be injected (causes Gemini to exit before hooks fire)
+    assert "selectedType" not in settings.get("security", {}).get("auth", {}), (
+        "selectedType leaked into sandbox settings — this breaks Gemini auth detection"
     )
 
     # 3. Token embedded in .gitconfig (not env var placeholder)
@@ -615,7 +620,9 @@ def test_crew_gemini_sandbox_config(temp_polecat_home, tmp_path):
             return ""
         return out.split(begin, 1)[1].split(end, 1)[0].strip()
 
-    gitconfig_content = extract_mount_content(output, str(Path.home() / ".gitconfig"))
+    # Use fake_home (not Path.home()) because the subprocess runs with HOME=fake_home,
+    # so mount destinations use the subprocess's home path.
+    gitconfig_content = extract_mount_content(output, str(fake_home / ".gitconfig"))
     assert gitconfig_content, (
         ".gitconfig mount not found in sandbox output — token embedding is unverified. "
         "If apply_env_mappings() failed to map AOPS_BOT_GH_TOKEN to GH_TOKEN, "

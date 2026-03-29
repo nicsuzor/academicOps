@@ -199,10 +199,10 @@ Context loading follows a **three-tier architecture** (see [[session-start-injec
 
 ### File Loading Summary
 
-| File                        | Purpose                           | Loaded Via                    |
-| --------------------------- | --------------------------------- | ----------------------------- |
-| `$AOPS/CORE.md`             | Framework tool inventory (~2KB)   | SessionStart hook             |
-| `$cwd/.agent/CORE.md`       | Project conventions               | SessionStart hook (if exists) |
+| File                              | Purpose                           | Loaded Via                    |
+| --------------------------------- | --------------------------------- | ----------------------------- |
+| `$AOPS/CORE.md`                   | Framework tool inventory (~2KB)   | SessionStart hook             |
+| `$cwd/.agent/CORE.md`             | Project conventions               | SessionStart hook (if exists) |
 | `$AOPS/AXIOMS.md`                 | Tier 1: Universal axioms          | SessionStart (always)         |
 | `$AOPS/RULES-DEV.md`              | Tier 2: Development context rules | JIT (when writing code)       |
 | `$AOPS/RULES-FRAMEWORK.md`        | Tier 2: Framework context rules   | JIT (when on framework work)  |
