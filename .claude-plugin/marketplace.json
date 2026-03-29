@@ -1,6 +1,6 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "aops",
+  "name": "academicOps",
   "description": "academicOps - Research workflow automation framework",
   "owner": {
     "name": "Nicolas Suzor",
