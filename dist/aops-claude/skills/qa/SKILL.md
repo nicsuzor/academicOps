@@ -93,14 +93,14 @@ Evaluate fitness-for-purpose. Cite specific evidence. Report honestly.
 
 **Good pattern**: "Evaluate fitness-for-purpose. Is this serving the user it was built for? Cite evidence." → produces genuine qualitative assessment.
 
-**For data-driven features**, explicitly instruct the agent to trace data pipelines, not just screenshot:
+**For features with data pipelines** (dashboards, transcripts, reports, generated artifacts), explicitly instruct the agent to trace the pipeline, not just inspect output:
 
 ```
 Agent(subagent_type="aops-core:qa", model="opus", prompt="
 Qualitative assessment of [FEATURE] against user stories in [SPEC].
 
-For each data-driven section: trace the data pipeline from source to display.
-Verify data correctness, not just rendering. Cross-verify against actual sources.
+For each section: trace the data pipeline from source to output.
+Verify data correctness, not just that output appears. Cross-verify against actual sources.
 Go deep on 2-3 critical sections rather than skimming everything.
 
 Evaluate fitness-for-purpose. Cite specific evidence. Report honestly.

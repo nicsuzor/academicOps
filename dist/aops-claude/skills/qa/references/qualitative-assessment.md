@@ -85,40 +85,42 @@ The output MUST be **narrative prose**, not tables. Structure:
 
 ## Data Pipeline Verification
 
-For data-driven UIs and features that display computed or aggregated information, visual inspection is necessary but insufficient. You must trace the data pipeline end-to-end to verify **correctness**, not just **presence**.
+For any feature that produces computed, aggregated, or transformed output, surface-level inspection is necessary but insufficient. You must trace the data pipeline end-to-end to verify **correctness**, not just **presence**.
 
 ### When to Apply
 
 - Dashboards showing aggregated or computed data
 - Features displaying data from external sources (APIs, files, databases)
-- Any UI where the data shown could be plausible but wrong
+- Generated artifacts (transcripts, reports, exports, summaries)
+- Processing pipelines (collection → transformation → output)
+- Any system where the output could be plausible but wrong
 
 ### Methodology: Forensic Data Tracing
 
-For each data-driven section of the feature:
+For each section or component of the feature:
 
-1. **Identify the data source.** Read the source code to find where the displayed data originates — what file, API, database query, or computation produces it?
-2. **Verify the source exists and is populated.** Don't assume. Check: does the file exist? Does the API return data? Is the query valid?
-3. **Cross-verify displayed values.** Independently query the data source (curl the API, read the file, run the query) and compare against what the UI shows. Do the numbers match? Are timestamps correct? Are labels accurate?
-4. **Check edge cases.** What happens when the data source is empty, stale, or missing? Does the feature degrade gracefully or silently show wrong data?
-5. **Document discrepancies with precision.** When data is wrong, note: the file path and line where the data is fetched, what it should show vs. what it actually shows, and the root cause.
+1. **Identify the data source.** Read the source code to find where the output originates — what file, API, database query, or computation produces it?
+2. **Verify the source exists and is populated.** Don't assume. Check: does the file exist? Does the API return data? Is the query valid? Are the expected events being captured?
+3. **Cross-verify output against source.** Independently query the data source (curl the API, read the file, run the query, inspect raw events) and compare against what the feature produces. Do the values match? Are timestamps correct? Is anything silently dropped or misrepresented?
+4. **Check edge cases.** What happens when the data source is empty, stale, or missing? Does the feature degrade gracefully or silently produce wrong output?
+5. **Document discrepancies with precision.** When output is wrong, note: the file path and line where data is fetched/transformed, what it should produce vs. what it actually produces, and the root cause.
 
 ### The Key Question
 
 > "Is this the RIGHT data?" — not just "Does data appear?"
 
-A dashboard can render beautifully, pass all visual checks, and still be fundamentally broken if it's reading from the wrong source, misinterpreting data, or showing stale values as current. Data that looks plausible is the most dangerous kind of incorrect data.
+A dashboard can render beautifully, a transcript can read plausibly, a report can look complete — and still be fundamentally broken if it's reading from the wrong source, misinterpreting data, dropping events, or showing stale values as current. Output that looks plausible is the most dangerous kind of incorrect output.
 
-### Anti-Pattern: Breadth-First Visual Sweeps
+### Anti-Pattern: Breadth-First Surface Sweeps
 
-Taking 30 screenshots and noting "data appears populated" for each section is not verification. Go deep on each section before moving to the next. One section thoroughly verified is more valuable than ten sections visually inspected.
+Taking 30 screenshots, or skimming 10 transcript sections, and noting "output appears correct" for each is not verification. Go deep on each section before moving to the next. One section thoroughly verified is more valuable than ten sections superficially inspected.
 
 ## Executing the Assessment
 
 1. **Read the spec and user stories.** Understand the INTENT.
 2. **Immerse in the persona.** Spend real time understanding who this is for.
 3. **Walk each scenario.** Use the feature as the persona would. Notice your reactions.
-4. **For data-driven sections: trace the pipeline.** After visual inspection, follow the data from source → server → component → display. Cross-verify against actual data sources.
+4. **For data-driven features: trace the pipeline.** After surface inspection, follow the data from source → processing → output. Cross-verify against actual data sources.
 5. **Evaluate each dimension in prose.** Cite specific evidence.
 6. **Synthesize.** Step back. Does this feature fundamentally serve its purpose?
 7. **Recommend.** Be specific and constructive.

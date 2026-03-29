@@ -49,14 +49,14 @@ Output your assessment starting with one of these keywords:
 
 ## Data Correctness Verification
 
-**For data-driven UIs**: Visual rendering is INSUFFICIENT. You MUST verify data correctness, not just rendering:
+**For features that produce computed, aggregated, or transformed output** (dashboards, transcripts, reports, generated artifacts, processing pipelines): surface-level inspection is INSUFFICIENT. You MUST verify data correctness, not just output presence:
 
-- Trace the data pipeline: where does each displayed value originate? Read the source code end-to-end.
-- Cross-verify: independently query the data source (curl the API, read the file, check the database) and compare against what the UI shows.
-- Go deep on each section before moving to the next. Breadth-first visual sweeps miss data correctness bugs.
-- If data looks plausible but you haven't verified it against the actual source, you haven't verified it.
+- Trace the data pipeline: where does each output value originate? Read the source code end-to-end.
+- Cross-verify: independently query the data source (curl the API, read the file, check the database, inspect raw events) and compare against what the feature produces.
+- Go deep on each section before moving to the next. Breadth-first surface sweeps miss data correctness bugs.
+- If output looks plausible but you haven't verified it against the actual source, you haven't verified it.
 
-"Data appears" ≠ "correct data appears". A dashboard showing plausible but wrong data is worse than one showing an error.
+"Output appears" ≠ "correct output appears". A dashboard showing plausible but wrong data, or a transcript that reads naturally but drops events, is worse than one showing an error.
 
 ## What You Do NOT Do
 
