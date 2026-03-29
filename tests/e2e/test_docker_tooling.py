@@ -5,6 +5,10 @@ entrypoint configures credentials and isolation correctly, and the aops-core
 plugin/extension is baked into the image.
 
 These tests run `docker run` directly — no LLM invocation needed.
+
+Optimization: tool-availability checks are batched into a single container
+invocation via a class-scoped fixture. Only tests that need special env vars
+or volume mounts run their own container.
 """
 
 import os
@@ -15,101 +19,121 @@ import pytest
 
 from tests.conftest import _docker_available
 
+# --- Batched tool checks (single container) ---
+
 
 @pytest.mark.slow
 @pytest.mark.integration
 class TestDockerTooling:
-    """Tools, entrypoint, and framework components in the Docker environment."""
+    """Tools and framework components in the Docker environment."""
 
     @pytest.fixture(autouse=True)
     def _require_docker(self):
         if not _docker_available():
             pytest.skip("Docker not available or aops-crew image not built")
 
-    def _docker_run(self, *cmd: str, timeout: int = 30) -> subprocess.CompletedProcess:
-        """Run a command inside the aops-crew Docker image."""
-        return subprocess.run(
-            ["docker", "run", "--rm", "aops-crew", *cmd],
+    @pytest.fixture(scope="class")
+    def tooling_results(self):
+        """Run ALL tool checks in a single docker container, return parsed results."""
+        if not _docker_available():
+            pytest.skip("Docker not available or aops-crew image not built")
+
+        script = (
+            'echo "NODE=$(node --version 2>&1)"\n'
+            'echo "NPM=$(npm --version 2>&1)"\n'
+            'echo "CARGO=$(cargo --version 2>&1)"\n'
+            'echo "RUSTC=$(rustc --version 2>&1)"\n'
+            'echo "GIT=$(git --version 2>&1)"\n'
+            'echo "PYTHON=$(python3 --version 2>&1)"\n'
+            'echo "PKB=$(pkb --version 2>&1)"\n'
+            'echo "GH=$(gh --version 2>&1 | head -1)"\n'
+            'echo "CLAUDE_PLUGIN=$(claude plugin list 2>&1)"\n'
+            'echo "GEMINI_EXT=$(ls /home/worker/.gemini/extensions/aops-core/GEMINI.md 2>&1)"\n'
+        )
+        result = subprocess.run(
+            ["docker", "run", "--rm", "aops-crew", "bash", "-c", script],
             capture_output=True,
             text=True,
-            timeout=timeout,
+            timeout=60,
             check=False,
         )
-
-    def _docker_run_with_env(
-        self, env: dict, cmd: str, timeout: int = 30
-    ) -> subprocess.CompletedProcess:
-        """Run a bash command inside aops-crew with environment variables set."""
-        docker_cmd = ["docker", "run", "--rm", "--user", f"{os.getuid()}:{os.getgid()}"]
-        for k, v in env.items():
-            docker_cmd.extend(["-e", f"{k}={v}"])
-        docker_cmd.extend(["aops-crew", "bash", "-c", cmd])
-        return subprocess.run(
-            docker_cmd, capture_output=True, text=True, timeout=timeout, check=False
+        assert result.returncode == 0, (
+            f"Batch tool check container failed (exit {result.returncode}):\n"
+            f"stdout: {result.stdout}\nstderr: {result.stderr}"
         )
+        # Parse KEY=VALUE lines into dict
+        results = {}
+        for line in result.stdout.splitlines():
+            if "=" in line:
+                key, _, value = line.partition("=")
+                results[key] = value
+        return results
 
     # --- Tool availability ---
 
-    def test_node_available(self):
-        """Verify Node.js and npm are on PATH."""
-        result = self._docker_run("node", "--version")
-        assert result.returncode == 0, f"node --version failed: {result.stderr}"
-        assert result.stdout.strip().startswith("v"), f"Unexpected node output: {result.stdout}"
+    def test_node_available(self, tooling_results):
+        """Node.js and npm are on PATH."""
+        assert tooling_results["NODE"].startswith("v"), (
+            f"Unexpected node output: {tooling_results['NODE']}"
+        )
+        assert tooling_results["NPM"], f"npm --version returned empty: {tooling_results['NPM']}"
 
-        result = self._docker_run("npm", "--version")
-        assert result.returncode == 0, f"npm --version failed: {result.stderr}"
+    def test_rust_available(self, tooling_results):
+        """Rust (cargo/rustc) is on PATH."""
+        assert "cargo" in tooling_results["CARGO"].lower(), (
+            f"Unexpected cargo output: {tooling_results['CARGO']}"
+        )
+        assert "rustc" in tooling_results["RUSTC"].lower(), (
+            f"Unexpected rustc output: {tooling_results['RUSTC']}"
+        )
 
-    def test_rust_available(self):
-        """Verify Rust (cargo/rustc) is on PATH."""
-        result = self._docker_run("cargo", "--version")
-        assert result.returncode == 0, f"cargo --version failed: {result.stderr}"
-        assert "cargo" in result.stdout.lower(), f"Unexpected cargo output: {result.stdout}"
+    def test_git_available(self, tooling_results):
+        """Git is installed."""
+        assert "git version" in tooling_results["GIT"].lower(), (
+            f"Unexpected git output: {tooling_results['GIT']}"
+        )
 
-        result = self._docker_run("rustc", "--version")
-        assert result.returncode == 0, f"rustc --version failed: {result.stderr}"
+    def test_python_available(self, tooling_results):
+        """Python 3 is on PATH."""
+        assert "Python 3" in tooling_results["PYTHON"], (
+            f"Unexpected python output: {tooling_results['PYTHON']}"
+        )
 
-    def test_git_credential_helper(self):
-        """Verify git is installed and credential helpers are available."""
-        result = self._docker_run("git", "--version")
-        assert result.returncode == 0, f"git --version failed: {result.stderr}"
-
-    def test_python_available(self):
-        """Verify Python 3 is on PATH."""
-        result = self._docker_run("python3", "--version")
-        assert result.returncode == 0, f"python3 --version failed: {result.stderr}"
-        assert "Python 3" in result.stdout, f"Unexpected python output: {result.stdout}"
-
-    # --- Framework binaries ---
-
-    def test_pkb_binary_available(self):
+    def test_pkb_binary_available(self, tooling_results):
         """pkb binary is on PATH and responds to --version."""
-        result = self._docker_run("pkb", "--version")
-        assert result.returncode == 0, f"pkb --version failed: {result.stderr}"
+        assert tooling_results["PKB"], f"pkb --version returned empty: {tooling_results['PKB']}"
 
-    def test_gh_cli_available(self):
+    def test_gh_cli_available(self, tooling_results):
         """GitHub CLI (gh) is on PATH."""
-        result = self._docker_run("gh", "--version")
-        assert result.returncode == 0, f"gh --version failed: {result.stderr}"
+        assert "gh version" in tooling_results["GH"].lower(), (
+            f"Unexpected gh output: {tooling_results['GH']}"
+        )
 
-    # --- Plugin and extension installed ---
-
-    def test_claude_plugin_installed(self):
+    def test_claude_plugin_installed(self, tooling_results):
         """aops-core Claude plugin is baked into the image."""
-        result = self._docker_run("bash", "-c", "claude plugin list 2>&1 | grep -i aops")
-        assert result.returncode == 0, (
-            f"aops-core plugin not found in claude plugin list: {result.stdout}{result.stderr}"
+        assert "aops" in tooling_results["CLAUDE_PLUGIN"].lower(), (
+            f"aops-core plugin not found in claude plugin list: {tooling_results['CLAUDE_PLUGIN']}"
         )
 
-    def test_gemini_extension_installed(self):
+    def test_gemini_extension_installed(self, tooling_results):
         """aops-core Gemini extension files are baked into the image."""
-        result = self._docker_run(
-            "bash", "-c", "ls /home/worker/.gemini/extensions/aops-core/GEMINI.md 2>&1"
-        )
-        assert result.returncode == 0, (
-            f"aops-core extension not found: {result.stdout}{result.stderr}"
+        assert "GEMINI.md" in tooling_results["GEMINI_EXT"], (
+            f"aops-core extension not found: {tooling_results['GEMINI_EXT']}"
         )
 
-    # --- Entrypoint configuration ---
+
+# --- Tests requiring special env/mounts (separate containers) ---
+
+
+@pytest.mark.slow
+@pytest.mark.integration
+class TestDockerEntrypoint:
+    """Entrypoint credential and staging configuration."""
+
+    @pytest.fixture(autouse=True)
+    def _require_docker(self):
+        if not _docker_available():
+            pytest.skip("Docker not available or aops-crew image not built")
 
     def test_entrypoint_configures_git_auth(self):
         """Entrypoint sets up git credentials, SSH isolation, and HTTPS rewrite.
@@ -119,17 +143,24 @@ class TestDockerTooling:
         important container smoke test — if this fails, no git operations work.
         """
         test_token = "ghp_test_e2e_credential_check_12345"
-        result = self._docker_run_with_env(
-            env={"GH_TOKEN": test_token, "SSH_AUTH_SOCK": ""},
-            cmd=(
-                "echo HELPER=$(git config --global credential.helper) && "
-                'echo CRED=$(printf "protocol=https\\nhost=github.com\\n" '
-                "| git credential fill 2>/dev/null | grep password) && "
-                "echo SSH=$SSH_AUTH_SOCK && "
-                "echo REWRITE=$(git config --global --get "
-                "url.https://github.com/.insteadOf)"
-            ),
+        docker_cmd = ["docker", "run", "--rm", "--user", f"{os.getuid()}:{os.getgid()}"]
+        docker_cmd.extend(["-e", f"GH_TOKEN={test_token}", "-e", "SSH_AUTH_SOCK="])
+        docker_cmd.extend(
+            [
+                "aops-crew",
+                "bash",
+                "-c",
+                (
+                    "echo HELPER=$(git config --global credential.helper) && "
+                    'echo CRED=$(printf "protocol=https\\nhost=github.com\\n" '
+                    "| git credential fill 2>/dev/null | grep password) && "
+                    "echo SSH=$SSH_AUTH_SOCK && "
+                    "echo REWRITE=$(git config --global --get "
+                    "url.https://github.com/.insteadOf)"
+                ),
+            ]
         )
+        result = subprocess.run(docker_cmd, capture_output=True, text=True, timeout=30, check=False)
         output = result.stdout + result.stderr
         assert result.returncode == 0, f"Container exited {result.returncode}:\n{output}"
 
@@ -163,7 +194,6 @@ class TestDockerTooling:
         into the container at runtime. If this breaks, all auth fails.
         """
         with tempfile.TemporaryDirectory() as staging_dir:
-            # Create a test file in the staging directory
             test_file = os.path.join(staging_dir, "test_staging_file.txt")
             with open(test_file, "w") as f:
                 f.write("staging-test-content-12345")
