@@ -27,10 +27,16 @@ class TestGeminiHooksFire:
         if not shutil.which("gemini"):
             pytest.skip("gemini CLI not in PATH")
 
-        # Verify extension is installed
+        # Verify extension is installed with Gemini-format hooks
         ext_dir = Path.home() / ".gemini" / "extensions" / "aops-core"
         if not ext_dir.exists():
             pytest.skip("aops-core extension not installed")
+        hooks_json = ext_dir / "hooks" / "hooks.json"
+        if not hooks_json.exists():
+            pytest.skip(
+                "aops-core extension has no hooks/hooks.json — "
+                "installed from repo root instead of dist/aops-gemini?"
+            )
 
         tmp_path = tmp_path_factory.mktemp("gemini_hooks")
         sessions_dir = tmp_path / "hook-sessions"
@@ -120,6 +126,12 @@ class TestGeminiHooksWithSettings:
         ext_dir = Path.home() / ".gemini" / "extensions" / "aops-core"
         if not ext_dir.exists():
             pytest.skip("aops-core extension not installed")
+        hooks_json = ext_dir / "hooks" / "hooks.json"
+        if not hooks_json.exists():
+            pytest.skip(
+                "aops-core extension has no hooks/hooks.json — "
+                "installed from repo root instead of dist/aops-gemini?"
+            )
 
         tmp_path = tmp_path_factory.mktemp("gemini_settings")
         sessions_dir = tmp_path / "sessions"
