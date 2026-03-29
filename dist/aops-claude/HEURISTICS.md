@@ -3,18 +3,46 @@ name: heuristics
 title: Heuristics
 type: instruction
 category: instruction
-description: Working hypotheses validated by evidence.
+description: Working hypotheses validated by evidence. Advisory — inform but don't block.
 ---
 
 # Heuristics
 
+## Project Independence (P#7)
+
+Projects must work independently without cross-dependencies.
+
+## Single-Purpose Files (P#11)
+
+Every file has ONE defined audience and ONE defined purpose.
+
+## Write For The Long Term (P#28)
+
+NEVER create single-use scripts or tests. Inline verification commands (`python -c`, `bash -c`) ARE single-use artifacts — write tests in `tests/`.
+
+## Minimal Instructions (P#44)
+
+Framework instructions should be no more detailed than required. Brevity reduces cognitive load and token cost.
+
+## Feedback Loops For Uncertainty (P#45)
+
+When the solution is unknown, don't guess — set up a feedback loop. Make minimal intervention, wait for evidence, revise hypothesis.
+
+## Read-Then-Write Memory (P#52)
+
+Before generating insights, search existing knowledge. Memory is read-then-write, never write-only.
+
+**Corollaries**:
+
+- Before analyzing a topic, search PKB for: people mentioned, related goals, prior reflections, and analogous situations.
+- Generating new insights without reading existing context risks reinventing or contradicting accumulated knowledge.
+- The `/remember` skill's mandatory "search first" step is the model for all knowledge-generating agents.
+
+**Derivation**: Knowledge accumulates across sessions. An agent that writes without reading produces a siloed write-only memory. Checking existing context before synthesis grounds new thinking in what is already known.
+
 ## Probabilistic Methods, Deterministic Processes (P#92)
 
 The framework embraces probabilistic methods (LLM agents) while requiring deterministic processes and derivable principles. We don't seek deterministic outcomes — we achieve rigor through deterministic processes that channel probabilistic methods.
-
-## Skills Contain No Dynamic Content (P#19)
-
-Current state lives in $ACA_DATA, not in skills.
 
 ## Semantic Link Density (P#54)
 
@@ -85,13 +113,9 @@ When spawning background agents, explicitly tell the user: what agents are spawn
 
 When data exceeds ~10KB or requires visual inspection, provide the file path and suggested commands instead of displaying inline.
 
-## Trust Version Control (P#70)
+## No Commit Hesitation (P#70)
 
-When removing or modifying files, delete them outright. Trust git. No `.backup`, `.old`, `.bak` copies.
-
-## No Commit Hesitation (P#24)
-
-After making bounded changes, commit immediately. NEVER ask "Would you like me to commit?" or any variant.
+After making bounded changes, commit immediately. NEVER ask "Would you like me to commit?" or any variant. Trust git — no `.backup`, `.old`, `.bak` copies.
 
 ## Decomposed Tasks Are Complete (P#71)
 
@@ -136,7 +160,7 @@ CLI commands and MCP tools exposing the same functionality MUST have identical d
 
 LLMs are bad at counting and aggregation. Use Python/scripts for deterministic operations; LLMs for judgment, classification, and generation. MCP servers return raw data; agents do all classification/selection.
 
-## Prefer Loud Failures Over Silent Skips (P#117)
+## Prefer Loud Failures Over Silent Skips (P#121)
 
 Tests should NOT use `pytest.skip` to mask configuration errors, missing dependencies, or environment-specific setup issues. Silence masks technical debt.
 
@@ -172,17 +196,9 @@ Bug fixes must not remove functionality required by acceptance criteria.
 
 Spike/learn output belongs in the task graph (task body, parent epic) or GitHub issues, not random files.
 
-## Mandatory Reproduction Tests for Fixes (P#82)
-
-Every framework bug fix MUST be preceded by a failing reproduction test case. This applies when implementing a fix, not necessarily during the initial async capture (/learn).
-
 ## Make Cross-Project Dependencies Explicit (P#83)
 
 When a task uses infrastructure from another project, create explicit linkage.
-
-## Methodology Belongs to Researcher (P#84)
-
-Methodological choices in research belong to the researcher. When implementation requires methodology not yet specified, HALT and ask.
 
 ## Error Recovery Returns to Reference (P#85)
 
@@ -238,15 +254,11 @@ When a subagent (custodiet, qa) returns a HALT or REVISE verdict, the main agent
 
 When executing QA/acceptance tests, treat the system as a black box. Never investigate implementation to figure out what you're testing.
 
-## Never Edit Generated Files (P#97)
-
-Before editing any file, check if it's auto-generated. If so, find and update the source/procedure that generates it.
-
 ## CLI Testing Requires Extended Timeouts (P#98)
 
 When testing CLI tools via Bash, use `timeout: 180000` (3 minutes) minimum.
 
-## Centralized Git Versioning (P#99)
+## Centralized Git Versioning (P#120)
 
 Versioning logic MUST be centralized in a single source of truth.
 
@@ -283,22 +295,6 @@ A flat task list indicates a failure to understand a problem's structure. Deeply
 - **Traceability.** Depth provides a trail of "Whys". Each level explains the purpose of the level below it. Shallow graphs lose this traceability.
 
 **Derivation**: Addresses the "wide and shallow" graph problem. Agents naturally prefer flat structures because they are easier to generate in a single turn. P#110 forces the agent to do the harder cognitive work of structural mapping.
-
-## User Sign-Off Required (P#111)
-
-Never mark a report/deliverable task as done without explicit user approval.
-
-## Receipts on QA (P#112)
-
-QA tasks on academic outputs require showing the user exactly what was checked and the results (verification logs, checklists, evidence).
-
-## Over-Verify Externally Visible Work (P#113)
-
-Prefer over-verification to under-verification on anything externally visible.
-
-## No Silent Release (P#114)
-
-Agents must not circulate, send, or publish any academic output without the user reviewing the final version.
 
 ## Tasks Require Purpose Context (P#106)
 
