@@ -66,7 +66,9 @@ def test_crew_spawns_docker_container_claude(temp_polecat_home, tmp_path):
     env = os.environ.copy()
     env["POLECAT_HOME"] = str(temp_polecat_home)
     env["POLECAT_DOCKER_IMAGE"] = "aops-test-nonexistent-image:latest"
-    env["PYTHONPATH"] = os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
+    env["PYTHONPATH"] = (
+        os.getcwd() + ":" + os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
+    )
 
     repo = tmp_path / "dummy_repo"
     repo.mkdir()
@@ -110,7 +112,9 @@ def test_crew_spawns_docker_container_gemini(temp_polecat_home, tmp_path):
     """
     env = os.environ.copy()
     env["POLECAT_HOME"] = str(temp_polecat_home)
-    env["PYTHONPATH"] = os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
+    env["PYTHONPATH"] = (
+        os.getcwd() + ":" + os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
+    )
 
     repo = tmp_path / "dummy_repo"
     repo.mkdir()
@@ -125,6 +129,8 @@ def test_crew_spawns_docker_container_gemini(temp_polecat_home, tmp_path):
     fake_bin = tmp_path / "bin"
     fake_bin.mkdir()
     fake_gemini = fake_bin / "gemini"
+    # Dump settings.json from inside fake gemini because polecat cleans up
+    # the temp GEMINI_CLI_HOME after the gemini process exits.
     fake_gemini.write_text(
         "#!/bin/sh\n"
         'echo "GEMINI_SANDBOX_IMAGE=${GEMINI_SANDBOX_IMAGE:-}"\n'
@@ -190,7 +196,9 @@ def test_crew_gemini_mounts_aca_data_when_exists(temp_polecat_home, tmp_path):
 
     env = os.environ.copy()
     env["POLECAT_HOME"] = str(temp_polecat_home)
-    env["PYTHONPATH"] = os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
+    env["PYTHONPATH"] = (
+        os.getcwd() + ":" + os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
+    )
     env["ACA_DATA"] = str(brain_dir)
 
     repo = tmp_path / "dummy_repo"
@@ -256,7 +264,9 @@ def test_gemini_crew_git_credentials_are_file_based(temp_polecat_home, tmp_path)
     """
     env = os.environ.copy()
     env["POLECAT_HOME"] = str(temp_polecat_home)
-    env["PYTHONPATH"] = os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
+    env["PYTHONPATH"] = (
+        os.getcwd() + ":" + os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
+    )
     env["AOPS_BOT_GH_TOKEN"] = "test-token-abc123"
     # Suppress Gemini auth replication (no ~/.gemini in test env)
     env["POLECAT_GEMINI_AUTH_DISABLED"] = "1"
@@ -342,7 +352,7 @@ def test_gemini_crew_git_credentials_are_file_based(temp_polecat_home, tmp_path)
         return out.split(begin, 1)[1].split(end, 1)[0].strip()
 
     # Verify .gitconfig has token embedded (not ${GH_TOKEN})
-    # Use Path.home() to build the absolute destination path dynamically
+    # This test doesn't override HOME, so use Path.home() for the mount destination
     gitconfig_content = extract_mount_content(output, str(Path.home() / ".gitconfig"))
     assert gitconfig_content, f".gitconfig mount content not found in output:\n{output}"
     assert "test-token-abc123" in gitconfig_content, (
@@ -354,7 +364,6 @@ def test_gemini_crew_git_credentials_are_file_based(temp_polecat_home, tmp_path)
     )
 
     # Verify gh hosts.yml has token embedded
-    # Use Path.home() to build the absolute destination path dynamically
     gh_hosts_content = extract_mount_content(
         output, str(Path.home() / ".config" / "gh" / "hosts.yml")
     )
@@ -374,7 +383,9 @@ def test_crew_interactive_shell_spawns_docker(temp_polecat_home, tmp_path):
     env = os.environ.copy()
     env["POLECAT_HOME"] = str(temp_polecat_home)
     env["POLECAT_DOCKER_IMAGE"] = "aops-test-nonexistent-image:latest"
-    env["PYTHONPATH"] = os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
+    env["PYTHONPATH"] = (
+        os.getcwd() + ":" + os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
+    )
 
     repo = tmp_path / "dummy_repo"
     repo.mkdir()
@@ -536,7 +547,9 @@ def test_crew_gemini_sandbox_config(temp_polecat_home, tmp_path):
     settings = json.loads(settings_raw)
 
     hooks_cfg = settings.get("hooksConfig", {})
-    assert hooks_cfg.get("enabled") is True, f"hooksConfig not enabled. Got: {hooks_cfg}"
+    assert hooks_cfg.get("enabled") is True, (
+        f"hooksConfig not enabled in replicated settings. Got: {hooks_cfg}"
+    )
 
     # No user baggage leaked
     assert "mcpServers" not in settings, (
