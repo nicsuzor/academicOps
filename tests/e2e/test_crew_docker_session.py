@@ -8,10 +8,13 @@ Covers: agent responds, binaries on PATH, extension active, structured output,
 hooks fire, session persistence (Claude), session log extraction (Claude).
 """
 
+import io
 import json
 import logging
 import os
+import subprocess
 import sys
+import tarfile
 from pathlib import Path
 
 import pytest
@@ -72,7 +75,7 @@ class TestCrewDockerSession:
     """
 
     @pytest.fixture(scope="class", params=["claude-docker", "gemini-docker"])
-    def crew_session(self, request, tmp_path_factory, gemini_home):
+    def crew_session(self, request, tmp_path_factory):
         """One LLM session per backend — class-scoped to share across tests.
 
         Returns dict with keys:
@@ -110,13 +113,54 @@ class TestCrewDockerSession:
             if aops_core_dir not in sys.path:
                 sys.path.insert(0, aops_core_dir)
 
-            from cli import _build_docker_cmd
+            from cli import _build_docker_cmd, _container_to_host_path
 
             session_id = str(uuid.uuid4())
-            workspace = tmp_path / "workspace"
-            workspace.mkdir()
+            # In DinD, tmp_path is on overlay (invisible to the outer Docker daemon).
+            # Create workspace under /workspace (a bind mount) so _build_docker_cmd
+            # can detect DinD and stage auth files on a host-visible volume.
+            _ws = Path("/workspace")
+            is_dind = _ws.exists() and _container_to_host_path(_ws) != _ws
+            if is_dind:
+                workspace = _ws / f".test-crew-{session_id[:8]}"
+            else:
+                workspace = tmp_path / "workspace"
+            workspace.mkdir(exist_ok=True)
             session_dir = tmp_path / "sessions"
             session_dir.mkdir()
+
+            # In DinD, use a Docker named volume for session persistence
+            # (bind mounts from overlay won't work).
+            vol_name = None
+            if is_dind:
+                vol_name = f"crew-test-sessions-{session_id[:8]}"
+                subprocess.run(
+                    ["docker", "volume", "create", vol_name],
+                    check=True,
+                    capture_output=True,
+                    timeout=30,
+                )
+                # Fix ownership so container user can write
+                uid, gid = os.getuid(), os.getgid()
+                subprocess.run(
+                    [
+                        "docker",
+                        "run",
+                        "--rm",
+                        "-v",
+                        f"{vol_name}:/sessions",
+                        "--user",
+                        "root",
+                        "aops-crew",
+                        "chown",
+                        "-R",
+                        f"{uid}:{gid}",
+                        "/sessions",
+                    ],
+                    check=True,
+                    capture_output=True,
+                    timeout=30,
+                )
 
             agent_cmd = [
                 "claude",
@@ -151,9 +195,8 @@ class TestCrewDockerSession:
                 agent_cmd=agent_cmd,
                 is_interactive=False,
                 session_dir=session_dir,
+                session_volume=vol_name,
             )
-
-            import subprocess
 
             try:
                 proc = subprocess.run(
@@ -181,8 +224,23 @@ class TestCrewDockerSession:
                 else:
                     result_msg = parsed
                     init_msg = {}
+                # Detect auth failures — Claude returns valid JSON but
+                # is_error=True with "Not logged in" when auth is missing.
+                # These must be hard failures, not silent successes.
+                result_text = result_msg.get("result", "") if isinstance(result_msg, dict) else ""
+                is_auth_failure = (
+                    isinstance(result_msg, dict)
+                    and result_msg.get("is_error")
+                    and "not logged in" in result_text.lower()
+                )
+                if is_auth_failure:
+                    pytest.fail(
+                        f"Claude auth failure inside Docker container: {result_text}\n"
+                        f"stderr: {proc.stderr[:500] if proc.stderr else 'none'}"
+                    )
+
                 result = {
-                    "success": True,
+                    "success": not (isinstance(result_msg, dict) and result_msg.get("is_error")),
                     "output": proc.stdout,
                     "stderr": proc.stderr,
                     "result": result_msg,
@@ -203,6 +261,47 @@ class TestCrewDockerSession:
                     f"Exit {proc.returncode}: {proc.stderr[:500] if proc.stderr else 'no stderr'}"
                 )
 
+            # In DinD, extract session files from the named volume into session_dir.
+            # In native mode, session_dir is already populated via the bind mount.
+            if vol_name:
+                try:
+                    tar_result = subprocess.run(
+                        [
+                            "docker",
+                            "run",
+                            "--rm",
+                            "-v",
+                            f"{vol_name}:/src",
+                            "alpine",
+                            "sh",
+                            "-c",
+                            "cd /src && find . -mindepth 1 | grep -q . && tar czf - . || true",
+                        ],
+                        capture_output=True,
+                        timeout=30,
+                    )
+                    if tar_result.returncode == 0 and tar_result.stdout:
+                        with tarfile.open(fileobj=io.BytesIO(tar_result.stdout)) as tar:
+                            tar.extractall(session_dir, filter="data")
+                except Exception as e:
+                    log.warning("Failed to extract sessions from volume %s: %s", vol_name, e)
+                finally:
+                    subprocess.run(
+                        ["docker", "volume", "rm", vol_name],
+                        check=False,
+                        capture_output=True,
+                        timeout=30,
+                    )
+
+            # Clean up DinD workspace and staging
+            if is_dind:
+                import shutil
+
+                shutil.rmtree(workspace, ignore_errors=True)
+                staging_root = workspace / ".aops-staging"
+                if staging_root.exists():
+                    shutil.rmtree(staging_root, ignore_errors=True)
+
             # Extract session data
             session_file = find_session_jsonl(session_id, search_dirs=[session_dir])
             tool_calls = parse_tool_calls(session_file) if session_file else []
@@ -222,6 +321,7 @@ class TestCrewDockerSession:
             if not _gemini_cli_available():
                 pytest.skip("Gemini CLI not found in PATH")
 
+            gemini_home = request.getfixturevalue("gemini_home")
             result = _run_gemini_docker(
                 MEGA_PROMPT,
                 gemini_home=gemini_home,
