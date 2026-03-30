@@ -690,7 +690,7 @@ class HookRouter:
             )
 
             tool_name = ctx.tool_name or ""
-            args = ctx.tool_input or {}
+            args = ctx.tool_input if isinstance(ctx.tool_input, dict) else {}
 
             for validator in [
                 validate_minimal_documentation,
