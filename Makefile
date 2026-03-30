@@ -91,7 +91,7 @@ install-dev:
 import json, shutil, pathlib; \
 f = pathlib.Path.home() / '.claude/plugins/installed_plugins.json'; \
 active = json.load(open(f))['plugins'].get('$(CLAUDE_PLUGIN_NAME)', [{}])[-1].get('installPath', '') if f.exists() else ''; \
-cache = pathlib.Path.home() / '.claude/plugins/cache/aops/aops-core'; \
+cache = pathlib.Path.home() / '.claude/plugins/cache/academicOps/aops-core'; \
 [shutil.rmtree(v) or print(f'  removed {v.name}') for v in cache.iterdir() if v.is_dir() and str(v) != active] if cache.exists() else None \
 "
 	@echo "Configuring local Claude marketplace (overrides release source)..."
@@ -102,7 +102,7 @@ cache = pathlib.Path.home() / '.claude/plugins/cache/aops/aops-core'; \
 	@command gemini extensions install $(DIST_DIR)/aops-gemini --consent || echo "  ⚠️ Gemini install failed"
 	@$(MAKE) report-versions
 	@echo "✓ Local installation complete"
-	@echo "  ⚠️  Marketplace 'aops' now points to $(AOPS_ROOT)"
+	@echo "  ⚠️  Marketplace 'academicOps' now points to $(AOPS_ROOT)"
 	@echo "  Run 'make uninstall-dev' to restore the release marketplace."
 
 # Restore the release marketplace after local dev testing

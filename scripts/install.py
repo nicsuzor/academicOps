@@ -364,7 +364,7 @@ def main():
             run_command(["claude", "plugin", "uninstall", "aops-core"], check=False)
             # Use local repo as marketplace for source installs
             run_command(["claude", "plugin", "marketplace", "add", str(aops_root)], check=False)
-            run_command(["claude", "plugin", "install", "aops-core@aops"], check=False)
+            run_command(["claude", "plugin", "install", "aops-core@academicOps"], check=False)
             print("✓ Claude plugin installed")
         else:
             print("Warning: Claude plugin dist not found. Skipping install.")

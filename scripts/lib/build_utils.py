@@ -117,7 +117,7 @@ def check_installed_plugin_version(
         with open(installed_plugins_path) as f:
             data = json.load(f)
 
-        plugin_key = f"{plugin_name}@aops"
+        plugin_key = f"{plugin_name}@academicOps"
         plugins = data.get("plugins", {})
 
         if plugin_key not in plugins:
