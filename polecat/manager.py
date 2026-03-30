@@ -1234,8 +1234,17 @@ class PolecatManager:
         )
 
         if branch_exists_result.stdout.strip():
-            # Exists remotely, checkout and track
-            subprocess.run(["git", "checkout", branch_name], cwd=worktree_path, check=True)
+            # Exists remotely — fetch then checkout and track
+            subprocess.run(
+                ["git", "fetch", "origin", branch_name],
+                cwd=worktree_path,
+                capture_output=True,
+            )
+            subprocess.run(
+                ["git", "checkout", "-b", branch_name, f"origin/{branch_name}"],
+                cwd=worktree_path,
+                check=True,
+            )
         else:
             # Create fresh from default branch. Note: clone usually checks out default branch.
             subprocess.run(["git", "checkout", default_branch], cwd=worktree_path, check=False)

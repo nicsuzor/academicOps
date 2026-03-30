@@ -813,6 +813,15 @@ def build_aops_core(
             content = template_path.read_text()
             mcp_template = json.loads(content)
 
+            # Conditional PKB server: HTTP when PKB_MCP_URL is set, stdio otherwise
+            pkb_url = os.environ.get("PKB_MCP_URL")
+            for platform_key in ("claude", "gemini"):
+                servers = mcp_template.get(platform_key, {}).get("mcpServers", {})
+                if pkb_url:
+                    servers.pop("pkb", None)
+                else:
+                    servers.pop("pkb-http", None)
+
             # Select platform-specific config if available
             if platform in mcp_template:
                 mcp_config = mcp_template[platform]
