@@ -7,7 +7,6 @@ import pytest
 from hooks.gate_config import extract_subagent_type
 from hooks.router import HookRouter
 from hooks.schemas import HookContext
-
 from lib.gate_model import GateVerdict
 from lib.gates.definitions import GATE_CONFIGS
 from lib.gates.engine import GenericGate

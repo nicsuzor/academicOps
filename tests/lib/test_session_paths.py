@@ -2,7 +2,6 @@ import os
 from unittest.mock import patch
 
 import pytest
-
 from lib.session_paths import _is_gemini_session, get_gate_file_path, get_session_short_hash
 
 
