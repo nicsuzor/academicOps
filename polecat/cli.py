@@ -16,10 +16,11 @@ if str(REPO_ROOT / "aops-core") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 
 import click
-from lib.agent_env import apply_env_mappings
 from manager import PolecatManager
 from observability import metrics
 from validation import TaskIDValidationError, validate_task_id_or_raise
+
+from lib.agent_env import apply_env_mappings
 
 # Max turns for headless Claude runs — must be high enough to accommodate hook
 # overhead (hydration gate, custodiet compliance check) plus actual task work.
@@ -476,7 +477,7 @@ def _build_docker_cmd(
             # (potentially stale or wrong-path) copy.
             staged_claude_dir = staging_dir / ".claude"
             staged_claude_dir.mkdir(exist_ok=True)
-            for auth_file in (".credentials.json", ".mcp.json", "settings.json"):
+            for auth_file in (".credentials.json", "settings.json"):
                 src = claude_dir / auth_file
                 if src.exists():
                     shutil.copy2(src, staged_claude_dir / auth_file)
