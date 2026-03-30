@@ -1,7 +1,7 @@
 # AcademicOps Makefile
 # Unified build and installation entry point
 
-.PHONY: help dev build-dev install-dev uninstall-dev install-remote install-claude install-gemini install-cli install-crontab install-hooks nextver release prerelease clean build-docker shell
+.PHONY: help dev build-dev install-dev uninstall-dev install-remote install-claude install-gemini install-cli install-crontab install-hooks nextver release prerelease clean build build-docker shell
 
 # --- Configuration ---
 
@@ -55,7 +55,7 @@ help:
 	@echo "  make release        - Manually tag/push (prefer release-please PRs)"
 	@echo ""
 	@echo "Docker:"
-	@echo "  make build-docker   - Build the aops crew worker image"
+	@echo "  make build          - Build the aops crew worker image"
 	@echo "  make shell          - Interactive shell in the crew image"
 	@echo ""
 	@echo "Detected Platform: $(or $(PLATFORM),unknown)"
@@ -204,7 +204,8 @@ build-docker:
 	@echo "✓ Image built: $(DOCKER_IMAGE)"
 	@echo "  Use with: GEMINI_SANDBOX_IMAGE=$(DOCKER_IMAGE) gemini --sandbox"
 
-# Alias for build-docker (referenced by ensure-docker)
+# Aliases
+build: build-docker
 build-sandbox: build-docker
 
 # Drop into an interactive shell in the crew image (for local testing)

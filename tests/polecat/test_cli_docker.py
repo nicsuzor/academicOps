@@ -293,15 +293,20 @@ class TestBuildDockerCmd:
         assert "AOPS_BOT_GH_TOKEN=ghp_test123" in env_args
         assert "GIT_ASKPASS=true" in env_args
 
-    def test_mounts_pkb_binary_when_available(self):
+    def test_mounts_pkb_binary_when_available(self, tmp_path):
         """pkb binary is mounted read-only for MCP server access."""
-        with patch(
-            "cli.shutil.which",
-            side_effect=lambda name, **kw: "/usr/bin/pkb" if name == "pkb" else None,
+        pkb_path = tmp_path / "pkb"
+        pkb_path.touch()
+        with (
+            patch(
+                "cli.shutil.which",
+                side_effect=lambda name, **kw: str(pkb_path) if name == "pkb" else None,
+            ),
+            patch("cli._container_to_host_path", return_value=pkb_path),
         ):
             cmd = self._build()
         vol_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-v"]
-        assert any("/usr/bin/pkb:/usr/local/bin/pkb:ro" in v for v in vol_args)
+        assert any(f"{pkb_path}:/usr/local/bin/pkb:ro" in v for v in vol_args)
 
     def test_no_pkb_mount_when_missing(self):
         """No pkb mount when binary is not found on host."""
@@ -459,11 +464,12 @@ class TestReplicateGeminiAuth:
         shutil.rmtree(result)
 
     def test_replicated_settings_is_minimal(self, tmp_path):
-        """Replicated settings.json should contain only auth + sandbox config.
+        """Replicated settings.json uses controlled template, not user settings.
 
-        User baggage (MCP servers, UI prefs, hooks, shell config) must not leak
-        into sandbox sessions — it causes hangs, non-reproducible behavior, and
-        host-path references that don't exist inside the container.
+        User baggage (MCP servers, UI prefs, auth selectedType, shell config)
+        must not leak into sandbox sessions. The template provides only
+        hooksConfig.enabled — no auth type (let Gemini auto-detect), no sandbox
+        settings, no user preferences.
         """
         gemini_dir = tmp_path / ".gemini"
         gemini_dir.mkdir(parents=True)
@@ -486,27 +492,25 @@ class TestReplicateGeminiAuth:
         assert result is not None
         replicated = json.loads((result / ".gemini" / "settings.json").read_text())
 
-        # Auth config preserved
-        assert replicated["security"]["auth"]["selectedType"] == "oauth-personal"
-        # Sandbox forced on
-        assert replicated["tools"]["sandbox"]["enabled"] is True
-        assert replicated["tools"]["sandbox"]["networkAccess"] is True
+        # Hooks explicitly enabled
+        assert replicated["hooksConfig"]["enabled"] is True
+        # No auth selectedType (Gemini auto-detects — avoids auth mismatch crash)
+        assert "security" not in replicated
         # User baggage stripped
         assert "mcpServers" not in replicated
         assert "ui" not in replicated
         assert "hooks" not in replicated
-        assert "shell" not in replicated.get("tools", {})
 
         import shutil
 
         shutil.rmtree(result)
 
-    def test_missing_auth_type_skips_settings(self, tmp_path):
-        """Settings without security.auth.selectedType should be skipped, not defaulted."""
+    def test_missing_auth_type_still_writes_settings(self, tmp_path):
+        """Settings.json is always written from template, regardless of user settings."""
         gemini_dir = tmp_path / ".gemini"
         gemini_dir.mkdir(parents=True)
 
-        # Settings with no auth type
+        # Settings with no auth type — template should still be written
         (gemini_dir / "settings.json").write_text(json.dumps({"tools": {}}))
 
         env = {}
@@ -514,15 +518,17 @@ class TestReplicateGeminiAuth:
             result = _replicate_gemini_auth(env)
 
         assert result is not None
-        # settings.json should not exist — skipped due to missing auth type
-        assert not (result / ".gemini" / "settings.json").exists()
+        # settings.json should exist — written from template
+        assert (result / ".gemini" / "settings.json").exists()
+        replicated = json.loads((result / ".gemini" / "settings.json").read_text())
+        assert replicated["hooksConfig"]["enabled"] is True
 
         import shutil
 
         shutil.rmtree(result)
 
-    def test_corrupt_settings_skipped(self, tmp_path):
-        """Unparseable settings.json should be skipped, not copied raw."""
+    def test_corrupt_settings_still_writes_template(self, tmp_path):
+        """Even with corrupt user settings, template is written."""
         gemini_dir = tmp_path / ".gemini"
         gemini_dir.mkdir(parents=True)
 
@@ -533,8 +539,8 @@ class TestReplicateGeminiAuth:
             result = _replicate_gemini_auth(env)
 
         assert result is not None
-        # settings.json should not exist — skipped due to parse error
-        assert not (result / ".gemini" / "settings.json").exists()
+        # settings.json should exist — written from template (user settings irrelevant)
+        assert (result / ".gemini" / "settings.json").exists()
 
         import shutil
 

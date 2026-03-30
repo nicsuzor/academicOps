@@ -303,6 +303,69 @@ def _detect_system_timezone() -> str:
     return "UTC"
 
 
+_DIND_MOUNTS: list[dict[str, str]] | None = None
+
+
+def _container_to_host_path(container_path: Path) -> Path:
+    """Resolve a container path to its host-visible path for Docker bind mounts.
+
+    In Docker-in-Docker (DinD) environments where the Docker socket is shared
+    with the host, bind-mount paths must be host-visible paths.  This function
+    uses ``docker inspect`` on the current container to get the actual
+    Source (host) / Destination (container) mount mappings, then finds the
+    longest-matching Destination prefix and replaces it with Source.
+
+    Results are cached — mount mappings don't change during a process lifetime.
+
+    Returns the original path unchanged in non-DinD environments or when
+    docker inspect fails.
+    """
+    global _DIND_MOUNTS  # noqa: PLW0603
+
+    # Lazy-load mount mappings on first call
+    if _DIND_MOUNTS is None:
+        _DIND_MOUNTS = []
+        if Path("/.dockerenv").exists():
+            try:
+                import socket
+                import subprocess as _sp
+
+                result = _sp.run(
+                    [
+                        "docker",
+                        "inspect",
+                        socket.gethostname(),
+                        "--format",
+                        "{{json .Mounts}}",
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                )
+                if result.returncode == 0 and result.stdout.strip():
+                    mounts = json.loads(result.stdout.strip())
+                    # Sort by Destination length descending for longest-prefix matching
+                    _DIND_MOUNTS = sorted(
+                        [m for m in mounts if m.get("Destination") and m.get("Source")],
+                        key=lambda m: len(m["Destination"]),
+                        reverse=True,
+                    )
+            except (OSError, json.JSONDecodeError, subprocess.TimeoutExpired):
+                pass
+
+    if not _DIND_MOUNTS:
+        return container_path
+
+    path_str = str(container_path.resolve())
+    for mount in _DIND_MOUNTS:
+        dest = mount["Destination"]
+        if path_str == dest or path_str.startswith(dest + "/"):
+            rel = path_str[len(dest) :]
+            return Path(mount["Source"] + rel)
+
+    return container_path
+
+
 def _build_docker_cmd(
     cli_tool: str,
     work_dir: Path,
@@ -311,13 +374,18 @@ def _build_docker_cmd(
     is_interactive: bool,
     tmp_files: list[Path] | None = None,
     session_dir: Path | None = None,
+    session_volume: str | None = None,
 ) -> list[str]:
     """Wraps an agent command in a Docker run command with appropriate mounts.
 
     If tmp_files is provided, any temporary files created (e.g. modified .claude.json)
     are appended to it so callers can clean them up.
 
-    If session_dir is provided and cli_tool is "claude" or "shell", mounts it at
+    If session_volume is provided and cli_tool is "claude" or "shell", uses it as a
+    Docker named volume at /home/worker/.claude/projects. Preferred in DinD environments
+    where bind-mounted paths may not be host-visible.
+
+    If session_dir is provided (and session_volume is not), mounts it as a bind mount at
     /home/worker/.claude/projects so Claude session transcripts persist on the host.
     """
     # Use POLECAT_DOCKER_IMAGE if set, otherwise default to the aops-crew image
@@ -357,8 +425,9 @@ def _build_docker_cmd(
     cmd.extend(["-e", f"GIT_COMMITTER_NAME={git_name}"])
     cmd.extend(["-e", f"GIT_COMMITTER_EMAIL={git_email}"])
 
-    # Mount worktree
-    cmd.extend(["-v", f"{work_dir.resolve()}:/workspace"])
+    # Mount worktree — resolve through _container_to_host_path for DinD compatibility
+    host_work_dir = _container_to_host_path(work_dir.resolve())
+    cmd.extend(["-v", f"{host_work_dir}:/workspace"])
     cmd.extend(["-w", "/workspace"])
 
     # Mount authentication and plugin cache for Claude
@@ -367,10 +436,23 @@ def _build_docker_cmd(
     if cli_tool in ("claude", "shell"):
         claude_json = home / ".claude.json"
         claude_dir = home / ".claude"
-        # Create a staging directory under $HOME so Colima/Docker VMs can access it
-        # (macOS VMs only share /Users, not /var/folders or /tmp).
-        # Use mkdtemp for a unique, non-guessable path; restrict to 0o700 since it holds auth material.
-        tmp_root = home / ".aops" / "tmp"
+        # Create a staging directory on a host-visible filesystem.
+        # - macOS Colima: only /Users is shared, so use $HOME/.aops/tmp
+        # - DinD (Docker-in-Docker): $HOME is overlay (invisible to outer daemon),
+        #   so use work_dir which is always a bind mount to a real host path
+        # - Native Docker: either location works
+        # Detect DinD: /.dockerenv exists AND root fs is overlay (= we're a container
+        # with Docker socket access). In this case $HOME is on overlay and invisible
+        # to the outer Docker daemon.
+        _is_dind = (
+            Path("/.dockerenv").exists()
+            and _container_to_host_path(work_dir.resolve()) != work_dir.resolve()
+        )
+        if _is_dind:
+            # DinD: $HOME is on overlay — stage under work_dir instead
+            tmp_root = work_dir / ".aops-staging"
+        else:
+            tmp_root = home / ".aops" / "tmp"
         tmp_root.mkdir(parents=True, exist_ok=True)
         staging_dir = Path(tempfile.mkdtemp(prefix="staging-", dir=tmp_root))
         os.chmod(staging_dir, 0o700)
@@ -398,7 +480,8 @@ def _build_docker_cmd(
                 src = claude_dir / auth_file
                 if src.exists():
                     shutil.copy2(src, staged_claude_dir / auth_file)
-        cmd.extend(["-v", f"{staging_dir}:/tmp/staging:ro"])
+        host_staging = _container_to_host_path(staging_dir)
+        cmd.extend(["-v", f"{host_staging}:/tmp/staging:ro"])
 
         # Stage Gemini auth files for "shell" mode so users can run gemini interactively.
         # Gemini normally handles its own sandbox, but in shell mode we're managing Docker.
@@ -432,15 +515,20 @@ def _build_docker_cmd(
         cmd.extend(["--group-add", str(docker_gid)])
         cmd.extend(["-v", "/var/run/docker.sock:/var/run/docker.sock"])
 
-    # Mount pkb binary for MCP server (plugin config references 'pkb' from PATH)
+    # Mount pkb binary for MCP server (plugin config references 'pkb' from PATH).
+    # In DinD the binary may be on an ephemeral volume the outer daemon can't reach;
+    # resolve and only mount if the host path exists, otherwise use the image's built-in.
     pkb_bin = shutil.which("pkb")
     if pkb_bin:
-        cmd.extend(["-v", f"{pkb_bin}:/usr/local/bin/pkb:ro"])
+        host_pkb = _container_to_host_path(Path(pkb_bin))
+        if host_pkb.exists():
+            cmd.extend(["-v", f"{host_pkb}:/usr/local/bin/pkb:ro"])
 
     # Mount ACA_DATA for PKB access (read-write — agents may update tasks)
     aca_data = env.get("ACA_DATA") or os.environ.get("ACA_DATA")
     if aca_data and os.path.isdir(aca_data):
-        cmd.extend(["-v", f"{aca_data}:{aca_data}"])
+        host_aca = _container_to_host_path(Path(aca_data))
+        cmd.extend(["-v", f"{host_aca}:{aca_data}"])
         cmd.extend(["-e", f"ACA_DATA={aca_data}"])
 
     # Add host networking for MCPs running on localhost
@@ -484,11 +572,17 @@ def _build_docker_cmd(
     cmd.extend(["-e", "SSH_AUTH_SOCK="])
     cmd.extend(["-e", "GIT_TERMINAL_PROMPT=0"])
 
-    # Mount session directory so Claude transcripts persist on the host.
+    # Mount session storage so Claude transcripts persist beyond container lifetime.
     # Without this, --rm destroys all session data when the container exits.
-    if session_dir and cli_tool in ("claude", "shell"):
-        session_dir.mkdir(parents=True, exist_ok=True)
-        cmd.extend(["-v", f"{session_dir.resolve()}:{container_home}/.claude/projects"])
+    if cli_tool in ("claude", "shell"):
+        if session_volume:
+            # Named volume: preferred in DinD where bind-mount paths may not be
+            # accessible from the outer Docker daemon.
+            cmd.extend(["-v", f"{session_volume}:{container_home}/.claude/projects"])
+        elif session_dir:
+            session_dir.mkdir(parents=True, exist_ok=True)
+            host_session = _container_to_host_path(session_dir.resolve())
+            cmd.extend(["-v", f"{host_session}:{container_home}/.claude/projects"])
 
     cmd.append(image)
     cmd.extend(agent_cmd)
@@ -543,6 +637,7 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
         "settings.json",
         "google_accounts.json",
         "oauth_creds.json",
+        "gemini-credentials.json",
         "installation_id",
         "trustedFolders.json",
         "projects.json",
@@ -580,30 +675,21 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
 
         if f == "settings.json":
             try:
-                # Read only the auth type from the user's settings — everything
-                # else comes from our controlled template to avoid leaking user
-                # baggage (MCP servers, hooks, UI prefs) into sandbox sessions.
-                with open(gemini_dir / f) as src_f:
-                    user_settings = json.load(src_f)
-                auth_type = user_settings.get("security", {}).get("auth", {}).get("selectedType")
-                if not auth_type:
-                    print(
-                        "   Warning: no security.auth.selectedType in user settings.json — "
-                        "sandbox auth may fail",
-                        file=sys.stderr,
-                    )
-                    continue
-
+                # Use our controlled template WITHOUT the user's auth selectedType.
+                # Gemini CLI auto-detects auth from available credentials (API key env
+                # var, OAuth files, etc.). Injecting selectedType causes Gemini to exit
+                # immediately if the auth type doesn't match available credentials
+                # (e.g. user logged in via Google Account but crew session has API key),
+                # which prevents hooks from firing at all.
                 template_path = SCRIPT_DIR / "defaults" / "gemini-settings.json"
                 with open(template_path) as tpl_f:
                     minimal = json.load(tpl_f)
-                minimal["security"]["auth"]["selectedType"] = auth_type
 
                 with open(target_dir / f, "w") as dst_f:
                     json.dump(minimal, dst_f, indent=2)
                 continue
             except (json.JSONDecodeError, OSError) as e:
-                print(f"   Warning: could not process user settings.json: {e}", file=sys.stderr)
+                print(f"   Warning: could not process settings.json template: {e}", file=sys.stderr)
                 continue
 
         # Follow symlinks to copy the actual file content, not the link itself.

@@ -108,6 +108,17 @@ RUN claude plugin marketplace add /app \
 RUN mkdir -p /home/worker/.gemini \
     && GEMINI_API_KEY=dummy-for-install gemini extensions install /app/dist/aops-gemini --consent
 
+# Set permissive extension enablement so hooks fire for any workspace path.
+# `gemini extensions install` restricts to /home/<user>/* which doesn't match
+# mounted worktrees (e.g. /workspace, /data, or deeply nested crew paths).
+RUN if [ -f /home/worker/.gemini/extensions/extension-enablement.json ]; then \
+    python3 -c "import json, pathlib; \
+p = pathlib.Path('/home/worker/.gemini/extensions/extension-enablement.json'); \
+d = json.loads(p.read_text()); \
+[d.__setitem__(k, {**v, 'overrides': ['*']}) for k, v in d.items()]; \
+p.write_text(json.dumps(d, indent=2))" ; \
+    fi
+
 # Install default ccstatusline and Claude Code settings.
 # These defaults are overridden at runtime if the host stages replacements.
 COPY --chown=worker:worker polecat/defaults/ccstatusline-settings.json /home/worker/.config/ccstatusline/settings.json
