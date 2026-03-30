@@ -29,8 +29,8 @@ Contains: P#3 (Don't Make Shit Up), P#5 (Do One Thing), P#6 (Data Boundaries), P
 | Context     | File                              | Agent                          | Activates when                       |
 | ----------- | --------------------------------- | ------------------------------ | ------------------------------------ |
 | Academic    | `$AOPS/skills/research/axioms.md` | Academic standards enforcer    | Research, teaching, publication work |
-| Development | `$AOPS/RULES-DEV.md`              | Engineering standards enforcer | Code, infrastructure, CI/CD work     |
-| Framework   | `$AOPS/RULES-FRAMEWORK.md`        | Framework operations enforcer  | Working on/within academicOps        |
+| Development | `$AOPS/agents/dev-standards.md`   | Engineering standards enforcer | Code, infrastructure, CI/CD work     |
+| Framework   | `$AOPS/agents/framework-ops.md`   | Framework operations enforcer  | Working on/within academicOps        |
 
 ### Tier 3: Heuristics (advisory)
 
@@ -39,59 +39,62 @@ Contains: P#3 (Don't Make Shit Up), P#5 (Do One Thing), P#6 (Data Boundaries), P
 
 ### How agents consume the registry
 
-1. Agent reads this manifest to identify which tier files apply to current context
-2. Agent always loads Tier 1 (universal axioms)
-3. Agent loads relevant Tier 2 file(s) based on project context
-4. Agent exercises semantic judgment about which specific axioms apply to the current task and phase
-5. No programmatic lookup — agents read and decide (P#49)
+Domain rules are embedded in the agents and skills that own them (the bazaar model). Instead of loading different rule files into a general-purpose agent based on detected context, you invoke the right specialist agent for the job:
+
+1. **Universal axioms** (Tier 1): Always active — loaded at SessionStart for all agents via `AXIOMS.md`
+2. **Academic rules**: Owned by the research skill (`skills/research/axioms.md`) — active when the research skill is invoked
+3. **Dev rules**: Owned by the dev-standards agent (`agents/dev-standards.md`) — invoke for code planning, review, or execution
+4. **Framework rules**: Owned by the framework-ops agent (`agents/framework-ops.md`) — invoke for framework development or operations
+
+No programmatic context detection required — the right agent for the job already has its rules (P#49).
 
 ## Axiom → Enforcement Mapping
 
-| Axiom                                       | Rule                                | Enforcement                                                                                  | Point                     | Level  |
-| ------------------------------------------- | ----------------------------------- | -------------------------------------------------------------------------------------------- | ------------------------- | ------ |
-| [[dont-make-shit-up]]                       | Don't Make Shit Up                  | AXIOMS.md                                                                                    | SessionStart              |        |
-| [[always-cite-sources]]                     | Always Cite Sources                 | skills/research/axioms.md                                                                    | SessionStart              |        |
-| [[do-one-thing]]                            | Do One Thing                        | TodoWrite visibility, custodiet drift detection, verbatim prompt comparison                  | During execution          |        |
-| [[data-boundaries]]                         | Data Boundaries                     | settings.json deny rules                                                                     | PreToolUse                |        |
-| [[project-independence]]                    | Project Independence                | HEURISTICS.md                                                                                | SessionStart              |        |
-| [[fail-fast-code]]                          | Fail-Fast (Code)                    | policy_enforcer.py blocks destructive git                                                    | PreToolUse                |        |
-| [[fail-fast-code]]                          | Fail-Fast (Code) - No Fallbacks     | check_no_fallbacks.py AST visitor detects `.get(..., "")`, `.get(..., [])`, `or ""` patterns | Pre-commit (active)       |        |
-| [[fail-fast-code]]                          | Fail-Fast (Code) Analysis           | axiom_enforcer (DISABLED)                                                                    | PreToolUse                |        |
-| [[fail-fast-agents]]                        | Fail-Fast (Agents)                  | fail_fast_watchdog.py injects reminder                                                       | PostToolUse               |        |
-| [[self-documenting]]                        | Self-Documenting                    | policy_enforcer.py blocks *-GUIDE.md                                                         | PreToolUse                |        |
-| [[single-purpose-files]]                    | Single-Purpose Files                | policy_enforcer.py 200-line limit                                                            | PreToolUse                |        |
-| [[dry-modular-explicit]]                    | DRY, Modular, Explicit              | RULES-DEV.md                                                                                 | SessionStart              |        |
-| [[use-standard-tools]]                      | Use Standard Tools                  | pyproject.toml, pre-commit                                                                   | Config                    |        |
-| [[always-dogfooding]]                       | Always Dogfooding                   | RULES-FRAMEWORK.md                                                                           | SessionStart              |        |
-| [[skills-are-read-only]]                    | Skills are Read-Only                | settings.json denies skill writes                                                            | PreToolUse                |        |
-| [[trust-version-control]]                   | Trust Version Control               | policy_enforcer.py blocks backup patterns                                                    | PreToolUse                |        |
-| [[no-workarounds]]                          | No Workarounds                      | fail_fast_watchdog.py                                                                        | PostToolUse               |        |
-| [[verify-first]]                            | Verify First                        | TodoWrite checkpoint                                                                         | During execution          |        |
-| [[verify-first]]                            | Verify Push Target                  | AXIOMS.md corollary: explicit refspec for git push                                           | Before git push           | 1c     |
-| [[trust-version-control]]                   | Always File PR                      | RULES-DEV.md P#24 corollary: commit → push → PR. Never leave work uncommitted.               | Stop                      | 1c     |
-| [[verify-first]]                            | Write-Without-Read Check            | axiom_enforcer (DISABLED)                                                                    | PreToolUse                |        |
-| [[verify-first]], [[dont-make-shit-up]]     | Check Existing Automation First     | Instruction injection (check .github/workflows/ before manual execution)                     | UserPromptSubmit          | 1c     |
-| [[verify-first]]                            | Primary Evidence Before Conclusions | AXIOMS.md P#26 corollary (read all comments/reviews/logs before concluding)                  | SessionStart              | 1a     |
-| [[no-excuses]]                              | No Excuses                          | AXIOMS.md                                                                                    | SessionStart              |        |
-| [[write-for-long-term]]                     | Write for Long Term                 | HEURISTICS.md                                                                                | SessionStart              |        |
-| [[maintain-relational-integrity]]           | Relational Integrity                | check_framework_integrity.py (index wikilinks, skill entries, workflow length)               | Pre-commit (active)       |        |
-| [[nothing-is-someone-elses-responsibility]] | Nothing Is Someone Else's           | AXIOMS.md                                                                                    | SessionStart              |        |
-| [[acceptance-criteria-own-success]]         | Acceptance Criteria Own Success     | /qa skill (on-demand)                                                                        | Stop                      |        |
-| [[plan-first-development]]                  | Plan-First Development              | EnterPlanMode tool                                                                           | Before coding             |        |
-| [[research-data-immutable]]                 | Research Data Immutable             | settings.json denies records/**                                                              | PreToolUse                |        |
-| [[just-in-time-context]]                    | Just-In-Time Context                | sessionstart_load_axioms.py                                                                  | SessionStart              |        |
-| [[minimal-instructions]]                    | Minimal Instructions                | HEURISTICS.md, policy_enforcer.py 200-line limit                                             | PreToolUse                |        |
-| [[feedback-loops-for-uncertainty]]          | Feedback Loops                      | HEURISTICS.md                                                                                | SessionStart              |        |
-| [[current-state-machine]]                   | Current State Machine               | autocommit_state.py (auto-commit+push)                                                       | PostToolUse               |        |
-| [[one-spec-per-feature]]                    | One Spec Per Feature                | RULES-FRAMEWORK.md                                                                           | SessionStart              |        |
-| [[mandatory-handover]]                      | Mandatory Handover Workflow         | UserPromptSubmit (hint), dump.md Step 2                                                      | UserPromptSubmit, Stop    |        |
-| [[capture-outstanding-work]]                | Capture Outstanding Work            | dump.md Step 2 (create follow-up tasks for incomplete/deferred work)                         | Stop                      |        |
-| [[explicit-approval-costly-ops]]            | Costly Operations Approval          | external-batch-submission.md workflow + AskUserQuestion before batch submit                  | During execution          |        |
-| [[academic-output-quality]]                 | Academic Output Quality (P#53)      | skills/research/axioms.md quality gate: user sign-off required for public deliverables       | Stop                      |        |
-| [[no-shitty-nlp]]                           | No Shitty NLP (P#49)                | RULES-FRAMEWORK.md, HEURISTICS.md, custodiet periodic check, REMINDERS.md                    | SessionStart, PostToolUse | 1a, 3b |
-| [[no-shitty-nlp]]                           | Agentic-First Design (P#49)         | RULES-FRAMEWORK.md corollary: no programmatic LLM API wrappers; custodiet detects "API call" | SessionStart, PostToolUse | 1a, 3b |
-| [[data-boundaries]]                         | Credential Isolation                | `SSH_AUTH_SOCK=""` in settings.local.json; `GH_TOKEN` from limited `AOPS_BOT_GH_TOKEN` PAT   | SessionStart              | 6      |
-| [[non-interactive-execution]]               | Non-interactive Execution (P#55)    | RULES-FRAMEWORK.md, C3 constraint; agent behavior and system prompts                         | During execution          |        |
+| Axiom                                       | Rule                                | Enforcement                                                                                       | Point                     | Level  |
+| ------------------------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------- | ------ |
+| [[dont-make-shit-up]]                       | Don't Make Shit Up                  | AXIOMS.md                                                                                         | SessionStart              |        |
+| [[always-cite-sources]]                     | Always Cite Sources                 | skills/research/axioms.md                                                                         | SessionStart              |        |
+| [[do-one-thing]]                            | Do One Thing                        | TodoWrite visibility, custodiet drift detection, verbatim prompt comparison                       | During execution          |        |
+| [[data-boundaries]]                         | Data Boundaries                     | settings.json deny rules                                                                          | PreToolUse                |        |
+| [[project-independence]]                    | Project Independence                | HEURISTICS.md                                                                                     | SessionStart              |        |
+| [[fail-fast-code]]                          | Fail-Fast (Code)                    | policy_enforcer.py blocks destructive git                                                         | PreToolUse                |        |
+| [[fail-fast-code]]                          | Fail-Fast (Code) - No Fallbacks     | check_no_fallbacks.py AST visitor detects `.get(..., "")`, `.get(..., [])`, `or ""` patterns      | Pre-commit (active)       |        |
+| [[fail-fast-code]]                          | Fail-Fast (Code) Analysis           | axiom_enforcer (DISABLED)                                                                         | PreToolUse                |        |
+| [[fail-fast-agents]]                        | Fail-Fast (Agents)                  | fail_fast_watchdog.py injects reminder                                                            | PostToolUse               |        |
+| [[self-documenting]]                        | Self-Documenting                    | policy_enforcer.py blocks *-GUIDE.md                                                              | PreToolUse                |        |
+| [[single-purpose-files]]                    | Single-Purpose Files                | policy_enforcer.py 200-line limit                                                                 | PreToolUse                |        |
+| [[dry-modular-explicit]]                    | DRY, Modular, Explicit              | agents/dev-standards.md                                                                           | SessionStart              |        |
+| [[use-standard-tools]]                      | Use Standard Tools                  | pyproject.toml, pre-commit                                                                        | Config                    |        |
+| [[always-dogfooding]]                       | Always Dogfooding                   | agents/framework-ops.md                                                                           | SessionStart              |        |
+| [[skills-are-read-only]]                    | Skills are Read-Only                | settings.json denies skill writes                                                                 | PreToolUse                |        |
+| [[trust-version-control]]                   | Trust Version Control               | policy_enforcer.py blocks backup patterns                                                         | PreToolUse                |        |
+| [[no-workarounds]]                          | No Workarounds                      | fail_fast_watchdog.py                                                                             | PostToolUse               |        |
+| [[verify-first]]                            | Verify First                        | TodoWrite checkpoint                                                                              | During execution          |        |
+| [[verify-first]]                            | Verify Push Target                  | AXIOMS.md corollary: explicit refspec for git push                                                | Before git push           | 1c     |
+| [[trust-version-control]]                   | Always File PR                      | agents/dev-standards.md P#24 corollary: commit → push → PR. Never leave work uncommitted.         | Stop                      | 1c     |
+| [[verify-first]]                            | Write-Without-Read Check            | axiom_enforcer (DISABLED)                                                                         | PreToolUse                |        |
+| [[verify-first]], [[dont-make-shit-up]]     | Check Existing Automation First     | Instruction injection (check .github/workflows/ before manual execution)                          | UserPromptSubmit          | 1c     |
+| [[verify-first]]                            | Primary Evidence Before Conclusions | AXIOMS.md P#26 corollary (read all comments/reviews/logs before concluding)                       | SessionStart              | 1a     |
+| [[no-excuses]]                              | No Excuses                          | AXIOMS.md                                                                                         | SessionStart              |        |
+| [[write-for-long-term]]                     | Write for Long Term                 | HEURISTICS.md                                                                                     | SessionStart              |        |
+| [[maintain-relational-integrity]]           | Relational Integrity                | check_framework_integrity.py (index wikilinks, skill entries, workflow length)                    | Pre-commit (active)       |        |
+| [[nothing-is-someone-elses-responsibility]] | Nothing Is Someone Else's           | AXIOMS.md                                                                                         | SessionStart              |        |
+| [[acceptance-criteria-own-success]]         | Acceptance Criteria Own Success     | /qa skill (on-demand)                                                                             | Stop                      |        |
+| [[plan-first-development]]                  | Plan-First Development              | EnterPlanMode tool                                                                                | Before coding             |        |
+| [[research-data-immutable]]                 | Research Data Immutable             | settings.json denies records/**                                                                   | PreToolUse                |        |
+| [[just-in-time-context]]                    | Just-In-Time Context                | sessionstart_load_axioms.py                                                                       | SessionStart              |        |
+| [[minimal-instructions]]                    | Minimal Instructions                | HEURISTICS.md, policy_enforcer.py 200-line limit                                                  | PreToolUse                |        |
+| [[feedback-loops-for-uncertainty]]          | Feedback Loops                      | HEURISTICS.md                                                                                     | SessionStart              |        |
+| [[current-state-machine]]                   | Current State Machine               | autocommit_state.py (auto-commit+push)                                                            | PostToolUse               |        |
+| [[one-spec-per-feature]]                    | One Spec Per Feature                | agents/framework-ops.md                                                                           | SessionStart              |        |
+| [[mandatory-handover]]                      | Mandatory Handover Workflow         | UserPromptSubmit (hint), dump.md Step 2                                                           | UserPromptSubmit, Stop    |        |
+| [[capture-outstanding-work]]                | Capture Outstanding Work            | dump.md Step 2 (create follow-up tasks for incomplete/deferred work)                              | Stop                      |        |
+| [[explicit-approval-costly-ops]]            | Costly Operations Approval          | external-batch-submission.md workflow + AskUserQuestion before batch submit                       | During execution          |        |
+| [[academic-output-quality]]                 | Academic Output Quality (P#53)      | skills/research/axioms.md quality gate: user sign-off required for public deliverables            | Stop                      |        |
+| [[no-shitty-nlp]]                           | No Shitty NLP (P#49)                | agents/framework-ops.md, HEURISTICS.md, custodiet periodic check, REMINDERS.md                    | SessionStart, PostToolUse | 1a, 3b |
+| [[no-shitty-nlp]]                           | Agentic-First Design (P#49)         | agents/framework-ops.md corollary: no programmatic LLM API wrappers; custodiet detects "API call" | SessionStart, PostToolUse | 1a, 3b |
+| [[data-boundaries]]                         | Credential Isolation                | `SSH_AUTH_SOCK=""` in settings.local.json; `GH_TOKEN` from limited `AOPS_BOT_GH_TOKEN` PAT        | SessionStart              | 6      |
+| [[non-interactive-execution]]               | Non-interactive Execution (P#55)    | agents/framework-ops.md, C3 constraint; agent behavior and system prompts                         | During execution          |        |
 
 ## Heuristic → Enforcement Mapping
 
@@ -169,6 +172,8 @@ Contains: P#3 (Don't Make Shit Up), P#5 (Do One Thing), P#6 (Data Boundaries), P
 | [[receipts-on-qa]] | Receipts on QA (P#112) | HEURISTICS.md | QA execution | |
 | [[over-verify-externally-visible]] | Over-Verify Externally Visible Work (P#113) | HEURISTICS.md | During execution | |
 | [[no-silent-release]] | No Silent Release (P#114) | HEURISTICS.md | Before release | |
+| [[butler-gap-principle]] | Butler Gap Principle (frame design questions as framework gaps) | framework SKILL.md | Skill invocation | |
+| [[butler-preflight-investigation]] | Butler Pre-Flight Investigation (verify mechanism capabilities before answering) | framework SKILL.md | Skill invocation | |
 
 ## Enforcement Level Summary
 
@@ -199,15 +204,15 @@ Context loading follows a **three-tier architecture** (see [[session-start-injec
 
 ### File Loading Summary
 
-| File                        | Purpose                           | Loaded Via                    |
-| --------------------------- | --------------------------------- | ----------------------------- |
-| `$AOPS/CORE.md`             | Framework tool inventory (~2KB)   | SessionStart hook             |
-| `$cwd/.agent/CORE.md`       | Project conventions               | SessionStart hook (if exists) |
-| `AXIOMS.md`                 | Tier 1: Universal axioms          | SessionStart (always)         |
-| `RULES-DEV.md`              | Tier 2: Development context rules | JIT (when writing code)       |
-| `RULES-FRAMEWORK.md`        | Tier 2: Framework context rules   | JIT (when on framework work)  |
-| `skills/research/axioms.md` | Tier 2: Academic context rules    | JIT (when on academic work)   |
-| `HEURISTICS.md`             | Tier 3: Advisory heuristics       | JIT via hints                 |
+| File                        | Purpose                         | Loaded Via                       |
+| --------------------------- | ------------------------------- | -------------------------------- |
+| `$AOPS/CORE.md`             | Framework tool inventory (~2KB) | SessionStart hook                |
+| `$cwd/.agent/CORE.md`       | Project conventions             | SessionStart hook (if exists)    |
+| `AXIOMS.md`                 | Tier 1: Universal axioms        | SessionStart (always)            |
+| `agents/dev-standards.md`   | Tier 2: Development rules       | When dev-standards agent invoked |
+| `agents/framework-ops.md`   | Tier 2: Framework rules         | When framework-ops agent invoked |
+| `skills/research/axioms.md` | Tier 2: Academic rules          | When research skill invoked      |
+| `HEURISTICS.md`             | Tier 3: Advisory heuristics     | JIT via hints                    |
 
 ## MCP Tool Injection Requirements
 
