@@ -19,6 +19,7 @@ AOPS_CORE_DIR = HOOK_DIR.parent
 if str(AOPS_CORE_DIR) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE_DIR))
 
+from hooks.schemas import HookContext
 from lib.gate_model import GateResult, GateVerdict
 from lib.session_paths import (
     get_all_gate_file_paths,
@@ -27,8 +28,6 @@ from lib.session_paths import (
     get_session_status_dir,
 )
 from lib.session_state import SessionState
-
-from hooks.schemas import HookContext
 
 
 def set_persistent_env(env_dict: dict[str, str]):
@@ -94,6 +93,14 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
         f"Hooks log: {hook_log_path}",
         f"Transcript: {transcript_path}",
     ]
+
+    # Bridge userConfig → ACA_DATA for Claude Code plugin installs.
+    # Claude exports plugin userConfig values as CLAUDE_PLUGIN_OPTION_<KEY>.
+    # Persist as ACA_DATA so all hooks/scripts can find it.
+    if not os.environ.get("ACA_DATA") and os.environ.get("CLAUDE_PLUGIN_OPTION_ACA_DATA"):
+        aca_data_val = os.environ["CLAUDE_PLUGIN_OPTION_ACA_DATA"]
+        persist["ACA_DATA"] = aca_data_val
+        os.environ["ACA_DATA"] = aca_data_val
 
     # Sync ACA_DATA: commit pending changes, then pull remote
     aca_data = os.environ.get("ACA_DATA")
