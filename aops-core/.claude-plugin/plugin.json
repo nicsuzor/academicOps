@@ -14,12 +14,16 @@
   ],
   "userConfig": {
     "ACA_DATA": {
+      "title": "Knowledge Base Path",
       "description": "Path to your personal knowledge base directory (e.g., ~/brain)",
+      "type": "directory",
       "sensitive": false
     },
     "PKB_MCP_URL": {
+      "title": "PKB Server URL",
       "description": "HTTP endpoint for pkb MCP server (e.g., http://localhost:3001/mcp)",
-        "sensitive": true
+      "type": "string",
+      "sensitive": true
     }
   },
   "mcpServers": "./.mcp.json"

@@ -1,5 +1,8 @@
 {
   "hooksConfig": {
     "enabled": true
+  },
+  "model": {
+    "selectedModel": "gemini-3.1-pro-preview"
   }
 }

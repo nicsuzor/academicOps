@@ -2,15 +2,6 @@
   "claude": {
     "mcpServers": {
       "pkb": {
-        "type": "stdio",
-        "command": "pkb",
-        "args": ["mcp"],
-        "env": {
-          "ACA_DATA": "${user_config.ACA_DATA}",
-          "RUST_LOG": "warn"
-        }
-      },
-      "pkb-http": {
         "type": "http",
         "url": "${user_config.PKB_MCP_URL}"
       }
@@ -19,12 +10,8 @@
   "gemini": {
     "mcpServers": {
       "pkb": {
-        "command": "pkb",
-        "args": ["mcp"],
-        "env": {
-          "ACA_DATA": "${ACA_DATA}",
-          "RUST_LOG": "warn"
-        }
+        "command": "uvx",
+        "args": ["fastmcp", "run", "${PKB_MCP_URL}"]
       }
     }
   }

@@ -99,7 +99,7 @@ RUN chmod +x /app/polecat/entrypoint.sh
 # Install the aops-core Claude plugin. HOME is already /home/worker so
 # known_marketplaces.json and installLocation paths are correct from the start.
 RUN claude plugin marketplace add /app \
-    && claude plugin install aops-core@aops
+    && claude plugin install aops-core@academicOps
 
 # Install the aops-core Gemini extension from local build artifacts.
 # Pre-create .gemini directory (gemini CLI needs it for project registry).

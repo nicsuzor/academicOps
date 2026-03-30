@@ -1,6 +1,6 @@
 {
   "name": "aops-core",
-  "version": "0.3.16-dev.65",
+  "version": "0.3.16",
   "description": "Core academicOps framework - skills, agents, hooks, and tools for research workflow automation",
   "author": {
     "name": "Nicolas Suzor"
@@ -14,11 +14,15 @@
   ],
   "userConfig": {
     "ACA_DATA": {
+      "title": "Knowledge Base Path",
       "description": "Path to your personal knowledge base directory (e.g., ~/brain)",
+      "type": "directory",
       "sensitive": false
     },
     "PKB_MCP_URL": {
+      "title": "PKB Server URL",
       "description": "HTTP endpoint for pkb MCP server (e.g., http://localhost:3001/mcp)",
+      "type": "string",
       "sensitive": true
     }
   },

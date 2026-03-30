@@ -186,19 +186,19 @@ def test_crew_spawns_docker_container_gemini(temp_polecat_home, tmp_path):
 
 @pytest.mark.slow
 @pytest.mark.integration
-def test_crew_gemini_mounts_aca_data_when_exists(temp_polecat_home, tmp_path):
+def test_crew_gemini_passes_pkb_url(temp_polecat_home, tmp_path):
     """
-    Gemini crew: when ACA_DATA exists on host, it is mounted via SANDBOX_MOUNTS
-    AND forwarded as an env var via SANDBOX_FLAGS.
+    Gemini crew: PKB_MCP_URL is forwarded via SANDBOX_FLAGS when set.
+    ACA_DATA is NOT mounted (PKB uses HTTP).
     """
-    brain_dir = tmp_path / "brain"
-    brain_dir.mkdir()
-
     env = os.environ.copy()
     env["POLECAT_HOME"] = str(temp_polecat_home)
     env["PYTHONPATH"] = (
         os.getcwd() + ":" + os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
     )
+    env["PKB_MCP_URL"] = "http://test-host:8026/mcp"
+    brain_dir = tmp_path / "brain"
+    brain_dir.mkdir()
     env["ACA_DATA"] = str(brain_dir)
 
     repo = tmp_path / "dummy_repo"
@@ -237,12 +237,12 @@ def test_crew_gemini_mounts_aca_data_when_exists(temp_polecat_home, tmp_path):
     )
 
     output = result.stdout + result.stderr
-    brain = str(brain_dir)
-    assert f"ACA_DATA={brain}" in output, (
-        f"ACA_DATA should be forwarded via SANDBOX_FLAGS. Output:\n{output}"
+    assert "PKB_MCP_URL=http://test-host:8026/mcp" in output, (
+        f"PKB_MCP_URL should be forwarded via SANDBOX_FLAGS. Output:\n{output}"
     )
-    assert f"{brain}:{brain}:rw" in output, (
-        f"ACA_DATA should be mounted via SANDBOX_MOUNTS. Output:\n{output}"
+    # Brain should NOT be mounted — PKB uses HTTP now
+    assert f"{brain_dir}:{brain_dir}:rw" not in output, (
+        f"ACA_DATA should NOT be mounted. Output:\n{output}"
     )
 
 
