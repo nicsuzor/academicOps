@@ -359,10 +359,13 @@ Using the data gathered in Steps 4.1–4.6, generate 3-5 bullet points that tell
 - **Each bullet under 80 characters**
 - **Cover**: what work started today, where context switches or distractions occurred, what remains undone (from today and yesterday)
 - **Match lived experience** — this is a narrative, not a task list reformatting. If the user set morning goals, note alignment or drift. If sessions show project-hopping, say so.
+- **Weight by human engagement**: Use the session engagement classification from Step 4.2. Lead with interactive sessions (2+ prompts) where the human was actively thinking. Autonomous runs (0 prompts) get a brief mention for their output, not a leading bullet. The dashboard reader wants to know what _they_ did, not what their agents produced.
 - **Order**: chronological or by impact, whichever tells a clearer story
 
 Bad: `"[aops] Fix tests failed"` (mechanical, not narrative)
+Bad: `"Designed /project skill with 6 tasks"` (describes autonomous agent output as if the human did it)
 Good: `"You spent the morning debugging test failures in aops"` (story)
+Good: `"You dispatched the /project design — it ran 4hrs and produced 6 tasks"` (accurate attribution)
 
 **4.7.2: Assemble and write synthesis.json**
 

@@ -50,6 +50,7 @@ After writing Today's Story to the daily note, also update the `daily_story` fie
    - Second person ("you started...", "you got pulled into...")
    - Each bullet under 80 characters
    - Cover: what started, what got sidetracked, what remains undone
+   - Weight by human engagement (prompt count from Step 4.2), not agent output volume. Lead with what the human interacted with, not what autonomous agents produced.
 2. Read existing `$AOPS_SESSIONS/synthesis.json`
 3. Update `daily_story` array and `narrative_generated` timestamp
 4. Write back atomically (preserve all other fields)
