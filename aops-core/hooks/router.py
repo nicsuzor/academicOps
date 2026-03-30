@@ -465,6 +465,24 @@ class HookRouter:
         # Run special handlers first (unified_logger, ntfy, etc.) then gates
         self._run_special_handlers(ctx, state, merged_result)
 
+        # Deterministic policy checks (PreToolUse only) — fail-fast before gates
+        if ctx.hook_event == "PreToolUse":
+            policy_result = self._run_policy_enforcer(ctx)
+            if policy_result:
+                hook_output = self._gate_result_to_canonical(policy_result)
+                self._merge_result(merged_result, hook_output)
+                if policy_result.verdict == GateVerdict.DENY:
+                    # Policy block — skip gates entirely
+                    try:
+                        state.save()
+                    except Exception as e:
+                        print(f"CRITICAL: Failed to save session state: {e}", file=sys.stderr)
+                    try:
+                        log_hook_event(ctx, output=merged_result)
+                    except Exception as e:
+                        print(f"WARNING: Failed to log hook event: {e}", file=sys.stderr)
+                    return merged_result
+
         # Lightweight hydrator hint (non-blocking)
         if ctx.hook_event == "UserPromptSubmit":
             self._run_lightweight_hydrator(ctx, state, merged_result)
@@ -657,6 +675,43 @@ class HookRouter:
                 )
         except Exception as e:
             print(f"WARNING: generate_transcript error: {e}", file=sys.stderr)
+
+    def _run_policy_enforcer(self, ctx: HookContext) -> GateResult | None:
+        """Run deterministic policy checks (PreToolUse only).
+
+        These are fast, no-LLM checks that block unsafe operations before
+        gates evaluate. Covers: destructive git, bulk rm, branch protection,
+        GUIDE.md bloat, protected artifacts.
+
+        Wires policy_enforcer.py validators into the router pipeline.
+        Issues: #322, #346, #354, #381.
+        """
+        try:
+            from hooks.policy_enforcer import (
+                validate_branch_protection,
+                validate_minimal_documentation,
+                validate_protect_artifacts,
+                validate_safe_git_usage,
+            )
+
+            tool_name = ctx.tool_name or ""
+            args = ctx.tool_input or {}
+
+            for validator in [
+                validate_minimal_documentation,
+                validate_safe_git_usage,
+                validate_branch_protection,
+                validate_protect_artifacts,
+            ]:
+                result = validator(tool_name, args)
+                if result and result.get("continue") is False:
+                    return GateResult.deny(
+                        system_message=result.get("systemMessage", "Policy violation"),
+                    )
+        except Exception as e:
+            print(f"WARNING: policy_enforcer error: {e}", file=sys.stderr)
+
+        return None
 
     def _run_aca_data_autocommit(self, ctx: HookContext) -> None:
         """Auto-commit ACA_DATA changes after state-modifying tool calls.
