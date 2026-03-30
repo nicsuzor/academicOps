@@ -1,7 +1,7 @@
 ---
 title: Supervisor Architecture
 type: spec
-description: Unified specification for task supervision — parallel swarm dispatch and iterative burst orchestration
+description: Unified specification for task supervision — epic-level orchestration and iterative burst processing
 status: active
 tier: polecat
 depends_on: [polecat-system]
@@ -9,7 +9,7 @@ supersedes: [polecat-supervision, polecat-swarms, worker-hypervisor]
 tags: [spec, polecat, architecture, supervisor]
 created: 2026-03-11
 implements:
-  - swarm-supervisor skill
+  - supervisor skill
   - burst-supervisor skill
   - polecat/supervisor_loop.py
   - polecat/swarm.py
@@ -26,7 +26,7 @@ Unified specification for task supervision. All orchestration patterns — paral
 - [[polecat/swarm.py]] — Multiprocessing worker pool
 - [[polecat/engineer.py]] — Refinery merge queue processor
 - [[polecat/manager.py]] — Worktree lifecycle, atomic task claiming
-- [[skills/swarm-supervisor/SKILL.md]] — Full lifecycle orchestration skill (swarm mode)
+- [[skills/supervisor/SKILL.md]] — Epic-level orchestration skill (orient→act→checkpoint loop)
 - [[skills/burst-supervisor/SKILL.md]] — Iterative long-running orchestration skill (burst mode)
 - [[WORKERS.md]] — Worker registry (types, capabilities, selection rules)
 - [[LIFECYCLE-HOOKS.md]] — Trigger hooks (queue-drain, stale-check, post-finish)
@@ -67,21 +67,21 @@ Done.                               Persist state → next burst
 
 ## When to Use Which
 
-| Situation                                   | Mode           | Entry point                            |
-| ------------------------------------------- | -------------- | -------------------------------------- |
-| Queue of independent tasks, drain fast      | Swarm          | `polecat swarm` or `polecat supervise` |
-| Decomposed epic, parallel subtasks          | Swarm          | `/swarm-supervisor` skill              |
-| Process N items iteratively with evaluation | Burst          | `/burst-supervisor` skill              |
-| Long-running workflow across sessions       | Burst          | `/burst-supervisor` + `/loop`          |
-| One-off single task                         | Neither        | `polecat run -t <id>` or `/pull`       |
-| Batch file processing (non-task)            | Atomic locking | See "Atomic Locking" appendix          |
+| Situation                                   | Mode           | Entry point                      |
+| ------------------------------------------- | -------------- | -------------------------------- |
+| Queue of independent tasks, drain fast      | Supervisor     | `/supervisor` skill              |
+| Decomposed epic, parallel subtasks          | Supervisor     | `/supervisor` skill              |
+| Process N items iteratively with evaluation | Burst          | `/burst-supervisor` skill        |
+| Long-running workflow across sessions       | Burst          | `/burst-supervisor` + `/loop`    |
+| One-off single task                         | Neither        | `polecat run -t <id>` or `/pull` |
+| Batch file processing (non-task)            | Atomic locking | See "Atomic Locking" appendix    |
 
 **Rules of thumb:**
 
-- If each task produces a PR and the PR pipeline can judge quality → swarm
+- If you own an epic from decomposition through integration → supervisor
 - If you need to read and evaluate each result before dispatching more → burst
-- If the work spans days or weeks → burst (state recovery across sessions)
-- If you want maximum throughput right now → swarm
+- If the work spans days or weeks → supervisor or burst (state recovery across sessions)
+- If you want maximum throughput for independent tasks → supervisor with parallel `polecat run` dispatch
 
 ## Shared Infrastructure
 
@@ -153,40 +153,40 @@ The swarm drains a task queue in parallel. Workers claim tasks independently —
 
 ### Entry Points
 
-| Entry point                            | What it does                                                                          |
-| -------------------------------------- | ------------------------------------------------------------------------------------- |
-| `polecat swarm -c N -g M -p <project>` | Spawn N Claude + M Gemini workers, each claims from queue                             |
-| `polecat supervise -p <project> -n N`  | LLM supervisor selects (task, runner) pairs per round                                 |
-| `/swarm-supervisor` skill              | Full 6-phase lifecycle: decompose → review → approve → dispatch → PR review → capture |
+| Entry point                           | What it does                                             |
+| ------------------------------------- | -------------------------------------------------------- |
+| `polecat run -t <id> -p <project>`    | Dispatch single task to Claude worker                    |
+| `polecat run -t <id> -p <project> -g` | Dispatch single task to Gemini worker                    |
+| `/supervisor` skill                   | Epic-level orchestration: orient → act → checkpoint loop |
 
-### Lifecycle (swarm-supervisor skill)
+### Lifecycle (supervisor skill)
 
-See [[skills/swarm-supervisor/SKILL.md]] for the full 6-phase protocol:
+See [[skills/supervisor/SKILL.md]] for the orient→act→checkpoint loop:
 
-1. **Decompose**: Break large tasks into PR-sized subtasks
-2. **Review**: Multi-agent review of decomposition
-3. **Approve**: Human approval gate (surfaced via `/daily`)
-4. **Dispatch**: Fire-and-forget via `polecat run` / `polecat swarm`
-5. **PR Review**: GitHub Actions pipeline (automated)
-6. **Capture**: Post-merge knowledge extraction
+1. **Orient**: Read epic, verify child statuses, decide what to do next
+2. **Decompose**: Break large tasks into PR-sized subtasks
+3. **Dispatch**: Individual tasks via `polecat run -t <id>`
+4. **Monitor**: Check PKB task statuses and GitHub PRs
+5. **React**: Handle failures, conflicts, scope changes
+6. **Integrate**: Verify, merge, sync
+7. **Complete**: Update epic, capture knowledge, file follow-ups
 
-**Key property**: The supervisor does NOT actively monitor workers. After dispatch, the next touchpoint is when PRs arrive on GitHub.
+**Key property**: The supervisor stays responsible for the epic — it checks progress on each invocation, not fire-and-forget. All state lives in the epic task file body.
 
-### State (supervisor_loop.py)
+### State
 
-The `polecat supervise` command uses `$POLECAT_HOME/supervisor-state-<project>.json` for round history. This is appropriate for swarm mode because:
+The supervisor stores all state in the epic task file body as structured
+markdown (work items table, pending decisions, dispatch log). No external
+state files. This enables preemptible async execution — the supervisor can
+be stopped at any time and a new instance recovers from the task file.
 
-- State is ephemeral (round history, not work-item tracking)
-- The supervisor runs as a single process, not across sessions
-- Workers report via exit codes and PR creation, not state updates
-
-For long-running workflows that need per-item tracking, use burst mode instead.
+See [[skills/supervisor/instructions/supervision-loop]] for the state format.
 
 ### Conflict Avoidance
 
 - **Atomic claiming**: `manager.py:claim_next_task()` with file locking
 - **Worktree isolation**: Each worker in separate `$POLECAT_HOME/polecat/<task-id>/`
-- **Batch isolation**: Mark non-batch tasks as `waiting` before dispatch to prevent claiming by `polecat swarm` (which claims ANY ready task)
+- **Selective dispatch**: Supervisor chooses which tasks to dispatch individually, avoiding unintended claiming
 
 ## Burst Mode
 
@@ -323,7 +323,7 @@ active → in_progress → merge_ready → merging → done
 - `merge_ready`: Worker finished, PR ready
 - `merging`: Refinery processing (merge slot claimed)
 - `review`: Engineer review or merge failure
-- `waiting`: Human decision gate (swarm-supervisor Phase 3)
+- `waiting`: Human decision gate (supervisor Phase 3)
 - `done`: Merged and complete
 - `blocked`: Unresolved issue
 
@@ -353,7 +353,7 @@ No migration needed — the two state patterns serve different use cases.
 
 ### Hypervisor Skill
 
-The `/hypervisor` skill is deprecated for task orchestration. `polecat swarm` provides worktree isolation, API-based claiming, and auto-restart — all improvements over the shared-worktree model.
+The `/hypervisor` skill is deprecated for task orchestration. `polecat run` with worktree isolation provides API-based claiming and auto-restart — all improvements over the shared-worktree model.
 
 The atomic locking pattern (above) is the only surviving element, retained for non-task batch operations.
 
@@ -364,7 +364,7 @@ The atomic locking pattern (above) is the only surviving element, retained for n
 ## Related
 
 - [[specs/polecat-system.md]] — Foundation: worktrees, bare mirrors, task claiming
-- [[skills/swarm-supervisor/SKILL.md]] — Swarm mode skill (6-phase lifecycle)
+- [[skills/supervisor/SKILL.md]] — Epic-level orchestration skill (orient→act→checkpoint loop)
 - [[skills/burst-supervisor/SKILL.md]] — Burst mode skill (iterative dispatch + evaluation)
 - [[WORKERS.md]] — Worker registry (soft config)
 - [[LIFECYCLE-HOOKS.md]] — Trigger hooks

@@ -737,7 +737,7 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         # Path references within specs (relative to aops-core)
         "skills/session-insights/SKILL.md",
         "skills/hypervisor/SKILL.md",
-        "skills/swarm-supervisor/SKILL.md",
+        "skills/swarm-supervisor/SKILL.md",  # renamed to supervisor
         "skills/decision-extract/SKILL.md",
         "skills/decision-apply/SKILL.md",
         # session-effectiveness promoted to global workflow

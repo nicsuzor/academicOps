@@ -1,4 +1,4 @@
-# Swarm Supervisor: Decomposition and Review
+# Decomposition and Review
 
 ## Phase 1: Decompose
 

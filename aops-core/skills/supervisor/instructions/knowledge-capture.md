@@ -1,4 +1,4 @@
-# Swarm Supervisor: Knowledge Capture
+# Knowledge Capture
 
 ## Phase 6: Knowledge Capture
 
