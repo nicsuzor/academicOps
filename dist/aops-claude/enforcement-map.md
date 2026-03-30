@@ -188,7 +188,7 @@ No programmatic context detection required — the right agent for the job alrea
 | Convention | 3     | Documented pattern, no mechanical check                                         |
 | Config     | 1     | External tool config (pyproject.toml, pre-commit)                               |
 
-**Note**: "Prompt" level rules are instructional. Compliance is checked by two complementary layers: (1) CC auto mode classifier evaluates every tool call via `autoMode.soft_deny` rules, and (2) custodiet provides periodic full-narrative compliance review.
+**Note**: "Prompt" level rules are instructional. Compliance is not mechanically enforced but is checked periodically by custodiet.
 
 ### What Constitutes Prompt-Level Enforcement
 
@@ -247,36 +247,6 @@ At threshold, spawns haiku subagent to review session transcript for:
 Uses `decision: "block"` output format to force agent attention. Insight capture is advisory only (no block).
 
 **Enforcement mode**: `block` (default). Custodiet violations halt the session. Override via `CUSTODIET_GATE_MODE=warn` env var.
-
-## Per-Action Classification (CC Auto Mode)
-
-Claude Code's [auto mode classifier](https://www.anthropic.com/engineering/claude-code-auto-mode) provides per-action semantic enforcement via `autoMode.soft_deny` rules in settings.json. This is a Sonnet 4.6 two-stage pipeline that evaluates every tool call.
-
-### Relationship to Custodiet
-
-CC auto mode and custodiet are **complementary, not redundant**:
-
-| Aspect    | CC auto mode                       | Custodiet                          |
-| --------- | ---------------------------------- | ---------------------------------- |
-| Scope     | Single tool call                   | Full session narrative             |
-| Frequency | Every action                       | Every ~50 write operations         |
-| Checks    | Rule match against tool + user msg | Drift, scope creep, plan deviation |
-| Latency   | <1s (prompt-cached)                | ~2-5s (subagent spawn)             |
-| Platform  | Claude Code only                   | Claude Code + Gemini               |
-
-CC auto mode catches per-action violations (e.g. destructive git, boundary crossings). Custodiet catches session-level patterns that no single-action classifier can detect (scope creep across multiple actions, plan deviation, verification gaps).
-
-### Setup
-
-Run `scripts/setup-automode.sh` to merge aops axiom rules from `aops-core/config/automode-rules.json` with CC defaults into `~/.claude/settings.json`.
-
-### Rules
-
-Rules in `automode-rules.json` are organised as:
-
-- **`soft_deny`**: Axiom enforcement rules (scope discipline, data boundaries, fail-fast, etc.)
-- **`allow`**: Explicitly permitted patterns (framework-aware operations)
-- **`environment`**: Context rules for the classifier
 
 ## Path Protection (Deny Rules)
 
