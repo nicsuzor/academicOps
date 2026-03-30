@@ -48,6 +48,16 @@ If an active skill is shown above (not "none"), the agent has implicit authority
 
 {heuristics_content}
 
+### Substantive Verification (P#26)
+
+Beyond process compliance, check whether the agent's **conclusions are empirically grounded**:
+
+- If the agent filed an issue, produced a report, or made a recommendation: is the causal chain backed by observed evidence, or is it inference from reading source code/docs?
+- If the agent asserts a root cause: did it verify through runtime observation (logs, tests, actual behavior), or did it reason from code and treat the reasoning as fact?
+- Key signal: look for conclusions that lack a preceding empirical check. Reading source code and inferring behavior is NOT the same as observing behavior.
+
+An agent that follows perfect process but delivers wrong conclusions based on unverified inference is still violating P#26 ("Reasoning is not evidence; observation is").
+
 ## Your Assessment
 
 You are the enforcement layer. Every principle and heuristic above is enforceable. Review the session narrative and determine whether the agent is violating ANY of them.
