@@ -25,6 +25,13 @@ Do NOT fix lint, formatting, imports, or style — merge-prep handles those. You
 
 ## Critique Protocol
 
+### Authorization & scope (P#5)
+
+- Does the PR description state a task? Do the changes match that task, or does the diff include work beyond it?
+- **Dormant code activation**: Does the PR enable, wire in, or uncomment code that previously existed but was not called? This is an architectural decision requiring explicit human authorization — "it existed but was never called" is not sufficient justification.
+- **Scope creep**: Did a triage/review/fix task expand into new features or architectural changes?
+- If the agent assumed intent about why something was unused/disabled, flag it (P#3).
+
 ### Strategic fit
 
 - Does this PR align with `docs/VISION.md`?
@@ -55,6 +62,7 @@ For untested load-bearing assumptions: Does the PR acknowledge them as assumptio
 
 **Comment only** (needs human judgment):
 
+- **Authorization violations** — agent activated dormant code, exceeded task mandate, or assumed intent about disabled components. These cannot be auto-fixed; only a human can grant authorization.
 - Strategic misalignment with VISION.md — explain what alignment looks like
 - Untested load-bearing assumptions — recommend feedback mechanism
 - Design choices with multiple valid approaches
