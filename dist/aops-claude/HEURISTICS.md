@@ -115,7 +115,7 @@ When data exceeds ~10KB or requires visual inspection, provide the file path and
 
 ## No Commit Hesitation (P#70)
 
-After making bounded changes, commit immediately. NEVER ask "Would you like me to commit?" or any variant. Trust git — no `.backup`, `.old`, `.bak` copies.
+After making bounded changes, commit immediately. NEVER ask "Would you like me to commit?" or any variant.
 
 ## Decomposed Tasks Are Complete (P#71)
 
@@ -426,9 +426,9 @@ Instructions should delegate responsibility for HOW a task is fulfilled. Specify
 - When writing or reviewing skill instructions, ask: "Am I specifying this step because the sequence matters, or because I don't trust the agent?" If the latter, remove it
 - Prefer a clear statement of acceptance criteria over a detailed procedure
 - When an agent produces good output via an unexpected method, that is success — not a compliance violation
-- When proposing automation, ask: "Can a Claude Code / Gemini CLI / GitHub agent do this directly?" If yes, design a skill or workflow — do not build a script that wraps LLM API calls (see P#49 agentic-first corollary)
+- Agentic-first design applies here too (see P#49 corollary in [[agents/framework-ops.md]])
 
-**Derivation**: Extends P#104 (Explain, Don't Ask) from single decisions to entire workflows. P#104 says agents should execute clearly superior choices rather than asking; P#116 says instructions should be written to enable this by specifying goals rather than procedures.
+**Derivation**: Extends P#104 from single decisions to entire workflows.
 
 <a id="P117"></a>
 
