@@ -169,6 +169,8 @@ Contains: P#3 (Don't Make Shit Up), P#5 (Do One Thing), P#6 (Data Boundaries), P
 | [[receipts-on-qa]] | Receipts on QA (P#112) | HEURISTICS.md | QA execution | |
 | [[over-verify-externally-visible]] | Over-Verify Externally Visible Work (P#113) | HEURISTICS.md | During execution | |
 | [[no-silent-release]] | No Silent Release (P#114) | HEURISTICS.md | Before release | |
+| [[butler-gap-principle]] | Butler Gap Principle (frame design questions as framework gaps) | framework SKILL.md | Skill invocation | |
+| [[butler-preflight-investigation]] | Butler Pre-Flight Investigation (verify mechanism capabilities before answering) | framework SKILL.md | Skill invocation | |
 
 ## Enforcement Level Summary
 

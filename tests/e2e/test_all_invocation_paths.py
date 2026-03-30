@@ -104,6 +104,10 @@ def _reset_fixture_task():
     content = task_file.read_text()
     # Replace status: <anything> with status: active in frontmatter
     content = re.sub(r"(?m)^status:\s+\S+", "status: active", content, count=1)
+    # Strip any "Completion Evidence" or "Outcome" sections appended by previous
+    # runs — agents see these and triage ("prior work") instead of executing.
+    content = re.sub(r"\n## Completion Evidence.*", "", content, flags=re.DOTALL)
+    content = re.sub(r"\n  ## Outcome.*?(?=\n\w)", "\n", content, flags=re.DOTALL)
     task_file.write_text(content)
 
 
