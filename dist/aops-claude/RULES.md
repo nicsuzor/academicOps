@@ -51,7 +51,7 @@ Quick lookup for framework principles. See [[skills/butler/enforcement-map.md]] 
 
 ### Development Context
 
-**File**: [[RULES-DEV.md]] | **Agent**: Engineering standards enforcer
+**File**: [[agents/dev-standards.md]] | **Agent**: Engineering standards enforcer
 
 | P#   | Name                         | One-liner                                     |
 | ---- | ---------------------------- | --------------------------------------------- |
@@ -66,7 +66,7 @@ Quick lookup for framework principles. See [[skills/butler/enforcement-map.md]] 
 
 ### Framework Context
 
-**File**: [[RULES-FRAMEWORK.md]] | **Agent**: Framework operations enforcer
+**File**: [[agents/framework-ops.md]] | **Agent**: Framework operations enforcer
 
 | P#   | Name                      | One-liner                                      |
 | ---- | ------------------------- | ---------------------------------------------- |
