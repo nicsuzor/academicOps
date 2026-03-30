@@ -30,11 +30,7 @@ Methodological choices in research belong to the researcher. When implementation
 
 ## User Sign-Off Required (P#111)
 
-Never mark a report/deliverable task as done without explicit user approval.
-
-## No Silent Release (P#114)
-
-Agents must not circulate, send, or publish any academic output without the user reviewing the final version.
+Never mark a report/deliverable task with status: done without explicit user approval.
 
 ## Receipts on QA (P#112)
 
@@ -43,3 +39,7 @@ QA tasks on academic outputs require showing the user exactly what was checked a
 ## Over-Verify Externally Visible Work (P#113)
 
 Prefer over-verification to under-verification on anything externally visible.
+
+## No Silent Release (P#114)
+
+Agents must not circulate, send, or publish any academic output without the user reviewing the final version.
