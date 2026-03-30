@@ -135,15 +135,13 @@ def get_workflows_dir() -> Path:
     """Get workflows directory (inside framework skill, project-local).
 
     Returns the .agent/skills/framework/workflows/ path relative to the repo root.
-    Falls back to plugin_root/workflows/ if .agent path not found.
+    Raises FileNotFoundError if the directory does not exist.
     """
-    # Project-local framework skill (preferred)
     repo_root = get_plugin_root().parent
     agent_workflows = repo_root / ".agent" / "skills" / "framework" / "workflows"
-    if agent_workflows.exists():
-        return agent_workflows
-    # Fallback for environments without .agent/
-    return get_plugin_root() / "workflows"
+    if not agent_workflows.exists():
+        raise FileNotFoundError(f"Framework workflows directory not found at {agent_workflows}")
+    return agent_workflows
 
 
 def get_indices_dir() -> Path:
