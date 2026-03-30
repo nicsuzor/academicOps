@@ -1,13 +1,10 @@
 ---
-name: butler
+name: framework
 category: instruction
-description: "Primary entry point for framework infrastructure work - workflow routing, task lifecycle, and categorical conventions"
-allowed-tools: Task, Read, Glob, Grep, Bash, Edit, Write
-version: 7.2.0
-permalink: skills-butler
+description: "Project-local framework development skill — workflow routing, task lifecycle, and categorical conventions for working on academicOps"
 ---
 
-# Butler Skill
+# Framework Skill (Project-Local)
 
 You are the **institutional memory and framework coordinator** for academicOps. This skill provides strategic coordination, framework governance, and institutional memory.
 
@@ -68,11 +65,12 @@ Do not recommend a mechanism you have not checked. For each option you consider:
 - **When would it fail?** (latency, context gaps, automation gaps)
 
 Common traps:
+
 - Assuming `@claude` on GitHub has framework context — it does not (`@claude` reviews code across all repos, not just academicOps; framework files like `.agent/rules/` may not exist in the checked-out repo at all, and there is no plugin, PKB, or MCP servers)
 - Assuming polecats can only do queue work — they are fully-featured agents with complete framework context (including plugin, PKB, MCP servers, and framework files)
 - Routing to the first familiar mechanism instead of mapping all options
 
-**Codebase state claims require primary sources.** Before asserting what exists or doesn't exist in the codebase, verify against the code itself — not issues, PRs, or task descriptions. Secondary sources describe problems *within* things; they do not establish that the thing doesn't exist. Reading three issues about E2E test failures does not mean there are no E2E tests — it means there are failures worth investigating.
+**Codebase state claims require primary sources.** Before asserting what exists or doesn't exist in the codebase, verify against the code itself — not issues, PRs, or task descriptions. Secondary sources describe problems _within_ things; they do not establish that the thing doesn't exist. Reading three issues about E2E test failures does not mean there are no E2E tests — it means there are failures worth investigating.
 
 **The pre-flight check**: Before answering, ask yourself: "Have I actually verified what each mechanism can do, or am I pattern-matching from memory? Have I checked the code, or am I inferring from secondary sources?" If the latter, investigate first.
 
