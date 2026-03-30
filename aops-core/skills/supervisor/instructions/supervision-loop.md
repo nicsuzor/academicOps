@@ -189,11 +189,47 @@ All work items done:
 3. File follow-up tasks for out-of-scope discoveries
 4. Final checkpoint with summary
 
+## Pending Decisions Are Advisory
+
+`Pending Decisions` in the epic task body are **not enforced by the PR pipeline**.
+Nothing automatically blocks a worker from merging a PR related to a
+pending-decision task. The operator must check manually.
+
+Before merging any PR related to an epic under active supervision, verify the
+epic task body contains no unresolved pending decisions. If one is found, do not
+merge — escalate to the human for resolution first.
+
+## State Recovery
+
+All supervisor state lives in the epic task file body. If the file is lost
+or corrupted, recover from the nearest available source:
+
+1. **Git log**: `git log --all -- <path-to-epic-task>` — prior versions of the
+   task file are in git history.
+2. **PKB search**: `pkb search "<epic title>"` — prior snapshots of the task
+   may be indexed.
+3. **Open PRs**: `gh pr list --search "head:polecat/"` — dispatched work items
+   leave PRs as evidence.
+4. **Child task status**: Query PKB for tasks with `parent: <epic-id>` to
+   reconstruct the work items table.
+
+Reconstruct the `## Supervisor State` block from these sources and checkpoint
+before resuming.
+
 ## Concurrency
 
 ### Multiple Supervisors
 
-Possible when sessions overlap. Git is the coordination mechanism:
+**One epic = one supervisor session.** Running two supervisors on the same
+epic concurrently is unsafe. Markdown table updates have no transaction
+isolation — two supervisors can both read a task as `ready`, both dispatch it,
+and the last-write-wins checkpoint will silently corrupt the work items table.
+
+If you suspect another supervisor is active, check the dispatch log timestamp
+and git log before acting. Use a session lock file (`epic-<id>.lock`) as a
+coordination signal if concurrent sessions are likely.
+
+When sessions do overlap, git is the backstop:
 
 - Pull before acting. Push after checkpointing.
 - If push fails → pull, re-orient, adjust.

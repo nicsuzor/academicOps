@@ -180,7 +180,7 @@ markdown (work items table, pending decisions, dispatch log). No external
 state files. This enables preemptible async execution — the supervisor can
 be stopped at any time and a new instance recovers from the task file.
 
-See [[skills/supervisor/instructions/supervision-loop]] for the state format.
+See [[supervision-loop]] for the state format.
 
 ### Conflict Avoidance
 
