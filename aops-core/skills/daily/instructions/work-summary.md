@@ -39,7 +39,7 @@ Write a 2-4 sentence natural language summary to the `## Today's Story` section.
 - Lead with the most impactful work, not chronological order
 - Mention specific PR numbers and task IDs for traceability
 - If goals were set in Focus, note alignment or drift briefly
-- **Weight by human engagement, not output volume.** Use session prompt counts (from Step 4.2) to determine where the human's attention actually went. An autonomous agent running for 4 hours is "dispatched work that produced X" — one sentence. A 5-minute interactive debugging session with 4 prompts is the real story. The reader wants to know what they thought about today, not what their agents did.
+- **Weight by human engagement, not output volume.** Use session prompt counts (from Step 4.2) to determine where the human's attention actually went. An autonomous agent running for 4 hours is "dispatched work that produced X" — one sentence. A 5-minute interactive debugging session with 3 prompts is the real story. The reader wants to know what they thought about today, not what their agents did.
 - **Use concrete details from user prompts, not abstract labels.** "Debugged PKB search for [[specific research question]]" tells a story. "[[Topic area]] PKB lookup" is a label. The `description` field from `user_prompt` timeline events contains the ground truth — use it.
 
 ### Step 5.3.1: Update synthesis.json with narrative

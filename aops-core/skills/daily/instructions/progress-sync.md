@@ -53,7 +53,7 @@ Read each session JSON from `$AOPS_SESSIONS/summaries/YYYYMMDD*.json`. Extract:
 - Timeline entries
 - Skill compliance metrics
 - Framework feedback: workflow_improvements, jit_context_needed, context_distractions, user_mood
-- **User prompt count and content**: Count `timeline_events` where `type == "user_prompt"`. Extract the `description` field of each (truncate to ~80 chars). This is the primary signal for human attention cost. If `timeline_events` is absent (older session format), use `user_prompts` if present; otherwise classify engagement as **unknown** and note it in the log rather than defaulting to Autonomous.
+- **User prompt count and content**: Count `timeline_events` where `type == "user_prompt"`. Extract the `description` field of each (truncate to ~80 chars). This is the primary signal for human attention cost. If `timeline_events` is absent (older session format) and a `user_prompts` field is present, treat it as a list of `[timestamp, role, text]` entries: count only elements where `role == "user"` and use the `text` element (truncated to ~80 chars) as the prompt content. If neither `timeline_events` nor any `user` entries in `user_prompts` are available, classify engagement as **unknown** and note it in the log rather than defaulting to Autonomous.
 
 **Session engagement classification** (derived from user prompt count):
 
