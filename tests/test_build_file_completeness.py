@@ -1,27 +1,21 @@
-"""Test that build.py includes all framework .md files in its copy list.
+"""Test that build.py deploys all framework files via its excludelist.
 
 Prevents regression where new framework files are added to aops-core/
-but not to the items_to_copy list in build.py, causing them to be
-missing from Gemini/Claude extension deploys.
+but accidentally excluded from Gemini/Claude extension deploys.
 
-Root cause of hydrator context failure: GLOSSARY.md and SCRIPTS.md were
-in aops-core/ but not in items_to_copy, so the Gemini extension never
-received them.
+The build uses an excludelist (EXCLUDED_FROM_COPY) — everything in
+aops-core/ is deployed unless explicitly excluded. This test ensures
+no .md files are silently caught by the excludelist without being
+intentionally listed.
 """
 
 from pathlib import Path
 
 AOPS_CORE_DIR = Path(__file__).resolve().parent.parent / "aops-core"
 
-# Files that are intentionally NOT deployed (generated, dev-only, or platform-specific)
-EXCLUDED_FILES = {
-    "BUTLER.md",  # Intentionally not deployed — content moved to enforcement-map.md and /butler skill
-    "GEMINI.md",  # Added conditionally for gemini platform only (line 602 of build.py)
-}
 
-
-def _get_items_to_copy_from_build() -> set[str]:
-    """Parse build.py to extract the items_to_copy list using AST for robustness."""
+def _get_excluded_from_copy() -> set[str]:
+    """Parse build.py to extract the EXCLUDED_FROM_COPY set using AST."""
     import ast
 
     build_py = Path(__file__).resolve().parent.parent / "scripts" / "build.py"
@@ -33,8 +27,8 @@ def _get_items_to_copy_from_build() -> set[str]:
             for sub_node in node.body:
                 if isinstance(sub_node, ast.Assign):
                     for target in sub_node.targets:
-                        if isinstance(target, ast.Name) and target.id == "items_to_copy":
-                            if isinstance(sub_node.value, ast.List):
+                        if isinstance(target, ast.Name) and target.id == "EXCLUDED_FROM_COPY":
+                            if isinstance(sub_node.value, ast.Set):
                                 return {
                                     elt.value
                                     for elt in sub_node.value.elts
@@ -42,34 +36,34 @@ def _get_items_to_copy_from_build() -> set[str]:
                                 }
 
     raise RuntimeError(
-        "Could not find 'items_to_copy' list in 'build_aops_core' function in build.py"
+        "Could not find 'EXCLUDED_FROM_COPY' set in 'build_aops_core' function in build.py"
     )
 
 
-def test_all_framework_md_files_in_build_copy_list() -> None:
-    """Every .md file in aops-core/ root must be in build.py's items_to_copy."""
+def test_no_md_files_silently_excluded() -> None:
+    """Every .md file in aops-core/ root is either deployed or explicitly excluded."""
     source_md_files = {f.name for f in AOPS_CORE_DIR.glob("*.md")}
-    items_to_copy = _get_items_to_copy_from_build()
+    excluded = _get_excluded_from_copy()
 
-    # Files in source but not in build list (excluding intentional exclusions)
-    missing = source_md_files - items_to_copy - EXCLUDED_FILES
+    # Files that are in source AND in the excludelist — these are intentionally not deployed
+    intentionally_excluded = source_md_files & excluded
 
-    assert not missing, (
-        f"Framework .md files in aops-core/ missing from build.py items_to_copy: {sorted(missing)}. "
-        "These files will not be deployed to Gemini/Claude extensions. "
-        "Add them to items_to_copy in scripts/build.py."
+    # This is fine — but if the set grows unexpectedly, we want to know
+    assert intentionally_excluded == {"BUTLER.md", "GEMINI.md"}, (
+        f"Unexpected .md files in EXCLUDED_FROM_COPY: {sorted(intentionally_excluded)}. "
+        "If a new .md file should genuinely be excluded, update this assertion."
     )
 
 
-def test_build_copy_list_has_no_phantom_files() -> None:
-    """Every .md file in items_to_copy must actually exist in aops-core/."""
-    items_to_copy = _get_items_to_copy_from_build()
+def test_excludelist_has_no_phantom_entries() -> None:
+    """Every .md entry in EXCLUDED_FROM_COPY must actually exist in aops-core/."""
+    excluded = _get_excluded_from_copy()
     source_files = {f.name for f in AOPS_CORE_DIR.iterdir()}
 
-    md_items = {item for item in items_to_copy if item.endswith(".md")}
-    phantom = md_items - source_files
+    md_excluded = {item for item in excluded if item.endswith(".md")}
+    phantom = md_excluded - source_files
 
     assert not phantom, (
-        f"build.py items_to_copy references files that don't exist in aops-core/: {sorted(phantom)}. "
-        "Remove stale entries or create the missing files."
+        f"EXCLUDED_FROM_COPY references .md files that don't exist in aops-core/: {sorted(phantom)}. "
+        "Remove stale entries from the excludelist."
     )

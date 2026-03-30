@@ -230,52 +230,6 @@ def generate_aops_core_pyproject(version: str) -> str:
     return AOPS_CORE_PYPROJECT_TEMPLATE.format(version=version)
 
 
-def generate_files_md(dist_dir: Path, platform: str) -> None:
-    """Generate FILES.md listing all files in the distribution.
-
-    Creates a simple file listing for the plugin distribution,
-    using relative paths from the plugin root.
-    """
-    files_md = dist_dir / "indices" / "FILES.md"
-    files_md.parent.mkdir(parents=True, exist_ok=True)
-
-    # Collect all files recursively
-    all_files = sorted(
-        p.relative_to(dist_dir)
-        for p in dist_dir.rglob("*")
-        if p.is_file() and not p.name.startswith(".")
-    )
-
-    # Build the content
-    content = f"""---
-name: files-index
-title: Plugin Files Index ({platform})
-category: reference
-type: generated
-description: Auto-generated file listing for {platform} plugin distribution
----
-
-# Plugin Files Index
-
-Auto-generated during build. Lists all files in this plugin distribution.
-
-## File Count
-
-Total files: {len(all_files)}
-
-## File Tree
-
-```
-"""
-    for f in all_files:
-        content += f"{f}\n"
-
-    content += "```\n"
-
-    files_md.write_text(content)
-    print(f"  ✓ Generated FILES.md ({len(all_files)} files)")
-
-
 def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
     """Transform hooks.json from Claude Code format to Gemini CLI format.
 
@@ -713,52 +667,37 @@ def build_aops_core(
         shutil.rmtree(dist_dir)
     dist_dir.mkdir(parents=True)
 
-    # 1. Copy content directories
-    # Note: pyproject.toml is generated, not copied (version from root)
-    # Note: hooks/ is handled separately in section 2 (Gemini hooks.json transform)
-    # Note: indices/ excluded - FILES.md is generated dynamically, PATHS.md is user config
-    items_to_copy = [
-        "skills",
-        "agents",
-        "commands",
-        "lib",
-        "mcp_servers",
-        "workflows",
-        "AXIOMS.md",
-        "CONSTRAINTS.md",
-        "HEURISTICS.md",
-        "INDEX.md",
-        "RULES.md",
-        "RULES-DEV.md",
-        "RULES-FRAMEWORK.md",
-        "SCRIPTS.md",
-        "SKILLS.md",
-        "TAXONOMY.md",
-        "TOOLS.md",
-        "uv.lock",
-    ]
+    # 1. Copy content — everything except known exclusions
+    EXCLUDED_FROM_COPY = {
+        "pyproject.toml",  # Generated with version from root
+        "hooks",  # Handled separately in section 2 (Gemini hooks.json transform)
+        "indices",  # PATHS.md is user config, no other generated indices
+        "BUTLER.md",  # Not deployed — content lives in /butler skill
+        "GEMINI.md",  # Added conditionally per-platform below
+        "__pycache__",
+    }
 
-    # Gemini-only items
+    # Gemini gets GEMINI.md
     if platform == "gemini":
-        items_to_copy.extend(["GEMINI.md"])
+        EXCLUDED_FROM_COPY.discard("GEMINI.md")
 
-    for item in items_to_copy:
-        src = src_dir / item
-        if src.exists():
-            if item == "agents" and src.is_dir():
-                # Special handling for agents: transform frontmatter and translate tool calls
-                dst = content_dir / item
-                dst.mkdir(parents=True, exist_ok=True)
-                for agent_file in src.glob("*.md"):
-                    content = agent_file.read_text()
-                    # Transform frontmatter (filter mcp__ tools for Gemini, apply schema)
-                    content = transform_agent_for_platform(content, platform, agent_file.name)
-                    # Translate tool calls in body text
-                    content = translate_tool_calls(content, platform)
-                    (dst / agent_file.name).write_text(content)
-                print(f"  ✓ Translated and copied agents -> {dst}")
-            else:
-                safe_copy(src, content_dir / item)
+    for src_item in src_dir.iterdir():
+        if src_item.name in EXCLUDED_FROM_COPY or src_item.name.startswith("."):
+            continue
+        if src_item.name == "agents" and src_item.is_dir():
+            # Special handling for agents: transform frontmatter and translate tool calls
+            dst = content_dir / src_item.name
+            dst.mkdir(parents=True, exist_ok=True)
+            for agent_file in src_item.glob("*.md"):
+                content = agent_file.read_text()
+                # Transform frontmatter (filter mcp__ tools for Gemini, apply schema)
+                content = transform_agent_for_platform(content, platform, agent_file.name)
+                # Translate tool calls in body text
+                content = translate_tool_calls(content, platform)
+                (dst / agent_file.name).write_text(content)
+            print(f"  ✓ Translated and copied agents -> {dst}")
+        else:
+            safe_copy(src_item, content_dir / src_item.name)
 
     # 1a. Generate pyproject.toml with version from root
     pyproject_content = generate_aops_core_pyproject(version)
@@ -913,9 +852,6 @@ def build_aops_core(
             md_file.unlink()
             print(f"  - Removed {md_file.name} (Gemini uses TOML)")
 
-    # 6. Generate FILES.md dynamically
-    generate_files_md(dist_dir, platform)
-
     print(f"✓ Built {plugin_name} ({platform})")
     return gemini_mcps
 
@@ -991,9 +927,6 @@ def build_aops_tools(
         else:
             print(f"Error: {src_plugin_json} not found.", file=sys.stderr)
             sys.exit(1)
-
-    # Generate FILES.md dynamically
-    generate_files_md(dist_dir, platform)
 
     print(f"✓ Built {plugin_name} ({platform})")
 
