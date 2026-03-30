@@ -45,7 +45,13 @@ def safe_copy(src: Path, dst: Path) -> None:
             dst.unlink()
 
     if src.is_dir():
-        shutil.copytree(src, dst)
+        shutil.copytree(
+            src,
+            dst,
+            ignore=shutil.ignore_patterns(
+                ".git", "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache"
+            ),
+        )
     else:
         shutil.copy2(src, dst)
 
