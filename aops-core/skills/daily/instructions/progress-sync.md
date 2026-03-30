@@ -53,6 +53,18 @@ Read each session JSON from `$ACA_SESSIONS/summaries/YYYYMMDD*.json`. Extract:
 - Timeline entries
 - Skill compliance metrics
 - Framework feedback: workflow_improvements, jit_context_needed, context_distractions, user_mood
+- **User prompt count and content**: Count `timeline_events` where `type == "user_prompt"`. Extract the `description` field of each (truncate to ~80 chars). This is the primary signal for human attention cost.
+
+**Session engagement classification** (derived from user prompt count):
+
+| Prompts | Classification      | Meaning                                                                                          |
+| ------- | ------------------- | ------------------------------------------------------------------------------------------------ |
+| 0       | **Autonomous**      | Agent ran without human involvement. High output possible, zero attention cost. Fire-and-forget. |
+| 1       | **Dispatched**      | Human kicked it off with a single instruction and moved on. Conductor work.                      |
+| 2–3     | **Interactive**     | Human engaged in back-and-forth. Moderate attention.                                             |
+| 4+      | **Deep engagement** | Sustained human involvement — debugging, discussing, iterating. Highest attention cost.          |
+
+**Why prompt count, not duration**: A 337-minute autonomous session costs the human nothing. A 5-minute session with 4 prompts is where they were actually thinking. Duration measures agent compute time; prompt count measures human attention.
 
 **Incremental filtering**: After listing JSONs, read the current daily note's Session Log table. Extract session IDs already present. Filter the JSON list to exclude already-processed sessions. This prevents duplicate entries on repeated syncs.
 
