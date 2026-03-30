@@ -51,17 +51,19 @@ A desired future state, typically multi-month or multi-year in scope. Goals are 
 
 ### Project
 
-A coherent body of work that advances a goal. A project has a defined scope, clear boundaries, and produces tangible outputs. Projects are ongoing — they can run for weeks or months.
+A **noun** — a discrete, specific thing we work on. A project has a defined scope, clear boundaries, and produces tangible outputs. Projects are ongoing — they can run for weeks or months. You should be able to point to what the thing IS.
 
-**Examples**: "AcademicOps", "Reliability Study", "TJA"
+**Examples**: "AcademicOps", "OSB Political Speech Benchmarking", "TJA", "Network Planning"
 
 **Children**: Epics (and sub-projects, rarely)
 
-**Anti-pattern**: A project with 30 direct task children. Projects need epics to provide intermediate structure and verifiable milestones.
+**Anti-pattern**: A project with direct task children. Tasks belong to epics, not projects.
+
+**Anti-pattern**: A "project" that is really a category — a grab-bag of unrelated work. "Explorations" or "Misc" are categories, not projects. If children serve different aims, they belong to different projects.
 
 ### Epic
 
-The **basic unit of verifiable work**. An epic is PR-sized: a coherent set of changes that can be reviewed, tested, and merged together. An epic is complete when all of its workflow steps pass — planning, execution, and verification.
+A **verb** — a bundle of related work that together achieves an aim within a project. An epic is PR-sized: a coherent set of changes that can be reviewed, tested, and merged together. An epic is complete when all of its workflow steps pass — planning, execution, and verification.
 
 An epic includes:
 
