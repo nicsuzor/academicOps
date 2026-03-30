@@ -69,10 +69,6 @@ The supervisor maintains structured state in the epic task body. This is the
 | 2 | task-def | Add tests   | pr_open | gemini | #235 | CI passing      |
 | 3 | task-ghi | Update docs | ready   | —      | —    | unblocked by #1 |
 
-### Pending Decisions
-
-- [ ] [description] — [why it needs human input]
-
 ### Dispatch Log
 
 [ISO timestamp] [environment]: [what the supervisor did]
@@ -83,15 +79,20 @@ Note: the `dispatched` status in the local work items table maps to
 
 ### Work Item Statuses
 
-| Status      | Meaning                                    |
-| ----------- | ------------------------------------------ |
-| ready       | Decomposed, ready to dispatch              |
-| dispatched  | Sent to worker, waiting for PR             |
-| pr_open     | PR filed, under review                     |
-| pr_approved | Approved, ready to merge                   |
-| done        | Merged and verified                        |
-| blocked     | Waiting on dependency or decision          |
-| failed      | Worker failed, needs re-dispatch or replan |
+| Status          | Meaning                                                         |
+| --------------- | --------------------------------------------------------------- |
+| ready           | Decomposed, ready to dispatch                                   |
+| dispatched      | Sent to worker, waiting for PR                                  |
+| pr_open         | PR filed, under review                                          |
+| pr_approved     | Approved, ready to merge                                        |
+| done            | Merged and verified                                             |
+| blocked         | Waiting on a dependency — will be unblocked automatically       |
+| needs_decision  | Requires human judgment before work can proceed — do not dispatch |
+| failed          | Worker failed, needs re-dispatch or replan                      |
+
+`needs_decision` maps to PKB task status `needs_review`. Agents cannot claim
+tasks in these statuses, so setting them is an enforceable gate — not an
+advisory note in the body.
 
 ## Verification, Not Interrogation
 
@@ -114,11 +115,6 @@ not fact-checking. Verification is execution — automate it.
 ## Phase Actions
 
 ### ORIENT
-
-**Step 0: Register intent.** Ensure the supervisor's parent epic is registered
-as an active intention via `/intend` (see `specs/intentions.md` for the
-intentions system). This makes the work visible across daily notes, dashboards,
-PKB CLI, and `/pull` task selection. If already registered, skip.
 
 **Step 1: Verify state.** Read the epic task file. For each work item, **independently verify** current reality:
 
@@ -170,7 +166,7 @@ No active polling loops. Check once per invocation.
 | PR got CHANGES_REQUESTED          | Read review comments, decide: fix or re-dispatch |
 | Task bigger than expected         | Decompose further, add work items                |
 | Dependency discovered             | Add depends_on, mark dependent as blocked        |
-| Academic integrity concern        | Flag as pending decision, do not proceed         |
+| Academic integrity concern        | Set task status to `needs_review`, do not dispatch |
 
 ### INTEGRATE
 
@@ -189,15 +185,23 @@ All work items done:
 3. File follow-up tasks for out-of-scope discoveries
 4. Final checkpoint with summary
 
-## Pending Decisions Are Advisory
+## Holding Work for Human Judgment
 
-`Pending Decisions` in the epic task body are **not enforced by the PR pipeline**.
-Nothing automatically blocks a worker from merging a PR related to a
-pending-decision task. The operator must check manually.
+When a task requires human judgment before work can proceed (academic integrity
+concern, methodology question, scope ambiguity), set the **PKB task status** to
+`needs_review` and the work items table status to `needs_decision`.
 
-Before merging any PR related to an epic under active supervision, verify the
-epic task body contains no unresolved pending decisions. If one is found, do not
-merge — escalate to the human for resolution first.
+This is an enforced gate. Agents cannot claim tasks in `needs_review` status,
+so the work is held without relying on anyone checking a body note.
+
+```bash
+# Hold a task for human decision
+pkb update <task-id> --status needs_review --note "Reason: <why human input needed>"
+```
+
+Update the work items table status to `needs_decision`. The supervisor will
+skip these items during DISPATCH until the human resolves them by changing
+the status back to `active` (ready to dispatch).
 
 ## State Recovery
 
@@ -266,4 +270,4 @@ pkb get task-XXXXXXXX | claude -p "You are the supervisor. Orient and act."
 - **Silent failures**: If something breaks, write it into the task file. The next
   supervisor instance needs to know.
 - **Delegating judgment**: If a work item involves academic output, methodology,
-  or citations — flag it as a pending decision. Never auto-merge.
+  or citations — set task status to `needs_review`. Never auto-merge.
