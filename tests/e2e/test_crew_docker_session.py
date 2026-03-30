@@ -460,3 +460,152 @@ class TestCrewDockerSession:
         assert len(bash_calls) >= 1, (
             f"Expected at least one Bash tool call, got: {[c['name'] for c in tool_calls]}"
         )
+
+
+def _init_test_repo(tmp_path):
+    """Create a minimal git repo with a remote so crew worktree setup works."""
+    repo = tmp_path / "test_repo"
+    repo.mkdir()
+    subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "-C", str(repo), "config", "user.email", "test@test"],
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "-C", str(repo), "config", "user.name", "Test"],
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "commit", "--allow-empty", "-m", "init"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    return repo
+
+
+@pytest.mark.slow
+@pytest.mark.integration
+class TestCrewFullPath:
+    """Full CLI-to-response tests: `pc crew repo <path> -- -p <prompt>`.
+
+    These exercise the ENTIRE crew path: CLI entry point → worktree setup →
+    env construction → Docker/sandbox launch → LLM response → cleanup.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _require_docker(self):
+        from tests.conftest import _docker_available
+
+        if not _docker_available():
+            pytest.skip("Docker not available or aops-crew image not built")
+
+    def _run_crew(self, tmp_path, gemini=False, timeout=180):
+        """Run pc crew repo <path> with a simple prompt, return stdout+stderr."""
+        repo = _init_test_repo(tmp_path)
+
+        cmd = [
+            sys.executable,
+            "-m",
+            "polecat.cli",
+            "--home",
+            str(tmp_path / "polecat_home"),
+            "crew",
+            "repo",
+            str(repo),
+            "-n",
+            f"test-{'gemini' if gemini else 'claude'}",
+        ]
+        if gemini:
+            cmd.append("-g")
+
+        # Pass agent-specific args after '--'
+        cmd.append("--")
+        if gemini:
+            cmd.extend(
+                [
+                    "-p",
+                    "What is 2+2? Reply with ONLY the number.",
+                    "--approval-mode",
+                    "yolo",
+                    "--raw-output",
+                    "--accept-raw-output-risk",
+                ]
+            )
+        else:
+            cmd.extend(
+                [
+                    "-p",
+                    "What is 2+2? Reply with ONLY the number.",
+                    "--output-format",
+                    "json",
+                    "--model",
+                    "haiku",
+                    "--max-turns",
+                    "3",
+                ]
+            )
+
+        # Create polecat home
+        polecat_home = tmp_path / "polecat_home"
+        polecat_home.mkdir(exist_ok=True)
+        import yaml
+
+        (polecat_home / "polecat.yaml").write_text(yaml.dump({"projects": {}}))
+
+        env = os.environ.copy()
+        env["POLECAT_HOME"] = str(polecat_home)
+        env["PYTHONPATH"] = (
+            os.getcwd() + ":" + os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
+        )
+
+        try:
+            proc = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                check=False,
+                env=env,
+                cwd=os.getcwd(),
+                stdin=subprocess.DEVNULL,
+            )
+        except subprocess.TimeoutExpired:
+            pytest.fail(f"pc crew {'gemini' if gemini else 'claude'} timed out after {timeout}s")
+
+        return proc
+
+    def test_crew_claude_full_path(self, tmp_path):
+        """pc crew repo <path> -- -p <prompt> produces a response via Claude."""
+        proc = self._run_crew(tmp_path, gemini=False)
+        combined = proc.stdout + proc.stderr
+
+        # The crew CLI prints status lines, then Claude outputs JSON
+        assert proc.returncode == 0 or "4" in combined, (
+            f"Claude crew failed (exit {proc.returncode}).\n"
+            f"stdout: {proc.stdout[-1000:]}\n"
+            f"stderr: {proc.stderr[-1000:]}"
+        )
+        assert "4" in combined, (
+            f"Claude crew did not produce expected response containing '4'.\n"
+            f"stdout: {proc.stdout[-1000:]}\n"
+            f"stderr: {proc.stderr[-1000:]}"
+        )
+
+    def test_crew_gemini_full_path(self, tmp_path):
+        """pc crew repo <path> -g -- -p <prompt> produces a response via Gemini."""
+        from tests.conftest import _gemini_cli_available
+
+        if not _gemini_cli_available():
+            pytest.skip("Gemini CLI not found in PATH")
+
+        proc = self._run_crew(tmp_path, gemini=True)
+        combined = proc.stdout + proc.stderr
+
+        assert "4" in combined, (
+            f"Gemini crew did not produce expected response containing '4'.\n"
+            f"stdout: {proc.stdout[-1000:]}\n"
+            f"stderr: {proc.stderr[-1000:]}"
+        )
