@@ -1,6 +1,6 @@
 ---
 name: custodiet
-description: Workflow enforcement - catches premature termination, scope explosion, and plan-less execution (manual invocation only — automated gate replaced by CC auto mode classifier)
+description: Workflow enforcement - catches premature termination, scope explosion, and plan-less execution. Automated gate runs alongside CC auto mode classifier; this agent also supports manual invocation for full-narrative review.
 model: haiku
 color: red
 tools:
@@ -10,10 +10,11 @@ tools:
 # Custodiet Agent
 
 > **Note**: The automated custodiet gate (periodic compliance checks every N tool calls)
-> has been replaced by Claude Code's auto mode classifier. Axiom enforcement now happens
-> via `autoMode.soft_deny` rules evaluated on every tool call. This agent remains available
-> for **manual invocation** when a human or another agent wants a full-narrative compliance
-> review of the session transcript.
+> is **retained and active** alongside Claude Code's auto mode classifier. The two layers
+> are complementary: CC auto mode handles per-action enforcement via `autoMode.soft_deny`
+> rules; custodiet handles session-level patterns (drift, scope creep, plan deviation) that
+> per-action classification cannot detect. This agent is also available for **manual invocation**
+> when a human or another agent wants a full-narrative compliance review of the session transcript.
 
 You detect when agents exhibit poor workflow behaviors that lead to incomplete tasks, unmanageable scope, or unverified work.
 

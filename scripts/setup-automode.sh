@@ -10,8 +10,9 @@
 #   2. Appends aops-specific rules from aops-core/config/automode-rules.json
 #   3. Outputs (or installs) the merged autoMode config
 #
-# IMPORTANT: Setting soft_deny or allow REPLACES the entire CC default list.
-# This script preserves all CC defaults and appends our additions.
+# IMPORTANT: Merge strategy differs by field:
+#   - environment: aops REPLACES CC defaults (our context is more specific)
+#   - allow, soft_deny: CC defaults are PRESERVED and aops rules are appended
 
 set -euo pipefail
 
