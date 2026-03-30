@@ -1,6 +1,6 @@
 [project]
 name = "aops-core"
-version = "0.3.16-dev.67"
+version = "0.3.16-dev.68"
 description = "Core academicOps framework - skills, agents, and hooks for research workflow automation"
 requires-python = ">=3.11"
 license = "MIT"
