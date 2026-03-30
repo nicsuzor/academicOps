@@ -496,7 +496,6 @@ def _build_docker_cmd(
                     "google_accounts.json",
                     "oauth_creds.json",
                     "installation_id",
-                    "trustedFolders.json",
                 ):
                     src = gemini_dir / auth_file
                     if src.exists():
