@@ -172,6 +172,8 @@ No programmatic context detection required — the right agent for the job alrea
 | [[receipts-on-qa]] | Receipts on QA (P#112) | HEURISTICS.md | QA execution | |
 | [[over-verify-externally-visible]] | Over-Verify Externally Visible Work (P#113) | HEURISTICS.md | During execution | |
 | [[no-silent-release]] | No Silent Release (P#114) | HEURISTICS.md | Before release | |
+| [[butler-gap-principle]] | Butler Gap Principle (frame design questions as framework gaps) | butler SKILL.md | Skill invocation | |
+| [[butler-preflight-investigation]] | Butler Pre-Flight Investigation (verify mechanism capabilities before answering) | butler SKILL.md | Skill invocation | |
 
 ## Enforcement Level Summary
 
