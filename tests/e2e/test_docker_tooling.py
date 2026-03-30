@@ -47,8 +47,11 @@ class TestDockerTooling:
             'echo "PYTHON=$(python3 --version 2>&1)"\n'
             'echo "PKB=$(pkb --version 2>&1)"\n'
             'echo "GH=$(gh --version 2>&1 | head -1)"\n'
-            'echo "CLAUDE_PLUGIN=$(claude plugin list 2>&1)"\n'
+            'echo "CLAUDE_PLUGIN=$(claude plugin list 2>/dev/null | grep -i aops || echo NOTFOUND)"\n'
             'echo "GEMINI_EXT=$(ls /home/worker/.gemini/extensions/aops-core/GEMINI.md 2>&1)"\n'
+            'echo "DNS_GOOGLE=$(getent hosts oauth2.googleapis.com 2>&1 | head -1)"\n'
+            'echo "DNS_ANTHROPIC=$(getent hosts api.anthropic.com 2>&1 | head -1)"\n'
+            'echo "DNS_GITHUB=$(getent hosts github.com 2>&1 | head -1)"\n'
         )
         result = subprocess.run(
             ["docker", "run", "--rm", "aops-crew", "bash", "-c", script],
@@ -110,15 +113,42 @@ class TestDockerTooling:
         )
 
     def test_claude_plugin_installed(self, tooling_results):
-        """aops-core Claude plugin is baked into the image."""
-        assert "aops" in tooling_results["CLAUDE_PLUGIN"].lower(), (
-            f"aops-core plugin not found in claude plugin list: {tooling_results['CLAUDE_PLUGIN']}"
+        """academicOps Claude plugin is baked into the image."""
+        output = tooling_results["CLAUDE_PLUGIN"]
+        assert "aops" in output.lower() and "NOTFOUND" not in output, (
+            f"academicOps plugin not found in claude plugin list: {output}"
         )
 
     def test_gemini_extension_installed(self, tooling_results):
-        """aops-core Gemini extension files are baked into the image."""
+        """academicOps Gemini extension files are baked into the image."""
         assert "GEMINI.md" in tooling_results["GEMINI_EXT"], (
-            f"aops-core extension not found: {tooling_results['GEMINI_EXT']}"
+            f"academicOps extension not found: {tooling_results['GEMINI_EXT']}"
+        )
+
+    # --- Network connectivity (DNS resolution from inside the container) ---
+
+    def test_dns_resolves_google_oauth(self, tooling_results):
+        """Container can resolve oauth2.googleapis.com (Gemini auth)."""
+        assert tooling_results.get("DNS_GOOGLE", "").strip(), (
+            "Cannot resolve oauth2.googleapis.com from inside container. "
+            "Gemini auth will fail with EAI_AGAIN. "
+            f"getent output: {tooling_results.get('DNS_GOOGLE', '<missing>')}"
+        )
+
+    def test_dns_resolves_anthropic_api(self, tooling_results):
+        """Container can resolve api.anthropic.com (Claude auth)."""
+        assert tooling_results.get("DNS_ANTHROPIC", "").strip(), (
+            "Cannot resolve api.anthropic.com from inside container. "
+            "Claude API calls will fail. "
+            f"getent output: {tooling_results.get('DNS_ANTHROPIC', '<missing>')}"
+        )
+
+    def test_dns_resolves_github(self, tooling_results):
+        """Container can resolve github.com (git push/pull)."""
+        assert tooling_results.get("DNS_GITHUB", "").strip(), (
+            "Cannot resolve github.com from inside container. "
+            "Git operations will fail. "
+            f"getent output: {tooling_results.get('DNS_GITHUB', '<missing>')}"
         )
 
 

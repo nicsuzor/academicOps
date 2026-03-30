@@ -16,10 +16,11 @@ if str(REPO_ROOT / "aops-core") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 
 import click
-from lib.agent_env import apply_env_mappings
 from manager import PolecatManager
 from observability import metrics
 from validation import TaskIDValidationError, validate_task_id_or_raise
+
+from lib.agent_env import apply_env_mappings
 
 # Max turns for headless Claude runs — must be high enough to accommodate hook
 # overhead (hydration gate, custodiet compliance check) plus actual task work.
@@ -675,15 +676,21 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
 
         if f == "settings.json":
             try:
-                # Use our controlled template WITHOUT the user's auth selectedType.
-                # Gemini CLI auto-detects auth from available credentials (API key env
-                # var, OAuth files, etc.). Injecting selectedType causes Gemini to exit
-                # immediately if the auth type doesn't match available credentials
-                # (e.g. user logged in via Google Account but crew session has API key),
-                # which prevents hooks from firing at all.
+                # Start from our controlled template, then set auth type based on
+                # what credentials were actually replicated. Gemini CLI does NOT
+                # auto-detect auth — it fails with "Please set an Auth method" if
+                # selectedType is missing. We infer the type from available files:
+                #   oauth_creds.json → "oauth-personal"
+                #   GEMINI_API_KEY env → "api-key" (handled by env, no setting needed)
                 template_path = SCRIPT_DIR / "defaults" / "gemini-settings.json"
                 with open(template_path) as tpl_f:
                     minimal = json.load(tpl_f)
+
+                # Set auth type if OAuth credentials are being replicated
+                if "oauth_creds.json" in existing_files:
+                    minimal.setdefault("security", {}).setdefault("auth", {})["selectedType"] = (
+                        "oauth-personal"
+                    )
 
                 with open(target_dir / f, "w") as dst_f:
                     json.dump(minimal, dst_f, indent=2)
@@ -2180,7 +2187,7 @@ def _branch_has_open_pr(branch_name: str, repo_path: Path) -> bool:
     return False
 
 
-@main.command("c", hidden=True)
+@main.command("c", hidden=True, context_settings={"ignore_unknown_options": True})
 @click.argument("target", required=False, default=None)
 @click.argument("extra", required=False, default=None)
 @click.option("--name", "-n", help="Crew name (randomly generated if not specified)")
@@ -2188,8 +2195,9 @@ def _branch_has_open_pr(branch_name: str, repo_path: Path) -> bool:
 @click.option("--interactive", "-i", is_flag=True, help="Drop into an interactive shell (no agent)")
 @click.option("--resume", "-r", help="Resume existing crew worker by name")
 @click.option("--keep", "-k", is_flag=True, help="Keep worktree even if a PR is open")
+@click.argument("agent_args", nargs=-1, type=click.UNPROCESSED)
 @click.pass_context
-def crew_alias(ctx, target, extra, name, gemini, interactive, resume, keep):
+def crew_alias(ctx, target, extra, name, gemini, interactive, resume, keep, agent_args):
     """Shorthand for 'crew'. See 'polecat crew --help'."""
     ctx.invoke(
         crew,
@@ -2200,10 +2208,11 @@ def crew_alias(ctx, target, extra, name, gemini, interactive, resume, keep):
         interactive=interactive,
         resume=resume,
         keep=keep,
+        agent_args=agent_args,
     )
 
 
-@main.command()
+@main.command(context_settings={"ignore_unknown_options": True})
 @click.argument("target", required=False, default=None)
 @click.argument("extra", required=False, default=None)
 @click.option("--name", "-n", help="Crew name (randomly generated if not specified)")
@@ -2211,8 +2220,9 @@ def crew_alias(ctx, target, extra, name, gemini, interactive, resume, keep):
 @click.option("--interactive", "-i", is_flag=True, help="Drop into an interactive shell (no agent)")
 @click.option("--resume", "-r", help="Resume existing crew worker by name")
 @click.option("--keep", "-k", is_flag=True, help="Keep worktree even if a PR is open")
+@click.argument("agent_args", nargs=-1, type=click.UNPROCESSED)
 @click.pass_context
-def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
+def crew(ctx, target, extra, name, gemini, interactive, resume, keep, agent_args):
     """Start an interactive crew session with worker isolation.
 
     Crew workers are persistent, named agents for interactive collaboration.
@@ -2222,6 +2232,8 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
     TARGET is a project alias (e.g., aops, bm), or 'repo' for arbitrary paths.
     If TARGET is 'repo', EXTRA is the path to the repository.
 
+    Any extra arguments after '--' are passed through to the underlying agent CLI.
+
     \b
     Examples:
         polecat crew aops             # Crew in academicOps repo
@@ -2230,6 +2242,7 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
         polecat crew -r audre         # Resume crew worker "audre"
         polecat crew -i aops          # Interactive shell in crew container
         polecat crew -g aops          # Gemini CLI in sandbox mode
+        polecat crew aops -- -p "do something"  # Pass args to agent CLI
     """
     import subprocess
 
@@ -2390,6 +2403,10 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
             "--setting-sources=user,project",
         ]
 
+    # Append any extra args passed after '--' to the agent command
+    if agent_args:
+        cmd.extend(agent_args)
+
     # Set session type environment variable for hooks to detect
     # Use sanitized env: SSH stripped, git auth set to bot token only
     env = _make_worker_env(interactive=True)
@@ -2524,12 +2541,14 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
         )
     else:
         # Claude Code: manually wrap in docker container
+        # Headless when agent_args contains -p (prompt mode, no TTY needed)
+        headless = agent_args and "-p" in agent_args
         final_cmd = _build_docker_cmd(
             cli_tool,
             work_dir,
             env,
             cmd,
-            is_interactive=True,
+            is_interactive=not headless,
             tmp_files=tmp_files,
             session_dir=session_dir,
         )
