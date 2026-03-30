@@ -41,7 +41,7 @@ class TestCoreSkills:
 class TestCoreAgents:
     """Verify core agents are present."""
 
-    CORE_AGENTS = ["qa"]
+    CORE_AGENTS = ["custodiet", "qa"]
     CORE_SKILLS = ["planner"]
 
     def test_all_core_agents_present(self) -> None:

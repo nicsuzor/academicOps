@@ -10,7 +10,7 @@ Usage:
     from lib.template_registry import TemplateRegistry
 
     registry = TemplateRegistry.instance()
-    content = registry.render("qa.policy_message", {})
+    content = registry.render("custodiet.policy_message", {})
 
 Exit behavior: Functions raise exceptions (fail-fast P#8). Callers handle graceful degradation.
 """
@@ -39,9 +39,9 @@ class TemplateSpec:
     """Specification for a gate template.
 
     Attributes:
-        name: Unique identifier, e.g., "qa.policy_message"
+        name: Unique identifier, e.g., "custodiet.policy_message"
         category: What kind of template (user message, context, subagent)
-        filename: Template file name, e.g., "qa-policy-message.md"
+        filename: Template file name, e.g., "custodiet-policy-message.md"
         required_vars: Variables that MUST be provided to render
         optional_vars: Variables that MAY be provided (default to empty string)
         description: Human-readable purpose
@@ -81,6 +81,22 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         description="Lightweight skills-routing hint (formerly hydration warning)",
         env_override="HYDRATION_WARN_TEMPLATE",
     ),
+    # --- Custodiet gate ---
+    "custodiet.context": TemplateSpec(
+        name="custodiet.context",
+        category=TemplateCategory.SUBAGENT_INSTRUCTION,
+        filename="custodiet-context.md",
+        required_vars=(
+            "session_context",
+            "tool_name",
+            "axioms_content",
+            "heuristics_content",
+            "custodiet_mode",
+        ),
+        optional_vars=("session_id", "gate_name", "skills_content", "active_skill", "skill_scope"),
+        description="Full context for custodiet compliance check",
+        env_override="CUSTODIET_CONTEXT_TEMPLATE",
+    ),
     "qa.context": TemplateSpec(
         name="qa.context",
         category=TemplateCategory.SUBAGENT_INSTRUCTION,
@@ -91,8 +107,55 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
             "axioms_content",
             "heuristics_content",
         ),
-        optional_vars=("session_id", "gate_name", "skills_content"),
+        optional_vars=("session_id", "gate_name", "custodiet_mode", "skills_content"),
         description="Session context for QA verification before exit",
+    ),
+    "custodiet.verified": TemplateSpec(
+        name="custodiet.verified",
+        category=TemplateCategory.USER_MESSAGE,
+        filename="custodiet-verified.md",
+        required_vars=(),
+        description="Status message when custodiet compliance check passes",
+    ),
+    "custodiet.policy_message": TemplateSpec(
+        name="custodiet.policy_message",
+        category=TemplateCategory.USER_MESSAGE,
+        filename="custodiet-policy-message.md",
+        required_vars=(),
+        optional_vars=("ops_since_open",),
+        description="Short message when custodiet gate blocks a tool call",
+    ),
+    "custodiet.policy_context": TemplateSpec(
+        name="custodiet.policy_context",
+        category=TemplateCategory.CONTEXT_INJECTION,
+        filename="custodiet-policy-context.md",
+        required_vars=("temp_path",),
+        optional_vars=("ops_since_open",),
+        description="Full context injection when custodiet gate blocks",
+        env_override="CUSTODIET_POLICY_CONTEXT_TEMPLATE",
+    ),
+    "custodiet.countdown": TemplateSpec(
+        name="custodiet.countdown",
+        category=TemplateCategory.USER_MESSAGE,
+        filename="custodiet-countdown.md",
+        required_vars=("remaining", "temp_path"),
+        optional_vars=("threshold", "current", "gate_name"),
+        description="Countdown warning before custodiet threshold",
+    ),
+    "custodiet.instruction": TemplateSpec(
+        name="custodiet.instruction",
+        category=TemplateCategory.CONTEXT_INJECTION,
+        filename="custodiet-instruction.md",
+        required_vars=("temp_path",),
+        description="Instruction to invoke custodiet skill",
+        env_override="CUSTODIET_INSTRUCTION_TEMPLATE",
+    ),
+    "custodiet.audit": TemplateSpec(
+        name="custodiet.audit",
+        category=TemplateCategory.SUBAGENT_INSTRUCTION,
+        filename="custodiet-audit.md",
+        required_vars=("session_id", "gate_name", "tool_name"),
+        description="Audit context for custodiet gate",
     ),
     # --- QA gate: trigger and policy messages ---
     "qa.complete": TemplateSpec(

@@ -214,7 +214,7 @@ This demo showed the complete hook log validation workflow:
 
 Hook logs are essential for:
 - Debugging agent behavior
-- Compliance auditing
+- Compliance auditing (custodiet checks)
 - Understanding tool usage patterns
 - Session replay and analysis
 

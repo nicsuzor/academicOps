@@ -1,24 +1,26 @@
 ---
 title: Ultra Vires Custodiet
 type: spec
-status: migrated
+status: partial
 tier: core
 depends_on: [enforcement]
-tags: [framework, agent-behavior, guardrails, enforcement, auto-mode]
+tags: [framework, agent-behavior, guardrails, enforcement]
 ---
 
 # Ultra Vires Custodiet
 
-**Status**: Migrated to Claude Code auto mode classifier
-**Current**: Automated axiom enforcement via CC `autoMode.soft_deny` rules; custodiet agent retained for manual invocation
-**Archived**: In-process custodiet gate (gate engine, templates, compliance report action)
+**Status**: Partial - agent defined, automated gate archived
+**Current**: Custodiet agent available for manual invocation via `agents/custodiet.md`
+**Archived**: Automated PostToolUse gate (`custodiet_gate.py`) moved to `archived/hooks/`
 
 ## Giving Effect
 
-- [[aops-core/config/automode-rules.json]] - Canonical aops-specific auto mode rules (soft_deny, allow, environment)
-- [[scripts/setup-automode.sh]] - Merges aops rules with CC defaults into user settings
-- [[agents/custodiet.md]] - Haiku agent for manual full-narrative compliance review
-- CC auto mode classifier (Sonnet 4.6 two-stage pipeline) - evaluates every tool call
+- [[agents/custodiet.md]] - Haiku agent that reads transcript and evaluates authority compliance
+- [[hooks/overdue_enforcement.py]] - PostToolUse hook that triggers custodiet every N tool calls
+- [[hooks/data/reminders.txt]] - Soft-tissue file with editable reminder lines
+- [[hooks/templates/custodiet-context.j2]] - Jinja2 context template (conditional axiom/heuristic injection)
+- [[hooks/templates/custodiet-instruction.md]] - Short instruction template
+- [[archived/hooks/custodiet_gate.py]] - Original automated gate (archived)
 
 ## Purpose
 
@@ -281,67 +283,27 @@ Edit `hooks/data/reminders.txt` to add/modify reminders. One per line, `#` for c
 4. TodoWrite scope expansion caught BEFORE work begins
 5. False positive rate low enough that warnings are actionable
 
-## Migration to CC Auto Mode (2026-03)
+## Relationship to CC Auto Mode (2026-03)
 
-The in-process custodiet gate was replaced by Claude Code's auto mode classifier. See [engineering blog post](https://www.anthropic.com/engineering/claude-code-auto-mode).
+Claude Code's [auto mode classifier](https://www.anthropic.com/engineering/claude-code-auto-mode) provides per-action semantic enforcement via `autoMode.soft_deny` rules. This is complementary to custodiet, not a replacement:
 
-### Why
+| Aspect    | CC auto mode                       | Custodiet                          |
+| --------- | ---------------------------------- | ---------------------------------- |
+| Scope     | Single tool call                   | Full session narrative             |
+| Frequency | Every action                       | Every ~50 write operations         |
+| Checks    | Rule match against tool + user msg | Drift, scope creep, plan deviation |
+| Platform  | Claude Code only                   | Claude Code + Gemini               |
 
-| Aspect            | Custodiet gate               | CC auto mode                           |
-| ----------------- | ---------------------------- | -------------------------------------- |
-| Classifier        | Haiku subagent every ~50 ops | Sonnet 4.6, every tool call, two-stage |
-| Latency           | ~2-5s (subagent spawn)       | <1s (prompt-cached)                    |
-| Prompt injection  | Not defended                 | Input probe + output classifier        |
-| Subagent coverage | Main session only            | Recursive (subagent delegation too)    |
-| Maintenance       | ~1500 LOC Python             | JSON settings file                     |
+**Current position**: Custodiet gate stays as-is — it's working and catches session-level patterns that per-action classification cannot detect (scope creep, plan deviation, verification gaps across multiple actions).
 
-### What Was Removed
+**Future direction**: Once the CC auto mode approach is proven effective in production, we will revise custodiet's substance — what it checks and how aggressively. The goal is to let auto mode handle per-action enforcement and focus custodiet on the session-level patterns where full-narrative review adds unique value.
 
-- Custodiet `GateConfig` from `lib/gates/definitions.py`
-- `CUSTODIET_GATE_MODE`, `CUSTODIET_TOOL_CALL_THRESHOLD` from `gate_config.py`
-- Custodiet entries from `COMPLIANCE_SUBAGENT_TYPES` and `SPAWN_TOOLS`
-- 7 custodiet template files (`hooks/templates/custodiet-*.md`)
-- `prepare_compliance_report` custom action
-- Custodiet countdown/status display in router
-
-### What Was Kept
-
-- Custodiet agent (`agents/custodiet.md`) — available for manual invocation
-- QA and handover gates — session lifecycle enforcement (auto mode has no equivalent)
-- Policy enforcer — mechanical pattern blocking (belt-and-suspenders)
-- Gate engine, types, registry — still used by QA/handover
-
-### Enforcement Downgrades
-
-Some enforcement that relied on full-narrative review downgraded to Prompt level:
-
-- Plan deviation detection (custodiet compared TodoWrite to actual actions)
-- Verification-before-assertion (custodiet checked for Read/Bash before claims)
-- Session-level scope creep (custodiet tracked drift across multiple actions)
-
-The auto mode classifier evaluates each action independently with user messages + tool commands only (assistant text stripped). This is a deliberate design choice — prevents the agent from "talking the classifier into" bad decisions.
-
-### Gemini-CLI Polecat Gap
-
-**Decision (2026-03):** CC auto mode is Claude Code-only. Gemini polecat workers have no equivalent per-action semantic classifier.
-
-Remaining enforcement for Gemini sessions:
-
-| Layer      | Mechanism                                 | Applies to Gemini? |
-| ---------- | ----------------------------------------- | ------------------ |
-| Mechanical | policy_enforcer.py (pattern blocking)     | Yes                |
-| Mechanical | Handover and QA gates                     | Yes                |
-| Prompt     | AXIOMS.md, HEURISTICS.md via SessionStart | Yes                |
-| Semantic   | CC auto mode soft_deny classifier         | **No**             |
-
-**Rationale for accepting the gap:** Polecat workers execute narrow, well-defined tasks with explicit acceptance criteria. The risk profile is lower than open-ended sessions. The custodiet agent remains available for manual invocation if needed (`agents/custodiet.md`).
-
-**Remediation path:** If Gemini CLI ships an equivalent pre-action classifier, apply the same `automode-rules.json` rule set. Until then, the gap is documented and accepted.
+See `aops-core/config/automode-rules.json` for the auto mode rule set and `scripts/setup-automode.sh` for installation.
 
 ## References
 
 - [[AXIOMS]] #4 (Do One Thing)
 - [[AXIOMS]] #22 (Acceptance Criteria Own Success)
+- [[HEURISTICS#H31]] (No LLM Calls in Hooks)
 - [[enforcement-map.md]] (Enforcement registry)
 - [CC Auto Mode engineering post](https://www.anthropic.com/engineering/claude-code-auto-mode)
-- [CC Auto Mode docs](https://code.claude.com/docs/en/permissions#configure-the-auto-mode-classifier)

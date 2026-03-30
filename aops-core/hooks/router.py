@@ -32,12 +32,6 @@ if str(AOPS_CORE_DIR) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE_DIR))
 
 try:
-    from lib.gate_model import GateResult, GateVerdict
-    from lib.gates.registry import GateRegistry
-    from lib.hook_utils import is_subagent_session
-    from lib.session_paths import get_pid_session_map_path, get_session_short_hash
-    from lib.session_state import SessionState
-
     from hooks.gate_config import SPAWN_TOOLS, extract_subagent_type
     from hooks.schemas import (
         CanonicalHookOutput,
@@ -49,6 +43,11 @@ try:
         HookContext,
     )
     from hooks.unified_logger import log_event_to_session, log_hook_event
+    from lib.gate_model import GateResult, GateVerdict
+    from lib.gates.registry import GateRegistry
+    from lib.hook_utils import is_subagent_session
+    from lib.session_paths import get_pid_session_map_path, get_session_short_hash
+    from lib.session_state import SessionState
 except ImportError as e:
     # Fail fast if schemas missing
     print(f"CRITICAL: Failed to import: {e}", file=sys.stderr)
@@ -111,11 +110,30 @@ def format_gate_status_icons(state: SessionState) -> str:
     """Format current gate statuses as a lifecycle-aware icon strip.
 
     Only shows gates when they need attention:
+    - ◇ N  custodiet countdown active
+    - ◇    custodiet overdue (past threshold)
     - ≡    handover complete (gate OPEN + handover invoked)
     - ▶ T-id  active task bound
     - ✓    nothing needs attention
     """
+    from lib.gates.registry import GateRegistry
+
     parts: list[str] = []
+
+    # Custodiet: countdown or overdue
+    custodiet = state.gates.get("custodiet")
+    if custodiet:
+        custodiet_gate = GateRegistry.get_gate("custodiet")
+        if custodiet_gate and custodiet_gate.config.countdown:
+            threshold = custodiet_gate.config.countdown.threshold
+            start_before = custodiet_gate.config.countdown.start_before
+            countdown_start = threshold - start_before
+            ops = custodiet.ops_since_open
+            if ops >= threshold:
+                parts.append("◇")
+            elif ops >= countdown_start:
+                remaining = threshold - ops
+                parts.append(f"◇ {remaining}")
 
     # Handover: show only AFTER completion (gate OPEN + skill invoked)
     handover = state.gates.get("handover")

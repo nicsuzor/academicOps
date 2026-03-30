@@ -111,7 +111,7 @@ The framework has a recurring failure mode: **over-engineering coordination mech
 **What we're re-evaluating (not cut, but need to earn their keep):**
 
 - **Hydrator**: Good concept (enrich tasks with context before execution). Enforcement gate (blocking all tools until hydrated) is the problem, not the skill itself. Needs to be useful without being mandatory for simple tasks.
-- **Custodiet**: Drift detection concept is sound. Needs evidence it catches things that async PR review wouldn't.
+- **Custodiet**: Drift detection concept is sound and the gate is working, so it stays as a separate enforcement layer alongside the new CC auto mode per-action classifier. Its substance (what it checks and how aggressively) will be revised once we have confidence that CC auto mode handles per-action enforcement well — the two are complementary, not redundant.
 - **Gate system**: Per-gate assessment needed. Handover gate (requires reflection) is valuable. Commit gate was removed because it competed with handover signals. Hydration gate (blocking all tools) is too aggressive.
 
 **How we prevent this recurring:**

@@ -28,7 +28,7 @@ from .paths import (
 log = logging.getLogger(__name__)
 
 # Max turns for Claude in test fixtures — higher than the default of 3 to allow
-# for hook overhead (hydration gate) before reaching the actual task.
+# for hook overhead (hydration gate, custodiet) before reaching the actual task.
 TEST_CLAUDE_MAX_TURNS = "10"
 
 
@@ -391,6 +391,7 @@ Provides:
 from pathlib import Path
 
 import pytest
+
 from lib.paths import get_plugin_root as get_aops_root
 
 

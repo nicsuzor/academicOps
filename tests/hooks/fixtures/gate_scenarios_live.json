@@ -995,7 +995,7 @@
       "hook_event": "SubagentStart",
       "tool_name": null,
       "tool_input": {},
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": false,
       "expected": {
         "verdict": "allow"
@@ -1014,7 +1014,7 @@
       "hook_event": "SubagentStop",
       "tool_name": null,
       "tool_input": {},
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": false,
       "expected": {
         "verdict": "allow"
@@ -1033,7 +1033,7 @@
       "hook_event": "SubagentStart",
       "tool_name": null,
       "tool_input": {},
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": false,
       "expected": {
         "verdict": "allow"
@@ -1052,7 +1052,7 @@
       "hook_event": "SubagentStop",
       "tool_name": null,
       "tool_input": {},
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": false,
       "expected": {
         "verdict": "allow"
@@ -2318,10 +2318,10 @@
       "tool_input": {
         "description": "Compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-academicOps/20260304-a24a3e52-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -2573,10 +2573,10 @@
       "tool_input": {
         "description": "Periodic compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-academicOps/20260304-a24a3e52-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -2621,10 +2621,10 @@
       "tool_input": {
         "description": "Periodic compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-academicOps/20260304-a24a3e52-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -2711,10 +2711,10 @@
       "tool_input": {
         "description": "Periodic compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-academicOps/20260304-a24a3e52-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -2998,10 +2998,10 @@
       "tool_input": {
         "description": "Compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-2d57455f-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -3069,10 +3069,10 @@
       "tool_input": {
         "description": "Periodic compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-2d57455f-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -3186,10 +3186,10 @@
       "tool_input": {
         "description": "Custodiet compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-2d57455f-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -3226,6 +3226,1354 @@
         "extracted_at": "2026-03-04T04:44:33.959137+00:00"
       },
       "gate_overrides": {}
+    }
+  ],
+  "claude_custodiet_threshold": [
+    {
+      "id": "claude-pretooluse-agent-L78",
+      "hook_event": "PreToolUse",
+      "tool_name": "Agent",
+      "tool_input": {
+        "description": "Explore polecat claiming mechanism",
+        "prompt": "I need to understand the current polecat task claiming and queue mechanisms. Find and read:\n\n1. The `claim_next_task()` method in polecat/manager.py - how does atomic claiming work?\n2. How does `polecat run` decide which task to work on?\n3. The task status lifecycle - what statuses exist and how do they transition?\n4. Any existing \"ready tasks\" filtering logic (get_ready_tasks or similar)\n5. How GitHub Issues relate to PKB tasks - is there an `_ensure_github_issue()` pattern or any issue_number field?\n\nRead the actual implementation code, not just specs. Be thorough.",
+        "subagent_type": "Explore"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops-crew-michelle-aops/20260302-6357b12f-hooks.jsonl",
+        "line_index": 78,
+        "session_id": "6357b12f-114c-4083-9d50-1fe72daf5412",
+        "logged_at": "2026-03-02T01:14:52+00:00",
+        "event_hash": "e10ad22da959318c",
+        "extracted_at": "2026-03-04T04:44:33.474359+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L94",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "wc -l /home/debian/.aops/crew/michelle/aops/polecat/manager.py"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops-crew-michelle-aops/20260302-6357b12f-hooks.jsonl",
+        "line_index": 94,
+        "session_id": "6357b12f-114c-4083-9d50-1fe72daf5412",
+        "logged_at": "2026-03-02T01:15:01+00:00",
+        "event_hash": "00ba4f6fa82044a1",
+        "extracted_at": "2026-03-04T04:44:33.474433+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L106",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "find /home/debian/.aops/crew/michelle/aops -name \"task_model.py\" -type f"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops-crew-michelle-aops/20260302-6357b12f-hooks.jsonl",
+        "line_index": 106,
+        "session_id": "6357b12f-114c-4083-9d50-1fe72daf5412",
+        "logged_at": "2026-03-02T01:15:12+00:00",
+        "event_hash": "534717308e6cabab",
+        "extracted_at": "2026-03-04T04:44:33.474536+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L114",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "grep -n \"class TaskStatus\" /home/debian/.aops/crew/michelle/aops/aops-core/lib/task_model.py | head -1"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops-crew-michelle-aops/20260302-6357b12f-hooks.jsonl",
+        "line_index": 114,
+        "session_id": "6357b12f-114c-4083-9d50-1fe72daf5412",
+        "logged_at": "2026-03-02T01:15:21+00:00",
+        "event_hash": "21c1517adfa74f29",
+        "extracted_at": "2026-03-04T04:44:33.474645+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-agent-L117",
+      "hook_event": "PreToolUse",
+      "tool_name": "Agent",
+      "tool_input": {
+        "description": "Hydrate rework proposal task",
+        "prompt": "/home/debian/.claude/projects/-home-debian-_aops-crew-michelle-aops/20260302-6357b12f-hydration.md",
+        "subagent_type": "aops-core:prompt-hydrator"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops-crew-michelle-aops/20260302-6357b12f-hooks.jsonl",
+        "line_index": 117,
+        "session_id": "6357b12f-114c-4083-9d50-1fe72daf5412",
+        "logged_at": "2026-03-02T01:15:42+00:00",
+        "event_hash": "f71b8b11db434281",
+        "extracted_at": "2026-03-04T04:44:33.474773+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-agent-L123",
+      "hook_event": "PreToolUse",
+      "tool_name": "Agent",
+      "tool_input": {
+        "description": "Custodiet compliance check",
+        "prompt": "/home/debian/.claude/projects/-home-debian-_aops-crew-michelle-aops/20260302-6357b12f-custodiet.md",
+        "subagent_type": "aops-core:custodiet",
+        "run_in_background": true
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops-crew-michelle-aops/20260302-6357b12f-hooks.jsonl",
+        "line_index": 123,
+        "session_id": "6357b12f-114c-4083-9d50-1fe72daf5412",
+        "logged_at": "2026-03-02T01:16:34+00:00",
+        "event_hash": "07e437750b5284f1",
+        "extracted_at": "2026-03-04T04:44:33.474864+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L160",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "grep -n \"TaskStatus\\|merge_ready\\|active\\|in_progress\" /home/debian/.aops/crew/michelle/aops/polecat/manager.py | head -40"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops-crew-michelle-aops/20260302-6357b12f-hooks.jsonl",
+        "line_index": 160,
+        "session_id": "6357b12f-114c-4083-9d50-1fe72daf5412",
+        "logged_at": "2026-03-02T01:16:58+00:00",
+        "event_hash": "1e82ac553e3f3e59",
+        "extracted_at": "2026-03-04T04:44:33.474935+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L164",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "grep -rn \"GitHub\\|issue\\|label\\|merge_ready\\|draft\\|publish\" /home/debian/.aops/crew/michelle/aops/polecat/manager.py | head -50"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops-crew-michelle-aops/20260302-6357b12f-hooks.jsonl",
+        "line_index": 164,
+        "session_id": "6357b12f-114c-4083-9d50-1fe72daf5412",
+        "logged_at": "2026-03-02T01:17:00+00:00",
+        "event_hash": "cecd4791186a7aa4",
+        "extracted_at": "2026-03-04T04:44:33.475001+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L166",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "grep -n \"merge_ready\\|MERGE\\|publish\\|draft\\|status\" /home/debian/.aops/crew/michelle/aops/polecat/cli.py | head -60"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops-crew-michelle-aops/20260302-6357b12f-hooks.jsonl",
+        "line_index": 166,
+        "session_id": "6357b12f-114c-4083-9d50-1fe72daf5412",
+        "logged_at": "2026-03-02T01:17:02+00:00",
+        "event_hash": "b39f5a96d55fa1cf",
+        "extracted_at": "2026-03-04T04:44:33.475058+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L170",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "grep -n \"create_pr\\|gh pr\\|generate_pr_body\\|GitHub\" /home/debian/.aops/crew/michelle/aops/polecat/cli.py"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops-crew-michelle-aops/20260302-6357b12f-hooks.jsonl",
+        "line_index": 170,
+        "session_id": "6357b12f-114c-4083-9d50-1fe72daf5412",
+        "logged_at": "2026-03-02T01:17:05+00:00",
+        "event_hash": "c181a7ffbf7c9e45",
+        "extracted_at": "2026-03-04T04:44:33.475112+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L180",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "find /home/debian/.aops/crew/michelle/aops -name \"*label*\" -o -name \"*issue*template*\" 2>/dev/null | head -20"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops-crew-michelle-aops/20260302-6357b12f-hooks.jsonl",
+        "line_index": 180,
+        "session_id": "6357b12f-114c-4083-9d50-1fe72daf5412",
+        "logged_at": "2026-03-02T01:17:12+00:00",
+        "event_hash": "f19e61c87588815c",
+        "extracted_at": "2026-03-04T04:44:33.475166+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L34",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr view 692 --json number,title,body,state,updatedAt 2>/dev/null; echo \"---\"; gh pr view 693 --json number,title,body,state,updatedAt 2>/dev/null",
+        "description": "Get spec PRs 692 and 693 details"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 34,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:19:27+00:00",
+        "event_hash": "23b1184c238d3e55",
+        "extracted_at": "2026-03-04T04:44:33.704095+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L40",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr view 717 --json number,title,body,state,updatedAt,comments 2>/dev/null | python3 -c \"import json,sys; d=json.load(sys.stdin); print('Title:', d['title']); print('State:', d['state']); print('Updated:', d['updatedAt']); print('Body:', d['body'][:2000])\"",
+        "description": "Get PR 717 details - review-related from today"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 40,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:19:36+00:00",
+        "event_hash": "ccc3c54f9fd322e0",
+        "extracted_at": "2026-03-04T04:44:33.704148+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L42",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr view 705 --json number,title,body,state,updatedAt 2>/dev/null | python3 -c \"import json,sys; d=json.load(sys.stdin); print('Title:', d['title']); print('State:', d['state']); print('Updated:', d['updatedAt']); print('Body:', d['body'][:2000])\"",
+        "description": "Get PR 705 - consolidated review agents"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 42,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:19:38+00:00",
+        "event_hash": "4f04477d332b2736",
+        "extracted_at": "2026-03-04T04:44:33.704243+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L46",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "find /opt/nic/.aops/crew/pamela_89/aops -name \"*.md\" -newer /opt/nic/brain/daily/20260303-daily.md 2>/dev/null | grep -v \".git\" | head -30",
+        "description": "Find repo files modified today"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 46,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:19:48+00:00",
+        "event_hash": "f06ab2f1e223aa40",
+        "extracted_at": "2026-03-04T04:44:33.704301+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L47",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "find /opt/nic/brain -name \"*.md\" -newer /opt/nic/brain/daily/20260303-daily.md 2>/dev/null | grep -i -E \"review|pr|aops\" | head -20",
+        "description": "Find brain files modified after yesterday related to PR review"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 47,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:19:48+00:00",
+        "event_hash": "a23e5b0eb7ee815d",
+        "extracted_at": "2026-03-04T04:44:33.704351+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L50",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh issue view 726 --json number,title,body,comments,updatedAt 2>/dev/null",
+        "description": "Get issue 726 which was updated today"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 50,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:19:49+00:00",
+        "event_hash": "3f48a026d5f31dbb",
+        "extracted_at": "2026-03-04T04:44:33.704401+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L64",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh issue list --repo nicsuzor/academicOps --search \"PR review workflow\" --limit 10 2>/dev/null; echo \"---\"; gh pr list --repo nicsuzor/academicOps --search \"review workflow\" --limit 10 2>/dev/null",
+        "description": "Search GitHub for PR review workflow issues/PRs"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 64,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:21:04+00:00",
+        "event_hash": "c723fd4d09337bcf",
+        "extracted_at": "2026-03-04T04:44:33.704455+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L71",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "find /opt/nic/brain -newer /opt/nic/brain/daily/20260303-daily.md -name \"*.md\" 2>/dev/null | head -50",
+        "description": "Find files modified more recently than yesterday's daily note"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 71,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:28:35+00:00",
+        "event_hash": "85f11586e8e270bc",
+        "extracted_at": "2026-03-04T04:44:33.704511+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L72",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "ls -la /opt/nic/brain/daily/ 2>/dev/null | tail -10",
+        "description": "List recent daily notes"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 72,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:28:35+00:00",
+        "event_hash": "58fa05af2d917240",
+        "extracted_at": "2026-03-04T04:44:33.704568+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L77",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "grep -rl \"environment\" /opt/nic/brain --include=\"*.md\" -l 2>/dev/null | xargs grep -l \"workflow\\|github\\|review\" 2>/dev/null | head -20",
+        "description": "Find files mentioning both \"environment\" and workflow/github/review"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 77,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:28:52+00:00",
+        "event_hash": "14ab5bc04108849d",
+        "extracted_at": "2026-03-04T04:44:33.704654+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L79",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "grep -rl \"environment\" /opt/nic/brain/aops --include=\"*.md\" 2>/dev/null | head -20",
+        "description": "Search aops PKB directory for files mentioning environment"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 79,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:28:58+00:00",
+        "event_hash": "14ab46489999f103",
+        "extracted_at": "2026-03-04T04:44:33.704724+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L80",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "grep -rl \"environment\" /opt/nic/brain/memories --include=\"*.md\" 2>/dev/null | head -20",
+        "description": "Search memories directory for files mentioning environment"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 80,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:28:58+00:00",
+        "event_hash": "ccc3688983170234",
+        "extracted_at": "2026-03-04T04:44:33.704784+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L83",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "grep -rl \"environment\" /opt/nic/brain/knowledge --include=\"*.md\" 2>/dev/null | head -20",
+        "description": "Search knowledge directory for files mentioning environment"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 83,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:28:59+00:00",
+        "event_hash": "9372c11e2672bae1",
+        "extracted_at": "2026-03-04T04:44:33.704974+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L85",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "grep -rl \"environment\\|approval.gate\\|workflow.*trigger\\|trigger.*review\" /opt/nic/brain/aops --include=\"*.md\" 2>/dev/null | xargs grep -l \"github\\|GitHub\\|review\" 2>/dev/null | head -20",
+        "description": "Find aops PKB files combining environment/approval gate with github/review"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 85,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:29:05+00:00",
+        "event_hash": "a2589fbbaf550c87",
+        "extracted_at": "2026-03-04T04:44:33.705045+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L87",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "find /opt/nic/brain -name \"*.md\" -newer /opt/nic/brain/daily/20260303-daily.md 2>/dev/null | xargs grep -l \"environment\\|approval.gate\\|workflow\" 2>/dev/null | head -20",
+        "description": "Find files modified today that mention environment, approval gate, or workflow"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 87,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:29:07+00:00",
+        "event_hash": "d611f95aa324ef25",
+        "extracted_at": "2026-03-04T04:44:33.705133+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L99",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "grep -rn \"environment\\b\" /opt/nic/brain/aops --include=\"*.md\" -i 2>/dev/null | grep -i \"github\\|workflow\\|trigger\\|approval\\|review\" | grep -v \"Binary\" | head -40",
+        "description": "Search for \"environment\" in aops PKB files with workflow/github context"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 99,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:29:27+00:00",
+        "event_hash": "3867ff3611e5c031",
+        "extracted_at": "2026-03-04T04:44:33.705280+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L101",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "grep -rn \"environment\\b\" /opt/nic/brain/memories --include=\"*.md\" -i 2>/dev/null | grep -v \"Binary\" | head -30",
+        "description": "Search memory files for \"environment\""
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 101,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:29:28+00:00",
+        "event_hash": "11b57f701cc563c5",
+        "extracted_at": "2026-03-04T04:44:33.705350+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L103",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "grep -rn \"environment:\" /opt/nic/brain --include=\"*.md\" 2>/dev/null | grep -v \"Binary\\|^Binary\" | head -30",
+        "description": "Search PKB for YAML \"environment:\" key which is how GitHub Actions environments are declared"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 103,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:29:35+00:00",
+        "event_hash": "67eb24eef41b5fad",
+        "extracted_at": "2026-03-04T04:44:33.705456+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L105",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "grep -rn \"environment:\" /opt/nic/.aops/crew/pamela_89/aops/.github --include=\"*.yml\" 2>/dev/null | head -20",
+        "description": "Check current workflow files for environment declarations"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 105,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:29:36+00:00",
+        "event_hash": "d3da5b3e9e0b6237",
+        "extracted_at": "2026-03-04T04:44:33.705533+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L107",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "find /opt/nic/brain -name \"*.md\" -newer /opt/nic/brain/daily/20260303-daily.md 2>/dev/null | xargs grep -l \"environment\\|approval\\|gate\\|concurrency\\|protection\" 2>/dev/null | head -20",
+        "description": "Find today's new files mentioning environment, approval, gate, or concurrency"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 107,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:29:38+00:00",
+        "event_hash": "e03f1cdc7d5b4497",
+        "extracted_at": "2026-03-04T04:44:33.705587+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L111",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "find /home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/ -name \"*.md\" -newer /opt/nic/brain/daily/20260303-daily.md 2>/dev/null | head -20",
+        "description": "Find today's Claude project session files"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 111,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:29:46+00:00",
+        "event_hash": "849f9c1da3e4e470",
+        "extracted_at": "2026-03-04T04:44:33.705655+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L113",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "find /home/debian/.claude/projects/ -name \"*.md\" -newer /opt/nic/brain/daily/20260303-daily.md 2>/dev/null 2>/dev/null | head -30",
+        "description": "Find all today's Claude project session files across all projects"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 113,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:29:46+00:00",
+        "event_hash": "258374060a013299",
+        "extracted_at": "2026-03-04T04:44:33.705761+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L115",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "for f in /home/debian/.claude/projects/-opt-nic-academicOps/20260304-*.md; do echo \"=== $f ===\"; grep -i \"environment\\|approval.gate\\|workflow.*trigger\\|review.*workflow\\|environment.*github\\|github.*environment\" \"$f\" 2>/dev/null | head -5; done",
+        "description": "Scan all today's academicOps session files for environment/workflow mentions"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 115,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:29:54+00:00",
+        "event_hash": "7c8dfb8d1ff4d80b",
+        "extracted_at": "2026-03-04T04:44:33.705839+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L117",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "ls -lt /home/debian/.claude/projects/-opt-nic-academicOps/ | head -20",
+        "description": "List today's session files in academicOps project by modification time"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 117,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:29:55+00:00",
+        "event_hash": "1d293af9468e6a2c",
+        "extracted_at": "2026-03-04T04:44:33.705894+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L123",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "ls -lt /home/debian/.claude/projects/-opt-nic-academicOps/ | grep \"85f8f6d6\\|a19d3878\\|3ceeb7d0\\|a24a3e52\" | head -20",
+        "description": "List session files for the most relevant today sessions"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 123,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:30:04+00:00",
+        "event_hash": "47b03378325c4ef1",
+        "extracted_at": "2026-03-04T04:44:33.705984+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L125",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "grep -i \"environment\\|approval.gate\\|environments:\" /home/debian/.claude/projects/-opt-nic-academicOps/85f8f6d6-35a7-4d11-a4ae-4a5e7f09b859.jsonl 2>/dev/null | head -30",
+        "description": "Search the session 85f8f6d6 JSONL transcript for environment mentions"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 125,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:30:12+00:00",
+        "event_hash": "d94dec947ce3708a",
+        "extracted_at": "2026-03-04T04:44:33.706080+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L126",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "ls /home/debian/.claude/projects/-opt-nic-academicOps/ | grep \"85f8f6d6\"",
+        "description": "List all files for session 85f8f6d6"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 126,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:30:12+00:00",
+        "event_hash": "0998ac3f90a747d2",
+        "extracted_at": "2026-03-04T04:44:33.706136+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L129",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "find /opt/nic/brain -name \"*1e4b90b5*\" 2>/dev/null; find /opt/nic/brain -name \"*review-github-workflow*\" 2>/dev/null",
+        "description": "Find the review-github-workflow task file in PKB"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 129,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:30:19+00:00",
+        "event_hash": "22fc8d935e20f8a1",
+        "extracted_at": "2026-03-04T04:44:33.706208+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L131",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "ls -lt /home/debian/.claude/projects/-opt-nic-academicOps/ | tail -40",
+        "description": "List all academicOps session files by age to find earlier today sessions"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 131,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:30:20+00:00",
+        "event_hash": "120704c98f75a793",
+        "extracted_at": "2026-03-04T04:44:33.706335+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L133",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "ls -lt /home/debian/.claude/projects/-opt-nic-_aops-sessions/ | grep \"20260304\" | head -20",
+        "description": "List today's aops-sessions project files"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 133,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:30:30+00:00",
+        "event_hash": "8474e4bcdf11cf0b",
+        "extracted_at": "2026-03-04T04:44:33.706410+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L135",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "cat /home/debian/.claude/projects/-opt-nic-academicOps/20260304-02-85f8f6d6.json 2>/dev/null",
+        "description": "Read the session summary JSON for session 85f8f6d6"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 135,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:30:31+00:00",
+        "event_hash": "7dab31a52d5582f1",
+        "extracted_at": "2026-03-04T04:44:33.706462+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L137",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "grep -i \"environment\" /home/debian/.claude/projects/-opt-nic-_aops-sessions/20260304-f84145da-custodiet.md 2>/dev/null | head -20",
+        "description": "Check today's aops-sessions custodiet for environment mentions"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 137,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:30:37+00:00",
+        "event_hash": "2ad1887a65ca06bf",
+        "extracted_at": "2026-03-04T04:44:33.706547+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L139",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "cat /home/debian/.claude/projects/-opt-nic-_aops-sessions/20260304-02-e238341c.json 2>/dev/null",
+        "description": "Read the aops-sessions session summary for today's e238341c session"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 139,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:30:39+00:00",
+        "event_hash": "7e381ab909cb97ee",
+        "extracted_at": "2026-03-04T04:44:33.706643+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L141",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "ls /opt/nic/.aops/crew/pamela_89/aops/.github/workflows/ 2>/dev/null | head -30",
+        "description": "List workflow files in the academicOps repo"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 141,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:30:39+00:00",
+        "event_hash": "21e58f247720202c",
+        "extracted_at": "2026-03-04T04:44:33.706702+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L143",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "grep -l \"environment:\" /opt/nic/.aops/crew/pamela_89/aops/.github/workflows/*.yml 2>/dev/null; grep -rn \"environment:\" /opt/nic/.aops/crew/pamela_89/aops/.github/workflows/ 2>/dev/null",
+        "description": "Check all workflow files for environment declarations"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 143,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:30:45+00:00",
+        "event_hash": "dc161f0991cc9b81",
+        "extracted_at": "2026-03-04T04:44:33.706767+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L145",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "grep -i \"environment\\|approval\\|protection.rule\" /home/debian/.claude/projects/-opt-nic-_aops-sessions/20260304-e238341c-hydration.md 2>/dev/null | head -20",
+        "description": "Check today's aops-sessions hydration file for environment mentions"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 145,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:30:47+00:00",
+        "event_hash": "8defb7936a145648",
+        "extracted_at": "2026-03-04T04:44:33.706866+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L147",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "find /opt/nic/brain -name \"*.md\" -newer /opt/nic/brain/daily/20260303-daily.md 2>/dev/null | xargs grep -li \"environment\\|approval.gate\\|protection.rule\\|concurrency\" 2>/dev/null | head -10",
+        "description": "Scan today's new PKB files for environment/approval/protection rule keywords"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 147,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:30:49+00:00",
+        "event_hash": "f7d9346fe2c8c531",
+        "extracted_at": "2026-03-04T04:44:33.706946+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L149",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "python3 -c \"\nimport json, sys\n\npath = '/home/debian/.claude/projects/-opt-nic-academicOps/a24a3e52-dde1-464e-b14d-0af6bcfe8fa1.jsonl'\nresults = []\nwith open(path) as f:\n    for line in f:\n        try:\n            obj = json.loads(line)\n            # Look for text content mentioning environment\n            text = json.dumps(obj)\n            if 'environment' in text.lower() and ('workflow' in text.lower() or 'github' in text.lower() or 'trigger' in text.lower() or 'review' in text.lower()):\n                # Extract just the relevant snippet\n                idx = text.lower().find('environment')\n                start = max(0, idx - 200)\n                end = min(len(text), idx + 400)\n                results.append(text[start:end])\n        except:\n            pass\n\nfor r in results[:5]:\n    print(r)\n    print('---')\n\" 2>/dev/null",
+        "description": "Extract environment+workflow mentions from the largest today session JSONL"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 149,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:31:00+00:00",
+        "event_hash": "4eb4637c3dcc9361",
+        "extracted_at": "2026-03-04T04:44:33.707006+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L153",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "python3 -c \"\nimport json, os, glob\n\n# Search all today's session JSONL files for GitHub environments discussion\npatterns = ['environments', 'approval gate', 'deployment environment', 'environment protection', 'required reviewers']\nsession_dir = '/home/debian/.claude/projects/-opt-nic-academicOps/'\n\nfiles = glob.glob(session_dir + '20260304-*.jsonl')\nfiles += glob.glob(session_dir + '20260304-*/*.jsonl')\n\nfor fpath in files:\n    try:\n        with open(fpath) as f:\n            content = f.read()\n        for pat in patterns:\n            if pat.lower() in content.lower():\n                # Find context around it\n                idx = content.lower().find(pat.lower())\n                start = max(0, idx - 100)\n                end = min(len(content), idx + 300)\n                print(f'FILE: {fpath}')\n                print(f'PATTERN: {pat}')\n                print(content[start:end])\n                print('---')\n    except Exception as e:\n        pass\n\" 2>/dev/null",
+        "description": "Search today's academicOps session JSONLs for GitHub environments/approval gate keywords"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_89-aops/20260304-2eed0305-hooks.jsonl",
+        "line_index": 153,
+        "session_id": "2eed0305-4cb1-43a1-8f42-e2ad7fb34609",
+        "logged_at": "2026-03-04T04:31:12+00:00",
+        "event_hash": "4828150ef3dfa074",
+        "extracted_at": "2026-03-04T04:44:33.707100+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
     }
   ],
   "claude_read_only_tools": [
@@ -4510,7 +5858,11 @@
         "event_hash": "00ba4f6fa82044a1",
         "extracted_at": "2026-03-04T04:44:33.480733+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "claude-pretooluse-bash-L106",
@@ -4532,7 +5884,11 @@
         "event_hash": "534717308e6cabab",
         "extracted_at": "2026-03-04T04:44:33.480797+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "claude-pretooluse-bash-L114",
@@ -4554,7 +5910,11 @@
         "event_hash": "21c1517adfa74f29",
         "extracted_at": "2026-03-04T04:44:33.480887+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "claude-pretooluse-bash-L146",
@@ -4618,7 +5978,11 @@
         "event_hash": "1e82ac553e3f3e59",
         "extracted_at": "2026-03-04T04:44:33.481040+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "claude-pretooluse-bash-L164",
@@ -4640,7 +6004,11 @@
         "event_hash": "cecd4791186a7aa4",
         "extracted_at": "2026-03-04T04:44:33.481094+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "claude-pretooluse-bash-L166",
@@ -4662,7 +6030,11 @@
         "event_hash": "b39f5a96d55fa1cf",
         "extracted_at": "2026-03-04T04:44:33.481152+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "claude-pretooluse-bash-L170",
@@ -4684,7 +6056,11 @@
         "event_hash": "c181a7ffbf7c9e45",
         "extracted_at": "2026-03-04T04:44:33.481204+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "claude-pretooluse-bash-L180",
@@ -4706,7 +6082,11 @@
         "event_hash": "f19e61c87588815c",
         "extracted_at": "2026-03-04T04:44:33.481300+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "claude-pretooluse-bash-L183",
@@ -5198,7 +6578,11 @@
         "event_hash": "23b1184c238d3e55",
         "extracted_at": "2026-03-04T04:44:33.711110+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "claude-pretooluse-bash-L40",
@@ -5221,7 +6605,11 @@
         "event_hash": "ccc3c54f9fd322e0",
         "extracted_at": "2026-03-04T04:44:33.711177+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "claude-pretooluse-bash-L42",
@@ -5244,7 +6632,11 @@
         "event_hash": "4f04477d332b2736",
         "extracted_at": "2026-03-04T04:44:33.711295+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "claude-pretooluse-bash-L46",
@@ -5267,7 +6659,11 @@
         "event_hash": "f06ab2f1e223aa40",
         "extracted_at": "2026-03-04T04:44:33.711347+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "claude-pretooluse-bash-L47",
@@ -5290,7 +6686,11 @@
         "event_hash": "a23e5b0eb7ee815d",
         "extracted_at": "2026-03-04T04:44:33.711397+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "claude-pretooluse-bash-L50",
@@ -5313,7 +6713,11 @@
         "event_hash": "3f48a026d5f31dbb",
         "extracted_at": "2026-03-04T04:44:33.711448+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "claude-pretooluse-bash-L64",
@@ -5336,7 +6740,11 @@
         "event_hash": "c723fd4d09337bcf",
         "extracted_at": "2026-03-04T04:44:33.711501+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "claude-pretooluse-bash-L71",
@@ -5359,7 +6767,11 @@
         "event_hash": "85f11586e8e270bc",
         "extracted_at": "2026-03-04T04:44:33.711552+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "claude-pretooluse-bash-L72",
@@ -5382,7 +6794,11 @@
         "event_hash": "58fa05af2d917240",
         "extracted_at": "2026-03-04T04:44:33.711600+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "claude-pretooluse-bash-L77",
@@ -5405,7 +6821,11 @@
         "event_hash": "14ab5bc04108849d",
         "extracted_at": "2026-03-04T04:44:33.711650+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "claude-pretooluse-bash-L79",
@@ -5428,7 +6848,11 @@
         "event_hash": "14ab46489999f103",
         "extracted_at": "2026-03-04T04:44:33.711699+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     }
   ],
   "gemini_compliance_agent_allowed": [
@@ -5462,10 +6886,10 @@
       "tool_input": {
         "description": "Compliance check",
         "prompt": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -5486,10 +6910,10 @@
       "tool_input": {
         "description": "Compliance check",
         "prompt": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -5599,10 +7023,10 @@
       "tool_input": {
         "description": "Compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-825840e5-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -6483,10 +7907,10 @@
       "tool_input": {
         "description": "Compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-825840e5-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -6897,6 +8321,1338 @@
       "gate_overrides": {}
     }
   ],
+  "gemini_custodiet_threshold": [
+    {
+      "id": "gemini-pretooluse-write-L68",
+      "hook_event": "PreToolUse",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "/home/debian/.aops/crew/audre/aops/.agent/STATUS.md",
+        "content": "# academicOps Framework Status\n\n**Last updated**: 2026-02-24\n\n## Vision\n\nacademicOps (aops) is an LLM-driven framework for managing academic workflows \u2014 research, teaching, writing \u2014 through structured enforcement, task management, and governance. The framework reduces cognitive load on the academic user by providing intelligent automation that remembers decisions, enforces consistency, and handles routine coordination.\n\n## Architecture Overview\n\n```\nacademicOps/\n\u251c\u2500\u2500 .agent/           # Agent instructions, commands, skills, rules\n\u2502   \u251c\u2500\u2500 rules/        # AXIOMS.md (inviolable principles), protected_paths\n\u2502   \u251c\u2500\u2500 commands/     # Slash commands (learn, email, aops, q, bump, pull)\n\u2502   \u251c\u2500\u2500 skills/       # Domain skills (analyst, framework, python-dev, custodiet, etc.)\n\u2502   \u2514\u2500\u2500 workflows/    # Workflow definitions (manual-qa, etc.)\n\u251c\u2500\u2500 .github/\n\u2502   \u251c\u2500\u2500 agents/       # Agent personality prompts (gatekeeper, custodiet, qa, merge-prep, hydrator-reviewer)\n\u2502   \u2514\u2500\u2500 workflows/    # 18 GitHub Actions workflows\n\u251c\u2500\u2500 aops-core/        # Framework core\n\u2502   \u251c\u2500\u2500 hooks/        # Session hooks (router, policy_enforcer, task_binding, etc.)\n\u2502   \u251c\u2500\u2500 lib/          # Shared libraries (gates, hydration, sessions, tasks, etc.)\n\u2502   \u251c\u2500\u2500 mcp_servers/  # MCP servers (tasks_server, memory_proxy)\n\u2502   \u2514\u2500\u2500 scripts/      # Utility scripts (transcript, custodiet_block, etc.)\n\u251c\u2500\u2500 specs/            # Design specifications (37 specs)\n\u251c\u2500\u2500 tests/            # Test suite (~90+ test files across unit/integration/e2e/demo)\n\u2514\u2500\u2500 config/           # Configuration files\n```\n\n**Data layer** ($ACA_DATA): `/home/nic/writing/data` \u2014 sessions, projects, logs, context, goals. Separate from framework code.\n\n## Key Components & Current State\n\n### PR Review Pipeline \u2014 WORKING (with known issues being addressed)\n\nThe fully automated PR review pipeline is the most mature component. Post-mortem on PRs 582 and 585 (2026-02-23) revealed three failure modes, all now addressed with fixes:\n\n**Pipeline flow**: `code-quality.yml` (lint + gatekeeper + type-check) -> `pr-review-pipeline.yml` (cascade-check -> custodiet -> QA -> merge-prep -> notify-ready) -> human approval -> `pr-lgtm-merge.yml` (check-status -> lint re-trigger -> approve -> auto-merge)\n\n**Safety mechanisms** (added/improved 2026-02-23):\n- **Cascade limit**: Pipeline run-count tracked per PR; halts after 3 runs to prevent infinite bot loops (`pr-review-pipeline.yml`)\n- **LGTM check-status gate**: Merge workflow now checks required status checks before enabling auto-merge; re-triggers lint if failing (`pr-lgtm-merge.yml`)\n- **Strategic gatekeeper**: Gatekeeper now reads `.agent/STATUS.md` in addition to VISION.md and AXIOMS.md, enabling it to reject PRs that delete working components or conflict with key decisions (`gatekeeper.md`)\n- **Loop detector**: Merge-prep uses `Merge-Prep-By:` commit trailer (not author name) \u2014 unchanged from prior fix\n\n**Prior fixes (2026-02-22)**:\n- Loop detector in merge-prep uses `Merge-Prep-By:` commit trailer (not author name)\n- Skip notices post honest PR comments when loop detected, including unresolved feedback count\n- Review dismissal instructions added to CLAUDE.md and merge-prep agent prompt\n- All 3 open PRs (579, 575, 576) merged successfully\n- Broken test fixed: `CUSTODIET_MODE` renamed to `CUSTODIET_GATE_MODE`\n\n**All 18 workflows have `workflow_dispatch` triggers** for manual re-runs.\n\n**Agents**: gatekeeper, custodiet, QA, merge-prep, hydrator-reviewer (5 agents with distinct personalities and authorities)\n\n**Merge methods**: merge commit, squash, and rebase all enabled on both nicsuzor/academicOps and qut-dmrc/buttermilk.\n\n### Hook System \u2014 WORKING\n\nSession lifecycle hooks managed via `aops-core/hooks/router.py`:\n- `user_prompt_submit.py` \u2014 prompt routing and gate evaluation\n- `policy_enforcer.py` \u2014 axiom enforcement\n- `task_binding.py` \u2014 task context injection\n- `session_env_setup.py` \u2014 environment setup (CUSTODIET_GATE_MODE, etc.)\n- `session_end_commit_check.py` \u2014 commit verification\n- `generate_transcript.py` \u2014 transcript generation\n- `ntfy_notifier.py` \u2014 push notifications\n\n### Gate System \u2014 WORKING\n\nPredicate-based gate engine at `aops-core/lib/gates/`:\n- `engine.py` \u2014 gate evaluation\n- `definitions.py` \u2014 gate definitions\n- `registry.py` \u2014 gate registration\n- `custom_conditions.py` / `custom_actions.py` \u2014 extensibility\n\n### Hydration System \u2014 WORKING\n\nContext injection at `aops-core/lib/hydration/`:\n- `builder.py` \u2014 hydration pipeline construction\n- `context_loaders.py` \u2014 context loading strategies\n- `skip_check.py` \u2014 hydration bypass conditions\n\n### Task Management \u2014 WORKING\n\n`aops-core/lib/task_model.py`, `task_storage.py`, `task_sync.py`, `task_index.py`\nMCP server: `aops-core/mcp_servers/tasks_server.py`\n\n### Issue Review Agents \u2014 EARLY\n\n- `issue-review-custodiet.yml` \u2014 proposal quality review on issue open\n- `issue-review-hydrator.yml` \u2014 infrastructure context on issue open\n- Known issue: hook over-triggering on read-only operations\n- Hydrator tends to drift into implementation advice (needs stronger guardrails)\n\n### Skills System \u2014 WORKING\n\n13+ skills in `.agent/skills/`: analyst, annotations, audit, convert-to-md, critic, custodiet, effectual-planner, framework, garden, pdf, python-dev, qa, remember, session-insights, task-viz, hypervisor\n\n### Session Insights \u2014 WORKING\n\nScripts for extracting insights from session transcripts in `.agent/skills/session-insights/scripts/`.\n\n### Agent Dispatch \u2014 SUPERVISED (new 2026-02-24)\n\nPolecat swarm no longer running. Task delegation now uses manual dispatch to:\n- **Jules** (online, GitHub-native) \u2014 best for PRs, CI work, repo cleanup\n- **Gemini polecats** \u2014 best for code generation, MCP tools, CLI additions\n\nDispatch protocol: manual task selection from PKB ready queue, handoff via GitHub issues (Jules) or session prompts (Gemini), human monitors PRs through review pipeline. Assignee convention: `jules` or `gemini` in task frontmatter.\n\n## Key Decisions\n\n| Decision | Rationale | Date |\n|----------|-----------|------|\n| Manual dispatch replaces polecat swarm | Swarm no longer running; Jules + Gemini polecats provide equivalent coverage with manual orchestration | 2026-02-24 |\n| Gatekeeper reads STATUS.md | Without strategic context, gatekeeper cannot catch PRs that delete working components (PR 582 post-mortem) | 2026-02-23 |\n| Pipeline cascade limit (max 3 runs) | PR 582 showed bots triggering bots in unbounded loops; comment-based counting bounds total cycles | 2026-02-23 |\n| LGTM triggers lint re-run if failing | PR 585 showed LGTM silently failing when lint was stale; merge workflow now checks and re-triggers | 2026-02-23 |\n| Commit trailer for loop detection | Author name unreliable (multiple bots use github-actions[bot]) | 2026-02-22 |\n| All workflows get workflow_dispatch | Manual re-run capability for debugging and recovery | 2026-02-22 |\n| Review dismissal by agents | Agents should dismiss reviews they've addressed; humans override remaining | 2026-02-22 |\n| All merge methods enabled | Flexibility for different PR types | 2026-02-22 |\n| Tests at repo root, not in aops-core | Single test suite covering all components | prior |\n| Skills are read-only (P#23) | Mutable state in $ACA_DATA only | prior |\n| Categorical imperative (P#2) | Every change must be a universal rule | prior |\n\n## Open Questions\n\n1. **Issue review over-triggering**: The issue review agents fire on read-only and tracking operations. Needs filtering improvement.\n2. **Hydrator guardrails**: Hydrator agent drifts into implementation advice instead of staying advisory. Needs stronger prompt constraints.\n3. **Autonomous automation readiness**: Most workflows are at \"supervised\" maturity. No workflows have been validated for fully autonomous operation yet. PR 582/585 post-mortem confirms the pipeline is not yet ready for autonomous \u2014 the new safety mechanisms need supervised validation.\n4. **PATHS.md staleness**: Generated paths reference `/home/nic/src/academicOps` but the repo is at `/opt/nic/academicOps` on this machine. Environment-specific \u2014 may need regeneration.\n5. **Run-count accuracy**: The cascade limit uses comment pattern matching, not a proper counter. Could be inaccurate if comments are deleted or have unusual formatting. Monitor in practice.\n6. **Gemini polecat PR creation**: Gemini polecats may not have direct repo write access \u2014 need to confirm whether they can create PRs or if output needs manual PR creation.\n\n## Roadmap\n\n### Recently Completed\n- PR pipeline post-mortem and fixes (cascade limit, LGTM check-status, strategic gatekeeper) \u2014 2026-02-23\n- PR review pipeline end-to-end (loop detection, skip notices, review dismissal) \u2014 2026-02-22\n- workflow_dispatch on all workflows\n- All open PRs merged to main\n- Test fix on main (CUSTODIET_GATE_MODE)\n\n### Near-term\n- **Manual agent dispatch: first supervised batch** \u2014 dispatch 3 tasks each to Jules and Gemini polecats, validate through PR pipeline (2026-02-24)\n- **Validate PR pipeline fixes on next real PR** (supervised run) \u2014 the three new safety mechanisms (cascade limit, LGTM lint re-trigger, strategic gatekeeper) need real-world validation\n- Address issue review over-triggering\n- Strengthen hydrator guardrails\n\n### Medium-term\n- Graduate PR pipeline from \"supervised\" to \"autonomous\" after multiple clean runs\n- Graduate agent dispatch from manual to semi-automated (script generates handoff prompts from task index)\n- PKB server implementation (spec exists at `specs/pkb-server-spec.md`)\n- Dogfooding workflow (recently added, commit f62c0442)\n- Complete MCP tool additions (9 mechanical tasks in queue)\n- Rework aops local framework (epic `aops-1815798a` with 10 subtasks)\n\n### Long-term\n- Full autonomous agent workflows with butler oversight\n- Cross-project task management\n- Session insights automation\n"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 68,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:13:51+00:00",
+        "event_hash": "6e96d0b536e2539a",
+        "extracted_at": "2026-03-04T04:44:33.610299+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-mcp__plugin_aops-core_pkb__list_tasks-L76",
+      "hook_event": "PreToolUse",
+      "tool_name": "mcp__plugin_aops-core_pkb__list_tasks",
+      "tool_input": {
+        "status": "ready"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 76,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:14:19+00:00",
+        "event_hash": "3b2343c50a04ab37",
+        "extracted_at": "2026-03-04T04:44:33.610436+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-mcp__plugin_aops-core_pkb__list_tasks-L78",
+      "hook_event": "PreToolUse",
+      "tool_name": "mcp__plugin_aops-core_pkb__list_tasks",
+      "tool_input": {
+        "status": "ready",
+        "limit": 272
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 78,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:14:24+00:00",
+        "event_hash": "16fcf5d1e0eafba8",
+        "extracted_at": "2026-03-04T04:44:33.610495+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-bash-L85",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "find /home/debian/.aops -type f -name \"*.md\" | head -20"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 85,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:15:46+00:00",
+        "event_hash": "8edbaa346a33b844",
+        "extracted_at": "2026-03-04T04:44:33.610552+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-bash-L94",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "find /home/debian/.aops -type d -name \"skills\" -o -type d -name \"docs\" -o -type d -name \".agent\""
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 94,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:15:51+00:00",
+        "event_hash": "a32934917bc9a5a9",
+        "extracted_at": "2026-03-04T04:44:33.610612+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-mcp__plugin_aops-core_pkb__get_task-L97",
+      "hook_event": "PreToolUse",
+      "tool_name": "mcp__plugin_aops-core_pkb__get_task",
+      "tool_input": {
+        "id": "aops-a6c9db05"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 97,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:15:53+00:00",
+        "event_hash": "ddb8ba022901e7c5",
+        "extracted_at": "2026-03-04T04:44:33.610667+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-mcp__plugin_aops-core_pkb__get_task-L100",
+      "hook_event": "PreToolUse",
+      "tool_name": "mcp__plugin_aops-core_pkb__get_task",
+      "tool_input": {
+        "id": "aops-14f2a3a2"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 100,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:15:54+00:00",
+        "event_hash": "0c8e2ef5c044be70",
+        "extracted_at": "2026-03-04T04:44:33.610729+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-mcp__plugin_aops-core_pkb__get_task-L108",
+      "hook_event": "PreToolUse",
+      "tool_name": "mcp__plugin_aops-core_pkb__get_task",
+      "tool_input": {
+        "id": "aops-713c17e0"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 108,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:15:55+00:00",
+        "event_hash": "505bc8f3cf66f9bc",
+        "extracted_at": "2026-03-04T04:44:33.610787+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-mcp__plugin_aops-core_pkb__get_task-L111",
+      "hook_event": "PreToolUse",
+      "tool_name": "mcp__plugin_aops-core_pkb__get_task",
+      "tool_input": {
+        "id": "aops-45f509af"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 111,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:15:56+00:00",
+        "event_hash": "eff6292c653f5137",
+        "extracted_at": "2026-03-04T04:44:33.610844+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-mcp__plugin_aops-core_pkb__get_task-L113",
+      "hook_event": "PreToolUse",
+      "tool_name": "mcp__plugin_aops-core_pkb__get_task",
+      "tool_input": {
+        "id": "aops-dd74eae2"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 113,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:15:57+00:00",
+        "event_hash": "b8a74bef9fc1c22a",
+        "extracted_at": "2026-03-04T04:44:33.610902+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-mcp__plugin_aops-core_pkb__get_task-L115",
+      "hook_event": "PreToolUse",
+      "tool_name": "mcp__plugin_aops-core_pkb__get_task",
+      "tool_input": {
+        "id": "task-map-d8f2052e"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 115,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:15:58+00:00",
+        "event_hash": "88abd2cad817cc87",
+        "extracted_at": "2026-03-04T04:44:33.610959+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-mcp__plugin_aops-core_pkb__get_task-L117",
+      "hook_event": "PreToolUse",
+      "tool_name": "mcp__plugin_aops-core_pkb__get_task",
+      "tool_input": {
+        "id": "task-1046aa2e"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 117,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:15:59+00:00",
+        "event_hash": "c453bf57e854ec4d",
+        "extracted_at": "2026-03-04T04:44:33.611013+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-mcp__plugin_aops-core_pkb__get_task-L121",
+      "hook_event": "PreToolUse",
+      "tool_name": "mcp__plugin_aops-core_pkb__get_task",
+      "tool_input": {
+        "id": "task-aa5603ca"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 121,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:15:59+00:00",
+        "event_hash": "fcde82a09ba6af1f",
+        "extracted_at": "2026-03-04T04:44:33.611068+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-bash-L122",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "find /home/debian/.aops -type f -name \"*polecat*\" -o -name \"*swarm*\" -o -name \"*jules*\""
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 122,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:16:00+00:00",
+        "event_hash": "d3cbd2df0f26c50d",
+        "extracted_at": "2026-03-04T04:44:33.611122+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-mcp__plugin_aops-core_pkb__get_task-L127",
+      "hook_event": "PreToolUse",
+      "tool_name": "mcp__plugin_aops-core_pkb__get_task",
+      "tool_input": {
+        "id": "buttermilk-cdeb7942"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 127,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:16:00+00:00",
+        "event_hash": "82c799763573474e",
+        "extracted_at": "2026-03-04T04:44:33.611177+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-mcp__plugin_aops-core_pkb__get_task-L129",
+      "hook_event": "PreToolUse",
+      "tool_name": "mcp__plugin_aops-core_pkb__get_task",
+      "tool_input": {
+        "id": "buttermilk-d5a01781"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 129,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:16:01+00:00",
+        "event_hash": "0f004fd26263777c",
+        "extracted_at": "2026-03-04T04:44:33.611270+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-mcp__plugin_aops-core_pkb__get_task-L131",
+      "hook_event": "PreToolUse",
+      "tool_name": "mcp__plugin_aops-core_pkb__get_task",
+      "tool_input": {
+        "id": "buttermilk-3411bcd1"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 131,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:16:02+00:00",
+        "event_hash": "58f93143d4d8b3f7",
+        "extracted_at": "2026-03-04T04:44:33.611333+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-mcp__plugin_aops-core_pkb__get_task-L133",
+      "hook_event": "PreToolUse",
+      "tool_name": "mcp__plugin_aops-core_pkb__get_task",
+      "tool_input": {
+        "id": "buttermilk-5af2a32b"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 133,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:16:03+00:00",
+        "event_hash": "0075a947be4c2e67",
+        "extracted_at": "2026-03-04T04:44:33.611388+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-mcp__plugin_aops-core_pkb__get_task-L136",
+      "hook_event": "PreToolUse",
+      "tool_name": "mcp__plugin_aops-core_pkb__get_task",
+      "tool_input": {
+        "id": "buttermilk-608d8919"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 136,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:16:04+00:00",
+        "event_hash": "6e3b0ffa28d06db6",
+        "extracted_at": "2026-03-04T04:44:33.611443+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-mcp__plugin_aops-core_pkb__get_task-L141",
+      "hook_event": "PreToolUse",
+      "tool_name": "mcp__plugin_aops-core_pkb__get_task",
+      "tool_input": {
+        "id": "aops-19f9f2ad"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 141,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:16:05+00:00",
+        "event_hash": "5fc9b7ccf984c67d",
+        "extracted_at": "2026-03-04T04:44:33.611503+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-mcp__plugin_aops-core_pkb__get_task-L147",
+      "hook_event": "PreToolUse",
+      "tool_name": "mcp__plugin_aops-core_pkb__get_task",
+      "tool_input": {
+        "id": "task-eb4b99"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 147,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:16:06+00:00",
+        "event_hash": "ec11eb7c439e9c74",
+        "extracted_at": "2026-03-04T04:44:33.611559+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-mcp__plugin_aops-core_pkb__get_task-L149",
+      "hook_event": "PreToolUse",
+      "tool_name": "mcp__plugin_aops-core_pkb__get_task",
+      "tool_input": {
+        "id": "dotfiles-72d6256f"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 149,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:16:07+00:00",
+        "event_hash": "f89b55a64bd61352",
+        "extracted_at": "2026-03-04T04:44:33.611612+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-mcp__plugin_aops-core_pkb__get_task-L151",
+      "hook_event": "PreToolUse",
+      "tool_name": "mcp__plugin_aops-core_pkb__get_task",
+      "tool_input": {
+        "id": "aops-10f73993"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 151,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:16:08+00:00",
+        "event_hash": "6c09963a35ba48c8",
+        "extracted_at": "2026-03-04T04:44:33.611668+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-mcp__plugin_aops-core_pkb__get_task-L153",
+      "hook_event": "PreToolUse",
+      "tool_name": "mcp__plugin_aops-core_pkb__get_task",
+      "tool_input": {
+        "id": "aops-9a865c42"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 153,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:16:09+00:00",
+        "event_hash": "75c45e604b4adf96",
+        "extracted_at": "2026-03-04T04:44:33.611722+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-mcp__plugin_aops-core_pkb__get_task-L160",
+      "hook_event": "PreToolUse",
+      "tool_name": "mcp__plugin_aops-core_pkb__get_task",
+      "tool_input": {
+        "id": "task-a1291448"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 160,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:16:10+00:00",
+        "event_hash": "59debb2f03ce671c",
+        "extracted_at": "2026-03-04T04:44:33.611777+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-mcp__plugin_aops-core_pkb__get_task-L165",
+      "hook_event": "PreToolUse",
+      "tool_name": "mcp__plugin_aops-core_pkb__get_task",
+      "tool_input": {
+        "id": "aops-ae4832ac"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 165,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:16:11+00:00",
+        "event_hash": "acc76c73e6f59cd3",
+        "extracted_at": "2026-03-04T04:44:33.611836+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-bash-L183",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "which polecat jules gemini 2>&1; polecat --help 2>&1 | head -20; jules --help 2>&1 | head -20",
+        "description": "Check CLI tools available for dispatch"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 183,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:18:52+00:00",
+        "event_hash": "bcdd9e5d07f2821e",
+        "extracted_at": "2026-03-04T04:44:33.611897+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-bash-L185",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "ls /home/debian/.aops/polecat/ 2>&1; cat /home/debian/.aops/polecat.yaml 2>&1",
+        "description": "Check polecat config and state"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 185,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:18:54+00:00",
+        "event_hash": "a1460088b411d139",
+        "extracted_at": "2026-03-04T04:44:33.611954+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-bash-L187",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "cd /opt/nic/academicOps && git remote -v 2>&1; echo \"---\"; cd /opt/nic/buttermilk && git remote -v 2>&1; echo \"---\"; cd /opt/nic/mem && git remote -v 2>&1; echo \"---\"; cd /home/debian/dotfiles && git remote -v 2>&1",
+        "description": "Check GitHub remotes for dispatch targets"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 187,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:19:08+00:00",
+        "event_hash": "7983ab473f6c6251",
+        "extracted_at": "2026-03-04T04:44:33.612010+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-bash-L189",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "polecat list 2>&1; echo \"---\"; ls ~/.aops/polecat/.repos/ 2>&1",
+        "description": "Check polecat init state and active workers"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 189,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:19:09+00:00",
+        "event_hash": "dd2efbee3b5b6702",
+        "extracted_at": "2026-03-04T04:44:33.612064+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-bash-L190",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh auth status 2>&1",
+        "description": "Check GitHub authentication"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 190,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:19:20+00:00",
+        "event_hash": "08711760c1213caf",
+        "extracted_at": "2026-03-04T04:44:33.612115+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-bash-L204",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh issue create --repo qut-dmrc/buttermilk \\\n  --title \"Bug: Vertex batch schema rejects integer Literal enums for Gemini models\" \\\n  --body \"$(cat <<'EOF'\n## Task ID\n`buttermilk-cdeb7942`\n\n## Priority\nP0 (Critical) \u2014 blocks Gemini Flash classification for OSB benchmarking\n\n## Problem\nAll 9,000 Gemini Flash classification records failed with:\n```\nFailed to parse JSON into proto: GenerateContentRequest @ generationConfig.responseSchema.properties[2].enum[0]: string, near offset 3838: unexpected character: '0'; expected '\"'\n```\n\n## Root Cause\n`ResponseClassification.criticism_intensity` is `Literal[0, 1, 2, 3]` (integer literals). Vertex's `responseSchema` requires all enum values to be JSON strings. Buttermilk's Pydantic-to-Vertex schema converter doesn't coerce integer Literal values to strings.\n\n## Fix\nIn the schema serialisation path (likely `VertexBatchProcessor._build_schema()` or similar), convert integer enum values to their string representations when building `responseSchema` for Gemini models.\n\nDo NOT change the Pydantic model to use string literals \u2014 fix the serialization layer.\n\n## Context\n- Claude Haiku batch succeeded (uses `tool_use`, not `responseSchema`)\n- Batch job: `batch_8cacc6243562` (global region)\n- Run: `20260217T2126Z-9oZXvooQ-Vqic5yYS`\n- Model: `ResponseClassification` in `buttermilk.agents.osb_classifier`\n- Parent epic: `buttermilk-5654bcef` (Pipeline Core Fixes)\n\n## Acceptance Criteria\n- [ ] Integer `Literal` enum values are coerced to strings in Vertex `responseSchema`\n- [ ] Existing string Literal enums still work correctly\n- [ ] Add a unit test for the integer-to-string coercion\n- [ ] Gemini Flash batch can be re-submitted without schema errors\nEOF\n)\" \\\n  --label \"bug\" 2>&1",
+        "description": "Create GitHub issue for Jules on buttermilk repo"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 204,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:20:32+00:00",
+        "event_hash": "ca42b34f8b469b2a",
+        "extracted_at": "2026-03-04T04:44:33.612188+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-bash-L206",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "command gemini --help 2>&1 | head -30",
+        "description": "Check gemini CLI options for non-interactive dispatch"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 206,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:20:57+00:00",
+        "event_hash": "d99bcf48111ede0b",
+        "extracted_at": "2026-03-04T04:44:33.612270+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-bash-L208",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "echo \"ACA_DATA=$ACA_DATA\"; echo \"---\"; cd /opt/nic/academicOps && git branch --list 'polecat/*' 2>&1 | head -10",
+        "description": "Check ACA_DATA env and existing polecat branches"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 208,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:21:15+00:00",
+        "event_hash": "fbe75d99f9af6a92",
+        "extracted_at": "2026-03-04T04:44:33.612328+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-bash-L210",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "cd /opt/nic/academicOps && git worktree add /tmp/polecat-aops-a6c9db05 -b polecat/aops-a6c9db05 HEAD 2>&1",
+        "description": "Create git worktree for Batch C task"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 210,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:21:26+00:00",
+        "event_hash": "7afe2ca6b90f0f3d",
+        "extracted_at": "2026-03-04T04:44:33.612385+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-bash-L212",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "cd /tmp/polecat-aops-a6c9db05 && command gemini -p \"$(cat <<'PROMPT'\n# Task: Remove task gate (does nothing)\nTask ID: aops-a6c9db05\nPriority: 1 (High)\nDownstream weight: 3.0 (blocks simplification of router.py and gate_config.py)\n\n## What to do\nThe \"task gate\" in the aops hook system is a no-op \u2014 it does nothing useful. Find it and remove it completely.\n\nLook in:\n- `aops-core/hooks/` \u2014 hook scripts that implement gates\n- `aops-core/gate_config.py` or similar \u2014 gate configuration/registry\n- `aops-core/router.py` \u2014 routing logic that references the task gate\n- Any YAML/JSON config that registers \"task\" as a gate name\n- Tests that reference the task gate\n\n## Steps\n1. Search the codebase for \"task gate\", \"task_gate\", gate names containing \"task\"\n2. Identify all files that reference this gate\n3. Remove the gate implementation, its registration, and any tests specific to it\n4. Make sure other gates still work \u2014 don't break the gate system, just remove this one entry\n5. Run existing tests to verify nothing breaks: `uv run pytest tests/ -x`\n6. Commit all changes with message: \"chore: remove task gate (no-op)\n\nRemoves the task gate which does nothing. Unblocks downstream\nsimplification of router.py and gate_config.py.\n\nTask-ID: aops-a6c9db05\"\n7. Push the branch to origin: `git push -u origin polecat/aops-a6c9db05`\n8. Create a PR: `gh pr create --title \"chore: remove task gate (no-op)\" --body \"Removes the task gate which does nothing. Unblocks downstream simplification of router.py and gate_config.py.\\n\\nTask-ID: aops-a6c9db05\"`\n\n## Important\n- Do NOT modify gates other than \"task\"\n- Do NOT refactor router.py or gate_config.py beyond removing the task gate references \u2014 that's a separate downstream task\n- Run tests before committing\nPROMPT\n)\" --approval-mode yolo 2>&1 | tail -100",
+        "timeout": 600000,
+        "description": "Run Gemini polecat headless on task aops-a6c9db05",
+        "run_in_background": true
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 212,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:21:48+00:00",
+        "event_hash": "ccdfc7d1427d3099",
+        "extracted_at": "2026-03-04T04:44:33.612459+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-bash-L214",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh issue create --repo nicsuzor/academicOps \\\n  --title \"chore: Remove polecat assignee convention and automatic routing\" \\\n  --body \"$(cat <<'EOF'\n## Task IDs\n- `aops-45f509af` \u2014 Remove 'polecat' assignee convention from aops framework\n- `aops-dd74eae2` \u2014 Remove automatic assignee routing from task creation\n\n## Problem\nThe framework uses `assignee: polecat` as a default convention for agent-executable tasks and has automatic routing logic (polecat vs nic based on complexity). This convention is no longer needed \u2014 tasks should be created without assignees by default.\n\n## What to Change\n\n### Files to Update\n1. **`aops-core/HEURISTICS.md`** \u2014 P#102 corollaries reference polecat. Update to reflect new convention (no default assignee).\n2. **`aops-core/skills/q/SKILL.md`** \u2014 Remove \"Step 2: Determine assignee\" section that defaults to polecat. Tasks should be created with `assignee: null` by default.\n3. **`aops-core/skills/pull/SKILL.md`** \u2014 Remove any polecat assignment references.\n4. **`aops-core/framework/enforcement-map.md`** \u2014 Update \"Task Assignment Convention\" section.\n5. **`aops-core/CORE.md`** \u2014 Remove polecat convention references if present.\n6. **Any other skills/workflows** referencing `assignee: polecat` \u2014 grep `aops-core/` for 'polecat' in instruction/config files.\n\n### What to Keep\n- Explicit user-specified assignees still work (e.g., `/q nic: ...` or `/q bot: ...`)\n- The `assignee` field itself stays \u2014 just no automatic routing\n\n## Acceptance Criteria\n- [ ] No framework file defaults assignee to 'polecat'\n- [ ] `/q` skill creates tasks without assignee by default  \n- [ ] P#102 updated to reflect new convention\n- [ ] Task Assignment Convention in enforcement-map.md updated\n- [ ] `grep -ri 'polecat' aops-core/` returns zero hits in instruction/markdown files (code references to the polecat CLI system are OK to keep)\n- [ ] No automatic polecat/nic routing based on complexity\nEOF\n)\" \\\n  --label \"chore\" 2>&1",
+        "description": "Create GitHub issue for Jules - Batch A polecat convention removal"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 214,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:22:11+00:00",
+        "event_hash": "ec3508b8add23d35",
+        "extracted_at": "2026-03-04T04:44:33.612531+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-bash-L215",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh issue create --repo nicsuzor/academicOps \\\n  --title \"chore: Remove polecat assignee convention and automatic routing\" \\\n  --body \"$(cat <<'EOF'\n## Task IDs\n- `aops-45f509af` \u2014 Remove 'polecat' assignee convention from aops framework\n- `aops-dd74eae2` \u2014 Remove automatic assignee routing from task creation\n\n## Problem\nThe framework uses `assignee: polecat` as a default convention for agent-executable tasks and has automatic routing logic (polecat vs nic based on complexity). This convention is no longer needed \u2014 tasks should be created without assignees by default.\n\n## What to Change\n\n### Files to Update\n1. **`aops-core/HEURISTICS.md`** \u2014 P#102 corollaries reference polecat. Update to reflect new convention (no default assignee).\n2. **`aops-core/skills/q/SKILL.md`** \u2014 Remove \"Step 2: Determine assignee\" section that defaults to polecat. Tasks should be created with `assignee: null` by default.\n3. **`aops-core/skills/pull/SKILL.md`** \u2014 Remove any polecat assignment references.\n4. **`aops-core/framework/enforcement-map.md`** \u2014 Update \"Task Assignment Convention\" section.\n5. **`aops-core/CORE.md`** \u2014 Remove polecat convention references if present.\n6. **Any other skills/workflows** referencing `assignee: polecat` \u2014 grep `aops-core/` for 'polecat' in instruction/config files.\n\n### What to Keep\n- Explicit user-specified assignees still work (e.g., `/q nic: ...` or `/q bot: ...`)\n- The `assignee` field itself stays \u2014 just no automatic routing\n\n## Acceptance Criteria\n- [ ] No framework file defaults assignee to 'polecat'\n- [ ] `/q` skill creates tasks without assignee by default  \n- [ ] P#102 updated to reflect new convention\n- [ ] Task Assignment Convention in enforcement-map.md updated\n- [ ] `grep -ri 'polecat' aops-core/` returns zero hits in instruction/markdown files (code references to the polecat CLI system are OK to keep)\n- [ ] No automatic polecat/nic routing based on complexity\nEOF\n)\" 2>&1",
+        "description": "Create GitHub issue for Jules - Batch A (no label)"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 215,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:22:21+00:00",
+        "event_hash": "296f95a25645047e",
+        "extracted_at": "2026-03-04T04:44:33.612603+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-bash-L225",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "cd /opt/nic/academicOps && git worktree add /tmp/polecat-aops-cleanup -b polecat/aops-cleanup HEAD 2>&1",
+        "description": "Create worktree for Batch B cleanup tasks"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 225,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:22:39+00:00",
+        "event_hash": "f2eebad3a17d045e",
+        "extracted_at": "2026-03-04T04:44:33.612668+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-bash-L235",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh issue create --repo nicsuzor/mem \\\n  --title \"feat: PKB search quality \u2014 path penalties + pandoc markup stripping\" \\\n  --body \"$(cat <<'EOF'\n## Task IDs\n- `task-1046aa2e` \u2014 Add path-based score penalties for archive/incoming documents\n- `task-a1291448` \u2014 Strip pandoc tracked-change markup from embedding text\n\nThese are both children of the epic `task-2cbde748` (PKB search quality improvements).\n\n---\n\n## Task 1: Path-based score penalties\n\n### Problem\n`archive/incoming/` contains raw DOCX-to-markdown conversions with tracked changes, XML artifacts, and reference lists. These pollute search results.\n\n### Implementation\nIn `handle_pkb_search` in `mcp_server.rs`, apply post-search score multipliers based on path:\n- If path contains `archive/incoming` \u2192 `score *= 0.7`\n- If path contains `archive/` \u2192 `score *= 0.85`\n\nApply after semantic scoring but before graph boost. Re-sort results after applying.\n\n### Acceptance\n- ~20 lines of code\n- No reindex needed\n\n---\n\n## Task 2: Strip pandoc tracked-change markup\n\n### Problem\nConverted DOCX files contain pandoc tracked-change syntax like:\n```\n{.deletion author=\"Nicolas Suzor\" date=\"2021-07-21T12:20:00Z\"}\n{.paragraph-deletion author=\"...\" date=\"...\"}\n{.insertion author=\"...\" date=\"...\"}\n[]{.paragraph-deletion ...}\n```\nThese get embedded as text, causing entity queries to match on metadata noise.\n\n### Implementation\nAdd a `clean_body()` function (in `pkb.rs` or `embeddings.rs`) that strips tracked-change patterns using regex:\n```\n\\{\\.(?:deletion|insertion|paragraph-deletion)\\s+author=\"[^\"]*\"\\s+date=\"[^\"]*\"\\}\n```\nAlso strip `[]{.paragraph-deletion ...}` empty spans.\n\nApply `clean_body()` in `PkbDocument::embedding_text()` before the body is chunked and embedded.\n\n### Acceptance\n- Requires reindex after change (`cargo build && reindex`)\n- Tracked-change markup no longer appears in embedding text\n\n## Combined Acceptance\n- [ ] Path-based penalties applied in search handler\n- [ ] Pandoc markup stripped before embedding\n- [ ] Tests pass: `cargo test`\nEOF\n)\" 2>&1",
+        "description": "Create GitHub issue for Jules - Batch F PKB search quality"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 235,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:22:54+00:00",
+        "event_hash": "a4de35567f6212ed",
+        "extracted_at": "2026-03-04T04:44:33.612748+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-bash-L245",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "cd /tmp/polecat-aops-cleanup && command gemini -p \"$(cat <<'PROMPT'\n# Task: Remove dead commands and old log file references\nTask IDs: aops-14f2a3a2 + aops-713c17e0\nBranch: polecat/aops-cleanup\n\n## Part 1: Remove dead slash commands (aops-14f2a3a2)\nRemove these 5 slash commands entirely from the framework:\n- /diag\n- /acceptance_test  \n- /log\n- /work\n- /health-check\n\nFor each, remove:\n- The command definition file (in aops-core/commands/ or aops-core/skills/)\n- Any references in command registries, INDEX.md, GLOSSARY.md\n- Any test files specific to these commands\n\n## Part 2: Remove old log file references (aops-713c17e0)\nFind and remove ALL mentions of these obsolete log files:\n- aops-transcripts.log\n- aops-refinery.log  \n- task-index.log\n\nSearch the entire codebase (not just aops-core/) for these strings and remove any code, config, or documentation that references them.\n\n## Steps\n1. Search for all 5 command names across the codebase\n2. Remove command files and registry entries\n3. Search for the 3 log file names across the codebase\n4. Remove all references\n5. Run tests: `uv run pytest tests/ -x`\n6. Commit with message: \"chore: remove dead commands and obsolete log references\n\nRemove /diag, /acceptance_test, /log, /work, /health-check commands.\nRemove references to aops-transcripts.log, aops-refinery.log, task-index.log.\n\nTask-ID: aops-14f2a3a2, aops-713c17e0\"\n7. Push: `git push -u origin polecat/aops-cleanup`\n8. Create PR: `gh pr create --title \"chore: remove dead commands and obsolete log references\" --body \"Removes 5 dead slash commands (/diag, /acceptance_test, /log, /work, /health-check) and all references to 3 obsolete log files (aops-transcripts.log, aops-refinery.log, task-index.log).\\n\\nTask-ID: aops-14f2a3a2, aops-713c17e0\"`\nPROMPT\n)\" --approval-mode yolo 2>&1 | tail -100",
+        "timeout": 600000,
+        "description": "Run Gemini polecat headless on Batch B cleanup",
+        "run_in_background": true
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 245,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:23:19+00:00",
+        "event_hash": "2c7545b7c523a350",
+        "extracted_at": "2026-03-04T04:44:33.612824+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-bash-L265",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "wc -l /tmp/claude-1000/-home-debian--aops/tasks/b6d4464.output 2>&1; echo \"=== LAST 60 LINES ===\"; tail -60 /tmp/claude-1000/-home-debian--aops/tasks/b6d4464.output 2>&1",
+        "description": "Check Gemini Batch C polecat output"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 265,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:23:49+00:00",
+        "event_hash": "4e2d76c1ce04fb76",
+        "extracted_at": "2026-03-04T04:44:33.612917+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-bash-L269",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "ps aux | grep -i gemini | grep -v grep 2>&1; echo \"---\"; ls -la /tmp/claude-1000/-home-debian--aops/tasks/b6d4464.* 2>&1; echo \"---\"; ls -la /tmp/claude-1000/-home-debian--aops/tasks/b82db48.* 2>&1",
+        "description": "Check if Gemini processes are running"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 269,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:23:56+00:00",
+        "event_hash": "90ba8832f3f443c6",
+        "extracted_at": "2026-03-04T04:44:33.612975+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-bash-L278",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "cd /tmp/polecat-aops-a6c9db05 && echo \"=== Batch C worktree ===\" && git status --short 2>&1 && git log --oneline -3 2>&1; echo \"---\"; cd /tmp/polecat-aops-cleanup && echo \"=== Batch B worktree ===\" && git status --short 2>&1 && git log --oneline -3 2>&1",
+        "description": "Check git changes in Gemini worktrees"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 278,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:24:10+00:00",
+        "event_hash": "7c263ad8d8dfd0f6",
+        "extracted_at": "2026-03-04T04:44:33.613035+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-bash-L290",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "ls -la /tmp/polecat-aops-a6c9db05/.gemini/ 2>&1; echo \"===\"; ls -la /tmp/polecat-aops-cleanup/.gemini/ 2>&1; echo \"===\"; # also check home dir for gemini state\nls -lt ~/.gemini/sessions/ 2>&1 | head -5",
+        "description": "Check Gemini session state directories"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 290,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:24:25+00:00",
+        "event_hash": "f0285a4d6dfb8e10",
+        "extracted_at": "2026-03-04T04:44:33.613095+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-run_shell_command-L293",
+      "hook_event": "PreToolUse",
+      "tool_name": "run_shell_command",
+      "tool_input": {
+        "command": "cat aops-core/lib/gate_model.py aops-core/lib/gate_types.py",
+        "description": "Read gate_model.py and gate_types.py"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 293,
+        "session_id": "5a401195-a55e-4d49-b60c-194a3cd7efda",
+        "logged_at": "2026-02-24T00:24:26+00:00",
+        "event_hash": "2d961353973158c6",
+        "extracted_at": "2026-03-04T04:44:33.613155+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-bash-L299",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "ls -la ~/.gemini/ 2>&1; echo \"===\"; # Check if process is doing network calls\nls /proc/2141475/fd 2>&1 | wc -l; echo \"FDs open\"; # Check working directory\nls -l /proc/2141475/cwd 2>&1; echo \"===\"; # Check stderr\ncat /proc/2141475/fd/2 2>/dev/null | head -20 || echo \"cant read stderr\"",
+        "description": "Inspect Gemini process state"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 299,
+        "session_id": "77cd2843-b2c5-401b-a29e-8a91864f5896",
+        "logged_at": "2026-02-24T00:24:35+00:00",
+        "event_hash": "582e7c3716d8aa5b",
+        "extracted_at": "2026-03-04T04:44:33.613237+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-run_shell_command-L314",
+      "hook_event": "PreToolUse",
+      "tool_name": "run_shell_command",
+      "tool_input": {
+        "description": "Search for \"task\" and \"gate\" in proximity.",
+        "command": "grep -rEi \"task.*gate|gate.*task\" ."
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 314,
+        "session_id": "5a401195-a55e-4d49-b60c-194a3cd7efda",
+        "logged_at": "2026-02-24T00:24:54+00:00",
+        "event_hash": "afab30d3076fe46f",
+        "extracted_at": "2026-03-04T04:44:33.613303+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-run_shell_command-L320",
+      "hook_event": "PreToolUse",
+      "tool_name": "run_shell_command",
+      "tool_input": {
+        "command": "grep -Ei \"task_gate|taskgate\" aops-core/hooks/router.py",
+        "description": "Search for \"task_gate\" or \"TaskGate\" in router.py"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 320,
+        "session_id": "5a401195-a55e-4d49-b60c-194a3cd7efda",
+        "logged_at": "2026-02-24T00:25:03+00:00",
+        "event_hash": "af098c780cb92be3",
+        "extracted_at": "2026-03-04T04:44:33.613368+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-run_shell_command-L324",
+      "hook_event": "PreToolUse",
+      "tool_name": "run_shell_command",
+      "tool_input": {
+        "description": "Search for \"task_gate\" or \"TaskGate\" in gate_config.py",
+        "command": "grep -Ei \"task_gate|taskgate\" aops-core/hooks/gate_config.py"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-hooks.jsonl",
+        "line_index": 324,
+        "session_id": "5a401195-a55e-4d49-b60c-194a3cd7efda",
+        "logged_at": "2026-02-24T00:25:09+00:00",
+        "event_hash": "8b40668bd6ecce78",
+        "extracted_at": "2026-03-04T04:44:33.613427+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 50
+        }
+      }
+    }
+  ],
   "gemini_subagent_events": [
     {
       "id": "gemini-subagentstart-none-L5",
@@ -6979,7 +9735,7 @@
       "hook_event": "SubagentStart",
       "tool_name": null,
       "tool_input": {},
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": false,
       "expected": {
         "verdict": "allow"
@@ -6998,7 +9754,7 @@
       "hook_event": "SubagentStop",
       "tool_name": null,
       "tool_input": {},
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": false,
       "expected": {
         "verdict": "allow"
@@ -7055,7 +9811,7 @@
       "hook_event": "SubagentStart",
       "tool_name": null,
       "tool_input": {},
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": false,
       "expected": {
         "verdict": "allow"
@@ -7074,7 +9830,7 @@
       "hook_event": "SubagentStop",
       "tool_name": null,
       "tool_input": {},
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": false,
       "expected": {
         "verdict": "allow"
@@ -7188,7 +9944,7 @@
       "hook_event": "SubagentStart",
       "tool_name": null,
       "tool_input": {},
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": false,
       "expected": {
         "verdict": "allow"
@@ -7207,7 +9963,7 @@
       "hook_event": "SubagentStop",
       "tool_name": null,
       "tool_input": {},
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": false,
       "expected": {
         "verdict": "allow"
@@ -7321,7 +10077,7 @@
       "hook_event": "SubagentStart",
       "tool_name": null,
       "tool_input": {},
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": false,
       "expected": {
         "verdict": "allow"
@@ -7340,7 +10096,7 @@
       "hook_event": "SubagentStop",
       "tool_name": null,
       "tool_input": {},
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": false,
       "expected": {
         "verdict": "allow"
@@ -7359,7 +10115,7 @@
       "hook_event": "SubagentStart",
       "tool_name": null,
       "tool_input": {},
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": false,
       "expected": {
         "verdict": "allow"
@@ -7378,7 +10134,7 @@
       "hook_event": "SubagentStop",
       "tool_name": null,
       "tool_input": {},
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": false,
       "expected": {
         "verdict": "allow"
@@ -7435,7 +10191,7 @@
       "hook_event": "SubagentStart",
       "tool_name": null,
       "tool_input": {},
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": false,
       "expected": {
         "verdict": "allow"
@@ -7454,7 +10210,7 @@
       "hook_event": "SubagentStop",
       "tool_name": null,
       "tool_input": {},
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": false,
       "expected": {
         "verdict": "allow"
@@ -7492,7 +10248,7 @@
       "hook_event": "SubagentStart",
       "tool_name": null,
       "tool_input": {},
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": false,
       "expected": {
         "verdict": "allow"
@@ -7511,7 +10267,7 @@
       "hook_event": "SubagentStop",
       "tool_name": null,
       "tool_input": {},
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": false,
       "expected": {
         "verdict": "allow"
@@ -7530,7 +10286,7 @@
       "hook_event": "SubagentStart",
       "tool_name": null,
       "tool_input": {},
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": false,
       "expected": {
         "verdict": "allow"
@@ -7549,7 +10305,7 @@
       "hook_event": "SubagentStop",
       "tool_name": null,
       "tool_input": {},
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": false,
       "expected": {
         "verdict": "allow"
@@ -7758,7 +10514,7 @@
       "hook_event": "SubagentStart",
       "tool_name": null,
       "tool_input": {},
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": false,
       "expected": {
         "verdict": "allow"
@@ -7777,7 +10533,7 @@
       "hook_event": "SubagentStop",
       "tool_name": null,
       "tool_input": {},
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": false,
       "expected": {
         "verdict": "allow"
@@ -7796,7 +10552,7 @@
       "hook_event": "SubagentStart",
       "tool_name": null,
       "tool_input": {},
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": false,
       "expected": {
         "verdict": "allow"
@@ -7815,7 +10571,7 @@
       "hook_event": "SubagentStop",
       "tool_name": null,
       "tool_input": {},
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": false,
       "expected": {
         "verdict": "allow"
@@ -10890,7 +13646,11 @@
         "event_hash": "6e96d0b536e2539a",
         "extracted_at": "2026-03-04T04:44:33.654129+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-bash-L85",
@@ -10912,7 +13672,11 @@
         "event_hash": "8edbaa346a33b844",
         "extracted_at": "2026-03-04T04:44:33.654192+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-bash-L94",
@@ -10934,7 +13698,11 @@
         "event_hash": "a32934917bc9a5a9",
         "extracted_at": "2026-03-04T04:44:33.654270+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-bash-L122",
@@ -10956,7 +13724,11 @@
         "event_hash": "d3cbd2df0f26c50d",
         "extracted_at": "2026-03-04T04:44:33.654330+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-bash-L183",
@@ -10979,7 +13751,11 @@
         "event_hash": "bcdd9e5d07f2821e",
         "extracted_at": "2026-03-04T04:44:33.654400+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-bash-L185",
@@ -11002,7 +13778,11 @@
         "event_hash": "a1460088b411d139",
         "extracted_at": "2026-03-04T04:44:33.654461+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-bash-L187",
@@ -11025,7 +13805,11 @@
         "event_hash": "7983ab473f6c6251",
         "extracted_at": "2026-03-04T04:44:33.654517+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-bash-L189",
@@ -11048,7 +13832,11 @@
         "event_hash": "dd2efbee3b5b6702",
         "extracted_at": "2026-03-04T04:44:33.654568+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-bash-L190",
@@ -11071,7 +13859,11 @@
         "event_hash": "08711760c1213caf",
         "extracted_at": "2026-03-04T04:44:33.654623+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-bash-L204",
@@ -11094,7 +13886,11 @@
         "event_hash": "ca42b34f8b469b2a",
         "extracted_at": "2026-03-04T04:44:33.654694+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-bash-L206",
@@ -11117,7 +13913,11 @@
         "event_hash": "d99bcf48111ede0b",
         "extracted_at": "2026-03-04T04:44:33.654749+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-bash-L208",
@@ -11140,7 +13940,11 @@
         "event_hash": "fbe75d99f9af6a92",
         "extracted_at": "2026-03-04T04:44:33.654803+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-bash-L210",
@@ -11163,7 +13967,11 @@
         "event_hash": "7afe2ca6b90f0f3d",
         "extracted_at": "2026-03-04T04:44:33.654861+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-bash-L212",
@@ -11188,7 +13996,11 @@
         "event_hash": "ccdfc7d1427d3099",
         "extracted_at": "2026-03-04T04:44:33.654935+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-bash-L214",
@@ -11211,7 +14023,11 @@
         "event_hash": "ec3508b8add23d35",
         "extracted_at": "2026-03-04T04:44:33.655009+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-bash-L215",
@@ -11234,7 +14050,11 @@
         "event_hash": "296f95a25645047e",
         "extracted_at": "2026-03-04T04:44:33.655084+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-bash-L225",
@@ -11257,7 +14077,11 @@
         "event_hash": "f2eebad3a17d045e",
         "extracted_at": "2026-03-04T04:44:33.655140+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-bash-L235",
@@ -11280,7 +14104,11 @@
         "event_hash": "a4de35567f6212ed",
         "extracted_at": "2026-03-04T04:44:33.655253+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-run_shell_command-L241",
@@ -11327,7 +14155,11 @@
         "event_hash": "2c7545b7c523a350",
         "extracted_at": "2026-03-04T04:44:33.655372+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-run_shell_command-L263",
@@ -11372,7 +14204,11 @@
         "event_hash": "4e2d76c1ce04fb76",
         "extracted_at": "2026-03-04T04:44:33.655486+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-bash-L269",
@@ -11395,7 +14231,11 @@
         "event_hash": "90ba8832f3f443c6",
         "extracted_at": "2026-03-04T04:44:33.655543+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-bash-L278",
@@ -11418,7 +14258,11 @@
         "event_hash": "7c263ad8d8dfd0f6",
         "extracted_at": "2026-03-04T04:44:33.655601+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-bash-L290",
@@ -11441,7 +14285,11 @@
         "event_hash": "f0285a4d6dfb8e10",
         "extracted_at": "2026-03-04T04:44:33.655666+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-run_shell_command-L293",
@@ -11464,7 +14312,11 @@
         "event_hash": "2d961353973158c6",
         "extracted_at": "2026-03-04T04:44:33.655722+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-bash-L299",
@@ -11487,7 +14339,11 @@
         "event_hash": "582e7c3716d8aa5b",
         "extracted_at": "2026-03-04T04:44:33.655780+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-run_shell_command-L314",
@@ -11510,7 +14366,11 @@
         "event_hash": "afab30d3076fe46f",
         "extracted_at": "2026-03-04T04:44:33.655839+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-run_shell_command-L316",
@@ -11577,7 +14437,11 @@
         "event_hash": "af098c780cb92be3",
         "extracted_at": "2026-03-04T04:44:33.655985+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-run_shell_command-L324",
@@ -11600,7 +14464,11 @@
         "event_hash": "8b40668bd6ecce78",
         "extracted_at": "2026-03-04T04:44:33.656042+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-run_shell_command-L326",
@@ -11689,7 +14557,11 @@
         "event_hash": "75502746034eb5b7",
         "extracted_at": "2026-03-04T04:44:33.656271+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-run_shell_command-L336",
@@ -11734,7 +14606,11 @@
         "event_hash": "1a0bc93158589d0a",
         "extracted_at": "2026-03-04T04:44:33.656376+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-run_shell_command-L340",
@@ -11757,7 +14633,11 @@
         "event_hash": "3faf7be49350172a",
         "extracted_at": "2026-03-04T04:44:33.656429+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-run_shell_command-L342",
@@ -11780,7 +14660,11 @@
         "event_hash": "7dda51fe009910fc",
         "extracted_at": "2026-03-04T04:44:33.656489+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-run_shell_command-L344",
@@ -11803,7 +14687,11 @@
         "event_hash": "c3581d8c06d7504e",
         "extracted_at": "2026-03-04T04:44:33.656544+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-run_shell_command-L346",
@@ -11826,7 +14714,11 @@
         "event_hash": "be5cd97c48c48c2e",
         "extracted_at": "2026-03-04T04:44:33.656605+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-run_shell_command-L354",
@@ -11849,7 +14741,11 @@
         "event_hash": "6212c854cab2f3d1",
         "extracted_at": "2026-03-04T04:44:33.656663+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-run_shell_command-L356",
@@ -11872,7 +14768,11 @@
         "event_hash": "d2c3291c67c66546",
         "extracted_at": "2026-03-04T04:44:33.656718+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-run_shell_command-L360",
@@ -11895,7 +14795,11 @@
         "event_hash": "b9fae0394f126047",
         "extracted_at": "2026-03-04T04:44:33.656775+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-run_shell_command-L367",
@@ -11918,7 +14822,11 @@
         "event_hash": "b83e344a19ed09da",
         "extracted_at": "2026-03-04T04:44:33.656831+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-run_shell_command-L375",
@@ -11941,7 +14849,11 @@
         "event_hash": "a53a340db15eb554",
         "extracted_at": "2026-03-04T04:44:33.656915+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-bash-L377",
@@ -11964,7 +14876,11 @@
         "event_hash": "d456e1e7e5cf98ea",
         "extracted_at": "2026-03-04T04:44:33.657933+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-run_shell_command-L382",
@@ -11987,7 +14903,11 @@
         "event_hash": "7cc7a73e36cefcc2",
         "extracted_at": "2026-03-04T04:44:33.657999+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     },
     {
       "id": "gemini-pretooluse-run_shell_command-L384",
@@ -12010,7 +14930,11 @@
         "event_hash": "9c3355d402b6662b",
         "extracted_at": "2026-03-04T04:44:33.658065+00:00"
       },
-      "gate_overrides": {}
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
     }
   ],
   "claude_compliance_agent_allowed": [
@@ -12021,10 +14945,10 @@
       "tool_input": {
         "description": "Compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-academicOps/20260304-a24a3e52-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -12045,10 +14969,10 @@
       "tool_input": {
         "description": "Periodic compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-academicOps/20260304-a24a3e52-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -12069,10 +14993,10 @@
       "tool_input": {
         "description": "Periodic compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-academicOps/20260304-a24a3e52-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -12093,10 +15017,10 @@
       "tool_input": {
         "description": "Periodic compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-academicOps/20260304-a24a3e52-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -12164,10 +15088,10 @@
       "tool_input": {
         "description": "Compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-2d57455f-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -12188,10 +15112,10 @@
       "tool_input": {
         "description": "Periodic compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-2d57455f-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -12212,10 +15136,10 @@
       "tool_input": {
         "description": "Custodiet compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-academicOps/20260303-2d57455f-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -12259,10 +15183,10 @@
       "tool_input": {
         "description": "Custodiet compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-academicOps/20260222-738a5bc9-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -12328,10 +15252,10 @@
       "tool_input": {
         "description": "Compliance check for QA workflow",
         "prompt": "/home/debian/.claude/projects/-opt-nic-academicOps/20260304-85f8f6d6-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -12352,10 +15276,10 @@
       "tool_input": {
         "description": "Periodic compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-academicOps/20260304-85f8f6d6-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -12376,10 +15300,10 @@
       "tool_input": {
         "description": "Periodic compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-academicOps/20260304-85f8f6d6-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -12446,10 +15370,10 @@
       "tool_input": {
         "description": "Custodiet compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-academicOps/20260222-7c5cc9ee-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -12470,10 +15394,10 @@
       "tool_input": {
         "description": "Custodiet compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-academicOps/20260222-7c5cc9ee-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -12494,10 +15418,10 @@
       "tool_input": {
         "description": "Custodiet compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-academicOps/20260222-7c5cc9ee-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -12518,10 +15442,10 @@
       "tool_input": {
         "description": "Custodiet compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-academicOps/20260222-7c5cc9ee-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -12542,10 +15466,10 @@
       "tool_input": {
         "description": "Custodiet compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-academicOps/20260222-7c5cc9ee-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -12566,10 +15490,10 @@
       "tool_input": {
         "description": "Custodiet compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-academicOps/20260222-7c5cc9ee-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -12590,10 +15514,10 @@
       "tool_input": {
         "description": "Custodiet compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-academicOps/20260222-7c5cc9ee-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -12775,10 +15699,10 @@
       "tool_input": {
         "description": "Compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-academicOps/20260222-8d1e48ec-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -12799,10 +15723,10 @@
       "tool_input": {
         "description": "Compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-academicOps/20260304-bf11cd57-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -12870,10 +15794,10 @@
       "tool_input": {
         "description": "Compliance check for edits",
         "prompt": "/home/debian/.claude/projects/-opt-nic-academicOps/20260304-3ceeb7d0-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -13055,10 +15979,10 @@
       "tool_input": {
         "description": "Compliance check custodiet",
         "prompt": "/home/debian/.claude/projects/-opt-nic-academicOps/20260220-d69c07b7-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -13079,10 +16003,10 @@
       "tool_input": {
         "description": "Custodiet compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-academicOps/20260220-d69c07b7-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -13103,9 +16027,9 @@
       "tool_input": {
         "description": "Custodiet compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-_aops-aops-e2e59eff/20260304-37885812-custodiet.md",
-        "subagent_type": "aops-core:audit"
+        "subagent_type": "aops-core:custodiet"
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -13126,9 +16050,9 @@
       "tool_input": {
         "description": "Custodiet compliance check",
         "prompt": "/home/debian/.claude/projects/-home-debian-_aops-crew-barbara/20260224-ea720087-custodiet.md",
-        "subagent_type": "aops-core:audit"
+        "subagent_type": "aops-core:custodiet"
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -13149,9 +16073,9 @@
       "tool_input": {
         "description": "Custodiet compliance check",
         "prompt": "/home/debian/.claude/projects/-home-debian-_aops-crew-barbara/20260224-ea720087-custodiet.md",
-        "subagent_type": "aops-core:audit"
+        "subagent_type": "aops-core:custodiet"
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -13172,9 +16096,9 @@
       "tool_input": {
         "description": "Custodiet compliance check",
         "prompt": "/home/debian/.claude/projects/-home-debian-_aops-crew-barbara/20260224-ea720087-custodiet.md",
-        "subagent_type": "aops-core:audit"
+        "subagent_type": "aops-core:custodiet"
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -13318,9 +16242,9 @@
       "tool_input": {
         "description": "Custodiet compliance check",
         "prompt": "/home/debian/.claude/projects/-home-debian-_aops-aops-focus-epic/20260303-58c695bc-custodiet.md",
-        "subagent_type": "aops-core:audit"
+        "subagent_type": "aops-core:custodiet"
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -13341,9 +16265,9 @@
       "tool_input": {
         "description": "Custodiet compliance check",
         "prompt": "/home/debian/.claude/projects/-home-debian-_aops-aops-focus-epic/20260303-58c695bc-custodiet.md",
-        "subagent_type": "aops-core:audit"
+        "subagent_type": "aops-core:custodiet"
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -13408,7 +16332,7 @@
       "tool_input": {
         "file_path": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_70-aops/20260305-cbf61233-custodiet.md"
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -13429,7 +16353,7 @@
       "tool_input": {
         "file_path": "/home/debian/.claude/projects/-opt-nic--aops-crew-pamela-70-aops/cbf61233-56f7-4417-ab4b-68084094f090/tool-results/toolu_01FCeTNtdrjEs1LptxxDUQwJ.txt"
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -13451,7 +16375,7 @@
         "file_path": "/home/debian/.claude/projects/-opt-nic--aops-crew-pamela-70-aops/cbf61233-56f7-4417-ab4b-68084094f090/tool-results/toolu_01NiRaH39q8ZnUEMucd7of3A.txt",
         "limit": 500
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -13474,7 +16398,7 @@
         "offset": 500,
         "limit": 500
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -13516,7 +16440,7 @@
       "tool_input": {
         "file_path": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_70-aops/20260305-cbf61233-custodiet.md"
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -13537,7 +16461,7 @@
       "tool_input": {
         "file_path": "/home/debian/.claude/projects/-opt-nic--aops-crew-pamela-70-aops/cbf61233-56f7-4417-ab4b-68084094f090/tool-results/toolu_016nR3G7sovuJvcfiURwHCit.txt"
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -13560,7 +16484,7 @@
         "offset": 1,
         "limit": 200
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -13583,7 +16507,7 @@
         "offset": 200,
         "limit": 400
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -13606,7 +16530,7 @@
         "offset": 600,
         "limit": 400
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -13690,7 +16614,7 @@
       "tool_input": {
         "file_path": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_70-aops/20260305-cbf61233-custodiet.md"
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -13711,7 +16635,7 @@
       "tool_input": {
         "file_path": "/home/debian/.claude/projects/-opt-nic--aops-crew-pamela-70-aops/cbf61233-56f7-4417-ab4b-68084094f090/tool-results/toolu_019vJaHwzmSsXcYTZjU13FvV.txt"
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -13734,7 +16658,7 @@
         "offset": 100,
         "limit": 2000
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -13757,7 +16681,7 @@
         "offset": 1,
         "limit": 500
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -13780,7 +16704,7 @@
         "offset": 500,
         "limit": 500
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -13803,7 +16727,7 @@
         "offset": 1050,
         "limit": 200
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -13866,7 +16790,7 @@
       "tool_input": {
         "file_path": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_70-aops/20260305-cbf61233-custodiet.md"
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -13888,7 +16812,7 @@
         "file_path": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_70-aops/20260305-cbf61233-custodiet.md",
         "limit": 100
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -13911,7 +16835,7 @@
         "offset": 100,
         "limit": 150
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -13934,7 +16858,7 @@
         "offset": 250,
         "limit": 150
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -13957,7 +16881,7 @@
         "offset": 400,
         "limit": 150
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -13980,7 +16904,7 @@
         "offset": 550,
         "limit": 150
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -14003,7 +16927,7 @@
         "offset": 700,
         "limit": 200
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -14024,7 +16948,7 @@
       "tool_input": {
         "file_path": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_70-aops/20260305-cbf61233-custodiet.md"
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -14047,7 +16971,7 @@
         "offset": 1,
         "limit": 100
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -14070,7 +16994,7 @@
         "offset": 100,
         "limit": 150
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -14093,7 +17017,7 @@
         "offset": 250,
         "limit": 200
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -14116,7 +17040,7 @@
         "offset": 450,
         "limit": 200
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -14139,7 +17063,7 @@
         "offset": 650,
         "limit": 200
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -14162,7 +17086,7 @@
         "offset": 849,
         "limit": 200
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -14204,7 +17128,7 @@
       "tool_input": {
         "file_path": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_70-aops/20260305-cbf61233-custodiet.md"
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -14227,7 +17151,7 @@
         "offset": 1,
         "limit": 100
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -14250,7 +17174,7 @@
         "offset": 1,
         "limit": 300
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -14273,7 +17197,7 @@
         "offset": 300,
         "limit": 500
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -14296,7 +17220,7 @@
         "offset": 799,
         "limit": 200
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -14319,7 +17243,7 @@
         "offset": 999,
         "limit": 300
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -14340,7 +17264,7 @@
       "tool_input": {
         "file_path": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_70-aops/20260305-cbf61233-custodiet.md"
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -14363,7 +17287,7 @@
         "offset": 1,
         "limit": 100
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -14386,7 +17310,7 @@
         "offset": 100,
         "limit": 150
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -14409,7 +17333,7 @@
         "offset": 250,
         "limit": 150
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -14432,7 +17356,7 @@
         "offset": 400,
         "limit": 150
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -14455,7 +17379,7 @@
         "offset": 550,
         "limit": 150
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -14524,9 +17448,9 @@
       "tool_input": {
         "description": "Periodic compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_70-aops/20260305-cbf61233-custodiet.md",
-        "subagent_type": "aops-core:audit"
+        "subagent_type": "aops-core:custodiet"
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -14570,9 +17494,9 @@
       "tool_input": {
         "description": "Periodic compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_70-aops/20260305-cbf61233-custodiet.md",
-        "subagent_type": "aops-core:audit"
+        "subagent_type": "aops-core:custodiet"
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -14662,9 +17586,9 @@
       "tool_input": {
         "description": "Periodic compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_70-aops/20260305-cbf61233-custodiet.md",
-        "subagent_type": "aops-core:audit"
+        "subagent_type": "aops-core:custodiet"
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -14731,9 +17655,9 @@
       "tool_input": {
         "description": "Periodic compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_70-aops/20260305-cbf61233-custodiet.md",
-        "subagent_type": "aops-core:audit"
+        "subagent_type": "aops-core:custodiet"
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -14754,9 +17678,9 @@
       "tool_input": {
         "description": "Compliance check during dump",
         "prompt": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_70-aops/20260305-cbf61233-custodiet.md",
-        "subagent_type": "aops-core:audit"
+        "subagent_type": "aops-core:custodiet"
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -14800,9 +17724,9 @@
       "tool_input": {
         "description": "Periodic compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_70-aops/20260305-cbf61233-custodiet.md",
-        "subagent_type": "aops-core:audit"
+        "subagent_type": "aops-core:custodiet"
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -14823,9 +17747,9 @@
       "tool_input": {
         "description": "Periodic compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_70-aops/20260305-cbf61233-custodiet.md",
-        "subagent_type": "aops-core:audit"
+        "subagent_type": "aops-core:custodiet"
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -14846,9 +17770,9 @@
       "tool_input": {
         "description": "Periodic compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_70-aops/20260305-cbf61233-custodiet.md",
-        "subagent_type": "aops-core:audit"
+        "subagent_type": "aops-core:custodiet"
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -14988,10 +17912,10 @@
       "tool_input": {
         "description": "Periodic compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_70-aops/20260305-cbf61233-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -15012,10 +17936,10 @@
       "tool_input": {
         "description": "Periodic compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_70-aops/20260305-cbf61233-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -15084,10 +18008,10 @@
       "tool_input": {
         "description": "Periodic compliance check",
         "prompt": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_70-aops/20260305-cbf61233-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -15177,10 +18101,10 @@
       "tool_input": {
         "description": "Compliance check",
         "prompt": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
@@ -15224,10 +18148,10 @@
       "tool_input": {
         "description": "Compliance check",
         "prompt": "/home/debian/.claude/projects/-home-debian-_aops/20260224-77cd2843-custodiet.md",
-        "subagent_type": "aops-core:audit",
+        "subagent_type": "aops-core:custodiet",
         "run_in_background": true
       },
-      "subagent_type": "aops-core:audit",
+      "subagent_type": "aops-core:custodiet",
       "is_subagent": true,
       "expected": {
         "verdict": "allow"
