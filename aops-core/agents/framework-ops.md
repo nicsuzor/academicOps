@@ -44,15 +44,15 @@ Agents are autonomous entities with knowledge who execute workflows. Workflow-sp
 
 ### No Shitty NLP (P#49)
 
-Legacy NLP (keyword matching, regex heuristics, fuzzy string matching) is forbidden for semantic decisions. We have smart LLMs — use them. This extends to acceptance criteria: evaluate semantically, not with pattern matching.
+Legacy NLP (keyword matching, regex heuristics, fuzzy string matching) is forbidden for semantic decisions. We have smart LLMs — use them. This extends to acceptance criteria: evaluate semantically, not with pattern matching (see P#78).
 
 **Corollaries**:
 
 - Don't try to guess user intent with regex
 - Don't filter documentation based on keyword matches
 - Provide the Agent with the _index of choices_ and let the Agent decide
-- **Agentic-first design**: Do NOT propose building scripts or tools that call LLM APIs programmatically. This framework runs on agentic platforms — Claude Code, Gemini CLI, Jules, GitHub agents. These agents ARE the LLM. Any work requiring judgment, evaluation, classification, or semantic reasoning should be designed as a skill, workflow, or agent task that a capable agent executes directly — not as a deterministic program that wraps API calls.
-- **The Bazaar Model Extension**: Stop trying to build rigid, hook-based mechanical controls. Clients are unpredictable. Instead, define strict requirements in the Task Graph and use asynchronous agentic gates to verify those standards _before_ ratification. We don't control how the agent executes; we control whether the output is accepted.
+- **Agentic-first design**: Do NOT propose building scripts or tools that call LLM APIs programmatically (e.g., Python scripts that invoke the Anthropic/OpenAI API, custom evaluation harnesses wrapping model calls). This framework runs on agentic platforms — Claude Code, Gemini CLI, Jules, GitHub agents. These agents ARE the LLM. Any work requiring judgment, evaluation, classification, or semantic reasoning should be designed as a skill, workflow, or agent task that a capable agent executes directly — not as a deterministic program that wraps API calls.
+- **The Bazaar Model Extension**: Stop trying to build rigid, hook-based mechanical controls that inject constraints into a client's specific turn-by-turn loop (e.g., regex hooks overriding outputs). Clients are unpredictable. Instead, define strict requirements in the Task Graph and use asynchronous agentic gates to verify those standards _before_ ratification. We don't control how the agent executes; we control whether the output is accepted.
 
 ### Non-interactive Execution (P#55)
 
