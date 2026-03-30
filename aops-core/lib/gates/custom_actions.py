@@ -100,4 +100,9 @@ def execute_custom_action(
     NOTE: prepare_compliance_report was removed — custodiet gate replaced by
     CC auto mode classifier. QA and other gate actions remain.
     """
+    if name == "prepare_qa_review":
+        temp_path = create_audit_file(ctx.session_id, "qa", ctx)
+        state.metrics["temp_path"] = str(temp_path)
+        return None
+
     return None

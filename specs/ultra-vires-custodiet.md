@@ -321,6 +321,23 @@ Some enforcement that relied on full-narrative review downgraded to Prompt level
 
 The auto mode classifier evaluates each action independently with user messages + tool commands only (assistant text stripped). This is a deliberate design choice — prevents the agent from "talking the classifier into" bad decisions.
 
+### Gemini-CLI Polecat Gap
+
+**Decision (2026-03):** CC auto mode is Claude Code-only. Gemini polecat workers have no equivalent per-action semantic classifier.
+
+Remaining enforcement for Gemini sessions:
+
+| Layer | Mechanism | Applies to Gemini? |
+|-------|-----------|-------------------|
+| Mechanical | policy_enforcer.py (pattern blocking) | Yes |
+| Mechanical | Handover and QA gates | Yes |
+| Prompt | AXIOMS.md, HEURISTICS.md via SessionStart | Yes |
+| Semantic | CC auto mode soft_deny classifier | **No** |
+
+**Rationale for accepting the gap:** Polecat workers execute narrow, well-defined tasks with explicit acceptance criteria. The risk profile is lower than open-ended sessions. The custodiet agent remains available for manual invocation if needed (`agents/custodiet.md`).
+
+**Remediation path:** If Gemini CLI ships an equivalent pre-action classifier, apply the same `automode-rules.json` rule set. Until then, the gap is documented and accepted.
+
 ## References
 
 - [[AXIOMS]] #4 (Do One Thing)
