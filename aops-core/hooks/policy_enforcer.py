@@ -31,10 +31,10 @@ DESTRUCTIVE_GIT_PATTERNS = [
 # Bulk destructive shell operations that should be blocked (#346)
 DESTRUCTIVE_SHELL_PATTERNS = [
     # rm -rf with glob or multiple targets (allow single specific files)
-    r"rm\s+-r[f]?\s+(\S+\s+){2,}",  # rm -rf dir1 dir2 dir3...
-    r"rm\s+-r[f]?\s+[*?]",  # rm -rf * or rm -rf *.something
-    r"rm\s+-r[f]?\s+\.\s",  # rm -rf .
-    r"rm\s+-r[f]?\s+\.$",  # rm -rf .
+    r"\brm\b\s+-r[f]?\s+\S+\s+\S+",  # rm -rf dir1 dir2 dir3...
+    r"\brm\b\s+-r[f]?\s+.*[*?\[\]].*",  # rm -rf * or rm -rf *.something
+    r"\brm\b\s+-r[f]?\s+\.\s",  # rm -rf .
+    r"\brm\b\s+-r[f]?\s+\.$",  # rm -rf .
 ]
 
 
@@ -153,7 +153,11 @@ def validate_branch_protection(tool_name: str, args: dict[str, Any]) -> dict[str
             timeout=5,
         )
         current_branch = result.stdout.strip()
-    except Exception:
+    except Exception as e:
+        print(
+            f"WARNING: Failed to determine git branch in validate_branch_protection: {e}",
+            file=sys.stderr,
+        )
         return None  # Can't determine branch — allow and let other checks handle it
 
     if current_branch in ("main", "master"):
@@ -224,7 +228,7 @@ def validate_protect_artifacts(tool_name: str, args: dict[str, Any]) -> dict[str
         # Match cp/mv commands targeting protected directories
         for protected in protected_paths:
             # cp ... dist/ or mv ... dist/
-            if re.search(rf"\b(cp|mv)\b.*\s{re.escape(protected)}", command):
+            if re.search(rf"\b(cp|mv)\b.*\s\S*{re.escape(protected)}\S*", command):
                 return {
                     "continue": False,
                     "systemMessage": (

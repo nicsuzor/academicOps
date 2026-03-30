@@ -473,14 +473,7 @@ class HookRouter:
                 self._merge_result(merged_result, hook_output)
                 if policy_result.verdict == GateVerdict.DENY:
                     # Policy block — skip gates entirely
-                    try:
-                        state.save()
-                    except Exception as e:
-                        print(f"CRITICAL: Failed to save session state: {e}", file=sys.stderr)
-                    try:
-                        log_hook_event(ctx, output=merged_result)
-                    except Exception as e:
-                        print(f"WARNING: Failed to log hook event: {e}", file=sys.stderr)
+                    self._finalize(ctx, state, merged_result)
                     return merged_result
 
         # Lightweight hydrator hint (non-blocking)
@@ -532,19 +525,21 @@ class HookRouter:
             except Exception as e:
                 print(f"WARNING: Stop block safety check failed: {e}", file=sys.stderr)
 
-        # Save Session State ONCE
+        self._finalize(ctx, state, merged_result)
+        return merged_result
+
+    def _finalize(
+        self, ctx: HookContext, state: SessionState, merged_result: CanonicalHookOutput
+    ) -> None:
+        """Save session state and log the hook event."""
         try:
             state.save()
         except Exception as e:
             print(f"CRITICAL: Failed to save session state: {e}", file=sys.stderr)
-
-        # Log hook event with output AFTER all gates complete
         try:
             log_hook_event(ctx, output=merged_result)
         except Exception as e:
             print(f"WARNING: Failed to log hook event: {e}", file=sys.stderr)
-
-        return merged_result
 
     def _run_special_handlers(
         self, ctx: HookContext, state: SessionState, merged_result: CanonicalHookOutput
