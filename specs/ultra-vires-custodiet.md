@@ -327,12 +327,12 @@ The auto mode classifier evaluates each action independently with user messages 
 
 Remaining enforcement for Gemini sessions:
 
-| Layer | Mechanism | Applies to Gemini? |
-|-------|-----------|-------------------|
-| Mechanical | policy_enforcer.py (pattern blocking) | Yes |
-| Mechanical | Handover and QA gates | Yes |
-| Prompt | AXIOMS.md, HEURISTICS.md via SessionStart | Yes |
-| Semantic | CC auto mode soft_deny classifier | **No** |
+| Layer      | Mechanism                                 | Applies to Gemini? |
+| ---------- | ----------------------------------------- | ------------------ |
+| Mechanical | policy_enforcer.py (pattern blocking)     | Yes                |
+| Mechanical | Handover and QA gates                     | Yes                |
+| Prompt     | AXIOMS.md, HEURISTICS.md via SessionStart | Yes                |
+| Semantic   | CC auto mode soft_deny classifier         | **No**             |
 
 **Rationale for accepting the gap:** Polecat workers execute narrow, well-defined tasks with explicit acceptance criteria. The risk profile is lower than open-ended sessions. The custodiet agent remains available for manual invocation if needed (`agents/custodiet.md`).
 

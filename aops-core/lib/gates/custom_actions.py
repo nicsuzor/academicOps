@@ -7,6 +7,7 @@ logger = logging.getLogger(__name__)
 
 from lib.gate_model import GateResult
 from lib.gate_types import GateState
+from lib.hook_utils import load_framework_content
 from lib.session_paths import get_gate_file_path
 from lib.session_state import SessionState
 from lib.template_registry import TemplateRegistry
@@ -49,6 +50,8 @@ def create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path:
     render_errors: list[str] = []
     content = None
 
+    axioms_content, heuristics_content, skills_content = load_framework_content()
+
     try:
         content = registry.render(
             f"{gate}.context",
@@ -57,6 +60,9 @@ def create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path:
                 "gate_name": gate,
                 "tool_name": ctx.tool_name or "unknown",
                 "session_context": session_context,
+                "axioms_content": axioms_content,
+                "heuristics_content": heuristics_content,
+                "skills_content": skills_content,
             },
         )
     except (KeyError, ValueError, FileNotFoundError) as e:
