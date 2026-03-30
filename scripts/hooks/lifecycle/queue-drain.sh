@@ -56,12 +56,12 @@ if [[ "$READY_COUNT" -eq 0 ]]; then
 fi
 
 # --- Build supervisor prompt ---
-PROMPT="You are the swarm supervisor. Check the ready task queue"
+PROMPT="You are the supervisor. Check the ready task queue"
 if [[ -n "$PROJECT" ]]; then
     PROMPT="${PROMPT} for project '${PROJECT}'"
 fi
 PROMPT="${PROMPT} and dispatch workers according to WORKERS.md."
-PROMPT="${PROMPT} Use polecat swarm or polecat run as appropriate."
+PROMPT="${PROMPT} Use polecat run to dispatch individual tasks."
 
 if [[ "$DRY_RUN" == "true" ]]; then
     echo "[queue-drain] DRY RUN: Would start supervisor session with prompt:"
@@ -71,7 +71,7 @@ fi
 
 # --- Start supervisor session ---
 # The supervisor agent makes all dispatch decisions.
-# Swap this command for any agent CLI that can run the swarm-supervisor skill.
+# Swap this command for any agent CLI that can run the supervisor skill.
 echo "[queue-drain] Starting supervisor session..."
 if command -v claude &>/dev/null; then
     exec claude --print --allowedTools "Bash,Read,Glob,Grep,Task,mcp__*" \
