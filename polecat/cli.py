@@ -516,21 +516,10 @@ def _build_docker_cmd(
         cmd.extend(["--group-add", str(docker_gid)])
         cmd.extend(["-v", "/var/run/docker.sock:/var/run/docker.sock"])
 
-    # Mount pkb binary for MCP server (plugin config references 'pkb' from PATH).
-    # In DinD the binary may be on an ephemeral volume the outer daemon can't reach;
-    # resolve and only mount if the host path exists, otherwise use the image's built-in.
-    pkb_bin = shutil.which("pkb")
-    if pkb_bin:
-        host_pkb = _container_to_host_path(Path(pkb_bin))
-        if host_pkb.exists():
-            cmd.extend(["-v", f"{host_pkb}:/usr/local/bin/pkb:ro"])
-
-    # Mount ACA_DATA for PKB access (read-write — agents may update tasks)
-    aca_data = env.get("ACA_DATA") or os.environ.get("ACA_DATA")
-    if aca_data and os.path.isdir(aca_data):
-        host_aca = _container_to_host_path(Path(aca_data))
-        cmd.extend(["-v", f"{host_aca}:{aca_data}"])
-        cmd.extend(["-e", f"ACA_DATA={aca_data}"])
+    # PKB connects over HTTP — pass the URL, no data volume needed.
+    pkb_url = env.get("PKB_MCP_URL") or os.environ.get("PKB_MCP_URL")
+    if pkb_url:
+        cmd.extend(["-e", f"PKB_MCP_URL={pkb_url}"])
 
     # Add host networking for MCPs running on localhost
     cmd.extend(["--add-host", "host.docker.internal:host-gateway"])
@@ -590,19 +579,15 @@ def _build_docker_cmd(
     return cmd
 
 
-def _mount_aca_data_sandbox(env: dict) -> None:
-    """Mount ACA_DATA read-write into the Gemini sandbox via SANDBOX_MOUNTS.
+def _pass_pkb_url_sandbox(env: dict) -> None:
+    """Ensure PKB_MCP_URL is forwarded into the Gemini sandbox.
 
-    Forwarding ACA_DATA as an env var alone (via SANDBOX_FLAGS) is insufficient —
-    without the bind mount the PKB server starts with a missing/empty path inside
-    the container.  This helper is called from both ``crew -g`` and ``run -g``.
+    PKB now connects over HTTP — no data volume mount needed.
+    This helper is called from both ``crew -g`` and ``run -g``.
     """
-    aca_data = env.get("ACA_DATA") or os.environ.get("ACA_DATA")
-    if aca_data and os.path.isdir(aca_data):
-        env.setdefault("ACA_DATA", aca_data)
-        mounts = env.get("SANDBOX_MOUNTS", "")
-        new_mount = f"{aca_data}:{aca_data}:rw"
-        env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
+    pkb_url = env.get("PKB_MCP_URL") or os.environ.get("PKB_MCP_URL")
+    if pkb_url:
+        env.setdefault("PKB_MCP_URL", pkb_url)
 
 
 def _mount_gemini_git_credentials(env: dict, tmp_files: list[Path]) -> list[str]:
@@ -2510,7 +2495,7 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, agent_args
         # Provide a stable Gemini session ID based on the crew/task ID
         env["GEMINI_SESSION_ID"] = f"gemini-{crew_name}"
 
-        _mount_aca_data_sandbox(env)
+        _pass_pkb_url_sandbox(env)
 
         # Gemini sandbox only forwards a hardcoded allowlist of env vars into
         # its Docker container. Use SANDBOX_FLAGS for simple -e flags and
@@ -2519,7 +2504,7 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, agent_args
         extra_flags = []
         for key, val in env.items():
             if key.endswith("_GATE_MODE") or key in (
-                "ACA_DATA",
+                "PKB_MCP_URL",
                 "GH_TOKEN",
                 "GEMINI_SANDBOX_IMAGE",
                 "GEMINI_SESSION_ID",
@@ -2959,14 +2944,14 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
         # Provide a stable Gemini session ID based on the task ID
         env["GEMINI_SESSION_ID"] = f"gemini-{task.id}"
 
-        _mount_aca_data_sandbox(env)
+        _pass_pkb_url_sandbox(env)
 
         # Gemini sandbox only forwards a hardcoded allowlist of env vars into
         # its Docker container. Use SANDBOX_FLAGS for simple -e flags.
         extra_flags = []
         for key, val in env.items():
             if key.endswith("_GATE_MODE") or key in (
-                "ACA_DATA",
+                "PKB_MCP_URL",
                 "GH_TOKEN",
                 "GEMINI_SANDBOX_IMAGE",
                 "GEMINI_SESSION_ID",
