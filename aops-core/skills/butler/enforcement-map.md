@@ -292,15 +292,18 @@ Agent must not have access to user's SSH key (which has admin/bypass rights on r
 
 ## Pattern Blocking (PreToolUse Hook)
 
-| Category          | Pattern             | Blocked Tools | Purpose                    | Axiom                    |
-| ----------------- | ------------------- | ------------- | -------------------------- | ------------------------ |
-| Doc bloat         | `*-GUIDE.md`        | Write         | Force README consolidation | [[single-purpose-files]] |
-| Doc bloat         | `.md` > 200 lines   | Write         | Force chunking             | [[self-documenting]]     |
-| Git: hard reset   | `git reset --hard`  | Bash          | Preserve uncommitted work  | [[fail-fast-code]]       |
-| Git: clean        | `git clean -[fd]`   | Bash          | Preserve untracked files   | [[fail-fast-code]]       |
-| Git: force push   | `git push --force`  | Bash          | Protect shared history     | [[fail-fast-code]]       |
-| Git: checkout all | `git checkout -- .` | Bash          | Preserve local changes     | [[fail-fast-code]]       |
-| Git: stash drop   | `git stash drop`    | Bash          | Preserve stashed work      | [[fail-fast-code]]       |
+| Category            | Pattern                   | Blocked Tools | Purpose                         | Axiom                    |
+| ------------------- | ------------------------- | ------------- | ------------------------------- | ------------------------ |
+| Doc bloat           | `*-GUIDE.md`              | Write         | Force README consolidation      | [[single-purpose-files]] |
+| Doc bloat           | `.md` > 200 lines         | Write         | Force chunking                  | [[self-documenting]]     |
+| Git: hard reset     | `git reset --hard`        | Bash          | Preserve uncommitted work       | [[fail-fast-code]]       |
+| Git: clean          | `git clean -[fd]`         | Bash          | Preserve untracked files        | [[fail-fast-code]]       |
+| Git: force push     | `git push --force`        | Bash          | Protect shared history          | [[fail-fast-code]]       |
+| Git: checkout all   | `git checkout -- .`       | Bash          | Preserve local changes          | [[fail-fast-code]]       |
+| Git: stash drop     | `git stash drop`          | Bash          | Preserve stashed work           | [[fail-fast-code]]       |
+| Git: commit on main | `git commit` on main      | Bash          | Enforce branch+PR workflow      | [[verify-first]]         |
+| Shell: bulk rm      | `rm -rf` with >1 targets  | Bash          | Prevent unconfirmed bulk delete | [[explicit-approval]]    |
+| Shell: dist copy    | `cp`/`mv` to `dist/`      | Bash          | Enforce build pipeline          | [[never-edit-generated]] |
 
 ## Session-End Validation (Stop Hooks)
 
