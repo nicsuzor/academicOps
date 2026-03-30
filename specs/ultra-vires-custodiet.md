@@ -283,9 +283,27 @@ Edit `hooks/data/reminders.txt` to add/modify reminders. One per line, `#` for c
 4. TodoWrite scope expansion caught BEFORE work begins
 5. False positive rate low enough that warnings are actionable
 
+## Relationship to CC Auto Mode (2026-03)
+
+Claude Code's [auto mode classifier](https://www.anthropic.com/engineering/claude-code-auto-mode) provides per-action semantic enforcement via `autoMode.soft_deny` rules. This is complementary to custodiet, not a replacement:
+
+| Aspect    | CC auto mode                       | Custodiet                          |
+| --------- | ---------------------------------- | ---------------------------------- |
+| Scope     | Single tool call                   | Full session narrative             |
+| Frequency | Every action                       | Every ~50 write operations         |
+| Checks    | Rule match against tool + user msg | Drift, scope creep, plan deviation |
+| Platform  | Claude Code only                   | Claude Code + Gemini               |
+
+**Current position**: Custodiet gate stays as-is — it's working and catches session-level patterns that per-action classification cannot detect (scope creep, plan deviation, verification gaps across multiple actions).
+
+**Future direction**: Once the CC auto mode approach is proven effective in production, we will revise custodiet's substance — what it checks and how aggressively. The goal is to let auto mode handle per-action enforcement and focus custodiet on the session-level patterns where full-narrative review adds unique value.
+
+See `aops-core/config/automode-rules.json` for the auto mode rule set and `scripts/setup-automode.sh` for installation.
+
 ## References
 
 - [[AXIOMS]] #4 (Do One Thing)
 - [[AXIOMS]] #22 (Acceptance Criteria Own Success)
 - [[HEURISTICS#H31]] (No LLM Calls in Hooks)
 - [[enforcement-map.md]] (Enforcement registry)
+- [CC Auto Mode engineering post](https://www.anthropic.com/engineering/claude-code-auto-mode)

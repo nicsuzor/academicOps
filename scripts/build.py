@@ -206,7 +206,7 @@ description = "Core academicOps framework - skills, agents, and hooks for resear
 requires-python = ">=3.11"
 license = "MIT"
 authors = [
-  {{ name = "Nicolas Suzor" }}
+  {{ name = "Nicolas Suzor" }},
 ]
 keywords = ["academicOps", "research", "framework", "workflow", "mcp"]
 dependencies = [
@@ -317,6 +317,7 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
     # Gemini CLI requires {"hooks": {...}} wrapper — the hooks property must be an object
     with open(dst_path, "w") as f:
         json.dump({"hooks": gemini_hooks}, f, indent=2)
+        f.write("\n")
     print(f"  ✓ Generated Gemini hooks.json with {len(gemini_hooks)} events")
 
 
@@ -802,6 +803,7 @@ def build_aops_core(
 
                 with open(dist_extension_json, "w") as f:
                     json.dump(manifest, f, indent=2)
+                    f.write("\n")
             except Exception as e:
                 print(f"Error processing extension manifest: {e}", file=sys.stderr)
                 raise
@@ -820,6 +822,7 @@ def build_aops_core(
                 manifest["version"] = version
                 with open(dist_plugin_json, "w") as f:
                     json.dump(manifest, f, indent=2)
+                    f.write("\n")
                 print(f"  ✓ Updated and copied plugin.json -> {dist_plugin_json}")
             except Exception as e:
                 print(f"Error processing plugin.json: {e}", file=sys.stderr)
@@ -849,6 +852,7 @@ def build_aops_core(
                 dist_mcp_path = dist_dir / ".mcp.json"
                 with open(dist_mcp_path, "w") as f:
                     json.dump(claude_mcp_config, f, indent=2)
+                    f.write("\n")
 
             # Prepare for Gemini Extension
             if platform == "gemini":
@@ -873,6 +877,7 @@ def build_aops_core(
 
                     with open(dist_extension_json, "w") as f:
                         json.dump(manifest, f, indent=2)
+                        f.write("\n")
                     print(f"✓ Updated {dist_extension_json} with MCP config")
 
         except Exception as e:
@@ -969,6 +974,7 @@ def build_aops_tools(
                 manifest["version"] = version
                 with open(dist_plugin_json, "w") as f:
                     json.dump(manifest, f, indent=2)
+                    f.write("\n")
                 print(f"  ✓ Updated and copied plugin.json -> {dist_plugin_json}")
             except Exception as e:
                 print(f"Error processing plugin.json: {e}", file=sys.stderr)
@@ -1024,6 +1030,7 @@ def build_antigravity(aops_root: Path, dist_root: Path, all_mcps: dict):
 
     with open(ag_dist / "mcp_config.json", "w") as f:
         json.dump(mcp_config, f, indent=2)
+        f.write("\n")
 
     # 3. Rules (AXIOMS, HEURISTICS, core.md)
     # NOTE: Antigravity doesn't use rules directly yet - setup.sh links from source to .agent/rules.

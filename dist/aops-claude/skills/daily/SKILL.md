@@ -97,6 +97,8 @@ A 2-4 sentence narrative synthesis of the day's work, followed by a structured *
 
 **Quality guidance**: Lead with the most significant work, not the most recent. Research progress, paper milestones, and external commitments matter more than framework PRs. If 8 PRs were merged on internal tooling but no progress was made on the paper deadline, the story should note the tooling work briefly and highlight the gap. Mention specific PR numbers and task IDs for traceability, but embed them in narrative, not tables.
 
+**Distinguish human work from agent output.** In a conductor workflow, impressive autonomous output (an agent producing 6 tasks over 4 hours) is not the same as the human doing deep work. The story should reflect what the human actually engaged with — use prompt count as the primary signal. An autonomous session that produced a lot is worth a sentence ("dispatched X, which produced Y"); an interactive session where the human debugged something for 5 minutes with 4 prompts is where the narrative focus should be. The reader wants to know: what did _I_ spend my attention on today?
+
 If this is a repeat run during the day, emphasise what changed since the last update. Note dropped threads (work started but not finished) with gentle framing.
 
 #### Session Flow subsection (`### Session Flow`)
@@ -108,15 +110,18 @@ Reconstructs the day's attention flow from session summary JSONs in `$AOPS_SESSI
 ```markdown
 ### Session Flow
 
-**Main threads**:
+**Where your attention went** (interactive sessions, 2+ user prompts):
 
-1. **[Topic]** ([time], [attention level]): [What happened, what was the outcome, editorial judgment on significance]
+1. **[Topic]** ([time], [N prompts], [duration]): [What the user was doing — use their actual prompt text, not agent-generated summaries. What was the outcome.]
 2. ...
 
-**Where attention leaked**:
+**Dispatched work** (1-prompt sessions — fire and forget):
 
-- **[Distraction]** ([time], [attention cost]): [What happened and why it was a leak]
-- **Quick conductor checks** — [item], [item], [item]: [Acknowledge these as lightweight, note if they're fine or if the switching cost matters]
+- **[Topic]** ([time]): [What was dispatched and what came back. Note if the agent ran autonomously for a long time.]
+
+**Autonomous background runs** (0-prompt sessions):
+
+- **[Session ID]** ([duration]): [What the agent produced. Flag this as zero human attention cost.]
 
 **Threads left hanging**:
 
@@ -125,17 +130,23 @@ Reconstructs the day's attention flow from session summary JSONs in `$AOPS_SESSI
 **The day in a line**: [One-sentence editorial summary]
 ```
 
-**Distinguishing attention cost from session count**: Not all sessions are equal. A 2-minute "launch agent and move on" is conductor work — low attention cost. A 90-minute debugging session is deep engagement. A 5-minute session repeated 3 times with growing frustration is worse than one 15-minute session. Evaluate what the human actually _thought about_, not just how many sessions ran.
+**The primary signal for attention cost is user prompt count**, not session duration or output complexity. Extract `timeline_events` where `type == "user_prompt"` for each session. See [[instructions/progress-sync]] Step 4.2 for the engagement classification table.
 
-**Categories of attention**:
+A 337-minute autonomous session with 0 prompts costs the human nothing — it's fire-and-forget. A 5-minute session with 4 prompts is where they were actively thinking. Lead with where the human's attention actually went, not where the most output was produced.
 
-- **Deep attention**: Sessions where the human was actively thinking, debugging, designing, reviewing in depth. These are the main cost centers.
-- **Low attention / conductor work**: Quick launches, brief checks, agent delegation, status queries. These are fine individually — flag them as a problem only when the pattern shows unfocused project-switching with no throughline.
-- **Frustration cost**: Sessions that should have been quick but weren't (broken deploys, failed builds, repeated attempts). The attention cost is disproportionate to the clock time.
+**Use the user's actual prompts as ground truth**: The `description` field in user prompt timeline events tells you what the human was trying to do. Agent-generated `summary` fields are abstractions of abstractions. When writing Session Flow entries, reference the prompt content (e.g., "debugged PKB search for [[specific topic]]" not "PKB lookup").
 
-**What counts as a distraction vs. conductor work**: A quick check on an unrelated project is conductor work if it's a deliberate scan. It's a distraction if it pulls the user into reactive engagement, or if a "quick check" turns into a 2-hour tangent. Judge by what happened after — did the user return to their main thread, or did they drift?
+**Categories of attention** (derived from prompt count):
 
-**Data source**: Read session summary JSONs for the current day. Filter out auto-commit sessions (`commit-changed` in filename, or filename starts with `sessions-`) and polecat workers (project field matches a short hex hash, e.g. `^[a-f0-9]{7,8}$`). Use `timeline_events[].description` for user prompts, `summary` for outcomes, `token_metrics.efficiency.session_duration_minutes` for duration, and `project` for context-switch detection.
+- **Deep engagement** (4+ prompts): Sustained human involvement — debugging, discussing, iterating. These are the real attention cost centers.
+- **Interactive** (2–3 prompts): Back-and-forth with the agent. Moderate attention.
+- **Dispatched** (1 prompt): Human kicked it off and moved on. Conductor work. Low attention cost.
+- **Autonomous** (0 prompts): Agent ran without human involvement. Zero attention cost regardless of duration or output volume.
+- **Frustration cost**: Sessions that should have been quick but weren't (broken deploys, failed builds, repeated attempts). The attention cost is disproportionate to the clock time. Identify these by multiple short sessions on the same topic, or sessions where prompt content shows escalating frustration.
+
+**What counts as a distraction vs. conductor work**: A quick check on an unrelated project is conductor work if it's a deliberate scan (1 prompt, moved on). It's a distraction if it pulls the user into reactive engagement (2+ prompts on something unplanned), or if a "quick check" turns into a 2-hour tangent. Judge by prompt count and what happened after — did the user return to their main thread, or did they drift?
+
+**Data source**: Read session summary JSONs for the current day. Filter out auto-commit sessions (`commit-changed` in filename, or filename starts with `sessions-`) and polecat workers (project field matches a short hex hash, e.g. `^[a-f0-9]{7,8}$`). Use `timeline_events` where `type == "user_prompt"` for prompt count and content (the primary attention signal), `summary` for agent outcomes, `token_metrics.efficiency.session_duration_minutes` for duration context, and `project` for context-switch detection.
 
 > See [[instructions/work-summary]] for story synthesis guidance.
 
@@ -147,10 +158,12 @@ A reference section for traceability — what sessions ran, what PRs merged, wha
 
 - Merged PRs across tracked repos (table format)
 - Open PRs needing decisions (with recommended actions)
-- Session log (table of sessions with project and summary)
+- Session log (table of sessions with project, prompt count, and description)
 - Project accomplishments (checklist items linked to tasks)
 
 **Quality guidance**: This section should be _scannable but not prominent_. It's reference material. If GitHub CLI is unavailable or no sessions ran, the section should be minimal ("No sessions today") rather than filled with empty tables and "n/a" markers.
+
+**Session log entries must be meaningful the next morning.** For sessions with user prompts, use the first user prompt's `description` (truncated) as the session description, not the agent-generated `summary`. For 0-prompt (autonomous) sessions, base the description on what the agent produced — e.g., `autonomous: summarized AXIOMS.md for daily skill update`. "Pulled task-7275a7b8" is useless — what was the task about? "Reviewed swarm-supervisor skill update" — what was the update? Include enough context that someone reading the log tomorrow can reconstruct what happened without opening the session JSON. Include the prompt count (e.g., "2p" or "0p") so the reader can distinguish interactive work from autonomous runs at a glance.
 
 Accomplishments should be linked to their corresponding tasks. Every `[x]` item should reference a task ID where possible.
 

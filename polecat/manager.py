@@ -1239,6 +1239,7 @@ class PolecatManager:
                 ["git", "fetch", "origin", branch_name],
                 cwd=worktree_path,
                 capture_output=True,
+                check=True,
             )
             subprocess.run(
                 ["git", "checkout", "-b", branch_name, f"origin/{branch_name}"],
