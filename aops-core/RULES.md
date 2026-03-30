@@ -12,7 +12,7 @@ tags: [framework, index, governance, principles]
 
 # Rules Quick Reference
 
-Quick lookup for framework principles. See [[skills/butler/enforcement-map.md]] for the full tiered architecture and enforcement details.
+Quick lookup for framework principles. See [[enforcement-map.md]] for the full tiered architecture and enforcement details.
 
 ## Tier 1: Universal Axioms (always active)
 
@@ -95,4 +95,4 @@ Includes demoted former axioms (P#7, P#11, P#28, P#44, P#45, P#52) plus operatio
 | **Context injection** | Principle in tier files     | Agent sees rule    |
 | **Behavioral**        | Agent instruction-following | Most principles    |
 
-See [[skills/butler/enforcement-map.md]] for full enforcement details.
+See [[enforcement-map.md]] for full enforcement details.
