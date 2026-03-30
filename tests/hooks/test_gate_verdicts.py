@@ -6,15 +6,11 @@ for every realistic hook call scenario. Uses JSON fixture data that replicates
 actual Claude Code and Gemini CLI hook invocations.
 
 Key invariants tested:
-1. Compliance agents (hydrator, custodiet, audit, butler) are NEVER blocked
-2. Read-only tools bypass custodiet gate (unlike write tools)
-3. Infrastructure tools bypass ALL gates; spawn tools (Agent, Skill) do NOT
-4. Custodiet blocks at ops threshold for write/spawn tools only
-5. Stop event respects handover and QA gates
-6. Claude Code and Gemini CLI output formats match their respective schemas
-7. Gate triggers (custodiet resets counter) fire correctly
-8. Gate mode env var overrides work correctly
-9. Custodiet deadlock prevented: Agent(custodiet) dispatch resets counter before policy fires
+1. Compliance agents (hydrator, audit, butler) are NEVER blocked
+2. Infrastructure tools bypass ALL gates; spawn tools (Agent, Skill) do NOT
+3. Stop event respects handover and QA gates
+4. Claude Code and Gemini CLI output formats match their respective schemas
+5. Gate mode env var overrides work correctly
 
 Run with:
     uv run pytest tests/hooks/test_gate_verdicts.py -v
@@ -36,6 +32,7 @@ from hooks.router import HookRouter
 from hooks.schemas import (
     HookContext,
 )
+
 from lib.gate_model import GateVerdict
 from lib.gate_types import GateState, GateStatus
 from lib.gates.registry import GateRegistry
@@ -135,15 +132,10 @@ def _make_context(scenario: dict) -> HookContext:
 def _make_gate_trigger_state(gate_name: str) -> SessionState:
     """Create a SessionState that will cause the named gate's policy to fire.
 
-    - custodiet: ops_since_open at threshold so policy condition is met
     - qa / handover: gate CLOSED so Stop-event policy fires
     """
     state = SessionState.create("test-gate-mode")
-    if gate_name == "custodiet":
-        from hooks.gate_config import CUSTODIET_TOOL_CALL_THRESHOLD
-
-        state.gates["custodiet"].ops_since_open = CUSTODIET_TOOL_CALL_THRESHOLD
-    elif gate_name in ("qa", "handover"):
+    if gate_name in ("qa", "handover"):
         # Ensure gate state exists (qa may not be in default_gates)
         if gate_name not in state.gates:
             state.gates[gate_name] = GateState(status=GateStatus.CLOSED)
@@ -158,22 +150,13 @@ def _make_gate_trigger_state(gate_name: str) -> SessionState:
 def _make_gate_trigger_context(gate_name: str) -> HookContext:
     """Create a HookContext that will trigger the named gate's policy.
 
-    - custodiet: PreToolUse on a spawn tool (Agent) that isn't excluded
     - qa / handover: Stop event
     """
-    if gate_name == "custodiet":
-        return HookContext(
-            session_id="test-gate-mode",
-            hook_event="PreToolUse",
-            tool_name="Agent",
-            tool_input={"prompt": "test"},
-        )
-    else:
-        # qa and handover both fire on Stop
-        return HookContext(
-            session_id="test-gate-mode",
-            hook_event="Stop",
-        )
+    # qa and handover both fire on Stop
+    return HookContext(
+        session_id="test-gate-mode",
+        hook_event="Stop",
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -184,7 +167,6 @@ def _deterministic_gate_modes(monkeypatch):
     inside a live Claude Code session.
     """
     monkeypatch.setenv("HYDRATION_GATE_MODE", "off")
-    monkeypatch.setenv("CUSTODIET_GATE_MODE", "block")
     monkeypatch.setenv("QA_GATE_MODE", "block")
     monkeypatch.setenv("HANDOVER_GATE_MODE", "warn")
     _reinit_gates_with_defaults()
@@ -197,43 +179,11 @@ def router(monkeypatch):
     return HookRouter()
 
 
-class TestReadOnlyBypassesCustodiet:
-    """Read-only tools bypass custodiet gate (unlike write tools).
-
-    The custodiet gate excludes both always_available AND read_only categories.
-    This allows agents to read files even when custodiet threshold is exceeded.
-    """
-
-    SCENARIOS = _flatten_scenarios("read_only_bypasses_custodiet")
-
-    @pytest.mark.parametrize(
-        "scenario",
-        SCENARIOS,
-        ids=[s["id"] for s in SCENARIOS],
-    )
-    def test_read_bypasses_custodiet(self, router, scenario):
-        state = _make_session_state(scenario)
-        ctx = _make_context(scenario)
-
-        result = router._dispatch_gates(ctx, state)
-
-        # Should be ALLOW (or None which means allow)
-        if result is not None:
-            assert result.verdict == GateVerdict.ALLOW, (
-                f"[{scenario['id']}] Read-only tool '{scenario['tool_name']}' "
-                f"should bypass custodiet gate, got {result.verdict.value}"
-            )
-
-
 # ===========================================================================
 # GATE MODE ENV VAR CASES: non-hydration gates
 # ===========================================================================
 
 _GATE_MODE_CASES = [
-    # Custodiet: default=block
-    ("custodiet", "CUSTODIET_GATE_MODE", "warn", GateVerdict.WARN),
-    ("custodiet", "CUSTODIET_GATE_MODE", "block", GateVerdict.DENY),
-    ("custodiet", "CUSTODIET_GATE_MODE", "deny", GateVerdict.DENY),
     # QA: default=block
     ("qa", "QA_GATE_MODE", "warn", GateVerdict.WARN),
     ("qa", "QA_GATE_MODE", "block", GateVerdict.DENY),

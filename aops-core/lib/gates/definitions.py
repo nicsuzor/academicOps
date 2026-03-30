@@ -1,12 +1,9 @@
 from hooks.gate_config import (
-    CUSTODIET_GATE_MODE,
-    CUSTODIET_TOOL_CALL_THRESHOLD,
     HANDOVER_GATE_MODE,
     QA_GATE_MODE,
 )
 
 from lib.gate_types import (
-    CountdownConfig,
     GateCondition,
     GateConfig,
     GatePolicy,
@@ -21,50 +18,12 @@ from lib.gate_types import (
 # intentional, not a workaround — _call_gate_method now routes SubagentStart
 # to gate.on_subagent_start() (fixed in aops-55bcf1a2).
 
+# NOTE: The custodiet gate was removed in favour of Claude Code's auto mode
+# classifier (see specs/ultra-vires-custodiet.md). Axiom enforcement is now
+# handled via autoMode.soft_deny rules in settings. The custodiet agent remains
+# available for manual invocation at agents/custodiet.md.
+
 GATE_CONFIGS = [
-    # --- Custodiet ---
-    GateConfig(
-        name="custodiet",
-        description="Enforces periodic compliance checks.",
-        initial_status=GateStatus.OPEN,
-        countdown=CountdownConfig(
-            start_before=7,
-            threshold=CUSTODIET_TOOL_CALL_THRESHOLD,
-            message_key="custodiet.countdown",
-        ),
-        triggers=[
-            # Custodiet check -> Reset
-            # PreToolUse is included so the trigger fires (resetting the counter)
-            # BEFORE the policy evaluates. Without it, Agent(custodiet) is itself
-            # is blocked when ops >= threshold (deadlock: can't dispatch the agent
-            # that would reset the counter).
-            GateTrigger(
-                condition=GateCondition(
-                    hook_event="^(PreToolUse|SubagentStart|SubagentStop)$",
-                    subagent_type_pattern="^(aops-core:)?custodiet$",
-                ),
-                transition=GateTransition(
-                    reset_ops_counter=True,
-                    system_message_key="custodiet.verified",
-                    context_key="custodiet.verified",
-                ),
-            ),
-        ],
-        policies=[
-            # Threshold check (except infrastructure and read_only tools)
-            GatePolicy(
-                condition=GateCondition(
-                    hook_event="PreToolUse",
-                    min_ops_since_open=CUSTODIET_TOOL_CALL_THRESHOLD,
-                    excluded_tool_categories=["infrastructure", "always_available", "read_only"],
-                ),
-                verdict=CUSTODIET_GATE_MODE,
-                message_key="custodiet.policy_message",
-                context_key="custodiet.policy_context",
-                custom_action="prepare_compliance_report",
-            ),
-        ],
-    ),
     # --- QA ---
     # Blocks exit until planned requirements are verified by QA agent.
     GateConfig(

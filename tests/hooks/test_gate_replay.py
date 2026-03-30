@@ -21,7 +21,6 @@ import json
 import sys
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch
 
 import pytest
 
@@ -33,8 +32,8 @@ if str(AOPS_CORE) not in sys.path:
 from hooks.gate_config import COMPLIANCE_SUBAGENT_TYPES, TOOL_CATEGORIES, get_tool_category
 from hooks.router import HookRouter
 from hooks.schemas import CanonicalHookOutput, HookContext
+
 from lib.gate_model import GateVerdict
-from lib.gate_types import GateStatus
 from lib.gates.registry import GateRegistry
 from lib.session_paths import get_gate_file_path
 from lib.session_state import SessionState
@@ -75,10 +74,8 @@ def gate_mode(monkeypatch):
 
     Yields a SimpleNamespace with gate configuration info.
     """
-    monkeypatch.setenv("CUSTODIET_GATE_MODE", "block")
     monkeypatch.setenv("QA_GATE_MODE", "block")
     monkeypatch.setenv("HANDOVER_GATE_MODE", "warn")
-    monkeypatch.setenv("CUSTODIET_TOOL_CALL_THRESHOLD", "50")
     _reinit_gates_with_defaults()
     yield SimpleNamespace()
     _reinit_gates_with_defaults()
@@ -139,8 +136,6 @@ class TestRealEventInvariants:
     def test_compliance_spawn_always_allowed(self, router, event):
         """Real compliance agent spawns must always be allowed."""
         state = SessionState.create("test-replay")
-        # Hostile state: custodiet at threshold
-        state.gates["custodiet"].ops_since_open = 100
         ctx = _make_context(event)
 
         result = router._dispatch_gates(ctx, state)
@@ -160,7 +155,6 @@ class TestRealEventInvariants:
     def test_always_available_tools_from_real_logs(self, router, event):
         """Real always-available tool calls must pass even with hostile state."""
         state = SessionState.create("test-replay")
-        state.gates["custodiet"].ops_since_open = 100
         ctx = _make_context(event)
 
         result = router._dispatch_gates(ctx, state)
@@ -320,7 +314,6 @@ class TestHookLogDiscovery:
             pytest.skip("No compliance agent PreToolUse events found in logs")
 
         state = SessionState.create("test-compliance-disk")
-        state.gates["custodiet"].ops_since_open = 100
 
         for event in compliance_events:
             ctx = HookContext(
@@ -341,145 +334,6 @@ class TestHookLogDiscovery:
 
 
 # ===========================================================================
-# PostToolUse: Ops counter increment
-# ===========================================================================
-
-
-class TestPostToolUseCounter:
-    """Verify ops_since_open increments on PostToolUse for write tools."""
-
-    def test_ops_counter_increments_on_write_tool(self, router):
-        """PostToolUse for write tools must increment ops_since_open."""
-        state = SessionState.create("test-counter")
-        state.gates["custodiet"].status = GateStatus.OPEN
-        state.gates["custodiet"].ops_since_open = 0
-
-        initial_ops = state.gates["custodiet"].ops_since_open
-
-        # Simulate PostToolUse for a write tool
-        ctx = HookContext(
-            session_id="test-counter",
-            hook_event="PostToolUse",
-            tool_name="Edit",
-            tool_input={"file_path": "/f.py", "old_string": "a", "new_string": "b"},
-        )
-        router._dispatch_gates(ctx, state)
-
-        assert state.gates["custodiet"].ops_since_open == initial_ops + 1, (
-            f"ops_since_open should increment from {initial_ops} to {initial_ops + 1}, "
-            f"got {state.gates['custodiet'].ops_since_open}"
-        )
-
-    def test_ops_counter_increments_multiple_times(self, router):
-        """Multiple PostToolUse events should increment the counter each time."""
-        state = SessionState.create("test-counter-multi")
-        state.gates["custodiet"].status = GateStatus.OPEN
-        state.gates["custodiet"].ops_since_open = 0
-
-        for i in range(5):
-            ctx = HookContext(
-                session_id="test-counter-multi",
-                hook_event="PostToolUse",
-                tool_name="Bash",
-                tool_input={"command": f"echo {i}"},
-            )
-            router._dispatch_gates(ctx, state)
-
-        assert state.gates["custodiet"].ops_since_open == 5, (
-            f"ops_since_open should be 5 after 5 PostToolUse events, "
-            f"got {state.gates['custodiet'].ops_since_open}"
-        )
-
-    def test_custodiet_counter_resets_after_compliance_check(self, router):
-        """Counter should reset to 0 when custodiet SubagentStop fires."""
-        state = SessionState.create("test-counter-reset")
-        state.gates["custodiet"].status = GateStatus.OPEN
-        state.gates["custodiet"].ops_since_open = 42
-
-        # Simulate custodiet SubagentStop
-        ctx = HookContext(
-            session_id="test-counter-reset",
-            hook_event="SubagentStop",
-            tool_name=None,
-            tool_input={},
-            subagent_type="aops-core:custodiet",
-        )
-        router._dispatch_gates(ctx, state)
-
-        assert state.gates["custodiet"].ops_since_open == 0, (
-            f"ops_since_open should reset to 0 after custodiet check, "
-            f"got {state.gates['custodiet'].ops_since_open}"
-        )
-
-
-# ===========================================================================
-# Countdown Warning: Ops approaching threshold
-# ===========================================================================
-
-
-class TestCountdownWarning:
-    """Verify countdown warning fires when ops approach custodiet threshold."""
-
-    def test_countdown_warning_in_range(self, router):
-        """Ops at 45 (within 43-49 range) should produce countdown message."""
-        state = SessionState.create("test-countdown")
-        state.gates["custodiet"].status = GateStatus.OPEN
-        state.gates["custodiet"].ops_since_open = 45  # threshold=50, start_before=7
-
-        ctx = HookContext(
-            session_id="test-countdown",
-            hook_event="PreToolUse",
-            tool_name="Read",  # Read-only: bypasses custodiet policy, but countdown still shows
-            tool_input={"file_path": "/f.py"},
-        )
-        result = router._dispatch_gates(ctx, state)
-
-        # Countdown should produce a system message with remaining count
-        assert result is not None, "Countdown warning should produce a result"
-        assert result.system_message is not None, "Countdown should have a system message"
-        assert "5" in result.system_message or "turns" in result.system_message.lower(), (
-            f"Countdown message should mention remaining turns, got: {result.system_message}"
-        )
-
-    def test_no_countdown_below_range(self, router):
-        """Ops at 10 (well below range) should not produce countdown."""
-        state = SessionState.create("test-no-countdown")
-        state.gates["custodiet"].status = GateStatus.OPEN
-        state.gates["custodiet"].ops_since_open = 10
-
-        ctx = HookContext(
-            session_id="test-no-countdown",
-            hook_event="PreToolUse",
-            tool_name="Read",
-            tool_input={"file_path": "/f.py"},
-        )
-        result = router._dispatch_gates(ctx, state)
-
-        # Should be None (allow) with no messages
-        if result is not None:
-            assert result.verdict == GateVerdict.ALLOW
-
-    def test_no_countdown_at_threshold(self, router):
-        """Ops at 50 (at threshold) should produce policy block, not countdown."""
-        state = SessionState.create("test-at-threshold")
-        state.gates["custodiet"].status = GateStatus.OPEN
-        state.gates["custodiet"].ops_since_open = 50
-
-        ctx = HookContext(
-            session_id="test-at-threshold",
-            hook_event="PreToolUse",
-            tool_name="Edit",  # Write tool: subject to custodiet policy
-            tool_input={"file_path": "/f.py", "old_string": "a", "new_string": "b"},
-        )
-        result = router._dispatch_gates(ctx, state)
-
-        assert result is not None
-        assert result.verdict == GateVerdict.DENY, (
-            f"At threshold, write tool should be DENIED, got {result.verdict.value}"
-        )
-
-
-# ===========================================================================
 # Temp Path Validation
 # ===========================================================================
 
@@ -487,7 +341,7 @@ class TestCountdownWarning:
 class TestTempPathValidation:
     """Verify gate temp_path is in a readable, predictable location.
 
-    Gate context files (custodiet.md, etc.) must be:
+    Gate context files must be:
     1. Under a directory that exists (or can be created)
     2. In the Claude/Gemini project directory (readable by the client)
     3. Named with a predictable pattern for session isolation
@@ -500,12 +354,12 @@ class TestTempPathValidation:
 
         monkeypatch.setenv("CLAUDE_PROJECT_DIR", "/Users/test/src/myproject")
         # Clear any cached env vars
-        monkeypatch.delenv("AOPS_GATE_FILE_CUSTODIET", raising=False)
+        monkeypatch.delenv("AOPS_GATE_FILE_QA", raising=False)
         monkeypatch.delenv("GEMINI_SESSION_ID", raising=False)
         monkeypatch.delenv("AOPS_SESSION_STATE_DIR", raising=False)
         monkeypatch.delenv("AOPS_SESSIONS", raising=False)
 
-        path = get_gate_file_path("custodiet", "test-session-abc123")
+        path = get_gate_file_path("qa", "test-session-abc123")
 
         # Path should be under ~/.claude/projects/
         assert str(path).startswith(str(Path.home() / ".claude" / "projects")), (
@@ -513,9 +367,7 @@ class TestTempPathValidation:
         )
 
         # Path should end with the gate name
-        assert path.name.endswith("-custodiet.md"), (
-            f"Gate file should end with -custodiet.md, got: {path.name}"
-        )
+        assert path.name.endswith("-qa.md"), f"Gate file should end with -qa.md, got: {path.name}"
 
         # Path should contain session hash for isolation
         from lib.session_paths import get_session_short_hash
@@ -529,46 +381,12 @@ class TestTempPathValidation:
         """Gate file parent directory must exist or be creatable."""
         # Use AOPS_GATE_FILE env var override to test with temp path
         test_gate_file = tmp_path / "test-gate.md"
-        monkeypatch.setenv("AOPS_GATE_FILE_CUSTODIET", str(test_gate_file))
+        monkeypatch.setenv("AOPS_GATE_FILE_QA", str(test_gate_file))
 
-        path = get_gate_file_path("custodiet", "test-session")
+        path = get_gate_file_path("qa", "test-session")
 
         assert path == test_gate_file
         assert path.parent.exists(), f"Gate file parent directory must exist: {path.parent}"
-
-    def test_custodiet_context_injection_contains_temp_path(self, router):
-        """When custodiet gate fires, context injection must contain temp_path."""
-        state = SessionState.create("test-custodiet-path")
-        state.gates["custodiet"].status = GateStatus.OPEN
-        state.gates["custodiet"].ops_since_open = 55
-
-        ctx = HookContext(
-            session_id="test-custodiet-path",
-            hook_event="PreToolUse",
-            tool_name="Edit",
-            tool_input={"file_path": "/f.py", "old_string": "a", "new_string": "b"},
-        )
-
-        # The custodiet policy has custom_action="prepare_compliance_report"
-        # which creates a file and sets temp_path. In tests, this will fail
-        # because templates aren't available. We mock it.
-        with patch(
-            "lib.gates.custom_actions.create_audit_file",
-            return_value=Path("/tmp/custodiet-test.md"),
-        ):
-            result = router._dispatch_gates(ctx, state)
-
-        assert result is not None
-        # temp_path should have been set by the custom action mock
-        temp_path = state.gates["custodiet"].metrics.get("temp_path")
-        assert temp_path is not None, "Custodiet policy should set temp_path in metrics"
-        assert result.context_injection is not None, (
-            "Custodiet gate should produce context injection"
-        )
-        assert temp_path in result.context_injection, (
-            f"Context injection should contain temp_path '{temp_path}', "
-            f"got: {result.context_injection[:200]}"
-        )
 
 
 # ===========================================================================
@@ -589,7 +407,7 @@ class TestExecuteHooksSmoke:
     def test_pretooluse_through_full_pipeline(self, router, tmp_path, monkeypatch):
         """PreToolUse for a write tool through full pipeline.
 
-        With a fresh state dir, no gates fire (custodiet ops=0).
+        With a fresh state dir, no gates fire.
         The expected verdict is 'allow'.
         """
         # Isolate state storage
@@ -606,9 +424,9 @@ class TestExecuteHooksSmoke:
         result = router.execute_hooks(ctx)
 
         assert isinstance(result, CanonicalHookOutput)
-        # Fresh state has custodiet ops=0 — no gates fire
+        # Fresh state — no gates fire
         assert result.verdict == "allow", (
-            f"Fresh state should produce 'allow' (custodiet ops=0), got '{result.verdict}'"
+            f"Fresh state should produce 'allow', got '{result.verdict}'"
         )
 
     def test_infrastructure_through_full_pipeline(self, router, tmp_path, monkeypatch):
@@ -643,7 +461,7 @@ class TestExecuteHooksSmoke:
 # "always_available" tools bypass ALL gates (meta/control tools: AskUserQuestion, etc.).
 # "infrastructure" tools bypass ALL gates (PKB ops).
 # "spawn" tools are subject to gate policies (Agent, Task, Skill, etc.).
-# "read_only" tools bypass custodiet gate.
+# "read_only" tools bypass gate policies.
 # "write" tools are subject to ALL gate policies.
 #
 # Sourced from 170 hook log files spanning 7 days of production usage.
@@ -805,24 +623,24 @@ REAL_TOOL_NAMES: list[tuple[str, str, str]] = [
 REAL_SPAWN_EVENTS: list[tuple[str, str, bool, str, str]] = [
     # Claude Code Agent spawns (is_subagent=False in main agent context)
     ("Agent", "Explore", False, "spawn", "CC Agent: Explore"),
-    ("Agent", "aops-core:custodiet", False, "spawn", "CC Agent: custodiet"),
+    ("Agent", "aops-core:audit", False, "spawn", "CC Agent: audit"),
     ("Agent", "aops-core:hydrator", False, "spawn", "CC Agent: hydrator"),
     ("Agent", "aops-core:butler", False, "spawn", "CC Agent: butler"),
     ("Agent", "general-purpose", False, "spawn", "CC Agent: general-purpose"),
     # Claude Code legacy Task spawns (is_subagent=True from subagent context)
     ("Task", "general-purpose", True, "spawn", "CC Task: general-purpose"),
     ("Task", "aops-core:hydrator", True, "spawn", "CC Task: hydrator"),
-    ("Task", "aops-core:custodiet", True, "spawn", "CC Task: custodiet"),
+    ("Task", "aops-core:audit", True, "spawn", "CC Task: audit"),
     ("Task", "Explore", True, "spawn", "CC Task: Explore"),
     ("Task", "claude-code-guide", True, "spawn", "CC Task: cc-guide"),
     ("Task", "aops-core:butler", True, "spawn", "CC Task: butler"),
     ("Task", "Plan", True, "spawn", "CC Task: Plan"),
     (
         "Task",
-        "aops-core:custodiet-reviewer",
+        "aops-core:audit-reviewer",
         True,
         "spawn",
-        "CC Task: custodiet-reviewer",
+        "CC Task: audit-reviewer",
     ),
     ("Task", "aops-core:hydrator-reviewer", True, "spawn", "CC Task: hydrator-reviewer"),
     ("Task", "aops-core:qa", True, "spawn", "CC Task: qa"),
@@ -914,8 +732,6 @@ class TestRealSpawnEventCategorization:
     ):
         """Spawn tools are in 'spawn' category."""
         state = SessionState.create("test-spawn-categorization")
-        # Hostile state: custodiet at threshold
-        state.gates["custodiet"].ops_since_open = 100
 
         tool_input = (
             {"subagent_type": subagent_type, "prompt": "test"}

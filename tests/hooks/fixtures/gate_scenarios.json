@@ -1,64 +1,4 @@
 {
-  "read_only_bypasses_custodiet": [
-    {
-      "id": "syn-custodiet-read-bypass",
-      "description": "Read bypasses custodiet threshold (read_only is exempt from custodiet policy)",
-      "_synthetic": "real-tool-synthetic-gate",
-      "hook_event": "PreToolUse",
-      "tool_name": "Read",
-      "tool_input": {
-        "file_path": "/home/debian/aops/aops-core/hooks/gate_config.py"
-      },
-      "is_subagent": false,
-      "gate_overrides": {
-        "custodiet": {
-          "ops_since_open": 75
-        }
-      },
-      "expected": {
-        "verdict": "allow"
-      }
-    },
-    {
-      "id": "syn-custodiet-grep-bypass",
-      "description": "Grep bypasses custodiet threshold (read_only is exempt)",
-      "_synthetic": "real-tool-synthetic-gate",
-      "hook_event": "PreToolUse",
-      "tool_name": "Grep",
-      "tool_input": {
-        "pattern": "def.*gate",
-        "path": "/home/debian/aops"
-      },
-      "is_subagent": false,
-      "gate_overrides": {
-        "custodiet": {
-          "ops_since_open": 75
-        }
-      },
-      "expected": {
-        "verdict": "allow"
-      }
-    },
-    {
-      "id": "syn-custodiet-read-file-gemini",
-      "description": "Gemini read_file bypasses custodiet threshold (read_only)",
-      "_synthetic": "real-tool-synthetic-gate",
-      "hook_event": "PreToolUse",
-      "tool_name": "read_file",
-      "tool_input": {
-        "file_path": "/Users/suzor/.gemini/tmp/brain/logs/20260303-a51fc272-hydration.md"
-      },
-      "is_subagent": false,
-      "gate_overrides": {
-        "custodiet": {
-          "ops_since_open": 75
-        }
-      },
-      "expected": {
-        "verdict": "allow"
-      }
-    }
-  ],
   "compliance_agent_bypass": [
     {
       "id": "syn-bypass-hydrator-edit-closed",
@@ -96,8 +36,8 @@
       }
     },
     {
-      "id": "syn-bypass-custodiet-bash-overdue",
-      "description": "Custodiet subagent can Bash when threshold exceeded (bypass). Real command pattern from live compliance sessions.",
+      "id": "syn-bypass-compliance-bash-overdue",
+      "description": "Compliance subagent can Bash when threshold exceeded (bypass). Real command pattern from live compliance sessions.",
       "_synthetic": "real-tool-synthetic-gate",
       "hook_event": "PreToolUse",
       "tool_name": "Bash",
@@ -106,19 +46,15 @@
         "description": "Compliance check"
       },
       "is_subagent": true,
-      "subagent_type": "custodiet",
-      "gate_overrides": {
-        "custodiet": {
-          "ops_since_open": 75
-        }
-      },
+      "subagent_type": "audit",
+      "gate_overrides": {},
       "expected": {
         "verdict": "allow"
       }
     },
     {
       "id": "syn-bypass-hydrator-both-hostile",
-      "description": "Hydrator can Write even when BOTH hydration and custodiet are blocking (worst-case hostile state)",
+      "description": "Hydrator can Write even when BOTH hydration and compliance are blocking (worst-case hostile state)",
       "_synthetic": "real-tool-synthetic-gate",
       "hook_event": "PreToolUse",
       "tool_name": "Write",
@@ -128,11 +64,7 @@
       },
       "is_subagent": true,
       "subagent_type": "aops-core:hydrator",
-      "gate_overrides": {
-        "custodiet": {
-          "ops_since_open": 75
-        }
-      },
+      "gate_overrides": {},
       "expected": {
         "verdict": "allow"
       }
@@ -149,11 +81,7 @@
       },
       "is_subagent": true,
       "subagent_type": "aops-core:audit",
-      "gate_overrides": {
-        "custodiet": {
-          "ops_since_open": 75
-        }
-      },
+      "gate_overrides": {},
       "expected": {
         "verdict": "allow"
       }
@@ -249,67 +177,6 @@
       }
     }
   ],
-  "custodiet_gate_blocks_at_threshold": [
-    {
-      "id": "syn-custodiet-bash-threshold-deny",
-      "description": "Bash blocked (DENY) when custodiet threshold exceeded (mode=block). Real command from live sessions.",
-      "_synthetic": "real-tool-synthetic-gate",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "git commit -m 'feat: implement gate hardening'"
-      },
-      "is_subagent": false,
-      "gate_overrides": {
-        "custodiet": {
-          "ops_since_open": 75
-        }
-      },
-      "expected": {
-        "verdict": "deny"
-      }
-    },
-    {
-      "id": "syn-custodiet-edit-threshold-deny",
-      "description": "Edit blocked (DENY) when custodiet threshold exceeded. Real file pattern from live sessions.",
-      "_synthetic": "real-tool-synthetic-gate",
-      "hook_event": "PreToolUse",
-      "tool_name": "Edit",
-      "tool_input": {
-        "file_path": "/home/debian/aops/aops-core/hooks/gate_config.py",
-        "old_string": "# placeholder",
-        "new_string": "# updated"
-      },
-      "is_subagent": false,
-      "gate_overrides": {
-        "custodiet": {
-          "ops_since_open": 75
-        }
-      },
-      "expected": {
-        "verdict": "deny"
-      }
-    },
-    {
-      "id": "syn-custodiet-run-shell-threshold-deny",
-      "description": "Gemini run_shell_command blocked (DENY) when custodiet threshold exceeded",
-      "_synthetic": "real-tool-synthetic-gate",
-      "hook_event": "PreToolUse",
-      "tool_name": "run_shell_command",
-      "tool_input": {
-        "command": "git push origin HEAD"
-      },
-      "is_subagent": false,
-      "gate_overrides": {
-        "custodiet": {
-          "ops_since_open": 75
-        }
-      },
-      "expected": {
-        "verdict": "deny"
-      }
-    }
-  ],
   "stop_gate_behavior": [
     {
       "id": "syn-stop-handover-closed-warn",
@@ -401,7 +268,7 @@
   "combined_gate_interactions": [
     {
       "id": "syn-combined-both-gates-bash-deny",
-      "description": "Bash blocked DENY when custodiet(block) fires. Real command from live sessions.",
+      "description": "Bash blocked DENY when compliance(block) fires. Real command from live sessions.",
       "_synthetic": "real-tool-synthetic-gate",
       "hook_event": "PreToolUse",
       "tool_name": "Bash",
@@ -410,18 +277,14 @@
         "description": "Run gate verdict tests"
       },
       "is_subagent": false,
-      "gate_overrides": {
-        "custodiet": {
-          "ops_since_open": 75
-        }
-      },
+      "gate_overrides": {},
       "expected": {
         "verdict": "deny"
       }
     },
     {
       "id": "syn-combined-both-gates-edit-deny",
-      "description": "Edit blocked DENY when custodiet fires. Real file path from live sessions.",
+      "description": "Edit blocked DENY when compliance fires. Real file path from live sessions.",
       "_synthetic": "real-tool-synthetic-gate",
       "hook_event": "PreToolUse",
       "tool_name": "Edit",
@@ -431,32 +294,8 @@
         "new_string": "excluded_tool_categories"
       },
       "is_subagent": false,
-      "gate_overrides": {
-        "custodiet": {
-          "ops_since_open": 75
-        }
-      },
+      "gate_overrides": {},
       "expected": {
-        "verdict": "deny"
-      }
-    },
-    {
-      "id": "syn-combined-custodiet-only-deny",
-      "description": "Bash blocked DENY by custodiet (custodiet at threshold)",
-      "_synthetic": "real-tool-synthetic-gate",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "git push origin HEAD"
-      },
-      "is_subagent": false,
-      "gate_overrides": {
-        "custodiet": {
-          "ops_since_open": 75
-        }
-      },
-      "expected": {
-        "not_allow": true,
         "verdict": "deny"
       }
     },
@@ -470,128 +309,16 @@
         "command": "find /home/suzor/aops -name '*.jsonl' | head -5"
       },
       "is_subagent": false,
-      "gate_overrides": {
-        "custodiet": {
-          "ops_since_open": 75
-        }
-      },
+      "gate_overrides": {},
       "expected": {
         "verdict": "deny"
-      }
-    }
-  ],
-  "custodiet_trigger_resets_counter": [
-    {
-      "id": "syn-trigger-custodiet-stop-resets",
-      "description": "SubagentStop for custodiet resets ops_since_open to 0",
-      "_synthetic": "real-tool-synthetic-gate",
-      "hook_event": "SubagentStop",
-      "tool_name": null,
-      "tool_input": {},
-      "is_subagent": false,
-      "subagent_type": "custodiet",
-      "gate_overrides": {
-        "custodiet": {
-          "ops_since_open": 55
-        }
-      },
-      "expected": {
-        "verdict": "allow",
-        "ops_reset": true
-      }
-    },
-    {
-      "id": "syn-trigger-custodiet-start-resets",
-      "description": "SubagentStart for custodiet resets ops counter (JIT reset before custodiet work begins)",
-      "_synthetic": "real-tool-synthetic-gate",
-      "hook_event": "SubagentStart",
-      "tool_name": null,
-      "tool_input": {},
-      "is_subagent": false,
-      "subagent_type": "aops-core:custodiet",
-      "gate_overrides": {
-        "custodiet": {
-          "ops_since_open": 55
-        }
-      },
-      "expected": {
-        "verdict": "allow",
-        "ops_reset": true
-      }
-    },
-    {
-      "id": "syn-trigger-custodiet-pretooluse-resets",
-      "description": "Agent(custodiet) on PreToolUse resets counter BEFORE policy evaluates (prevents dispatch deadlock)",
-      "_synthetic": "real-tool-synthetic-gate",
-      "hook_event": "PreToolUse",
-      "tool_name": "Agent",
-      "tool_input": {
-        "subagent_type": "custodiet",
-        "prompt": "/tmp/custodiet.md",
-        "description": "Run compliance check"
-      },
-      "is_subagent": false,
-      "subagent_type": "custodiet",
-      "gate_overrides": {
-        "custodiet": {
-          "ops_since_open": 75
-        }
-      },
-      "expected": {
-        "verdict": "allow",
-        "ops_reset": true
-      }
-    }
-  ],
-  "claude_output_format": [
-    {
-      "id": "syn-claude-format-deny-custodiet",
-      "description": "Bash blocked DENY by custodiet: Claude output must have permissionDecision=deny",
-      "_synthetic": "real-tool-synthetic-gate",
-      "hook_event": "PreToolUse",
-      "tool_name": "Bash",
-      "tool_input": {
-        "command": "git push origin HEAD",
-        "description": "Push changes to remote"
-      },
-      "is_subagent": false,
-      "gate_overrides": {
-        "custodiet": {
-          "ops_since_open": 75
-        }
-      },
-      "expected": {
-        "verdict": "deny",
-        "claude_permission_decision": "deny"
-      }
-    },
-    {
-      "id": "syn-claude-format-deny-custodiet-edit",
-      "description": "Edit blocked DENY by custodiet threshold: Claude permissionDecision=deny",
-      "_synthetic": "real-tool-synthetic-gate",
-      "hook_event": "PreToolUse",
-      "tool_name": "Edit",
-      "tool_input": {
-        "file_path": "/home/debian/aops/aops-core/lib/gates/definitions.py",
-        "old_string": "OPEN",
-        "new_string": "OPEN"
-      },
-      "is_subagent": false,
-      "gate_overrides": {
-        "custodiet": {
-          "ops_since_open": 75
-        }
-      },
-      "expected": {
-        "verdict": "deny",
-        "claude_permission_decision": "deny"
       }
     }
   ],
   "gemini_output_format": [
     {
       "id": "syn-gemini-format-deny-run-shell",
-      "description": "Gemini run_shell_command DENY at custodiet threshold: output.decision=deny",
+      "description": "Gemini run_shell_command DENY at compliance threshold: output.decision=deny",
       "_synthetic": "real-tool-synthetic-gate",
       "hook_event": "PreToolUse",
       "tool_name": "run_shell_command",
@@ -599,11 +326,7 @@
         "command": "git push origin HEAD"
       },
       "is_subagent": false,
-      "gate_overrides": {
-        "custodiet": {
-          "ops_since_open": 75
-        }
-      },
+      "gate_overrides": {},
       "expected": {
         "verdict": "deny",
         "gemini_decision": "deny"
@@ -619,11 +342,7 @@
         "query": "hydration gate implementation"
       },
       "is_subagent": false,
-      "gate_overrides": {
-        "custodiet": {
-          "ops_since_open": 75
-        }
-      },
+      "gate_overrides": {},
       "expected": {
         "verdict": "allow",
         "gemini_decision": "allow"

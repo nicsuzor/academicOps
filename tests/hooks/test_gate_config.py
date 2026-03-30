@@ -130,10 +130,6 @@ class TestExtractSubagentType:
 class TestComplianceSubagentTypes:
     """Verify COMPLIANCE_SUBAGENT_TYPES has expected members."""
 
-    def test_custodiet_variants(self):
-        assert "custodiet" in COMPLIANCE_SUBAGENT_TYPES
-        assert "aops-core:custodiet" in COMPLIANCE_SUBAGENT_TYPES
-
     def test_audit_variants(self):
         assert "audit" in COMPLIANCE_SUBAGENT_TYPES
         assert "aops-core:audit" in COMPLIANCE_SUBAGENT_TYPES

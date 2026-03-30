@@ -111,30 +111,11 @@ def format_gate_status_icons(state: SessionState) -> str:
     """Format current gate statuses as a lifecycle-aware icon strip.
 
     Only shows gates when they need attention:
-    - ◇ N  custodiet countdown active
-    - ◇    custodiet overdue (past threshold)
     - ≡    handover complete (gate OPEN + handover invoked)
     - ▶ T-id  active task bound
     - ✓    nothing needs attention
     """
-    from lib.gates.registry import GateRegistry
-
     parts: list[str] = []
-
-    # Custodiet: countdown or overdue
-    custodiet = state.gates.get("custodiet")
-    if custodiet:
-        custodiet_gate = GateRegistry.get_gate("custodiet")
-        if custodiet_gate and custodiet_gate.config.countdown:
-            threshold = custodiet_gate.config.countdown.threshold
-            start_before = custodiet_gate.config.countdown.start_before
-            countdown_start = threshold - start_before
-            ops = custodiet.ops_since_open
-            if ops >= threshold:
-                parts.append("◇")
-            elif ops >= countdown_start:
-                remaining = threshold - ops
-                parts.append(f"◇ {remaining}")
 
     # Handover: show only AFTER completion (gate OPEN + skill invoked)
     handover = state.gates.get("handover")

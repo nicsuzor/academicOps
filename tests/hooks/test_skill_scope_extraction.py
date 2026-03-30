@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Test skill scope extraction for custodiet context.
+"""Test skill scope extraction for gate context.
 
-Regression test for: ns-siv (custodiet false positives on multi-step skills)
-Root cause: custodiet saw active skill name but NOT the skill's authorized
-workflow steps. When /learn does investigation+fix+test, custodiet blocked
+Regression test for: ns-siv (false positives on multi-step skills)
+Root cause: compliance gate saw active skill name but NOT the skill's authorized
+workflow steps. When /learn does investigation+fix+test, the gate blocked
 "scope creep" because it didn't know testing is explicitly authorized.
 
 Fix: load_skill_scope() extracts workflow from skill definition files and
-custodiet_gate.py includes it in the context for compliance checking.
+includes it in the context for compliance checking.
 """
 
 import sys
@@ -22,12 +22,12 @@ from lib.session_reader import _extract_skill_scope_from_file, load_skill_scope 
 
 
 class TestLoadSkillScope:
-    """Test skill scope loading for custodiet context."""
+    """Test skill scope loading for gate context."""
 
     def test_load_skill_scope_for_learn_command(self):
         """Verify /learn command scope includes workflow steps.
 
-        Regression: custodiet blocked /learn investigation+testing as scope creep
+        Regression: compliance gate blocked /learn investigation+testing as scope creep
         because it didn't know those were authorized workflow steps.
         """
         scope = load_skill_scope("learn")
@@ -53,7 +53,7 @@ class TestLoadSkillScope:
         """Verify workflow steps are extracted from definition files.
 
         The /learn command has numbered workflow steps (### 0., ### 1., etc.)
-        that should be extracted for custodiet context.
+        that should be extracted for gate context.
         """
         scope = load_skill_scope("learn")
 

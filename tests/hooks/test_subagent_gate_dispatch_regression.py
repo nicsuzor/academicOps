@@ -16,6 +16,7 @@ from unittest.mock import patch
 import pytest
 from hooks.router import HookRouter
 from hooks.schemas import HookContext
+
 from lib.gate_model import GateVerdict
 from lib.gate_types import (
     GateCondition,
@@ -32,17 +33,17 @@ from lib.session_state import SessionState
 # --- Minimal gate configs for testing ---
 
 
-def _make_custodiet_config(threshold: int = 5) -> GateConfig:
-    """Minimal custodiet-like gate config for testing."""
+def _make_compliance_config(threshold: int = 5) -> GateConfig:
+    """Minimal compliance gate config for testing."""
     return GateConfig(
-        name="custodiet",
+        name="compliance_test",
         description="Test compliance gate",
         initial_status=GateStatus.OPEN,
         triggers=[
             GateTrigger(
                 condition=GateCondition(
                     hook_event="^(SubagentStart|SubagentStop|PostToolUse)$",
-                    subagent_type_pattern="custodiet",
+                    subagent_type_pattern="compliance_test",
                 ),
                 transition=GateTransition(
                     reset_ops_counter=True,
@@ -107,7 +108,7 @@ def test_registry():
     GateRegistry._initialized = False
 
     gates = [
-        GenericGate(_make_custodiet_config()),
+        GenericGate(_make_compliance_config()),
         GenericGate(_make_critic_config()),
     ]
     for gate in gates:
@@ -213,7 +214,7 @@ class TestSubagentGateBypass:
             hook_event="PreToolUse",
             tool_name="Read",
             is_subagent=True,
-            subagent_type="custodiet",
+            subagent_type="compliance_test",
             raw_input={},
         )
 
@@ -225,13 +226,13 @@ class TestSubagentGateBypass:
     def test_non_compliance_subagent_also_returns_none(self, mock_session, test_registry):
         """Non-compliance subagents are also invisible to gates.
 
-        Even with custodiet threshold exceeded, subagent tool calls
+        Even with gate threshold exceeded, subagent tool calls
         return None (gates don't evaluate for subagent sessions).
         """
         session_id, state = mock_session
 
-        state.gates["custodiet"].ops_since_open = 100
-        state.gates["custodiet"].status = GateStatus.OPEN
+        state.get_gate("compliance_test").ops_since_open = 100
+        state.get_gate("compliance_test").status = GateStatus.OPEN
 
         ctx = HookContext(
             session_id=session_id,
@@ -252,8 +253,8 @@ class TestSubagentGateBypass:
         """Main session (is_subagent=False) must still be subject to gate policies."""
         session_id, state = mock_session
 
-        state.gates["custodiet"].ops_since_open = 100
-        state.gates["custodiet"].status = GateStatus.OPEN
+        state.get_gate("compliance_test").ops_since_open = 100
+        state.get_gate("compliance_test").status = GateStatus.OPEN
 
         ctx = HookContext(
             session_id=session_id,
@@ -277,7 +278,7 @@ class TestEvaluateTriggersMethod:
 
     def test_evaluate_triggers_exists(self):
         """GenericGate must expose evaluate_triggers() as a public method."""
-        gate = GenericGate(_make_custodiet_config())
+        gate = GenericGate(_make_compliance_config())
         assert hasattr(gate, "evaluate_triggers")
         assert callable(gate.evaluate_triggers)
 
@@ -286,8 +287,8 @@ class TestEvaluateTriggersMethod:
         session_id, state = mock_session
 
         # Set up high ops so policies WOULD fire
-        state.gates["custodiet"].ops_since_open = 100
-        state.gates["custodiet"].status = GateStatus.OPEN
+        state.get_gate("compliance_test").ops_since_open = 100
+        state.get_gate("compliance_test").status = GateStatus.OPEN
 
         ctx = HookContext(
             session_id=session_id,
@@ -297,7 +298,7 @@ class TestEvaluateTriggersMethod:
             raw_input={},
         )
 
-        gate = GenericGate(_make_custodiet_config())
+        gate = GenericGate(_make_compliance_config())
 
         # evaluate_triggers should NOT return a DENY (that's policies)
         result = gate.evaluate_triggers(ctx, state)
@@ -308,8 +309,8 @@ class TestEvaluateTriggersMethod:
         """check() should evaluate BOTH triggers AND policies (contrast with evaluate_triggers)."""
         session_id, state = mock_session
 
-        state.gates["custodiet"].ops_since_open = 100
-        state.gates["custodiet"].status = GateStatus.OPEN
+        state.get_gate("compliance_test").ops_since_open = 100
+        state.get_gate("compliance_test").status = GateStatus.OPEN
 
         ctx = HookContext(
             session_id=session_id,
@@ -319,7 +320,7 @@ class TestEvaluateTriggersMethod:
             raw_input={},
         )
 
-        gate = GenericGate(_make_custodiet_config())
+        gate = GenericGate(_make_compliance_config())
 
         # check() evaluates both triggers AND policies -> should DENY
         result = gate.check(ctx, state)
@@ -328,12 +329,12 @@ class TestEvaluateTriggersMethod:
 
 
 class TestReadOnlyToolExclusion:
-    """read_only tools must be excluded from custodiet threshold."""
+    """read_only tools must be excluded from gate threshold."""
 
     def test_read_only_category_excluded(self, mock_session):
         """Tools in excluded categories should not trigger policies."""
         config = GateConfig(
-            name="custodiet_excl",
+            name="compliance_excl",
             description="Test gate with category exclusion",
             initial_status=GateStatus.OPEN,
             triggers=[],
@@ -352,9 +353,9 @@ class TestReadOnlyToolExclusion:
         gate = GenericGate(config)
         session_id, state = mock_session
 
-        state.gates["custodiet_excl"] = state.gates["custodiet"].model_copy()
-        state.gates["custodiet_excl"].ops_since_open = 100
-        state.gates["custodiet_excl"].status = GateStatus.OPEN
+        state.gates["compliance_excl"] = state.get_gate("compliance_test").model_copy()
+        state.gates["compliance_excl"].ops_since_open = 100
+        state.gates["compliance_excl"].status = GateStatus.OPEN
 
         ctx = HookContext(
             session_id=session_id,
@@ -386,15 +387,15 @@ class TestSubagentStartHandler:
         """SubagentStart must be dispatched to gate.on_subagent_start(), not return None."""
         session_id, state = mock_session
 
-        # Custodiet trigger matches SubagentStart with subagent_type=custodiet
-        state.gates["custodiet"].ops_since_open = 50
-        state.gates["custodiet"].status = GateStatus.OPEN
+        # Compliance trigger matches SubagentStart with subagent_type=compliance_test
+        state.get_gate("compliance_test").ops_since_open = 50
+        state.get_gate("compliance_test").status = GateStatus.OPEN
 
         ctx = HookContext(
             session_id=session_id,
             trace_id=None,
             hook_event="SubagentStart",
-            subagent_type="custodiet",
+            subagent_type="compliance_test",
             is_subagent=False,  # Main agent context
             raw_input={},
         )
@@ -408,11 +409,11 @@ class TestSubagentStartHandler:
             router.execute_hooks(ctx)
 
         # Trigger should have fired and reset ops counter
-        assert state.gates["custodiet"].ops_since_open == 0
+        assert state.get_gate("compliance_test").ops_since_open == 0
 
     def test_on_subagent_start_method_exists(self):
         """GenericGate must have on_subagent_start method."""
-        gate = GenericGate(_make_custodiet_config())
+        gate = GenericGate(_make_compliance_config())
         assert hasattr(gate, "on_subagent_start")
         assert callable(gate.on_subagent_start)
 
@@ -420,22 +421,22 @@ class TestSubagentStartHandler:
         """on_subagent_start must evaluate triggers (same as on_subagent_stop)."""
         session_id, state = mock_session
 
-        state.gates["custodiet"].ops_since_open = 50
-        state.gates["custodiet"].status = GateStatus.OPEN
+        state.get_gate("compliance_test").ops_since_open = 50
+        state.get_gate("compliance_test").status = GateStatus.OPEN
 
         ctx = HookContext(
             session_id=session_id,
             trace_id=None,
             hook_event="SubagentStart",
-            subagent_type="custodiet",
+            subagent_type="compliance_test",
             raw_input={},
         )
 
-        gate = GenericGate(_make_custodiet_config())
+        gate = GenericGate(_make_compliance_config())
         result = gate.on_subagent_start(ctx, state)
 
         # Trigger should fire and reset ops
-        assert state.gates["custodiet"].ops_since_open == 0
+        assert state.get_gate("compliance_test").ops_since_open == 0
         assert result is not None
 
 
@@ -451,8 +452,8 @@ class TestSubagentPostToolUseBypass:
         session_id, state = mock_session
 
         initial_ops = 10
-        state.gates["custodiet"].ops_since_open = initial_ops
-        state.gates["custodiet"].status = GateStatus.OPEN
+        state.get_gate("compliance_test").ops_since_open = initial_ops
+        state.get_gate("compliance_test").status = GateStatus.OPEN
 
         ctx = HookContext(
             session_id=session_id,
@@ -460,7 +461,7 @@ class TestSubagentPostToolUseBypass:
             hook_event="PostToolUse",
             tool_name="Read",
             is_subagent=True,
-            subagent_type="aops-core:custodiet",
+            subagent_type="aops-core:compliance_test",
             raw_input={},
         )
 
@@ -469,7 +470,7 @@ class TestSubagentPostToolUseBypass:
 
         # Subagent sessions return None — ops unchanged
         assert result is None
-        assert state.gates["custodiet"].ops_since_open == initial_ops
+        assert state.get_gate("compliance_test").ops_since_open == initial_ops
 
     def test_non_compliance_subagent_post_tool_use_also_unchanged(
         self, mock_session, test_registry
@@ -478,8 +479,8 @@ class TestSubagentPostToolUseBypass:
         session_id, state = mock_session
 
         initial_ops = 10
-        state.gates["custodiet"].ops_since_open = initial_ops
-        state.gates["custodiet"].status = GateStatus.OPEN
+        state.get_gate("compliance_test").ops_since_open = initial_ops
+        state.get_gate("compliance_test").status = GateStatus.OPEN
 
         ctx = HookContext(
             session_id=session_id,
@@ -496,7 +497,7 @@ class TestSubagentPostToolUseBypass:
 
         # Subagent sessions return None — ops unchanged
         assert result is None
-        assert state.gates["custodiet"].ops_since_open == initial_ops
+        assert state.get_gate("compliance_test").ops_since_open == initial_ops
 
 
 class TestSubagentStartStopIsNotSubagent:
@@ -515,14 +516,14 @@ class TestSubagentStartStopIsNotSubagent:
             "hook_event_name": "SubagentStart",
             "session_id": "f4e3f1cb-775c-4aaf-8bf6-4e18a18dad3d",
             "agent_id": "abc1234",
-            "agent_type": "custodiet",
+            "agent_type": "audit",
         }
 
         ctx = router.normalize_input(raw_input)
 
         assert ctx.hook_event == "SubagentStart"
         assert ctx.is_subagent is False
-        assert ctx.subagent_type == "custodiet"
+        assert ctx.subagent_type == "audit"
 
     def test_subagent_stop_not_marked_as_subagent(self):
         """normalize_input must set is_subagent=False for SubagentStop events."""
@@ -532,7 +533,7 @@ class TestSubagentStartStopIsNotSubagent:
             "hook_event_name": "SubagentStop",
             "session_id": "f4e3f1cb-775c-4aaf-8bf6-4e18a18dad3d",
             "agent_id": "abc1234",
-            "agent_type": "custodiet",
+            "agent_type": "audit",
         }
 
         ctx = router.normalize_input(raw_input)

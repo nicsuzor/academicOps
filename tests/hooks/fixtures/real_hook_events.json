@@ -246,29 +246,6 @@
     "recorded_verdict": "allow"
   },
   {
-    "sequence_index": 277,
-    "hook_event": "PreToolUse",
-    "tool_name": "Task",
-    "tool_input": {
-      "description": "Run custodiet compliance check",
-      "prompt": "/Users/suzor/.claude/projects/-Users-suzor-src-academicOps/20260227-4076474b-custodiet.md",
-      "subagent_type": "aops-core:custodiet",
-      "model": "haiku"
-    },
-    "is_subagent": true,
-    "subagent_type": "aops-core:custodiet",
-    "recorded_verdict": "allow"
-  },
-  {
-    "sequence_index": 278,
-    "hook_event": "SubagentStart",
-    "tool_name": null,
-    "tool_input": {},
-    "is_subagent": false,
-    "subagent_type": "aops-core:custodiet",
-    "recorded_verdict": "allow"
-  },
-  {
     "sequence_index": 297,
     "hook_event": "SubagentStop",
     "tool_name": null,
@@ -289,29 +266,6 @@
     },
     "is_subagent": true,
     "subagent_type": "aops-core:hydrator",
-    "recorded_verdict": "allow"
-  },
-  {
-    "sequence_index": 322,
-    "hook_event": "SubagentStop",
-    "tool_name": null,
-    "tool_input": {},
-    "is_subagent": false,
-    "subagent_type": "aops-core:custodiet",
-    "recorded_verdict": "allow"
-  },
-  {
-    "sequence_index": 323,
-    "hook_event": "PostToolUse",
-    "tool_name": "Task",
-    "tool_input": {
-      "description": "Run custodiet compliance check",
-      "prompt": "/Users/suzor/.claude/projects/-Users-suzor-src-academicOps/20260227-4076474b-custodiet.md",
-      "subagent_type": "aops-core:custodiet",
-      "model": "haiku"
-    },
-    "is_subagent": true,
-    "subagent_type": "aops-core:custodiet",
     "recorded_verdict": "allow"
   },
   {

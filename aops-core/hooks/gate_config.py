@@ -3,11 +3,15 @@ Gate Configuration: Single source of truth for gate behavior.
 
 This module defines:
 1. Tool categories (always_available, read_only, write, meta)
-2. Compliance subagent types (bypass gate policies)
+2. Compliance subagent types (bypass gate policies — QA, audit agents)
 3. Spawn tool detection (cross-platform agent/skill invocation)
-4. Gate modes (block/warn)
+4. Gate modes (block/warn) for handover and QA gates
 5. PKB prefix normalization (handles MCP tool name variants)
 
+NOTE: The custodiet gate was removed in favour of Claude Code's auto mode
+classifier (see specs/ultra-vires-custodiet.md). Axiom enforcement is now
+handled via autoMode.soft_deny rules. The custodiet agent remains available
+for manual invocation.
 """
 
 import os
@@ -140,7 +144,7 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "save_memory",
     },
     # Spawn: tools that invoke subagents or skills.
-    # Always allowed if the target subagent is a compliance agent (custodiet, etc).
+    # Always allowed if the target subagent is a compliance agent (qa, audit).
     "spawn": {
         "Agent",  # Claude Code: spawn subagent (current tool name)
         "Task",  # Claude Code: spawn subagent (legacy/alias)
@@ -151,13 +155,11 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "TaskUpdate",
         "TaskGet",
         "TaskList",
-        "aops_core_custodiet",
         "aops_core_qa",
         "aops_core_audit",
         "aops_core_butler",
     },
-    # Read-only tools: no side effects. Exempt from custodiet gate.
-    # Custodiet gate exempts them because compliance only tracks write operations.
+    # Read-only tools: no side effects on user data.
     "read_only": {
         # --- Claude Code built-in ---
         "Read",
@@ -299,21 +301,19 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
 # This is conceptually different from tool categories: these are
 # subagent_type values (passed via Task/delegate_to_agent params),
 # not tool names.
+#
+# NOTE: Custodiet entries removed — custodiet gate replaced by CC auto mode
+# classifier. QA and audit entries remain for the QA gate.
 
 COMPLIANCE_SUBAGENT_TYPES: frozenset[str] = frozenset(
     {
-        "custodiet",
-        "aops-core:custodiet",
-        "aops_core_custodiet",
         "audit",
         "aops-core:audit",
         "aops_core_audit",
         "qa",
         "aops-core:qa",
         "aops_core_qa",
-        # Curia alias: "auditor" is the Curia name for the custodiet/audit role.
-        # Other Curia roles (Assessor/Critic, Advocate) are not compliance agents
-        # and must not bypass gate enforcement.
+        # Curia alias: "auditor" is the Curia name for the audit role.
         "auditor",
     }
 )
@@ -342,7 +342,6 @@ SPAWN_TOOLS: dict[str, tuple[tuple[str, ...], bool]] = {
     "delegate_to_agent": (("name", "agent_name"), False),
     "activate_skill": (("skill", "name"), True),
     # Gemini: bare agent tools (Strategy 2)
-    "aops_core_custodiet": ((), False),
     "aops_core_qa": ((), False),
     "aops_core_audit": ((), False),
     "aops_core_butler": ((), False),
@@ -377,8 +376,6 @@ def _gate_mode(var: str, default: str = "warn") -> str:
 
 HANDOVER_GATE_MODE = _gate_mode("HANDOVER_GATE_MODE")
 QA_GATE_MODE = _gate_mode("QA_GATE_MODE")
-CUSTODIET_GATE_MODE = _gate_mode("CUSTODIET_GATE_MODE")
-CUSTODIET_TOOL_CALL_THRESHOLD = int(os.environ.get("CUSTODIET_TOOL_CALL_THRESHOLD", "50"))
 HYDRATION_GATE_MODE = os.environ.get("HYDRATION_GATE_MODE", "off")
 COMMIT_GATE_MODE = _gate_mode("COMMIT_GATE_MODE")
 
@@ -465,8 +462,7 @@ def get_tool_category(tool_name: str, tool_input: dict[str, Any] | None = None) 
 
     # 2. Compliance agent spawns (Agent/Task + compliance subagent_type, or tool_name
     # is the compliance agent name directly) are infrastructure.
-    # This ensures dispatching the custodiet is never blocked by any gate,
-    # including custodiet's own ops-threshold policy.
+    # This ensures dispatching QA/audit agents is never blocked by any gate.
     extracted_st, _ = extract_subagent_type(tool_name, tool_input or {})
     if extracted_st and extracted_st in COMPLIANCE_SUBAGENT_TYPES:
         return "infrastructure"

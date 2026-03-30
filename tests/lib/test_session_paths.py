@@ -2,6 +2,7 @@ import os
 from unittest.mock import patch
 
 import pytest
+
 from lib.session_paths import _is_gemini_session, get_gate_file_path, get_session_short_hash
 
 
@@ -12,8 +13,8 @@ def _clear_env_vars(monkeypatch):
         "AOPS_SESSIONS",
         "AOPS_SESSION_STATE_DIR",
         "AOPS_HOOK_LOG_PATH",
-        "AOPS_GATE_FILE_CUSTODIET",
-        "AOPS_GATE_FILE_CUSTODIET",
+        "AOPS_GATE_FILE_QA",
+        "AOPS_GATE_FILE_QA",
         "GEMINI_SESSION_ID",
     )
     for var in ENV_VARS_TO_CLEAR:
@@ -57,9 +58,9 @@ class TestGetGateFilePath:
 
     def test_env_override(self):
         """Test that AOPS_GATE_FILE_<GATE> environment variable overrides the path."""
-        with patch.dict(os.environ, {"AOPS_GATE_FILE_CUSTODIET": "/tmp/override-custodiet.md"}):
-            path = get_gate_file_path("custodiet", "session-123")
-            assert str(path) == "/tmp/override-custodiet.md"
+        with patch.dict(os.environ, {"AOPS_GATE_FILE_QA": "/tmp/override-qa.md"}):
+            path = get_gate_file_path("qa", "session-123")
+            assert str(path) == "/tmp/override-qa.md"
 
     @patch("lib.session_paths.Path.home")
     @patch("lib.session_paths.get_claude_project_folder")
@@ -69,7 +70,7 @@ class TestGetGateFilePath:
         mock_project_folder.return_value = "-home-user-project"
 
         session_id = "550e8400-e29b-41d4-a716-446655440000"
-        gate = "custodiet"
+        gate = "qa"
         date = "2024-05-20"
 
         path = get_gate_file_path(gate, session_id, date=date)
@@ -77,11 +78,7 @@ class TestGetGateFilePath:
         # Expected: ~/.claude/projects/<project>/<date>-<shorthash>-<gate>.md
         # Short hash for "550e8400..." is "550e8400"
         expected_path = (
-            tmp_path
-            / ".claude"
-            / "projects"
-            / "-home-user-project"
-            / "20240520-550e8400-custodiet.md"
+            tmp_path / ".claude" / "projects" / "-home-user-project" / "20240520-550e8400-qa.md"
         )
         assert path == expected_path
         # Verify parent directory was created (via mkdir(parents=True, exist_ok=True))
@@ -96,14 +93,14 @@ class TestGetGateFilePath:
         (tmp_path / "gemini-logs").mkdir(parents=True)
 
         session_id = "gemini-session-123"
-        gate = "custodiet"
+        gate = "qa"
         date = "2024-05-20"
 
         path = get_gate_file_path(gate, session_id, date=date)
 
         # Short hash for "gemini-session-123" will be a SHA256 prefix because of '-'
         short_hash = get_session_short_hash(session_id)
-        expected_path = tmp_path / "gemini-logs" / f"20240520-{short_hash}-custodiet.md"
+        expected_path = tmp_path / "gemini-logs" / f"20240520-{short_hash}-qa.md"
 
         assert path == expected_path
 
@@ -117,10 +114,10 @@ class TestGetGateFilePath:
 
         # Use AOPS_SESSION_STATE_DIR to trigger Gemini detection for a UUID session
         with patch.dict(os.environ, {"AOPS_SESSION_STATE_DIR": str(gemini_state_dir)}):
-            path = get_gate_file_path("custodiet", session_id, date="2024-05-20")
+            path = get_gate_file_path("qa", session_id, date="2024-05-20")
 
             assert "/.gemini/tmp/fakehash/logs" in str(path)
-            assert "20240520-550e8400-custodiet.md" in str(path)
+            assert "20240520-550e8400-qa.md" in str(path)
             assert path.parent == gemini_logs_dir
 
     def test_gemini_missing_logs_dir_raises_error(self):
@@ -130,4 +127,4 @@ class TestGetGateFilePath:
                 with pytest.raises(
                     ValueError, match="Gemini session detected but no logs directory configured"
                 ):
-                    get_gate_file_path("custodiet", "some-id")
+                    get_gate_file_path("qa", "some-id")

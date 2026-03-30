@@ -19,6 +19,7 @@ AOPS_CORE_DIR = HOOK_DIR.parent
 if str(AOPS_CORE_DIR) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE_DIR))
 
+from hooks.schemas import HookContext
 from lib.gate_model import GateResult, GateVerdict
 from lib.session_paths import (
     get_all_gate_file_paths,
@@ -27,8 +28,6 @@ from lib.session_paths import (
     get_session_status_dir,
 )
 from lib.session_state import SessionState
-
-from hooks.schemas import HookContext
 
 
 def set_persistent_env(env_dict: dict[str, str]):
@@ -183,8 +182,6 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
     # When missing, gate_config.py falls back to "warn"; we persist that
     # so subsequent hooks in this session also get the defaults.
     from hooks.gate_config import (
-        CUSTODIET_GATE_MODE,
-        CUSTODIET_TOOL_CALL_THRESHOLD,
         HANDOVER_GATE_MODE,
         QA_GATE_MODE,
     )
@@ -192,8 +189,6 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
     gate_mode_vars = {
         "HANDOVER_GATE_MODE": HANDOVER_GATE_MODE,
         "QA_GATE_MODE": QA_GATE_MODE,
-        "CUSTODIET_GATE_MODE": CUSTODIET_GATE_MODE,
-        "CUSTODIET_TOOL_CALL_THRESHOLD": str(CUSTODIET_TOOL_CALL_THRESHOLD),
     }
     for var, val in gate_mode_vars.items():
         if not os.environ.get(var):

@@ -117,17 +117,13 @@ class TestBuildDockerCmd:
     def test_forwards_gate_mode_vars(self):
         """Gate mode env vars must reach the hook subprocess inside the container."""
         env = {
-            "CUSTODIET_GATE_MODE": "block",
             "HANDOVER_GATE_MODE": "warn",
             "QA_GATE_MODE": "warn",
-            "CUSTODIET_TOOL_CALL_THRESHOLD": "50",
         }
         cmd = self._build(env=env)
         env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
-        assert "CUSTODIET_GATE_MODE=block" in env_args
         assert "HANDOVER_GATE_MODE=warn" in env_args
         assert "QA_GATE_MODE=warn" in env_args
-        assert "CUSTODIET_TOOL_CALL_THRESHOLD=50" in env_args
 
     def test_forwards_aops_prefixed_env(self):
         """AOPS_* vars are forwarded (e.g. ACA_DATA, AOPS_SESSIONS)."""

@@ -7,8 +7,8 @@ import pytest
 from hooks.gate_config import extract_subagent_type
 from hooks.router import HookRouter
 from hooks.schemas import HookContext
+
 from lib.gate_model import GateVerdict
-from lib.gates.definitions import GATE_CONFIGS
 from lib.gates.engine import GenericGate
 from lib.gates.registry import GateRegistry
 from lib.session_state import SessionState
@@ -51,11 +51,11 @@ def test_router_normalize_subagent_type_extraction(router):
         "hook_event_name": "PreToolUse",
         "session_id": "main-session",
         "tool_name": "Task",
-        "tool_input": {"subagent_type": "custodiet", "prompt": "test"},
+        "tool_input": {"subagent_type": "qa", "prompt": "test"},
     }
 
     ctx = router.normalize_input(raw_input)
-    assert ctx.subagent_type == "custodiet"
+    assert ctx.subagent_type == "qa"
     assert ctx.tool_name == "Task"
 
 
@@ -161,7 +161,9 @@ class TestSubagentInternalToolsSkipGates:
             f"[{scenario['id']}] Subagent internal tool call should skip gates, "
             f"got {result.verdict.value if result else 'N/A'}"
         )
-        assert state.get_gate("custodiet").ops_since_open == 0
+        # Verify no ops were incremented (subagent internals skip gates)
+        for _gate_name, gs in state.gates.items():
+            assert gs.ops_since_open == 0
 
 
 class TestSpawnToolNotClassifiedAsSubagent:
@@ -222,23 +224,26 @@ class TestSubagentEventsNotSubagent:
 
 def test_regex_hook_event_matching():
     """Test that GenericGate supports regex in hook_event matching."""
-    from lib.gate_types import GateCondition
+    from lib.gate_types import GateCondition, GateConfig
 
     state = SessionState.create("s1")
 
-    cond = GateCondition(
-        hook_event="^(SubagentStop|PostToolUse)$", subagent_type_pattern="custodiet"
-    )
+    cond = GateCondition(hook_event="^(SubagentStop|PostToolUse)$", subagent_type_pattern="audit")
 
-    custodiet_config = next(g for g in GATE_CONFIGS if g.name == "custodiet")
-    gate = GenericGate(custodiet_config)
+    # Create a minimal gate config for testing regex matching
+    test_config = GateConfig(
+        name="test_regex",
+        description="Test gate for regex matching",
+        policies=[],
+    )
+    gate = GenericGate(test_config)
 
     # Matches
     assert (
         gate._evaluate_condition(
             cond,
-            HookContext(session_id="s1", hook_event="SubagentStop", subagent_type="custodiet"),
-            state.get_gate("custodiet"),
+            HookContext(session_id="s1", hook_event="SubagentStop", subagent_type="audit"),
+            state.get_gate("test_regex"),
             state,
         )
         is True
@@ -246,8 +251,8 @@ def test_regex_hook_event_matching():
     assert (
         gate._evaluate_condition(
             cond,
-            HookContext(session_id="s1", hook_event="PostToolUse", subagent_type="custodiet"),
-            state.get_gate("custodiet"),
+            HookContext(session_id="s1", hook_event="PostToolUse", subagent_type="audit"),
+            state.get_gate("test_regex"),
             state,
         )
         is True
@@ -257,8 +262,8 @@ def test_regex_hook_event_matching():
     assert (
         gate._evaluate_condition(
             cond,
-            HookContext(session_id="s1", hook_event="PreToolUse", subagent_type="custodiet"),
-            state.get_gate("custodiet"),
+            HookContext(session_id="s1", hook_event="PreToolUse", subagent_type="audit"),
+            state.get_gate("test_regex"),
             state,
         )
         is False
@@ -266,8 +271,8 @@ def test_regex_hook_event_matching():
     assert (
         gate._evaluate_condition(
             cond,
-            HookContext(session_id="s1", hook_event="Stop", subagent_type="custodiet"),
-            state.get_gate("custodiet"),
+            HookContext(session_id="s1", hook_event="Stop", subagent_type="audit"),
+            state.get_gate("test_regex"),
             state,
         )
         is False
@@ -284,10 +289,8 @@ class TestExtractSubagentType:
 
     def test_claude_task_extracts_subagent_type(self):
         """Claude's Task tool extracts subagent_type param."""
-        result, is_skill = extract_subagent_type(
-            "Task", {"subagent_type": "custodiet", "prompt": "check"}
-        )
-        assert result == "custodiet"
+        result, is_skill = extract_subagent_type("Task", {"subagent_type": "qa", "prompt": "check"})
+        assert result == "qa"
         assert is_skill is False
 
     def test_claude_skill_extracts_skill_name(self):
@@ -306,8 +309,8 @@ class TestExtractSubagentType:
 
     def test_gemini_delegate_extracts_agent_name_fallback(self):
         """Gemini's delegate_to_agent falls back to agent_name param."""
-        result, is_skill = extract_subagent_type("delegate_to_agent", {"agent_name": "custodiet"})
-        assert result == "custodiet"
+        result, is_skill = extract_subagent_type("delegate_to_agent", {"agent_name": "audit"})
+        assert result == "audit"
         assert is_skill is False
 
     def test_gemini_activate_skill_extracts_skill(self):
@@ -357,7 +360,7 @@ class TestExtractSubagentType:
 _LOG_FILE = "cc_hooks_9f3e3217-fb40-44cf-8a93-f78b6b292e29.jsonl"
 
 # Line 38, ts=2026-03-10T03:26:14.835878
-# Main session PreToolUse for Agent tool spawning custodiet.
+# Main session PreToolUse for Agent tool spawning compliance.
 _STDIN_SPAWN_AGENT_COMPLIANCE = {
     "session_id": "9f3e3217-fb40-44cf-8a93-f78b6b292e29",
     "transcript_path": "/home/debian/.claude/projects/-opt-nic--aops-crew-michelle-61-aops/9f3e3217-fb40-44cf-8a93-f78b6b292e29.jsonl",
@@ -367,35 +370,35 @@ _STDIN_SPAWN_AGENT_COMPLIANCE = {
     "tool_name": "Agent",
     "tool_input": {
         "description": "Compliance check",
-        "prompt": "/opt/nic/.aops/sessions/hooks/20260310-9f3e3217-custodiet.md",
-        "subagent_type": "aops-core:custodiet",
+        "prompt": "/opt/nic/.aops/sessions/hooks/20260310-9f3e3217-compliance.md",
+        "subagent_type": "aops-core:audit",
     },
     "tool_use_id": "toolu_017q4iiDqdFQfdEvCs2BTTz4",
 }
 
 # Line 39, ts=2026-03-10T03:26:15.296250
-# SubagentStart fires in main session context about the custodiet subagent.
+# SubagentStart fires in main session context about the compliance subagent.
 _STDIN_SUBAGENT_START = {
     "session_id": "9f3e3217-fb40-44cf-8a93-f78b6b292e29",
     "transcript_path": "/home/debian/.claude/projects/-opt-nic--aops-crew-michelle-61-aops/9f3e3217-fb40-44cf-8a93-f78b6b292e29.jsonl",
     "cwd": "/opt/nic/.aops/crew/michelle_61/aops",
     "agent_id": "aa27af7b50acfae7f",
-    "agent_type": "aops-core:custodiet",
+    "agent_type": "aops-core:audit",
     "hook_event_name": "SubagentStart",
 }
 
 # Line 40, ts=2026-03-10T03:26:16.907683
-# Subagent internal PreToolUse — custodiet reading its audit file.
+# Subagent internal PreToolUse — compliance reading its audit file.
 _STDIN_SUBAGENT_INTERNAL_READ = {
     "session_id": "9f3e3217-fb40-44cf-8a93-f78b6b292e29",
     "transcript_path": "/home/debian/.claude/projects/-opt-nic--aops-crew-michelle-61-aops/9f3e3217-fb40-44cf-8a93-f78b6b292e29.jsonl",
     "cwd": "/opt/nic/.aops/crew/michelle_61/aops",
     "permission_mode": "bypassPermissions",
     "agent_id": "aa27af7b50acfae7f",
-    "agent_type": "aops-core:custodiet",
+    "agent_type": "aops-core:audit",
     "hook_event_name": "PreToolUse",
     "tool_name": "Read",
-    "tool_input": {"file_path": "/opt/nic/.aops/sessions/hooks/20260310-9f3e3217-custodiet.md"},
+    "tool_input": {"file_path": "/opt/nic/.aops/sessions/hooks/20260310-9f3e3217-compliance.md"},
     "tool_use_id": "toolu_01KTvJFkfJZWCkAMGRmD5X8t",
 }
 
@@ -416,14 +419,14 @@ _STDIN_MAIN_SESSION_BASH = {
 }
 
 # Line 68, ts=2026-03-10T03:27:05.009187
-# SubagentStop fires in main session context after custodiet finishes.
+# SubagentStop fires in main session context after compliance finishes.
 _STDIN_SUBAGENT_STOP = {
     "session_id": "9f3e3217-fb40-44cf-8a93-f78b6b292e29",
     "transcript_path": "/home/debian/.claude/projects/-opt-nic--aops-crew-michelle-61-aops/9f3e3217-fb40-44cf-8a93-f78b6b292e29.jsonl",
     "cwd": "/opt/nic/.aops/crew/michelle_61/aops",
     "permission_mode": "bypassPermissions",
     "agent_id": "aa27af7b50acfae7f",
-    "agent_type": "aops-core:custodiet",
+    "agent_type": "aops-core:audit",
     "hook_event_name": "SubagentStop",
     "stop_hook_active": False,
     "agent_transcript_path": "/home/debian/.claude/projects/-opt-nic--aops-crew-michelle-61-aops/9f3e3217-fb40-44cf-8a93-f78b6b292e29/subagents/agent-aa27af7b50acfae7f.jsonl",
@@ -431,7 +434,7 @@ _STDIN_SUBAGENT_STOP = {
 }
 
 # Line 69, ts=2026-03-10T03:27:05 (approx)
-# PostToolUse for Agent after custodiet spawn completes.
+# PostToolUse for Agent after compliance spawn completes.
 _STDIN_SPAWN_AGENT_POSTTOOLUSE = {
     "session_id": "9f3e3217-fb40-44cf-8a93-f78b6b292e29",
     "transcript_path": "/home/debian/.claude/projects/-opt-nic--aops-crew-michelle-61-aops/9f3e3217-fb40-44cf-8a93-f78b6b292e29.jsonl",
@@ -441,12 +444,12 @@ _STDIN_SPAWN_AGENT_POSTTOOLUSE = {
     "tool_name": "Agent",
     "tool_input": {
         "description": "Compliance check",
-        "prompt": "/opt/nic/.aops/sessions/hooks/20260310-9f3e3217-custodiet.md",
-        "subagent_type": "aops-core:custodiet",
+        "prompt": "/opt/nic/.aops/sessions/hooks/20260310-9f3e3217-compliance.md",
+        "subagent_type": "aops-core:audit",
     },
     "tool_response": {
         "status": "completed",
-        "prompt": "/opt/nic/.aops/sessions/hooks/20260310-9f3e3217-custodiet.md",
+        "prompt": "/opt/nic/.aops/sessions/hooks/20260310-9f3e3217-compliance.md",
         "agentId": "aa27af7b50acfae7f",
         "content": [{"type": "text", "text": "(truncated)"}],
     },
@@ -489,7 +492,7 @@ class TestE2EGateDispatchFromRawStdin:
 
         # Normalization: detected as subagent via agent_id field
         assert ctx.is_subagent is True
-        assert ctx.subagent_type == "aops-core:custodiet"
+        assert ctx.subagent_type == "aops-core:audit"
         assert ctx.hook_event == "PreToolUse"
         assert ctx.tool_name == "Read"
 
@@ -501,7 +504,7 @@ class TestE2EGateDispatchFromRawStdin:
     # --- Spawn tool (Agent) for compliance agent gets compliance bypass ---
 
     def test_spawn_agent_compliance_not_denied(self, router, state_fresh):
-        """Agent tool spawning custodiet is never denied.
+        """Agent tool spawning compliance is never denied.
 
         Source: {_LOG_FILE} line 38, ts=2026-03-10T03:26:14.835878
         The subagent_type is extracted from tool_input, but since the spawn
@@ -513,7 +516,7 @@ class TestE2EGateDispatchFromRawStdin:
         ctx = router.normalize_input(stdin)
 
         # Normalization: subagent_type extracted from Agent tool_input
-        assert ctx.subagent_type == "aops-core:custodiet"
+        assert ctx.subagent_type == "aops-core:audit"
         assert ctx.hook_event == "PreToolUse"
         assert ctx.tool_name == "Agent"
         # Spawn tool calls stay in main session context — is_subagent is False
@@ -539,7 +542,7 @@ class TestE2EGateDispatchFromRawStdin:
 
         assert ctx.is_subagent is False
         assert ctx.hook_event == "SubagentStart"
-        assert ctx.subagent_type == "aops-core:custodiet"
+        assert ctx.subagent_type == "aops-core:audit"
 
     def test_subagent_stop_not_classified_as_subagent(self, router):
         """SubagentStop fires in the main agent's context, is_subagent forced False.
@@ -553,7 +556,7 @@ class TestE2EGateDispatchFromRawStdin:
 
         assert ctx.is_subagent is False
         assert ctx.hook_event == "SubagentStop"
-        assert ctx.subagent_type == "aops-core:custodiet"
+        assert ctx.subagent_type == "aops-core:audit"
 
     # --- Main session non-spawn tool call — gates evaluate normally ---
 
@@ -589,7 +592,7 @@ class TestE2EGateDispatchFromRawStdin:
         stdin = copy.deepcopy(_STDIN_SPAWN_AGENT_POSTTOOLUSE)
         ctx = router.normalize_input(stdin)
 
-        assert ctx.subagent_type == "aops-core:custodiet"
+        assert ctx.subagent_type == "aops-core:audit"
         assert ctx.hook_event == "PostToolUse"
         assert ctx.tool_name == "Agent"
 

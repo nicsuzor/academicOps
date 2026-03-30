@@ -11,6 +11,5 @@ import os
 # hooks.gate_config is collected by pytest.
 os.environ.setdefault("HANDOVER_GATE_MODE", "warn")
 os.environ.setdefault("QA_GATE_MODE", "block")
-os.environ.setdefault("CUSTODIET_GATE_MODE", "block")
 os.environ.setdefault("HYDRATION_GATE_MODE", "off")
 os.environ.setdefault("COMMIT_GATE_MODE", "deny")
