@@ -19,7 +19,7 @@
     },
     "PKB_MCP_URL": {
       "description": "HTTP endpoint for pkb MCP server (e.g., http://localhost:3001/mcp)",
-      "sensitive": false
+        "sensitive": true
     }
   },
   "mcpServers": "./.mcp.json"
