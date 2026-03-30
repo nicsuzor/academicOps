@@ -15,7 +15,7 @@ GEMINI_REMOTE_URL := git@github.com:nicsuzor/academicOps.git
 
 # Extension names
 GEMINI_EXT_NAME := aops-core
-CLAUDE_PLUGIN_NAME := aops-core@aops
+CLAUDE_PLUGIN_NAME := aops-core@academicOps
 
 # Platform detection for binaries
 UNAME_S := $(shell uname -s)
@@ -109,7 +109,7 @@ cache = pathlib.Path.home() / '.claude/plugins/cache/aops/aops-core'; \
 uninstall-dev:
 	@echo "Restoring release marketplace ($(DIST_REPO))..."
 	@command claude plugin marketplace add $(DIST_REPO)
-	@command claude plugin marketplace update aops
+	@command claude plugin marketplace update academicOps
 	@command claude plugin install $(CLAUDE_PLUGIN_NAME)
 	@echo "✓ Release marketplace restored"
 
@@ -138,7 +138,7 @@ install-claude:
 	@echo "  Source: $(DIST_REPO_URL)"
 	-command claude plugin uninstall $(CLAUDE_PLUGIN_NAME)
 	@command claude plugin marketplace add $(DIST_REPO) && \
-	command claude plugin marketplace update aops && \
+	command claude plugin marketplace update academicOps && \
 	command claude plugin install $(CLAUDE_PLUGIN_NAME) && \
 	echo "✓ Claude Code plugin installed"
 
