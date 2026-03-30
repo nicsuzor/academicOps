@@ -134,7 +134,7 @@ Reconstructs the day's attention flow from session summary JSONs in `$AOPS_SESSI
 
 A 337-minute autonomous session with 0 prompts costs the human nothing — it's fire-and-forget. A 5-minute session with 4 prompts is where they were actively thinking. Lead with where the human's attention actually went, not where the most output was produced.
 
-**Use the user's actual prompts as ground truth**: The `description` field in user prompt timeline events tells you what the human was trying to do. Agent-generated `summary` fields are abstractions of abstractions. When writing Session Flow entries, reference the prompt content (e.g., "debugged PKB search for blood test tips" not "PKB lookup").
+**Use the user's actual prompts as ground truth**: The `description` field in user prompt timeline events tells you what the human was trying to do. Agent-generated `summary` fields are abstractions of abstractions. When writing Session Flow entries, reference the prompt content (e.g., "debugged PKB search for [[specific topic]]" not "PKB lookup").
 
 **Categories of attention** (derived from prompt count):
 
@@ -144,7 +144,7 @@ A 337-minute autonomous session with 0 prompts costs the human nothing — it's 
 - **Autonomous** (0 prompts): Agent ran without human involvement. Zero attention cost regardless of duration or output volume.
 - **Frustration cost**: Sessions that should have been quick but weren't (broken deploys, failed builds, repeated attempts). The attention cost is disproportionate to the clock time. Identify these by multiple short sessions on the same topic, or sessions where prompt content shows escalating frustration.
 
-**What counts as a distraction vs. conductor work**: A quick check on an unrelated project is conductor work if it's a deliberate scan (1 prompt, moved on). It's a distraction if it pulls the user into reactive engagement (3+ prompts on something unplanned), or if a "quick check" turns into a 2-hour tangent. Judge by prompt count and what happened after — did the user return to their main thread, or did they drift?
+**What counts as a distraction vs. conductor work**: A quick check on an unrelated project is conductor work if it's a deliberate scan (1 prompt, moved on). It's a distraction if it pulls the user into reactive engagement (2+ prompts on something unplanned), or if a "quick check" turns into a 2-hour tangent. Judge by prompt count and what happened after — did the user return to their main thread, or did they drift?
 
 **Data source**: Read session summary JSONs for the current day. Filter out auto-commit sessions (`commit-changed` in filename, or filename starts with `sessions-`) and polecat workers (project field matches a short hex hash, e.g. `^[a-f0-9]{7,8}$`). Use `timeline_events` where `type == "user_prompt"` for prompt count and content (the primary attention signal), `summary` for agent outcomes, `token_metrics.efficiency.session_duration_minutes` for duration context, and `project` for context-switch detection.
 
@@ -163,7 +163,7 @@ A reference section for traceability — what sessions ran, what PRs merged, wha
 
 **Quality guidance**: This section should be _scannable but not prominent_. It's reference material. If GitHub CLI is unavailable or no sessions ran, the section should be minimal ("No sessions today") rather than filled with empty tables and "n/a" markers.
 
-**Session log entries must be meaningful the next morning.** Use the first user prompt's `description` (truncated) as the session description, not the agent-generated `summary`. "Pulled task-7275a7b8" is useless — what was the task about? "Reviewed swarm-supervisor skill update" — what was the update? Include enough context that someone reading the log tomorrow can reconstruct what happened without opening the session JSON. Include the prompt count (e.g., "2p") so the reader can distinguish interactive work from autonomous runs at a glance.
+**Session log entries must be meaningful the next morning.** For sessions with user prompts, use the first user prompt's `description` (truncated) as the session description, not the agent-generated `summary`. For 0-prompt (autonomous) sessions, base the description on what the agent produced — e.g., `autonomous: summarized AXIOMS.md for daily skill update`. "Pulled task-7275a7b8" is useless — what was the task about? "Reviewed swarm-supervisor skill update" — what was the update? Include enough context that someone reading the log tomorrow can reconstruct what happened without opening the session JSON. Include the prompt count (e.g., "2p" or "0p") so the reader can distinguish interactive work from autonomous runs at a glance.
 
 Accomplishments should be linked to their corresponding tasks. Every `[x]` item should reference a task ID where possible.
 

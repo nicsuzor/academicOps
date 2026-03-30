@@ -46,14 +46,14 @@ mcp__pkb__list_tasks(status="done", limit=20)
 
 ### Step 4.2: Load and Merge Sessions
 
-Read each session JSON from `$ACA_SESSIONS/summaries/YYYYMMDD*.json`. Extract:
+Read each session JSON from `$AOPS_SESSIONS/summaries/YYYYMMDD*.json`. Extract:
 
 - Session ID, project, summary
 - Accomplishments
 - Timeline entries
 - Skill compliance metrics
 - Framework feedback: workflow_improvements, jit_context_needed, context_distractions, user_mood
-- **User prompt count and content**: Count `timeline_events` where `type == "user_prompt"`. Extract the `description` field of each (truncate to ~80 chars). This is the primary signal for human attention cost.
+- **User prompt count and content**: Count `timeline_events` where `type == "user_prompt"`. Extract the `description` field of each (truncate to ~80 chars). This is the primary signal for human attention cost. If `timeline_events` is absent (older session format), use `user_prompts` if present; otherwise classify engagement as **unknown** and note it in the log rather than defaulting to Autonomous.
 
 **Session engagement classification** (derived from user prompt count):
 
