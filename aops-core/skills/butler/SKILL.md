@@ -72,7 +72,9 @@ Common traps:
 - Assuming polecats can only do queue work — they are fully-featured agents with complete framework context (including plugin, PKB, MCP servers, and framework files)
 - Routing to the first familiar mechanism instead of mapping all options
 
-**The pre-flight check**: Before answering, ask yourself: "Have I actually verified what each mechanism can do, or am I pattern-matching from memory?" If the latter, investigate first.
+**Codebase state claims require primary sources.** Before asserting what exists or doesn't exist in the codebase, verify against the code itself — not issues, PRs, or task descriptions. Secondary sources describe problems *within* things; they do not establish that the thing doesn't exist. Reading three issues about E2E test failures does not mean there are no E2E tests — it means there are failures worth investigating.
+
+**The pre-flight check**: Before answering, ask yourself: "Have I actually verified what each mechanism can do, or am I pattern-matching from memory? Have I checked the code, or am I inferring from secondary sources?" If the latter, investigate first.
 
 ### Butler → Planner Handoff
 
