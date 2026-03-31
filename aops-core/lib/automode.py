@@ -107,11 +107,18 @@ def _read_user_settings() -> tuple[dict, Path]:
 
 
 def is_installed() -> bool:
-    """Check if aops autoMode rules are already in user settings."""
+    """Check if aops autoMode rules are already in user settings.
+
+    Uses the presence of "P#42" in soft_deny as a fingerprint for aops rules.
+    LOAD-BEARING: If the P#42 rule text is renamed or removed from plugin.json,
+    this fingerprint silently breaks — sessions will re-install on every start
+    (if P#42 text no longer contains "P#42") or never re-install after a rule
+    reset (if P#42 disappears entirely). Update this fingerprint string if the
+    P#42 rule identifier changes.
+    """
     settings, _ = _read_user_settings()
     auto_mode = settings.get("autoMode", {})
     soft_deny = auto_mode.get("soft_deny", [])
-    # Check for a distinctive aops rule as a fingerprint
     return any("P#42" in rule for rule in soft_deny)
 
 

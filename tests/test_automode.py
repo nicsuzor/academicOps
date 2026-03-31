@@ -205,6 +205,35 @@ class TestInstall:
         assert "CC auto-mode defaults" in msg
 
 
+class TestPolekatDefaultsContainAopsRules:
+    """Verify polecat/defaults/claude-settings.json contains all aops autoMode rules."""
+
+    @pytest.fixture()
+    def plugin_rules(self):
+        plugin_path = Path(__file__).parent.parent / "aops-core" / ".claude-plugin" / "plugin.json"
+        manifest = json.loads(plugin_path.read_text())
+        return manifest["autoMode"]
+
+    @pytest.fixture()
+    def polecat_automode(self):
+        polecat_path = (
+            Path(__file__).parent.parent / "polecat" / "defaults" / "claude-settings.json"
+        )
+        settings = json.loads(polecat_path.read_text())
+        return settings["autoMode"]
+
+    def test_environment_matches(self, plugin_rules, polecat_automode):
+        assert polecat_automode["environment"] == plugin_rules["environment"]
+
+    def test_allow_rules_present(self, plugin_rules, polecat_automode):
+        for rule in plugin_rules["allow"]:
+            assert rule in polecat_automode["allow"], f"Missing allow rule: {rule[:60]}..."
+
+    def test_soft_deny_rules_present(self, plugin_rules, polecat_automode):
+        for rule in plugin_rules["soft_deny"]:
+            assert rule in polecat_automode["soft_deny"], f"Missing soft_deny rule: {rule[:60]}..."
+
+
 class TestPluginJsonAndConfigInSync:
     """Verify plugin.json autoMode and automode-rules.json stay in sync."""
 
