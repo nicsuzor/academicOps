@@ -361,6 +361,7 @@ Read existing `$AOPS_SESSIONS/synthesis.json` if it exists, then merge your data
 {
   "generated": "ISO timestamp",
   "date": "YYYYMMDD",
+  "daily_narrative": "Synthesized summary from Step 5.3",
   "daily_story": [
     "You started the morning reviewing the HDR extension request",
     "Got pulled into dashboard debugging around 10am",
