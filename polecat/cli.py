@@ -874,6 +874,21 @@ def init(ctx, project):
             sys.exit(1)
         print("\n✓ All mirrors ready")
 
+    # Validate AOPS_SESSIONS is a git repo
+    sessions_path = _get_sessions_base()
+    if not sessions_path.is_dir():
+        print(f"\n✗ AOPS_SESSIONS directory does not exist: {sessions_path}", file=sys.stderr)
+        sys.exit(1)
+    if not (sessions_path / ".git").exists():
+        print(
+            f"\n✗ AOPS_SESSIONS is not a git repo: {sessions_path}\n"
+            f"  Session data will not sync without a git repo.\n"
+            f"  Fix: cd {sessions_path} && git init && git remote add origin <url>",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    print(f"✓ Sessions repo: {sessions_path}")
+
 
 def _clear_stale_git_lock(repo_path: Path) -> bool:
     """Remove stale .git/index.lock if no process holds it.
@@ -1265,14 +1280,20 @@ def sync(ctx, check, quiet, mirrors_only):
                 if not success:
                     needs_attention.append(project_name)
 
-        # Also sync AOPS_SESSIONS if defined
-        sessions_dir = os.environ.get("AOPS_SESSIONS")
-        if sessions_dir:
-            sessions_path = Path(os.path.expanduser(sessions_dir))
-            if sessions_path.is_dir():
-                success, msg = _sync_working_repo(sessions_path, auto_commit=True, quiet=quiet)
-                if not success or not quiet:
-                    print(f"  {msg}")
+        # Also sync AOPS_SESSIONS — fail fast if not a git repo
+        sessions_path = _get_sessions_base()
+        if not (sessions_path / ".git").exists():
+            print(
+                f"  ✗ sessions: not a git repo ({sessions_path}). Run 'polecat init'.",
+                file=sys.stderr,
+            )
+            needs_attention.append("sessions")
+        else:
+            success, msg = _sync_working_repo(sessions_path, auto_commit=True, quiet=quiet)
+            if not success or not quiet:
+                print(f"  {msg}")
+            if not success:
+                needs_attention.append("sessions")
 
         if not quiet:
             if needs_attention:
