@@ -1,8 +1,9 @@
 {
   "_comment": [
-    "academicOps auto mode classifier rules.",
-    "These are ADDITIONAL rules appended to Claude Code's built-in defaults.",
-    "Run `scripts/setup-automode.sh` to merge with CC defaults and install.",
+    "academicOps auto mode classifier rules (LEGACY FALLBACK).",
+    "The canonical source is now .claude-plugin/plugin.json (autoMode field).",
+    "This file + setup-automode.sh remain as a workaround for CC versions that",
+    "don't read autoMode from plugin.json. Keep both in sync.",
     "See https://www.anthropic.com/engineering/claude-code-auto-mode for background."
   ],
   "environment": [
