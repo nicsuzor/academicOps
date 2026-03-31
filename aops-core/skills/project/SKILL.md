@@ -1,5 +1,7 @@
 ---
 name: project
+type: skill
+category: instruction
 description: >
   Scaffold research project repositories with smart defaults — repo creation,
   directory structure, CI/CD, documentation, and PKB integration in one pass.

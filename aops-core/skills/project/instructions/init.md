@@ -8,7 +8,7 @@ about project type, tooling, and preferences. Now build it.
 ```bash
 gh repo create <org>/<project-name> --<visibility> --clone
 cd <project-name>
-git checkout -b main  # ensure default branch
+git checkout -B main  # ensure default branch (creates or resets to main)
 ```
 
 If the user wants to initialise an existing local directory instead, skip repo
@@ -83,18 +83,18 @@ replace with the project's primary constraint.
 
 ## Setup
 
-\```bash
+```bash
 git clone <repo-url>
 cd <project-name>
 uv sync
 pre-commit install
-\```
+```
 
 ## Directory Layout
 
-\```
+```
 <generated tree of what was actually created>
-\```
+```
 
 ## Team
 
@@ -412,7 +412,7 @@ clean-targets: ["target", "dbt_packages"]
 **`dbt_project/profiles.yml`**:
 
 ```yaml
-<project_name>:
+'<project_name>':
   target: dev
   outputs:
     dev:
@@ -515,7 +515,7 @@ Add `data/raw/` to DVC tracking. Ensure `.dvc/` is committed but
 Create a project node in the personal knowledge base:
 
 ```
-mcp__pkb-user__create(
+mcp__pkb__create_task(
   title="Project: <title>",
   type="project",
   body="<description from Phase 1>",
