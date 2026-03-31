@@ -1,6 +1,6 @@
 {
   "name": "aops-core",
-  "version": "0.3.16-dev.69",
+  "version": "0.3.16-dev.70",
   "description": "Core academicOps framework - skills, agents, hooks, and tools for research workflow automation",
   "author": {
     "name": "Nicolas Suzor"
@@ -23,7 +23,7 @@
       "title": "PKB Server URL",
       "description": "HTTP endpoint for pkb MCP server (e.g., http://localhost:3001/mcp)",
       "type": "string",
-      "sensitive": true
+      "sensitive": false
     }
   },
   "mcpServers": "./.mcp.json"
