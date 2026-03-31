@@ -11,11 +11,11 @@ INSTALL_BIN := $(if $(USER_OPT),$(USER_OPT)/bin,$(HOME)/.local/bin)
 CRON_SCRIPT := $(AOPS_ROOT)/scripts/repo-sync-cron.sh
 DIST_REPO := nicsuzor/academicOps
 DIST_REPO_URL := https://github.com/$(DIST_REPO)
-GEMINI_REMOTE_URL := git@github.com:nicsuzor/academicOps.git
+GEMINI_REMOTE_URL := https://github.com/nicsuzor/academicOps.git
 
 # Extension names
 GEMINI_EXT_NAME := aops-core
-CLAUDE_PLUGIN_NAME := aops-core@aops
+CLAUDE_PLUGIN_NAME := aops-core@academicOps
 
 # Platform detection for binaries
 UNAME_S := $(shell uname -s)
@@ -91,7 +91,7 @@ install-dev:
 import json, shutil, pathlib; \
 f = pathlib.Path.home() / '.claude/plugins/installed_plugins.json'; \
 active = json.load(open(f))['plugins'].get('$(CLAUDE_PLUGIN_NAME)', [{}])[-1].get('installPath', '') if f.exists() else ''; \
-cache = pathlib.Path.home() / '.claude/plugins/cache/aops/aops-core'; \
+cache = pathlib.Path.home() / '.claude/plugins/cache/academicOps/aops-core'; \
 [shutil.rmtree(v) or print(f'  removed {v.name}') for v in cache.iterdir() if v.is_dir() and str(v) != active] if cache.exists() else None \
 "
 	@echo "Configuring local Claude marketplace (overrides release source)..."
@@ -102,14 +102,14 @@ cache = pathlib.Path.home() / '.claude/plugins/cache/aops/aops-core'; \
 	@command gemini extensions install $(DIST_DIR)/aops-gemini --consent || echo "  ⚠️ Gemini install failed"
 	@$(MAKE) report-versions
 	@echo "✓ Local installation complete"
-	@echo "  ⚠️  Marketplace 'aops' now points to $(AOPS_ROOT)"
+	@echo "  ⚠️  Marketplace 'academicOps' now points to $(AOPS_ROOT)"
 	@echo "  Run 'make uninstall-dev' to restore the release marketplace."
 
 # Restore the release marketplace after local dev testing
 uninstall-dev:
 	@echo "Restoring release marketplace ($(DIST_REPO))..."
 	@command claude plugin marketplace add $(DIST_REPO)
-	@command claude plugin marketplace update aops
+	@command claude plugin marketplace update academicOps
 	@command claude plugin install $(CLAUDE_PLUGIN_NAME)
 	@echo "✓ Release marketplace restored"
 
@@ -138,7 +138,7 @@ install-claude:
 	@echo "  Source: $(DIST_REPO_URL)"
 	-command claude plugin uninstall $(CLAUDE_PLUGIN_NAME)
 	@command claude plugin marketplace add $(DIST_REPO) && \
-	command claude plugin marketplace update aops && \
+	command claude plugin marketplace update academicOps && \
 	command claude plugin install $(CLAUDE_PLUGIN_NAME) && \
 	echo "✓ Claude Code plugin installed"
 

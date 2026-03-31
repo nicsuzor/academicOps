@@ -148,8 +148,8 @@ if command -v claude &>/dev/null; then
     else
         echo "  Installing aops plugin from marketplace..."
         if claude plugin marketplace add nicsuzor/aops-dist 2>&1 | sed 's/^/    /' && \
-           claude plugin marketplace update aops 2>&1 | sed 's/^/    /' && \
-           claude plugin install aops-core@aops 2>&1 | sed 's/^/    /'; then
+           claude plugin marketplace update academicOps 2>&1 | sed 's/^/    /' && \
+           claude plugin install aops-core@academicOps 2>&1 | sed 's/^/    /'; then
             ok "aops-core plugin installed"
         else
             fail "Plugin installation failed. Try: make install-claude"

@@ -12,7 +12,7 @@ tags: [framework, index, governance, principles]
 
 # Rules Quick Reference
 
-Quick lookup for framework principles. See [[skills/butler/enforcement-map.md]] for the full tiered architecture and enforcement details.
+Quick lookup for framework principles. See [[enforcement-map.md]] for the full tiered architecture and enforcement details.
 
 ## Tier 1: Universal Axioms (always active)
 
@@ -51,7 +51,7 @@ Quick lookup for framework principles. See [[skills/butler/enforcement-map.md]] 
 
 ### Development Context
 
-**File**: [[RULES-DEV.md]] | **Agent**: Engineering standards enforcer
+**File**: [[agents/dev-standards.md]] | **Agent**: Engineering standards enforcer
 
 | P#   | Name                         | One-liner                                     |
 | ---- | ---------------------------- | --------------------------------------------- |
@@ -66,7 +66,7 @@ Quick lookup for framework principles. See [[skills/butler/enforcement-map.md]] 
 
 ### Framework Context
 
-**File**: [[RULES-FRAMEWORK.md]] | **Agent**: Framework operations enforcer
+**File**: [[agents/framework-ops.md]] | **Agent**: Framework operations enforcer
 
 | P#   | Name                      | One-liner                                      |
 | ---- | ------------------------- | ---------------------------------------------- |
@@ -95,4 +95,4 @@ Includes demoted former axioms (P#7, P#11, P#28, P#44, P#45, P#52) plus operatio
 | **Context injection** | Principle in tier files     | Agent sees rule    |
 | **Behavioral**        | Agent instruction-following | Most principles    |
 
-See [[skills/butler/enforcement-map.md]] for full enforcement details.
+See [[enforcement-map.md]] for full enforcement details.

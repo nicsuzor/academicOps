@@ -68,6 +68,17 @@ Skills are Claude Code extensions that know how to do specific things. Core skil
 - Domain skills are **fungible** — they exist only because no better external solution exists yet, and are designed to be replaced
 - Skills compose into workflows but don't prescribe sequence
 
+### Agents as domain experts (the bazaar model)
+
+Instead of loading different rule files into a general-purpose agent based on detected context, the framework uses **specialist agents with embedded domain expertise**. Each agent carries its own principles and applies them to any work type — planning, reviewing, or executing.
+
+- **Academic integrity**: the research skill owns academic rules (citation, data immutability, methodology ownership)
+- **Engineering standards**: the dev-standards agent owns development rules (fail-fast, DRY, version control, credential isolation)
+- **Framework operations**: the framework-ops agent owns framework rules (dogfooding, skills read-only, no workarounds, agentic-first)
+- **Universal axioms**: always active, loaded at session start for all agents
+
+You invoke the right agents for the job. Rules live local to the entity that enforces them, not in central files that need a context-detection mechanism to load. This is the bazaar model (P#49) applied to governance: multiple independent agents with their own perspective, rather than one central agent switching modes.
+
 ### 3. Async quality assurance (GitHub as coordination layer)
 
 GitHub serves as the coordination layer for agents and humans. PR pipelines run review workflows asynchronously after work is submitted. This catches what real-time enforcement misses and provides the audit trail.
@@ -100,7 +111,7 @@ The framework has a recurring failure mode: **over-engineering coordination mech
 **What we're re-evaluating (not cut, but need to earn their keep):**
 
 - **Hydrator**: Good concept (enrich tasks with context before execution). Enforcement gate (blocking all tools until hydrated) is the problem, not the skill itself. Needs to be useful without being mandatory for simple tasks.
-- **Custodiet**: Drift detection concept is sound. Needs evidence it catches things that async PR review wouldn't.
+- **Custodiet**: Drift detection concept is sound and the gate is working, so it stays as a separate enforcement layer alongside the new CC auto mode per-action classifier. Its substance (what it checks and how aggressively) will be revised once we have confidence that CC auto mode handles per-action enforcement well — the two are complementary, not redundant.
 - **Gate system**: Per-gate assessment needed. Handover gate (requires reflection) is valuable. Commit gate was removed because it competed with handover signals. Hydration gate (blocking all tools) is too aggressive.
 
 **How we prevent this recurring:**

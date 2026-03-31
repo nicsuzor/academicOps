@@ -124,6 +124,7 @@ def synthesize(sessions: list[dict], today: str) -> dict:
             .get("efficiency", {})
             .get("session_duration_minutes"),
             "user_prompts": s.get("user_prompts", []),
+            "user_prompt_count": s.get("user_prompt_count"),
         }
         for s in sessions[-5:]
     ]

@@ -476,7 +476,7 @@ def _build_docker_cmd(
             # (potentially stale or wrong-path) copy.
             staged_claude_dir = staging_dir / ".claude"
             staged_claude_dir.mkdir(exist_ok=True)
-            for auth_file in (".credentials.json", ".mcp.json", "settings.json"):
+            for auth_file in (".credentials.json", "settings.json"):
                 src = claude_dir / auth_file
                 if src.exists():
                     shutil.copy2(src, staged_claude_dir / auth_file)
@@ -496,7 +496,6 @@ def _build_docker_cmd(
                     "google_accounts.json",
                     "oauth_creds.json",
                     "installation_id",
-                    "trustedFolders.json",
                 ):
                     src = gemini_dir / auth_file
                     if src.exists():
@@ -515,21 +514,10 @@ def _build_docker_cmd(
         cmd.extend(["--group-add", str(docker_gid)])
         cmd.extend(["-v", "/var/run/docker.sock:/var/run/docker.sock"])
 
-    # Mount pkb binary for MCP server (plugin config references 'pkb' from PATH).
-    # In DinD the binary may be on an ephemeral volume the outer daemon can't reach;
-    # resolve and only mount if the host path exists, otherwise use the image's built-in.
-    pkb_bin = shutil.which("pkb")
-    if pkb_bin:
-        host_pkb = _container_to_host_path(Path(pkb_bin))
-        if host_pkb.exists():
-            cmd.extend(["-v", f"{host_pkb}:/usr/local/bin/pkb:ro"])
-
-    # Mount ACA_DATA for PKB access (read-write — agents may update tasks)
-    aca_data = env.get("ACA_DATA") or os.environ.get("ACA_DATA")
-    if aca_data and os.path.isdir(aca_data):
-        host_aca = _container_to_host_path(Path(aca_data))
-        cmd.extend(["-v", f"{host_aca}:{aca_data}"])
-        cmd.extend(["-e", f"ACA_DATA={aca_data}"])
+    # PKB connects over HTTP — pass the URL, no data volume needed.
+    pkb_url = env.get("PKB_MCP_URL") or os.environ.get("PKB_MCP_URL")
+    if pkb_url:
+        cmd.extend(["-e", f"PKB_MCP_URL={pkb_url}"])
 
     # Add host networking for MCPs running on localhost
     cmd.extend(["--add-host", "host.docker.internal:host-gateway"])
@@ -589,19 +577,78 @@ def _build_docker_cmd(
     return cmd
 
 
-def _mount_aca_data_sandbox(env: dict) -> None:
-    """Mount ACA_DATA read-write into the Gemini sandbox via SANDBOX_MOUNTS.
+def _pass_pkb_url_sandbox(env: dict) -> None:
+    """Ensure PKB_MCP_URL is forwarded into the Gemini sandbox.
 
-    Forwarding ACA_DATA as an env var alone (via SANDBOX_FLAGS) is insufficient —
-    without the bind mount the PKB server starts with a missing/empty path inside
-    the container.  This helper is called from both ``crew -g`` and ``run -g``.
+    PKB now connects over HTTP — no data volume mount needed.
+    This helper is called from both ``crew -g`` and ``run -g``.
     """
-    aca_data = env.get("ACA_DATA") or os.environ.get("ACA_DATA")
-    if aca_data and os.path.isdir(aca_data):
-        env.setdefault("ACA_DATA", aca_data)
-        mounts = env.get("SANDBOX_MOUNTS", "")
-        new_mount = f"{aca_data}:{aca_data}:rw"
-        env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
+    pkb_url = env.get("PKB_MCP_URL") or os.environ.get("PKB_MCP_URL")
+    if pkb_url:
+        env.setdefault("PKB_MCP_URL", pkb_url)
+
+
+def _mount_gemini_git_credentials(env: dict, tmp_files: list[Path]) -> list[str]:
+    """Mount .gitconfig and gh hosts.yml into Gemini sandbox for git push.
+
+    File-based credentials are preferred over SANDBOX_FLAGS -e for two reasons:
+    1. Security: env vars are visible in /proc/<pid>/environ and ``ps auxe``;
+       mounted files are not leaked through process listings.
+    2. Reliability: Gemini sandbox only forwards a hardcoded allowlist of env
+       vars into the container. SANDBOX_FLAGS -e is kept as belt-and-suspenders
+       but cannot be the primary mechanism.
+
+    The token is embedded directly in the gitconfig so git does not need
+    $GH_TOKEN to be present in the container environment at push time.
+
+    Returns extra_flags (list of ``-e KEY=VALUE`` strings) to append to
+    SANDBOX_FLAGS.
+    """
+    extra_flags: list[str] = []
+    gh_token = env.get("GH_TOKEN") or os.environ.get("AOPS_BOT_GH_TOKEN")
+    if not gh_token:
+        return extra_flags
+
+    extra_flags.extend(["-e", "GIT_ASKPASS=true"])
+    extra_flags.extend(["-e", f"GH_TOKEN={gh_token}"])
+    extra_flags.extend(["-e", f"GITHUB_TOKEN={gh_token}"])
+    extra_flags.extend(["-e", "SSH_AUTH_SOCK="])
+    extra_flags.extend(["-e", "GIT_TERMINAL_PROMPT=0"])
+
+    # .gitconfig with embedded credential helper
+    gitconfig = tempfile.NamedTemporaryFile(
+        suffix=".gitconfig", delete=False, mode="w", prefix="polecat-"
+    )
+    gitconfig.write(
+        "[credential]\n"
+        f'\thelper = !f() {{ echo username=x-access-token; echo "password={gh_token}"; }}; f\n'
+        '[credential "https://github.com"]\n'
+        f'\thelper = !f() {{ echo username=x-access-token; echo "password={gh_token}"; }}; f\n'
+        '[url "https://github.com/"]\n'
+        "\tinsteadOf = git@github.com:\n"
+    )
+    gitconfig.close()
+    tmp_files.append(Path(gitconfig.name))
+
+    container_gitconfig = str(Path.home() / ".gitconfig")
+    mounts = env.get("SANDBOX_MOUNTS", "")
+    new_mount = f"{gitconfig.name}:{container_gitconfig}:ro"
+    env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
+
+    # gh CLI hosts.yml — file-based auth fallback for `gh pr create`
+    gh_hosts = tempfile.NamedTemporaryFile(
+        suffix=".yml", delete=False, mode="w", prefix="polecat-gh-hosts-"
+    )
+    gh_hosts.write(f"github.com:\n    oauth_token: {gh_token}\n    git_protocol: https\n")
+    gh_hosts.close()
+    tmp_files.append(Path(gh_hosts.name))
+
+    container_gh_hosts = str(Path.home() / ".config" / "gh" / "hosts.yml")
+    mounts = env.get("SANDBOX_MOUNTS", "")
+    new_mount = f"{gh_hosts.name}:{container_gh_hosts}:ro"
+    env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
+
+    return extra_flags
 
 
 def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | None:
@@ -675,15 +722,21 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
 
         if f == "settings.json":
             try:
-                # Use our controlled template WITHOUT the user's auth selectedType.
-                # Gemini CLI auto-detects auth from available credentials (API key env
-                # var, OAuth files, etc.). Injecting selectedType causes Gemini to exit
-                # immediately if the auth type doesn't match available credentials
-                # (e.g. user logged in via Google Account but crew session has API key),
-                # which prevents hooks from firing at all.
+                # Start from our controlled template, then set auth type based on
+                # what credentials were actually replicated. Gemini CLI does NOT
+                # auto-detect auth — it fails with "Please set an Auth method" if
+                # selectedType is missing. We infer the type from available files:
+                #   oauth_creds.json → "oauth-personal"
+                #   GEMINI_API_KEY env → "api-key" (handled by env, no setting needed)
                 template_path = SCRIPT_DIR / "defaults" / "gemini-settings.json"
                 with open(template_path) as tpl_f:
                     minimal = json.load(tpl_f)
+
+                # Set auth type if OAuth credentials are being replicated
+                if "oauth_creds.json" in existing_files:
+                    minimal.setdefault("security", {}).setdefault("auth", {})["selectedType"] = (
+                        "oauth-personal"
+                    )
 
                 with open(target_dir / f, "w") as dst_f:
                     json.dump(minimal, dst_f, indent=2)
@@ -2180,7 +2233,7 @@ def _branch_has_open_pr(branch_name: str, repo_path: Path) -> bool:
     return False
 
 
-@main.command("c", hidden=True)
+@main.command("c", hidden=True, context_settings={"ignore_unknown_options": True})
 @click.argument("target", required=False, default=None)
 @click.argument("extra", required=False, default=None)
 @click.option("--name", "-n", help="Crew name (randomly generated if not specified)")
@@ -2188,8 +2241,9 @@ def _branch_has_open_pr(branch_name: str, repo_path: Path) -> bool:
 @click.option("--interactive", "-i", is_flag=True, help="Drop into an interactive shell (no agent)")
 @click.option("--resume", "-r", help="Resume existing crew worker by name")
 @click.option("--keep", "-k", is_flag=True, help="Keep worktree even if a PR is open")
+@click.argument("agent_args", nargs=-1, type=click.UNPROCESSED)
 @click.pass_context
-def crew_alias(ctx, target, extra, name, gemini, interactive, resume, keep):
+def crew_alias(ctx, target, extra, name, gemini, interactive, resume, keep, agent_args):
     """Shorthand for 'crew'. See 'polecat crew --help'."""
     ctx.invoke(
         crew,
@@ -2200,10 +2254,11 @@ def crew_alias(ctx, target, extra, name, gemini, interactive, resume, keep):
         interactive=interactive,
         resume=resume,
         keep=keep,
+        agent_args=agent_args,
     )
 
 
-@main.command()
+@main.command(context_settings={"ignore_unknown_options": True})
 @click.argument("target", required=False, default=None)
 @click.argument("extra", required=False, default=None)
 @click.option("--name", "-n", help="Crew name (randomly generated if not specified)")
@@ -2211,8 +2266,9 @@ def crew_alias(ctx, target, extra, name, gemini, interactive, resume, keep):
 @click.option("--interactive", "-i", is_flag=True, help="Drop into an interactive shell (no agent)")
 @click.option("--resume", "-r", help="Resume existing crew worker by name")
 @click.option("--keep", "-k", is_flag=True, help="Keep worktree even if a PR is open")
+@click.argument("agent_args", nargs=-1, type=click.UNPROCESSED)
 @click.pass_context
-def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
+def crew(ctx, target, extra, name, gemini, interactive, resume, keep, agent_args):
     """Start an interactive crew session with worker isolation.
 
     Crew workers are persistent, named agents for interactive collaboration.
@@ -2222,6 +2278,8 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
     TARGET is a project alias (e.g., aops, bm), or 'repo' for arbitrary paths.
     If TARGET is 'repo', EXTRA is the path to the repository.
 
+    Any extra arguments after '--' are passed through to the underlying agent CLI.
+
     \b
     Examples:
         polecat crew aops             # Crew in academicOps repo
@@ -2230,6 +2288,7 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
         polecat crew -r audre         # Resume crew worker "audre"
         polecat crew -i aops          # Interactive shell in crew container
         polecat crew -g aops          # Gemini CLI in sandbox mode
+        polecat crew aops -- -p "do something"  # Pass args to agent CLI
     """
     import subprocess
 
@@ -2390,6 +2449,10 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
             "--setting-sources=user,project",
         ]
 
+    # Append any extra args passed after '--' to the agent command
+    if agent_args:
+        cmd.extend(agent_args)
+
     # Set session type environment variable for hooks to detect
     # Use sanitized env: SSH stripped, git auth set to bot token only
     env = _make_worker_env(interactive=True)
@@ -2430,7 +2493,7 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
         # Provide a stable Gemini session ID based on the crew/task ID
         env["GEMINI_SESSION_ID"] = f"gemini-{crew_name}"
 
-        _mount_aca_data_sandbox(env)
+        _pass_pkb_url_sandbox(env)
 
         # Gemini sandbox only forwards a hardcoded allowlist of env vars into
         # its Docker container. Use SANDBOX_FLAGS for simple -e flags and
@@ -2439,7 +2502,7 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
         extra_flags = []
         for key, val in env.items():
             if key.endswith("_GATE_MODE") or key in (
-                "ACA_DATA",
+                "PKB_MCP_URL",
                 "GH_TOKEN",
                 "GEMINI_SANDBOX_IMAGE",
                 "GEMINI_SESSION_ID",
@@ -2447,63 +2510,8 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
             ):
                 extra_flags.extend(["-e", f"{key}={val}"])
 
-        # Git credential helper — write a .gitconfig and mount it read-only.
-        # SANDBOX_FLAGS can't carry the credential helper because shell-quote
-        # interprets { } ; ( ) as operators, mangling the shell function.
-        #
-        # File-based credentials are preferred over SANDBOX_FLAGS -e for two reasons:
-        # 1. Security: env vars are visible in /proc/<pid>/environ and `ps auxe`;
-        #    mounted files are not leaked through process listings.
-        # 2. Reliability: Gemini sandbox only forwards a hardcoded allowlist of env
-        #    vars into the container. SANDBOX_FLAGS -e is kept as belt-and-suspenders
-        #    but cannot be the primary mechanism.
-        #
-        # The token is embedded directly in the gitconfig so git does not need
-        # $GH_TOKEN to be present in the container environment at push time.
-        gh_token = env.get("GH_TOKEN") or os.environ.get("AOPS_BOT_GH_TOKEN")
-        if gh_token:
-            extra_flags.extend(["-e", "GIT_ASKPASS=true"])
-            extra_flags.extend(["-e", f"GH_TOKEN={gh_token}"])
-            extra_flags.extend(["-e", f"GITHUB_TOKEN={gh_token}"])
-            extra_flags.extend(["-e", "SSH_AUTH_SOCK="])
-            extra_flags.extend(["-e", "GIT_TERMINAL_PROMPT=0"])
-            gitconfig = tempfile.NamedTemporaryFile(
-                suffix=".gitconfig", delete=False, mode="w", prefix="polecat-"
-            )
-            # Embed token value directly — does not rely on $GH_TOKEN being in
-            # the container environment (SANDBOX_FLAGS -e forwarding is unreliable).
-            gitconfig.write(
-                "[credential]\n"
-                f'\thelper = !f() {{ echo username=x-access-token; echo "password={gh_token}"; }}; f\n'
-                '[credential "https://github.com"]\n'
-                f'\thelper = !f() {{ echo username=x-access-token; echo "password={gh_token}"; }}; f\n'
-                '[url "https://github.com/"]\n'
-                "\tinsteadOf = git@github.com:\n"
-            )
-            gitconfig.close()
-            if tmp_files is not None:
-                tmp_files.append(Path(gitconfig.name))
-            # Mount via SANDBOX_MOUNTS (colon-separated from:to:opts).
-            # Gemini sandbox maps homedir() to the same path in the container,
-            # so mount .gitconfig at the host user's home path.
-            container_gitconfig = str(Path.home() / ".gitconfig")
-            mounts = env.get("SANDBOX_MOUNTS", "")
-            new_mount = f"{gitconfig.name}:{container_gitconfig}:ro"
-            env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
-
-            # gh CLI hosts.yml — mount token so `gh pr create` works without
-            # needing GH_TOKEN in the container env (file-based auth fallback).
-            gh_hosts = tempfile.NamedTemporaryFile(
-                suffix=".yml", delete=False, mode="w", prefix="polecat-gh-hosts-"
-            )
-            gh_hosts.write(f"github.com:\n    oauth_token: {gh_token}\n    git_protocol: https\n")
-            gh_hosts.close()
-            if tmp_files is not None:
-                tmp_files.append(Path(gh_hosts.name))
-            container_gh_hosts = str(Path.home() / ".config" / "gh" / "hosts.yml")
-            mounts = env.get("SANDBOX_MOUNTS", "")
-            new_mount = f"{gh_hosts.name}:{container_gh_hosts}:ro"
-            env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
+        # Git credentials: mount .gitconfig and gh hosts.yml into sandbox
+        extra_flags.extend(_mount_gemini_git_credentials(env, tmp_files))
 
         if extra_flags:
             existing = env.get("SANDBOX_FLAGS", "")
@@ -2524,12 +2532,14 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep):
         )
     else:
         # Claude Code: manually wrap in docker container
+        # Headless when agent_args contains -p (prompt mode, no TTY needed)
+        headless = agent_args and "-p" in agent_args
         final_cmd = _build_docker_cmd(
             cli_tool,
             work_dir,
             env,
             cmd,
-            is_interactive=True,
+            is_interactive=not headless,
             tmp_files=tmp_files,
             session_dir=session_dir,
         )
@@ -2932,20 +2942,23 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
         # Provide a stable Gemini session ID based on the task ID
         env["GEMINI_SESSION_ID"] = f"gemini-{task.id}"
 
-        _mount_aca_data_sandbox(env)
+        _pass_pkb_url_sandbox(env)
 
         # Gemini sandbox only forwards a hardcoded allowlist of env vars into
         # its Docker container. Use SANDBOX_FLAGS for simple -e flags.
         extra_flags = []
         for key, val in env.items():
             if key.endswith("_GATE_MODE") or key in (
-                "ACA_DATA",
+                "PKB_MCP_URL",
                 "GH_TOKEN",
                 "GEMINI_SANDBOX_IMAGE",
                 "GEMINI_SESSION_ID",
                 "AOPS_SESSION_STATE_DIR",
             ):
                 extra_flags.extend(["-e", f"{key}={val}"])
+
+        # Git credentials: mount .gitconfig and gh hosts.yml into sandbox
+        extra_flags.extend(_mount_gemini_git_credentials(env, tmp_files))
 
         if extra_flags:
             existing = env.get("SANDBOX_FLAGS", "")

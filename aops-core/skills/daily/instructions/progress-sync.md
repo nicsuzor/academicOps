@@ -46,13 +46,25 @@ mcp__pkb__list_tasks(status="done", limit=20)
 
 ### Step 4.2: Load and Merge Sessions
 
-Read each session JSON from `$ACA_SESSIONS/summaries/YYYYMMDD*.json`. Extract:
+Read each session JSON from `$AOPS_SESSIONS/summaries/YYYYMMDD*.json`. Extract:
 
 - Session ID, project, summary
 - Accomplishments
 - Timeline entries
 - Skill compliance metrics
 - Framework feedback: workflow_improvements, jit_context_needed, context_distractions, user_mood
+- **User prompt count and content**: Count `timeline_events` where `type == "user_prompt"`. Extract the `description` field of each (truncate to ~80 chars). This is the primary signal for human attention cost. If `timeline_events` is absent (older session format) and a `user_prompts` field is present, treat it as a list of `[timestamp, role, text]` entries: count only elements where `role == "user"` and use the `text` element (truncated to ~80 chars) as the prompt content. If neither `timeline_events` nor any `user` entries in `user_prompts` are available, classify engagement as **unknown** and note it in the log rather than defaulting to Autonomous.
+
+**Session engagement classification** (derived from user prompt count):
+
+| Prompts | Classification      | Meaning                                                                                          |
+| ------- | ------------------- | ------------------------------------------------------------------------------------------------ |
+| 0       | **Autonomous**      | Agent ran without human involvement. High output possible, zero attention cost. Fire-and-forget. |
+| 1       | **Dispatched**      | Human kicked it off with a single instruction and moved on. Conductor work.                      |
+| 2–3     | **Interactive**     | Human engaged in back-and-forth. Moderate attention.                                             |
+| 4+      | **Deep engagement** | Sustained human involvement — debugging, discussing, iterating. Highest attention cost.          |
+
+**Why prompt count, not duration**: A 337-minute autonomous session costs the human nothing. A 5-minute session with 4 prompts is where they were actually thinking. Duration measures agent compute time; prompt count measures human attention.
 
 **Incremental filtering**: After listing JSONs, read the current daily note's Session Log table. Extract session IDs already present. Filter the JSON list to exclude already-processed sessions. This prevents duplicate entries on repeated syncs.
 
@@ -335,24 +347,13 @@ In the Project Accomplishments section, add task links:
 - [x] Added new endpoint (no task match)
 ```
 
-### Step 4.7: Update synthesis.json
+### Step 4.7: Update synthesis.json (structural data only)
 
 **Read-merge-write** to `$AOPS_SESSIONS/synthesis.json` (same file the cron mechanical synthesis writes to, and the dashboard reads from). Preserve any existing fields from the cron-generated version that you don't have data for.
 
-**4.7.1: Generate qualitative narrative (`daily_story`)**
+**Important**: Do NOT generate `daily_story` here. The narrative is generated once in Step 5.3.1 (work-summary.md) after Today's Story has been composed with full day context. Writing a narrative here and overwriting it in 5.3.1 wastes tokens. Step 4.7 writes only structural/mechanical data.
 
-Using the data gathered in Steps 4.1–4.6, generate 3-5 bullet points that tell the story of today's work:
-
-- **Second person**: "You started...", "You got pulled into...", "Still waiting from yesterday:..."
-- **Each bullet under 80 characters**
-- **Cover**: what work started today, where context switches or distractions occurred, what remains undone (from today and yesterday)
-- **Match lived experience** — this is a narrative, not a task list reformatting. If the user set morning goals, note alignment or drift. If sessions show project-hopping, say so.
-- **Order**: chronological or by impact, whichever tells a clearer story
-
-Bad: `"[aops] Fix tests failed"` (mechanical, not narrative)
-Good: `"You spent the morning debugging test failures in aops"` (story)
-
-**4.7.2: Assemble and write synthesis.json**
+**4.7.1: Assemble and write synthesis.json**
 
 Read existing `$AOPS_SESSIONS/synthesis.json` if it exists, then merge your data on top:
 
@@ -399,13 +400,13 @@ Read existing `$AOPS_SESSIONS/synthesis.json` if it exists, then merge your data
 
 **Key fields**:
 
-| Field                 | Source                            | Notes                                  |
-| --------------------- | --------------------------------- | -------------------------------------- |
-| `daily_story`         | Generated in 4.7.1                | Qualitative narrative for dashboard    |
-| `narrative_generated` | Current timestamp                 | Lets dashboard show freshness          |
-| `narrative`           | Mechanical from session summaries | Backward compat; cron also writes this |
-| `merged_prs`          | From Step 4.2.5                   | Not available in cron version          |
-| `next_action`         | From Step 3 recommendations       | Highest priority ready task            |
-| `session_timeline`    | From session JSONs                | Chronological activity log             |
+| Field                 | Source                            | Notes                                   |
+| --------------------- | --------------------------------- | --------------------------------------- |
+| `daily_story`         | Written by Step 5.3.1 only        | Do NOT write here — see work-summary.md |
+| `narrative_generated` | Written by Step 5.3.1 only        | Updated alongside daily_story           |
+| `narrative`           | Mechanical from session summaries | Backward compat; cron also writes this  |
+| `merged_prs`          | From Step 4.2.5                   | Not available in cron version           |
+| `next_action`         | From Step 3 recommendations       | Highest priority ready task             |
+| `session_timeline`    | From session JSONs                | Chronological activity log              |
 
 **Write atomically**: Read existing file, deep-merge your fields on top (don't discard fields you don't have data for like `skill_insights` from cron), write to temp file, then rename.

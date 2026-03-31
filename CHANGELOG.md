@@ -2,37 +2,33 @@
 
 ## [0.3.17](https://github.com/nicsuzor/academicOps/compare/v0.3.16...v0.3.17) (2026-03-29)
 
-
 ### Features
 
-* **qa:** teach forensic data-pipeline tracing methodology ([#386](https://github.com/nicsuzor/academicOps/issues/386)) ([1125721](https://github.com/nicsuzor/academicOps/commit/1125721620276bf286d88e128e8a7f098da15737))
-
+- **qa:** teach forensic data-pipeline tracing methodology ([#386](https://github.com/nicsuzor/academicOps/issues/386)) ([1125721](https://github.com/nicsuzor/academicOps/commit/1125721620276bf286d88e128e8a7f098da15737))
 
 ### Bug Fixes
 
-* **build:** push stable build dist to main, not tag ref ([#387](https://github.com/nicsuzor/academicOps/issues/387)) ([bd79903](https://github.com/nicsuzor/academicOps/commit/bd79903ec3944dac774037a1533c645b5fa4751c))
-* DinD-compatible Docker auth + e2e test optimization ([35cf06d](https://github.com/nicsuzor/academicOps/commit/35cf06d04f33f0598bfc93945fa591bdbbd4ce7e))
-* DinD-compatible Docker auth via docker inspect path resolution ([dcd19a8](https://github.com/nicsuzor/academicOps/commit/dcd19a8afd9656cdb6f5a4da29cee0af77916648))
-* Gemini hooks not firing in polecat/crew sessions ([25f10f5](https://github.com/nicsuzor/academicOps/commit/25f10f50bc16365e7f96d733bb176131dfe5f910))
-* Gemini hooks not firing in polecat/crew sessions ([c3d32d0](https://github.com/nicsuzor/academicOps/commit/c3d32d0ec87dbd7f0eb128ef6a6bf0b5d12f6dea))
-* merge-prep failure counter never increments due to continue-on-error ([a038786](https://github.com/nicsuzor/academicOps/commit/a03878619ba094c18f71cfbe7be5f8980ad4950f))
-* **tests:** align e2e tests with new gemini-settings template ([73dea65](https://github.com/nicsuzor/academicOps/commit/73dea65c1128205d8a2a9b232e4eeed8c9011f55))
-* **tests:** fix e2e test regressions and add gemini-credentials.json to auth replication ([99f5e48](https://github.com/nicsuzor/academicOps/commit/99f5e483f7cb239fff04ddc08a45f5c583731722))
-* **tests:** mock _container_to_host_path in pkb mount test ([7f31401](https://github.com/nicsuzor/academicOps/commit/7f31401a1f3d0de2eae90859fadaf584f77b755a))
-* **tests:** pass gemini_home to crew_session fixture, revert auth skip ([1aa90a7](https://github.com/nicsuzor/academicOps/commit/1aa90a7f2ab52e6644e433510fd24aeb78b49fd8))
-* **tests:** skip crew session tests when Claude auth fails in Docker ([4bdbf3d](https://github.com/nicsuzor/academicOps/commit/4bdbf3d15aad62acaa38401da678fead6e623e8e))
-* **tests:** skip gemini hooks tests when extension lacks hooks dir ([a2a6907](https://github.com/nicsuzor/academicOps/commit/a2a6907e5a47464fdaf7c60eb9f4da60ed0ae4d6))
-
+- **build:** push stable build dist to main, not tag ref ([#387](https://github.com/nicsuzor/academicOps/issues/387)) ([bd79903](https://github.com/nicsuzor/academicOps/commit/bd79903ec3944dac774037a1533c645b5fa4751c))
+- DinD-compatible Docker auth + e2e test optimization ([35cf06d](https://github.com/nicsuzor/academicOps/commit/35cf06d04f33f0598bfc93945fa591bdbbd4ce7e))
+- DinD-compatible Docker auth via docker inspect path resolution ([dcd19a8](https://github.com/nicsuzor/academicOps/commit/dcd19a8afd9656cdb6f5a4da29cee0af77916648))
+- Gemini hooks not firing in polecat/crew sessions ([25f10f5](https://github.com/nicsuzor/academicOps/commit/25f10f50bc16365e7f96d733bb176131dfe5f910))
+- Gemini hooks not firing in polecat/crew sessions ([c3d32d0](https://github.com/nicsuzor/academicOps/commit/c3d32d0ec87dbd7f0eb128ef6a6bf0b5d12f6dea))
+- merge-prep failure counter never increments due to continue-on-error ([a038786](https://github.com/nicsuzor/academicOps/commit/a03878619ba094c18f71cfbe7be5f8980ad4950f))
+- **tests:** align e2e tests with new gemini-settings template ([73dea65](https://github.com/nicsuzor/academicOps/commit/73dea65c1128205d8a2a9b232e4eeed8c9011f55))
+- **tests:** fix e2e test regressions and add gemini-credentials.json to auth replication ([99f5e48](https://github.com/nicsuzor/academicOps/commit/99f5e483f7cb239fff04ddc08a45f5c583731722))
+- **tests:** mock _container_to_host_path in pkb mount test ([7f31401](https://github.com/nicsuzor/academicOps/commit/7f31401a1f3d0de2eae90859fadaf584f77b755a))
+- **tests:** pass gemini_home to crew_session fixture, revert auth skip ([1aa90a7](https://github.com/nicsuzor/academicOps/commit/1aa90a7f2ab52e6644e433510fd24aeb78b49fd8))
+- **tests:** skip crew session tests when Claude auth fails in Docker ([4bdbf3d](https://github.com/nicsuzor/academicOps/commit/4bdbf3d15aad62acaa38401da678fead6e623e8e))
+- **tests:** skip gemini hooks tests when extension lacks hooks dir ([a2a6907](https://github.com/nicsuzor/academicOps/commit/a2a6907e5a47464fdaf7c60eb9f4da60ed0ae4d6))
 
 ### Code Refactoring
 
-* **tests:** optimize e2e suite — one LLM call per backend, batch container tests ([cbe086c](https://github.com/nicsuzor/academicOps/commit/cbe086c0617cb2136c11c7aaa12a0aac409501a2))
-
+- **tests:** optimize e2e suite — one LLM call per backend, batch container tests ([cbe086c](https://github.com/nicsuzor/academicOps/commit/cbe086c0617cb2136c11c7aaa12a0aac409501a2))
 
 ### Miscellaneous
 
-* regenerate axioms in pr-reviewer agent prompt ([18b8bf9](https://github.com/nicsuzor/academicOps/commit/18b8bf9c6c5e428849a1c1899bc00db5c83c598f))
-* Testing release v0.3.16-dev.62 [skip ci] ([4a9d6dd](https://github.com/nicsuzor/academicOps/commit/4a9d6dd0237e03a1005f42b3499b055a3c240b96))
+- regenerate axioms in pr-reviewer agent prompt ([18b8bf9](https://github.com/nicsuzor/academicOps/commit/18b8bf9c6c5e428849a1c1899bc00db5c83c598f))
+- Testing release v0.3.16-dev.62 [skip ci] ([4a9d6dd](https://github.com/nicsuzor/academicOps/commit/4a9d6dd0237e03a1005f42b3499b055a3c240b96))
 
 ## [0.3.16](https://github.com/nicsuzor/academicOps/compare/v0.3.15...v0.3.16) (2026-03-28)
 

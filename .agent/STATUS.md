@@ -177,7 +177,7 @@ The canonical index is `aops-core/SKILLS.md` with 25 entries (8 commands + 17 sk
 | academic          | `analyst`, `research`                                        |
 | quality-assurance | `qa`                                                         |
 | tools             | `convert-to-md`, `excalidraw`, `extract`, `flowchart`, `pdf` |
-| multi-agent       | `swarm-supervisor`                                           |
+| multi-agent       | `supervisor`                                                 |
 
 ### Specs System -- WORKING
 

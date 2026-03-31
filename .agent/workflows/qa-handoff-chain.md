@@ -94,7 +94,7 @@ Implementation agents pick up tasks from the queue. The UX acceptance criteria f
 
 ### Automated (future)
 
-The chain could be automated via polecat swarm orchestration where each phase spawns the next. However, the human review point between Phase 1 and Phase 2 is valuable — the human can triage which findings warrant decomposition.
+The chain could be automated via supervisor orchestration where each phase dispatches the next via `polecat run`. However, the human review point between Phase 1 and Phase 2 is valuable — the human can triage which findings warrant decomposition.
 
 ## Key Principles
 

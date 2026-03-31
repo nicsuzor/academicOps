@@ -132,8 +132,16 @@ def get_config_dir() -> Path:
 
 
 def get_workflows_dir() -> Path:
-    """Get workflows directory (inside butler skill package)."""
-    return get_plugin_root() / "skills" / "butler" / "workflows"
+    """Get workflows directory (inside framework skill, project-local).
+
+    Returns the .agent/skills/framework/workflows/ path relative to the repo root.
+    Raises FileNotFoundError if the directory does not exist.
+    """
+    repo_root = get_plugin_root().parent
+    agent_workflows = repo_root / ".agent" / "skills" / "framework" / "workflows"
+    if not agent_workflows.exists():
+        raise FileNotFoundError(f"Framework workflows directory not found at {agent_workflows}")
+    return agent_workflows
 
 
 def get_indices_dir() -> Path:

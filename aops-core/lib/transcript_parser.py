@@ -483,13 +483,7 @@ def _synthesize_summary(reflection: dict[str, Any], outcome: str, project: str) 
         # Combine first accomplishment with count of others
         summary = f"{accomplishments[0]}; plus {len(accomplishments) - 1} other accomplishment{'s' if len(accomplishments) > 2 else ''}"
 
-    # Add outcome context
-    if outcome == "success":
-        prefix = ""
-    elif outcome == "partial":
-        prefix = ""
-    else:
-        prefix = ""
+    prefix = ""
 
     # Add friction note if present
     if friction_points and outcome != "success":
@@ -589,6 +583,13 @@ def reflection_to_insights(
     # Timeline events for path reconstruction (optional)
     if timeline_events:
         result["timeline_events"] = timeline_events
+        # Pre-compute user prompt count for downstream consumers
+        # (daily skill engagement classification, synthesize_dashboard.py)
+        result["user_prompt_count"] = sum(
+            1 for e in timeline_events if e.get("type") == "user_prompt"
+        )
+    else:
+        result["user_prompt_count"] = None
 
     return result
 

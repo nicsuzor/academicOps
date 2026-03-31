@@ -1,19 +1,12 @@
 {
   "mcpServers": {
     "pkb": {
-      "type": "stdio",
-      "command": "pkb",
+      "command": "uvx",
       "args": [
-        "mcp"
-      ],
-      "env": {
-        "ACA_DATA": "${ACA_DATA}",
-        "RUST_LOG": "warn"
-      }
-    },
-    "pkb-http": {
-      "type": "http",
-      "url": "${PKB_MCP_URL}"
+        "fastmcp",
+        "run",
+        "${user_config.PKB_MCP_URL}"
+      ]
     }
   }
 }

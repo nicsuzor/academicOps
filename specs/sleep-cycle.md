@@ -78,7 +78,7 @@ Phases run sequentially. Each phase checks whether there's work to do and skips 
 Run `/session-insights batch` for any sessions with transcripts but no insights. This is already implemented — the sleep cycle just schedules it.
 
 **Input**: Session transcripts without corresponding insight JSONs.
-**Output**: `$ACA_SESSIONS/summaries/YYYYMMDD-{id}.json` + PKB memories.
+**Output**: `$AOPS_SESSIONS/summaries/YYYYMMDD-{id}.json` + PKB memories.
 **Skip condition**: No pending sessions.
 
 #### Phase 2: Episode Replay

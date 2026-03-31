@@ -364,10 +364,27 @@ def main():
             run_command(["claude", "plugin", "uninstall", "aops-core"], check=False)
             # Use local repo as marketplace for source installs
             run_command(["claude", "plugin", "marketplace", "add", str(aops_root)], check=False)
-            run_command(["claude", "plugin", "install", "aops-core@aops"], check=False)
+            run_command(["claude", "plugin", "install", "aops-core@academicOps"], check=False)
             print("✓ Claude plugin installed")
         else:
             print("Warning: Claude plugin dist not found. Skipping install.")
+
+        # Install auto mode classifier rules
+        print("\n=== Phase 4b: Install Auto Mode Rules ===")
+        try:
+            # Add aops-core to path for imports
+            aops_core_dir = aops_root / "aops-core"
+            if str(aops_core_dir) not in sys.path:
+                sys.path.insert(0, str(aops_core_dir))
+            from lib.automode import install as install_automode
+
+            ok, msg = install_automode()
+            if ok:
+                print(f"✓ {msg}")
+            else:
+                print(f"Warning: autoMode install skipped: {msg}")
+        except Exception as e:
+            print(f"Warning: autoMode install failed: {e}")
     else:
         print("Warning: 'claude' executable not found. Skipping plugin installation.")
 

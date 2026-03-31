@@ -202,7 +202,7 @@ When intentions are active:
 
 When intentions are active:
 
-- `polecat swarm` defaults to intention subgraph scope
+- `/supervisor` defaults to intention subgraph scope
 - Override with `--all` flag
 - SessionStart context injection includes intention summary
 

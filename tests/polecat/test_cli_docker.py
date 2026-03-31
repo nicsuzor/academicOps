@@ -23,8 +23,8 @@ sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 from cli import (
     _build_docker_cmd,
     _clone_has_changes,
-    _mount_aca_data_sandbox,
     _node_version_key,
+    _pass_pkb_url_sandbox,
     _replicate_gemini_auth,
 )
 
@@ -293,38 +293,21 @@ class TestBuildDockerCmd:
         assert "AOPS_BOT_GH_TOKEN=ghp_test123" in env_args
         assert "GIT_ASKPASS=true" in env_args
 
-    def test_mounts_pkb_binary_when_available(self, tmp_path):
-        """pkb binary is mounted read-only for MCP server access."""
-        pkb_path = tmp_path / "pkb"
-        pkb_path.touch()
-        with (
-            patch(
-                "cli.shutil.which",
-                side_effect=lambda name, **kw: str(pkb_path) if name == "pkb" else None,
-            ),
-            patch("cli._container_to_host_path", return_value=pkb_path),
-        ):
-            cmd = self._build()
-        vol_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-v"]
-        assert any(f"{pkb_path}:/usr/local/bin/pkb:ro" in v for v in vol_args)
+    def test_passes_pkb_url_when_set(self):
+        """PKB_MCP_URL is forwarded to the container."""
+        env = {"PKB_MCP_URL": "http://host:8026/mcp"}
+        cmd = self._build(env=env)
+        env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
+        assert "PKB_MCP_URL=http://host:8026/mcp" in env_args
 
-    def test_no_pkb_mount_when_missing(self):
-        """No pkb mount when binary is not found on host."""
-        with patch("cli.shutil.which", return_value=None):
-            cmd = self._build()
-        vol_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-v"]
-        assert not any("/usr/local/bin/pkb" in v for v in vol_args)
-
-    def test_mounts_aca_data_when_set(self, tmp_path):
-        """ACA_DATA directory is mounted for PKB access."""
+    def test_no_brain_volume_mount(self, tmp_path):
+        """ACA_DATA is NOT mounted — PKB uses HTTP now."""
         aca_dir = tmp_path / "brain"
         aca_dir.mkdir()
         env = {"ACA_DATA": str(aca_dir)}
         cmd = self._build(env=env)
         vol_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-v"]
-        assert any(str(aca_dir) in v for v in vol_args)
-        env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
-        assert f"ACA_DATA={aca_dir}" in env_args
+        assert not any(str(aca_dir) in v for v in vol_args)
 
 
 class TestMakeWorkerEnv:
@@ -547,48 +530,25 @@ class TestReplicateGeminiAuth:
         shutil.rmtree(result)
 
 
-class TestMountAcaDataSandbox:
-    """Tests for _mount_aca_data_sandbox — called by both crew -g and run -g."""
+class TestPassPkbUrlSandbox:
+    """Tests for _pass_pkb_url_sandbox — called by both crew -g and run -g."""
 
-    def test_mounts_existing_directory(self, tmp_path):
-        brain = tmp_path / "brain"
-        brain.mkdir()
-        env: dict = {"ACA_DATA": str(brain)}
-        _mount_aca_data_sandbox(env)
-        assert f"{brain}:{brain}:rw" in env["SANDBOX_MOUNTS"]
+    def test_passes_url_from_env_dict(self):
+        env: dict = {"PKB_MCP_URL": "http://localhost:8026/mcp"}
+        _pass_pkb_url_sandbox(env)
+        assert env["PKB_MCP_URL"] == "http://localhost:8026/mcp"
 
-    def test_appends_to_existing_mounts(self, tmp_path):
-        brain = tmp_path / "brain"
-        brain.mkdir()
-        env: dict = {"ACA_DATA": str(brain), "SANDBOX_MOUNTS": "/a:/a:ro"}
-        _mount_aca_data_sandbox(env)
-        assert env["SANDBOX_MOUNTS"].startswith("/a:/a:ro,")
-        assert f"{brain}:{brain}:rw" in env["SANDBOX_MOUNTS"]
-
-    def test_no_mount_when_dir_missing(self, tmp_path):
-        env: dict = {"ACA_DATA": str(tmp_path / "nonexistent")}
-        _mount_aca_data_sandbox(env)
-        assert "SANDBOX_MOUNTS" not in env
-
-    def test_falls_back_to_os_environ(self, tmp_path, monkeypatch):
-        brain = tmp_path / "brain"
-        brain.mkdir()
-        monkeypatch.setenv("ACA_DATA", str(brain))
+    def test_passes_url_from_os_environ(self, monkeypatch):
+        monkeypatch.setenv("PKB_MCP_URL", "http://host:8026/mcp")
         env: dict = {}
-        _mount_aca_data_sandbox(env)
-        assert f"{brain}:{brain}:rw" in env["SANDBOX_MOUNTS"]
+        _pass_pkb_url_sandbox(env)
+        assert env["PKB_MCP_URL"] == "http://host:8026/mcp"
 
-    def test_no_double_mount_on_repeated_call(self, tmp_path):
-        brain = tmp_path / "brain"
-        brain.mkdir()
-        env: dict = {"ACA_DATA": str(brain)}
-        _mount_aca_data_sandbox(env)
-        first = env["SANDBOX_MOUNTS"]
-        # Calling again (simulating the old duplicate in crew -g) would append twice
-        # — the deduplication responsibility is now in the caller (no duplicate calls).
-        # This test confirms the first call produces exactly one mount entry.
-        assert env["SANDBOX_MOUNTS"].count(f"{brain}:{brain}:rw") == 1
-        assert env["SANDBOX_MOUNTS"] == first
+    def test_noop_when_url_missing(self, monkeypatch):
+        monkeypatch.delenv("PKB_MCP_URL", raising=False)
+        env: dict = {}
+        _pass_pkb_url_sandbox(env)
+        assert "PKB_MCP_URL" not in env
 
 
 class TestCloneHasChanges:
