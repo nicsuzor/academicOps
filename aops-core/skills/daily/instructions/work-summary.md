@@ -44,7 +44,7 @@ Write a 2-4 sentence natural language summary to the `## Today's Story` section.
 
 ### Step 5.3.1: Update synthesis.json with narrative
 
-After writing Today's Story to the daily note, also update the `daily_story` field in `$AOPS_SESSIONS/synthesis.json`. This ensures the dashboard narrative reflects the latest work summary, even if Step 4.7 ran earlier with less data.
+After writing Today's Story to the daily note, update the `daily_story` field in `$AOPS_SESSIONS/synthesis.json`. This is the **sole write point** for `daily_story` — Step 4.7 writes only structural data (sessions, PRs, accomplishments), not narrative. This avoids generating a narrative twice per /daily run with incomplete context the first time.
 
 1. Adapt Today's Story from prose (Step 5.3) into 3-5 bullet points:
    - Second person ("you started...", "you got pulled into...")
