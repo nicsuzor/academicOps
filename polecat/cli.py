@@ -476,7 +476,7 @@ def _build_docker_cmd(
             # (potentially stale or wrong-path) copy.
             staged_claude_dir = staging_dir / ".claude"
             staged_claude_dir.mkdir(exist_ok=True)
-            for auth_file in (".credentials.json", ".mcp.json", "settings.json"):
+            for auth_file in (".credentials.json", "settings.json"):
                 src = claude_dir / auth_file
                 if src.exists():
                     shutil.copy2(src, staged_claude_dir / auth_file)
@@ -496,7 +496,6 @@ def _build_docker_cmd(
                     "google_accounts.json",
                     "oauth_creds.json",
                     "installation_id",
-                    "trustedFolders.json",
                 ):
                     src = gemini_dir / auth_file
                     if src.exists():

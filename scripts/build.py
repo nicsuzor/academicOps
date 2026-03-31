@@ -446,6 +446,15 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
         # Web operations
         "WebFetch": "web_fetch",
         "WebSearch": "google_web_search",
+        # Browser/Playwright (Claude Code -> Gemini chrome-devtools-mcp)
+        "browser_navigate": "navigate_page",
+        "browser_snapshot": "take_snapshot",
+        "browser_take_screenshot": "take_screenshot",
+        "browser_click": "click",
+        "browser_wait_for": "wait_for",
+        "browser_evaluate": "evaluate_script",
+        "browser_type": "type_text",
+        "browser_resize": "resize_page",
     }
 
     # Handle case where tools is already a string (no transformation needed for format)
@@ -521,6 +530,24 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
             "TodoWrite": "TodoWrite",
             "AskUserQuestion": "AskUserQuestion",
             "NotebookEdit": "NotebookEdit",
+            # Browser/Playwright (Gemini chrome-devtools-mcp -> Claude Code)
+            "navigate_page": "browser_navigate",
+            "take_snapshot": "browser_snapshot",
+            "take_screenshot": "browser_take_screenshot",
+            "click": "browser_click",
+            "wait_for": "browser_wait_for",
+            "evaluate_script": "browser_evaluate",
+            "type_text": "browser_type",
+            "resize_page": "browser_resize",
+            # Passthrough for browser_* names (already canonical)
+            "browser_navigate": "browser_navigate",
+            "browser_snapshot": "browser_snapshot",
+            "browser_take_screenshot": "browser_take_screenshot",
+            "browser_click": "browser_click",
+            "browser_wait_for": "browser_wait_for",
+            "browser_evaluate": "browser_evaluate",
+            "browser_type": "browser_type",
+            "browser_resize": "browser_resize",
         }
 
         # Transform each tool name

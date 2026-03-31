@@ -6,8 +6,7 @@ RUN useradd -m -d /home/worker -s /bin/bash worker
 
 # Set environment variables — HOME stays as /root during root-level installs
 # to avoid polluting /home/worker with root-owned files. Switched after USER.
-ENV AOPS=/app \
-    ACA_DATA=/data \
+ENV ACA_DATA=/data \
     HOSTNAME=aops-crew \
     UV_INSTALL_DIR=/usr/local/bin \
     PYTHONUNBUFFERED=1 \
@@ -44,26 +43,11 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 # Install Gemini CLI, Claude Code, and code quality tools globally
 RUN npm install -g @google/gemini-cli @anthropic-ai/claude-code markdownlint-cli2 dprint ccstatusline && npm cache clean --force
 
-# Install aops and pkb binaries from authoritative releases
-RUN TMPDIR=$(mktemp -d) \
-    && PLATFORM="x86_64-linux" \
-    && MEM_LATEST=$(curl -s https://api.github.com/repos/nicsuzor/mem/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/') \
-    && curl -fsSL "https://github.com/nicsuzor/mem/releases/download/${MEM_LATEST}/mem-${MEM_LATEST}-${PLATFORM}.tar.gz" -o "${TMPDIR}/mem.tar.gz" \
-    && tar xzf "${TMPDIR}/mem.tar.gz" -C "${TMPDIR}" \
-    && cp "${TMPDIR}/pkb" "/usr/local/bin/pkb" \
-    && chmod +x "/usr/local/bin/pkb" \
-    && AOPS_LATEST=$(curl -s https://api.github.com/repos/nicsuzor/aops-dist/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/') \
-    && curl -fsSL "https://github.com/nicsuzor/aops-dist/releases/download/${AOPS_LATEST}/aops-claude-linux-x86_64.tar.gz" -o "${TMPDIR}/aops.tar.gz" \
-    && tar xzf "${TMPDIR}/aops.tar.gz" -C "${TMPDIR}" \
-    && if [ -f "${TMPDIR}/aops" ]; then cp "${TMPDIR}/aops" "/usr/local/bin/aops"; chmod +x "/usr/local/bin/aops"; fi \
-    && rm -rf "${TMPDIR}"
-
-# Create app and data directories, hand ownership to worker
-RUN mkdir -p /app /data && chown worker:worker /app /data
+# Create data directory, hand ownership to worker
+RUN mkdir -p /data && chown worker:worker /data
 
 # ── Switch to non-root user for all remaining operations ───────────────
 
-WORKDIR /app
 USER worker
 
 # Now set HOME and PATH for the worker user
@@ -76,37 +60,36 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no
 # Install Python-based CLI tools as user (installs to ~/.local/bin)
 RUN uv tool install ruff
 
-# Copy dependency files for layer caching
-COPY --chown=worker:worker pyproject.toml uv.lock ./
+# ── Install aops framework from GitHub (same as `make install`) ──────
+# Claude plugin: installed from the GitHub repo marketplace (dist/aops-claude
+# is committed to main by the build-extension workflow).
+# Gemini extension: installed from the GitHub repo with --pre-release.
+# pkb binary: downloaded from nicsuzor/mem releases.
+#
+# To test main before a stable release: `make prerelease && make build`
+ARG AOPS_REPO_URL=https://github.com/nicsuzor/academicOps.git
 
-# Pre-install project dependencies (no-dev for lightweight production-ready image)
-RUN uv sync --frozen --no-install-project --no-dev
-
-# Copy the rest of the application
-COPY --chown=worker:worker . .
-
-# Final sync to install the project itself
-RUN uv sync --frozen --no-dev
-
-# Build distribution artifacts (Claude plugin package)
-RUN uv run python scripts/build.py --pkb-binary /usr/local/bin/pkb
-
-# Set entrypoint script for worker configuration
-# COPY happened earlier in the worker layer, but we re-copy to ensure permissions.
-COPY --chown=worker:worker polecat/entrypoint.sh /app/polecat/entrypoint.sh
-RUN chmod +x /app/polecat/entrypoint.sh
-
-# Install the aops-core Claude plugin. HOME is already /home/worker so
-# known_marketplaces.json and installLocation paths are correct from the start.
-RUN claude plugin marketplace add /app \
+# Install Claude plugin from GitHub marketplace (HTTPS — no SSH in containers).
+# --sparse limits checkout to plugin directories only (faster, avoids full repo clone).
+RUN claude plugin marketplace add ${AOPS_REPO_URL} --sparse .claude-plugin dist/aops-claude \
+    && claude plugin marketplace update academicOps \
     && claude plugin install aops-core@academicOps
 
-# Install the aops-core Gemini extension from local build artifacts.
-# Pre-create .gemini directory (gemini CLI needs it for project registry).
-# Use a dummy GEMINI_API_KEY to bypass auth check during install.
-# --consent bypasses the interactive consent prompt.
+# Install pkb binary from nicsuzor/mem releases
+RUN TMPDIR=$(mktemp -d) \
+    && PLATFORM="x86_64-linux" \
+    && MEM_TAG=$(curl -s https://api.github.com/repos/nicsuzor/mem/releases/latest \
+         | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/') \
+    && curl -fsSL "https://github.com/nicsuzor/mem/releases/download/${MEM_TAG}/mem-${MEM_TAG}-${PLATFORM}.tar.gz" \
+         -o "${TMPDIR}/mem.tar.gz" \
+    && tar xzf "${TMPDIR}/mem.tar.gz" -C "${TMPDIR}" \
+    && cp "${TMPDIR}/pkb" "$HOME/.local/bin/pkb" \
+    && chmod +x "$HOME/.local/bin/pkb" \
+    && rm -rf "${TMPDIR}"
+
+# Install Gemini extension from GitHub repo
 RUN mkdir -p /home/worker/.gemini \
-    && GEMINI_API_KEY=dummy-for-install gemini extensions install /app/dist/aops-gemini --consent
+    && GEMINI_API_KEY=dummy-for-install gemini extensions install ${AOPS_REPO_URL} --consent --pre-release
 
 # Set permissive extension enablement so hooks fire for any workspace path.
 # `gemini extensions install` restricts to /home/<user>/* which doesn't match
@@ -124,6 +107,10 @@ p.write_text(json.dumps(d, indent=2))" ; \
 COPY --chown=worker:worker polecat/defaults/ccstatusline-settings.json /home/worker/.config/ccstatusline/settings.json
 COPY --chown=worker:worker polecat/defaults/claude-settings.json /home/worker/.claude/settings.json
 
+# Copy entrypoint script
+COPY --chown=worker:worker polecat/entrypoint.sh /home/worker/entrypoint.sh
+RUN chmod +x /home/worker/entrypoint.sh
+
 # Make home dir and .claude writable for any UID — polecat crew runs containers
 # as the host UID (non-root), which may differ from worker UID 1000.
 # Remove .claude.json so the entrypoint can populate it from staging with correct ownership.
@@ -132,5 +119,5 @@ RUN chmod 777 /home/worker \
     && rm -f /home/worker/.claude.json
 
 # Default command and entrypoint
-ENTRYPOINT ["/app/polecat/entrypoint.sh"]
+ENTRYPOINT ["/home/worker/entrypoint.sh"]
 CMD ["/bin/bash"]

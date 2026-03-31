@@ -1,8 +1,12 @@
 {
   "mcpServers": {
     "pkb": {
-      "type": "http",
-      "url": "${user_config.PKB_MCP_URL}"
+      "command": "uvx",
+      "args": [
+        "fastmcp",
+        "run",
+        "${user_config.PKB_MCP_URL}"
+      ]
     }
   }
 }
