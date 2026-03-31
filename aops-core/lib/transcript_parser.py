@@ -485,11 +485,11 @@ def _synthesize_summary(reflection: dict[str, Any], outcome: str, project: str) 
 
     # Add outcome context
     if outcome == "success":
-        prefix = "Successfully completed: "
+        prefix = ""
     elif outcome == "partial":
-        prefix = "Partially completed: "
+        prefix = ""
     else:
-        prefix = "Attempted: "
+        prefix = ""
 
     # Add friction note if present
     if friction_points and outcome != "success":

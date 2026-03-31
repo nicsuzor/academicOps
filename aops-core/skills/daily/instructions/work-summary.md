@@ -39,6 +39,9 @@ Write a 2-4 sentence natural language summary to the `## Today's Story` section.
 - Lead with the most impactful work, not chronological order
 - Mention specific PR numbers and task IDs for traceability
 - If goals were set in Focus, note alignment or drift briefly
+- **Punchy Verbs**: Avoid robotic preambles like "Successfully completed" or "Attempted to". Lead directly with the verb: "Decomposed OSB...", "Refactored UI...", "Fixed bug in...".
+
+**Synthesized Narrative for Dashboard**: Prepare a copy of this 2-4 sentence summary (excluding the "Dropped Threads" bullet) to be used as `daily_narrative` in `synthesis.json` during the next step.
 
 ### Step 5.3.1: Update synthesis.json with narrative
 
