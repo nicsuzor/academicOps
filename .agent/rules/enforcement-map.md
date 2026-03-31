@@ -268,11 +268,13 @@ CC auto mode catches per-action violations (e.g. destructive git, boundary cross
 
 ### Setup
 
-Run `scripts/setup-automode.sh` to merge aops axiom rules from `aops-core/config/automode-rules.json` with CC defaults into `~/.claude/settings.json`.
+Auto-installed on every session start via `aops-core/hooks/session_env_setup.py`. The hook fingerprint-checks for `P#42` in `soft_deny` and, if absent, calls `lib/automode.py:install()` which: (1) reads aops rules from `plugin.json` autoMode field (fallback: `automode-rules.json`), (2) fetches CC defaults via `claude auto-mode defaults`, (3) merges and writes to `~/.claude/settings.json`.
+
+Also runs during dev install (`scripts/install.py` Phase 4b) and is baked into `polecat/defaults/claude-settings.json` for containers. Manual `setup-automode.sh` is retained as a workaround only.
 
 ### Rules
 
-Rules in `automode-rules.json` are organised as:
+Rules in `plugin.json` (`autoMode` field) are the canonical source, organised as:
 
 - **`soft_deny`**: Axiom enforcement rules (scope discipline, data boundaries, fail-fast, etc.)
 - **`allow`**: Explicitly permitted patterns (framework-aware operations)

@@ -6,8 +6,16 @@ fetches CC defaults via `claude auto-mode defaults`, merges them, and installs
 into ~/.claude/settings.json.
 
 Merge strategy:
-  - environment: aops REPLACES CC defaults (our context is more specific)
-  - allow, soft_deny: CC defaults are PRESERVED and aops rules are appended
+  - environment: aops REPLACES CC defaults (our context is more specific).
+    Rationale: CC environment strings describe a generic developer context; aops
+    strings describe an academic research context with its own norms (data
+    immutability, PKB-as-truth, etc.). Appending would create contradictory or
+    redundant context. Replacement is safe because aops rules are designed to be
+    complete — if a needed CC environment string is missing it should be added to
+    plugin.json rather than relying on CC defaults.
+  - allow, soft_deny: CC defaults are PRESERVED and aops rules are appended.
+    Rationale: CC built-in rules encode security patterns we should not lose.
+    Appending lets aops add domain-specific constraints without removing protections.
 """
 
 import json
@@ -117,7 +125,7 @@ def install(dry_run: bool = False) -> tuple[bool, str]:
         return False, "No aops autoMode rules found"
 
     cc_defaults = _get_cc_defaults()
-    if not cc_defaults:
+    if cc_defaults is None:
         return False, "Could not fetch CC auto-mode defaults (is `claude` CLI available?)"
 
     merged = _merge_rules(cc_defaults, aops_rules)
