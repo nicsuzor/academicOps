@@ -7,7 +7,7 @@
  *
  * Defaults:
  *   --url  http://localhost:5173/
- *   --out  ./screenshots/dashboard-audit-YYYYMMDD/
+ *   --out  $AOPS_SESSIONS/qa/dashboard-audit-YYYYMMDD/
  *
  * Requires: npx playwright (chromium browser installed)
  *   Install if needed: npx playwright install chromium
@@ -28,8 +28,9 @@ const BASE_URL = getArg(
   "http://localhost:5173/",
 );
 const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+const sessionsDir = process.env.AOPS_SESSIONS || resolve(".", "screenshots");
 const OUT_DIR = resolve(
-  getArg("--out", `./screenshots/dashboard-audit-${today}`),
+  getArg("--out", `${sessionsDir}/qa/dashboard-audit-${today}`),
 );
 
 if (!existsSync(OUT_DIR)) mkdirSync(OUT_DIR, { recursive: true });
@@ -68,31 +69,19 @@ async function main() {
   console.log("[2/9] Dashboard home (full page)...");
   await shot(page, "01-dashboard-home-full", { fullPage: true });
 
-  // ── 3. Task Graph — Treemap ───────────────────────────────────────
-  console.log("[3/9] Task Graph — Treemap...");
-  await clickButton(page, "TASK GRAPH");
-  // Treemap is the default view
-  await shot(page, "02-taskgraph-treemap");
-
-  // ── 4. Task Graph — Circle Pack ───────────────────────────────────
-  console.log("[4/9] Task Graph — Circle Pack...");
-  await clickButton(page, "Circle Pack");
-  await shot(page, "03-taskgraph-circlepack");
-
-  // ── 5. Task Graph — Force Atlas 2 ────────────────────────────────
-  console.log("[5/9] Task Graph — Force Atlas 2...");
-  await clickButton(page, "Force Atlas 2");
-  await shot(page, "04-taskgraph-forceatlas");
-
-  // ── 6. Task Graph — SFDP ─────────────────────────────────────────
-  console.log("[6/9] Task Graph — SFDP...");
-  await clickButton(page, "SFDP");
-  await shot(page, "05-taskgraph-sfdp");
-
-  // ── 7. Task Graph — Arc Diagram ──────────────────────────────────
-  console.log("[7/9] Task Graph — Arc Diagram...");
-  await clickButton(page, "Arc Diagram");
-  await shot(page, "06-taskgraph-arc");
+  // ── 3–7. Task Graph views (nav buttons render VIEW_MODES directly) ──
+  const graphViews = [
+    { label: "Treemap",     file: "02-taskgraph-treemap" },
+    { label: "Circle Pack", file: "03-taskgraph-circlepack" },
+    { label: "Force",       file: "04-taskgraph-force" },
+    { label: "Metro",       file: "05-taskgraph-metro" },
+    { label: "Arc Diagram", file: "06-taskgraph-arc" },
+  ];
+  for (const [i, view] of graphViews.entries()) {
+    console.log(`[${i + 3}/${2 + graphViews.length + 2}] Task Graph — ${view.label}...`);
+    await clickButton(page, view.label);
+    await shot(page, view.file);
+  }
 
   // ── 8. Threaded Tasks view ────────────────────────────────────────
   console.log("[8/9] Threaded Tasks...");
