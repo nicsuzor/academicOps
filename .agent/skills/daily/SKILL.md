@@ -2,7 +2,7 @@
 name: daily
 category: instruction
 description: Daily note lifecycle - briefing, task recommendations, progress sync, and work summary. SSoT for daily note structure.
-allowed-tools: Read,Bash,Grep,Write,Edit,AskUserQuestion,mcp__outlook__messages_list_recent,mcp__outlook__messages_get,mcp__outlook__messages_move
+allowed-tools: Read,Bash,Grep,Write,Edit,AskUserQuestion,mcp__outlook__messages_list_recent,mcp__outlook__messages_get,mcp__outlook__messages_move,mcp__plugin_aops-core_pkb__get_task,mcp__plugin_aops-core_pkb__search,mcp__plugin_aops-core_pkb__batch_update
 version: 2.0.0
 permalink: skills-daily
 ---
@@ -11,7 +11,26 @@ permalink: skills-daily
 
 Manage daily note lifecycle: briefing, task recommendations, progress sync, and work summary.
 
-Location: `$ACA_SESSIONS/YYYYMMDD-daily.md`
+Location: `$AOPS_SESSIONS/YYYYMMDD-daily.md`
+
+## Pre-Flight: Required MCP Servers
+
+**Before doing ANYTHING else, verify both required MCP servers are available.**
+
+Run these two calls. If EITHER fails, STOP and tell the user which server is missing. Do NOT proceed with degraded data — the daily note will be wrong.
+
+```
+mcp__plugin_aops-core_pkb__search(query="test", limit=1)
+mcp__outlook__messages_list_recent(folder="inbox", limit=1)
+```
+
+**If PKB MCP is unavailable**: HALT. Say: "PKB MCP server is not available. Daily skill cannot verify task status without it — proceeding would produce phantom overdue items. Fix PKB_MCP_URL or start the PKB server."
+
+**If Outlook MCP is unavailable**: HALT. Say: "Outlook MCP server is not available. Daily skill cannot triage email without it. Connect Outlook MCP before running /daily."
+
+**Do NOT fall back to filesystem scanning, cached data, or yesterday's daily note as a substitute for live PKB queries.** That path produces stale task status and phantom overdue items.
+
+**After pre-flight passes**: Use `mcp__plugin_aops-core_pkb__get_task` to check the **live status** of every task that was outstanding in yesterday's daily note, plus any tasks that are in-progress or time-sensitive today. Never carry forward a task's status from yesterday's note without verifying it against PKB — tasks completed between daily notes will otherwise appear as phantom overdue items.
 
 ## CRITICAL BOUNDARY: Planning Only
 
@@ -65,7 +84,7 @@ Every `/daily` invocation runs the **full pipeline** and updates the daily note 
 
 ## 1. Create note
 
-Check `$ACA_SESSIONS/YYYYMMDD-daily.md`.
+Check `$AOPS_SESSIONS/YYYYMMDD-daily.md`.
 
 **If exists**: Skip to section 2. The note is updated in place.
 
@@ -399,7 +418,7 @@ Update daily note from session JSON files and GitHub merge data.
 ### Step 4.1: Find Session JSONs
 
 ```bash
-ls $ACA_SESSIONS/summaries/YYYYMMDD*.json 2>/dev/null
+ls $AOPS_SESSIONS/summaries/YYYYMMDD*.json 2>/dev/null
 ```
 
 **Incremental filtering**: After listing JSONs, read the current daily note's Session Log table. Extract session IDs already present. Filter the JSON list to exclude already-processed sessions. This prevents duplicate entries on repeated syncs.
