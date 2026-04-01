@@ -1,0 +1,154 @@
+# Agent: Enforcer
+# Personality: Universal standards enforcer — axiom compliance reviewer.
+# Responsibilities:
+#   - Review PR diff against framework axioms
+#   - Read local .agent/CORE.md for project-specific context
+#   - Push fixes for axiom violations directly to the PR branch
+#   - Comment on issues requiring human judgment
+# Prompt: aops-core/agents/enforcer.md (canonical source — same prompt as local subagent)
+#
+# This is a reusable workflow. Install on other repos with:
+#   uses: nicsuzor/academicOps/.github/workflows/agent-enforcer.yml@main
+
+name: "Agent: Enforcer Review"
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to review'
+        type: string
+        required: true
+      ref:
+        description: 'Git ref to checkout'
+        type: string
+        required: true
+  workflow_call:
+    inputs:
+      pr_number:
+        description: 'PR number to review'
+        type: string
+        required: true
+      ref:
+        description: 'Git ref to checkout'
+        type: string
+        required: true
+
+jobs:
+  enforcer-review:
+    name: Enforcer Review
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: agent-enforcer-${{ inputs.pr_number || github.event.pull_request.number }}
+      cancel-in-progress: true
+    permissions:
+      contents: write
+      pull-requests: write
+      statuses: write
+      id-token: write
+      issues: write
+      actions: read
+    steps:
+      - name: Determine PR info
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]'
+        id: pr-info
+        run: |
+          if [ -n "$INPUT_PR_NUMBER" ]; then
+            if [ ! -d .git ]; then
+              git init
+              git remote add origin ${{ github.server_url }}/${{ github.repository }} || true
+            fi
+
+            SHA=$(gh pr view "$INPUT_PR_NUMBER" --repo "${{ github.repository }}" --json headRefOid -q '.headRefOid')
+            {
+              echo "pr_number=$INPUT_PR_NUMBER"
+              echo "ref=$INPUT_REF"
+              echo "sha=$SHA"
+            } >> "$GITHUB_OUTPUT"
+          else
+            {
+              echo "pr_number=$EVENT_PR_NUMBER"
+              echo "sha=$EVENT_HEAD_SHA"
+              echo "ref=$EVENT_HEAD_REF"
+            } >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+          INPUT_PR_NUMBER: ${{ inputs.pr_number }}
+          INPUT_REF: ${{ inputs.ref }}
+          EVENT_PR_NUMBER: ${{ github.event.pull_request.number }}
+          EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          EVENT_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+
+      - uses: actions/checkout@v4
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]'
+        with:
+          fetch-depth: 0
+          ref: ${{ steps.pr-info.outputs.ref }}
+
+      # Loop detection: skip if last commit was from enforcer
+      - name: Check if last push was from an agent
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]'
+        id: loop-check
+        run: |
+          LAST_MSG=$(git log -1 --format='%B')
+          if echo "$LAST_MSG" | grep -qE '(Enforcer-By|Autofix-By|Merge-Prep-By):'; then
+            echo "Last commit was from an agent — skipping to avoid loop"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Read the canonical enforcer prompt. When called from another repo,
+      # fetch it from academicOps. When called from academicOps itself,
+      # read it from the local checkout.
+      - name: Read enforcer agent prompt
+        if: (github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]') && steps.loop-check.outputs.skip != 'true'
+        id: prompt
+        run: |
+          if [ -f "aops-core/agents/enforcer.md" ]; then
+            PROMPT=$(cat aops-core/agents/enforcer.md)
+          elif [ -f ".github/agents/enforcer.agent.md" ]; then
+            PROMPT=$(cat .github/agents/enforcer.agent.md)
+          else
+            echo "::error::Enforcer agent prompt not found"
+            exit 1
+          fi
+          {
+            echo "prompt<<AGENT_EOF"
+            echo "$PROMPT"
+            echo "AGENT_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run Enforcer Review
+        id: review
+        if: (github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]') && steps.loop-check.outputs.skip != 'true'
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        with:
+          allowed_bots: "claude[bot]"
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            ${{ steps.prompt.outputs.prompt }}
+
+            ---
+
+            Your task: Review PR #${{ steps.pr-info.outputs.pr_number }} in repository ${{ github.repository }} against the axioms above.
+
+            1. Read `.agent/CORE.md` from the repo root (if it exists) for local project context.
+            2. Run `gh pr view ${{ steps.pr-info.outputs.pr_number }}` to understand the PR.
+            3. Run `gh pr diff ${{ steps.pr-info.outputs.pr_number }}` to see the changes.
+            4. Check each change against the axioms. Push fixes for clear violations directly to the PR branch.
+            5. Leave a PR review comment summarizing your findings.
+            6. Use `gh pr review` to file your review (APPROVE or REQUEST_CHANGES).
+
+            If you push fixes, use this commit trailer: `Enforcer-By: agent`
+
+            PR ref: ${{ steps.pr-info.outputs.ref }}
+            PR head SHA: ${{ steps.pr-info.outputs.sha }}
+
+            Enforcement Mode: warn
+          claude_args: '--model claude-haiku-4-5-20251001 --allowed-tools "Bash,Read"'
