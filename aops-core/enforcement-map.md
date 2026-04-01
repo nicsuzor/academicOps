@@ -384,12 +384,12 @@ Auto-commits staged changes. Blocks if unstaged changes require manual commit.
 
 ## CI/CD Validation (GitHub Actions)
 
-| Workflow              | Purpose                                  | Axiom                             |
-| --------------------- | ---------------------------------------- | --------------------------------- |
-| test-setup.yml        | Validate symlinks exist and are relative | [[fail-fast-code]]                |
-| framework-health.yml  | Framework health metrics and enforcement | [[maintain-relational-integrity]] |
-| claude.yml            | Claude Code bot integration              | -                                 |
-| agent-enforcer.yml    | Axiom compliance review for PRs          | Universal axioms (Tier 1)         |
+| Workflow             | Purpose                                  | Axiom                             |
+| -------------------- | ---------------------------------------- | --------------------------------- |
+| test-setup.yml       | Validate symlinks exist and are relative | [[fail-fast-code]]                |
+| framework-health.yml | Framework health metrics and enforcement | [[maintain-relational-integrity]] |
+| claude.yml           | Claude Code bot integration              | -                                 |
+| agent-enforcer.yml   | Axiom compliance review for PRs          | Universal axioms (Tier 1)         |
 
 ## Agent Tool Permissions
 
