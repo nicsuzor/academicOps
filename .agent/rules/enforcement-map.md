@@ -44,6 +44,13 @@ tags: [framework, enforcement, moc]
 | [[acceptance-criteria-own-success]]         | Acceptance Criteria Own Success  | /qa skill enforcement                                                                                       | Stop                      |        |
 | [[plan-first-development]]                  | Plan-First Development           | EnterPlanMode tool                                                                                          | Before coding             |        |
 | [[research-data-immutable]]                 | Research Data Immutable          | settings.json denies records/**                                                                             | PreToolUse                |        |
+| [[research-data-immutable]]                 | Research Data Immutable (P#42)   | CC auto mode classifier soft_deny                                                                           | PreToolUse (per tool call)|        |
+| [[data-boundaries]]                         | Data Boundaries                  | CC auto mode classifier soft_deny (scope discipline, boundary crossings)                                    | PreToolUse (per tool call)|        |
+| [[trust-version-control]]                   | No Backup Files (P#24)           | CC auto mode classifier soft_deny                                                                           | PreToolUse (per tool call)|        |
+| [[do-one-thing]]                            | Scope Discipline (P#5)           | CC auto mode classifier soft_deny                                                                           | PreToolUse (per tool call)|        |
+| [[fail-fast-code]]                          | No Workarounds (P#9, P#30)       | CC auto mode classifier soft_deny                                                                           | PreToolUse (per tool call)|        |
+| [[plan-first-development]]                  | Plan-First Development (P#41)    | CC auto mode classifier soft_deny                                                                           | PreToolUse (per tool call)|        |
+| [[acceptance-criteria-own-success]]         | Acceptance Criteria (P#31)       | CC auto mode classifier soft_deny                                                                           | PreToolUse (per tool call)|        |
 | [[just-in-time-context]]                    | Just-In-Time Context             | sessionstart_load_axioms.py                                                                                 | SessionStart              |        |
 | [[minimal-instructions]]                    | Minimal Instructions             | policy_enforcer.py 200-line limit                                                                           | PreToolUse                |        |
 | [[feedback-loops-for-uncertainty]]          | Feedback Loops                   | AXIOMS.md                                                                                                   | SessionStart              |        |
@@ -268,11 +275,13 @@ CC auto mode catches per-action violations (e.g. destructive git, boundary cross
 
 ### Setup
 
-Run `scripts/setup-automode.sh` to merge aops axiom rules from `aops-core/config/automode-rules.json` with CC defaults into `~/.claude/settings.json`.
+Auto-installed on every session start via `aops-core/hooks/session_env_setup.py`. The hook fingerprint-checks for `P#42` in `soft_deny` and, if absent, calls `lib/automode.py:install()` which: (1) reads aops rules from `plugin.json` autoMode field (fallback: `automode-rules.json`), (2) fetches CC defaults via `claude auto-mode defaults`, (3) merges and writes to `~/.claude/settings.json`.
+
+Also runs during dev install (`scripts/install.py` Phase 4b) and is baked into `polecat/defaults/claude-settings.json` for containers. Manual `setup-automode.sh` is retained as a workaround only.
 
 ### Rules
 
-Rules in `automode-rules.json` are organised as:
+Rules in `plugin.json` (`autoMode` field) are the canonical source, organised as:
 
 - **`soft_deny`**: Axiom enforcement rules (scope discipline, data boundaries, fail-fast, etc.)
 - **`allow`**: Explicitly permitted patterns (framework-aware operations)

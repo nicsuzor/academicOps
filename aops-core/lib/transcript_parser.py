@@ -483,13 +483,7 @@ def _synthesize_summary(reflection: dict[str, Any], outcome: str, project: str) 
         # Combine first accomplishment with count of others
         summary = f"{accomplishments[0]}; plus {len(accomplishments) - 1} other accomplishment{'s' if len(accomplishments) > 2 else ''}"
 
-    # Add outcome context
-    if outcome == "success":
-        prefix = "Successfully completed: "
-    elif outcome == "partial":
-        prefix = "Partially completed: "
-    else:
-        prefix = "Attempted: "
+    prefix = ""
 
     # Add friction note if present
     if friction_points and outcome != "success":

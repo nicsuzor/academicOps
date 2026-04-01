@@ -152,6 +152,19 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
     if pkb_status:
         messages.append(pkb_status)
 
+    # Ensure auto mode classifier rules are installed
+    try:
+        from lib.automode import install, is_installed
+
+        if not is_installed():
+            ok, msg = install()
+            if ok:
+                messages.append(f"autoMode: {msg}")
+            else:
+                messages.append(f"autoMode: skipped ({msg})")
+    except Exception as e:
+        messages.append(f"autoMode: check failed ({e})")
+
     # 1. Persist Session ID
     if ctx.session_id:
         persist["CLAUDE_SESSION_ID"] = ctx.session_id
