@@ -151,4 +151,4 @@ jobs:
             PR head SHA: ${{ steps.pr-info.outputs.sha }}
 
             Enforcement Mode: warn
-          claude_args: '--model claude-haiku-4-5-20251001 --allowed-tools "Bash,Read"'
+          claude_args: '--allowed-tools "Bash,Read"'

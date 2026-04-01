@@ -1,7 +1,6 @@
 ---
 name: enforcer
 description: Universal standards agent — carries the axioms as core knowledge and applies them in any context. Can review code, audit sessions, assess PRs, or advise on design.
-model: haiku
 color: red
 tools:
   - read_file
