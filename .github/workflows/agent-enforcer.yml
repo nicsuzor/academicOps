@@ -100,20 +100,25 @@ jobs:
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
-      # Read the canonical enforcer prompt. When called from another repo,
-      # fetch it from academicOps. When called from academicOps itself,
-      # read it from the local checkout.
+      # Read the canonical enforcer prompt.
+      # Priority: local checkout (academicOps) → fetch from academicOps repo (cross-repo calls).
       - name: Read enforcer agent prompt
         if: (github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]') && steps.loop-check.outputs.skip != 'true'
         id: prompt
+        env:
+          GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
         run: |
           if [ -f "aops-core/agents/enforcer.md" ]; then
+            # Running in academicOps — read from local checkout
             PROMPT=$(cat aops-core/agents/enforcer.md)
-          elif [ -f ".github/agents/enforcer.agent.md" ]; then
-            PROMPT=$(cat .github/agents/enforcer.agent.md)
           else
-            echo "::error::Enforcer agent prompt not found"
-            exit 1
+            # Cross-repo call — fetch canonical prompt from academicOps
+            PROMPT=$(gh api repos/nicsuzor/academicOps/contents/aops-core/agents/enforcer.md \
+              --header 'Accept: application/vnd.github.raw+json')
+            if [ -z "$PROMPT" ]; then
+              echo "::error::Failed to fetch enforcer agent prompt from academicOps"
+              exit 1
+            fi
           fi
           {
             echo "prompt<<AGENT_EOF"
