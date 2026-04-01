@@ -66,6 +66,19 @@ Read each session JSON from `$AOPS_SESSIONS/summaries/YYYYMMDD*.json`. Extract:
 
 **Why prompt count, not duration**: A 337-minute autonomous session costs the human nothing. A 5-minute session with 4 prompts is where they were actually thinking. Duration measures agent compute time; prompt count measures human attention.
 
+**Work type classification** (derived from project and prompt content):
+
+| Signal                                                                                                                              | Classification     |
+| ----------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
+| Prompt mentions research/analysis/paper/methodology/data/literature; or project is tagged as research in ACA_DATA                  | **Research**       |
+| Prompt mentions teaching, supervision, HDR, marking, student                                                                        | **Academic**       |
+| Prompt mentions PR/deploy/CI/infra/config/tooling; or project is framework, tooling, or personal config (tagged in ACA_DATA)        | **Infrastructure** |
+| Email, calendar, scheduling, admin                                                                                                  | **Administrative** |
+
+Use the user's prompt `description` text as the primary signal. Project name is a fallback — check the project's tags or category in ACA_DATA rather than hardcoding names. When ambiguous, prefer research classification — the daily skill's job is to surface research work, not bury it.
+
+**Why this matters**: Session Flow and Today's Story must lead with research sessions. Infrastructure sessions with high output (many PRs, many tasks) are visually impressive but represent lower-significance work. An interactive research session with 4 prompts is the day's headline; 5 autonomous infrastructure sessions are a footnote.
+
 **Incremental filtering**: After listing JSONs, read the current daily note's Session Log table. Extract session IDs already present. Filter the JSON list to exclude already-processed sessions. This prevents duplicate entries on repeated syncs.
 
 ### Step 4.2.5: Query Merged PRs
@@ -91,9 +104,9 @@ cd <repo_path> && gh pr list --state merged --json number,title,author,mergedAt,
 
 | PR          | Title                  | Author    | Merged |
 | ----------- | ---------------------- | --------- | ------ |
-| [#123](url) | Fix authentication bug | @nicsuzor | 10:15  |
+| [#123](url) | Fix authentication bug | @user | 10:15  |
 
-### buttermilk
+### my-other-project
 
 No PRs merged today.
 
@@ -134,15 +147,15 @@ cd <repo_path> && gh pr list --state open --json number,title,author,createdAt,h
 
 | PR          | Title                        | Author     | Size           | Age | CI                 | Mergeable | Action                     |
 | ----------- | ---------------------------- | ---------- | -------------- | --- | ------------------ | --------- | -------------------------- |
-| [#631](url) | Agent launch controls in TUI | @botnicbot | +144/-4 (2f)   | 0d  | passing            | conflict  | fix conflicts then merge   |
-| [#630](url) | Fix crontab broken paths     | @nicsuzor  | +149/-34 (6f)  | 0d  | type check failing | conflict  | fix type check + conflicts |
-| [#640](url) | Add extraction skill         | @botnicbot | +1048/-17 (6f) | 0d  | skipped            | unknown   | review — large new skill   |
+| [#631](url) | Agent launch controls in TUI | @agent | +144/-4 (2f)   | 0d  | passing            | conflict  | fix conflicts then merge   |
+| [#630](url) | Fix crontab broken paths     | @user  | +149/-34 (6f)  | 0d  | type check failing | conflict  | fix type check + conflicts |
+| [#640](url) | Add extraction skill         | @agent | +1048/-17 (6f) | 0d  | skipped            | unknown   | review — large new skill   |
 
-### buttermilk (10 open)
+### my-other-project (10 open)
 
 | PR          | Title                   | Author    | Size            | Age | CI      | Mergeable | Action                       |
 | ----------- | ----------------------- | --------- | --------------- | --- | ------- | --------- | ---------------------------- |
-| [#304](url) | Unify processor classes | @nicsuzor | +471/-424 (22f) | 74d | failing | conflict  | close or rebase — very stale |
+| [#304](url) | Unify processor classes | @user | +471/-424 (22f) | 74d | failing | conflict  | close or rebase — very stale |
 
 _N open PRs across M repos — X ready to merge, Y need fixes, Z need review_
 ```
