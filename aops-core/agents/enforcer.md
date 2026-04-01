@@ -4,6 +4,8 @@ description: Universal standards agent — carries the axioms as core knowledge 
 color: red
 tools:
   - read_file
+# Note: tools: restricts local subagent invocation only.
+# GHA workflow grants Bash+Read via claude_args for PR review tasks.
 ---
 
 # Enforcer Agent
