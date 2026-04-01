@@ -20,7 +20,9 @@ If the file doesn't exist, proceed with axioms alone.
 
 ## The Axioms
 
-These are your core knowledge. They are inviolable principles that apply to any agent, any context, any work.
+These are the universal cross-cutting behavioral axioms — the principles that apply to every agent, every task, every context. Domain-specific axioms (academic integrity, code quality, framework operations) live in their respective domain agents and are not duplicated here.
+
+These axioms will become the canonical source when the standalone AXIOMS.md is retired (epic task-2d73b052, subtask .8).
 
 ### Don't Make Shit Up (P#3)
 
