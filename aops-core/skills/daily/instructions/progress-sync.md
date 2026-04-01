@@ -66,6 +66,19 @@ Read each session JSON from `$AOPS_SESSIONS/summaries/YYYYMMDD*.json`. Extract:
 
 **Why prompt count, not duration**: A 337-minute autonomous session costs the human nothing. A 5-minute session with 4 prompts is where they were actually thinking. Duration measures agent compute time; prompt count measures human attention.
 
+**Work type classification** (derived from project and prompt content):
+
+| Signal                                                                                                      | Classification     |
+| ----------------------------------------------------------------------------------------------------------- | ------------------ |
+| Project is `explorations`, `tja`, `buttermilk`, or prompt mentions research/analysis/paper/methodology/data | **Research**       |
+| Prompt mentions teaching, supervision, HDR, marking, student                                                | **Academic**       |
+| Project is `academicOps`, `mem`, `dotfiles`, or prompt mentions PR/deploy/CI/infra/config                   | **Infrastructure** |
+| Email, calendar, scheduling, admin                                                                          | **Administrative** |
+
+Use the user's prompt `description` text as the primary signal. Project name is a fallback. When ambiguous, prefer research classification — the daily skill's job is to surface research work, not bury it.
+
+**Why this matters**: Session Flow and Today's Story must lead with research sessions. Infrastructure sessions with high output (many PRs, many tasks) are visually impressive but represent lower-significance work. An interactive TJA analysis session with 4 prompts is the day's headline; 5 autonomous infrastructure sessions are a footnote.
+
 **Incremental filtering**: After listing JSONs, read the current daily note's Session Log table. Extract session IDs already present. Filter the JSON list to exclude already-processed sessions. This prevents duplicate entries on repeated syncs.
 
 ### Step 4.2.5: Query Merged PRs
