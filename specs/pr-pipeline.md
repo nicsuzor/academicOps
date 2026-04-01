@@ -170,7 +170,7 @@ A PR qualifies for dispatch if ALL of the following are true:
 
 1. **Age gate:** Last commit was >= 15 minutes ago. This preserves a bazaar window for external reviews (Gemini, Copilot) to arrive before the Merge-Prep Agent triages them.
 2. **No in-progress run:** `gh run list --workflow=agent-merge-prep.yml --json status` shows no `in_progress` or `queued` run. Replaces the `merge-prep-running` label.
-3. **Not already completed or permanently halted:** The latest commit does not have a `merge-prep-status` commit status with `state: success` or `state: failure`. The Merge-Prep Agent sets `success` at the end of every successful run; it sets `failure` after 3 consecutive failures. A new commit from any actor clears this automatically — the new SHA has no status yet, so the agent will re-run.
+3. **Not already completed or permanently halted:** The latest commit does not have a `merge-prep-status` commit status with `state: success` or `state: failure`. The Merge-Prep Agent sets `success` at the end of every successful run; it sets `failure` after 3 consecutive failures. A new commit from any actor clears this automatically — the new SHA has no status yet, so the agent will re-run. **Exception — late reviews:** If `merge-prep-status` is `success` but `CHANGES_REQUESTED` reviews arrived _after_ the status was set, the PR re-qualifies. This handles the race where merge-prep's own commits trigger the Axiom Review, which finishes after merge-prep has already declared success.
 4. **Not a merge-prep commit:** The HEAD commit message does not contain a `Merge-Prep-By:` trailer. This is a race-condition guard: the `workflow_run` trigger can fire before the agent workflow sets `merge-prep-status: success` on a freshly pushed commit. The trailer check prevents wasteful re-dispatch.
 
 The dispatcher does not check whether checks are passing. The Merge-Prep Agent runs regardless — it will fix what it can and post an honest outcome.
@@ -378,7 +378,7 @@ environment:
 - [ ] No comment-text scanning in merge-prep-cron.yml (halt detection uses commit status API)
 - [ ] In-progress detection uses `gh run list` — no duplicate merge-prep runs
 - [ ] On every successful merge-prep run: `gh pr review --approve` posted, `merge-prep-status: success` commit status set on latest commit, `summary-and-merge.yml` triggered
-- [ ] Cron qualification skips PRs where latest commit has `merge-prep-status: success` (already processed) or `failure` (halted)
+- [ ] Cron qualification skips PRs where latest commit has `merge-prep-status: success` (already processed) or `failure` (halted), unless `CHANGES_REQUESTED` reviews arrived after the `success` status was set (late-review re-qualification)
 - [ ] After 3 consecutive merge-prep failures: merge-prep approval dismissed, `merge-prep-status: failure` commit status set, notification comment posted, cron skips the PR
 - [ ] Runaway loop ceiling: merge-prep halts (same as above) when `Merge-Prep-By:` commit count in branch ≥ 5
 - [ ] Manual retry via workflow_dispatch resets halt state (re-runs full success sequence if successful)
