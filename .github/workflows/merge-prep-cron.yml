@@ -140,8 +140,27 @@ jobs:
               2>/dev/null || echo "")
 
             if [ "$MP_STATUS" = "success" ]; then
-              echo "  SKIP: merge-prep-status is success (already processed)"
-              continue
+              # Check for CHANGES_REQUESTED reviews that arrived after merge-prep
+              # set success (race condition: Axiom Review triggered by merge-prep's
+              # own commits can finish after merge-prep declares success)
+              MP_CREATED=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses" \
+                --jq '[.[] | select(.context == "merge-prep-status" and .state == "success")] | sort_by(.created_at) | last | .created_at' \
+                2>/dev/null || echo "")
+
+              LATE_CR=0
+              if [ -n "$MP_CREATED" ]; then
+                JQ_FILTER="[.[] | select(.state == \"CHANGES_REQUESTED\" and .submitted_at > \"$MP_CREATED\")] | length"
+                LATE_CR=$(gh api "repos/$REPO/pulls/$PR_NUM/reviews" \
+                  --jq "$JQ_FILTER" \
+                  2>/dev/null || echo "0")
+              fi
+
+              if [ "$LATE_CR" -gt 0 ]; then
+                echo "  RE-QUALIFY: $LATE_CR CHANGES_REQUESTED review(s) arrived after merge-prep succeeded"
+              else
+                echo "  SKIP: merge-prep-status is success (already processed, no late reviews)"
+                continue
+              fi
             fi
 
             if [ "$MP_STATUS" = "failure" ]; then

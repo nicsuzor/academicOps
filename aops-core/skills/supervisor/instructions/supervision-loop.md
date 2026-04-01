@@ -79,16 +79,16 @@ Note: the `dispatched` status in the local work items table maps to
 
 ### Work Item Statuses
 
-| Status          | Meaning                                                         |
-| --------------- | --------------------------------------------------------------- |
-| ready           | Decomposed, ready to dispatch                                   |
-| dispatched      | Sent to worker, waiting for PR                                  |
-| pr_open         | PR filed, under review                                          |
-| pr_approved     | Approved, ready to merge                                        |
-| done            | Merged and verified                                             |
-| blocked         | Waiting on a dependency — will be unblocked automatically       |
-| needs_decision  | Requires human judgment before work can proceed — do not dispatch |
-| failed          | Worker failed, needs re-dispatch or replan                      |
+| Status         | Meaning                                                           |
+| -------------- | ----------------------------------------------------------------- |
+| ready          | Decomposed, ready to dispatch                                     |
+| dispatched     | Sent to worker, waiting for PR                                    |
+| pr_open        | PR filed, under review                                            |
+| pr_approved    | Approved, ready to merge                                          |
+| done           | Merged and verified                                               |
+| blocked        | Waiting on a dependency — will be unblocked automatically         |
+| needs_decision | Requires human judgment before work can proceed — do not dispatch |
+| failed         | Worker failed, needs re-dispatch or replan                        |
 
 `needs_decision` maps to PKB task status `needs_review`. Agents cannot claim
 tasks in these statuses, so setting them is an enforceable gate — not an
@@ -159,13 +159,13 @@ No active polling loops. Check once per invocation.
 
 ### REACT
 
-| Problem                           | Response                                         |
-| --------------------------------- | ------------------------------------------------ |
-| Worker failed (no PR, task reset) | Re-dispatch, possibly different worker           |
-| PR has merge conflicts            | Close PR, re-dispatch on fresh base              |
-| PR got CHANGES_REQUESTED          | Read review comments, decide: fix or re-dispatch |
-| Task bigger than expected         | Decompose further, add work items                |
-| Dependency discovered             | Add depends_on, mark dependent as blocked        |
+| Problem                           | Response                                           |
+| --------------------------------- | -------------------------------------------------- |
+| Worker failed (no PR, task reset) | Re-dispatch, possibly different worker             |
+| PR has merge conflicts            | Close PR, re-dispatch on fresh base                |
+| PR got CHANGES_REQUESTED          | Read review comments, decide: fix or re-dispatch   |
+| Task bigger than expected         | Decompose further, add work items                  |
+| Dependency discovered             | Add depends_on, mark dependent as blocked          |
 | Academic integrity concern        | Set task status to `needs_review`, do not dispatch |
 
 ### INTEGRATE
