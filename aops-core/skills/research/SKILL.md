@@ -25,7 +25,7 @@ mode: advisory
 domain:
   - academic
 allowed-tools: Read,Grep,Glob,Bash
-version: 0.1.0
+version: 0.1.1
 permalink: skill-research
 ---
 
@@ -204,14 +204,42 @@ This skill should be active whenever:
 3. Reviewing dry-run or pilot results before a full run
 4. Making any decision about what to include or exclude from an analysis
 5. An agent proposes to simplify, optimize, or shortcut a research process
+6. Reviewing or revising chapters of a research report — the report IS the
+   argument, not a container for stats
 
-## What This Skill Does NOT Cover
+### "Let me finish this chapter"
 
-- Specific tool workflows (dbt, Streamlit, notebooks) — that's the analyst
-  skill or project-specific CLAUDE.md
-- Statistical test selection and reporting — see references/statistical-analysis.md
-- Writing or drafting — that's a separate review lens
-- Project management or task decomposition — that's the planner
+When working on a research report, agents default to "deliverable completion"
+mode: batch up improvements, present a polished result, check the box. This
+is the wrong frame.
+
+A research report is an argument, not a document. Each chapter answers a
+specific question. Each section is a step in that argument. Each
+visualisation must earn its place by advancing the argument — if it doesn't,
+it's noise regardless of how informative it looks in isolation.
+
+**Symptoms of deliverable-mode thinking:**
+
+- Batching up 6 changes and presenting a "finished" chapter
+- Adding charts because the data exists, not because the reader needs them
+  at that point in the narrative
+- Presenting metrics without connecting them to implications ("F1 = 0.69"
+  vs "one in three flagged articles is wrong — not deployable")
+- Suggesting additional analysis to be thorough, without asking what the
+  user actually needs to claim
+
+**What to do instead:**
+
+- Go section by section with the user. Their judgment about what to keep,
+  drop, or reframe is the point — you can't front-run it.
+- Before adding any visualisation, articulate what question it answers and
+  why that question matters at this point in the narrative.
+- Connect every number to its implication. If you can't state the
+  implication, the number may not belong here.
+- Methodology is in constant development during research. When thinking
+  what to do, always ask "what does the user need to claim?" and "who is
+  the audience?" — that determines what belongs in the report, not some
+  mechanical notion of "stuff we normally include in a research report."
 
 ## Research Documentation Structure
 
@@ -223,7 +251,12 @@ for the canonical documentation structure. The key distinction:
 
 ---
 
-> **Status: v0.1.0 — Initial extraction from analyst skill.**
+> **Status: v0.1.1 — Added report-as-argument guidance.**
+> v0.1.0: Initial extraction from analyst skill.
+> v0.1.1: Added "Let me finish this chapter" anti-pattern from TJA session
+> learnings. Agents default to deliverable-completion mode when working on
+> research reports; this section captures the dual-level engagement pattern
+> (granular detail + big-picture methodology) that academic research requires.
 > This skill needs further research to identify what methodological
 > knowledge should be encoded here vs. left to project-specific context.
 > See PKB task for the research agenda.
