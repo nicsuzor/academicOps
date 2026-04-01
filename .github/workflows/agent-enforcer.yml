@@ -142,8 +142,16 @@ jobs:
             2. Run `gh pr view ${{ steps.pr-info.outputs.pr_number }}` to understand the PR.
             3. Run `gh pr diff ${{ steps.pr-info.outputs.pr_number }}` to see the changes.
             4. Check each change against the axioms. Push fixes for clear violations directly to the PR branch.
-            5. Leave a PR review comment summarizing your findings.
+            5. Before posting your review, dismiss any previous enforcer review to keep the PR clean:
+               ```bash
+               gh api repos/${{ github.repository }}/pulls/${{ steps.pr-info.outputs.pr_number }}/reviews \
+                 --jq '.[] | select(.state=="CHANGES_REQUESTED" or .state=="APPROVED") | select(.body | test("Enforcer Review")) | .id' \
+                 | xargs -I{} gh api -X PUT repos/${{ github.repository }}/pulls/${{ steps.pr-info.outputs.pr_number }}/reviews/{}/dismissals \
+                   -f message="Superseded by new review" -f event="DISMISS"
+               ```
             6. Use `gh pr review` to file your review (APPROVE or REQUEST_CHANGES).
+               - Start the review body with `## Enforcer Review` so it can be identified for future dismissal.
+               - Keep it concise: list violations with axiom numbers, or confirm no violations found.
 
             If you push fixes, use this commit trailer: `Enforcer-By: agent`
 
