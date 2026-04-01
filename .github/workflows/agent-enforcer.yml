@@ -81,11 +81,21 @@ jobs:
           EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           EVENT_HEAD_REF: ${{ github.event.pull_request.head.ref }}
 
+      # Checkout the caller's repo (the PR under review)
       - uses: actions/checkout@v4
         if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]'
         with:
           fetch-depth: 0
           ref: ${{ steps.pr-info.outputs.ref }}
+
+      # Checkout academicOps to read the canonical enforcer prompt
+      - uses: actions/checkout@v4
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]'
+        with:
+          repository: nicsuzor/academicOps
+          path: .aops
+          sparse-checkout: aops-core/agents/enforcer.md
+          token: ${{ secrets.AOPS_BOT_GH_TOKEN }}
 
       # Loop detection: skip if last commit was from enforcer
       - name: Check if last push was from an agent
@@ -100,26 +110,11 @@ jobs:
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
-      # Read the canonical enforcer prompt.
-      # Priority: local checkout (academicOps) → fetch from academicOps repo (cross-repo calls).
       - name: Read enforcer agent prompt
         if: (github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]') && steps.loop-check.outputs.skip != 'true'
         id: prompt
-        env:
-          GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
         run: |
-          if [ -f "aops-core/agents/enforcer.md" ]; then
-            # Running in academicOps — read from local checkout
-            PROMPT=$(cat aops-core/agents/enforcer.md)
-          else
-            # Cross-repo call — fetch canonical prompt from academicOps
-            PROMPT=$(gh api repos/nicsuzor/academicOps/contents/aops-core/agents/enforcer.md \
-              --header 'Accept: application/vnd.github.raw+json')
-            if [ -z "$PROMPT" ]; then
-              echo "::error::Failed to fetch enforcer agent prompt from academicOps"
-              exit 1
-            fi
-          fi
+          PROMPT=$(cat .aops/aops-core/agents/enforcer.md)
           {
             echo "prompt<<AGENT_EOF"
             echo "$PROMPT"
