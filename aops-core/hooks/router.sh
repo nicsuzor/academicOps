@@ -4,23 +4,9 @@
 # Bootstraps the environment to ensure 'uv' and 'python' are available
 # before delegating to the Python router.
 
-# 1. Detect uv binary
-if ! command -v uv &> /dev/null; then
-    # Try common installation paths
-    COMMON_PATHS=(
-        "$HOME/.local/bin"
-        "/home/debian/.local/bin"
-        "/usr/local/bin"
-        "/opt/homebrew/bin"
-        "/usr/bin"
-    )
-    for p in "${COMMON_PATHS[@]}"; do
-        if [[ -x "$p/uv" ]]; then
-            export PATH="$p:$PATH"
-            break
-        fi
-    done
-fi
+# 1. Ensure uv/uvx are on PATH (shared with run-mcp.sh)
+SCRIPT_DIR="$(cd "$(dirname "$0")/../scripts" && pwd)"
+source "$SCRIPT_DIR/ensure-path.sh"
 
 # 2. Final check
 if ! command -v uv &> /dev/null; then

@@ -25,7 +25,37 @@ This document covers both Claude Code's hook system and the academicOps implemen
 
 ## Router Architecture
 
-All hooks are dispatched through a single router (`hooks/router.py`). This consolidates multiple hook outputs into a single response.
+All hooks are dispatched through a single router (`hooks/router.py`), launched via `hooks/router.sh`. The shell wrapper bootstraps PATH before delegating to Python.
+
+### PATH Bootstrap (`scripts/ensure-path.sh`)
+
+Claude Code launches plugin processes (hooks, MCP servers) with a minimal PATH (`/usr/bin:/bin:/usr/sbin:/sbin`). Tools like `uv`/`uvx` installed via Homebrew (`/opt/homebrew/bin`) or pip (`~/.local/bin`) are not available without explicit PATH probing.
+
+`scripts/ensure-path.sh` is the shared solution — sourced by both `hooks/router.sh` (for hooks) and `scripts/run-mcp.sh` (for the PKB MCP server). It:
+
+1. Sets `$USER` if missing (minimal environments like launchd omit it, breaking `~/.env.system-paths` which uses `/opt/$USER/...`)
+2. Sources `~/.env.system-paths` if present (Homebrew shellenv, Cargo, etc.)
+3. Probes common binary paths for `uv`: `~/.local/bin`, `/home/debian/.local/bin`, `/usr/local/bin`, `/opt/homebrew/bin`, `/usr/bin`
+
+This pattern has been needed 6+ times across different execution contexts (hooks, cron, Gemini workers, polecat subprocesses, Docker, MCP servers). The shared script prevents further duplication.
+
+### MCP Server Launch (`scripts/run-mcp.sh`)
+
+The PKB MCP server is launched via `run-mcp.sh`, not by calling `uvx` directly. The `.mcp.json` config uses:
+
+```json
+{
+  "command": "bash",
+  "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/run-mcp.sh"],
+  "env": { "PKB_MCP_URL": "${user_config.PKB_MCP_URL}" }
+}
+```
+
+`run-mcp.sh` sources `ensure-path.sh`, validates `$PKB_MCP_URL`, ensures `UV_CACHE_DIR` is writable, then exec's `uvx fastmcp run "$PKB_MCP_URL"`.
+
+### Hook Dispatch
+
+The router consolidates multiple hook outputs into a single response.
 
 ### Async Dispatch
 

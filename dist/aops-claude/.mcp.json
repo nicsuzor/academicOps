@@ -1,12 +1,11 @@
 {
   "mcpServers": {
     "pkb": {
-      "command": "uvx",
-      "args": [
-        "fastmcp",
-        "run",
-        "${PKB_MCP_URL}"
-      ]
+      "command": "bash",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/run-mcp.sh"],
+      "env": {
+        "PKB_MCP_URL": "${PKB_MCP_URL}"
+      }
     }
   }
 }
