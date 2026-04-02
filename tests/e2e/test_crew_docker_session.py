@@ -105,7 +105,7 @@ class TestCrewDockerSession:
 
             import uuid
 
-            from tests.conftest import TEST_CLAUDE_MAX_TURNS, get_repo_root
+            from tests.conftest import build_claude_agent_cmd, get_repo_root
 
             repo_root = get_repo_root()
             polecat_dir = str(repo_root / "polecat")
@@ -172,23 +172,17 @@ class TestCrewDockerSession:
                     timeout=30,
                 )
 
-            agent_cmd = [
-                "claude",
-                "--dangerously-skip-permissions",
-                "-p",
+            agent_cmd = build_claude_agent_cmd(
                 MEGA_PROMPT,
-                "--output-format",
-                "json",
-                "--verbose",
-                "--debug",
-                "hooks",
-                "--session-id",
-                session_id,
-                "--model",
-                "haiku",
-                "--max-turns",
-                TEST_CLAUDE_MAX_TURNS,
-            ]
+                output_format="json",
+                extra_args=[
+                    "--verbose",
+                    "--debug",
+                    "hooks",
+                    "--session-id",
+                    session_id,
+                ],
+            )
 
             env = {}
             api_key = os.environ.get("ANTHROPIC_API_KEY")

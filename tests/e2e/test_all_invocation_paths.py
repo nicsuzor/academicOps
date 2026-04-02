@@ -23,7 +23,13 @@ from pathlib import Path
 import pytest
 import yaml
 
-from tests.conftest import _docker_available, _gemini_cli_available, get_repo_root
+from tests.conftest import (
+    _docker_available,
+    _gemini_cli_available,
+    build_claude_agent_cmd,
+    build_gemini_agent_cmd,
+    get_repo_root,
+)
 
 # PKB task whose body is the test prompt for `pc run -t`.
 # Created in PKB under aops project — DO NOT COMPLETE or ARCHIVE this task.
@@ -196,29 +202,9 @@ class TestAllInvocationPaths:
 
         cmd.append("--")
         if backend == "gemini":
-            cmd.extend(
-                [
-                    "-p",
-                    MEGA_PROMPT,
-                    "--approval-mode",
-                    "yolo",
-                    "--raw-output",
-                    "--accept-raw-output-risk",
-                ]
-            )
+            cmd.extend(build_gemini_agent_cmd(MEGA_PROMPT))
         else:
-            cmd.extend(
-                [
-                    "-p",
-                    MEGA_PROMPT,
-                    "--output-format",
-                    "text",
-                    "--model",
-                    "haiku",
-                    "--max-turns",
-                    "10",
-                ]
-            )
+            cmd.extend(build_claude_agent_cmd(MEGA_PROMPT, output_format="text"))
 
         env = _base_env(polecat_home)
 

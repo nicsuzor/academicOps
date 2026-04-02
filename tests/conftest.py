@@ -31,6 +31,49 @@ log = logging.getLogger(__name__)
 # for hook overhead (hydration gate, custodiet) before reaching the actual task.
 TEST_CLAUDE_MAX_TURNS = "10"
 
+# Base CLI args for each backend — single source of truth for headless execution.
+CLAUDE_BASE_ARGS = [
+    "claude",
+    "--dangerously-skip-permissions",
+    "--model",
+    "haiku",
+    "--max-turns",
+    TEST_CLAUDE_MAX_TURNS,
+]
+
+GEMINI_BASE_ARGS = [
+    "gemini",
+    "--approval-mode",
+    "yolo",
+    "--raw-output",
+    "--accept-raw-output-risk",
+]
+
+
+def build_claude_agent_cmd(
+    prompt: str,
+    output_format: str = "json",
+    extra_args: list[str] | None = None,
+) -> list[str]:
+    """Build a full Claude CLI command from base args + prompt + extras."""
+    cmd = list(CLAUDE_BASE_ARGS)
+    cmd.extend(["-p", prompt, "--output-format", output_format])
+    if extra_args:
+        cmd.extend(extra_args)
+    return cmd
+
+
+def build_gemini_agent_cmd(
+    prompt: str,
+    extra_args: list[str] | None = None,
+) -> list[str]:
+    """Build a full Gemini CLI command from base args + prompt + extras."""
+    cmd = list(GEMINI_BASE_ARGS)
+    cmd.extend(["-p", prompt])
+    if extra_args:
+        cmd.extend(extra_args)
+    return cmd
+
 
 def _redact_cmd(cmd: list[str]) -> list[str]:
     """Redact secrets and sensitive host paths from command for logging.
@@ -917,7 +960,6 @@ def _run_claude_docker_simple(prompt: str, tmp_path: Path, **kwargs) -> dict[str
     workspace = tmp_path / "docker-claude"
     workspace.mkdir(exist_ok=True)
 
-    model = kwargs.get("model", "haiku")
     timeout_seconds = kwargs.get("timeout_seconds", 300)
 
     # Prepare prompt to write output to a file for robust extraction
@@ -929,18 +971,7 @@ def _run_claude_docker_simple(prompt: str, tmp_path: Path, **kwargs) -> dict[str
         "current directory. The JSON object must have a 'response' field."
     )
 
-    agent_cmd = [
-        "claude",
-        "--dangerously-skip-permissions",
-        "-p",
-        staged_prompt,
-        "--output-format",
-        "json",
-        "--model",
-        model,
-        "--max-turns",
-        TEST_CLAUDE_MAX_TURNS,
-    ]
+    agent_cmd = build_claude_agent_cmd(staged_prompt, output_format="json")
 
     env = {}
     api_key = os.environ.get("ANTHROPIC_API_KEY")
@@ -1960,23 +1991,17 @@ def claude_docker(tmp_path):
 
         # Build agent command — use --verbose so stdout includes the init
         # message (with apiKeySource, mcp_servers status, etc.) as a JSON array
-        agent_cmd = [
-            "claude",
-            "--dangerously-skip-permissions",
-            "-p",
+        agent_cmd = build_claude_agent_cmd(
             prompt,
-            "--output-format",
-            "json",
-            "--verbose",
-            "--debug",
-            "hooks",
-            "--session-id",
-            session_id,
-            "--model",
-            model,
-            "--max-turns",
-            TEST_CLAUDE_MAX_TURNS,
-        ]
+            output_format="json",
+            extra_args=[
+                "--verbose",
+                "--debug",
+                "hooks",
+                "--session-id",
+                session_id,
+            ],
+        )
 
         # Build Docker command via polecat's builder
         env = {}
