@@ -3,7 +3,7 @@
     "mcpServers": {
       "pkb": {
         "command": "uvx",
-        "args": ["fastmcp", "run", "${user_config.PKB_MCP_URL}"]
+        "args": ["fastmcp", "run", "${PKB_MCP_URL}"]
       }
     }
   },
