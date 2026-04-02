@@ -2,7 +2,7 @@
 name: sleep
 type: skill
 category: operations
-description: "Periodic consolidation agent — session backfill, episode replay, index refresh, staleness sweep, brain sync. Runs on GitHub Actions cron or manually via /sleep."
+description: "Periodic consolidation agent — session backfill, transcript mining, knowledge consolidation, quality review, staleness sweep, brain sync. Runs on GitHub Actions cron or manually via /sleep."
 triggers:
   - "sleep cycle"
   - "consolidation"
@@ -12,7 +12,7 @@ needs_task: false
 mode: execution
 domain:
   - operations
-allowed-tools: Bash,Read,Write,Grep,Glob,mcp__pkb__search,mcp__pkb__pkb_orphans,mcp__pkb__create_memory,mcp__pkb__list_tasks,mcp__pkb__graph_stats,mcp__pkb__get_network_metrics,mcp__pkb__update_task,mcp__pkb__get_task,mcp__pkb__task_search,mcp__pkb__pkb_context,mcp__pkb__bulk_reparent,mcp__pkb__find_duplicates,mcp__pkb__batch_merge,mcp__pkb__merge_node,mcp__pkb__complete_task,mcp__pkb__batch_reclassify,mcp__pkb__batch_archive,mcp__pkb__batch_update,mcp__omcp__messages_search,mcp__omcp__messages_query,mcp__omcp__calendar_list_events
+allowed-tools: Bash,Read,Write,Grep,Glob,mcp__pkb__search,mcp__pkb__pkb_orphans,mcp__pkb__create_memory,mcp__pkb__list_tasks,mcp__pkb__graph_stats,mcp__pkb__get_network_metrics,mcp__pkb__update_task,mcp__pkb__get_task,mcp__pkb__task_search,mcp__pkb__pkb_context,mcp__pkb__bulk_reparent,mcp__pkb__find_duplicates,mcp__pkb__batch_merge,mcp__pkb__merge_node,mcp__pkb__complete_task,mcp__pkb__batch_reclassify,mcp__pkb__batch_archive,mcp__pkb__batch_update,mcp__pkb__create_task,mcp__pkb__update_memory,mcp__omcp__messages_search,mcp__omcp__messages_query,mcp__omcp__calendar_list_events
 version: 0.1.0
 tags:
   - consolidation
@@ -47,11 +47,14 @@ The agent works through these in order, using judgment about what needs attentio
 | ----- | --------------------------- | ------------------------------------------------------- |
 | 0     | Graph Health                | Run `graph_stats` — baseline measurement for this cycle |
 | 1     | Session Backfill            | Run `/session-insights batch` for pending transcripts   |
+| 1b    | Transcript Mining           | Extract unsaved insights from session transcripts       |
 | 2     | Episode Replay              | Scan recent activity, identify promotion candidates     |
+| 2b    | Knowledge Consolidation     | Transform episodic content into semantic knowledge      |
 | 3     | Index Refresh               | Update mechanical framework indices (`SKILLS.md`, etc.) |
 | 4     | Data Quality Reconciliation | Dedup, staleness verification, misclassification        |
 | 5     | Staleness Sweep             | Detect orphans, stale docs, under-specified tasks       |
 | 5b    | Graph Maintenance           | Densify, reparent, or connect — pick ONE strategy       |
+| 5c    | PKB Quality Review          | Qualitative assessment of knowledge note quality        |
 | 6     | Brain Sync                  | Commit and push `$ACA_DATA`; re-run `graph_stats`       |
 
 ## Phase 0: Graph Health Baseline
@@ -65,6 +68,101 @@ Run `graph_stats` at the start of every cycle. Record:
 - `stale_count` — tasks not modified in 7+ days while in_progress
 
 This is the baseline. Phase 6 re-runs graph_stats to measure what changed.
+
+## Phase 1b: Transcript Mining
+
+Extract insights from session transcripts that agents may not have saved during the session.
+
+**Input**: Session transcripts in `$AOPS_SESSIONS/` (JSONL files)
+**Output**: Knowledge notes created via /remember skill
+
+### Process
+
+1. Find transcripts not yet mined: check for `.mined` marker files or `mined_transcripts.json` manifest
+2. For each unmined transcript (up to 5 per cycle):
+   a. Read the transcript (use `aops-core/scripts/transcript.py` to convert if needed)
+   b. Identify extractable insights: decisions made, patterns observed, facts learned, problems solved
+   c. For each insight: search PKB first (`mcp__pkb__search`) to avoid duplicates
+   d. Create knowledge notes via /remember skill with proper provenance:
+   - `sources: ["Session transcript <session-id> <date>"]`
+   - `confidence: provisional` (single source)
+     e. Mark transcript as mined
+
+### Critical Rules
+
+- **NEVER fabricate** — only extract what is actually stated or clearly implied in the transcript
+- **NEVER editorialize** — extract facts and observations, not opinions about what the user should do
+- **Provenance required** — every extracted fact must cite the session it came from
+- **Dedup first** — always search PKB before creating. If the insight was already saved during the session, skip it
+- **Respect abstraction level** — extract generalizable patterns, not implementation minutiae (see /remember skill's Abstraction Level section)
+
+### Environment Guard
+
+Transcript mining requires access to `$AOPS_SESSIONS`. On GitHub Actions, this directory may be mounted or cloned separately. Skip this phase if transcripts are not accessible.
+
+### Batch Limit
+
+Process up to 5 transcripts per cycle. Each transcript may yield 0-10 insights. Time budget: 5 minutes.
+
+## Phase 2b: Knowledge Consolidation
+
+Transform episodic memory into durable semantic knowledge. This is the core of the sleep cycle's value — it mirrors the cognitive process of semanticization, where temporal memories are decontextualized into lasting understanding.
+
+### The Consolidation Pipeline
+
+```
+Daily notes / Meeting notes / Task bodies (episodic)
+        ↓ extract observations
+Atomic observations with provenance
+        ↓ detect patterns across 3+ observations
+Synthesis notes (semantic knowledge)
+        ↓ accumulate related synthesis
+Maps of Content (navigational hubs)
+```
+
+### Process
+
+1. **Identify consolidation candidates**: Find episodic content older than 7 days that hasn't been consolidated:
+   - Daily notes without `consolidated: YYYY-MM-DD` in frontmatter
+   - Meeting notes without `consolidated: YYYY-MM-DD`
+   - Completed tasks with substantive body content
+
+2. **Extract observations**: For each candidate (up to 10 per cycle):
+   a. Read the episodic content carefully
+   b. Identify atomic facts, decisions, patterns, and insights
+   c. Search PKB for existing knowledge notes on the same topics
+   d. Either augment existing knowledge notes or create new ones
+   e. Use observation notation format (see /remember skill)
+   f. Always include provenance: `sources: ["[[source-note]]"]`
+   g. Mark the episodic source as `consolidated: YYYY-MM-DD` in its frontmatter (but DO NOT modify the content — episodic notes are preserved as-is)
+
+3. **Detect synthesis opportunities**: When 3+ observations exist on the same topic:
+   a. Create or update a synthesis note that integrates the observations
+   b. Synthesis note frontmatter includes all source observations
+   c. `confidence` level based on evidence strength:
+   - `established`: 3+ independent sources agree
+   - `provisional`: pattern emerging but limited evidence
+   - `speculative`: single inference, needs verification
+
+4. **Generate MOCs**: When a topic area has 5+ related knowledge notes:
+   a. Check if a MOC already exists for that topic
+   b. If not, create one with curated links and brief annotations
+   c. If yes, update with new entries
+
+### Critical Rules
+
+- **Extract, don't invent** — only create knowledge that is grounded in the source material
+- **Preserve episodic originals** — NEVER modify the content of daily notes, meeting notes, or task bodies. Only add `consolidated: YYYY-MM-DD` to their frontmatter.
+- **Provenance chain** — every synthesized fact must trace back to specific sources
+- **Abstraction ladder** — climb one rung at a time. Don't leap from a single meeting note to a broad generalization.
+- **Leave editorializing to the user** — agents extract patterns and connections. Value judgments and strategic implications are the user's domain.
+
+### Bounded Effort
+
+- Up to 10 episodic sources consolidated per cycle
+- Up to 3 synthesis notes created/updated per cycle
+- Up to 1 MOC created per cycle
+- Time budget: 10 minutes
 
 ## Phase 4: Data Quality Reconciliation
 
@@ -148,6 +246,56 @@ See `aops-core/skills/planner/SKILL.md` → `maintain` mode for full activity re
 
 **Measure after**: Re-run `graph_stats` in Phase 6 to confirm the metric improved.
 
+## Phase 5c: PKB Quality Review
+
+Qualitative assessment of PKB health. This is not a metric check — it requires the agent to actually read and evaluate knowledge content.
+
+### Process
+
+1. **Sample selection**: Select 5-10 knowledge notes for review, biased toward:
+   - Recently created or modified notes
+   - Notes with `confidence: speculative` or `provisional`
+   - Notes flagged in previous quality reviews
+   - Random sampling to catch drift
+
+2. **Evaluate each note against quality dimensions**:
+   - **Accuracy**: Does the content still hold? Any contradictions with other notes?
+   - **Provenance**: Can claims be traced to sources? Are sources still valid?
+   - **Abstraction level**: Right level of generalization? Too specific or too vague?
+   - **Link health**: Are wikilinks valid? Should more connections exist?
+   - **Freshness**: Is a `last_reviewed` date present? Is the content still current?
+   - **Completeness**: Are there obvious gaps or missing context?
+
+3. **Actions**:
+   - **Mechanical fixes**: Fix broken links, add missing frontmatter fields — do autonomously
+   - **Content concerns**: Flag for human review in the cycle summary
+   - **Upgrade/downgrade confidence**: If additional evidence found, update confidence level
+   - **Staleness**: If content is outdated, flag for review (don't delete or modify substantive content)
+
+4. **Quality report**: Write findings to the cycle summary. Track trends across cycles.
+
+### Quality Signals (Positive)
+
+- Dense wikilink network (notes connect to related concepts)
+- Provenance present on synthesized claims
+- Confidence levels match evidence strength
+- MOCs exist for major topic areas
+- Recently consolidated episodic content
+
+### Quality Signals (Negative)
+
+- Orphan notes with zero incoming links
+- Synthesized claims without provenance
+- Stale notes (no review in 90+ days)
+- Near-duplicate content across files
+- MOCs that are outdated or too large
+- Observation notation without source attribution
+
+### Bounded Effort
+
+- Sample 5-10 notes per cycle
+- Time budget: 5 minutes
+
 ## Active Loop Integration
 
 When running via `/loop` or `/active-loop`, the sleep cycle follows the active-loop protocol:
@@ -163,6 +311,7 @@ When running via `/loop` or `/active-loop`, the sleep cycle follows the active-l
 3. **Incremental** — only processes what's new since last run
 4. **Surfaces, doesn't decide** — flags candidates for human/supervised review
 5. **No moldy docs** — never creates knowledge docs without a named consumer
+6. **Agents can consolidate (hypothesis under test)** — we believe agents can perform the episodic→semantic transformation given proper value alignment, clear provenance requirements, and bounded autonomy. Phase 5c tests this hypothesis each cycle. If quality review reveals persistent problems, escalate enforcement — don't just trust harder.
 
 ## Architecture
 

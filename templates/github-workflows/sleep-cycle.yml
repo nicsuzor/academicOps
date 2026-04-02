@@ -8,7 +8,7 @@ name: Sleep Cycle
 
 on:
   schedule:
-    - cron: '0 */4 * * *' # Every 4 hours
+    - cron: '17 */6 * * *' # Every 6 hours at :17 (off-peak)
   workflow_dispatch:
     inputs:
       focus:
@@ -41,7 +41,15 @@ jobs:
         with:
           repository: nicsuzor/academicOps
           path: _aops
-          token: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+          token: ${{ secrets.AOPS_DIST_PAT }}
+
+      - name: Checkout sessions repo (for transcript mining)
+        uses: actions/checkout@v4
+        with:
+          repository: nicsuzor/sessions
+          path: _sessions
+          token: ${{ secrets.AOPS_DIST_PAT }}
+        continue-on-error: true # Transcript mining degrades gracefully if unavailable
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -66,22 +74,48 @@ jobs:
             full phase instructions:
               ${{ github.workspace }}/_aops/aops-core/skills/sleep/SKILL.md
 
-            Also read the full spec for design rationale:
-              ${{ github.workspace }}/_aops/specs/sleep-cycle.md
+            Also read the remember skill for knowledge standards and consolidation:
+              ${{ github.workspace }}/_aops/aops-core/skills/remember/SKILL.md
+              ${{ github.workspace }}/_aops/aops-core/skills/remember/procedures/consolidate.md
 
-            Work through the phases in order. Use your judgment about what needs
-            attention. Skip phases where there's nothing to do.
+            Work through ALL phases in order (0, 1, 1b, 2, 2b, 3, 4, 5, 5b, 5c, 6).
+            Use your judgment about what needs attention. Skip phases where there's
+            nothing to do — but always run Phase 0 (baseline) and Phase 6 (sync).
+
+            ## Values Alignment (READ THIS CAREFULLY)
+
+            You are trusted to do complex knowledge work. The consolidation phases
+            (1b, 2b, 5c) require you to READ content, UNDERSTAND it, and SYNTHESIZE
+            knowledge at the right level of abstraction. This is not mechanical work.
+
+            Core principles:
+            - **Never fabricate** — only extract what is grounded in source material
+            - **Always track provenance** — every synthesized fact must cite its source
+            - **Preserve episodic originals** — never modify the content of daily notes
+              or meeting notes. Only add `consolidated: true` to frontmatter.
+            - **Leave editorializing to the user** — you extract patterns and connections.
+              Value judgments are the user's domain.
+            - **Respect uncertainty** — use confidence levels honestly. Don't upgrade
+              `provisional` to `established` without additional evidence.
+            - **Quality over quantity** — one well-sourced synthesis note is worth more
+              than ten unsourced assertions.
 
             ## Environment
             - Brain repo (data): ${{ github.workspace }}
             - academicOps (code): ${{ github.workspace }}/_aops
+            - Sessions directory: ${{ github.workspace }}/_sessions (for transcript mining)
             - Batch limit: ${{ inputs.batch_limit || vars.SLEEP_BATCH_LIMIT || 100 }} items per phase
 
             ## CI-Specific Rules
-            - Time budget: 20 minutes. Exit cleanly when time is up.
+            - Time budget: 25 minutes. Exit cleanly when time is up.
             - Email/calendar MCP tools are NOT available on GitHub Actions.
               Degrade gracefully per the skill instructions (flag instead of verify).
-            - Write a summary of what you did to $GITHUB_STEP_SUMMARY.
+            - Transcript mining (Phase 1b): requires $AOPS_SESSIONS. Skip if not available.
+            - Write a summary of what you did to $GITHUB_STEP_SUMMARY. Include:
+              - Phase completion status
+              - Knowledge notes created/updated (Phase 2b)
+              - Quality review findings (Phase 5c)
+              - Graph health delta (Phase 0 vs Phase 6)
             - Commit message: "sleep: periodic consolidation"
 
             ## Repo Topology (CRITICAL)
