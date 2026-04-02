@@ -66,7 +66,7 @@ Do not recommend a mechanism you have not checked. For each option you consider:
 
 Common traps:
 
-- Assuming `@claude` on GitHub has framework context — it does not (`@claude` reviews code across all repos, not just academicOps; framework files like `.agent/rules/` may not exist in the checked-out repo at all, and there is no plugin, PKB, or MCP servers)
+- Assuming `@claude` on GitHub has framework context — it does not (`@claude` reviews code across all repos, not just academicOps; framework files like `.agents/rules/` may not exist in the checked-out repo at all, and there is no plugin, PKB, or MCP servers)
 - Assuming polecats can only do queue work — they are fully-featured agents with complete framework context (including plugin, PKB, MCP servers, and framework files)
 - Routing to the first familiar mechanism instead of mapping all options
 

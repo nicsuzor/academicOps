@@ -4,7 +4,7 @@ PreToolUse policy enforcer for Claude Code.
 
 Implements deterministic protection rules that don't require LLM judgment.
 Scope drift detection and axiom compliance are handled by the custodiet skill
-(local sessions) and auditor.agent.md (GitHub PRs). See .agent/curia/CURIA.md.
+(local sessions) and auditor.agent.md (GitHub PRs). See .agents/curia/CURIA.md.
 
 Blocks operations that violate framework principles:
 - MINIMAL: *-GUIDE.md files, .md files > 200 lines
@@ -117,7 +117,7 @@ def validate_protect_artifacts(tool_name: str, args: dict[str, Any]) -> dict[str
 
     # Load protected paths from project-local config
     protected_paths = []
-    local_config = Path(".agent/rules/protected_paths.txt")
+    local_config = Path(".agents/rules/protected_paths.txt")
     if local_config.exists():
         try:
             protected_paths = [
@@ -135,7 +135,7 @@ def validate_protect_artifacts(tool_name: str, args: dict[str, Any]) -> dict[str
                 "continue": False,
                 "systemMessage": (
                     f"BLOCKED: Modification of protected path '{file_path}'.\n"
-                    f"This path is protected by project-local rule (see .agent/rules/protected_paths.txt).\n"
+                    f"This path is protected by project-local rule (see .agents/rules/protected_paths.txt).\n"
                     "Modify source files instead and run build scripts if necessary."
                 ),
             }

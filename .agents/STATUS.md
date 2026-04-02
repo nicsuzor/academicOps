@@ -14,7 +14,7 @@ academicOps (aops) is an LLM-driven framework for managing academic workflows --
 
 ```
 academicOps/
-+-- .agent/           # Agent instructions, commands, skills, rules
++-- .agents/           # Agent instructions, commands, skills, rules
 |   +-- rules/        # AXIOMS.md, HEURISTICS.md, protected_paths
 |   +-- commands/     # Slash commands (learn, email, aops, q, bump, pull, dump, path)
 |   +-- skills/       # 7 agent-facing skills (see Skills System below)
@@ -81,7 +81,7 @@ Automated PR review pipeline with safety mechanisms.
 - **Cascade limit**: Pipeline run-count tracked per PR; halts after 3 runs to prevent infinite bot loops
 - **LGTM check-status gate**: Merge workflow checks required status checks before enabling auto-merge
 - **Axiom compliance**: Axiom review agent checks diffs against AXIOMS.md, HEURISTICS.md, and project rules (mechanical, silent on success)
-- **Strategic review**: Review-and-fix agent reads `.agent/STATUS.md`, VISION.md, and codebase context to catch strategic misalignment and fix mechanical issues
+- **Strategic review**: Review-and-fix agent reads `.agents/STATUS.md`, VISION.md, and codebase context to catch strategic misalignment and fix mechanical issues
 - **Loop detector**: Merge-prep uses `Merge-Prep-By:` commit trailer for detection
 
 **GitHub Actions workflows** (12):
@@ -150,7 +150,7 @@ Context injection at `aops-core/lib/hydration/`:
 - `context_loaders.py` -- context loading strategies (SKILLS.md, WORKFLOWS.md, AXIOMS.md, HEURISTICS.md, GLOSSARY.md, SCRIPTS.md, project rules, project workflows, project context index, global workflow content)
 - `skip_check.py` -- hydration bypass conditions
 
-**Context loaders**: The hydration system loads framework indices (`SKILLS.md`, `WORKFLOWS.md`, `AXIOMS.md`, `HEURISTICS.md`, `GLOSSARY.md`, `SCRIPTS.md`) from the plugin root plus project-specific rules and workflows from the current working directory's `.agent/` folder. Missing framework files now raise `FileNotFoundError` (fail-fast, PR #813) rather than returning empty strings.
+**Context loaders**: The hydration system loads framework indices (`SKILLS.md`, `WORKFLOWS.md`, `AXIOMS.md`, `HEURISTICS.md`, `GLOSSARY.md`, `SCRIPTS.md`) from the plugin root plus project-specific rules and workflows from the current working directory's `.agents/` folder. Missing framework files now raise `FileNotFoundError` (fail-fast, PR #813) rather than returning empty strings.
 
 ### Task Management -- WORKING (via PKB server)
 
@@ -162,11 +162,11 @@ Task management has migrated from the Python task model (`aops-core/lib/task_mod
 
 Skills exist in two locations with different roles:
 
-1. **`.agent/skills/`** (7 skills): Agent-facing skill definitions loaded by Claude Code's native skill system. These are the skills that appear when Claude Code lists available skills.
+1. **`.agents/skills/`** (7 skills): Agent-facing skill definitions loaded by Claude Code's native skill system. These are the skills that appear when Claude Code lists available skills.
 2. **`aops-core/skills/`** (7 skill definitions): Canonical skill definitions with `SKILL.md` frontmatter (triggers, domain, mode, allowed-tools). These are loaded by the hydration system via `SKILLS.md` for routing.
 3. **`aops-tools/skills/`** (7 skill definitions): Domain-specific tool skills (analyst, convert-to-md, excalidraw, extract, flowchart, pdf, research).
 
-The canonical index is `aops-core/SKILLS.md` with 25 entries (8 commands + 17 skills). Skills are distributed across three locations: `aops-core/skills/` (framework core), `.agent/skills/` (project-local agent skills), and `aops-tools/skills/` (domain tools).
+The canonical index is `aops-core/SKILLS.md` with 25 entries (8 commands + 17 skills). Skills are distributed across three locations: `aops-core/skills/` (framework core), `.agents/skills/` (project-local agent skills), and `aops-tools/skills/` (domain tools).
 
 **Skills by domain**:
 
@@ -189,7 +189,7 @@ The canonical index is `aops-core/SKILLS.md` with 25 entries (8 commands + 17 sk
 
 The Curia is the named agent team that operates across local sessions and GitHub PRs. Each agent has a consistent identity but manifests differently on each surface.
 
-**Roster** (see `.agent/curia/CURIA.md` for full details):
+**Roster** (see `.agents/curia/CURIA.md` for full details):
 
 | Agent        | Charter            | Local Skill | GitHub Agent                                                         | Mechanical (Hook/Gate)                  |
 | ------------ | ------------------ | ----------- | -------------------------------------------------------------------- | --------------------------------------- |
@@ -213,7 +213,7 @@ Scripts for extracting insights from session transcripts in `aops-core/skills/se
 
 ### Overwhelm Dashboard -- WORKING
 
-Streamlit dashboard for cognitive load management at `overwhelm-dashboard/`. Includes task graph redesign epic with three purpose-built views (treemap/circle-pack overview, arc diagram for dependencies, force graph priority spread). QA workflow documented at `.agent/workflows/evaluate-dashboard.md`.
+Streamlit dashboard for cognitive load management at `overwhelm-dashboard/`. Includes task graph redesign epic with three purpose-built views (treemap/circle-pack overview, arc diagram for dependencies, force graph priority spread). QA workflow documented at `.agents/workflows/evaluate-dashboard.md`.
 
 ### Acceptance Tests -- IN PROGRESS
 
@@ -264,7 +264,7 @@ Gemini CLI extension installed at `~/.gemini/extensions/aops-core/`. Missing 7 o
 4. **Autonomous automation readiness**: Most workflows are at "supervised" maturity. No workflows have been validated for fully autonomous operation yet.
 5. **STATUS.md as bot input**: Bots (axiom-review, review-and-fix) read this document as authoritative context. Stale information here causes false positives in reviews. This document MUST be kept accurate.
 6. **Hydrator acceptance test harness gap**: The hydrator subagent cannot be tested in isolation because the test harness does not construct the input file that `builder.py` normally provides during session hooks. Both v1.1 and v0.3 acceptance tests are blocked on this.
-7. **Skills duplication across locations**: 7 skills in `.agent/skills/`, 7 in `aops-core/skills/`, and 7 in `aops-tools/skills/` with some overlap (daily, qa, remember, analyst appear in multiple locations). The relationship between these locations needs clarification -- which is authoritative, and should the `.agent/skills/` set be generated from `aops-core/skills/`?
+7. **Skills duplication across locations**: 7 skills in `.agents/skills/`, 7 in `aops-core/skills/`, and 7 in `aops-tools/skills/` with some overlap (daily, qa, remember, analyst appear in multiple locations). The relationship between these locations needs clarification -- which is authoritative, and should the `.agents/skills/` set be generated from `aops-core/skills/`?
 8. **Knowledge diffusion**: Butler specialist knowledge (in MEMORY.md, butler system prompt) is not systematically transferred to framework-accessible locations (GLOSSARY.md, context_loaders, specs). See strategic analysis in this session's conversation.
 
 ## Roadmap
@@ -272,7 +272,7 @@ Gemini CLI extension installed at `~/.gemini/extensions/aops-core/`. Missing 7 o
 ### Recently Completed
 
 - **Butler/Framework consolidation** -- Merged framework and audit skills with the Butler to create a context-aware core. Core operational logic (Learn As You Go, Verification Loops) migrated to **Framework Skill (v7.2.0+)**.
-- **Curia agent team legibility** -- Named agent team ("The Curia") with roster at `.agent/curia/CURIA.md`. Renamed GitHub agents (axiom-review -> auditor, review-and-fix -> critic). Cross-references added to all skills, agents, and hooks. Portable QA agent (`qa.agent.md`) works on any repo. Curia alias "auditor" added to gate config (assessor/advocate removed — not compliance bypass agents).
+- **Curia agent team legibility** -- Named agent team ("The Curia") with roster at `.agents/curia/CURIA.md`. Renamed GitHub agents (axiom-review -> auditor, review-and-fix -> critic). Cross-references added to all skills, agents, and hooks. Portable QA agent (`qa.agent.md`) works on any repo. Curia alias "auditor" added to gate config (assessor/advocate removed — not compliance bypass agents).
 - **Review agent consolidation** (PR #705) -- deleted qa.agent.md and strategic-review.agent.md (both unused); custodiet-reviewer now reads AXIOMS.md dynamically; conceptual-review refocused on assumption audit + effectual reasoning.
 - **Conceptual review agent** -- Replaced gatekeeper/custodiet/hydrator-reviewer issue-review pattern with strategic-review and conceptual-review agents.
 - Gate hardening sprint: 150 verdict tests, 31 replay tests, Agent tool fix, import convention fix, gate status strip -- 2026-02-28 / 2026-03-01
@@ -298,7 +298,7 @@ Gemini CLI extension installed at `~/.gemini/extensions/aops-core/`. Missing 7 o
 
 - Graduate PR pipeline from "supervised" to "autonomous" after multiple clean runs
 - PKB server spec v2 refinements (episodic memories, tool consolidation)
-- Clarify skills system architecture (`.agent/skills/` vs `aops-core/skills/`)
+- Clarify skills system architecture (`.agents/skills/` vs `aops-core/skills/`)
 - Dogfooding workflow improvements
 
 ### Long-term
@@ -311,9 +311,9 @@ Gemini CLI extension installed at `~/.gemini/extensions/aops-core/`. Missing 7 o
 
 _Update log_ (keep last 3 entries; older history is in git):
 
-- **2026-03-09**: Curia agent team legibility. Created `.agent/curia/CURIA.md` roster mapping 5 named agents to implementations across surfaces. Renamed GitHub agents: axiom-review -> auditor, review-and-fix -> critic (file: assessor.agent.md, pending workflow rename). Updated workflow YAMLs. Added cross-references to all skills, GitHub agents, and hooks. Created portable `qa.agent.md` (works on any repo via fallback methodology). Added Curia alias "auditor" to gate_config.py (assessor/advocate removed — not compliance bypass roles).
+- **2026-03-09**: Curia agent team legibility. Created `.agents/curia/CURIA.md` roster mapping 5 named agents to implementations across surfaces. Renamed GitHub agents: axiom-review -> auditor, review-and-fix -> critic (file: assessor.agent.md, pending workflow rename). Updated workflow YAMLs. Added cross-references to all skills, GitHub agents, and hooks. Created portable `qa.agent.md` (works on any repo via fallback methodology). Added Curia alias "auditor" to gate_config.py (assessor/advocate removed — not compliance bypass roles).
 - **2026-03-05**: Added v0.3 acceptance tests (`tests/acceptance/v0.3-release.md`) -- 12 tests covering hydrator routing accuracy across workflow discrimination, academic workflows, project-scoped workflow loading, skill bypass, multi-intent splitting, and batch routing. Added "Acceptance Tests" section to Components. Documented hydrator test harness gap as Open Question #6 and near-term roadmap item. Both v1.1 and v0.3 tests blocked on harness fix.
 - **2026-03-04**: Gate hardening (PR #730). Tool categories refactored: `always_available` split into `infrastructure` (PKB, meta tools) and `spawn` (Agent, Task, Skill, delegate_to_agent). Spawn tools now blocked by hydration gate. Custodiet deadlock fixed: PreToolUse trigger resets counter before policy evaluates. Test fixtures rebuilt from live production logs (861 provenance-tracked scenarios). Gate test count: 150+ verdict tests + 31 replay tests.
-- **2026-03-09**: Butler invocation and full STATUS.md refresh. Corrected skills count: 36 entries in canonical SKILLS.md (8 commands + 28 skills), 28 skill definitions in `aops-core/skills/`, 17 in `.agent/skills/`. Added skills duplication as Open Question #7. Added knowledge diffusion as Open Question #8. Added Gemini Extension, Overwhelm Dashboard, and Specs System sections. Updated architecture tree to show `aops-core/skills/` and key index files. Added recent completions (specs audit, fail-fast, stitch cleanup). Trimmed older key decisions table for readability. Corrected update log entry that incorrectly said agent count went from "5 -> 3" (there are still 5 agents in `.github/agents/`).
+- **2026-03-09**: Butler invocation and full STATUS.md refresh. Corrected skills count: 36 entries in canonical SKILLS.md (8 commands + 28 skills), 28 skill definitions in `aops-core/skills/`, 17 in `.agents/skills/`. Added skills duplication as Open Question #7. Added knowledge diffusion as Open Question #8. Added Gemini Extension, Overwhelm Dashboard, and Specs System sections. Updated architecture tree to show `aops-core/skills/` and key index files. Added recent completions (specs audit, fail-fast, stitch cleanup). Trimmed older key decisions table for readability. Corrected update log entry that incorrectly said agent count went from "5 -> 3" (there are still 5 agents in `.github/agents/`).
 - **2026-03-05**: Added v0.3 acceptance tests (`tests/acceptance/v0.3-release.md`) -- 12 tests covering hydrator routing accuracy. Added "Acceptance Tests" section. Documented hydrator test harness gap as Open Question #6.
 - **2026-03-04**: Gate hardening (PR #730). Tool categories refactored: `always_available` split into `infrastructure` and `spawn`. Test fixtures rebuilt from live production logs (861 provenance-tracked scenarios).

@@ -6,7 +6,7 @@ model: opus
 
 # Critic Agent
 
-> **Curia**: Critic, plan-review mode (local surface). GitHub: `.github/agents/assessor.agent.md` (strategic-review), `summary-brief.agent.md` (decision-brief). See `.agent/curia/CURIA.md`.
+> **Curia**: Critic, plan-review mode (local surface). GitHub: `.github/agents/assessor.agent.md` (strategic-review), `summary-brief.agent.md` (decision-brief). See `.agents/curia/CURIA.md`.
 
 ## Purpose
 

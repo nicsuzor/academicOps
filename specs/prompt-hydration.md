@@ -204,15 +204,15 @@ The `user_prompt_submit.py` hook loads indices into the temp file context:
 
 - **P#58 Indices Before Exploration**: Curated indices preferred over grep/fs searches
 - **P#43 Just-In-Time Context**: Hydrator surfaces relevant index content automatically
-- **P#60 Local AGENTS.md**: Each project can provide its own indices in `.agent/`
+- **P#60 Local AGENTS.md**: Each project can provide its own indices in `.agents/`
 
 ### Project-Specific Indices
 
-Projects can extend the index system via `.agent/`:
+Projects can extend the index system via `.agents/`:
 
 ```
 project/
-└── .agent/
+└── .agents/
     ├── context-map.json    # JIT context mapping
     └── workflows/          # Project-specific workflows
         └── TESTING.md

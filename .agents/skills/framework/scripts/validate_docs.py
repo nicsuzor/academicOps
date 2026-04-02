@@ -155,15 +155,15 @@ def check_no_axiom_duplication(target_path: Path | None = None) -> list[str]:
 
 
 def check_directory_structure_matches() -> list[str]:
-    """Verify actual directory structure matches .agent/PATHS.md path table."""
+    """Verify actual directory structure matches .agents/PATHS.md path table."""
     # This check is inherently global/structural, so target_path is less relevant
     # but strictly we should perhaps skip it if target_path is a leaf node.
     # For now, always scanning global structure as it's fast.
     errors = []
 
-    framework_md = REPO_ROOT / ".agent/PATHS.md"
+    framework_md = REPO_ROOT / ".agents/PATHS.md"
     if not framework_md.exists():
-        return [f".agent/PATHS.md not found at {framework_md}"]
+        return [f".agents/PATHS.md not found at {framework_md}"]
 
     content = framework_md.read_text()
 
@@ -175,7 +175,7 @@ def check_directory_structure_matches() -> list[str]:
         # Resolve path relative to root
         target = REPO_ROOT / path_str.strip("/")
         if not target.exists():
-            errors.append(f"Path defined in .agent/PATHS.md missing: {target}")
+            errors.append(f"Path defined in .agents/PATHS.md missing: {target}")
 
     return errors
 

@@ -4,7 +4,7 @@
 # Install the PR reviewer bot into a target GitHub repository.
 #
 # The bot reviews PRs against framework axioms, reads repo-local rules
-# (.agent/CORE.md), pushes fixes, and leaves review comments.
+# (.agents/CORE.md), pushes fixes, and leaves review comments.
 #
 # USAGE
 #   ./install-pr-reviewer.sh <target-repo-path>
@@ -123,5 +123,5 @@ echo "  2. Push and trigger manually:"
 echo "       git push"
 echo "       gh workflow run 'Agent: PR Review' --repo ${REPO_SLUG:-<owner/repo>}"
 echo ""
-echo "  3. Optional: add .agent/CORE.md to your repo with local review rules."
+echo "  3. Optional: add .agents/CORE.md to your repo with local review rules."
 echo ""

@@ -5,7 +5,7 @@
 #   - Post PR comment ONLY if violations are found
 #   - Set "Axiom Review" commit status (success/failure)
 # Prompt: .github/agents/auditor.agent.md
-# Curia: Auditor (GitHub surface). Local: .agent/skills/custodiet/SKILL.md
+# Curia: Auditor (GitHub surface). Local: .agents/skills/custodiet/SKILL.md
 #
 # This is distinct from "Agent: Assessor" (agent-review-and-fix.yml),
 # which handles strategic review and can push fixes.

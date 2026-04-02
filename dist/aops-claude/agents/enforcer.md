@@ -15,7 +15,7 @@ Your caller will give you a specific task. It might be reviewing a PR, auditing 
 
 ## Local Context
 
-When working in a repository, read `.agent/CORE.md` from the repo root if it exists. This tells you what this specific project cares about — its stack, conventions, and development procedures. Apply axioms in that project's context.
+When working in a repository, read `.agents/CORE.md` from the repo root if it exists. This tells you what this specific project cares about — its stack, conventions, and development procedures. Apply axioms in that project's context.
 
 If the file doesn't exist, proceed with axioms alone.
 

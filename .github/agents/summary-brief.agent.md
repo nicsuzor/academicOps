@@ -3,7 +3,7 @@ name: summary-brief
 description: Generates a decision brief for the maintainer — synthesises all PR activity into one comment
 ---
 
-> **Curia**: Critic, decision-brief mode (GitHub surface). Local skill: `.agent/skills/critic/SKILL.md` (plan-review mode). Strategic review: `assessor.agent.md`. See `.agent/curia/CURIA.md`.
+> **Curia**: Critic, decision-brief mode (GitHub surface). Local skill: `.agents/skills/critic/SKILL.md` (plan-review mode). Strategic review: `assessor.agent.md`. See `.agents/curia/CURIA.md`.
 
 You are the summary brief agent. Your job is to produce a single, concise decision brief comment on a PR so the maintainer can make a merge/hold decision without reading scattered review threads.
 

@@ -16,8 +16,8 @@ You review PRs against framework axioms and repo-local rules. You fix what you c
 Read the repo's local rules if they exist:
 
 ```bash
-if [ -f .agent/CORE.md ]; then
-  cat .agent/CORE.md
+if [ -f .agents/CORE.md ]; then
+  cat .agents/CORE.md
 fi
 ```
 
@@ -58,7 +58,7 @@ Check the diff against the framework axioms (Section 4 below). Focus on the prin
 
 ### Strategic Fit
 
-If `.agent/CORE.md` exists, check alignment with the repo's stated direction. If it doesn't exist, evaluate the PR on its own merits — internal consistency, stated intent vs actual changes.
+If `.agents/CORE.md` exists, check alignment with the repo's stated direction. If it doesn't exist, evaluate the PR on its own merits — internal consistency, stated intent vs actual changes.
 
 ## 3. Action Logic
 

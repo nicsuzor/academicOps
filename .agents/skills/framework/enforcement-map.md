@@ -155,7 +155,7 @@ Contains: P#3 (Don't Make Shit Up), P#5 (Do One Thing), P#6 (Data Boundaries), P
 | [[user-intent-discovery]] | Slash Command Args Intent Parsing | skip_check.py: multi-word args trigger lightweight hint | UserPromptSubmit | 3b |
 | [[verify-non-duplication-batch-create]] | Verify Non-Duplication Before Create | HEURISTICS.md, triage-email workflow | SessionStart, task creation | 1a |
 | [[run-python-via-uv]] | Run Python via uv | HEURISTICS.md | SessionStart | 1a |
-| [[protect-dist-directory]] | Protect dist/ Directory | .agent/rules/HEURISTICS.md, policy_enforcer.py | SessionStart, PreToolUse | 1a |
+| [[protect-dist-directory]] | Protect dist/ Directory | .agents/rules/HEURISTICS.md, policy_enforcer.py | SessionStart, PreToolUse | 1a |
 | [[subagent-verdicts-binding]] | Subagent Verdicts Are Binding | HEURISTICS.md | SessionStart, SubagentStop | 1a |
 | [[qa-tests-black-box]] | QA Tests Are Black-Box | HEURISTICS.md | SessionStart, QA execution | 1b |
 | [[cli-testing-extended-timeouts]] | CLI Testing Requires Extended Timeouts | HEURISTICS.md | SessionStart | 1a |
@@ -191,11 +191,11 @@ Contains: P#3 (Don't Make Shit Up), P#5 (Do One Thing), P#6 (Data Boundaries), P
 
 Context loading follows a **three-tier architecture** (see [[session-start-injection]]):
 
-| Tier | File                  | Purpose                          | When Loaded               |
-| ---- | --------------------- | -------------------------------- | ------------------------- |
-| 1    | `$AOPS/CORE.md`       | Framework tools (essential only) | SessionStart (ALL agents) |
-| 2    | `$cwd/.agent/CORE.md` | Project-specific context         | SessionStart (if exists)  |
-| 3    | `AXIOMS.md` etc.      | Detailed guidance                | JIT via hints             |
+| Tier | File                   | Purpose                          | When Loaded               |
+| ---- | ---------------------- | -------------------------------- | ------------------------- |
+| 1    | `$AOPS/CORE.md`        | Framework tools (essential only) | SessionStart (ALL agents) |
+| 2    | `$cwd/.agents/CORE.md` | Project-specific context         | SessionStart (if exists)  |
+| 3    | `AXIOMS.md` etc.       | Detailed guidance                | JIT via hints             |
 
 **Design principle**: Minimal baseline, maximal JIT. Agents start with only what they need to understand the framework and project. Everything else loads on-demand.
 
@@ -204,7 +204,7 @@ Context loading follows a **three-tier architecture** (see [[session-start-injec
 | File                        | Purpose                           | Loaded Via                    |
 | --------------------------- | --------------------------------- | ----------------------------- |
 | `$AOPS/CORE.md`             | Framework tool inventory (~2KB)   | SessionStart hook             |
-| `$cwd/.agent/CORE.md`       | Project conventions               | SessionStart hook (if exists) |
+| `$cwd/.agents/CORE.md`      | Project conventions               | SessionStart hook (if exists) |
 | `AXIOMS.md`                 | Tier 1: Universal axioms          | SessionStart (always)         |
 | `RULES-DEV.md`              | Tier 2: Development context rules | JIT (when writing code)       |
 | `RULES-FRAMEWORK.md`        | Tier 2: Framework context rules   | JIT (when on framework work)  |

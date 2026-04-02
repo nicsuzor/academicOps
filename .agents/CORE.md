@@ -4,7 +4,7 @@ This project contains the **academicOps** framework itself. You are currently wo
 
 ## Key Components
 
-- **.agent/**: Instructions for working on the framework
+- **.agents/**: Instructions for working on the framework
 - **aops-core/**: Framework core (hooks, enforcement, skills)
 - **aops-tools/**: Additional tools and utilities
 - **specs/**: Framework specifications and architecture

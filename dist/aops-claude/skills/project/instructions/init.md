@@ -18,7 +18,7 @@ creation and work in place.
 
 Create these files for every project, regardless of type.
 
-### `.agent/CORE.md`
+### `.agents/CORE.md`
 
 Adapt this template based on Phase 1 answers:
 
@@ -56,7 +56,7 @@ analysis, Quarto rendering conventions).
 ### `CLAUDE.md`
 
 ```markdown
-@.agent/CORE.md
+@.agents/CORE.md
 
 **RESEARCH DATA IS IMMUTABLE**: Source datasets and ground truth labels are
 SACRED. NEVER modify, convert, reformat, or "fix" them. If infrastructure

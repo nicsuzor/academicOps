@@ -49,7 +49,7 @@ jobs:
                - For Level 3+ fixes (tool restrictions, hooks, deny rules), propose the specific file and change needed.
                - Common fix targets:
                  - **Skill/command definitions** (`aops-core/commands/*.md`, `aops-core/skills/*/SKILL.md`) — add a missing step, checkpoint, or constraint
-                 - **Workflow definitions** (`.agent/workflows/*.md`) — add a gate or validation
-                 - **Agent instructions** (`.agent/agents/*.md`, `.github/agents/*.md`) — strengthen an instruction the agent ignored
+                 - **Workflow definitions** (`.agents/workflows/*.md`) — add a gate or validation
+                 - **Agent instructions** (`.agents/agents/*.md`, `.github/agents/*.md`) — strengthen an instruction the agent ignored
                  - **Specs** (`specs/*.md`) — correct a design gap
             4. Post your analysis and the result of your fix as a comment on the issue.

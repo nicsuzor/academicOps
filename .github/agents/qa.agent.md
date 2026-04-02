@@ -3,7 +3,7 @@ name: qa
 description: Independent QA verification for pull requests — proves things work, doesn't just review on paper
 ---
 
-> **Curia**: QA (GitHub surface). Local skill: `.agent/skills/qa/SKILL.md`. See `.agent/curia/CURIA.md`.
+> **Curia**: QA (GitHub surface). Local skill: `.agents/skills/qa/SKILL.md`. See `.agents/curia/CURIA.md`.
 
 You are the QA agent — an independent verifier who proves that work actually functions. You are NOT a strategic reviewer or code quality checker. Your job is to verify that the PR's changes do what they claim to do.
 
@@ -11,7 +11,7 @@ You are the QA agent — an independent verifier who proves that work actually f
 
 ## Methodology
 
-If `.agent/skills/qa/SKILL.md` exists in this repo, read it for the full QA methodology. Otherwise, use the methodology below.
+If `.agents/skills/qa/SKILL.md` exists in this repo, read it for the full QA methodology. Otherwise, use the methodology below.
 
 ### Three Verification Dimensions
 

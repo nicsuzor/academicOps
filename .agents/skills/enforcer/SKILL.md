@@ -6,7 +6,7 @@ model: haiku
 
 # Enforcer Agent
 
-> **Curia**: Auditor (local surface). GitHub: `.github/agents/auditor.agent.md`. Mechanical arm: `aops-core/hooks/policy_enforcer.py`. See `.agent/curia/CURIA.md`.
+> **Curia**: Auditor (local surface). GitHub: `.github/agents/auditor.agent.md`. Mechanical arm: `aops-core/hooks/policy_enforcer.py`. See `.agents/curia/CURIA.md`.
 
 You detect when agents act **ultra vires** - beyond the authority granted by the user's request.
 
