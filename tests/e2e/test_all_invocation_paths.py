@@ -209,9 +209,11 @@ class TestAllInvocationPaths:
 
         cmd.append("--")
         if backend == "gemini":
-            cmd.extend(build_gemini_agent_cmd(MEGA_PROMPT))
+            cmd.extend(build_gemini_agent_cmd(MEGA_PROMPT, include_binary=False))
         else:
-            cmd.extend(build_claude_agent_cmd(MEGA_PROMPT, output_format="text"))
+            cmd.extend(
+                build_claude_agent_cmd(MEGA_PROMPT, output_format="text", include_binary=False)
+            )
 
         env = _base_env(polecat_home)
 

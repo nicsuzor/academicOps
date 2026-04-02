@@ -54,9 +54,14 @@ def build_claude_agent_cmd(
     prompt: str,
     output_format: str = "json",
     extra_args: list[str] | None = None,
+    include_binary: bool = True,
 ) -> list[str]:
-    """Build a full Claude CLI command from base args + prompt + extras."""
-    cmd = list(CLAUDE_BASE_ARGS)
+    """Build Claude CLI args from base args + prompt + extras.
+
+    Set include_binary=False when passing args after '--' to polecat crew
+    (the CLI already launches claude).
+    """
+    cmd = list(CLAUDE_BASE_ARGS) if include_binary else list(CLAUDE_BASE_ARGS[1:])
     cmd.extend(["-p", prompt, "--output-format", output_format])
     if extra_args:
         cmd.extend(extra_args)
@@ -66,9 +71,14 @@ def build_claude_agent_cmd(
 def build_gemini_agent_cmd(
     prompt: str,
     extra_args: list[str] | None = None,
+    include_binary: bool = True,
 ) -> list[str]:
-    """Build a full Gemini CLI command from base args + prompt + extras."""
-    cmd = list(GEMINI_BASE_ARGS)
+    """Build Gemini CLI args from base args + prompt + extras.
+
+    Set include_binary=False when passing args after '--' to polecat crew
+    (the CLI already launches gemini).
+    """
+    cmd = list(GEMINI_BASE_ARGS) if include_binary else list(GEMINI_BASE_ARGS[1:])
     cmd.extend(["-p", prompt])
     if extra_args:
         cmd.extend(extra_args)
