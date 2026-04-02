@@ -4,7 +4,7 @@
 Consolidated from 5 slow tests to 2 fast filesystem tests + 1 slow test.
 Tests that don't need headless have had @slow removed.
 
-Note: The framework skill is project-local (.agent/skills/framework/),
+Note: The framework skill is project-local (.agents/skills/framework/),
 not distributed (aops-core/skills/). These tests verify that project-local
 scripts are discoverable and executable.
 """
@@ -19,8 +19,8 @@ import pytest
 @pytest.fixture(autouse=True)
 def mock_home(tmp_path, monkeypatch):
     """Setup a mock project structure in tmp_path."""
-    # Create .agent/skills/framework structure (project-local)
-    framework_scripts = tmp_path / ".agent" / "skills" / "framework" / "scripts"
+    # Create .agents/skills/framework structure (project-local)
+    framework_scripts = tmp_path / ".agents" / "skills" / "framework" / "scripts"
     framework_scripts.mkdir(parents=True, exist_ok=True)
 
     # Create required scripts
@@ -29,7 +29,7 @@ def mock_home(tmp_path, monkeypatch):
     # Setup symlink to real AOPS if available
     aops = os.environ.get("AOPS")
     if aops:
-        aops_scripts = Path(aops) / ".agent" / "skills" / "framework" / "scripts"
+        aops_scripts = Path(aops) / ".agents" / "skills" / "framework" / "scripts"
         if aops_scripts.exists():
             import shutil
 
@@ -41,12 +41,12 @@ def mock_home(tmp_path, monkeypatch):
 
 @pytest.mark.integration
 def test_framework_skill_scripts_exist(mock_home):
-    """Test that framework skill scripts are accessible in .agent/skills/framework/."""
-    framework_path = mock_home / ".agent" / "skills" / "framework"
-    assert framework_path.exists(), ".agent/skills/framework/ not found"
+    """Test that framework skill scripts are accessible in .agents/skills/framework/."""
+    framework_path = mock_home / ".agents" / "skills" / "framework"
+    assert framework_path.exists(), ".agents/skills/framework/ not found"
 
     scripts_path = framework_path / "scripts"
-    assert scripts_path.exists(), ".agent/skills/framework/scripts/ should exist"
+    assert scripts_path.exists(), ".agents/skills/framework/scripts/ should exist"
 
     required_scripts = ["validate_docs.py"]
     for script_name in required_scripts:
@@ -62,7 +62,7 @@ def test_framework_script_runs_from_writing_repo(data_dir):
     if not aops:
         pytest.skip("AOPS environment variable not set")
 
-    script_path = Path(aops) / ".agent" / "skills" / "framework" / "scripts" / "validate_docs.py"
+    script_path = Path(aops) / ".agents" / "skills" / "framework" / "scripts" / "validate_docs.py"
     assert script_path.exists(), f"Script not found at {script_path}"
 
     cmd = ["uv", "run", "python", str(script_path), "--help"]
@@ -87,11 +87,11 @@ def test_framework_script_runs_from_writing_repo(data_dir):
 
 @pytest.mark.integration
 def test_skill_self_contained_architecture():
-    """Test that the framework skill is self-contained in .agent/skills/framework/."""
+    """Test that the framework skill is self-contained in .agents/skills/framework/."""
     aops = os.environ.get("AOPS")
     if not aops:
         pytest.skip("AOPS environment variable not set")
 
     aops_path = Path(aops)
-    scripts_in_aops = aops_path / ".agent" / "skills" / "framework" / "scripts"
-    assert scripts_in_aops.exists(), f"Scripts should exist in AOPS .agent/: {scripts_in_aops}"
+    scripts_in_aops = aops_path / ".agents" / "skills" / "framework" / "scripts"
+    assert scripts_in_aops.exists(), f"Scripts should exist in AOPS .agents/: {scripts_in_aops}"

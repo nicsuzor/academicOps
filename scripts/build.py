@@ -1033,7 +1033,7 @@ def build_antigravity(aops_root: Path, dist_root: Path, all_mcps: dict):
         f.write("\n")
 
     # 3. Rules (AXIOMS, HEURISTICS, core.md)
-    # NOTE: Antigravity doesn't use rules directly yet - setup.sh links from source to .agent/rules.
+    # NOTE: Antigravity doesn't use rules directly yet - setup.sh links from source to .agents/rules.
     # Keeping this comment for future reference if we want to distribute rules from dist.
 
     print("✓ Built antigravity dist")

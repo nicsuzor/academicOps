@@ -42,7 +42,7 @@ SKIP_DIRS = {
     ".ruff_cache",
     # Build artifacts and generated content
     "dist",
-    ".agent",
+    ".agents",
     # Archived/legacy content (kept for reference but not actively maintained)
     "archived",
 }
@@ -684,7 +684,7 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         "framework-gate",
         "constraint-check",
         # Agent directory paths (may not exist in all configurations)
-        ".agent/PATHS.md",
+        ".agents/PATHS.md",
         # MCP tool references (conceptual links to tool documentation)
         "mcp__pkb__create_task",
         "mcp__pkb__update_task",
@@ -732,7 +732,7 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         "aops-tools/.mcp.json",
         "aops-core/.mcp.json",
         # Cross-vault/project-specific paths
-        ".agent/CORE.md",
+        ".agents/CORE.md",
         "STYLE.md",
         # Path references within specs (relative to aops-core)
         "skills/session-insights/SKILL.md",
@@ -850,7 +850,7 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         root / "skills",
         root / "aops-core" / "skills",
         root / "aops-tools" / "skills",
-        root / ".agent" / "skills",
+        root / ".agents" / "skills",
         root / "dist" / "aops-core" / "skills",
         root / "dist" / "aops-tools" / "skills",
         root / "archived" / "skills",

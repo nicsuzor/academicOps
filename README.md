@@ -172,8 +172,8 @@ Before releasing, build the image and run slow tests on a Docker-capable host. R
 
 ## Project configuration
 
-Projects customise the framework by adding files to a `.agent/` directory:
+Projects customise the framework by adding files to a `.agents/` directory:
 
-- **`.agent/rules/`** — Project-specific rules loaded as binding constraints
-- **`.agent/workflows/`** — Project-specific workflows supplementing the global index
-- **`.agent/context-map.json`** — Maps project documentation to topics for just-in-time context injection
+- **`.agents/rules/`** — Project-specific rules loaded as binding constraints
+- **`.agents/workflows/`** — Project-specific workflows supplementing the global index
+- **`.agents/context-map.json`** — Maps project documentation to topics for just-in-time context injection

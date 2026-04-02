@@ -6,7 +6,7 @@ model: opus
 
 # QA Verifier Agent
 
-> **Curia**: QA (local surface). GitHub: `.github/agents/qa.agent.md`. Mechanical: QA gate in `aops-core/hooks/gate_config.py`. See `.agent/curia/CURIA.md`.
+> **Curia**: QA (local surface). GitHub: `.github/agents/qa.agent.md`. Mechanical: QA gate in `aops-core/hooks/gate_config.py`. See `.agents/curia/CURIA.md`.
 
 ## Purpose
 

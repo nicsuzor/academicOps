@@ -171,7 +171,7 @@ def uninstall_framework(aops_path: Path):
         ag_gw.unlink()
 
     # Clean Project Rules
-    project_rules = aops_path / ".agent" / "rules"
+    project_rules = aops_path / ".agents" / "rules"
     if project_rules.exists():
         shutil.rmtree(project_rules)
 
@@ -181,7 +181,7 @@ def uninstall_framework(aops_path: Path):
 
 def generate_paths_md(aops_root: Path):
     """Run generate_framework_paths.py."""
-    print("Generating .agent/PATHS.md...")
+    print("Generating .agents/PATHS.md...")
     script = aops_root / "aops-core" / "scripts" / "generate_framework_paths.py"
     if script.exists():
         run_command([sys.executable, str(script)], env=os.environ, check=False)

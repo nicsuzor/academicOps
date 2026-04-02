@@ -6,7 +6,7 @@
 #   - Comment briefly on issues requiring human judgment
 #   - File gh pr review (APPROVE or REQUEST_CHANGES)
 # Prompt: .github/agents/assessor.agent.md
-# Curia: Assessor (GitHub surface). Local: .agent/skills/critic/SKILL.md
+# Curia: Assessor (GitHub surface). Local: .agents/skills/critic/SKILL.md
 #
 # See specs/pr-pipeline.md for the full process documentation.
 

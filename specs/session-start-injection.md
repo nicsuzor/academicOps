@@ -15,7 +15,7 @@ tags: [framework, hooks, architecture, session]
 - [[hooks/user_prompt_submit.py]] - UserPromptSubmit hook: Tier 3 JIT injection
 - [[agents/prompt-hydrator.md]] - Hydrator that surfaces relevant context
 - [[AXIOMS.md]], [[HEURISTICS.md]] - Tier 1 framework core
-- [[.agent/]] - Tier 2 project context (when present)
+- [[.agents/]] - Tier 2 project context (when present)
 - [[lib/file_index.py]] - FILE_INDEX for JIT path injection
 
 ## Purpose
@@ -64,7 +64,7 @@ Tier 3: JIT Injection (prompt-hydrator or on-demand)
 
 ### Tier 2: Project Context
 
-**File**: `$cwd/.agent/CORE.md`
+**File**: `$cwd/.agents/CORE.md`
 
 **Who reads**: Agents working in a project directory.
 
@@ -109,7 +109,7 @@ Tier 3: JIT Injection (prompt-hydrator or on-demand)
 | Tier | File                                        | Purpose                        | Size Target |
 | ---- | ------------------------------------------- | ------------------------------ | ----------- |
 | 1    | `$AOPS/CORE.md`                             | Framework tools                | ~2KB        |
-| 2    | `$cwd/.agent/CORE.md`                       | Project context                | ~1KB        |
+| 2    | `$cwd/.agents/CORE.md`                      | Project context                | ~1KB        |
 | 3    | `$AOPS/aops-core/agents/prompt-hydrator.md` | Fallback for non-hooked agents | ~1KB        |
 | 3    | Various                                     | JIT-loaded by hydrator         | As needed   |
 
@@ -136,9 +136,9 @@ cat $AOPS/CORE.md
 ### Project Detection
 
 ```bash
-# If project has .agent/CORE.md, inject Tier 2
-if [ -f "$cwd/.agent/CORE.md" ]; then
-  cat "$cwd/.agent/CORE.md"
+# If project has .agents/CORE.md, inject Tier 2
+if [ -f "$cwd/.agents/CORE.md" ]; then
+  cat "$cwd/.agents/CORE.md"
 fi
 ```
 
@@ -170,7 +170,7 @@ claude --print-context | grep "Framework tool inventory"
 
 ```bash
 mkdir -p .agent
-echo "# Project Context" > .agent/CORE.md
+echo "# Project Context" > .agents/CORE.md
 # New session should show project context
 ```
 
@@ -189,7 +189,7 @@ echo "# Project Context" > .agent/CORE.md
 ## Acceptance Criteria
 
 - [ ] $AOPS/CORE.md contains ONLY essential framework tool info (~2KB)
-- [ ] $cwd/.agent/CORE.md convention documented and templated
+- [ ] $cwd/.agents/CORE.md convention documented and templated
 - [ ] SessionStart hook injects Tier 1 only
 - [ ] Prompt hook triggers hydrator for Tier 3
 - [ ] Non-hooked agents have clear self-hydration path

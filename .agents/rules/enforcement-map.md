@@ -23,7 +23,7 @@ tags: [framework, enforcement, moc]
 | [[do-one-thing]]                            | Do One Thing                     | TodoWrite visibility, custodiet drift detection, verbatim prompt comparison                                 | During execution           |        |
 | [[data-boundaries]]                         | Data Boundaries                  | settings.json deny rules                                                                                    | PreToolUse                 |        |
 | [[project-independence]]                    | Project Independence             | AXIOMS.md                                                                                                   | SessionStart               |        |
-| [[project-independence]]                    | Cross-Repository Safety          | `.agent/CORE.md` context injection — prohibits edits outside current git repo                               | SessionStart               |        |
+| [[project-independence]]                    | Cross-Repository Safety          | `.agents/CORE.md` context injection — prohibits edits outside current git repo                              | SessionStart               |        |
 | [[fail-fast-code]]                          | Fail-Fast (Code)                 | policy_enforcer.py blocks destructive git                                                                   | PreToolUse                 |        |
 | [[fail-fast-code]]                          | Fail-Fast (Code) - No Fallbacks  | check_no_fallbacks.py AST visitor detects `.get(..., "")`, `.get(..., [])`, `or ""` patterns                | Pre-commit (active)        |        |
 | [[fail-fast-agents]]                        | Fail-Fast (Agents)               | fail_fast_watchdog.py injects reminder                                                                      | PostToolUse                |        |
@@ -142,7 +142,7 @@ Context loading follows a **three-tier architecture** (see [[session-start-injec
 | Tier | File                                            | Purpose                          | When Loaded               |
 | ---- | ----------------------------------------------- | -------------------------------- | ------------------------- |
 | 1    | `$AOPS/CORE.md`                                 | Framework tools (essential only) | SessionStart (ALL agents) |
-| 2    | `$cwd/.agent/CORE.md`                           | Project-specific context         | SessionStart (if exists)  |
+| 2    | `$cwd/.agents/CORE.md`                          | Project-specific context         | SessionStart (if exists)  |
 | 3    | `AXIOMS.md`, `HEURISTICS.md`, workflows, skills | Detailed guidance                | JIT via hydrator          |
 
 **Design principle**: Minimal baseline, maximal JIT. Agents start with only what they need to understand the framework and project. Everything else loads on-demand.
@@ -171,7 +171,7 @@ This is the **default enforcement mechanism** for instructions. Principles surfa
 | File                              | Purpose                         | Loaded Via                           |
 | --------------------------------- | ------------------------------- | ------------------------------------ |
 | `$AOPS/CORE.md`                   | Framework tool inventory (~2KB) | SessionStart hook                    |
-| `$cwd/.agent/CORE.md`             | Project conventions             | SessionStart hook (if exists)        |
+| `$cwd/.agents/CORE.md`            | Project conventions             | SessionStart hook (if exists)        |
 | `AXIOMS.md`                       | Inviolable principles           | Hydrator temp file → filtered output |
 | `HEURISTICS.md`                   | Operational defaults            | Hydrator temp file → filtered output |
 | Agent frontmatter (`agents/*.md`) | Agent-specific context          | Task tool invocation                 |

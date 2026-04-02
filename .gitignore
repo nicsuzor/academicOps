@@ -1,13 +1,14 @@
 # Claude code
-.claude/
+.claude/*
+!.claude/skills
 .gemini/
 !.gemini/sandbox.Dockerfile
 .aops/
 .polecat/
-!.agent/commands/
-!.agent/skills/
-!.agent/rules
-!.agent/workflows
+!.agents/commands/
+!.agents/skills/
+!.agents/rules
+!.agents/workflows
 
 # ============================================================================
 # Python

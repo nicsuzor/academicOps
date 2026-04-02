@@ -88,7 +88,7 @@ def check_index_skills(plugin_root: Path) -> list[str]:
 
     # Build set of existing skills and commands
     skills_dir = plugin_root / "skills"
-    project_local_skills_dir = plugin_root.parent / ".agent" / "skills"
+    project_local_skills_dir = plugin_root.parent / ".agents" / "skills"
     tools_skills_dir = plugin_root.parent / "aops-tools" / "skills"
     commands_dir = plugin_root / "commands"
 

@@ -29,7 +29,7 @@ uv run basedpyright
 
 ```
 academicOps/
-├── .agent/           # Agent instructions, rules, skills (READ-ONLY reference)
+├── .agents/           # Agent instructions, rules, skills (READ-ONLY reference)
 │   ├── rules/        # AXIOMS.md (inviolable principles)
 │   └── skills/       # Domain skills
 ├── .github/
@@ -81,7 +81,7 @@ Closes: <task-id>
 
 ### What NOT to Do
 
-- Do NOT modify files under `.agent/rules/` — these are inviolable.
+- Do NOT modify files under `.agents/rules/` — these are inviolable.
 - Do NOT add tests inside `aops-core/` — tests go in the root `tests/` directory.
 - Do NOT create backup or archive files — git is the backup system.
 - Do NOT disable pre-commit hooks or CI checks.

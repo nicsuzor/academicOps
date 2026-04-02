@@ -50,10 +50,10 @@ GitHub issue and implement it to completion.
 
 ## What NOT to Modify
 
-- `.agent/rules/` — inviolable framework axioms
+- `.agents/rules/` — inviolable framework axioms
 - `.github/workflows/` — CI pipeline (unless the issue specifically targets it)
 - `aops-core/AXIOMS.md` — framework principles
-- Any file listed in `.agent/rules/protected_paths.txt`
+- Any file listed in `.agents/rules/protected_paths.txt`
 
 ## PR Description
 

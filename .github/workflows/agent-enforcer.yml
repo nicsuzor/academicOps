@@ -2,7 +2,7 @@
 # Personality: Universal standards enforcer — axiom compliance reviewer.
 # Responsibilities:
 #   - Review PR diff against framework axioms
-#   - Read local .agent/CORE.md for project-specific context
+#   - Read local .agents/CORE.md for project-specific context
 #   - Push fixes for axiom violations directly to the PR branch
 #   - Comment on issues requiring human judgment
 # Prompt: aops-core/agents/enforcer.md (canonical source — same prompt as local subagent)
@@ -138,7 +138,7 @@ jobs:
 
             Your task: Review PR #${{ steps.pr-info.outputs.pr_number }} in repository ${{ github.repository }} against the axioms above.
 
-            1. Read `.agent/CORE.md` from the repo root (if it exists) for local project context.
+            1. Read `.agents/CORE.md` from the repo root (if it exists) for local project context.
             2. Run `gh pr view ${{ steps.pr-info.outputs.pr_number }}` to understand the PR.
             3. Run `gh pr diff ${{ steps.pr-info.outputs.pr_number }}` to see the changes.
             4. Check each change against the axioms. Push fixes for clear violations directly to the PR branch.
