@@ -10,14 +10,6 @@ from lib.path_bootstrap import COMMON_BIN_DIRS, REQUIRED_BINARIES, detect_path_a
 class TestDetectPathAdditions:
     """Tests for detect_path_additions()."""
 
-    def test_returns_none_when_all_binaries_found(self):
-        """No changes needed when all required binaries are already on PATH."""
-        # Use real PATH — uv and gh are available in dev environment
-        result = detect_path_additions(os.environ.get("PATH", ""))
-        # If both are found, result is None; if not, that's fine too
-        # The key invariant: result is either None or a valid PATH string
-        assert result is None or isinstance(result, str)
-
     def test_returns_none_when_nothing_to_add(self):
         """Returns None when binaries are already on the given PATH."""
         with patch("lib.path_bootstrap.shutil.which", return_value="/usr/bin/fake"):
