@@ -68,17 +68,17 @@ Quick lookup for framework principles. See [[enforcement-map.md]] for the full t
 
 **File**: [[agents/framework-ops.md]] | **Agent**: Framework operations enforcer
 
-| P#   | Name                      | One-liner                                      |
-| ---- | ------------------------- | ---------------------------------------------- |
-| P#22 | Always Dogfooding         | Use real projects as test cases                |
-| P#23 | Skills Are Read-Only      | No dynamic data in skills                      |
-| P#25 | No Workarounds            | If tools fail, halt - don't bypass             |
-| P#29 | Relational Integrity      | Atomic markdown files that link                |
-| P#43 | Just-In-Time Context      | Missing context = framework bug                |
-| P#46 | Current State Machine     | $ACA_DATA = semantic memory only               |
-| P#47 | Agents Execute Workflows  | Agents select workflows, don't contain them    |
-| P#49 | No Shitty NLP             | Use LLMs for semantic decisions; agentic-first |
-| P#55 | Non-interactive Execution | No commands requiring interactive input        |
+| P#   | Name                      | One-liner                                       |
+| ---- | ------------------------- | ----------------------------------------------- |
+| P#22 | Always Dogfooding         | Use real projects as test cases                 |
+| P#23 | Skills Are Read-Only      | No dynamic data in skills                       |
+| P#25 | No Workarounds            | If tools fail, halt - don't bypass              |
+| P#29 | Relational Integrity      | Atomic markdown files that link                 |
+| P#43 | Just-In-Time Context      | Missing context = framework bug                 |
+| P#46 | Memory Model              | $ACA_DATA = semantic + episodic with provenance |
+| P#47 | Agents Execute Workflows  | Agents select workflows, don't contain them     |
+| P#49 | No Shitty NLP             | Use LLMs for semantic decisions; agentic-first  |
+| P#55 | Non-interactive Execution | No commands requiring interactive input         |
 
 ## Tier 3: Heuristics (advisory)
 

@@ -242,11 +242,18 @@ When the solution is unknown, don't guess - set up a feedback loop.
 
 **Derivation**: Guessing compounds uncertainty. Experiments with feedback reduce uncertainty systematically.
 
-## Current State Machine (P#46)
+## Memory Model (P#46)
 
-$ACA_DATA is a semantic memory store containing ONLY current state. Episodic memory (observations) lives in bd issues.
+$ACA_DATA contains both semantic and episodic memory. Semantic memory (synthesized knowledge) is durable, decontextualized, and always kept current. Episodic memory (daily notes, meeting notes, task bodies) is time-stamped, preserved as-is, and serves as primary source material for synthesis. The consolidation pipeline transforms episodic into semantic through extraction, pattern detection, and provenance-tracked synthesis.
 
-**Derivation**: Mixing episodic and semantic memory creates confusion. Current state should be perfect, always up to date, always understandable without piecing together observations.
+**Corollaries**:
+
+- Semantic notes must be understandable without reading their sources
+- Episodic notes are never edited after creation — only frontmatter flags added
+- All synthesized claims must cite their episodic sources (provenance required)
+- The /sleep cycle's consolidation phases test the hypothesis that agents can perform this transformation
+
+**Derivation**: The original "semantic only" rule prevented legitimate episodic content (meeting notes, daily summaries) from living alongside the knowledge it informs. Cognitive science shows that episodic→semantic transformation requires active retrieval and reprocessing, not just storage. Separating the two creates a capture gap where valuable temporal context is lost before it can be synthesized.
 
 ## Human Tasks Are Not Agent Tasks (P#48)
 

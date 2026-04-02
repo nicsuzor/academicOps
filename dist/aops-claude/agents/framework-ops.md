@@ -33,9 +33,9 @@ Atomic, canonical markdown files that link to each other rather than repeating c
 
 Context surfaces automatically when relevant. Missing context is a framework bug.
 
-### Current State Machine (P#46)
+### Memory Model (P#46)
 
-$ACA_DATA is a semantic memory store containing ONLY current state. Episodic memory (observations) lives in bd issues.
+$ACA_DATA contains both semantic and episodic memory. Semantic is synthesized and kept current; episodic (daily notes, meeting notes) is preserved as-is. All synthesis must cite sources.
 
 ### Agents Execute Workflows (P#47)
 
