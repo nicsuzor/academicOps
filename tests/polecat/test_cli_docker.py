@@ -92,6 +92,12 @@ class TestBuildDockerCmd:
         env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
         assert "ANTHROPIC_API_KEY=sk-test-123" in env_args
 
+    def test_forwards_claude_code_oauth_token(self):
+        env = {"CLAUDE_CODE_OAUTH_TOKEN": "oauth-test-token"}
+        cmd = self._build(env=env)
+        env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
+        assert "CLAUDE_CODE_OAUTH_TOKEN=oauth-test-token" in env_args
+
     def test_does_not_forward_gemini_keys(self):
         """Gemini keys not needed in Claude Docker container — Gemini uses its own sandbox."""
         env = {"GEMINI_API_KEY": "gemini-test-key", "GOOGLE_API_KEY": "google-test-key"}

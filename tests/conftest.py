@@ -946,6 +946,9 @@ def _run_claude_docker_simple(prompt: str, tmp_path: Path, **kwargs) -> dict[str
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if api_key:
         env["ANTHROPIC_API_KEY"] = api_key
+    oauth_token = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN")
+    if oauth_token:
+        env["CLAUDE_CODE_OAUTH_TOKEN"] = oauth_token
     aca_data = os.environ.get("ACA_DATA")
     if aca_data:
         env["ACA_DATA"] = aca_data
@@ -1290,7 +1293,11 @@ def cli_headless(request, tmp_path, gemini_home):
         if not _docker_available():
             pytest.skip("Docker not available or aops-crew image not built")
         has_oauth = (Path.home() / ".claude" / ".credentials.json").exists()
-        if not os.environ.get("ANTHROPIC_API_KEY") and not has_oauth:
+        if (
+            not os.environ.get("ANTHROPIC_API_KEY")
+            and not os.environ.get("CLAUDE_CODE_OAUTH_TOKEN")
+            and not has_oauth
+        ):
             pytest.skip("No Claude auth for Docker")
 
         def _run_claude_in_docker(prompt, **kwargs):
@@ -1916,9 +1923,12 @@ def claude_docker(tmp_path):
         pytest.skip("Docker not available or aops-crew image not built")
 
     api_key = os.environ.get("ANTHROPIC_API_KEY")
+    oauth_token = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN")
     has_oauth = (Path.home() / ".claude" / ".credentials.json").exists()
-    if not api_key and not has_oauth:
-        pytest.skip("No Claude auth: neither ANTHROPIC_API_KEY nor OAuth credentials found")
+    if not api_key and not oauth_token and not has_oauth:
+        pytest.skip(
+            "No Claude auth: neither ANTHROPIC_API_KEY, CLAUDE_CODE_OAUTH_TOKEN, nor OAuth credentials found"
+        )
 
     # Import _build_docker_cmd from polecat
     repo_root = get_repo_root()
@@ -1972,6 +1982,8 @@ def claude_docker(tmp_path):
         env = {}
         if api_key:
             env["ANTHROPIC_API_KEY"] = api_key
+        if oauth_token:
+            env["CLAUDE_CODE_OAUTH_TOKEN"] = oauth_token
         # Forward ACA_DATA if set
         aca_data = os.environ.get("ACA_DATA")
         if aca_data:

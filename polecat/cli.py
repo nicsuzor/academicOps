@@ -534,6 +534,7 @@ def _build_docker_cmd(
                 "GH_TOKEN",
                 "GITHUB_TOKEN",
                 "ANTHROPIC_API_KEY",
+                "CLAUDE_CODE_OAUTH_TOKEN",
                 "COLORTERM",
                 "FORCE_COLOR",
                 "CUSTODIET_TOOL_CALL_THRESHOLD",
