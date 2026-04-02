@@ -116,6 +116,7 @@ RUN chmod +x /home/worker/entrypoint.sh
 # Remove .claude.json so the entrypoint can populate it from staging with correct ownership.
 RUN chmod 777 /home/worker \
     && (chmod -R 777 /home/worker/.claude/ 2>/dev/null || true) \
+    && (chmod -R 777 /home/worker/.cache/ 2>/dev/null || true) \
     && rm -f /home/worker/.claude.json
 
 # Default command and entrypoint
