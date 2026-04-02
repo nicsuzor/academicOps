@@ -23,7 +23,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from tests.conftest import _docker_available, _gemini_cli_available
+from tests.conftest import _docker_available, _gemini_cli_available, get_repo_root
 
 # PKB task whose body is the test prompt for `pc run -t`.
 # Created in PKB under aops project — DO NOT COMPLETE or ARCHIVE this task.
@@ -118,7 +118,7 @@ def _make_polecat_home(tmp_path):
     config = {
         "projects": {
             "aops": {
-                "path": str(Path("/opt/nic/academicOps")),
+                "path": str(get_repo_root()),
                 "default_branch": "main",
             },
         },

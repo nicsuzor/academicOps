@@ -14,6 +14,7 @@ or volume mounts run their own container.
 import os
 import subprocess
 import tempfile
+from pathlib import Path
 
 import pytest
 
@@ -223,7 +224,13 @@ class TestDockerEntrypoint:
         This is the mechanism used to stage auth files (.credentials.json, etc.)
         into the container at runtime. If this breaks, all auth fails.
         """
-        with tempfile.TemporaryDirectory() as staging_dir:
+        # Use a path under $HOME — on macOS with Colima, only /Users is shared
+        # via virtiofs. Python's tempfile uses /private/var/folders/ which is
+        # invisible to the Docker daemon.
+        docker_visible_tmp = Path.home() / ".aops" / "tmp" / "test-staging"
+        docker_visible_tmp.mkdir(parents=True, exist_ok=True)
+        staging_dir = tempfile.mkdtemp(dir=docker_visible_tmp)
+        try:
             test_file = os.path.join(staging_dir, "test_staging_file.txt")
             with open(test_file, "w") as f:
                 f.write("staging-test-content-12345")
@@ -251,3 +258,7 @@ class TestDockerEntrypoint:
             assert "staging-test-content-12345" in output, (
                 f"Staging copy to $HOME failed. Output:\n{output}"
             )
+        finally:
+            import shutil
+
+            shutil.rmtree(staging_dir, ignore_errors=True)
