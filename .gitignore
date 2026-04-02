@@ -338,8 +338,10 @@ aops-core/.mcp.json
 
 # Distribution artifacts - built by CI
 # Claude plugin dist is tracked (served directly from this repo)
+# Cowork plugin dist is also tracked (stripped-down build for Cowork desktop)
 dist/*
 !dist/aops-claude/
+!dist/aops-cowork/
 
 streamlit_log.txt
 data/

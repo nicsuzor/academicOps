@@ -1,7 +1,7 @@
 # AcademicOps Makefile
 # Unified build and installation entry point
 
-.PHONY: help dev build-dev install-dev uninstall-dev install-remote install-claude install-gemini install-cli install-crontab install-hooks nextver release prerelease clean build build-docker shell
+.PHONY: help dev build-dev install-dev uninstall-dev install-remote install-claude install-gemini install-cowork install-cli install-crontab install-hooks nextver release prerelease clean build build-docker shell
 
 # --- Configuration ---
 
@@ -16,6 +16,7 @@ GEMINI_REMOTE_URL := https://github.com/nicsuzor/academicOps.git
 # Extension names
 GEMINI_EXT_NAME := aops-core
 CLAUDE_PLUGIN_NAME := aops-core@academicOps
+COWORK_PLUGIN_NAME := aops-cowork@academicOps
 
 # Platform detection for binaries
 UNAME_S := $(shell uname -s)
@@ -40,6 +41,7 @@ help:
 	@echo "  make dev            - Full local dev setup (sync, build, install-dev)"
 	@echo "  make build-dev      - Build extension locally (dist/)"
 	@echo "  make install-dev    - Install current dist/ into Claude and Gemini"
+	@echo "  make install-cowork - Install Cowork plugin from local dist/aops-cowork build"
 	@echo "  make uninstall-dev  - Restore release marketplace after local testing"
 	@echo "  make install-hooks  - Install pre-commit hooks"
 	@echo ""
@@ -104,6 +106,15 @@ cache = pathlib.Path.home() / '.claude/plugins/cache/academicOps/aops-core'; \
 	@echo "✓ Local installation complete"
 	@echo "  ⚠️  Marketplace 'academicOps' now points to $(AOPS_ROOT)"
 	@echo "  Run 'make uninstall-dev' to restore the release marketplace."
+
+# Install Cowork plugin from local dist build
+install-cowork:
+	@echo "Installing aops plugin for Claude Cowork..."
+	@echo "  Source: $(DIST_DIR)/aops-cowork (local build)"
+	-command claude plugin uninstall $(COWORK_PLUGIN_NAME)
+	@command claude plugin marketplace add $(AOPS_ROOT) && \
+	command claude plugin install $(COWORK_PLUGIN_NAME) && \
+	echo "✓ Cowork plugin installed"
 
 # Restore the release marketplace after local dev testing
 uninstall-dev:
