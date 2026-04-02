@@ -59,24 +59,26 @@ def detect_path_additions(current_path: str) -> str | None:
     Returns the full updated PATH string, or ``None`` if no changes are needed.
     """
     path_segments = [s for s in current_path.split(os.pathsep) if s]
+    normalized_path = os.pathsep.join(path_segments)
     dirs_to_add: list[str] = []
     brew_bin: str | None = None  # lazy, cached
     brew_checked = False
 
     for binary in REQUIRED_BINARIES:
         # Already available?
-        if shutil.which(binary, path=current_path):
+        if shutil.which(binary, path=normalized_path):
             continue
 
         # Also check against dirs we've already decided to add
-        augmented = os.pathsep.join([*dirs_to_add, current_path]) if dirs_to_add else current_path
+        augmented = (
+            os.pathsep.join([*dirs_to_add, normalized_path]) if dirs_to_add else normalized_path
+        )
         if shutil.which(binary, path=augmented):
             continue
 
         found = False
         for bin_dir in COMMON_BIN_DIRS:
-            candidate = bin_dir / binary
-            if candidate.exists() and os.access(candidate, os.X_OK):
+            if shutil.which(binary, path=str(bin_dir)):
                 dir_str = str(bin_dir)
                 if dir_str not in path_segments and dir_str not in dirs_to_add:
                     dirs_to_add.append(dir_str)
@@ -88,11 +90,9 @@ def detect_path_additions(current_path: str) -> str | None:
             if not brew_checked:
                 brew_bin = _get_brew_bin_dir()
                 brew_checked = True
-            if brew_bin:
-                candidate_path = Path(brew_bin) / binary
-                if candidate_path.exists() and os.access(candidate_path, os.X_OK):
-                    if brew_bin not in path_segments and brew_bin not in dirs_to_add:
-                        dirs_to_add.append(brew_bin)
+            if brew_bin and shutil.which(binary, path=brew_bin):
+                if brew_bin not in path_segments and brew_bin not in dirs_to_add:
+                    dirs_to_add.append(brew_bin)
 
     if not dirs_to_add:
         return None

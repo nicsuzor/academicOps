@@ -49,7 +49,7 @@ def test_no_md_files_silently_excluded() -> None:
     intentionally_excluded = source_md_files & excluded
 
     # This is fine — but if the set grows unexpectedly, we want to know
-    assert intentionally_excluded == {"BUTLER.md", "GEMINI.md"}, (
+    assert intentionally_excluded == {"GEMINI.md"}, (
         f"Unexpected .md files in EXCLUDED_FROM_COPY: {sorted(intentionally_excluded)}. "
         "If a new .md file should genuinely be excluded, update this assertion."
     )

@@ -34,7 +34,7 @@ _AOPS_DIRS_TO_ADD=""
 for _bin in "${_AOPS_REQUIRED_BINS[@]}"; do
     if ! command -v "$_bin" &> /dev/null; then
         for _p in "${_AOPS_COMMON_PATHS[@]}"; do
-            if [[ -x "$_p/$_bin" ]]; then
+            if [[ -f "$_p/$_bin" && -x "$_p/$_bin" ]]; then
                 # Only add if not already in PATH and not already queued
                 case ":$PATH:$_AOPS_DIRS_TO_ADD:" in
                     *":$_p:"*) ;;
@@ -47,7 +47,11 @@ for _bin in "${_AOPS_REQUIRED_BINS[@]}"; do
 done
 
 if [[ -n "$_AOPS_DIRS_TO_ADD" ]]; then
-    export PATH="${_AOPS_DIRS_TO_ADD%:}:$PATH"
+    if [[ -n "$PATH" ]]; then
+        export PATH="${_AOPS_DIRS_TO_ADD%:}:$PATH"
+    else
+        export PATH="${_AOPS_DIRS_TO_ADD%:}"
+    fi
 fi
 
 unset _bin _p _AOPS_REQUIRED_BINS _AOPS_COMMON_PATHS _AOPS_DIRS_TO_ADD

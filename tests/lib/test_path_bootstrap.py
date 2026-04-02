@@ -12,11 +12,18 @@ class TestDetectPathAdditions:
 
     def test_returns_none_when_all_binaries_found(self):
         """No changes needed when all required binaries are already on PATH."""
-        # Use real PATH — uv and gh are available in dev environment
-        result = detect_path_additions(os.environ.get("PATH", ""))
-        # If both are found, result is None; if not, that's fine too
-        # The key invariant: result is either None or a valid PATH string
-        assert result is None or isinstance(result, str)
+        current_path = "/usr/bin:/usr/local/bin"
+
+        def mock_which(binary: str, path: str | None = None) -> str | None:
+            if binary in {"uv", "gh"}:
+                return f"/usr/bin/{binary}"
+            return None
+
+        with patch("lib.path_bootstrap.REQUIRED_BINARIES", ["uv", "gh"]):
+            with patch("lib.path_bootstrap.shutil.which", side_effect=mock_which):
+                result = detect_path_additions(current_path)
+
+        assert result is None
 
     def test_returns_none_when_nothing_to_add(self):
         """Returns None when binaries are already on the given PATH."""
@@ -33,12 +40,12 @@ class TestDetectPathAdditions:
 
         with patch("lib.path_bootstrap.COMMON_BIN_DIRS", [tmp_path]):
             with patch("lib.path_bootstrap.REQUIRED_BINARIES", ["gh"]):
-                result = detect_path_additions("/usr/bin")
+                result = detect_path_additions("/nonexistent")
 
         assert result is not None
         assert str(tmp_path) in result
         # Original path preserved
-        assert "/usr/bin" in result
+        assert "/nonexistent" in result
 
     def test_does_not_duplicate_existing_path_entry(self, tmp_path):
         """Doesn't add a directory that's already in PATH."""
@@ -47,11 +54,18 @@ class TestDetectPathAdditions:
         fake_bin.chmod(0o755)
 
         current = f"{tmp_path}:/usr/bin"
+
+        def mock_which(binary: str, path: str | None = None) -> str | None:
+            # Return None for the initial normalized PATH check so we
+            # fall through to the COMMON_BIN_DIRS scan, but return a hit
+            # when scanning the specific bin_dir so the dedup logic runs.
+            if path == str(tmp_path):
+                return str(fake_bin)
+            return None
+
         with patch("lib.path_bootstrap.COMMON_BIN_DIRS", [tmp_path]):
             with patch("lib.path_bootstrap.REQUIRED_BINARIES", ["gh"]):
-                # gh won't be found by shutil.which with our mocked common dirs
-                # but the dir is already in PATH, so nothing to add
-                with patch("lib.path_bootstrap.shutil.which", return_value=str(fake_bin)):
+                with patch("lib.path_bootstrap.shutil.which", side_effect=mock_which):
                     result = detect_path_additions(current)
 
         assert result is None
@@ -65,7 +79,7 @@ class TestDetectPathAdditions:
 
         with patch("lib.path_bootstrap.COMMON_BIN_DIRS", [tmp_path]):
             with patch("lib.path_bootstrap.REQUIRED_BINARIES", ["uv", "gh"]):
-                result = detect_path_additions("/usr/bin")
+                result = detect_path_additions("/nonexistent")
 
         assert result is not None
         # Count occurrences of tmp_path in result
@@ -80,12 +94,12 @@ class TestDetectPathAdditions:
 
         with patch("lib.path_bootstrap.COMMON_BIN_DIRS", [tmp_path]):
             with patch("lib.path_bootstrap.REQUIRED_BINARIES", ["gh"]):
-                result = detect_path_additions("/usr/bin")
+                result = detect_path_additions("/nonexistent")
 
         assert result is not None
         segments = result.split(os.pathsep)
         assert segments[0] == str(tmp_path)
-        assert segments[-1] == "/usr/bin"
+        assert segments[-1] == "/nonexistent"
 
     def test_handles_empty_path(self, tmp_path):
         """Works with an empty PATH string."""
@@ -108,11 +122,10 @@ class TestDetectPathAdditions:
 
         with patch("lib.path_bootstrap.COMMON_BIN_DIRS", [tmp_path]):
             with patch("lib.path_bootstrap.REQUIRED_BINARIES", ["gh"]):
-                result = detect_path_additions("/usr/bin")
+                result = detect_path_additions("/nonexistent")
 
-        # Should not have added tmp_path since binary isn't executable
-        if result is not None:
-            assert str(tmp_path) not in result
+        # No PATH update should be returned because the only candidate is not executable.
+        assert result is None
 
     @pytest.mark.skipif(os.name == "nt", reason="brew only on macOS/Linux")
     def test_brew_fallback_on_darwin(self, tmp_path):
@@ -136,7 +149,7 @@ class TestDetectPathAdditions:
             with patch("lib.path_bootstrap.REQUIRED_BINARIES", ["gh"]):
                 with patch("lib.path_bootstrap.sys.platform", "darwin"):
                     with patch("lib.path_bootstrap.subprocess.run", side_effect=fake_brew_run):
-                        result = detect_path_additions("/usr/bin")
+                        result = detect_path_additions("/nonexistent")
 
         assert result is not None
         assert str(brew_bin_dir) in result
