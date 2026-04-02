@@ -121,15 +121,23 @@ class TestCrewDockerSession:
             # In DinD, tmp_path is on overlay (invisible to the outer Docker daemon).
             # Create workspace under /workspace (a bind mount) so _build_docker_cmd
             # can detect DinD and stage auth files on a host-visible volume.
+            # Workspace and session_dir must be on a Docker-visible filesystem.
+            # - DinD: /workspace is a bind mount; use it directly
+            # - macOS Colima: only /Users is shared via virtiofs; pytest tmp_path
+            #   resolves to /private/var/folders/ which is invisible to Docker.
+            #   Create under $HOME/.aops/tmp/ instead.
             _ws = Path("/workspace")
             is_dind = _ws.exists() and _container_to_host_path(_ws) != _ws
             if is_dind:
                 workspace = _ws / f".test-crew-{session_id[:8]}"
             else:
-                workspace = tmp_path / "workspace"
+                # Use a path under $HOME so Colima can see it
+                docker_visible_tmp = Path.home() / ".aops" / "tmp" / f"test-crew-{session_id[:8]}"
+                docker_visible_tmp.mkdir(parents=True, exist_ok=True)
+                workspace = docker_visible_tmp / "workspace"
             workspace.mkdir(exist_ok=True)
-            session_dir = tmp_path / "sessions"
-            session_dir.mkdir()
+            session_dir = workspace.parent / "sessions"
+            session_dir.mkdir(exist_ok=True)
 
             # In DinD, use a Docker named volume for session persistence
             # (bind mounts from overlay won't work).
@@ -298,17 +306,33 @@ class TestCrewDockerSession:
                         timeout=30,
                     )
 
-            # Clean up DinD workspace and staging
-            if is_dind:
-                import shutil
+            # Extract session data before cleanup (session_dir may be inside
+            # docker_visible_tmp which gets removed).
+            session_file = find_session_jsonl(session_id, search_dirs=[session_dir])
 
+            # Copy session files to tmp_path so they survive cleanup of
+            # docker_visible_tmp. tmp_path is managed by pytest.
+            persist_dir = tmp_path / "sessions"
+            persist_dir.mkdir(exist_ok=True)
+            import shutil
+
+            for f in session_dir.rglob("*"):
+                if f.is_file():
+                    dest = persist_dir / f.relative_to(session_dir)
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(f, dest)
+            if session_file:
+                session_file = persist_dir / session_file.relative_to(session_dir)
+            session_dir = persist_dir
+
+            # Clean up Docker-visible temp dirs
+            if is_dind:
                 shutil.rmtree(workspace, ignore_errors=True)
                 staging_root = workspace / ".aops-staging"
                 if staging_root.exists():
                     shutil.rmtree(staging_root, ignore_errors=True)
-
-            # Extract session data
-            session_file = find_session_jsonl(session_id, search_dirs=[session_dir])
+            elif docker_visible_tmp.exists():
+                shutil.rmtree(docker_visible_tmp, ignore_errors=True)
             tool_calls = parse_tool_calls(session_file) if session_file else []
 
             return {
