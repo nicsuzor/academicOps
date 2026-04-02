@@ -1048,6 +1048,7 @@ def build_aops_cowork(
                 for agent_file in src_item.glob("*.md"):
                     content = agent_file.read_text()
                     content = transform_agent_for_platform(content, "claude", agent_file.name)
+                    content = translate_tool_calls(content, "claude")
                     (dst / agent_file.name).write_text(content)
                 print(f"  ✓ Copied agents -> {dst}")
             else:

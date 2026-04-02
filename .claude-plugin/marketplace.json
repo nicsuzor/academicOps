@@ -16,6 +16,16 @@
       },
       "source": "./dist/aops-claude",
       "category": "productivity"
+    },
+    {
+      "name": "aops-cowork",
+      "description": "academicOps for Cowork - stripped-down plugin with skills, agents, and tools (no hooks/scripts)",
+      "version": "0.3.16-dev.73",
+      "author": {
+        "name": "Nicolas Suzor"
+      },
+      "source": "./dist/aops-cowork",
+      "category": "productivity"
     }
   ]
 }
