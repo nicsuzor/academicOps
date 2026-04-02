@@ -169,7 +169,7 @@ claude --print-context | grep "Framework tool inventory"
 ### Test: Tier 2 loads when present
 
 ```bash
-mkdir -p .agent
+mkdir -p .agents
 echo "# Project Context" > .agents/CORE.md
 # New session should show project context
 ```

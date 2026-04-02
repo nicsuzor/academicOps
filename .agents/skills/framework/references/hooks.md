@@ -146,7 +146,7 @@ from typing import Any
 
 def main():
     input_data: dict[str, Any] = {}
-    with contextlib.suppress(Exception):
+    with contextlib.suppress(json.JSONDecodeError):
         input_data = json.load(sys.stdin)
 
     output = {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}
