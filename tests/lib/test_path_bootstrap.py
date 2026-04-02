@@ -40,12 +40,24 @@ class TestDetectPathAdditions:
         fake_bin.touch()
         fake_bin.chmod(0o755)
 
-        current = f"{tmp_path}:/usr/bin"
+        # tmp_path is already in PATH. The initial shutil.which against
+        # normalized PATH returns None (simulating a minimal env), so
+        # detect_path_additions falls through to COMMON_BIN_DIRS scanning.
+        # It finds gh in tmp_path but sees tmp_path is already a PATH
+        # segment, so nothing is added.
+        current = str(tmp_path)
+
+        def mock_which(binary, path=None):
+            # Return None for the normalized PATH and augmented checks
+            # so we fall through to COMMON_BIN_DIRS scanning.
+            # Return the binary when scanning the specific bin_dir.
+            if path == str(tmp_path):
+                return str(fake_bin)
+            return None
+
         with patch("lib.path_bootstrap.COMMON_BIN_DIRS", [tmp_path]):
             with patch("lib.path_bootstrap.REQUIRED_BINARIES", ["gh"]):
-                # gh won't be found by shutil.which with our mocked common dirs
-                # but the dir is already in PATH, so nothing to add
-                with patch("lib.path_bootstrap.shutil.which", return_value=str(fake_bin)):
+                with patch("lib.path_bootstrap.shutil.which", side_effect=mock_which):
                     result = detect_path_additions(current)
 
         assert result is None

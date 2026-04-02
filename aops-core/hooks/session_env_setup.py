@@ -231,8 +231,9 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
     updated_path = detect_path_additions(os.environ.get("PATH", ""))
     if updated_path:
         persist["PATH"] = updated_path
-        # Also update os.environ so subprocesses spawned later in this hook invocation
-        # can find the tools immediately (persist only applies to future Claude tool calls).
+        # Also update live env so subprocesses spawned later in this hook
+        # invocation find the tools immediately (persist only applies to
+        # future Claude tool calls via CLAUDE_ENV_FILE).
         os.environ["PATH"] = updated_path
 
     # 8. Inject Tier 1 Core context (CORE.md)
