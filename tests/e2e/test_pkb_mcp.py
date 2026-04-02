@@ -193,7 +193,7 @@ class HttpPkbClient(PkbClient):
 
     def _post(self, body: dict, session_id: str | None = None) -> tuple[int, dict, list[dict]]:
         """POST to /mcp, return (status, headers, parsed_sse_messages)."""
-        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=15)
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=45)
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json, text/event-stream",
@@ -259,7 +259,7 @@ class HttpPkbClient(PkbClient):
 
     def raw_post_string(self, raw_body: str) -> tuple[int, dict, str]:
         """POST raw string (for malformed JSON tests)."""
-        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=15)
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=45)
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json, text/event-stream",

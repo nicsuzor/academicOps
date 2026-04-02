@@ -178,6 +178,14 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
         persist["PYTHONPATH"] = new_pythonpath
 
     # 3. Persist paths
+    # Persist AOPS_SESSIONS and POLECAT_HOME so subagents (worktree agents,
+    # macOS app sessions) write transcripts/summaries to the correct git-synced
+    # directory instead of falling back to ~/.polecat/sessions/.
+    for var in ("AOPS_SESSIONS", "POLECAT_HOME"):
+        val = os.environ.get(var)
+        if val:
+            persist[var] = val
+
     try:
         persist["AOPS_SESSION_STATE_DIR"] = str(status_dir)
     except Exception as e:
