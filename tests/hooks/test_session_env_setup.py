@@ -81,7 +81,7 @@ class TestSessionEnvSetup:
     def test_run_session_env_setup_persists_gate_mode_defaults_when_missing(self, tmp_path):
         """When gate mode env vars are absent, defaults should be persisted via CLAUDE_ENV_FILE.
 
-        This covers the non-shell runtime case (Claude macOS app, Cowork) where
+        This covers the non-shell runtime case (Claude macOS app) where
         ~/.env.local is not sourced and gate mode vars are missing from the environment.
         """
         env_file = tmp_path / "claude_env"

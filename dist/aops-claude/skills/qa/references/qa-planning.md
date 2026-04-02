@@ -147,7 +147,7 @@ This can be evaluated by pattern matching. An agent can check these without unde
 
 **Poor**: Labels are truncated to meaninglessness ("overwhelm-da..."), or every node has a label creating a wall of overlapping text, or the labels that show are the least important ones (leaf tasks labeled, goals unlabeled).
 
-**Scenario**: Open dashboard after reindex. Don't touch the zoom. Can you identify which project cluster the "cowork MCP integration" task sits in? How many steps does it take — zero (it's visible), one (zoom to the right cluster), or many (hunt across the graph)?
+**Scenario**: Open dashboard after reindex. Don't touch the zoom. Can you identify which project cluster the "Discord integration" task sits in? How many steps does it take — zero (it's visible), one (zoom to the right cluster), or many (hunt across the graph)?
 
 ## Anti-Patterns in QA Plan Design
 

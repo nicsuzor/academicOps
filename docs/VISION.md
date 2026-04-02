@@ -11,7 +11,7 @@ tags:
 
 # academicOps Vision
 
-**Last updated**: 2026-03-20
+**Last updated**: 2026-04-01
 
 > **Why this file matters**: Agents have no persistent memory. VISION.md defines the end state — what we're building and why. Update when fundamental direction changes. Keep out: implementation details, current status.
 
@@ -95,6 +95,7 @@ Hooks and configuration that make every Claude Code session framework-aware:
 - Autocommit keeps state synced
 - Session transcripts captured for reflection
 - Cross-device sync via git
+- **Channels** as the central interface — Claude Code Channels (Discord, Slack) provide a unified way to interact with Claude Code clients from any device. The framework targets Claude Code as the sole runtime; Cowork is not supported (not configurable in the same way as Claude Code).
 
 ## What We've Learned
 
@@ -153,6 +154,12 @@ The PKB server does deterministic computation (search, CRUD, graph traversal). A
 - Cross-device workflow (multiple computers)
 - Private data (secure and confidential)
 - Academic standards (publication-quality required)
+
+### Platform Focus
+
+- **Claude Code** is the sole supported runtime. All hooks, skills, and MCP servers target Claude Code.
+- **Claude Cowork is not supported.** Cowork runs in a VM with read-only plugin cache, no skill/hook execution, and no equivalent configurability. We do not invest in Cowork compatibility.
+- **Channels** (Discord, Slack) provide the central interface for interacting with Claude Code clients remotely.
 
 ### Must Not Require
 

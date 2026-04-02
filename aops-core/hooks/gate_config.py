@@ -354,7 +354,7 @@ SPAWN_TOOLS: dict[str, tuple[tuple[str, ...], bool]] = {
 # GATE MODES
 # =============================================================================
 # Gate enforcement modes from environment variables. Defaults to "warn" when
-# not set (e.g. Claude macOS app, Cowork) so the router can boot and
+# not set (e.g. Claude macOS app) so the router can boot and
 # session_env_setup can persist values via CLAUDE_ENV_FILE.
 #
 # NOTE: Missing vars emit a stderr warning so misconfigured deployments remain

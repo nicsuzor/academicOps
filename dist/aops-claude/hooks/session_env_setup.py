@@ -191,7 +191,7 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
     for gate_name, gate_path in gate_paths.items():
         persist[f"AOPS_GATE_FILE_{gate_name.upper()}"] = str(gate_path)
 
-    # 5. Persist gate mode defaults for non-shell runtimes (macOS app, Cowork)
+    # 5. Persist gate mode defaults for non-shell runtimes (macOS app)
     # These are normally inherited from ~/.env.local via interactive zsh.
     # When missing, gate_config.py falls back to "warn"; we persist that
     # so subsequent hooks in this session also get the defaults.
