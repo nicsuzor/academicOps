@@ -61,9 +61,7 @@ def test_cowork_include_dirs_exist() -> None:
     """Every entry in COWORK_INCLUDE must resolve to a real directory under aops-core/."""
     cowork_include, _ = _get_cowork_sets()
 
-    missing = {
-        name for name in cowork_include if not (AOPS_CORE_DIR / name).is_dir()
-    }
+    missing = {name for name in cowork_include if not (AOPS_CORE_DIR / name).is_dir()}
 
     assert not missing, (
         f"COWORK_INCLUDE references directories that don't exist in aops-core/: {sorted(missing)}. "
@@ -75,9 +73,7 @@ def test_cowork_md_include_files_exist() -> None:
     """Every entry in COWORK_MD_INCLUDE must resolve to a real file under aops-core/."""
     _, cowork_md_include = _get_cowork_sets()
 
-    missing = {
-        name for name in cowork_md_include if not (AOPS_CORE_DIR / name).is_file()
-    }
+    missing = {name for name in cowork_md_include if not (AOPS_CORE_DIR / name).is_file()}
 
     assert not missing, (
         f"COWORK_MD_INCLUDE references files that don't exist in aops-core/: {sorted(missing)}. "
