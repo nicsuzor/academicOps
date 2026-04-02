@@ -68,12 +68,12 @@ Read each session JSON from `$AOPS_SESSIONS/summaries/YYYYMMDD*.json`. Extract:
 
 **Work type classification** (derived from project and prompt content):
 
-| Signal                                                                                                                              | Classification     |
-| ----------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
-| Prompt mentions research/analysis/paper/methodology/data/literature; or project is tagged as research in ACA_DATA                  | **Research**       |
-| Prompt mentions teaching, supervision, HDR, marking, student                                                                        | **Academic**       |
-| Prompt mentions PR/deploy/CI/infra/config/tooling; or project is framework, tooling, or personal config (tagged in ACA_DATA)        | **Infrastructure** |
-| Email, calendar, scheduling, admin                                                                                                  | **Administrative** |
+| Signal                                                                                                                       | Classification     |
+| ---------------------------------------------------------------------------------------------------------------------------- | ------------------ |
+| Prompt mentions research/analysis/paper/methodology/data/literature; or project is tagged as research in ACA_DATA            | **Research**       |
+| Prompt mentions teaching, supervision, HDR, marking, student                                                                 | **Academic**       |
+| Prompt mentions PR/deploy/CI/infra/config/tooling; or project is framework, tooling, or personal config (tagged in ACA_DATA) | **Infrastructure** |
+| Email, calendar, scheduling, admin                                                                                           | **Administrative** |
 
 Use the user's prompt `description` text as the primary signal. Project name is a fallback — check the project's tags or category in ACA_DATA rather than hardcoding names. When ambiguous, prefer research classification — the daily skill's job is to surface research work, not bury it.
 
@@ -102,9 +102,9 @@ cd <repo_path> && gh pr list --state merged --json number,title,author,mergedAt,
 
 ### academicOps
 
-| PR          | Title                  | Author    | Merged |
-| ----------- | ---------------------- | --------- | ------ |
-| [#123](url) | Fix authentication bug | @user | 10:15  |
+| PR          | Title                  | Author | Merged |
+| ----------- | ---------------------- | ------ | ------ |
+| [#123](url) | Fix authentication bug | @user  | 10:15  |
 
 ### my-other-project
 
@@ -145,17 +145,17 @@ cd <repo_path> && gh pr list --state open --json number,title,author,createdAt,h
 
 ### academicOps (7 open)
 
-| PR          | Title                        | Author     | Size           | Age | CI                 | Mergeable | Action                     |
-| ----------- | ---------------------------- | ---------- | -------------- | --- | ------------------ | --------- | -------------------------- |
+| PR          | Title                        | Author | Size           | Age | CI                 | Mergeable | Action                     |
+| ----------- | ---------------------------- | ------ | -------------- | --- | ------------------ | --------- | -------------------------- |
 | [#631](url) | Agent launch controls in TUI | @agent | +144/-4 (2f)   | 0d  | passing            | conflict  | fix conflicts then merge   |
 | [#630](url) | Fix crontab broken paths     | @user  | +149/-34 (6f)  | 0d  | type check failing | conflict  | fix type check + conflicts |
 | [#640](url) | Add extraction skill         | @agent | +1048/-17 (6f) | 0d  | skipped            | unknown   | review — large new skill   |
 
 ### my-other-project (10 open)
 
-| PR          | Title                   | Author    | Size            | Age | CI      | Mergeable | Action                       |
-| ----------- | ----------------------- | --------- | --------------- | --- | ------- | --------- | ---------------------------- |
-| [#304](url) | Unify processor classes | @user | +471/-424 (22f) | 74d | failing | conflict  | close or rebase — very stale |
+| PR          | Title                   | Author | Size            | Age | CI      | Mergeable | Action                       |
+| ----------- | ----------------------- | ------ | --------------- | --- | ------- | --------- | ---------------------------- |
+| [#304](url) | Unify processor classes | @user  | +471/-424 (22f) | 74d | failing | conflict  | close or rebase — very stale |
 
 _N open PRs across M repos — X ready to merge, Y need fixes, Z need review_
 ```
