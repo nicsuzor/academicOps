@@ -1,7 +1,7 @@
 # AcademicOps Makefile
 # Unified build and installation entry point
 
-.PHONY: help dev build-dev install-dev uninstall-dev install-remote install-claude install-gemini install-cli install-crontab install-hooks nextver release prerelease clean build build-docker shell
+.PHONY: help dev build-dev install-dev uninstall-dev install-remote install-claude install-gemini install-cowork install-cli install-crontab install-hooks nextver release prerelease clean build build-docker shell
 
 # --- Configuration ---
 
@@ -16,6 +16,7 @@ GEMINI_REMOTE_URL := https://github.com/nicsuzor/academicOps.git
 # Extension names
 GEMINI_EXT_NAME := aops-core
 CLAUDE_PLUGIN_NAME := aops-core@academicOps
+COWORK_PLUGIN_NAME := aops-cowork@academicOps
 
 # Platform detection for binaries
 UNAME_S := $(shell uname -s)
@@ -46,6 +47,7 @@ help:
 	@echo "User Installation (Install from remote releases):"
 	@echo "  make install        - Install all components from GitHub releases"
 	@echo "  make install-claude - Install Claude plugin from dist repo"
+	@echo "  make install-cowork - Install Cowork plugin from dist repo"
 	@echo "  make install-gemini - Install Gemini extension from main repo"
 	@echo "  make install-crontab - Setup background sync"
 	@echo ""
@@ -141,6 +143,14 @@ install-claude:
 	command claude plugin marketplace update academicOps && \
 	command claude plugin install $(CLAUDE_PLUGIN_NAME) && \
 	echo "✓ Claude Code plugin installed"
+
+install-cowork:
+	@echo "Installing aops plugin for Claude Cowork..."
+	@echo "  Source: $(DIST_DIR)/aops-cowork (local build)"
+	-command claude plugin uninstall $(COWORK_PLUGIN_NAME)
+	@command claude plugin marketplace add $(AOPS_ROOT) && \
+	command claude plugin install $(COWORK_PLUGIN_NAME) && \
+	echo "✓ Cowork plugin installed"
 
 install-gemini:
 	@echo "Installing aops extension for Gemini CLI..."

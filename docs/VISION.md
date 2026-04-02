@@ -95,7 +95,7 @@ Hooks and configuration that make every Claude Code session framework-aware:
 - Autocommit keeps state synced
 - Session transcripts captured for reflection
 - Cross-device sync via git
-- **Channels** as the central interface — Claude Code Channels (Discord, Slack) provide a unified way to interact with Claude Code clients from any device. The framework targets Claude Code as the sole runtime; Cowork is not supported (not configurable in the same way as Claude Code).
+- **Channels** as the central interface — Claude Code Channels (Discord, Slack) provide a unified way to interact with Claude Code clients from any device. The framework targets Claude Code as the primary runtime; Cowork receives a stripped-down build with skills, commands, and agents (no hooks or enforcement).
 
 ## What We've Learned
 
@@ -157,8 +157,8 @@ The PKB server does deterministic computation (search, CRUD, graph traversal). A
 
 ### Platform Focus
 
-- **Claude Code** is the sole supported runtime. All hooks, skills, and MCP servers target Claude Code.
-- **Claude Cowork is not supported.** Cowork runs in a VM with read-only plugin cache, no skill/hook execution, and no equivalent configurability. We do not invest in Cowork compatibility.
+- **Claude Code** is the primary supported runtime. All hooks, skills, and MCP servers target Claude Code.
+- **Claude Cowork** receives a stripped-down build (`dist/aops-cowork/`) containing skills, commands, agents, and MCP config. Hooks and Python-based enforcement do not run in Cowork's read-only VM environment.
 - **Channels** (Discord, Slack) provide the central interface for interacting with Claude Code clients remotely.
 
 ### Must Not Require

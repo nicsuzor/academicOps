@@ -1,7 +1,7 @@
 #!/usr/bin/env -S uv run python
 """
 Build script for AcademicOps extensions.
-Generates dist/aops-gemini, dist/aops-claude, dist/aops-tools-gemini, dist/aops-tools-claude, and dist/antigravity.
+Generates dist/aops-gemini, dist/aops-claude, dist/aops-cowork, dist/aops-tools-gemini, dist/aops-tools-claude, and dist/antigravity.
 """
 
 import argparse
@@ -985,6 +985,125 @@ def build_aops_tools(
     print(f"✓ Built {plugin_name} ({platform})")
 
 
+def build_aops_cowork(
+    aops_root: Path,
+    dist_root: Path,
+    aca_data_path: str,
+    version: str = "0.1.0",
+):
+    """Build the aops-cowork plugin for Claude Cowork.
+
+    Cowork runs in a VM with a read-only plugin cache and cannot execute hooks
+    or Python scripts. This build produces a stripped-down Claude-format plugin
+    containing only the components Cowork can use:
+    - skills/ (markdown procedural knowledge)
+    - commands/ (slash command definitions)
+    - agents/ (agent definitions)
+    - .mcp.json (MCP server config)
+    - .claude-plugin/plugin.json (manifest)
+    - Documentation markdown files
+    """
+    print(f"Building aops-cowork (v{version})...")
+    src_dir = aops_root / "aops-core"
+    dist_dir = dist_root / "aops-cowork"
+
+    if dist_dir.exists():
+        shutil.rmtree(dist_dir)
+    dist_dir.mkdir(parents=True)
+
+    # Write version info
+    commit_sha = get_git_commit_sha(aops_root)
+    if commit_sha:
+        write_plugin_version(src_dir, commit_sha)
+
+    # 1. Copy only Cowork-compatible content (no hooks, lib, scripts, config)
+    COWORK_INCLUDE = {
+        "skills",
+        "commands",
+        "agents",
+    }
+    # Top-level markdown files to include
+    COWORK_MD_INCLUDE = {
+        "SKILLS.md",
+        "AXIOMS.md",
+        "HEURISTICS.md",
+        "RULES.md",
+        "INDEX.md",
+        "TAXONOMY.md",
+        "CONSTRAINTS.md",
+        "TOOLS.md",
+        "enforcement-map.md",
+        "agent-env-map.conf",
+    }
+
+    for src_item in src_dir.iterdir():
+        if src_item.name.startswith(".") or src_item.name == "__pycache__":
+            continue
+
+        if src_item.name in COWORK_INCLUDE:
+            if src_item.name == "agents" and src_item.is_dir():
+                # Transform agent frontmatter for Claude format (same as claude build)
+                dst = dist_dir / src_item.name
+                dst.mkdir(parents=True, exist_ok=True)
+                for agent_file in src_item.glob("*.md"):
+                    content = agent_file.read_text()
+                    content = transform_agent_for_platform(content, "claude", agent_file.name)
+                    (dst / agent_file.name).write_text(content)
+                print(f"  ✓ Copied agents -> {dst}")
+            else:
+                safe_copy(src_item, dist_dir / src_item.name)
+        elif src_item.is_file() and src_item.name in COWORK_MD_INCLUDE:
+            safe_copy(src_item, dist_dir / src_item.name)
+
+    # 2. Plugin manifest — same format as Claude Code but with hooks stripped
+    src_plugin_json = src_dir / ".claude-plugin" / "plugin.json"
+    dist_plugin_dir = dist_dir / ".claude-plugin"
+    dist_plugin_dir.mkdir(parents=True, exist_ok=True)
+    if src_plugin_json.exists():
+        manifest = json.loads(src_plugin_json.read_text())
+        manifest["version"] = version
+        manifest["name"] = "aops-cowork"
+        manifest["description"] = (
+            "academicOps for Cowork - skills, agents, and tools for research workflow automation"
+        )
+        # Cowork cannot execute hooks, so we don't reference them
+        with open(dist_plugin_dir / "plugin.json", "w") as f:
+            json.dump(manifest, f, indent=2)
+            f.write("\n")
+        print(f"  ✓ Generated plugin.json (v{version})")
+
+    # 3. MCP config — Cowork uses the same format as Claude Code
+    template_path = src_dir / "mcp.json.template"
+    if template_path.exists():
+        mcp_template = json.loads(template_path.read_text())
+        claude_mcp_config = mcp_template.get("claude", mcp_template)
+        with open(dist_dir / ".mcp.json", "w") as f:
+            json.dump(claude_mcp_config, f, indent=2)
+            f.write("\n")
+        print("  ✓ Generated .mcp.json")
+
+    # 4. Also include aops-tools skills if available
+    tools_src = aops_root / "aops-tools" / "skills"
+    if tools_src.exists():
+        tools_skills_dst = dist_dir / "skills"
+        # Merge tool skills into the main skills directory
+        for skill_dir in tools_src.iterdir():
+            dst = tools_skills_dst / skill_dir.name
+            if not dst.exists():
+                safe_copy(skill_dir, dst)
+        tools_index = aops_root / "aops-tools" / "SKILLS.md"
+        if tools_index.exists():
+            # Append tools skills index to main SKILLS.md
+            main_skills_md = dist_dir / "SKILLS.md"
+            if main_skills_md.exists():
+                with open(main_skills_md, "a") as f:
+                    f.write("\n\n## Domain Tools\n\n")
+                    f.write(tools_index.read_text())
+        print("  ✓ Merged aops-tools skills")
+
+    print("✓ Built aops-cowork")
+
+
 def build_antigravity(aops_root: Path, dist_root: Path, all_mcps: dict):
     """Build the antigravity distribution."""
     print("Building antigravity...")
@@ -1122,6 +1241,9 @@ def main():
     build_aops_tools(aops_root, dist_root, "gemini", version)
     build_aops_tools(aops_root, dist_root, "claude", version)
 
+    # Build Cowork plugin (stripped-down Claude-format for Cowork desktop)
+    build_aops_cowork(aops_root, dist_root, aca_data_path, version)
+
     # Install PKB binary if provided
     pkb_binary = Path(args.pkb_binary) if args.pkb_binary else None
     if pkb_binary:
@@ -1218,7 +1340,16 @@ def package_artifacts(
     print(f"  ✓ Packaged {claude_archive.name}")
     safe_symlink(claude_archive, dist_root / "aops-claude-latest.tar.gz")
 
-    # 3. aops-antigravity-v{version}.tar.gz
+    # 3. aops-cowork-v{version}.tar.gz
+    cowork_dir = dist_root / "aops-cowork"
+    if cowork_dir.exists():
+        cowork_archive = dist_root / f"aops-cowork-v{version}.tar.gz"
+        with tarfile.open(cowork_archive, "w:gz") as tar:
+            tar.add(cowork_dir, arcname="aops-cowork", filter=_source_filter)
+        print(f"  ✓ Packaged {cowork_archive.name}")
+        safe_symlink(cowork_archive, dist_root / "aops-cowork-latest.tar.gz")
+
+    # 4. aops-antigravity-v{version}.tar.gz
     antigravity_archive = dist_root / f"aops-antigravity-v{version}.tar.gz"
     with tarfile.open(antigravity_archive, "w:gz") as tar:
         tar.add(dist_root / "aops-antigravity", arcname=".", filter=_source_filter)
