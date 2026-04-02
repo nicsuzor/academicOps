@@ -55,13 +55,24 @@ def build_claude_agent_cmd(
     output_format: str = "json",
     extra_args: list[str] | None = None,
     include_binary: bool = True,
+    model: str | None = None,
 ) -> list[str]:
     """Build Claude CLI args from base args + prompt + extras.
 
     Set include_binary=False when passing args after '--' to polecat crew
     (the CLI already launches claude).
+
+    Args:
+        model: Override the default model from CLAUDE_BASE_ARGS.
     """
     cmd = list(CLAUDE_BASE_ARGS) if include_binary else list(CLAUDE_BASE_ARGS[1:])
+    if model is not None:
+        # Replace the --model value already set in CLAUDE_BASE_ARGS
+        try:
+            idx = cmd.index("--model")
+            cmd[idx + 1] = model
+        except ValueError:
+            cmd.extend(["--model", model])
     cmd.extend(["-p", prompt, "--output-format", output_format])
     if extra_args:
         cmd.extend(extra_args)
@@ -2004,6 +2015,7 @@ def claude_docker(tmp_path):
         agent_cmd = build_claude_agent_cmd(
             prompt,
             output_format="json",
+            model=model,
             extra_args=[
                 "--verbose",
                 "--debug",
