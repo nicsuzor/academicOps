@@ -1,24 +1,4 @@
----
-name: dogfood
-type: skill
-category: meta
-description: Generic reflective execution loop — learn from doing, capture friction, improve instructions
-triggers:
-  - "dogfood"
-  - "reflective loop"
-  - "learn from this"
-  - "interactive development"
-modifies_files: true
-needs_task: true
-mode: execution
-domain:
-  - meta
-  - framework
-allowed-tools: Read, Grep, Glob, Bash, Edit, Write, mcp__pkb__create_task, mcp__pkb__update_task, mcp__pkb__append, mcp__pkb__search, mcp__pkb__retrieve_memory
-version: 1.0.0
----
-
-# Dogfood — Reflective Execution Loop
+# 10 — Reflective Execution Loop (Dogfooding)
 
 A generic loop for learning from doing. Works for framework development, research methodology, teaching design — any domain where the process itself is worth examining.
 
@@ -40,6 +20,7 @@ Per-step, not per-session. Reflect after every step, not batched at the end.
 ### 1. Execute (One Step)
 
 Do one discrete piece of work. While doing it, notice:
+
 - What context was missing?
 - What felt awkward or unclear?
 - What tools didn't work or weren't available?
@@ -49,26 +30,26 @@ Do one discrete piece of work. While doing it, notice:
 
 Before proceeding, ask: did the process work as designed?
 
-| Observation | Action |
-|-------------|--------|
-| One-time friction | Note in task body, continue |
-| Recurring pattern (seen 3+ times) | Check HEURISTICS.md — codify if missing |
-| Blocking current work | Fix minimally, file follow-up task |
-| Better approach found | Document what worked |
-| Tool or schema gap | File task under relevant project |
-| Strategic misalignment | Stop. Check vision doc. Discuss with user. |
+| Observation                       | Action                                     |
+| --------------------------------- | ------------------------------------------ |
+| One-time friction                 | Note in task body, continue                |
+| Recurring pattern (seen 3+ times) | Check HEURISTICS.md — codify if missing    |
+| Blocking current work             | Fix minimally, file follow-up task         |
+| Better approach found             | Document what worked                       |
+| Tool or schema gap                | File task under relevant project           |
+| Strategic misalignment            | Stop. Check vision doc. Discuss with user. |
 
 ### 3. Codify (Improve Instructions)
 
 **The step most often skipped.** Ask: "What did I learn that should change instructions for future work?"
 
-| Learning type | Where it goes |
-|---------------|---------------|
-| Better workflow steps | Update the workflow .md file |
-| Missing guardrail | HEURISTICS.md via /learn |
-| Agent behaviour fix | CORE.md or relevant SKILL.md |
+| Learning type             | Where it goes                 |
+| ------------------------- | ----------------------------- |
+| Better workflow steps     | Update the workflow .md file  |
+| Missing guardrail         | HEURISTICS.md via /learn      |
+| Agent behaviour fix       | CORE.md or relevant SKILL.md  |
 | Domain methodology update | The governing methodology doc |
-| Unclear instruction | Fix the instruction directly |
+| Unclear instruction       | Fix the instruction directly  |
 
 ## PKB Integration (Mandatory)
 
@@ -91,6 +72,7 @@ mcp__pkb__create_task(
 ```
 
 **Title examples**:
+
 - Good: "Finding: hydrator workflow missing checkpoint after context gathering"
 - Bad: "Finding #3"
 

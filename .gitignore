@@ -1,5 +1,6 @@
 # Claude code
-.claude/
+.claude/*
+!.claude/skills
 .gemini/
 !.gemini/sandbox.Dockerfile
 .aops/
