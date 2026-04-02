@@ -1,10 +1,53 @@
-"""Tests for Docker container tooling (Node.js, Rust).
+"""Tests for Docker container tooling (Node.js, Rust, Docker socket).
 
-Verifies that Node.js and Rust (cargo) are correctly installed and
-available on PATH inside the aops-crew Docker image.
+Verifies that Node.js, Rust (cargo), and Docker are correctly installed and
+available inside the aops-crew Docker image.
 """
 
+import os
+import subprocess
+from pathlib import Path
+
 import pytest
+
+
+@pytest.mark.slow
+@pytest.mark.integration
+class TestDockerSocket:
+    """Docker socket is accessible and images can be built inside the container."""
+
+    @pytest.fixture(autouse=True)
+    def require_crew_container(self):
+        """Skip unless running inside an aops-crew container."""
+        if os.environ.get("HOSTNAME") != "aops-crew":
+            pytest.skip("Not running inside an aops-crew container")
+
+    def test_docker_socket_accessible(self):
+        """Docker socket exists and docker info succeeds."""
+        assert Path("/var/run/docker.sock").is_socket(), (
+            "Docker socket not found at /var/run/docker.sock — DinD not running?"
+        )
+        result = subprocess.run(["docker", "info"], capture_output=True, text=True, timeout=30)
+        assert result.returncode == 0, f"docker info failed:\n{result.stderr}"
+
+    def test_can_build_dockerfile(self):
+        """docker build . succeeds from the workspace root."""
+        repo_root = Path(__file__).parents[2]
+        tag = "aops-crew-ci-test"
+        try:
+            result = subprocess.run(
+                ["docker", "build", "-t", tag, str(repo_root)],
+                capture_output=True,
+                text=True,
+                timeout=600,
+            )
+            assert result.returncode == 0, (
+                f"docker build failed:\n"
+                f"STDOUT: {result.stdout[-3000:]}\n"
+                f"STDERR: {result.stderr[-3000:]}"
+            )
+        finally:
+            subprocess.run(["docker", "rmi", tag], capture_output=True)
 
 
 @pytest.mark.slow

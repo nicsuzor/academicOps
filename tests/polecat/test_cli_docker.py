@@ -321,6 +321,40 @@ class TestBuildDockerCmd:
         env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
         assert f"ACA_DATA={aca_dir}" in env_args
 
+    def _patch_docker_sock(self, exists: bool):
+        """Context manager that patches cli.Path so the docker socket mock returns `exists`."""
+        from unittest.mock import MagicMock
+
+        real_home = Path.home()
+
+        def path_factory(p):
+            if str(p) == "/var/run/docker.sock":
+                m = MagicMock()
+                m.exists.return_value = exists
+                m.stat.return_value.st_gid = 999
+                return m
+            return Path(p)
+
+        import contextlib
+
+        @contextlib.contextmanager
+        def _ctx():
+            with patch("cli.Path") as MockPath:
+                MockPath.home.return_value = real_home
+                MockPath.side_effect = path_factory
+                yield MockPath
+
+        return _ctx()
+
+    def test_mounts_docker_socket_when_present(self):
+        """Mounts host socket and adds --group-add when socket exists (DooD)."""
+        with self._patch_docker_sock(exists=True):
+            cmd = self._build()
+        vol_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-v"]
+        assert any("docker.sock" in v for v in vol_args)
+        assert "--privileged" not in cmd
+        assert "--user" in cmd
+
 
 class TestMakeWorkerEnv:
     """Tests for _make_worker_env environment construction."""
