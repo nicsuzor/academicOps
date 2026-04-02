@@ -75,7 +75,7 @@ Instead of loading different rule files into a general-purpose agent based on de
 - **Academic integrity**: the research skill owns academic rules (citation, data immutability, methodology ownership)
 - **Engineering standards**: the dev-standards agent owns development rules (fail-fast, DRY, version control, credential isolation)
 - **Framework operations**: the framework-ops agent owns framework rules (dogfooding, skills read-only, no workarounds, agentic-first)
-- **Universal axioms**: always active, loaded at session start for all agents
+- **Universal axioms**: the enforcer agent carries the axioms as core knowledge and applies them in any context — session audits, PR reviews, design assessments
 
 You invoke the right agents for the job. Rules live local to the entity that enforces them, not in central files that need a context-detection mechanism to load. This is the bazaar model (P#49) applied to governance: multiple independent agents with their own perspective, rather than one central agent switching modes.
 
@@ -112,7 +112,7 @@ The framework has a recurring failure mode: **over-engineering coordination mech
 **What we're re-evaluating (not cut, but need to earn their keep):**
 
 - **Hydrator**: Good concept (enrich tasks with context before execution). Enforcement gate (blocking all tools until hydrated) is the problem, not the skill itself. Needs to be useful without being mandatory for simple tasks.
-- **Custodiet**: Drift detection concept is sound and the gate is working, so it stays as a separate enforcement layer alongside the new CC auto mode per-action classifier. Its substance (what it checks and how aggressively) will be revised once we have confidence that CC auto mode handles per-action enforcement well — the two are complementary, not redundant.
+- **Enforcer (was custodiet)**: Drift detection concept is sound. Being consolidated into the enforcer agent — a universal standards expert that carries the axioms as core knowledge and can be applied to any task (session audits, PR reviews, design assessments). The periodic compliance gate mechanism is retained alongside CC auto mode per-action classifier — the two are complementary, not redundant. The enforcer replaces custodiet as the identity, not the function.
 - **Gate system**: Per-gate assessment needed. Handover gate (requires reflection) is valuable. Commit gate was removed because it competed with handover signals. Hydration gate (blocking all tools) is too aggressive.
 
 **How we prevent this recurring:**

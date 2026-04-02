@@ -18,8 +18,8 @@ Axioms are organized into tiers, each enforced by a distinct agent personality. 
 
 ### Tier 1: Universal Axioms (always active)
 
-**File**: `$AOPS/AXIOMS.md`
-**Agent**: Integrity enforcer
+**File**: `$AOPS/agents/enforcer.md` (canonical source; `$AOPS/AXIOMS.md` until retirement — epic task-2d73b052, subtask .8)
+**Agent**: Enforcer (`aops-core/agents/enforcer.md`)
 **Scope**: All work, all contexts, all platforms
 
 Contains: P#3 (Don't Make Shit Up), P#5 (Do One Thing), P#6 (Data Boundaries), P#9 (Fail-Fast Agents), P#26 (Verify First), P#27 (No Excuses), P#30 (Nothing Is Someone Else's Responsibility), P#31 (Acceptance Criteria Own Success), P#48 (Human Tasks), P#50 (Explicit Approval), P#99 (Delegated Authority Only).
@@ -35,13 +35,13 @@ Contains: P#3 (Don't Make Shit Up), P#5 (Do One Thing), P#6 (Data Boundaries), P
 ### Tier 3: Heuristics (advisory)
 
 **File**: `$AOPS/HEURISTICS.md`
-**Scope**: Inform but don't block. Checked periodically by custodiet.
+**Scope**: Inform but don't block. Checked periodically by custodiet/enforcer.
 
 ### How agents consume the registry
 
 Domain rules are embedded in the agents and skills that own them (the bazaar model). Instead of loading different rule files into a general-purpose agent based on detected context, you invoke the right specialist agent for the job:
 
-1. **Universal axioms** (Tier 1): Always active — loaded at SessionStart for all agents via `AXIOMS.md`
+1. **Universal axioms** (Tier 1): Always active — loaded at SessionStart for all agents via `AXIOMS.md`. The enforcer agent (`aops-core/agents/enforcer.md`) carries these axioms as core knowledge for PR review and session audits
 2. **Academic rules**: Owned by the research skill (`skills/research/axioms.md`) — active when the research skill is invoked
 3. **Dev rules**: Owned by the dev-standards agent (`agents/dev-standards.md`) — invoke for code planning, review, or execution
 4. **Framework rules**: Owned by the framework-ops agent (`agents/framework-ops.md`) — invoke for framework development or operations
@@ -389,6 +389,7 @@ Auto-commits staged changes. Blocks if unstaged changes require manual commit.
 | test-setup.yml       | Validate symlinks exist and are relative | [[fail-fast-code]]                |
 | framework-health.yml | Framework health metrics and enforcement | [[maintain-relational-integrity]] |
 | claude.yml           | Claude Code bot integration              | -                                 |
+| agent-enforcer.yml   | Axiom compliance review for PRs          | Universal axioms (Tier 1)         |
 
 ## Agent Tool Permissions
 
@@ -397,7 +398,8 @@ Main agent has all tools except deny rules. Subagents are restricted:
 | Agent          | Tools Granted                                | Model  | Purpose                                                                                                        |
 | -------------- | -------------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------- |
 | Main agent     | All (minus deny rules)                       | varies | Primary task execution                                                                                         |
-| custodiet      | Read                                         | haiku  | Compliance checking                                                                                            |
+| custodiet      | Read                                         | haiku  | Periodic session compliance checking                                                                           |
+| enforcer       | Read (local), Bash+Read (GHA)                | varies | Axiom compliance checking (PR review, session audits)                                                          |
 | qa             | Read, Grep, Glob                             | opus   | Independent verification (anti-sycophancy: must verify against original request verbatim, not agent reframing) |
 | planner        | All (inherits from main)                     | sonnet | Implementation planning                                                                                        |
 | planning skill | See `skills/planning/SKILL.md` allowed-tools | opus   | Strategic planning (invoked via `Skill(skill="planning")`)                                                     |
