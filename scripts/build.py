@@ -700,7 +700,6 @@ def build_aops_core(
         "pyproject.toml",  # Generated with version from root
         "hooks",  # Handled separately in section 2 (Gemini hooks.json transform)
         "indices",  # PATHS.md is user config, no other generated indices
-        "BUTLER.md",  # Not deployed — content lives in /butler skill
         "GEMINI.md",  # Added conditionally per-platform below
         "__pycache__",
     }
