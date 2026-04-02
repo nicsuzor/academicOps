@@ -31,6 +31,70 @@ log = logging.getLogger(__name__)
 # for hook overhead (hydration gate, custodiet) before reaching the actual task.
 TEST_CLAUDE_MAX_TURNS = "10"
 
+# Base CLI args for each backend — single source of truth for headless execution.
+CLAUDE_BASE_ARGS = [
+    "claude",
+    "--dangerously-skip-permissions",
+    "--model",
+    "haiku",
+    "--max-turns",
+    TEST_CLAUDE_MAX_TURNS,
+]
+
+GEMINI_BASE_ARGS = [
+    "gemini",
+    "--approval-mode",
+    "yolo",
+    "--raw-output",
+    "--accept-raw-output-risk",
+]
+
+
+def build_claude_agent_cmd(
+    prompt: str,
+    output_format: str = "json",
+    extra_args: list[str] | None = None,
+    include_binary: bool = True,
+    model: str | None = None,
+) -> list[str]:
+    """Build Claude CLI args from base args + prompt + extras.
+
+    Set include_binary=False when passing args after '--' to polecat crew
+    (the CLI already launches claude).
+
+    Args:
+        model: Override the default model from CLAUDE_BASE_ARGS.
+    """
+    cmd = list(CLAUDE_BASE_ARGS) if include_binary else list(CLAUDE_BASE_ARGS[1:])
+    if model is not None:
+        # Replace the --model value already set in CLAUDE_BASE_ARGS
+        try:
+            idx = cmd.index("--model")
+            cmd[idx + 1] = model
+        except ValueError:
+            cmd.extend(["--model", model])
+    cmd.extend(["-p", prompt, "--output-format", output_format])
+    if extra_args:
+        cmd.extend(extra_args)
+    return cmd
+
+
+def build_gemini_agent_cmd(
+    prompt: str,
+    extra_args: list[str] | None = None,
+    include_binary: bool = True,
+) -> list[str]:
+    """Build Gemini CLI args from base args + prompt + extras.
+
+    Set include_binary=False when passing args after '--' to polecat crew
+    (the CLI already launches gemini).
+    """
+    cmd = list(GEMINI_BASE_ARGS) if include_binary else list(GEMINI_BASE_ARGS[1:])
+    cmd.extend(["-p", prompt])
+    if extra_args:
+        cmd.extend(extra_args)
+    return cmd
+
 
 def _redact_cmd(cmd: list[str]) -> list[str]:
     """Redact secrets and sensitive host paths from command for logging.
@@ -917,7 +981,6 @@ def _run_claude_docker_simple(prompt: str, tmp_path: Path, **kwargs) -> dict[str
     workspace = tmp_path / "docker-claude"
     workspace.mkdir(exist_ok=True)
 
-    model = kwargs.get("model", "haiku")
     timeout_seconds = kwargs.get("timeout_seconds", 300)
 
     # Prepare prompt to write output to a file for robust extraction
@@ -929,23 +992,15 @@ def _run_claude_docker_simple(prompt: str, tmp_path: Path, **kwargs) -> dict[str
         "current directory. The JSON object must have a 'response' field."
     )
 
-    agent_cmd = [
-        "claude",
-        "--dangerously-skip-permissions",
-        "-p",
-        staged_prompt,
-        "--output-format",
-        "json",
-        "--model",
-        model,
-        "--max-turns",
-        TEST_CLAUDE_MAX_TURNS,
-    ]
+    agent_cmd = build_claude_agent_cmd(staged_prompt, output_format="json")
 
     env = {}
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if api_key:
         env["ANTHROPIC_API_KEY"] = api_key
+    oauth_token = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN")
+    if oauth_token:
+        env["CLAUDE_CODE_OAUTH_TOKEN"] = oauth_token
     aca_data = os.environ.get("ACA_DATA")
     if aca_data:
         env["ACA_DATA"] = aca_data
@@ -1290,7 +1345,11 @@ def cli_headless(request, tmp_path, gemini_home):
         if not _docker_available():
             pytest.skip("Docker not available or aops-crew image not built")
         has_oauth = (Path.home() / ".claude" / ".credentials.json").exists()
-        if not os.environ.get("ANTHROPIC_API_KEY") and not has_oauth:
+        if (
+            not os.environ.get("ANTHROPIC_API_KEY")
+            and not os.environ.get("CLAUDE_CODE_OAUTH_TOKEN")
+            and not has_oauth
+        ):
             pytest.skip("No Claude auth for Docker")
 
         def _run_claude_in_docker(prompt, **kwargs):
@@ -1916,9 +1975,12 @@ def claude_docker(tmp_path):
         pytest.skip("Docker not available or aops-crew image not built")
 
     api_key = os.environ.get("ANTHROPIC_API_KEY")
+    oauth_token = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN")
     has_oauth = (Path.home() / ".claude" / ".credentials.json").exists()
-    if not api_key and not has_oauth:
-        pytest.skip("No Claude auth: neither ANTHROPIC_API_KEY nor OAuth credentials found")
+    if not api_key and not oauth_token and not has_oauth:
+        pytest.skip(
+            "No Claude auth: neither ANTHROPIC_API_KEY, CLAUDE_CODE_OAUTH_TOKEN, nor OAuth credentials found"
+        )
 
     # Import _build_docker_cmd from polecat
     repo_root = get_repo_root()
@@ -1950,28 +2012,25 @@ def claude_docker(tmp_path):
 
         # Build agent command — use --verbose so stdout includes the init
         # message (with apiKeySource, mcp_servers status, etc.) as a JSON array
-        agent_cmd = [
-            "claude",
-            "--dangerously-skip-permissions",
-            "-p",
+        agent_cmd = build_claude_agent_cmd(
             prompt,
-            "--output-format",
-            "json",
-            "--verbose",
-            "--debug",
-            "hooks",
-            "--session-id",
-            session_id,
-            "--model",
-            model,
-            "--max-turns",
-            TEST_CLAUDE_MAX_TURNS,
-        ]
+            output_format="json",
+            model=model,
+            extra_args=[
+                "--verbose",
+                "--debug",
+                "hooks",
+                "--session-id",
+                session_id,
+            ],
+        )
 
         # Build Docker command via polecat's builder
         env = {}
         if api_key:
             env["ANTHROPIC_API_KEY"] = api_key
+        if oauth_token:
+            env["CLAUDE_CODE_OAUTH_TOKEN"] = oauth_token
         # Forward ACA_DATA if set
         aca_data = os.environ.get("ACA_DATA")
         if aca_data:

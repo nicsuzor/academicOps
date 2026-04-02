@@ -46,6 +46,8 @@ check_prereq "aops-crew image" "docker images $IMAGE_NAME --format '{{.Repositor
 HAS_AUTH=false
 if [[ -n "${ANTHROPIC_API_KEY:-}" ]]; then
     HAS_AUTH=true
+elif [[ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]]; then
+    HAS_AUTH=true
 elif [[ -f "$HOME/.claude/.credentials.json" ]]; then
     HAS_AUTH=true
 fi
@@ -90,6 +92,9 @@ if [[ -f "$HOME/.claude/.credentials.json" ]]; then
 fi
 if [[ -n "${ANTHROPIC_API_KEY:-}" ]]; then
     DOCKER_CMD+=(-e "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY")
+fi
+if [[ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]]; then
+    DOCKER_CMD+=(-e "CLAUDE_CODE_OAUTH_TOKEN=$CLAUDE_CODE_OAUTH_TOKEN")
 fi
 
 DOCKER_CMD+=(

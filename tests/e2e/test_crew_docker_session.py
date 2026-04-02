@@ -44,6 +44,8 @@ def _has_claude_auth():
     """Check if Claude auth is available (API key or OAuth)."""
     if os.environ.get("ANTHROPIC_API_KEY"):
         return True
+    if os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"):
+        return True
     creds = Path.home() / ".claude" / ".credentials.json"
     return creds.exists()
 
@@ -103,7 +105,7 @@ class TestCrewDockerSession:
 
             import uuid
 
-            from tests.conftest import TEST_CLAUDE_MAX_TURNS, get_repo_root
+            from tests.conftest import build_claude_agent_cmd, get_repo_root
 
             repo_root = get_repo_root()
             polecat_dir = str(repo_root / "polecat")
@@ -119,15 +121,23 @@ class TestCrewDockerSession:
             # In DinD, tmp_path is on overlay (invisible to the outer Docker daemon).
             # Create workspace under /workspace (a bind mount) so _build_docker_cmd
             # can detect DinD and stage auth files on a host-visible volume.
+            # Workspace and session_dir must be on a Docker-visible filesystem.
+            # - DinD: /workspace is a bind mount; use it directly
+            # - macOS Colima: only /Users is shared via virtiofs; pytest tmp_path
+            #   resolves to /private/var/folders/ which is invisible to Docker.
+            #   Create under $HOME/.aops/tmp/ instead.
             _ws = Path("/workspace")
             is_dind = _ws.exists() and _container_to_host_path(_ws) != _ws
             if is_dind:
                 workspace = _ws / f".test-crew-{session_id[:8]}"
             else:
-                workspace = tmp_path / "workspace"
+                # Use a path under $HOME so Colima can see it
+                docker_visible_tmp = Path.home() / ".aops" / "tmp" / f"test-crew-{session_id[:8]}"
+                docker_visible_tmp.mkdir(parents=True, exist_ok=True)
+                workspace = docker_visible_tmp / "workspace"
             workspace.mkdir(exist_ok=True)
-            session_dir = tmp_path / "sessions"
-            session_dir.mkdir()
+            session_dir = workspace / "sessions"
+            session_dir.mkdir(exist_ok=True)
 
             # In DinD, use a Docker named volume for session persistence
             # (bind mounts from overlay won't work).
@@ -162,28 +172,25 @@ class TestCrewDockerSession:
                     timeout=30,
                 )
 
-            agent_cmd = [
-                "claude",
-                "--dangerously-skip-permissions",
-                "-p",
+            agent_cmd = build_claude_agent_cmd(
                 MEGA_PROMPT,
-                "--output-format",
-                "json",
-                "--verbose",
-                "--debug",
-                "hooks",
-                "--session-id",
-                session_id,
-                "--model",
-                "haiku",
-                "--max-turns",
-                TEST_CLAUDE_MAX_TURNS,
-            ]
+                output_format="json",
+                extra_args=[
+                    "--verbose",
+                    "--debug",
+                    "hooks",
+                    "--session-id",
+                    session_id,
+                ],
+            )
 
             env = {}
             api_key = os.environ.get("ANTHROPIC_API_KEY")
             if api_key:
                 env["ANTHROPIC_API_KEY"] = api_key
+            oauth_token = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN")
+            if oauth_token:
+                env["CLAUDE_CODE_OAUTH_TOKEN"] = oauth_token
             aca_data = os.environ.get("ACA_DATA")
             if aca_data:
                 env["ACA_DATA"] = aca_data
@@ -293,17 +300,35 @@ class TestCrewDockerSession:
                         timeout=30,
                     )
 
-            # Clean up DinD workspace and staging
-            if is_dind:
-                import shutil
+            # Extract session data before cleanup (session_dir may be inside
+            # docker_visible_tmp which gets removed).
+            session_file = find_session_jsonl(session_id, search_dirs=[session_dir])
 
+            # Copy session files to tmp_path so they survive cleanup of
+            # docker_visible_tmp. tmp_path is managed by pytest.
+            persist_dir = tmp_path / "sessions"
+            import shutil
+
+            if session_dir.exists():
+                shutil.copytree(session_dir, persist_dir, dirs_exist_ok=True)
+            else:
+                persist_dir.mkdir(exist_ok=True)
+            if session_file:
+                try:
+                    session_file = persist_dir / session_file.relative_to(session_dir)
+                except ValueError:
+                    # session_file fell back to host ~/.claude/projects/ — leave as-is
+                    pass
+            session_dir = persist_dir
+
+            # Clean up Docker-visible temp dirs
+            if is_dind:
                 shutil.rmtree(workspace, ignore_errors=True)
                 staging_root = workspace / ".aops-staging"
                 if staging_root.exists():
                     shutil.rmtree(staging_root, ignore_errors=True)
-
-            # Extract session data
-            session_file = find_session_jsonl(session_id, search_dirs=[session_dir])
+            elif docker_visible_tmp.exists():
+                shutil.rmtree(docker_visible_tmp, ignore_errors=True)
             tool_calls = parse_tool_calls(session_file) if session_file else []
 
             return {

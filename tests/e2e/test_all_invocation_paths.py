@@ -23,7 +23,13 @@ from pathlib import Path
 import pytest
 import yaml
 
-from tests.conftest import _docker_available, _gemini_cli_available
+from tests.conftest import (
+    _docker_available,
+    _gemini_cli_available,
+    build_claude_agent_cmd,
+    build_gemini_agent_cmd,
+    get_repo_root,
+)
 
 # PKB task whose body is the test prompt for `pc run -t`.
 # Created in PKB under aops project — DO NOT COMPLETE or ARCHIVE this task.
@@ -118,7 +124,7 @@ def _make_polecat_home(tmp_path):
     config = {
         "projects": {
             "aops": {
-                "path": str(Path("/opt/nic/academicOps")),
+                "path": str(get_repo_root()),
                 "default_branch": "main",
             },
         },
@@ -176,8 +182,15 @@ class TestAllInvocationPaths:
 
     def _run_crew(self, tmp_path, backend, timeout=300):
         """Run pc crew repo <path> -- -p <mega-prompt>."""
-        repo = _init_test_repo(tmp_path)
-        polecat_home = _make_polecat_home(tmp_path)
+        # Polecat home and repo must be on a Docker-visible filesystem.
+        # On macOS with Colima, only /Users is shared; pytest tmp_path
+        # resolves to /private/var/folders/ which Docker cannot see.
+        import uuid
+
+        docker_tmp = Path.home() / ".aops" / "tmp" / f"test-crew-{uuid.uuid4().hex[:8]}"
+        docker_tmp.mkdir(parents=True, exist_ok=True)
+        repo = _init_test_repo(docker_tmp)
+        polecat_home = _make_polecat_home(docker_tmp)
 
         cmd = [
             sys.executable,
@@ -196,28 +209,10 @@ class TestAllInvocationPaths:
 
         cmd.append("--")
         if backend == "gemini":
-            cmd.extend(
-                [
-                    "-p",
-                    MEGA_PROMPT,
-                    "--approval-mode",
-                    "yolo",
-                    "--raw-output",
-                    "--accept-raw-output-risk",
-                ]
-            )
+            cmd.extend(build_gemini_agent_cmd(MEGA_PROMPT, include_binary=False))
         else:
             cmd.extend(
-                [
-                    "-p",
-                    MEGA_PROMPT,
-                    "--output-format",
-                    "text",
-                    "--model",
-                    "haiku",
-                    "--max-turns",
-                    "10",
-                ]
+                build_claude_agent_cmd(MEGA_PROMPT, output_format="text", include_binary=False)
             )
 
         env = _base_env(polecat_home)
@@ -237,6 +232,12 @@ class TestAllInvocationPaths:
             pytest.fail(f"crew-{backend} timed out after {timeout}s")
 
         combined = proc.stdout + proc.stderr
+
+        # Clean up Docker-visible temp dir
+        import shutil
+
+        shutil.rmtree(docker_tmp, ignore_errors=True)
+
         return {
             "param": f"crew-{backend}",
             "path_type": "crew",
