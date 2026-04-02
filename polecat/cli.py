@@ -2467,11 +2467,10 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, agent_args
         # with their aops plugins, so the user can run either manually.
         cmd = ["bash"]
     elif gemini:
-        # Gemini: sandbox is enabled via the replicated settings.json to avoid
-        # CLI bugs where --sandbox forces an internal network without internet access.
-        # The image is built from Dockerfile via `make build-docker`.
+        # Gemini: run in sandbox (Docker container) for isolation.
         cmd = [
             "gemini",
+            "--sandbox",
         ]
     else:
         # Claude Code: sandbox via project settings.json + setting-sources
@@ -2499,7 +2498,7 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, agent_args
 
     tmp_gemini_home = None
     tmp_files: list[Path] = []
-    if gemini and not interactive:
+    if gemini:
         # Replicate Gemini authentication if available.
         tmp_gemini_home = _replicate_gemini_auth(env, work_dir=work_dir)
         if tmp_gemini_home:

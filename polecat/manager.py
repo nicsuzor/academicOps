@@ -370,8 +370,8 @@ class PolecatManager:
         Unlike polecat worktrees (task-scoped, ephemeral), crew worktrees
         are named and persist across sessions.
 
-        Uses the local project repo (from polecat.yaml) as source instead of
-        cloning from origin. This is faster and works offline.
+        Uses the same bare mirror as polecat task worktrees — synced before
+        clone, fast (local hardlinks), and no stale local branch state.
 
         Args:
             name: Crew worker name (e.g., "audre", "marsha")
@@ -383,13 +383,9 @@ class PolecatManager:
         if project not in self.projects:
             raise ValueError(f"Unknown project: {project}. Known: {list(self.projects.keys())}")
 
-        # Get project config - use local repo path directly
         project_config = self.projects[project]
         local_repo_path = project_config["path"]
         default_branch = project_config.get("default_branch", "main")
-
-        if not local_repo_path.exists():
-            raise FileNotFoundError(f"Local repo not found: {local_repo_path}")
 
         crew_path = self.crew_dir / name
         crew_path.mkdir(exist_ok=True)
@@ -403,16 +399,32 @@ class PolecatManager:
                 f"Use 'polecat crew -r {name}' to resume, or 'polecat nuke {name}' to start fresh."
             )
 
-        print(f"Creating crew clone at {worktree_path} from local repo {local_repo_path}...")
+        # Sync bare mirror before cloning (same as polecat task worktrees)
+        mirror_path = self.repos_dir / f"{project}.git"
+        if mirror_path.exists():
+            print(f"🔄 Syncing {project} mirror...")
+            self.safe_sync_mirror(project)
+        else:
+            print(f"📦 Creating mirror for {project}...")
+            self.ensure_repo_mirror(project)
 
-        # Clone locally (fast, uses hardlinks on same filesystem)
-        cmd = ["git", "clone", str(local_repo_path), str(worktree_path)]
-        subprocess.run(cmd, check=True)
+        # Clone from bare mirror (fast hardlinks, no stale local branches).
+        # Fall back to local repo if mirror somehow doesn't exist.
+        repo_path = mirror_path if mirror_path.exists() else local_repo_path
+        if not repo_path.exists():
+            raise FileNotFoundError(f"No repo source found for {project}")
+
+        print(f"Creating crew clone at {worktree_path} from {repo_path}...")
+        subprocess.run(
+            ["git", "clone", str(repo_path), str(worktree_path)],
+            check=True,
+        )
 
         # Propagate git identity from source repo (clone doesn't copy local config)
-        self._propagate_git_identity(local_repo_path, worktree_path)
+        if local_repo_path.exists():
+            self._propagate_git_identity(local_repo_path, worktree_path)
 
-        # Re-point origin to the actual remote instead of the local repo
+        # Re-point origin to the actual remote (bare mirror sets origin to itself)
         result = subprocess.run(
             ["git", "remote", "get-url", "origin"],
             cwd=local_repo_path,
@@ -422,13 +434,12 @@ class PolecatManager:
         origin_url = _to_https_url(result.stdout.strip())
         if origin_url:
             subprocess.run(
-                ["git", "remote", "set-url", "origin", origin_url], cwd=worktree_path, check=True
+                ["git", "remote", "set-url", "origin", origin_url],
+                cwd=worktree_path,
+                check=True,
             )
 
-        # Fetch from the real origin so we have up to date refs before checking out
-        subprocess.run(["git", "fetch", "origin"], cwd=worktree_path, check=False)
-
-        # Check if branch exists remotely
+        # Check if crew branch exists remotely
         branch_exists_result = subprocess.run(
             ["git", "ls-remote", "--heads", "origin", branch_name],
             cwd=worktree_path,
@@ -437,8 +448,18 @@ class PolecatManager:
         )
 
         if branch_exists_result.stdout.strip():
-            # Exists remotely, check it out and track
-            subprocess.run(["git", "checkout", branch_name], cwd=worktree_path, check=True)
+            # Exists remotely — fetch and track origin's version
+            subprocess.run(
+                ["git", "fetch", "origin", branch_name],
+                cwd=worktree_path,
+                capture_output=True,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "checkout", "-b", branch_name, f"origin/{branch_name}"],
+                cwd=worktree_path,
+                check=True,
+            )
         else:
             # Create new branch from the default branch
             subprocess.run(["git", "checkout", default_branch], cwd=worktree_path, check=False)
