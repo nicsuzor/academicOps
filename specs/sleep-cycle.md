@@ -188,11 +188,27 @@ Ensure `$ACA_DATA` is committed, pushed, and remote is pulled. This is already h
 - **`/remember`**: Still needed for inline, immediate knowledge capture during sessions.
 - **Manual synthesis**: Some knowledge requires human judgment. Sleep cycle flags these, doesn't auto-generate.
 
+## Output Must Not Auto-Merge
+
+The sleep cycle produces knowledge of uncertain quality. Consolidation output (new knowledge notes, synthesis, MOCs) MUST go through a QA gate before reaching the main branch. The process:
+
+1. **Sleep cycle creates a PR** against brain/main (branch: `sleep/consolidation-YYYY-MM-DD-HHMM`)
+2. **`/qa` review** — the existing /qa skill evaluates the PR for fitness-for-purpose (see `aops-core/skills/qa/SKILL.md`). This is not a separate QA process — it's the standard /qa skill applied to consolidation output. The user story: "consolidated knowledge should help future agents find synthesized understanding without reconstructing from fragments."
+3. **Merge only after QA passes** — during supervised phase, human reviews the QA decision
+
+Mechanical work (dedup, index refresh, graph maintenance, brain sync) commits directly — this is safe because it's deterministic and verifiable. Knowledge creation is judgment work and follows Principle #5: unsupervised execution, supervised judgment.
+
+**Graduation path**: Initially, the human reviews every consolidation PR. After multiple cycles of consistent quality, the QA agent can auto-approve and the human reviews only rejections. Full autonomous merge only after sustained evidence of quality. See P#22 corollary on graduated trust.
+
+**Quality criteria are discovered, not designed** (P#22, P#115): The QA review criteria for consolidation output cannot be specified in advance. They must be discovered by actually reviewing real consolidation output, learning what distinguishes good from bad, and codifying what works. Design the QA process AFTER dogfooding it, not before.
+
 ## Anti-Patterns to Avoid
 
 - **Over-promotion**: Creating knowledge docs for every observation. The question is always whether a named consumer would benefit — routine details that don't improve retrieval don't need promotion.
 - **Moldy docs**: Creating docs without a maintenance path. Every promoted doc must be re-checkable by the staleness sweep.
 - **Synthesis without verification**: Auto-generating knowledge docs from fragments. LLM synthesis of unverified claims violates epistemic honesty (P#2). Flag for human review instead.
+- **Auto-merging knowledge**: Committing consolidation output directly to main without QA review. This circumvents Principle #5 and allows uncertain-quality knowledge to pollute every downstream consumer.
+- **Designing QA criteria before dogfooding**: Writing quality checklists or automated review prompts before actually reviewing real consolidation output. The criteria must come from experience, not imagination.
 - **Scope creep into `/daily`**: The sleep cycle is not a briefing. It doesn't present information to the user. It updates stores that other tools read.
 - **Two-mode complexity**: Don't split into "light" and "heavy" runs. One cycle, one schedule, phases skip when there's nothing to do.
 

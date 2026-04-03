@@ -82,23 +82,11 @@ jobs:
             Use your judgment about what needs attention. Skip phases where there's
             nothing to do — but always run Phase 0 (baseline) and Phase 6 (sync).
 
-            ## Values Alignment (READ THIS CAREFULLY)
+            ## Values Alignment
 
-            You are trusted to do complex knowledge work. The consolidation phases
-            (1b, 2b, 5c) require you to READ content, UNDERSTAND it, and SYNTHESIZE
-            knowledge at the right level of abstraction. This is not mechanical work.
-
-            Core principles:
-            - **Never fabricate** — only extract what is grounded in source material
-            - **Always track provenance** — every synthesized fact must cite its source
-            - **Preserve episodic originals** — never modify the content of daily notes
-              or meeting notes. Only add `consolidated: true` to frontmatter.
-            - **Leave editorializing to the user** — you extract patterns and connections.
-              Value judgments are the user's domain.
-            - **Respect uncertainty** — use confidence levels honestly. Don't upgrade
-              `provisional` to `established` without additional evidence.
-            - **Quality over quantity** — one well-sourced synthesis note is worth more
-              than ten unsourced assertions.
+            Read the **Values** and **Why This Works** sections in the sleep skill
+            file — they explain both the principles and the cognitive science rationale.
+            You are trusted to do complex knowledge work. Understand WHY, not just WHAT.
 
             ## Environment
             - Brain repo (data): ${{ github.workspace }}
@@ -108,15 +96,22 @@ jobs:
 
             ## CI-Specific Rules
             - Time budget: 25 minutes. Exit cleanly when time is up.
+            - **No PKB MCP server** — you are working directly with markdown files.
+              Use Grep/Glob to search, Write/Edit to create/modify files. Do NOT
+              reference mcp__pkb__* tools. Changes sync to PKB consumers via git push.
             - Email/calendar MCP tools are NOT available on GitHub Actions.
               Degrade gracefully per the skill instructions (flag instead of verify).
             - Transcript mining (Phase 1b): requires $AOPS_SESSIONS. Skip if not available.
+            - **Output**: Mechanical work (dedup, index refresh, graph maintenance)
+              commits directly to main. Knowledge work (new notes, synthesis, MOCs)
+              commits to a branch `sleep/consolidation-$(date +%Y-%m-%d-%H%M)` and
+              creates a PR. The PR is reviewed by /qa before merging.
             - Write a summary of what you did to $GITHUB_STEP_SUMMARY. Include:
               - Phase completion status
               - Knowledge notes created/updated (Phase 2b)
-              - Quality review findings (Phase 5c)
+              - Self-check findings (Phase 5c)
               - Graph health delta (Phase 0 vs Phase 6)
-            - Commit message: "sleep: periodic consolidation"
+              - PR URL if consolidation PR was created
 
             ## Repo Topology (CRITICAL)
             This is a DATA repo (tasks, notes, memories), NOT code.

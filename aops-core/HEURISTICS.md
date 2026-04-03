@@ -410,6 +410,7 @@ Replace mechanical quality checks (word counts, structural checklists, format en
 - Instructions should define WHAT outcome is needed and WHY, not prescribe HOW to achieve it
 - When reviewing agent output, evaluate fitness-for-purpose in context, not compliance with procedural steps
 - Quantitative metrics (compliance rates, line counts, format scores) are useful only as signals that trigger qualitative review — never as verdicts
+- **You cannot automate a quality judgment you haven't exercised.** Before building automated quality gates for any new process, an agent must personally perform the qualitative review on real output, document what signals distinguished good from bad, and get user validation. This is P#22 (Dogfooding) applied to quality assurance — the review process itself must be dogfooded before codification.
 
 **Derivation**: Extends P#92 (Probabilistic Methods, Deterministic Processes). P#92 establishes that we embrace probabilistic methods; P#115 draws the consequence for quality assurance — probabilistic outputs require qualitative evaluation, not quantitative measurement. The /qa skill's Qualitative Assessment mode operationalises this principle.
 

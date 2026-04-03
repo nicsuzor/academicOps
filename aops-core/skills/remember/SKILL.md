@@ -40,6 +40,10 @@ Durable, decontextualized truths. Lives in `$ACA_DATA/knowledge/`, project files
 2. **Daily notes** (`type: daily-note`, in `sessions/`): High-quality user synthesis of what happened and what matters. Created by the user. NOT edited after the day.
 3. **Contemporaneous notes** (`type: meeting-note`, in `knowledge/` or project dirs): Notes of meetings, phone calls, conversations. Captured close to the event. May not be edited afterwards. Valuable as primary sources.
 
+### Cognitive Foundations
+
+The episodic/semantic distinction mirrors how biological memory works. Complementary Learning Systems theory (McClelland et al. 1995) shows that rapid episode capture and gradual pattern extraction are complementary processes — you need both. Semanticization (Baddeley 1988) is the natural process where episodic memories lose temporal context through repeated retrieval, becoming context-free semantic knowledge. The /sleep cycle's consolidation phases mirror this: offline replay of episodes, pattern extraction, integration into durable knowledge. The review process IS the consolidation mechanism — passive storage does not produce understanding.
+
 ### Synthesis Flow (the consolidation pipeline)
 
 - Episodic content accumulates → patterns emerge across multiple notes
@@ -207,6 +211,7 @@ When extracting facts or observations from episodic content, use Obsidian callou
 - Confidence levels: `established` (multiple independent sources), `provisional` (single source or limited evidence), `speculative` (inference, needs verification)
 - Observations in episodic notes (daily, meeting) are raw material; observations in knowledge notes are synthesized claims
 - Humans may also write observations informally as plain prose — the callout format is a recommendation, not a requirement
+- **Contradictions**: When a new observation contradicts an existing one, record BOTH with their sources. Never silently overwrite. Flag for human resolution. This prevents catastrophic forgetting — schema-inconsistent information must be integrated gradually, not by replacement.
 
 ## Provenance
 
@@ -223,8 +228,15 @@ sources:
   - "Session transcript 2026-04-01T14:30"
 synthesized: 2026-04-03
 confidence: provisional
+maturity: seedling
 last_reviewed: 2026-04-03
 ```
+
+**Maturity levels** (optional, tracks evidence strength):
+
+- `seedling` — single source, provisional confidence. May not survive review.
+- `budding` — corroborated by 2+ independent sources. Worth linking to.
+- `evergreen` — reviewed, stable, established confidence. Core knowledge.
 
 ### Inline Attribution
 

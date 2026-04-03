@@ -24,6 +24,29 @@ tags:
 
 > **Taxonomy note**: This skill orchestrates periodic offline consolidation — transforming write-optimised storage (tasks, session logs) into read-optimised knowledge that agents actually use. See `specs/sleep-cycle.md` for full design rationale.
 
+## Why This Works (Cognitive Science)
+
+The sleep cycle mirrors biological memory consolidation. Complementary Learning Systems theory (McClelland et al. 1995) shows that the hippocampus rapidly stores episodes while the neocortex gradually extracts patterns through offline replay during sleep. Semanticization (Baddeley 1988) confirms that episodic memories lose temporal context through repeated retrieval and integration, becoming decontextualized semantic knowledge. This is a feature, not a bug — decontextualized knowledge is more retrievable.
+
+**Implications for this system:**
+
+- **Offline batch processing**: Consolidation runs offline (cron), not during active work — mirroring neural sleep replay.
+- **Flag contradictions, never auto-resolve**: Schema-inconsistent information must be integrated gradually or it causes catastrophic forgetting. When two sources disagree, surface both with provenance. Resolution is human judgment.
+- **Just-in-time over bulk**: Promotion is triggered by retrieval need (a named consumer), not by schedule. This prevents "moldy docs" — notes nobody reads.
+- **The review IS the consolidation**: Active retrieval and reprocessing drive the transformation. Passively copying information between stores does not produce understanding.
+
+## Values
+
+These principles govern all consolidation work — manual `/sleep` invocations and CI workflows alike.
+
+1. **Never fabricate** — only extract what is grounded in source material. If you can't cite it, don't assert it.
+2. **Always track provenance** — every synthesized fact must cite its source. The chain from claim → source must be traversable.
+3. **Preserve episodic originals** — never modify the content of daily notes, meeting notes, or task bodies. Only add `consolidated: YYYY-MM-DD` to their frontmatter.
+4. **Leave editorializing to the user** — agents extract patterns and connections. Value judgments and strategic implications are the user's domain.
+5. **Respect uncertainty** — use confidence levels honestly. Don't upgrade `provisional` to `established` without additional evidence from independent sources.
+6. **Quality over quantity** — one well-sourced synthesis note is worth more than ten unsourced assertions. Bounded effort per cycle prevents bulk low-quality output.
+7. **Note maturity** — `seedling` (single source, provisional) → `budding` (corroborated by 2+ sources) → `evergreen` (reviewed, stable, established). Maturity progresses through evidence, not time.
+
 ## How It Works
 
 The sleep cycle is an **agent session**, not a script. A Claude agent is launched (via GitHub Actions cron or manually) with a consolidation prompt. The agent works through phases using judgment, calling tools as signals — not deterministic code that makes the decisions.
@@ -246,55 +269,27 @@ See `aops-core/skills/planner/SKILL.md` → `maintain` mode for full activity re
 
 **Measure after**: Re-run `graph_stats` in Phase 6 to confirm the metric improved.
 
-## Phase 5c: PKB Quality Review
+## Phase 5c: Consolidation Self-Check (Lightweight)
 
-Qualitative assessment of PKB health. This is not a metric check — it requires the agent to actually read and evaluate knowledge content.
+A 2-minute sanity check of THIS cycle's own output. This is NOT a quality review — the real quality gate is the `/qa` review on the consolidation PR (see "Output" section below).
 
-### Process
+### Check
 
-1. **Sample selection**: Select 5-10 knowledge notes for review, biased toward:
-   - Recently created or modified notes
-   - Notes with `confidence: speculative` or `provisional`
-   - Notes flagged in previous quality reviews
-   - Random sampling to catch drift
+For each knowledge note created or modified in this cycle:
 
-2. **Evaluate each note against quality dimensions**:
-   - **Accuracy**: Does the content still hold? Any contradictions with other notes?
-   - **Provenance**: Can claims be traced to sources? Are sources still valid?
-   - **Abstraction level**: Right level of generalization? Too specific or too vague?
-   - **Link health**: Are wikilinks valid? Should more connections exist?
-   - **Freshness**: Is a `last_reviewed` date present? Is the content still current?
-   - **Completeness**: Are there obvious gaps or missing context?
+- Does it have `sources:` in frontmatter?
+- Does synthesis cite 2+ observations?
+- Are wikilinks valid (not broken)?
+- Is confidence level present and reasonable?
 
-3. **Actions**:
-   - **Mechanical fixes**: Fix broken links, add missing frontmatter fields — do autonomously
-   - **Content concerns**: Flag for human review in the cycle summary
-   - **Upgrade/downgrade confidence**: If additional evidence found, update confidence level
-   - **Staleness**: If content is outdated, flag for review (don't delete or modify substantive content)
+### On Failure
 
-4. **Quality report**: Write findings to the cycle summary. Track trends across cycles.
-
-### Quality Signals (Positive)
-
-- Dense wikilink network (notes connect to related concepts)
-- Provenance present on synthesized claims
-- Confidence levels match evidence strength
-- MOCs exist for major topic areas
-- Recently consolidated episodic content
-
-### Quality Signals (Negative)
-
-- Orphan notes with zero incoming links
-- Synthesized claims without provenance
-- Stale notes (no review in 90+ days)
-- Near-duplicate content across files
-- MOCs that are outdated or too large
-- Observation notation without source attribution
+If any check fails: log the issue in the cycle summary and flag it in the PR description. Do not try to fix content quality problems — that's the QA reviewer's job.
 
 ### Bounded Effort
 
-- Sample 5-10 notes per cycle
-- Time budget: 5 minutes
+- Only check notes created/modified in THIS cycle
+- Time budget: 2 minutes
 
 ## Active Loop Integration
 
@@ -311,7 +306,28 @@ When running via `/loop` or `/active-loop`, the sleep cycle follows the active-l
 3. **Incremental** — only processes what's new since last run
 4. **Surfaces, doesn't decide** — flags candidates for human/supervised review
 5. **No moldy docs** — never creates knowledge docs without a named consumer
-6. **Agents can consolidate (hypothesis under test)** — we believe agents can perform the episodic→semantic transformation given proper value alignment, clear provenance requirements, and bounded autonomy. Phase 5c tests this hypothesis each cycle. If quality review reveals persistent problems, escalate enforcement — don't just trust harder.
+6. **Agents can consolidate (hypothesis under test)** — we believe agents can perform the episodic→semantic transformation given proper value alignment, clear provenance requirements, and bounded autonomy. The `/qa` review on each consolidation PR tests this hypothesis. If quality review reveals persistent problems, escalate enforcement — don't just trust harder.
+
+## Output: Consolidation PR
+
+Knowledge creation (Phases 1b, 2b) produces output of uncertain quality. This output MUST go through a QA gate before reaching the main branch. The sleep cycle creates a PR — it never commits knowledge directly to main.
+
+### Process
+
+1. Mechanical work (Phase 0, 3, 4, 5, 5b, 6) commits directly to main — deterministic and verifiable.
+2. Knowledge work (Phases 1b, 2b) commits to a branch: `sleep/consolidation-YYYY-MM-DD-HHMM`
+3. At the end of the cycle, create a PR from the branch against main.
+4. The `/qa` skill reviews the PR for fitness-for-purpose (triggered by PR creation or manual invocation).
+5. Merge only after QA passes. During supervised phase, human reviews the QA decision.
+
+### Graduation Path
+
+- **Current**: Human reviews every consolidation PR
+- **Next**: `/qa` agent reviews, human reviews QA decisions
+- **Future**: `/qa` auto-approves, human reviews only rejections
+- **Autonomous**: Full auto-merge after sustained evidence of quality
+
+Each transition requires evidence from the previous level (P#22 corollary on graduated trust).
 
 ## Architecture
 
@@ -320,4 +336,6 @@ templates/github-workflows/sleep-cycle.yml   ← workflow template (maintained i
 $ACA_DATA/.github/workflows/sleep-cycle.yml  ← installed copy (runs the agent)
 ```
 
-The workflow uses `anthropics/claude-code-action` to launch an agent with a consolidation prompt. The agent has access to the brain repo and academicOps tools.
+Install via: `scripts/install-brain-workflows.sh <brain-repo-path>`
+
+The workflow uses `anthropics/claude-code-action` to launch an agent with a consolidation prompt. The agent has access to the brain repo and academicOps tools. In CI, the agent works directly with markdown files — no PKB MCP server is available. Changes sync to PKB consumers via git push.
