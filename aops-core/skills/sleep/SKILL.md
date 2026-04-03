@@ -180,6 +180,17 @@ Maps of Content (navigational hubs)
 - **Abstraction ladder** — climb one rung at a time. Don't leap from a single meeting note to a broad generalization.
 - **Leave editorializing to the user** — agents extract patterns and connections. Value judgments and strategic implications are the user's domain.
 
+### Knowledge Note Deduplication
+
+Before creating new knowledge notes, check for overlapping existing notes. When two notes cover substantially the same topic:
+
+- Keep the stronger note (more sources, better synthesis, clearer thesis)
+- Merge any unique content from the weaker note into the stronger
+- Delete the weaker note
+- Update any `superseded_by` or wikilink references
+
+This is distinct from Phase 4's task dedup — it operates on `knowledge/` files by reading and comparing content qualitatively, not by title/embedding similarity.
+
 ### Bounded Effort
 
 - Up to 10 episodic sources consolidated per cycle

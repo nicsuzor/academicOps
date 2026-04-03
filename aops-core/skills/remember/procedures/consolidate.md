@@ -10,6 +10,8 @@ tags: [memory, workflow, consolidation]
 
 Transform episodic memory into durable semantic knowledge. Mirrors the cognitive process of semanticization — retrieval and reprocessing drive the transformation, not passive storage.
 
+For concrete examples of good and bad consolidation output, see [[quality-exemplars]].
+
 ## Pipeline
 
 Episodic sources (daily notes, meeting notes, task bodies) → observation extraction → pattern detection (3+ sources) → synthesis notes → Maps of Content (5+ notes on a topic).
