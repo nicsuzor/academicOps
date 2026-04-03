@@ -1,3 +1,22 @@
+---
+name: strategic-review
+type: skill
+category: instruction
+description: Supervisor-critic loop for multi-level strategic review
+triggers:
+  - "review this plan"
+  - "review this proposal"
+  - "strategic review"
+  - "is this good"
+  - "critique this"
+  - "review this grant"
+modifies_files: false
+needs_task: true
+mode: iterative
+domain:
+  - quality-assurance
+---
+
 # Strategic Review Skill
 
 Supervisor-critic loop for multi-level strategic review of documents, plans, and proposals. Produces reviews that operate at the instance, class, and systems level simultaneously — the cognitive signature of expert-level review.
@@ -30,7 +49,7 @@ Read the document. Identify:
 Dispatch the critic agent:
 
 ```
-Task(subagent_type="critic", model="opus", prompt="
+Task(subagent_type="aops-core:critic", model="opus", prompt="
 ## Document to Review
 
 [Full document text]
@@ -41,7 +60,9 @@ Task(subagent_type="critic", model="opus", prompt="
 - Who produced it: [agent/human/team]
 - Any relevant background: [domain, constraints, prior work]
 
-Apply the 10 cognitive moves and produce a structured strategic review.")
+Apply the 10 cognitive moves and produce a structured strategic review.
+
+[Coaching instructions if this is a retry iteration]")
 ```
 
 ### Phase 3: Score the critic's output
