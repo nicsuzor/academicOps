@@ -87,8 +87,6 @@ If the topic area now has 5+ related knowledge notes and no MOC exists, create o
 - **Under-attribution**: Synthesis without citing sources
 - **Content modification**: Changing episodic note text (only add frontmatter)
 - **Duplicate creation**: Not searching PKB first
-- **Lazy filing**: Dumping project-specific notes into generic directories
-- **Supersession hoarding**: Keeping old files with `superseded_by:` instead of deleting them
 - **Premature synthesis**: Knowledge notes from a single weak source
 
 ## Quality Check
@@ -100,7 +98,3 @@ If the topic area now has 5+ related knowledge notes and no MOC exists, create o
 - [ ] Superseded memories deleted (not left with `superseded_by:` pointers)
 - [ ] Source episodic notes marked `consolidated: YYYY-MM-DD` but content unchanged
 - [ ] Notes filed in the right directory (project-specific → project dir, not generic)
-
-## Continuous Improvement
-
-When /qa review of consolidation PRs reveals recurring quality issues, the /sleep cycle creates tasks to update this procedure and [[quality-exemplars]]. See the Evaluation Feedback Loop in the sleep skill's Phase 5c for details.
