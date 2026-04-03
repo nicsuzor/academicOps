@@ -2,7 +2,7 @@
 name: session-insights
 type: skill
 category: analysis
-description: Generate comprehensive session insights from transcripts using Gemini
+description: Generate comprehensive session insights from transcripts using a Claude subagent
 triggers:
   - "session summary"
   - "generate insights"
@@ -11,19 +11,18 @@ needs_task: false
 mode: execution
 domain:
   - operations
-allowed-tools: Bash,Read,Write,~~ai-assistant,mcp__pkb__create_memory
-version: 3.1.0
+allowed-tools: Bash,Read,Write,Agent,mcp__pkb__create_memory
+version: 4.0.0
 tags:
   - analysis
-  - gemini
   - insights
 ---
 
-# Session Insights (Gemini Post-hoc Analysis)
+# Session Insights (Claude-native Post-hoc Analysis)
 
 > **Taxonomy note**: This skill provides domain expertise (HOW) for generating session insights from transcripts. See [[TAXONOMY.md]] for the skill/workflow distinction.
 
-Generate comprehensive session insights from transcripts using Gemini Flash 2.0.
+Generate comprehensive session insights from transcripts using a Claude subagent.
 
 ## Overview
 
@@ -136,95 +135,90 @@ cd "$AOPS" && uv run python aops-core/scripts/transcript_push.py "$SESSION_PATH"
 TRANSCRIPT=$(find "$ACA_DATA/../sessions/claude" -name "*-${SESSION_ID}-*.md" | head -1)
 ```
 
-### Step 3: Extract Metadata and Prepare Prompt
+### Step 3: Extract Metadata from Transcript Filename
+
+Parse the transcript filename to extract metadata. The filename format is `YYYYMMDD-{project}-{session_id}-{suffix}.md`.
 
 ```bash
-# Use prepare_prompt.py to extract metadata and prepare prompt
-PROMPT=$(cd "$AOPS" && PYTHONPATH=aops-core uv run python \
-    aops-core/skills/session-insights/scripts/prepare_prompt.py \
-    "$TRANSCRIPT")
-
-if [ $? -ne 0 ]; then
-    echo "❌ Failed to prepare prompt"
-    exit 1
+BASENAME=$(basename "$TRANSCRIPT" .md)
+DATE=$(echo "$BASENAME" | cut -d'-' -f1)
+SESSION_ID=$(echo "$BASENAME" | rev | cut -d'-' -f2 | rev)  # second-to-last segment
+# Handle both YYYYMMDD and YYYYMMDD-HH formats
+if [[ "$BASENAME" =~ ^[0-9]{8}-[0-9]{2}- ]]; then
+    PROJECT=$(echo "$BASENAME" | cut -d'-' -f3- | rev | cut -d'-' -f3- | rev)
+else
+    PROJECT=$(echo "$BASENAME" | cut -d'-' -f2- | rev | cut -d'-' -f3- | rev)
 fi
-
-echo "✓ Prompt prepared with metadata substituted"
 ```
 
-The prepare_prompt.py script:
+### Step 4: Launch Claude Subagent for Analysis
 
-- Extracts `session_id`, `date`, `project` from transcript filename
-- Loads shared template from `aops-core/specs/session-insights-prompt.md`
-- Substitutes `{session_id}`, `{date}`, `{project}` placeholders
-- Returns prepared prompt
+Launch a Claude subagent to analyze the transcript. The subagent:
 
-### Step 4: Call Gemini
+1. Reads the prompt template from `specs/session-insights-prompt.md`
+2. Reads the transcript file
+3. Substitutes `{session_id}`, `{date}`, `{project}` placeholders with the extracted metadata
+4. Analyzes the transcript following the prompt template instructions
+5. Writes the resulting JSON directly to the summaries directory
 
-Use Gemini Flash 2.0 for fast, cost-effective analysis:
+**Agent prompt** (pass all of this to the subagent):
 
-```bash
-# Prepare full prompt with transcript reference
-FULL_PROMPT="${PROMPT}
-
-## Session Transcript
-
-@${TRANSCRIPT}
-
-Generate insights JSON now:"
-
-# Call Gemini via MCP
-# Note: The transcript will be loaded via the @{path} syntax
 ```
+You are a session insights extraction agent. Your job is to analyze a session transcript and produce structured JSON insights.
 
-Now call ~~ai-assistant with the full prompt:
+## Instructions
 
-```python
-# Tool call (conceptual - use whatever ~~ai-assistant connector is available)
-result = ~~ai-assistant.ask(
-    prompt=FULL_PROMPT,
-    timeout=120  # 2 minutes
-)
+1. Read the prompt template at: specs/session-insights-prompt.md
+2. Read the transcript at: {TRANSCRIPT}
+3. Use these metadata values EXACTLY:
+   - session_id: {SESSION_ID}
+   - date: {DATE}
+   - project: {PROJECT}
+4. Follow the prompt template to analyze the transcript and produce the JSON output
+5. Use the Write tool to save the JSON output to: $ACA_DATA/../sessions/summaries/{INSIGHTS_FILE}
+
+Output ONLY valid JSON — no markdown fences, no commentary.
 ```
 
 **Error Handling**:
 
-- If timeout (> 120s): Suggest using abridged transcript
-- If API error: Show error message, suggest retry
-- If rate limit: Show message, suggest waiting
+- If the subagent fails to produce valid JSON, proceed to Step 5 for validation and retry
+- If the transcript is too large, suggest using an abridged transcript (if available)
 
-### Step 5: Parse and Validate JSON
+### Step 5: Validate Output
 
-```bash
-# Extract JSON from Gemini response (may be in markdown fence)
-# Validate and normalize using process_response.py
+After the subagent writes the JSON file, validate it:
 
-INSIGHTS_JSON=$(echo "$GEMINI_RESPONSE" | (cd "$AOPS" && PYTHONPATH=aops-core uv run python \
-    aops-core/skills/session-insights/scripts/process_response.py \
-    "$DATE" "$SESSION_ID"))
+```python
+import sys
+import os
+import json
+from lib.insights_generator import validate_insights_schema, InsightsValidationError
 
-if [ $? -ne 0 ]; then
-    # Error details are printed to stderr and debug file by the script
-    echo "❌ Failed to process insights response"
-    exit 1
-fi
+insights_file = os.environ.get('INSIGHTS_FILE', '')
+with open(insights_file) as f:
+    data = json.load(f)
+
+try:
+    validate_insights_schema(data)
+except InsightsValidationError as e:
+    # Re-run the subagent with the validation errors included in the prompt
+    # Ask it to fix the specific issues
+    print(f'Validation failed: {e}')
+    pass
 ```
 
-If JSON is invalid:
+**Known issue**: Approximately 13% of extractions produce null values for required fields (`summary`, `outcome`, `accomplishments`). When validation fails, re-launch the subagent with the validation errors appended to the prompt and ask it to fix only the failing fields while preserving everything else.
 
-- Save raw response to `$ACA_DATA/../sessions/summaries/YYYYMMDD-{session_id}.debug.txt`
-- Show error message with path to debug file
-- Exit with error
+### Step 6: Confirm File Written
 
-### Step 6: Update Insights File
+The subagent writes the insights file directly. Verify:
 
 ```bash
-# Merge and write insights using merge_insights.py
-echo "$INSIGHTS_JSON" | (cd "$AOPS" && PYTHONPATH=aops-core uv run python \
-    aops-core/skills/session-insights/scripts/merge_insights.py \
-    "$INSIGHTS_FILE")
-
-if [ $? -ne 0 ]; then
+if [ -f "$INSIGHTS_FILE" ]; then
+    echo "✓ Insights written to: $INSIGHTS_FILE"
+else
+    echo "❌ Insights file not created"
     exit 1
 fi
 ```
@@ -302,7 +296,6 @@ When invoked with `batch`:
 
 ```bash
 # 1. Find sessions with transcripts but no insights
-
 PENDING_SESSIONS=$(cd "$AOPS" && PYTHONPATH=aops-core uv run python \
     aops-core/skills/session-insights/scripts/find_pending.py \
     --limit 5)
@@ -344,10 +337,10 @@ Generating transcript...
 Continuing with insights generation...
 ```
 
-### Gemini Timeout
+### Subagent Timeout
 
 ```
-❌ Gemini call timed out after 120 seconds
+❌ Subagent timed out
 
 The transcript may be too long. Try one of:
 1. Use an abridged transcript (if available)
@@ -357,17 +350,16 @@ The transcript may be too long. Try one of:
 Transcript: /path/to/transcript.md (125 KB)
 ```
 
-### Invalid JSON Response
+### Invalid JSON Output
 
 ```
-❌ Gemini returned invalid JSON
+❌ Subagent produced invalid JSON
 
-Error: Expecting ',' delimiter: line 15 column 5 (char 432)
+Validation errors:
+- Missing required field: summary
+- outcome must be one of: success, partial, failure
 
-Raw response saved to:
-$ACA_DATA/../sessions/summaries/20260113-a1b2c3d4.debug.txt
-
-Please review and report if this is a bug.
+Retrying with validation feedback...
 ```
 
 ### File Exists
@@ -377,7 +369,7 @@ Please review and report if this is a bug.
 Generated: 2026-01-13
 Summary: Created unified session insights architecture
 
-Regenerate with Gemini? (yes/no)
+Regenerate? (yes/no)
 > no
 
 Aborted. Existing insights preserved.
@@ -385,7 +377,7 @@ Aborted. Existing insights preserved.
 
 ## Tips
 
-**For Large Transcripts**: If Gemini times out, consider:
+**For Large Transcripts**: If the subagent times out, consider:
 
 - Using abridged transcripts (created by transcript_push.py - generates both full and abridged versions)
 - Breaking the analysis into chunks
@@ -399,7 +391,7 @@ Aborted. Existing insights preserved.
 
 **For Debugging**:
 
-- Check `$ACA_DATA/../sessions/summaries/*.debug.txt` for raw Gemini responses
+- Check the insights JSON for validation errors
 - Verify transcript format matches expected structure
 - Ensure ACA_DATA environment variable is set correctly
 
@@ -416,5 +408,5 @@ Generated insights are:
 
 - `/audit` skill - Framework health auditing
 - `aops-core/scripts/transcript_push.py` - Transcript generation + reflection extraction
-- `aops-core/specs/session-insights-prompt.md` - Shared prompt template
-- `aops-core/lib/insights_generator.py` - Generation library
+- `specs/session-insights-prompt.md` - Shared prompt template
+- `aops-core/lib/insights_generator.py` - Generation library (validation utilities)

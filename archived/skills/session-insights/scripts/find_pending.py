@@ -44,51 +44,62 @@ def main():
         )
         return
 
-    count = 0
-
     # Iterate over all .md files in transcripts directory
-    # Sort by mtime descending (most recent first) to prioritize recent sessions?
-    # Or scanning all? The bash loop had a limit.
-
+    # Sort by mtime descending (most recent first) to prioritize recent sessions.
     transcripts = sorted(
         transcripts_dir.glob("*.md"), key=lambda p: p.stat().st_mtime, reverse=True
     )
 
-    for transcript in transcripts:
-        if count >= args.limit:
-            break
+    # Deduplicate by session_id: prefer full transcripts over abridged ones.
+    # A session with both *-full.md and *-abridged.md should only appear once.
+    seen_session_ids: dict[str, Path] = {}
 
+    for transcript in transcripts:
         # Format: YYYYMMDD-{project}-{session_id}-{suffix}.md
         # or v3.7.0+: YYYYMMDD-HH-{project}-{session_id}-{suffix}.md
         parts = transcript.stem.split("-")
 
         # We need at least date and session_id
-        if len(parts) >= 3:
-            # Check date format roughly
-            if len(parts[0]) == 8 and parts[0].isdigit():
-                date_str = parts[0]
-                date_formatted = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+        if len(parts) < 3:
+            continue
+        if len(parts[0]) != 8 or not parts[0].isdigit():
+            continue
 
-                # Check for hour component (v3.7.0+)
-                shift = 0
-                if len(parts[1]) == 2 and parts[1].isdigit():
-                    shift = 1
+        date_str = parts[0]
+        date_formatted = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
 
-                # Ensure we have enough parts with the shift
-                if len(parts) >= 3 + shift:
-                    # Standard format: YYYYMMDD-[HH]-project-session_id
-                    session_id = parts[2 + shift]
+        # Check for hour component (v3.7.0+)
+        shift = 1 if (len(parts[1]) == 2 and parts[1].isdigit()) else 0
 
-                    # Check if insights exist (v3.4.0: YYYYMMDD format)
-                    insights_file = insights_dir / f"{date_str}-{session_id}.json"
+        if len(parts) < 3 + shift:
+            continue
 
-                    if not insights_file.exists():
-                        print(f"{transcript}|{session_id}|{date_formatted}")
-                        count += 1
+        # Standard format: YYYYMMDD-[HH]-project-session_id
+        session_id = parts[2 + shift]
 
-    if count == 0:
-        # No output means no pending sessions found
-        pass
+        # Check if insights exist (v3.4.0: YYYYMMDD format)
+        insights_file = insights_dir / f"{date_str}-{session_id}.json"
+        if insights_file.exists():
+            continue
+
+        # Deduplicate: prefer full transcript over abridged
+        if session_id in seen_session_ids:
+            existing = seen_session_ids[session_id]
+            # Replace with full transcript if current is full and existing is not
+            if "full" in transcript.stem and "full" not in existing.stem:
+                seen_session_ids[session_id] = transcript
+        else:
+            seen_session_ids[session_id] = transcript
+
+    count = 0
+    for session_id, transcript in list(seen_session_ids.items()):
+        if count >= args.limit:
+            break
+        parts = transcript.stem.split("-")
+        date_str = parts[0]
+        date_formatted = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+        print(f"{transcript}|{session_id}|{date_formatted}")
+        count += 1
 
 
 if __name__ == "__main__":
