@@ -143,7 +143,12 @@ Parse the transcript filename to extract metadata. The filename format is `YYYYM
 BASENAME=$(basename "$TRANSCRIPT" .md)
 DATE=$(echo "$BASENAME" | cut -d'-' -f1)
 SESSION_ID=$(echo "$BASENAME" | rev | cut -d'-' -f2 | rev)  # second-to-last segment
-PROJECT=$(echo "$BASENAME" | cut -d'-' -f2- | rev | cut -d'-' -f3- | rev)  # middle segments
+# Handle both YYYYMMDD and YYYYMMDD-HH formats
+if [[ "$BASENAME" =~ ^[0-9]{8}-[0-9]{2}- ]]; then
+    PROJECT=$(echo "$BASENAME" | cut -d'-' -f3- | rev | cut -d'-' -f3- | rev)
+else
+    PROJECT=$(echo "$BASENAME" | cut -d'-' -f2- | rev | cut -d'-' -f3- | rev)
+fi
 ```
 
 ### Step 4: Launch Claude Subagent for Analysis
@@ -170,12 +175,10 @@ You are a session insights extraction agent. Your job is to analyze a session tr
    - date: {DATE}
    - project: {PROJECT}
 4. Follow the prompt template to analyze the transcript and produce the JSON output
-5. Write the JSON output to: {INSIGHTS_FILE}
+5. Use the Write tool to save the JSON output to: $ACA_DATA/../sessions/summaries/{INSIGHTS_FILE}
 
-Output ONLY valid JSON — no markdown fences, no commentary. Write the file directly.
+Output ONLY valid JSON — no markdown fences, no commentary.
 ```
-
-**Note**: The prompt template at `specs/session-insights-prompt.md` uses the correct relative path from the repo root. Do NOT use `aops-core/specs/` — `load_prompt_template()` in `lib/insights_generator.py` has a wrong path that has not been fixed.
 
 **Error Handling**:
 
@@ -187,16 +190,21 @@ Output ONLY valid JSON — no markdown fences, no commentary. Write the file dir
 After the subagent writes the JSON file, validate it:
 
 ```python
-from lib.insights_generator import validate_insights_schema
+import sys
+import os
 import json
+from lib.insights_generator import validate_insights_schema, InsightsValidationError
 
+insights_file = os.environ.get('INSIGHTS_FILE', '')
 with open(insights_file) as f:
     data = json.load(f)
 
-errors = validate_insights_schema(data)
-if errors:
+try:
+    validate_insights_schema(data)
+except InsightsValidationError as e:
     # Re-run the subagent with the validation errors included in the prompt
     # Ask it to fix the specific issues
+    print(f'Validation failed: {e}')
     pass
 ```
 
@@ -311,8 +319,6 @@ done <<< "$PENDING_SESSIONS"
 echo ""
 echo "✓ Batch processing complete: $COUNT sessions"
 ```
-
-**Known issue**: `find_pending.py` double-counts abridged and full transcripts as separate pending items. A session with both `*-full.md` and `*-abridged.md` will appear twice. Prefer the full transcript when both exist.
 
 ## Error Handling
 

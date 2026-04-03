@@ -31,7 +31,7 @@ def load_prompt_template() -> str:
     Raises:
         FileNotFoundError: If template file doesn't exist
     """
-    template_path = get_plugin_root() / "specs" / "session-insights-prompt.md"
+    template_path = get_plugin_root().parent / "specs" / "session-insights-prompt.md"
     return template_path.read_text()
 
 
