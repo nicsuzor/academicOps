@@ -1,0 +1,155 @@
+# Transcript Insight Extraction
+# Mines session transcripts for insights that agents may not have saved during sessions.
+# Uses /remember skill to persist findings to the PKB.
+#
+# Install: copy this file to $ACA_DATA/.github/workflows/transcript-extraction.yml
+#
+# CUSTOMIZE: Set these repository variables in your brain repo's Settings → Variables:
+#   AOPS_SESSIONS_REPO — your sessions repository (e.g., "yourname/sessions")
+#   AOPS_REPO         — your academicOps fork/install (e.g., "yourname/academicOps")
+
+name: Transcript Extraction
+
+on:
+  schedule:
+    - cron: '47 */6 * * *' # Every 6 hours at :47 (off-peak)
+  workflow_dispatch:
+    inputs:
+      max_transcripts:
+        description: 'Maximum transcripts to process'
+        required: false
+        default: '10'
+        type: string
+      session_id:
+        description: 'Specific session ID to process (optional)'
+        required: false
+        type: string
+
+jobs:
+  extract-insights:
+    name: Extract Transcript Insights
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Checkout brain repo
+        uses: actions/checkout@v4
+
+      - name: Checkout sessions repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.AOPS_SESSIONS_REPO }}
+          path: _sessions
+          token: ${{ secrets.AOPS_DIST_PAT }}
+
+      - name: Checkout academicOps
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.AOPS_REPO }}
+          path: _aops
+          token: ${{ secrets.AOPS_DIST_PAT }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        working-directory: _aops
+        run: uv sync --frozen
+
+      - name: Run transcript extraction agent
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            You are the Transcript Insight Extraction agent. Your job is to mine
+            session transcripts for valuable insights that were not saved during
+            the original session.
+
+            ## Instructions
+            Read the remember skill for knowledge standards:
+              ${{ github.workspace }}/_aops/aops-core/skills/remember/SKILL.md
+
+            Read the sleep skill for transcript mining guidance (Phase 1b):
+              ${{ github.workspace }}/_aops/aops-core/skills/sleep/SKILL.md
+
+            ## Environment
+            - Brain repo (knowledge base): ${{ github.workspace }}
+            - Sessions directory: ${{ github.workspace }}/_sessions
+            - academicOps (instructions): ${{ github.workspace }}/_aops
+            - Max transcripts: ${{ inputs.max_transcripts || '10' }}
+
+            ## Process
+
+            1. **Find transcripts to mine**:
+               - Check ${{ github.workspace }}/_sessions/ for session directories
+               - Each session has JSONL or JSON transcript files
+               - Check ${{ github.workspace }}/mined_transcripts.json for already-processed sessions
+               - Skip sessions already mined
+               ${{ inputs.session_id && format('- Process ONLY session: {0}', inputs.session_id) || '' }}
+
+            2. **Convert transcripts** to readable format:
+               - Use `uv run python ${{ github.workspace }}/_aops/aops-core/scripts/transcript.py`
+                 to generate readable markdown from JSONL
+               - Or read the generated .md transcript if already processed
+
+            3. **For each transcript** (up to ${{ inputs.max_transcripts || '10' }}):
+               a. Read the transcript carefully
+               b. Identify extractable knowledge:
+                  - Decisions made and their rationale
+                  - Problems encountered and solutions found
+                  - Patterns or best practices discovered
+                  - Facts learned about external systems or tools
+                  - Project context and status updates
+               c. For each potential insight:
+                  - Search the PKB first to avoid duplicates
+                  - If genuinely new, create a knowledge note via /remember
+                  - Include provenance: `sources: ["Session <id> (<date>)"]`
+                  - Set `confidence: provisional` (single source)
+               d. Record the session ID in mined_transcripts.json
+
+            4. **Commit results** (knowledge work → PR, not direct commit):
+               ```bash
+               BRANCH="extract/transcripts-$(date +%Y-%m-%d-%H%M)"
+               git checkout -b "$BRANCH"
+               git add -A
+               git commit -m "extract: mine transcripts for insights"
+               git push -u origin "$BRANCH"
+               gh pr create --title "extract: transcript insights $(date +%Y-%m-%d)" \
+                 --body "Automated transcript mining. Review knowledge notes for quality before merging."
+               ```
+
+            ## CI-Specific Rules
+            - **No PKB MCP server** — you are working directly with markdown files.
+              Use Grep/Glob to search, Write/Edit to create/modify files. Do NOT
+              reference mcp__pkb__* tools. Changes sync to PKB consumers via git push.
+            - Time budget: 25 minutes. Exit cleanly when time is up.
+
+            ## CRITICAL Rules
+
+            - **NEVER FABRICATE**: Only extract what is actually in the transcript
+            - **NEVER EDITORIALIZE**: Extract facts and patterns, not opinions
+            - **ALWAYS SEARCH FIRST**: Check PKB before creating to avoid duplicates
+            - **PROVENANCE REQUIRED**: Every fact must cite its source session
+            - **RESPECT ABSTRACTION**: Extract generalizable patterns, not implementation details
+            - **PRESERVE PRIVACY**: Don't extract personal conversations, complaints, or sensitive content
+            - **DEDUP AGGRESSIVELY**: If the agent already saved an insight during the session, skip it
+
+            ## Output
+
+            Write a summary to $GITHUB_STEP_SUMMARY:
+            - Sessions processed: N
+            - Insights extracted: N
+            - Duplicates skipped: N
+            - Errors: N
+            - PR URL (if created)

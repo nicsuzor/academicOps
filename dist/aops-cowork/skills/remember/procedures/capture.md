@@ -95,6 +95,6 @@ Content with [[wikilinks]] to related concepts.
 - Wait until conversation end to capture
 - Announce that you're capturing
 - Create task files directly (use task skill)
-- Create timestamped session files (except transcripts)
+- Create timestamped session log files (use daily notes or meeting-note type instead)
 - Append date-headers to existing files
 - Skip the search step

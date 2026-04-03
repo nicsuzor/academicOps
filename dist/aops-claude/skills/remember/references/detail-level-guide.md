@@ -74,3 +74,43 @@ Match detail level to file type and importance.
 - Detailed specifications, analysis, or documentation
 - Technical details beyond "standup level"
 - Link back to high-level project file: `[[../projects/<project>]]`
+
+## Meeting / Contemporaneous Notes
+
+Notes captured close to an event (meetings, phone calls, conversations). These are primary sources — valued for their contemporaneous accuracy.
+
+**Key principles:**
+
+- Capture as close to the event as possible
+- Do NOT edit after the day — preserve the original record
+- Tag with `type: meeting-note` in frontmatter
+- Include: who was present, key decisions, action items, notable observations
+- File in `knowledge/<topic>/` or `projects/<name>/` depending on scope
+
+**Format:**
+
+```markdown
+---
+title: "Meeting: Topic - YYYY-MM-DD"
+type: meeting-note
+tags: [meeting, topic-area]
+created: YYYY-MM-DD
+attendees: [Name1, Name2]
+---
+
+# Meeting: Topic - YYYY-MM-DD
+
+## Key Decisions
+
+- ...
+
+## Action Items
+
+- ...
+
+## Notes
+
+- ...
+```
+
+**These notes are raw material for synthesis.** Patterns across multiple meeting notes should be extracted into semantic knowledge notes (with provenance). The meeting notes themselves are preserved unedited as primary sources.

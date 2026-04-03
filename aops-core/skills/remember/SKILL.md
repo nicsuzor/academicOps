@@ -22,16 +22,35 @@ version: 2.0.0
 
 Persist knowledge to markdown + PKB. **Both writes required** for semantic search.
 
-## Current State Machine
+## Memory Model
 
-`$ACA_DATA` contains ONLY semantic memory - timeless truths, always up-to-date:
+`$ACA_DATA` contains both semantic and episodic memory. The key distinction is between _synthesized knowledge_ (decontextualized, kept current) and _primary sources_ (time-stamped, preserved as-is).
 
-- **Semantic memory** (current state): What IS true now. Understandable without history. Lives in `$ACA_DATA`.
-- **Episodic memory** (observations): Time-stamped events. Lives in **tasks** (`data/tasks/`, managed via tasks MCP).
-- **Episodic content includes**: Bug investigations, experiment observations, development logs, code change discussions, decision rationales, any observation at a point in time
-- **Synthesis flow**: Observations accumulate in tasks → patterns emerge → synthesize to semantic docs (HEURISTICS, specs) → complete task with link to synthesized content
-- If you must read multiple files or piece together history to understand truth, it's not properly synthesized
-- Git history preserves the record; `$ACA_DATA` reflects only what's current
+### Semantic Memory (synthesized knowledge)
+
+Durable, decontextualized truths. Lives in `$ACA_DATA/knowledge/`, project files, context files.
+
+- What IS true now. Understandable without history.
+- If you must read multiple files or piece together history to understand truth, it's not properly synthesized.
+- Always cites its episodic sources (see Provenance below).
+
+### Episodic Memory (three types, all legitimate in $ACA_DATA)
+
+1. **Task bodies** (`type: task`): Document what was done. Preserved even when archived. Managed via tasks MCP.
+2. **Daily notes** (`type: daily-note`, in `sessions/`): High-quality user synthesis of what happened and what matters. Created by the user. NOT edited after the day.
+3. **Contemporaneous notes** (`type: meeting-note`, in `knowledge/` or project dirs): Notes of meetings, phone calls, conversations. Captured close to the event. May not be edited afterwards. Valuable as primary sources.
+
+### Cognitive Foundations
+
+The episodic/semantic distinction mirrors how biological memory works. Complementary Learning Systems theory (McClelland et al. 1995) shows that rapid episode capture and gradual pattern extraction are complementary processes — you need both. Semanticization (Baddeley 1988) is the natural process where episodic memories lose temporal context through repeated retrieval, becoming context-free semantic knowledge. The /sleep cycle's consolidation phases mirror this: offline replay of episodes, pattern extraction, integration into durable knowledge. The review process IS the consolidation mechanism — passive storage does not produce understanding.
+
+### Synthesis Flow (the consolidation pipeline)
+
+- Episodic content accumulates → patterns emerge across multiple notes
+- Agent or human extracts observations → creates/updates semantic knowledge notes
+- Semantic notes always cite their episodic sources (provenance)
+- The transformation from episodic to semantic mirrors cognitive semanticization
+- Git history preserves the full record; semantic notes in `$ACA_DATA` reflect what's current
 
 ## Storage Hierarchy (Critical)
 
@@ -64,27 +83,33 @@ Is this about the user? (projects, goals, context, tasks)
 
 ## File Locations
 
-| Content               | Location              | Notes                |
-| --------------------- | --------------------- | -------------------- |
-| Project metadata      | `projects/<name>.md`  | Hub file             |
-| Project details       | `projects/<name>/`    | Subdirectory         |
-| Goals                 | `goals/`              | Strategic objectives |
-| Context (about user)  | `context/`            | Preferences, history |
-| Sessions/daily        | `sessions/`           | Daily notes only     |
-| Tasks                 | Delegate to [[tasks]] | Use scripts          |
-| **General knowledge** | `knowledge/<topic>/`  | Facts NOT about user |
+| Content                | Location                            | Notes                                       |
+| ---------------------- | ----------------------------------- | ------------------------------------------- |
+| Project metadata       | `projects/<name>.md`                | Hub file                                    |
+| Project details        | `projects/<name>/`                  | Subdirectory                                |
+| Goals                  | `goals/`                            | Strategic objectives                        |
+| Context (about user)   | `context/`                          | Preferences, history                        |
+| Sessions/daily         | `sessions/`                         | Daily notes only, `type: daily-note`        |
+| Tasks                  | Delegate to [[tasks]]               | Use scripts                                 |
+| **General knowledge**  | `knowledge/<topic>/`                | Facts NOT about user                        |
+| Meeting/call notes     | `knowledge/<topic>/` or `projects/` | Contemporaneous notes, `type: meeting-note` |
+| Maps of Content (MOCs) | `knowledge/` or topic dirs          | Navigational hub notes, `type: moc`         |
 
-## PROHIBITED → Use Tasks MCP Instead
+## Episodic Content → Where It Belongs
 
-**NEVER create files for:**
+### Use Tasks MCP (NOT $ACA_DATA files)
 
-- What an agent did: "Completed X on DATE" → `mcp__pkb__create_task(task_title="...", type="task", project="<project>", parent="<parent-id>")`
-- What an agent found: "Discovered bug in Y" → `mcp__pkb__create_task(task_title="...", type="task", project="<project>", parent="<parent-id>", tags=["bug"])`
-- Observations: "Noticed pattern Z" → `mcp__pkb__create_task(task_title="Learning: Z", project="<project>", parent="<parent-id>")`
-- Experiments: "Tried approach A" → `mcp__pkb__update_task(id="...", body="...")`
-- Decisions: "Chose B over C" → update task body, synthesize to HEURISTICS.md later
+- Individual agent actions: "Completed X on DATE" → `mcp__pkb__create_task(task_title="...", type="task", project="<project>", parent="<parent-id>")`
+- Debugging logs: "Discovered bug in Y" → `mcp__pkb__create_task(task_title="...", type="task", project="<project>", parent="<parent-id>", tags=["bug"])`
+- Experiment step-by-step records: "Tried approach A" → `mcp__pkb__update_task(id="...", body="...")`
 
-**Rule**: If it has a timestamp or describes agent activity, it's episodic → tasks MCP.
+**Rule**: If it describes agent activity or debugging, it's operational episodic → tasks MCP.
+
+### Episodic Content in $ACA_DATA
+
+- **Daily notes** (user-created summaries in `sessions/`) — `type: daily-note`
+- **Meeting/call notes** (`type: meeting-note`) — contemporaneous records of conversations, captured close to the event
+- **Contemporaneous observations** that may not be edited later — primary sources valued for their accuracy at the time of capture
 
 ## Workflow
 
@@ -95,7 +120,7 @@ Is this about the user? (projects, goals, context, tasks)
 ```markdown
 ---
 title: Descriptive Title
-type: note|project|knowledge
+type: note|project|knowledge|moc|meeting-note|daily-note
 tags: [relevant, tags]
 created: YYYY-MM-DD
 ---
@@ -159,15 +184,131 @@ When capturing learnings from debugging/development sessions, **prefer generaliz
 
 **Test**: Would this memory help an agent working on a DIFFERENT component? If not, it's too specific.
 
+## Observation Notation
+
+When extracting facts or observations from episodic content, use Obsidian callout syntax:
+
+> [!observation] Brief factual claim
+> Source: [[link-to-source-note]] or description of origin
+> Confidence: established | provisional | speculative
+
+**Examples:**
+
+> [!observation] Platform liability frameworks increasingly distinguish between hosting and curation
+> Source: [[20260401-meeting-regulators]], discussion with policy team
+> Confidence: established
+
+<!-- -->
+
+> [!observation] Sleep cycle deduplication catches ~15% false positives on short titles
+> Source: Three /sleep runs in March 2026
+> Confidence: provisional
+
+**Guidelines:**
+
+- One fact per observation block
+- Always include source — never assert facts without provenance
+- Confidence levels: `established` (multiple independent sources), `provisional` (single source or limited evidence), `speculative` (inference, needs verification)
+- Observations in episodic notes (daily, meeting) are raw material; observations in knowledge notes are synthesized claims
+- Humans may also write observations informally as plain prose — the callout format is a recommendation, not a requirement
+- **Contradictions**: When a new observation contradicts an existing one, record BOTH with their sources. Never silently overwrite. Flag for human resolution. This prevents catastrophic forgetting — schema-inconsistent information must be integrated gradually, not by replacement.
+
+## Provenance
+
+All synthesized knowledge must be traceable to its sources. This is critical — we never fabricate information.
+
+### Frontmatter Fields
+
+For synthesized knowledge notes, include:
+
+```yaml
+sources:
+  - "[[daily/20260401-daily]]"
+  - "[[meeting-notes/regulatory-review-20260328]]"
+  - "Session transcript 2026-04-01T14:30"
+synthesized: 2026-04-03
+confidence: provisional
+maturity: seedling
+last_reviewed: 2026-04-03
+```
+
+**Maturity levels** (optional, tracks evidence strength):
+
+- `seedling` — single source, provisional confidence. May not survive review.
+- `budding` — corroborated by 2+ independent sources. Worth linking to.
+- `evergreen` — reviewed, stable, established confidence. Core knowledge.
+
+### Inline Attribution
+
+When a specific claim comes from a specific source, cite it inline:
+
+- "Platform liability is shifting toward curation-based models ([[20260401-meeting-regulators]])"
+- Use `[[wikilinks]]` for $ACA_DATA sources, markdown links for external sources
+
+### Rules
+
+- **Never synthesize without attribution** — if you can't cite where a claim came from, don't assert it
+- **Distinguish observation from editorial** — agents extract and synthesize but leave editorializing to the user
+- **Preserve uncertainty** — use confidence levels. Don't upgrade `provisional` to `established` without additional evidence
+- **Source chain**: When synthesizing from other synthesized notes, include the full chain (the intermediate synthesis AND its original sources)
+
+## Maps of Content (MOCs)
+
+A Map of Content is a navigational hub note that curates links to related notes on a topic.
+
+### When to Create
+
+Create a MOC when a topic area reaches a "mental squeeze point" — typically 5+ related notes that would benefit from a navigational index. MOCs are created by the /sleep consolidation cycle or manually.
+
+### Format
+
+```yaml
+---
+title: "MOC: Topic Name"
+type: moc
+tags: [moc, topic-area]
+created: YYYY-MM-DD
+last_reviewed: YYYY-MM-DD
+---
+```
+
+### Structure
+
+MOCs contain curated links with brief annotations, grouped thematically:
+
+```markdown
+# MOC: Platform Regulation
+
+## Core Concepts
+
+- [[platform-liability-frameworks]] — distinction between hosting and curation models
+- [[content-moderation-at-scale]] — practical challenges of automated enforcement
+
+## Australian Context
+
+- [[osb-act-overview]] — Online Safety Bill structure and key provisions
+- [[esafety-commissioner-powers]] — regulatory enforcement mechanisms
+
+## Open Questions
+
+- How will AI-generated content affect platform liability? (no settled answer yet)
+```
+
+### Maintenance
+
+- MOCs should be reviewed when the /sleep cycle detects they may be stale
+- Add new notes to relevant MOCs when creating them
+- Split MOCs that grow beyond ~30 entries
+
 ## General Knowledge (Fast Path)
 
 For factual observations NOT about the user. Location: `knowledge/<topic>/`
 
 **Constraints:**
 
-- Max 200 words - enables dense vector embeddings
+- Aim for concise notes (under 500 words for knowledge, under 200 for atomic facts)
 - [[wikilinks]] on ALL proper nouns
-- One fact per file
+- One fact per file for atomic knowledge; synthesized notes may cover a topic
 
 **Topics** (use broadly):
 

@@ -17,7 +17,7 @@ This skill is the **permanent context-aware core** of the framework. It owns the
 You are responsible for fixing instructions at the source. When you are corrected, discover you were wrong, or see a `learning`-tagged task:
 
 1. **Identify the Source**: Ask "where does the instruction live that would have prevented this?"
-2. **Fix Immediately**: Update the `CORE.md`, `BUTLER.md`, or `SKILL.md` file _in the same turn_.
+2. **Fix Immediately**: Update the `CORE.md` or `SKILL.md` file _in the same turn_.
 3. **Target the Audience**: Match the instruction to the file (e.g., `CORE.md` for all agents, `SKILL.md` for skill users).
 
 ### The Verification Loop (Closing the Gap)

@@ -1,0 +1,119 @@
+# PKB Quality Assessment: Periodic Knowledge Base Health Review
+# Runs in the brain ($ACA_DATA) repo on a schedule.
+# Launches a Claude agent that evaluates knowledge quality qualitatively.
+#
+# Install: copy this file to $ACA_DATA/.github/workflows/pkb-quality-review.yml
+#
+# CUSTOMIZE: Set these repository variables in your brain repo's Settings → Variables:
+#   AOPS_REPO — your academicOps fork/install (e.g., "yourname/academicOps")
+
+name: PKB Quality Review
+
+on:
+  schedule:
+    - cron: '23 3 * * 1' # Weekly on Monday at 3:23 AM (off-peak)
+  workflow_dispatch:
+    inputs:
+      focus:
+        description: 'Optional focus area (e.g., "knowledge/cyberlaw", "recent synthesis")'
+        required: false
+        type: string
+      sample_size:
+        description: 'Number of notes to review'
+        required: false
+        default: '20'
+        type: string
+
+jobs:
+  quality-review:
+    name: PKB Quality Review
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - name: Checkout brain repo
+        uses: actions/checkout@v4
+
+      - name: Checkout academicOps
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.AOPS_REPO }}
+          path: _aops
+          token: ${{ secrets.AOPS_DIST_PAT }}
+
+      - name: Run quality review agent
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            You are the PKB Quality Review agent. Your job is to assess the quality
+            of knowledge notes in this personal knowledge base QUALITATIVELY — by
+            actually reading and evaluating content, not just counting metrics.
+
+            ## Instructions
+            Read the quality assessment guidance:
+              ${{ github.workspace }}/_aops/aops-core/skills/sleep/SKILL.md
+            Focus on Phase 5c (PKB Quality Review) for methodology.
+
+            Also read the remember skill for knowledge standards:
+              ${{ github.workspace }}/_aops/aops-core/skills/remember/SKILL.md
+
+            ## Process
+
+            1. **Sample selection** (select ${{ inputs.sample_size || '20' }} notes):
+               - Stratified sample: knowledge/, projects/, context/, goals/
+               - Bias toward recently modified files
+               - Include some random selections for drift detection
+
+            2. **For each note, evaluate**:
+               - Accuracy: Does content appear current and correct?
+               - Provenance: Are claims attributed to sources?
+               - Abstraction: Right level of generalization?
+               - Links: Wikilinks present and meaningful?
+               - Freshness: Is last_reviewed present? Content still relevant?
+               - Format: Proper frontmatter, type, tags?
+
+            3. **Aggregate findings**:
+               - Count and categorize issues found
+               - Identify patterns (e.g., "most knowledge/tech/ notes lack provenance")
+               - Note positive patterns worth preserving
+               - Suggest specific improvements (but don't make them)
+
+            4. **Create GitHub issue** with the quality report:
+               ```
+               gh issue create --title "PKB Quality Review: $(date +%Y-%m-%d)" \
+                 --label "pkb-health" \
+                 --body "[report content]"
+               ```
+
+            ## Quality Dimensions (evaluate qualitatively, not mechanically)
+
+            - **Accuracy**: Read the content. Does it make sense? Any obvious errors?
+            - **Provenance**: For synthesized claims, can you trace them to sources?
+            - **Usefulness**: Would this note help a future agent or the user?
+            - **Connection**: Does it link to related concepts? Isolated notes lose value.
+            - **Appropriate detail**: Not too specific (implementation minutiae), not too vague (platitudes)
+
+            ## CI-Specific Rules
+            - **No PKB MCP server** — you are working directly with markdown files.
+              Use Grep/Glob to search, Read to inspect files. Do NOT reference
+              mcp__pkb__* tools.
+            - Time budget: 25 minutes. Exit cleanly when time is up.
+
+            ## Critical Rules
+
+            - READ the content. Don't just check frontmatter fields mechanically.
+            - Be honest about quality. Don't inflate the assessment.
+            - Focus on actionable findings, not comprehensive cataloguing.
+            - Note what's GOOD as well as what needs work.
+            - DO NOT modify any files — this is assessment only.
+
+            ## Environment
+            - Brain repo: ${{ github.workspace }}
+            - academicOps: ${{ github.workspace }}/_aops
+            - Sample size: ${{ inputs.sample_size || '20' }}
+
+            ${{ inputs.focus && format('## Focus\nThe operator asked you to focus on: {0}', inputs.focus) || '' }}

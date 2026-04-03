@@ -3,12 +3,16 @@
 # Launches a Claude agent that works through consolidation phases using judgment.
 #
 # Install: copy this file to $ACA_DATA/.github/workflows/sleep-cycle.yml
+#
+# CUSTOMIZE: Set these repository variables in your brain repo's Settings → Variables:
+#   AOPS_REPO          — your academicOps repository (e.g., "yourname/academicOps")
+#   AOPS_SESSIONS_REPO — your sessions repository (e.g., "yourname/sessions")
 
 name: Sleep Cycle
 
 on:
   schedule:
-    - cron: '0 */4 * * *' # Every 4 hours
+    - cron: '17 */6 * * *' # Every 6 hours at :17 (off-peak)
   workflow_dispatch:
     inputs:
       focus:
@@ -39,9 +43,17 @@ jobs:
       - name: Checkout academicOps
         uses: actions/checkout@v4
         with:
-          repository: nicsuzor/academicOps
+          repository: ${{ vars.AOPS_REPO }}
           path: _aops
-          token: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+          token: ${{ secrets.AOPS_DIST_PAT }}
+
+      - name: Checkout sessions repo (for transcript mining)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.AOPS_SESSIONS_REPO }}
+          path: _sessions
+          token: ${{ secrets.AOPS_DIST_PAT }}
+        continue-on-error: true # Transcript mining degrades gracefully if unavailable
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -66,23 +78,44 @@ jobs:
             full phase instructions:
               ${{ github.workspace }}/_aops/aops-core/skills/sleep/SKILL.md
 
-            Also read the full spec for design rationale:
-              ${{ github.workspace }}/_aops/specs/sleep-cycle.md
+            Also read the remember skill for knowledge standards and consolidation:
+              ${{ github.workspace }}/_aops/aops-core/skills/remember/SKILL.md
+              ${{ github.workspace }}/_aops/aops-core/skills/remember/procedures/consolidate.md
 
-            Work through the phases in order. Use your judgment about what needs
-            attention. Skip phases where there's nothing to do.
+            Work through ALL phases in order (0, 1, 1b, 2, 2b, 3, 4, 5, 5b, 5c, 6).
+            Use your judgment about what needs attention. Skip phases where there's
+            nothing to do — but always run Phase 0 (baseline) and Phase 6 (sync).
+
+            ## Values Alignment
+
+            Read the **Values** and **Why This Works** sections in the sleep skill
+            file — they explain both the principles and the cognitive science rationale.
+            You are trusted to do complex knowledge work. Understand WHY, not just WHAT.
 
             ## Environment
             - Brain repo (data): ${{ github.workspace }}
             - academicOps (code): ${{ github.workspace }}/_aops
+            - Sessions directory: ${{ github.workspace }}/_sessions (for transcript mining)
             - Batch limit: ${{ inputs.batch_limit || vars.SLEEP_BATCH_LIMIT || 100 }} items per phase
 
             ## CI-Specific Rules
-            - Time budget: 20 minutes. Exit cleanly when time is up.
+            - Time budget: 25 minutes. Exit cleanly when time is up.
+            - **No PKB MCP server** — you are working directly with markdown files.
+              Use Grep/Glob to search, Write/Edit to create/modify files. Do NOT
+              reference mcp__pkb__* tools. Changes sync to PKB consumers via git push.
             - Email/calendar MCP tools are NOT available on GitHub Actions.
               Degrade gracefully per the skill instructions (flag instead of verify).
-            - Write a summary of what you did to $GITHUB_STEP_SUMMARY.
-            - Commit message: "sleep: periodic consolidation"
+            - Transcript mining (Phase 1b): requires $AOPS_SESSIONS. Skip if not available.
+            - **Output**: Mechanical work (dedup, index refresh, graph maintenance)
+              commits directly to main. Knowledge work (new notes, synthesis, MOCs)
+              commits to a branch `sleep/consolidation-$(date +%Y-%m-%d-%H%M)` and
+              creates a PR. The PR is reviewed by /qa before merging.
+            - Write a summary of what you did to $GITHUB_STEP_SUMMARY. Include:
+              - Phase completion status
+              - Knowledge notes created/updated (Phase 2b)
+              - Self-check findings (Phase 5c)
+              - Graph health delta (Phase 0 vs Phase 6)
+              - PR URL if consolidation PR was created
 
             ## Repo Topology (CRITICAL)
             This is a DATA repo (tasks, notes, memories), NOT code.
