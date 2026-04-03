@@ -12,7 +12,7 @@ tags: [prompt-template, observability, session-insights]
 ## Giving Effect
 
 - [[skills/session-insights/SKILL.md]] - Session insights skill that uses this prompt
-- [[mcp__gemini__*]] - Gemini MCP tools for transcript analysis
+- Claude subagent — launched by the skill with this template + transcript; produces JSON directly (no Python script glue)
 - [[specs/session-insights-metrics-schema.md]] - Schema for extracted metrics
 - [[specs/framework-observability.md]] - Observability architecture this feeds into
 
