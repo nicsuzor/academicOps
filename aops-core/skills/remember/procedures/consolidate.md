@@ -59,11 +59,23 @@ Use observation notation for atomic facts:
 > Confidence: provisional
 ```
 
-### 3. Mark source as consolidated
+### 3. Delete or mark superseded sources
 
-Add `consolidated: YYYY-MM-DD` to the episodic source's frontmatter (date enables re-consolidation if quality review later flags problems). **Never modify the source's content** — episodic notes are primary records.
+If the new knowledge note **fully replaces** an episodic memory or older knowledge note, **delete** the old file (`git rm`). Trust git — the history preserves it. Do NOT leave superseded files with `superseded_by:` pointers; that creates duplication and confusion.
 
-### 4. Update or create MOC if needed
+If the source is a primary episodic record (daily note, meeting note, task body), add `consolidated: YYYY-MM-DD` to its frontmatter instead — episodic notes are primary records and should not be deleted. But memories (`mem-*.md`) that have been fully consolidated into knowledge notes should be deleted.
+
+### 4. File in the right location
+
+The PKB has directory structure for a reason. Choosing the right directory is part of the consolidation work:
+
+- **Project-specific insights** → the project's directory (e.g., `osb/`, `buttermilk/`, `hdr/`)
+- **Generic domain knowledge** → `knowledge/<domain>/` (e.g., `knowledge/tech/`, `knowledge/cyberlaw/`)
+- **Agent conventions and patterns** → `memories/` (only if truly generalizable across projects)
+
+Don't dump project-specific insights into `knowledge/` or `memories/` to avoid thinking about where they go. If a note is about OSB benchmarking, it belongs in `osb-benchmarking/`, not `knowledge/tech/`.
+
+### 5. Update or create MOC if needed
 
 If the topic area now has 5+ related knowledge notes and no MOC exists, create one.
 
@@ -75,6 +87,8 @@ If the topic area now has 5+ related knowledge notes and no MOC exists, create o
 - **Under-attribution**: Synthesis without citing sources
 - **Content modification**: Changing episodic note text (only add frontmatter)
 - **Duplicate creation**: Not searching PKB first
+- **Lazy filing**: Dumping project-specific notes into generic directories
+- **Supersession hoarding**: Keeping old files with `superseded_by:` instead of deleting them
 - **Premature synthesis**: Knowledge notes from a single weak source
 
 ## Quality Check
@@ -83,7 +97,9 @@ If the topic area now has 5+ related knowledge notes and no MOC exists, create o
 - [ ] Confidence level matches evidence strength
 - [ ] Wikilinks connect to related concepts
 - [ ] Content understandable without reading source
+- [ ] Superseded memories deleted (not left with `superseded_by:` pointers)
 - [ ] Source episodic notes marked `consolidated: YYYY-MM-DD` but content unchanged
+- [ ] Notes filed in the right directory (project-specific → project dir, not generic)
 
 ## Continuous Improvement
 
