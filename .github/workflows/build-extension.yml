@@ -226,7 +226,7 @@ jobs:
           if [ "$RELEASE_TYPE" = "testing" ]; then
             COMMIT_PREFIX="Testing release"
           fi
-          git add dist/aops-claude/ .claude-plugin/marketplace.json
+          git add dist/aops-claude/ dist/aops-cowork/ .claude-plugin/marketplace.json
           git commit -m "chore: $COMMIT_PREFIX v$VERSION [skip ci]" || echo "No changes to commit"
           git push origin HEAD:main
 
