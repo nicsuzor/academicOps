@@ -94,6 +94,12 @@ jobs:
             - **Connection**: Does it link to related concepts? Isolated notes lose value.
             - **Appropriate detail**: Not too specific (implementation minutiae), not too vague (platitudes)
 
+            ## CI-Specific Rules
+            - **No PKB MCP server** — you are working directly with markdown files.
+              Use Grep/Glob to search, Read to inspect files. Do NOT reference
+              mcp__pkb__* tools.
+            - Time budget: 25 minutes. Exit cleanly when time is up.
+
             ## Critical Rules
 
             - READ the content. Don't just check frontmatter fields mechanically.

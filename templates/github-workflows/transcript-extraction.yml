@@ -29,6 +29,7 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: write
+      pull-requests: write
       issues: write
 
     steps:
@@ -114,12 +115,22 @@ jobs:
                   - Set `confidence: provisional` (single source)
                d. Record the session ID in mined_transcripts.json
 
-            4. **Commit results**:
+            4. **Commit results** (knowledge work → PR, not direct commit):
                ```bash
+               BRANCH="extract/transcripts-$(date +%Y-%m-%d-%H%M)"
+               git checkout -b "$BRANCH"
                git add -A
                git commit -m "extract: mine transcripts for insights"
-               git push
+               git push -u origin "$BRANCH"
+               gh pr create --title "extract: transcript insights $(date +%Y-%m-%d)" \
+                 --body "Automated transcript mining. Review knowledge notes for quality before merging."
                ```
+
+            ## CI-Specific Rules
+            - **No PKB MCP server** — you are working directly with markdown files.
+              Use Grep/Glob to search, Write/Edit to create/modify files. Do NOT
+              reference mcp__pkb__* tools. Changes sync to PKB consumers via git push.
+            - Time budget: 25 minutes. Exit cleanly when time is up.
 
             ## CRITICAL Rules
 
@@ -138,5 +149,4 @@ jobs:
             - Insights extracted: N
             - Duplicates skipped: N
             - Errors: N
-
-            Commit all new knowledge files and the updated mined_transcripts.json.
+            - PR URL (if created)
