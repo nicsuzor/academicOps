@@ -1082,6 +1082,18 @@ def build_aops_cowork(
             f.write("\n")
         print("  ✓ Generated .mcp.json")
 
+    # 3a. MCP launch scripts — .mcp.json references scripts/run-mcp.sh
+    mcp_scripts = ["run-mcp.sh", "ensure-path.sh"]
+    scripts_src = src_dir / "scripts"
+    scripts_dst = dist_dir / "scripts"
+    if scripts_src.exists():
+        scripts_dst.mkdir(parents=True, exist_ok=True)
+        for script_name in mcp_scripts:
+            src_script = scripts_src / script_name
+            if src_script.exists():
+                safe_copy(src_script, scripts_dst / script_name)
+        print("  ✓ Copied MCP launch scripts")
+
     # 4. Also include aops-tools skills if available
     tools_src = aops_root / "aops-tools" / "skills"
     if tools_src.exists():
