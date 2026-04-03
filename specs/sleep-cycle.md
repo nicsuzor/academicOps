@@ -30,7 +30,7 @@ Most captured knowledge is never retrieved. Synthesising everything upfront crea
 4. **Use-case-driven promotion.** An observation gets promoted when it would meaningfully improve a named consumer's experience. The agent evaluates: Would this help an agent starting a fresh session? Does it answer a question that keeps being reconstructed? Does it update, contradict, or extend existing knowledge in a way that matters? There is no numeric bar — the question is always whether promotion would help a specific reader.
 5. **Unsupervised execution, supervised judgment.** The sleep cycle runs on a cron job — unsupervised by design. It executes mechanical work autonomously (session backfill, index refresh, brain sync) and _stages_ promotion candidates for the next supervised session. The cycle does the legwork; the human or supervised agent (`/daily`, `/pull`) makes the final call.
 6. **Idempotent and incremental.** Running the sleep cycle twice produces the same result. Each run processes only what's new since the last run.
-7. **Single cycle, time-bounded.** One cycle runs every ~4 hours and does what it can within its time budget. No separate "nap" vs "deep" modes — the agent works through phases in order and exits cleanly when time runs out. Simpler scheduling, simpler reasoning.
+7. **Single cycle, time-bounded.** One cycle runs every 6 hours and does what it can within its time budget. No separate "nap" vs "deep" modes — the agent works through phases in order and exits cleanly when time runs out. Simpler scheduling, simpler reasoning.
 8. **Agents do their jobs.** The sleep cycle orchestrates — it doesn't micromanage. Each phase delegates to existing tools and skills. Less planning, more execution.
 
 ## Named Consumers (Promotion Targets)
@@ -51,13 +51,13 @@ If an insight doesn't map to one of these consumers, it stays in its episode (ta
 
 ### Schedule
 
-The sleep cycle runs as a **GitHub Actions scheduled workflow** in the `$ACA_DATA` (brain) repository, every ~4 hours. The code lives in `$AOPS` (academicOps) but executes against brain data.
+The sleep cycle runs as a **GitHub Actions scheduled workflow** in the `$ACA_DATA` (brain) repository, every 6 hours. The code lives in `$AOPS` (academicOps) but executes against brain data.
 
 ```yaml
 # $ACA_DATA/.github/workflows/sleep-cycle.yml
 on:
   schedule:
-    - cron: '0 */4 * * *'
+    - cron: '17 */6 * * *'
   workflow_dispatch:
 ```
 
@@ -80,6 +80,16 @@ Run `/session-insights batch` for any sessions with transcripts but no insights.
 **Input**: Session transcripts without corresponding insight JSONs.
 **Output**: `$AOPS_SESSIONS/summaries/YYYYMMDD-{id}.json` + PKB memories.
 **Skip condition**: No pending sessions.
+
+#### Phase 1b: Transcript Mining
+
+**Consumer**: PKB search
+
+Extract insights from session transcripts that agents may not have saved during the session. See `aops-core/skills/sleep/SKILL.md` Phase 1b for full procedure, critical rules, and batch limits.
+
+**Input**: Session transcripts in `$AOPS_SESSIONS/` (JSONL files).
+**Output**: Knowledge notes with provenance, created via /remember skill.
+**Skip condition**: No unmined transcripts, or `$AOPS_SESSIONS` not accessible.
 
 #### Phase 2: Episode Replay
 
@@ -112,6 +122,16 @@ Scan recent activity (since last sleep cycle) and identify **promotion candidate
    - **Stage for supervised review**: New knowledge docs, significant rewrites, or any uncertainty about tier ownership → annotate as promotion candidates for the next supervised session (`/daily` or `/pull`). The `/briefing-bundle` and `/process-bundle` skills already support the annotation→decision pipeline. Don't auto-generate knowledge docs from unverified fragments.
 
 **Skip condition**: No new activity since last run.
+
+#### Phase 2b: Knowledge Consolidation
+
+**Consumer**: PKB search, knowledge docs
+
+Transform episodic memory into durable semantic knowledge. This is the core value of the sleep cycle — it mirrors cognitive semanticization, where temporal memories are decontextualized into lasting understanding. See `aops-core/skills/sleep/SKILL.md` Phase 2b for the full consolidation pipeline, deduplication process, and bounded effort limits.
+
+**Input**: Episodic content older than 7 days without `consolidated:` frontmatter.
+**Output**: Knowledge notes (new or augmented), synthesis notes (3+ sources), MOCs (5+ related notes). Created on a branch, submitted as a PR for /qa review.
+**Skip condition**: No unconsolidated episodic content.
 
 #### Phase 3: Framework Index Refresh
 
@@ -160,7 +180,13 @@ Identify knowledge docs and memories that may be stale, and tasks that are under
 
 **Output**: Candidates staged as a report for `/daily` or `/planner` (maintain mode) to process. The sleep cycle does NOT auto-delete or auto-modify tasks — it surfaces them.
 
-**Skip condition**: Sweep ran within the last 24 hours (no need to run every 4h).
+**Skip condition**: Sweep ran within the last 24 hours (no need to run every 6h).
+
+#### Phase 5c: Consolidation Self-Check
+
+A 2-minute sanity check of THIS cycle's own knowledge output. Not a quality review — the real quality gate is the /qa review on the consolidation PR.
+
+Checks: sources in frontmatter, synthesis cites 2+ observations, wikilinks valid, confidence level present. On failure: log in cycle summary and flag in PR description. See `aops-core/skills/sleep/SKILL.md` Phase 5c for the evaluation feedback loop.
 
 #### Phase 6: Brain Sync
 
