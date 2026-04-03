@@ -3,6 +3,9 @@
 # Launches a Claude agent that works through consolidation phases using judgment.
 #
 # Install: copy this file to $ACA_DATA/.github/workflows/sleep-cycle.yml
+#
+# CUSTOMIZE: Set these repository variables in your brain repo's Settings → Variables:
+#   AOPS_SESSIONS_REPO — your sessions repository (e.g., "yourname/sessions")
 
 name: Sleep Cycle
 
@@ -46,7 +49,7 @@ jobs:
       - name: Checkout sessions repo (for transcript mining)
         uses: actions/checkout@v4
         with:
-          repository: nicsuzor/sessions
+          repository: ${{ vars.AOPS_SESSIONS_REPO }}
           path: _sessions
           token: ${{ secrets.AOPS_DIST_PAT }}
         continue-on-error: true # Transcript mining degrades gracefully if unavailable

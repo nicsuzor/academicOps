@@ -33,6 +33,19 @@ type: note
 - Position: Absolute top of file (no content before opening `---`)
 - Syntax: Valid YAML with `key: value` pairs (space after colon)
 
+**Type values:** `note`, `project`, `knowledge`, `moc`, `meeting-note`, `daily-note`
+
+**Additional fields for synthesized content:**
+
+```yaml
+sources:
+  - "[[daily/20260401-daily]]"
+  - "[[meeting-notes/regulatory-review-20260328]]"
+synthesized: 2026-04-03          # date when synthesis was performed
+confidence: provisional           # established | provisional | speculative
+last_reviewed: 2026-04-03        # date of last review
+```
+
 **Multiple values** - either format works:
 
 ```yaml

@@ -53,7 +53,6 @@ Quick reference for routing user requests to skills/commands. When a request mat
 3. **Context match**: File types or project structure indicate skill -> apply skill guidance
 4. **No match**: Route through normal workflow selection (WORKFLOWS.md)
 
-
 ## Domain Tools
 
 ---

@@ -3,7 +3,10 @@
 # Uses /remember skill to persist findings to the PKB.
 #
 # Install: copy this file to $ACA_DATA/.github/workflows/transcript-extraction.yml
-# Requires: $AOPS_SESSIONS directory accessible (either cloned or mounted)
+#
+# CUSTOMIZE: Set these repository variables in your brain repo's Settings → Variables:
+#   AOPS_SESSIONS_REPO — your sessions repository (e.g., "yourname/sessions")
+#   AOPS_REPO         — your academicOps fork/install (e.g., "yourname/academicOps")
 
 name: Transcript Extraction
 
@@ -39,14 +42,14 @@ jobs:
       - name: Checkout sessions repo
         uses: actions/checkout@v4
         with:
-          repository: nicsuzor/sessions
+          repository: ${{ vars.AOPS_SESSIONS_REPO }}
           path: _sessions
           token: ${{ secrets.AOPS_DIST_PAT }}
 
       - name: Checkout academicOps
         uses: actions/checkout@v4
         with:
-          repository: nicsuzor/academicOps
+          repository: ${{ vars.AOPS_REPO }}
           path: _aops
           token: ${{ secrets.AOPS_DIST_PAT }}
 

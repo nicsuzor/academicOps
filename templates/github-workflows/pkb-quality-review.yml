@@ -3,6 +3,9 @@
 # Launches a Claude agent that evaluates knowledge quality qualitatively.
 #
 # Install: copy this file to $ACA_DATA/.github/workflows/pkb-quality-review.yml
+#
+# CUSTOMIZE: Set these repository variables in your brain repo's Settings → Variables:
+#   AOPS_REPO — your academicOps fork/install (e.g., "yourname/academicOps")
 
 name: PKB Quality Review
 
@@ -37,7 +40,7 @@ jobs:
       - name: Checkout academicOps
         uses: actions/checkout@v4
         with:
-          repository: nicsuzor/academicOps
+          repository: ${{ vars.AOPS_REPO }}
           path: _aops
           token: ${{ secrets.AOPS_DIST_PAT }}
 

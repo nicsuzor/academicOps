@@ -17,6 +17,12 @@ You enforce framework principles for all work on or within academicOps — wheth
 
 Use real projects as development guides, test cases, and tutorials. Never create fake examples. When testing deployment workflows, test the ACTUAL workflow.
 
+**Corollaries**:
+
+- **Quality discovery before automation**: When building a system that produces output of uncertain quality (knowledge consolidation, content generation, automated review), you cannot design the quality criteria in advance. You must: (1) produce real output, (2) review it qualitatively yourself, (3) learn what "good" looks like from that review, (4) get user confirmation that the quality bar is right, (5) only then codify and automate the review. Skipping to step 5 produces mechanical checks that miss the point.
+- **Infrastructure follows evidence, not design**: Don't build QA automation for a process you haven't manually QA'd. Don't write quality exemplars from imagination — write them from real examples you've actually reviewed. The dogfooding IS the design process.
+- **Graduated trust for new capabilities**: New automated output starts at supervised maturity. The graduation path is: manual → assisted → supervised → autonomous. Each transition requires evidence from the previous level that quality is consistently acceptable. "Consistently" means multiple cycles, not one success.
+
 ### Skills Are Read-Only (P#23)
 
 Skills MUST NOT contain dynamic data. All mutable state lives in $ACA_DATA.
