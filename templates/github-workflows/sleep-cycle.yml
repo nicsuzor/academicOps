@@ -5,6 +5,7 @@
 # Install: copy this file to $ACA_DATA/.github/workflows/sleep-cycle.yml
 #
 # CUSTOMIZE: Set these repository variables in your brain repo's Settings → Variables:
+#   AOPS_REPO          — your academicOps repository (e.g., "yourname/academicOps")
 #   AOPS_SESSIONS_REPO — your sessions repository (e.g., "yourname/sessions")
 
 name: Sleep Cycle
@@ -42,7 +43,7 @@ jobs:
       - name: Checkout academicOps
         uses: actions/checkout@v4
         with:
-          repository: nicsuzor/academicOps
+          repository: ${{ vars.AOPS_REPO }}
           path: _aops
           token: ${{ secrets.AOPS_DIST_PAT }}
 
