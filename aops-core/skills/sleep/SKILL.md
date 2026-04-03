@@ -297,6 +297,17 @@ For each knowledge note created or modified in this cycle:
 
 If any check fails: log the issue in the cycle summary and flag it in the PR description. Do not try to fix content quality problems — that's the QA reviewer's job.
 
+### Evaluation Feedback Loop
+
+Quality findings from this cycle and from /qa reviews should feed back into improving the consolidation process. When a pattern of quality issues is detected (same issue appearing across 3+ cycles):
+
+1. **Create a task** describing the recurring quality pattern (via `mcp__pkb__create_task` or `gh issue create`)
+2. **Link to examples** — cite the specific notes/PRs where the issue appeared
+3. **Propose a procedure update** — suggest what change to `consolidate.md` or `quality-exemplars.md` would prevent recurrence
+4. The task is then triaged normally — human decides whether to update procedures
+
+This closes the loop: consolidation → QA review → quality findings → procedure improvements → better consolidation.
+
 ### Bounded Effort
 
 - Only check notes created/modified in THIS cycle

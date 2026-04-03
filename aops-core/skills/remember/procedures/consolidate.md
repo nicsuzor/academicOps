@@ -84,3 +84,7 @@ If the topic area now has 5+ related knowledge notes and no MOC exists, create o
 - [ ] Wikilinks connect to related concepts
 - [ ] Content understandable without reading source
 - [ ] Source episodic notes marked `consolidated: YYYY-MM-DD` but content unchanged
+
+## Continuous Improvement
+
+When /qa review of consolidation PRs reveals recurring quality issues, the /sleep cycle creates tasks to update this procedure and [[quality-exemplars]]. See the Evaluation Feedback Loop in the sleep skill's Phase 5c for details.
