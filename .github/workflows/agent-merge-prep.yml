@@ -238,19 +238,25 @@ jobs:
             exit 1
           fi
 
-          # Approve the PR (skip only the known self-approval restriction)
-          APPROVE_OUTPUT=$(gh pr review "$PR_NUMBER" --repo "$REPO" --approve \
-            --body "Merge Prep complete. All review feedback triaged and addressed." 2>&1) \
-            || {
-              if echo "$APPROVE_OUTPUT" | grep -q "Can not approve your own pull request"; then
-                echo "WARNING: Self-approval blocked by GitHub — skipping (expected for own PRs)"
-              elif echo "$APPROVE_OUTPUT" | grep -q "GitHub Actions is not permitted to approve pull requests"; then
-                echo "WARNING: GitHub Actions cannot approve PRs — skipping"
-              else
-                echo "ERROR: Approval failed unexpectedly: $APPROVE_OUTPUT"
-                exit 1
-              fi
-            }
+          # Approve the PR — skip if the Claude agent already approved
+          EXISTING_APPROVAL=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" \
+            --jq '[.[] | select(.state == "APPROVED" and .user.login == "claude[bot]")] | length')
+          if [ "$EXISTING_APPROVAL" -gt 0 ]; then
+            echo "claude[bot] already approved — skipping workflow approval"
+          else
+            APPROVE_OUTPUT=$(gh pr review "$PR_NUMBER" --repo "$REPO" --approve \
+              --body "Merge Prep complete. All review feedback triaged and addressed." 2>&1) \
+              || {
+                if echo "$APPROVE_OUTPUT" | grep -q "Can not approve your own pull request"; then
+                  echo "WARNING: Self-approval blocked by GitHub — skipping (expected for own PRs)"
+                elif echo "$APPROVE_OUTPUT" | grep -q "GitHub Actions is not permitted to approve pull requests"; then
+                  echo "WARNING: GitHub Actions cannot approve PRs — skipping"
+                else
+                  echo "ERROR: Approval failed unexpectedly: $APPROVE_OUTPUT"
+                  exit 1
+                fi
+              }
+          fi
 
           # Set merge-prep-status commit status
           # Re-fetch HEAD SHA — the agent may have pushed new commits during its run

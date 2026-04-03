@@ -12,15 +12,14 @@ supersedes: pr-process.md
 
 ## Giving Effect
 
-- [[.github/workflows/code-quality.yml]] → split into [[.github/workflows/lint.yml]] + [[.github/workflows/typecheck.yml]]
-- [[.github/workflows/agent-merge-prep.yml]] → rewrite: drop LGTM gate, cron-driven, post `gh pr review --approve` on success, add `workflow_dispatch` trigger (already exists in current impl), add loop ceiling check, set `merge-prep-status` commit status on success and on halt
-- [[.github/workflows/merge-prep-cron.yml]] → simplify: 30-min cron + `workflow_run` trigger, label-free qualification (commit status replaces comment-text scanning), early exit when no open PRs
-- [[.github/workflows/agent-conceptual-review.yml]] → rename to [[.github/workflows/agent-review.yml]], switch to `gh pr review`
-- [[.github/workflows/summary-and-merge.yml]] → **new**: environment-gated merge workflow
-- [[.github/rulesets/pr-review-and-merge.yml]] → add Pytest to required status checks
-- [[.github/agents/merge-prep.agent.md]] → remove commit-status instructions, add PR review approval, add loop-ceiling logic
-- [[.github/agents/conceptual-review.agent.md]] → update to use `gh pr review` instead of commit status
-- GitHub Environment: **production** → required reviewer: repository maintainer(s)
+- [[.github/workflows/pr-pipeline.yml]] → CI-only orchestrator: sequential lint → typecheck → pytest
+- [[.github/workflows/lint.yml]] → uses `AOPS_BOT_GH_TOKEN` for checkout so autofix pushes trigger workflow restart
+- [[.github/workflows/axiom-review.yml]] → standalone axiom review with 120s settle delay
+- [[.github/workflows/agent-auditor.yml]] → called by axiom-review.yml (unchanged)
+- [[.github/workflows/agent-merge-prep.yml]] → cron-driven, duplicate-approval guard, loop ceiling, `merge-prep-status` commit status
+- [[.github/workflows/merge-prep-cron.yml]] → `workflow_run` trigger watches both "PR Review Pipeline" and "Axiom Review"
+- [[.github/workflows/summary-and-merge.yml]] → environment-gated merge workflow (disabled pending production environment setup)
+- GitHub Ruleset: required checks = `Lint / Lint`, `Type Check / Type Check`, `Pytest / Pytest`, `Axiom Review / Axiom Review`
 
 ## Overview
 
@@ -37,7 +36,7 @@ The previous pipeline ([[specs/pr-process.md]]) required a human LGTM to trigger
 3. **No labels for coordination.** Labels are unreliable state machines. In-progress detection uses `gh run list`; halt state uses the `merge-prep-status` commit status API. No load-bearing labels; no comment-text scanning.
 4. **Environment gate for graduation.** Merge-prep signals readiness by triggering a `summary-and-merge.yml` workflow. Job 1 posts a decision brief (summary of all changes, reviews, and fixes). Job 2 requires the `production` environment — the maintainer clicks "Approve" in the GitHub UI to merge. One click, no PR comment archaeology needed.
 5. **Event-driven + cron fallback.** Merge-prep dispatch fires immediately when Phase 1 checks complete (`workflow_run` trigger), plus a 30-minute cron as safety net. The existing qualification logic (age gate, in-progress check, commit status) handles premature firings gracefully. No human trigger needed, no label gate.
-6. **Independence.** Every check runs independently on every push. Lint does not gate Type Check. Type Check does not gate Pytest. If Lint autofixes and pushes, the others re-run on the new commit without waiting.
+6. **Sequential CI, independent review.** CI checks run sequentially (lint → typecheck → pytest) so that if lint pushes an autofix commit, typecheck and pytest haven't started yet — no wasted compute on the cancelled run. Axiom Review runs as a separate workflow, independent of the CI pipeline. Lint uses a PAT (`AOPS_BOT_GH_TOKEN`) for checkout so autofix pushes trigger a new `synchronize` event, restarting the pipeline on the clean commit with correct check run names on the actual HEAD.
 7. **GitHub affordances only.** Required status checks, PR reviews, commit status API, environments, and auto-merge handle state. No custom orchestration where GitHub provides a native mechanism. No comment parsing; no label-based state machines.
 
 ## Architecture: Four Phases
@@ -46,32 +45,25 @@ The previous pipeline ([[specs/pr-process.md]]) required a human LGTM to trigger
 flowchart TD
     PR["PR opened / push"]
 
-    %% Phase 1a: Deterministic CI (parallel)
+    %% CI Pipeline (sequential)
     PR --> Lint["<b>Lint</b><br/>Autofix + push if needed<br/><i>Required status check</i>"]
-    PR --> TC["<b>Type Check</b><br/>basedpyright<br/><i>Required status check</i>"]
-    PR --> Test["<b>Pytest</b><br/>Unit tests<br/><i>Required status check</i>"]
 
     Lint --> LintFix{Issues?}
-    LintFix -- Yes --> AutoFix["Autofix + push commit"]
+    LintFix -- Yes --> AutoFix["Autofix + push commit<br/>(PAT triggers synchronize)"]
     AutoFix --> PR
-    LintFix -- No --> Settle
+    LintFix -- No --> TC["<b>Type Check</b><br/>basedpyright<br/><i>Required status check</i>"]
 
-    TC --> Settle
-    Test --> Settle
+    TC --> Test["<b>Pytest</b><br/>Unit tests<br/><i>Required status check</i>"]
 
-    %% Phase 1b: Settle + Axiom Review
-    Settle["<b>Settle</b><br/>120s delay<br/>Absorbs rapid pushes"]
+    %% Axiom Review (independent workflow)
+    PR --> Settle["<b>Settle</b><br/>120s delay<br/>Absorbs rapid pushes"]
     Settle --> AR["<b>Axiom Review</b><br/>Auditor agent<br/>gh pr review: APPROVE or REQUEST_CHANGES"]
-
-    %% Phase 1c: Agent Fix (failure-only)
-    AR --> CICheck{CI failed?}
-    CICheck -- Yes --> AgentFix["<b>Agent Fix</b><br/>Read CI logs + reviews<br/>Push fixes → restart"]
-    AgentFix --> PR
-    CICheck -- No --> Phase2["<b>Bazaar window</b><br/>External reviews arrive<br/>(Gemini, Copilot, commenters)"]
 
     AR --> ARV{Verdict}
     ARV -- REQUEST_CHANGES --> Blocked["<b>Merge blocked</b><br/>Author or agent revises"]
     ARV -- APPROVE --> Phase2
+
+    Test --> Phase2["<b>Bazaar window</b><br/>External reviews arrive<br/>(Gemini, Copilot, commenters)"]
 
     %% Phase 2: Cron — no human trigger needed
     Phase2 --> Cron
@@ -115,47 +107,37 @@ flowchart TD
     class Settle settle
 ```
 
-## Phase 1: On Every Push (CI + Agent Fix)
+## Phase 1: On Every Push (CI + Axiom Review)
 
-The PR Review Pipeline (`pr-pipeline.yml`) orchestrates Phase 1 in three sub-phases:
+Two workflows run independently on every `pull_request` push:
 
-### Phase 1a: Deterministic CI (parallel)
+### CI Pipeline (`pr-pipeline.yml`) — sequential
 
-Three CI jobs run concurrently on every `pull_request` push:
+Three CI jobs run sequentially: lint → typecheck → pytest.
 
-| Workflow   | File            | Job name     | Required check? | Action                                                        |
-| ---------- | --------------- | ------------ | --------------- | ------------------------------------------------------------- |
-| Lint       | `lint.yml`      | `Lint`       | Yes             | `ruff check --fix` + `ruff format`. Autofix + push if needed. |
-| Type Check | `typecheck.yml` | `Type Check` | Yes             | `basedpyright`. Read-only.                                    |
-| Pytest     | `pytest.yml`    | `Pytest`     | Yes             | `pytest -m "not slow"`. Read-only.                            |
+| Workflow   | File            | Job name     | Required check?                 | Action                                                        |
+| ---------- | --------------- | ------------ | ------------------------------- | ------------------------------------------------------------- |
+| Lint       | `lint.yml`      | `Lint`       | Yes (`Lint / Lint`)             | `ruff check --fix` + `ruff format`. Autofix + push if needed. |
+| Type Check | `typecheck.yml` | `Type Check` | Yes (`Type Check / Type Check`) | `basedpyright`. Read-only.                                    |
+| Pytest     | `pytest.yml`    | `Pytest`     | Yes (`Pytest / Pytest`)         | `pytest -m "not slow"`. Read-only.                            |
 
-**Lint autofix loop:** When Lint pushes a fix commit, the new push re-triggers all workflows on the new commit via the `cancel-in-progress` concurrency group. Type Check and Pytest re-run on the fixed commit naturally.
+**Why sequential?** When lint pushes an autofix commit, typecheck and pytest haven't started yet — no wasted compute on the cancelled run. The `cancel-in-progress` concurrency group cancels the old run and a new pipeline starts on the clean commit.
 
-### Phase 1b: Settle + Axiom Review
+**Lint autofix with PAT:** Lint checks out using `AOPS_BOT_GH_TOKEN` (a PAT). When it pushes an autofix commit, the PAT push triggers a new `synchronize` event, restarting the pipeline on the new commit. This ensures check runs appear on the actual HEAD — pushes with `GITHUB_TOKEN` are deliberately ignored by GitHub Actions and would leave the new commit with zero check runs.
 
-**Settle delay (120s):** After Phase 1a completes, the pipeline sleeps 120 seconds. This absorbs rapid pushes — cancelling the cheap sleep (via `cancel-in-progress`) is much cheaper than cancelling an expensive agent run. Settle runs on `always() && !cancelled()` so it proceeds regardless of CI pass/fail.
+**Loop safety:** Lint is idempotent — the second run finds nothing to fix, no push, pipeline completes normally.
+
+### Axiom Review (`axiom-review.yml`) — independent
+
+The Axiom Review workflow runs independently of the CI pipeline, triggered by the same `pull_request` events.
+
+**Settle delay (120s):** Before starting the agent, the workflow sleeps 120 seconds. This absorbs rapid pushes (including lint autofix commits) — cancelling the cheap sleep (via `cancel-in-progress`) is much cheaper than cancelling an expensive agent run. In practice, lint autofix pushes happen ~2-3 minutes into the CI pipeline, while axiom review is still sleeping, so the cancellation is always cheap.
 
 **Axiom Review:** The Auditor agent (`agent-auditor.yml`) runs after settle. It checks compliance against axioms, heuristics, and project rules. Posts `gh pr review --request-changes` if violations are found. Read-only — never pushes code. The Auditor is mechanical (rule-checking) rather than strategic (judgment calls).
 
-### Phase 1c: Agent Fix (failure-only)
+Check run name: `Axiom Review / Axiom Review` (required status check in ruleset).
 
-**Agent Fix** (`agent-autofix.yml`) runs ONLY when at least one Phase 1a CI check failed:
-
-```yaml
-if: >-
-  !cancelled() &&
-  (needs.lint.result == 'failure' ||
-   needs.pytest.result == 'failure' ||
-   needs.typecheck.result == 'failure')
-```
-
-Agent Fix is the **fast-path fixer**: it reads CI failure logs, review comments (including Axiom Review findings), and pushes fixes directly. If it pushes, the pipeline restarts from Phase 1a.
-
-When all Phase 1a checks pass, Agent Fix is skipped — there is nothing to fix. The Merge-Prep Agent (Phase 2) handles the graduation path.
-
-**Agent Fix does NOT trigger on Axiom Review failures alone.** If the auditor crashes (infrastructure failure) but CI is green, Agent Fix does not run. This prevents confused autofix attempts when only the review agent had an issue.
-
-**Note on Axiom Review (custodiet-reviewer):** The Auditor submits `gh pr review --request-changes` for violations, blocking merge via the same `CHANGES_REQUESTED` mechanism as any other review — the Merge-Prep Agent must fix the violation or document it as unresolvable.
+**No Agent Fix in the pipeline.** CI failures are handled by the Merge-Prep Agent (Phase 2), which already triages all review feedback and fixes issues. This simplifies the pipeline and avoids duplicate fix attempts.
 
 ## Phase 2: Merge Prep (Cron-Driven)
 
@@ -306,25 +288,19 @@ Merge happens as part of Job 2 in `summary-and-merge.yml`. After environment app
 
 No separate auto-merge configuration needed — the merge is executed by the workflow job itself, not by GitHub's auto-merge feature.
 
-## Workflow Files: Changes Required
+## Workflow Files
 
-| File                          | Action              | Notes                                                                                                                                                                                                                                                                                                                                                                                                           |
-| ----------------------------- | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `code-quality.yml`            | **Split into two**  | Create `lint.yml` (Lint job) and `typecheck.yml` (Type Check job). Remove `needs: lint` dependency.                                                                                                                                                                                                                                                                                                             |
-| `agent-conceptual-review.yml` | **Rename + update** | Rename to `agent-review.yml`. Switch from commit status to `gh pr review`.                                                                                                                                                                                                                                                                                                                                      |
-| `agent-merge-prep.yml`        | **Rewrite**         | Drop `lgtm-gate` job. Remove all label operations. Add: dismiss prior approval (step 1), loop ceiling check (step 3), post `gh pr review --approve` on success (step 9), set `merge-prep-status: success` commit status on success (step 10), set `merge-prep-status: failure` on halt. Add `workflow_dispatch` trigger with `pr_number` input (already present in current impl). Add global concurrency group. |
-| `merge-prep-cron.yml`         | **Simplify**        | Change cron to `*/30 * * * *`. Add `workflow_run` trigger on Phase 1 completions. Add early exit when no open PRs. Replace label checks with `gh run list` + commit status API.                                                                                                                                                                                                                                 |
-| `summary-and-merge.yml`       | **New**             | Two-job workflow: decision brief + environment-gated merge. Triggered by merge-prep on success.                                                                                                                                                                                                                                                                                                                 |
-| `pytest.yml`                  | **No change**       | Already independent.                                                                                                                                                                                                                                                                                                                                                                                            |
-| Ruleset                       | **Update**          | Add `Pytest` to required status checks.                                                                                                                                                                                                                                                                                                                                                                         |
-| `merge-prep.agent.md`         | **Update**          | Remove commit status instructions. Add: dismiss-prior-approval step, loop ceiling logic, trigger summary-and-merge on success.                                                                                                                                                                                                                                                                                  |
-| `conceptual-review.agent.md`  | **Update**          | Replace commit status with `gh pr review`. Rename context references.                                                                                                                                                                                                                                                                                                                                           |
-
-### Workflows to delete after migration
-
-| File               | Reason                                   |
-| ------------------ | ---------------------------------------- |
-| `code-quality.yml` | Replaced by `lint.yml` + `typecheck.yml` |
+| File                    | Purpose                                                                                       |
+| ----------------------- | --------------------------------------------------------------------------------------------- |
+| `pr-pipeline.yml`       | CI orchestrator: sequential lint → typecheck → pytest. Triggers on `pull_request`.            |
+| `lint.yml`              | Ruff lint + format with autofix. Uses `AOPS_BOT_GH_TOKEN` so pushes trigger workflow restart. |
+| `typecheck.yml`         | basedpyright. Read-only gate.                                                                 |
+| `pytest.yml`            | Unit tests. Read-only gate.                                                                   |
+| `axiom-review.yml`      | Standalone axiom review with 120s settle delay. Triggers on `pull_request`.                   |
+| `agent-auditor.yml`     | Auditor agent (called by axiom-review.yml). Checks axioms, posts `gh pr review`.              |
+| `merge-prep-cron.yml`   | Dispatcher: `workflow_run` (CI + Axiom Review) + 30-min cron. Label-free qualification.       |
+| `agent-merge-prep.yml`  | Merge-prep agent: triage reviews, fix issues, approve, set status, trigger summary-and-merge. |
+| `summary-and-merge.yml` | Decision brief + environment-gated merge (disabled pending production environment setup).     |
 
 ## GitHub Ruleset
 
@@ -339,10 +315,13 @@ rules:
     parameters:
       strict_required_status_checks_policy: false
       required_status_checks:
-        - context: Lint          # lint.yml
-        - context: Type Check    # typecheck.yml
-        - context: Pytest        # pytest.yml
+        - context: "Lint / Lint"                    # pr-pipeline.yml → lint.yml
+        - context: "Type Check / Type Check"        # pr-pipeline.yml → typecheck.yml
+        - context: "Pytest / Pytest"                # pr-pipeline.yml → pytest.yml
+        - context: "Axiom Review / Axiom Review"    # axiom-review.yml → agent-auditor.yml
 ```
+
+**Note on check run names:** The compound format (`Caller / Callee`) is produced by `workflow_call`. The caller job name and callee job name must both match to produce the expected check run name. Changing either job name will break the required status check.
 
 **Note:** The `required_approving_review_count: 1` is still needed for PRs where merge-prep doesn't run (e.g., trivial changes merged directly). For the environment-gated path, merge is handled by the workflow job, not auto-merge, so the review count is not the primary gate.
 

@@ -1,7 +1,7 @@
 # AcademicOps Makefile
 # Unified build and installation entry point
 
-.PHONY: help dev build-dev install-dev uninstall-dev install-remote install-claude install-gemini install-cowork install-cli install-crontab install-hooks nextver release prerelease clean build build-docker shell
+.PHONY: help dev build-dev install-dev uninstall-dev install-remote install-claude install-gemini install-cowork patch-cowork install-cli install-crontab install-hooks nextver release prerelease clean build build-docker shell
 
 # --- Configuration ---
 
@@ -42,6 +42,7 @@ help:
 	@echo "  make build-dev      - Build extension locally (dist/)"
 	@echo "  make install-dev    - Install current dist/ into Claude and Gemini"
 	@echo "  make install-cowork - Install Cowork plugin from local dist/aops-cowork build"
+	@echo "  make patch-cowork   - Patch installed Cowork plugin with local PKB_MCP_URL"
 	@echo "  make uninstall-dev  - Restore release marketplace after local testing"
 	@echo "  make install-hooks  - Install pre-commit hooks"
 	@echo ""
@@ -115,6 +116,10 @@ install-cowork:
 	@command claude plugin marketplace add $(AOPS_ROOT) && \
 	command claude plugin install $(COWORK_PLUGIN_NAME) && \
 	echo "✓ Cowork plugin installed"
+	@$(MAKE) patch-cowork
+
+patch-cowork:
+	@./scripts/patch-cowork-mcp.sh
 
 # Restore the release marketplace after local dev testing
 uninstall-dev:

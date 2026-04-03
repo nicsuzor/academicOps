@@ -953,10 +953,10 @@ class Entry:
             if data.get("hasOutput"):
                 entry.additional_context = (entry.additional_context or "") + " (has output)"
 
-        # Parse timestamp
-        if "timestamp" in data:
+        # Parse timestamp (Claude uses "timestamp", Cowork audit uses "_audit_timestamp")
+        timestamp_str = data.get("timestamp") or data.get("_audit_timestamp")
+        if timestamp_str:
             try:
-                timestamp_str = data["timestamp"]
                 if timestamp_str.endswith("Z"):
                     timestamp_str = timestamp_str[:-1] + "+00:00"
                 dt = datetime.fromisoformat(timestamp_str)
@@ -1324,6 +1324,9 @@ class SessionProcessor:
             return self._parse_antigravity_brain(file_path)
         if file_path.suffix.lower() == ".json":
             return self._parse_gemini_json(file_path)
+        # Cowork audit.jsonl — same JSONL format but no agent/hook sidecar files
+        if file_path.name == "audit.jsonl":
+            return self._parse_jsonl_file(file_path, load_agents=False, load_hooks=False)
         return self._parse_jsonl_file(file_path, load_agents=load_agents, load_hooks=load_hooks)
 
     def parse_jsonl(

@@ -1005,9 +1005,10 @@ def find_sessions(
     claude_projects_dir: Path | None = None,
     include_gemini: bool = True,
     include_antigravity: bool = True,
+    include_cowork: bool = True,
 ) -> list[SessionInfo]:
     """
-    Find all Claude Code, Gemini, and optionally Antigravity sessions.
+    Find all Claude Code, Gemini, Cowork, and optionally Antigravity sessions.
 
     Args:
         project: Filter to specific project (partial match)
@@ -1015,6 +1016,7 @@ def find_sessions(
         claude_projects_dir: Override default ~/.claude/projects/
         include_gemini: Whether to include sessions from ~/.gemini/tmp/
         include_antigravity: Whether to include sessions from ~/.gemini/antigravity/brain/
+        include_cowork: Whether to include sessions from Claude Desktop Cowork
 
     Returns:
         List of SessionInfo, sorted by last_modified descending (newest first)
@@ -1213,6 +1215,61 @@ def find_sessions(
                             source="claude",
                         )
                     )
+
+    # 5. Find Claude Desktop Cowork sessions
+    if include_cowork:
+        cowork_base = (
+            Path.home() / "Library" / "Application Support" / "Claude" / "local-agent-mode-sessions"
+        )
+        if cowork_base.exists():
+            # Structure: <user-uuid>/<org-uuid>/local_<conv-uuid>/audit.jsonl
+            for audit_file in cowork_base.glob("*/*/local_*/audit.jsonl"):
+                # Skip the persistent agent ditto session
+                if "local_ditto_" in str(audit_file):
+                    continue
+
+                # Session ID from parent dir name: local_<uuid> -> first 8 chars of uuid
+                conv_dir = audit_file.parent
+                conv_name = conv_dir.name  # local_<uuid>
+                session_id = conv_name.replace("local_", "")[:8]
+
+                # Try to get project/title from the metadata JSON
+                org_dir = conv_dir.parent
+                metadata_json = org_dir / f"{conv_name}.json"
+                project_name = "cowork"
+                if metadata_json.exists():
+                    try:
+                        import json as _json
+
+                        meta = _json.loads(metadata_json.read_text())
+                        title = meta.get("title", "")
+                        if title:
+                            # Use title words for project name (keep it short)
+                            words = title.lower().split()[:3]
+                            project_name = "cowork-" + "-".join(w for w in words if w.isalnum())
+                    except (OSError, ValueError):
+                        pass
+
+                # Filter by project if specified
+                if project and project.lower() not in project_name.lower():
+                    continue
+
+                # Get modification time
+                mtime = datetime.fromtimestamp(audit_file.stat().st_mtime, tz=UTC)
+
+                # Filter by time if specified
+                if since and mtime < since:
+                    continue
+
+                sessions.append(
+                    SessionInfo(
+                        path=audit_file,
+                        project=project_name,
+                        session_id=session_id,
+                        last_modified=mtime,
+                        source="cowork",
+                    )
+                )
 
     # Sort by last modified, newest first
     sessions.sort(key=lambda s: s.last_modified, reverse=True)

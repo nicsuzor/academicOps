@@ -377,6 +377,12 @@ def _get_session_id(session_path: Path) -> str:
         # Antigravity brain directory
         return session_path.name[:8]
 
+    # Cowork: audit.jsonl inside local_<uuid>/ — extract ID from parent dir
+    if session_path.name == "audit.jsonl":
+        parent_name = session_path.parent.name  # local_<uuid>
+        uuid_part = parent_name.replace("local_", "")
+        return uuid_part[:8]
+
     session_id = session_path.stem
     if len(session_id) > 8:
         if session_id.startswith("session-"):
@@ -508,6 +514,24 @@ def _infer_project(
     Returns:
         Project name string
     """
+    # Handle Cowork audit.jsonl — infer project from metadata JSON
+    if session_path.name == "audit.jsonl":
+        conv_dir = session_path.parent  # local_<uuid>/
+        org_dir = conv_dir.parent
+        metadata_json = org_dir / f"{conv_dir.name}.json"
+        if metadata_json.exists():
+            try:
+                import json as _json
+
+                meta = _json.loads(metadata_json.read_text())
+                title = meta.get("title", "")
+                if title:
+                    words = title.lower().split()[:3]
+                    return "cowork-" + "-".join(w for w in words if w.isalnum())
+            except (OSError, ValueError):
+                pass
+        return "cowork"
+
     # Handle Antigravity brain directories
     if session_path.is_dir():
         # Try to extract working dir from brain content

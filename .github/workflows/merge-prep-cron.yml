@@ -17,6 +17,7 @@ on:
   workflow_run:
     workflows:
       - "PR Review Pipeline"
+      - "Axiom Review"
     types: [completed]
     branches-ignore:
       - main
@@ -101,9 +102,10 @@ jobs:
           REPO="${{ github.repository }}"
           NOW=$(date +%s)
 
-          # Get all open PRs
+          # Get all open, non-draft PRs
           PRS=$(gh pr list --repo "$REPO" --state open \
-            --json number,headRefName,headRefOid)
+            --json number,headRefName,headRefOid,isDraft \
+            --jq '[.[] | select(.isDraft | not)]')
 
           if [ "$(echo "$PRS" | jq 'length')" -eq 0 ]; then
             echo "No open PRs found"
