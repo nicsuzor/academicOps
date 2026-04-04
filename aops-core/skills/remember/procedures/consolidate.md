@@ -81,25 +81,11 @@ If the topic area now has 5+ related knowledge notes and no MOC exists, create o
 
 ## Anti-Patterns
 
-- **Fabrication**: Asserting facts not in source material
-- **Editorializing**: Adding value judgments the user hasn't made
-- **Over-abstraction**: Leaping from one source to a universal principle
-- **Under-attribution**: Synthesis without citing sources
-- **Content modification**: Changing episodic note text (only add frontmatter)
-- **Duplicate creation**: Not searching PKB first
-- **Lazy filing**: Dumping project-specific notes into generic directories
-- **Supersession hoarding**: Keeping old files with `superseded_by:` instead of deleting them
-- **Premature synthesis**: Knowledge notes from a single weak source
+Fabrication (asserting facts not in source), editorializing (adding user's value judgments), over-abstraction (single source → universal principle), under-attribution (no sources cited), content modification (changing episodic text, not just frontmatter), duplicate creation (not searching first), lazy filing (project notes in generic dirs), supersession hoarding (keeping old files instead of deleting), premature synthesis (single weak source).
 
 ## Quality Check
 
-- [ ] Every new knowledge note has `sources:` in frontmatter
-- [ ] Confidence level matches evidence strength
-- [ ] Wikilinks connect to related concepts
-- [ ] Content understandable without reading source
-- [ ] Superseded memories deleted (not left with `superseded_by:` pointers)
-- [ ] Source episodic notes marked `consolidated: YYYY-MM-DD` but content unchanged
-- [ ] Notes filed in the right directory (project-specific → project dir, not generic)
+Every knowledge note must have: `sources:` in frontmatter, appropriate confidence level, wikilinks to related concepts, content understandable without source. Superseded memories deleted. Episodic sources marked `consolidated:` but content unchanged. Notes filed in correct directory.
 
 ## Continuous Improvement
 
