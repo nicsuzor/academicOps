@@ -1218,16 +1218,9 @@ def find_sessions(
 
     # 5. Find Claude Desktop Cowork sessions
     if include_cowork:
-        import platform
-
-        _sys = platform.system()
-        if _sys == "Darwin":
-            _app_data = Path.home() / "Library" / "Application Support"
-        elif _sys == "Windows":
-            _app_data = Path.home() / "AppData" / "Roaming"
-        else:
-            _app_data = Path.home() / ".local" / "share"
-        cowork_base = _app_data / "Claude" / "local-agent-mode-sessions"
+        cowork_base = (
+            Path.home() / "Library" / "Application Support" / "Claude" / "local-agent-mode-sessions"
+        )
         if cowork_base.exists():
             # Structure: <user-uuid>/<org-uuid>/local_<conv-uuid>/audit.jsonl
             for audit_file in cowork_base.glob("*/*/local_*/audit.jsonl"):

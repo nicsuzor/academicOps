@@ -287,7 +287,7 @@ def is_custodiet_enabled() -> bool:
 def set_custodiet_block(session_id: str, reason: str) -> None:
     """Set custodiet block on a session.
 
-    This is used by external scripts (custodiet_block.py) to block
+    This is used by external scripts (compliance_block.py) to block
     session when policy violations are detected.
     """
     state = SessionState.load(session_id)

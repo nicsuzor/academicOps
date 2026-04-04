@@ -60,7 +60,7 @@ Custodiet runs periodically (every ~7 tool calls) to check for:
 When mode is `block` and custodiet outputs `BLOCK`:
 
 1. Block record saved to `$ACA_DATA/custodiet/blocks/`
-2. Session block flag set via `custodiet_block.py`
+2. Session block flag set via `compliance_block.py`
 3. All subsequent hooks check and fail until cleared
 4. User must clear the block to continue
 
