@@ -201,15 +201,15 @@ Only use BLOCK when the context explicitly says "Enforcement Mode: block".
 1. **Save block record for review** using Write tool:
    ```
    Write(
-     file_path="$ACA_DATA/custodiet/blocks/block_YYYY-MM-DD_HHMMSS.md",
+     file_path="$ACA_DATA/rbg/blocks/block_YYYY-MM-DD_HHMMSS.md",
      content="# RBG Block Record\n\n**Timestamp**: [ISO timestamp]\n**Session**: $CLAUDE_SESSION_ID\n\n## Decision\n\n[Your BLOCK output: Issue, Principle, Correction]\n\n## Input Context\n\n[Paste the full content you read from the audit temp file]"
    )
    ```
-   Replace YYYY-MM-DD_HHMMSS with actual timestamp. $ACA_DATA is `/home/nic/writing/data`.
+   Replace YYYY-MM-DD_HHMMSS with actual timestamp.
 
 2. Use Bash to set the block flag:
    ```bash
-   python3 "$AOPS/aops-core/scripts/custodiet_block.py" "$CLAUDE_SESSION_ID" "Issue: [your 1 sentence description]"
+   python3 "$AOPS/aops-core/scripts/rbg_block.py" "$CLAUDE_SESSION_ID" "Issue: [your 1 sentence description]"
    ```
 3. Output the BLOCK message above
 4. The session will HALT - all hooks will fail until the user clears the block
