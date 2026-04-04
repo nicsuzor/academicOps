@@ -128,7 +128,7 @@ PR opened → lint + typecheck + tests → agent review → merge prep → human
 
 ## Installation
 
-Distribution repository: https://github.com/nicsuzor/aops-dist
+Distribution repository: https://github.com/nicsuzor/aops
 
 ```bash
 # Set your knowledge base directory
@@ -138,17 +138,15 @@ export ACA_DATA="$HOME/brain"
 **Claude Code**:
 
 ```bash
-command claude plugin marketplace add nicsuzor/aops-dist
+command claude plugin marketplace add nicsuzor/aops
 ```
 
 **Gemini CLI**:
 
 ```bash
 (command gemini extensions uninstall aops-core || echo not installed) && \
-  command gemini extensions install git@github.com:nicsuzor/aops-dist.git --consent --auto-update --pre-release
+  command gemini extensions install git@github.com:nicsuzor/aops.git --consent --auto-update --pre-release
 ```
-
-Domain tools install separately — see [aops-dist](https://github.com/nicsuzor/aops-dist) for details.
 
 ## Development setup
 
