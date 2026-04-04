@@ -255,20 +255,6 @@ $ACA_DATA contains both semantic and episodic memory. Semantic memory (synthesiz
 
 **Derivation**: The original "semantic only" rule prevented legitimate episodic content (meeting notes, daily summaries) from living alongside the knowledge it informs. Cognitive science shows that episodic→semantic transformation requires active retrieval and reprocessing, not just storage. Separating the two creates a capture gap where valuable temporal context is lost before it can be synthesized.
 
-## Human Tasks Are Not Agent Tasks (P#48)
-
-Tasks requiring external communication (emails to non-users), unknown file locations, or human judgment about timing/wording are HUMAN tasks. Route them back to the user with a clear handoff, don't attempt execution.
-
-**Corollaries**:
-
-- "Send email to [external party]" → HALT, ask user to send or provide exact content
-- "Find [file with unknown location]" → HALT, ask user for path
-- "Schedule meeting" → HALT unless all details are explicit
-
-**Derivation**: Agent attempts at human tasks waste cycles and risk incorrect actions. Clear delegation boundaries prevent fishing expeditions.
-
----
-
 ## Agents Execute Workflows (P#47)
 
 Agents are autonomous entities with knowledge who execute workflows. Agents don't "own" or "contain" workflows.

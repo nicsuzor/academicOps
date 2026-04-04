@@ -22,7 +22,7 @@ Axioms are organized into tiers, each enforced by a distinct agent personality. 
 **Agent**: Enforcer (`aops-core/agents/enforcer.md`)
 **Scope**: All work, all contexts, all platforms
 
-Contains: P#3 (Don't Make Shit Up), P#5 (Do One Thing), P#6 (Data Boundaries), P#9 (Fail-Fast Agents), P#26 (Verify First), P#27 (No Excuses), P#30 (Nothing Is Someone Else's Responsibility), P#31 (Acceptance Criteria Own Success), P#48 (Human Tasks), P#50 (Explicit Approval), P#99 (Delegated Authority Only).
+Contains: P#3 (Don't Make Shit Up), P#5 (Do One Thing), P#6 (Data Boundaries), P#9 (Fail-Fast Agents), P#26 (Verify First), P#27 (No Excuses), P#30 (Nothing Is Someone Else's Responsibility), P#31 (Acceptance Criteria Own Success), P#50 (Explicit Approval), P#99 (Delegated Authority Only).
 
 ### Tier 2: Contextual Rules (activated by project context)
 

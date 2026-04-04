@@ -90,6 +90,7 @@ Every knowledge note must have: `sources:` in frontmatter, appropriate confidenc
 ## Continuous Improvement
 
 When /qa review of consolidation PRs reveals recurring quality issues, the /sleep cycle creates tasks to update this procedure and [[quality-exemplars]]. See the Evaluation Feedback Loop in the sleep skill's Phase 5c for details.
+
 - [ ] Every new knowledge note has `sources:` in frontmatter
 - [ ] Confidence level matches evidence strength
 - [ ] Content understandable without reading source
