@@ -81,10 +81,6 @@ Only user-defined acceptance criteria determine whether work is complete. Agents
 
 - **The Task Graph is the QA Guarantee**: The strict requirements defined in a PKB task node are the ultimate authority. An agent's execution method is irrelevant; the work is only ratified as "done" when these specific criteria are met and verified by the Filter layer.
 
-## Human Tasks Are Not Agent Tasks (P#48)
-
-Tasks requiring external communication, unknown file locations, or human judgment about timing/wording are HUMAN tasks. Route them back to the user.
-
 ## Explicit Approval For Costly Operations (P#50)
 
 Explicit user approval is REQUIRED before potentially expensive operations (batch API calls, bulk requests). Present the plan (model, request count, estimated cost) and get explicit "go ahead." A single verification request (1-3 calls) does NOT require approval.
