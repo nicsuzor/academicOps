@@ -1422,7 +1422,6 @@ _GHA_WORKFLOW_AGENTS: dict[str, dict[str, str | bool | int]] = {
         "display_name": "Enforcer Review",
         "description": "Universal standards enforcer — axiom compliance reviewer",
         "can_push": True,
-        "model": "claude-sonnet-4-6",
         "tools": "Bash,Edit,Read,Write",
         "trailer": "Enforcer-By: agent",
         "timeout": 30,
@@ -1431,7 +1430,6 @@ _GHA_WORKFLOW_AGENTS: dict[str, dict[str, str | bool | int]] = {
         "display_name": "Compliance Review",
         "description": "Workflow enforcement — catches scope explosion and plan-less execution",
         "can_push": False,
-        "model": "claude-haiku-4-5",
         "tools": "Bash(gh:*),Read",
         "trailer": "Audit-By: agent",
         "timeout": 15,
@@ -1440,7 +1438,6 @@ _GHA_WORKFLOW_AGENTS: dict[str, dict[str, str | bool | int]] = {
         "display_name": "QA Verification",
         "description": "Independent end-to-end verification before completion",
         "can_push": False,
-        "model": "claude-opus-4-6",
         "tools": "Bash,Read",
         "trailer": "QA-By: agent",
         "timeout": 45,
@@ -1559,7 +1556,7 @@ jobs:
             If you push fixes, use commit trailer: `__TRAILER__`
 
             PR ref: ${{ inputs.ref }}
-          claude_args: '--model __MODEL__ --allowed-tools "__TOOLS__"'
+          claude_args: '--allowed-tools "__TOOLS__"'
 """
 
 
@@ -1595,7 +1592,6 @@ def generate_reusable_workflows(aops_root: Path, dist_root: Path) -> None:
         workflow = workflow.replace("__JOB_ID__", job_id)
         workflow = workflow.replace("__TIMEOUT__", str(config["timeout"]))
         workflow = workflow.replace("__CONTENTS_PERM__", contents_perm)
-        workflow = workflow.replace("__MODEL__", str(config["model"]))
         workflow = workflow.replace("__TOOLS__", str(config["tools"]))
         workflow = workflow.replace("__TRAILER__", str(config["trailer"]))
 
