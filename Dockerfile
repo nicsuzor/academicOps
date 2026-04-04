@@ -67,11 +67,10 @@ RUN uv tool install ruff
 # pkb binary: downloaded from nicsuzor/mem releases.
 #
 # To test main before a stable release: `make prerelease && make build`
-ARG AOPS_REPO_URL=https://github.com/nicsuzor/academicOps.git
+ARG AOPS_REPO_URL=https://github.com/nicsuzor/aops.git
 
 # Install Claude plugin from GitHub marketplace (HTTPS — no SSH in containers).
-# --sparse limits checkout to plugin directories only (faster, avoids full repo clone).
-RUN claude plugin marketplace add ${AOPS_REPO_URL} --sparse .claude-plugin dist/aops-claude \
+RUN claude plugin marketplace add ${AOPS_REPO_URL} \
     && claude plugin marketplace update academicOps \
     && claude plugin install aops-core@academicOps
 

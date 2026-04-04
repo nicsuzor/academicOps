@@ -336,12 +336,11 @@ reference-graph.csv
 # Plugin-specific MCP configs (generated from templates)
 aops-core/.mcp.json
 
-# Distribution artifacts - built by CI
-# Claude plugin dist is tracked (served directly from this repo)
-# Cowork plugin dist is also tracked (stripped-down build for Cowork desktop)
-dist/*
-!dist/aops-claude/
-!dist/aops-cowork/
+# Distribution artifacts - built by CI, pushed to nicsuzor/aops
+dist/
+
+# Generated marketplace.json (produced by build.py from templates/marketplace.json)
+.claude-plugin/marketplace.json
 
 streamlit_log.txt
 data/

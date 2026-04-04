@@ -1268,6 +1268,9 @@ def main():
     # Build Antigravity (global config if needed)
     build_antigravity(aops_root, dist_root, core_mcps_gemini)
 
+    # Generate marketplace.json for local dev and dist repo
+    generate_marketplace(aops_root, dist_root, version)
+
     package_artifacts(aops_root, dist_root, version, target_platform=args.target_platform)
 
     # Create git tags for release (only for generic builds, not platform-specific)
@@ -1275,6 +1278,59 @@ def main():
         create_git_tags(aops_root, version)
 
     print("\nBuild complete. Dist artifacts in dist/")
+
+
+def generate_marketplace(aops_root: Path, dist_root: Path, version: str):
+    """Generate marketplace.json for both local dev and dist repo consumption.
+
+    Reads the template from templates/marketplace.json and produces two outputs:
+    1. .claude-plugin/marketplace.json — for local dev (paths: ./dist/aops-claude)
+    2. dist/marketplace.json — for the dist repo (paths: ./aops-claude)
+    """
+    template_path = aops_root / "templates" / "marketplace.json"
+    if not template_path.exists():
+        print("  ⚠ templates/marketplace.json not found, skipping marketplace generation")
+        return
+
+    with open(template_path) as f:
+        data = json.load(f)
+
+    # Get cowork version (may differ from core version)
+    cowork_plugin_json = dist_root / "aops-cowork" / ".claude-plugin" / "plugin.json"
+    cowork_version = version
+    if cowork_plugin_json.exists():
+        with open(cowork_plugin_json) as f:
+            cowork_version = json.load(f).get("version", version)
+
+    # Inject versions
+    for plugin in data.get("plugins", []):
+        if plugin.get("name") == "aops-core":
+            plugin["version"] = version
+        elif plugin.get("name") == "aops-cowork":
+            plugin["version"] = cowork_version
+
+    # 1. Dist repo version (sources point to ./aops-claude, ./aops-cowork)
+    dist_marketplace_dir = dist_root / ".claude-plugin"
+    dist_marketplace_dir.mkdir(parents=True, exist_ok=True)
+    dist_marketplace = dist_marketplace_dir / "marketplace.json"
+    with open(dist_marketplace, "w") as f:
+        json.dump(data, f, indent=2)
+        f.write("\n")
+    print(f"  ✓ Generated {dist_marketplace} (for dist repo)")
+
+    # 2. Local dev version (sources point to ./dist/aops-claude, ./dist/aops-cowork)
+    local_data = json.loads(json.dumps(data))  # deep copy
+    for plugin in local_data.get("plugins", []):
+        source = plugin.get("source", "")
+        if source.startswith("./"):
+            plugin["source"] = f"./dist/{source[2:]}"
+    local_marketplace_dir = aops_root / ".claude-plugin"
+    local_marketplace_dir.mkdir(parents=True, exist_ok=True)
+    local_marketplace = local_marketplace_dir / "marketplace.json"
+    with open(local_marketplace, "w") as f:
+        json.dump(local_data, f, indent=2)
+        f.write("\n")
+    print(f"  ✓ Generated {local_marketplace} (for local dev)")
 
 
 def package_artifacts(
