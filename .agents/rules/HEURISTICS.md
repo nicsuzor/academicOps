@@ -417,7 +417,7 @@ description: Working hypotheses validated by evidence.
 - LLM generation parameters (temperature, max_tokens, top_p) → methodological choice, needs researcher approval
 - Building infrastructure to RUN an evaluation → agent work, proceed
 
-**Derivation**: Research methodology requires disciplinary expertise and ethical oversight that agents cannot provide. P#48 (Human Tasks) establishes that decisions requiring human judgment route back to users. Methodology is inherently such a decision. P#8 (Fail-Fast) requires halting on uncertainty rather than inventing fallbacks - this applies to methodological uncertainty too.
+**Derivation**: Research methodology requires disciplinary expertise and ethical oversight that agents cannot provide. P#99 (Delegated Authority Only) establishes that decisions outside delegated authority must route back to the user. Methodology is inherently such a decision. P#8 (Fail-Fast) requires halting on uncertainty rather than inventing fallbacks - this applies to methodological uncertainty too.
 
 ---
 
