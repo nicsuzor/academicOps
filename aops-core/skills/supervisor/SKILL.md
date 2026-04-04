@@ -109,7 +109,7 @@ merges via GitHub UI or auto-merge for clean PRs.
 
 **PR review pipeline** (`pr-review-pipeline.yml`) has three jobs:
 
-1. **custodiet-and-qa** — scope/compliance + acceptance checks. Runs first on
+1. **rbg-and-marsha** — scope/compliance + acceptance checks. Runs first on
    PR open/synchronize, giving bot reviewers (Gemini, Copilot) time to post.
 2. **claude-review** — bot comment triage. Runs after custodiet-and-qa (~3 min
    delay). Triages bot reviewer comments as genuine bug / valid improvement /

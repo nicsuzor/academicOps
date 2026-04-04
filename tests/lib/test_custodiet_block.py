@@ -1,6 +1,6 @@
-"""Tests for aops-core/scripts/custodiet_block.py CLI script.
+"""Tests for aops-core/scripts/compliance_block.py CLI script.
 
-Tests the CLI wrapper that sets custodiet block flags via session_state.
+Tests the CLI wrapper that sets compliance block flags via session_state.
 """
 
 from __future__ import annotations
@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 # Get the script path
-SCRIPT_PATH = Path(__file__).parents[2] / "aops-core" / "scripts" / "custodiet_block.py"
+SCRIPT_PATH = Path(__file__).parents[2] / "aops-core" / "scripts" / "compliance_block.py"
 
 
 class TestCustodietBlockCLI:

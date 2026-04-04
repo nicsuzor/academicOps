@@ -2,7 +2,7 @@
 name: strategic-review
 type: skill
 category: instruction
-description: Supervisor-critic loop for multi-level strategic review. Commissions the enforcer agent to apply the 10 cognitive moves, scores output across 7 dimensions, coaches and iterates until quality threshold is met.
+description: Multi-agent strategic review of documents, plans, and proposals. Commissions review agents and iterates until the review meets quality standards.
 triggers:
   - "strategic review"
   - "pre-hoc plan evaluation"
@@ -17,15 +17,13 @@ domain:
   - framework
   - quality-assurance
 allowed-tools: Task,Read
-version: 1.0.0
+version: 2.0.0
 permalink: skills-strategic-review
 ---
 
-# /strategic-review — Strategic Review Supervisor Loop
+# /strategic-review — Strategic Review
 
-Supervisor-critic loop for multi-level strategic review of documents, plans, and proposals. Produces reviews that operate at the instance, class, and systems level simultaneously — the cognitive signature of expert-level review.
-
-The enforcer agent carries the 10 cognitive moves as instinctive knowledge. This skill commissions the enforcer, evaluates its output against 7 dimensions, coaches if needed, and iterates until the review meets the quality threshold.
+Multi-agent strategic review of documents, plans, and proposals. You are the supervisor — you commission review agents, evaluate their output, coach if needed, and iterate until the review meets quality standards.
 
 ## When to invoke
 
@@ -37,106 +35,44 @@ Use this when a document needs strategic review, not proofreading:
 - Design decisions and specs
 - Any time the question "is this actually good, or just coherent?" matters
 
-## What to do
+## Available agents
 
-You are the SUPERVISOR. Commission the enforcer, evaluate its output, coach if needed, iterate until the review is of sufficient quality.
+| Agent      | What they do                                   | When to use                                      |
+| ---------- | ---------------------------------------------- | ------------------------------------------------ |
+| **pauli**  | Strategic critique via 10 cognitive moves      | Primary reviewer — always commission first       |
+| **rbg**    | Axiom compliance and workflow discipline check | When the review must verify framework compliance |
+| **marsha** | Independent end-to-end verification            | When work products need QA before shipping       |
 
-### Phase 1: Understand the document
+Commission agents via `Agent(subagent_type="aops-core:<name>", ...)`. Choose the model appropriate to the task (opus for depth, haiku for mechanical checks).
 
-Read the document. Identify:
+## Quality target
 
-- What type of document is this (plan, grant, PR, proposal)?
-- What is it trying to accomplish?
-- What is the claimed contribution or benefit?
-- What context does the reviewer need?
+A strategic review is not a proofreading session with better vocabulary. It must:
 
-### Phase 2: Commission the enforcer
+1. **Operate at multiple abstraction levels** — address the specific instance AND the class of problem AND the system it's embedded in.
+2. **Question the question** — not just answer what's asked, but assess whether the right question is being asked.
+3. **Find the negative space** — identify what's MISSING, not just what's wrong.
+4. **Calibrate severity** — distinguish fatal problems (rethink the approach) from fixable ones (revise and improve).
+5. **Be grounded** — reference existing knowledge, not just internal consistency.
+6. **Be actionable** — specify what to change, not just what's wrong.
 
-Dispatch the enforcer agent to produce a strategic review:
+## Your job as supervisor
 
-```
-Agent(subagent_type="aops-core:enforcer", model="opus", prompt="
-## Document to Review
+1. **Understand the document.** What type is it? What is it trying to accomplish? What context does the reviewer need?
 
-[Full document text]
+2. **Commission pauli.** Provide the full document and context. Let pauli work.
 
-## Context
-- Document type: [plan/grant/PR/proposal/other]
-- What it's trying to accomplish: [1-2 sentences]
-- Any relevant background: [domain, constraints, prior work]
+3. **Evaluate the output.** Does it meet the quality target above? If the review stayed at the surface level, didn't question the question, or missed the negative space — coach pauli and iterate. Don't accept competent proofreading as strategic review.
 
-Apply the 10 cognitive moves and produce a structured strategic review using the Strategic Review Output Format.")
-```
+4. **Coach if needed.** Be specific about what's missing:
+   - Surface-level → "What CLASS OF PROBLEM does this represent? What SYSTEM is it embedded in?"
+   - Didn't question the question → "Is the question itself well-formed? Would an expert reframe it?"
+   - Missed negative space → "What should be here that isn't? What feedback loop is absent?"
 
-### Phase 3: Score the enforcer's output
+5. **Use rbg and marsha as the task requires.** Not every review needs all three agents. Trust your judgment about what the specific document needs.
 
-Evaluate across 7 dimensions. Score each: Pass / Partial / Fail.
-
-| Dimension                      | What to look for                                                                  |
-| ------------------------------ | --------------------------------------------------------------------------------- |
-| **1. Multi-level abstraction** | Does it address instance AND class AND system? Or only surface?                   |
-| **2. Meta-reasoning**          | Does it question whether the right question is being asked?                       |
-| **3. Negative space**          | Does it identify what's MISSING, not just what's wrong?                           |
-| **4. Fatal vs. fixable**       | Does it calibrate severity? Or treat everything as equal weight?                  |
-| **5. Causal chain**            | Does it trace inputs→process→outputs→impact? Or evaluate components in isolation? |
-| **6. Knowledge grounding**     | Does it reference what already exists / is already known?                         |
-| **7. Actionable guidance**     | Does it specify what to change, not just what's wrong?                            |
-
-**Pass threshold**: At least 5/7 Pass, AND dimensions 1, 2, 3 must all pass (these are the highest-leverage moves).
-
-### Phase 4: Coach and retry if insufficient
-
-If the review doesn't pass, identify which dimensions failed and generate targeted coaching:
-
-For **dimension 1 failure** (stayed at surface level):
-
-> "You reviewed the specific [plan/proposal]. Now: what CLASS OF PROBLEM does this represent? What is this an instance of? Step up: what SYSTEM is this embedded in, and what does the system need that this doesn't provide?"
-
-For **dimension 2 failure** (answered the question rather than questioning it):
-
-> "You engaged with the question as posed. Now: is the question itself well-formed? Is the right problem being diagnosed? Would an expert reviewer answer this question, or reframe it first?"
-
-For **dimension 3 failure** (reviewed what's present, missed what's absent):
-
-> "You reviewed what's in the document. Now: what should be here that isn't? What process, mechanism, check, or feedback loop is absent? The most important critique is often about what's NOT there."
-
-Re-dispatch enforcer with: original document + coaching instructions. Maximum 3 iterations.
-
-### Phase 5: Produce final output
-
-```
-## Strategic Review
-
-[Enforcer's final review — verbatim, not paraphrased]
-
----
-
-## Supervisor Observation Log
-
-**Document reviewed**: [name]
-**Iterations**: [n of 3 max]
-
-**Initial quality** (after iteration 1):
-- Multi-level abstraction: [Pass/Partial/Fail]
-- Meta-reasoning: [Pass/Partial/Fail]
-- Negative space: [Pass/Partial/Fail]
-- Fatal vs. fixable: [Pass/Partial/Fail]
-- Causal chain: [Pass/Partial/Fail]
-- Knowledge grounding: [Pass/Partial/Fail]
-- Actionable guidance: [Pass/Partial/Fail]
-
-**Coaching delivered** (if applicable):
-[Exact coaching instructions provided]
-
-**Final quality**:
-[Dimension scores after final iteration]
-
-**Honest assessment**:
-[What did the loop produce? Where does it fall short? What would a human expert catch that this didn't?]
-```
+6. **Produce the final output.** Include the review itself, your observation log (iterations, coaching, quality assessment), and an honest assessment of where the review falls short.
 
 ## Design rationale
 
 The loop exists because one-shot prompting reliably produces competent-but-not-genius reviews: internally consistent, surface-level, answering the question as posed. The supervisor's job is to force elevation — from instance to class, from artifact to process, from "is this right?" to "is this the right question?".
-
-The pass threshold is intentionally high on dimensions 1-3. A review that doesn't operate at multiple abstraction levels, doesn't question the question, and doesn't identify negative space is not a strategic review — it's a proofreading session with better vocabulary.
