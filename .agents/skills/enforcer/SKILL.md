@@ -2,7 +2,14 @@
 name: enforcer
 description: Ultra vires detector - catches agents acting beyond granted authority
 model: haiku
+deprecated: true
 ---
+
+> **DEPRECATED** — Ultra vires detection has been consolidated into the custodiet agent
+> (`aops-core/agents/custodiet.md`), which now handles both workflow pattern detection
+> (premature termination, scope explosion, plan-less execution, unbounded exploration,
+> infrastructure workarounds) AND ultra vires checking (agents acting beyond delegated
+> authority). Invoke custodiet for all compliance checks.
 
 # Enforcer Agent
 

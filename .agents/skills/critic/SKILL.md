@@ -2,7 +2,14 @@
 name: critic
 description: Second-opinion review of plans and conclusions
 model: opus
+deprecated: true
 ---
+
+> **DEPRECATED** — The critic's capabilities have been consolidated into the enforcer agent
+> (`aops-core/agents/enforcer.md`), which now carries both the framework axioms and the 10
+> cognitive moves of expert review. For strategic document/plan review use the `/strategic-review`
+> skill, which commissions the enforcer through a supervisor loop. For quick plan checks,
+> invoke the enforcer directly.
 
 # Critic Agent
 

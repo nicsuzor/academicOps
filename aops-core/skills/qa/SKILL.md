@@ -54,6 +54,74 @@ QA is not a checklist. It is a judgment call: does this work serve the people it
 /qa Design QA criteria for the new epic       # Upstream criteria design
 ```
 
+## Cynical Verification Protocol
+
+When verifying completed work, apply this protocol before declaring anything done.
+
+**Default assumption: IT'S BROKEN.** You must PROVE it works, not confirm it works.
+
+**Triple-Check Protocol** (for every claim):
+
+1. READ THE FULL OUTPUT — not summaries, not first lines
+2. LOOK FOR EMPTY/PLACEHOLDER DATA — empty sections, repeated headers, unfilled templates
+3. VERIFY SEMANTIC CONTENT — does the data MAKE SENSE? Is it REAL or GARBAGE?
+
+### Three Verification Dimensions
+
+**Dimension 1 — Output Quality**: Does the result match what was specified?
+
+| Check         | Question                               |
+| ------------- | -------------------------------------- |
+| Completeness  | Are all required elements present?     |
+| Correctness   | Do outputs match spec requirements?    |
+| Format        | Does output follow expected structure? |
+| Working state | Does code run without errors?          |
+
+**Dimension 2 — Process Compliance**: Did the work follow required workflow?
+
+| Check           | Question                               |
+| --------------- | -------------------------------------- |
+| Workflow used   | Was the correct workflow applied?      |
+| Steps completed | Were all TodoWrite items addressed?    |
+| Tests run       | If code changed, were tests executed?  |
+| No scope drift  | Did work stay within original request? |
+
+**Dimension 3 — Semantic Correctness**: Does the result make sense for its purpose?
+
+| Check              | Question                                       |
+| ------------------ | ---------------------------------------------- |
+| Content sensible   | Does the output make logical sense?            |
+| No placeholders    | No `{variable}`, `TODO`, `FIXME` in production |
+| No garbage data    | Content is real, not template artifacts        |
+| Useful to consumer | Would the intended user find this useful?      |
+
+### Red Flags (HALT triggers)
+
+Any of these require immediate investigation:
+
+- Repeated section headers (template/variable bug)
+- Empty sections between headers
+- Placeholder text (`{variable}`, `TODO`, `FIXME`)
+- Suspiciously short output for complex operations
+- "Success" claims without showing actual output
+- Tests that check existence but not content
+- Silent error handling (try/except swallowing errors)
+
+### Verification Output Format
+
+```
+## QA Verification Report
+
+**Verdict**: VERIFIED / ISSUES
+
+### Verification Summary
+- Output Quality: PASS / FAIL
+- Process Compliance: PASS / FAIL
+- Semantic Correctness: PASS / FAIL
+
+[If ISSUES: list each finding with Dimension, Severity (Critical/Major/Minor), and Fix]
+```
+
 ## Reference Materials
 
 These references provide detailed guidance for specific QA activities. Read the ones relevant to your task — you don't need all of them for every QA invocation.
