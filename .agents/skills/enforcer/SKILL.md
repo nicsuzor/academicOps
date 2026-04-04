@@ -119,7 +119,7 @@ Only use BLOCK when the context explicitly says "Enforcement Mode: block".
 
 2. Use Bash to set the custodiet block flag:
    ```bash
-   python3 "$AOPS/aops-core/scripts/custodiet_block.py" "$CLAUDE_SESSION_ID" "Issue: [your 1 sentence description]"
+   python3 "$AOPS/aops-core/scripts/rbg_block.py" "$CLAUDE_SESSION_ID" "Issue: [your 1 sentence description]"
    ```
 3. Output the BLOCK message above
 4. The session will HALT - all hooks will fail until the user clears the block

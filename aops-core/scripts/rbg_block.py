@@ -1,11 +1,11 @@
 #!/usr/bin/env -S uv run python
-"""CLI wrapper to set custodiet block flag.
+"""CLI wrapper to set rbg block flag.
 
 Usage:
-    custodiet_block.py <session_id> <reason>
+    rbg_block.py <session_id> <reason>
 
 Example:
-    custodiet_block.py abc123 "Agent modified setup.sh without approval - violates P#5"
+    rbg_block.py abc123 "Agent modified setup.sh without approval - violates P#5"
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ from lib.session_state import is_custodiet_enabled, set_custodiet_block
 
 def main() -> int:
     if len(sys.argv) < 3:
-        print("Usage: custodiet_block.py <session_id> <reason>", file=sys.stderr)
+        print("Usage: rbg_block.py <session_id> <reason>", file=sys.stderr)
         return 1
 
     session_id = sys.argv[1]

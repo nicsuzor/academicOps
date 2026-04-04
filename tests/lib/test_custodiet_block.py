@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 # Get the script path
-SCRIPT_PATH = Path(__file__).parents[2] / "aops-core" / "scripts" / "custodiet_block.py"
+SCRIPT_PATH = Path(__file__).parents[2] / "aops-core" / "scripts" / "rbg_block.py"
 
 
 class TestCustodietBlockCLI:
