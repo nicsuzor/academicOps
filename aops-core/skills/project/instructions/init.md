@@ -510,7 +510,11 @@ dvc remote add -d storage <remote-path>  # configure with user
 Add `data/raw/` to DVC tracking. Ensure `.dvc/` is committed but
 `data/raw/` is in `.gitignore`.
 
-## Step 6: PKB integration
+## Step 6: Context map
+
+Create `.agents/context-map.json` by following the [[context-map-audit]] workflow. This makes the repo's documentation discoverable by any agent. At scaffolding time, the map will typically contain entries for README.md, `.agents/CORE.md`, `docs/METHODOLOGY.md`, and any other documentation created in earlier steps.
+
+## Step 7: PKB integration
 
 Create a project node in the personal knowledge base:
 
@@ -524,7 +528,7 @@ mcp__pkb__create_task(
 )
 ```
 
-## Step 7: Git, pre-commit, and registration
+## Step 8: Git, pre-commit, and registration
 
 ```bash
 uv sync                           # install Python dependencies
@@ -544,7 +548,7 @@ Register with polecat by adding to `~/.polecat/polecat.yaml`:
 
 Remind the user this is machine-specific — repeat on other machines.
 
-## Step 8: Summary
+## Step 9: Summary
 
 Print a clear summary of what was created:
 
