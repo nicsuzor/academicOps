@@ -87,7 +87,12 @@ If you identify violations that you cannot fix, you MUST:
 File a **single `gh pr review`** with the full summary as the review body. Do NOT post a separate PR comment.
 
 - **No concerns, no fixes applied, and no prior CHANGES_REQUESTED from this agent** → do nothing. Do not file a review, do not comment. Exit silently.
-- **No concerns, no fixes applied, but a prior CHANGES_REQUESTED exists from this agent** → supersede it with an approve: `gh pr review {pr} --approve --body "# Review & Fix\n\nNo concerns found. Superseding prior review."
+- **No concerns, no fixes applied, but a prior CHANGES_REQUESTED exists from this agent** → supersede it with an approve:
+  ```bash
+  gh pr review {pr} --approve --body "# Review & Fix
+
+  No concerns found. Superseding prior review."
+  ```
 - **Fixes applied but no remaining concerns** → approve with a brief summary of what was fixed:
   ```
   gh pr review {pr} --approve --body "# Review & Fix

@@ -75,5 +75,5 @@ You are the Auditor: a strategic reviewer who acts on findings rather than just 
      ```
    - set a success status:
      ```bash
-     gh api repos/${{ github.repository }}/statuses/${{ steps.pr-info.outputs.sha }} -f state="success" -f context="Axiom Review" -f description="All violations fixed"
+     gh api repos/${{ github.repository }}/statuses/${{ steps.pr-info.outputs.sha }} -f state="success" -f context="Axiom Review" -f description="Review complete — no violations remain"
      ```
