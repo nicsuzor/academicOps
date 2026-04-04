@@ -1243,6 +1243,9 @@ def main():
     if not dist_root.exists():
         dist_root.mkdir()
 
+    # Generate GHA agent prompts from canonical sources
+    generate_gha_agents(aops_root, dist_root)
+
     # Build components (Gemini)
     core_mcps_gemini = build_aops_core(aops_root, dist_root, aca_data_path, "gemini", version)
 
@@ -1278,6 +1281,135 @@ def main():
         create_git_tags(aops_root, version)
 
     print("\nBuild complete. Dist artifacts in dist/")
+
+
+_GHA_OPS_SECTION = """\
+## GHA Operational Rules
+
+- **Credential Isolation (P#51)**: Use `GH_TOKEN` from environment. Never use personal credentials or `gh auth login`.
+- **One review only**: File a single `gh pr review` — do not post separate comments. Put everything in the review body.
+- **Be specific**: Reference file paths, line numbers, and axiom numbers (e.g. `utils.py:45 — P#8 violation`).
+- **Depth over breadth**: One well-analysed finding beats seven surface nits.
+- **Conservative fixes**: If a fix might change intended behaviour, comment instead.
+- **No manual lint/style fixes**: Automated tooling handles that; focus on substance.\
+"""
+
+_GHA_TRAILER_MAP: dict[str, tuple[str, str]] = {
+    "enforcer": ("Review-By", "aops-enforcer"),
+    "custodiet": ("Audit-By", "aops-custodiet"),
+    "qa": ("QA-By", "aops-qa"),
+}
+
+
+def _parse_agent_frontmatter(text: str) -> tuple[dict, str]:
+    """Parse YAML frontmatter delimited by '---' lines.
+
+    Returns (frontmatter_dict, body_text).
+    Only parses simple scalar key: value lines (not lists or nested).
+    """
+    if not text.startswith("---\n"):
+        return {}, text
+    end = text.find("\n---\n", 4)
+    if end == -1:
+        return {}, text
+    fm_text = text[4:end]
+    body = text[end + 5 :]  # skip "\n---\n"
+
+    frontmatter: dict = {}
+    for line in fm_text.splitlines():
+        if ": " in line and not line.startswith(" ") and not line.startswith("-"):
+            key, _, val = line.partition(": ")
+            frontmatter[key.strip()] = val.strip()
+
+    return frontmatter, body
+
+
+def _strip_agent_body_h1(body: str) -> str:
+    """Strip the leading '# Heading' line from an agent body, if present."""
+    lines = body.lstrip("\n").splitlines(keepends=True)
+    if lines and lines[0].startswith("# "):
+        remaining = lines[1:]
+        if remaining and remaining[0] == "\n":
+            remaining = remaining[1:]
+        return "".join(remaining)
+    return body.lstrip("\n")
+
+
+def generate_gha_agents(aops_root: Path, dist_root: Path) -> None:
+    """Generate GHA agent prompts from canonical aops-core/agents/ sources.
+
+    Reads enforcer.md, custodiet.md, and qa.md — the review agents —
+    transforms them for GitHub Actions context (no plugin, axioms inlined),
+    and writes to dist/gha-agents/.
+
+    dev-standards.md and framework-ops.md are Claude Code-only subagents
+    and are intentionally excluded.
+    """
+    print("\nGenerating GHA agent prompts...")
+    agents_src = aops_root / "aops-core" / "agents"
+    axioms_path = aops_root / "aops-core" / "AXIOMS.md"
+    gha_out = dist_root / "gha-agents"
+    gha_out.mkdir(parents=True, exist_ok=True)
+
+    if not axioms_path.exists():
+        print(f"  ✗ {axioms_path} not found — skipping GHA agent generation")
+        return
+
+    _, axioms_body = _parse_agent_frontmatter(axioms_path.read_text())
+    axioms_body = axioms_body.strip()
+
+    # Review agents only — dev-standards and framework-ops are CC-only subagents
+    review_agents = ["enforcer", "custodiet", "qa"]
+
+    for agent_name in review_agents:
+        src_path = agents_src / f"{agent_name}.md"
+        if not src_path.exists():
+            print(f"  ⚠ {src_path} not found, skipping")
+            continue
+
+        frontmatter, body = _parse_agent_frontmatter(src_path.read_text())
+        description = frontmatter.get("description", agent_name)
+
+        # Strip the canonical "# {Name} Agent" heading — replaced by
+        # the description-derived identity header.
+        body_content = _strip_agent_body_h1(body).strip()
+
+        trailer_key, trailer_value = _GHA_TRAILER_MAP.get(
+            agent_name, ("Review-By", f"aops-{agent_name}")
+        )
+
+        sections = [
+            f"# {description}",
+            "",
+            body_content,
+            "",
+            "---",
+            "",
+            _GHA_OPS_SECTION,
+            "",
+            "When pushing fixes, commit with the required trailer:",
+            "",
+            "```bash",
+            "git add -A",
+            f'git commit -m "fix: address review findings\\n\\n{trailer_key}: {trailer_value}"',
+            "git push",
+            "```",
+            "",
+            "---",
+            "",
+            "## Framework Axioms",
+            "",
+            "<!-- Source: aops-core/AXIOMS.md — regenerate via `scripts/build.py` if axioms change -->",
+            "",
+            "The following principles are always active, regardless of domain context.",
+            "",
+            axioms_body,
+            "",
+        ]
+
+        out_path = gha_out / f"{agent_name}.agent.md"
+        out_path.write_text("\n".join(sections))
+        print(f"  ✓ {out_path.relative_to(aops_root)}")
 
 
 def generate_marketplace(aops_root: Path, dist_root: Path, version: str):
