@@ -125,7 +125,7 @@
       "topic": "hook_tests_directory",
       "path": "tests/hooks/",
       "description": "All hook tests — gate verdicts, gate config, router formatting, hydration, session env setup, autocommit",
-      "keywords": ["hook", "test", "gate", "router", "hydration", "session", "policy", "enforcer"]
+      "keywords": ["hook", "test", "gate", "router", "hydration", "session", "autocommit", "config"]
     },
     {
       "topic": "specs_index",
