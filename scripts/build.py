@@ -1584,7 +1584,7 @@ def generate_reusable_workflows(aops_root: Path, dist_root: Path) -> None:
             print(f"  ⚠ {agent_file} not found, skipping workflow for {agent_name}")
             continue
 
-        job_id = config["display_name"].lower().replace(" ", "-")
+        job_id = str(config["display_name"]).lower().replace(" ", "-")
         contents_perm = "write" if config["can_push"] else "read"
 
         workflow = _GHA_WORKFLOW_TEMPLATE
