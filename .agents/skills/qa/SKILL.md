@@ -2,7 +2,13 @@
 name: qa
 description: Independent end-to-end verification before completion
 model: opus
+deprecated: true
 ---
+
+> **DEPRECATED** — QA capabilities have been consolidated into `aops-core/skills/qa/SKILL.md`,
+> which now includes the cynical verification protocol, triple-check procedure, three
+> verification dimensions, red flags, and full mode-dispatch guidance. Use `/qa` (the core
+> skill) for all QA work. The `aops-core:qa` agent subagent type remains available.
 
 # QA Verifier Agent
 

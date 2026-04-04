@@ -1243,6 +1243,10 @@ def main():
     if not dist_root.exists():
         dist_root.mkdir()
 
+    # Generate GHA agent prompts and reusable workflows for the dist repo
+    generate_gha_agents(aops_root, dist_root)
+    generate_reusable_workflows(aops_root, dist_root)
+
     # Build components (Gemini)
     core_mcps_gemini = build_aops_core(aops_root, dist_root, aca_data_path, "gemini", version)
 
@@ -1268,6 +1272,9 @@ def main():
     # Build Antigravity (global config if needed)
     build_antigravity(aops_root, dist_root, core_mcps_gemini)
 
+    # Generate marketplace.json for local dev and dist repo
+    generate_marketplace(aops_root, dist_root, version)
+
     package_artifacts(aops_root, dist_root, version, target_platform=args.target_platform)
 
     # Create git tags for release (only for generic builds, not platform-specific)
@@ -1275,6 +1282,379 @@ def main():
         create_git_tags(aops_root, version)
 
     print("\nBuild complete. Dist artifacts in dist/")
+
+
+_GHA_OPS_SECTION = """\
+## GHA Operational Rules
+
+- **Credential Isolation (P#51)**: Use `GH_TOKEN` from environment. Never use personal credentials or `gh auth login`.
+- **One review only**: File a single `gh pr review` — do not post separate comments. Put everything in the review body.
+- **Be specific**: Reference file paths, line numbers, and axiom numbers (e.g. `utils.py:45 — P#8 violation`).
+- **Depth over breadth**: One well-analysed finding beats seven surface nits.
+- **Conservative fixes**: If a fix might change intended behaviour, comment instead.
+- **No manual lint/style fixes**: Automated tooling handles that; focus on substance.\
+"""
+
+_GHA_TRAILER_MAP: dict[str, tuple[str, str]] = {
+    "enforcer": ("Review-By", "aops-enforcer"),
+    "custodiet": ("Audit-By", "aops-custodiet"),
+    "qa": ("QA-By", "aops-qa"),
+}
+
+
+def _parse_agent_frontmatter(text: str) -> tuple[dict, str]:
+    """Parse YAML frontmatter delimited by '---' lines.
+
+    Returns (frontmatter_dict, body_text).
+    Only parses simple scalar key: value lines (not lists or nested).
+    """
+    if not text.startswith("---\n"):
+        return {}, text
+    end = text.find("\n---\n", 4)
+    if end == -1:
+        return {}, text
+    fm_text = text[4:end]
+    body = text[end + 5 :]  # skip "\n---\n"
+
+    frontmatter: dict = {}
+    for line in fm_text.splitlines():
+        if ": " in line and not line.startswith(" ") and not line.startswith("-"):
+            key, _, val = line.partition(": ")
+            frontmatter[key.strip()] = val.strip()
+
+    return frontmatter, body
+
+
+def _strip_agent_body_h1(body: str) -> str:
+    """Strip the leading '# Heading' line from an agent body, if present."""
+    lines = body.lstrip("\n").splitlines(keepends=True)
+    if lines and lines[0].startswith("# "):
+        remaining = lines[1:]
+        if remaining and remaining[0] == "\n":
+            remaining = remaining[1:]
+        return "".join(remaining)
+    return body.lstrip("\n")
+
+
+def generate_gha_agents(aops_root: Path, dist_root: Path) -> None:
+    """Generate GHA agent prompts from canonical aops-core/agents/ sources.
+
+    Reads enforcer.md, custodiet.md, and qa.md — the review agents —
+    transforms them for GitHub Actions context (no plugin, axioms inlined),
+    and writes to dist/gha-agents/.
+
+    dev-standards.md and framework-ops.md are Claude Code-only subagents
+    and are intentionally excluded.
+    """
+    print("\nGenerating GHA agent prompts...")
+    agents_src = aops_root / "aops-core" / "agents"
+    axioms_path = aops_root / "aops-core" / "AXIOMS.md"
+    gha_out = dist_root / "gha-agents"
+    gha_out.mkdir(parents=True, exist_ok=True)
+
+    if not axioms_path.exists():
+        print(f"  ✗ {axioms_path} not found — skipping GHA agent generation")
+        return
+
+    _, axioms_body = _parse_agent_frontmatter(axioms_path.read_text())
+    axioms_body = axioms_body.strip()
+
+    # Review agents only — dev-standards and framework-ops are CC-only subagents
+    review_agents = ["enforcer", "custodiet", "qa"]
+
+    for agent_name in review_agents:
+        src_path = agents_src / f"{agent_name}.md"
+        if not src_path.exists():
+            print(f"  ⚠ {src_path} not found, skipping")
+            continue
+
+        frontmatter, body = _parse_agent_frontmatter(src_path.read_text())
+        description = frontmatter.get("description", agent_name)
+
+        # Strip the canonical "# {Name} Agent" heading — replaced by
+        # the description-derived identity header.
+        body_content = _strip_agent_body_h1(body).strip()
+
+        trailer_key, trailer_value = _GHA_TRAILER_MAP.get(
+            agent_name, ("Review-By", f"aops-{agent_name}")
+        )
+
+        sections = [
+            f"# {description}",
+            "",
+            body_content,
+            "",
+            "---",
+            "",
+            _GHA_OPS_SECTION,
+            "",
+            "When pushing fixes, commit with the required trailer:",
+            "",
+            "```bash",
+            "git add -A",
+            f'git commit -m "fix: address review findings\\n\\n{trailer_key}: {trailer_value}"',
+            "git push",
+            "```",
+            "",
+            "---",
+            "",
+            "## Framework Axioms",
+            "",
+            "<!-- Source: aops-core/AXIOMS.md — regenerate via `scripts/build.py` if axioms change -->",
+            "",
+            "The following principles are always active, regardless of domain context.",
+            "",
+            axioms_body,
+            "",
+        ]
+
+        out_path = gha_out / f"{agent_name}.agent.md"
+        out_path.write_text("\n".join(sections))
+        print(f"  ✓ {out_path.relative_to(aops_root)}")
+
+
+# --- Reusable GHA Workflow Generation ---
+
+_DIST_REPO = "nicsuzor/aops"
+
+_GHA_WORKFLOW_AGENTS: dict[str, dict[str, str | bool | int]] = {
+    "enforcer": {
+        "display_name": "Enforcer Review",
+        "description": "Universal standards enforcer — axiom compliance reviewer",
+        "can_push": True,
+        "model": "claude-sonnet-4-6",
+        "tools": "Bash,Edit,Read,Write",
+        "trailer": "Enforcer-By: agent",
+        "timeout": 30,
+    },
+    "custodiet": {
+        "display_name": "Compliance Review",
+        "description": "Workflow enforcement — catches scope explosion and plan-less execution",
+        "can_push": False,
+        "model": "claude-haiku-4-5",
+        "tools": "Bash(gh:*),Read",
+        "trailer": "Audit-By: agent",
+        "timeout": 15,
+    },
+    "qa": {
+        "display_name": "QA Verification",
+        "description": "Independent end-to-end verification before completion",
+        "can_push": False,
+        "model": "claude-opus-4-6",
+        "tools": "Bash,Read",
+        "trailer": "QA-By: agent",
+        "timeout": 45,
+    },
+}
+
+# Template uses __PLACEHOLDER__ style to avoid conflicts with GitHub ${{ }} expressions
+# and shell { } grouping syntax.
+_GHA_WORKFLOW_TEMPLATE = """\
+# Agent: __DISPLAY_NAME__
+# __DESCRIPTION__
+# Prompt: gha-agents/__AGENT_NAME__.agent.md (generated from aops-core/agents/__AGENT_NAME__.md)
+#
+# Reusable workflow. Call from other repos:
+#   uses: __DIST_REPO__/.github/workflows/agent-__AGENT_NAME__.yml@main
+
+name: "Agent: __DISPLAY_NAME__"
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to review'
+        type: string
+        required: true
+      ref:
+        description: 'Git ref to checkout'
+        type: string
+        required: true
+  workflow_call:
+    inputs:
+      pr_number:
+        description: 'PR number to review'
+        type: string
+        required: true
+      ref:
+        description: 'Git ref to checkout'
+        type: string
+        required: true
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN:
+        required: true
+
+jobs:
+  __JOB_ID__:
+    name: __DISPLAY_NAME__
+    runs-on: ubuntu-latest
+    timeout-minutes: __TIMEOUT__
+    concurrency:
+      group: agent-__AGENT_NAME__-${{ inputs.pr_number }}
+      cancel-in-progress: true
+    permissions:
+      contents: __CONTENTS_PERM__
+      pull-requests: write
+      statuses: write
+      id-token: write
+      issues: write
+      actions: read
+    steps:
+      # Checkout the caller's repo (the PR under review)
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref }}
+
+      # Checkout dist repo for the generated agent prompt
+      - uses: actions/checkout@v4
+        with:
+          repository: __DIST_REPO__
+          path: .aops-dist
+          sparse-checkout: gha-agents/__AGENT_NAME__.agent.md
+
+      - name: Loop detection
+        id: loop-check
+        run: |
+          LAST_MSG=$(git log -1 --format='%B')
+          if echo "$LAST_MSG" | grep -qE '(Review-By|Audit-By|QA-By|Enforcer-By|Merge-Prep-By):'; then
+            echo "Last commit was from an agent — skipping to avoid loop"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Read agent prompt
+        if: steps.loop-check.outputs.skip != 'true'
+        id: prompt
+        run: |
+          PROMPT=$(cat .aops-dist/gha-agents/__AGENT_NAME__.agent.md)
+          {
+            echo "prompt<<AGENT_EOF"
+            echo "$PROMPT"
+            echo "AGENT_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run __DISPLAY_NAME__
+        if: steps.loop-check.outputs.skip != 'true'
+        uses: anthropics/claude-code-action@v1
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            ${{ steps.prompt.outputs.prompt }}
+
+            ---
+
+            Review PR #${{ inputs.pr_number }} in repository ${{ github.repository }}.
+
+            1. Read `.agents/CORE.md` from the repo root (if it exists) for local project context.
+            2. Run `gh pr view ${{ inputs.pr_number }}` to understand the PR.
+            3. Run `gh pr diff ${{ inputs.pr_number }}` to see the changes.
+            4. Apply the review protocol from your instructions above.
+            5. Use `gh pr review` to file your review (APPROVE or REQUEST_CHANGES).
+               Start the review body with `## __DISPLAY_NAME__` for identification.
+
+            If you push fixes, use commit trailer: `__TRAILER__`
+
+            PR ref: ${{ inputs.ref }}
+          claude_args: '--model __MODEL__ --allowed-tools "__TOOLS__"'
+"""
+
+
+def generate_reusable_workflows(aops_root: Path, dist_root: Path) -> None:
+    """Generate reusable GHA workflows for the dist repo.
+
+    For each review agent (enforcer, custodiet, qa), generates a workflow YAML
+    that can be called from other repos:
+        uses: nicsuzor/aops/.github/workflows/agent-enforcer.yml@main
+
+    Each workflow checks out the dist repo for the generated agent prompt
+    (from dist/gha-agents/), so no private repo access is needed.
+    """
+    print("\nGenerating reusable GHA workflows...")
+    gha_agents_dir = dist_root / "gha-agents"
+    workflows_out = dist_root / ".github" / "workflows"
+    workflows_out.mkdir(parents=True, exist_ok=True)
+
+    for agent_name, config in _GHA_WORKFLOW_AGENTS.items():
+        agent_file = gha_agents_dir / f"{agent_name}.agent.md"
+        if not agent_file.exists():
+            print(f"  ⚠ {agent_file} not found, skipping workflow for {agent_name}")
+            continue
+
+        job_id = str(config["display_name"]).lower().replace(" ", "-")
+        contents_perm = "write" if config["can_push"] else "read"
+
+        workflow = _GHA_WORKFLOW_TEMPLATE
+        workflow = workflow.replace("__DIST_REPO__", _DIST_REPO)
+        workflow = workflow.replace("__AGENT_NAME__", agent_name)
+        workflow = workflow.replace("__DISPLAY_NAME__", str(config["display_name"]))
+        workflow = workflow.replace("__DESCRIPTION__", str(config["description"]))
+        workflow = workflow.replace("__JOB_ID__", job_id)
+        workflow = workflow.replace("__TIMEOUT__", str(config["timeout"]))
+        workflow = workflow.replace("__CONTENTS_PERM__", contents_perm)
+        workflow = workflow.replace("__MODEL__", str(config["model"]))
+        workflow = workflow.replace("__TOOLS__", str(config["tools"]))
+        workflow = workflow.replace("__TRAILER__", str(config["trailer"]))
+
+        out_path = workflows_out / f"agent-{agent_name}.yml"
+        out_path.write_text(workflow)
+        print(f"  ✓ {out_path.relative_to(aops_root)}")
+
+
+def generate_marketplace(aops_root: Path, dist_root: Path, version: str):
+    """Generate marketplace.json for both local dev and dist repo consumption.
+
+    Reads the template from templates/marketplace.json and produces two outputs:
+    1. .claude-plugin/marketplace.json — for local dev (paths: ./dist/aops-claude)
+    2. dist/marketplace.json — for the dist repo (paths: ./aops-claude)
+    """
+    template_path = aops_root / "templates" / "marketplace.json"
+    if not template_path.exists():
+        print("  ⚠ templates/marketplace.json not found, skipping marketplace generation")
+        return
+
+    with open(template_path) as f:
+        data = json.load(f)
+
+    # Get cowork version (may differ from core version)
+    cowork_plugin_json = dist_root / "aops-cowork" / ".claude-plugin" / "plugin.json"
+    cowork_version = version
+    if cowork_plugin_json.exists():
+        with open(cowork_plugin_json) as f:
+            cowork_version = json.load(f).get("version", version)
+
+    # Inject versions
+    for plugin in data.get("plugins", []):
+        if plugin.get("name") == "aops-core":
+            plugin["version"] = version
+        elif plugin.get("name") == "aops-cowork":
+            plugin["version"] = cowork_version
+
+    # 1. Dist repo version (sources point to ./aops-claude, ./aops-cowork)
+    dist_marketplace_dir = dist_root / ".claude-plugin"
+    dist_marketplace_dir.mkdir(parents=True, exist_ok=True)
+    dist_marketplace = dist_marketplace_dir / "marketplace.json"
+    with open(dist_marketplace, "w") as f:
+        json.dump(data, f, indent=2)
+        f.write("\n")
+    print(f"  ✓ Generated {dist_marketplace} (for dist repo)")
+
+    # 2. Local dev version (sources point to ./dist/aops-claude, ./dist/aops-cowork)
+    local_data = json.loads(json.dumps(data))  # deep copy
+    for plugin in local_data.get("plugins", []):
+        source = plugin.get("source", "")
+        if source.startswith("./"):
+            plugin["source"] = f"./dist/{source[2:]}"
+    local_marketplace_dir = aops_root / ".claude-plugin"
+    local_marketplace_dir.mkdir(parents=True, exist_ok=True)
+    local_marketplace = local_marketplace_dir / "marketplace.json"
+    with open(local_marketplace, "w") as f:
+        json.dump(local_data, f, indent=2)
+        f.write("\n")
+    print(f"  ✓ Generated {local_marketplace} (for local dev)")
 
 
 def package_artifacts(

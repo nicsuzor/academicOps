@@ -1,0 +1,31 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "academicOps",
+  "description": "academicOps - Research workflow automation framework",
+  "owner": {
+    "name": "Nicolas Suzor",
+    "email": "nic@suzor.net"
+  },
+  "plugins": [
+    {
+      "name": "aops-core",
+      "description": "Core academicOps framework - skills, agents, hooks, and tools for research workflow automation",
+      "version": "__VERSION__",
+      "author": {
+        "name": "Nicolas Suzor"
+      },
+      "source": "./aops-claude",
+      "category": "productivity"
+    },
+    {
+      "name": "aops-cowork",
+      "description": "academicOps for Cowork - stripped-down plugin with skills, agents, and tools (no hooks/scripts)",
+      "version": "__COWORK_VERSION__",
+      "author": {
+        "name": "Nicolas Suzor"
+      },
+      "source": "./aops-cowork",
+      "category": "productivity"
+    }
+  ]
+}
