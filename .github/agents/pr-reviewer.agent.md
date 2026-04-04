@@ -96,11 +96,27 @@ Review-By: aops-pr-bot"
 git push
 ```
 
+After pushing, **re-read the diff** and verify your fixes are reflected:
+
+```bash
+gh pr diff $PR_NUMBER
+```
+
+Confirm each issue is resolved in the new diff. **If you pushed fixes, you MUST file a review** — never exit silently after pushing a fix commit.
+
 ## 4. File Review
+
+Check for prior reviews from this agent — if a `CHANGES_REQUESTED` review exists and this run finds no remaining concerns, you MUST submit an `APPROVED` review to supersede it (do not exit silently).
 
 File a **single `gh pr review`** — do not post separate comments.
 
-- **No concerns and no fixes** → exit silently. Do nothing.
+- **No concerns, no fixes, and no prior CHANGES_REQUESTED from this agent** → exit silently. Do nothing.
+- **No concerns, no fixes, but a prior CHANGES_REQUESTED exists from this agent** → approve to supersede:
+  ```bash
+  gh pr review $PR_NUMBER --approve --body "# PR Review
+
+  No concerns found. Superseding prior review."
+  ```
 - **Fixes applied, no remaining concerns** → approve:
   ```bash
   gh pr review $PR_NUMBER --approve --body "# PR Review
