@@ -2,7 +2,7 @@
 name: strategic-review
 type: skill
 category: instruction
-description: Supervisor-critic loop for multi-level strategic review. Commissions the enforcer agent to apply the 10 cognitive moves, scores output across 7 dimensions, coaches and iterates until quality threshold is met.
+description: Three-agent review pipeline. Commissions pauli (Logician) for strategic abstraction iteratively until quality threshold met, then rbg (Judge) for axiom compliance, then marsha (QA) for verification.
 triggers:
   - "strategic review"
   - "pre-hoc plan evaluation"
@@ -17,15 +17,17 @@ domain:
   - framework
   - quality-assurance
 allowed-tools: Task,Read
-version: 1.0.0
+version: 2.0.0
 permalink: skills-strategic-review
 ---
 
-# /strategic-review — Strategic Review Supervisor Loop
+# /strategic-review — Strategic Review Pipeline
 
-Supervisor-critic loop for multi-level strategic review of documents, plans, and proposals. Produces reviews that operate at the instance, class, and systems level simultaneously — the cognitive signature of expert-level review.
+Three-agent review pipeline for documents, plans, and proposals. Produces reviews that operate at the instance, class, and systems level — then verifies axiom compliance and confirms the work is complete.
 
-The enforcer agent carries the 10 cognitive moves as instinctive knowledge. This skill commissions the enforcer, evaluates its output against 7 dimensions, coaches if needed, and iterates until the review meets the quality threshold.
+**Pipeline**: pauli (strategic abstraction, iterative) → rbg (axiom compliance, single pass) → marsha (verification, single pass)
+
+**pauli** carries the 10 cognitive moves of expert review. This skill commissions pauli, evaluates output against 7 dimensions, coaches if needed, and iterates until quality threshold is met. Then hands off to rbg for compliance checking, then marsha for final verification.
 
 ## When to invoke
 
@@ -39,7 +41,7 @@ Use this when a document needs strategic review, not proofreading:
 
 ## What to do
 
-You are the SUPERVISOR. Commission the enforcer, evaluate its output, coach if needed, iterate until the review is of sufficient quality.
+You are the SUPERVISOR. Commission pauli, evaluate its output, coach if needed, iterate until quality threshold is met. Then run rbg for compliance, then marsha for verification.
 
 ### Phase 1: Understand the document
 
@@ -50,12 +52,12 @@ Read the document. Identify:
 - What is the claimed contribution or benefit?
 - What context does the reviewer need?
 
-### Phase 2: Commission the enforcer
+### Phase 2: Commission pauli
 
-Dispatch the enforcer agent to produce a strategic review:
+Dispatch pauli to produce a strategic review:
 
 ```
-Agent(subagent_type="aops-core:enforcer", model="opus", prompt="
+Agent(subagent_type="aops-core:pauli", model="opus", prompt="
 ## Document to Review
 
 [Full document text]
@@ -68,7 +70,7 @@ Agent(subagent_type="aops-core:enforcer", model="opus", prompt="
 Apply the 10 cognitive moves and produce a structured strategic review using the Strategic Review Output Format.")
 ```
 
-### Phase 3: Score the enforcer's output
+### Phase 3: Score pauli's output
 
 Evaluate across 7 dimensions. Score each: Pass / Partial / Fail.
 
@@ -100,21 +102,71 @@ For **dimension 3 failure** (reviewed what's present, missed what's absent):
 
 > "You reviewed what's in the document. Now: what should be here that isn't? What process, mechanism, check, or feedback loop is absent? The most important critique is often about what's NOT there."
 
-Re-dispatch enforcer with: original document + coaching instructions. Maximum 3 iterations.
+Re-dispatch pauli with: original document + coaching instructions. Maximum 3 iterations.
 
-### Phase 5: Produce final output
+### Phase 5: Commission rbg for axiom compliance
+
+Once pauli's output passes (or after 3 iterations), commission rbg for a single compliance pass:
+
+```
+Agent(subagent_type="aops-core:rbg", model="haiku", prompt="
+[Provide the session audit file path or inline the document + pauli's review]
+
+Enforcement Mode: warn
+")
+```
+
+Record the rbg verdict (OK / WARN / BLOCK). On BLOCK, surface the issue to the user before proceeding.
+
+### Phase 6: Commission marsha for verification
+
+Commission marsha for a single verification pass:
+
+```
+Agent(subagent_type="aops-core:marsha", model="opus", prompt="
+Verify the review is complete.
+
+**Original request**: [what was asked for]
+
+**Acceptance criteria**:
+1. Strategic review covers all 10 cognitive moves
+2. Fatal/fixable distinction is made
+3. Specific actionable recommendations are provided
+4. rbg compliance check passed
+
+**Work completed**:
+- pauli's strategic review (above)
+- rbg compliance: [OK/WARN/BLOCK + any issue]
+
+Check all three dimensions and produce verdict.
+")
+```
+
+### Phase 7: Produce final output
 
 ```
 ## Strategic Review
 
-[Enforcer's final review — verbatim, not paraphrased]
+[Pauli's final review — verbatim, not paraphrased]
+
+---
+
+## Compliance Check
+
+**RBG verdict**: [OK / WARN: [issue] / BLOCK: [issue]]
+
+---
+
+## Verification
+
+**Marsha verdict**: [PASS / FAIL: [issues] / REVISE: [what to fix]]
 
 ---
 
 ## Supervisor Observation Log
 
 **Document reviewed**: [name]
-**Iterations**: [n of 3 max]
+**Pauli iterations**: [n of 3 max]
 
 **Initial quality** (after iteration 1):
 - Multi-level abstraction: [Pass/Partial/Fail]
@@ -132,7 +184,7 @@ Re-dispatch enforcer with: original document + coaching instructions. Maximum 3 
 [Dimension scores after final iteration]
 
 **Honest assessment**:
-[What did the loop produce? Where does it fall short? What would a human expert catch that this didn't?]
+[What did the pipeline produce? Where does it fall short? What would a human expert catch that this didn't?]
 ```
 
 ## Design rationale
@@ -140,3 +192,5 @@ Re-dispatch enforcer with: original document + coaching instructions. Maximum 3 
 The loop exists because one-shot prompting reliably produces competent-but-not-genius reviews: internally consistent, surface-level, answering the question as posed. The supervisor's job is to force elevation — from instance to class, from artifact to process, from "is this right?" to "is this the right question?".
 
 The pass threshold is intentionally high on dimensions 1-3. A review that doesn't operate at multiple abstraction levels, doesn't question the question, and doesn't identify negative space is not a strategic review — it's a proofreading session with better vocabulary.
+
+The three-agent pipeline separates concerns: pauli does the strategic thinking, rbg checks the rules, marsha verifies the outcome. Each agent is optimised for one job.
