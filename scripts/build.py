@@ -1243,8 +1243,9 @@ def main():
     if not dist_root.exists():
         dist_root.mkdir()
 
-    # Generate GHA agent prompts from canonical sources
+    # Generate GHA agent prompts and reusable workflows for the dist repo
     generate_gha_agents(aops_root, dist_root)
+    generate_reusable_workflows(aops_root, dist_root)
 
     # Build components (Gemini)
     core_mcps_gemini = build_aops_core(aops_root, dist_root, aca_data_path, "gemini", version)
@@ -1409,6 +1410,197 @@ def generate_gha_agents(aops_root: Path, dist_root: Path) -> None:
 
         out_path = gha_out / f"{agent_name}.agent.md"
         out_path.write_text("\n".join(sections))
+        print(f"  ✓ {out_path.relative_to(aops_root)}")
+
+
+# --- Reusable GHA Workflow Generation ---
+
+_DIST_REPO = "nicsuzor/aops"
+
+_GHA_WORKFLOW_AGENTS: dict[str, dict[str, str | bool | int]] = {
+    "enforcer": {
+        "display_name": "Enforcer Review",
+        "description": "Universal standards enforcer — axiom compliance reviewer",
+        "can_push": True,
+        "model": "claude-sonnet-4-6",
+        "tools": "Bash,Edit,Read,Write",
+        "trailer": "Enforcer-By: agent",
+        "timeout": 30,
+    },
+    "custodiet": {
+        "display_name": "Compliance Review",
+        "description": "Workflow enforcement — catches scope explosion and plan-less execution",
+        "can_push": False,
+        "model": "claude-haiku-4-5",
+        "tools": "Bash(gh:*),Read",
+        "trailer": "Audit-By: agent",
+        "timeout": 15,
+    },
+    "qa": {
+        "display_name": "QA Verification",
+        "description": "Independent end-to-end verification before completion",
+        "can_push": False,
+        "model": "claude-opus-4-6",
+        "tools": "Bash,Read",
+        "trailer": "QA-By: agent",
+        "timeout": 45,
+    },
+}
+
+# Template uses __PLACEHOLDER__ style to avoid conflicts with GitHub ${{ }} expressions
+# and shell { } grouping syntax.
+_GHA_WORKFLOW_TEMPLATE = """\
+# Agent: __DISPLAY_NAME__
+# __DESCRIPTION__
+# Prompt: gha-agents/__AGENT_NAME__.agent.md (generated from aops-core/agents/__AGENT_NAME__.md)
+#
+# Reusable workflow. Call from other repos:
+#   uses: __DIST_REPO__/.github/workflows/agent-__AGENT_NAME__.yml@main
+
+name: "Agent: __DISPLAY_NAME__"
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to review'
+        type: string
+        required: true
+      ref:
+        description: 'Git ref to checkout'
+        type: string
+        required: true
+  workflow_call:
+    inputs:
+      pr_number:
+        description: 'PR number to review'
+        type: string
+        required: true
+      ref:
+        description: 'Git ref to checkout'
+        type: string
+        required: true
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN:
+        required: true
+
+jobs:
+  __JOB_ID__:
+    name: __DISPLAY_NAME__
+    runs-on: ubuntu-latest
+    timeout-minutes: __TIMEOUT__
+    concurrency:
+      group: agent-__AGENT_NAME__-${{ inputs.pr_number }}
+      cancel-in-progress: true
+    permissions:
+      contents: __CONTENTS_PERM__
+      pull-requests: write
+      statuses: write
+      id-token: write
+      issues: write
+      actions: read
+    steps:
+      # Checkout the caller's repo (the PR under review)
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref }}
+
+      # Checkout dist repo for the generated agent prompt
+      - uses: actions/checkout@v4
+        with:
+          repository: __DIST_REPO__
+          path: .aops-dist
+          sparse-checkout: gha-agents/__AGENT_NAME__.agent.md
+
+      - name: Loop detection
+        id: loop-check
+        run: |
+          LAST_MSG=$(git log -1 --format='%B')
+          if echo "$LAST_MSG" | grep -qE '(Review-By|Audit-By|QA-By|Enforcer-By|Merge-Prep-By):'; then
+            echo "Last commit was from an agent — skipping to avoid loop"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Read agent prompt
+        if: steps.loop-check.outputs.skip != 'true'
+        id: prompt
+        run: |
+          PROMPT=$(cat .aops-dist/gha-agents/__AGENT_NAME__.agent.md)
+          {
+            echo "prompt<<AGENT_EOF"
+            echo "$PROMPT"
+            echo "AGENT_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run __DISPLAY_NAME__
+        if: steps.loop-check.outputs.skip != 'true'
+        uses: anthropics/claude-code-action@v1
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            ${{ steps.prompt.outputs.prompt }}
+
+            ---
+
+            Review PR #${{ inputs.pr_number }} in repository ${{ github.repository }}.
+
+            1. Read `.agents/CORE.md` from the repo root (if it exists) for local project context.
+            2. Run `gh pr view ${{ inputs.pr_number }}` to understand the PR.
+            3. Run `gh pr diff ${{ inputs.pr_number }}` to see the changes.
+            4. Apply the review protocol from your instructions above.
+            5. Use `gh pr review` to file your review (APPROVE or REQUEST_CHANGES).
+               Start the review body with `## __DISPLAY_NAME__` for identification.
+
+            If you push fixes, use commit trailer: `__TRAILER__`
+
+            PR ref: ${{ inputs.ref }}
+          claude_args: '--model __MODEL__ --allowed-tools "__TOOLS__"'
+"""
+
+
+def generate_reusable_workflows(aops_root: Path, dist_root: Path) -> None:
+    """Generate reusable GHA workflows for the dist repo.
+
+    For each review agent (enforcer, custodiet, qa), generates a workflow YAML
+    that can be called from other repos:
+        uses: nicsuzor/aops/.github/workflows/agent-enforcer.yml@main
+
+    Each workflow checks out the dist repo for the generated agent prompt
+    (from dist/gha-agents/), so no private repo access is needed.
+    """
+    print("\nGenerating reusable GHA workflows...")
+    gha_agents_dir = dist_root / "gha-agents"
+    workflows_out = dist_root / ".github" / "workflows"
+    workflows_out.mkdir(parents=True, exist_ok=True)
+
+    for agent_name, config in _GHA_WORKFLOW_AGENTS.items():
+        agent_file = gha_agents_dir / f"{agent_name}.agent.md"
+        if not agent_file.exists():
+            print(f"  ⚠ {agent_file} not found, skipping workflow for {agent_name}")
+            continue
+
+        job_id = config["display_name"].lower().replace(" ", "-")
+        contents_perm = "write" if config["can_push"] else "read"
+
+        workflow = _GHA_WORKFLOW_TEMPLATE
+        workflow = workflow.replace("__DIST_REPO__", _DIST_REPO)
+        workflow = workflow.replace("__AGENT_NAME__", agent_name)
+        workflow = workflow.replace("__DISPLAY_NAME__", str(config["display_name"]))
+        workflow = workflow.replace("__DESCRIPTION__", str(config["description"]))
+        workflow = workflow.replace("__JOB_ID__", job_id)
+        workflow = workflow.replace("__TIMEOUT__", str(config["timeout"]))
+        workflow = workflow.replace("__CONTENTS_PERM__", contents_perm)
+        workflow = workflow.replace("__MODEL__", str(config["model"]))
+        workflow = workflow.replace("__TOOLS__", str(config["tools"]))
+        workflow = workflow.replace("__TRAILER__", str(config["trailer"]))
+
+        out_path = workflows_out / f"agent-{agent_name}.yml"
+        out_path.write_text(workflow)
         print(f"  ✓ {out_path.relative_to(aops_root)}")
 
 
