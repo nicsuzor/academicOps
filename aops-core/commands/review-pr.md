@@ -75,7 +75,7 @@ gh pr diff $PR_NUMBER -R $REPO_REF
 Also try to load repo-specific context. If the target repo is available locally, read `.agents/CORE.md` directly. Otherwise fetch it via `gh`:
 
 ```bash
-gh api repos/$REPO_REF/contents/.agents/CORE.md --jq '.content' | base64 -d 2>/dev/null
+gh api repos/$REPO_REF/contents/.agents/CORE.md --jq '.content | @base64d' 2>/dev/null
 ```
 
 If `.agents/CORE.md` is absent, look for `README.md` as fallback context.
@@ -106,6 +106,16 @@ Commission Marsha when ANY of these are true:
 ---
 
 ## Step 4: Commission Agents
+
+Before commissioning any agents, present your plan and obtain explicit approval (Axiom P#50):
+
+```
+Agents to run: RBG (always) [+ Pauli] [+ Marsha]
+Reason: <one-line rationale based on PR complexity>
+Proceed? (yes/no)
+```
+
+Wait for confirmation before continuing. If the user declines, ask what they want instead.
 
 ### Routing principles
 
@@ -269,12 +279,12 @@ You can fix directly when:
 Use `gh` to push fixes:
 
 ```bash
-# Clone or use existing local checkout
-git clone $(gh repo view $REPO_REF --json sshUrl -q .sshUrl) /tmp/review-$PR_NUMBER
-cd /tmp/review-$PR_NUMBER
-git fetch origin
-BRANCH=$(gh pr view $PR_NUMBER -R $REPO_REF --json headRefName -q .headRefName)
-git checkout $BRANCH
+# Clone and check out the PR branch
+REPO_SLUG=$(echo $REPO_REF | tr '/' '-')
+REVIEW_DIR="/tmp/review-${REPO_SLUG}-${PR_NUMBER}"
+gh repo clone "$REPO_REF" "$REVIEW_DIR"
+cd "$REVIEW_DIR"
+gh pr checkout $PR_NUMBER -R "$REPO_REF"
 
 # ... make changes ...
 
@@ -388,8 +398,8 @@ When reviewing a PR in a repo other than the current working directory:
 
 - Use `-R OWNER/REPO` on all `gh` commands
 - Don't assume local file access — fetch context via `gh api`
-- Clone to `/tmp/review-$PR_NUMBER` for any code changes
-- Clean up: `rm -rf /tmp/review-$PR_NUMBER` when done
+- Clone to `/tmp/review-${REPO_SLUG}-${PR_NUMBER}` for any code changes (where `REPO_SLUG` is `OWNER-REPO`)
+- Clean up: `rm -rf "/tmp/review-${REPO_SLUG}-${PR_NUMBER}"` when done
 
 ## Draft PRs
 

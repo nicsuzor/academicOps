@@ -26,7 +26,7 @@ class TestGetAopsRules:
         rules = _get_aops_rules()
         assert len(rules["environment"]) == 4
         assert len(rules["allow"]) == 3
-        assert len(rules["soft_deny"]) == 12
+        assert len(rules["soft_deny"]) == 11
 
     def test_rules_contain_axiom_references(self):
         """Each soft_deny rule should reference its axiom number."""

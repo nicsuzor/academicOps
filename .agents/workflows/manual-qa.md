@@ -167,7 +167,7 @@ These patterns recur and should be checked when failures appear:
 
 **Pattern 1 — MCP tools gap** (affects email-related routing)
 
-- Symptom: Hydrator invokes P#48 halt for email requests ("no email tools available")
+- Symptom: Hydrator halts for email requests citing no email tools available (P#99 scope boundary)
 - Root cause: `load_mcp_tools_context()` in `builder.py` does not include Outlook MCP server tools in the context bundle — the hydrator correctly concludes no email capability exists
 - Fix target: `aops-core/lib/hydration/context_loaders.py` → `load_mcp_tools_context()` must include configured MCP servers
 - Test to rerun: TEST-001

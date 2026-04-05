@@ -70,7 +70,17 @@ The agent that wrote this code may have unconsciously substituted easier-to-veri
    - Check for `Makefile` → check for `test` target
    - Check for `Cargo.toml` → try `cargo test`
    - If no test infrastructure found, note this in your report.
-4. Run tests if available. **Runtime verification is required** — reading code is not sufficient.
+4. **Run the code. Reading diffs is not verification.**
+   - Run the test suite and confirm it passes.
+   - For UI/frontend PRs: spin up the dev server and use a browser to verify the changes:
+     ```bash
+     # Example for a Streamlit app
+     uv run streamlit run <app.py> &
+     # Then use browser tools to navigate, interact, and verify visually
+     ```
+     Check that the UI matches what was described in the PR. Evaluate qualitatively against the acceptance criteria — does it look right, behave correctly, handle edge cases?
+   - For backend/CLI PRs: run the affected commands or invoke the changed functions directly.
+   - If the PR claims to fix a bug, reproduce the bug first (confirm it existed), then confirm the fix resolves it.
 5. Verify all three dimensions against the PR's stated intent.
 6. Post your verdict as a PR review.
 

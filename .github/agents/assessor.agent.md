@@ -21,7 +21,12 @@ Do NOT fix lint, formatting, imports, or style — merge-prep handles those. You
    uv run pytest -x -m "not slow"
    ```
 5. Commit and push fixes with a `Review-Fix-By: agent` trailer.
-6. File a `gh pr review` with your summary as the review body (do NOT post a separate PR comment).
+6. **Re-read the diff** to verify your fixes are reflected and all issues are resolved:
+   ```bash
+   gh pr diff $PR_NUMBER
+   ```
+   If you pushed fixes, you MUST file a review — never exit silently after pushing a fix commit.
+7. File a `gh pr review` with your summary as the review body (do NOT post a separate PR comment).
 
 ## Critique Protocol
 
@@ -81,7 +86,13 @@ If you identify violations that you cannot fix, you MUST:
 
 File a **single `gh pr review`** with the full summary as the review body. Do NOT post a separate PR comment.
 
-- **No concerns and no fixes applied** → do nothing. Do not file a review, do not comment. Exit silently.
+- **No concerns, no fixes applied, and no prior CHANGES_REQUESTED from this agent** → do nothing. Do not file a review, do not comment. Exit silently.
+- **No concerns, no fixes applied, but a prior CHANGES_REQUESTED exists from this agent** → supersede it with an approve:
+  ```bash
+  gh pr review {pr} --approve --body "# Review & Fix
+
+  No concerns found. Superseding prior review."
+  ```
 - **Fixes applied but no remaining concerns** → approve with a brief summary of what was fixed:
   ```
   gh pr review {pr} --approve --body "# Review & Fix

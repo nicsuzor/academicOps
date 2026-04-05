@@ -17,13 +17,13 @@ domain:
   - framework
   - quality-assurance
 allowed-tools: Task,Read
-version: 2.0.0
+version: 2.1.0
 permalink: skills-strategic-review
 ---
 
 # /strategic-review — Strategic Review
 
-Multi-agent strategic review of documents, plans, and proposals. You are the supervisor — you commission review agents, evaluate their output, coach if needed, and iterate until the review meets quality standards.
+Multi-agent strategic review of documents, plans, and proposals. The orchestrator is **James** — commission James and let him manage the agent loop. If you are James, this skill is your operating context.
 
 ## When to invoke
 
@@ -35,44 +35,35 @@ Use this when a document needs strategic review, not proofreading:
 - Design decisions and specs
 - Any time the question "is this actually good, or just coherent?" matters
 
-## Available agents
+## Orchestrator: James
 
-| Agent      | What they do                                   | When to use                                      |
-| ---------- | ---------------------------------------------- | ------------------------------------------------ |
-| **pauli**  | Strategic critique via 10 cognitive moves      | Primary reviewer — always commission first       |
-| **rbg**    | Axiom compliance and workflow discipline check | When the review must verify framework compliance |
-| **marsha** | Independent end-to-end verification            | When work products need QA before shipping       |
+Commission James as the orchestrator. He manages the agent loop, evaluates output quality, iterates, and synthesises.
 
-Commission agents via `Agent(subagent_type="aops-core:<name>", ...)`. Choose the model appropriate to the task (opus for depth, haiku for mechanical checks).
+```
+Agent(subagent_type="aops-core:james", prompt="[artifact + context]")
+```
 
-## Quality target
+James will commission the right agents based on the artifact type and load the appropriate review context descriptor. You do not need to manage the agent loop — James does that.
 
-A strategic review is not a proofreading session with better vocabulary. It must:
+## Review Context Descriptors
 
-1. **Operate at multiple abstraction levels** — address the specific instance AND the class of problem AND the system it's embedded in.
-2. **Question the question** — not just answer what's asked, but assess whether the right question is being asked.
-3. **Find the negative space** — identify what's MISSING, not just what's wrong.
-4. **Calibrate severity** — distinguish fatal problems (rethink the approach) from fixable ones (revise and improve).
-5. **Be grounded** — reference existing knowledge, not just internal consistency.
-6. **Be actionable** — specify what to change, not just what's wrong.
+Context descriptors in `review-contexts/` configure James's behavior per artifact type:
 
-## Your job as supervisor
+| Descriptor        | When to use                                                   |
+| ----------------- | ------------------------------------------------------------- |
+| `pr-code.md`      | Code PRs — features, fixes, refactors                         |
+| `pr-framework.md` | Framework PRs — skills, agents, hooks, enforcement, workflows |
 
-1. **Understand the document.** What type is it? What is it trying to accomplish? What context does the reviewer need?
+James will read the relevant descriptor automatically based on what you tell him about the artifact.
 
-2. **Commission pauli.** Provide the full document and context. Let pauli work.
+## The Three Agents
 
-3. **Evaluate the output.** Does it meet the quality target above? If the review stayed at the surface level, didn't question the question, or missed the negative space — coach pauli and iterate. Don't accept competent proofreading as strategic review.
-
-4. **Coach if needed.** Be specific about what's missing:
-   - Surface-level → "What CLASS OF PROBLEM does this represent? What SYSTEM is it embedded in?"
-   - Didn't question the question → "Is the question itself well-formed? Would an expert reframe it?"
-   - Missed negative space → "What should be here that isn't? What feedback loop is absent?"
-
-5. **Use rbg and marsha as the task requires.** Not every review needs all three agents. Trust your judgment about what the specific document needs.
-
-6. **Produce the final output.** Include the review itself, your observation log (iterations, coaching, quality assessment), and an honest assessment of where the review falls short.
+| Agent      | What they do                                             | Ruth always runs      |
+| ---------- | -------------------------------------------------------- | --------------------- |
+| **rbg**    | Axiom compliance and workflow discipline — The Judge     | Yes — non-negotiable  |
+| **pauli**  | Strategic critique via 10 cognitive moves — The Logician | As needed             |
+| **marsha** | Independent runtime verification — The QA Reviewer       | When code is involved |
 
 ## Design rationale
 
-The loop exists because one-shot prompting reliably produces competent-but-not-genius reviews: internally consistent, surface-level, answering the question as posed. The supervisor's job is to force elevation — from instance to class, from artifact to process, from "is this right?" to "is this the right question?".
+The loop exists because one-shot prompting reliably produces competent-but-not-genius reviews: internally consistent, surface-level, answering the question as posed. James's job is to force elevation — from instance to class, from artifact to process, from "is this right?" to "is this the right question?". He also carries axiom compliance (Ruth) and runtime verification (Marsha) as non-negotiable dimensions that strategic review alone cannot provide.
