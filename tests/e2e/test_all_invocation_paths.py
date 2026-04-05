@@ -165,6 +165,7 @@ class TestAllInvocationPaths:
             timeout = 600 if backend == "gemini" else 300
 
         repo = get_repo_root()
+        crew_name = f"test-{backend}"
 
         cmd = [
             sys.executable,
@@ -174,7 +175,7 @@ class TestAllInvocationPaths:
             "repo",
             str(repo),
             "-n",
-            f"test-{backend}",
+            crew_name,
         ]
         if backend == "gemini":
             cmd.append("-g")
@@ -204,6 +205,14 @@ class TestAllInvocationPaths:
         ]:
             env.pop(key, None)
 
+        # Always clean up any previous run first
+        subprocess.run(
+            [sys.executable, "-m", "polecat.cli", "nuke", crew_name, "--force"],
+            capture_output=True,
+            check=False,
+            env=env,
+            cwd=cwd,
+        )
         try:
             proc = subprocess.run(
                 cmd,

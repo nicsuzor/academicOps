@@ -7,6 +7,7 @@ RUN useradd -m -d /home/worker -s /bin/bash worker
 # Set environment variables — HOME stays as /root during root-level installs
 # to avoid polluting /home/worker with root-owned files. Switched after USER.
 ENV ACA_DATA=/data \
+    AOPS=/app \
     HOSTNAME=aops-crew \
     UV_INSTALL_DIR=/usr/local/bin \
     PYTHONUNBUFFERED=1 \
@@ -71,8 +72,8 @@ ARG AOPS_REPO_URL=https://github.com/nicsuzor/aops.git
 
 # Install Claude plugin from GitHub marketplace (HTTPS — no SSH in containers).
 RUN claude plugin marketplace add ${AOPS_REPO_URL} \
-    && claude plugin marketplace update aops \
-    && claude plugin install aops-core@aops
+    && claude plugin marketplace update academicOps \
+    && claude plugin install aops-core@academicOps
 
 # Install pkb binary from nicsuzor/mem releases
 RUN TMPDIR=$(mktemp -d) \

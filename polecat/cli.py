@@ -120,7 +120,7 @@ def _node_version_key(p: Path) -> tuple[int, ...]:
     return tuple(int(x) for x in m.groups()) if m else (0, 0, 0)
 
 
-def _make_worker_env(interactive: bool = False) -> dict[str, str]:
+def _make_worker_env(interactive: bool = False, work_dir: Path | None = None) -> dict[str, str]:
     """Create a sanitized environment for polecat/crew worker subprocesses.
 
     Strips SSH credentials and maps git auth to the bot token, ensuring
@@ -132,6 +132,18 @@ def _make_worker_env(interactive: bool = False) -> dict[str, str]:
     """
     env = os.environ.copy()
     apply_env_mappings(env)
+
+    # Strip ACA_DATA access unless the agent is specifically working in that repo.
+    aca_data = env.get("ACA_DATA")
+    if aca_data and work_dir:
+        try:
+            aca_path = Path(aca_data).resolve()
+            if not work_dir.resolve().is_relative_to(aca_path):
+                env.pop("ACA_DATA", None)
+        except OSError:
+            env.pop("ACA_DATA", None)
+    elif aca_data:
+        env.pop("ACA_DATA", None)
 
     if interactive:
         # Enable 24-bit color (TrueColor) for interactive sessions
@@ -1228,8 +1240,7 @@ def sync(ctx, check, quiet, mirrors_only):
     Fetches, pulls, and pushes working repos defined in polecat.yaml.
     Also updates bare mirrors used by polecat workers.
 
-    The brain repo ($ACA_DATA) gets special treatment: dirty files are
-    auto-committed and pushed. Other repos are only pulled/pushed if clean.
+    Working repos are only pulled/pushed if clean.
 
     Examples:
         polecat sync              # Sync everything
@@ -1244,12 +1255,6 @@ def sync(ctx, check, quiet, mirrors_only):
         if not quiet:
             print("Syncing working repos...")
 
-        brain_path = os.environ.get("ACA_DATA", str(Path.home() / "brain"))
-        try:
-            brain_path = str(Path(brain_path).resolve())
-        except OSError:
-            brain_path = ""
-
         needs_attention = []
         for project_name, project_cfg in manager.config.get("projects", {}).items():
             repo_path_str = project_cfg.get("path", "")
@@ -1261,23 +1266,6 @@ def sync(ctx, check, quiet, mirrors_only):
                     print(f"  {project_name}: path not found ({repo_path})")
                 continue
 
-            # Brain repo gets auto-commit; other repos don't
-            is_brain = False
-            try:
-                is_brain = str(repo_path.resolve()) == brain_path
-            except OSError:
-                pass
-
-            if is_brain and not check:
-                # Run aops lint --fix on brain before syncing
-                aops_bin = shutil.which("aops")
-                if aops_bin:
-                    subprocess.run(
-                        [aops_bin, "lint", "--fix"],
-                        capture_output=True,
-                        check=False,
-                    )
-
             if check:
                 # Just report status
                 success, msg = _sync_working_repo(repo_path, auto_commit=False, quiet=quiet)
@@ -1286,7 +1274,7 @@ def sync(ctx, check, quiet, mirrors_only):
                 if not success:
                     needs_attention.append(project_name)
             else:
-                success, msg = _sync_working_repo(repo_path, auto_commit=is_brain, quiet=quiet)
+                success, msg = _sync_working_repo(repo_path, auto_commit=False, quiet=quiet)
                 if not success or not quiet:
                     print(f"  {msg}")
                 if not success:
@@ -2487,7 +2475,7 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, agent_args
 
     # Set session type environment variable for hooks to detect
     # Use sanitized env: SSH stripped, git auth set to bot token only
-    env = _make_worker_env(interactive=True)
+    env = _make_worker_env(interactive=True, work_dir=work_dir)
     env["POLECAT_SESSION_TYPE"] = "crew"
     env["POLECAT_CREW_NAME"] = crew_name
     env["POLECAT_WORKTREE"] = str(work_dir)
@@ -2938,7 +2926,7 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
 
     # Set session type environment variable for hooks to detect
     # Use sanitized env: SSH stripped, git auth set to bot token only
-    env = _make_worker_env(interactive=interactive)
+    env = _make_worker_env(interactive=interactive, work_dir=worktree_path)
     env["POLECAT_SESSION_TYPE"] = "polecat"
 
     tmp_gemini_home = None
