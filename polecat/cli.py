@@ -138,7 +138,7 @@ def _make_worker_env(interactive: bool = False, work_dir: Path | None = None) ->
     if aca_data and work_dir:
         try:
             aca_path = Path(aca_data).resolve()
-            if not str(work_dir.resolve()).startswith(str(aca_path)):
+            if not work_dir.resolve().is_relative_to(aca_path):
                 env.pop("ACA_DATA", None)
         except OSError:
             env.pop("ACA_DATA", None)
