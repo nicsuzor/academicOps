@@ -487,30 +487,6 @@ class TestCrewDockerSession:
         )
 
 
-def _init_test_repo(tmp_path):
-    """Create a minimal git repo with a remote so crew worktree setup works."""
-    repo = tmp_path / "test_repo"
-    repo.mkdir()
-    subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
-    subprocess.run(
-        ["git", "-C", str(repo), "config", "user.email", "test@test"],
-        check=True,
-        capture_output=True,
-    )
-    subprocess.run(
-        ["git", "-C", str(repo), "config", "user.name", "Test"],
-        check=True,
-        capture_output=True,
-    )
-    subprocess.run(
-        ["git", "commit", "--allow-empty", "-m", "init"],
-        cwd=repo,
-        check=True,
-        capture_output=True,
-    )
-    return repo
-
-
 @pytest.mark.slow
 @pytest.mark.integration
 class TestCrewFullPath:
@@ -529,7 +505,9 @@ class TestCrewFullPath:
 
     def _run_crew(self, tmp_path, gemini=False, timeout=180):
         """Run pc crew repo <path> with a simple prompt, return stdout+stderr."""
-        repo = _init_test_repo(tmp_path)
+        from tests.conftest import get_repo_root
+
+        repo = get_repo_root()
 
         cmd = [
             sys.executable,

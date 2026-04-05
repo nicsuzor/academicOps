@@ -58,30 +58,6 @@ Do NOT create any commits, PRs, or modify any files. Just report the results.\
 """
 
 
-def _init_test_repo(tmp_path):
-    """Create a minimal git repo with a remote so crew worktree setup works."""
-    repo = tmp_path / "test_repo"
-    repo.mkdir()
-    subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
-    subprocess.run(
-        ["git", "-C", str(repo), "config", "user.email", "test@test"],
-        check=True,
-        capture_output=True,
-    )
-    subprocess.run(
-        ["git", "-C", str(repo), "config", "user.name", "Test"],
-        check=True,
-        capture_output=True,
-    )
-    subprocess.run(
-        ["git", "commit", "--allow-empty", "-m", "init"],
-        cwd=repo,
-        check=True,
-        capture_output=True,
-    )
-    return repo
-
-
 def _check_fixture_task():
     """Verify the test fixture task exists in PKB and is runnable."""
     try:
@@ -200,7 +176,7 @@ class TestAllInvocationPaths:
 
         docker_tmp = Path.home() / ".aops" / "tmp" / f"test-crew-{uuid.uuid4().hex[:8]}"
         docker_tmp.mkdir(parents=True, exist_ok=True)
-        repo = _init_test_repo(docker_tmp)
+        repo = get_repo_root()
         polecat_home = _make_polecat_home(docker_tmp)
 
         cmd = [

@@ -1243,6 +1243,7 @@ def _run_gemini_docker(prompt: str, gemini_home: Path | None = None, **kwargs) -
             "output": raw_output,
             "stderr": result.stderr,
             "result": parsed,
+            "hook_files_content": "",
         }
         if is_error_response:
             err = parsed.get("error", {})
@@ -1262,13 +1263,19 @@ def _run_gemini_docker(prompt: str, gemini_home: Path | None = None, **kwargs) -
                 f"hook files: {hook_files}",
                 f"all jsonl: {log_files}",
             ]
+
+            hook_contents = []
             # Read hook log contents if found
             for hf in hook_files:
                 try:
+                    content = hf.read_text()
+                    hook_contents.append(content)
                     diag_lines.append(f"--- {hf.name} ---")
-                    diag_lines.append(hf.read_text()[:2000])
+                    diag_lines.append(content[:2000])
                 except OSError:
                     pass
+            response["hook_files_content"] = "\n".join(hook_contents)
+
             # Read session transcript if found
             for sf in session_files:
                 try:
