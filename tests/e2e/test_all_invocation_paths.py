@@ -21,7 +21,6 @@ import sys
 from pathlib import Path
 
 import pytest
-import yaml
 
 from tests.conftest import (
     _docker_available,
@@ -93,41 +92,6 @@ def _reset_fixture_task():
     task_file.write_text(content)
 
 
-def _make_polecat_home(tmp_path):
-    """Create a polecat home with project config pointing to the real academicOps repo."""
-    polecat_home = tmp_path / "polecat_home"
-    polecat_home.mkdir(exist_ok=True)
-    config = {
-        "projects": {
-            "aops": {
-                "path": str(get_repo_root()),
-                "default_branch": "main",
-            },
-        },
-    }
-    (polecat_home / "polecat.yaml").write_text(yaml.dump(config))
-    return polecat_home
-
-
-def _base_env(polecat_home):
-    """Build env dict for running polecat commands."""
-    env = os.environ.copy()
-    env["POLECAT_HOME"] = str(polecat_home)
-    env["PYTHONPATH"] = (
-        os.getcwd() + ":" + os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
-    )
-    # Strip parent session vars so child polecat gets its own session identity
-    # and doesn't inherit hooks/state from the test runner's aops session.
-    for key in [
-        "CLAUDE_SESSION_ID",
-        "CLAUDE_ENV_FILE",
-        "AOPS_SESSION_STATE_DIR",
-        "AOPS_HOOK_LOG_PATH",
-    ]:
-        env.pop(key, None)
-    return env
-
-
 @pytest.mark.slow
 @pytest.mark.integration
 @pytest.mark.xdist_group("invocation-paths")
@@ -169,22 +133,13 @@ class TestAllInvocationPaths:
         """Run pc crew repo <path> -- -p <mega-prompt>."""
         if timeout is None:
             timeout = 600 if backend == "gemini" else 300
-        # Polecat home and repo must be on a Docker-visible filesystem.
-        # On macOS with Colima, only /Users is shared; pytest tmp_path
-        # resolves to /private/var/folders/ which Docker cannot see.
-        import uuid
 
-        docker_tmp = Path.home() / ".aops" / "tmp" / f"test-crew-{uuid.uuid4().hex[:8]}"
-        docker_tmp.mkdir(parents=True, exist_ok=True)
         repo = get_repo_root()
-        polecat_home = _make_polecat_home(docker_tmp)
 
         cmd = [
             sys.executable,
             "-m",
             "polecat.cli",
-            "--home",
-            str(polecat_home),
             "crew",
             "repo",
             str(repo),
@@ -202,7 +157,17 @@ class TestAllInvocationPaths:
                 build_claude_agent_cmd(MEGA_PROMPT, output_format="text", include_binary=False)
             )
 
-        env = _base_env(polecat_home)
+        env = os.environ.copy()
+        env["PYTHONPATH"] = (
+            os.getcwd() + ":" + os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
+        )
+        for key in [
+            "CLAUDE_SESSION_ID",
+            "CLAUDE_ENV_FILE",
+            "AOPS_SESSION_STATE_DIR",
+            "AOPS_HOOK_LOG_PATH",
+        ]:
+            env.pop(key, None)
 
         try:
             proc = subprocess.run(
@@ -220,10 +185,27 @@ class TestAllInvocationPaths:
 
         combined = proc.stdout + proc.stderr
 
-        # Clean up Docker-visible temp dir
-        import shutil
+        from tests.conftest import parse_tool_calls
 
-        shutil.rmtree(docker_tmp, ignore_errors=True)
+        aops_sessions = Path(os.environ.get("AOPS_SESSIONS", Path.home() / ".aops" / "sessions"))
+        hook_files = sorted(aops_sessions.rglob("*-hooks.jsonl"), key=os.path.getmtime)
+        hook_file = hook_files[-1] if hook_files else None
+        hook_files_content = hook_file.read_text() if hook_file else ""
+
+        claude_dir = Path.home() / ".claude" / "projects"
+        session_files = []
+        if claude_dir.exists():
+            session_files.extend(
+                [f for f in claude_dir.rglob("*.jsonl") if not f.name.endswith("-hooks.jsonl")]
+            )
+        if aops_sessions.exists():
+            session_files.extend(
+                [f for f in aops_sessions.rglob("*.jsonl") if not f.name.endswith("-hooks.jsonl")]
+            )
+
+        session_files = sorted(session_files, key=os.path.getmtime)
+        session_file = session_files[-1] if session_files else None
+        tool_calls = parse_tool_calls(session_file) if session_file else []
 
         return {
             "param": f"crew-{backend}",
@@ -233,6 +215,9 @@ class TestAllInvocationPaths:
             "stdout": proc.stdout,
             "stderr": proc.stderr,
             "combined": combined,
+            "hook_files_content": hook_files_content,
+            "session_file": session_file,
+            "tool_calls": tool_calls,
         }
 
     def _run_polecat(self, tmp_path, backend, timeout=None):
@@ -245,17 +230,12 @@ class TestAllInvocationPaths:
                 "(missing, or pkb binary not available)"
             )
 
-        # Reset task to active before each run (previous run may have set in_progress)
         _reset_fixture_task()
-
-        polecat_home = _make_polecat_home(tmp_path)
 
         cmd = [
             sys.executable,
             "-m",
             "polecat.cli",
-            "--home",
-            str(polecat_home),
             "run",
             "-t",
             TEST_FIXTURE_TASK_ID,
@@ -264,7 +244,17 @@ class TestAllInvocationPaths:
         if backend == "gemini":
             cmd.append("-g")
 
-        env = _base_env(polecat_home)
+        env = os.environ.copy()
+        env["PYTHONPATH"] = (
+            os.getcwd() + ":" + os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
+        )
+        for key in [
+            "CLAUDE_SESSION_ID",
+            "CLAUDE_ENV_FILE",
+            "AOPS_SESSION_STATE_DIR",
+            "AOPS_HOOK_LOG_PATH",
+        ]:
+            env.pop(key, None)
 
         try:
             proc = subprocess.run(
@@ -280,10 +270,32 @@ class TestAllInvocationPaths:
         except subprocess.TimeoutExpired:
             pytest.fail(f"run-{backend} timed out after {timeout}s")
         finally:
-            # Always reset task status so it's reusable
             _reset_fixture_task()
 
         combined = proc.stdout + proc.stderr
+
+        from tests.conftest import parse_tool_calls
+
+        aops_sessions = Path(os.environ.get("AOPS_SESSIONS", Path.home() / ".aops" / "sessions"))
+        hook_files = sorted(aops_sessions.rglob("*-hooks.jsonl"), key=os.path.getmtime)
+        hook_file = hook_files[-1] if hook_files else None
+        hook_files_content = hook_file.read_text() if hook_file else ""
+
+        claude_dir = Path.home() / ".claude" / "projects"
+        session_files = []
+        if claude_dir.exists():
+            session_files.extend(
+                [f for f in claude_dir.rglob("*.jsonl") if not f.name.endswith("-hooks.jsonl")]
+            )
+        if aops_sessions.exists():
+            session_files.extend(
+                [f for f in aops_sessions.rglob("*.jsonl") if not f.name.endswith("-hooks.jsonl")]
+            )
+
+        session_files = sorted(session_files, key=os.path.getmtime)
+        session_file = session_files[-1] if session_files else None
+        tool_calls = parse_tool_calls(session_file) if session_file else []
+
         return {
             "param": f"run-{backend}",
             "path_type": "run",
@@ -292,6 +304,9 @@ class TestAllInvocationPaths:
             "stdout": proc.stdout,
             "stderr": proc.stderr,
             "combined": combined,
+            "hook_files_content": hook_files_content,
+            "session_file": session_file,
+            "tool_calls": tool_calls,
         }
 
     # --- Assertions (all parse the shared session result) ---
@@ -345,4 +360,56 @@ class TestAllInvocationPaths:
         assert has_pkb, (
             f"{session['param']} did not report pkb binary.\n"
             f"Output (last 1000 chars): {combined[-1000:]}"
+        )
+
+    def test_hooks_fired(self, session):
+        """Hooks fire inside Docker container.
+
+        Checks the jsonl hook debug files for hook evidence.
+        """
+        hook_files_content = session.get("hook_files_content", "")
+
+        hook_evidence = (
+            "hook" in hook_files_content.lower()
+            or "SessionStart" in hook_files_content
+            or "gate" in hook_files_content.lower()
+        )
+
+        assert hook_evidence, (
+            f"[{session['param']}] No hook evidence in output.\n"
+            f"hook JSONL contents (last 500): {hook_files_content[-500:]}\n"
+        )
+
+    def test_session_persists(self, session):
+        """Session JSONL is written and contains user+assistant entries."""
+        session_file = session.get("session_file")
+
+        # JSONL file exists and is non-empty
+        assert session_file is not None, f"No session JSONL found for {session['param']}."
+        assert session_file.stat().st_size > 0, "Session JSONL exists but is empty"
+
+        # JSONL content has user + assistant messages
+        import json
+
+        entries = []
+        with session_file.open() as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    entries.append(json.loads(line))
+
+        assert len(entries) > 0, "Session JSONL has no entries"
+        types = {e.get("type") for e in entries}
+        assert "user" in types or "human" in types, f"No user message. Types: {types}"
+        assert "assistant" in types or "model" in types, (
+            f"No assistant/model message. Types: {types}"
+        )
+
+    def test_session_logs_extracted(self, session):
+        """Session JSONL can be parsed for tool calls."""
+        tool_calls = session.get("tool_calls", [])
+        # The mega-prompt asks to run shell commands, so there should be Bash tool calls
+        bash_calls = [c for c in tool_calls if c["name"] in ("Bash", "run_shell_command")]
+        assert len(bash_calls) >= 1, (
+            f"Expected at least one Bash tool call, got: {[c['name'] for c in tool_calls]}"
         )
