@@ -166,6 +166,29 @@ class TestAllInvocationPaths:
 
         repo = get_repo_root()
 
+        crew_name = f"test-{backend}"
+
+        env = os.environ.copy()
+        env["PYTHONPATH"] = (
+            os.getcwd() + ":" + os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
+        )
+        for key in [
+            "CLAUDE_SESSION_ID",
+            "CLAUDE_ENV_FILE",
+            "AOPS_SESSION_STATE_DIR",
+            "AOPS_HOOK_LOG_PATH",
+        ]:
+            env.pop(key, None)
+
+        # Always clean up any previous run first
+        subprocess.run(
+            [sys.executable, "-m", "polecat.cli", "nuke", crew_name, "--force"],
+            capture_output=True,
+            check=False,
+            env=env,
+            cwd=os.getcwd(),
+        )
+
         cmd = [
             sys.executable,
             "-m",
@@ -174,7 +197,7 @@ class TestAllInvocationPaths:
             "repo",
             str(repo),
             "-n",
-            f"test-{backend}",
+            crew_name,
         ]
         if backend == "gemini":
             cmd.append("-g")
@@ -187,23 +210,6 @@ class TestAllInvocationPaths:
                 build_claude_agent_cmd(MEGA_PROMPT, output_format="text", include_binary=False)
             )
 
-        env = os.environ.copy()
-        cwd = os.getcwd()
-        env["PYTHONPATH"] = os.pathsep.join(
-            [
-                cwd,
-                os.path.join(cwd, "polecat"),
-                os.path.join(cwd, "aops-core"),
-            ]
-        )
-        for key in [
-            "CLAUDE_SESSION_ID",
-            "CLAUDE_ENV_FILE",
-            "AOPS_SESSION_STATE_DIR",
-            "AOPS_HOOK_LOG_PATH",
-        ]:
-            env.pop(key, None)
-
         try:
             proc = subprocess.run(
                 cmd,
@@ -212,7 +218,7 @@ class TestAllInvocationPaths:
                 timeout=timeout,
                 check=False,
                 env=env,
-                cwd=cwd,
+                cwd=os.getcwd(),
                 stdin=subprocess.DEVNULL,
             )
         except subprocess.TimeoutExpired:

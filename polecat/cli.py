@@ -120,7 +120,7 @@ def _node_version_key(p: Path) -> tuple[int, ...]:
     return tuple(int(x) for x in m.groups()) if m else (0, 0, 0)
 
 
-def _make_worker_env(interactive: bool = False) -> dict[str, str]:
+def _make_worker_env(interactive: bool = False, work_dir: Path | None = None) -> dict[str, str]:
     """Create a sanitized environment for polecat/crew worker subprocesses.
 
     Strips SSH credentials and maps git auth to the bot token, ensuring
@@ -132,6 +132,18 @@ def _make_worker_env(interactive: bool = False) -> dict[str, str]:
     """
     env = os.environ.copy()
     apply_env_mappings(env)
+
+    # Strip ACA_DATA access unless the agent is specifically working in that repo.
+    aca_data = env.get("ACA_DATA")
+    if aca_data and work_dir:
+        try:
+            aca_path = Path(aca_data).resolve()
+            if not str(work_dir.resolve()).startswith(str(aca_path)):
+                env.pop("ACA_DATA", None)
+        except OSError:
+            env.pop("ACA_DATA", None)
+    elif aca_data:
+        env.pop("ACA_DATA", None)
 
     if interactive:
         # Enable 24-bit color (TrueColor) for interactive sessions
@@ -2463,7 +2475,7 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, agent_args
 
     # Set session type environment variable for hooks to detect
     # Use sanitized env: SSH stripped, git auth set to bot token only
-    env = _make_worker_env(interactive=True)
+    env = _make_worker_env(interactive=True, work_dir=work_dir)
     env["POLECAT_SESSION_TYPE"] = "crew"
     env["POLECAT_CREW_NAME"] = crew_name
     env["POLECAT_WORKTREE"] = str(work_dir)
@@ -2914,7 +2926,7 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
 
     # Set session type environment variable for hooks to detect
     # Use sanitized env: SSH stripped, git auth set to bot token only
-    env = _make_worker_env(interactive=interactive)
+    env = _make_worker_env(interactive=interactive, work_dir=worktree_path)
     env["POLECAT_SESSION_TYPE"] = "polecat"
 
     tmp_gemini_home = None
