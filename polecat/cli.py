@@ -1228,8 +1228,7 @@ def sync(ctx, check, quiet, mirrors_only):
     Fetches, pulls, and pushes working repos defined in polecat.yaml.
     Also updates bare mirrors used by polecat workers.
 
-    The brain repo ($ACA_DATA) gets special treatment: dirty files are
-    auto-committed and pushed. Other repos are only pulled/pushed if clean.
+    Working repos are only pulled/pushed if clean.
 
     Examples:
         polecat sync              # Sync everything
@@ -1244,12 +1243,6 @@ def sync(ctx, check, quiet, mirrors_only):
         if not quiet:
             print("Syncing working repos...")
 
-        brain_path = os.environ.get("ACA_DATA", str(Path.home() / "brain"))
-        try:
-            brain_path = str(Path(brain_path).resolve())
-        except OSError:
-            brain_path = ""
-
         needs_attention = []
         for project_name, project_cfg in manager.config.get("projects", {}).items():
             repo_path_str = project_cfg.get("path", "")
@@ -1261,23 +1254,6 @@ def sync(ctx, check, quiet, mirrors_only):
                     print(f"  {project_name}: path not found ({repo_path})")
                 continue
 
-            # Brain repo gets auto-commit; other repos don't
-            is_brain = False
-            try:
-                is_brain = str(repo_path.resolve()) == brain_path
-            except OSError:
-                pass
-
-            if is_brain and not check:
-                # Run aops lint --fix on brain before syncing
-                aops_bin = shutil.which("aops")
-                if aops_bin:
-                    subprocess.run(
-                        [aops_bin, "lint", "--fix"],
-                        capture_output=True,
-                        check=False,
-                    )
-
             if check:
                 # Just report status
                 success, msg = _sync_working_repo(repo_path, auto_commit=False, quiet=quiet)
@@ -1286,7 +1262,7 @@ def sync(ctx, check, quiet, mirrors_only):
                 if not success:
                     needs_attention.append(project_name)
             else:
-                success, msg = _sync_working_repo(repo_path, auto_commit=is_brain, quiet=quiet)
+                success, msg = _sync_working_repo(repo_path, auto_commit=False, quiet=quiet)
                 if not success or not quiet:
                     print(f"  {msg}")
                 if not success:
