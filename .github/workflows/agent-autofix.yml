@@ -5,7 +5,7 @@
 #   - Push fixes for mechanical issues directly to the PR branch
 #   - Comment briefly on issues requiring human judgment
 #   - File gh pr review (APPROVE or REQUEST_CHANGES)
-# Prompt: .github/agents/assessor.agent.md
+# Prompt: .github/agents/autofix.agent.md
 # Curia: Assessor (GitHub surface). Local: .agents/skills/critic/SKILL.md
 #
 # See specs/pr-pipeline.md for the full process documentation.
