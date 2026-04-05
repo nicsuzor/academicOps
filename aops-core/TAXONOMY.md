@@ -43,15 +43,15 @@ Each level resolves a different kind of uncertainty:
 
 ---
 
-## Computed Properties
+## Core Computed Properties
 
-Every node carries three computed properties that drive both label assignment and tooling:
+Every node carries three core computed properties that drive both label assignment and tooling:
 
 ### scope
 
 **What it measures**: Subtree size — the total count of descendants.
 
-**How computed**: Recursive count of all children, grandchildren, etc., with a cycle guard to handle soft cycles.
+**How computed**: Recursive count of all children, grandchildren, etc., via Parent edges (with a cycle guard for invalid Parent cycles).
 
 **What it tells you**: How much work lives under this node. High scope = strategic container. Low scope = leaf-level work.
 
@@ -61,7 +61,7 @@ Every node carries three computed properties that drive both label assignment an
 
 **How computed**: Composite signal from:
 
-- `has_children`: decomposed work reduces uncertainty
+- `has_children`: decomposed nodes have lower uncertainty than undecomposed equivalents at the same scope (high-scope nodes may still remain above task thresholds even when decomposed)
 - `has_acceptance_criteria`: explicit success criteria reduce uncertainty
 - `dep_resolution_ratio`: fraction of dependencies that are resolved
 - `body_length`: fuller description signals more specified intent
@@ -84,7 +84,7 @@ Every node carries three computed properties that drive both label assignment an
 ### depth and leaf
 
 - **depth**: Distance from root (parent chain walk). Advisory — does not determine label.
-- **leaf**: Boolean. True when the node has no children AND uncertainty is low. A leaf is the unit of direct action.
+- **leaf**: Boolean. True when the node has no children AND uncertainty is low. A structural indicator of decomposition completeness — not sufficient for execution readiness (which also requires resolved DependsOn edges).
 
 ---
 
@@ -94,10 +94,10 @@ These ranges map conventional labels to computed property values. They are **gui
 
 | Label       | Scope | Uncertainty | Typical behaviour                                     |
 | ----------- | ----- | ----------- | ----------------------------------------------------- |
-| **Goal**    | > 50  | > 0.7       | Target distribution — defines what success looks like |
-| **Project** | > 15  | varies      | Partition of goal space — a coherent body of work     |
-| **Epic**    | 3–20  | < 0.5       | Sufficient statistic for execution — what to do       |
-| **Task**    | 0–3   | < 0.3       | Near-zero entropy — ready to act                      |
+| **goal**    | > 50  | > 0.7       | Target distribution — defines what success looks like |
+| **project** | > 15  | varies      | Partition of goal space — a coherent body of work     |
+| **epic**    | 3–20  | < 0.5       | Sufficient statistic for execution — what to do       |
+| **task**    | 0–3   | < 0.3       | Near-zero entropy — ready to act                      |
 
 A node with scope 25 but clear acceptance criteria and resolved dependencies might be a well-decomposed epic, not a project. The label is a human-facing shorthand; the properties are authoritative.
 
@@ -110,12 +110,13 @@ Variable-rate decomposition stops when uncertainty is low enough to act — rega
 
 ---
 
-## Actionable Types
+## Primary Node Types
 
-The four actionable node types in the PKB:
+The five primary node types in the PKB:
 
 | Type        | Description                                                                                                                          |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| **goal**    | A multi-month/year desired outcome — the root of the hierarchy                                                                       |
 | **project** | A discrete thing we work on — a noun with defined scope and boundaries                                                               |
 | **epic**    | A bundle of related work that together achieves an aim — a verb                                                                      |
 | **task**    | A discrete deliverable, completable in a single focused session                                                                      |
@@ -139,7 +140,7 @@ The graph is **directed but not required to be acyclic**. Cycles are a feature f
 
 ### Cycle detection policy
 
-**Hard cycles** (DependsOn + Parent edges): Detected via Tarjan's SCC. Any strongly connected component with more than one node is a decomposition failure requiring human review. These are surfaced as errors.
+**Hard cycles** (DependsOn + Parent edges): Detected via Tarjan's SCC. Any strongly connected component with more than one node, or any single-node SCC that has a self-edge, is a decomposition failure requiring human review. These are surfaced as errors.
 
 **Soft cycles** (SoftDependsOn edges): Counted and reported but not flagged as errors. Mutual reinforcement is a normal property of academic work — writing clarifies thinking, thinking improves writing.
 
@@ -166,6 +167,8 @@ The tree hierarchy is a **spanning tree** of the underlying dependency graph. It
 **Ready means ready**: A task should only appear as `ready` when uncertainty is low AND all upstream `DependsOn` edges are resolved — not merely when it has no children.
 
 **Propagation**: Completion of a node should trigger readiness re-evaluation of all nodes that depend on it. The system surfaces dependency chains so that cascading unblocks are visible.
+
+**Canonical authority**: This is the canonical status set. Discrepancies in other framework documents (e.g. implementation specs using additional statuses like `active`, `waiting`, or `review`) should be resolved by updating those documents to align with this list or explicitly scoping their additional statuses to their subsystem.
 
 ---
 
@@ -232,7 +235,7 @@ A task is only ready when its uncertainty is low AND all DependsOn edges point t
 
 ### 5. The hierarchy provides context
 
-Each level answers "why?" in terms of its parent. A task's purpose is explained by its epic. An epic's purpose is explained by its project. If you can't trace this chain, something is misplaced.
+Each level answers "why?" in terms of its parent. A task's purpose is explained by its epic. An epic's purpose is explained by its project. A project's purpose is explained by its goal. If you can't trace this chain, something is misplaced.
 
 ### 6. Workflows orchestrate; skills execute; skills are fungible
 
@@ -270,6 +273,6 @@ Workflows define WHAT steps to take and in WHAT order. Skills define HOW to exec
 
 This document supersedes any conflicting definitions in other framework files. If another document defines these terms differently, that document should be updated to reference this one.
 
-**Referenced by**: TASK_FORMAT_GUIDE.md, WORKFLOWS.md, SKILLS.md, all SKILL.md files, workflow-system-spec.md
+**Referenced by**: `aops-core/SKILLS.md`, all `SKILL.md` files, `specs/workflow-system-spec.md`, `aops-core/skills/planner/WORKFLOWS.md`
 
-**Supersedes**: Fixed-depth waterfall definitions (Goal→Project→Epic→Task as structural types at fixed depths). See `knowledge/framework/taxonomy-redesign-information-theoretic.md` for the design rationale.
+**Supersedes**: Fixed-depth waterfall definitions (Goal→Project→Epic→Task as structural types at fixed depths).
