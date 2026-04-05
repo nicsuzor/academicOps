@@ -12,7 +12,7 @@ needs_task: false
 mode: execution
 domain:
   - operations
-allowed-tools: Bash,Read,Write,Grep,Glob,mcp__pkb__search,mcp__pkb__pkb_orphans,mcp__pkb__create_memory,mcp__pkb__list_tasks,mcp__pkb__graph_stats,mcp__pkb__get_network_metrics,mcp__pkb__update_task,mcp__pkb__get_task,mcp__pkb__task_search,mcp__pkb__pkb_context,mcp__pkb__bulk_reparent,mcp__pkb__find_duplicates,mcp__pkb__batch_merge,mcp__pkb__merge_node,mcp__pkb__complete_task,mcp__pkb__batch_reclassify,mcp__pkb__batch_archive,mcp__pkb__batch_update,mcp__pkb__create_task,mcp__pkb__update_memory,mcp__omcp__messages_search,mcp__omcp__messages_query,mcp__omcp__calendar_list_events
+allowed-tools: Bash,Read,Write,Grep,Glob,Skill,mcp__pkb__search,mcp__pkb__pkb_orphans,mcp__pkb__create_memory,mcp__pkb__list_tasks,mcp__pkb__graph_stats,mcp__pkb__get_network_metrics,mcp__pkb__update_task,mcp__pkb__get_task,mcp__pkb__task_search,mcp__pkb__pkb_context,mcp__pkb__bulk_reparent,mcp__pkb__find_duplicates,mcp__pkb__batch_merge,mcp__pkb__merge_node,mcp__pkb__complete_task,mcp__pkb__batch_reclassify,mcp__pkb__batch_archive,mcp__pkb__batch_update,mcp__pkb__create_task,mcp__pkb__update_memory,mcp__omcp__messages_search,mcp__omcp__messages_query,mcp__omcp__calendar_list_events
 version: 0.1.0
 tags:
   - consolidation
@@ -76,6 +76,7 @@ The agent works through these in order, using judgment about what needs attentio
 | 3     | Index Refresh               | Update mechanical framework indices (`SKILLS.md`, etc.) |
 | 4     | Data Quality Reconciliation | Dedup, staleness verification, misclassification        |
 | 5     | Staleness Sweep             | Detect orphans, stale docs, under-specified tasks       |
+| 5a    | Refile Processing           | Re-parent user-flagged tasks via /planner, remove flag  |
 | 5b    | Graph Maintenance           | Densify, reparent, or connect — pick ONE strategy       |
 | 5c    | PKB Quality Review          | Qualitative assessment of knowledge note quality        |
 | 6     | Brain Sync                  | Commit and push `$ACA_DATA`; re-run `graph_stats`       |
@@ -252,6 +253,23 @@ The agent uses these as **signals**, not as deterministic verdicts:
 - **PKB orphan detection**: `mcp__pkb__pkb_orphans()`
 - **Git log**: Recent commits, task changes since last cycle
 - **Own judgment**: The agent reads flagged tasks and decides whether they genuinely need attention.
+
+## Phase 5a: Refile Processing
+
+Process tasks the user has explicitly flagged for refiling via the dashboard's REFILE button. These are user-initiated reparent requests and take priority over automated graph maintenance.
+
+### Process
+
+1. **Find flagged tasks**: Grep for `refile: true` across `$ACA_DATA/tasks/`
+2. **Reparent each task**: Invoke `/planner` in `maintain` mode (reparent activity) for each flagged task — the planner reads the task's context and finds an appropriate parent
+3. **Clean up the flag**: After successful reparenting, remove the `refile` key from the task's YAML frontmatter
+4. **Handle ambiguity**: If the planner cannot determine a parent, flag in cycle summary for human review. Remove `refile: true` and add `needs_triage: true` to prevent re-processing
+
+### Rules
+
+- **No batch limit** — these are explicit user requests; process all of them
+- **Commits directly to main** — this is mechanical/autonomous work, not knowledge creation
+- **Runs before Phase 5b** so graph metrics reflect the refile changes
 
 ## Phase 5b: Graph Maintenance
 
