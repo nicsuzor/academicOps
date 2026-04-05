@@ -324,32 +324,51 @@ class TestAllInvocationPaths:
 
     def test_sandbox_isolation(self, session):
         """Agent runs inside a Docker container / Gemini sandbox."""
+        import re
+
         combined = session["combined"]
-        # Check for signals of sandbox/container execution.
-        # Primary: agent echoed the sandbox check commands from the mega prompt.
-        has_dockerenv = "SANDBOX_VERIFIED=true" in combined
-        has_session_type = "SESSION_TYPE=crew" in combined or "SESSION_TYPE=polecat" in combined
-        # Fallback: polecat's own output markers (resilient to LLM not following prompt).
-        has_crew_marker = "Crew worker:" in combined and "session ended" in combined
-        has_polecat_marker = "Starting " in combined and " agent (" in combined
-        assert has_dockerenv or has_session_type or has_crew_marker or has_polecat_marker, (
-            f"{session['param']} could not verify sandbox isolation.\n"
-            f"Expected SANDBOX_VERIFIED=true, SESSION_TYPE=crew/polecat, "
-            f"or polecat session markers.\n"
-            f"Output (last 1000 chars): {combined[-1000:]}"
+        session_file = session.get("session_file")
+        raw_log = session_file.read_text() if session_file and session_file.exists() else ""
+
+        # Primary proof: the agent executed the bash command inside the container.
+        # We check both the raw JSONL session log (which contains verbatim tool outputs)
+        # and the combined stdout (in case the LLM formatted it as a table or summarized it).
+        has_dockerenv = (
+            "SANDBOX_VERIFIED=true" in raw_log
+            or bool(re.search(r"SANDBOX_VERIFIED.*?true", combined, re.IGNORECASE))
+            or "/.dockerenv" in combined
+        )
+
+        # Secondary proof: the agent read the injected environment variables
+        has_session_type = "SESSION_TYPE=" in raw_log or bool(
+            re.search(r"SESSION_TYPE.*?(crew|polecat)", combined, re.IGNORECASE)
+        )
+
+        assert has_dockerenv and has_session_type, (
+            f"[{session['param']}] Failed to verify sandbox isolation.\n"
+            f"has_dockerenv={has_dockerenv}, has_session_type={has_session_type}\n"
+            f"Agent output (last 1000 chars): {combined[-1000:]}"
         )
 
     def test_pkb_tool_call(self, session):
         """PKB MCP graph_stats tool call succeeds inside the container."""
         combined = session["combined"]
+        session_file = session.get("session_file")
+        raw_log = session_file.read_text() if session_file and session_file.exists() else ""
+
         # graph_stats returns task_count and/or document_count
-        has_task_count = "task_count" in combined.lower()
-        has_doc_count = "document_count" in combined.lower()
-        has_graph_stats = "graph_stats" in combined.lower() or "graph stats" in combined.lower()
+        has_task_count = "task_count" in combined.lower() or "task_count" in raw_log.lower()
+        has_doc_count = "document_count" in combined.lower() or "document_count" in raw_log.lower()
+        has_graph_stats = (
+            "graph_stats" in combined.lower()
+            or "graph stats" in combined.lower()
+            or "graph_stats" in raw_log.lower()
+        )
+
         assert has_task_count or has_doc_count or has_graph_stats, (
-            f"{session['param']} did not produce PKB graph_stats output.\n"
-            f"Expected task_count/document_count in output.\n"
-            f"Output (last 1000 chars): {combined[-1000:]}"
+            f"[{session['param']}] did not produce PKB graph_stats output.\n"
+            f"Expected task_count/document_count in output or raw session log.\n"
+            f"Agent output (last 1000 chars): {combined[-1000:]}"
         )
 
     def test_pkb_binary_available(self, session):
