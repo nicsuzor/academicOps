@@ -28,7 +28,6 @@ Quick lookup for framework principles. See [[enforcement-map.md]] for the full t
 | P#27 | No Excuses                      | Never claim success without confirmation   |
 | P#30 | Nothing Is Someone Else's       | If you can't fix it, HALT                  |
 | P#31 | Acceptance Criteria Own Success | Only user criteria determine completion    |
-| P#48 | Human Tasks Are Not Agent Tasks | External comms route to user               |
 | P#50 | Explicit Approval               | Get approval before expensive operations   |
 | P#99 | Delegated Authority Only        | Act within delegated authority only        |
 

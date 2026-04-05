@@ -129,6 +129,36 @@ class TestAllInvocationPaths:
         else:
             return self._run_polecat(tmp_path, backend)
 
+    @staticmethod
+    def _find_latest_session_logs():
+        """Discover the most-recently-modified session JSONL and hook log.
+
+        Returns:
+            (hook_files_content, session_file, tool_calls)
+        """
+        from tests.conftest import parse_tool_calls
+
+        aops_sessions = Path(os.environ.get("AOPS_SESSIONS", Path.home() / ".aops" / "sessions"))
+        hook_files = sorted(aops_sessions.rglob("*-hooks.jsonl"), key=os.path.getmtime)
+        hook_file = hook_files[-1] if hook_files else None
+        hook_files_content = hook_file.read_text() if hook_file else ""
+
+        claude_dir = Path.home() / ".claude" / "projects"
+        session_files = []
+        if claude_dir.exists():
+            session_files.extend(
+                [f for f in claude_dir.rglob("*.jsonl") if not f.name.endswith("-hooks.jsonl")]
+            )
+        if aops_sessions.exists():
+            session_files.extend(
+                [f for f in aops_sessions.rglob("*.jsonl") if not f.name.endswith("-hooks.jsonl")]
+            )
+
+        session_files = sorted(session_files, key=os.path.getmtime)
+        session_file = session_files[-1] if session_files else None
+        tool_calls = parse_tool_calls(session_file) if session_file else []
+        return hook_files_content, session_file, tool_calls
+
     def _run_crew(self, tmp_path, backend, timeout=None):
         """Run pc crew repo <path> -- -p <mega-prompt>."""
         if timeout is None:
@@ -158,8 +188,13 @@ class TestAllInvocationPaths:
             )
 
         env = os.environ.copy()
-        env["PYTHONPATH"] = (
-            os.getcwd() + ":" + os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
+        cwd = os.getcwd()
+        env["PYTHONPATH"] = os.pathsep.join(
+            [
+                cwd,
+                os.path.join(cwd, "polecat"),
+                os.path.join(cwd, "aops-core"),
+            ]
         )
         for key in [
             "CLAUDE_SESSION_ID",
@@ -177,35 +212,14 @@ class TestAllInvocationPaths:
                 timeout=timeout,
                 check=False,
                 env=env,
-                cwd=os.getcwd(),
+                cwd=cwd,
                 stdin=subprocess.DEVNULL,
             )
         except subprocess.TimeoutExpired:
             pytest.fail(f"crew-{backend} timed out after {timeout}s")
 
         combined = proc.stdout + proc.stderr
-
-        from tests.conftest import parse_tool_calls
-
-        aops_sessions = Path(os.environ.get("AOPS_SESSIONS", Path.home() / ".aops" / "sessions"))
-        hook_files = sorted(aops_sessions.rglob("*-hooks.jsonl"), key=os.path.getmtime)
-        hook_file = hook_files[-1] if hook_files else None
-        hook_files_content = hook_file.read_text() if hook_file else ""
-
-        claude_dir = Path.home() / ".claude" / "projects"
-        session_files = []
-        if claude_dir.exists():
-            session_files.extend(
-                [f for f in claude_dir.rglob("*.jsonl") if not f.name.endswith("-hooks.jsonl")]
-            )
-        if aops_sessions.exists():
-            session_files.extend(
-                [f for f in aops_sessions.rglob("*.jsonl") if not f.name.endswith("-hooks.jsonl")]
-            )
-
-        session_files = sorted(session_files, key=os.path.getmtime)
-        session_file = session_files[-1] if session_files else None
-        tool_calls = parse_tool_calls(session_file) if session_file else []
+        hook_files_content, session_file, tool_calls = self._find_latest_session_logs()
 
         return {
             "param": f"crew-{backend}",
@@ -245,8 +259,13 @@ class TestAllInvocationPaths:
             cmd.append("-g")
 
         env = os.environ.copy()
-        env["PYTHONPATH"] = (
-            os.getcwd() + ":" + os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
+        cwd = os.getcwd()
+        env["PYTHONPATH"] = os.pathsep.join(
+            [
+                cwd,
+                os.path.join(cwd, "polecat"),
+                os.path.join(cwd, "aops-core"),
+            ]
         )
         for key in [
             "CLAUDE_SESSION_ID",
@@ -264,7 +283,7 @@ class TestAllInvocationPaths:
                 timeout=timeout,
                 check=False,
                 env=env,
-                cwd=os.getcwd(),
+                cwd=cwd,
                 stdin=subprocess.DEVNULL,
             )
         except subprocess.TimeoutExpired:
@@ -273,28 +292,7 @@ class TestAllInvocationPaths:
             _reset_fixture_task()
 
         combined = proc.stdout + proc.stderr
-
-        from tests.conftest import parse_tool_calls
-
-        aops_sessions = Path(os.environ.get("AOPS_SESSIONS", Path.home() / ".aops" / "sessions"))
-        hook_files = sorted(aops_sessions.rglob("*-hooks.jsonl"), key=os.path.getmtime)
-        hook_file = hook_files[-1] if hook_files else None
-        hook_files_content = hook_file.read_text() if hook_file else ""
-
-        claude_dir = Path.home() / ".claude" / "projects"
-        session_files = []
-        if claude_dir.exists():
-            session_files.extend(
-                [f for f in claude_dir.rglob("*.jsonl") if not f.name.endswith("-hooks.jsonl")]
-            )
-        if aops_sessions.exists():
-            session_files.extend(
-                [f for f in aops_sessions.rglob("*.jsonl") if not f.name.endswith("-hooks.jsonl")]
-            )
-
-        session_files = sorted(session_files, key=os.path.getmtime)
-        session_file = session_files[-1] if session_files else None
-        tool_calls = parse_tool_calls(session_file) if session_file else []
+        hook_files_content, session_file, tool_calls = self._find_latest_session_logs()
 
         return {
             "param": f"run-{backend}",
@@ -335,7 +333,7 @@ class TestAllInvocationPaths:
         # and the combined stdout (in case the LLM formatted it as a table or summarized it).
         has_dockerenv = (
             "SANDBOX_VERIFIED=true" in raw_log
-            or bool(re.search(r"SANDBOX_VERIFIED.*?true", combined, re.IGNORECASE))
+            or bool(re.search(r"\bSANDBOX_VERIFIED\s*=\s*true\b", combined, re.IGNORECASE))
             or "/.dockerenv" in combined
         )
 

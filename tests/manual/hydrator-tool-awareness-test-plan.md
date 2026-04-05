@@ -87,11 +87,10 @@ The main agent may have: omcp (Outlook), zot (Zotero), osb, playwright, context7
 
 **Expected**: Hydrator SHOULD flag this as needing human input because:
 
-- External communication to non-user (P#48 applies)
-- Requires human judgment on wording
-- This is NOT a tool availability issue
+- External communication to non-user requires human judgment on wording
+- This is NOT a tool availability issue — it's a scope boundary
 
-**This confirms P#48 still works for actual human tasks.**
+**This confirms the hydrator correctly routes judgment-sensitive tasks back to the user.**
 
 ## How to Run Manual Tests
 

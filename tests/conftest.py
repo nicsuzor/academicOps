@@ -961,15 +961,6 @@ def gemini_headless(gemini_home):
 
     return _make_failing_wrapper(_run)
 
-    # --- Parameterized CLI fixture for cross-platform tests ---
-
-    """Pytest fixture providing aOps framework root path.
-
-    Returns:
-        Path: Absolute path to aOps framework root ($AOPS)
-    """
-    return get_aops_root()
-
 
 # --- Session tracking fixtures for E2E tool verification ---
 
