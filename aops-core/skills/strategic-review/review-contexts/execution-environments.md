@@ -1,7 +1,7 @@
 # Execution Environments for Review Agents
 
 Two environments are available for running review agents: GitHub Actions runners and local
-polecats. Each has distinct capabilities and constraints. The maintainer decides which to use per
+polecats. Each has distinct capabilities and constraints. James decides which to use per
 agent commission.
 
 ## GitHub Actions Runners
