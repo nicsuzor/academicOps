@@ -5,7 +5,7 @@
 # run discards no work. The new synchronize event restarts the pipeline
 # on the clean commit.
 #
-# Axiom Review runs as a separate workflow (axiom-review.yml).
+# PR Review (pr-review.yml) runs as a separate workflow on every push.
 # Agent Fix has been removed — merge-prep handles all fix work.
 #
 # See specs/pr-pipeline.md for the full process documentation.
