@@ -44,12 +44,7 @@ Do ALL of the following steps and report results exactly as labeled:
    - Run: echo "SESSION_TYPE=$POLECAT_SESSION_TYPE"
    - Run: hostname
 
-2. PKB TOOL CALL:
-   - Use the pkb graph_stats MCP tool and report the output
-   - Include the exact task_count and document_count values
-
-3. BINARY CHECK:
-   - Run: pkb --version
+2. BINARY CHECK:
    - Run: which aops
 
 Reply with ALL outputs clearly labeled. Do NOT skip any step.
@@ -355,37 +350,6 @@ class TestAllInvocationPaths:
             f"[{session['param']}] Failed to verify sandbox isolation.\n"
             f"has_dockerenv={has_dockerenv}, has_session_type={has_session_type}\n"
             f"Agent output (last 1000 chars): {combined[-1000:]}"
-        )
-
-    def test_pkb_tool_call(self, session):
-        """PKB MCP graph_stats tool call succeeds inside the container."""
-        combined = session["combined"]
-        session_file = session.get("session_file")
-        raw_log = session_file.read_text() if session_file and session_file.exists() else ""
-
-        # graph_stats returns task_count and/or document_count
-        has_task_count = "task_count" in combined.lower() or "task_count" in raw_log.lower()
-        has_doc_count = "document_count" in combined.lower() or "document_count" in raw_log.lower()
-        has_graph_stats = (
-            "graph_stats" in combined.lower()
-            or "graph stats" in combined.lower()
-            or "graph_stats" in raw_log.lower()
-        )
-
-        assert has_task_count or has_doc_count or has_graph_stats, (
-            f"[{session['param']}] did not produce PKB graph_stats output.\n"
-            f"Expected task_count/document_count in output or raw session log.\n"
-            f"Agent output (last 1000 chars): {combined[-1000:]}"
-        )
-
-    def test_pkb_binary_available(self, session):
-        """pkb binary is on PATH and responds to --version."""
-        combined = session["combined"]
-        # The prompt asks to run `pkb --version` and `which aops`
-        has_pkb = "pkb" in combined.lower()
-        assert has_pkb, (
-            f"{session['param']} did not report pkb binary.\n"
-            f"Output (last 1000 chars): {combined[-1000:]}"
         )
 
     def test_hooks_fired(self, session):

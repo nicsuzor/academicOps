@@ -8,6 +8,7 @@ import sys
 import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import NamedTuple
 
 # Add aops-core to path for lib imports
 SCRIPT_DIR = Path(__file__).parent.resolve()
@@ -378,8 +379,20 @@ def _container_to_host_path(container_path: Path) -> Path:
     return container_path
 
 
-def _find_docker_sock(env: dict, home: Path | None = None) -> Path | None:
-    """Return the host Docker socket path to mount, or None if unavailable.
+class DockerSock(NamedTuple):
+    """Docker socket paths for mounting into containers.
+
+    mount_source: path to use in the ``-v`` argument (VM-internal for Colima).
+    host_path: path on the macOS/Linux host for ``stat()`` (GID discovery).
+               May equal *mount_source* on Linux / Docker Desktop.
+    """
+
+    mount_source: Path
+    host_path: Path
+
+
+def _find_docker_sock(env: dict, home: Path | None = None) -> DockerSock | None:
+    """Return Docker socket paths to mount, or None if unavailable.
 
     Discovery order:
     1. DOCKER_HOST in *env* dict or os.environ (env dict takes precedence).
@@ -390,17 +403,31 @@ def _find_docker_sock(env: dict, home: Path | None = None) -> Path | None:
     3. ~/.colima/docker.sock          (Colima legacy path)
     4. /var/run/docker.sock           (standard Linux / Docker Desktop)
 
+    **Colima quirk:** Colima's file-sharing layer (virtiofs / 9p) cannot
+    bind-mount Unix sockets from the macOS host into containers.  The Docker
+    daemon inside the Colima VM already exposes its socket at
+    ``/var/run/docker.sock``, so we use that VM-internal path as the mount
+    source while keeping the host path for ``stat()`` (GID discovery).
+
     ``home`` is injectable for testing; defaults to ``Path.home()``.  When
     ``home`` is explicitly provided the absolute system path
     ``/var/run/docker.sock`` is excluded from probing so tests remain
     isolated from the host environment.
     """
     _home = home if home is not None else Path.home()
+
+    def _is_colima(p: Path) -> bool:
+        return ".colima" in p.parts
+
     docker_host = env.get("DOCKER_HOST") or os.environ.get("DOCKER_HOST", "")
     if docker_host:
         if docker_host.startswith("unix://"):
             candidate = Path(docker_host.removeprefix("unix://"))
-            return candidate if candidate.exists() else None
+            if not candidate.exists():
+                return None
+            if _is_colima(candidate):
+                return DockerSock(Path("/var/run/docker.sock"), candidate)
+            return DockerSock(candidate, candidate)
         # Non-unix scheme (tcp://, etc.) — remote daemon, skip local mount.
         return None
     candidates: list[Path] = [
@@ -413,7 +440,9 @@ def _find_docker_sock(env: dict, home: Path | None = None) -> Path | None:
         candidates.append(Path("/var/run/docker.sock"))
     for candidate in candidates:
         if candidate.exists():
-            return candidate
+            if _is_colima(candidate):
+                return DockerSock(Path("/var/run/docker.sock"), candidate)
+            return DockerSock(candidate, candidate)
     return None
 
 
@@ -559,11 +588,17 @@ def _build_docker_cmd(
     # Mount Docker socket for Docker-outside-of-Docker (build/test inside agents).
     # Pass the socket's gid so the non-root container user can access it — the gid
     # varies by host so we read it from the socket file rather than hardcoding.
+    # For Colima the mount_source is the VM-internal path (/var/run/docker.sock)
+    # which differs from the host_path used for stat().
     docker_sock = _find_docker_sock(env)
     if docker_sock is not None:
-        docker_gid = docker_sock.stat().st_gid
-        cmd.extend(["--group-add", str(docker_gid)])
-        cmd.extend(["-v", f"{docker_sock}:/var/run/docker.sock"])
+        # host_path is stattable on the host; mount_source may be VM-internal.
+        try:
+            docker_gid = docker_sock.host_path.stat().st_gid
+            cmd.extend(["--group-add", str(docker_gid)])
+        except OSError:
+            pass
+        cmd.extend(["-v", f"{docker_sock.mount_source}:/var/run/docker.sock"])
 
     # PKB connects over HTTP — pass the URL, no data volume needed.
     pkb_url = env.get("PKB_MCP_URL") or os.environ.get("PKB_MCP_URL")

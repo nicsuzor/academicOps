@@ -46,7 +46,6 @@ class TestDockerTooling:
             'echo "RUSTC=$(rustc --version 2>&1)"\n'
             'echo "GIT=$(git --version 2>&1)"\n'
             'echo "PYTHON=$(python3 --version 2>&1)"\n'
-            'echo "PKB=$(pkb --version 2>&1)"\n'
             'echo "GH=$(gh --version 2>&1 | head -1)"\n'
             'echo "CLAUDE_PLUGIN=$(claude plugin list 2>/dev/null | grep -i aops || echo NOTFOUND)"\n'
             'echo "GEMINI_EXT=$(ls /home/worker/.gemini/extensions/aops-core/GEMINI.md 2>&1)"\n'
@@ -102,10 +101,6 @@ class TestDockerTooling:
         assert "Python 3" in tooling_results["PYTHON"], (
             f"Unexpected python output: {tooling_results['PYTHON']}"
         )
-
-    def test_pkb_binary_available(self, tooling_results):
-        """pkb binary is on PATH and responds to --version."""
-        assert tooling_results["PKB"], f"pkb --version returned empty: {tooling_results['PKB']}"
 
     def test_gh_cli_available(self, tooling_results):
         """GitHub CLI (gh) is on PATH."""

@@ -344,7 +344,20 @@ class TestFindDockerSock:
         sock = tmp_path / "custom.sock"
         sock.touch()
         result = _find_docker_sock({"DOCKER_HOST": f"unix://{sock}"}, home=tmp_path)
-        assert result == sock
+        assert result is not None
+        assert result.mount_source == sock
+        assert result.host_path == sock
+
+    def test_docker_host_colima_unix_socket(self, tmp_path):
+        """DOCKER_HOST pointing to a Colima socket → mount_source is /var/run/docker.sock."""
+        colima = tmp_path / ".colima" / "default"
+        colima.mkdir(parents=True)
+        sock = colima / "docker.sock"
+        sock.touch()
+        result = _find_docker_sock({"DOCKER_HOST": f"unix://{sock}"}, home=tmp_path)
+        assert result is not None
+        assert result.mount_source == Path("/var/run/docker.sock")
+        assert result.host_path == sock
 
     def test_docker_host_unix_socket_missing(self, tmp_path):
         """DOCKER_HOST=unix://... pointing at a nonexistent file → None (not a fallback)."""
@@ -367,17 +380,22 @@ class TestFindDockerSock:
         os_sock.touch()
         monkeypatch.setenv("DOCKER_HOST", f"unix://{os_sock}")
         result = _find_docker_sock({"DOCKER_HOST": f"unix://{env_sock}"}, home=tmp_path)
-        assert result == env_sock
+        assert result is not None
+        assert result.mount_source == env_sock
+        assert result.host_path == env_sock
 
     def test_colima_default_profile(self, tmp_path, monkeypatch):
-        """Falls back to ~/.colima/default/docker.sock when DOCKER_HOST unset."""
+        """Falls back to ~/.colima/default/docker.sock when DOCKER_HOST unset.
+        Colima paths use /var/run/docker.sock as mount_source (VM-internal)."""
         monkeypatch.delenv("DOCKER_HOST", raising=False)
         colima = tmp_path / ".colima" / "default"
         colima.mkdir(parents=True)
         sock = colima / "docker.sock"
         sock.touch()
         result = _find_docker_sock({}, home=tmp_path)
-        assert result == sock
+        assert result is not None
+        assert result.mount_source == Path("/var/run/docker.sock")
+        assert result.host_path == sock
 
     def test_colima_legacy_path(self, tmp_path, monkeypatch):
         """Falls back to ~/.colima/docker.sock when default profile is absent."""
@@ -387,7 +405,9 @@ class TestFindDockerSock:
         sock = colima / "docker.sock"
         sock.touch()
         result = _find_docker_sock({}, home=tmp_path)
-        assert result == sock
+        assert result is not None
+        assert result.mount_source == Path("/var/run/docker.sock")
+        assert result.host_path == sock
 
     def test_colima_default_preferred_over_legacy(self, tmp_path, monkeypatch):
         """default/docker.sock wins over legacy docker.sock when both exist."""
@@ -399,7 +419,9 @@ class TestFindDockerSock:
         default_sock.touch()
         legacy_sock.touch()
         result = _find_docker_sock({}, home=tmp_path)
-        assert result == default_sock
+        assert result is not None
+        assert result.mount_source == Path("/var/run/docker.sock")
+        assert result.host_path == default_sock
 
     @pytest.mark.skipif(
         not Path("/var/run/docker.sock").exists(),
@@ -411,7 +433,7 @@ class TestFindDockerSock:
         # Production call — no home override, so /var/run/docker.sock is in the probe list.
         result = _find_docker_sock({})
         assert result is not None
-        assert "docker.sock" in str(result)
+        assert "docker.sock" in str(result.mount_source)
 
 
 class TestMakeWorkerEnv:
