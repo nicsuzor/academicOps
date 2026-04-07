@@ -380,6 +380,18 @@ def _container_to_host_path(container_path: Path) -> Path:
     return container_path
 
 
+class DockerCmd(NamedTuple):
+    """Result of _build_docker_cmd: the command to run and an optional staging dir.
+
+    When staging_dir is set, callers must use _run_docker_container() instead of
+    a plain subprocess.run() — it injects the staging files via ``docker cp``
+    which works on all platforms (bind mounts fail on WSL2/Docker Desktop).
+    """
+
+    cmd: list[str]
+    staging_dir: Path | None
+
+
 class DockerSock(NamedTuple):
     """Docker socket paths for mounting into containers.
 
@@ -456,8 +468,12 @@ def _build_docker_cmd(
     tmp_files: list[Path] | None = None,
     session_dir: Path | None = None,
     session_volume: str | None = None,
-) -> list[str]:
-    """Wraps an agent command in a Docker run command with appropriate mounts.
+) -> DockerCmd:
+    """Build a Docker command with appropriate mounts and env for an agent session.
+
+    Returns a DockerCmd with the command args and an optional staging_dir.  When
+    staging_dir is set, callers MUST use _run_docker_container() which injects
+    files via ``docker cp`` (portable across WSL2, Colima, native Docker).
 
     If tmp_files is provided, any temporary files created (e.g. modified .claude.json)
     are appended to it so callers can clean them up.
@@ -474,6 +490,7 @@ def _build_docker_cmd(
     image = os.environ.get("POLECAT_DOCKER_IMAGE", "aops-crew")
 
     cmd = ["docker", "run", "--rm"]
+    _staging_dir: Path | None = None  # set below if auth files are staged
 
     # TTY allocation
     if is_interactive:
@@ -517,23 +534,10 @@ def _build_docker_cmd(
     if cli_tool in ("claude", "shell"):
         claude_json = home / ".claude.json"
         claude_dir = home / ".claude"
-        # Create a staging directory on a host-visible filesystem.
-        # - macOS Colima: only /Users is shared, so use $HOME/.aops/tmp
-        # - DinD (Docker-in-Docker): $HOME is overlay (invisible to outer daemon),
-        #   so use work_dir which is always a bind mount to a real host path
-        # - Native Docker: either location works
-        # Detect DinD: /.dockerenv exists AND root fs is overlay (= we're a container
-        # with Docker socket access). In this case $HOME is on overlay and invisible
-        # to the outer Docker daemon.
-        _is_dind = (
-            Path("/.dockerenv").exists()
-            and _container_to_host_path(work_dir.resolve()) != work_dir.resolve()
-        )
-        if _is_dind:
-            # DinD: $HOME is on overlay — stage under work_dir instead
-            tmp_root = work_dir / ".aops-staging"
-        else:
-            tmp_root = home / ".aops" / "tmp"
+        # Create a staging directory for auth files.  Files are injected into the
+        # container via `docker cp` (not bind mounts), so any writable temp dir works
+        # regardless of platform (WSL2, Colima, DinD).
+        tmp_root = home / ".aops" / "tmp"
         tmp_root.mkdir(parents=True, exist_ok=True)
         staging_dir = Path(tempfile.mkdtemp(prefix="staging-", dir=tmp_root))
         os.chmod(staging_dir, 0o700)
@@ -561,8 +565,9 @@ def _build_docker_cmd(
                 src = claude_dir / auth_file
                 if src.exists():
                     shutil.copy2(src, staged_claude_dir / auth_file)
-        host_staging = _container_to_host_path(staging_dir)
-        cmd.extend(["-v", f"{host_staging}:/tmp/staging:ro"])
+        # staging_dir is populated; callers use docker cp to inject it
+        # into the container (avoids bind mount issues on WSL2/Colima).
+        _staging_dir = staging_dir
 
         # Stage Gemini auth files for "shell" mode so users can run gemini interactively.
         # Gemini normally handles its own sandbox, but in shell mode we're managing Docker.
@@ -663,7 +668,68 @@ def _build_docker_cmd(
 
     cmd.append(image)
     cmd.extend(agent_cmd)
-    return cmd
+    return DockerCmd(cmd=cmd, staging_dir=_staging_dir)
+
+
+def _run_docker_container(
+    docker_cmd: DockerCmd,
+    *,
+    cwd: Path | None = None,
+    env: dict | None = None,
+    capture_output: bool = False,
+    text: bool = True,
+) -> subprocess.CompletedProcess:
+    """Launch a Docker container, optionally injecting staging files via docker cp.
+
+    Uses ``docker create`` + ``docker cp`` + ``docker start`` instead of
+    ``docker run`` when staging files need to be injected.  This avoids bind
+    mount issues on WSL2/Docker Desktop where file mounts appear as empty
+    directories.
+
+    When no staging_dir is set, falls back to a plain ``docker run``.
+    """
+    cmd = list(docker_cmd.cmd)  # copy to avoid mutation
+
+    if docker_cmd.staging_dir is None:
+        # No staging needed — plain docker run
+        return subprocess.run(cmd, cwd=cwd, env=env, capture_output=capture_output, text=text)
+
+    # Replace "docker run --rm" with "docker create" (no --rm, we clean up manually)
+    # The cmd starts with ["docker", "run", "--rm", ...]
+    create_cmd = ["docker", "create"] + cmd[3:]  # skip "docker", "run", "--rm"
+
+    # Create the container (stopped)
+    result = subprocess.run(create_cmd, cwd=cwd, env=env, capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"docker create failed: {result.stderr}", file=sys.stderr)
+        return result
+    container_id = result.stdout.strip()
+
+    try:
+        # Copy staging files into the container
+        cp_result = subprocess.run(
+            ["docker", "cp", f"{docker_cmd.staging_dir}/.", f"{container_id}:/tmp/staging"],
+            capture_output=True,
+            text=True,
+        )
+        if cp_result.returncode != 0:
+            print(f"docker cp failed: {cp_result.stderr}", file=sys.stderr)
+            return cp_result
+
+        # Start the container and wait for it to finish
+        start_cmd = ["docker", "start", "-a"]
+        if any(x in cmd for x in ["-i", "--interactive"]):
+            start_cmd.append("-i")
+        start_cmd.append(container_id)
+
+        return subprocess.run(start_cmd, cwd=cwd, env=env, capture_output=capture_output, text=text)
+    finally:
+        # Always clean up the container (replaces --rm)
+        subprocess.run(
+            ["docker", "rm", "-f", container_id],
+            capture_output=True,
+            check=False,
+        )
 
 
 def _pass_pkb_url_sandbox(env: dict) -> None:
@@ -2627,10 +2693,11 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, agent_args
             new_flags = " ".join(extra_flags)
             env["SANDBOX_FLAGS"] = f"{existing} {new_flags}".strip() if existing else new_flags
 
+        docker_cmd = None
         final_cmd = cmd
     elif interactive:
         # Interactive shell: wrap in Docker container (same as Claude path)
-        final_cmd = _build_docker_cmd(
+        docker_cmd = _build_docker_cmd(
             "shell",
             work_dir,
             env,
@@ -2639,11 +2706,12 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, agent_args
             tmp_files=tmp_files,
             session_dir=session_dir,
         )
+        final_cmd = docker_cmd.cmd
     else:
         # Claude Code: manually wrap in docker container
         # Headless when agent_args contains -p (prompt mode, no TTY needed)
         headless = agent_args and "-p" in agent_args
-        final_cmd = _build_docker_cmd(
+        docker_cmd = _build_docker_cmd(
             cli_tool,
             work_dir,
             env,
@@ -2652,6 +2720,7 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, agent_args
             tmp_files=tmp_files,
             session_dir=session_dir,
         )
+        final_cmd = docker_cmd.cmd
     print(f"   Sessions: {session_dir}")
 
     # Resolve CLI binary to absolute path so subprocess doesn't depend on PATH lookup
@@ -2661,7 +2730,10 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, agent_args
 
     set_terminal_title(f"crew:{crew_name}")
     try:
-        subprocess.run(final_cmd, cwd=work_dir, env=env)
+        if docker_cmd and docker_cmd.staging_dir:
+            _run_docker_container(docker_cmd, cwd=work_dir, env=env)
+        else:
+            subprocess.run(final_cmd, cwd=work_dir, env=env)
     except FileNotFoundError:
         print(f"Error: '{cli_tool}' command not found.", file=sys.stderr)
         sys.exit(1)
@@ -3074,10 +3146,11 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
             new_flags = " ".join(extra_flags)
             env["SANDBOX_FLAGS"] = f"{existing} {new_flags}".strip() if existing else new_flags
 
+        docker_cmd = None
         final_cmd = cmd
     else:
         # Claude Code: manually wrap in docker container
-        final_cmd = _build_docker_cmd(
+        docker_cmd = _build_docker_cmd(
             cli_tool,
             worktree_path,
             env,
@@ -3086,6 +3159,7 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
             tmp_files=tmp_files,
             session_dir=run_session_dir,
         )
+        final_cmd = docker_cmd.cmd
         print(f"   Sessions: {run_session_dir}")
 
     # Resolve CLI binary to absolute path so subprocess doesn't depend on PATH lookup
@@ -3099,21 +3173,33 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
         if interactive:
             # In interactive mode, we MUST NOT capture output or it will hang
             # and we want the user to see/interact with the CLI
-            result = subprocess.run(
-                final_cmd,
-                cwd=worktree_path,
-                env=env,
-            )
+            if docker_cmd and docker_cmd.staging_dir:
+                result = _run_docker_container(docker_cmd, cwd=worktree_path, env=env)
+            else:
+                result = subprocess.run(
+                    final_cmd,
+                    cwd=worktree_path,
+                    env=env,
+                )
             exit_code = result.returncode
             # No transcript to analyze in interactive mode (currently)
         else:
-            result = subprocess.run(
-                final_cmd,
-                cwd=worktree_path,
-                capture_output=True,
-                text=True,
-                env=env,
-            )
+            if docker_cmd and docker_cmd.staging_dir:
+                result = _run_docker_container(
+                    docker_cmd,
+                    cwd=worktree_path,
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                )
+            else:
+                result = subprocess.run(
+                    final_cmd,
+                    cwd=worktree_path,
+                    capture_output=True,
+                    text=True,
+                    env=env,
+                )
             exit_code = result.returncode
             # Display agent output after run
             if result.stdout:

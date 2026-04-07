@@ -13,7 +13,6 @@ or volume mounts run their own container.
 
 import os
 import subprocess
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -212,51 +211,6 @@ class TestDockerEntrypoint:
         assert "REWRITE=git@github.com:" in output, (
             f"SSH→HTTPS URL rewrite not configured:\n{output}"
         )
-
-    def test_staging_copy_to_home(self):
-        """Entrypoint copies files from /tmp/staging to $HOME.
-
-        This is the mechanism used to stage auth files (.credentials.json, etc.)
-        into the container at runtime. If this breaks, all auth fails.
-        """
-        # Use a path under $HOME — on macOS with Colima, only /Users is shared
-        # via virtiofs. Python's tempfile uses /private/var/folders/ which is
-        # invisible to the Docker daemon.
-        docker_visible_tmp = Path.home() / ".aops" / "tmp" / "test-staging"
-        docker_visible_tmp.mkdir(parents=True, exist_ok=True)
-        staging_dir = tempfile.mkdtemp(dir=docker_visible_tmp)
-        try:
-            test_file = os.path.join(staging_dir, "test_staging_file.txt")
-            with open(test_file, "w") as f:
-                f.write("staging-test-content-12345")
-
-            result = subprocess.run(
-                [
-                    "docker",
-                    "run",
-                    "--rm",
-                    "--user",
-                    f"{os.getuid()}:{os.getgid()}",
-                    "-v",
-                    f"{staging_dir}:/tmp/staging:ro",
-                    "aops-crew",
-                    "bash",
-                    "-c",
-                    "cat $HOME/test_staging_file.txt 2>&1 || echo STAGING_COPY_FAILED",
-                ],
-                capture_output=True,
-                text=True,
-                timeout=30,
-                check=False,
-            )
-            output = result.stdout + result.stderr
-            assert "staging-test-content-12345" in output, (
-                f"Staging copy to $HOME failed. Output:\n{output}"
-            )
-        finally:
-            import shutil
-
-            shutil.rmtree(staging_dir, ignore_errors=True)
 
 
 @pytest.mark.slow

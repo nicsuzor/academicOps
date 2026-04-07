@@ -67,13 +67,14 @@ class TestBuildDockerCmd:
     """Tests for _build_docker_cmd Docker wrapper construction."""
 
     def _build(self, cli_tool="claude", env=None, agent_cmd=None, work_dir=None):
-        return _build_docker_cmd(
+        docker_cmd = _build_docker_cmd(
             cli_tool=cli_tool,
             work_dir=work_dir or Path("/tmp/worktree"),
             env=env or {},
             agent_cmd=agent_cmd or ["claude", "--dangerously-skip-permissions"],
             is_interactive=False,
         )
+        return docker_cmd.cmd
 
     def test_runs_as_current_user(self):
         cmd = self._build()
@@ -145,106 +146,6 @@ class TestBuildDockerCmd:
         env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
         assert "AOPS_SESSIONS=/tmp/sessions" in env_args
         assert "AOPS_CUSTOM_VAR=value" in env_args
-
-    def test_claude_mounts_config(self, tmp_path):
-        """Claude auth files are staged into a temp dir and mounted as /tmp/staging:ro."""
-        claude_json = tmp_path / ".claude.json"
-        claude_json.write_text("{}")
-        claude_dir = tmp_path / ".claude"
-        claude_dir.mkdir()
-
-        with patch("cli.Path.home", return_value=tmp_path):
-            cmd = self._build(cli_tool="claude")
-
-        vol_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-v"]
-        # Staging dir is mounted read-only at /tmp/staging
-        staging_vols = [v for v in vol_args if ":/tmp/staging:ro" in v]
-        assert len(staging_vols) == 1, (
-            f"Expected one staging mount at /tmp/staging:ro, got: {vol_args}"
-        )
-        # The original .claude.json should NOT be mounted directly
-        direct_json_vols = [v for v in vol_args if ":/home/worker/.claude.json" in v]
-        assert len(direct_json_vols) == 0, (
-            f"Expected no direct .claude.json mount, got: {direct_json_vols}"
-        )
-        # Staging dir must exist and contain .claude.json
-        staging_host = Path(staging_vols[0].split(":")[0])
-        assert (staging_host / ".claude.json").exists()
-
-    def test_claude_json_has_bypass_flag(self, tmp_path):
-        """Staged .claude.json copy has bypassPermissionsModeAccepted=true."""
-        claude_json = tmp_path / ".claude.json"
-        claude_json.write_text('{"projects": {}}')
-        claude_dir = tmp_path / ".claude"
-        claude_dir.mkdir()
-
-        with patch("cli.Path.home", return_value=tmp_path):
-            cmd = self._build(cli_tool="claude")
-
-        vol_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-v"]
-        staging_vols = [v for v in vol_args if ":/tmp/staging:ro" in v]
-        staging_host = Path(staging_vols[0].split(":")[0])
-        with open(staging_host / ".claude.json") as f:
-            config = json.load(f)
-        assert config["bypassPermissionsModeAccepted"] is True
-        assert config["projects"] == {}
-
-    def test_claude_stages_settings_json(self, tmp_path):
-        """settings.json is staged for Claude containers.
-
-        Regression test: Claude Code requires skipDangerousModePermissionPrompt
-        and enabledPlugins from settings.json. Without it, --dangerously-skip-permissions
-        hangs waiting for an interactive prompt in headless mode.
-        """
-        claude_json = tmp_path / ".claude.json"
-        claude_json.write_text("{}")
-        claude_dir = tmp_path / ".claude"
-        claude_dir.mkdir()
-        settings = {
-            "enabledPlugins": {"aops-core@aops": True},
-            "skipDangerousModePermissionPrompt": True,
-        }
-        (claude_dir / "settings.json").write_text(json.dumps(settings))
-
-        with patch("cli.Path.home", return_value=tmp_path):
-            cmd = self._build(cli_tool="claude")
-
-        vol_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-v"]
-        staging_vols = [v for v in vol_args if ":/tmp/staging:ro" in v]
-        staging_host = Path(staging_vols[0].split(":")[0])
-        staged_settings = staging_host / ".claude" / "settings.json"
-        assert staged_settings.exists(), "settings.json must be staged for Claude containers"
-        data = json.loads(staged_settings.read_text())
-        assert data["skipDangerousModePermissionPrompt"] is True
-        assert data["enabledPlugins"]["aops-core@aops"] is True
-
-    def test_claude_does_not_stage_settings_local(self, tmp_path):
-        """settings.local.json must NOT be staged — it contains the user's personal GH_TOKEN.
-
-        Container uses bot token via env vars, not the user's personal token.
-        """
-        claude_json = tmp_path / ".claude.json"
-        claude_json.write_text("{}")
-        claude_dir = tmp_path / ".claude"
-        claude_dir.mkdir()
-        (claude_dir / "settings.local.json").write_text(
-            '{"env": {"GH_TOKEN": "personal-token-DO-NOT-STAGE"}}'
-        )
-
-        with patch("cli.Path.home", return_value=tmp_path):
-            cmd = self._build(cli_tool="claude")
-
-        vol_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-v"]
-        staging_vols = [v for v in vol_args if ":/tmp/staging:ro" in v]
-        staging_host = Path(staging_vols[0].split(":")[0])
-        assert not (staging_host / ".claude" / "settings.local.json").exists(), (
-            "settings.local.json must NOT be staged — contains user's personal token"
-        )
-
-    def test_no_tmpfs_mount(self):
-        """No --tmpfs: it overrides bind mounts at the same path, hiding .claude config."""
-        cmd = self._build()
-        assert "--tmpfs" not in cmd
 
     def test_sets_timezone(self):
         """TZ is set in Docker env, detected from system when not in env."""

@@ -25,7 +25,10 @@ def build_docker_cmd():
         sys.path.insert(0, aops_core_dir)
     from cli import _build_docker_cmd
 
-    return _build_docker_cmd
+    def _build_and_return_cmd(**kwargs):
+        return _build_docker_cmd(**kwargs).cmd
+
+    return _build_and_return_cmd
 
 
 def test_session_dir_mount_in_docker_cmd(build_docker_cmd, tmp_path):
