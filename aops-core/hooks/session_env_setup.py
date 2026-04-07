@@ -182,6 +182,18 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
 
     persist.update(get_env_mapping_persist_dict())
 
+    # 6b. Force SSH→HTTPS rewrite for GitHub URLs (defense-in-depth).
+    # On macOS, SSH_AUTH_SOCK="" is insufficient — Keychain-stored keys
+    # bypass ssh-agent entirely. GIT_SSH_COMMAND=false (from agent-env-map)
+    # blocks SSH auth, but git would still *attempt* SSH and fail rather
+    # than falling through to HTTPS. The insteadOf rewrite ensures git
+    # never tries SSH at all, using GH_TOKEN via HTTPS credential helper.
+    persist["GIT_CONFIG_COUNT"] = "2"
+    persist["GIT_CONFIG_KEY_0"] = "url.https://github.com/.insteadOf"
+    persist["GIT_CONFIG_VALUE_0"] = "git@github.com:"
+    persist["GIT_CONFIG_KEY_1"] = "url.https://github.com/.insteadOf"
+    persist["GIT_CONFIG_VALUE_1"] = "ssh://git@github.com/"
+
     # 7. Ensure required CLIs (uv, gh, etc.) are accessible in PATH.
     # Centralised in lib/path_bootstrap — shared logic with ensure-path.sh.
     from lib.path_bootstrap import detect_path_additions

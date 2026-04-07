@@ -184,10 +184,11 @@ class TestAgentEnvConfig:
     # --- Literal (:=) syntax tests ---
 
     def test_load_entries_includes_literals(self):
-        """Default config should include SSH_AUTH_SOCK and GIT_TERMINAL_PROMPT literals."""
+        """Default config should include SSH isolation and GIT_TERMINAL_PROMPT literals."""
         entries = load_env_entries()
         targets = {e.target for e in entries}
         assert "SSH_AUTH_SOCK" in targets
+        assert "GIT_SSH_COMMAND" in targets
         assert "GIT_TERMINAL_PROMPT" in targets
 
     def test_load_entries_literal_types(self):
@@ -196,6 +197,8 @@ class TestAgentEnvConfig:
         by_target = {e.target: e for e in entries}
         assert by_target["SSH_AUTH_SOCK"].is_literal is True
         assert by_target["SSH_AUTH_SOCK"].value == ""
+        assert by_target["GIT_SSH_COMMAND"].is_literal is True
+        assert by_target["GIT_SSH_COMMAND"].value == "false"
         assert by_target["GIT_TERMINAL_PROMPT"].is_literal is True
         assert by_target["GIT_TERMINAL_PROMPT"].value == "0"
 
@@ -407,6 +410,16 @@ class TestCredentialBridgeHook:
         )
         assert "export GIT_TERMINAL_PROMPT=0" in content, (
             f"Hook should set GIT_TERMINAL_PROMPT=0 in CLAUDE_ENV_FILE.\nGot: {content}"
+        )
+        assert "export GIT_SSH_COMMAND=false" in content, (
+            f"Hook should set GIT_SSH_COMMAND=false in CLAUDE_ENV_FILE.\nGot: {content}"
+        )
+        # SSH→HTTPS rewrite must be configured via GIT_CONFIG env vars
+        assert "GIT_CONFIG_COUNT" in content, (
+            f"Hook should set GIT_CONFIG_COUNT for insteadOf rewrite.\nGot: {content}"
+        )
+        assert "url.https://github.com/.insteadOf" in content, (
+            f"Hook should rewrite SSH URLs to HTTPS.\nGot: {content}"
         )
 
     def test_hook_does_not_map_when_bot_token_absent(self, temp_env_file):

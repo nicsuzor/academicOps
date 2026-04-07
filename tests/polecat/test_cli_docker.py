@@ -287,10 +287,11 @@ class TestBuildDockerCmd:
         assert "GIT_AUTHOR_EMAIL=custom@example.com" in env_args
 
     def test_ssh_isolation(self):
-        """SSH_AUTH_SOCK is cleared and GIT_TERMINAL_PROMPT=0 inside container."""
+        """SSH fully blocked: agent cleared, command disabled, prompt off."""
         cmd = self._build()
         env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
         assert "SSH_AUTH_SOCK=" in env_args
+        assert "GIT_SSH_COMMAND=false" in env_args
         assert "GIT_TERMINAL_PROMPT=0" in env_args
 
     def test_git_credential_helper_with_gh_token(self):

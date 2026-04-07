@@ -645,6 +645,7 @@ def _build_docker_cmd(
 
     # SSH isolation — no SSH auth inside container
     cmd.extend(["-e", "SSH_AUTH_SOCK="])
+    cmd.extend(["-e", "GIT_SSH_COMMAND=false"])
     cmd.extend(["-e", "GIT_TERMINAL_PROMPT=0"])
 
     # Mount session storage so Claude transcripts persist beyond container lifetime.
@@ -700,6 +701,7 @@ def _mount_gemini_git_credentials(env: dict, tmp_files: list[Path]) -> list[str]
     extra_flags.extend(["-e", f"GH_TOKEN={gh_token}"])
     extra_flags.extend(["-e", f"GITHUB_TOKEN={gh_token}"])
     extra_flags.extend(["-e", "SSH_AUTH_SOCK="])
+    extra_flags.extend(["-e", "GIT_SSH_COMMAND=false"])
     extra_flags.extend(["-e", "GIT_TERMINAL_PROMPT=0"])
 
     # .gitconfig with embedded credential helper
