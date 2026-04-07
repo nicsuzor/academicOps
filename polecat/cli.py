@@ -508,11 +508,32 @@ def _build_docker_cmd(
     # Mount Docker socket for Docker-outside-of-Docker (build/test inside agents).
     # Pass the socket's gid so the non-root container user can access it — the gid
     # varies by host so we read it from the socket file rather than hardcoding.
-    docker_sock = Path("/var/run/docker.sock")
-    if docker_sock.exists():
+    #
+    # Socket discovery order:
+    #   1. DOCKER_HOST env var (strip "unix://" prefix if present)
+    #   2. ~/.colima/default/docker.sock  (Colima on macOS, default profile)
+    #   3. ~/.colima/docker.sock          (Colima legacy path)
+    #   4. /var/run/docker.sock           (standard Linux / Docker Desktop path)
+    docker_sock: Path | None = None
+    _docker_host = os.environ.get("DOCKER_HOST", "")
+    if _docker_host:
+        _sock_path = _docker_host.removeprefix("unix://")
+        _candidate = Path(_sock_path)
+        if _candidate.exists():
+            docker_sock = _candidate
+    if docker_sock is None:
+        for _candidate in [
+            Path.home() / ".colima" / "default" / "docker.sock",
+            Path.home() / ".colima" / "docker.sock",
+            Path("/var/run/docker.sock"),
+        ]:
+            if _candidate.exists():
+                docker_sock = _candidate
+                break
+    if docker_sock is not None:
         docker_gid = docker_sock.stat().st_gid
         cmd.extend(["--group-add", str(docker_gid)])
-        cmd.extend(["-v", "/var/run/docker.sock:/var/run/docker.sock"])
+        cmd.extend(["-v", f"{docker_sock}:/var/run/docker.sock"])
 
     # PKB connects over HTTP — pass the URL, no data volume needed.
     pkb_url = env.get("PKB_MCP_URL") or os.environ.get("PKB_MCP_URL")

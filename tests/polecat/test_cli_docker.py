@@ -316,16 +316,27 @@ class TestBuildDockerCmd:
         assert not any(str(aca_dir) in v for v in vol_args)
 
     def _patch_docker_sock(self, exists: bool):
-        """Context manager that patches cli.Path so the docker socket mock returns `exists`."""
+        """Context manager that patches cli.Path so the docker socket mock returns `exists`.
+
+        Patches all probed socket paths (Colima default, Colima legacy, /var/run/docker.sock)
+        so that the first candidate returns `exists` and the rest return False (or True for the
+        first one when exists=True).  DOCKER_HOST is cleared so env-var discovery is skipped.
+        """
         from unittest.mock import MagicMock
 
         real_home = Path.home()
+        colima_default = str(real_home / ".colima" / "default" / "docker.sock")
+        colima_legacy = str(real_home / ".colima" / "docker.sock")
+        standard = "/var/run/docker.sock"
 
         def path_factory(p):
-            if str(p) == "/var/run/docker.sock":
-                m = MagicMock()
-                m.exists.return_value = exists
+            p_str = str(p)
+            if p_str in (colima_default, colima_legacy, standard):
+                m = MagicMock(spec=Path)
+                # Only the first candidate (colima_default) pretends to exist when exists=True
+                m.exists.return_value = exists and (p_str == colima_default)
                 m.stat.return_value.st_gid = 999
+                m.__str__ = lambda self: p_str
                 return m
             return Path(p)
 
@@ -333,7 +344,10 @@ class TestBuildDockerCmd:
 
         @contextlib.contextmanager
         def _ctx():
-            with patch("cli.Path") as MockPath:
+            with (
+                patch("cli.Path") as MockPath,
+                patch.dict(os.environ, {"DOCKER_HOST": ""}, clear=False),
+            ):
                 MockPath.home.return_value = real_home
                 MockPath.side_effect = path_factory
                 yield MockPath
