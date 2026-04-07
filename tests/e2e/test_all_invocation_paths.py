@@ -18,6 +18,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -125,8 +126,17 @@ class TestAllInvocationPaths:
             return self._run_polecat(tmp_path, backend)
 
     @staticmethod
-    def _find_latest_session_logs():
+    def _is_hook_file(f: Path) -> bool:
+        """Return True if the file is a hook log, not a session transcript."""
+        return f.name.endswith("-hooks.jsonl") or f.name.startswith("cc_hooks_")
+
+    @staticmethod
+    def _find_latest_session_logs(started_after: float = 0):
         """Discover the most-recently-modified session JSONL and hook log.
+
+        Args:
+            started_after: Unix timestamp — only consider files modified after
+                this time. Prevents picking up stale files from unrelated sessions.
 
         Returns:
             (hook_files_content, session_file, tool_calls)
@@ -140,14 +150,15 @@ class TestAllInvocationPaths:
 
         claude_dir = Path.home() / ".claude" / "projects"
         session_files = []
+        is_hook = TestAllInvocationPaths._is_hook_file
         if claude_dir.exists():
-            session_files.extend(
-                [f for f in claude_dir.rglob("*.jsonl") if not f.name.endswith("-hooks.jsonl")]
-            )
+            session_files.extend(f for f in claude_dir.rglob("*.jsonl") if not is_hook(f))
         if aops_sessions.exists():
-            session_files.extend(
-                [f for f in aops_sessions.rglob("*.jsonl") if not f.name.endswith("-hooks.jsonl")]
-            )
+            session_files.extend(f for f in aops_sessions.rglob("*.jsonl") if not is_hook(f))
+
+        # Filter by modification time to avoid picking up unrelated sessions
+        if started_after:
+            session_files = [f for f in session_files if f.stat().st_mtime >= started_after]
 
         session_files = sorted(session_files, key=os.path.getmtime)
         session_file = session_files[-1] if session_files else None
@@ -208,6 +219,7 @@ class TestAllInvocationPaths:
             env=env,
             cwd=cwd,
         )
+        started_at = time.time()
         try:
             proc = subprocess.run(
                 cmd,
@@ -223,7 +235,9 @@ class TestAllInvocationPaths:
             pytest.fail(f"crew-{backend} timed out after {timeout}s")
 
         combined = proc.stdout + proc.stderr
-        hook_files_content, session_file, tool_calls = self._find_latest_session_logs()
+        hook_files_content, session_file, tool_calls = self._find_latest_session_logs(
+            started_after=started_at
+        )
 
         return {
             "param": f"crew-{backend}",
@@ -279,6 +293,7 @@ class TestAllInvocationPaths:
         ]:
             env.pop(key, None)
 
+        started_at = time.time()
         try:
             proc = subprocess.run(
                 cmd,
@@ -296,7 +311,9 @@ class TestAllInvocationPaths:
             _reset_fixture_task()
 
         combined = proc.stdout + proc.stderr
-        hook_files_content, session_file, tool_calls = self._find_latest_session_logs()
+        hook_files_content, session_file, tool_calls = self._find_latest_session_logs(
+            started_after=started_at
+        )
 
         return {
             "param": f"run-{backend}",
