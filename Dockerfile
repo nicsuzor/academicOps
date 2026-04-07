@@ -41,8 +41,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install uv system-wide (standard for aops framework per P#93)
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Install Gemini CLI, Claude Code, and code quality tools globally
-RUN npm install -g @google/gemini-cli @anthropic-ai/claude-code markdownlint-cli2 dprint ccstatusline && npm cache clean --force
+# Install Gemini CLI and code quality tools globally (Claude installed separately below)
+RUN npm install -g @google/gemini-cli markdownlint-cli2 dprint ccstatusline && npm cache clean --force
 
 # Create data directory, hand ownership to worker
 RUN mkdir -p /data && chown worker:worker /data
@@ -54,6 +54,10 @@ USER worker
 # Now set HOME and PATH for the worker user
 ENV HOME=/home/worker \
     PATH="/home/worker/.local/bin:/home/worker/.cargo/bin:$PATH"
+
+# Install Claude Code via native installer — npm package lacks the full binary
+# and causes .claude.json config migration issues on startup.
+RUN curl -fsSL https://claude.ai/install.sh | bash
 
 # Install Rust toolchain via rustup
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal
