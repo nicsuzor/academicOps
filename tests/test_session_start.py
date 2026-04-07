@@ -1,15 +1,21 @@
 """Test SessionStart gate functionality."""
 
+import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+# Add aops-core to path for imports
+aops_core_dir = Path(__file__).parent.parent / "aops-core"
+if str(aops_core_dir) not in sys.path:
+    sys.path.insert(0, str(aops_core_dir))
+
 from hooks.schemas import HookContext
+from hooks.session_env_setup import run_session_env_setup
 from lib.gate_model import GateResult, GateVerdict
-from session_env_setup import run_session_env_setup
 
 
-@patch("session_env_setup.get_hook_log_path")
-@patch("session_env_setup.get_session_file_path")
+@patch("hooks.session_env_setup.get_hook_log_path")
+@patch("hooks.session_env_setup.get_session_file_path")
 @patch("lib.gates.registry.GateRegistry.get_all_gates")
 def test_session_start_message_generation(
     mock_get_all_gates,
