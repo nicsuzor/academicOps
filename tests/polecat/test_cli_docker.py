@@ -656,6 +656,45 @@ class TestReplicateGeminiAuth:
 
         shutil.rmtree(result)
 
+    def test_replicated_dir_writable_by_other_uid(self, tmp_path):
+        """Replicated auth dir must be accessible by a different UID (sandbox container).
+
+        Gemini's --sandbox mounts GEMINI_CLI_HOME into a Docker container that
+        runs as a different UID. The container writes temp files like
+        projects.json.tmp, so dirs must be world-writable and files readable.
+        """
+        gemini_dir = tmp_path / ".gemini"
+        gemini_dir.mkdir(parents=True)
+
+        # Create auth files with restrictive source permissions (like real ~/.gemini)
+        (gemini_dir / "settings.json").write_text("{}")
+        (gemini_dir / "oauth_creds.json").write_text("{}")
+        os.chmod(gemini_dir / "oauth_creds.json", 0o600)
+
+        env = {}
+        with patch("cli.Path.home", return_value=tmp_path):
+            result = _replicate_gemini_auth(env)
+
+        assert result is not None
+
+        # Parent dir must be traversable
+        parent_mode = os.stat(result).st_mode & 0o777
+        assert parent_mode & 0o005, f"Parent dir not world-readable: {oct(parent_mode)}"
+
+        # .gemini dir must be world-writable (container writes projects.json.tmp)
+        gemini_mode = os.stat(result / ".gemini").st_mode & 0o777
+        assert gemini_mode & 0o007 == 0o007, f".gemini dir not world-rwx: {oct(gemini_mode)}"
+
+        # Auth files must be world-readable (container reads oauth_creds.json)
+        for f in (result / ".gemini").iterdir():
+            if f.is_file():
+                fmode = os.stat(f).st_mode & 0o777
+                assert fmode & 0o004, f"{f.name} not world-readable: {oct(fmode)}"
+
+        import shutil
+
+        shutil.rmtree(result)
+
 
 class TestPassPkbUrlSandbox:
     """Tests for _pass_pkb_url_sandbox — called by both crew -g and run -g."""

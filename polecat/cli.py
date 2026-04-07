@@ -17,10 +17,11 @@ if str(REPO_ROOT / "aops-core") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 
 import click
-from lib.agent_env import apply_env_mappings
 from manager import PolecatManager
 from observability import metrics
 from validation import TaskIDValidationError, validate_task_id_or_raise
+
+from lib.agent_env import apply_env_mappings
 
 # Max turns for headless Claude runs — must be high enough to accommodate hook
 # overhead (hydration gate, custodiet compliance check) plus actual task work.
@@ -789,10 +790,15 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
     tmp_root = home / ".aops" / "tmp"
     tmp_root.mkdir(parents=True, exist_ok=True)
     tmp_gemini_home = Path(tempfile.mkdtemp(prefix="polecat-gemini-auth-", dir=tmp_root))
-    os.chmod(tmp_gemini_home, 0o700)
+    # Gemini's --sandbox mounts GEMINI_CLI_HOME into a Docker container that may
+    # run as a different UID. The container needs to write temp files (e.g.
+    # projects.json.tmp) inside .gemini/, so both the parent and the .gemini
+    # subdir must be world-writable. This is a throwaway copy of auth files.
+    os.chmod(tmp_gemini_home, 0o755)
 
     target_dir = tmp_gemini_home / ".gemini"
     target_dir.mkdir(parents=True)
+    os.chmod(target_dir, 0o777)
 
     for f in existing_files:
         if f == "trustedFolders.json" and work_dir:
@@ -887,6 +893,13 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
                     json.dump(enablement, f, indent=2)
             except (json.JSONDecodeError, OSError):
                 shutil.copy2(enablement_src, dst_extensions / "extension-enablement.json")
+
+    # Make all replicated files readable and directories writable by any UID.
+    # Gemini's sandbox container may run as a different user than the host.
+    for dirpath, _dirnames, filenames in os.walk(target_dir):
+        os.chmod(dirpath, 0o777)
+        for fname in filenames:
+            os.chmod(os.path.join(dirpath, fname), 0o644)
 
     # Set GEMINI_CLI_HOME to the parent directory — Gemini creates .gemini/
     # inside GEMINI_CLI_HOME (i.e. path.join(GEMINI_CLI_HOME, ".gemini", ...)).
