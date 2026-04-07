@@ -366,6 +366,38 @@ def _container_to_host_path(container_path: Path) -> Path:
     return container_path
 
 
+def _find_docker_sock(env: dict, home: Path | None = None) -> Path | None:
+    """Return the host Docker socket path to mount, or None if unavailable.
+
+    Discovery order:
+    1. DOCKER_HOST in *env* dict or os.environ (env dict takes precedence).
+       - If set to a ``unix://`` socket that exists on disk → use it.
+       - If set to any other scheme (e.g. ``tcp://``) → return None; the
+         daemon is remote so mounting a local socket would be wrong.
+    2. ~/.colima/default/docker.sock  (Colima on macOS, default profile)
+    3. ~/.colima/docker.sock          (Colima legacy path)
+    4. /var/run/docker.sock           (standard Linux / Docker Desktop)
+
+    ``home`` is injectable for testing; defaults to ``Path.home()``.
+    """
+    _home = home if home is not None else Path.home()
+    docker_host = env.get("DOCKER_HOST") or os.environ.get("DOCKER_HOST", "")
+    if docker_host:
+        if docker_host.startswith("unix://"):
+            candidate = Path(docker_host.removeprefix("unix://"))
+            return candidate if candidate.exists() else None
+        # Non-unix scheme (tcp://, etc.) — remote daemon, skip local mount.
+        return None
+    for candidate in [
+        _home / ".colima" / "default" / "docker.sock",
+        _home / ".colima" / "docker.sock",
+        Path("/var/run/docker.sock"),
+    ]:
+        if candidate.exists():
+            return candidate
+    return None
+
+
 def _build_docker_cmd(
     cli_tool: str,
     work_dir: Path,
@@ -508,28 +540,7 @@ def _build_docker_cmd(
     # Mount Docker socket for Docker-outside-of-Docker (build/test inside agents).
     # Pass the socket's gid so the non-root container user can access it — the gid
     # varies by host so we read it from the socket file rather than hardcoding.
-    #
-    # Socket discovery order:
-    #   1. DOCKER_HOST env var (strip "unix://" prefix if present)
-    #   2. ~/.colima/default/docker.sock  (Colima on macOS, default profile)
-    #   3. ~/.colima/docker.sock          (Colima legacy path)
-    #   4. /var/run/docker.sock           (standard Linux / Docker Desktop path)
-    docker_sock: Path | None = None
-    _docker_host = os.environ.get("DOCKER_HOST", "")
-    if _docker_host:
-        _sock_path = _docker_host.removeprefix("unix://")
-        _candidate = Path(_sock_path)
-        if _candidate.exists():
-            docker_sock = _candidate
-    if docker_sock is None:
-        for _candidate in [
-            Path.home() / ".colima" / "default" / "docker.sock",
-            Path.home() / ".colima" / "docker.sock",
-            Path("/var/run/docker.sock"),
-        ]:
-            if _candidate.exists():
-                docker_sock = _candidate
-                break
+    docker_sock = _find_docker_sock(env)
     if docker_sock is not None:
         docker_gid = docker_sock.stat().st_gid
         cmd.extend(["--group-add", str(docker_gid)])
