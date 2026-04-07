@@ -59,8 +59,7 @@ def test_framework_skill_scripts_exist(mock_home):
 def test_framework_script_runs_from_writing_repo(data_dir):
     """Test that framework scripts execute correctly from writing repo."""
     aops = os.environ.get("AOPS")
-    if not aops:
-        pytest.skip("AOPS environment variable not set")
+    assert aops, "AOPS environment variable must be set"
 
     script_path = Path(aops) / ".agents" / "skills" / "framework" / "scripts" / "validate_docs.py"
     assert script_path.exists(), f"Script not found at {script_path}"
@@ -89,8 +88,7 @@ def test_framework_script_runs_from_writing_repo(data_dir):
 def test_skill_self_contained_architecture():
     """Test that the framework skill is self-contained in .agents/skills/framework/."""
     aops = os.environ.get("AOPS")
-    if not aops:
-        pytest.skip("AOPS environment variable not set")
+    assert aops, "AOPS environment variable must be set"
 
     aops_path = Path(aops)
     scripts_in_aops = aops_path / ".agents" / "skills" / "framework" / "scripts"

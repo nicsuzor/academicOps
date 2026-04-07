@@ -48,8 +48,10 @@ def test_settings_json_discoverable_by_claude(bots_dir: Path) -> None:
     user_exists = user_settings.exists()
     project_exists = project_settings.exists()
 
-    if not (user_exists or project_exists):
-        pytest.skip("No settings.json found at ~/.claude/settings.json or project root")
+    assert user_exists or project_exists, (
+        "No settings.json found at ~/.claude/settings.json or project root. "
+        "At least one must exist for hooks/plugins to load."
+    )
 
     # Determine which settings file to validate
     settings_path = user_settings if user_exists else project_settings
