@@ -14,6 +14,8 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 # Add polecat to path
 TESTS_DIR = Path(__file__).parent.resolve()
 REPO_ROOT = TESTS_DIR.parent.parent
@@ -398,6 +400,18 @@ class TestFindDockerSock:
         legacy_sock.touch()
         result = _find_docker_sock({}, home=tmp_path)
         assert result == default_sock
+
+    @pytest.mark.skipif(
+        not Path("/var/run/docker.sock").exists(),
+        reason="/var/run/docker.sock not present on this host",
+    )
+    def test_standard_linux_sock_found_in_production_mode(self, monkeypatch):
+        """Production mode (home=None) picks up /var/run/docker.sock on Linux/CI."""
+        monkeypatch.delenv("DOCKER_HOST", raising=False)
+        # Production call — no home override, so /var/run/docker.sock is in the probe list.
+        result = _find_docker_sock({})
+        assert result is not None
+        assert "docker.sock" in str(result)
 
 
 class TestMakeWorkerEnv:

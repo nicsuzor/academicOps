@@ -378,7 +378,10 @@ def _find_docker_sock(env: dict, home: Path | None = None) -> Path | None:
     3. ~/.colima/docker.sock          (Colima legacy path)
     4. /var/run/docker.sock           (standard Linux / Docker Desktop)
 
-    ``home`` is injectable for testing; defaults to ``Path.home()``.
+    ``home`` is injectable for testing; defaults to ``Path.home()``.  When
+    ``home`` is explicitly provided the absolute system path
+    ``/var/run/docker.sock`` is excluded from probing so tests remain
+    isolated from the host environment.
     """
     _home = home if home is not None else Path.home()
     docker_host = env.get("DOCKER_HOST") or os.environ.get("DOCKER_HOST", "")
@@ -388,11 +391,15 @@ def _find_docker_sock(env: dict, home: Path | None = None) -> Path | None:
             return candidate if candidate.exists() else None
         # Non-unix scheme (tcp://, etc.) — remote daemon, skip local mount.
         return None
-    for candidate in [
+    candidates: list[Path] = [
         _home / ".colima" / "default" / "docker.sock",
         _home / ".colima" / "docker.sock",
-        Path("/var/run/docker.sock"),
-    ]:
+    ]
+    if home is None:
+        # Only probe the absolute system path in production; tests pass home
+        # explicitly so they don't accidentally pick up a real host socket.
+        candidates.append(Path("/var/run/docker.sock"))
+    for candidate in candidates:
         if candidate.exists():
             return candidate
     return None
