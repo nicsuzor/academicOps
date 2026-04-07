@@ -131,8 +131,23 @@ class TestAllInvocationPaths:
         return f.name.endswith("-hooks.jsonl") or f.name.startswith("cc_hooks_")
 
     @staticmethod
+    def _is_session_file(f: Path) -> bool:
+        """Return True if the file looks like a session transcript (Claude or Gemini)."""
+        if TestAllInvocationPaths._is_hook_file(f):
+            return False
+        # Claude: *.jsonl (not hooks)
+        if f.suffix == ".jsonl":
+            return True
+        # Gemini: chats/session-*.json
+        if f.suffix == ".json" and f.name.startswith("session-"):
+            return True
+        return False
+
+    @staticmethod
     def _find_latest_session_logs(started_after: float = 0):
-        """Discover the most-recently-modified session JSONL and hook log.
+        """Discover the most-recently-modified session file and hook log.
+
+        Searches for both Claude JSONL and Gemini JSON session files.
 
         Args:
             started_after: Unix timestamp — only consider files modified after
@@ -148,13 +163,16 @@ class TestAllInvocationPaths:
         hook_file = hook_files[-1] if hook_files else None
         hook_files_content = hook_file.read_text() if hook_file else ""
 
+        is_session = TestAllInvocationPaths._is_session_file
         claude_dir = Path.home() / ".claude" / "projects"
         session_files = []
-        is_hook = TestAllInvocationPaths._is_hook_file
         if claude_dir.exists():
-            session_files.extend(f for f in claude_dir.rglob("*.jsonl") if not is_hook(f))
+            session_files.extend(f for f in claude_dir.rglob("*.jsonl") if is_session(f))
         if aops_sessions.exists():
-            session_files.extend(f for f in aops_sessions.rglob("*.jsonl") if not is_hook(f))
+            # Search both .jsonl (Claude) and .json (Gemini chats)
+            for f in aops_sessions.rglob("*"):
+                if f.is_file() and is_session(f):
+                    session_files.append(f)
 
         # Filter by modification time to avoid picking up unrelated sessions
         if started_after:
@@ -398,41 +416,37 @@ class TestAllInvocationPaths:
         )
 
     def test_session_persists(self, session):
-        """Session JSONL is written and contains user+assistant entries."""
+        """Session file is written and contains user+assistant entries."""
         session_file = session.get("session_file")
 
-        if session_file is None and session["backend"] == "gemini":
-            pytest.skip(
-                "Gemini session JSONL not found — Gemini writes sessions in its "
-                "own format, not to ~/.claude/projects or ~/.aops/sessions"
-            )
+        assert session_file is not None, f"No session file found for {session['param']}."
+        assert session_file.stat().st_size > 0, "Session file exists but is empty"
 
-        # JSONL file exists and is non-empty
-        assert session_file is not None, f"No session JSONL found for {session['param']}."
-        assert session_file.stat().st_size > 0, "Session JSONL exists but is empty"
-
-        # JSONL content has user + assistant messages
         import json
 
-        entries = []
-        with session_file.open() as f:
-            for line in f:
-                line = line.strip()
-                if line:
-                    entries.append(json.loads(line))
+        # Handle both Claude JSONL (one entry per line) and Gemini JSON (single object)
+        if session_file.suffix == ".json":
+            # Gemini: {"messages": [{"type": "user"|"gemini", ...}]}
+            data = json.loads(session_file.read_text())
+            entries = data.get("messages", [])
+        else:
+            # Claude: one JSON object per line
+            entries = []
+            with session_file.open() as f:
+                for line in f:
+                    line = line.strip()
+                    if line:
+                        entries.append(json.loads(line))
 
-        assert len(entries) > 0, "Session JSONL has no entries"
+        assert len(entries) > 0, "Session file has no entries"
         types = {e.get("type") for e in entries}
         assert "user" in types or "human" in types, f"No user message. Types: {types}"
-        assert "assistant" in types or "model" in types, (
+        assert "assistant" in types or "model" in types or "gemini" in types, (
             f"No assistant/model message. Types: {types}"
         )
 
     def test_session_logs_extracted(self, session):
-        """Session JSONL can be parsed for tool calls."""
-        if session.get("session_file") is None and session["backend"] == "gemini":
-            pytest.skip("Gemini session JSONL not available for tool call parsing")
-
+        """Session file can be parsed for tool calls."""
         tool_calls = session.get("tool_calls", [])
         # The agent should make at least one tool call (any type — the specific
         # tools used depend on hooks, prompt hydration, and LLM behavior)

@@ -455,6 +455,7 @@ Provides:
 from pathlib import Path
 
 import pytest
+
 from lib.paths import get_plugin_root as get_aops_root
 
 
@@ -1000,20 +1001,26 @@ def find_session_jsonl(session_id: str, search_dirs: list[Path] | None = None) -
 
 
 def parse_tool_calls(session_file: Path) -> list[dict]:
-    """Parse tool calls from session JSONL.
+    """Parse tool calls from a session file (Claude JSONL or Gemini JSON).
 
     Args:
-        session_file: Path to session JSONL file
+        session_file: Path to session file (.jsonl for Claude, .json for Gemini)
 
     Returns:
         List of tool call dictionaries with 'name' and 'input' keys
     """
+    if session_file.suffix == ".json":
+        return _parse_gemini_tool_calls(session_file)
+    return _parse_claude_tool_calls(session_file)
+
+
+def _parse_claude_tool_calls(session_file: Path) -> list[dict]:
+    """Parse tool calls from Claude JSONL session file."""
     tool_calls = []
     with session_file.open() as f:
         for line in f:
             try:
                 entry = json.loads(line.strip())
-                # Look for tool_use content blocks in assistant messages
                 if entry.get("type") == "assistant":
                     message = entry.get("message", {})
                     for content in message.get("content", []):
@@ -1026,6 +1033,47 @@ def parse_tool_calls(session_file: Path) -> list[dict]:
                             )
             except json.JSONDecodeError:
                 continue
+    return tool_calls
+
+
+# Gemini tool names to search for in message content strings
+_GEMINI_TOOL_NAMES = [
+    "run_shell_command",
+    "read_file",
+    "write_file",
+    "replace",
+    "grep_search",
+    "glob",
+    "list_directory",
+    "create_task",
+    "get_task",
+    "update_task",
+    "complete_task",
+    "list_tasks",
+    "task_search",
+    "activate_skill",
+]
+
+
+def _parse_gemini_tool_calls(session_file: Path) -> list[dict]:
+    """Parse tool calls from Gemini JSON session file.
+
+    Gemini stores message content as plain strings, so we grep for
+    known tool names in model responses.
+    """
+    import re
+
+    data = json.loads(session_file.read_text())
+    tool_calls = []
+    for msg in data.get("messages", []):
+        if msg.get("type") != "gemini":
+            continue
+        content = msg.get("content", "")
+        if not isinstance(content, str):
+            continue
+        for tool_name in _GEMINI_TOOL_NAMES:
+            if re.search(rf"\b{tool_name}\b", content):
+                tool_calls.append({"name": tool_name, "input": {}})
     return tool_calls
 
 
