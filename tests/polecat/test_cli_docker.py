@@ -14,6 +14,8 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 # Add polecat to path
 TESTS_DIR = Path(__file__).parent.resolve()
 REPO_ROOT = TESTS_DIR.parent.parent
@@ -23,6 +25,7 @@ sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 from cli import (
     _build_docker_cmd,
     _clone_has_changes,
+    _find_docker_sock,
     _node_version_key,
     _pass_pkb_url_sandbox,
     _replicate_gemini_auth,
@@ -315,39 +318,100 @@ class TestBuildDockerCmd:
         vol_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-v"]
         assert not any(str(aca_dir) in v for v in vol_args)
 
-    def _patch_docker_sock(self, exists: bool):
-        """Context manager that patches cli.Path so the docker socket mock returns `exists`."""
-        from unittest.mock import MagicMock
-
-        real_home = Path.home()
-
-        def path_factory(p):
-            if str(p) == "/var/run/docker.sock":
-                m = MagicMock()
-                m.exists.return_value = exists
-                m.stat.return_value.st_gid = 999
-                return m
-            return Path(p)
-
-        import contextlib
-
-        @contextlib.contextmanager
-        def _ctx():
-            with patch("cli.Path") as MockPath:
-                MockPath.home.return_value = real_home
-                MockPath.side_effect = path_factory
-                yield MockPath
-
-        return _ctx()
-
-    def test_mounts_docker_socket_when_present(self):
+    def test_mounts_docker_socket_when_present(self, tmp_path):
         """Mounts host socket and adds --group-add when socket exists (DooD)."""
-        with self._patch_docker_sock(exists=True):
-            cmd = self._build()
+        sock = tmp_path / "docker.sock"
+        sock.touch()
+        env = {"DOCKER_HOST": f"unix://{sock}"}
+        cmd = self._build(env=env)
         vol_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-v"]
         assert any("docker.sock" in v for v in vol_args)
         assert "--privileged" not in cmd
         assert "--user" in cmd
+
+
+class TestFindDockerSock:
+    """Live tests for _find_docker_sock — no mocking, real filesystem paths in tmp_path."""
+
+    def test_returns_none_when_no_socket_anywhere(self, tmp_path, monkeypatch):
+        """No socket file → None (DooD skipped gracefully)."""
+        monkeypatch.delenv("DOCKER_HOST", raising=False)
+        result = _find_docker_sock({}, home=tmp_path)
+        assert result is None
+
+    def test_docker_host_unix_socket_found(self, tmp_path):
+        """DOCKER_HOST=unix://... with existing file → that path is returned."""
+        sock = tmp_path / "custom.sock"
+        sock.touch()
+        result = _find_docker_sock({"DOCKER_HOST": f"unix://{sock}"}, home=tmp_path)
+        assert result == sock
+
+    def test_docker_host_unix_socket_missing(self, tmp_path):
+        """DOCKER_HOST=unix://... pointing at a nonexistent file → None (not a fallback)."""
+        result = _find_docker_sock({"DOCKER_HOST": f"unix://{tmp_path}/ghost.sock"}, home=tmp_path)
+        assert result is None
+
+    def test_docker_host_tcp_skips_local_probe(self, tmp_path):
+        """DOCKER_HOST=tcp://... → None even when local Colima sockets exist."""
+        colima = tmp_path / ".colima" / "default"
+        colima.mkdir(parents=True)
+        (colima / "docker.sock").touch()
+        result = _find_docker_sock({"DOCKER_HOST": "tcp://remote:2375"}, home=tmp_path)
+        assert result is None
+
+    def test_env_dict_takes_precedence_over_os_environ(self, tmp_path, monkeypatch):
+        """DOCKER_HOST in env dict is used even when os.environ has a different value."""
+        env_sock = tmp_path / "env-dict.sock"
+        env_sock.touch()
+        os_sock = tmp_path / "os-environ.sock"
+        os_sock.touch()
+        monkeypatch.setenv("DOCKER_HOST", f"unix://{os_sock}")
+        result = _find_docker_sock({"DOCKER_HOST": f"unix://{env_sock}"}, home=tmp_path)
+        assert result == env_sock
+
+    def test_colima_default_profile(self, tmp_path, monkeypatch):
+        """Falls back to ~/.colima/default/docker.sock when DOCKER_HOST unset."""
+        monkeypatch.delenv("DOCKER_HOST", raising=False)
+        colima = tmp_path / ".colima" / "default"
+        colima.mkdir(parents=True)
+        sock = colima / "docker.sock"
+        sock.touch()
+        result = _find_docker_sock({}, home=tmp_path)
+        assert result == sock
+
+    def test_colima_legacy_path(self, tmp_path, monkeypatch):
+        """Falls back to ~/.colima/docker.sock when default profile is absent."""
+        monkeypatch.delenv("DOCKER_HOST", raising=False)
+        colima = tmp_path / ".colima"
+        colima.mkdir(parents=True)
+        sock = colima / "docker.sock"
+        sock.touch()
+        result = _find_docker_sock({}, home=tmp_path)
+        assert result == sock
+
+    def test_colima_default_preferred_over_legacy(self, tmp_path, monkeypatch):
+        """default/docker.sock wins over legacy docker.sock when both exist."""
+        monkeypatch.delenv("DOCKER_HOST", raising=False)
+        (tmp_path / ".colima" / "default").mkdir(parents=True)
+        (tmp_path / ".colima").mkdir(parents=True, exist_ok=True)
+        default_sock = tmp_path / ".colima" / "default" / "docker.sock"
+        legacy_sock = tmp_path / ".colima" / "docker.sock"
+        default_sock.touch()
+        legacy_sock.touch()
+        result = _find_docker_sock({}, home=tmp_path)
+        assert result == default_sock
+
+    @pytest.mark.skipif(
+        not Path("/var/run/docker.sock").exists(),
+        reason="/var/run/docker.sock not present on this host",
+    )
+    def test_standard_linux_sock_found_in_production_mode(self, monkeypatch):
+        """Production mode (home=None) picks up /var/run/docker.sock on Linux/CI."""
+        monkeypatch.delenv("DOCKER_HOST", raising=False)
+        # Production call — no home override, so /var/run/docker.sock is in the probe list.
+        result = _find_docker_sock({})
+        assert result is not None
+        assert "docker.sock" in str(result)
 
 
 class TestMakeWorkerEnv:
