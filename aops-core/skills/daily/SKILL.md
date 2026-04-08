@@ -207,7 +207,28 @@ The skill gathers information from multiple sources and composes the note. The o
 2. **Invoke `/email`** to triage inbox (creates tasks with full context; returns FYI items for the daily note)
 3. **Compose Focus** (load task data, reason about recommendations, engage user on priorities)
 4. **Sync progress** (session JSONs, merged PRs, task completions → Work Log + Today's Story)
-5. **Output** terminal briefing and halt
+5. **Sweep review-status tasks** (see below)
+6. **Output** terminal briefing and halt
+
+### Review Sweep (Step 5)
+
+`status="review"` means the task needs human/manager review — typically after a failure or blocked execution path. This sweep does **not** redefine that lifecycle state. Instead, it catches tasks that are still marked `review` even though repository evidence suggests the work may already be complete and the task status was never updated (status drift).
+
+**Procedure:**
+
+1. Call `list_tasks(status="review")` to get all tasks currently in review.
+2. Group tasks by repository, then check for merge evidence repo-by-repo:
+   - First inspect each task's `evidence`, `notes`, and `description` for a linked PR number, PR URL, task ID, task title, and any linked branch name
+   - For each repo represented by those tasks, fetch merged PRs once with `gh pr list --state merged --json number,title,url,mergedAt,body,headRefName`
+   - Match tasks locally against the fetched PR set: PR number already linked on the task, task ID in PR body, `headRefName` matching the task's linked branch, or PR title substring-matching the task title
+   - Only if a specific candidate PR number is already known and the batch result lacks needed detail, use `gh pr view <number> --json state,url,mergedAt,headRefName` as a targeted confirmation step
+3. **Auto-complete only clear status-drift cases**: If a merged PR is found and the task's remaining `review` status appears stale rather than an active human-review step, call `mcp__pkb__complete_task` with a completion note explaining the sweep reconciled an out-of-date task state and evidence including the PR URL and merge timestamp. No human confirmation needed — the merge is sufficient evidence.
+4. **Flag stale tasks**: If a task has been in `review` status for more than 14 days with no merge evidence found, flag it for user triage. Do not auto-close or auto-abandon stale tasks — surface them explicitly in the Focus section with a brief summary (task ID, title, age, what was expected to close it).
+5. **Report summary**: Include a brief sweep summary in the Work Log section:
+   - `N tasks auto-completed from merged PRs`
+   - `N tasks flagged as stale (>14d in review)` — list task IDs inline
+
+**What counts as evidence**: A merged PR linked to the task by any of: PR number already linked on task, task ID in PR body, `headRefName` matching task's linked branch, PR title substring-matching task title. A closed-but-not-merged PR is not evidence of completion — flag it separately if found.
 
 > Detailed procedures for each step are in the `instructions/` subdirectory. These procedures describe best practices and edge cases — they are guidance for the agent, not scripts to execute mechanically (P#116).
 

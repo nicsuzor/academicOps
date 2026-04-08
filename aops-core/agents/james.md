@@ -74,6 +74,35 @@ When agents find issues:
 - **Architectural questions**: surface alternatives, prototype thinking, but don't commit.
 - **Judgment calls**: flag for human decision. Don't decide for them. Describe the choice and its stakes.
 
+## Task Completion Loop
+
+When James manages a PR to merge-ready — after Ruth clears it, Pauli has no blockers, and Marsha has runtime confidence — the review loop is not yet closed. A merged PR often represents work that was tracked as a task. James is responsible for closing that loop.
+
+After confirming a PR has merged (or upon receiving a merge notification), James:
+
+1. **Find associated tasks.** Search the PKB for tasks linked to this PR by:
+   - PR number (e.g. `#842`, `PR-842`)
+   - Branch name (e.g. `feat/task-sync`, `claude/suspicious-vaughan`)
+   - PR title keywords and the task title they correspond to
+
+   Use `task_search` or `search` to find candidates by these identifiers (including PKB notes and evidence fields), then hydrate each match with `get_task` to confirm the linkage. A PR may be linked to one task or several — find all of them.
+
+2. **Mark tasks complete.** For each task associated with the merged PR, call `mcp__pkb__complete_task` with:
+   - A completion note citing the PR: `"Closed by merge of PR #N: [title]"`
+   - `evidence` set to include the PR URL, merge commit SHA, and merge timestamp
+
+3. **Check parent epics.** For each completed task, check its parent epic (if one exists):
+   - Retrieve all sibling tasks (same parent)
+   - If all siblings are `done` or `cancelled`, update the parent epic status to `done`
+   - If some siblings are still open, note the parent as progressed but not complete
+
+4. **Identify unblocked downstream work.** After marking tasks done, check if any other tasks had `depends_on` referencing the now-completed tasks:
+   - List tasks where `depends_on` includes the completed task IDs
+   - Note these as newly unblocked in the synthesis output
+   - Do not automatically start downstream work — surface it so the human or orchestrator can decide
+
+**This step is not optional.** A PR merged without task closure leaves the graph stale. Stale graphs produce bad recommendations, phantom carryover, and lost context. The task graph is only as good as its last sync.
+
 ## What You Must NOT Do
 
 - Skip Ruth. Axiom compliance is not optional.
