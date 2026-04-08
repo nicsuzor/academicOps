@@ -151,6 +151,8 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "TaskUpdate",
         "TaskGet",
         "TaskList",
+        "aops_core_rbg",
+        "aops_core_marsha",
         "aops_core_custodiet",
         "aops_core_qa",
         "aops_core_audit",
@@ -302,6 +304,11 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
 
 COMPLIANCE_SUBAGENT_TYPES: frozenset[str] = frozenset(
     {
+        # rbg (The Judge) — canonical name for compliance enforcement agent.
+        # Legacy aliases: custodiet, enforcer, audit, auditor.
+        "rbg",
+        "aops-core:rbg",
+        "aops_core_rbg",
         "custodiet",
         "aops-core:custodiet",
         "aops_core_custodiet",
@@ -311,13 +318,15 @@ COMPLIANCE_SUBAGENT_TYPES: frozenset[str] = frozenset(
         "audit",
         "aops-core:audit",
         "aops_core_audit",
+        "auditor",
+        # marsha (The QA Reviewer) — canonical name for QA agent.
+        # Legacy alias: qa.
+        "marsha",
+        "aops-core:marsha",
+        "aops_core_marsha",
         "qa",
         "aops-core:qa",
         "aops_core_qa",
-        # Curia alias: "auditor" is the Curia name for the custodiet/audit role.
-        # Other Curia roles (Assessor/Critic, Advocate) are not compliance agents
-        # and must not bypass gate enforcement.
-        "auditor",
     }
 )
 
@@ -345,6 +354,10 @@ SPAWN_TOOLS: dict[str, tuple[tuple[str, ...], bool]] = {
     "delegate_to_agent": (("name", "agent_name"), False),
     "activate_skill": (("skill", "name"), True),
     # Gemini: bare agent tools (Strategy 2)
+    # Canonical names
+    "aops_core_rbg": ((), False),
+    "aops_core_marsha": ((), False),
+    # Legacy aliases
     "aops_core_custodiet": ((), False),
     "aops_core_qa": ((), False),
     "aops_core_audit": ((), False),

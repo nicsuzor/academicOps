@@ -69,7 +69,7 @@ Evaluate the session against these lenses. Be **brutal and specific** — quote 
 #### A. Framework Compliance
 
 - Did the agent follow the task lifecycle (pre-work, planning, implementation, post-work)?
-- Did non-trivial work get a plan + critic review?
+- Did non-trivial work get a plan + pauli review?
 - Were tasks tracked? Updated? Completed?
 - Did the agent push before claiming done?
 - Did the agent run QA/tests?

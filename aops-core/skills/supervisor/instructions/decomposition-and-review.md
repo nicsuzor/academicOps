@@ -103,8 +103,8 @@ Supervisor invokes reviewer agents and synthesizes their feedback before human a
 
 | Reviewer          | Role                                                        | Mandatory                                 | Model  |
 | ----------------- | ----------------------------------------------------------- | ----------------------------------------- | ------ |
-| Custodiet         | Authority check: is task within granted scope?              | Yes                                       | haiku  |
-| Critic            | Pedantic review: assumptions, logical errors, missing cases | Yes                                       | opus   |
+| RBG (custodiet)   | Authority check: is task within granted scope?              | Yes                                       | —      |
+| Pauli             | Pedantic review: assumptions, logical errors, missing cases | Yes                                       | opus   |
 | Domain specialist | Subject matter expertise                                    | If task.tags intersect specialist.domains | varies |
 
 ---
@@ -158,7 +158,7 @@ Check for:
 
 Return your assessment in this exact format:
 
-## Critic Review
+## Pauli Review
 
 **Reviewing**: [1-line description]
 
@@ -173,10 +173,10 @@ Return your assessment in this exact format:
 
 [If REVISE or HALT: specific changes needed]
 ''',
-    description='Critic review of decomposition'
+    description='Pauli review of decomposition'
 )
 
-custodiet_task = Task(
+rbg_task = Task(
     subagent_type='aops-core:custodiet',
     model='haiku',
     prompt='''Verify this task is within granted authority:
@@ -190,7 +190,7 @@ Check:
 2. Are there any scope expansions not explicitly authorized?
 3. Do any subtasks assume permissions not granted?
 
-Output exactly: OK, WARN, or BLOCK (see custodiet format spec)
+Output exactly: OK, WARN, or BLOCK (see rbg format spec)
 ''',
     description='Authority verification'
 )
@@ -202,13 +202,13 @@ Wait for both reviewers (timeout: 5 minutes each).
 
 Parse responses into structured verdicts:
 
-| Critic Verdict | Custodiet Verdict | Combined Result          |
-| -------------- | ----------------- | ------------------------ |
-| PROCEED        | OK                | → APPROVED               |
-| PROCEED        | WARN              | → APPROVED (log warning) |
-| REVISE         | OK/WARN           | → NEEDS_REVISION         |
-| HALT           | any               | → BLOCKED                |
-| any            | BLOCK             | → BLOCKED                |
+| Pauli Verdict | RBG Verdict | Combined Result          |
+| ------------- | ----------- | ------------------------ |
+| PROCEED       | OK          | → APPROVED               |
+| PROCEED       | WARN        | → APPROVED (log warning) |
+| REVISE        | OK/WARN     | → NEEDS_REVISION         |
+| HALT          | any         | → BLOCKED                |
+| any           | BLOCK       | → BLOCKED                |
 
 ---
 
@@ -223,10 +223,10 @@ Parse responses into structured verdicts:
 
 ### Reviewer Summary
 
-| Reviewer  | Verdict | Key Points       |
-| --------- | ------- | ---------------- |
-| Critic    | PROCEED | [1-line summary] |
-| Custodiet | OK      | Within scope     |
+| Reviewer | Verdict | Key Points       |
+| -------- | ------- | ---------------- |
+| Pauli    | PROCEED | [1-line summary] |
+| RBG      | OK      | Within scope     |
 
 ### Minor Suggestions (optional)
 
@@ -252,7 +252,7 @@ update_task(id=task_id, status='waiting', body=synthesis_markdown)
 
 - **Suggested fix**: [how to address]
 
-2. [Issue from custodiet if WARN]: [scope concern]
+2. [Issue from RBG if WARN]: [scope concern]
    - **Suggested fix**: [how to narrow scope]
 
 ### Required Actions
@@ -310,8 +310,8 @@ If reviewers return conflicting verdicts (one PROCEED, one REVISE), initiate a d
 
 ### Conflicting Assessments
 
-- **Critic** says PROCEED: "[rationale]"
-- **Custodiet** says WARN: "[concern]"
+- **Pauli** says PROCEED: "[rationale]"
+- **RBG** says WARN: "[concern]"
 
 ### Resolution Attempt
 ```
@@ -320,10 +320,10 @@ If reviewers return conflicting verdicts (one PROCEED, one REVISE), initiate a d
 # Share concerns with the other reviewer
 debate_task = Task(
     model='opus',
-    prompt='''The custodiet raised this concern about the decomposition:
+    prompt='''RBG raised this concern about the decomposition:
 
 <concern>
-{custodiet_concern}
+{rbg_concern}
 </concern>
 
 Your original assessment was PROCEED. Given this new information:
@@ -354,7 +354,7 @@ Respond with:
 
 ### Unresolved Reviewer Disagreement
 
-**Critic Position** (after debate):
+**Pauli Position** (after debate):
 [Their final position]
 
 **Custodiet Position** (after debate):
@@ -366,7 +366,7 @@ Respond with:
 
 ### Options for Human
 
-2. **Narrow scope**: Accept custodiet's constraint
+2. **Narrow scope**: Accept RBG's constraint
 3. **Request more info**: Specific question to resolve
 
 → Awaiting human decision (status='waiting')

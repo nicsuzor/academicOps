@@ -41,7 +41,7 @@ GATE_CONFIGS = [
             GateTrigger(
                 condition=GateCondition(
                     hook_event="^(PreToolUse|SubagentStart|SubagentStop)$",
-                    subagent_type_pattern="^(aops-core:)?custodiet$",
+                    subagent_type_pattern="^(aops-core:)?(custodiet|rbg)$",
                 ),
                 transition=GateTransition(
                     reset_ops_counter=True,
@@ -81,7 +81,7 @@ GATE_CONFIGS = [
             GateTrigger(
                 condition=GateCondition(
                     hook_event="^(SubagentStart|SubagentStop|PostToolUse)$",
-                    subagent_type_pattern="^(aops-core:)?qa$",
+                    subagent_type_pattern="^(aops-core:)?(qa|marsha)$",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,

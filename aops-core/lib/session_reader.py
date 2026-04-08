@@ -375,7 +375,7 @@ def build_audit_session_context(
             If not provided, the transcript is parsed from disk.
 
     Returns:
-        Formatted markdown context suitable for critic agent consumption
+        Formatted markdown context suitable for review agent consumption
     """
     processor = SessionProcessor()
 
@@ -411,7 +411,7 @@ def build_audit_session_context(
 
     lines: list[str] = []
 
-    # Noise tools the critic doesn't need to see individually
+    # Noise tools the reviewer doesn't need to see individually
     _SKIP_TOOLS = {"TodoWrite", "Skill"}
     # Max chars for agent reasoning text per turn
     _AGENT_TEXT_LIMIT = 2000

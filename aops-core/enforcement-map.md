@@ -41,7 +41,7 @@ Contains: P#3 (Don't Make Shit Up), P#5 (Do One Thing), P#6 (Data Boundaries), P
 
 Domain rules are embedded in the agents and skills that own them (the bazaar model). Instead of loading different rule files into a general-purpose agent based on detected context, you invoke the right specialist agent for the job:
 
-1. **Universal axioms** (Tier 1): Always active — loaded at SessionStart for all agents via `AXIOMS.md`. The enforcer agent (`aops-core/agents/enforcer.md`) carries these axioms as core knowledge for PR review and session audits
+1. **Universal axioms** (Tier 1): Always active — loaded at SessionStart for all agents via `AXIOMS.md`. The rbg agent (`aops-core/agents/rbg.md`) carries these axioms as core knowledge for PR review and session audits
 2. **Academic rules**: Owned by the research skill (`skills/research/axioms.md`) — active when the research skill is invoked
 3. **Dev rules**: Owned by the dev-standards agent (`agents/dev-standards.md`) — invoke for code planning, review, or execution
 4. **Framework rules**: Owned by the framework-ops agent (`agents/framework-ops.md`) — invoke for framework development or operations
