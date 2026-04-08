@@ -88,7 +88,7 @@ def test_gemini_md_imports_resolve():
 
     Gemini CLI ImportProcessor looks for lines starting with @filename.
     """
-    import_pattern = re.compile(r"^@([a-zA-Z0-9_.-]+)", re.MULTILINE)
+    import_pattern = re.compile(r"^@([a-zA-Z0-9_/.-]+)\b", re.MULTILINE)
 
     # Check all GEMINI.md files in the repository
     for gemini_file in REPO_ROOT.rglob("GEMINI.md"):
