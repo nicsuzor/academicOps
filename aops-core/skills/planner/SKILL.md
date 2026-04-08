@@ -83,15 +83,16 @@ Quick task capture with minimal overhead. Speed is the priority — no enrichmen
 
 **When**: User says "/q X", "queue task", "new task:", "save for later"
 
-**Allowed tools**: `mcp__pkb__create_task`, `mcp__pkb__task_search`, `mcp__pkb__update_task`
+**Allowed tools**: `mcp__pkb__create_task`, `mcp__pkb__task_search`, `mcp__pkb__update_task`, `mcp__pkb__get_task`
 
 **Workflow**:
 
-1. Search for duplicates (quick, 5 results max)
-2. Resolve parent per hierarchy rules
-3. Route assignee: `polecat` (default), `null` (judgment-required), `nic` (only if explicit)
-4. Create task with body template (Problem, Solution, Files, AC)
-5. Report and HALT — no execution
+1. Search for duplicates and similar tasks (quick, 5 results max).
+2. **Scope check**: If similar tasks exist with high `scope`, consider if the new task should be a subtask of an existing epic rather than a new top-level task.
+3. Resolve parent per hierarchy rules.
+4. Route assignee: `polecat` (default), `null` (judgment-required), `nic` (only if explicit).
+5. Create task with body template (Problem, Solution, Files, AC).
+6. Report and HALT — no execution.
 
 **Key rule**: Commission don't code. Route to swarm for execution.
 
@@ -114,13 +115,13 @@ Strategic planning under genuine uncertainty. Knowledge-building that produces p
 
 **Sub-modes**:
 
-- **Strategic Intake** (UP): New ideas, constraints, connections, surprises → place at the right level, link, surface assumptions. Use the [[strategic-intake]] workflow.
-- **Prioritisation** (ACROSS): Use graph topology to rank by information value. `information_value ≈ downstream_weight × assumption_criticality`.
+- **Strategic Intake** (UP): New ideas, constraints, connections, surprises → place at the right level, link, surface assumptions. Use `uncertainty` to distinguish between "need more information" (high uncertainty, needs a spike/probe) and "know what to do" (low uncertainty, needs execution). Use the [[strategic-intake]] workflow.
+- **Prioritisation** (ACROSS): Use graph topology and computed properties to rank tasks. Surface high-criticality, low-uncertainty tasks as ready priorities. `priority_score ≈ downstream_weight × criticality`.
 
 **Philosophy**:
 
 - Plans are hypotheses, not commitments
-- Prioritise by information value, not urgency
+- Prioritise by information value and criticality, not just urgency
 - Search before synthesizing (P52 — MANDATORY)
 - Effectuation over causation: probe, learn, adapt
 
@@ -142,23 +143,26 @@ Break validated epics into structured task trees.
 
 **Workflow**:
 
-1. Understand the target (project → needs epics; epic → needs tasks; task → needs actions)
-2. Search for context (P52)
-3. Select workflow — identify which workflow achieves this epic
-4. Derive epic shape: planning tasks (before) → execution tasks (during) → verification tasks (after)
-5. Define deliverables — each task must have a concrete output
-6. Identify dependencies — hard (`depends_on`) vs soft (`soft_depends_on` = unlockers)
-7. Estimate effort — XS/S/M/L; tasks over M need further decomposition
-8. Create in PKB via `decompose_task(parent_id, subtasks)`
+1. Understand the target (project → needs epics; epic → needs tasks; task → needs actions).
+2. Search for context (P52).
+3. **Property Check**: Check the parent's `scope` and `uncertainty`.
+   - **High Uncertainty**: Parent needs more specification. Focus on decomposition into spikes, research, or probeable tasks.
+   - **Low Uncertainty + High Scope**: Parent is well-specified but large. Focus on creating standard execution subtasks.
+4. Select workflow — identify which workflow achieves this epic.
+5. Derive epic shape: planning tasks (before) → execution tasks (during) → verification tasks (after).
+6. Define deliverables — each task must have a concrete output.
+7. Identify dependencies — hard (`depends_on`) vs soft (`soft_depends_on` = unlockers).
+8. Estimate effort — XS/S/M/L; tasks over M need further decomposition.
+9. Create in PKB via `decompose_task(parent_id, subtasks)`.
 
 **Critical rules**:
 
 - Every subtask MUST have clear acceptance criteria. If you can't write AC, keep the step in the parent body instead of creating a hollow subtask.
-- All tasks together must achieve the original epic (completeness)
-- Every task must be completable in a single session (actionability)
-- Every epic must include at least one QA/review task (verification)
-- Tasks must be self-contained for handoff (P#120) — include context, decisions, constraints, data findings
-- **Map unknowns**: Before planning execution, classify unknowns as researchable, internal, or probeable (Step 3). Build appropriate evidence-gathering or spike tasks.
+- All tasks together must achieve the original epic (completeness).
+- Every task must be completable in a single session (actionability).
+- Every epic must include at least one QA/review task (verification).
+- Tasks must be self-contained for handoff (P#120) — include context, decisions, constraints, data findings.
+- **Map unknowns**: Before planning execution, classify unknowns as researchable, internal, or probeable (Step 3). Build appropriate evidence-gathering or spike tasks. High uncertainty on the parent signals a need for more probeable tasks.
 - **Cross-cutting impact & prerequisites**: Every decomposition must check what other projects depend on what's changing AND what must be true before the change is useful (Step 4). Create tasks in affected projects, not just under this epic.
 
 **Workflow files**: `aops-core/skills/planner/workflows/decompose.md`
@@ -262,18 +266,19 @@ These are the interactive counterpart to sleep Phase 4. In maintain mode, the hu
 
 **Health metrics**: Orphan rate <5% (including wrong-type-parent orphans), link density >2 per note, zero broken links, zero DRY violations, zero hierarchy violations.
 
-**Hierarchy rules** (P#73): Every task MUST have a parent of the correct type. Tasks → epic, epics → project/epic, projects = root level (no required parent, or parent is another project). Goals link via `goals: []` metadata, not parent hierarchy. No star patterns (>5 children → create intermediate epic). `pkb_orphans` detects both missing-parent AND wrong-type-parent violations (e.g., task parented to a project instead of an epic).
+**Hierarchy rules** (P#73): Every task MUST have a parent of the correct type. Tasks → epic, epics → project/epic, projects = root level (no required parent, or parent is another project). Goals link via `goals: []` metadata, not parent hierarchy. No star patterns (>5 children → create intermediate epic). `pkb_orphans` detects both missing-parent AND wrong-type-parent violations (e.g., task parented to a project instead of an epic). **Criticality focus**: High-criticality orphans are prioritized for reparenting over low-criticality ones.
 
 **Densify strategies** (rotate across sessions when densifying):
 
-| Strategy               | Targets                            |
-| ---------------------- | ---------------------------------- |
-| `high-priority-sparse` | P0/P1 ready tasks with zero edges  |
-| `project-cluster`      | Ready tasks within one project     |
-| `neighbourhood-expand` | Neighbours of high-weight tasks    |
+| Strategy               | Targets                                         |
+| ---------------------- | ----------------------------------------------- |
+| `criticality-focus`    | High-criticality tasks with zero/few edges      |
+| `high-priority-sparse` | P0/P1 ready tasks with zero edges               |
+| `project-cluster`      | Ready tasks within one project                  |
+| `neighbourhood-expand` | Neighbours of high-weight/high-criticality tasks |
 | `cross-project-bridge` | Tasks sharing tags across projects |
 
-**Densify workflow**: Select candidates (5 min) → Enrich each (15 min) → Present proposals → Apply approved → Verify `downstream_weight` improved
+**Densify workflow**: Select candidates (5 min) → Enrich each (15 min) → Present proposals → Apply approved → Verify `downstream_weight` and graph health improved
 
 **Densify rules**:
 

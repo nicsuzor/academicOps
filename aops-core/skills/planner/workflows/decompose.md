@@ -19,11 +19,13 @@ version: 2.0.0
 
 ## Core Process
 
-1. **Understand the Target** — What are we decomposing? A goal (needs projects/epics first), an epic (needs tasks), or a task (needs actions)? Clarify the primary objective and constraints.
+1. **Understand the Target** — What are we decomposing? A goal (needs projects/epics first), an epic (needs tasks), or a task (needs actions)? Clarify the primary objective and constraints. **Property Check**: Examine the parent's `scope`, `uncertainty`, and `criticality`.
+   - **High Uncertainty**: Priority is to reduce uncertainty. The decomposition should lean heavily into evidence gathering, audits, or probes (Step 3).
+   - **Low Uncertainty + High Scope**: Parent is well-understood but large. The decomposition should focus on creating independent, parallelizable execution tasks.
 
 2. **Search for Context** (P52) — Query PKB for existing related work, prior decompositions of similar scope, and established patterns. Use `pkb_context(id, hops=2)` to understand the neighbourhood.
 
-3. **Map Unknowns** — Before planning execution, identify what you _don't_ know. Classify each as: **researchable** (others may have solved it → evidence-gathering task), **internal** (we have unanalysed data → audit/survey task), or **probeable** (unknown-unknown → time-boxed spike).
+3. **Map Unknowns** — Before planning execution, identify what you _don't_ know. Classify each as: **researchable** (others may have solved it → evidence-gathering task), **internal** (we have unanalysed data → audit/survey task), or **probeable** (unknown-unknown → time-boxed spike). High parent `uncertainty` means most subtasks should start here.
 
 4. **Cross-cutting Impact & Prerequisites** — Ask two questions: (a) "What other projects consume or depend on what's changing?" Search PKB for affected tasks/epics; create sibling tasks in THOSE projects with `depends_on` pointing back here. (b) "What must be true for this change to work?" For each unmet prerequisite, create a prep task that implementation `depends_on`. Both often live in different projects.
 
@@ -91,8 +93,7 @@ Tasks created during decomposition will often be picked up by a **different agen
 
 ## Critical Rules
 
-- **Completeness**: All tasks together must achieve the original epic.
-- **Actionability**: Every task must be completable in a single session.
+- **Completeness & Actionability**: All tasks together must achieve the original epic; every task must be completable in a single session.
 - **Verification**: Every epic must include at least one QA/review task.
 - **Conservative expansion**: If a task can be done in one sitting, don't decompose further.
 - **Graph placement**: Every created task must be connected to the graph — parented under a live (not done) epic, with dependencies to related work. A task with zero downstream weight and a completed parent is effectively invisible to prioritisation. Check: is the parent epic still active? Do any other tasks depend on this work?
