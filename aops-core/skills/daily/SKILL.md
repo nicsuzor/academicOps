@@ -207,7 +207,27 @@ The skill gathers information from multiple sources and composes the note. The o
 2. **Invoke `/email`** to triage inbox (creates tasks with full context; returns FYI items for the daily note)
 3. **Compose Focus** (load task data, reason about recommendations, engage user on priorities)
 4. **Sync progress** (session JSONs, merged PRs, task completions → Work Log + Today's Story)
-5. **Output** terminal briefing and halt
+5. **Sweep review-status tasks** (see below)
+6. **Output** terminal briefing and halt
+
+### Review Sweep (Step 5)
+
+Tasks in `status="review"` are waiting for external confirmation — typically a merged PR or published output. Left unchecked, they accumulate silently and pollute recommendations. The daily skill sweeps them automatically.
+
+**Procedure:**
+
+1. Call `list_tasks(status="review")` to get all tasks currently in review.
+2. For each task, check for merge evidence:
+   - Look for a linked PR in the task's `evidence`, `notes`, or `description` fields
+   - Query `gh pr list --state merged` for PRs whose title, branch, or body reference the task ID, task title, or linked branch name
+   - A task's linked PR is considered merged if `gh pr view <number> --json state` returns `"MERGED"`
+3. **Auto-complete tasks with evidence**: If a merged PR is found, update the task to `status="done"`, set `evidence` to include the PR URL and merge timestamp, and add a completion note. No human confirmation needed — the merge is sufficient evidence.
+4. **Flag stale tasks**: If a task has been in `review` status for more than 14 days with no merge evidence found, flag it for user triage. Do not auto-close or auto-abandon stale tasks — surface them explicitly in the Focus section with a brief summary (task ID, title, age, what was expected to close it).
+5. **Report summary**: Include a brief sweep summary in the Work Log section:
+   - `N tasks auto-completed from merged PRs`
+   - `N tasks flagged as stale (>14d in review)` — list task IDs inline
+
+**What counts as evidence**: A merged PR linked to the task by any of: task ID in PR body, branch name matching task branch, PR title substring-matching task title. A closed-but-not-merged PR is not evidence of completion — flag it separately if found.
 
 > Detailed procedures for each step are in the `instructions/` subdirectory. These procedures describe best practices and edge cases — they are guidance for the agent, not scripts to execute mechanically (P#116).
 
