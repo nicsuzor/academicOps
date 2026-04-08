@@ -528,12 +528,10 @@ def _build_docker_cmd(
     cmd.extend(["-v", f"{host_work_dir}:/workspace"])
     cmd.extend(["-w", "/workspace"])
 
-    # Mount authentication and plugin cache for Claude
-    # Also mount for "shell" mode so users can run claude interactively
+    # Mount authentication and plugin cache for Claude/Gemini.
+    # Also mount for "shell" mode so users can run either CLI interactively.
     home = Path.home()
-    if cli_tool in ("claude", "shell"):
-        claude_json = home / ".claude.json"
-        claude_dir = home / ".claude"
+    if cli_tool in ("claude", "shell", "gemini"):
         # Create a staging directory for auth files.  Files are injected into the
         # container via `docker cp` (not bind mounts), so any writable temp dir works
         # regardless of platform (WSL2, Colima, DinD).
@@ -543,6 +541,11 @@ def _build_docker_cmd(
         os.chmod(staging_dir, 0o700)
         if tmp_files is not None:
             tmp_files.append(staging_dir)
+        _staging_dir = staging_dir
+
+    if cli_tool in ("claude", "shell"):
+        claude_json = home / ".claude.json"
+        claude_dir = home / ".claude"
         if claude_json.exists():
             # Claude needs bypassPermissionsModeAccepted=true for --dangerously-skip-permissions
             # to work without an interactive prompt. Create a copy with this flag set
@@ -565,13 +568,8 @@ def _build_docker_cmd(
                 src = claude_dir / auth_file
                 if src.exists():
                     shutil.copy2(src, staged_claude_dir / auth_file)
-        # staging_dir is populated; callers use docker cp to inject it
-        # into the container (avoids bind mount issues on WSL2/Colima).
-        _staging_dir = staging_dir
-
         # Stage Gemini auth files for "shell" mode so users can run gemini interactively.
         # Gemini normally handles its own sandbox, but in shell mode we're managing Docker.
-        # (Nested here because staging_dir is only defined when cli_tool in ("claude", "shell"))
         if cli_tool == "shell":
             gemini_dir = home / ".gemini"
             if gemini_dir.exists():
@@ -634,6 +632,15 @@ def _build_docker_cmd(
         ):
             cmd.extend(["-e", f"{key}={val}"])
 
+    # Gemini: forward Gemini-specific env vars and set GEMINI_CLI_HOME
+    # to the container home (entrypoint copies staged .gemini/ to $HOME/.gemini/).
+    if cli_tool == "gemini":
+        cmd.extend(["-e", f"GEMINI_CLI_HOME={container_home}"])
+        for gkey in ("GEMINI_API_KEY", "GEMINI_SESSION_ID"):
+            gval = env.get(gkey)
+            if gval:
+                cmd.extend(["-e", f"{gkey}={gval}"])
+
     # GitHub authentication — forward tokens to the container.
     # The container entrypoint handles git and gh CLI authentication.
     gh_token = env.get("GH_TOKEN") or os.environ.get("AOPS_BOT_GH_TOKEN")
@@ -654,17 +661,20 @@ def _build_docker_cmd(
     cmd.extend(["-e", "GIT_SSH_COMMAND=false"])
     cmd.extend(["-e", "GIT_TERMINAL_PROMPT=0"])
 
-    # Mount session storage so Claude transcripts persist beyond container lifetime.
-    # Without this, --rm destroys all session data when the container exits.
-    if cli_tool in ("claude", "shell"):
+    # Session storage: transcripts persist beyond container lifetime.
+    # Bind mounts silently fail on WSL2/Docker Desktop so callers use
+    # extract_paths in _run_docker_container() to docker-cp sessions out
+    # after the container stops.  Named volumes (DinD) still work.
+    if cli_tool in ("claude", "shell", "gemini"):
         if session_volume:
             # Named volume: preferred in DinD where bind-mount paths may not be
             # accessible from the outer Docker daemon.
-            cmd.extend(["-v", f"{session_volume}:{container_home}/.claude/projects"])
+            if cli_tool in ("claude", "shell"):
+                cmd.extend(["-v", f"{session_volume}:{container_home}/.claude/projects"])
+            else:
+                cmd.extend(["-v", f"{session_volume}:{container_home}/.gemini/tmp"])
         elif session_dir:
             session_dir.mkdir(parents=True, exist_ok=True)
-            host_session = _container_to_host_path(session_dir.resolve())
-            cmd.extend(["-v", f"{host_session}:{container_home}/.claude/projects"])
 
     cmd.append(image)
     cmd.extend(agent_cmd)
@@ -678,6 +688,7 @@ def _run_docker_container(
     env: dict | None = None,
     capture_output: bool = False,
     text: bool = True,
+    extract_paths: list[tuple[str, Path]] | None = None,
 ) -> subprocess.CompletedProcess:
     """Launch a Docker container, optionally injecting staging files via docker cp.
 
@@ -686,12 +697,18 @@ def _run_docker_container(
     mount issues on WSL2/Docker Desktop where file mounts appear as empty
     directories.
 
+    If ``extract_paths`` is provided, copies files out of the container after
+    it exits (before ``docker rm``).  Each entry is a ``(container_path,
+    host_path)`` tuple.  This is the reliable way to get session transcripts
+    out of the container, since bind-mounted session dirs may silently fail on
+    WSL2/Docker Desktop.
+
     When no staging_dir is set, falls back to a plain ``docker run``.
     """
     cmd = list(docker_cmd.cmd)  # copy to avoid mutation
 
-    if docker_cmd.staging_dir is None:
-        # No staging needed — plain docker run
+    if docker_cmd.staging_dir is None and not extract_paths:
+        # No staging or extraction needed — plain docker run
         return subprocess.run(cmd, cwd=cwd, env=env, capture_output=capture_output, text=text)
 
     # Replace "docker run --rm" with "docker create" (no --rm, we clean up manually)
@@ -707,14 +724,15 @@ def _run_docker_container(
 
     try:
         # Copy staging files into the container
-        cp_result = subprocess.run(
-            ["docker", "cp", f"{docker_cmd.staging_dir}/.", f"{container_id}:/tmp/staging"],
-            capture_output=True,
-            text=True,
-        )
-        if cp_result.returncode != 0:
-            print(f"docker cp failed: {cp_result.stderr}", file=sys.stderr)
-            return cp_result
+        if docker_cmd.staging_dir:
+            cp_result = subprocess.run(
+                ["docker", "cp", f"{docker_cmd.staging_dir}/.", f"{container_id}:/tmp/staging"],
+                capture_output=True,
+                text=True,
+            )
+            if cp_result.returncode != 0:
+                print(f"docker cp failed: {cp_result.stderr}", file=sys.stderr)
+                return cp_result
 
         # Start the container and wait for it to finish
         start_cmd = ["docker", "start", "-a"]
@@ -722,7 +740,28 @@ def _run_docker_container(
             start_cmd.append("-i")
         start_cmd.append(container_id)
 
-        return subprocess.run(start_cmd, cwd=cwd, env=env, capture_output=capture_output, text=text)
+        run_result = subprocess.run(
+            start_cmd, cwd=cwd, env=env, capture_output=capture_output, text=text
+        )
+
+        # Extract files from container before cleanup (belt-and-suspenders
+        # for session persistence — bind mounts silently fail on WSL2).
+        if extract_paths:
+            for container_path, host_path in extract_paths:
+                host_path.mkdir(parents=True, exist_ok=True)
+                cp_out = subprocess.run(
+                    ["docker", "cp", f"{container_id}:{container_path}/.", str(host_path)],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                if cp_out.returncode != 0:
+                    print(
+                        f"   Session extract warning: {cp_out.stderr.strip()}",
+                        file=sys.stderr,
+                    )
+
+        return run_result
     finally:
         # Always clean up the container (replaces --rm)
         subprocess.run(
@@ -936,7 +975,7 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
         # which break in Docker/temp dirs.  `uv run` in router.sh will
         # recreate a fresh venv from pyproject.toml on first hook invocation.
         def _ignore_venv(directory, contents):
-            return [c for c in contents if c == ".venv"]
+            return [c for c in contents if c in (".venv", ".uv-cache")]
 
         for child in src_extensions.iterdir():
             if child.is_dir():
@@ -960,18 +999,42 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
             except (json.JSONDecodeError, OSError):
                 shutil.copy2(enablement_src, dst_extensions / "extension-enablement.json")
 
-    # Make all replicated files readable and directories writable by any UID.
-    # Gemini's sandbox container may run as a different user than the host.
+    # Make all replicated files and directories writable by any UID.
+    # Gemini's sandbox container may run as a different user than the host
+    # and needs to write temp files (projects.json.tmp, settings updates).
     for dirpath, _dirnames, filenames in os.walk(target_dir):
         os.chmod(dirpath, 0o777)
         for fname in filenames:
-            os.chmod(os.path.join(dirpath, fname), 0o644)
+            os.chmod(os.path.join(dirpath, fname), 0o666)
 
     # Set GEMINI_CLI_HOME to the parent directory — Gemini creates .gemini/
     # inside GEMINI_CLI_HOME (i.e. path.join(GEMINI_CLI_HOME, ".gemini", ...)).
     env["GEMINI_CLI_HOME"] = str(tmp_gemini_home)
 
     return tmp_gemini_home
+
+
+def _extract_gemini_sessions(tmp_gemini_home: Path, session_dir: Path) -> None:
+    """Copy Gemini session transcripts from tmp auth home to persistent session_dir.
+
+    Gemini CLI writes sessions to ``$GEMINI_CLI_HOME/.gemini/tmp/<hash>/chats/session-*.json``
+    where ``<hash>`` is a SHA256 of the working directory.  These files live inside
+    the temporary auth home that gets deleted after each run.  This function
+    extracts them to the persistent ``session_dir`` so they survive cleanup.
+    """
+    gemini_tmp = tmp_gemini_home / ".gemini" / "tmp"
+    if not gemini_tmp.is_dir():
+        return
+
+    dest = session_dir / "chats"
+    dest.mkdir(parents=True, exist_ok=True)
+
+    for session_file in gemini_tmp.rglob("session-*.json"):
+        target = dest / session_file.name
+        if target.exists():
+            # Avoid collision: prefix with parent hash dir name
+            target = dest / f"{session_file.parent.parent.name}-{session_file.name}"
+        shutil.copy2(session_file, target)
 
 
 def is_interactive() -> bool:
@@ -2610,11 +2673,11 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, agent_args
         # with their aops plugins, so the user can run either manually.
         cmd = ["bash"]
     elif gemini:
-        # Gemini: run in sandbox (Docker container) for isolation.
-        cmd = [
-            "gemini",
-            "--sandbox",
-        ]
+        # Gemini: run inside our Docker container (not --sandbox, which uses
+        # bind mounts that fail on WSL2/Docker Desktop).  Auth files are staged
+        # via docker cp, and session transcripts are extracted after the run.
+        # Note: --approval-mode is set by agent_args (passed after '--').
+        cmd = ["gemini"]
     else:
         # Claude Code: sandbox via project settings.json + setting-sources
         cmd = [
@@ -2642,59 +2705,41 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, agent_args
     tmp_gemini_home = None
     tmp_files: list[Path] = []
     if gemini:
-        # Replicate Gemini authentication if available.
+        # Replicate Gemini authentication — creates a temp dir with .gemini/ auth files.
         tmp_gemini_home = _replicate_gemini_auth(env, work_dir=work_dir)
         if tmp_gemini_home:
-            print(f"   Auth: Replicated to {env['GEMINI_CLI_HOME']}")
+            print(f"   Auth: Replicated to {tmp_gemini_home}")
 
-        # Gemini --sandbox re-execs itself inside the container, so the image
-        # needs the Gemini CLI installed. Use aops-crew (full image with AI CLIs).
-        env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-crew")
-
-        # Set the hook state directory to Gemini's natural log path inside the container
-        if tmp_gemini_home:
-            container_sessions_dir = str(tmp_gemini_home / ".gemini" / "tmp" / project_slug)
-        else:
-            container_sessions_dir = str(Path.home() / ".gemini" / "tmp" / project_slug)
-
-        env["AOPS_SESSION_STATE_DIR"] = container_sessions_dir
-
-        # Mount the clean host session directory directly to Gemini's log path
-        session_dir.mkdir(parents=True, exist_ok=True)
-        mounts = env.get("SANDBOX_MOUNTS", "")
-        new_mount = f"{session_dir.resolve()}:{container_sessions_dir}:rw"
-        env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
-
-        # Provide a stable Gemini session ID based on the crew/task ID
+        # Provide a stable Gemini session ID based on the crew name
         env["GEMINI_SESSION_ID"] = f"gemini-{crew_name}"
 
-        _pass_pkb_url_sandbox(env)
+        # Hook state dir inside the container
+        env["AOPS_SESSION_STATE_DIR"] = "/home/worker/.gemini/tmp"
 
-        # Gemini sandbox only forwards a hardcoded allowlist of env vars into
-        # its Docker container. Use SANDBOX_FLAGS for simple -e flags and
-        # SANDBOX_MOUNTS for volumes. Git credentials use a mounted .gitconfig
-        # because shell-quote mangles the credential helper shell function.
-        extra_flags = []
-        for key, val in env.items():
-            if key.endswith("_GATE_MODE") or key in (
-                "PKB_MCP_URL",
-                "GH_TOKEN",
-                "GEMINI_SANDBOX_IMAGE",
-                "GEMINI_SESSION_ID",
-                "AOPS_SESSION_STATE_DIR",
-            ):
-                extra_flags.extend(["-e", f"{key}={val}"])
+        # Wrap Gemini in our Docker container (same as Claude path).
+        # Headless when agent_args contains -p (prompt mode, no TTY needed)
+        headless = agent_args and "-p" in agent_args
+        docker_cmd = _build_docker_cmd(
+            "gemini",
+            work_dir,
+            env,
+            cmd,
+            is_interactive=not headless,
+            tmp_files=tmp_files,
+            session_dir=session_dir,
+        )
 
-        # Git credentials: mount .gitconfig and gh hosts.yml into sandbox
-        extra_flags.extend(_mount_gemini_git_credentials(env, tmp_files))
+        # Copy replicated .gemini/ auth into staging_dir so docker cp injects
+        # it into /home/worker/.gemini/ via the entrypoint.
+        if tmp_gemini_home and docker_cmd.staging_dir:
+            src_gemini = tmp_gemini_home / ".gemini"
+            if src_gemini.is_dir():
+                dst_gemini = docker_cmd.staging_dir / ".gemini"
+                if dst_gemini.exists():
+                    shutil.rmtree(dst_gemini)
+                shutil.copytree(src_gemini, dst_gemini)
 
-        if extra_flags:
-            existing = env.get("SANDBOX_FLAGS", "")
-            new_flags = " ".join(extra_flags)
-            env["SANDBOX_FLAGS"] = f"{existing} {new_flags}".strip() if existing else new_flags
-
-        docker_cmd = None
-        final_cmd = cmd
+        final_cmd = docker_cmd.cmd
     elif interactive:
         # Interactive shell: wrap in Docker container (same as Claude path)
         docker_cmd = _build_docker_cmd(
@@ -2731,7 +2776,20 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, agent_args
     set_terminal_title(f"crew:{crew_name}")
     try:
         if docker_cmd and docker_cmd.staging_dir:
-            _run_docker_container(docker_cmd, cwd=work_dir, env=env)
+            # Extract session transcripts after the container stops.
+            # Claude writes to /home/worker/.claude/projects/;
+            # Gemini writes to /home/worker/.gemini/tmp/.
+            extract = []
+            if gemini:
+                extract.append(("/home/worker/.gemini/tmp", session_dir))
+            else:
+                extract.append(("/home/worker/.claude/projects", session_dir))
+            _run_docker_container(
+                docker_cmd,
+                cwd=work_dir,
+                env=env,
+                extract_paths=extract,
+            )
         else:
             subprocess.run(final_cmd, cwd=work_dir, env=env)
     except FileNotFoundError:
@@ -2741,8 +2799,9 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, agent_args
         print("\n\n\u26a0\ufe0f  Session interrupted")
     finally:
         reset_terminal_title()
-        # Clean up temporary Gemini home
+        # Extract Gemini session files before cleaning up
         if tmp_gemini_home and tmp_gemini_home.exists():
+            _extract_gemini_sessions(tmp_gemini_home, session_dir)
             shutil.rmtree(tmp_gemini_home)
         # Clean up temporary files created by _build_docker_cmd
         for tmp_file in tmp_files:
@@ -3054,15 +3113,13 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
 
     # Build command - gemini and claude have different CLI interfaces
     if gemini:
-        # Gemini CLI
+        # Gemini CLI — run inside our Docker container (not --sandbox, which
+        # uses bind mounts that fail on WSL2/Docker Desktop).
         cmd = [
             "gemini",
-            "--sandbox",
             "--approval-mode",
             "yolo",
         ]
-        # Note: Gemini CLI doesn't support --session-id; it uses --resume for session management
-        # For now, each polecat run starts a fresh session
 
         if interactive:
             # -i starts interactive mode with initial prompt
@@ -3097,57 +3154,39 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
     run_session_dir = _get_sessions_base() / "polecats" / task.id / project_slug
 
     if gemini:
-        # Replicate Gemini authentication if available.
+        # Replicate Gemini authentication — creates a temp dir with .gemini/ auth files.
         tmp_gemini_home = _replicate_gemini_auth(env, work_dir=worktree_path)
         if tmp_gemini_home:
-            print(f"   Auth: Replicated to {env['GEMINI_CLI_HOME']}")
-
-        # Gemini --sandbox re-execs itself inside the container, so the image
-        # needs the Gemini CLI installed. Use aops-crew (full image with AI CLIs).
-        env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-crew")
-
-        # Set the hook state directory to Gemini's natural log path inside the container
-        if tmp_gemini_home:
-            container_sessions_dir = str(tmp_gemini_home / ".gemini" / "tmp" / project_slug)
-        else:
-            container_sessions_dir = str(Path.home() / ".gemini" / "tmp" / project_slug)
-
-        env["AOPS_SESSION_STATE_DIR"] = container_sessions_dir
-
-        # Mount the clean host session directory directly to Gemini's log path
-        run_session_dir.mkdir(parents=True, exist_ok=True)
-        mounts = env.get("SANDBOX_MOUNTS", "")
-        new_mount = f"{run_session_dir.resolve()}:{container_sessions_dir}:rw"
-        env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
+            print(f"   Auth: Replicated to {tmp_gemini_home}")
 
         # Provide a stable Gemini session ID based on the task ID
         env["GEMINI_SESSION_ID"] = f"gemini-{task.id}"
 
-        _pass_pkb_url_sandbox(env)
+        # Hook state dir inside the container
+        env["AOPS_SESSION_STATE_DIR"] = "/home/worker/.gemini/tmp"
 
-        # Gemini sandbox only forwards a hardcoded allowlist of env vars into
-        # its Docker container. Use SANDBOX_FLAGS for simple -e flags.
-        extra_flags = []
-        for key, val in env.items():
-            if key.endswith("_GATE_MODE") or key in (
-                "PKB_MCP_URL",
-                "GH_TOKEN",
-                "GEMINI_SANDBOX_IMAGE",
-                "GEMINI_SESSION_ID",
-                "AOPS_SESSION_STATE_DIR",
-            ):
-                extra_flags.extend(["-e", f"{key}={val}"])
+        # Wrap Gemini in our Docker container (same as Claude path).
+        docker_cmd = _build_docker_cmd(
+            "gemini",
+            worktree_path,
+            env,
+            cmd,
+            is_interactive=interactive,
+            tmp_files=tmp_files,
+            session_dir=run_session_dir,
+        )
 
-        # Git credentials: mount .gitconfig and gh hosts.yml into sandbox
-        extra_flags.extend(_mount_gemini_git_credentials(env, tmp_files))
+        # Copy replicated .gemini/ auth into staging_dir so docker cp injects
+        # it into /home/worker/.gemini/ via the entrypoint.
+        if tmp_gemini_home and docker_cmd.staging_dir:
+            src_gemini = tmp_gemini_home / ".gemini"
+            if src_gemini.is_dir():
+                dst_gemini = docker_cmd.staging_dir / ".gemini"
+                if dst_gemini.exists():
+                    shutil.rmtree(dst_gemini)
+                shutil.copytree(src_gemini, dst_gemini)
 
-        if extra_flags:
-            existing = env.get("SANDBOX_FLAGS", "")
-            new_flags = " ".join(extra_flags)
-            env["SANDBOX_FLAGS"] = f"{existing} {new_flags}".strip() if existing else new_flags
-
-        docker_cmd = None
-        final_cmd = cmd
+        final_cmd = docker_cmd.cmd
     else:
         # Claude Code: manually wrap in docker container
         docker_cmd = _build_docker_cmd(
@@ -3160,12 +3199,20 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
             session_dir=run_session_dir,
         )
         final_cmd = docker_cmd.cmd
-        print(f"   Sessions: {run_session_dir}")
+    print(f"   Sessions: {run_session_dir}")
 
     # Resolve CLI binary to absolute path so subprocess doesn't depend on PATH lookup
     resolved = shutil.which(final_cmd[0], path=env.get("PATH"))
     if resolved:
         final_cmd[0] = resolved
+
+    # Compute extract_paths for session transcript extraction.
+    # Claude writes to /home/worker/.claude/projects/;
+    # Gemini writes to /home/worker/.gemini/tmp/.
+    if gemini:
+        _extract = [("/home/worker/.gemini/tmp", run_session_dir)]
+    else:
+        _extract = [("/home/worker/.claude/projects", run_session_dir)]
 
     if interactive:
         set_terminal_title(f"polecat:{task.id}")
@@ -3174,7 +3221,12 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
             # In interactive mode, we MUST NOT capture output or it will hang
             # and we want the user to see/interact with the CLI
             if docker_cmd and docker_cmd.staging_dir:
-                result = _run_docker_container(docker_cmd, cwd=worktree_path, env=env)
+                result = _run_docker_container(
+                    docker_cmd,
+                    cwd=worktree_path,
+                    env=env,
+                    extract_paths=_extract,
+                )
             else:
                 result = subprocess.run(
                     final_cmd,
@@ -3191,6 +3243,7 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
                     env=env,
                     capture_output=True,
                     text=True,
+                    extract_paths=_extract,
                 )
             else:
                 result = subprocess.run(
@@ -3235,8 +3288,9 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
     finally:
         if interactive:
             reset_terminal_title()
-        # Clean up temporary Gemini home
+        # Extract Gemini session files before cleaning up
         if tmp_gemini_home and tmp_gemini_home.exists():
+            _extract_gemini_sessions(tmp_gemini_home, run_session_dir)
             shutil.rmtree(tmp_gemini_home)
         # Clean up temporary files created by _build_docker_cmd
         for tmp_file in tmp_files:

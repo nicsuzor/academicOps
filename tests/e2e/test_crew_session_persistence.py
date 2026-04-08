@@ -1,10 +1,15 @@
 """Unit tests for crew session transcript persistence.
 
-Verifies that _build_docker_cmd() correctly configures session_dir mounts
+Verifies that _build_docker_cmd() correctly configures session handling
 for Claude and Gemini modes. No Docker or LLM required.
 
-E2E session persistence tests are in test_crew_docker_session.py
-(TestCrewDockerSession.test_session_persists).
+Session transcripts are extracted via docker cp (not bind mounts) because
+bind mounts silently fail on WSL2/Docker Desktop. The session_dir param
+creates the directory on the host; callers pass extract_paths to
+_run_docker_container() for post-run extraction.
+
+E2E session persistence tests are in test_all_invocation_paths.py
+(TestAllInvocationPaths.test_session_persists).
 """
 
 import sys
@@ -31,8 +36,22 @@ def build_docker_cmd():
     return _build_and_return_cmd
 
 
-def test_session_dir_mount_in_docker_cmd(build_docker_cmd, tmp_path):
-    """session_dir param adds a -v mount for .claude/projects."""
+def test_session_dir_created_by_build(build_docker_cmd, tmp_path):
+    """session_dir param creates the directory (extraction target for docker cp)."""
+    session_dir = tmp_path / "test-sessions"
+    build_docker_cmd(
+        cli_tool="claude",
+        work_dir=tmp_path,
+        env={},
+        agent_cmd=["claude", "-p", "hello"],
+        is_interactive=False,
+        session_dir=session_dir,
+    )
+    assert session_dir.exists(), "session_dir should be created by _build_docker_cmd"
+
+
+def test_no_session_bind_mount_for_claude(build_docker_cmd, tmp_path):
+    """Claude mode does NOT bind-mount session_dir (uses docker cp extraction)."""
     session_dir = tmp_path / "test-sessions"
     cmd = build_docker_cmd(
         cli_tool="claude",
@@ -43,12 +62,11 @@ def test_session_dir_mount_in_docker_cmd(build_docker_cmd, tmp_path):
         session_dir=session_dir,
     )
     cmd_str = " ".join(cmd)
-    assert f"{session_dir.resolve()}:/home/worker/.claude/projects" in cmd_str
-    assert session_dir.exists(), "session_dir should be created by _build_docker_cmd"
+    assert ".claude/projects" not in cmd_str
 
 
-def test_shell_mode_gets_session_mount(build_docker_cmd, tmp_path):
-    """shell mode also gets the session_dir mount."""
+def test_no_session_bind_mount_for_shell(build_docker_cmd, tmp_path):
+    """Shell mode does NOT bind-mount session_dir (uses docker cp extraction)."""
     session_dir = tmp_path / "shell-sessions"
     cmd = build_docker_cmd(
         cli_tool="shell",
@@ -59,7 +77,7 @@ def test_shell_mode_gets_session_mount(build_docker_cmd, tmp_path):
         session_dir=session_dir,
     )
     cmd_str = " ".join(cmd)
-    assert f"{session_dir.resolve()}:/home/worker/.claude/projects" in cmd_str
+    assert ".claude/projects" not in cmd_str
 
 
 def test_no_session_mount_without_param(build_docker_cmd, tmp_path):

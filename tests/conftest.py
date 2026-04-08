@@ -1058,8 +1058,9 @@ _GEMINI_TOOL_NAMES = [
 def _parse_gemini_tool_calls(session_file: Path) -> list[dict]:
     """Parse tool calls from Gemini JSON session file.
 
-    Gemini stores message content as plain strings, so we grep for
-    known tool names in model responses.
+    Gemini stores tool calls as structured ``toolCalls`` arrays inside
+    each model message.  Falls back to grepping for known tool names
+    in the ``content`` string when structured data is absent.
     """
     import re
 
@@ -1068,12 +1069,18 @@ def _parse_gemini_tool_calls(session_file: Path) -> list[dict]:
     for msg in data.get("messages", []):
         if msg.get("type") != "gemini":
             continue
-        content = msg.get("content", "")
-        if not isinstance(content, str):
-            continue
-        for tool_name in _GEMINI_TOOL_NAMES:
-            if re.search(rf"\b{tool_name}\b", content):
-                tool_calls.append({"name": tool_name, "input": {}})
+
+        # Prefer structured toolCalls (Gemini CLI >= 0.5)
+        for tc in msg.get("toolCalls", []):
+            tool_calls.append({"name": tc.get("name", ""), "input": tc.get("args", {})})
+
+        # Fallback: grep known tool names in content string
+        if not msg.get("toolCalls"):
+            content = msg.get("content", "")
+            if isinstance(content, str):
+                for tool_name in _GEMINI_TOOL_NAMES:
+                    if re.search(rf"\b{tool_name}\b", content):
+                        tool_calls.append({"name": tool_name, "input": {}})
     return tool_calls
 
 
