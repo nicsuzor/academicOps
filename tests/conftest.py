@@ -455,7 +455,6 @@ Provides:
 from pathlib import Path
 
 import pytest
-
 from lib.paths import get_plugin_root as get_aops_root
 
 
