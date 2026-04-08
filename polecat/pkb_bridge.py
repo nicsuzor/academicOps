@@ -1,17 +1,15 @@
 """Bridge to the PKB MCP server for polecat task operations.
 
-After the task_storage/task_model migration to PKB MCP, the old
-lib.task_storage module is no longer present. This module talks to the
-``pkb mcp`` server over JSON-RPC/stdio to get and update tasks — the
-same interface that Claude Code and Gemini CLI use.
+Connects to the PKB MCP server over HTTP (Streamable HTTP transport).
+The server URL is read from the ``PKB_MCP_URL`` environment variable.
 """
 
 from __future__ import annotations
 
 import json
-import shutil
-import subprocess
+import os
 import sys
+import urllib.request
 from datetime import datetime
 from typing import Any
 
@@ -48,19 +46,25 @@ class PkbTask:
                     pass
 
 
-class PkbClient:
-    """Thin MCP client that talks to ``pkb mcp`` over stdio JSON-RPC."""
+def _parse_sse_json(raw: str) -> dict | None:
+    """Extract the last JSON-RPC response from an SSE stream."""
+    for line in raw.splitlines():
+        if line.startswith("data: ") and line.strip() != "data:":
+            payload = line[len("data: ") :]
+            if payload:
+                try:
+                    return json.loads(payload)
+                except json.JSONDecodeError:
+                    continue
+    return None
 
-    def __init__(self):
-        pkb_bin = shutil.which("pkb")
-        if pkb_bin is None:
-            raise RuntimeError("pkb binary not found on PATH")
-        self._proc = subprocess.Popen(
-            [pkb_bin, "mcp"],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
+
+class PkbClient:
+    """Thin MCP client that talks to the PKB server over HTTP (MCP Streamable HTTP)."""
+
+    def __init__(self, url: str):
+        self._url = url
+        self._session_id: str | None = None
         self._id = 0
         self._initialize()
 
@@ -68,20 +72,28 @@ class PkbClient:
         self._id += 1
         return self._id
 
-    def _send(self, msg: dict) -> None:
-        assert self._proc.stdin is not None
-        self._proc.stdin.write((json.dumps(msg) + "\n").encode())
-        self._proc.stdin.flush()
+    def _post(self, body: dict) -> dict | None:
+        """POST a JSON-RPC message and parse the SSE response."""
+        data = json.dumps(body).encode()
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+        }
+        if self._session_id:
+            headers["Mcp-Session-Id"] = self._session_id
 
-    def _recv(self) -> dict | None:
-        assert self._proc.stdout is not None
-        line = self._proc.stdout.readline()
-        if not line:
-            return None
-        return json.loads(line)
+        req = urllib.request.Request(self._url, data=data, headers=headers)
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            # Capture session ID from response headers
+            sid = resp.headers.get("Mcp-Session-Id")
+            if sid:
+                self._session_id = sid
+            raw = resp.read().decode()
+
+        return _parse_sse_json(raw)
 
     def _initialize(self) -> None:
-        self._send(
+        self._post(
             {
                 "jsonrpc": "2.0",
                 "id": self._next_id(),
@@ -89,16 +101,16 @@ class PkbClient:
                 "params": {
                     "protocolVersion": "2024-11-05",
                     "capabilities": {},
-                    "clientInfo": {"name": "polecat", "version": "0.1"},
+                    "clientInfo": {"name": "polecat", "version": "0.3"},
                 },
             }
         )
-        self._recv()  # consume initialize result
-        self._send({"jsonrpc": "2.0", "method": "notifications/initialized"})
+        # Send initialized notification (fire-and-forget, no id = notification)
+        self._post({"jsonrpc": "2.0", "method": "notifications/initialized"})
 
     def call_tool(self, name: str, arguments: dict) -> Any:
         """Call an MCP tool and return the parsed JSON content."""
-        self._send(
+        resp = self._post(
             {
                 "jsonrpc": "2.0",
                 "id": self._next_id(),
@@ -106,7 +118,6 @@ class PkbClient:
                 "params": {"name": name, "arguments": arguments},
             }
         )
-        resp = self._recv()
         if resp is None:
             return None
         result = resp.get("result", {})
@@ -128,11 +139,7 @@ class PkbClient:
             return text
 
     def close(self) -> None:
-        try:
-            self._proc.terminate()
-            self._proc.wait(timeout=2)
-        except Exception:
-            self._proc.kill()
+        pass  # HTTP is stateless per-request; nothing to tear down
 
 
 # Module-level singleton, lazily initialized
@@ -142,7 +149,13 @@ _client: PkbClient | None = None
 def _get_client() -> PkbClient:
     global _client
     if _client is None:
-        _client = PkbClient()
+        url = os.environ.get("PKB_MCP_URL")
+        if not url:
+            raise RuntimeError(
+                "PKB_MCP_URL not set. The PKB MCP server must be running "
+                "and PKB_MCP_URL must point to its HTTP endpoint."
+            )
+        _client = PkbClient(url)
     return _client
 
 

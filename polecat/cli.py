@@ -3044,10 +3044,14 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
             task.assignee = caller
     else:
         print(f"Looking for ready tasks{' in project ' + project if project else ''}...")
-        task = manager.claim_next_task(caller, project)
+        try:
+            task = manager.claim_next_task(caller, project)
+        except Exception as e:
+            print(f"No ready tasks found (task backend unavailable: {e}).")
+            sys.exit(3)  # Exit 3 = queue empty. Swarm treats non-zero as "stop worker".
         if not task:
             print("No ready tasks found.")
-            sys.exit(3)  # Exit 3 = queue empty. Swarm treats non-zero as "stop worker".
+            sys.exit(3)
 
     if is_issue:
         print(f"🎯 Issue: {task.title} ({getattr(task, 'issue_url', '') or task.id})")

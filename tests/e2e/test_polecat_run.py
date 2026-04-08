@@ -17,10 +17,14 @@ import pytest
 
 
 def _polecat_env(polecat_home):
-    """Build an env dict for running polecat CLI."""
+    """Build an env dict for running polecat CLI.
+
+    Strips PKB_MCP_URL so tests don't talk to the real PKB server.
+    """
     env = os.environ.copy()
     env["POLECAT_HOME"] = str(polecat_home)
     env["PYTHONPATH"] = os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
+    env.pop("PKB_MCP_URL", None)
     return env
 
 
