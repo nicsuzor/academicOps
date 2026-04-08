@@ -71,15 +71,23 @@ def _check_fixture_task():
 def _reset_fixture_task():
     """Reset the test fixture task to active status so it can be re-run.
 
-    Writes directly to the task file's frontmatter since `pkb update` is
-    only available via the MCP protocol, not the CLI.
+    Uses the PKB MCP HTTP API to update the remote server, then also
+    resets the local file to keep them in sync.
     """
+    # Reset via PKB MCP API (the source of truth for `pc run`)
+    try:
+        from polecat.pkb_bridge import update_task
+
+        update_task(TEST_FIXTURE_TASK_ID, status="active", assignee="polecat")
+    except Exception:
+        pass  # Best-effort; local reset below is the fallback
+
+    # Also reset the local file for environments where PKB reads locally
     aca_data = os.environ.get("ACA_DATA", str(Path.home() / "brain"))
     task_file = Path(aca_data) / "tasks" / f"{TEST_FIXTURE_TASK_ID}.md"
     if not task_file.exists():
         return
     content = task_file.read_text()
-    # Replace status: <anything> with status: active in frontmatter
     content = re.sub(r"(?m)^status:\s+\S+", "status: active", content, count=1)
     # Strip any "Completion Evidence" or "Outcome" sections appended by previous
     # runs — agents see these and triage ("prior work") instead of executing.
