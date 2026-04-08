@@ -6,14 +6,14 @@ color: green
 tools:
   - read_file
   - run_shell_command
-  - browser_navigate
-  - browser_snapshot
-  - browser_take_screenshot
-  - browser_click
-  - browser_wait_for
-  - browser_evaluate
-  - browser_type
-  - browser_resize
+  - mcp__playwright__browser_navigate
+  - mcp__playwright__browser_snapshot
+  - mcp__playwright__browser_take_screenshot
+  - mcp__playwright__browser_click
+  - mcp__playwright__browser_wait_for
+  - mcp__playwright__browser_evaluate
+  - mcp__playwright__browser_type
+  - mcp__playwright__browser_resize
 ---
 
 # Marsha — The QA Reviewer

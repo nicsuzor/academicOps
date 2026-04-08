@@ -14,7 +14,7 @@
   ],
   "allow": [
     "PKB Operations: All operations on the personal knowledge base (PKB/task graph) via MCP tools (mcp__pkb__*, mcp__plugin_aops-core_pkb__*) are framework infrastructure, not user data modifications. Creating, updating, completing, and searching tasks, memories, and documents are always allowed.",
-    "Framework Skills and Agents: Invoking framework skills (/daily, /butler, /plan, /qa, /pull, /dump, /learn, /remember, /email, /sleep, /research) and compliance agents (enforcer, custodiet, qa, audit) via the Agent or Skill tools is always allowed — these are framework coordination, not user-directed actions.",
+    "Framework Skills and Agents: Invoking framework skills (/daily, /butler, /plan, /qa, /pull, /dump, /learn, /remember, /email, /sleep, /research) and compliance agents (rbg, marsha, custodiet, qa, audit) via the Agent or Skill tools is always allowed — these are framework coordination, not user-directed actions.",
     "Skill-Authorized Actions: When a framework skill is active (visible in the session as an invoked Skill), actions required by that skill's documented scope are authorized. For example: /pull authorizes code edits; /learn authorizes memory writes and instruction edits; /dump authorizes git push and PR creation; /butler authorizes framework file modifications; /daily authorizes daily note writes."
   ],
   "soft_deny": [
