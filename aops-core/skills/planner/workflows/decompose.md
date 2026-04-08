@@ -19,11 +19,13 @@ version: 2.0.0
 
 ## Core Process
 
-1. **Understand the Target** — What are we decomposing? A goal (needs projects/epics first), an epic (needs tasks), or a task (needs actions)? Clarify the primary objective and constraints.
+1. **Understand the Target** — What are we decomposing? A goal (needs projects/epics first), an epic (needs tasks), or a task (needs actions)? Clarify the primary objective and constraints. **Property Check**: Examine the parent's `scope`, `uncertainty`, and `criticality`.
+   - **High Uncertainty**: Priority is to reduce uncertainty. The decomposition should lean heavily into evidence gathering, audits, or probes (Step 3).
+   - **Low Uncertainty + High Scope**: Parent is well-understood but large. The decomposition should focus on creating independent, parallelizable execution tasks.
 
 2. **Search for Context** (P52) — Query PKB for existing related work, prior decompositions of similar scope, and established patterns. Use `pkb_context(id, hops=2)` to understand the neighbourhood.
 
-3. **Map Unknowns** — Before planning execution, identify what you _don't_ know. Classify each as: **researchable** (others may have solved it → evidence-gathering task), **internal** (we have unanalysed data → audit/survey task), or **probeable** (unknown-unknown → time-boxed spike).
+3. **Map Unknowns** — Before planning execution, identify what you _don't_ know. Classify each as: **researchable** (others may have solved it → evidence-gathering task), **internal** (we have unanalysed data → audit/survey task), or **probeable** (unknown-unknown → time-boxed spike). High parent `uncertainty` means most subtasks should start here.
 
 4. **Cross-cutting Impact & Prerequisites** — Ask two questions: (a) "What other projects consume or depend on what's changing?" Search PKB for affected tasks/epics; create sibling tasks in THOSE projects with `depends_on` pointing back here. (b) "What must be true for this change to work?" For each unmet prerequisite, create a prep task that implementation `depends_on`. Both often live in different projects.
 
@@ -81,19 +83,15 @@ Epic: "Add user authentication" using `feature-dev` workflow:
 
 ## Task Handoff Quality (P#120)
 
-Tasks created during decomposition will often be picked up by a **different agent or session** than the one that created them. The creating agent has rich context from the conversation — the picking-up agent has only what's in the task body.
-
-- **Self-contained context**: Each task must include enough background that someone with no session context can understand _why_ this task exists and _what decisions led to it_.
-- **Include data findings**: If the decomposition session discovered relevant data (node counts, edge distributions, performance characteristics), record these in the task body — not just "we found the hierarchy is flat" but the actual numbers.
-- **Link to related tasks**: Use explicit task ID wikilinks (e.g., [[task-id]]), not "the other task" or "as discussed."
-- **Record design decisions and constraints**: If the user made a choice (e.g., "filters are dishonest — show everything"), capture it in the task as a design constraint with rationale.
-- **Name terminology**: If new terms were coined (e.g., "unlockers" for soft dependencies), define them in the task body so the next agent uses them correctly.
+Tasks are often picked up by different agents. The creator must ensure self-contained context:
+- **Context & Data**: Include the "why", decisions, and actual data findings (not just summaries).
+- **Links & Constraints**: Use explicit wikilinks (e.g., [[task-id]]) and record design constraints with rationale.
+- **Terminology**: Define any new terms coined during the session.
 
 ## Critical Rules
 
-- **Completeness**: All tasks together must achieve the original epic.
-- **Actionability**: Every task must be completable in a single session.
+- **Completeness & Actionability**: All tasks must achieve the epic; each must be single-session.
 - **Verification**: Every epic must include at least one QA/review task.
-- **Conservative expansion**: If a task can be done in one sitting, don't decompose further.
-- **Graph placement**: Every created task must be connected to the graph — parented under a live (not done) epic, with dependencies to related work. A task with zero downstream weight and a completed parent is effectively invisible to prioritisation. Check: is the parent epic still active? Do any other tasks depend on this work?
-- **Scope drift tracking**: When a PR or decision changes the scope of existing tasks, update the affected task bodies. Decomposition is not fire-and-forget — if upstream work narrows or shifts the problem, downstream tasks must be refreshed or they become stale.
+- **Graph placement**: Every task must be parented under a live epic with valid dependencies.
+- **Scope drift**: If upstream work changes the scope, update or refresh downstream tasks.
+- **Conservative expansion**: If a task fits in one sitting, don't decompose further.

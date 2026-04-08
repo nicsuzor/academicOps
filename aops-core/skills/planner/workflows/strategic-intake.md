@@ -23,7 +23,7 @@ version: 1.0.0
 
 2. **Search Before Placing** (P52) — Query PKB for existing related nodes. Use `mcp__pkb__search()` and `mcp__pkb__pkb_context()` to understand what already exists. Never create duplicates; link to or update existing nodes.
 
-3. **Classify Level** — Where does this belong in the hierarchy?
+3. **Classify Level** — Where does this belong in the hierarchy? Use `uncertainty` to distinguish between information-gathering and execution.
 
    | Signal                            | Level       | Action                                   |
    | --------------------------------- | ----------- | ---------------------------------------- |
@@ -31,9 +31,10 @@ version: 1.0.0
    | Bounded effort toward a goal      | **Project** | Create in `${ACA_DATA}/projects/`        |
    | PR-sized verifiable unit          | **Epic**    | Create via PKB with parent project       |
    | Refinement of existing node       | **Update**  | Append to existing node                  |
+   | High Uncertainty (Need Info)      | **Spike**   | Create research/probe task               |
    | Too vague to classify             | **Seed**    | Create with `status: seed`, link loosely |
 
-4. **Place in Graph** — Create or update the node. Link to related nodes via wikilinks. Set appropriate status (`seed` for unexamined, `growing` for developing).
+4. **Place in Graph** — Create or update the node. Link to related nodes via wikilinks. Set appropriate status (`seed` for unexamined, `growing` for developing). **Criticality focus**: Explicitly identify if this fragment is on a critical path for active goals.
 
 5. **Surface Assumptions** — What must be true for this fragment to matter? If non-obvious, note them explicitly. Assumptions are load-bearing hypotheses — if wrong, dependent work is invalid.
 
