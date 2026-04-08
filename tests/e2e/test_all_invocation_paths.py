@@ -5,7 +5,7 @@ Each test exercises the FULL path from CLI entry point through Docker/sandbox
 to LLM response, proving:
 - Agent responds and produces output
 - Agent runs inside a container (sandbox isolation)
-- PKB MCP server works (tool calls succeed)
+- Session transcripts are persisted and extractable
 - Required binaries are available
 
 These are the most expensive tests in the suite — each invokes a real LLM
