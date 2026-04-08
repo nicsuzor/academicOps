@@ -220,6 +220,26 @@ class TestBuildDockerCmd:
         vol_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-v"]
         assert not any(str(aca_dir) in v for v in vol_args)
 
+    def test_interactive_mode_has_separate_tty_flag(self):
+        """Interactive mode produces -i and -t as separate elements (needed by docker start)."""
+        docker_cmd = _build_docker_cmd(
+            cli_tool="gemini",
+            work_dir=Path("/tmp/worktree"),
+            env={},
+            agent_cmd=["gemini"],
+            is_interactive=True,
+        )
+        cmd = docker_cmd.cmd
+        assert "-i" in cmd, "stdin flag must be a separate element"
+        assert "-t" in cmd, "TTY flag must be a separate element"
+        assert "-it" not in cmd, "flags must not be combined (breaks docker start detection)"
+
+    def test_headless_mode_has_stdin_no_tty(self):
+        """Headless mode gets -i (stdin) but not -t (no TTY)."""
+        cmd = self._build()
+        assert "-i" in cmd
+        assert "-t" not in cmd
+
     def test_mounts_docker_socket_when_present(self, tmp_path):
         """Mounts host socket and adds --group-add when socket exists (DooD)."""
         sock = tmp_path / "docker.sock"

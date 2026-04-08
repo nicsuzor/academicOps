@@ -491,11 +491,11 @@ def _build_docker_cmd(
     cmd = ["docker", "run", "--rm"]
     _staging_dir: Path | None = None  # set below if auth files are staged
 
-    # TTY allocation
+    # TTY allocation — flags must be separate elements so _run_docker_container
+    # can detect "-i" when building the "docker start" command.
+    cmd.append("-i")
     if is_interactive:
-        cmd.append("-it")
-    else:
-        cmd.append("-i")
+        cmd.append("-t")
 
     # Run as current user — Claude Code refuses --dangerously-skip-permissions under root
     uid = os.getuid()
@@ -739,7 +739,7 @@ def _run_docker_container(
 
         # Start the container and wait for it to finish
         start_cmd = ["docker", "start", "-a"]
-        if any(x in cmd for x in ["-i", "--interactive"]):
+        if any(x in cmd for x in ["-i", "--interactive", "-it"]):
             start_cmd.append("-i")
         start_cmd.append(container_id)
 
