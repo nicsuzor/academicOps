@@ -85,12 +85,11 @@ After confirming a PR has merged (or upon receiving a merge notification), James
    - Branch name (e.g. `feat/task-sync`, `claude/suspicious-vaughan`)
    - PR title keywords and the task title they correspond to
 
-   Use `list_tasks` filtered by these identifiers, or search PKB notes for matching references. A PR may be linked to one task or several — find all of them.
+   Use `task_search` or `search` to find candidates by these identifiers (including PKB notes and evidence fields), then hydrate each match with `get_task` to confirm the linkage. A PR may be linked to one task or several — find all of them.
 
-2. **Mark tasks complete.** For each task associated with the merged PR:
-   - Update status to `done`
-   - Set `evidence`: the PR URL, merge commit SHA, and merge timestamp
-   - Add a completion note citing the PR: `"Closed by merge of PR #N: [title]"`
+2. **Mark tasks complete.** For each task associated with the merged PR, call `mcp__pkb__complete_task` with:
+   - A completion note citing the PR: `"Closed by merge of PR #N: [title]"`
+   - `evidence` set to include the PR URL, merge commit SHA, and merge timestamp
 
 3. **Check parent epics.** For each completed task, check its parent epic (if one exists):
    - Retrieve all sibling tasks (same parent)

@@ -530,6 +530,7 @@ def _build_docker_cmd(
     # Mount authentication and plugin cache for Claude/Gemini.
     # Also mount for "shell" mode so users can run either CLI interactively.
     home = Path.home()
+    staging_dir: Path | None = None
     if cli_tool in ("claude", "shell", "gemini"):
         # Create a staging directory for auth files.  Files are injected into the
         # container via `docker cp` (not bind mounts), so any writable temp dir works
@@ -543,6 +544,9 @@ def _build_docker_cmd(
         _staging_dir = staging_dir
 
     if cli_tool in ("claude", "shell"):
+        assert (
+            staging_dir is not None
+        )  # always set: ("claude","shell") ⊆ ("claude","shell","gemini")
         claude_json = home / ".claude.json"
         claude_dir = home / ".claude"
         if claude_json.exists():
