@@ -282,6 +282,8 @@ mcp__pkb__release_task(id="<task-id>", status="merge_ready", summary="What was d
 
 This captures what was done so work history is never lost.
 
+**Fallback**: If `mcp__pkb__release_task` is not available, use `mcp__pkb__update_task(id="<task-id>", updates={"status": "done"})` or `mcp__pkb__complete_task(id="<task-id>")`.
+
 **Note**: TRIAGE path should halt before reaching Step 4. Only EXECUTE path tasks should be finished.
 
 ## Arguments
