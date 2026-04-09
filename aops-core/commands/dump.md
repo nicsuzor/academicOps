@@ -14,7 +14,7 @@ needs_task: true
 mode: execution
 domain:
   - operations
-allowed-tools: Bash, mcp__pkb__create_memory, mcp__pkb__update_task, mcp__pkb__create_task, TodoWrite, AskUserQuestion, Read
+allowed-tools: Bash, mcp__pkb__create_memory, mcp__pkb__update_task, mcp__pkb__release_task, mcp__pkb__create_task, TodoWrite, AskUserQuestion, Read
 permalink: commands/dump
 ---
 
@@ -47,7 +47,18 @@ This command is **mandatory** before session end. The framework stop gate blocks
 Execute the [[base-handover]] workflow. The steps are:
 
 1. **Commit, push, and file a Pull Request** (MANDATORY per P#24)
-2. **Update task with progress** (or create historical task if none claimed)
+2. **Release task with progress** — use `release_task` to record what was done:
+   ```
+   mcp__pkb__release_task(
+     id="<task-id>",
+     status="merge_ready",
+     summary="What was done and outcome",
+     pr_url="https://github.com/..."
+   )
+   ```
+   If no PR was filed: use `status="review"` with `reason="session ended, work incomplete"`.
+   If no task was claimed, create a historical task first.
+   **Fallback**: If `mcp__pkb__release_task` is not available, use `mcp__pkb__update_task(id="<task-id>", updates={"status": "merge_ready"})`.
 3. **File follow-up tasks** for outstanding work — use [[decompose]] principles and ensure all have a **parent** set to the current task or epic
 4. **Persist discoveries to memory** (optional)
    4.5. **Codify learnings** — framework improvement → `gh issue create` in aops repo; project-scoped → update `./.agents/workflows/`; see [[references/handover-details]]

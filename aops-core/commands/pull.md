@@ -13,7 +13,7 @@ needs_task: false
 mode: execution
 domain:
   - operations
-allowed-tools: Task, Bash, Read, Grep, Skill, AskUserQuestion, mcp__pkb__get_task, mcp__pkb__get_task_children, mcp__pkb__list_tasks, mcp__pkb__update_task, mcp__pkb__complete_task
+allowed-tools: Task, Bash, Read, Grep, Skill, AskUserQuestion, mcp__pkb__get_task, mcp__pkb__get_task_children, mcp__pkb__list_tasks, mcp__pkb__update_task, mcp__pkb__complete_task, mcp__pkb__release_task
 permalink: commands/pull
 ---
 
@@ -270,10 +270,18 @@ The PR review pipeline handles merge via GitHub auto-merge when a PR exists and 
 For tasks executed outside the polecat worktree system (e.g., direct `/pull` in a normal repo), use:
 
 ```
-mcp__pkb__complete_task(id="<task-id>")
+mcp__pkb__release_task(id="<task-id>", status="done", summary="What was done and outcome")
 ```
 
-This directly marks the task as `done` since there's no branch to merge.
+If you filed a PR, use `merge_ready` instead:
+
+```
+mcp__pkb__release_task(id="<task-id>", status="merge_ready", summary="What was done", pr_url="https://...")
+```
+
+This captures what was done so work history is never lost.
+
+**Fallback**: If `mcp__pkb__release_task` is not available, use `mcp__pkb__update_task(id="<task-id>", updates={"status": "done"})` or `mcp__pkb__complete_task(id="<task-id>")`.
 
 **Note**: TRIAGE path should halt before reaching Step 4. Only EXECUTE path tasks should be finished.
 
