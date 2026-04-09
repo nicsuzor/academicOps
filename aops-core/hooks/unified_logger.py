@@ -75,7 +75,7 @@ def log_hook_event(
         logged_at=datetime.now().astimezone().replace(microsecond=0).isoformat(),
         exit_code=exit_code,
         output=output.model_dump() if output else None,
-        **ctx.model_dump(exclude={"framework_content", "session_id"}),
+        **ctx.model_dump(exclude={"session_id"}),
     )
 
     log_dict = log_entry.model_dump()

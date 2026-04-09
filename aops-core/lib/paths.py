@@ -149,11 +149,6 @@ def get_indices_dir() -> Path:
     return get_plugin_root() / "indices"
 
 
-def get_axioms_file() -> Path:
-    """Get path to AXIOMS.md framework file."""
-    return get_plugin_root() / "AXIOMS.md"
-
-
 def get_heuristics_file() -> Path:
     """Get path to HEURISTICS.md framework file."""
     return get_plugin_root() / "HEURISTICS.md"

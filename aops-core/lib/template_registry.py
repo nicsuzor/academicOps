@@ -89,11 +89,8 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         required_vars=(
             "session_context",
             "tool_name",
-            "axioms_content",
-            "heuristics_content",
-            "custodiet_mode",
         ),
-        optional_vars=("session_id", "gate_name", "skills_content", "active_skill", "skill_scope"),
+        optional_vars=("session_id", "gate_name", "active_skill", "skill_scope"),
         description="Full context for custodiet compliance check",
         env_override="CUSTODIET_CONTEXT_TEMPLATE",
     ),
@@ -104,10 +101,8 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         required_vars=(
             "session_context",
             "tool_name",
-            "axioms_content",
-            "heuristics_content",
         ),
-        optional_vars=("session_id", "gate_name", "custodiet_mode", "skills_content"),
+        optional_vars=("session_id", "gate_name"),
         description="Session context for QA verification before exit",
     ),
     "custodiet.verified": TemplateSpec(
