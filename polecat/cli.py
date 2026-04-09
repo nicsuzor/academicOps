@@ -23,7 +23,7 @@ from validation import TaskIDValidationError, validate_task_id_or_raise
 
 # Max turns for headless Claude runs — must be high enough to accommodate hook
 # overhead (hydration gate, custodiet compliance check) plus actual task work.
-HEADLESS_CLAUDE_MAX_TURNS = "30"
+HEADLESS_CLAUDE_MAX_TURNS = "50"
 
 
 def _node_version_key(p: Path) -> tuple[int, ...]:
