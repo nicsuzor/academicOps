@@ -12,34 +12,70 @@ description: Reconstruct session events from hooks logs to diagnose gate failure
 
 **Key principle**: Hooks logs record **every hook event** with full context. Session transcripts show the conversation; hooks logs show the infrastructure behavior.
 
-**Detailed procedures and examples**: See **[[forensics-details]]**.
+**Detailed procedures, schemas, and diagnostic commands**: See **[[forensics-details]]**.
 
 ## Quick Start
 
 ```bash
-# 1. Find recent sessions with hooks logs
-fd -l --newer 10m jsonl ~/.claude/projects
+# 1. Find the hooks log for a session
+ls $AOPS_SESSIONS/hooks/*<session-short-hash>*
 
-# 2. Generate transcript from session file
+# 2. Quick summary: how many ops, any denies?
+grep -c '"hook_event":"PostToolUse"' <hooks.jsonl>
+grep '"verdict":"deny"' <hooks.jsonl> | wc -l
+
+# 3. Generate transcript (for the conversation side)
 cd $AOPS && uv run python scripts/transcript.py <session.jsonl>
 
-# 3. Read the hooks log (last N entries)
-tail -20 <session-hooks.jsonl> | jq -c '.'
+# 4. Check gate verdicts (raw JSONL — transcripts don't show these yet)
+grep '"hook_event":"Stop"' <hooks.jsonl> | python3 -c "
+import sys, json
+for l in sys.stdin:
+    d = json.loads(l); o = d.get('output', {})
+    print(f'{d.get(\"logged_at\",\"?\")[:19]} verdict={o.get(\"verdict\")} msg={str(o.get(\"system_message\",\"\"))[:80]}')
+"
 ```
 
 ## Steps
 
-1. **Locate the Files**: Identify the session file and its corresponding hooks log.
-2. **Generate Transcript First**: Always use `transcript.py` on the session file for a readable log.
-3. **Analyze Hooks Log**: Filter for denied tool uses, hook errors, and event sequences using `jq`.
-4. **Reconstruct Event Sequence**: Focus on the last 3-5 events to identify failures at session end.
-5. **Diagnose Patterns**: Identify common issues like crashed gates, recursive loops, or missing gate requirements.
-6. **Create Bug Report**: Document the session ID, event sequence, root cause, and fix location.
+1. **Locate the Files**
+   - Hook JSONL: `$AOPS_SESSIONS/hooks/<YYYYMMDD>-<session-short-hash>-hooks.jsonl`
+   - Session state: `$AOPS_SESSION_STATE_DIR/<YYYYMMDD>-<HH>-<session-short-hash>.json`
+   - Transcript: `$POLECAT_HOME/sessions/transcripts/*<session-short-hash>*-full.md`
+   - See [[forensics-details]] for full path conventions and cross-reference guide.
+
+2. **Generate Transcript First**
+   Always use `transcript.py` on the CC session JSONL for a readable conversation log. But note: **transcripts currently do not show hook verdicts or system_messages** due to a parser bug (`transcript_parser.py:1764` reads wrong field). Use raw hook JSONL for gate behavior.
+
+3. **Check Gate Behavior**
+   - **Custodiet/RBG gate**: Grep for `SubagentStart`/`SubagentStop` with `custodiet` or `rbg` subagent type. Each pair = one compliance check. See [[forensics-details]] for commands.
+   - **Stop/Handover gate**: Grep for `"hook_event":"Stop"` and check `output.verdict`. Look for the 4-deny-then-auto-approve pattern.
+   - **PreToolUse blocks**: Grep for `"verdict":"deny"` to find any tool calls that were rejected.
+
+4. **Reconstruct Event Sequence**
+   Focus on the last 10-20 events to identify failures at session end. Key question: did the session complete its work, commit, invoke `/dump`, or get blocked?
+
+5. **Identify the Pattern**
+   Common patterns (see [[forensics-details]] for details):
+   - Custodiet dispatching repeatedly in long sessions (normal)
+   - 4 Stop denies then auto-approve (agent ignoring or unable to comply)
+   - Zero Gemini hook JSONL (open question as of 2026-04-09)
+   - Operations count ≠ turn count (50 ops ≈ 11 turns)
+
+6. **File Bug Report or Learning**
+   Document: session ID, event sequence, root cause, fix location. Use `/learn` for systemic issues.
+
+## Known Issues
+
+- **Transcript parser gap**: Hook `output` fields (verdict, system_message, context_injection) are not rendered in transcripts. The parser reads `hookSpecificOutput` (a CC protocol field) instead of `output` (our hook JSONL field). Until fixed, raw JSONL is the only source for gate forensics.
+- **Missing client_type**: Hook JSONL shows `model=unknown` for all polecat sessions. Distinguish Claude vs Gemini by session ID format only (`gemini-*` prefix for Gemini).
 
 ## Common Indicators
 
 - **`PostToolUse` crashes**: Gate updates failing after a tool completes.
-- **`verdict == "deny"`**: Explicitly blocked tool uses.
-- **Gate status markers**: `[📌✗ 💧✗ 🤝✓]` indicating specific gate states.
+- **`verdict == "deny"`**: Explicitly blocked tool uses or session stops.
+- **Gate status markers**: `◇` (custodiet countdown), `💧` (hydration), `≡` (gate status).
+- **`SubagentStart`/`SubagentStop` with custodiet/rbg**: Compliance gate check cycle.
+- **4 consecutive Stop denies**: Safety override pattern — investigate what happened between denies.
 
-**ALWAYS generate transcript first** - raw JSONL/JSON is difficult to interpret.
+**ALWAYS generate transcript first** — raw JSONL is difficult to interpret for the conversation side. But for hook/gate behavior, read the hook JSONL directly.
