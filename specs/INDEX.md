@@ -19,22 +19,20 @@ All specs in this folder, grouped by tier and annotated with implementation stat
 
 How the system works today. Required reading for understanding the framework.
 
-| Spec                             | Status | Purpose                                                                                                                                         |
-| -------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| [[enforcement.md]]               | ✅     | 5-layer enforcement architecture                                                                                                                |
-| [[flow.md]]                      | 🔶     | v1.0 core execution loop (hydration → workflow → QA → reflection)                                                                               |
-| [[prompt-hydration.md]]          | ✅     | Transform raw prompt into execution plan. Includes optimisation proposals (merged from former selective-injection and hydration-overhead specs) |
-| [[session-start-injection.md]]   | ✅     | Three-tier context loading (baseline + JIT)                                                                                                     |
-| [[hook-router.md]]               | ✅     | Single dispatch entry point for all hooks                                                                                                       |
-| [[ultra-vires-custodiet.md]]     | 🔶     | Drift detection (agent defined, automated gate archived)                                                                                        |
-| [[workflow-system-spec.md]]      | 📋     | Composable markdown-based workflow engine                                                                                                       |
-| [[plugin-architecture.md]]       | ✅     | Component boundaries (aops-core vs aops-tools)                                                                                                  |
-| [[verification-system.md]]       | 📋     | Verify-first enforcement (design decision, not yet implemented)                                                                                 |
-| [[effectual-planning-agent.md]]  | ✅     | Strategic planning under uncertainty, network-based prioritisation                                                                              |
-| [[workflow-constraints.md]]      | 🔶     | Constraint-based workflows. Partially implemented (100-line limit, substance in Skills)                                                         |
-| [[predicate-registry.md]]        | 📋     | Standard predicate definitions. Needs design discussion                                                                                         |
-| [[constraint-checking-tests.md]] | 📋     | Test cases for constraint checking. Blocked on predicate-registry                                                                               |
-| [[command-intercept.md]]         | 📋     | PreToolUse tool parameter transformation                                                                                                        |
+| Spec                            | Status | Purpose                                                                                                                                         |
+| ------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| [[enforcement.md]]              | ✅     | 5-layer enforcement architecture                                                                                                                |
+| [[supervisor.md]]               | ✅     | Polecat orchestration: supervisor workflow, swarms, worker management                                                                           |
+| [[prompt-hydration.md]]         | ✅     | Transform raw prompt into execution plan. Includes optimisation proposals (merged from former selective-injection and hydration-overhead specs) |
+| [[session-start-injection.md]]  | ✅     | Three-tier context loading (baseline + JIT)                                                                                                     |
+| [[hook-router.md]]              | ✅     | Single dispatch entry point for all hooks                                                                                                       |
+| [[ultra-vires-custodiet.md]]    | 🔶     | Drift detection (agent defined, automated gate archived)                                                                                        |
+| [[workflow-system-spec.md]]     | 📋     | Composable markdown-based workflow engine                                                                                                       |
+| [[plugin-architecture.md]]      | ✅     | Component boundaries (aops-core vs aops-tools)                                                                                                  |
+| [[verification-system.md]]      | 📋     | Verify-first enforcement (design decision, not yet implemented)                                                                                 |
+| [[effectual-planning-agent.md]] | ✅     | Strategic planning under uncertainty, network-based prioritisation                                                                              |
+| [[workflow-constraints.md]]     | 🔶     | Constraint-based workflows. Partially implemented (100-line limit, substance in Skills)                                                         |
+| [[command-intercept.md]]        | 📋     | PreToolUse tool parameter transformation                                                                                                        |
 
 ## Tier 1.5: Engineering Methodology
 

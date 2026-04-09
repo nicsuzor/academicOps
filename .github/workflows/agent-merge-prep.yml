@@ -272,13 +272,7 @@ jobs:
           gh pr merge "$PR_NUMBER" --repo "$REPO" --auto --squash --delete-branch \
             || echo "WARNING: Could not enable auto-merge (may already be enabled)"
 
-          # Trigger decision brief via repository_dispatch (GITHUB_TOKEN can trigger this,
-          # unlike workflow_dispatch which is blocked from workflow_dispatch context).
-          gh api "repos/$REPO/dispatches" \
-            -f event_type="summary-and-merge" \
-            -f 'client_payload[pr_number]'="$PR_NUMBER"
-
-          echo "Enabled auto-merge and triggered decision brief for PR #$PR_NUMBER"
+          echo "Enabled auto-merge for PR #$PR_NUMBER"
 
       - name: Handle skip (loop detection)
         if: steps.loop-check.outputs.skip == 'true'
