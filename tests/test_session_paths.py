@@ -21,25 +21,22 @@ class TestSessionPaths(unittest.TestCase):
             self.assertEqual(str(path), "/custom/path")
 
     @patch.dict(os.environ, {"AOPS_SESSION_STATE_DIR": ""}, clear=True)
-    def test_get_session_status_dir_gemini_fallback(self):
-        """When AOPS_SESSION_STATE_DIR not set and session_id starts with gemini-, use gemini path."""
+    def test_get_session_status_dir_gemini_raises_without_state_dir(self):
+        """When Gemini detected but no state dir resolvable, raise ValueError (fail fast)."""
         import tempfile
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            # Create a fake gemini tmp structure
             project_root = Path(tmpdir) / "project"
             project_root.mkdir(parents=True, exist_ok=True)
-            project_hash = hashlib.sha256(str(project_root.resolve()).encode()).hexdigest()
-            gemini_tmp = Path(tmpdir) / ".gemini" / "tmp" / project_hash
 
-            # Patch Path.home() and Path.cwd() - cwd must return a real path for resolve()
             with (
                 patch.object(Path, "home", return_value=Path(tmpdir)),
                 patch.object(Path, "cwd", return_value=project_root),
             ):
-                # Pass gemini- prefixed session_id to trigger gemini path
-                result = session_paths.get_session_status_dir("gemini-test-session")
-                self.assertEqual(result, gemini_tmp)
+                # gemini- prefix triggers detection, but no transcript_path or
+                # AOPS_SESSION_STATE_DIR means we can't determine the status dir
+                with self.assertRaises(ValueError, msg="Gemini session detected"):
+                    session_paths.get_session_status_dir("gemini-test-session")
 
     @patch.dict(os.environ, {"AOPS_SESSION_STATE_DIR": ""}, clear=True)
     def test_get_session_status_dir_claude_fallback(self):

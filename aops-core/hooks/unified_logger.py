@@ -10,7 +10,6 @@ Logs ALL hook events to:
 import json
 import logging
 import os
-import sys
 import time
 from datetime import datetime
 from typing import Any
@@ -48,51 +47,48 @@ def log_hook_event(
     if not session_id or session_id == "unknown":
         return
 
+    # Path resolution — fail fast (no silent swallowing)
+    input_data = ctx.raw_input
+    date = input_data.get("date")
+    if date is None:
+        date = datetime.now().astimezone().strftime("%Y-%m-%d")
+
+    log_path = get_hook_log_path(session_id, input_data, date)
+
+    # Process metrics — best-effort (psutil may fail in sandboxed envs)
     try:
-        # Build per-session hook log path
-        input_data = ctx.raw_input
-        date = input_data.get("date")
-        if date is None:
-            date = datetime.now().astimezone().strftime("%Y-%m-%d")
-
-        log_path = get_hook_log_path(session_id, input_data, date)
-
-        # Gather process metrics
         process = psutil.Process(os.getpid())
         mem_info = process.memory_info()
-
-        # Create log entry from superclass fields + new metadata
-        log_entry = HookLogEntry(
-            session_id=session_id,
-            logged_at=datetime.now().astimezone().replace(microsecond=0).isoformat(),
-            exit_code=exit_code,
-            output=output.model_dump() if output else None,
-            **ctx.model_dump(exclude={"framework_content", "session_id"}),
-        )
-
-        # Add debug metrics to metadata
-        log_dict = log_entry.model_dump()
-        log_dict["debug"] = {
+        debug_metrics = {
             "pid": os.getpid(),
             "ppid": os.getppid(),
             "mem_rss_mb": mem_info.rss / (1024 * 1024),
             "mem_vms_mb": mem_info.vms / (1024 * 1024),
             "process_uptime": time.time() - process.create_time(),
         }
+    except Exception:
+        debug_metrics = {"pid": os.getpid(), "ppid": os.getppid()}
 
-        # Append to JSONL file
-        with log_path.open("a") as f:
-            json.dump(
-                log_dict,
-                f,
-                separators=(",", ":"),
-                default=_json_serializer,
-            )
-            f.write("\n")
+    # Build and write entry — fail fast
+    log_entry = HookLogEntry(
+        session_id=session_id,
+        logged_at=datetime.now().astimezone().replace(microsecond=0).isoformat(),
+        exit_code=exit_code,
+        output=output.model_dump() if output else None,
+        **ctx.model_dump(exclude={"framework_content", "session_id"}),
+    )
 
-    except Exception as e:
-        # Log error to stderr but don't crash the hook
-        print(f"[unified_logger] Error logging hook event: {e}", file=sys.stderr)
+    log_dict = log_entry.model_dump()
+    log_dict["debug"] = debug_metrics
+
+    with log_path.open("a") as f:
+        json.dump(
+            log_dict,
+            f,
+            separators=(",", ":"),
+            default=_json_serializer,
+        )
+        f.write("\n")
 
 
 def log_event_to_session(

@@ -29,6 +29,7 @@ class HookContext(BaseModel):
     )
     agent_id: str | None = None
     slug: str | None = None
+    client_type: str | None = None  # "claude" or "gemini" (set from --client flag)
 
     # Precomputed values (computed once in router.normalize_input())
     session_short_hash: str = Field(
