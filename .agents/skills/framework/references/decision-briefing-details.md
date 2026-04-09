@@ -31,8 +31,8 @@ mcp__plugin_aops-core_tasks__search_tasks(query="[query]")           # Search ta
 mcp__plugin_aops-core_tasks__get_blocked_tasks()                      # Tasks with unmet dependencies
 mcp__plugin_aops-core_tasks__list_tasks(status="active")              # Filter by status
 mcp__plugin_aops-core_tasks__complete_task(id="[ID]")                 # Complete task
-mcp__plugin_aops-core_tasks__update_task(id="[ID]", status="waiting") # Defer for later
-mcp__plugin_aops-core_tasks__update_task(id="[ID]", body="...")       # Add notes to task
+mcp__plugin_aops-core_tasks__update_task(id="[ID]", updates={"status": "waiting"}) # Defer for later
+mcp__plugin_aops-core_tasks__update_task(id="[ID]", updates={"body": "..."})       # Add notes to task
 ```
 
 ## Workflow
@@ -147,19 +147,19 @@ Parse user response and execute. Handle one decision at a time with verification
 ```python
 # For approved RFCs
 task = mcp__plugin_aops-core_tasks__get_task(id="[ID]")  # Verify still active
-mcp__plugin_aops-core_tasks__update_task(id="[ID]", body=task["body"] + "\n\nApproved by user [DATE]")
+mcp__plugin_aops-core_tasks__update_task(id="[ID]", updates={"body": task["body"] + "\n\nApproved by user [DATE]"})
 mcp__plugin_aops-core_tasks__complete_task(id="[ID]")
 # Note: Implementation task creation is SEPARATE work, not part of this workflow
 
 # For rejected RFCs
-mcp__plugin_aops-core_tasks__update_task(id="[ID]", body="Rejected: [user-provided reason if any]", status="cancelled")
+mcp__plugin_aops-core_tasks__update_task(id="[ID]", updates={"body": "Rejected: [user-provided reason if any]", "status": "cancelled"})
 
 # For deferred items
-mcp__plugin_aops-core_tasks__update_task(id="[ID]", status="waiting")
+mcp__plugin_aops-core_tasks__update_task(id="[ID]", updates={"status": "waiting"})
 
 # For prioritization decisions - add note documenting decision
 task = mcp__plugin_aops-core_tasks__get_task(id="[ID]")
-mcp__plugin_aops-core_tasks__update_task(id="[ID]", body=task["body"] + "\n\nUser decision [DATE]: [decision text]")
+mcp__plugin_aops-core_tasks__update_task(id="[ID]", updates={"body": task["body"] + "\n\nUser decision [DATE]: [decision text]"})
 ```
 
 **Error handling**: If any MCP call fails, report error and continue to next decision. Do not halt entire workflow for single failure.
@@ -247,8 +247,8 @@ Agent:
 1. mcp__plugin_aops-core_tasks__get_task(id="ns-p8n") → still active ✓
 2. mcp__plugin_aops-core_tasks__complete_task(id="ns-p8n")  # with approval note
 3. mcp__plugin_aops-core_tasks__get_task(id="ns-0ct") → still active ✓
-4. mcp__plugin_aops-core_tasks__update_task(id="ns-0ct", status="cancelled")
-5. mcp__plugin_aops-core_tasks__update_task(id="ns-tme", status="waiting")
+4. mcp__plugin_aops-core_tasks__update_task(id="ns-0ct", updates={"status": "cancelled"})
+5. mcp__plugin_aops-core_tasks__update_task(id="ns-tme", updates={"status": "waiting"})
 
 Reports: "Executed 3 decisions: ns-p8n approved, ns-0ct rejected, ns-tme deferred"
 ```

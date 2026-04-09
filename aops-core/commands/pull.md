@@ -27,14 +27,14 @@ permalink: commands/pull
 
 1. **List ready tasks**: Call `mcp__pkb__list_tasks(status="ready", limit=10)` to find ready tasks sorted by priority + downstream weight.
 2. **Select task**: Review the list and select the highest priority task (lowest priority number, e.g., P0).
-3. **Claim task**: Call `mcp__pkb__update_task(id="<task-id>", status="in_progress", assignee="polecat")` to claim it.
+3. **Claim task**: Call `mcp__pkb__update_task(id="<task-id>", updates={"status": "in_progress", "assignee": "polecat"})` to claim it.
 
 **If a specific task ID is provided** (`/pull <task-id>`):
 
 1. Call `mcp__pkb__get_task(id="<task-id>")` to load it.
 2. If the task has children (leaf=false), navigate to the first ready leaf subtask instead.
 3. If the task is already `in_progress`, skip claim and proceed directly to Step 1.5.
-4. Otherwise, claim with `mcp__pkb__update_task(id="<task-id>", status="in_progress", assignee="polecat")`.
+4. Otherwise, claim with `mcp__pkb__update_task(id="<task-id>", updates={"status": "in_progress", "assignee": "polecat"})`.
 
 **If no tasks are ready**:
 
@@ -137,7 +137,7 @@ Before proceeding to commit, verify the work produces **independent evidence** o
 For tasks with `type: learn`:
 
 1. **Investigate** per task instructions
-2. **Write findings to task body** - Use `update_task(id, body=...)` to append findings
+2. **Write findings to task body** - Use `update_task(id="<id>", updates={"body": "..."})` to append findings
 3. **Summarize in parent epic** - Read parent, append to "## Findings from Spikes"
 4. **Apply learnings to framework** - Before creating follow-up tasks, check if findings warrant direct changes to framework files (HEURISTICS.md, skill prompts, specs). Knowledge files alone are insufficient — if a learning points to a process improvement, change the process.
 5. **Decompose actionable items** - Create subtasks for remaining work that can't be done in this session. Resolve parent per [[references/hierarchy-quality-rules]]:
@@ -178,7 +178,7 @@ If task needs specific expertise or human judgment:
 ```
 mcp__pkb__update_task(
   id="<task-id>",
-  assignee="<role>"  # e.g., "nic", "polecat"
+  updates={"assignee": "<role>"}  # e.g., "nic", "polecat"
 )
 ```
 
@@ -236,8 +236,7 @@ If task is fundamentally unclear:
 ```
 mcp__pkb__update_task(
   id="<task-id>",
-  status="blocked",
-  body="Blocked: [specific questions]. Context: [what's known so far]."
+  updates={"status": "blocked", "body": "Blocked: [specific questions]. Context: [what's known so far]."}
 )
 ```
 
