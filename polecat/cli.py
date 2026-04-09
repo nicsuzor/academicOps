@@ -2117,17 +2117,69 @@ def finish(ctx, no_push, do_nuke, force, force_done):
     except Exception as e:
         print(f"  ⚠️  Unexpected error in PR integration: {e}")
 
-    # Update task status to merge_ready
+    # Release task with summary via PKB release_task
+    # Auto-generate summary from git diff stats
+    finish_summary = task.title
     try:
-        from lib.task_model import TaskStatus
+        stat_res = subprocess.run(
+            ["git", "diff", "--shortstat", "origin/main", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if stat_res.returncode == 0 and stat_res.stdout.strip():
+            finish_summary = f"{task.title}. Changes: {stat_res.stdout.strip()}"
+    except Exception:
+        pass
 
-        task.status = TaskStatus.MERGE_READY.value
-        manager.storage.save_task(task)
-    except ImportError:
-        from polecat.pkb_bridge import save_task as pkb_save
+    # Try to get PR URL
+    pr_url_str = None
+    try:
+        pr_res = subprocess.run(
+            [
+                "gh",
+                "pr",
+                "list",
+                "--head",
+                branch_name,
+                "--state",
+                "open",
+                "--json",
+                "url",
+                "-q",
+                ".[0].url",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if pr_res.returncode == 0 and pr_res.stdout.strip():
+            pr_url_str = pr_res.stdout.strip()
+    except Exception:
+        pass
 
-        task.status = "merge_ready"
-        pkb_save(task)
+    try:
+        from polecat.pkb_bridge import release_task as pkb_release
+
+        pkb_release(
+            task_id,
+            status="merge_ready",
+            summary=finish_summary,
+            pr_url=pr_url_str,
+            branch=branch_name,
+        )
+    except Exception:
+        # Fallback to old path if release_task not available yet
+        try:
+            from lib.task_model import TaskStatus
+
+            task.status = TaskStatus.MERGE_READY.value
+            manager.storage.save_task(task)
+        except ImportError:
+            from polecat.pkb_bridge import save_task as pkb_save
+
+            task.status = "merge_ready"
+            pkb_save(task)
     print("✅ Task marked as 'merge_ready'")
     print(
         "📋 If a PR was created, the review pipeline will handle merge. See logs above for PR status."

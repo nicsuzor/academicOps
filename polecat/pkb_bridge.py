@@ -198,6 +198,31 @@ def update_task(task_id: str, **kwargs: Any) -> bool:
     return result is not None
 
 
+def release_task(
+    task_id: str,
+    status: str,
+    summary: str,
+    pr_url: str | None = None,
+    branch: str | None = None,
+    **kwargs: Any,
+) -> bool:
+    """Release a task via the PKB MCP server's release_task tool.
+
+    Captures what was done (summary) when transitioning to a handoff status.
+    Flat parameters — no nested objects.
+    """
+    params: dict[str, Any] = {"id": task_id, "status": status, "summary": summary}
+    if pr_url:
+        params["pr_url"] = pr_url
+    if branch:
+        params["branch"] = branch
+    for k, v in kwargs.items():
+        if v is not None:
+            params[k] = v
+    result = _get_client().call_tool("release_task", params)
+    return result is not None
+
+
 def save_task(task: PkbTask) -> bool:
     """Persist a mutated PkbTask back to PKB.
 
