@@ -238,7 +238,7 @@ Parse responses into structured verdicts:
 Then:
 
 ```python
-update_task(id=task_id, status='waiting', body=synthesis_markdown)
+update_task(id=task_id, updates={"status": "waiting", "body": synthesis_markdown})
 ```
 
 **On NEEDS_REVISION**:
@@ -267,7 +267,7 @@ update_task(id=task_id, status='waiting', body=synthesis_markdown)
 Then:
 
 ```python
-update_task(id=task_id, status='active', body=synthesis_markdown)
+update_task(id=task_id, updates={"status": "active", "body": synthesis_markdown})
 # Re-enter Phase 1 with reviewer feedback
 ```
 
@@ -294,7 +294,7 @@ update_task(id=task_id, status='active', body=synthesis_markdown)
 Then:
 
 ```python
-update_task(id=task_id, status='blocked', body=synthesis_markdown)
+update_task(id=task_id, updates={"status": "blocked", "body": synthesis_markdown})
 ```
 
 ---
