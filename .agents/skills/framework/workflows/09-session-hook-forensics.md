@@ -27,7 +27,7 @@ grep '"verdict":"deny"' <hooks.jsonl> | wc -l
 # 3. Generate transcript (for the conversation side)
 cd $AOPS && uv run python scripts/transcript.py <session.jsonl>
 
-# 4. Check gate verdicts (raw JSONL — most precise source)
+# 4. Check gate verdicts (raw JSONL — transcripts don't show these yet)
 grep '"hook_event":"Stop"' <hooks.jsonl> | python3 -c "
 import sys, json
 for l in sys.stdin:

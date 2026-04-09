@@ -11,13 +11,14 @@ tags: [spec, tasks, mcp, data]
 
 ## Giving Effect
 
-- [[aops-tools/tasks_server.py]] - MCP server implementing task CRUD operations
+- PKB MCP server (Rust, `nicsuzor/mem`) implementing task CRUD and graph operations
 - [[mcp__pkb__create_task]] - Create task
-- [[mcp__pkb__update_task]] - Update task (status, assignment)
+- [[mcp__pkb__update_task]] - Update task fields (priority, tags, assignee, body)
+- [[mcp__pkb__release_task]] - Release task to handoff status with required summary
+- [[mcp__pkb__complete_task]] - Mark task done with completion evidence
 - [[mcp__pkb__list_tasks]] - List tasks with filters
-- [[mcp__pkb__complete_task]] - Mark task done
-- [[mcp__pkb__get_blocked_tasks]] - Get tasks with unmet dependencies
 - [[commands/pull.md]] - `/pull` command for claiming and executing tasks
+- [[commands/dump.md]] - `/dump` command for session handover
 
 Tasks MCP is the primary work management system for multi-session tracking, dependencies, and strategic work.
 
@@ -28,24 +29,29 @@ flowchart LR
         C2[list_tasks]
     end
 
+    subgraph CLAIM["Claim"]
+        E1["update_task(status=in_progress)"]
+    end
+
     subgraph EXECUTE["Execute"]
-        E1[update_task status=in_progress]
         E2[Work on task]
-        E3[complete_task]
     end
 
-    subgraph TRACK["Track"]
-        T1[list_tasks]
-        T2[get_blocked_tasks]
+    subgraph RELEASE["Release"]
+        R1["release_task(merge_ready)"]
+        R2["release_task(done)"]
+        R3["release_task(blocked)"]
     end
 
-    C1 --> C2 --> E1 --> E2 --> E3
-    T1 -.-> E1
-    T2 -.-> E1
+    C1 --> C2 --> E1 --> E2
+    E2 --> R1
+    E2 --> R2
+    E2 --> R3
 
     style CREATE fill:#e3f2fd
+    style CLAIM fill:#e8f5e9
     style EXECUTE fill:#e8f5e9
-    style TRACK fill:#fff3e0
+    style RELEASE fill:#fff3e0
 ```
 
 **When to use Tasks MCP**:
@@ -57,35 +63,82 @@ flowchart LR
 
 ## Core Functions
 
-| Function                              | Purpose            |
-| ------------------------------------- | ------------------ |
-| `mcp__pkb__create_task()`             | Create new task    |
-| `mcp__pkb__get_task(id)`              | Get task details   |
-| `mcp__pkb__update_task(id, ...)`      | Update task fields |
-| `mcp__pkb__complete_task(id)`         | Mark task done     |
-| `mcp__pkb__list_tasks(...)`           | List/filter tasks  |
-| `mcp__pkb__task_search(query)`        | Search tasks       |
-| `mcp__pkb__get_blocked_tasks()`       | Get blocked tasks  |
-| `mcp__pkb__create_task(id, children)` | Break down task    |
+| Function                                           | Purpose                                                     |
+| -------------------------------------------------- | ----------------------------------------------------------- |
+| `mcp__pkb__create_task(title, ...)`                | Create new task                                             |
+| `mcp__pkb__get_task(id)`                           | Get task details + relationship context                     |
+| `mcp__pkb__update_task(id, updates={...})`         | Update non-terminal fields (priority, tags, assignee, body) |
+| `mcp__pkb__release_task(id, status, summary, ...)` | Release task to handoff status with summary                 |
+| `mcp__pkb__complete_task(id, completion_evidence)` | Mark task done with evidence (legacy path)                  |
+| `mcp__pkb__list_tasks(status, ...)`                | List/filter tasks                                           |
+| `mcp__pkb__task_search(query)`                     | Semantic search across tasks                                |
+| `mcp__pkb__decompose_task(parent_id, subtasks)`    | Break down task into subtasks                               |
 
 ## Task Lifecycle
 
+### State Machine
+
 ```
-active → in_progress → done
-         ↓
-      blocked/waiting
+active → in_progress → merge_ready (PR filed) → done (after merge)
+                     → done (non-code task completed)
+                     → review (needs human attention)
+                     → blocked (external dependency)
+                     → cancelled (abandoned)
+         ↕
+      waiting (deferred for later)
 ```
 
-**Statuses**:
+### Claiming Tasks
 
-- `active`: Ready to be worked on
-- `in_progress`: Currently being worked on
-- `blocked`: Waiting on dependencies
-- `waiting`: Deferred for later
-- `done`: Completed
-- `cancelled`: Abandoned
-- `merge_ready`: Work complete, awaiting merge to main
-- `review`: Needs human/manager review after failure
+Use `update_task` to claim:
+
+```
+update_task(id="<task-id>", updates={"status": "in_progress", "assignee": "polecat"})
+```
+
+### Releasing Tasks
+
+Use `release_task` for all terminal/handoff transitions. Flat parameters — no nested objects:
+
+```
+release_task(id, status, summary, pr_url?, branch?, blocker?, reason?)
+```
+
+| Target Status | summary  | pr_url    | blocker   | reason    |
+| ------------- | -------- | --------- | --------- | --------- |
+| `merge_ready` | REQUIRED | soft-warn | -         | -         |
+| `done`        | REQUIRED | optional  | -         | -         |
+| `review`      | REQUIRED | -         | -         | soft-warn |
+| `blocked`     | REQUIRED | -         | soft-warn | -         |
+| `cancelled`   | REQUIRED | -         | -         | soft-warn |
+
+`release_task` appends a timestamped evidence block to the task body, sets `released_at` in frontmatter, and records `pr_url`/`branch` if provided.
+
+**Hard errors**: missing summary, unknown status, task already terminal (done/cancelled).
+
+**Soft warnings**: context-specific fields missing (logged in response, tool still succeeds).
+
+### Why `release_task` Instead of `update_task`
+
+`update_task(updates={...})` requires a nested JSON object, which agents frequently serialize as a string instead of an object, drop fields on retry, or forget entirely. `release_task` uses flat string parameters and always requires a summary, making it harder to lose information than to capture it.
+
+`update_task` remains for non-terminal field changes (priority, tags, assignee, body). It soft-hints toward `release_task` when a terminal status is detected.
+
+### Canonical Statuses
+
+| Status        | Meaning                                 | Terminal? |
+| ------------- | --------------------------------------- | --------- |
+| `active`      | Ready to be worked on                   | No        |
+| `in_progress` | Currently being worked on               | No        |
+| `merge_ready` | Work complete, PR filed, awaiting merge | No        |
+| `review`      | Needs human/manager review              | No        |
+| `blocked`     | Waiting on external dependency          | No        |
+| `waiting`     | Deferred for later                      | No        |
+| `draft`       | Early/incomplete/seed content           | No        |
+| `done`        | Completed successfully                  | Yes       |
+| `cancelled`   | Abandoned/no longer relevant            | Yes       |
+
+Additional statuses exist (`paused`, `someday`, `submitted`, `accepted`) — see `graph.rs` for the full list and alias mappings.
 
 ## Multi-Project Organization
 

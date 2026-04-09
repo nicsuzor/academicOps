@@ -67,7 +67,7 @@ If executing:
 
 For `type: learn` tasks specifically:
 1. Investigate per task instructions
-2. Write findings to task body via `update_task(id, body=...)`
+2. Write findings to task body via `update_task(id, updates={"body": "..."})`
 3. Decompose actionable items into subtasks
 4. Decomposition IS completion for learn tasks
 
@@ -77,7 +77,7 @@ If triaging, pick one:
 
 - **Assign**: `update_task(id="{task_id}", assignee="nic")` if it needs human judgment
 - **Decompose**: Break into 3-7 subtasks if scope is clear but too large
-- **Block**: `update_task(id="{task_id}", status="blocked", body="Blocked: [reason]")` if unclear
+- **Block**: `release_task(id="{task_id}", status="blocked", summary="What was attempted", blocker="[reason]")` if unclear
 
 After triaging, HALT. Do not continue to execution.
 
@@ -106,25 +106,25 @@ After successful execution:
    All four flags (`--title`, `--body`, `--head`, `--base`) are required.
    Omitting `--head` or `--base` will cause `gh` to hang.
 
-3. **Update the task** in PKB to reflect the outcome:
+3. **Release the task** in PKB to record what was done:
 
    - If a PR was filed:
      ```
-     mcp__pkb__update_task(id="{task_id}", status="merge_ready",
-       body="## Outcome\\n- Branch: <branch>\\n- Commit: <sha>\\n- PR: <url>")
+     mcp__pkb__release_task(id="{task_id}", status="merge_ready",
+       summary="<what changed and why>", pr_url="<PR URL>", branch="<branch>")
      ```
-     This sets the task to `merge_ready`, which is the final worker state for PR-backed
-     work. The governing system will close the task after the PR is merged. Do not call
-     `complete_task` for PR-backed work.
+     This sets the task to `merge_ready` with a summary of the work. The governing
+     system will close the task after the PR is merged.
 
      **Do NOT wait for CI after filing a PR** — exit promptly after push + PR + reflection.
 
    - If no code changes (learn tasks, investigations, etc.):
      ```
-     mcp__pkb__complete_task(id="{task_id}")
+     mcp__pkb__release_task(id="{task_id}", status="done",
+       summary="<what was investigated and findings>")
      ```
 
-Do NOT update status until all changes are committed and acceptance criteria \
+Do NOT release until all changes are committed and acceptance criteria \
 are met."""
 
 FINISH_GITHUB_ISSUE = """\
