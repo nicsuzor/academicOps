@@ -63,11 +63,11 @@ This is the most important field for forensics. Written by `unified_logger.py:69
 | Transcript (abridged) | `$POLECAT_HOME/sessions/transcripts/` | `<YYYYMMDD>-<HH>-<worktree-name>-<session>-*-abridged.md` |
 | CC session JSONL      | `~/.claude/projects/<project-dir>/`   | `<session-uuid>.jsonl`                                    |
 
-### Typical Paths on This Machine
+### Example Local Paths
 
-- `$AOPS_SESSIONS` = `/Users/suzor/.aops/sessions`
-- `$POLECAT_HOME` = `/Users/suzor/.aops`
-- `$AOPS_SESSION_STATE_DIR` = `/Users/suzor/.claude/projects/<project-dir>/`
+- `$AOPS_SESSIONS` = `$HOME/.aops/sessions`
+- `$POLECAT_HOME` = `$HOME/.aops`
+- `$AOPS_SESSION_STATE_DIR` = `$HOME/.claude/projects/<project-dir>/`
 
 ### Correlating Task → Session → Artifacts
 
