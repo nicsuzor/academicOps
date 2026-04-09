@@ -30,7 +30,7 @@ Hook events are logged to `$AOPS_SESSIONS/hooks/<YYYYMMDD>-<session-short-hash>-
 
 ### The `output` Field (CanonicalHookOutput)
 
-This is the most important field for forensics. Written by `unified_logger.py:69` as `output.model_dump()`.
+This is the most important field for forensics. Written by `unified_logger.py:77` as `output.model_dump()`.
 
 ```json
 {
@@ -48,7 +48,7 @@ This is the most important field for forensics. Written by `unified_logger.py:69
 
 ### Known Transcript Gap
 
-**IMPORTANT**: The transcript parser (`transcript_parser.py:1764`) reads `data.get("hookSpecificOutput")` — a field from the Claude Code protocol that does NOT exist in hook JSONL. All `output` fields (verdicts, system_messages, context_injections) are silently dropped from generated transcripts. Until this parser bug is fixed, you **must read raw hook JSONL** for gate forensics. Do not trust transcripts for hook behavior.
+**IMPORTANT**: The transcript parser (`transcript_parser.py:1753`) reads `data.get("hookSpecificOutput")` — a field from the Claude Code protocol that does NOT exist in hook JSONL. All `output` fields (verdicts, system_messages, context_injections) are silently dropped from generated transcripts. Until this parser bug is fixed, you **must read raw hook JSONL** for gate forensics. Do not trust transcripts for hook behavior.
 
 ## File Locations & Cross-Referencing
 
@@ -65,9 +65,9 @@ This is the most important field for forensics. Written by `unified_logger.py:69
 
 ### Typical Paths on This Machine
 
-- `$AOPS_SESSIONS` = `/Users/suzor/.aops/sessions`
-- `$POLECAT_HOME` = `/Users/suzor/.aops`
-- `$AOPS_SESSION_STATE_DIR` = `/Users/suzor/.claude/projects/<project-dir>/`
+- `$AOPS_SESSIONS` = `~/.aops/sessions`
+- `$POLECAT_HOME` = `~/.aops`
+- `$AOPS_SESSION_STATE_DIR` = `~/.claude/projects/<project-dir>/`
 
 ### Correlating Task → Session → Artifacts
 
