@@ -4,6 +4,7 @@ from unittest.mock import patch
 import pytest
 from hooks.schemas import HookContext
 from lib.gate_types import GateStatus
+from lib.gates.definitions import GATE_CONFIGS
 from lib.gates.registry import GateRegistry
 from lib.session_state import SessionState
 
@@ -47,6 +48,13 @@ def mock_session(tmp_path):
         state = SessionState.create(session_id)
         state.save()
         yield session_id
+
+
+@pytest.mark.parametrize("gate_config", GATE_CONFIGS, ids=lambda c: c.name)
+def test_create_respects_gate_initial_status(mock_session, gate_config):
+    """Regression: SessionState.create() must initialize gates from GateConfig.initial_status."""
+    state = SessionState.load(mock_session)
+    assert state.gates[gate_config.name].status == gate_config.initial_status
 
 
 def test_gate_open_close_unification(mock_session):
