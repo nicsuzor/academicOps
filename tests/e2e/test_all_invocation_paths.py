@@ -479,25 +479,20 @@ class TestAllInvocationPaths:
             f"expected {len(raw_entries)}"
         )
 
-        # For entries with gate output, verdict must survive parsing
-        for raw in raw_entries:
+        # For entries with gate output, verdict must survive parsing (match by index)
+        for i, raw in enumerate(raw_entries):
             if (
                 raw.get("output")
                 and isinstance(raw["output"], dict)
                 and raw["output"].get("verdict")
             ):
-                # Find matching parsed entry by hook_event name
-                matching = [
-                    e
-                    for e in parsed_entries
-                    if e.hook_event_name and e.hook_event_name == raw.get("hook_event")
-                ]
-                if matching:
-                    assert matching[0].hook_verdict == raw["output"]["verdict"], (
-                        f"[{session['param']}] Verdict lost in parsing: "
-                        f"raw={raw['output']['verdict']!r}, "
-                        f"parsed={matching[0].hook_verdict!r}"
-                    )
+                parsed = parsed_entries[i]
+                assert parsed.hook_verdict == raw["output"]["verdict"], (
+                    f"[{session['param']}] Verdict lost in parsing at entry {i} "
+                    f"({raw.get('hook_event')}): "
+                    f"raw={raw['output']['verdict']!r}, "
+                    f"parsed={parsed.hook_verdict!r}"
+                )
 
     def test_session_persists(self, session):
         """Session file is written and contains user+assistant entries."""
