@@ -137,7 +137,7 @@ Before proceeding to commit, verify the work produces **independent evidence** o
 For tasks with `type: learn`:
 
 1. **Investigate** per task instructions
-2. **Write findings to task body** - Use `update_task(id="<id>", updates={"body": "..."})` to append findings
+2. **Write findings to task body** - Use `mcp__pkb__append(id="<task-id>", content="...")` to record findings
 3. **Summarize in parent epic** - Read parent, append to "## Findings from Spikes"
 4. **Apply learnings to framework** - Before creating follow-up tasks, check if findings warrant direct changes to framework files (HEURISTICS.md, skill prompts, specs). Knowledge files alone are insufficient — if a learning points to a process improvement, change the process.
 5. **Decompose actionable items** - Create subtasks for remaining work that can't be done in this session. Resolve parent per [[references/hierarchy-quality-rules]]:

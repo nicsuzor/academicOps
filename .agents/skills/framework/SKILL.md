@@ -236,7 +236,7 @@ Every task MUST follow this lifecycle. No shortcuts.
    - If no rule exists, propose one first
 
 3. UPDATE TASK AS YOU WORK (if tracking with task)
-   mcp__plugin_aops-core_tasks__update_task(id="<id>", body="[progress note]")
+   mcp__plugin_aops-core_tasks__update_task(id="<id>", updates={"body": "[progress note]"})
 
 4. ITERATION LOOP
    If implementation reveals plan was incomplete:
