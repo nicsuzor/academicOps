@@ -45,7 +45,7 @@ for l in sys.stdin:
    - See [[forensics-details]] for full path conventions and cross-reference guide.
 
 2. **Generate Transcript First**
-   Always use `transcript.py` on the CC session JSONL for a readable conversation log. But note: **transcripts currently do not show hook verdicts or system_messages** due to a parser bug (`transcript_parser.py:1753` reads wrong field). Use raw hook JSONL for gate behavior.
+   Always use `transcript.py` on the CC session JSONL for a readable conversation log. But note: **transcripts currently do not show hook verdicts or system_messages** due to a parser bug (`transcript_parser.py:1764` reads wrong field). Use raw hook JSONL for gate behavior.
 
 3. **Check Gate Behavior**
    - **Custodiet/RBG gate**: Grep for `SubagentStart`/`SubagentStop` with `custodiet` or `rbg` subagent type. Each pair = one compliance check. See [[forensics-details]] for commands.
