@@ -406,22 +406,91 @@ class TestAllInvocationPaths:
         )
 
     def test_hooks_fired(self, session):
-        """Hooks fire inside Docker container.
+        """Hook JSONL is written with valid structure for all invocation paths.
 
-        Checks the jsonl hook debug files for hook evidence.
+        Validates every line is valid JSON with required fields, SessionStart
+        is first, and client_type is logged correctly.
         """
-        hook_files_content = session.get("hook_files_content", "")
+        import json
 
-        hook_evidence = (
-            "hook" in hook_files_content.lower()
-            or "SessionStart" in hook_files_content
-            or "gate" in hook_files_content.lower()
+        hook_content = session.get("hook_files_content", "")
+        assert hook_content.strip(), (
+            f"[{session['param']}] No hook JSONL content found.\n"
+            f"stderr (last 500): {session['stderr'][-500:]}"
         )
 
-        assert hook_evidence, (
-            f"[{session['param']}] No hook evidence in output.\n"
-            f"hook JSONL contents (last 500): {hook_files_content[-500:]}\n"
+        # Parse every line as valid JSON
+        entries = []
+        for line in hook_content.strip().splitlines():
+            entry = json.loads(line)  # fail if any line is invalid JSON
+            entries.append(entry)
+
+        assert len(entries) >= 1, f"[{session['param']}] Hook JSONL has no entries"
+
+        # Every entry must have core fields
+        for i, entry in enumerate(entries):
+            assert "hook_event" in entry, f"Entry {i} missing hook_event"
+            assert "session_id" in entry, f"Entry {i} missing session_id"
+            assert "logged_at" in entry, f"Entry {i} missing logged_at"
+
+        # SessionStart must be the first event
+        assert entries[0]["hook_event"] == "SessionStart", (
+            f"[{session['param']}] First hook event is "
+            f"{entries[0]['hook_event']!r}, expected 'SessionStart'"
         )
+
+        # client_type must be present and match backend
+        assert entries[0].get("client_type") == session["backend"], (
+            f"[{session['param']}] client_type={entries[0].get('client_type')!r}, "
+            f"expected {session['backend']!r}"
+        )
+
+    def test_hook_transcript_roundtrip(self, session):
+        """Transcript parser correctly reads hook JSONL output fields.
+
+        Proves the full chain: logger writes -> parser reads -> verdict survives.
+        """
+        import json
+
+        hook_content = session.get("hook_files_content", "")
+        if not hook_content.strip():
+            pytest.skip("No hook content (covered by test_hooks_fired)")
+
+        # Find the actual hook file on disk
+        aops_sessions = Path(os.environ.get("AOPS_SESSIONS", Path.home() / ".aops" / "sessions"))
+        hook_files = sorted(aops_sessions.rglob("*-hooks.jsonl"), key=os.path.getmtime)
+        assert hook_files, f"[{session['param']}] No hook files on disk"
+
+        # Use the transcript parser to load entries
+        from lib.transcript_parser import TranscriptParser
+
+        parser = TranscriptParser()
+        parsed_entries = parser._load_hook_entries(hook_files[-1])
+        assert len(parsed_entries) >= 1, (
+            f"[{session['param']}] Transcript parser returned no entries from hook JSONL"
+        )
+
+        # For entries with gate output, verdict must survive parsing
+        raw_entries = [json.loads(line) for line in hook_content.strip().splitlines()]
+        for raw in raw_entries:
+            if (
+                raw.get("output")
+                and isinstance(raw["output"], dict)
+                and raw["output"].get("verdict")
+            ):
+                # Find matching parsed entry by timestamp
+                matching = [
+                    e
+                    for e in parsed_entries
+                    if str(e.timestamp) == raw.get("logged_at")
+                    or (e.hook_event_name and e.hook_event_name == raw.get("hook_event"))
+                ]
+                if matching:
+                    assert matching[0].hook_verdict == raw["output"]["verdict"], (
+                        f"[{session['param']}] Verdict lost in parsing: "
+                        f"raw={raw['output']['verdict']!r}, "
+                        f"parsed={matching[0].hook_verdict!r}"
+                    )
 
     def test_session_persists(self, session):
         """Session file is written and contains user+assistant entries."""

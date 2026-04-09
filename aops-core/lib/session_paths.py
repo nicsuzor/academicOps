@@ -112,46 +112,21 @@ def _get_gemini_status_dir(input_data: dict | None) -> Path | None:
     or
     ~/.gemini/tmp/<hash>/logs/session-<uuid>.jsonl
 
-    Falls back to AOPS_SESSION_STATE_DIR when transcript_path is not available
-    (e.g., polecat workers where input_data has no transcript_path).
-
     Returns the ~/.gemini/tmp/<hash>/ directory or None if not detectable.
+    No fallback chains — returns None if neither signal is available.
     """
-    if input_data is None:
-        # Try AOPS_SESSION_STATE_DIR as last resort
-        state_dir = os.environ.get("AOPS_SESSION_STATE_DIR")
-        if state_dir and "/.gemini/" in state_dir:
-            return Path(state_dir)
-        return None
+    # 1. Extract from transcript_path (parent of chats/ or logs/)
+    if input_data:
+        transcript_path = input_data.get("transcript_path")
+        if transcript_path:
+            for parent in Path(transcript_path).parents:
+                if parent.name in ("chats", "logs"):
+                    return parent.parent
 
-    transcript_path = input_data.get("transcript_path")
-    if transcript_path is None:
-        # Try AOPS_SESSION_STATE_DIR as fallback for workers without transcript_path
-        state_dir = os.environ.get("AOPS_SESSION_STATE_DIR")
-        if state_dir and "/.gemini/" in state_dir:
-            return Path(state_dir)
-        return None
-
-    path = Path(transcript_path)
-
-    # Walk up to find the hash directory (parent of chats/logs)
-    for parent in path.parents:
-        if parent.name in ("chats", "logs"):
-            # Parent of chats/logs is the hash directory
-            return parent.parent
-
-    # Check if we are already in the hash directory
-    if "/.gemini/tmp/" in str(path):
-        # If path is ~/.gemini/tmp/<hash>, return it
-        # Otherwise, if it's deeper, we might need more logic,
-        # but usually Gemini passes transcript_path in chats/ or logs/
-        parts = path.parts
-        try:
-            tmp_idx = parts.index("tmp")
-            if len(parts) > tmp_idx + 2 and parts[tmp_idx - 1] == ".gemini":
-                return Path(*parts[: tmp_idx + 2])
-        except ValueError:
-            pass
+    # 2. AOPS_SESSION_STATE_DIR (set at SessionStart, persisted for session)
+    state_dir = os.environ.get("AOPS_SESSION_STATE_DIR")
+    if state_dir and "/.gemini/" in state_dir:
+        return Path(state_dir)
 
     return None
 
@@ -249,22 +224,15 @@ def get_session_status_dir(session_id: str | None = None, input_data: dict | Non
 
     # 2. Auto-detect Gemini from session_id or transcript_path
     if _is_gemini_session(session_id, input_data):
-        # Try to extract from transcript_path first
         gemini_dir = _get_gemini_status_dir(input_data)
         if gemini_dir is not None:
             gemini_dir.mkdir(parents=True, exist_ok=True)
             return gemini_dir
 
-        # Fallback: use hash-based path from GEMINI_PROJECT_DIR (provided by Gemini CLI)
-        project_root = (
-            os.environ.get("GEMINI_PROJECT_DIR")
-            or os.environ.get("CLAUDE_PROJECT_DIR")  # Gemini also provides this alias
-            or str(Path.cwd().resolve())
+        raise ValueError(
+            "Gemini session detected but cannot determine status directory. "
+            "Set AOPS_SESSION_STATE_DIR or ensure transcript_path is provided."
         )
-        project_hash = hashlib.sha256(project_root.encode()).hexdigest()
-        gemini_tmp = Path.home() / ".gemini" / "tmp" / project_hash
-        gemini_tmp.mkdir(parents=True, exist_ok=True)
-        return gemini_tmp
 
     # 3. Claude Code session (or unknown) - derive path from cwd
     # Same logic as session_env_setup.sh: ~/.claude/projects/-<cwd-with-dashes>/

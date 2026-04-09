@@ -987,6 +987,7 @@ def main():
 
     # Pipeline
     ctx = router.normalize_input(raw_input, gemini_event)
+    ctx.client_type = client_type
     result = router.execute_hooks(ctx)
 
     # Output (JSON conversion happens only here)

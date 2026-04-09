@@ -875,6 +875,9 @@ class Entry:
     additional_context: str | None = None
     hook_event_name: str | None = None
     hook_exit_code: int | None = None
+    hook_verdict: str | None = None  # Gate verdict from CanonicalHookOutput
+    hook_system_message: str | None = None  # System message from gate
+    hook_context_injection: str | None = None  # Context injection from gate
     skills_matched: list[str] | None = None
     files_loaded: list[str] | None = None
     tool_name: str | None = None
@@ -931,6 +934,10 @@ class Entry:
                 entry.tool_name = hook_output.get("toolName")
                 entry.tool_input = hook_output.get("toolInput")
                 entry.agent_id = hook_output.get("agentId")
+                # Gate verdict/message from merged CanonicalHookOutput
+                entry.hook_verdict = hook_output.get("verdict")
+                entry.hook_system_message = hook_output.get("systemMessage")
+                entry.hook_context_injection = hook_output.get("contextInjection")
             # Fall back to content.additionalContext
             if not entry.additional_context and isinstance(entry.content, dict):
                 entry.additional_context = entry.content.get("additionalContext", "")
@@ -1493,18 +1500,7 @@ class SessionProcessor:
 
                     # Handle hook logs passed as main file
                     if file_path.name.endswith("-hooks.jsonl"):
-                        # Map hook log format to Entry format
-                        hook_output = data.get("hookSpecificOutput") or {}
-                        if not hook_output.get("hookEventName"):
-                            hook_output["hookEventName"] = data.get("hook_event", "Unknown")
-                        if "exit_code" in data and "exitCode" not in hook_output:
-                            hook_output["exitCode"] = data["exit_code"]
-
-                        data = {
-                            "type": "system_reminder",
-                            "timestamp": data.get("logged_at"),
-                            "hookSpecificOutput": hook_output,
-                        }
+                        data = self._map_hook_jsonl_to_entry_data(data)
 
                     entry = Entry.from_dict(data)
                     entries.append(entry)
@@ -1746,6 +1742,44 @@ class SessionProcessor:
 
         return None
 
+    @staticmethod
+    def _map_hook_jsonl_to_entry_data(data: dict) -> dict:
+        """Map our hook JSONL format to Entry-compatible dict.
+
+        Our hook JSONL stores gate results under data["output"] (CanonicalHookOutput),
+        NOT under data["hookSpecificOutput"] (Claude Code protocol). This method
+        normalizes both schemas into a single hookSpecificOutput dict for Entry.from_dict().
+        """
+        hook_output = data.get("hookSpecificOutput") or {}
+
+        # Merge CanonicalHookOutput fields (our JSONL schema)
+        canon_output = data.get("output")
+        if isinstance(canon_output, dict):
+            if canon_output.get("verdict"):
+                hook_output["verdict"] = canon_output["verdict"]
+            if canon_output.get("system_message"):
+                hook_output["systemMessage"] = canon_output["system_message"]
+            if canon_output.get("context_injection"):
+                hook_output["contextInjection"] = canon_output["context_injection"]
+
+        # Map flat fields from our JSONL to CC-style names
+        if not hook_output.get("hookEventName"):
+            hook_output["hookEventName"] = data.get("hook_event", "Unknown")
+        if "exit_code" in data and "exitCode" not in hook_output:
+            hook_output["exitCode"] = data["exit_code"]
+        if "tool_name" in data:
+            hook_output["toolName"] = data["tool_name"]
+        if "tool_input" in data:
+            hook_output["toolInput"] = data["tool_input"]
+        if "agent_id" in data:
+            hook_output["agentId"] = data["agent_id"]
+
+        return {
+            "type": "system_reminder",
+            "timestamp": data.get("logged_at"),
+            "hookSpecificOutput": hook_output,
+        }
+
     def _load_hook_entries(self, hook_file_path: Path) -> list[Entry]:
         """Load ALL hook entries from JSONL file."""
         entries = []
@@ -1761,29 +1795,7 @@ class SessionProcessor:
                 except json.JSONDecodeError:
                     continue
 
-                hook_output = data.get("hookSpecificOutput") or {}
-
-                if not hook_output.get("hookEventName"):
-                    hook_output["hookEventName"] = data.get("hook_event", "Unknown")
-
-                if "exit_code" in data and "exitCode" not in hook_output:
-                    hook_output["exitCode"] = data["exit_code"]
-
-                if "tool_name" in data:
-                    hook_output["toolName"] = data["tool_name"]
-
-                if "tool_input" in data:
-                    hook_output["toolInput"] = data["tool_input"]
-
-                if "agent_id" in data:
-                    hook_output["agentId"] = data["agent_id"]
-
-                entry_data = {
-                    "type": "system_reminder",
-                    "timestamp": data.get("logged_at"),
-                    "hookSpecificOutput": hook_output,
-                }
-
+                entry_data = self._map_hook_jsonl_to_entry_data(data)
                 entries.append(Entry.from_dict(entry_data))
 
         return entries
