@@ -46,9 +46,9 @@ This is the most important field for forensics. Written by `unified_logger.py:69
 - **`system_message`**: Human-readable message about gate state. Contains countdown markers (`◇ N`), gate status icons (`💧 ≡`), and blocking reasons.
 - **`context_injection`**: Instructions injected into the agent's context. Contains compliance check demands, skill routing tables, etc.
 
-### Known Transcript Gap
+### Transcript Rendering of Hook Output
 
-**IMPORTANT**: The transcript parser (`transcript_parser.py:1764`) reads `data.get("hookSpecificOutput")` — a field from the Claude Code protocol that does NOT exist in hook JSONL. All `output` fields (verdicts, system_messages, context_injections) are silently dropped from generated transcripts. Until this parser bug is fixed, you **must read raw hook JSONL** for gate forensics. Do not trust transcripts for hook behavior.
+The transcript parser (`transcript_parser.py:_map_hook_jsonl_to_entry_data`) normalises both the CC protocol `hookSpecificOutput` field and our hook JSONL `output` field into a single `hookSpecificOutput` dict (see `transcript_parser.py` around line 1753–1763). Verdict, system_message, and context_injection from hook JSONL **are** merged into generated transcripts. However, transcript rendering may condense or truncate long system_messages. When you need the exact raw values, read the hook JSONL directly.
 
 ## File Locations & Cross-Referencing
 
@@ -63,11 +63,11 @@ This is the most important field for forensics. Written by `unified_logger.py:69
 | Transcript (abridged) | `$POLECAT_HOME/sessions/transcripts/` | `<YYYYMMDD>-<HH>-<worktree-name>-<session>-*-abridged.md` |
 | CC session JSONL      | `~/.claude/projects/<project-dir>/`   | `<session-uuid>.jsonl`                                    |
 
-### Typical Paths on This Machine
+### Example Local Paths
 
-- `$AOPS_SESSIONS` = `/Users/suzor/.aops/sessions`
-- `$POLECAT_HOME` = `/Users/suzor/.aops`
-- `$AOPS_SESSION_STATE_DIR` = `/Users/suzor/.claude/projects/<project-dir>/`
+- `$AOPS_SESSIONS` = `$HOME/.aops/sessions`
+- `$POLECAT_HOME` = `$HOME/.aops`
+- `$AOPS_SESSION_STATE_DIR` = `$HOME/.claude/projects/<project-dir>/`
 
 ### Correlating Task → Session → Artifacts
 

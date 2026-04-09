@@ -165,7 +165,7 @@ Before marking task complete, verify work is committed:
    - Commit with task context: `git commit -m "feat(<area>): <task summary>"`
 3. Only after commit succeeds, proceed to Step 4
 
-**Enforcement**: Do NOT call `complete_task()` until commit is verified.
+**Enforcement**: Do NOT call `release_task()` until commit is verified.
 
 ### Step 3B: Triage (TRIAGE Path)
 
