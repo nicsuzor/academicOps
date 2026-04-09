@@ -217,4 +217,4 @@ Options: "Looks right" | "Out of sync" | "Need a reset"
 
 Ask: "Any of these ready to archive?"
 
-When user picks, use `mcp__pkb__update_task(id="<id>", status="cancelled")` to archive.
+When user picks, use `mcp__pkb__update_task(id="<id>", updates={"status": "cancelled"})` to archive.
