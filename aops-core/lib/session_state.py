@@ -28,6 +28,9 @@ from typing import Any
 from pydantic import BaseModel, Field, ValidationError
 
 from lib.gate_types import GateState, GateStatus
+from lib.gates.definitions import GATE_CONFIGS
+
+_GATE_CONFIGS_BY_NAME = {config.name: config for config in GATE_CONFIGS}
 from lib.session_paths import (
     get_session_file_path,
     get_session_short_hash,
@@ -155,17 +158,9 @@ class SessionState(BaseModel):
             version=ver,
         )
 
-        # Initialize default gate states
-        default_gates = {
-            "custodiet": GateStatus.OPEN,
-            "handover": GateStatus.OPEN,
-        }
-
-        for name, status in default_gates.items():
-            instance.gates[name] = GateState(status=status)
-
-        # Initialize legacy flags in 'state' dict for compatibility if needed
-        instance.state["handover_skill_invoked"] = True
+        # Initialize gate states from gate config definitions
+        for gate_config in GATE_CONFIGS:
+            instance.gates[gate_config.name] = GateState(status=gate_config.initial_status)
 
         return instance
 
@@ -249,9 +244,9 @@ class SessionState(BaseModel):
 
     def get_gate(self, name: str) -> GateState:
         if name not in self.gates:
-            # Default to OPEN if unknown gate accessed, or create closed?
-            # Safer to default to OPEN (non-blocking) for unknown gates unless configured otherwise
-            self.gates[name] = GateState(status=GateStatus.OPEN)
+            config = _GATE_CONFIGS_BY_NAME.get(name)
+            initial = config.initial_status if config else GateStatus.OPEN
+            self.gates[name] = GateState(status=initial)
         return self.gates[name]
 
     def is_gate_open(self, name: str) -> bool:
