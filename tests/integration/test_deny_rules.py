@@ -47,7 +47,5 @@ def test_deny_rules_block_claude_dir_write(claude_headless):
     if file_exists:
         test_file.unlink()
 
-    assert found_denial or not file_exists, (
-        f"Deny rule may not be working. Response should indicate write was blocked "
-        f"or file should NOT exist. Got: {output}"
-    )
+    assert not file_exists, f"Deny rule failed: file was created at {test_file}. Got: {output}"
+    assert found_denial, f"Response should indicate write was blocked. Got: {result_text}"
