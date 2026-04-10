@@ -24,7 +24,7 @@ from validation import TaskIDValidationError, validate_task_id_or_raise
 
 # Max turns for headless Claude runs — must be high enough to accommodate hook
 # overhead (hydration gate, custodiet compliance check) plus actual task work.
-HEADLESS_CLAUDE_MAX_TURNS = "30"
+HEADLESS_CLAUDE_MAX_TURNS = "50"
 
 
 # --- GitHub helpers (inlined from deleted polecat/github.py) ---
@@ -2129,8 +2129,8 @@ def finish(ctx, no_push, do_nuke, force, force_done):
         )
         if stat_res.returncode == 0 and stat_res.stdout.strip():
             finish_summary = f"{task.title}. Changes: {stat_res.stdout.strip()}"
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"  ⚠️  Could not generate git diff summary: {e}", file=sys.stderr)
 
     # Try to get PR URL
     pr_url_str = None
@@ -2155,19 +2155,21 @@ def finish(ctx, no_push, do_nuke, force, force_done):
         )
         if pr_res.returncode == 0 and pr_res.stdout.strip():
             pr_url_str = pr_res.stdout.strip()
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"  ⚠️  Could not get PR URL: {e}", file=sys.stderr)
 
     try:
         from polecat.pkb_bridge import release_task as pkb_release
 
-        pkb_release(
+        released = pkb_release(
             task_id,
             status="merge_ready",
             summary=finish_summary,
             pr_url=pr_url_str,
             branch=branch_name,
         )
+        if not released:
+            raise RuntimeError("release_task returned False")
     except Exception:
         # Fallback to old path if release_task not available yet
         try:

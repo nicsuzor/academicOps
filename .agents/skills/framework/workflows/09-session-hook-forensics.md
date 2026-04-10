@@ -45,7 +45,7 @@ for l in sys.stdin:
    - See [[forensics-details]] for full path conventions and cross-reference guide.
 
 2. **Generate Transcript First**
-   Always use `transcript.py` on the CC session JSONL for a readable conversation log. But note: **transcripts currently do not show hook verdicts or system_messages** due to a parser bug (`transcript_parser.py:1764` reads wrong field). Use raw hook JSONL for gate behavior.
+   Always use `transcript.py` on the CC session JSONL for a readable conversation log. Transcripts include hook verdicts and system_messages (merged by `transcript_parser.py:_map_hook_jsonl_to_entry_data`). For exact raw values or when transcript rendering is truncated, use raw hook JSONL directly.
 
 3. **Check Gate Behavior**
    - **Custodiet/RBG gate**: Grep for `SubagentStart`/`SubagentStop` with `custodiet` or `rbg` subagent type. Each pair = one compliance check. See [[forensics-details]] for commands.
@@ -67,7 +67,6 @@ for l in sys.stdin:
 
 ## Known Issues
 
-- **Transcript parser gap**: Hook `output` fields (verdict, system_message, context_injection) are not rendered in transcripts. The parser reads `hookSpecificOutput` (a CC protocol field) instead of `output` (our hook JSONL field). Until fixed, raw JSONL is the only source for gate forensics.
 - **Missing client_type**: Hook JSONL shows `model=unknown` for all polecat sessions. Distinguish Claude vs Gemini by session ID format only (`gemini-*` prefix for Gemini).
 
 ## Common Indicators

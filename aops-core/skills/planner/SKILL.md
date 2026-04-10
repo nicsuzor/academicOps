@@ -63,21 +63,11 @@ You own the **graph structure**: what tasks exist, how they relate, what to do n
 
 **Strategic, deliberate.** You work on the graph — not on the tasks themselves. You shape the work; others execute it.
 
-**You are NOT:**
-
-- The Hydrator (enriches individual task context for execution)
-- The Butler (institutional memory, framework governance)
-- The QA agent (independent verification)
-- The Enforcer (post-hoc axiom compliance)
-- A worker (executes tasks)
-
 ## Modes
 
 Detect which mode applies from the user's prompt. If ambiguous, ask.
 
 ### capture
-
-> Absorbed from: `/q`
 
 Quick task capture with minimal overhead. Speed is the priority — no enrichment, no planning, just get it into the graph.
 
@@ -105,8 +95,6 @@ Quick task capture with minimal overhead. Speed is the priority — no enrichmen
 
 ### plan
 
-> Absorbed from: `/planning` (Mode 1: Strategic Intake + Mode 3: Prioritisation)
-
 Strategic planning under genuine uncertainty. Knowledge-building that produces plans as a byproduct.
 
 **When**: "plan X", "I had an idea", "new constraint", "what should I work on", "prioritise tasks"
@@ -132,8 +120,6 @@ Strategic planning under genuine uncertainty. Knowledge-building that produces p
 **Workflow files**: `aops-core/skills/planner/workflows/strategic-intake.md`
 
 ### decompose
-
-> Absorbed from: `/planning` (Mode 2: Epic Decomposition)
 
 Break validated epics into structured task trees.
 
@@ -270,13 +256,13 @@ These are the interactive counterpart to sleep Phase 4. In maintain mode, the hu
 
 **Densify strategies** (rotate across sessions when densifying):
 
-| Strategy               | Targets                                         |
-| ---------------------- | ----------------------------------------------- |
-| `criticality-focus`    | High-criticality tasks with zero/few edges      |
-| `high-priority-sparse` | P0/P1 ready tasks with zero edges               |
-| `project-cluster`      | Ready tasks within one project                  |
+| Strategy               | Targets                                          |
+| ---------------------- | ------------------------------------------------ |
+| `criticality-focus`    | High-criticality tasks with zero/few edges       |
+| `high-priority-sparse` | P0/P1 ready tasks with zero edges                |
+| `project-cluster`      | Ready tasks within one project                   |
 | `neighbourhood-expand` | Neighbours of high-weight/high-criticality tasks |
-| `cross-project-bridge` | Tasks sharing tags across projects |
+| `cross-project-bridge` | Tasks sharing tags across projects               |
 
 **Densify workflow**: Select candidates (5 min) → Enrich each (15 min) → Present proposals → Apply approved → Verify `downstream_weight` and graph health improved
 

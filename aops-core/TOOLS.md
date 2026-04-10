@@ -33,27 +33,3 @@ These are optional tools resolved at runtime. Skills reference them as `~~catego
 | Case database    | `~~case-database`    | Search decisions, get case summaries, legal reasoning analysis |
 | Documentation    | `~~documentation`    | Look up API docs for any programming library                   |
 | AI assistant     | `~~ai-assistant`     | Delegate analysis to another AI model                          |
-
-<!-- NS: exclude Standard Tools from this file. -->
-
-## Standard Tools
-
-| Tool        | Purpose                |
-| ----------- | ---------------------- |
-| `Read`      | Read file contents     |
-| `Write`     | Create new files       |
-| `Edit`      | Modify existing files  |
-| `Bash`      | Run shell commands     |
-| `Glob`      | Find files by pattern  |
-| `Grep`      | Search file contents   |
-| `Task`      | Spawn subagents        |
-| `WebFetch`  | Fetch web page content |
-| `WebSearch` | Search the web         |
-
-## Routing Hints
-
-- **Email work** → use `~~email` connector (e.g., Outlook, Gmail)
-- **Research/citations** → use `~~research-library` (e.g., Zotero) or `~~case-database`
-- **Remember context** → `pkb` server: `create_memory`, `search`, `append`
-- **Task management** → `pkb` server: `create_task`, `update_task`, `list_tasks`, `complete_task`
-- **Documentation lookup** → use `~~documentation` connector (e.g., Context7)

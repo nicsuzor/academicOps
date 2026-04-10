@@ -216,8 +216,9 @@ def release_task(
         params["pr_url"] = pr_url
     if branch:
         params["branch"] = branch
+    reserved = {"id", "status", "summary"}
     for k, v in kwargs.items():
-        if v is not None:
+        if k not in reserved and v is not None:
             params[k] = v
     result = _get_client().call_tool("release_task", params)
     return result is not None
