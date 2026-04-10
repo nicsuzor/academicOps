@@ -95,10 +95,14 @@ class TestCoreLib:
 class TestGovernanceFiles:
     """Verify enforced axioms and heuristics are present."""
 
-    def test_axioms_file_exists(self) -> None:
-        """AXIOMS.md must exist in framework directory."""
-        axioms_file = PLUGIN_ROOT / "AXIOMS.md"
-        assert axioms_file.exists(), "Missing AXIOMS.md"
+    def test_axioms_in_rbg_agent(self) -> None:
+        """Axioms must be embedded in rbg agent definition."""
+        rbg_file = PLUGIN_ROOT / "agents" / "rbg.md"
+        assert rbg_file.exists(), "Missing agents/rbg.md"
+        content = rbg_file.read_text()
+        assert "## Axioms" in content, "rbg.md must contain axioms section"
+        assert "P#1" in content, "rbg.md must contain axiom P#1"
+        assert "P#99" in content, "rbg.md must contain axiom P#99"
 
     def test_heuristics_file_exists(self) -> None:
         """HEURISTICS.md must exist in framework directory."""

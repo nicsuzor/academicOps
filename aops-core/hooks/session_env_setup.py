@@ -101,13 +101,6 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
         persist["ACA_DATA"] = aca_data_val
         os.environ["ACA_DATA"] = aca_data_val
 
-    # Check pkb binary availability
-    from lib.binary_install import check_pkb_available
-
-    pkb_status = check_pkb_available()
-    if pkb_status:
-        messages.append(pkb_status)
-
     # Ensure auto mode classifier rules are installed
     try:
         from lib.automode import install, is_installed

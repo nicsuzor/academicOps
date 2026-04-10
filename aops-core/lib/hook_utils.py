@@ -12,37 +12,13 @@ All gates should use these utilities instead of duplicating code.
 from __future__ import annotations
 
 import os
-from functools import lru_cache
 from typing import Any, TypedDict
-
-from lib.paths import (
-    get_axioms_file,
-    get_heuristics_file,
-    get_skills_file,
-)
-from lib.template_loader import load_template
 
 
 class HookOutput(TypedDict, total=False):
     """Standard hook output format."""
 
     hookSpecificOutput: dict[str, Any]
-
-
-@lru_cache(maxsize=1)
-def load_framework_content() -> tuple[str, str, str]:
-    """Load framework content (axioms, heuristics, skills).
-
-    Cached to avoid repeated file I/O within a single hook invocation.
-    Cache is process-scoped (reset when process restarts).
-
-    Returns:
-        tuple: (axioms_text, heuristics_text, skills_text)
-    """
-    axioms = load_template(get_axioms_file())
-    heuristics = load_template(get_heuristics_file())
-    skills = load_template(get_skills_file())
-    return axioms, heuristics, skills
 
 
 def get_session_id(input_data: dict[str, Any] | None = None) -> str:

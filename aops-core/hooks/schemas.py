@@ -1,4 +1,3 @@
-from functools import cached_property
 from typing import Any, Literal, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -14,10 +13,7 @@ class HookContext(BaseModel):
     during normalize_input() to avoid redundant calculations across gates.
     """
 
-    model_config = ConfigDict(
-        # Allow cached_property to work with Pydantic
-        ignored_types=(cached_property,),
-    )
+    model_config = ConfigDict()
 
     # Core Identity
     session_id: str = Field(..., description="The unique session identifier.")
@@ -52,20 +48,6 @@ class HookContext(BaseModel):
 
     # Raw Input (for fallback/passthrough)
     raw_input: dict[str, Any] = Field(default_factory=dict)
-
-    # Cached framework content (lazy loaded)
-    _framework_content_cache: tuple[str, str, str] | None = None
-
-    @cached_property
-    def framework_content(self) -> tuple[str, str, str]:
-        """Lazy-load framework content (axioms, heuristics, skills).
-
-        Returns:
-            tuple: (axioms_text, heuristics_text, skills_text)
-        """
-        from lib.hook_utils import load_framework_content
-
-        return load_framework_content()
 
 
 # --- Claude Code Hook Schemas ---

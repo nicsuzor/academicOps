@@ -1,12 +1,10 @@
 import logging
-import os
 from pathlib import Path
 
 from hooks.schemas import HookContext
 
 logger = logging.getLogger(__name__)
 
-from lib import hook_utils
 from lib.gate_model import GateResult
 from lib.gate_types import GateState
 from lib.session_paths import get_gate_file_path
@@ -82,9 +80,6 @@ def create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path:
         transcript_path,
         len(session_context),
     )
-    axioms, heuristics, skills = hook_utils.load_framework_content()
-    custodiet_mode = os.environ["CUSTODIET_GATE_MODE"].lower()
-
     registry = TemplateRegistry.instance()
 
     # Try rich context template first, then simple audit template.
@@ -100,10 +95,6 @@ def create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path:
                 "gate_name": gate,
                 "tool_name": ctx.tool_name or "unknown",
                 "session_context": session_context,
-                "axioms_content": axioms,
-                "heuristics_content": heuristics,
-                "skills_content": skills,
-                "custodiet_mode": custodiet_mode,
                 "active_skill": active_skill or "none",
                 "skill_scope": skill_scope or "",
             },

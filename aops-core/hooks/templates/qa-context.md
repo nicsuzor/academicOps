@@ -4,12 +4,12 @@ title: QA Context Template
 category: template
 description: |
   Template written to temp file for QA subagent verification.
-  Variables: {session_context}, {tool_name}, {axioms_content}, {heuristics_content}, {skills_content}
+  Variables: {session_context}, {tool_name}
 ---
 
 # QA Verification Request
 
-You are the QA agent. Your task is to verify that all planned requirements have been met before the session ends. Review the session history below and check each requirement against the actual implementation.
+Your task is to verify that all planned requirements have been met before the session ends. Review the session history below and check each requirement against the actual implementation.
 
 **You have deep context.** The session narrative below contains the complete chronological record of this session: every user request, agent reasoning, tool call, and result. Use it to ground your verdict in what actually happened — not speculation.
 
@@ -22,12 +22,6 @@ QA verification triggered before: **{tool_name}**
 The following is a chronological record of the session. Each turn shows the user's request, the agent's reasoning, and the tools invoked with their arguments and results.
 
 {session_context}
-
-## Framework Principles
-
-{axioms_content}
-
-{heuristics_content}
 
 ## Verification Checklist
 

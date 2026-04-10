@@ -1024,10 +1024,8 @@ def build_aops_cowork(
     # Top-level markdown files to include
     COWORK_MD_INCLUDE = {
         "SKILLS.md",
-        "AXIOMS.md",
         "HEURISTICS.md",
         "RULES.md",
-        "INDEX.md",
         "TAXONOMY.md",
         "CONSTRAINTS.md",
         "TOOLS.md",
