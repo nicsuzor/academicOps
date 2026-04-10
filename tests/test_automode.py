@@ -232,5 +232,3 @@ class TestPolekatDefaultsContainAopsRules:
     def test_soft_deny_rules_present(self, plugin_rules, polecat_automode):
         for rule in plugin_rules["soft_deny"]:
             assert rule in polecat_automode["soft_deny"], f"Missing soft_deny rule: {rule[:60]}..."
-
-
