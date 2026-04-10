@@ -736,6 +736,8 @@ def _run_docker_container(
                 ["docker", "cp", f"{docker_cmd.workspace_dir}/.", f"{container_id}:/workspace"],
                 capture_output=True,
                 text=True,
+                cwd=cwd,
+                env=env,
             )
             if cp_result.returncode != 0:
                 print(f"docker cp (workspace) failed: {cp_result.stderr}", file=sys.stderr)
@@ -747,6 +749,8 @@ def _run_docker_container(
                 ["docker", "cp", f"{docker_cmd.staging_dir}/.", f"{container_id}:/tmp/staging"],
                 capture_output=True,
                 text=True,
+                cwd=cwd,
+                env=env,
             )
             if cp_result.returncode != 0:
                 print(f"docker cp failed: {cp_result.stderr}", file=sys.stderr)

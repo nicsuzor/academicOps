@@ -18,6 +18,7 @@ import os
 import shutil
 import sys
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -126,23 +127,18 @@ class TestDockerEndState:
         }
 
         tmp_files: list[Path] = []
-        docker_cmd = _build_docker_cmd(
-            cli_tool="claude",
-            work_dir=work_dir,
-            env=env,
-            agent_cmd=["bash", "-c", _ENV_SCRIPT],
-            is_interactive=False,
-            tmp_files=tmp_files,
-        )
-
-        # Inject TZ env var into the command (normally set via os.environ)
-        cmd = list(docker_cmd.cmd)
-        for i, arg in enumerate(cmd):
-            if arg == "aops-crew":
-                cmd.insert(i, "TZ=US/Eastern")
-                cmd.insert(i, "-e")
-                break
-        patched_cmd = docker_cmd._replace(cmd=cmd)
+        # _build_docker_cmd reads TZ from os.environ — patch it so the container
+        # gets a known timezone regardless of the host's POLECAT_DOCKER_IMAGE value.
+        with patch.dict(os.environ, {"TZ": "US/Eastern"}):
+            docker_cmd = _build_docker_cmd(
+                cli_tool="claude",
+                work_dir=work_dir,
+                env=env,
+                agent_cmd=["bash", "-c", _ENV_SCRIPT],
+                is_interactive=False,
+                tmp_files=tmp_files,
+            )
+        patched_cmd = docker_cmd
 
         try:
             result = _run_docker_container(
