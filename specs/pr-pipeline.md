@@ -127,7 +127,7 @@ Three CI jobs run sequentially: lint → typecheck → pytest.
 
 **Loop safety:** Lint is idempotent — the second run finds nothing to fix, no push, pipeline completes normally.
 
-### Axiom Review (`axiom-review.yml`) — independent
+### Axiom Review (`pr-review.yml`) — independent
 
 The Axiom Review workflow runs independently of the CI pipeline, triggered by the same `pull_request` events.
 
@@ -318,7 +318,7 @@ rules:
         - context: "Lint / Lint"                    # pr-pipeline.yml → lint.yml
         - context: "Type Check / Type Check"        # pr-pipeline.yml → typecheck.yml
         - context: "Pytest / Pytest"                # pr-pipeline.yml → pytest.yml
-        - context: "Axiom Review / Axiom Review"    # axiom-review.yml → agent-auditor.yml
+        - context: "Axiom Review / Axiom Review"    # pr-review.yml (independent)
 ```
 
 **Note on check run names:** The compound format (`Caller / Callee`) is produced by `workflow_call`. The caller job name and callee job name must both match to produce the expected check run name. Changing either job name will break the required status check.
