@@ -82,12 +82,25 @@ class TestBuildDockerCmd:
         uid_gid = cmd[idx + 1]
         assert uid_gid == f"{os.getuid()}:{os.getgid()}"
 
-    def test_mounts_worktree(self):
-        cmd = self._build(work_dir=Path("/tmp/test-worktree"))
-        assert "-v" in cmd
-        vol_idx = [i for i, x in enumerate(cmd) if x == "-v"]
-        volumes = [cmd[i + 1] for i in vol_idx]
-        assert any("/tmp/test-worktree:/workspace" in v for v in volumes)
+    def test_workspace_uses_docker_cp_not_bind_mount(self):
+        """Workspace must be injected via docker cp, not bind mount (WSL2 compat)."""
+        docker_cmd = _build_docker_cmd(
+            cli_tool="claude",
+            work_dir=Path("/tmp/test-worktree"),
+            env={},
+            agent_cmd=["claude", "--dangerously-skip-permissions"],
+            is_interactive=False,
+        )
+        # workspace_dir should be set for docker cp injection
+        assert docker_cmd.workspace_dir == Path("/tmp/test-worktree")
+        # No bind mount for workspace in the command
+        vol_idx = [i for i, x in enumerate(docker_cmd.cmd) if x == "-v"]
+        volumes = [docker_cmd.cmd[i + 1] for i in vol_idx]
+        assert not any("/workspace" in v for v in volumes)
+        # Working directory is still set
+        assert "-w" in docker_cmd.cmd
+        w_idx = docker_cmd.cmd.index("-w")
+        assert docker_cmd.cmd[w_idx + 1] == "/workspace"
 
     def test_forwards_anthropic_api_key(self):
         env = {"ANTHROPIC_API_KEY": "sk-test-123"}

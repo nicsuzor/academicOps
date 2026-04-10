@@ -1,7 +1,6 @@
-import json
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -11,7 +10,7 @@ if str(AOPS_CORE_DIR) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE_DIR))
 
 from hooks.router import CanonicalHookOutput, HookRouter
-from hooks.schemas import GeminiHookOutput, HookContext
+from hooks.schemas import GeminiHookOutput
 
 
 class TestUniversalRouter:
@@ -48,26 +47,6 @@ class TestUniversalRouter:
 
         assert ctx.hook_event == "PreToolUse"
         assert ctx.session_id == "claude-1"
-
-        @patch("hooks.router.subprocess.run")
-        def test_execute_hooks_dispatch(self, mock_run, router_instance):
-            # Mock successful hook execution
-            # PreToolUse runs 2 hooks (logger + gates)
-            # We'll make them return same output, so they merge
-            mock_run.return_value = MagicMock(
-                returncode=0,
-                stdout=json.dumps({"verdict": "allow", "system_message": "Allowed"}),
-                stderr="",
-            )
-
-            ctx = HookContext(session_id="test", hook_event="PreToolUse", raw_input={})
-            result = router_instance.execute_hooks(ctx)
-
-            assert isinstance(result, CanonicalHookOutput)
-            assert result.verdict == "allow"
-            # Expect merged messages from 2 hooks
-            assert result.system_message == "Allowed\nAllowed"
-            assert mock_run.called
 
     def test_output_for_gemini(self, router_instance):
         canonical = CanonicalHookOutput(
