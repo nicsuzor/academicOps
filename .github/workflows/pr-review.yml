@@ -5,9 +5,11 @@
 # Install via: scripts/install-pr-reviewer.sh <target-repo-path>
 # Secrets required: CLAUDE_CODE_OAUTH_TOKEN, AOPS_BOT_GH_TOKEN
 
-name: "Agent: PR Review"
+name: "Axiom Review"
 
 on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
   workflow_dispatch:
     inputs:
       pr_number:
@@ -71,7 +73,7 @@ jobs:
           INPUT_REF: ${{ inputs.ref }}
 
   review:
-    name: "Review PR #${{ matrix.item.pr_number }}"
+    name: "Axiom Review"
     needs: discover-prs
     if: needs.discover-prs.outputs.count != '0'
     runs-on: ubuntu-latest

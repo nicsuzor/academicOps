@@ -88,7 +88,7 @@ rules:
         - context: "PR Review Pipeline / lint / Lint"
         - context: "PR Review Pipeline / typecheck / Type Check"
         - context: "PR Review Pipeline / pytest / Pytest"
-        - context: "PR Review Pipeline / Axiom Review / Axiom Review"
+        - context: "Axiom Review / Axiom Review"
 
   # ─────────────────────────────────────────
   # Code quality (CodeQL / Copilot analysis)
