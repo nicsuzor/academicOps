@@ -96,13 +96,21 @@ class TestGovernanceFiles:
     """Verify enforced axioms and heuristics are present."""
 
     def test_axioms_in_rbg_agent(self) -> None:
-        """Axioms must be embedded in rbg agent definition."""
+        """Axioms must be accessible to rbg agent (inline or via @ reference)."""
         rbg_file = PLUGIN_ROOT / "agents" / "rbg.md"
         assert rbg_file.exists(), "Missing agents/rbg.md"
         content = rbg_file.read_text()
         assert "## Axioms" in content, "rbg.md must contain axioms section"
-        assert "P#1" in content, "rbg.md must contain axiom P#1"
-        assert "P#99" in content, "rbg.md must contain axiom P#99"
+        # Axioms may be inline or loaded via @ reference to AXIOMS.md
+        if "P#1" not in content:
+            # Must reference AXIOMS.md which must contain P#1 and P#99
+            assert "AXIOMS.md" in content, "rbg.md must either embed axioms or reference AXIOMS.md"
+            repo_root = PLUGIN_ROOT.parent
+            axioms_file = repo_root / ".agents" / "rules" / "AXIOMS.md"
+            assert axioms_file.exists(), "AXIOMS.md must exist at .agents/rules/AXIOMS.md"
+            axioms_content = axioms_file.read_text()
+            assert "P#1" in axioms_content, "AXIOMS.md must contain axiom P#1"
+            assert "P#99" in axioms_content, "AXIOMS.md must contain axiom P#99"
 
     def test_heuristics_file_exists(self) -> None:
         """HEURISTICS.md must exist in framework directory."""
