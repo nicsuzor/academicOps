@@ -50,7 +50,7 @@ class TestExtractRecentContext:
         result = extract_recent_context(str(session_file))
 
         assert "[User]: Hello" in result
-        assert "[Agent]:" in result or "Hi there" in result
+        assert "[Agent]: Hi there" in result
 
     def test_extract_by_session_id(self, tmp_path: Path, monkeypatch) -> None:
         """Session ID lookup finds the right file via find_sessions."""
