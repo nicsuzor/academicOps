@@ -82,7 +82,7 @@ When invoked, analyze the input and route to the appropriate workflow:
 - Goal is to capture significant events/relationships
 - Source is historical documents
 
-**Route to**: Existing `archived/skills/extractor/SKILL.md` logic
+**Route to**: Archive extraction logic (selective extraction, use `/remember` for storage)
 
 **Storage**: Use `Skill(skill="remember")` for PKB storage
 
@@ -124,7 +124,7 @@ When invoked, analyze the input and route to the appropriate workflow:
 #### Type B: Separate Review + Source Documents
 
 - **Example**: `review.txt` + `source.pdf` + `metadata.json`
-- **Workflow**: `archived/skills/review-training/SKILL.md`
+- **Workflow**: Review-training extraction (match feedback to source evidence)
 - **Output**: Training pairs matching feedback to source evidence
 
 #### Type C: Revision History
@@ -182,7 +182,7 @@ See `procedures/review-inline-comments.md` for detailed procedure.
 
 ## Workflow: Archive Information Extraction
 
-Delegate to `archived/skills/extractor/SKILL.md`.
+Apply selective extraction logic.
 
 **Key principle**: Most archival documents have NO long-term value. Be highly selective.
 

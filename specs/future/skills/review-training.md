@@ -304,7 +304,7 @@ power in tech, but doesn't quite make the critique explicit
 enough and comes off a little disjoint as a result.
 ```
 
-### Extracted Training Pair
+### Extracted Training Pair (Example 2)
 
 ```json
 {
