@@ -389,6 +389,7 @@ class DockerCmd(NamedTuple):
 
     cmd: list[str]
     staging_dir: Path | None
+    workspace_dir: Path | None = None
 
 
 class DockerSock(NamedTuple):
@@ -522,9 +523,10 @@ def _build_docker_cmd(
     cmd.extend(["-e", f"GIT_COMMITTER_NAME={git_name}"])
     cmd.extend(["-e", f"GIT_COMMITTER_EMAIL={git_email}"])
 
-    # Mount worktree — resolve through _container_to_host_path for DinD compatibility
-    host_work_dir = _container_to_host_path(work_dir.resolve())
-    cmd.extend(["-v", f"{host_work_dir}:/workspace"])
+    # Workspace directory — injected via docker cp in _run_docker_container()
+    # to avoid bind mount failures on WSL2/Docker Desktop where bind-mounted
+    # volumes silently appear as empty directories.
+    workspace_dir = work_dir.resolve()
     cmd.extend(["-w", "/workspace"])
 
     # Mount authentication and plugin cache for Claude/Gemini.
@@ -681,7 +683,7 @@ def _build_docker_cmd(
 
     cmd.append(image)
     cmd.extend(agent_cmd)
-    return DockerCmd(cmd=cmd, staging_dir=_staging_dir)
+    return DockerCmd(cmd=cmd, staging_dir=_staging_dir, workspace_dir=workspace_dir)
 
 
 def _run_docker_container(
@@ -693,12 +695,12 @@ def _run_docker_container(
     text: bool = True,
     extract_paths: list[tuple[str, Path]] | None = None,
 ) -> subprocess.CompletedProcess:
-    """Launch a Docker container, optionally injecting staging files via docker cp.
+    """Launch a Docker container, injecting workspace and staging files via docker cp.
 
     Uses ``docker create`` + ``docker cp`` + ``docker start`` instead of
-    ``docker run`` when staging files need to be injected.  This avoids bind
-    mount issues on WSL2/Docker Desktop where file mounts appear as empty
-    directories.
+    ``docker run`` when workspace, staging files, or extraction is needed.
+    This avoids bind mount issues on WSL2/Docker Desktop where file mounts
+    appear as empty directories.
 
     If ``extract_paths`` is provided, copies files out of the container after
     it exits (before ``docker rm``).  Each entry is a ``(container_path,
@@ -706,12 +708,14 @@ def _run_docker_container(
     out of the container, since bind-mounted session dirs may silently fail on
     WSL2/Docker Desktop.
 
-    When no staging_dir is set, falls back to a plain ``docker run``.
+    When no workspace_dir, staging_dir, or extract_paths is set, falls back
+    to a plain ``docker run``.
     """
     cmd = list(docker_cmd.cmd)  # copy to avoid mutation
 
-    if docker_cmd.staging_dir is None and not extract_paths:
-        # No staging or extraction needed — plain docker run
+    needs_cp = docker_cmd.staging_dir or docker_cmd.workspace_dir or extract_paths
+    if not needs_cp:
+        # No staging, workspace injection, or extraction needed — plain docker run
         return subprocess.run(cmd, cwd=cwd, env=env, capture_output=capture_output, text=text)
 
     # Replace "docker run --rm" with "docker create" (no --rm, we clean up manually)
@@ -726,6 +730,17 @@ def _run_docker_container(
     container_id = result.stdout.strip()
 
     try:
+        # Copy workspace into the container (avoids bind mount failures on WSL2)
+        if docker_cmd.workspace_dir:
+            cp_result = subprocess.run(
+                ["docker", "cp", f"{docker_cmd.workspace_dir}/.", f"{container_id}:/workspace"],
+                capture_output=True,
+                text=True,
+            )
+            if cp_result.returncode != 0:
+                print(f"docker cp (workspace) failed: {cp_result.stderr}", file=sys.stderr)
+                return cp_result
+
         # Copy staging files into the container
         if docker_cmd.staging_dir:
             cp_result = subprocess.run(
