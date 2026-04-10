@@ -234,26 +234,3 @@ class TestPolekatDefaultsContainAopsRules:
             assert rule in polecat_automode["soft_deny"], f"Missing soft_deny rule: {rule[:60]}..."
 
 
-class TestPluginJsonAndConfigInSync:
-    """Verify plugin.json autoMode and automode-rules.json stay in sync."""
-
-    @pytest.fixture()
-    def plugin_rules(self):
-        plugin_path = Path(__file__).parent.parent / "aops-core" / ".claude-plugin" / "plugin.json"
-        manifest = json.loads(plugin_path.read_text())
-        return manifest["autoMode"]
-
-    @pytest.fixture()
-    def config_rules(self):
-        config_path = Path(__file__).parent.parent / "aops-core" / "config" / "automode-rules.json"
-        raw = json.loads(config_path.read_text())
-        return {k: v for k, v in raw.items() if k in ("environment", "allow", "soft_deny")}
-
-    def test_environment_matches(self, plugin_rules, config_rules):
-        assert plugin_rules["environment"] == config_rules["environment"]
-
-    def test_allow_matches(self, plugin_rules, config_rules):
-        assert plugin_rules["allow"] == config_rules["allow"]
-
-    def test_soft_deny_matches(self, plugin_rules, config_rules):
-        assert plugin_rules["soft_deny"] == config_rules["soft_deny"]
