@@ -1,25 +1,49 @@
 name: Build and Deploy
 
-# Slim dispatcher: fires a repository_dispatch at nicsuzor/aops, which owns
-# the actual build and release. The aops workflow checks out this repo (public),
-# downloads pkb binaries from nicsuzor/mem (public), builds, and commits/releases
-# on itself using its own GITHUB_TOKEN.
+# ==============================================================================
+# Slim cross-repo build dispatcher.
 #
-# Secret required: AOPS_DIST_PAT
-#   Minimum scope (fine-grained PAT on nicsuzor/aops only):
-#     - Contents: Read and write   (needed to dispatch; Metadata: Read implied)
-#   Or a GitHub App installed on nicsuzor/aops with Contents: Write and an
-#   actions/create-github-app-token step to mint the token in-workflow.
+# WHAT THIS WORKFLOW DOES
+#   Fires a `repository_dispatch` at nicsuzor/aops, which owns the actual
+#   build and release. This file does NOT build anything itself — see
+#   .github/aops-dist/build.yml for the canonical reference copy of the
+#   real build workflow (the live copy lives at
+#   nicsuzor/aops/.github/workflows/build.yml).
+#
+# WHY IT'S SPLIT
+#   academicOps used to do the whole build and push artifacts cross-repo,
+#   which required a broad PAT. Moving the build to nicsuzor/aops means:
+#     - mem + academicOps reads on the build side are unauthenticated (public)
+#     - the only write target is aops itself, so its own GITHUB_TOKEN suffices
+#     - the only PAT use *anywhere* is the dispatch POST below
+#
+# REQUIRED SECRET
+#   AOPS_DIST_PAT — used solely to POST repository_dispatch on nicsuzor/aops.
+#     Fine-grained PAT, resource owner nicsuzor, repository nicsuzor/aops:
+#       - Contents: Read and write   (governs repository_dispatch)
+#       - Metadata: Read             (implied baseline)
+#     Or classic PAT with `repo` scope (per GitHub's docs for /dispatches).
+#     Or a GitHub App installed on nicsuzor/aops with Contents: Write +
+#     actions/create-github-app-token to mint the token in-workflow.
+#
+# DOWNSTREAM CONTRACT — see also nicsuzor/aops `.github/workflows/build.yml`
+#   event_type:    build-aops-extension
+#   client_payload:
+#     ref:            ref to build (tag/branch/sha) — academicOps source
+#     release_type:   "stable" or "testing"
+#     source_sha:     informational; this run's commit
+#     source_run_id:  informational; this run's id
+# ==============================================================================
 
 on:
   push:
-    tags: ['v*']
+    tags: ['v*']           # stable releases on tag push
   release:
-    types: [published]
+    types: [published]     # release-please publishes a release
   workflow_dispatch:
     inputs:
       prerelease:
-        description: 'Create a pre-release version (testing build)'
+        description: 'Cut a pre-release (testing) build instead of a stable one'
         required: false
         type: boolean
         default: false
@@ -30,33 +54,46 @@ concurrency:
 
 jobs:
   dispatch:
+    name: Dispatch build to nicsuzor/aops
     runs-on: ubuntu-latest
     steps:
-      - name: Determine ref and release type
+      - name: Resolve dispatch context (ref + release type)
         id: ctx
         run: |
+          # Map the trigger event to the {ref, release_type} we'll send to aops.
+          # Tag pushes and release events always cut stable; workflow_dispatch
+          # honours the prerelease input toggle.
           if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            echo "ref=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
-            echo "release_type=stable" >> "$GITHUB_OUTPUT"
+            REF="${{ github.ref_name }}"
+            RTYPE="stable"
+            REASON="tag push"
           elif [[ "${{ github.event_name }}" == "release" ]]; then
-            echo "ref=${{ github.event.release.tag_name }}" >> "$GITHUB_OUTPUT"
-            echo "release_type=stable" >> "$GITHUB_OUTPUT"
+            REF="${{ github.event.release.tag_name }}"
+            RTYPE="stable"
+            REASON="release published"
           elif [[ "${{ github.event.inputs.prerelease }}" == "true" ]]; then
-            echo "ref=${{ github.sha }}" >> "$GITHUB_OUTPUT"
-            echo "release_type=testing" >> "$GITHUB_OUTPUT"
+            REF="${{ github.sha }}"
+            RTYPE="testing"
+            REASON="manual prerelease"
           else
-            echo "ref=${{ github.sha }}" >> "$GITHUB_OUTPUT"
-            echo "release_type=stable" >> "$GITHUB_OUTPUT"
+            REF="${{ github.sha }}"
+            RTYPE="stable"
+            REASON="manual stable"
           fi
+          echo "ref=$REF" >> "$GITHUB_OUTPUT"
+          echo "release_type=$RTYPE" >> "$GITHUB_OUTPUT"
+          echo "::notice title=Dispatch context::ref=$REF type=$RTYPE reason=$REASON"
 
-      - name: Fire repository_dispatch at nicsuzor/aops
+      - name: POST repository_dispatch → nicsuzor/aops [build-aops-extension]
         env:
           GH_TOKEN: ${{ secrets.AOPS_DIST_PAT }}
         run: |
+          # The receiving workflow lives at:
+          #   https://github.com/nicsuzor/aops/blob/main/.github/workflows/build.yml
           gh api repos/nicsuzor/aops/dispatches \
             -f event_type=build-aops-extension \
             -f client_payload[ref]='${{ steps.ctx.outputs.ref }}' \
             -f client_payload[release_type]='${{ steps.ctx.outputs.release_type }}' \
             -f client_payload[source_sha]='${{ github.sha }}' \
             -f client_payload[source_run_id]='${{ github.run_id }}'
-          echo "Dispatched build-aops-extension for ref=${{ steps.ctx.outputs.ref }} type=${{ steps.ctx.outputs.release_type }}"
+          echo "::notice::Dispatched build-aops-extension to nicsuzor/aops (ref=${{ steps.ctx.outputs.ref }}, type=${{ steps.ctx.outputs.release_type }}). Watch: https://github.com/nicsuzor/aops/actions"
