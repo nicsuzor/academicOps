@@ -65,6 +65,30 @@ This question is not a sort operation. It requires understanding:
 
 6. **Cumulative, not repetitive.** Each cycle builds on the last. If a recommendation was surfaced and the user deferred it, don't re-surface it the next cycle. Track what's been presented and what decision was made (or not made).
 
+## User Expectations
+
+### Current State (Design & Dogfooding)
+
+The system is currently in the **design phase**. There is no automated cron job running this logic. Users should expect:
+
+- **No automatic recommendations** in the daily note.
+- **Manual validation only**: Triage logic is currently verified through manual walkthroughs (see Dogfooding Results) to tune the selection heuristics.
+- **Implementation Pending**: The `triage` skill and its integration into the `sleep-cycle` are scheduled for the next development burst.
+
+### Target State (Implemented)
+
+Once the triage agent is operational, a user should be able to verify its performance against these criteria:
+
+1. **Extreme Selectivity**: The `## Strategic Triage` section in the daily note contains exactly 3–5 recommendations. If the agent surfaces more than 5 or fewer than 3 (given a pool of at least 10 candidates), it is failing its primary mandate of noise reduction.
+2. **Structural Justification**: Every recommendation must include a "Why Now" argument that references at least one structural signal (e.g., "High downstream weight," "Last domino," or "Convergence point"). It must not rely solely on existing P-levels.
+3. **Maturity Routing**: Recommendations must be explicitly categorized by readiness:
+   - **Ready for `/pull`**: Actionable in a single session with clear AC.
+   - **Needs Decomposition**: High strategic value but requires a supervised planning session first.
+   - **Seedling**: Requires qualitative sketching before structural commitment.
+4. **Information Value Priority**: At least one recommendation per cycle should be a "spike" or "learn" type task that tests a load-bearing assumption, even if its structural weight is lower than routine tasks.
+5. **Persistence and Deferral**: The agent must respect prior user decisions. A deferred recommendation should not reappear in the next cycle unless a significant change has occurred in the task's dependency neighbourhood (e.g., a prerequisite was completed or a new dependent was added).
+6. **Densify Pre-requisite**: Triage quality is a function of graph density. Triage must be preceded by a `densify` pass in the same scheduled cycle; if densification fails, triage should be aborted to prevent low-signal recommendations.
+
 ## Architecture
 
 ### Schedule
