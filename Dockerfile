@@ -44,8 +44,8 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 # Install Gemini CLI and code quality tools globally (Claude installed separately below)
 RUN npm install -g @google/gemini-cli markdownlint-cli2 dprint ccstatusline && npm cache clean --force
 
-# Create data directory, hand ownership to worker
-RUN mkdir -p /data && chown worker:worker /data
+# Create data and workspace directories, hand ownership to worker
+RUN mkdir -p /data /workspace && chown worker:worker /data /workspace
 
 # ── Switch to non-root user for all remaining operations ───────────────
 
@@ -57,6 +57,9 @@ ENV HOME=/home/worker \
 
 # Install Claude Code via native installer — npm package lacks the full binary
 # and causes .claude.json config migration issues on startup.
+# CLAUDE_CODE_VERSION busts the Docker layer cache so rebuilds pick up the latest.
+# Pass --build-arg CLAUDE_CODE_VERSION=x.y.z to pin, or leave empty to get latest.
+ARG CLAUDE_CODE_VERSION
 RUN curl -fsSL https://claude.ai/install.sh | bash
 
 # Install Rust toolchain via rustup
