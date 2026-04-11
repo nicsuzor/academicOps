@@ -120,6 +120,18 @@ class PkbClient:
         )
         if resp is None:
             return None
+        # Top-level JSON-RPC error (e.g. -32602 "Missing required parameter"). The
+        # MCP server returns these instead of a result object, so any code path
+        # that reads resp["result"] without checking this will see {} and silently
+        # return None, corrupting the caller. Surface the message to stderr so
+        # future failures aren't silent — match the isError branch's semantics
+        # (log + return None).
+        if "error" in resp:
+            err = resp["error"] or {}
+            code = err.get("code", "?")
+            msg = err.get("message", str(err))
+            print(f"PKB MCP error {code} ({name}): {msg}", file=sys.stderr)
+            return None
         result = resp.get("result", {})
         if result.get("isError"):
             content = result.get("content")
