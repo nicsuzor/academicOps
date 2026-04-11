@@ -48,9 +48,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG=$(gh api repos/nicsuzor/mem/releases --jq '
-            [.[] | select(.assets | length > 0)] | .[0].tag_name
+            [.[] | select(.assets | length > 0)] | .[0].tag_name // ""
           ')
-          if [ -z "$TAG" ]; then
+          if [ -z "$TAG" ] || [ "$TAG" = "null" ]; then
             echo "::error::No mem release found with binary assets"
             exit 1
           fi
