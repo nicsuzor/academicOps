@@ -763,8 +763,14 @@ class PolecatManager:
                             capture_output=True,
                             check=False,
                         )
-                    self._delete_crew_branch_remote(repo_path, branch_name)
-                    self._delete_crew_branch_mirror(project, branch_name)
+                    if state == "open_pr":
+                        print(
+                            f"Preserving remote branch {branch_name} — open PR: "
+                            f"{info.get('pr_url')}"
+                        )
+                    else:
+                        self._delete_crew_branch_remote(repo_path, branch_name)
+                        self._delete_crew_branch_mirror(project, branch_name)
 
             if crew_path.exists():
                 shutil.rmtree(crew_path)
