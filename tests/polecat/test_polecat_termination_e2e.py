@@ -94,7 +94,12 @@ def test_gemini_terminates_after_release_task(tmp_path: Path) -> None:
         _get_client,
     )
 
-    project = os.environ.get("POLECAT_E2E_PROJECT", "aops")
+    project = os.environ.get("POLECAT_E2E_PROJECT")
+    if not project:
+        pytest.fail(
+            "POLECAT_E2E_PROJECT must be set explicitly — no silent default. "
+            "Set it to the project slug to run against (e.g. POLECAT_E2E_PROJECT=aops)."
+        )
     client = _get_client()
 
     create_result = client.call_tool(
