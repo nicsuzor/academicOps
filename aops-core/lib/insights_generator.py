@@ -16,6 +16,7 @@ from typing import Any
 
 from lib.paths import get_plugin_root, get_summaries_dir
 from lib.session_reader import extract_gate_context, find_sessions
+import lib.session_naming as session_naming
 
 
 class InsightsValidationError(Exception):
@@ -440,11 +441,14 @@ def find_existing_insights(date: str, session_id: str, index: int | None = None)
     date_compact = date[:10].replace("-", "") if "T" in date else date.replace("-", "")
 
     # Search for insights with this session_id
+    # v4.0.0+ format: YYYYMMDD-HHMM-session_id-shortform-slug.json
     # v3.7.0+ format: YYYYMMDD-HH-project-session_id-slug.json
     # v3.6.0 format: YYYYMMDD-project-session_id-slug.json
     # v3.5.0 format: YYYYMMDD-session_id-slug.json
     # Legacy formats also supported for backwards compatibility
     patterns = [
+        f"{date_compact}-????-{session_id}-*.json",  # v4.0.0: date-HHMM-sessionid-shortform-slug
+        f"{date_compact}-????-{session_id}.json",    # v4.0.0: date-HHMM-sessionid-shortform (no slug)
         f"{date_compact}-??-*-{session_id}-*.json",  # v3.7.0: date-hour-project-sessionid-slug
         f"{date_compact}-??-*-{session_id}.json",  # v3.7.0: date-hour-project-sessionid (no slug)
         f"{date_compact}-??-{session_id}-*.json",  # v3.7.0: date-hour-sessionid-slug
@@ -517,46 +521,45 @@ def get_insights_file_path(
         index: Optional index for multi-reflection sessions (0, 1, 2, etc.)
                If None or 0 with single reflection, uses base filename.
         project: Project name to include in filename for traceability
-        hour: Optional 2-digit hour (24-hour format). If not provided, extracted from
-              ISO 8601 date or defaults to current hour.
+        hour: Optional 2-digit hour (24-hour format).
 
     Returns:
-        Path to session file: summaries/YYYYMMDD-HH-{project}-{session_id}-{slug}.json
-        or YYYYMMDD-HH-{project}-{session_id}-{slug}-{index}.json for multi-reflection sessions
-
-    Note:
-        v3.4.0: Output moved to summaries/ subdirectory, filename uses YYYYMMDD-slug format.
-        v3.5.0: Always include session_id in filename to prevent collisions.
-        v3.6.0: Include project name for relationship traceability with transcripts.
-        v3.7.0: Include 24-hour component (HH) for better sorting and timezone awareness.
+        Path to session file: summaries/YYYYMMDD-HHMM-{shortform}-{slug}.json
     """
     summaries_dir = get_summaries_dir()
 
-    # Extract date and hour components
+    # Parse date and hour into a datetime object for session_naming
     if "T" in date:
         # ISO 8601 format: 2026-01-24T17:30:00+10:00
-        date_compact = date[:10].replace("-", "")
-        if hour is None:
-            hour = date[11:13]
+        try:
+            dt = datetime.fromisoformat(date)
+        except ValueError:
+            # Fallback for older ISO formats or partial strings
+            dt = datetime.strptime(date[:10], "%Y-%m-%d")
+            if hour:
+                dt = dt.replace(hour=int(hour))
     else:
         # Simple YYYY-MM-DD format
-        date_compact = date.replace("-", "")
-        if hour is None:
-            hour = datetime.now().astimezone().strftime("%H")
+        try:
+            dt = datetime.strptime(date, "%Y-%m-%d")
+        except ValueError:
+            # Maybe it's compact YYYYMMDD
+            dt = datetime.strptime(date, "%Y%m%d")
 
-    # Sanitize project name for filesystem safety
-    safe_project = _sanitize_filename_segment(project) if project else ""
+        if hour:
+            dt = dt.replace(hour=int(hour))
+        else:
+            # Use current hour as fallback (legacy behavior)
+            dt = dt.replace(hour=datetime.now().astimezone().hour)
 
-    # Build filename: YYYYMMDD-HH-project-session_id-slug.json
-    # Matches transcript format: YYYYMMDD-HH-project-sessionid-slug-full.md
-    parts = [date_compact, hour]
-    if safe_project:
-        parts.append(safe_project)
-    parts.append(session_id)
-    if slug:
-        parts.append(slug)
-
-    base = "-".join(parts)
+    # Use session_naming to generate the base filename
+    # NOTE: provider and machine are auto-detected by session_naming if not provided
+    base = session_naming.generate_base_name(
+        session_id=session_id,
+        timestamp=dt,
+        slug=slug or "session",
+        repo=project,
+    )
 
     if index is not None and index > 0:
         return summaries_dir / f"{base}-{index}.json"
