@@ -1,12 +1,10 @@
 """Tests for session_naming module — single source of truth for session filenames."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
-
 from lib.session_naming import (
     ARTIFACT_TYPES,
-    ParsedFilename,
     derive_polecat_session_id,
     generate_base_name,
     generate_session_filename,
@@ -18,7 +16,7 @@ from lib.session_naming import (
 )
 
 # Fixed timestamp for deterministic tests
-TS = datetime(2026, 4, 11, 14, 30, 0, tzinfo=timezone.utc)
+TS = datetime(2026, 4, 11, 14, 30, 0, tzinfo=UTC)
 
 
 # --- get_session_short_hash ---
@@ -195,7 +193,9 @@ class TestGenerateSessionFilename:
             provider="claude",
             artifact_type="transcript-full",
         )
-        assert result == "20260411-1430-c3d4e5f6-gloria-academicops-nuc-claude-refactor-tests-full.md"
+        assert (
+            result == "20260411-1430-c3d4e5f6-gloria-academicops-nuc-claude-refactor-tests-full.md"
+        )
 
     def test_invalid_artifact_type(self):
         with pytest.raises(ValueError, match="Unknown artifact_type"):
@@ -364,7 +364,14 @@ class TestRoundTrip:
             (None, "mem", "dev01", "claude"),
             (None, "mem", "dev01", "gemini"),
         ],
-        ids=["manual-claude", "manual-gemini", "crew-claude", "crew-gemini", "polecat-claude", "polecat-gemini"],
+        ids=[
+            "manual-claude",
+            "manual-gemini",
+            "crew-claude",
+            "crew-gemini",
+            "polecat-claude",
+            "polecat-gemini",
+        ],
     )
     @pytest.mark.parametrize("artifact_type", ARTIFACT_TYPES.keys())
     def test_roundtrip(self, crew_name, repo, machine, provider, artifact_type):
@@ -391,7 +398,7 @@ class TestRoundTrip:
                 int(parsed.date[6:8]),
                 int(parsed.time[:2]),
                 int(parsed.time[2:4]),
-                tzinfo=timezone.utc,
+                tzinfo=UTC,
             ),
             slug=parsed.slug,
             crew_name=parsed.crew,
@@ -401,7 +408,9 @@ class TestRoundTrip:
             artifact_type=artifact_type,
         )
 
-        assert regenerated == filename, f"Round-trip failed:\n  Original:    {filename}\n  Regenerated: {regenerated}"
+        assert regenerated == filename, (
+            f"Round-trip failed:\n  Original:    {filename}\n  Regenerated: {regenerated}"
+        )
 
 
 # --- get_artifact_subdir ---

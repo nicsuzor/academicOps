@@ -15,7 +15,6 @@ import socket
 from dataclasses import dataclass
 from datetime import datetime
 
-
 # Known artifact variants and their extensions
 ARTIFACT_TYPES = {
     "transcript-full": {"variant": "-full", "ext": ".md", "subdir": "transcripts"},
@@ -181,7 +180,9 @@ def generate_session_filename(
         Filename string (no directory prefix)
     """
     if artifact_type not in ARTIFACT_TYPES:
-        raise ValueError(f"Unknown artifact_type: {artifact_type}. Must be one of {list(ARTIFACT_TYPES.keys())}")
+        raise ValueError(
+            f"Unknown artifact_type: {artifact_type}. Must be one of {list(ARTIFACT_TYPES.keys())}"
+        )
 
     if timestamp is None:
         timestamp = datetime.now().astimezone()

@@ -14,9 +14,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+import lib.session_naming as session_naming
 from lib.paths import get_plugin_root, get_summaries_dir
 from lib.session_reader import extract_gate_context, find_sessions
-import lib.session_naming as session_naming
 
 
 class InsightsValidationError(Exception):
@@ -448,7 +448,7 @@ def find_existing_insights(date: str, session_id: str, index: int | None = None)
     # Legacy formats also supported for backwards compatibility
     patterns = [
         f"{date_compact}-????-{session_id}-*.json",  # v4.0.0: date-HHMM-sessionid-shortform-slug
-        f"{date_compact}-????-{session_id}.json",    # v4.0.0: date-HHMM-sessionid-shortform (no slug)
+        f"{date_compact}-????-{session_id}.json",  # v4.0.0: date-HHMM-sessionid-shortform (no slug)
         f"{date_compact}-??-*-{session_id}-*.json",  # v3.7.0: date-hour-project-sessionid-slug
         f"{date_compact}-??-*-{session_id}.json",  # v3.7.0: date-hour-project-sessionid (no slug)
         f"{date_compact}-??-{session_id}-*.json",  # v3.7.0: date-hour-sessionid-slug

@@ -24,6 +24,7 @@ FRAMEWORK_ROOT = AOPS_CORE_ROOT.parent
 sys.path.insert(0, str(FRAMEWORK_ROOT))
 sys.path.insert(0, str(AOPS_CORE_ROOT))
 
+import lib.session_naming as session_naming
 from lib.insights_generator import (  # noqa: E402
     InsightsValidationError,
     find_existing_insights,
@@ -31,7 +32,6 @@ from lib.insights_generator import (  # noqa: E402
     validate_insights_schema,
     write_insights_file,
 )
-import lib.session_naming as session_naming
 from lib.paths import get_sessions_repo, get_transcripts_dir  # noqa: E402
 from lib.session_reader import find_sessions  # noqa: E402
 from lib.transcript_parser import (  # noqa: E402
