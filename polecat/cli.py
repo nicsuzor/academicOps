@@ -721,14 +721,18 @@ def _pkb_termination_watchdog(
         )
         return
 
-    try:
-        grace_seconds = int(
-            os.environ.get(
-                "POLECAT_TERMINATION_GRACE_SECONDS",
-                str(DEFAULT_TERMINATION_GRACE_SECONDS),
+    _grace_env = os.environ.get("POLECAT_TERMINATION_GRACE_SECONDS")
+    if _grace_env is not None:
+        try:
+            grace_seconds = int(_grace_env)
+        except ValueError:
+            print(
+                f"   [termination watchdog] POLECAT_TERMINATION_GRACE_SECONDS={_grace_env!r} "
+                f"is not a valid integer — failing fast (P#8). Aborting watchdog.",
+                file=sys.stderr,
             )
-        )
-    except ValueError:
+            return
+    else:
         grace_seconds = DEFAULT_TERMINATION_GRACE_SECONDS
 
     while not cancel_event.is_set():

@@ -1698,9 +1698,15 @@ class PolecatManager:
         if self.storage is not None:
             task = self.storage.get_task(task_id)
         else:
-            from polecat.pkb_bridge import get_task as pkb_get_task
+            try:
+                from polecat.pkb_bridge import get_task as pkb_get_task
 
-            task = pkb_get_task(task_id)
+                task = pkb_get_task(task_id)
+            except Exception:
+                # Network/transient error — treat as "task not found" so the
+                # worktree URL-recovery path below can run rather than
+                # propagating an exception that bypasses cleanup entirely.
+                task = None
         worktree_path = self.polecats_dir / task_id
 
         if task:
