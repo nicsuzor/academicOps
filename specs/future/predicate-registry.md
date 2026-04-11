@@ -8,19 +8,20 @@ depends_on: [workflow-constraints]
 created: 2026-01-23
 tags: [spec, architecture, predicates, constraints]
 related: [workflow-constraints, prompt-hydrator]
-note: "Needs design discussion before implementation"
+note: "Future direction — connects to RBG agent axiom enforcement and constraint-based workflow checking"
 ---
 
 # Predicate Registry
 
 ## Giving Effect
 
-- [[workflows/constraint-check.md]] - Workflow that uses predicates for constraint verification
-- [[agents/prompt-hydrator.md]] - Hydrator that checks constraints using predicates
 - [[specs/workflow-constraints.md]] - Constraint specification referencing this registry
-- [[specs/constraint-checking-tests.md]] - Test specification for predicate validation
+- [[specs/future/constraint-checking-tests.md]] - Test specification for predicate validation
+- [[specs/enforcement.md]] - Runtime enforcement layer (gates, detection, review)
+- [[agents/rbg.md]] - The Judge: axiom compliance checking uses predicate-like reasoning
+- [[agents/custodiet.md]] - Periodic compliance audit (potential consumer of formal predicates)
 
-Standard predicate definitions for workflow constraint checking. Used by the prompt-hydrator to verify execution plans satisfy workflow constraints.
+Standard predicate definitions for workflow constraint checking. Provides the semantic foundation for expressing workflow constraints as logical statements rather than procedural steps.
 
 ## Purpose
 
@@ -29,6 +30,28 @@ Workflows define constraints using predicates like `tests_exist`, `plan_approved
 1. What each predicate means
 2. How to verify it at planning time (static check)
 3. How to verify it at execution time (runtime check)
+
+## User Expectations
+
+As the semantic foundation for workflow enforcement, the Predicate Registry must satisfy these core expectations:
+
+1. **Deterministic Definitions**: Users expect each predicate to have a single, unambiguous meaning. `tests_pass` must consistently mean "zero exit code from the primary test runner," regardless of the workflow context.
+2. **Static & Dynamic Verifiability**: Every predicate must be verifiable at two distinct phases:
+   - **Planning (Static)**: Can the hydrator find a step in the proposed plan that _intends_ to satisfy the predicate?
+   - **Execution (Dynamic)**: Can the executor empirically confirm the system state matches the predicate?
+3. **Transparent Failure Modes**: When a constraint fails, the user expects to see exactly which predicate(s) failed and why. Errors should not be opaque; they should point to the missing file, the failing test, or the missing plan step.
+4. **Tool-Agnostic Semantics**: Predicates should describe the _intent_ (e.g., `tests_pass`) rather than the _implementation_ (e.g., `run_pytest_exit_0`), allowing the underlying tools to change without breaking workflow definitions.
+5. **Fail-Closed Security**: If a predicate cannot be evaluated due to environmental issues (e.g., missing tool, permission error), it must be treated as `FALSE` to prevent accidental constraint bypass.
+6. **Human-in-the-loop for Heuristics**: For predicates requiring qualitative judgment (e.g., `minimal_implementation`), users expect the system to flag the check for human review or provide a soft recommendation rather than making an autonomous, potentially incorrect verdict.
+
+## Connection to RBG and Enforcement Architecture
+
+The predicate registry formalises what the RBG agent already does instinctively — checking whether axioms and constraints are satisfied. Currently, RBG applies axioms qualitatively (reading the conversation and judging compliance). The predicate registry would provide a structured vocabulary for expressing these checks, enabling:
+
+- **Composable constraints** in workflow definitions (`BEFORE commit: tests_pass AND critic_reviewed`)
+- **Mechanical verification** where possible (test predicates, file predicates)
+- **Qualitative verification** delegated to RBG/custodiet where judgment is required (heuristic predicates)
+- **Transparent audit trails** showing exactly which predicates passed/failed and why
 
 ## Predicate Categories
 
@@ -154,5 +177,7 @@ When adding a predicate to a workflow:
 ## Related Documents
 
 - [[workflow-constraints]] - Constraint specification format
-- [[prompt-hydrator]] - Agent that performs constraint checking
-- [[enforcement]] - Runtime enforcement layer
+- [[enforcement]] - Runtime enforcement architecture (layers 1-5)
+- [[agents/rbg.md]] - The Judge: qualitative axiom compliance
+- [[agents/custodiet.md]] - Periodic compliance auditor (potential predicate consumer)
+- [[specs/ultra-vires-custodiet.md]] - Custodiet behaviour specification
