@@ -406,26 +406,22 @@ class PolecatManager:
         Returns:
             (state, info) where state is one of 'merged', 'open_pr',
             'unmerged_wip', 'gone'. info may include 'pr_url',
-            'unmerged_log', 'offline'.
+            'unmerged_log'.
         """
         info: dict = {}
 
-        fetch_branch = subprocess.run(
+        subprocess.run(
             ["git", "fetch", "origin", branch_name],
             cwd=repo_path,
             capture_output=True,
-            text=True,
             check=False,
         )
-        fetch_default = subprocess.run(
+        subprocess.run(
             ["git", "fetch", "origin", default_branch],
             cwd=repo_path,
             capture_output=True,
-            text=True,
             check=False,
         )
-        if fetch_branch.returncode != 0 and fetch_default.returncode != 0:
-            info["offline"] = True
 
         def _ref_exists(ref: str) -> bool:
             return (
@@ -772,8 +768,6 @@ class PolecatManager:
 
             if crew_path.exists():
                 shutil.rmtree(crew_path)
-
-            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
 
         try:
             lock_path.unlink(missing_ok=True)
