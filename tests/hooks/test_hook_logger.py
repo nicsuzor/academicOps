@@ -156,9 +156,11 @@ class TestLogHookEvent:
         assert len(log_files) == 0, "'unknown' session_id should not create log file"
 
     def test_log_file_path_format(self, temp_claude_projects):
-        """Test that log file path follows expected format: YYYYMMDD-shorthash-hooks.jsonl."""
+        """Test that log file path follows expected format: YYYYMMDD-HH-shorthash-hooks.jsonl."""
         session_id = "test-path-format-xyz"
-        today = datetime.now(UTC).strftime("%Y%m%d")
+        now = datetime.now(UTC)
+        today = now.strftime("%Y%m%d")
+        current_hour = now.strftime("%H")
 
         log_hook_event(
             HookContext(
@@ -173,11 +175,14 @@ class TestLogHookEvent:
         assert len(log_files) == 1
 
         filename = log_files[0].name
-        # Should be YYYYMMDD-8charhash-hooks.jsonl
-        assert filename.startswith(today), f"Expected {today} prefix, got {filename}"
+        # Should be YYYYMMDD-HH-8charhash-hooks.jsonl
+        expected_prefix = f"{today}-{current_hour}-"
+        assert filename.startswith(expected_prefix), (
+            f"Expected {expected_prefix!r} prefix, got {filename}"
+        )
         assert filename.endswith("-hooks.jsonl")
-        # Middle part should be 8-char hash
-        middle = filename[len(today) + 1 : -len("-hooks.jsonl")]
+        # Middle part after date-hour prefix should be 8-char hash
+        middle = filename[len(expected_prefix) : -len("-hooks.jsonl")]
         assert len(middle) == 8, f"Expected 8-char hash, got '{middle}'"
 
     def test_different_sessions_different_files(self, temp_claude_projects):
