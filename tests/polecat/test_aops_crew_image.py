@@ -95,13 +95,13 @@ def test_playwright_chromium_runnable() -> None:
     # fast. If the binary is missing system libs, the binary itself will
     # exit non-zero with a linker error on stderr.
     script = (
-        'set -e; '
+        "set -e; "
         'root="${PLAYWRIGHT_BROWSERS_PATH:-$HOME/.cache/ms-playwright}"; '
         'shell=$(find "$root" -type f \\( -name chrome-headless-shell -o -name headless_shell \\) 2>/dev/null | head -n1); '
         'if [ -z "$shell" ]; then '
         '  echo "MISSING: no chromium headless shell binary under $root (playwright install chromium was not run at build time)" >&2; '
-        '  exit 10; '
-        'fi; '
+        "  exit 10; "
+        "fi; "
         '"$shell" --version'
     )
 
