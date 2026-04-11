@@ -317,7 +317,7 @@ Update the work items table with status `dispatched`, the worker type, and
 the dispatch timestamp. The supervisor checks status on next orient phase.
 
 ```markdown
-### Dispatch Log
+### Activity Log
 
 [ISO timestamp] [environment]: Dispatched task-abc to claude via polecat run
 ```

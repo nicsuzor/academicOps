@@ -70,7 +70,7 @@ The supervisor maintains structured state in the epic task body. This is the
 | 2 | task-def | Add tests   | pr_open | gemini | #235 | CI passing      |
 | 3 | task-ghi | Update docs | ready   | —      | —    | unblocked by #1 |
 
-### Dispatch Log
+### Activity Log
 
 [ISO timestamp] [environment]: [what the supervisor did]
 ```
@@ -304,7 +304,7 @@ isolation — two supervisors can both read a task as `ready`, both dispatch it,
 and the last-write-wins checkpoint will silently corrupt the work items table.
 
 If you suspect another supervisor is active, check the epic task body's
-last-modified timestamp and `git log -- <task-file>` before acting. Use a
+`**Last checkpoint**` field and `git log -- <task-file>` before acting. Use a
 session lock file (`epic-<id>.lock`) as a coordination signal if concurrent
 sessions are likely.
 
