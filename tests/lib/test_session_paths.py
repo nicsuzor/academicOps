@@ -1,4 +1,5 @@
 import os
+import re
 from unittest.mock import patch
 
 import pytest
@@ -74,18 +75,14 @@ class TestGetGateFilePath:
 
         path = get_gate_file_path(gate, session_id, date=date)
 
-        # Expected: ~/.claude/projects/<project>/<date>-<shorthash>-<gate>.md
+        # Expected: ~/.claude/projects/<project>/<date>-<HH>-<shorthash>-<gate>.md
         # Short hash for "550e8400..." is "550e8400"
-        expected_path = (
-            tmp_path
-            / ".claude"
-            / "projects"
-            / "-home-user-project"
-            / "20240520-550e8400-custodiet.md"
-        )
-        assert path == expected_path
+        # We use a regex match for the filename because HH depends on current time
+        filename_pattern = r"20240520-\d{2}-550e8400-custodiet\.md"
+        assert re.search(filename_pattern, str(path))
         # Verify parent directory was created (via mkdir(parents=True, exist_ok=True))
-        assert expected_path.parent.exists()
+        expected_parent = tmp_path / ".claude" / "projects" / "-home-user-project"
+        assert expected_parent.exists()
 
     @patch("lib.session_paths._is_gemini_session")
     @patch("lib.session_paths.get_gemini_logs_dir")
@@ -103,9 +100,8 @@ class TestGetGateFilePath:
 
         # Short hash for "gemini-session-123" will be a SHA256 prefix because of '-'
         short_hash = get_session_short_hash(session_id)
-        expected_path = tmp_path / "gemini-logs" / f"20240520-{short_hash}-custodiet.md"
-
-        assert path == expected_path
+        filename_pattern = rf"20240520-\d{{2}}-{short_hash}-custodiet\.md"
+        assert re.search(filename_pattern, str(path))
 
     def test_polecat_worker_uuid_as_gemini(self, tmp_path):
         """Test that UUID session IDs are handled as Gemini if indicators are present."""
@@ -120,7 +116,7 @@ class TestGetGateFilePath:
             path = get_gate_file_path("custodiet", session_id, date="2024-05-20")
 
             assert "/.gemini/tmp/fakehash/logs" in str(path)
-            assert "20240520-550e8400-custodiet.md" in str(path)
+            assert re.search(r"20240520-\d{2}-550e8400-custodiet\.md", str(path))
             assert path.parent == gemini_logs_dir
 
     def test_gemini_missing_logs_dir_raises_error(self):
