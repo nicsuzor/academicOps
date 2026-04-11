@@ -24,6 +24,7 @@ sys.path.insert(0, str(ROOT / "aops-core"))
 
 import importlib.util
 
+
 # Import aops-core scripts by file path to avoid shadowing root scripts/ package
 def _import_from_path(name: str, path: Path):
     spec = importlib.util.spec_from_file_location(name, path)
@@ -31,8 +32,11 @@ def _import_from_path(name: str, path: Path):
     spec.loader.exec_module(mod)
     return mod
 
+
 transcript = _import_from_path("transcript", ROOT / "aops-core" / "scripts" / "transcript.py")
-insights_generator = _import_from_path("insights_generator", ROOT / "aops-core" / "lib" / "insights_generator.py")
+insights_generator = _import_from_path(
+    "insights_generator", ROOT / "aops-core" / "lib" / "insights_generator.py"
+)
 
 
 class TestTranscriptNamingIntegration:
