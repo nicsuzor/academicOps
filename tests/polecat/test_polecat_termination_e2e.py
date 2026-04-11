@@ -34,6 +34,7 @@ issue #521) and this test times out.
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -41,6 +42,30 @@ import time
 from pathlib import Path
 
 import pytest
+
+# PKB create_task returns a plain text confirmation like:
+#   "Task created: `/data/brain/tasks/task-3c8847bb-<slug>.md`"
+# from which we extract the task ID. The call_tool helper passes text
+# through for non-JSON responses.
+_TASK_ID_RE = re.compile(r"(task-[0-9a-f]+|epic-[0-9a-f]+|aops-[0-9a-f]+)")
+
+
+def _extract_task_id(resp: object) -> str | None:
+    """Pull a task id out of a PKB create_task response."""
+    if isinstance(resp, dict):
+        fm = resp.get("frontmatter") or {}
+        return fm.get("id") or resp.get("id")
+    if isinstance(resp, str):
+        m = _TASK_ID_RE.search(resp)
+        if m:
+            return m.group(1)
+    return None
+
+
+# Known-stable fallback parent under the aops project: an active "Framework
+# maintenance and tooling improvements" epic with mixed scratch children.
+# Can be overridden via POLECAT_E2E_PARENT.
+_DEFAULT_AOPS_SCRATCH_PARENT = "task-0d77545a"
 
 TESTS_DIR = Path(__file__).parent.resolve()
 REPO_ROOT = TESTS_DIR.parent.parent
@@ -102,25 +127,59 @@ def test_gemini_terminates_after_release_task(tmp_path: Path) -> None:
         )
     client = _get_client()
 
+    # PKB enforces the task hierarchy project → epic → task. Tasks MUST
+    # have a parent (the server rejects root-level tasks with -32602
+    # "Missing required parameter: parent"). We pick a scratch parent in
+    # this order:
+    #   1. POLECAT_E2E_PARENT env var (explicit override)
+    #   2. When project==aops, a known-stable existing epic under the
+    #      aops project — "Framework maintenance and tooling improvements"
+    #      (task-0d77545a). This is a grab-bag maintenance epic that
+    #      already hosts scratch/tooling children, so a transient test
+    #      task is appropriate and teardown is easy.
+    # We do NOT auto-create a fresh scratch epic via the MCP bridge
+    # because PKB's create_task tool via this bridge coerces the type to
+    # "task" regardless of the type= arg, which would put a task under
+    # the project — violating the hierarchy rule we're trying to respect.
+    # Using an existing epic is both simpler and hierarchy-clean.
+    parent_override = os.environ.get("POLECAT_E2E_PARENT")
+    if parent_override:
+        scratch_parent_id = parent_override
+    elif project == "aops":
+        scratch_parent_id = _DEFAULT_AOPS_SCRATCH_PARENT
+    else:
+        pytest.fail(
+            f"No default scratch parent for project={project!r}. "
+            "Set POLECAT_E2E_PARENT to an existing epic ID under that project."
+        )
+
+    # NOTE: PKB's create_task MCP tool does not accept project/status/type
+    # arguments via the bridge schema — it only sets parent/title/body/tags.
+    # We set project and status as a follow-up update_task call. Without
+    # project, polecat fails with "Task ... has no project set — cannot
+    # set up worktree".
     create_result = client.call_tool(
         "create_task",
         {
             "title": "e2e: gemini termination watchdog (#521)",
             "body": _WORKER_INSTRUCTION,
-            "project": project,
-            "type": "task",
-            "status": "ready",
+            "parent": scratch_parent_id,
             "tags": ["test", "e2e", "polecat-termination"],
         },
     )
     assert create_result is not None, "PKB create_task returned None"
 
-    task_id: str | None = None
-    if isinstance(create_result, dict):
-        fm = create_result.get("frontmatter") or {}
-        task_id = fm.get("id") or create_result.get("id")
+    task_id = _extract_task_id(create_result)
     if not task_id:
         pytest.fail(f"Could not extract task id from PKB create_task response: {create_result!r}")
+
+    # Attach project + ready status so polecat can dispatch the task.
+    update_resp = client.call_tool(
+        "update_task",
+        {"id": task_id, "updates": {"project": project, "status": "ready"}},
+    )
+    if update_resp is None:
+        pytest.fail(f"Failed to set project/status on task {task_id}")
 
     transcript_path = (
         Path(os.environ.get("POLECAT_HOME", Path.home() / ".aops"))
@@ -192,3 +251,14 @@ def test_gemini_terminates_after_release_task(tmp_path: Path) -> None:
                 proc.wait(timeout=30)
             except subprocess.TimeoutExpired:
                 pass
+
+        # Best-effort cleanup: delete the test task. Swallow errors —
+        # cleanup failures should not mask a real test result. If
+        # cleanup fails, the task will be visible in PKB under the
+        # scratch parent with the "polecat-termination" tag and can be
+        # removed manually.
+        if task_id:
+            try:
+                client.call_tool("delete", {"id": task_id})
+            except Exception as e:  # pragma: no cover — cleanup-only
+                print(f"cleanup: failed to delete task {task_id}: {e}", file=sys.stderr)
