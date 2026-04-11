@@ -130,3 +130,13 @@ When adding new components:
 2. **Check dependencies**: Component should only depend on its own plugin or aops-core
 3. **MCP servers**: Assign to plugin that uses them; prefer stdio over HTTP for security
 4. **Document here**: Update this spec when adding components
+
+## User Expectations
+
+As a user of the academicOps framework, you can expect:
+
+1. **Infrastructure Stability**: `aops-core` provides the foundational "operating system" for research. The task graph, memory persistence, and quality assurance workflows remain stable and functional even if domain-specific tools are modified or removed.
+2. **Modular Capabilities**: Domain-specific tools (e.g., citation management, data analysis, PDF generation) are provided as optional extensions. You can enable the `aops-tools` plugin to gain these capabilities without bloating the core framework's footprint.
+3. **Clear Component Ownership**: Every skill, command, and agent belongs to exactly one plugin. Architectural boundaries are enforced to ensure that tool-specific logic does not leak into the core orchestration layer.
+4. **Predictable Performance**: By bundling only necessary MCP servers and skills within each plugin, the framework minimizes initialization latency and cognitive load for both the agent and the human.
+5. **Secure-by-Design Isolation**: Plugins manage their own tool permissions and external service connections. Security is improved by ensuring that the core framework remains lean and only domain-specific plugins handle sensitive external integrations.

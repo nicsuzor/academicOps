@@ -25,6 +25,15 @@ tags: [architecture, workflows]
 **I want** a composable workflow system where workflows are simple markdown files that LLMs can read and compose
 **So that** I can systematically guide work through human-readable processes that are version-controlled, auditable, and continuously improvable
 
+## User Expectations
+
+- **Source Discovery**: Workflows are stored as `.md` files in `aops-core/workflows/`. If a new workflow is added and registered in `WORKFLOWS.md`, the hydrator MUST be able to select and read it without framework code changes.
+- **Composition Integrity**: When Workflow A includes a `[[Workflow B]]` wikilink, the generated execution plan MUST contain steps from both A and B. The plan MUST NOT contain instructions for the agent to read the workflow files themselves.
+- **Routing Accuracy**: Given a prompt with clear intent (e.g., "add feature X"), the hydrator MUST select the corresponding workflow (e.g., `feature-dev`) as its primary route.
+- **Base Integration**: Specialized workflows MUST be able to inherit steps from base workflows (e.g., `base-tdd`) via the `bases` frontmatter. The hydrator MUST prioritize these base steps as foundational machinery.
+- **Actionable Granularity**: Every step in a workflow-derived execution plan MUST describe a specific action (e.g., "Write a test", "Implement the fix") rather than a generic goal.
+- **No Hidden Logic**: The markdown files in `workflows/` are the single source of truth for process logic. There must be no hardcoded workflow sequences in the hydrator or agent prompts that contradict these files.
+
 ## Key Insight: LLM-Native Design
 
 **Pre-LLM thinking**: Parse YAML frontmatter, deterministic ordering, structured data
