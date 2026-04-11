@@ -93,6 +93,12 @@ subtask-1 ~> subtask-3 (informs)
 ### Risks
 
 - Risk 1 (mitigation: ...)
+
+### High-Risk Tags
+
+[For each subtask that meets ANY critic-gate trigger criterion
+(see [[worker-dispatch]] "Critic Gate"), add the `high-risk` tag.
+This ensures the dispatch-time critic gate activates for these tasks.]
 ```
 
 ## Phase 2: Multi-Agent Review
