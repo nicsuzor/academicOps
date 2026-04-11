@@ -767,6 +767,7 @@ def _run_docker_container(
                     cwd=cwd,
                     env=env,
                 )
+                assert tar_proc.stdout is not None
                 tar_proc.stdout.close()
                 tar_proc.wait()
                 if tar_proc.returncode != 0:
