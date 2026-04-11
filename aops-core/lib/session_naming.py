@@ -147,9 +147,9 @@ def get_session_shortform(
 
     parts = []
     if crew_name:
-        parts.append(_sanitize(crew_name))
-    parts.append(_sanitize(repo))
-    parts.append(_sanitize(machine))
+        parts.append(_sanitize(crew_name, allow_dashes=False))
+    parts.append(_sanitize(repo, allow_dashes=False))
+    parts.append(_sanitize(machine, allow_dashes=False))
     parts.append(provider.lower())
 
     return "-".join(parts)
@@ -350,16 +350,26 @@ def parse_session_filename(filename: str) -> ParsedFilename | None:
 # --- Private helpers ---
 
 
-def _sanitize(s: str) -> str:
+def _sanitize(s: str, *, allow_dashes: bool = True) -> str:
     """Sanitize a string for use in filenames.
 
     Lowercases, replaces non-alphanumeric chars with dashes,
     collapses multiple dashes, strips leading/trailing dashes.
+
+    Args:
+        s: String to sanitize.
+        allow_dashes: If False, remove all dashes from the result.
+            Used for shortform components (crew, repo, machine) where dashes
+            serve as inter-component delimiters and must not appear within
+            individual components.
     """
     s = s.lower()
     s = re.sub(r"[^a-z0-9]", "-", s)
     s = re.sub(r"-+", "-", s)
-    return s.strip("-")
+    s = s.strip("-")
+    if not allow_dashes:
+        s = s.replace("-", "")
+    return s
 
 
 def _sanitize_slug(slug: str, max_words: int = 5) -> str:

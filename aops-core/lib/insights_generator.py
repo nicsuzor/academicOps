@@ -505,7 +505,7 @@ def _sanitize_filename_segment(segment: str) -> str:
 
 
 def get_insights_file_path(
-    date: str,
+    date: str | datetime,
     session_id: str,
     slug: str = "",
     index: int | None = None,
@@ -515,7 +515,8 @@ def get_insights_file_path(
     """Get path to unified session JSON file in summaries/.
 
     Args:
-        date: Date string (YYYY-MM-DD format or ISO 8601 with timezone)
+        date: datetime object, or ISO 8601 string (e.g. "2026-01-24T17:30:00+10:00").
+              YYYY-MM-DD strings are also accepted for backwards compatibility.
         session_id: 8-character session hash
         slug: Short descriptive slug for the session (e.g., "refactor-insights")
         index: Optional index for multi-reflection sessions (0, 1, 2, etc.)
@@ -525,31 +526,24 @@ def get_insights_file_path(
 
     Returns:
         Path to session file: summaries/YYYYMMDD-HHMM-{shortform}-{slug}.json
+
+    Raises:
+        ValueError: If date string is not a valid ISO 8601 or YYYY-MM-DD format.
     """
     summaries_dir = get_summaries_dir()
 
-    # Parse date and hour into a datetime object for session_naming
-    if "T" in date:
-        # ISO 8601 format: 2026-01-24T17:30:00+10:00
-        try:
-            dt = datetime.fromisoformat(date)
-        except ValueError:
-            # Fallback for older ISO formats or partial strings
-            dt = datetime.strptime(date[:10], "%Y-%m-%d")
-            if hour:
-                dt = dt.replace(hour=int(hour))
+    # Accept datetime objects directly — no string parsing needed
+    if isinstance(date, datetime):
+        dt = date
+    elif "T" in date:
+        # ISO 8601 format: 2026-01-24T17:30:00+10:00 — no silent fallback
+        dt = datetime.fromisoformat(date)
     else:
-        # Simple YYYY-MM-DD format
-        try:
-            dt = datetime.strptime(date, "%Y-%m-%d")
-        except ValueError:
-            # Maybe it's compact YYYYMMDD
-            dt = datetime.strptime(date, "%Y%m%d")
+        # YYYY-MM-DD format only — no silent fallback to compact YYYYMMDD
+        dt = datetime.strptime(date, "%Y-%m-%d")
 
-        if hour:
-            dt = dt.replace(hour=int(hour))
-        # No fallback: dt stays at midnight (00:00) when no hour provided.
-        # Pass an ISO 8601 date or explicit `hour` for accurate timestamps.
+    if hour:
+        dt = dt.replace(hour=int(hour))
 
     # Use session_naming to generate the base filename
     # NOTE: provider and machine are auto-detected by session_naming if not provided

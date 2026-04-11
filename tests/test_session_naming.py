@@ -115,7 +115,21 @@ class TestGetSessionShortform:
         result = get_session_shortform(
             crew_name="My Crew", repo="My.Repo", machine="DEV-01", provider="claude"
         )
-        assert result == "my-crew-my-repo-dev-01-claude"
+        # Dashes are stripped from shortform components to keep the delimiter unambiguous
+        assert result == "mycrew-myrepo-dev01-claude"
+
+    def test_dashed_repo_name_no_crew(self):
+        """Repo names with dashes must not break parsing — dashes are collapsed."""
+        result = get_session_shortform(
+            crew_name=None, repo="my-project", machine="nuc", provider="claude"
+        )
+        assert result == "myproject-nuc-claude"
+
+    def test_dashed_repo_name_with_crew(self):
+        result = get_session_shortform(
+            crew_name="gloria", repo="my-project", machine="nuc", provider="claude"
+        )
+        assert result == "gloria-myproject-nuc-claude"
 
 
 # --- generate_session_filename ---
@@ -337,6 +351,17 @@ class TestParseSessionFilename:
         )
         assert parsed is not None
         assert parsed.session_id == "a1b2c3d4"
+
+    def test_dashed_repo_no_crew_roundtrips(self):
+        """Repo names with dashes have dashes stripped, so parsing is unambiguous."""
+        parsed = parse_session_filename(
+            "20260411-1430-a1b2c3d4-myproject-nuc-claude-fix-bug-full.md"
+        )
+        assert parsed is not None
+        assert parsed.crew is None
+        assert parsed.repo == "myproject"
+        assert parsed.machine == "nuc"
+        assert parsed.provider == "claude"
 
     def test_invalid_returns_none(self):
         assert parse_session_filename("not-a-session-file.txt") is None

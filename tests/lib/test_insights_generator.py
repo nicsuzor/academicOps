@@ -267,8 +267,8 @@ class TestInsightsFilePath:
         """Test that project name is sanitized for filesystem safety."""
         monkeypatch.setenv("AOPS_MACHINE", "testmachine")
         path = get_insights_file_path("2026-01-13", "a1b2c3d4", project="My Project!", hour="23")
-        # Special chars removed, lowercase: "My Project!" -> "my-project"
-        assert path.name.startswith("20260113-2300-a1b2c3d4-my-project-")
+        # Special chars removed, lowercase, dashes stripped in shortform: "My Project!" -> "myproject"
+        assert path.name.startswith("20260113-2300-a1b2c3d4-myproject-")
         assert path.name.endswith(".json")
 
     def test_file_path_uses_centralized_location(self, monkeypatch):
