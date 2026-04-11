@@ -324,8 +324,8 @@ jobs:
           done
 
           if [ -z "$ARCHIVES" ]; then
-            echo "::warning::No archives in source/dist/ — nothing to upload"
-            exit 0
+            echo "::error::No archives in source/dist/ — build produced no artifacts"
+            exit 1
           fi
 
           # Try upload-to-existing first; fall back to create-new if no release
