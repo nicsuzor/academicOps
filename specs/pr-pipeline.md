@@ -14,12 +14,13 @@ supersedes: pr-process.md
 
 - [[.github/workflows/pr-pipeline.yml]] → CI-only orchestrator: sequential lint → typecheck → pytest
 - [[.github/workflows/lint.yml]] → uses `AOPS_BOT_GH_TOKEN` for checkout so autofix pushes trigger workflow restart
-- [[.github/workflows/axiom-review.yml]] → standalone axiom review with 120s settle delay
-- [[.github/workflows/agent-auditor.yml]] → called by axiom-review.yml (unchanged)
-- [[.github/workflows/agent-merge-prep.yml]] → cron-driven, duplicate-approval guard, loop ceiling, `merge-prep-status` commit status
-- [[.github/workflows/merge-prep-cron.yml]] → `workflow_run` trigger watches both "PR Review Pipeline" and "Axiom Review"
-- [[.github/workflows/summary-and-merge.yml]] → environment-gated merge workflow (disabled pending production environment setup)
-- GitHub Ruleset: required checks = `Lint / Lint`, `Type Check / Type Check`, `Pytest / Pytest`, `Axiom Review / Axiom Review`
+- [[.github/workflows/typecheck.yml]] → basedpyright type checking
+- [[.github/workflows/pytest.yml]] → unit tests
+- [[.github/workflows/pr-review.yml]] → standalone Axiom Review (Claude PR reviewer, no settle delay)
+- [[.github/workflows/agent-merge-prep.yml]] → cron-driven merge prep agent
+- [[.github/workflows/merge-prep-cron.yml]] → `workflow_run` trigger watches "Axiom Review" completion + cron fallback
+- [[.github/workflows/agent-enforcer.yml]] → reusable enforcer for other repos (not wired into this repo's pipeline)
+- GitHub Ruleset: required checks = `PR Review Pipeline / lint / Lint`, `PR Review Pipeline / typecheck / Type Check`, `PR Review Pipeline / pytest / Pytest`, `Axiom Review / Axiom Review`
 
 ## Overview
 
@@ -56,8 +57,7 @@ flowchart TD
     TC --> Test["<b>Pytest</b><br/>Unit tests<br/><i>Required status check</i>"]
 
     %% Axiom Review (independent workflow)
-    PR --> Settle["<b>Settle</b><br/>120s delay<br/>Absorbs rapid pushes"]
-    Settle --> AR["<b>Axiom Review</b><br/>Auditor agent<br/>gh pr review: APPROVE or REQUEST_CHANGES"]
+    PR --> AR["<b>Axiom Review</b><br/>PR reviewer agent<br/>Posts review feedback"]
 
     AR --> ARV{Verdict}
     ARV -- REQUEST_CHANGES --> Blocked["<b>Merge blocked</b><br/>Author or agent revises"]
@@ -96,15 +96,12 @@ flowchart TD
     classDef success fill:#e8f5e9,stroke:#4caf50,stroke-width:2px
     classDef fail fill:#ffebee,stroke:#f44336
     classDef cron fill:#f3e5f5,stroke:#9c27b0
-    classDef settle fill:#f5f5f5,stroke:#9e9e9e
-
     class Lint,TC,Test check
     class AR,MP,AgentFix agent
     class EnvGate human
     class Merge,Graduate success
     class Blocked,RetryOrEscalate fail
     class Cron cron
-    class Settle settle
 ```
 
 ## Phase 1: On Every Push (CI + Axiom Review)
@@ -131,9 +128,11 @@ Three CI jobs run sequentially: lint → typecheck → pytest.
 
 The Axiom Review workflow runs independently of the CI pipeline, triggered by the same `pull_request` events.
 
-**Settle delay (120s):** Before starting the agent, the workflow sleeps 120 seconds. This absorbs rapid pushes (including lint autofix commits) — cancelling the cheap sleep (via `cancel-in-progress`) is much cheaper than cancelling an expensive agent run. In practice, lint autofix pushes happen ~2-3 minutes into the CI pipeline, while axiom review is still sleeping, so the cancellation is always cheap.
+**PR event handling:** On `pull_request` events, the workflow extracts the PR number and ref directly from the event context, producing a single-item matrix that reviews only the triggering PR. On `workflow_dispatch` without a PR number, it discovers all open PRs for batch review. On `workflow_call` or `workflow_dispatch` with a PR number, it reviews only the specified PR.
 
-**Axiom Review:** The Auditor agent (`agent-auditor.yml`) runs after settle. It checks compliance against axioms, heuristics, and project rules. Posts `gh pr review --request-changes` if violations are found. Read-only — never pushes code. The Auditor is mechanical (rule-checking) rather than strategic (judgment calls).
+**Missing prompt file:** If the PR branch lacks `.github/agents/pr-reviewer.agent.md` (e.g. old branches), the review step is skipped gracefully instead of failing.
+
+**Axiom Review:** The PR reviewer agent (`pr-reviewer.agent.md`) checks compliance against axioms, heuristics, and project rules. Posts review feedback via `claude-code-action`. Read-only — never pushes code.
 
 Check run name: `Axiom Review / Axiom Review` (required status check in ruleset).
 
@@ -290,17 +289,16 @@ No separate auto-merge configuration needed — the merge is executed by the wor
 
 ## Workflow Files
 
-| File                    | Purpose                                                                                       |
-| ----------------------- | --------------------------------------------------------------------------------------------- |
-| `pr-pipeline.yml`       | CI orchestrator: sequential lint → typecheck → pytest. Triggers on `pull_request`.            |
-| `lint.yml`              | Ruff lint + format with autofix. Uses `AOPS_BOT_GH_TOKEN` so pushes trigger workflow restart. |
-| `typecheck.yml`         | basedpyright. Read-only gate.                                                                 |
-| `pytest.yml`            | Unit tests. Read-only gate.                                                                   |
-| `axiom-review.yml`      | Standalone axiom review with 120s settle delay. Triggers on `pull_request`.                   |
-| `agent-auditor.yml`     | Auditor agent (called by axiom-review.yml). Checks axioms, posts `gh pr review`.              |
-| `merge-prep-cron.yml`   | Dispatcher: `workflow_run` (CI + Axiom Review) + 30-min cron. Label-free qualification.       |
-| `agent-merge-prep.yml`  | Merge-prep agent: triage reviews, fix issues, approve, set status, trigger summary-and-merge. |
-| `summary-and-merge.yml` | Decision brief + environment-gated merge (disabled pending production environment setup).     |
+| File                   | Purpose                                                                                       |
+| ---------------------- | --------------------------------------------------------------------------------------------- |
+| `pr-pipeline.yml`      | CI orchestrator: sequential lint → typecheck → pytest. Triggers on `pull_request`.            |
+| `lint.yml`             | Ruff lint + format with autofix. Uses `AOPS_BOT_GH_TOKEN` so pushes trigger workflow restart. |
+| `typecheck.yml`        | basedpyright. Read-only gate.                                                                 |
+| `pytest.yml`           | Unit tests. Read-only gate.                                                                   |
+| `pr-review.yml`        | Standalone Axiom Review. Triggers on `pull_request` + dispatch/call.                          |
+| `merge-prep-cron.yml`  | Dispatcher: `workflow_run` (Axiom Review) + cron. Label-free qualification.                   |
+| `agent-merge-prep.yml` | Merge-prep agent: triage reviews, fix issues, approve, set status.                            |
+| `agent-enforcer.yml`   | Reusable enforcer for other repos (dispatch/call only, not wired into this repo).             |
 
 ## GitHub Ruleset
 
@@ -315,15 +313,15 @@ rules:
     parameters:
       strict_required_status_checks_policy: false
       required_status_checks:
-        - context: "Lint / Lint"                    # pr-pipeline.yml → lint.yml
-        - context: "Type Check / Type Check"        # pr-pipeline.yml → typecheck.yml
-        - context: "Pytest / Pytest"                # pr-pipeline.yml → pytest.yml
-        - context: "Axiom Review / Axiom Review"    # pr-review.yml (independent)
+        - context: "PR Review Pipeline / lint / Lint"          # pr-pipeline.yml → lint.yml
+        - context: "PR Review Pipeline / typecheck / Type Check"  # pr-pipeline.yml → typecheck.yml
+        - context: "PR Review Pipeline / pytest / Pytest"      # pr-pipeline.yml → pytest.yml
+        - context: "Axiom Review / Axiom Review"               # pr-review.yml (independent)
 ```
 
-**Note on check run names:** The compound format (`Caller / Callee`) is produced by `workflow_call`. The caller job name and callee job name must both match to produce the expected check run name. Changing either job name will break the required status check.
+**Note on check run names:** The compound format (`Caller / Callee`) is produced by `workflow_call`. The caller job name and callee job name must both match to produce the expected check run name. Changing either job name will break the required status check. The `PR Review Pipeline` prefix comes from the `pr-pipeline.yml` workflow name.
 
-**Note:** The `required_approving_review_count: 1` is still needed for PRs where merge-prep doesn't run (e.g., trivial changes merged directly). For the environment-gated path, merge is handled by the workflow job, not auto-merge, so the review count is not the primary gate.
+**Note:** The `required_approving_review_count: 1` is still needed for PRs where merge-prep doesn't run (e.g., trivial changes merged directly).
 
 ## GitHub Environment: `production`
 
@@ -468,7 +466,7 @@ Each step leaves the pipeline functional. Never delete a workflow until its repl
 
 5. **`validate-ruleset.yml` update.** After the split, the validation script needs to find `Lint` in `lint.yml`, `Type Check` in `typecheck.yml`, and `Pytest` in `pytest.yml`. Verify the script handles multi-file checks.
 
-6. **Custodiet-reviewer integration.** ~~Resolved~~: The Auditor remains a separate workflow (`agent-axiom-review.yml`) but now submits `gh pr review --request-changes` for violations, blocking merge via the same mechanism as Agent Review. See PR #872.
+6. **PR reviewer integration.** ~~Resolved~~: Axiom Review (`pr-review.yml`) runs as a standalone workflow using `pr-reviewer.agent.md`. The enforcer agent (`agent-enforcer.yml`) is available as a reusable workflow for other repos but is not wired into this repo's pipeline.
 
 7. **Loop ceiling calibration.** The ceiling of 5 is conservative. After 20 real PRs, review actual `Merge-Prep-By:` commit counts and adjust if warranted. A ceiling too low causes false halts; too high defeats the purpose.
 

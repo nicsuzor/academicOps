@@ -79,7 +79,7 @@ The system is currently in the **design phase**. There is no automated cron job 
 
 Once the triage agent is operational, a user should be able to verify its performance against these criteria:
 
-1. **Extreme Selectivity**: The `## Strategic Triage` section in the daily note contains exactly 3–5 recommendations. If the agent surfaces more than 5 or fewer than 3 (given a pool of at least 10 candidates), it is failing its primary mandate of noise reduction.
+1. **Extreme Selectivity**: The `## Strategic Triage` section in the daily note contains between 3 and 5 recommendations. If the agent surfaces more than 5 or fewer than 3 (given a pool of at least 10 candidates), it is failing its primary mandate of noise reduction.
 2. **Structural Justification**: Every recommendation must include a "Why Now" argument that references at least one structural signal (e.g., "High downstream weight," "Last domino," or "Convergence point"). It must not rely solely on existing P-levels.
 3. **Maturity Routing**: Recommendations must be explicitly categorized by readiness:
    - **Ready for `/pull`**: Actionable in a single session with clear AC.
