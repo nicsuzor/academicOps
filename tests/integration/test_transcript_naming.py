@@ -19,10 +19,20 @@ from pathlib import Path
 # Add framework roots for imports
 SCRIPT_DIR = Path(__file__).parent.resolve()
 ROOT = SCRIPT_DIR.parent.parent
+sys.path.insert(0, str(ROOT / "aops-core" / "lib"))
 sys.path.insert(0, str(ROOT / "aops-core"))
 
-import lib.insights_generator as insights_generator
-import scripts.transcript as transcript
+import importlib.util
+
+# Import aops-core scripts by file path to avoid shadowing root scripts/ package
+def _import_from_path(name: str, path: Path):
+    spec = importlib.util.spec_from_file_location(name, path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+transcript = _import_from_path("transcript", ROOT / "aops-core" / "scripts" / "transcript.py")
+insights_generator = _import_from_path("insights_generator", ROOT / "aops-core" / "lib" / "insights_generator.py")
 
 
 class TestTranscriptNamingIntegration:
