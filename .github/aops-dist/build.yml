@@ -1,14 +1,57 @@
 name: Build AOPS Extension
 
-# ============================================================================
+# ==============================================================================
 # DEPLOYMENT TARGET: nicsuzor/aops — copy this file to:
 #   nicsuzor/aops/.github/workflows/build.yml
+# (.github/aops-dist/build.yml in academicOps is the canonical reference copy.)
+# ==============================================================================
 #
-# It is fired by a repository_dispatch from nicsuzor/academicOps's
-# build-extension.yml workflow. It checks out academicOps (public) and
-# nicsuzor/mem release binaries (public), builds, then commits and releases
-# on itself using the repo's own GITHUB_TOKEN. No PAT required here.
-# ============================================================================
+# WHAT THIS WORKFLOW DOES
+# -----------------------
+# Builds the AOPS extension distribution and publishes it on this repo
+# (nicsuzor/aops) — the "dist repo" that downstream consumers (Claude Code,
+# Gemini CLI, etc.) install from.
+#
+# ARCHITECTURE — three repos, one direction
+#
+#   nicsuzor/academicOps          nicsuzor/mem                nicsuzor/aops
+#   ┌────────────────────┐        ┌──────────────────┐        ┌──────────────┐
+#   │ source of truth    │        │ pkb binary       │        │ dist repo    │
+#   │ (this build's      │        │ releases (per    │        │ (THIS REPO)  │
+#   │  source checkout)  │        │  platform)       │        │              │
+#   └─────────┬──────────┘        └────────┬─────────┘        └──────▲───────┘
+#             │ checked out @ ref           │ binaries downloaded     │
+#             │ (public, unauth)            │ (public, unauth)        │
+#             └─────────────────┬───────────┘                         │
+#                               ▼                                     │
+#                    ┌──────────────────────┐                         │
+#                    │  Build dist artifacts │  commit + release ──────┘
+#                    │  (uv run build.py)   │  (default GITHUB_TOKEN)
+#                    └──────────────────────┘
+#
+# WHY THIS REPO INSTEAD OF academicOps
+#   academicOps used to do this whole job, which required a PAT with broad
+#   cross-repo write access. Moving the build here means:
+#     • mem + academicOps reads are unauthenticated (both public)
+#     • the only write target is THIS repo, so the default GITHUB_TOKEN works
+#     • no PAT needed on this side at all
+#   academicOps just fires a repository_dispatch with a tiny scoped PAT.
+#
+# TRIGGERS
+#   repository_dispatch [build-aops-extension]  — fired by academicOps on
+#                                                 tag push, release publish,
+#                                                 or workflow_dispatch
+#   workflow_dispatch                           — manual rerun from this repo's
+#                                                 Actions UI (for debugging
+#                                                 without touching academicOps)
+#
+# DISPATCH PAYLOAD (client_payload)
+#   ref           — academicOps git ref to build from (tag/branch/sha)
+#   release_type  — "stable" | "testing" (testing → prerelease + dev versioning)
+#   source_sha    — informational; the academicOps commit that fired this
+#   source_run_id — informational; the academicOps run that fired this
+#
+# ==============================================================================
 
 on:
   repository_dispatch:
@@ -20,7 +63,7 @@ on:
         required: false
         default: 'main'
       release_type:
-        description: 'stable or testing'
+        description: 'Release type — stable cuts a normal release, testing cuts a prerelease with a -dev.N suffix'
         required: false
         default: 'stable'
         type: choice
@@ -31,7 +74,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ----------------------------------------------------------------------------
+  # Job 1: Fetch the prebuilt pkb binary for each target platform from the
+  # latest nicsuzor/mem release that has assets attached. Skipping releases
+  # without assets handles the case where mem cuts a release before CI uploads.
+  # ----------------------------------------------------------------------------
   download-pkb-binaries:
+    name: Fetch pkb binary (${{ matrix.artifact_label }})
     strategy:
       fail-fast: false
       matrix:
@@ -42,88 +91,110 @@ jobs:
             output_name: pkb-macos-aarch64
     runs-on: ubuntu-latest
     steps:
-      - name: Determine mem release tag
+      - name: Resolve latest mem release with assets
         id: version
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}  # public read; default token is enough
         run: |
+          # Skip releases that exist but have no binary assets attached yet.
+          # `// ""` coerces the jq null result (empty array) to empty string so
+          # the guard below catches "no releases" cleanly.
           TAG=$(gh api repos/nicsuzor/mem/releases --jq '
             [.[] | select(.assets | length > 0)] | .[0].tag_name // ""
           ')
           if [ -z "$TAG" ] || [ "$TAG" = "null" ]; then
-            echo "::error::No mem release found with binary assets"
+            echo "::error::No nicsuzor/mem release found with binary assets"
             exit 1
           fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Latest mem release with assets: $TAG"
 
-      - name: Download release archive
+      - name: Download ${{ matrix.artifact_label }} archive from mem release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="${{ steps.version.outputs.tag }}"
           ARCHIVE="mem-${TAG}-${{ matrix.artifact_label }}.tar.gz"
+          echo "Downloading $ARCHIVE from nicsuzor/mem@$TAG"
           gh release download "$TAG" --repo nicsuzor/mem --pattern "$ARCHIVE"
+
+          # Extract just the pkb binary; aops CLI was merged into pkb in mem v0.3.0.
           mkdir -p output
           tar xzf "$ARCHIVE" -C output
           chmod +x output/pkb
+          echo "Extracted:"
           ls -la output/
 
-      - name: Upload artifact
+      - name: Upload pkb binary as workflow artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.output_name }}
           path: output/pkb
           if-no-files-found: error
 
+  # ----------------------------------------------------------------------------
+  # Job 2: Check out academicOps source + this repo (dist), build per-platform
+  # extensions using the pkb binaries from Job 1, and publish if the version
+  # has changed (or unconditionally for testing builds).
+  # ----------------------------------------------------------------------------
   build-and-deploy:
+    name: Build extensions and publish to ${{ github.repository }}
     needs: download-pkb-binaries
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # push to self + create release on self
+      contents: write  # required for: push to self, create release on self
     steps:
-      - name: Resolve dispatch inputs
+      - name: Resolve build context (ref + release type) from dispatch payload
         id: ctx
         run: |
+          # repository_dispatch supplies client_payload; workflow_dispatch
+          # supplies inputs; default to main + stable for safety.
           REF="${{ github.event.client_payload.ref || inputs.ref || 'main' }}"
           RTYPE="${{ github.event.client_payload.release_type || inputs.release_type || 'stable' }}"
+          SRC_SHA="${{ github.event.client_payload.source_sha || '' }}"
+          SRC_RUN="${{ github.event.client_payload.source_run_id || '' }}"
           echo "ref=$REF" >> "$GITHUB_OUTPUT"
           echo "release_type=$RTYPE" >> "$GITHUB_OUTPUT"
-          echo "Building academicOps@$REF as $RTYPE"
+          echo "::notice title=Build context::academicOps@$REF type=$RTYPE source_sha=$SRC_SHA source_run=$SRC_RUN"
 
-      - name: Checkout academicOps source
+      - name: Checkout academicOps source (read-only, public)
         uses: actions/checkout@v4
         with:
           repository: nicsuzor/academicOps
           ref: ${{ steps.ctx.outputs.ref }}
-          fetch-depth: 0
+          fetch-depth: 0  # full history needed for scripts/version.py git-describe
           path: source
 
-      - name: Checkout aops (self) for publish
+      - name: Checkout self (${{ github.repository }}) for publish target
         uses: actions/checkout@v4
         with:
           path: dist-repo
 
-      - name: Setup Python
+      - name: Setup Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install uv
+      - name: Install uv (Python package manager)
         uses: astral-sh/setup-uv@v5
 
-      - name: Install dependencies
+      - name: Install academicOps dependencies (uv sync)
         working-directory: source
         run: uv sync --frozen
 
-      - name: Get project version
+      - name: Compute publish version (stable or -dev.N)
         id: version
         working-directory: source
         run: |
+          # scripts/version.py wraps git-describe and is the canonical source.
           chmod +x scripts/version.py
           BASE_VERSION=$(uv run python scripts/version.py --get)
           echo "base_version=$BASE_VERSION" >> "$GITHUB_OUTPUT"
 
           if [ "${{ steps.ctx.outputs.release_type }}" = "testing" ]; then
+            # Testing builds: ensure strictly-increasing, semver-clean versions.
+            # If git-describe already produced a -dev.N suffix, append the run
+            # number for CI uniqueness; otherwise start a fresh -dev.N sequence.
             if [[ "$BASE_VERSION" == *-dev.* ]]; then
               VERSION="${BASE_VERSION}.${{ github.run_number }}"
             else
@@ -134,34 +205,40 @@ jobs:
             VERSION="$BASE_VERSION"
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Version: $VERSION (base: $BASE_VERSION)"
+          echo "::notice title=Publish version::$VERSION (base $BASE_VERSION)"
 
-      - name: Download PKB binaries
+      - name: Download pkb binaries from Job 1 into source/pkb-binaries/
         uses: actions/download-artifact@v4
         with:
           path: source/pkb-binaries/
 
-      - name: Check if version changed
+      - name: Decide whether the dist version actually needs republishing
         id: check_version
         run: |
+          # Testing builds always publish — the run-number in the version
+          # guarantees uniqueness, so there's no risk of clobbering.
           if [ "${{ steps.ctx.outputs.release_type }}" = "testing" ]; then
             echo "version_changed=true" >> "$GITHUB_OUTPUT"
-            echo "Testing build: always deploy"
-          else
-            DIST_VERSION=""
-            if [ -f dist-repo/aops-claude/.claude-plugin/plugin.json ]; then
-              DIST_VERSION=$(python3 -c "import json; print(json.load(open('dist-repo/aops-claude/.claude-plugin/plugin.json'))['version'])" 2>/dev/null || true)
-            fi
-            if [ -n "$DIST_VERSION" ] && [ "$DIST_VERSION" = "${{ steps.version.outputs.version }}" ]; then
-              echo "version_changed=false" >> "$GITHUB_OUTPUT"
-              echo "Version unchanged ($DIST_VERSION), skipping build"
-            else
-              echo "version_changed=true" >> "$GITHUB_OUTPUT"
-              echo "Version changed: ${DIST_VERSION:-<none>} -> ${{ steps.version.outputs.version }}"
-            fi
+            echo "Testing build: always publish"
+            exit 0
           fi
 
-      - name: Build platform-specific distributions
+          # Stable builds: only republish if the version on the dist repo's
+          # main differs from what we just computed. Avoids no-op release churn.
+          DIST_VERSION=""
+          if [ -f dist-repo/aops-claude/.claude-plugin/plugin.json ]; then
+            DIST_VERSION=$(python3 -c "import json; print(json.load(open('dist-repo/aops-claude/.claude-plugin/plugin.json'))['version'])" 2>/dev/null || true)
+          fi
+
+          if [ -n "$DIST_VERSION" ] && [ "$DIST_VERSION" = "${{ steps.version.outputs.version }}" ]; then
+            echo "version_changed=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Dist version unchanged ($DIST_VERSION) — skipping build/publish"
+          else
+            echo "version_changed=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Dist version: ${DIST_VERSION:-<none>} → ${{ steps.version.outputs.version }}"
+          fi
+
+      - name: Build per-platform dist artifacts (build.py × pkb binaries)
         if: steps.check_version.outputs.version_changed == 'true'
         working-directory: source
         env:
@@ -172,70 +249,92 @@ jobs:
             VERSION_FLAG="--set-version ${{ steps.version.outputs.version }}"
           fi
 
+          # One build per pkb binary platform — build.py emits a tarball named
+          # for the target platform under dist/.
           for platform_dir in pkb-binaries/pkb-*; do
             ARTIFACT_NAME=$(basename "$platform_dir")
-            PLATFORM_LABEL="${ARTIFACT_NAME#pkb-}"
-            echo "Building with PKB binary: $ARTIFACT_NAME ($PLATFORM_LABEL)"
-            # shellcheck disable=SC2086
+            PLATFORM_LABEL="${ARTIFACT_NAME#pkb-}"  # strip "pkb-" prefix
+            echo "::group::Build for $PLATFORM_LABEL"
+            # shellcheck disable=SC2086  # VERSION_FLAG intentionally word-splits
             uv run python scripts/build.py \
               --pkb-binary "$platform_dir/pkb" \
               --target-platform "$PLATFORM_LABEL" \
               $VERSION_FLAG
+            echo "::endgroup::"
           done
 
-          echo "Building generic (no PKB binary) distribution"
+          # Generic (no-binary) fallback for installs that supply their own pkb.
+          echo "::group::Build generic (no PKB binary) distribution"
           # shellcheck disable=SC2086
           uv run python scripts/build.py $VERSION_FLAG
+          echo "::endgroup::"
 
-      - name: Sync dist into self and commit
+      - name: Mirror dist/ into ${{ github.repository }} and commit
         if: steps.check_version.outputs.version_changed == 'true'
         env:
           VERSION: ${{ steps.version.outputs.version }}
           RELEASE_TYPE: ${{ steps.ctx.outputs.release_type }}
         run: |
-          git config --global user.name "github-actions[bot]"
+          git config --global user.name  "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
+          # rsync --delete keeps the dist repo a strict mirror of build.py output:
+          # files removed from the source tree are removed downstream too.
           rsync -a --delete source/dist/aops-claude/  dist-repo/aops-claude/
           rsync -a --delete source/dist/aops-cowork/  dist-repo/aops-cowork/
           rsync -a --delete source/dist/aops-gemini/  dist-repo/aops-gemini/
+
+          # gemini-extension.json must live at the dist repo ROOT — gemini CLI
+          # discovers extensions by looking for that file at the repo root, not
+          # inside aops-gemini/.
           cp source/dist/aops-gemini/gemini-extension.json dist-repo/gemini-extension.json
 
+          # marketplace.json is the Claude Code plugin marketplace manifest;
+          # it lives under .claude-plugin/ at the dist repo root.
           mkdir -p dist-repo/.claude-plugin
           cp source/dist/.claude-plugin/marketplace.json dist-repo/.claude-plugin/marketplace.json
 
           cd dist-repo
           COMMIT_PREFIX="Release"
-          if [ "$RELEASE_TYPE" = "testing" ]; then
-            COMMIT_PREFIX="Testing release"
-          fi
-          git add -A
-          git commit -m "chore: $COMMIT_PREFIX v$VERSION" || echo "No changes to commit"
-          git push origin HEAD
+          [ "$RELEASE_TYPE" = "testing" ] && COMMIT_PREFIX="Testing release"
 
-      - name: Create GitHub Release on self
+          git add -A
+          if git commit -m "chore: $COMMIT_PREFIX v$VERSION"; then
+            git push origin HEAD
+            echo "::notice::Pushed $COMMIT_PREFIX v$VERSION to ${{ github.repository }}"
+          else
+            echo "::notice::Nothing to commit (dist already in sync)"
+          fi
+
+      - name: Upload archives to GitHub Release v${{ steps.version.outputs.version }}
         if: steps.check_version.outputs.version_changed == 'true'
+        working-directory: dist-repo  # gh CLI infers --repo from the git checkout's origin
         env:
           VERSION: ${{ steps.version.outputs.version }}
           RELEASE_TYPE: ${{ steps.ctx.outputs.release_type }}
           GH_TOKEN: ${{ github.token }}
         run: |
           PRERELEASE_FLAG=""
-          if [ "$RELEASE_TYPE" = "testing" ]; then
-            PRERELEASE_FLAG="--prerelease"
-          fi
+          [ "$RELEASE_TYPE" = "testing" ] && PRERELEASE_FLAG="--prerelease"
 
+          # Collect every tarball build.py emitted (one per platform + generic).
           ARCHIVES=""
-          for f in source/dist/*.tar.gz; do
+          for f in "$GITHUB_WORKSPACE"/source/dist/*.tar.gz; do
             [ -f "$f" ] && ARCHIVES="$ARCHIVES $f"
           done
 
-          if [ -n "$ARCHIVES" ]; then
-            # shellcheck disable=SC2086
-            gh release upload "v$VERSION" $ARCHIVES --clobber \
-              || gh release create "v$VERSION" \
+          if [ -z "$ARCHIVES" ]; then
+            echo "::warning::No archives in source/dist/ — nothing to upload"
+            exit 0
+          fi
+
+          # Try upload-to-existing first; fall back to create-new if no release
+          # exists at this tag yet. --clobber overwrites assets on retries.
+          # shellcheck disable=SC2086  # ARCHIVES + PRERELEASE_FLAG intentionally word-split
+          gh release upload "v$VERSION" $ARCHIVES --clobber \
+            || gh release create "v$VERSION" \
                 --title "v$VERSION" \
                 --notes "AcademicOps v$VERSION" \
                 $PRERELEASE_FLAG \
                 $ARCHIVES
-          fi
+          echo "::notice::Published GitHub Release v$VERSION on ${{ github.repository }}"
