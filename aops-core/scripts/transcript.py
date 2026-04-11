@@ -11,6 +11,8 @@ Usage:
 """
 
 import argparse
+import os
+import shutil
 import subprocess
 import sys
 from datetime import datetime, timedelta
@@ -32,6 +34,7 @@ from lib.insights_generator import (  # noqa: E402
     write_insights_file,
 )
 from lib.paths import get_sessions_repo, get_transcripts_dir  # noqa: E402
+from lib.session_naming import get_session_filename  # noqa: E402
 from lib.session_reader import find_sessions  # noqa: E402
 from lib.transcript_parser import (  # noqa: E402
     SessionProcessor,
@@ -57,14 +60,12 @@ def _load_transcript_config() -> dict:
           exclude_projects:
             - sessions
     """
-    import os
-
-    import yaml
-
     polecat_yaml = Path(os.environ.get("POLECAT_HOME", Path.home() / ".polecat")) / "polecat.yaml"
     if not polecat_yaml.exists():
         return {}
     try:
+        import yaml
+
         with open(polecat_yaml) as f:
             config = yaml.safe_load(f) or {}
         return config.get("transcripts", {}) or {}
@@ -73,6 +74,60 @@ def _load_transcript_config() -> dict:
             f"Warning: Could not load transcript config from {polecat_yaml}: {e}", file=sys.stderr
         )
         return {}
+
+
+def sync_client_log(session_path: Path, session_id: str, date: datetime | None = None) -> None:
+    """Sync raw client log to $AOPS_SESSIONS/client-logs/ with unified naming.
+
+    Prefer hardlink for efficiency, fallback to copy for cross-filesystem scenarios.
+    Naming follows: YYYYMMDD-HH-shorthash-client.jsonl
+    """
+    if session_path.is_dir():
+        # Antigravity brain sessions are directories, skip for now
+        return
+
+    try:
+        sessions_root = get_sessions_repo()
+        client_logs_dir = sessions_root / "client-logs"
+        client_logs_dir.mkdir(parents=True, exist_ok=True)
+
+        # Fallback to mtime if date not provided (prevents non-deterministic naming)
+        if date is None:
+            date = datetime.fromtimestamp(session_path.stat().st_mtime).astimezone()
+
+        # Unified naming: YYYYMMDD-HH-shorthash-client[.jsonl|.json]
+        # Preserves source extension: Claude uses .jsonl, Gemini uses .json
+        target_name = get_session_filename(
+            session_id,
+            date.isoformat(),
+            slug="client",
+            suffix=session_path.suffix,
+        )
+        target_path = client_logs_dir / target_name
+
+        # Skip if already current (check mtime)
+        if target_path.exists():
+            if target_path.stat().st_mtime >= session_path.stat().st_mtime:
+                return
+            target_path.unlink()
+
+        try:
+            # Prefer hardlink (fastest, same filesystem)
+            os.link(session_path, target_path)
+        except OSError:
+            # Fallback to copy (cross-filesystem, e.g. container to host)
+            shutil.copy2(session_path, target_path)
+
+        # Ensure correct permissions for shared visibility
+        try:
+            target_path.chmod(0o644)
+        except OSError:
+            pass
+
+        print(f"🔄 Synced client log: {target_name}")
+
+    except Exception as e:
+        print(f"⚠️  Failed to sync client log: {e}", file=sys.stderr)
 
 
 def _is_excluded_project(project: str, config: dict | None = None) -> bool:
@@ -747,9 +802,13 @@ Examples:
         for s in sessions:
             try:
                 session_path = s.path if hasattr(s, "path") else Path(str(s))
+                session_id = _get_session_id(session_path)
+
+                # Sync raw client log to $AOPS_SESSIONS/client-logs/
+                # Do this early so it happens even if skipped for other reasons
+                sync_client_log(session_path, session_id)
 
                 # Early mtime check: skip if transcript already exists and is current
-                session_id = _get_session_id(session_path)
                 existing_transcript = _find_existing_transcript(sessions_claude, session_id)
                 if existing_transcript and _transcript_is_current(
                     session_path, existing_transcript
@@ -920,6 +979,12 @@ Examples:
     # Process the session
     try:
         print(f"📝 Processing session: {session_path}")
+
+        # Extract session ID for early log sync
+        session_id = _get_session_id(session_path)
+        # Sync raw client log to $AOPS_SESSIONS/client-logs/
+        sync_client_log(session_path, session_id)
+
         session_summary, entries, agent_entries = processor.parse_session_file(str(session_path))
 
         # Generate output base name
@@ -981,7 +1046,7 @@ Examples:
                     session_timestamp = entry.timestamp
                     break
             # Get session ID from path
-            sid = session_path.stem[:8]
+            sid = session_id
             proj = (
                 session_path.parent.name.split("-")[-1] if session_path.parent.name else "unknown"
             )

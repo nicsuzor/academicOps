@@ -1187,12 +1187,16 @@ def find_sessions(
                     for project_dir in claude_sessions_dir.iterdir():
                         if project_dir.is_dir() and not project_dir.name.endswith("-hooks"):
                             potential_session_files.extend(project_dir.glob("*.jsonl"))
+                            potential_session_files.extend(project_dir.glob("*.json"))
                     # Check for sessions directly in the dir
                     potential_session_files.extend(claude_sessions_dir.glob("*.jsonl"))
+                    potential_session_files.extend(claude_sessions_dir.glob("*.json"))
 
                 for session_file in potential_session_files:
-                    if session_file.name.startswith("agent-") or session_file.name.endswith(
-                        "-hooks.jsonl"
+                    if (
+                        session_file.name.startswith("agent-")
+                        or session_file.name.endswith("-hooks.jsonl")
+                        or session_file.name.endswith("-hooks.json")
                     ):
                         continue
 
@@ -1206,13 +1210,15 @@ def find_sessions(
                     if since and mtime < since:
                         continue
 
+                    source = "gemini" if session_file.suffix == ".json" else "claude"
+
                     sessions.append(
                         SessionInfo(
                             path=session_file,
                             project=worker_project,
                             session_id=session_id,
                             last_modified=mtime,
-                            source="claude",
+                            source=source,
                         )
                     )
 
