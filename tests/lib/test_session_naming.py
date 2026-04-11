@@ -13,6 +13,14 @@ class TestSessionNaming(unittest.TestCase):
         # Should use SHA256 fallback
         self.assertEqual(len(session_naming.get_session_short_hash(session_id)), 8)
 
+    def test_get_session_short_hash_empty_raises(self):
+        with self.assertRaises(ValueError):
+            session_naming.get_session_short_hash("")
+
+    def test_get_session_short_hash_unknown_raises(self):
+        with self.assertRaises(ValueError):
+            session_naming.get_session_short_hash("unknown")
+
     def test_get_session_filename_basic(self):
         session_id = "550e8400-e29b-41d4-a716-446655440000"
         date = "2026-04-11"

@@ -142,8 +142,8 @@ def get_hook_log_path(
     """Get the path for the per-session hook log file.
 
     Logs to:
-    - Claude: ~/.claude/projects/<project>/<date>-<shorthash>-hooks.jsonl
-    - Gemini: ~/.gemini/tmp/<hash>/logs/<date>-<shorthash>-hooks.jsonl
+    - Claude: ~/.claude/projects/<project>/YYYYMMDD-HH-<shorthash>-hooks.jsonl
+    - Gemini: ~/.gemini/tmp/<hash>/logs/YYYYMMDD-HH-<shorthash>-hooks.jsonl
 
     Args:
         session_id: Session ID from Claude Code or Gemini CLI
@@ -175,7 +175,7 @@ def get_hook_log_path(
             raise ValueError("Gemini session detected but no logs directory configured")
         return logs_dir / filename
     else:
-        # Claude: ~/.claude/projects/<project>/<date>-<shorthash>-hooks.jsonl
+        # Claude: ~/.claude/projects/<project>/YYYYMMDD-HH-<shorthash>-hooks.jsonl
         project_folder = get_claude_project_folder()
         claude_projects_dir = Path.home() / ".claude" / "projects" / project_folder
         claude_projects_dir.mkdir(parents=True, exist_ok=True)
@@ -327,8 +327,8 @@ def get_gate_file_path(
     """Get the path for a gate context file.
 
     Writes to the same directory as hook log files:
-    - Claude: ~/.claude/projects/<project>/<date>-<shorthash>-<gate>.md
-    - Gemini: ~/.gemini/tmp/<hash>/logs/<date>-<shorthash>-<gate>.md
+    - Claude: ~/.claude/projects/<project>/YYYYMMDD-HH-<shorthash>-<gate>.md
+    - Gemini: ~/.gemini/tmp/<hash>/logs/YYYYMMDD-HH-<shorthash>-<gate>.md
 
     Checks AOPS_GATE_FILE_<GATE> env var first for session-stable path.
 

@@ -24,7 +24,7 @@ def get_session_short_hash(session_id: str) -> str:
         8-character string
     """
     if not session_id or session_id == "unknown":
-        return "unknown"
+        raise ValueError(f"Invalid session_id: {session_id!r}. Callers must guard before calling.")
 
     # 1. If it's a standard UUID or long enough, use the prefix (matches transcript)
     if len(session_id) >= 8:
@@ -68,9 +68,10 @@ def get_session_filename(
             hour = now.strftime("%H")
     elif "T" in date:
         # ISO 8601 format: 2026-01-24T17:30:00+10:00
-        date_compact = date[:10].replace("-", "")
+        dt = datetime.fromisoformat(date)
+        date_compact = dt.strftime("%Y%m%d")
         if hour is None:
-            hour = date[11:13]
+            hour = dt.strftime("%H")
     else:
         # Simple YYYY-MM-DD format
         date_compact = date.replace("-", "")

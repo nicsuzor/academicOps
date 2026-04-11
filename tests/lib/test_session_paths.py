@@ -1,5 +1,4 @@
 import os
-import re
 from unittest.mock import patch
 
 import pytest
@@ -71,15 +70,13 @@ class TestGetGateFilePath:
 
         session_id = "550e8400-e29b-41d4-a716-446655440000"
         gate = "custodiet"
-        date = "2024-05-20"
+        date = "2024-05-20T10:00:00+00:00"
 
         path = get_gate_file_path(gate, session_id, date=date)
 
-        # Expected: ~/.claude/projects/<project>/<date>-<HH>-<shorthash>-<gate>.md
-        # Short hash for "550e8400..." is "550e8400"
-        # We use a regex match for the filename because HH depends on current time
-        filename_pattern = r"20240520-\d{2}-550e8400-custodiet\.md"
-        assert re.search(filename_pattern, str(path))
+        # Expected: ~/.claude/projects/<project>/YYYYMMDD-HH-<shorthash>-<gate>.md
+        # Short hash for "550e8400..." is "550e8400"; hour from ISO date is "10"
+        assert str(path).endswith("20240520-10-550e8400-custodiet.md")
         # Verify parent directory was created (via mkdir(parents=True, exist_ok=True))
         expected_parent = tmp_path / ".claude" / "projects" / "-home-user-project"
         assert expected_parent.exists()
@@ -94,14 +91,14 @@ class TestGetGateFilePath:
 
         session_id = "gemini-session-123"
         gate = "custodiet"
-        date = "2024-05-20"
+        date = "2024-05-20T10:00:00+00:00"
 
         path = get_gate_file_path(gate, session_id, date=date)
 
         # Short hash for "gemini-session-123" will be a SHA256 prefix because of '-'
         short_hash = get_session_short_hash(session_id)
-        filename_pattern = rf"20240520-\d{{2}}-{short_hash}-custodiet\.md"
-        assert re.search(filename_pattern, str(path))
+        # Hour extracted from ISO date is "10"
+        assert str(path).endswith(f"20240520-10-{short_hash}-custodiet.md")
 
     def test_polecat_worker_uuid_as_gemini(self, tmp_path):
         """Test that UUID session IDs are handled as Gemini if indicators are present."""
@@ -113,10 +110,10 @@ class TestGetGateFilePath:
 
         # Use AOPS_SESSION_STATE_DIR to trigger Gemini detection for a UUID session
         with patch.dict(os.environ, {"AOPS_SESSION_STATE_DIR": str(gemini_state_dir)}):
-            path = get_gate_file_path("custodiet", session_id, date="2024-05-20")
+            path = get_gate_file_path("custodiet", session_id, date="2024-05-20T10:00:00+00:00")
 
             assert "/.gemini/tmp/fakehash/logs" in str(path)
-            assert re.search(r"20240520-\d{2}-550e8400-custodiet\.md", str(path))
+            assert str(path).endswith("20240520-10-550e8400-custodiet.md")
             assert path.parent == gemini_logs_dir
 
     def test_gemini_missing_logs_dir_raises_error(self):
