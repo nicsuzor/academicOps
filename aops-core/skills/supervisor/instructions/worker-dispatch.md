@@ -65,12 +65,15 @@ Supervisor judgment is the primary trigger. Tag matching and keyword heuristics 
    # Dispatch Review: <task-id>
 
    ## Task Spec
+
    [Full task body including AC]
 
    ## Target State
+
    [Current state of files/systems the task will modify — verified, not inferred]
 
    ## Blast Radius
+
    - What changes: [files, systems, devices]
    - Reversibility: [automatic | manual-remote | manual-physical | irreversible]
    - Failure impact: [what happens if the task goes wrong]
@@ -78,6 +81,7 @@ Supervisor judgment is the primary trigger. Tag matching and keyword heuristics 
    - Recovery paths after action (if it fails): [which paths survive?]
 
    ## Rollback Plan
+
    [See below — required for all critic-gated tasks]
    ```
 
@@ -98,16 +102,16 @@ Supervisor judgment is the primary trigger. Tag matching and keyword heuristics 
 
 3. **Gate decision**:
 
-   | Pauli Verdict      | Result                                                     |
-   | ------------------ | ---------------------------------------------------------- |
-   | SAFE_TO_DISPATCH   | Dispatch normally                                          |
-   | NEEDS_REFINEMENT   | Return to task spec refinement, do NOT dispatch            |
-   | DO_NOT_DISPATCH    | Set task to `needs_review`, escalate to human with context |
+   | Pauli Verdict    | Result                                                     |
+   | ---------------- | ---------------------------------------------------------- |
+   | SAFE_TO_DISPATCH | Dispatch normally                                          |
+   | NEEDS_REFINEMENT | Return to task spec refinement, do NOT dispatch            |
+   | DO_NOT_DISPATCH  | Set task to `needs_review`, escalate to human with context |
 
-4. **Record gate result** in dispatch log:
+4. **Record gate result** in the task body (the task file is the only state store — see SKILL.md design principles):
    ```
-   [timestamp] CRITIC GATE: task-abc — Pauli: SAFE_TO_DISPATCH → dispatching
-   [timestamp] CRITIC GATE: task-def — Pauli: DO_NOT_DISPATCH (closes only network ingress) → needs_review
+   [timestamp] CRITIC GATE: Pauli: SAFE_TO_DISPATCH → dispatching
+   [timestamp] CRITIC GATE: Pauli: DO_NOT_DISPATCH (closes only network ingress) → needs_review
    ```
 
 5. **Human override** (for `DO_NOT_DISPATCH` or `NEEDS_REFINEMENT` verdicts):
@@ -119,8 +123,8 @@ Supervisor judgment is the primary trigger. Tag matching and keyword heuristics 
    - Append a note: `CRITIC OVERRIDE: <rationale for why this is safe>`
    - The supervisor dispatches on the next cycle without re-invoking the gate
 
-   The override rationale is recorded in the task body and dispatch log for
-   audit. The supervisor does NOT override on its own — only humans can.
+   The override rationale is recorded in the task body for audit. The
+   supervisor does NOT override on its own — only humans can.
 
 ### Rollback Plan Requirements
 
@@ -135,26 +139,29 @@ dispatch. The supervisor adds this during DECOMPOSE or before DISPATCH.
 **Reversibility**: [automatic | manual-remote | manual-physical | irreversible]
 
 ### Steps to Revert
+
 1. [Specific command or action to undo the change]
 2. [Verification that revert succeeded]
 
 ### Preconditions for Safe Rollback
+
 - [What must be true for rollback to work]
 - [Time window: must revert within X minutes/hours?]
 
 ### If Rollback Fails
+
 - [Contingency if revert steps don't work]
 - [Escalation path]
 ```
 
 **Dispatch rules based on reversibility**:
 
-| Reversibility    | Dispatch allowed? | Additional requirement                             |
-| ---------------- | ----------------- | -------------------------------------------------- |
-| automatic        | Yes               | Rollback steps must be executable by agent         |
-| manual-remote    | Yes               | Human must be reachable (not overnight/weekend)    |
-| manual-physical  | NO — refuse       | Escalate to human with full context                |
-| irreversible     | NO — refuse       | Set `needs_review`, present alternatives to human  |
+| Reversibility   | Dispatch allowed? | Additional requirement                            |
+| --------------- | ----------------- | ------------------------------------------------- |
+| automatic       | Yes               | Rollback steps must be executable by agent        |
+| manual-remote   | Yes               | Human must be reachable (not overnight/weekend)   |
+| manual-physical | NO — refuse       | Escalate to human with full context               |
+| irreversible    | NO — refuse       | Set `needs_review`, present alternatives to human |
 
 **Refusal grounds** (from issue #454 — any one is sufficient to refuse):
 
@@ -278,13 +285,13 @@ multiple polecats onto a shared feature branch instead of individual
 
 Push commits to branch `feature/<epic-id>` (already exists on remote).
 Do NOT create a new branch. Pull before pushing:
-  git pull origin feature/<epic-id>
+git pull origin feature/<epic-id>
 Do NOT file a separate PR — work contributes to draft PR #NNN.
 Call `mcp__pkb__release_task` with branch="feature/<epic-id>" when done.
 ```
 
 **Sequencing**: Dispatch one polecat at a time to the shared branch.
-Record "branch lock: task-abc" in dispatch log. Next polecat dispatches
+Record "branch lock: task-abc" in the epic task body. Next polecat dispatches
 only after the current one releases its task.
 
 **Completion**: When all subtasks are done, mark draft PR ready:
@@ -310,7 +317,7 @@ Update the work items table with status `dispatched`, the worker type, and
 the dispatch timestamp. The supervisor checks status on next orient phase.
 
 ```markdown
-### Dispatch Log
+### Activity Log
 
 [ISO timestamp] [environment]: Dispatched task-abc to claude via polecat run
 ```

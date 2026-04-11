@@ -70,7 +70,7 @@ The supervisor maintains structured state in the epic task body. This is the
 | 2 | task-def | Add tests   | pr_open | gemini | #235 | CI passing      |
 | 3 | task-ghi | Update docs | ready   | —      | —    | unblocked by #1 |
 
-### Dispatch Log
+### Activity Log
 
 [ISO timestamp] [environment]: [what the supervisor did]
 ```
@@ -206,19 +206,20 @@ failure without clear cause), read the polecat transcript for deeper insight.
 - Legacy fallbacks checked by `find_polecat_transcript()`: `$AOPS_SESSIONS/polecats/`, `$AOPS_SESSIONS/transcripts/polecats/`
 
 Convert raw JSONL if needed:
+
 ```bash
 uv run python aops-core/scripts/transcript.py $POLECAT_HOME/polecats/<task-id>.jsonl
 ```
 
 **What to look for**:
 
-| Signal in transcript                          | Indicates                                        |
-| --------------------------------------------- | ------------------------------------------------ |
-| Worker attempted something 3+ times           | Codebase obstacle — may need different approach  |
-| Worker modified files outside task scope       | Scope creep — review PR carefully                |
-| Worker skipped an AC item without explanation  | May need re-dispatch with tighter spec           |
-| Worker encountered tool/infra errors           | Infrastructure gap — file follow-up              |
-| Worker made autonomous decisions not in AC     | Check whether decisions were sound               |
+| Signal in transcript                          | Indicates                                       |
+| --------------------------------------------- | ----------------------------------------------- |
+| Worker attempted something 3+ times           | Codebase obstacle — may need different approach |
+| Worker modified files outside task scope      | Scope creep — review PR carefully               |
+| Worker skipped an AC item without explanation | May need re-dispatch with tighter spec          |
+| Worker encountered tool/infra errors          | Infrastructure gap — file follow-up             |
+| Worker made autonomous decisions not in AC    | Check whether decisions were sound              |
 
 **When to read transcripts**:
 
@@ -302,9 +303,10 @@ epic concurrently is unsafe. Markdown table updates have no transaction
 isolation — two supervisors can both read a task as `ready`, both dispatch it,
 and the last-write-wins checkpoint will silently corrupt the work items table.
 
-If you suspect another supervisor is active, check the dispatch log timestamp
-and git log before acting. Use a session lock file (`epic-<id>.lock`) as a
-coordination signal if concurrent sessions are likely.
+If you suspect another supervisor is active, check the epic task body's
+`**Last checkpoint**` field and `git log -- <task-file>` before acting. Use a
+session lock file (`epic-<id>.lock`) as a coordination signal if concurrent
+sessions are likely.
 
 When sessions do overlap, git is the backstop:
 
