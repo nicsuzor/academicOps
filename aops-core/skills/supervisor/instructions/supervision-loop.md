@@ -214,7 +214,7 @@ check the polecat lifecycle directly:
   stays empty until polecat reaches its teardown phase. Check it only when
   you suspect the worker has finished.
 - **Transcript** at `$POLECAT_HOME/polecats/<task-id>.jsonl` — written
-  incrementally; readable while the worker is still active.
+  after the worker finishes; provides the full session log for evaluation.
 
 #### Non-PR Work (PKB-only dispatches)
 
