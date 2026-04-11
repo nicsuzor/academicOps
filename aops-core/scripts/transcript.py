@@ -26,6 +26,7 @@ FRAMEWORK_ROOT = AOPS_CORE_ROOT.parent
 sys.path.insert(0, str(FRAMEWORK_ROOT))
 sys.path.insert(0, str(AOPS_CORE_ROOT))
 
+import lib.session_naming as session_naming
 from lib.insights_generator import (  # noqa: E402
     InsightsValidationError,
     find_existing_insights,
@@ -228,7 +229,10 @@ def _save_minimal_token_summary(
             print(f"⏭️  Insights already exist for session {session_id}: {existing.name}")
             return
 
-        insights_path = get_insights_file_path(date_str, session_id, slug, None, project)
+        date_for_insights = (
+            timestamp if timestamp else f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+        )
+        insights_path = get_insights_file_path(date_for_insights, session_id, slug, None, project)
         write_insights_file(insights_path, insights, session_id=session_id)
         print(f"📊 Token metrics saved (no reflection): {insights_path}")
     except Exception as e:
@@ -313,7 +317,12 @@ def _process_reflection(
                 print(f"⏭️  Insights already exist for session {session_id}: {existing.name}")
                 continue
 
-            insights_path = get_insights_file_path(date_str, session_id, slug, idx, project)
+            date_for_insights = (
+                timestamp if timestamp else f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+            )
+            insights_path = get_insights_file_path(
+                date_for_insights, session_id, slug, idx, project
+            )
             write_insights_file(insights_path, insights, session_id=session_id)
             print(f"💡 Reflection {i + 1}/{len(reflections)} saved to: {insights_path}")
         except InsightsValidationError as e:
@@ -456,42 +465,65 @@ def _generate_transcript_filename(
     slug: str | None = None,
     processor: "SessionProcessor | None" = None,
 ) -> tuple[str, str, str, str, str]:
-    """Generate consistent transcript filename."""
-    # 1. Date and Hour
-    date_str = None
-    hour_str = None
+    """Generate consistent transcript filename using session_naming."""
+    # 1. Detect crew_name from path if applicable
+    # (Matches _infer_project's Polecat/Crew logic)
+    crew_name = None
+    parts = session_path.parts
+    for category_plural in ("polecats", "crew"):
+        if category_plural in parts:
+            idx = parts.index(category_plural)
+            if len(parts) > idx + 1:
+                crew_name = parts[idx + 1]
+                break
 
-    # Try to find first timestamp in entries
+    # 2. Detect provider from path
+    provider = None
+    path_str = str(session_path)
+    if ".gemini/" in path_str:
+        provider = "gemini"
+    elif ".claude/" in path_str:
+        provider = "claude"
+
+    # 3. Get timestamp
+    timestamp = None
     for entry in entries:
         if entry.timestamp:
-            # entry.timestamp is already local/aware from parser
-            date_str = entry.timestamp.strftime("%Y%m%d")
-            hour_str = entry.timestamp.strftime("%H")
+            timestamp = entry.timestamp
             break
+    if not timestamp:
+        timestamp = datetime.fromtimestamp(session_path.stat().st_mtime).astimezone()
 
-    # Fallback to mtime if no timestamp in entries
-    if not date_str:
-        mtime = datetime.fromtimestamp(session_path.stat().st_mtime).astimezone()
-        date_str = mtime.strftime("%Y%m%d")
-        hour_str = mtime.strftime("%H")
+    # 4. Project/Repo
+    repo = _infer_project(session_path, entries)
 
-    # 2. Project
-    short_project = _infer_project(session_path, entries)
-
-    # 3. Session ID
+    # 5. Session ID
     session_id = _get_session_id(session_path)
 
-    # 4. Slug
+    # 6. Slug
     if not slug:
         if processor:
             slug = processor.generate_session_slug(entries)
         else:
             slug = "session"
 
+    # Generate base name via naming module
+    # (unified format: {YYYYMMDD}-{HHMM}-{session_id}-{shortform}-{slug})
+    base = session_naming.generate_base_name(
+        session_id=session_id,
+        timestamp=timestamp,
+        slug=slug,
+        crew_name=crew_name,
+        repo=repo,
+        provider=provider,
+    )
+
+    # Return components for compatibility with transcript.py callers
+    # filename (base), date_str, short_project, session_id, slug
     return (
-        f"{date_str}-{hour_str}-{short_project}-{session_id}-{slug}",
-        date_str,
-        short_project,
+        base,
+        timestamp.strftime("%Y%m%d"),
+        repo,
         session_id,
         slug,
     )
@@ -508,11 +540,14 @@ def _find_existing_transcripts(out_dir: Path, session_id: str) -> list[Path]:
         List of all matching transcript files (both -full.md and -abridged.md)
     """
     # Search for transcripts with this session_id
+    # v4.0.0+ Pattern: YYYYMMDD-HHMM-sessionID-shortform-slug-variant.md
     # v3.7.0+ Pattern: with hour (e.g., 20260105-17-writing-3bf94f77-session-full.md)
     # Legacy Pattern: without hour (e.g., 20260105-writing-3bf94f77-session-full.md)
     matches = []
     for suffix in ("-full.md", "-abridged.md"):
-        # New format with hour
+        # Unified format with HHMM (4 digits)
+        matches.extend(out_dir.glob(f"*-????-{session_id}-*{suffix}"))
+        # Format with hour (2 digits)
         matches.extend(out_dir.glob(f"*-??-*-{session_id}-*{suffix}"))
         matches.extend(out_dir.glob(f"*-??-*-{session_id}{suffix}"))
         # Legacy format without hour
@@ -1045,11 +1080,9 @@ Examples:
                     date_iso = entry.timestamp.strftime("%Y-%m-%d")
                     session_timestamp = entry.timestamp
                     break
-            # Get session ID from path
-            sid = session_id
-            proj = (
-                session_path.parent.name.split("-")[-1] if session_path.parent.name else "unknown"
-            )
+            # Get session ID and project from path
+            sid = _get_session_id(session_path)
+            proj = _infer_project(session_path, entries)
             slug = processor.generate_session_slug(entries)
 
             # Compute usage stats and session duration for token_metrics

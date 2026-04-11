@@ -1301,7 +1301,7 @@ def get_session_state(session: SessionInfo, aca_data: Path) -> SessionState:
     transcript_path = None
     for transcript_dir in transcript_dirs:
         if transcript_dir.exists():
-            # Match EXACT session ID prefix
+            # Match session ID in both new (v4.0.0: date-HHMM-ID-...) and old (v3.x: date-HH-proj-ID-...) formats
             pattern = str(transcript_dir / f"*-*-{session_prefix}*-abridged.md")
             matches = glob.glob(pattern)
             if matches:
