@@ -177,7 +177,9 @@ class TestLogHookEvent:
         filename = log_files[0].name
         # Should be YYYYMMDD-HH-8charhash-hooks.jsonl
         expected_prefix = f"{today}-{current_hour}-"
-        assert filename.startswith(expected_prefix), f"Expected {expected_prefix!r} prefix, got {filename}"
+        assert filename.startswith(expected_prefix), (
+            f"Expected {expected_prefix!r} prefix, got {filename}"
+        )
         assert filename.endswith("-hooks.jsonl")
         # Middle part after date-hour prefix should be 8-char hash
         middle = filename[len(expected_prefix) : -len("-hooks.jsonl")]
