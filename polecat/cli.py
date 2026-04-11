@@ -6,9 +6,17 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import NamedTuple
+
+# Issue #521: Gemini workers have no Stop hook; polecat must poll PKB and
+# kill the container after the task transitions to a terminal status.
+TERMINAL_PKB_STATUSES = frozenset({"done", "merge_ready", "blocked", "cancelled"})
+DEFAULT_TERMINATION_GRACE_SECONDS = 60
+TERMINATION_SIGKILL_DELAY_SECONDS = 30
+TERMINATION_POLL_INTERVAL_SECONDS = 10
 
 # Add aops-core to path for lib imports
 SCRIPT_DIR = Path(__file__).parent.resolve()
@@ -686,6 +694,93 @@ def _build_docker_cmd(
     return DockerCmd(cmd=cmd, staging_dir=_staging_dir, workspace_dir=workspace_dir)
 
 
+def _pkb_termination_watchdog(
+    container_id: str,
+    task_id: str,
+    cancel_event: threading.Event,
+) -> None:
+    """Poll PKB for task terminal status; kill the container when reached.
+
+    Issue #521 fix: Gemini CLI has no Stop hook, so polecat must detect
+    task completion externally. Polls PKB every
+    ``TERMINATION_POLL_INTERVAL_SECONDS`` via ``polecat.pkb_bridge.get_task``.
+    When the task reaches a terminal status (done / merge_ready / blocked /
+    cancelled) the watchdog waits ``POLECAT_TERMINATION_GRACE_SECONDS``
+    (default 60), sends SIGTERM to the container, then SIGKILL after
+    ``TERMINATION_SIGKILL_DELAY_SECONDS`` more.
+
+    ``cancel_event`` is set by the main thread when the CLI exits cleanly
+    on its own; the watchdog then returns without killing anything.
+    """
+    try:
+        from polecat.pkb_bridge import get_task as pkb_get_task
+    except Exception as exc:  # pragma: no cover — defensive
+        print(
+            f"   [termination watchdog] unable to import pkb_bridge: {exc}",
+            file=sys.stderr,
+        )
+        return
+
+    try:
+        grace_seconds = int(
+            os.environ.get(
+                "POLECAT_TERMINATION_GRACE_SECONDS",
+                str(DEFAULT_TERMINATION_GRACE_SECONDS),
+            )
+        )
+    except ValueError:
+        grace_seconds = DEFAULT_TERMINATION_GRACE_SECONDS
+
+    while not cancel_event.is_set():
+        try:
+            task = pkb_get_task(task_id)
+        except Exception as exc:  # pragma: no cover — network/transient
+            print(
+                f"   [termination watchdog] PKB poll failed for {task_id}: {exc}",
+                file=sys.stderr,
+            )
+            task = None
+
+        status = getattr(task, "status", None) if task is not None else None
+        if status in TERMINAL_PKB_STATUSES:
+            print(
+                f"   [termination watchdog] task {task_id} status={status!r}; "
+                f"grace={grace_seconds}s before SIGTERM",
+                file=sys.stderr,
+            )
+            # Grace period — respect cancellation so a natural exit wins.
+            if cancel_event.wait(timeout=grace_seconds):
+                return
+            try:
+                subprocess.run(
+                    ["docker", "kill", "--signal=TERM", container_id],
+                    capture_output=True,
+                    check=False,
+                )
+            except Exception as exc:  # pragma: no cover — docker transient
+                print(
+                    f"   [termination watchdog] docker kill TERM failed: {exc}",
+                    file=sys.stderr,
+                )
+            if cancel_event.wait(timeout=TERMINATION_SIGKILL_DELAY_SECONDS):
+                return
+            try:
+                subprocess.run(
+                    ["docker", "kill", "--signal=KILL", container_id],
+                    capture_output=True,
+                    check=False,
+                )
+            except Exception as exc:  # pragma: no cover — docker transient
+                print(
+                    f"   [termination watchdog] docker kill KILL failed: {exc}",
+                    file=sys.stderr,
+                )
+            return
+
+        if cancel_event.wait(timeout=TERMINATION_POLL_INTERVAL_SECONDS):
+            return
+
+
 def _run_docker_container(
     docker_cmd: DockerCmd,
     *,
@@ -694,6 +789,8 @@ def _run_docker_container(
     capture_output: bool = False,
     text: bool = True,
     extract_paths: list[tuple[str, Path]] | None = None,
+    gemini: bool = False,
+    task_id: str | None = None,
 ) -> subprocess.CompletedProcess:
     """Launch a Docker container, injecting workspace and staging files via docker cp.
 
@@ -809,9 +906,31 @@ def _run_docker_container(
             start_cmd.append("-i")
         start_cmd.append(container_id)
 
-        run_result = subprocess.run(
-            start_cmd, cwd=cwd, env=env, capture_output=capture_output, text=text
-        )
+        # Issue #521: Gemini workers have no Stop hook, so polecat must
+        # watch PKB for a terminal status and kill the container when
+        # observed. Claude workers terminate via their own Stop hook —
+        # leave that path unchanged.
+        watchdog_cancel: threading.Event | None = None
+        watchdog_thread: threading.Thread | None = None
+        if gemini and task_id:
+            watchdog_cancel = threading.Event()
+            watchdog_thread = threading.Thread(
+                target=_pkb_termination_watchdog,
+                args=(container_id, task_id, watchdog_cancel),
+                name=f"polecat-watchdog-{task_id}",
+                daemon=True,
+            )
+            watchdog_thread.start()
+
+        try:
+            run_result = subprocess.run(
+                start_cmd, cwd=cwd, env=env, capture_output=capture_output, text=text
+            )
+        finally:
+            if watchdog_cancel is not None:
+                watchdog_cancel.set()
+            if watchdog_thread is not None:
+                watchdog_thread.join(timeout=5.0)
 
         # Extract files from container before cleanup (belt-and-suspenders
         # for session persistence — bind mounts silently fail on WSL2).
@@ -3429,6 +3548,8 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
                     cwd=worktree_path,
                     env=env,
                     extract_paths=_extract,
+                    gemini=gemini,
+                    task_id=task.id,
                 )
             else:
                 result = subprocess.run(
@@ -3447,6 +3568,8 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
                     capture_output=True,
                     text=True,
                     extract_paths=_extract,
+                    gemini=gemini,
+                    task_id=task.id,
                 )
             else:
                 result = subprocess.run(
