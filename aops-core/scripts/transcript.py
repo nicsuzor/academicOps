@@ -97,7 +97,8 @@ def sync_client_log(session_path: Path, session_id: str, date: datetime | None =
 
         # Unified naming base (YYYYMMDD-HH-shorthash)
         base_name = generate_session_filename(session_id, date)
-        target_name = f"{base_name}-client.jsonl"
+        # Preserve source extension: Claude uses .jsonl, Gemini uses .json
+        target_name = f"{base_name}-client{session_path.suffix}"
         target_path = client_logs_dir / target_name
 
         # Skip if already current (check mtime)

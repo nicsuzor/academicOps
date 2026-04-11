@@ -21,23 +21,16 @@ def generate_session_filename(session_id: str, date: datetime | str | None = Non
         now = datetime.now().astimezone()
     elif isinstance(date, str):
         if "T" in date:
-            try:
-                now = datetime.fromisoformat(date)
-            except ValueError:
-                # Fallback for older Python versions or non-standard ISO
-                now = datetime.now().astimezone()
+            now = datetime.fromisoformat(date)
         else:
-            try:
-                # Assume YYYY-MM-DD
-                now = datetime.strptime(date, "%Y-%m-%d").astimezone()
-            except ValueError:
-                now = datetime.now().astimezone()
+            # Assume YYYY-MM-DD
+            now = datetime.strptime(date, "%Y-%m-%d").astimezone()
     elif isinstance(date, datetime):
         now = date
         if now.tzinfo is None:
             now = now.astimezone()
     else:
-        now = datetime.now().astimezone()
+        raise TypeError(f"date must be datetime, str, or None; got {type(date)}")
 
     date_compact = now.strftime("%Y%m%d")
     hour = now.strftime("%H")
