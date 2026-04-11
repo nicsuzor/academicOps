@@ -769,6 +769,14 @@ def _run_docker_container(
                 )
                 tar_proc.stdout.close()
                 tar_proc.wait()
+                if tar_proc.returncode != 0:
+                    print(
+                        f"tar failed (exit {tar_proc.returncode}) archiving workspace",
+                        file=sys.stderr,
+                    )
+                    return subprocess.CompletedProcess(
+                        args=tar_cmd, returncode=tar_proc.returncode, stdout="", stderr=""
+                    )
             else:
                 cp_result = subprocess.run(
                     ["docker", "cp", f"{docker_cmd.workspace_dir}/.", f"{container_id}:/workspace"],
