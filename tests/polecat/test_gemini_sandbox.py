@@ -1,0 +1,172 @@
+#!/usr/bin/env python3
+"""Tests for issue #522 — Gemini CLI sandbox allowlist.
+
+Gemini's workspace sandbox blocks reads of files outside the workspace,
+including ``/home/worker/.gemini/extensions/aops-core/GEMINI.md`` and the
+sibling skills in that extension tree. Evidence in
+``~/.aops/polecats/task-e36e9a5d.jsonl`` shows ``Path not in workspace``
+errors.
+
+The fix is to pass ``--include-directories`` to the ``gemini`` CLI inside
+the polecat docker wrapper (polecat/cli.py gemini branch) so the extension
+directory is reachable by ``read_file`` and ``activate_skill``.
+
+These tests pin two properties:
+
+1. **Static**: the gemini branch in ``polecat/cli.py`` emits
+   ``--include-directories`` with ``/home/worker/.gemini/extensions/aops-core``.
+2. **Integration** (optional, gated on Docker + ``RUN_GEMINI_SANDBOX_IT=1``):
+   run ``gemini`` inside ``aops-crew`` with the flag and confirm no
+   ``Path not in workspace`` error when reading ``GEMINI.md``.
+"""
+
+from __future__ import annotations
+
+import os
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+TESTS_DIR = Path(__file__).parent.resolve()
+REPO_ROOT = TESTS_DIR.parent.parent
+sys.path.insert(0, str(REPO_ROOT / "polecat"))
+sys.path.insert(0, str(REPO_ROOT / "aops-core"))
+
+from tests.conftest import _docker_available  # noqa: E402
+
+CLI_PY = REPO_ROOT / "polecat" / "cli.py"
+EXTENSION_DIR = "/home/worker/.gemini/extensions/aops-core"
+
+
+def _gemini_branch_source() -> str:
+    """Return the snippet of ``polecat/cli.py`` covering the gemini cmd
+    construction (the ``if gemini:`` block inside ``run`` that builds the
+    inner gemini CLI invocation, *not* the docker wrapping).
+
+    We bound the slice narrowly so unrelated changes elsewhere don't mask
+    regressions here.
+    """
+    text = CLI_PY.read_text()
+    # Match from the first 'if gemini:' that sets up the inner CLI cmd
+    # (identified by the adjacent '"gemini"' literal and '--approval-mode')
+    # up to the following 'else:' or 'else:  # Claude CLI' sibling.
+    m = re.search(
+        r"if gemini:\s*\n(?:.*\n){0,40}?\s*cmd\s*=\s*\[\s*\n\s*\"gemini\",",
+        text,
+    )
+    assert m is not None, "could not locate gemini cmd construction in polecat/cli.py"
+    start = m.start()
+    # Find the matching else: for this if. Scan forward for a line that
+    # starts (at the same indent) with 'else:' — polecat/cli.py uses 4-space
+    # indent inside functions, so the sibling 'else:' is at 4 spaces.
+    tail = text[start:]
+    else_m = re.search(r"\n    else:\s*\n", tail)
+    assert else_m is not None, "could not find sibling else: for gemini branch"
+    return tail[: else_m.start()]
+
+
+class TestGeminiSandboxStatic:
+    """Source-level pin: the gemini CLI invocation must include the
+    extension dir allowlist flag.
+
+    This test is intentionally tight-coupled to the fix site because the
+    behaviour we care about (sandbox allowlist) is a CLI flag string passed
+    to ``gemini`` — there is no reasonable runtime assertion short of the
+    integration test below.
+    """
+
+    def test_include_directories_flag_present(self):
+        snippet = _gemini_branch_source()
+        assert "--include-directories" in snippet, (
+            "polecat gemini branch must pass --include-directories so the "
+            "sandbox allowlist includes the aops-core extension dir. See #522."
+        )
+
+    def test_extension_dir_in_allowlist(self):
+        snippet = _gemini_branch_source()
+        assert EXTENSION_DIR in snippet, (
+            f"polecat gemini branch must include {EXTENSION_DIR} in the "
+            "--include-directories allowlist. See #522."
+        )
+
+    def test_flag_and_value_adjacent(self):
+        """The flag value must follow the flag — guard against accidental
+        drift where the literal exists but isn't the flag argument."""
+        snippet = _gemini_branch_source()
+        # Accept either form:
+        #   "--include-directories", EXTENSION_DIR
+        #   "--include-directories=EXTENSION_DIR"
+        pat_sep = re.compile(
+            r'"--include-directories"\s*,\s*[^"\n]*"' + re.escape(EXTENSION_DIR) + r'"'
+        )
+        pat_eq = re.compile(r'"--include-directories=' + re.escape(EXTENSION_DIR) + r'"')
+        assert pat_sep.search(snippet) or pat_eq.search(snippet), (
+            "--include-directories flag must be adjacent to the extension dir "
+            "value in polecat/cli.py gemini branch."
+        )
+
+
+# ---------------------------------------------------------------------------
+# Integration: actually run gemini with the flag and confirm it can read
+# the extension GEMINI.md without "Path not in workspace".
+# ---------------------------------------------------------------------------
+
+_IT_ENV = "RUN_GEMINI_SANDBOX_IT"
+
+
+@pytest.mark.slow
+@pytest.mark.integration
+class TestGeminiSandboxDocker:
+    """Spin up ``aops-crew`` and run ``gemini --include-directories ...``
+    against a file the sandbox would otherwise block. Gated: requires
+    Docker, the image, and ``RUN_GEMINI_SANDBOX_IT=1`` (because it costs an
+    LLM call).
+    """
+
+    @pytest.fixture(autouse=True)
+    def _require_docker_and_gate(self):
+        if not _docker_available():
+            pytest.skip("Docker not available or aops-crew image not built")
+        if os.environ.get(_IT_ENV) != "1":
+            pytest.skip(f"set {_IT_ENV}=1 to run the gemini sandbox integration test")
+
+    def test_extension_read_with_allowlist(self, tmp_path):
+        # Minimal workspace — gemini requires a cwd.
+        work_dir = tmp_path / "ws"
+        work_dir.mkdir()
+        (work_dir / "placeholder").write_text("x")
+
+        prompt = (
+            f"Use the read_file tool to read {EXTENSION_DIR}/GEMINI.md and print the first line."
+        )
+
+        cmd = [
+            "docker",
+            "run",
+            "--rm",
+            "-w",
+            "/workspace",
+            "-v",
+            f"{work_dir}:/workspace",
+            "aops-crew",
+            "gemini",
+            "--approval-mode",
+            "yolo",
+            "--include-directories",
+            EXTENSION_DIR,
+            "-p",
+            prompt,
+        ]
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=180,
+        )
+        combined = (result.stdout or "") + "\n" + (result.stderr or "")
+        assert "Path not in workspace" not in combined, (
+            f"gemini --include-directories did not expand the sandbox allowlist:\n{combined}"
+        )
