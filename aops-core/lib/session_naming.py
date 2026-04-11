@@ -1,15 +1,11 @@
 """Session naming utilities for unified session identification."""
 
 from datetime import datetime
-from pathlib import Path
-from typing import Union
 
 from .session_paths import get_session_short_hash
 
 
-def generate_session_filename(
-    session_id: str, date: Union[datetime, str, None] = None
-) -> str:
+def generate_session_filename(session_id: str, date: datetime | str | None = None) -> str:
     """Generate a unified session filename base.
 
     Format: YYYYMMDD-HH-shorthash

@@ -1193,9 +1193,11 @@ def find_sessions(
                     potential_session_files.extend(claude_sessions_dir.glob("*.json"))
 
                 for session_file in potential_session_files:
-                    if session_file.name.startswith("agent-") or session_file.name.endswith(
-                        "-hooks.jsonl"
-                    ) or session_file.name.endswith("-hooks.json"):
+                    if (
+                        session_file.name.startswith("agent-")
+                        or session_file.name.endswith("-hooks.jsonl")
+                        or session_file.name.endswith("-hooks.json")
+                    ):
                         continue
 
                     # Determine session_id

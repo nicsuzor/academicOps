@@ -76,9 +76,7 @@ def _load_transcript_config() -> dict:
         return {}
 
 
-def sync_client_log(
-    session_path: Path, session_id: str, date: datetime | None = None
-) -> None:
+def sync_client_log(session_path: Path, session_id: str, date: datetime | None = None) -> None:
     """Sync raw client log to $AOPS_SESSIONS/client-logs/ with unified naming.
 
     Prefer hardlink for efficiency, fallback to copy for cross-filesystem scenarios.
