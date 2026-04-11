@@ -229,7 +229,9 @@ def _save_minimal_token_summary(
             print(f"⏭️  Insights already exist for session {session_id}: {existing.name}")
             return
 
-        date_for_insights = timestamp if timestamp else f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+        date_for_insights = (
+            timestamp if timestamp else f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+        )
         insights_path = get_insights_file_path(date_for_insights, session_id, slug, None, project)
         write_insights_file(insights_path, insights, session_id=session_id)
         print(f"📊 Token metrics saved (no reflection): {insights_path}")
@@ -315,7 +317,9 @@ def _process_reflection(
                 print(f"⏭️  Insights already exist for session {session_id}: {existing.name}")
                 continue
 
-            date_for_insights = timestamp if timestamp else f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+            date_for_insights = (
+                timestamp if timestamp else f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+            )
             insights_path = get_insights_file_path(
                 date_for_insights, session_id, slug, idx, project
             )
