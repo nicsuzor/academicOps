@@ -60,3 +60,68 @@ def test_procps_available() -> None:
     assert "/pgrep" in result.stdout, (
         f"pgrep not found on PATH in aops-crew image; stdout={result.stdout!r}"
     )
+
+
+@pytest.mark.integration
+def test_playwright_chromium_runnable() -> None:
+    """Playwright's Chromium must be baked into the aops-crew image.
+
+    Marsha and other workers that run browser verification depend on
+    ``playwright`` + Chromium being available without a network round-trip
+    or an at-runtime ``install-deps`` that needs root. The fix bakes both
+    the browser binaries and the system libraries (libnss3, libatk, fonts,
+    ...) into the image at build time.
+
+    This test asserts two things by actually running the installed
+    Chromium headless-shell binary with ``--version``:
+
+      1. The browser cache exists under ``~/.cache/ms-playwright`` with a
+         ``chromium_headless_shell-*`` directory (proves ``playwright
+         install chromium`` ran during build).
+      2. That binary launches successfully — which would fail with a
+         dynamic-linker error (missing libnss3 etc.) if ``install-deps``
+         had not been run during build.
+
+    Pre-fix both conditions fail; post-fix both pass.
+    """
+    if not _docker_available():
+        pytest.skip("Docker not available or aops-crew image not built")
+    if not _image_built():
+        pytest.skip("aops-crew image not built locally")
+
+    # Single shell invocation: locate the installed headless-shell binary
+    # under ~/.cache/ms-playwright and run it with --version. If the cache
+    # dir doesn't exist, the glob expands to nothing and the command fails
+    # fast. If the binary is missing system libs, the binary itself will
+    # exit non-zero with a linker error on stderr.
+    script = (
+        'set -e; '
+        'root="${PLAYWRIGHT_BROWSERS_PATH:-$HOME/.cache/ms-playwright}"; '
+        'shell=$(find "$root" -type f \\( -name chrome-headless-shell -o -name headless_shell \\) 2>/dev/null | head -n1); '
+        'if [ -z "$shell" ]; then '
+        '  echo "MISSING: no chromium headless shell binary under $root (playwright install chromium was not run at build time)" >&2; '
+        '  exit 10; '
+        'fi; '
+        '"$shell" --version'
+    )
+
+    result = subprocess.run(
+        ["docker", "run", "--rm", "aops-crew", "sh", "-c", script],
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+
+    assert result.returncode == 0, (
+        "Chromium headless-shell failed to run in aops-crew image "
+        f"(exit={result.returncode}).\n"
+        f"stdout={result.stdout!r}\n"
+        f"stderr={result.stderr!r}\n"
+        "Either the browser cache is missing (playwright install chromium "
+        "not baked in) or system libraries are missing (playwright "
+        "install-deps not baked in). Fix: add both RUN steps to the "
+        "Dockerfile."
+    )
+    assert "HeadlessChrome" in result.stdout or "Chrome" in result.stdout, (
+        f"Unexpected --version output from chromium: {result.stdout!r}"
+    )
