@@ -10,7 +10,7 @@ tags: [framework, agent-behavior, guardrails, enforcement]
 # Ultra Vires Custodiet
 
 **Status**: Active - Unified gate system implemented
-**Current**: Custodiet gate active in `lib/gates/definitions.py`; agent at `aops-core/agents/custodiet.md`
+**Current**: Custodiet gate active in `aops-core/lib/gates/definitions.py`; agent at `aops-core/agents/custodiet.md`
 **Evolution**: Standalone hooks (`custodiet_gate.py`, `overdue_enforcement.py`) consolidated into unified gate architecture.
 
 ## Giving Effect
@@ -220,11 +220,11 @@ No issues detected. Continue current work.
 
 **Original**: `custodiet_gate.py` (archived)
 **Transitional**: `overdue_enforcement.py` (archived)
-**Current**: Unified `custodiet` gate in `lib/gates/definitions.py`
+**Current**: Unified `custodiet` gate in `aops-core/lib/gates/definitions.py`
 
 The enforcement logic has been moved from standalone hook scripts into the unified gate architecture. This provides better lifecycle management, icons in the icon strip, and JIT (Just-In-Time) gate opening for compliance agents.
 
-**What changed**: Implementation moved to `lib/gates/` system; threshold increased to 50 ops.
+**What changed**: Implementation moved to `aops-core/lib/gates/` system; threshold increased to 50 ops.
 **What didn't change**: Logic, output formats, agent integration.
 
 ### Hook Output Formats
