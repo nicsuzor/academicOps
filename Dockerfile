@@ -22,6 +22,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gnupg \
     make \
     cron \
+    procps \
     ca-certificates \
     && curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash - \
     && apt-get install -y nodejs \
@@ -37,6 +38,24 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean && rm -rf /var/lib/apt/lists/* \
     && ln -s /usr/bin/fdfind /usr/local/bin/fd \
     && ln -s /usr/bin/batcat /usr/local/bin/bat
+
+# Pre-install Playwright's Chromium browser and its system dependencies.
+# Marsha and other workers run browser verification via `playwright`; without
+# this, each container has to run `npx playwright install-deps` at runtime —
+# slow, often fails offline, and needs sudo under the `worker` user.
+#
+# `install-deps` auto-detects the distro and runs `apt-get install -y` for the
+# chromium-required packages (libnss3, libatk-1.0, libcups2, fonts, ...). Must
+# run as root (we still are here) before the USER switch further down.
+# `playwright install chromium` downloads the browser binaries. We set
+# PLAYWRIGHT_BROWSERS_PATH=/ms-playwright (system-wide) before the install so
+# the binaries land in a location the unprivileged `worker` user can read at
+# runtime. The env var stays set for all subsequent stages and containers.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN npx --yes playwright@1.59.1 install-deps chromium \
+    && npx --yes playwright@1.59.1 install chromium \
+    && chmod -R a+rX /ms-playwright \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install uv system-wide (standard for aops framework per P#93)
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh

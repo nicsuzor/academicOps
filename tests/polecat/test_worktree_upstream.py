@@ -240,6 +240,44 @@ class TestCrewBranchFlush:
         )
         assert not worktree.exists()
 
+    def test_nuke_preserves_remote_when_pr_open(
+        self,
+        local_clone: Path,
+        bare_origin: Path,
+        manager: PolecatManager,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        """nuke_crew(force=True) must preserve the remote branch when an open PR exists.
+
+        force=True means "bypass the unmerged-WIP safety check", not "destroy PRs".
+        The local worktree and local branch should still be cleaned up.
+        """
+        worktree = manager.setup_crew_worktree("test-worker", "test")
+        ls = _git(
+            ["ls-remote", "--heads", str(bare_origin), "crew/test-worker"],
+            cwd=local_clone,
+        )
+        assert ls.stdout.strip(), "precondition: remote branch should exist after setup"
+
+        # Force the classifier to report an open PR without needing real GitHub.
+        monkeypatch.setattr(
+            PolecatManager,
+            "_crew_branch_open_pr",
+            lambda self, repo_path, branch_name: "https://example.com/pr/1",
+        )
+
+        manager.nuke_crew("test-worker", force=True)
+
+        ls = _git(
+            ["ls-remote", "--heads", str(bare_origin), "crew/test-worker"],
+            cwd=local_clone,
+        )
+        assert ls.stdout.strip(), (
+            "nuke_crew(force=True) must preserve origin/crew/test-worker when an open PR "
+            "exists; the branch was deleted"
+        )
+        assert not worktree.exists(), "local worktree cleanup should still happen"
+
     def test_new_crew_starts_from_fresh_origin_main(
         self, local_clone: Path, bare_origin: Path, tmp_path: Path, manager: PolecatManager
     ):
