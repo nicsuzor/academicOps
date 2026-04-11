@@ -50,10 +50,12 @@ to execute.
 A task requires critic-gated dispatch if ANY of:
 
 - Task is tagged `high-risk`, `irreversible`, `production`, or `destructive`
-- Task body mentions: OTA, flash, deploy, migrate, delete (at scale), upload to external system
+- Task body mentions keywords like: OTA, flash, deploy, migrate, delete (at scale), upload to external system — these are **heuristic indicators**, not an exhaustive list
 - Task modifies infrastructure (CI/CD workflows, deployment configs, DNS)
 - Task targets a remote/physical system where failure requires physical intervention to recover
-- Supervisor judgment: the action closes a recovery path (e.g., uploading code that disables the only network ingress on a device)
+- **Supervisor judgment** (authoritative): the action closes a recovery path, affects systems beyond version control, or has blast radius disproportionate to the task scope
+
+Supervisor judgment is the primary trigger. Tag matching and keyword heuristics are a defense-in-depth safety net for tasks that weren't tagged during decomposition — they catch what judgment might miss, but they don't replace it.
 
 ### Gate Protocol
 
@@ -89,6 +91,11 @@ A task requires critic-gated dispatch if ANY of:
 
    Verdict: `SAFE_TO_DISPATCH` / `NEEDS_REFINEMENT` / `DO_NOT_DISPATCH`
 
+   **Batch review**: When an epic has multiple `high-risk` tasks that share
+   context (same target system, same blast radius class), batch them into a
+   single Pauli invocation. Include all task specs in one dispatch review
+   context. This avoids redundant reviews while maintaining coverage.
+
 3. **Gate decision**:
 
    | Pauli Verdict      | Result                                                     |
@@ -102,6 +109,18 @@ A task requires critic-gated dispatch if ANY of:
    [timestamp] CRITIC GATE: task-abc — Pauli: SAFE_TO_DISPATCH → dispatching
    [timestamp] CRITIC GATE: task-def — Pauli: DO_NOT_DISPATCH (closes only network ingress) → needs_review
    ```
+
+5. **Human override** (for `DO_NOT_DISPATCH` or `NEEDS_REFINEMENT` verdicts):
+
+   The critic gate is a safety check, not a permanent block. If a human
+   determines the task is safe despite the verdict, they can override:
+
+   - Set the task status back to `active` in PKB
+   - Append a note: `CRITIC OVERRIDE: <rationale for why this is safe>`
+   - The supervisor dispatches on the next cycle without re-invoking the gate
+
+   The override rationale is recorded in the task body and dispatch log for
+   audit. The supervisor does NOT override on its own — only humans can.
 
 ### Rollback Plan Requirements
 
@@ -145,9 +164,11 @@ dispatch. The supervisor adds this during DECOMPOSE or before DISPATCH.
 - Success criteria are vague or untestable
 - Failure detection has no out-of-band evidence path
 
-**Anti-pattern**: Writing "git revert" as the rollback plan for tasks that
-modify external systems. Git revert only undoes the code change — it doesn't
-un-flash a device or un-deploy a service.
+**Rollback plan validation**: Before accepting a rollback plan, check: does
+every external system modified by the task have a corresponding revert step?
+If the rollback plan only addresses version control (e.g., `git revert`) but
+the task modifies external systems, the plan is incomplete. Git revert undoes
+the code change — it doesn't un-flash a device or un-deploy a service.
 
 ---
 
@@ -246,7 +267,7 @@ multiple polecats onto a shared feature branch instead of individual
 
 **Setup** (supervisor does this before dispatching any worker):
 
-1. Create feature branch: `git checkout -b feature/<epic-id> origin/main && git push -u origin feature/<epic-id>`
+1. Create feature branch: `git fetch origin && git checkout -b feature/<epic-id> origin/main && git push -u origin feature/<epic-id>`
 2. Create draft PR: `gh pr create --draft --title "<epic title>" --body "<summary>\n\nTracks <epic-id>" --base main --head feature/<epic-id>`
 3. Record in the epic's Supervisor State block: `**Feature Branch**: feature/<epic-id> (PR #NNN, draft)`
 
@@ -259,7 +280,7 @@ Push commits to branch `feature/<epic-id>` (already exists on remote).
 Do NOT create a new branch. Pull before pushing:
   git pull origin feature/<epic-id>
 Do NOT file a separate PR — work contributes to draft PR #NNN.
-Call release_task with branch="feature/<epic-id>" when done.
+Call `mcp__pkb__release_task` with branch="feature/<epic-id>" when done.
 ```
 
 **Sequencing**: Dispatch one polecat at a time to the shared branch.
@@ -272,6 +293,14 @@ only after the current one releases its task.
 **Fallback**: If a polecat fails to push (conflict, etc.), fall back to
 individual-branch mode for remaining tasks. Merge those branches into the
 feature branch manually before marking the PR ready.
+
+**Deadlock prevention**: If the branch-locked worker hangs (no `release_task`,
+no PR activity), `polecat reset-stalled --hours 4` will reset it to `active`,
+implicitly releasing the branch lock. The supervisor transitions the next
+`branch_queued` item on its next ORIENT pass. If coordinated dispatch is
+producing repeated conflicts or failures, abort coordinated mode: dispatch
+remaining tasks on individual `polecat/<task-id>` branches and merge them into
+the feature branch before marking the PR ready.
 
 ---
 
