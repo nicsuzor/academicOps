@@ -358,7 +358,7 @@ def build_audit_session_context(
 
     Design choices:
     - ALL turns included (no max_turns cap) — auditor must see full history
-    - Agent reasoning text preserved at length (2000 chars) — auditor needs
+    - Agent reasoning text preserved at length (1000 chars) — auditor needs
       to see *why* decisions were made, not just what tools were called
     - Task/subagent prompts and results shown — these are major decision points
     - Edit diffs summarized — what changed matters for review
