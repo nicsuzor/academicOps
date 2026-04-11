@@ -701,7 +701,6 @@ class PolecatManager:
             # Apply sandbox settings to isolate the worker to this worktree
             self.create_sandbox_settings(worktree_path)
 
-            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
             return worktree_path
 
     def nuke_crew(self, name: str, force: bool = False):
