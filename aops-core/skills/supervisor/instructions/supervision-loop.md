@@ -231,6 +231,24 @@ uv run python aops-core/scripts/transcript.py $POLECAT_HOME/polecats/<task-id>.j
 **Anti-pattern**: Reading every transcript. Only read when lightweight signals
 (task status, PR diff, worker notes) are insufficient.
 
+#### Deferred Verification Tracking
+
+Any TDD fix that ships with tests the worker could not actually run
+(Docker rebuild needed, credentialed service, long wall-clock, external API)
+is **not verified** — it is inference. Before the epic can complete, each
+unrunnable test becomes an explicit follow-up task, not a note in the PR body.
+
+On MONITOR, for every work item whose report (see [[worker-dispatch]]
+parallel dispatch report shape) lists deferred verification:
+
+1. Create a child verification task under the same epic with:
+   - Exact reproduce steps (command, env, expected result)
+   - `depends_on` the PR that shipped the fix
+   - `soft_blocks` the epic's COMPLETE transition
+2. Link the task ID into the PR body under a `## Deferred verification` heading
+3. Do not mark the epic complete until every deferred-verification task is
+   `done` or explicitly accepted by the human as permanently manual
+
 ### REACT
 
 | Problem                           | Response                                           |
