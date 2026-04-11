@@ -730,15 +730,53 @@ def _run_docker_container(
     container_id = result.stdout.strip()
 
     try:
-        # Copy workspace into the container (avoids bind mount failures on WSL2)
+        # Copy workspace into the container and fix ownership.
+        # docker cp writes files as root, but the container runs as the host UID
+        # (--user flag). We tar with --owner/--group to set the correct UID:GID
+        # during injection so pre-commit hooks, uv, and git can write to /workspace.
         if docker_cmd.workspace_dir:
-            cp_result = subprocess.run(
-                ["docker", "cp", f"{docker_cmd.workspace_dir}/.", f"{container_id}:/workspace"],
-                capture_output=True,
-                text=True,
-                cwd=cwd,
-                env=env,
+            user_spec = next(
+                (cmd[i + 1] for i, x in enumerate(cmd) if x == "--user"),
+                None,
             )
+            if user_spec:
+                uid_str, gid_str = (user_spec.split(":") + [user_spec])[:2]
+                # tar with forced ownership | docker cp from stdin
+                tar_cmd = [
+                    "tar",
+                    "-cf",
+                    "-",
+                    "--owner",
+                    uid_str,
+                    "--group",
+                    gid_str,
+                    "-C",
+                    str(docker_cmd.workspace_dir),
+                    ".",
+                ]
+                tar_proc = subprocess.Popen(
+                    tar_cmd,
+                    stdout=subprocess.PIPE,
+                    cwd=cwd,
+                )
+                cp_result = subprocess.run(
+                    ["docker", "cp", "-", f"{container_id}:/workspace"],
+                    stdin=tar_proc.stdout,
+                    capture_output=True,
+                    text=True,
+                    cwd=cwd,
+                    env=env,
+                )
+                tar_proc.stdout.close()
+                tar_proc.wait()
+            else:
+                cp_result = subprocess.run(
+                    ["docker", "cp", f"{docker_cmd.workspace_dir}/.", f"{container_id}:/workspace"],
+                    capture_output=True,
+                    text=True,
+                    cwd=cwd,
+                    env=env,
+                )
             if cp_result.returncode != 0:
                 print(f"docker cp (workspace) failed: {cp_result.stderr}", file=sys.stderr)
                 return cp_result
