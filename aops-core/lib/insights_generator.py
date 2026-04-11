@@ -548,9 +548,8 @@ def get_insights_file_path(
 
         if hour:
             dt = dt.replace(hour=int(hour))
-        else:
-            # Use current hour as fallback (legacy behavior)
-            dt = dt.replace(hour=datetime.now().astimezone().hour)
+        # No fallback: dt stays at midnight (00:00) when no hour provided.
+        # Pass an ISO 8601 date or explicit `hour` for accurate timestamps.
 
     # Use session_naming to generate the base filename
     # NOTE: provider and machine are auto-detected by session_naming if not provided
@@ -558,7 +557,7 @@ def get_insights_file_path(
         session_id=session_id,
         timestamp=dt,
         slug=slug or "session",
-        repo=project,
+        repo=project or None,  # None triggers auto-detection; empty string causes double-dash
     )
 
     if index is not None and index > 0:

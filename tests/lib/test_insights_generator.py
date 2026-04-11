@@ -235,46 +235,56 @@ class TestSchemaValidation:
 class TestInsightsFilePath:
     """Test insights file path generation."""
 
-    def test_file_path_format_without_project(self):
+    def test_file_path_format_without_project(self, monkeypatch):
         """Test that file path follows correct format without project."""
+        monkeypatch.setenv("AOPS_MACHINE", "testmachine")
         path = get_insights_file_path("2026-01-13", "a1b2c3d4", hour="09")
-        # Without project: YYYYMMDD-HH-session_id.json
-        assert path.name == "20260113-09-a1b2c3d4.json"
-        assert str(path).endswith("sessions/summaries/20260113-09-a1b2c3d4.json")
+        # New format: YYYYMMDD-HHMM-session_id-{shortform}-session.json
+        assert path.name.startswith("20260113-0900-a1b2c3d4-")
+        assert path.name.endswith(".json")
+        assert "summaries" in str(path)
 
-    def test_file_path_format_with_project(self):
+    def test_file_path_format_with_project(self, monkeypatch):
         """Test that file path includes project name when provided."""
+        monkeypatch.setenv("AOPS_MACHINE", "testmachine")
         path = get_insights_file_path("2026-01-13", "a1b2c3d4", project="writing", hour="14")
-        # With project: YYYYMMDD-HH-project-session_id.json
-        assert path.name == "20260113-14-writing-a1b2c3d4.json"
-        assert str(path).endswith("sessions/summaries/20260113-14-writing-a1b2c3d4.json")
+        # New format: YYYYMMDD-HHMM-session_id-{project}-{machine}-{provider}-session.json
+        assert path.name.startswith("20260113-1400-a1b2c3d4-writing-")
+        assert path.name.endswith(".json")
+        assert "summaries" in str(path)
 
-    def test_file_path_format_with_project_and_slug(self):
+    def test_file_path_format_with_project_and_slug(self, monkeypatch):
         """Test that file path includes project and slug."""
+        monkeypatch.setenv("AOPS_MACHINE", "testmachine")
         path = get_insights_file_path(
             "2026-01-13", "a1b2c3d4", slug="review", project="aops", hour="17"
         )
-        # With project and slug: YYYYMMDD-HH-project-session_id-slug.json
-        assert path.name == "20260113-17-aops-a1b2c3d4-review.json"
+        # New format: YYYYMMDD-HHMM-session_id-{project}-{machine}-{provider}-{slug}.json
+        assert path.name.startswith("20260113-1700-a1b2c3d4-aops-")
+        assert path.name.endswith("-review.json")
 
-    def test_file_path_sanitizes_project_name(self):
+    def test_file_path_sanitizes_project_name(self, monkeypatch):
         """Test that project name is sanitized for filesystem safety."""
+        monkeypatch.setenv("AOPS_MACHINE", "testmachine")
         path = get_insights_file_path("2026-01-13", "a1b2c3d4", project="My Project!", hour="23")
-        # Special chars removed, lowercase
-        assert path.name == "20260113-23-my-project-a1b2c3d4.json"
+        # Special chars removed, lowercase: "My Project!" -> "my-project"
+        assert path.name.startswith("20260113-2300-a1b2c3d4-my-project-")
+        assert path.name.endswith(".json")
 
-    def test_file_path_uses_centralized_location(self):
+    def test_file_path_uses_centralized_location(self, monkeypatch):
         """Test that file path uses centralized sessions/summaries/ location."""
+        monkeypatch.setenv("AOPS_MACHINE", "testmachine")
         path = get_insights_file_path("2026-01-13", "a1b2c3d4", project="test", hour="08")
         # Centralized location via get_summaries_dir()
         assert "summaries" in str(path)
-        assert path.name == "20260113-08-test-a1b2c3d4.json"
+        assert path.name.startswith("20260113-0800-a1b2c3d4-test-")
 
-    def test_file_path_extracts_hour_from_iso8601(self):
-        """Test that hour is extracted from ISO 8601 date format."""
+    def test_file_path_extracts_hour_from_iso8601(self, monkeypatch):
+        """Test that hour and minute are extracted from ISO 8601 date format."""
+        monkeypatch.setenv("AOPS_MACHINE", "testmachine")
         path = get_insights_file_path("2026-01-13T15:30:00+10:00", "a1b2c3d4", project="test")
-        # Hour extracted from ISO 8601 timestamp
-        assert path.name == "20260113-15-test-a1b2c3d4.json"
+        # Hour AND minute extracted from ISO 8601 timestamp (15:30 → 1530)
+        assert path.name.startswith("20260113-1530-a1b2c3d4-test-")
 
 
 class TestWriteInsightsFile:

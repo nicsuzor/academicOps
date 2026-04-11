@@ -229,7 +229,8 @@ def _save_minimal_token_summary(
             print(f"⏭️  Insights already exist for session {session_id}: {existing.name}")
             return
 
-        insights_path = get_insights_file_path(date_str, session_id, slug, None, project)
+        date_for_insights = timestamp.isoformat() if timestamp else date_str
+        insights_path = get_insights_file_path(date_for_insights, session_id, slug, None, project)
         write_insights_file(insights_path, insights, session_id=session_id)
         print(f"📊 Token metrics saved (no reflection): {insights_path}")
     except Exception as e:
@@ -314,7 +315,10 @@ def _process_reflection(
                 print(f"⏭️  Insights already exist for session {session_id}: {existing.name}")
                 continue
 
-            insights_path = get_insights_file_path(date_str, session_id, slug, idx, project)
+            date_for_insights = timestamp.isoformat() if timestamp else date_str
+            insights_path = get_insights_file_path(
+                date_for_insights, session_id, slug, idx, project
+            )
             write_insights_file(insights_path, insights, session_id=session_id)
             print(f"💡 Reflection {i + 1}/{len(reflections)} saved to: {insights_path}")
         except InsightsValidationError as e:
