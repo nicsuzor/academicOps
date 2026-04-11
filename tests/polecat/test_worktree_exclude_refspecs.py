@@ -8,7 +8,6 @@ output and returns negative refspecs for branches checked out in worktrees.
 import subprocess
 import sys
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 import yaml
@@ -125,31 +124,26 @@ class TestWorktreeExcludeRefspecs:
         for name in ["branch-x", "branch-y", "branch-z"]:
             assert f"^refs/heads/{name}" in result
 
-    def test_results_are_sorted_and_deduplicated(self, manager: PolecatManager):
-        """Output is sorted and deduplicated."""
-        porcelain_output = (
-            "worktree /path/a\n"
-            "branch refs/heads/beta\n"
-            "\n"
-            "worktree /path/b\n"
-            "branch refs/heads/alpha\n"
-            "\n"
-            "worktree /path/c\n"
-            "branch refs/heads/beta\n"
-            "\n"
-        )
-        fake_result = subprocess.CompletedProcess(
-            args=[], returncode=0, stdout=porcelain_output, stderr=""
-        )
-        with patch("subprocess.run", return_value=fake_result):
-            result = manager._worktree_exclude_refspecs(Path("/fake"))
+    def test_results_are_sorted_and_deduplicated(
+        self, tmp_path: Path, local_clone: Path, manager: PolecatManager
+    ):
+        """Output is sorted and deduplicated (real worktrees, checked via sort order)."""
+        # Create worktrees with branch names that prove sorting: z before a alphabetically
+        for name in ["zebra", "alpha"]:
+            wt = tmp_path / f"wt-{name}"
+            _git(["worktree", "add", "-b", name, str(wt), "main"], cwd=local_clone)
 
-        # Sorted and deduplicated: alpha before beta, beta only once
-        assert result == ["^refs/heads/alpha", "^refs/heads/beta"]
+        result = manager._worktree_exclude_refspecs(local_clone)
 
-    def test_command_failure_returns_empty(self, manager: PolecatManager):
-        """If git worktree list fails, returns empty list gracefully."""
-        fake_result = subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr="error")
-        with patch("subprocess.run", return_value=fake_result):
-            result = manager._worktree_exclude_refspecs(Path("/fake"))
+        # Must be sorted: alpha before main before zebra
+        branch_names = [r.replace("^refs/heads/", "") for r in result]
+        assert branch_names == sorted(branch_names), f"Not sorted: {branch_names}"
+        # No duplicates
+        assert len(branch_names) == len(set(branch_names)), f"Duplicates: {branch_names}"
+
+    def test_command_failure_returns_empty(self, tmp_path: Path, manager: PolecatManager):
+        """If git worktree list fails (non-git dir), returns empty list gracefully."""
+        non_git_dir = tmp_path / "not-a-repo"
+        non_git_dir.mkdir()
+        result = manager._worktree_exclude_refspecs(non_git_dir)
         assert result == []

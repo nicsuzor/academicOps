@@ -144,6 +144,34 @@ class TestRouterClaudeFormat:
         assert "decision" in output, f"Missing decision. Output: {output}"
         assert output["decision"] in ["approve", "block"]
 
+    def test_session_end_output_format(self) -> None:
+        """SessionEnd (distinct from Stop) returns correct Claude format."""
+        input_data = {
+            "hook_event_name": "SessionEnd",
+            "session_id": f"test-{uuid.uuid4()}",
+        }
+
+        output, stderr = run_router_claude(input_data)
+
+        assert "decision" in output, f"Missing decision. Output: {output}"
+        assert output["decision"] in ["approve", "block"]
+
+
+class TestRouterSilentEvents:
+    """Tests for events that should produce empty or minimal output."""
+
+    def test_task_notification_returns_empty_output(self) -> None:
+        """Task-notification UserPromptSubmit should produce empty output."""
+        input_data = {
+            "hook_event_name": "UserPromptSubmit",
+            "session_id": f"test-{uuid.uuid4()}",
+            "prompt": "<task-notification>Task completed</task-notification>",
+        }
+
+        output, stderr = run_router_claude(input_data)
+
+        assert output == {}, f"Expected empty output, got: {output}"
+
 
 class TestRouterGeminiFormat:
     """Tests for Gemini CLI output format."""
