@@ -253,10 +253,10 @@ There is no Python orchestrator. The workflow launches a **Claude agent** (`anth
 
 The sleep cycle is the framework's "maintenance" layer. Users (human or agent) can expect the following behaviors:
 
-1. **Autonomous Maintenance**: The cycle runs every 4 hours via GitHub Actions. It should complete without intervention and stay within its time budget (see Open Questions for duration).
+1. **Autonomous Maintenance**: The cycle runs every 6 hours via GitHub Actions. It should complete without intervention and stay within its time budget (see Open Questions for duration).
 2. **Zero-Orphan Sessions**: Every session transcript eventually receives a corresponding summary JSON and PKB memory. Users shouldn't need to manually run `/session-insights` in bulk.
 3. **Self-Cleaning Task Graph**: Under-specified tasks (vague titles, empty bodies) are automatically flagged. The task graph stays actionable without manual pruning of dead ends.
-4. **Living Framework Indices**: Mechanical framework files (`SKILLS.md`, `INDEX.md`) stay synchronized with the filesystem. New skills or commands appear in indices within 4 hours of being merged.
+4. **Living Framework Indices**: Mechanical framework files (`SKILLS.md`, `INDEX.md`) stay synchronized with the filesystem. New skills or commands appear in indices within 6 hours of being merged.
 5. **Staged Knowledge Promotion**: Significant patterns from recent sessions or tasks are surfaced as candidates for `MEMORY.md` or PKB. The system identifies _what_ is worth remembering, even if the human didn't manually invoke `/remember`.
 6. **Remote Consistency**: The brain repo (`$ACA_DATA`) is kept synchronized across devices through periodic commits and pushes.
 

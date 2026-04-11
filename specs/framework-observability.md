@@ -278,8 +278,8 @@ Insights JSON uses consistent schemas so tooling can:
 
 Users can expect that every session (Gemini CLI or Claude Code) automatically generates a persistent audit trail.
 
-- **Transcripts**: Full and abridged markdown transcripts are generated at session end and stored in the `sessions/transcripts/` directory within the sessions data repository.
-- **Insights JSON**: A structured analysis of the session (outcome, accomplishments, friction points) is saved to the `sessions/summaries/` directory within the sessions data repository.
+- **Transcripts**: Full and abridged markdown transcripts are generated at session end and stored in `$ACA_DATA/sessions/transcripts/`.
+- **Insights JSON**: A structured analysis of the session (outcome, accomplishments, friction points) is saved to `$ACA_DATA/sessions/summaries/`.
 - **Token Tracking**: Detailed token usage metrics are captured per session, allowing users to monitor cost and efficiency.
 
 ### 2. Self-Reflexive Learning
