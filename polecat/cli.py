@@ -2704,6 +2704,82 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, agent_args
                     )
                     if merge_result.stderr:
                         print(f"      Git error: {merge_result.stderr.strip()}")
+
+                # Detect divergence between local crew branch and its origin
+                # counterpart (e.g. force-push upstream). The previous
+                # implementation silently ignored this.
+                crew_branch = f"crew/{crew_name}"
+                remote_ref = f"refs/remotes/origin/{crew_branch}"
+                remote_exists = (
+                    subprocess.run(
+                        ["git", "rev-parse", "--verify", "--quiet", remote_ref],
+                        cwd=project_dir,
+                        capture_output=True,
+                    ).returncode
+                    == 0
+                )
+                local_exists = (
+                    subprocess.run(
+                        ["git", "rev-parse", "--verify", "--quiet", f"refs/heads/{crew_branch}"],
+                        cwd=project_dir,
+                        capture_output=True,
+                    ).returncode
+                    == 0
+                )
+                if remote_exists and local_exists:
+                    local_anc = (
+                        subprocess.run(
+                            [
+                                "git",
+                                "merge-base",
+                                "--is-ancestor",
+                                f"refs/heads/{crew_branch}",
+                                remote_ref,
+                            ],
+                            cwd=project_dir,
+                            capture_output=True,
+                        ).returncode
+                        == 0
+                    )
+                    remote_anc = (
+                        subprocess.run(
+                            [
+                                "git",
+                                "merge-base",
+                                "--is-ancestor",
+                                remote_ref,
+                                f"refs/heads/{crew_branch}",
+                            ],
+                            cwd=project_dir,
+                            capture_output=True,
+                        ).returncode
+                        == 0
+                    )
+                    if local_anc and not remote_anc:
+                        ahead = subprocess.run(
+                            [
+                                "git",
+                                "rev-list",
+                                "--count",
+                                f"refs/heads/{crew_branch}..{remote_ref}",
+                            ],
+                            cwd=project_dir,
+                            capture_output=True,
+                            text=True,
+                        ).stdout.strip()
+                        print(
+                            f"   \u26a0 {crew_branch} is {ahead} commits behind "
+                            f"origin/{crew_branch}. Run 'git pull --ff-only' "
+                            f"inside the crew session."
+                        )
+                    elif not local_anc and not remote_anc:
+                        print(
+                            f"   \u274c {crew_branch} has DIVERGED from "
+                            f"origin/{crew_branch} (likely force-push upstream). "
+                            f"Local and remote have commits the other doesn't. "
+                            f"Resolve manually: 'git log --oneline --graph "
+                            f"HEAD origin/{crew_branch}'."
+                        )
         projects = list(clone_paths.keys())
     else:
         try:

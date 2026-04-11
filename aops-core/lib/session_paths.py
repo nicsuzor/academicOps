@@ -7,10 +7,10 @@ Session files are stored in ~/writing/sessions/status/ as YYYYMMDD-HH-sessionID.
 where HH is the 24-hour local time when the session was created.
 """
 
-import hashlib
 import os
-from datetime import datetime
 from pathlib import Path
+
+from lib import session_naming
 
 
 def get_claude_project_folder() -> str:
@@ -55,15 +55,7 @@ def get_session_short_hash(session_id: str) -> str:
     Returns:
         8-character string
     """
-    # 1. If it's a standard UUID or long enough, use the prefix (matches transcript)
-    if len(session_id) >= 8:
-        # Check if first 8 are valid hex or alphanumeric
-        prefix = session_id[:8].lower()
-        if all(c in "0123456789abcdefghijklmnopqrstuvwxyz" for c in prefix):
-            return prefix
-
-    # 2. Fallback to SHA-256 for short/complex IDs
-    return hashlib.sha256(session_id.encode()).hexdigest()[:8]
+    return session_naming.get_session_short_hash(session_id)
 
 
 def _is_gemini_session(session_id: str | None, input_data: dict | None) -> bool:
@@ -150,8 +142,8 @@ def get_hook_log_path(
     """Get the path for the per-session hook log file.
 
     Logs to:
-    - Claude: ~/.claude/projects/<project>/<date>-<shorthash>-hooks.jsonl
-    - Gemini: ~/.gemini/tmp/<hash>/logs/<date>-<shorthash>-hooks.jsonl
+    - Claude: ~/.claude/projects/<project>/YYYYMMDD-HH-<shorthash>-hooks.jsonl
+    - Gemini: ~/.gemini/tmp/<hash>/logs/YYYYMMDD-HH-<shorthash>-hooks.jsonl
 
     Args:
         session_id: Session ID from Claude Code or Gemini CLI
@@ -166,20 +158,14 @@ def get_hook_log_path(
     if env_hook_log_path := os.environ.get("AOPS_HOOK_LOG_PATH"):
         return Path(env_hook_log_path)
 
-    if date is None:
-        from datetime import datetime
-
-        date = datetime.now().astimezone().strftime("%Y-%m-%d")
-
-    short_hash = get_session_short_hash(session_id)
-    date_compact = date.replace("-", "")  # YYYY-MM-DD -> YYYYMMDD
+    filename = session_naming.get_hook_log_filename(session_id, date=date)
 
     # Unify hook logging: Always prefer centralized AOPS_SESSIONS if available
     aops_sessions = os.environ.get("AOPS_SESSIONS")
     if aops_sessions:
         logs_dir = Path(aops_sessions).resolve() / "hooks"
         logs_dir.mkdir(parents=True, exist_ok=True)
-        return logs_dir / f"{date_compact}-{short_hash}-hooks.jsonl"
+        return logs_dir / filename
 
     # Determine log directory based on session type
     if _is_gemini_session(session_id, input_data):
@@ -187,13 +173,13 @@ def get_hook_log_path(
         logs_dir = get_gemini_logs_dir(input_data)
         if logs_dir is None:
             raise ValueError("Gemini session detected but no logs directory configured")
-        return logs_dir / f"{date_compact}-{short_hash}-hooks.jsonl"
+        return logs_dir / filename
     else:
-        # Claude: ~/.claude/projects/<project>/<date>-<shorthash>-hooks.jsonl
+        # Claude: ~/.claude/projects/<project>/YYYYMMDD-HH-<shorthash>-hooks.jsonl
         project_folder = get_claude_project_folder()
         claude_projects_dir = Path.home() / ".claude" / "projects" / project_folder
         claude_projects_dir.mkdir(parents=True, exist_ok=True)
-        return claude_projects_dir / f"{date_compact}-{short_hash}-hooks.jsonl"
+        return claude_projects_dir / filename
 
 
 def get_session_status_dir(session_id: str | None = None, input_data: dict | None = None) -> Path:
@@ -259,24 +245,8 @@ def get_session_file_path(
     Returns:
         Path to session state file
     """
-    if date is None:
-        now = datetime.now().astimezone()
-        date_compact = now.strftime("%Y%m%d")
-        hour = now.strftime("%H")
-    elif "T" in date:
-        # ISO 8601 format with time: 2026-01-24T17:30:00+10:00
-        date_compact = date[:10].replace("-", "")  # Extract YYYY-MM-DD -> YYYYMMDD
-        hour = date[11:13]  # Extract HH from time portion
-    else:
-        # Simple YYYY-MM-DD format - use current hour
-        date_compact = date.replace("-", "")
-        hour = datetime.now().astimezone().strftime("%H")
-
-    short_hash = get_session_short_hash(session_id)
-
-    return (
-        get_session_status_dir(session_id, input_data) / f"{date_compact}-{hour}-{short_hash}.json"
-    )
+    filename = session_naming.get_session_filename(session_id, date=date)
+    return get_session_status_dir(session_id, input_data) / filename
 
 
 def get_session_directory(
@@ -304,19 +274,10 @@ def get_session_directory(
     """
     if base_dir is not None:
         # Test isolation mode - use old structure for compatibility
-        if date is None:
-            now = datetime.now().astimezone()
-            date_compact = now.strftime("%Y%m%d")
-            hour = now.strftime("%H")
-        elif "T" in date:
-            date_compact = date[:10].replace("-", "")
-            hour = date[11:13]
-        else:
-            date_compact = date.replace("-", "")
-            hour = datetime.now().astimezone().strftime("%H")
+        # We use get_session_filename without suffix to get the folder name
+        folder_name = session_naming.get_session_filename(session_id, date=date, suffix="")
         project_folder = get_claude_project_folder()
-        short_hash = get_session_short_hash(session_id)
-        session_dir = base_dir / project_folder / f"{date_compact}-{hour}-{short_hash}"
+        session_dir = base_dir / project_folder / folder_name
         session_dir.mkdir(parents=True, exist_ok=True)
         return session_dir
 
@@ -366,8 +327,8 @@ def get_gate_file_path(
     """Get the path for a gate context file.
 
     Writes to the same directory as hook log files:
-    - Claude: ~/.claude/projects/<project>/<date>-<shorthash>-<gate>.md
-    - Gemini: ~/.gemini/tmp/<hash>/logs/<date>-<shorthash>-<gate>.md
+    - Claude: ~/.claude/projects/<project>/YYYYMMDD-HH-<shorthash>-<gate>.md
+    - Gemini: ~/.gemini/tmp/<hash>/logs/YYYYMMDD-HH-<shorthash>-<gate>.md
 
     Checks AOPS_GATE_FILE_<GATE> env var first for session-stable path.
 
@@ -384,29 +345,25 @@ def get_gate_file_path(
     if env_path := os.environ.get(env_var):
         return Path(env_path)
 
-    if date is None:
-        date = datetime.now().astimezone().strftime("%Y-%m-%d")
-
-    short_hash = get_session_short_hash(session_id)
-    date_compact = date.replace("-", "")
+    filename = session_naming.get_gate_filename(gate, session_id, date=date)
 
     # Unify gate logging: Always prefer centralized AOPS_SESSIONS if available
     aops_sessions = os.environ.get("AOPS_SESSIONS")
     if aops_sessions:
         logs_dir = Path(aops_sessions).resolve() / "hooks"
         logs_dir.mkdir(parents=True, exist_ok=True)
-        return logs_dir / f"{date_compact}-{short_hash}-{gate}.md"
+        return logs_dir / filename
 
     if _is_gemini_session(session_id, input_data):
         logs_dir = get_gemini_logs_dir(input_data)
         if logs_dir is None:
             raise ValueError("Gemini session detected but no logs directory configured")
-        return logs_dir / f"{date_compact}-{short_hash}-{gate}.md"
+        return logs_dir / filename
     else:
         project_folder = get_claude_project_folder()
         claude_projects_dir = Path.home() / ".claude" / "projects" / project_folder
         claude_projects_dir.mkdir(parents=True, exist_ok=True)
-        return claude_projects_dir / f"{date_compact}-{short_hash}-{gate}.md"
+        return claude_projects_dir / filename
 
 
 def get_all_gate_file_paths(
