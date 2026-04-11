@@ -374,3 +374,68 @@ Workers coordinate through the task system, not through the supervisor:
 - Jules sessions are isolated by design (separate Google infrastructure)
 - If decomposition reveals shared files:
   - Add explicit `depends_on` between subtasks before dispatch
+
+---
+
+## Parallel Dispatch into a Shared Repo
+
+When dispatching multiple general-purpose subagents (not polecat workers) at
+once into the same underlying repo — e.g. via the Task tool with
+`isolation: worktree` — the nominal isolation is **not sufficient**. Agents
+still race on the shared checkout: one `git checkout -b` while another is
+mid-commit lands commits on the wrong branch. Every parallel dispatch must
+follow this pattern.
+
+### Mandatory per-agent setup
+
+Each agent's brief MUST instruct it to create its own private worktree
+**before** any work, and remove it at the end:
+
+```bash
+git fetch origin
+git worktree add /tmp/wt-<task-id> -b <branch-name> origin/<base-branch>
+cd /tmp/wt-<task-id>
+# ... do work ...
+# on exit: git worktree remove /tmp/wt-<task-id>
+```
+
+Never let two agents share a checkout. `isolation: worktree` alone is not
+enough — make the private worktree explicit in the brief.
+
+### Mandatory push pattern
+
+`branch.autoSetupMerge=always` is common on aops machines, so
+`git checkout -b feature origin/main` sets the new branch's upstream to
+`origin/main`. A plain `git push -u origin <branch>` then tries to push to
+`refs/heads/main` and is rejected by branch protection. Always use an
+explicit refspec:
+
+```bash
+git push -u origin <branch>:<branch>
+```
+
+### No-touch lists
+
+When dispatching N parallel agents into one repo, compute each agent's
+**no-touch list** = every file or path any other agent is expected to touch,
+plus any in-flight dirty changes. Include the list verbatim in the brief.
+Without it, agents improvise (stash unrelated changes, edit adjacent files)
+and integration becomes unrecoverable.
+
+### Required report shape from each agent
+
+Every parallel-dispatched agent must return a structured report as its final
+deliverable. The integration step depends on this shape — free-form prose
+makes bundled merges unsafe:
+
+```markdown
+- **Branch**: <branch-name>
+- **Commits**: <SHA1>, <SHA2>, ...
+- **Files touched**: <list>
+- **Files NOT touched** (from no-touch list): confirmed
+- **Deviations from brief**: <none | list>
+- **Deferred verification**: <none | list of unrunnable tests with reproduce steps>
+```
+
+The supervisor uses this directly to assemble a bundle branch and to file
+follow-up verification tasks (see [[supervision-loop]] MONITOR).
