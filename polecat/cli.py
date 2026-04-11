@@ -3318,10 +3318,19 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
     if gemini:
         # Gemini CLI — run inside our Docker container (not --sandbox, which
         # uses bind mounts that fail on WSL2/Docker Desktop).
+        #
+        # Sandbox allowlist (#522): Gemini's workspace sandbox blocks reads of
+        # files outside /workspace, including the aops-core extension's
+        # GEMINI.md and sibling skills. Explicitly widen the allowlist to the
+        # extension directory so read_file / activate_skill work.  Keep this
+        # list narrow — DO NOT blanket-widen; each entry is a specific dir
+        # the agent needs to reach.
         cmd = [
             "gemini",
             "--approval-mode",
             "yolo",
+            "--include-directories",
+            "/home/worker/.gemini/extensions/aops-core",
         ]
 
         if interactive:
