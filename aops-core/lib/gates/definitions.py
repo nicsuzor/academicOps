@@ -104,7 +104,6 @@ GATE_CONFIGS = [
         ],
     ),
     # --- Handover ---
-    # --- Handover ---
     # Gate starts OPEN (so short interactive chats don't require handover).
     # Closes when work begins (task bound or write tool used).
     # Opens when /handover skill completes. Policy blocks Stop when CLOSED.
