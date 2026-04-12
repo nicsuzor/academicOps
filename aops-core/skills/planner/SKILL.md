@@ -51,6 +51,7 @@ domain:
   - operations
   - knowledge-management
 model: opus
+owner: vaughan
 version: 0.1.0
 permalink: skills-planner
 ---
