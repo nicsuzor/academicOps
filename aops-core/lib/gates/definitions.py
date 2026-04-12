@@ -152,6 +152,29 @@ GATE_CONFIGS = [
                     system_message_key="handover.complete",
                 ),
             ),
+            # Gemini /dump via slash command injection (UserPromptSubmit containing /dump template)
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="UserPromptSubmit",
+                    prompt_pattern=r"^\s*#\s*/dump\s*-\s*Session Handover",
+                ),
+                transition=GateTransition(
+                    target_status=GateStatus.OPEN,
+                    system_message_key="handover.complete",
+                ),
+            ),
+            # Gemini fallback to Pauli subagent for /dump
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="PreToolUse",
+                    tool_name_pattern="^pauli$",
+                    tool_input_pattern=r"/dump|handover",
+                ),
+                transition=GateTransition(
+                    target_status=GateStatus.OPEN,
+                    system_message_key="handover.complete",
+                ),
+            ),
         ],
         policies=[
             # Block Stop when gate is CLOSED (dump not yet done)
