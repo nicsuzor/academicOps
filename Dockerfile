@@ -81,7 +81,8 @@ ENV HOME=/home/worker \
 ARG CLAUDE_CODE_VERSION
 RUN curl -fsSL https://claude.ai/install.sh | bash
 
-# Install Rust toolchain via rustup
+# RUST_VERSION busts the Docker layer cache so rebuilds pick up the latest.
+ARG RUST_VERSION
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal
 
 # Install Python-based CLI tools as user (installs to ~/.local/bin)
