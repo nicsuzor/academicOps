@@ -2,7 +2,7 @@
 name: dump
 type: command
 category: instruction
-description: Pauli — Comprehensive work handover and session closure (/handover) - commit changes, push, file a Pull Request, update tasks, file follow-ups, output Framework Reflection, halt
+description: Pauli — Comprehensive work handover and session closure (/dump) - commit changes, push, file a Pull Request, update tasks, file follow-ups, output Framework Reflection, halt
 triggers:
   - "emergency handoff"
   - "save work"
@@ -22,7 +22,7 @@ permalink: commands/dump
 
 # /dump - Session Handover & Context Dump
 
-Force graceful handover when work must stop or session must end. This unified command (also known as `/handover`) ensures clean session closure and context preservation.
+Force graceful handover when work must stop or session must end. This unified command ensures clean session closure and context preservation.
 
 ## Ownership: Pauli
 
@@ -32,7 +32,6 @@ This command is owned by **Pauli (The Logician)**. When you invoke it, you are s
 
 ```
 /dump
-/handover
 ```
 
 To invoke programmatically mid-session: `Skill(skill="aops-core:dump")`.
