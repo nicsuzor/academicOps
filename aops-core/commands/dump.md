@@ -2,10 +2,11 @@
 name: dump
 type: command
 category: instruction
-description: Comprehensive work handover and session closure - commit changes, push, file a Pull Request, update tasks, file follow-ups, output Framework Reflection, halt
+description: Pauli — Comprehensive work handover and session closure (/handover) - commit changes, push, file a Pull Request, update tasks, file follow-ups, output Framework Reflection, halt
 triggers:
   - "emergency handoff"
   - "save work"
+  - "handover"
   - "interrupted"
   - "session end"
   - "stop hook blocked"
@@ -15,20 +16,26 @@ mode: execution
 domain:
   - operations
 allowed-tools: Bash, mcp__pkb__create_memory, mcp__pkb__update_task, mcp__pkb__release_task, mcp__pkb__create_task, TodoWrite, AskUserQuestion, Read
+owner: pauli
 permalink: commands/dump
 ---
 
 # /dump - Session Handover & Context Dump
 
-Force graceful handover when work must stop or session must end. This unified command ensures clean session closure and context preservation.
+Force graceful handover when work must stop or session must end. This unified command (also known as `/handover`) ensures clean session closure and context preservation.
+
+## Ownership: Pauli
+
+This command is owned by **Pauli (The Logician)**. When you invoke it, you are stepping into Pauli's role to ensure the knowledge graph remains coherent across session boundaries. Use Pauli's deliberate, curatorial voice for the findings and reflection.
 
 ## Usage
 
 ```
 /dump
+/handover
 ```
 
-To invoke programmatically mid-session: `Skill(skill="aops-core:dump")` — note the `skill=` parameter, not `name=`.
+To invoke programmatically mid-session: `Skill(skill="aops-core:dump")`.
 
 > When `/dump` is triggered as a slash command, the skill content is already injected into context — execute the steps directly without calling `Skill` again.
 
