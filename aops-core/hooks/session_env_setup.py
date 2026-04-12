@@ -60,14 +60,11 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
 
     persist = {}
 
-    # Reconstruct input_data with transcript_path since it was popped from raw_input
-    input_data = {**ctx.raw_input, "transcript_path": ctx.transcript_path}
-
     # Use precomputed short_hash from context
     short_hash = ctx.session_short_hash
-    hook_log_path = get_hook_log_path(ctx.session_id, input_data)
-    state_file_path = get_session_file_path(ctx.session_id, input_data=input_data)
-    status_dir = get_session_status_dir(ctx.session_id, input_data)
+    hook_log_path = get_hook_log_path(ctx.session_id, transcript_path=ctx.transcript_path)
+    state_file_path = get_session_file_path(ctx.session_id, transcript_path=ctx.transcript_path)
+    status_dir = get_session_status_dir(ctx.session_id, transcript_path=ctx.transcript_path)
 
     # Fail-fast: ensure state file can be written
     if not state_file_path.exists():

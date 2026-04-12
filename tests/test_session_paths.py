@@ -80,9 +80,8 @@ class TestSessionPaths(unittest.TestCase):
             # Patch Path.home()
             with patch.object(Path, "home", return_value=Path(tmpdir)):
                 # Pass UUID session_id (no gemini- prefix) but with Gemini transcript_path
-                input_data = {"transcript_path": transcript_path}
                 result = session_paths.get_session_status_dir(
-                    "07328230-44d4-414b-9fec-191a6eec0948", input_data=input_data
+                    "07328230-44d4-414b-9fec-191a6eec0948", transcript_path=transcript_path
                 )
                 # Should detect Gemini from transcript_path and return gemini_base
                 self.assertEqual(result, gemini_base)
@@ -92,7 +91,7 @@ class TestSessionPaths(unittest.TestCase):
         # UUID session_id (no gemini- prefix) with Gemini transcript_path
         result = session_paths._is_gemini_session(
             "07328230-44d4-414b-9fec-191a6eec0948",
-            {"transcript_path": "/home/user/.gemini/tmp/hash/chats/session.json"},
+            transcript_path="/home/user/.gemini/tmp/hash/chats/session.json",
         )
         self.assertTrue(result)
 

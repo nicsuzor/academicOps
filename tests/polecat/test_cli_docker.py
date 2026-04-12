@@ -92,7 +92,7 @@ class TestBuildDockerCmd:
             is_interactive=False,
         )
         # workspace_dir should be set for docker cp injection
-        assert docker_cmd.workspace_dir == Path("/tmp/test-worktree")
+        assert docker_cmd.workspace_dir == Path("/tmp/test-worktree").resolve()
         # No bind mount for workspace in the command
         vol_idx = [i for i, x in enumerate(docker_cmd.cmd) if x == "-v"]
         volumes = [docker_cmd.cmd[i + 1] for i in vol_idx]
