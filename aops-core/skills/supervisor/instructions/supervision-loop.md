@@ -194,6 +194,45 @@ During MONITOR, read BOTH:
 Use worker notes to update the work items table, decide whether the task
 truly needs follow-up, and inform subsequent task specs with lessons learned.
 
+#### Polecat Lifecycle Signals
+
+PKB status and PR state are the primary signals, but for ambiguous cases also
+check the polecat lifecycle directly:
+
+- **`polecat list`** — is the task's worktree still registered? Present =
+  worker or auto-finish is still running. Absent = cleanup completed.
+- **`docker ps`** — is the container still up? Long-running containers
+  (>45 min for cycles that finished their work) often mean the CLI agent is
+  looping post-handover, not still working. Cross-check against PKB status:
+  if `status: done` but container still up, the worker has finished but isn't
+  terminating cleanly.
+- **Dispatch command output file** — when the supervisor backgrounded
+  `polecat run`, its stdout is written to the background task's output file.
+  Polecat writes lifecycle events at the end: `Agent completed successfully`,
+  `Running auto-finish`, `Nuking worktree`, `Worktree removed`. If you see
+  these, the run is fully wound down. **Do not check this file early** — it
+  stays empty until polecat reaches its teardown phase. Check it only when
+  you suspect the worker has finished.
+- **Transcript** at `$POLECAT_HOME/polecats/<task-id>.jsonl` — written
+  after the worker finishes; provides the full session log for evaluation.
+
+#### Non-PR Work (PKB-only dispatches)
+
+Not every dispatch produces a PR. Skills like `/sleep`, `/planner`, `/remember`
+write directly to the PKB via MCP and never touch the worktree branch. For
+these tasks:
+
+- **Don't** check `gh pr list` — no PR will appear.
+- **Don't** check the polecat worktree's git log for commits — the worktree
+  may have zero commits even on a successful run.
+- **Do** check `$ACA_DATA` (brain repo) `git log --since` for auto-sync
+  commits that touch task/knowledge/project files, plus the dispatched task's
+  body for worker-appended evidence.
+- **Do** read the transcript if the brain-side signals are thin.
+
+The dispatch task body is still the primary evidence surface — workers should
+append a completion summary there before calling `release_task`.
+
 #### Deep Evaluation via Transcripts
 
 When a worker's output is surprising (unexpected scope, quality concerns, or
