@@ -18,7 +18,7 @@ tags: [spec, tasks, mcp, data]
 - [[mcp__pkb__complete_task]] - Mark task done with completion evidence
 - [[mcp__pkb__list_tasks]] - List tasks with filters
 - [[commands/pull.md]] - `/pull` command for claiming and executing tasks
-- [[commands/dump.md]] - `/dump` command for session handover
+- [[skills/handover/SKILL.md]] - `/handover` skill for session handover
 
 Tasks MCP is the primary work management system for multi-session tracking, dependencies, and strategic work.
 

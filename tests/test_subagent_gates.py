@@ -312,8 +312,8 @@ class TestExtractSubagentType:
 
     def test_gemini_activate_skill_extracts_skill(self):
         """Gemini's activate_skill extracts skill param and marks as skill."""
-        result, is_skill = extract_subagent_type("activate_skill", {"skill": "dump"})
-        assert result == "dump"
+        result, is_skill = extract_subagent_type("activate_skill", {"skill": "handover"})
+        assert result == "handover"
         assert is_skill is True
 
     def test_unknown_tool_returns_none(self):

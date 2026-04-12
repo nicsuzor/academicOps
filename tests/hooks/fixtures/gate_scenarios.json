@@ -379,7 +379,7 @@
     },
     {
       "id": "syn-stop-all-open-allow",
-      "description": "Stop allowed when handover+QA gates are both open (normal exit after /dump and QA)",
+      "description": "Stop allowed when handover+QA gates are both open (normal exit after /handover and QA)",
       "_synthetic": "real-tool-synthetic-gate",
       "hook_event": "Stop",
       "tool_name": null,

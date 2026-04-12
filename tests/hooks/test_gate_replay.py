@@ -827,7 +827,7 @@ REAL_SPAWN_EVENTS: list[tuple[str, str, bool, str, str]] = [
     ("Task", "aops-core:hydrator-reviewer", True, "spawn", "CC Task: hydrator-reviewer"),
     ("Task", "aops-core:qa", True, "spawn", "CC Task: qa"),
     # Claude Code Skill invocations
-    ("Skill", "aops-core:dump", False, "spawn", "CC Skill: dump"),
+    ("Skill", "aops-core:handover", False, "spawn", "CC Skill: handover"),
     ("Skill", "aops-core:daily", False, "spawn", "CC Skill: daily"),
     ("Skill", "aops-core:learn", False, "spawn", "CC Skill: learn"),
     ("Skill", "aops-core:strategy", False, "spawn", "CC Skill: strategy"),
@@ -838,7 +838,7 @@ REAL_SPAWN_EVENTS: list[tuple[str, str, bool, str, str]] = [
     ("Skill", "framework", False, "spawn", "CC Skill: framework (bare)"),
     ("Skill", "remember", False, "spawn", "CC Skill: remember (bare)"),
     # Gemini CLI
-    ("activate_skill", "aops-core:dump", False, "spawn", "Gemini: activate dump"),
+    ("activate_skill", "aops-core:handover", False, "spawn", "Gemini: activate handover"),
 ]
 
 

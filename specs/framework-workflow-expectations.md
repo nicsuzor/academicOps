@@ -24,7 +24,7 @@ As specified in the framework vision, the core loop ensures that academic work m
 3. **Workflow-Driven Progress**: Execution follows defined, composable workflows (e.g., `feature-dev`, `tdd-cycle`). The user expects the framework to enforce these procedures, preventing "plan-less execution" and ensuring all required steps are performed in sequence.
 4. **Continuous Compliance (Custodiet)**: The framework periodically audits the session for scope drift and principle violations. The user expects immediate notification (and session halting in block mode) if the agent diverges from the original intent or violates core axioms.
 5. **Independent Verification (QA)**: Non-trivial work must pass a mandatory end-to-end check by an independent agent before completion. The user expects that "looks correct" is never accepted as "works correctly," and evidence of runtime verification is required.
-6. **Captured Learning (Reflection)**: Every session concludes with a mandatory Framework Reflection (via `/dump`). The user expects that decisions, findings, and friction points are captured and persisted to the Knowledge Base (PKB), ensuring the framework "learns" across sessions.
+6. **Captured Learning (Reflection)**: Every session concludes with a mandatory Framework Reflection (via `/handover`). The user expects that decisions, findings, and friction points are captured and persisted to the Knowledge Base (PKB), ensuring the framework "learns" across sessions.
 7. **Verifiable End State**: Sessions close only when work is committed, pushed, and verified against the remote origin. The user expects that no work is left in a dirty or unpushed state, maintaining a clean audit trail.
 
 ## Relationship to Enforcement Architecture

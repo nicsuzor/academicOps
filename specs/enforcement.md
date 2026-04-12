@@ -164,7 +164,7 @@ TodoWrite and Plan Mode create visible artifacts user can review.
 ### Layer 5: Post-Hoc Verification
 
 - **QA Agent**: Independent subagent verifies work against original request and acceptance criteria.
-- **Handover Gate**: Blocks session exit until a valid Framework Reflection is provided and `/dump` is run.
+- **Handover Gate**: Blocks session exit until a valid Framework Reflection is provided and `/handover` is run.
 
 ## User Expectations
 
@@ -187,9 +187,9 @@ The enforcement system ensures framework compliance through real-time gating and
 - **Expectation**: A session cannot be closed until work is verified and documented.
 - **Behavior**: The `Stop` event is blocked if:
   - A "Framework Reflection" is missing or malformed in the agent's response. _(Handover gate — active)_
-  - The `/dump` skill has not been run (if a task was bound to the session). _(Handover gate — active)_
+  - The `/handover` skill has not been run (if a task was bound to the session). _(Handover gate — active)_
   - The `/qa` skill (or `qa` agent) has not been invoked to verify results. _(QA gate — planned, not yet enforced: gate starts OPEN and has no closing trigger)_
-- **Verification**: Running `Stop` without a Framework Reflection or `/dump` should return a `HANDOVER_GATE` block. The `QA_GATE` block is not yet active.
+- **Verification**: Running `Stop` without a Framework Reflection or `/handover` should return a `HANDOVER_GATE` block. The `QA_GATE` block is not yet active.
 
 ### 4. Commitment Safety
 

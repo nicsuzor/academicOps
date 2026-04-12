@@ -84,8 +84,8 @@ def test_skills_index_valid_entry_passes(plugin_root: Path) -> None:
 
 def test_command_valid_entry_passes(plugin_root: Path) -> None:
     """SKILLS.md entry with matching commands/<name>.md passes."""
-    make_command(plugin_root, "dump")
-    make_skills_index(plugin_root, ["dump"])
+    make_command(plugin_root, "handover")
+    make_skills_index(plugin_root, ["handover"])
 
     errors = check_index_skills(plugin_root)
 
@@ -146,7 +146,7 @@ def test_multiple_unindexed_skills_all_caught(plugin_root: Path) -> None:
 def test_fully_synced_index_passes(plugin_root: Path) -> None:
     """All skills on disk are indexed and all index entries have files — no errors."""
     skills = ["analyst", "audit", "daily"]
-    commands = ["dump", "pull"]
+    commands = ["handover", "pull"]
 
     for name in skills:
         make_skill(plugin_root, name)

@@ -67,17 +67,17 @@ Skills are Claude Code / Gemini CLI extensions that know how to do specific thin
 
 **Core skills** (non-fungible — framework operations):
 
-| Skill                | Purpose                                              |
-| -------------------- | ---------------------------------------------------- |
-| `/plan`              | Effectual planning, decomposition, graph maintenance |
-| `/butler`            | Institutional memory, framework coordination         |
-| `/daily`             | Daily notes, briefing, progress sync                 |
-| `/learn`             | Capture friction and failures, fix instructions      |
-| `/qa`                | Independent verification against acceptance criteria |
-| `/pull` `/q` `/dump` | Task queue lifecycle                                 |
-| `/remember`          | Persist knowledge to PKB                             |
-| `/sleep`             | Periodic consolidation, graph maintenance            |
-| `/email`             | Email triage and task capture                        |
+| Skill                    | Purpose                                              |
+| ------------------------ | ---------------------------------------------------- |
+| `/plan`                  | Effectual planning, decomposition, graph maintenance |
+| `/butler`                | Institutional memory, framework coordination         |
+| `/daily`                 | Daily notes, briefing, progress sync                 |
+| `/learn`                 | Capture friction and failures, fix instructions      |
+| `/qa`                    | Independent verification against acceptance criteria |
+| `/pull` `/q` `/handover` | Task queue lifecycle                                 |
+| `/remember`              | Persist knowledge to PKB                             |
+| `/sleep`                 | Periodic consolidation, graph maintenance            |
+| `/email`                 | Email triage and task capture                        |
 
 **Domain skills** (fungible — retire when better external tools exist):
 

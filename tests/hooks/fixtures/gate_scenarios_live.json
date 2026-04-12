@@ -2171,8 +2171,8 @@
       "hook_event": "PreToolUse",
       "tool_name": "TaskCreate",
       "tool_input": {
-        "subject": "Update handover-details.md and dump.md",
-        "description": "Align handover-details and add inline format spec to dump.md",
+        "subject": "Update handover-details.md and handover.md",
+        "description": "Align handover-details and add inline format spec to handover.md",
         "activeForm": "Updating workflow docs"
       },
       "subagent_type": null,
@@ -4526,7 +4526,7 @@
       "hook_event": "PreToolUse",
       "tool_name": "Bash",
       "tool_input": {
-        "command": "python3 -c \"\nimport json, sys\n\npath = '/home/debian/.claude/projects/-opt-nic-academicOps/a24a3e52-dde1-464e-b14d-0af6bcfe8fa1.jsonl'\nresults = []\nwith open(path) as f:\n    for line in f:\n        try:\n            obj = json.loads(line)\n            # Look for text content mentioning environment\n            text = json.dumps(obj)\n            if 'environment' in text.lower() and ('workflow' in text.lower() or 'github' in text.lower() or 'trigger' in text.lower() or 'review' in text.lower()):\n                # Extract just the relevant snippet\n                idx = text.lower().find('environment')\n                start = max(0, idx - 200)\n                end = min(len(text), idx + 400)\n                results.append(text[start:end])\n        except:\n            pass\n\nfor r in results[:5]:\n    print(r)\n    print('---')\n\" 2>/dev/null",
+        "command": "python3 -c \"\nimport json, sys\n\npath = '/home/debian/.claude/projects/-opt-nic-academicOps/a24a3e52-dde1-464e-b14d-0af6bcfe8fa1.jsonl'\nresults = []\nwith open(path) as f:\n    for line in f:\n        try:\n            obj = json.loads(line)\n            # Look for text content mentioning environment\n            text = json.handovers(obj)\n            if 'environment' in text.lower() and ('workflow' in text.lower() or 'github' in text.lower() or 'trigger' in text.lower() or 'review' in text.lower()):\n                # Extract just the relevant snippet\n                idx = text.lower().find('environment')\n                start = max(0, idx - 200)\n                end = min(len(text), idx + 400)\n                results.append(text[start:end])\n        except:\n            pass\n\nfor r in results[:5]:\n    print(r)\n    print('---')\n\" 2>/dev/null",
         "description": "Extract environment+workflow mentions from the largest today session JSONL"
       },
       "subagent_type": null,
@@ -17676,7 +17676,7 @@
       "hook_event": "PreToolUse",
       "tool_name": "Agent",
       "tool_input": {
-        "description": "Compliance check during dump",
+        "description": "Compliance check during handover",
         "prompt": "/home/debian/.claude/projects/-opt-nic-_aops-crew-pamela_70-aops/20260305-cbf61233-custodiet.md",
         "subagent_type": "aops-core:custodiet"
       },
