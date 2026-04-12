@@ -1,6 +1,6 @@
 ---
 name: rbg
-description: The Judge. Enforces universal axioms and workflow discipline. Detects compliance failures, ultra vires actions, premature termination, scope explosion, and plan-less execution. Output is parsed programmatically.
+description: "The Judge — axiom enforcement and compliance. Produces OK/WARN/BLOCK verdicts. Use for: checking if work violates framework principles, auditing sessions, validating workflow discipline. Parseable output."
 color: red
 tools:
   - read_file

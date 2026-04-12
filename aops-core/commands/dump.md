@@ -35,7 +35,7 @@ This command is owned by **Pauli (The Logician)**. When you invoke it, you are s
 /handover
 ```
 
-To invoke programmatically mid-session: `Skill(skill="aops-core:dump")` or `Skill(skill="aops-core:handover")`.
+To invoke programmatically mid-session: `Skill(skill="aops-core:dump")`.
 
 > When `/dump` is triggered as a slash command, the skill content is already injected into context — execute the steps directly without calling `Skill` again.
 
@@ -66,6 +66,7 @@ Execute the [[base-handover]] workflow. The steps are:
    If no PR was filed: use `status="review"` with `reason="session ended, work incomplete"`.
    If no task was claimed, create a historical task first.
    **Fallback**: If `mcp__pkb__release_task` is not available, use `mcp__pkb__update_task(id="<task-id>", updates={"status": "merge_ready"})`.
+   **Note (Gemini workers, #521)**: Calling `release_task` with a terminal status (done/merge_ready/blocked/cancelled) is what lets the polecat supervisor detect termination via PKB polling and shut the container down — Gemini has no Stop hook, so skipping this will leave the worker running until an external timeout.
 3. **File follow-up tasks** for outstanding work — use [[decompose]] principles and ensure all have a **parent** set to the current task or epic
 4. **Persist discoveries to memory** (optional)
    4.5. **Codify learnings** — framework improvement → `gh issue create` in aops repo; project-scoped → update `./.agents/workflows/`; see [[references/handover-details]]

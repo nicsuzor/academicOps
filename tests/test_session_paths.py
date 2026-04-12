@@ -210,7 +210,12 @@ class TestSessionPaths(unittest.TestCase):
                         )
 
                         self.assertIn(".claude/projects/-project", str(gate_path))
-                        self.assertIn("20260124-07328230-custodiet.md", str(gate_path))
+                        # Use regex to match YYYYMMDD-HH-shorthash-gate.md
+                        import re
+
+                        self.assertTrue(
+                            re.search(r"20260124-\d{2}-07328230-custodiet\.md", str(gate_path))
+                        )
 
     def test_get_gate_file_path_gemini_prefix(self):
         """get_gate_file_path returns a valid path for Gemini sessions via prefix."""
@@ -238,7 +243,11 @@ class TestSessionPaths(unittest.TestCase):
                 self.assertIn(".gemini/tmp", str(gate_path))
                 # gemini-20... doesn't match alphanumeric prefix, so it uses hash fallback for short hash
                 expected_hash = hashlib.sha256(b"gemini-2026-01-24-abc12345").hexdigest()[:8]
-                self.assertIn(f"20260124-{expected_hash}-custodiet.md", str(gate_path))
+                import re
+
+                self.assertTrue(
+                    re.search(rf"20260124-\d{{2}}-{expected_hash}-custodiet\.md", str(gate_path))
+                )
 
     def test_get_gate_file_path_gemini_polecat(self):
         """get_gate_file_path returns a valid path for Gemini sessions (polecat style - UUID ID)."""
@@ -259,7 +268,11 @@ class TestSessionPaths(unittest.TestCase):
                 )
 
                 self.assertIn(".gemini/tmp/abc123hash", str(gate_path))
-                self.assertIn("logs/20260124-07328230-custodiet.md", str(gate_path))
+                import re
+
+                self.assertTrue(
+                    re.search(r"logs/20260124-\d{2}-07328230-custodiet\.md", str(gate_path))
+                )
 
 
 if __name__ == "__main__":

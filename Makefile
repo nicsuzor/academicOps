@@ -1,7 +1,7 @@
 # AcademicOps Makefile
 # Unified build and installation entry point
 
-.PHONY: help dev build-dev install-dev uninstall-dev install-remote install-claude install-gemini install-cowork patch-cowork install-cli install-crontab install-hooks nextver release prerelease clean build build-docker shell
+.PHONY: help dev build-dev install-dev uninstall-dev install-remote install-claude install-gemini install-cowork patch-cowork patch-aops-core install-cli install-crontab install-hooks nextver release prerelease clean build build-docker shell
 
 # --- Configuration ---
 
@@ -43,6 +43,7 @@ help:
 	@echo "  make install-dev    - Install current dist/ into Claude and Gemini"
 	@echo "  make install-cowork - Install Cowork plugin from local dist/aops-cowork build"
 	@echo "  make patch-cowork   - Patch installed Cowork plugin with local PKB_MCP_URL"
+	@echo "  make patch-aops-core - Patch installed aops-core plugin with local PKB_MCP_URL"
 	@echo "  make uninstall-dev  - Restore release marketplace after local testing"
 	@echo "  make install-hooks  - Install pre-commit hooks"
 	@echo ""
@@ -101,6 +102,7 @@ cache = pathlib.Path.home() / '.claude/plugins/cache/academicOps/aops-core'; \
 	-command claude plugin marketplace add $(AOPS_ROOT)
 	@echo "Installing local build into Claude Code..."
 	@command claude plugin install $(CLAUDE_PLUGIN_NAME) || echo "  ⚠️ Claude install failed"
+	@$(MAKE) patch-aops-core || echo "  ⚠️ patch-aops-core failed (set PKB_MCP_URL in ~/.env.local)"
 	@echo "Installing local build into Gemini CLI..."
 	@command gemini extensions install $(DIST_DIR)/aops-gemini --consent || echo "  ⚠️ Gemini install failed"
 	@$(MAKE) report-versions
@@ -120,6 +122,10 @@ install-cowork:
 
 patch-cowork:
 	@./scripts/patch-cowork-mcp.sh
+
+# Patch installed aops-core plugin with PKB_MCP_URL from environment
+patch-aops-core:
+	@./scripts/patch-aops-core-mcp.sh
 
 # Restore the release marketplace after local dev testing
 uninstall-dev:
@@ -157,6 +163,7 @@ install-claude:
 	command claude plugin marketplace update academicOps && \
 	command claude plugin install $(CLAUDE_PLUGIN_NAME) && \
 	echo "✓ Claude Code plugin installed"
+	@$(MAKE) patch-aops-core || echo "  ⚠️ patch-aops-core failed (set PKB_MCP_URL in ~/.env.local)"
 
 install-gemini:
 	@echo "Installing aops extension for Gemini CLI..."
@@ -214,9 +221,11 @@ DOCKER_IMAGE := aops-crew
 SANDBOX_IMAGE := $(DOCKER_IMAGE)
 
 # Build the Docker image used for crew/worker agent environments and Gemini sandboxing
+# CLAUDE_CODE_VERSION busts the layer cache so the installer always runs fresh,
+# picking up the latest release. Pass an explicit version to pin.
 build-docker:
 	@echo "Building aops crew image..."
-	@docker build -t $(DOCKER_IMAGE) .
+	@docker build --build-arg CLAUDE_CODE_VERSION=$$(date +%s) -t $(DOCKER_IMAGE) .
 	@echo "✓ Image built: $(DOCKER_IMAGE)"
 	@echo "  Use with: GEMINI_SANDBOX_IMAGE=$(DOCKER_IMAGE) gemini --sandbox"
 

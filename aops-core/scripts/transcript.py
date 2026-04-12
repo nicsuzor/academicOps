@@ -11,6 +11,8 @@ Usage:
 """
 
 import argparse
+import os
+import shutil
 import subprocess
 import sys
 from datetime import datetime, timedelta
@@ -24,6 +26,7 @@ FRAMEWORK_ROOT = AOPS_CORE_ROOT.parent
 sys.path.insert(0, str(FRAMEWORK_ROOT))
 sys.path.insert(0, str(AOPS_CORE_ROOT))
 
+import lib.session_naming as session_naming
 from lib.insights_generator import (  # noqa: E402
     InsightsValidationError,
     find_existing_insights,
@@ -32,6 +35,7 @@ from lib.insights_generator import (  # noqa: E402
     write_insights_file,
 )
 from lib.paths import get_sessions_repo, get_transcripts_dir  # noqa: E402
+from lib.session_naming import get_session_filename  # noqa: E402
 from lib.session_reader import find_sessions  # noqa: E402
 from lib.transcript_parser import (  # noqa: E402
     SessionProcessor,
@@ -57,14 +61,12 @@ def _load_transcript_config() -> dict:
           exclude_projects:
             - sessions
     """
-    import os
-
-    import yaml
-
     polecat_yaml = Path(os.environ.get("POLECAT_HOME", Path.home() / ".polecat")) / "polecat.yaml"
     if not polecat_yaml.exists():
         return {}
     try:
+        import yaml
+
         with open(polecat_yaml) as f:
             config = yaml.safe_load(f) or {}
         return config.get("transcripts", {}) or {}
@@ -73,6 +75,60 @@ def _load_transcript_config() -> dict:
             f"Warning: Could not load transcript config from {polecat_yaml}: {e}", file=sys.stderr
         )
         return {}
+
+
+def sync_client_log(session_path: Path, session_id: str, date: datetime | None = None) -> None:
+    """Sync raw client log to $AOPS_SESSIONS/client-logs/ with unified naming.
+
+    Prefer hardlink for efficiency, fallback to copy for cross-filesystem scenarios.
+    Naming follows: YYYYMMDD-HH-shorthash-client.jsonl
+    """
+    if session_path.is_dir():
+        # Antigravity brain sessions are directories, skip for now
+        return
+
+    try:
+        sessions_root = get_sessions_repo()
+        client_logs_dir = sessions_root / "client-logs"
+        client_logs_dir.mkdir(parents=True, exist_ok=True)
+
+        # Fallback to mtime if date not provided (prevents non-deterministic naming)
+        if date is None:
+            date = datetime.fromtimestamp(session_path.stat().st_mtime).astimezone()
+
+        # Unified naming: YYYYMMDD-HH-shorthash-client[.jsonl|.json]
+        # Preserves source extension: Claude uses .jsonl, Gemini uses .json
+        target_name = get_session_filename(
+            session_id,
+            date.isoformat(),
+            slug="client",
+            suffix=session_path.suffix,
+        )
+        target_path = client_logs_dir / target_name
+
+        # Skip if already current (check mtime)
+        if target_path.exists():
+            if target_path.stat().st_mtime >= session_path.stat().st_mtime:
+                return
+            target_path.unlink()
+
+        try:
+            # Prefer hardlink (fastest, same filesystem)
+            os.link(session_path, target_path)
+        except OSError:
+            # Fallback to copy (cross-filesystem, e.g. container to host)
+            shutil.copy2(session_path, target_path)
+
+        # Ensure correct permissions for shared visibility
+        try:
+            target_path.chmod(0o644)
+        except OSError:
+            pass
+
+        print(f"🔄 Synced client log: {target_name}")
+
+    except Exception as e:
+        print(f"⚠️  Failed to sync client log: {e}", file=sys.stderr)
 
 
 def _is_excluded_project(project: str, config: dict | None = None) -> bool:
@@ -173,7 +229,10 @@ def _save_minimal_token_summary(
             print(f"⏭️  Insights already exist for session {session_id}: {existing.name}")
             return
 
-        insights_path = get_insights_file_path(date_str, session_id, slug, None, project)
+        date_for_insights = (
+            timestamp if timestamp else f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+        )
+        insights_path = get_insights_file_path(date_for_insights, session_id, slug, None, project)
         write_insights_file(insights_path, insights, session_id=session_id)
         print(f"📊 Token metrics saved (no reflection): {insights_path}")
     except Exception as e:
@@ -258,7 +317,12 @@ def _process_reflection(
                 print(f"⏭️  Insights already exist for session {session_id}: {existing.name}")
                 continue
 
-            insights_path = get_insights_file_path(date_str, session_id, slug, idx, project)
+            date_for_insights = (
+                timestamp if timestamp else f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+            )
+            insights_path = get_insights_file_path(
+                date_for_insights, session_id, slug, idx, project
+            )
             write_insights_file(insights_path, insights, session_id=session_id)
             print(f"💡 Reflection {i + 1}/{len(reflections)} saved to: {insights_path}")
         except InsightsValidationError as e:
@@ -401,42 +465,65 @@ def _generate_transcript_filename(
     slug: str | None = None,
     processor: "SessionProcessor | None" = None,
 ) -> tuple[str, str, str, str, str]:
-    """Generate consistent transcript filename."""
-    # 1. Date and Hour
-    date_str = None
-    hour_str = None
+    """Generate consistent transcript filename using session_naming."""
+    # 1. Detect crew_name from path if applicable
+    # (Matches _infer_project's Polecat/Crew logic)
+    crew_name = None
+    parts = session_path.parts
+    for category_plural in ("polecats", "crew"):
+        if category_plural in parts:
+            idx = parts.index(category_plural)
+            if len(parts) > idx + 1:
+                crew_name = parts[idx + 1]
+                break
 
-    # Try to find first timestamp in entries
+    # 2. Detect provider from path
+    provider = None
+    path_str = str(session_path)
+    if ".gemini/" in path_str:
+        provider = "gemini"
+    elif ".claude/" in path_str:
+        provider = "claude"
+
+    # 3. Get timestamp
+    timestamp = None
     for entry in entries:
         if entry.timestamp:
-            # entry.timestamp is already local/aware from parser
-            date_str = entry.timestamp.strftime("%Y%m%d")
-            hour_str = entry.timestamp.strftime("%H")
+            timestamp = entry.timestamp
             break
+    if not timestamp:
+        timestamp = datetime.fromtimestamp(session_path.stat().st_mtime).astimezone()
 
-    # Fallback to mtime if no timestamp in entries
-    if not date_str:
-        mtime = datetime.fromtimestamp(session_path.stat().st_mtime).astimezone()
-        date_str = mtime.strftime("%Y%m%d")
-        hour_str = mtime.strftime("%H")
+    # 4. Project/Repo
+    repo = _infer_project(session_path, entries)
 
-    # 2. Project
-    short_project = _infer_project(session_path, entries)
-
-    # 3. Session ID
+    # 5. Session ID
     session_id = _get_session_id(session_path)
 
-    # 4. Slug
+    # 6. Slug
     if not slug:
         if processor:
             slug = processor.generate_session_slug(entries)
         else:
             slug = "session"
 
+    # Generate base name via naming module
+    # (unified format: {YYYYMMDD}-{HHMM}-{session_id}-{shortform}-{slug})
+    base = session_naming.generate_base_name(
+        session_id=session_id,
+        timestamp=timestamp,
+        slug=slug,
+        crew_name=crew_name,
+        repo=repo,
+        provider=provider,
+    )
+
+    # Return components for compatibility with transcript.py callers
+    # filename (base), date_str, short_project, session_id, slug
     return (
-        f"{date_str}-{hour_str}-{short_project}-{session_id}-{slug}",
-        date_str,
-        short_project,
+        base,
+        timestamp.strftime("%Y%m%d"),
+        repo,
         session_id,
         slug,
     )
@@ -453,11 +540,14 @@ def _find_existing_transcripts(out_dir: Path, session_id: str) -> list[Path]:
         List of all matching transcript files (both -full.md and -abridged.md)
     """
     # Search for transcripts with this session_id
+    # v4.0.0+ Pattern: YYYYMMDD-HHMM-sessionID-shortform-slug-variant.md
     # v3.7.0+ Pattern: with hour (e.g., 20260105-17-writing-3bf94f77-session-full.md)
     # Legacy Pattern: without hour (e.g., 20260105-writing-3bf94f77-session-full.md)
     matches = []
     for suffix in ("-full.md", "-abridged.md"):
-        # New format with hour
+        # Unified format with HHMM (4 digits)
+        matches.extend(out_dir.glob(f"*-????-{session_id}-*{suffix}"))
+        # Format with hour (2 digits)
         matches.extend(out_dir.glob(f"*-??-*-{session_id}-*{suffix}"))
         matches.extend(out_dir.glob(f"*-??-*-{session_id}{suffix}"))
         # Legacy format without hour
@@ -747,9 +837,13 @@ Examples:
         for s in sessions:
             try:
                 session_path = s.path if hasattr(s, "path") else Path(str(s))
+                session_id = _get_session_id(session_path)
+
+                # Sync raw client log to $AOPS_SESSIONS/client-logs/
+                # Do this early so it happens even if skipped for other reasons
+                sync_client_log(session_path, session_id)
 
                 # Early mtime check: skip if transcript already exists and is current
-                session_id = _get_session_id(session_path)
                 existing_transcript = _find_existing_transcript(sessions_claude, session_id)
                 if existing_transcript and _transcript_is_current(
                     session_path, existing_transcript
@@ -920,6 +1014,12 @@ Examples:
     # Process the session
     try:
         print(f"📝 Processing session: {session_path}")
+
+        # Extract session ID for early log sync
+        session_id = _get_session_id(session_path)
+        # Sync raw client log to $AOPS_SESSIONS/client-logs/
+        sync_client_log(session_path, session_id)
+
         session_summary, entries, agent_entries = processor.parse_session_file(str(session_path))
 
         # Generate output base name
@@ -980,11 +1080,9 @@ Examples:
                     date_iso = entry.timestamp.strftime("%Y-%m-%d")
                     session_timestamp = entry.timestamp
                     break
-            # Get session ID from path
-            sid = session_path.stem[:8]
-            proj = (
-                session_path.parent.name.split("-")[-1] if session_path.parent.name else "unknown"
-            )
+            # Get session ID and project from path
+            sid = _get_session_id(session_path)
+            proj = _infer_project(session_path, entries)
             slug = processor.generate_session_slug(entries)
 
             # Compute usage stats and session duration for token_metrics

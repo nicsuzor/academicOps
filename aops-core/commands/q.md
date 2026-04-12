@@ -11,6 +11,7 @@ needs_task: false
 mode: conversational
 domain:
   - planning
+owner: vaughan
 ---
 
 # /q - Quick Queue

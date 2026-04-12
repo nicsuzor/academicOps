@@ -6,9 +6,17 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import NamedTuple
+
+# Issue #521: Gemini workers have no Stop hook; polecat must poll PKB and
+# kill the container after the task transitions to a terminal status.
+TERMINAL_PKB_STATUSES = frozenset({"done", "merge_ready", "blocked", "cancelled"})
+DEFAULT_TERMINATION_GRACE_SECONDS = 60
+TERMINATION_SIGKILL_DELAY_SECONDS = 30
+TERMINATION_POLL_INTERVAL_SECONDS = 10
 
 # Add aops-core to path for lib imports
 SCRIPT_DIR = Path(__file__).parent.resolve()
@@ -686,6 +694,97 @@ def _build_docker_cmd(
     return DockerCmd(cmd=cmd, staging_dir=_staging_dir, workspace_dir=workspace_dir)
 
 
+def _pkb_termination_watchdog(
+    container_id: str,
+    task_id: str,
+    cancel_event: threading.Event,
+) -> None:
+    """Poll PKB for task terminal status; kill the container when reached.
+
+    Issue #521 fix: Gemini CLI has no Stop hook, so polecat must detect
+    task completion externally. Polls PKB every
+    ``TERMINATION_POLL_INTERVAL_SECONDS`` via ``polecat.pkb_bridge.get_task``.
+    When the task reaches a terminal status (done / merge_ready / blocked /
+    cancelled) the watchdog waits ``POLECAT_TERMINATION_GRACE_SECONDS``
+    (default 60), sends SIGTERM to the container, then SIGKILL after
+    ``TERMINATION_SIGKILL_DELAY_SECONDS`` more.
+
+    ``cancel_event`` is set by the main thread when the CLI exits cleanly
+    on its own; the watchdog then returns without killing anything.
+    """
+    try:
+        from polecat.pkb_bridge import get_task as pkb_get_task
+    except Exception as exc:  # pragma: no cover — defensive
+        print(
+            f"   [termination watchdog] unable to import pkb_bridge: {exc}",
+            file=sys.stderr,
+        )
+        return
+
+    _grace_env = os.environ.get("POLECAT_TERMINATION_GRACE_SECONDS")
+    if _grace_env is not None:
+        try:
+            grace_seconds = int(_grace_env)
+        except ValueError:
+            print(
+                f"   [termination watchdog] POLECAT_TERMINATION_GRACE_SECONDS={_grace_env!r} "
+                f"is not a valid integer — failing fast (P#8). Aborting watchdog.",
+                file=sys.stderr,
+            )
+            return
+    else:
+        grace_seconds = DEFAULT_TERMINATION_GRACE_SECONDS
+
+    while not cancel_event.is_set():
+        try:
+            task = pkb_get_task(task_id)
+        except Exception as exc:  # pragma: no cover — network/transient
+            print(
+                f"   [termination watchdog] PKB poll failed for {task_id}: {exc}",
+                file=sys.stderr,
+            )
+            task = None
+
+        status = getattr(task, "status", None) if task is not None else None
+        if status in TERMINAL_PKB_STATUSES:
+            print(
+                f"   [termination watchdog] task {task_id} status={status!r}; "
+                f"grace={grace_seconds}s before SIGTERM",
+                file=sys.stderr,
+            )
+            # Grace period — respect cancellation so a natural exit wins.
+            if cancel_event.wait(timeout=grace_seconds):
+                return
+            try:
+                subprocess.run(
+                    ["docker", "kill", "--signal=TERM", container_id],
+                    capture_output=True,
+                    check=False,
+                )
+            except Exception as exc:  # pragma: no cover — docker transient
+                print(
+                    f"   [termination watchdog] docker kill TERM failed: {exc}",
+                    file=sys.stderr,
+                )
+            if cancel_event.wait(timeout=TERMINATION_SIGKILL_DELAY_SECONDS):
+                return
+            try:
+                subprocess.run(
+                    ["docker", "kill", "--signal=KILL", container_id],
+                    capture_output=True,
+                    check=False,
+                )
+            except Exception as exc:  # pragma: no cover — docker transient
+                print(
+                    f"   [termination watchdog] docker kill KILL failed: {exc}",
+                    file=sys.stderr,
+                )
+            return
+
+        if cancel_event.wait(timeout=TERMINATION_POLL_INTERVAL_SECONDS):
+            return
+
+
 def _run_docker_container(
     docker_cmd: DockerCmd,
     *,
@@ -694,6 +793,8 @@ def _run_docker_container(
     capture_output: bool = False,
     text: bool = True,
     extract_paths: list[tuple[str, Path]] | None = None,
+    gemini: bool = False,
+    task_id: str | None = None,
 ) -> subprocess.CompletedProcess:
     """Launch a Docker container, injecting workspace and staging files via docker cp.
 
@@ -730,15 +831,62 @@ def _run_docker_container(
     container_id = result.stdout.strip()
 
     try:
-        # Copy workspace into the container (avoids bind mount failures on WSL2)
+        # Copy workspace into the container and fix ownership.
+        # docker cp writes files as root, but the container runs as the host UID
+        # (--user flag). We tar with --owner/--group to set the correct UID:GID
+        # during injection so pre-commit hooks, uv, and git can write to /workspace.
         if docker_cmd.workspace_dir:
-            cp_result = subprocess.run(
-                ["docker", "cp", f"{docker_cmd.workspace_dir}/.", f"{container_id}:/workspace"],
-                capture_output=True,
-                text=True,
-                cwd=cwd,
-                env=env,
+            user_spec = next(
+                (cmd[i + 1] for i, x in enumerate(cmd) if x == "--user"),
+                None,
             )
+            if user_spec:
+                uid_str, gid_str = (user_spec.split(":") + [user_spec])[:2]
+                # tar with forced ownership | docker cp from stdin
+                tar_cmd = [
+                    "tar",
+                    "-cf",
+                    "-",
+                    "--owner",
+                    uid_str,
+                    "--group",
+                    gid_str,
+                    "-C",
+                    str(docker_cmd.workspace_dir),
+                    ".",
+                ]
+                tar_proc = subprocess.Popen(
+                    tar_cmd,
+                    stdout=subprocess.PIPE,
+                    cwd=cwd,
+                )
+                cp_result = subprocess.run(
+                    ["docker", "cp", "-", f"{container_id}:/workspace"],
+                    stdin=tar_proc.stdout,
+                    capture_output=True,
+                    text=True,
+                    cwd=cwd,
+                    env=env,
+                )
+                assert tar_proc.stdout is not None
+                tar_proc.stdout.close()
+                tar_proc.wait()
+                if tar_proc.returncode != 0:
+                    print(
+                        f"tar failed (exit {tar_proc.returncode}) archiving workspace",
+                        file=sys.stderr,
+                    )
+                    return subprocess.CompletedProcess(
+                        args=tar_cmd, returncode=tar_proc.returncode, stdout="", stderr=""
+                    )
+            else:
+                cp_result = subprocess.run(
+                    ["docker", "cp", f"{docker_cmd.workspace_dir}/.", f"{container_id}:/workspace"],
+                    capture_output=True,
+                    text=True,
+                    cwd=cwd,
+                    env=env,
+                )
             if cp_result.returncode != 0:
                 print(f"docker cp (workspace) failed: {cp_result.stderr}", file=sys.stderr)
                 return cp_result
@@ -762,9 +910,31 @@ def _run_docker_container(
             start_cmd.append("-i")
         start_cmd.append(container_id)
 
-        run_result = subprocess.run(
-            start_cmd, cwd=cwd, env=env, capture_output=capture_output, text=text
-        )
+        # Issue #521: Gemini workers have no Stop hook, so polecat must
+        # watch PKB for a terminal status and kill the container when
+        # observed. Claude workers terminate via their own Stop hook —
+        # leave that path unchanged.
+        watchdog_cancel: threading.Event | None = None
+        watchdog_thread: threading.Thread | None = None
+        if gemini and task_id:
+            watchdog_cancel = threading.Event()
+            watchdog_thread = threading.Thread(
+                target=_pkb_termination_watchdog,
+                args=(container_id, task_id, watchdog_cancel),
+                name=f"polecat-watchdog-{task_id}",
+                daemon=True,
+            )
+            watchdog_thread.start()
+
+        try:
+            run_result = subprocess.run(
+                start_cmd, cwd=cwd, env=env, capture_output=capture_output, text=text
+            )
+        finally:
+            if watchdog_cancel is not None:
+                watchdog_cancel.set()
+            if watchdog_thread is not None:
+                watchdog_thread.join(timeout=5.0)
 
         # Extract files from container before cleanup (belt-and-suspenders
         # for session persistence — bind mounts silently fail on WSL2).
@@ -2704,6 +2874,82 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, agent_args
                     )
                     if merge_result.stderr:
                         print(f"      Git error: {merge_result.stderr.strip()}")
+
+                # Detect divergence between local crew branch and its origin
+                # counterpart (e.g. force-push upstream). The previous
+                # implementation silently ignored this.
+                crew_branch = f"crew/{crew_name}"
+                remote_ref = f"refs/remotes/origin/{crew_branch}"
+                remote_exists = (
+                    subprocess.run(
+                        ["git", "rev-parse", "--verify", "--quiet", remote_ref],
+                        cwd=project_dir,
+                        capture_output=True,
+                    ).returncode
+                    == 0
+                )
+                local_exists = (
+                    subprocess.run(
+                        ["git", "rev-parse", "--verify", "--quiet", f"refs/heads/{crew_branch}"],
+                        cwd=project_dir,
+                        capture_output=True,
+                    ).returncode
+                    == 0
+                )
+                if remote_exists and local_exists:
+                    local_anc = (
+                        subprocess.run(
+                            [
+                                "git",
+                                "merge-base",
+                                "--is-ancestor",
+                                f"refs/heads/{crew_branch}",
+                                remote_ref,
+                            ],
+                            cwd=project_dir,
+                            capture_output=True,
+                        ).returncode
+                        == 0
+                    )
+                    remote_anc = (
+                        subprocess.run(
+                            [
+                                "git",
+                                "merge-base",
+                                "--is-ancestor",
+                                remote_ref,
+                                f"refs/heads/{crew_branch}",
+                            ],
+                            cwd=project_dir,
+                            capture_output=True,
+                        ).returncode
+                        == 0
+                    )
+                    if local_anc and not remote_anc:
+                        ahead = subprocess.run(
+                            [
+                                "git",
+                                "rev-list",
+                                "--count",
+                                f"refs/heads/{crew_branch}..{remote_ref}",
+                            ],
+                            cwd=project_dir,
+                            capture_output=True,
+                            text=True,
+                        ).stdout.strip()
+                        print(
+                            f"   \u26a0 {crew_branch} is {ahead} commits behind "
+                            f"origin/{crew_branch}. Run 'git pull --ff-only' "
+                            f"inside the crew session."
+                        )
+                    elif not local_anc and not remote_anc:
+                        print(
+                            f"   \u274c {crew_branch} has DIVERGED from "
+                            f"origin/{crew_branch} (likely force-push upstream). "
+                            f"Local and remote have commits the other doesn't. "
+                            f"Resolve manually: 'git log --oneline --graph "
+                            f"HEAD origin/{crew_branch}'."
+                        )
         projects = list(clone_paths.keys())
     else:
         try:
@@ -3195,10 +3441,19 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
     if gemini:
         # Gemini CLI — run inside our Docker container (not --sandbox, which
         # uses bind mounts that fail on WSL2/Docker Desktop).
+        #
+        # Sandbox allowlist (#522): Gemini's workspace sandbox blocks reads of
+        # files outside /workspace, including the aops-core extension's
+        # GEMINI.md and sibling skills. Explicitly widen the allowlist to the
+        # extension directory so read_file / activate_skill work.  Keep this
+        # list narrow — DO NOT blanket-widen; each entry is a specific dir
+        # the agent needs to reach.
         cmd = [
             "gemini",
             "--approval-mode",
             "yolo",
+            "--include-directories",
+            "/home/worker/.gemini/extensions/aops-core",
         ]
 
         if interactive:
@@ -3306,6 +3561,8 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
                     cwd=worktree_path,
                     env=env,
                     extract_paths=_extract,
+                    gemini=gemini,
+                    task_id=task.id,
                 )
             else:
                 result = subprocess.run(
@@ -3324,6 +3581,8 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
                     capture_output=True,
                     text=True,
                     extract_paths=_extract,
+                    gemini=gemini,
+                    task_id=task.id,
                 )
             else:
                 result = subprocess.run(
