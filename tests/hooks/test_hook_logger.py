@@ -7,7 +7,7 @@ Tests that log_hook_event correctly writes to per-session JSONL files.
 import json
 import sys
 import tempfile
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -158,7 +158,7 @@ class TestLogHookEvent:
     def test_log_file_path_format(self, temp_claude_projects):
         """Test that log file path follows expected format: YYYYMMDD-HH-shorthash-hooks.jsonl."""
         session_id = "test-path-format-xyz"
-        now = datetime.now(UTC)
+        now = datetime.now().astimezone()
         today = now.strftime("%Y%m%d")
         current_hour = now.strftime("%H")
 

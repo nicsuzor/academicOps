@@ -48,7 +48,10 @@ def log_hook_event(
         return
 
     # Path resolution — fail fast (no silent swallowing)
-    input_data = ctx.raw_input
+    input_data = {**ctx.raw_input}
+    if ctx.transcript_path:
+        input_data["transcript_path"] = ctx.transcript_path
+
     date = input_data.get("date")
     if date is None:
         date = datetime.now().astimezone().strftime("%Y-%m-%d")
