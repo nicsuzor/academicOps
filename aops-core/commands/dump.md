@@ -35,7 +35,7 @@ This command is owned by **Vaughan (The Memory Custodian)**. When you invoke it,
 /handover
 ```
 
-To invoke programmatically mid-session: `Skill(skill="aops-core:dump")` or `Skill(skill="aops-core:handover")`.
+To invoke programmatically mid-session: `Skill(skill="aops-core:dump")`.
 
 > When `/dump` is triggered as a slash command, the skill content is already injected into context — execute the steps directly without calling `Skill` again.
 
