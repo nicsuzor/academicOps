@@ -23,15 +23,15 @@ This spec defines the canonical naming convention for all session artifacts stor
 
 ### Components
 
-| Component | Format | Example | Source |
-|-----------|--------|---------|--------|
-| `YYYYMMDD` | Date | `20260411` | First entry timestamp, fallback to file mtime |
-| `HHMM` | 24h hours + minutes | `1430` | First entry timestamp, fallback to file mtime |
-| `session_id` | 8-char alphanumeric | `a1b2c3d4` | See [Session ID Derivation](#session-id-derivation) |
-| `shortform` | See [Shortform](#shortform-format) | `gloria-academicops-nuc-claude` | Composed from session metadata |
-| `slug` | kebab-case, max 5 words | `fix-hook-log-paths` | Auto-generated from first user prompt |
-| `variant` | Optional suffix | `-full`, `-abridged` | Artifact-specific (transcripts only) |
-| `ext` | File extension | `.md`, `.json`, `.jsonl` | Determined by artifact type |
+| Component    | Format                             | Example                         | Source                                              |
+| ------------ | ---------------------------------- | ------------------------------- | --------------------------------------------------- |
+| `YYYYMMDD`   | Date                               | `20260411`                      | First entry timestamp, fallback to file mtime       |
+| `HHMM`       | 24h hours + minutes                | `1430`                          | First entry timestamp, fallback to file mtime       |
+| `session_id` | 8-char alphanumeric                | `a1b2c3d4`                      | See [Session ID Derivation](#session-id-derivation) |
+| `shortform`  | See [Shortform](#shortform-format) | `gloria-academicops-nuc-claude` | Composed from session metadata                      |
+| `slug`       | kebab-case, max 5 words            | `fix-hook-log-paths`            | Auto-generated from first user prompt               |
+| `variant`    | Optional suffix                    | `-full`, `-abridged`            | Artifact-specific (transcripts only)                |
+| `ext`        | File extension                     | `.md`, `.json`, `.jsonl`        | Determined by artifact type                         |
 
 ### Component Ordering Rationale
 
@@ -51,23 +51,23 @@ The shortform encodes session provenance in a compact, readable string:
 
 ### Rules
 
-| Field | Source | Omission Rule |
-|-------|--------|---------------|
-| `crew` | `$POLECAT_CREW_NAME` | Omitted for manual sessions and polecat-run sessions (no crew) |
-| `repo` | Repository name from `$CLAUDE_PROJECT_DIR` or cwd | Always present. Derived from the basename of the project directory, lowercased |
-| `machine` | `$AOPS_MACHINE` env var, fallback to `hostname -s` | Always present. Must be set explicitly — container hostname `aops-crew` is not useful |
-| `provider` | `claude` or `gemini` | Always present. Detected via `_is_gemini_session()` or `$POLECAT_SESSION_TYPE` + `-g` flag |
+| Field      | Source                                             | Omission Rule                                                                              |
+| ---------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `crew`     | `$POLECAT_CREW_NAME`                               | Omitted for manual sessions and polecat-run sessions (no crew)                             |
+| `repo`     | Repository name from `$CLAUDE_PROJECT_DIR` or cwd  | Always present. Derived from the basename of the project directory, lowercased             |
+| `machine`  | `$AOPS_MACHINE` env var, fallback to `hostname -s` | Always present. Must be set explicitly — container hostname `aops-crew` is not useful      |
+| `provider` | `claude` or `gemini`                               | Always present. Detected via `_is_gemini_session()` or `$POLECAT_SESSION_TYPE` + `-g` flag |
 
 ### Examples by Session Type
 
-| Session Type | Shortform | Full Filename Example |
-|---|---|---|
-| Manual Claude | `academicops-nuc-claude` | `20260411-1430-a1b2c3d4-academicops-nuc-claude-fix-hook-paths-full.md` |
-| Manual Gemini | `academicops-nuc-gemini` | `20260411-1430-b2c3d4e5-academicops-nuc-gemini-review-pr-full.md` |
-| Crew Claude | `gloria-academicops-nuc-claude` | `20260411-1430-c3d4e5f6-gloria-academicops-nuc-claude-refactor-tests-full.md` |
-| Crew Gemini | `gloria-academicops-nuc-gemini` | `20260411-1430-d4e5f6a7-gloria-academicops-nuc-gemini-update-docs-full.md` |
-| Polecat Claude | `academicops-nuc-claude` | `20260411-1430-e5f6a7b8-academicops-nuc-claude-fix-lint-full.md` |
-| Polecat Gemini | `academicops-nuc-gemini` | `20260411-1430-f6a7b8c9-academicops-nuc-gemini-add-tests-full.md` |
+| Session Type   | Shortform                       | Full Filename Example                                                         |
+| -------------- | ------------------------------- | ----------------------------------------------------------------------------- |
+| Manual Claude  | `academicops-nuc-claude`        | `20260411-1430-a1b2c3d4-academicops-nuc-claude-fix-hook-paths-full.md`        |
+| Manual Gemini  | `academicops-nuc-gemini`        | `20260411-1430-b2c3d4e5-academicops-nuc-gemini-review-pr-full.md`             |
+| Crew Claude    | `gloria-academicops-nuc-claude` | `20260411-1430-c3d4e5f6-gloria-academicops-nuc-claude-refactor-tests-full.md` |
+| Crew Gemini    | `gloria-academicops-nuc-gemini` | `20260411-1430-d4e5f6a7-gloria-academicops-nuc-gemini-update-docs-full.md`    |
+| Polecat Claude | `academicops-nuc-claude`        | `20260411-1430-e5f6a7b8-academicops-nuc-claude-fix-lint-full.md`              |
+| Polecat Gemini | `academicops-nuc-gemini`        | `20260411-1430-f6a7b8c9-academicops-nuc-gemini-add-tests-full.md`             |
 
 Note: Polecat-run sessions have no crew name (they run as isolated workers, not in a named worktree).
 
@@ -136,24 +136,24 @@ Files are organised by artifact type, not grouped into per-session directories. 
 
 ### Subdirectory Details
 
-| Directory | Contents | Filename Pattern |
-|-----------|----------|------------------|
-| `transcripts/` | Human-readable markdown transcripts | `{base}-full.md`, `{base}-abridged.md` |
-| `summaries/` | Session insights, metrics, reflection | `{base}.json` |
-| `hooks/` | Hook execution log (one entry per hook invocation) | `{base}-hooks.jsonl` |
-| `client-logs/` | Raw session log from Claude/Gemini CLI | `{base}-client.jsonl` |
+| Directory      | Contents                                           | Filename Pattern                       |
+| -------------- | -------------------------------------------------- | -------------------------------------- |
+| `transcripts/` | Human-readable markdown transcripts                | `{base}-full.md`, `{base}-abridged.md` |
+| `summaries/`   | Session insights, metrics, reflection              | `{base}.json`                          |
+| `hooks/`       | Hook execution log (one entry per hook invocation) | `{base}-hooks.jsonl`                   |
+| `client-logs/` | Raw session log from Claude/Gemini CLI             | `{base}-client.jsonl`                  |
 
 Where `{base}` = `{YYYYMMDD}-{HHMM}-{session_id}-{shortform}-{slug}`
 
 ## File Taxonomy
 
-| Suffix | Extension | Content | Producer |
-|--------|-----------|---------|----------|
-| `-full` | `.md` | Full session transcript with all tool calls | `transcript.py` |
-| `-abridged` | `.md` | Abbreviated transcript (prompts + key outputs) | `transcript.py` |
-| (none) | `.json` | Session insights: summary, metrics, reflection | `insights_generator.py` |
-| `-hooks` | `.jsonl` | Hook activity log (one JSON object per line) | `session_paths.py` / router |
-| `-client` | `.jsonl` | Raw client session log (Claude JSONL or Gemini JSON converted) | Sync pipeline (new) |
+| Suffix      | Extension | Content                                                        | Producer                    |
+| ----------- | --------- | -------------------------------------------------------------- | --------------------------- |
+| `-full`     | `.md`     | Full session transcript with all tool calls                    | `transcript.py`             |
+| `-abridged` | `.md`     | Abbreviated transcript (prompts + key outputs)                 | `transcript.py`             |
+| (none)      | `.json`   | Session insights: summary, metrics, reflection                 | `insights_generator.py`     |
+| `-hooks`    | `.jsonl`  | Hook activity log (one JSON object per line)                   | `session_paths.py` / router |
+| `-client`   | `.jsonl`  | Raw client session log (Claude JSONL or Gemini JSON converted) | Sync pipeline (new)         |
 
 ## Migration & Backward Compatibility
 
@@ -162,6 +162,7 @@ Where `{base}` = `{YYYYMMDD}-{HHMM}-{session_id}-{shortform}-{slug}`
 All file discovery functions (`find_sessions()`, `_find_existing_transcripts()`, `find_existing_insights()`) must support BOTH old and new naming patterns during the transition period.
 
 Old patterns to support:
+
 - `YYYYMMDD-HH-project-sessionid-slug-full.md` (transcripts, no minutes, no shortform)
 - `YYYYMMDD-HH-project-sessionid-slug.json` (insights, no minutes, no shortform)
 - `YYYYMMDD-shorthash-hooks.jsonl` (hook logs, no minutes, no context)
@@ -176,8 +177,8 @@ Existing files are NOT renamed. The old files remain discoverable via backward-c
 
 ## New Environment Variables Required
 
-| Variable | Purpose | Where to Set |
-|----------|---------|-------------|
+| Variable       | Purpose                                   | Where to Set                                                           |
+| -------------- | ----------------------------------------- | ---------------------------------------------------------------------- |
 | `AOPS_MACHINE` | Short machine name for filename shortform | Host `.bashrc` or systemd; forwarded to containers via `AOPS_*` prefix |
 
 ## Implementation Notes
