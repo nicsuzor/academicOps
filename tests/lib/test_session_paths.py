@@ -35,8 +35,9 @@ class TestIsGeminiSession:
 
     def test_detection_via_transcript_path(self):
         """Test detection when transcript_path contains '/.gemini/'."""
-        input_data = {"transcript_path": "/home/user/.gemini/tmp/hash/chats/session.json"}
-        assert _is_gemini_session("some-id", input_data) is True
+        assert (
+            _is_gemini_session("some-id", "/home/user/.gemini/tmp/hash/chats/session.json") is True
+        )
 
     def test_detection_via_state_dir_env(self):
         """Test detection when AOPS_SESSION_STATE_DIR contains '/.gemini/'."""
