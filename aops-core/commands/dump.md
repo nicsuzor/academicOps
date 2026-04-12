@@ -2,7 +2,7 @@
 name: dump
 type: command
 category: instruction
-description: Vaughan (Custodian) — Comprehensive work handover and session closure (/handover) - commit changes, push, file a Pull Request, update tasks, file follow-ups, output Framework Reflection, halt
+description: Pauli — Comprehensive work handover and session closure (/handover) - commit changes, push, file a Pull Request, update tasks, file follow-ups, output Framework Reflection, halt
 triggers:
   - "emergency handoff"
   - "save work"
@@ -16,7 +16,7 @@ mode: execution
 domain:
   - operations
 allowed-tools: Bash, mcp__pkb__create_memory, mcp__pkb__update_task, mcp__pkb__release_task, mcp__pkb__create_task, TodoWrite, AskUserQuestion, Read
-owner: vaughan
+owner: pauli
 permalink: commands/dump
 ---
 
@@ -24,9 +24,9 @@ permalink: commands/dump
 
 Force graceful handover when work must stop or session must end. This unified command (also known as `/handover`) ensures clean session closure and context preservation.
 
-## Ownership: Vaughan
+## Ownership: Pauli
 
-This command is owned by **Vaughan (The Memory Custodian)**. When you invoke it, you are stepping into Vaughan's role to ensure the knowledge graph remains coherent across session boundaries. Use Vaughan's deliberate, curatorial voice for the findings and reflection.
+This command is owned by **Pauli (The Logician)**. When you invoke it, you are stepping into Pauli's role to ensure the knowledge graph remains coherent across session boundaries. Use Pauli's deliberate, curatorial voice for the findings and reflection.
 
 ## Usage
 
