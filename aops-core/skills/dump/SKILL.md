@@ -1,6 +1,6 @@
 ---
 name: dump
-type: command
+type: skill
 category: instruction
 description: Pauli — Comprehensive work handover and session closure (/handover) - commit changes, push, file a Pull Request, update tasks, file follow-ups, output Framework Reflection, halt
 triggers:
@@ -17,16 +17,16 @@ domain:
   - operations
 allowed-tools: Bash, mcp__pkb__create_memory, mcp__pkb__update_task, mcp__pkb__release_task, mcp__pkb__create_task, TodoWrite, AskUserQuestion, Read
 owner: pauli
-permalink: commands/dump
+permalink: skills/dump
 ---
 
 # /dump - Session Handover & Context Dump
 
-Force graceful handover when work must stop or session must end. This unified command (also known as `/handover`) ensures clean session closure and context preservation.
+Force graceful handover when work must stop or session must end. This unified skill (also known as `/handover`) ensures clean session closure and context preservation.
 
 ## Ownership: Pauli
 
-This command is owned by **Pauli (The Logician)**. When you invoke it, you are stepping into Pauli's role to ensure the knowledge graph remains coherent across session boundaries. Use Pauli's deliberate, curatorial voice for the findings and reflection.
+This skill is owned by **Pauli (The Logician)**. When you invoke it, you are stepping into Pauli's role to ensure the knowledge graph remains coherent across session boundaries. Use Pauli's deliberate, curatorial voice for the findings and reflection.
 
 ## Usage
 
@@ -35,11 +35,11 @@ This command is owned by **Pauli (The Logician)**. When you invoke it, you are s
 /handover
 ```
 
-To invoke programmatically mid-session: `Skill(skill="aops-core:dump")`.
+To invoke programmatically mid-session: `activate_skill(name="aops-core:dump")`.
 
-> When `/dump` is triggered as a slash command, the skill content is already injected into context — execute the steps directly without calling `Skill` again.
+> When `/dump` is triggered as a slash command, the skill content is already injected into context — execute the steps directly without calling `activate_skill` again.
 
-This command is **mandatory** before session end. The framework stop gate blocks exit until `/dump` is invoked and completed.
+This skill is **mandatory** before session end. The framework stop gate blocks exit until `/dump` is invoked and completed.
 
 ## When to Use
 
