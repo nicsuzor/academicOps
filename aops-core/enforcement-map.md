@@ -87,8 +87,8 @@ No programmatic context detection required — the right agent for the job alrea
 | [[feedback-loops-for-uncertainty]]          | Feedback Loops                      | HEURISTICS.md                                                                                     | SessionStart              |        |
 | [[current-state-machine]]                   | Current State Machine               | autocommit_state.py (auto-commit+push)                                                            | PostToolUse               |        |
 | [[one-spec-per-feature]]                    | One Spec Per Feature                | agents/framework-ops.md                                                                           | SessionStart              |        |
-| [[mandatory-handover]]                      | Mandatory Handover Workflow         | UserPromptSubmit (hint), dump.md Step 2                                                           | UserPromptSubmit, Stop    |        |
-| [[capture-outstanding-work]]                | Capture Outstanding Work            | dump.md Step 2 (create follow-up tasks for incomplete/deferred work)                              | Stop                      |        |
+| [[mandatory-handover]]                      | Mandatory Handover Workflow         | UserPromptSubmit (hint), skills/handover/SKILL.md Step 2                                          | UserPromptSubmit, Stop    |        |
+| [[capture-outstanding-work]]                | Capture Outstanding Work            | skills/handover/SKILL.md Step 2 (create follow-up tasks for incomplete/deferred work)             | Stop                      |        |
 | [[explicit-approval-costly-ops]]            | Costly Operations Approval          | external-batch-submission.md workflow + AskUserQuestion before batch submit                       | During execution          |        |
 | [[academic-output-quality]]                 | Academic Output Quality (P#53)      | skills/research/axioms.md quality gate: user sign-off required for public deliverables            | Stop                      |        |
 | [[no-shitty-nlp]]                           | No Shitty NLP (P#49)                | agents/framework-ops.md, HEURISTICS.md, custodiet periodic check, REMINDERS.md                    | SessionStart, PostToolUse | 1a, 3b |
@@ -351,7 +351,7 @@ The stop gate requires reflection for session completion:
 3. PostToolUse hook sets `qa_invoked` flag
 4. Agent outputs Framework Reflection with ALL required fields
 5. AfterAgent hook validates format and sets `handover_skill_invoked` flag
-6. Agent invokes `/dump` command
+6. Agent invokes `/handover` command
 7. Agent attempts to end session (triggers Stop event)
 8. Stop gate checks flags (handover, QA)
 9. If flags set: session ends

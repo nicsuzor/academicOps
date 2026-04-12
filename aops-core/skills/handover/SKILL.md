@@ -1,6 +1,6 @@
 ---
-name: dump
-type: command
+name: handover
+type: skill
 category: instruction
 description: Comprehensive work handover and session closure - commit changes, push, file a Pull Request, update tasks, file follow-ups, output Framework Reflection, halt
 triggers:
@@ -9,30 +9,32 @@ triggers:
   - "interrupted"
   - "session end"
   - "stop hook blocked"
+  - "handover"
 modifies_files: true
 needs_task: true
 mode: execution
 domain:
   - operations
 allowed-tools: Bash, mcp__pkb__create_memory, mcp__pkb__update_task, mcp__pkb__release_task, mcp__pkb__create_task, TodoWrite, AskUserQuestion, Read
-permalink: commands/dump
+version: 1.0.0
+permalink: skills-handover
 ---
 
-# /dump - Session Handover & Context Dump
+# Handover Skill
 
-Force graceful handover when work must stop or session must end. This unified command ensures clean session closure and context preservation.
+Force graceful handover when work must stop or session must end. This unified skill ensures clean session closure and context preservation.
 
 ## Usage
 
 ```
-/dump
+/handover
 ```
 
-To invoke programmatically mid-session: `Skill(skill="aops-core:dump")` — note the `skill=` parameter, not `name=`.
+To invoke programmatically mid-session: `Skill(skill="aops-core:handover")` — note the `skill=` parameter, not `name=`.
 
-> When `/dump` is triggered as a slash command, the skill content is already injected into context — execute the steps directly without calling `Skill` again.
+> When `/handover` is triggered as a slash command, the skill content is already injected into context — execute the steps directly without calling `Skill` again.
 
-This command is **mandatory** before session end. The framework stop gate blocks exit until `/dump` is invoked and completed.
+This command is **mandatory** before session end. The framework stop gate blocks exit until `/handover` is invoked and completed.
 
 ## When to Use
 
@@ -59,6 +61,7 @@ Execute the [[base-handover]] workflow. The steps are:
    If no PR was filed: use `status="review"` with `reason="session ended, work incomplete"`.
    If no task was claimed, create a historical task first.
    **Fallback**: If `mcp__pkb__release_task` is not available, use `mcp__pkb__update_task(id="<task-id>", updates={"status": "merge_ready"})`.
+   **Note (Gemini workers, #521)**: Calling `release_task` with a terminal status (done/merge_ready/blocked/cancelled) is what lets the polecat supervisor detect termination via PKB polling and shut the container down — Gemini has no Stop hook, so skipping this will leave the worker running until an external timeout.
 3. **File follow-up tasks** for outstanding work — use [[decompose]] principles and ensure all have a **parent** set to the current task or epic
 4. **Persist discoveries to memory** (optional)
    4.5. **Codify learnings** — framework improvement → `gh issue create` in aops repo; project-scoped → update `./.agents/workflows/`; see [[references/handover-details]]

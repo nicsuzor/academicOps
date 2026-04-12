@@ -24,7 +24,7 @@ permalink: commands/retro
 
 **Purpose**: Read a recent transcript in detail through a framework-development lens. Provide a brutal, concise, critical review identifying problems and potential problems. Log every finding via `/learn`. We are aiming for EXCELLENCE, not "running code".
 
-**Privacy rule**: Anonymise all findings before filing. No real names, emails, student details, or session dumps in GitHub issues.
+**Privacy rule**: Anonymise all findings before filing. No real names, emails, student details, or session transcripts in GitHub issues.
 
 ## Workflow
 
@@ -211,7 +211,7 @@ Don't retro every session. Have a fast pass (read first/last 50 lines) and prior
 
 - Sessions where the user corrected the agent ("no", "stop", "that's wrong")
 - Sessions > 1hr that produced no PR or task
-- Sessions rated POOR by their own /dump reflection
+- Sessions rated POOR by their own /handover reflection
 - Sessions with interesting new patterns (not just re-confirming known issues)
 
 Skip automated sessions (cron, task notifications) and trivially short sessions with no meaningful interaction.

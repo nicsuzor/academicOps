@@ -124,16 +124,16 @@ GATE_CONFIGS = [
                     system_message_key="handover.bound",
                 ),
             ),
-            # /dump skill completes -> Open
+            # /handover skill completes -> Open
             # Uses subagent_type_pattern to match skill name extracted by router
             # (router.py extracts tool_input["skill"] into ctx.subagent_type)
             # Matches both Claude's Skill tool and Gemini's activate_skill tool.
-            # Pattern matches "dump", "handover" (legacy), and aops-core: prefixed forms.
+            # Pattern matches "handover" and aops-core: prefixed forms.
             GateTrigger(
                 condition=GateCondition(
                     hook_event="PostToolUse",
                     tool_name_pattern="^(Skill|activate_skill)$",
-                    subagent_type_pattern="^(aops-core:)?(handover|dump)$",
+                    subagent_type_pattern="^(aops-core:)?handover$",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
@@ -142,7 +142,7 @@ GATE_CONFIGS = [
             ),
         ],
         policies=[
-            # Block Stop when gate is CLOSED (dump not yet done)
+            # Block Stop when gate is CLOSED (handover not yet done)
             GatePolicy(
                 condition=GateCondition(
                     current_status=GateStatus.CLOSED,

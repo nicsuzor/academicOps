@@ -84,7 +84,7 @@ Complete the task requested, then STOP. Don't be so fucking eager.
 - User asks to CREATE/SCHEDULE a task → Create the task, stop. Scheduling ≠ executing.
 - Find related issues → Report, don't fix. "I'll just xyz" → Wait for direction.
 - Collaborative mode → Execute ONE step, then wait.
-- Task complete → invoke /dump → session ends.
+- Task complete → invoke /handover → session ends.
 - **HALT signals**: "we'll halt", "then stop", "just plan", "and halt" = STOP.
 
 ### Data Boundaries (P#6)

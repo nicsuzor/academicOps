@@ -22,7 +22,7 @@ permalink: commands/learn
 
 **Purpose**: Capture framework failures, recurring friction, and knowledge by filing high-quality, anonymised bug reports to GitHub Issues. We no longer make code changes directly; if a code change is warranted, someone will pick up the issue and address it. Not every issue will get addressed, as we use volume indicators to let the most active and critical issues float to the top.
 
-**Privacy rule**: You MUST anonymise bug reports and transcripts before sending them out. NEVER include direct logs, session dumps, real people's names, email addresses, student details, or personal information.
+**Privacy rule**: You MUST anonymise bug reports and transcripts before sending them out. NEVER include direct logs, session transcripts, real people's names, email addresses, student details, or personal information.
 
 ## Workflow
 
