@@ -64,6 +64,7 @@ This command routes to the **[[workflows/email-capture]]** workflow.
    - All links from the email body
    - Entry ID for retrieval
    - Sender, recipients, date
+   - **Structured metadata**: `due` (ISO date), `effort` (duration), and `consequence` (prose)
 5. **Summarize**: Present Important FYI content and created tasks to the user.
 
 ## Quality Bar

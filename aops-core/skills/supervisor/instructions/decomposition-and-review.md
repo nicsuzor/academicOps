@@ -6,7 +6,7 @@ The supervisor decomposes large tasks into PR-sized subtasks.
 
 **PR-Sized Definition** (all must be true):
 
-- Estimated effort ≤ 4 hours
+- Estimated effort ≤ 0.5d (4 hours)
 - Touches ≤ 10 files
 - Single logical unit (one "why")
 - Testable in isolation
@@ -75,7 +75,7 @@ If any check fails, fix the hierarchy BEFORE proceeding with decomposition.
 
 | ID        | Title       | Estimate | Confidence |
 | --------- | ----------- | -------- | ---------- |
-| subtask-1 | Description | 2h       | medium     |
+| subtask-1 | Description | 0.5d     | medium     |
 
 ### Dependency Graph
 
