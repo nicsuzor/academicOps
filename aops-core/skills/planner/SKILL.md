@@ -84,9 +84,9 @@ Quick task capture with minimal overhead. Speed is the priority — no enrichmen
 4. Route assignee: `polecat` (default), `null` (judgment-required), `nic` (only if explicit).
 5. **Extract structured metadata** if mentioned in description or conversation:
    - `due`: ISO date (YYYY-MM-DD)
-   - `effort`: duration (1d, 1w, 3w)
+   - `effort`: duration (0.5d, 1d, 1w)
    - `consequence`: prose description of what happens if not done
-6. Create task with body template (Problem, Solution, Files, AC) and the extracted metadata.
+6. Create task with body template (Problem, Solution, Files, AC). Pass `due`, `effort`, and `consequence` as explicit PKB parameters to `mcp__pkb__create_task` (not only in body prose) — the PKB uses `due` as a structured field for deadline-aware prioritization.
 7. Report and HALT — no execution.
 
 **Key rule**: Commission don't code. Route to swarm for execution.
@@ -143,7 +143,7 @@ Break validated epics into structured task trees.
 5. Derive epic shape: planning tasks (before) → execution tasks (during) → verification tasks (after).
 6. Define deliverables — each task must have a concrete output.
 7. Identify dependencies — hard (`depends_on`) vs soft (`soft_depends_on` = unlockers).
-8. Estimate effort — duration (1d, 1w, 3w); tasks over 1w need further decomposition.
+8. Estimate effort — duration (0.5d, 1d, 1w); tasks over 0.5d need further decomposition.
 9. Extract `due` and `consequence` for subtasks if mentioned or implied by the parent task.
 10. Create in PKB via `decompose_task(parent_id, subtasks)`.
 

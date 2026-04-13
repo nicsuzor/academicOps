@@ -54,7 +54,7 @@ Query the PKB for relevant context (projects, goals, relationships). Match actio
 
 2. **Extract Structured Metadata**:
    - **due**: Extract deadline from email body. Format: ISO date (YYYY-MM-DD).
-   - **effort**: Estimate effort required for the task. Format: duration (1d, 1w, 3w).
+   - **effort**: Estimate effort required for the task. Format: duration (0.5d, 1d, 1w).
    - **consequence**: Extract stated or implied consequences if the task is not completed.
 
 ### Create "Ready for Action" Tasks
@@ -115,6 +115,8 @@ Entry ID: [entry_id]
 - **effort**: [duration]
 - **consequence**: [prose]
 ```
+
+**PKB field storage (MANDATORY)**: Pass `due`, `effort`, and `consequence` as explicit parameters to `mcp__pkb__create_task` — not only in the body template. The PKB uses `due` as a structured field for deadline-aware prioritization (`days_until_due`); writing it only in body prose leaves that computed property empty and silently breaks deadline-based task ordering.
 
 #### Resource Handling
 
