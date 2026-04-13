@@ -85,18 +85,16 @@ Epic: "Add user authentication" using `feature-dev` workflow:
 
 ## Task Handoff Quality (P#120)
 
-Tasks created during decomposition will often be picked up by a **different agent or session** than the one that created them. The creating agent has rich context from the conversation — the picking-up agent has only what's in the task body.
+Tasks will be picked up by a **different agent** with only the task body as context.
 
-- **Self-contained context**: Each task must include enough background that someone with no session context can understand _why_ this task exists and _what decisions led to it_.
-- **Include data findings**: If the decomposition session discovered relevant data (node counts, edge distributions, performance characteristics), record these in the task body — not just "we found the hierarchy is flat" but the actual numbers.
-- **Link to related tasks**: Use explicit task ID wikilinks (e.g., [[task-id]]), not "the other task" or "as discussed."
-- **Record design decisions and constraints**: If the user made a choice (e.g., "filters are dishonest — show everything"), capture it in the task as a design constraint with rationale.
-- **Name terminology**: If new terms were coined (e.g., "unlockers" for soft dependencies), define them in the task body so the next agent uses them correctly.
+- **Self-contained context**: Include enough background that someone with no session context understands _why_ this task exists and _what decisions led to it_.
+- **Include data findings**: Record actual numbers discovered during decomposition, not just summaries.
+- **Link to related tasks**: Use explicit task ID wikilinks (e.g., [[task-id]]), not "the other task."
+- **Record design decisions and terminology**: Capture user choices as design constraints with rationale; define new terms in the task body.
 
 ## Critical Rules
 
 - **Completeness & Actionability**: All tasks together must achieve the original epic; every task must be completable in a single session.
 - **Verification**: Every epic must include at least one QA/review task.
 - **Conservative expansion**: If a task can be done in one sitting, don't decompose further.
-- **Graph placement**: Every created task must be connected to the graph — parented under a live (not done) epic, with dependencies to related work. A task with zero downstream weight and a completed parent is effectively invisible to prioritisation. Check: is the parent epic still active? Do any other tasks depend on this work?
-- **Scope drift tracking**: When a PR or decision changes the scope of existing tasks, update the affected task bodies. Decomposition is not fire-and-forget — if upstream work narrows or shifts the problem, downstream tasks must be refreshed or they become stale.
+- **Graph placement & drift**: Every task must be parented under a live epic with dependencies. When upstream work changes scope, update affected task bodies.
