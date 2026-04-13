@@ -57,9 +57,11 @@ version: 2.0.0
 
 8. **Identify Dependencies** — Which tasks must complete before others can start? Use the [[planning]] skill's dependency-type heuristic: "What happens if the dependency never completes?" If impossible → hard dependency. If less informed → soft dependency.
 
-9. **Estimate Effort** — Assign rough complexity (XS, S, M, L). Tasks over M probably need further decomposition. Single-session tasks (1–4 hours) are the right granularity.
+9. **Estimate Effort** — Assign rough duration (1d, 1w, 3w). Tasks over 1w probably need further decomposition. Single-session tasks (1–4 hours) are the right granularity.
 
-10. **Create in PKB** — Use `mcp__pkb__decompose_task(parent_id, subtasks)` for batch creation under the epic. Include dependencies, complexity, and deliverable descriptions.
+10. **Extract Structured Metadata** — Extract `due` and `consequence` for subtasks if mentioned or implied by the parent task.
+
+11. **Create in PKB** — Use `mcp__pkb__decompose_task(parent_id, subtasks)` for batch creation under the epic. Include dependencies, complexity (effort), and deliverable descriptions.
 
 ## Hierarchy and Depth
 
