@@ -15,7 +15,7 @@ mode: execution
 domain:
   - quality-assurance
   - framework
-allowed-tools: Bash, Read, Grep, Glob, Edit, Write, Agent
+allowed-tools: Bash, Read, Grep, Glob, Edit, Write, Agent, mcp__pkb__task_search
 model: opus
 permalink: commands/trend-review
 ---
