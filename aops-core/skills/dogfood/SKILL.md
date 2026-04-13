@@ -35,7 +35,7 @@ This skill is the **outer loop** that wraps any task category. The inner loop (e
 - Evaluating framework capabilities on real work
 - Any situation where "can a contextless agent do this well?" is the question
 
-## The Process
+## Workflow
 
 ### Phase 0: Know What You're Eating
 
