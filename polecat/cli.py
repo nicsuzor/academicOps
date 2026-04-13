@@ -471,6 +471,9 @@ def _find_docker_sock(env: dict, home: Path | None = None) -> DockerSock | None:
 # Docker memory helpers
 # ---------------------------------------------------------------------------
 
+_DOCKER_LOW_MEMORY_THRESHOLD_GB = 3.0
+_DOCKER_MEMORY_LIMIT_WARN_RATIO = 0.8
+
 
 def _get_docker_daemon_memory() -> int | None:
     """Return Docker daemon total memory in bytes, or None if unavailable."""
@@ -573,7 +576,7 @@ def _warn_low_docker_memory(
 
     mem_gb = daemon_mem_bytes / (1024**3)
 
-    if mem_gb < 3.0:
+    if mem_gb < _DOCKER_LOW_MEMORY_THRESHOLD_GB:
         print(
             f"\u26a0\ufe0f  Warning: Docker daemon has only {mem_gb:.1f} GB memory. "
             "Crew sessions typically need 4-6 GB.",
@@ -593,7 +596,7 @@ def _warn_low_docker_memory(
     if memory_limit:
         # Parse memory limit to bytes for comparison
         limit_bytes = _parse_memory_string(memory_limit)
-        if limit_bytes and limit_bytes > daemon_mem_bytes * 0.8:
+        if limit_bytes and limit_bytes > daemon_mem_bytes * _DOCKER_MEMORY_LIMIT_WARN_RATIO:
             print(
                 f"\u26a0\ufe0f  Warning: Memory limit ({memory_limit}) exceeds 80% of "
                 f"Docker daemon memory ({mem_gb:.1f} GB).",
@@ -615,7 +618,7 @@ def _parse_memory_string(mem_str: str) -> int | None:
             return int(float(mem_str[:-1]))
         else:
             return int(mem_str)
-    except (ValueError, IndexError):
+    except ValueError:
         return None
 
 
