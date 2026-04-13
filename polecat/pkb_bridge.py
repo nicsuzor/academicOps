@@ -35,7 +35,9 @@ class PkbTask:
         self.pr: str | None = fm.get("pr")
         self.due: str | None = data.get("due")  # ISO date string like "2026-05-13"
         self.effort: str | None = data.get("effort")  # Duration string like "1d", "1w", "3w", "2h"
-        self.consequence: str | None = data.get("consequence")  # Free text describing what happens if missed
+        self.consequence: str | None = data.get(
+            "consequence"
+        )  # Free text describing what happens if missed
         # Parse modified timestamp
         mod_raw = fm.get("modified")
         self.modified: datetime | None = None
