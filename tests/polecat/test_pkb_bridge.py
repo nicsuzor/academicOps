@@ -13,13 +13,14 @@ suite (unit scope).
 from __future__ import annotations
 
 import sys
+from datetime import date
 from pathlib import Path
 from unittest.mock import patch
 
 REPO_ROOT = Path(__file__).parent.parent.parent.resolve()
 sys.path.insert(0, str(REPO_ROOT / "polecat"))
 
-from polecat.pkb_bridge import PkbClient  # noqa: E402
+from polecat.pkb_bridge import PkbClient, PkbTask  # noqa: E402
 
 
 def _make_client() -> PkbClient:
@@ -120,3 +121,56 @@ class TestCallToolErrorHandling:
         client = _make_client()
         with patch.object(PkbClient, "_post", return_value=None):
             assert client.call_tool("anything", {}) is None
+
+
+class TestPkbTaskDeadlineFields:
+    def _make_task(self, extra: dict | None = None) -> PkbTask:
+        data: dict = {
+            "frontmatter": {"id": "task-abc", "title": "Test task"},
+            "body": "",
+        }
+        if extra:
+            data.update(extra)
+        return PkbTask(data)
+
+    def test_fields_populated(self):
+        task = self._make_task(
+            {
+                "due": "2026-05-13",
+                "effort": "1w",
+                "consequence": "Project delayed",
+            }
+        )
+        assert task.due == "2026-05-13"
+        assert task.effort == "1w"
+        assert task.consequence == "Project delayed"
+
+    def test_backward_compat_no_fields(self):
+        task = self._make_task()
+        assert task.due is None
+        assert task.effort is None
+        assert task.consequence is None
+
+    def test_days_until_due_future(self):
+        task = self._make_task({"due": "2026-04-20"})
+        with patch("polecat.pkb_bridge.date") as mock_date:
+            mock_date.today.return_value = date(2026, 4, 13)
+            mock_date.fromisoformat.side_effect = date.fromisoformat
+            result = task.days_until_due
+        assert result == 7
+
+    def test_days_until_due_past(self):
+        task = self._make_task({"due": "2026-04-06"})
+        with patch("polecat.pkb_bridge.date") as mock_date:
+            mock_date.today.return_value = date(2026, 4, 13)
+            mock_date.fromisoformat.side_effect = date.fromisoformat
+            result = task.days_until_due
+        assert result == -7
+
+    def test_days_until_due_no_due_date(self):
+        task = self._make_task()
+        assert task.days_until_due is None
+
+    def test_days_until_due_invalid_date(self):
+        task = self._make_task({"due": "not-a-date"})
+        assert task.days_until_due is None
