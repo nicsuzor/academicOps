@@ -26,9 +26,13 @@ from cli import (
     _build_docker_cmd,
     _clone_has_changes,
     _find_docker_sock,
+    _format_oom_message,
+    _is_colima_env,
     _node_version_key,
+    _parse_memory_string,
     _pass_pkb_url_sandbox,
     _replicate_gemini_auth,
+    _resolve_memory_limit,
 )
 
 
@@ -708,3 +712,190 @@ class TestCloneHasChanges:
     def test_nonexistent_path_returns_true(self, tmp_path):
         """Safe default: if path doesn't exist, assume changes (don't auto-nuke)."""
         assert _clone_has_changes(tmp_path / "nonexistent") is True
+
+
+# ---------------------------------------------------------------------------
+# Docker memory management
+# ---------------------------------------------------------------------------
+
+
+class TestParseMemoryString:
+    """Tests for _parse_memory_string."""
+
+    def test_gigabytes(self):
+        assert _parse_memory_string("4g") == 4 * 1024**3
+
+    def test_megabytes(self):
+        assert _parse_memory_string("2048m") == 2048 * 1024**2
+
+    def test_kilobytes(self):
+        assert _parse_memory_string("512k") == 512 * 1024
+
+    def test_bytes_suffix(self):
+        assert _parse_memory_string("1073741824b") == 1073741824
+
+    def test_plain_integer(self):
+        assert _parse_memory_string("1073741824") == 1073741824
+
+    def test_uppercase(self):
+        assert _parse_memory_string("4G") == 4 * 1024**3
+
+    def test_fractional(self):
+        assert _parse_memory_string("1.5g") == int(1.5 * 1024**3)
+
+    def test_whitespace_stripped(self):
+        assert _parse_memory_string("  4g  ") == 4 * 1024**3
+
+    def test_invalid_returns_none(self):
+        assert _parse_memory_string("abc") is None
+
+    def test_empty_string_returns_none(self):
+        assert _parse_memory_string("") is None
+
+
+class TestResolveMemoryLimit:
+    """Tests for _resolve_memory_limit priority: CLI > env > config > None."""
+
+    def test_cli_flag_wins(self, monkeypatch):
+        monkeypatch.setenv("POLECAT_DOCKER_MEMORY", "2g")
+        config = {"docker": {"memory": "1g"}}
+        assert _resolve_memory_limit("4g", config) == "4g"
+
+    def test_env_var_when_no_cli(self, monkeypatch):
+        monkeypatch.setenv("POLECAT_DOCKER_MEMORY", "2g")
+        config = {"docker": {"memory": "1g"}}
+        assert _resolve_memory_limit(None, config) == "2g"
+
+    def test_config_when_no_cli_or_env(self, monkeypatch):
+        monkeypatch.delenv("POLECAT_DOCKER_MEMORY", raising=False)
+        config = {"docker": {"memory": "1g"}}
+        assert _resolve_memory_limit(None, config) == "1g"
+
+    def test_none_when_nothing_set(self, monkeypatch):
+        monkeypatch.delenv("POLECAT_DOCKER_MEMORY", raising=False)
+        assert _resolve_memory_limit(None, None) is None
+
+    def test_none_when_config_empty(self, monkeypatch):
+        monkeypatch.delenv("POLECAT_DOCKER_MEMORY", raising=False)
+        assert _resolve_memory_limit(None, {}) is None
+
+    def test_none_when_config_docker_has_no_memory(self, monkeypatch):
+        monkeypatch.delenv("POLECAT_DOCKER_MEMORY", raising=False)
+        assert _resolve_memory_limit(None, {"docker": {}}) is None
+
+
+class TestBuildDockerCmdMemory:
+    """Tests for memory flags in _build_docker_cmd."""
+
+    def _build(self, memory_limit=None, **kwargs):
+        docker_cmd = _build_docker_cmd(
+            cli_tool=kwargs.get("cli_tool", "claude"),
+            work_dir=kwargs.get("work_dir", Path("/tmp/worktree")),
+            env=kwargs.get("env", {}),
+            agent_cmd=kwargs.get("agent_cmd", ["claude", "--dangerously-skip-permissions"]),
+            is_interactive=kwargs.get("is_interactive", False),
+            memory_limit=memory_limit,
+        )
+        return docker_cmd.cmd
+
+    def test_memory_limit_flags_added(self):
+        cmd = self._build(memory_limit="4g")
+        assert "--memory" in cmd
+        mem_idx = cmd.index("--memory")
+        assert cmd[mem_idx + 1] == "4g"
+        assert "--memory-swap" in cmd
+        swap_idx = cmd.index("--memory-swap")
+        assert cmd[swap_idx + 1] == "4g"
+
+    def test_no_memory_flags_when_none(self):
+        cmd = self._build(memory_limit=None)
+        assert "--memory" not in cmd
+        assert "--memory-swap" not in cmd
+
+    def test_memory_swap_equals_memory(self):
+        """--memory-swap == --memory disables swap for predictable OOM."""
+        cmd = self._build(memory_limit="6g")
+        mem_idx = cmd.index("--memory")
+        swap_idx = cmd.index("--memory-swap")
+        assert cmd[mem_idx + 1] == cmd[swap_idx + 1] == "6g"
+
+
+class TestIsColimaEnv:
+    """Tests for _is_colima_env."""
+
+    def test_colima_socket(self):
+        from cli import DockerSock
+
+        sock = DockerSock(
+            mount_source=Path("/var/run/docker.sock"),
+            host_path=Path("/Users/testuser/.colima/default/docker.sock"),
+        )
+        with patch("cli._find_docker_sock", return_value=sock):
+            assert _is_colima_env({}) is True
+
+    def test_standard_socket(self):
+        from cli import DockerSock
+
+        sock = DockerSock(
+            mount_source=Path("/var/run/docker.sock"),
+            host_path=Path("/var/run/docker.sock"),
+        )
+        with patch("cli._find_docker_sock", return_value=sock):
+            assert _is_colima_env({}) is False
+
+    def test_no_socket(self):
+        with patch("cli._find_docker_sock", return_value=None):
+            assert _is_colima_env({}) is False
+
+
+class TestFormatOomMessage:
+    """Tests for _format_oom_message."""
+
+    def test_colima_remediation(self):
+        from cli import DockerSock
+
+        sock = DockerSock(
+            mount_source=Path("/var/run/docker.sock"),
+            host_path=Path("/Users/testuser/.colima/default/docker.sock"),
+        )
+        with patch("cli._find_docker_sock", return_value=sock):
+            msg = _format_oom_message({}, daemon_mem_bytes=2 * 1024**3)
+        assert "exit code 137" in msg
+        assert "2.0 GB" in msg
+        assert "colima stop" in msg
+        assert "colima start --memory" in msg
+
+    def test_linux_remediation(self):
+        with (
+            patch("cli._find_docker_sock", return_value=None),
+            patch("cli.sys.platform", "linux"),
+        ):
+            msg = _format_oom_message({})
+        assert "exit code 137" in msg
+        assert "free -h" in msg
+
+    def test_docker_desktop_remediation(self):
+        from cli import DockerSock
+
+        sock = DockerSock(
+            mount_source=Path("/var/run/docker.sock"),
+            host_path=Path("/var/run/docker.sock"),
+        )
+        with (
+            patch("cli._find_docker_sock", return_value=sock),
+            patch("cli.sys.platform", "darwin"),
+        ):
+            msg = _format_oom_message({})
+        assert "Docker Desktop" in msg
+        assert "Settings" in msg
+
+    def test_includes_polecat_docker_memory_hint(self):
+        with patch("cli._find_docker_sock", return_value=None):
+            msg = _format_oom_message({})
+        assert "POLECAT_DOCKER_MEMORY" in msg
+        assert "--memory" in msg
+
+    def test_no_daemon_mem_omits_gb_line(self):
+        with patch("cli._find_docker_sock", return_value=None):
+            msg = _format_oom_message({}, daemon_mem_bytes=None)
+        assert "GB memory available" not in msg
