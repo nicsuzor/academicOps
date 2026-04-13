@@ -136,7 +136,7 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
     persist["AOPS_SESSION_STATE_PATH"] = str(state_file_path)
 
     # 4. Persist gate file paths
-    gate_paths = get_all_gate_file_paths(ctx.session_id, ctx.raw_input)
+    gate_paths = get_all_gate_file_paths(ctx.session_id, transcript_path=ctx.transcript_path)
     for gate_name, gate_path in gate_paths.items():
         persist[f"AOPS_GATE_FILE_{gate_name.upper()}"] = str(gate_path)
 

@@ -1023,13 +1023,12 @@ def build_aops_cowork(
     }
     # Top-level markdown files to include
     COWORK_MD_INCLUDE = {
-        "SKILLS.md",
         "HEURISTICS.md",
         "RULES.md",
         "TAXONOMY.md",
         "CONSTRAINTS.md",
-        "TOOLS.md",
         "enforcement-map.md",
+        "GEMINI.md",
         "agent-env-map.conf",
     }
 
