@@ -33,9 +33,9 @@ class PkbTask:
         self.assignee: str | None = fm.get("assignee")
         self.pr_url: str | None = fm.get("pr_url")
         self.pr: str | None = fm.get("pr")
-        self.due = data.get("due")  # ISO date string like "2026-05-13"
-        self.effort = data.get("effort")  # Duration string like "1d", "1w", "3w", "2h"
-        self.consequence = data.get("consequence")  # Free text describing what happens if missed
+        self.due: str | None = data.get("due")  # ISO date string like "2026-05-13"
+        self.effort: str | None = data.get("effort")  # Duration string like "1d", "1w", "3w", "2h"
+        self.consequence: str | None = data.get("consequence")  # Free text describing what happens if missed
         # Parse modified timestamp
         mod_raw = fm.get("modified")
         self.modified: datetime | None = None
@@ -216,7 +216,8 @@ def get_task(task_id: str) -> PkbTask | None:
 def update_task(task_id: str, **kwargs: Any) -> bool:
     """Update task fields via the PKB MCP server.
 
-    Supported kwargs: status, assignee, priority, project, tags, body, pr_url.
+    Supported kwargs: status, assignee, priority, project, tags, body, pr_url,
+    due, effort, consequence.
     Pass ``None`` to remove a field.
     """
     updates = dict(kwargs)
@@ -266,6 +267,12 @@ def save_task(task: PkbTask) -> bool:
         updates["body"] = task.body
     if task.pr_url is not None:
         updates["pr_url"] = task.pr_url
+    if task.due is not None:
+        updates["due"] = task.due
+    if task.effort is not None:
+        updates["effort"] = task.effort
+    if task.consequence is not None:
+        updates["consequence"] = task.consequence
     return update_task(task.id, **updates)
 
 
