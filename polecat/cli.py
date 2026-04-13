@@ -847,14 +847,20 @@ def _run_docker_container(
                     "tar",
                     "-cf",
                     "-",
-                    "--owner",
-                    uid_str,
-                    "--group",
-                    gid_str,
-                    "-C",
-                    str(docker_cmd.workspace_dir),
-                    ".",
                 ]
+                if sys.platform == "darwin":
+                    tar_cmd.extend(["--no-mac-metadata", "--no-xattrs"])
+                tar_cmd.extend(
+                    [
+                        "--owner",
+                        uid_str,
+                        "--group",
+                        gid_str,
+                        "-C",
+                        str(docker_cmd.workspace_dir),
+                        ".",
+                    ]
+                )
                 tar_proc = subprocess.Popen(
                     tar_cmd,
                     stdout=subprocess.PIPE,
@@ -876,6 +882,8 @@ def _run_docker_container(
                         f"tar failed (exit {tar_proc.returncode}) archiving workspace",
                         file=sys.stderr,
                     )
+                    if cp_result.returncode != 0:
+                        print(f"docker cp (workspace) failed: {cp_result.stderr}", file=sys.stderr)
                     return subprocess.CompletedProcess(
                         args=tar_cmd, returncode=tar_proc.returncode, stdout="", stderr=""
                     )
