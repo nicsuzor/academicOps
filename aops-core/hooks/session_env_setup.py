@@ -93,14 +93,6 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
         f"Transcript: {transcript_path}",
     ]
 
-    # Bridge userConfig → ACA_DATA for Claude Code plugin installs.
-    # Claude exports plugin userConfig values as CLAUDE_PLUGIN_OPTION_<KEY>.
-    # Persist as ACA_DATA so all hooks/scripts can find it.
-    if not os.environ.get("ACA_DATA") and os.environ.get("CLAUDE_PLUGIN_OPTION_ACA_DATA"):
-        aca_data_val = os.environ["CLAUDE_PLUGIN_OPTION_ACA_DATA"]
-        persist["ACA_DATA"] = aca_data_val
-        os.environ["ACA_DATA"] = aca_data_val
-
     # Ensure auto mode classifier rules are installed
     try:
         from lib.automode import install, is_installed
