@@ -503,7 +503,7 @@ def _format_oom_message(env: dict, daemon_mem_bytes: int | None = None) -> str:
         "\u274c  Container killed by Out-Of-Memory (OOM) killer — exit code 137",
         "",
     ]
-    if daemon_mem_bytes:
+    if daemon_mem_bytes is not None:
         mem_gb = daemon_mem_bytes / (1024**3)
         lines.append(f"   Docker daemon has {mem_gb:.1f} GB memory available.")
 
@@ -3199,7 +3199,7 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
     session_dir = _get_sessions_base() / "crew" / crew_name / project_slug
 
     # Resolve container memory limit and check daemon memory
-    config = manager.load_config() if hasattr(manager, "load_config") else None
+    config = manager.config if hasattr(manager, "config") else None
     memory_limit = _resolve_memory_limit(memory, config)
     daemon_mem = _get_docker_daemon_memory()
     _warn_low_docker_memory(memory_limit, env, daemon_mem)
@@ -3672,7 +3672,7 @@ def run(
     env["POLECAT_SESSION_TYPE"] = "polecat"
 
     # Resolve container memory limit and check daemon memory
-    config = manager.load_config() if hasattr(manager, "load_config") else None
+    config = manager.config if hasattr(manager, "config") else None
     memory_limit = _resolve_memory_limit(memory, config)
     daemon_mem = _get_docker_daemon_memory()
     _warn_low_docker_memory(memory_limit, env, daemon_mem)
