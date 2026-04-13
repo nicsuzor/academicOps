@@ -622,6 +622,21 @@ def _parse_memory_string(mem_str: str) -> int | None:
         return None
 
 
+def _init_container_memory(
+    memory: str | None,
+    manager,
+    env: dict,
+) -> tuple[str | None, int | None]:
+    """Resolve container memory limit and emit daemon-memory warnings.
+
+    Returns (memory_limit, daemon_mem_bytes) for use in OOM reporting.
+    """
+    memory_limit = _resolve_memory_limit(memory, manager.config)
+    daemon_mem = _get_docker_daemon_memory()
+    _warn_low_docker_memory(memory_limit, env, daemon_mem)
+    return memory_limit, daemon_mem
+
+
 def _build_docker_cmd(
     cli_tool: str,
     work_dir: Path,
@@ -3202,10 +3217,7 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
     session_dir = _get_sessions_base() / "crew" / crew_name / project_slug
 
     # Resolve container memory limit and check daemon memory
-    config = manager.config if hasattr(manager, "config") else None
-    memory_limit = _resolve_memory_limit(memory, config)
-    daemon_mem = _get_docker_daemon_memory()
-    _warn_low_docker_memory(memory_limit, env, daemon_mem)
+    memory_limit, daemon_mem = _init_container_memory(memory, manager, env)
 
     tmp_gemini_home = None
     tmp_files: list[Path] = []
@@ -3675,10 +3687,7 @@ def run(
     env["POLECAT_SESSION_TYPE"] = "polecat"
 
     # Resolve container memory limit and check daemon memory
-    config = manager.config if hasattr(manager, "config") else None
-    memory_limit = _resolve_memory_limit(memory, config)
-    daemon_mem = _get_docker_daemon_memory()
-    _warn_low_docker_memory(memory_limit, env, daemon_mem)
+    memory_limit, daemon_mem = _init_container_memory(memory, manager, env)
 
     tmp_gemini_home = None
     tmp_files: list[Path] = []
