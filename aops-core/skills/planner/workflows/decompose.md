@@ -97,4 +97,4 @@ Tasks created during decomposition will often be picked up by a **different agen
 
 - **Completeness & Actionability**: All tasks together must achieve the original epic; every task must be completable in a single session.
 - **Verification & expansion**: Every epic includes at least one QA/review task; don't decompose a task that fits one sitting.
-- **Graph placement & drift**: Parent every task under a live epic with real dependencies; refresh affected task bodies when upstream scope shifts. Orphaned or stale tasks are invisible to prioritisation.
+- **Graph placement & drift**: Parent every task under a live epic with real dependencies; refresh affected task bodies when upstream scope shifts. Orphaned or stale tasks are invisible to prioritisation. Check: is the parent epic still active? Do any other tasks depend on this work?

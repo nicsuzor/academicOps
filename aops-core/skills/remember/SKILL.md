@@ -132,7 +132,7 @@ Is this about the user? (projects, goals, context, tasks)
 mcp__pkb__create(
   title="Descriptive Title",
   body="Content with [[wikilinks]] to related concepts.",
-  type="note" | "project" | "knowledge" | "moc" | "meeting-note",
+  type="note" | "project" | "epic" | "knowledge" | "moc" | "meeting-note",
   tags=["relevant", "tags"],
   # created / path / frontmatter fields handled by PKB
 )
