@@ -700,13 +700,8 @@ def build_aops_core(
         "pyproject.toml",  # Generated with version from root
         "hooks",  # Handled separately in section 2 (Gemini hooks.json transform)
         "indices",  # PATHS.md is user config, no other generated indices
-        "GEMINI.md",  # Added conditionally per-platform below
         "__pycache__",
     }
-
-    # Gemini gets GEMINI.md
-    if platform == "gemini":
-        EXCLUDED_FROM_COPY.discard("GEMINI.md")
 
     for src_item in src_dir.iterdir():
         if src_item.name in EXCLUDED_FROM_COPY or src_item.name.startswith("."):
@@ -936,8 +931,6 @@ def build_aops_tools(
 
     # Copy skills and index files
     items_to_copy = ["skills", "SKILLS.md"]
-    if platform == "gemini":
-        items_to_copy.append("GEMINI.md")
 
     for item in items_to_copy:
         src = src_dir / item
@@ -1028,7 +1021,6 @@ def build_aops_cowork(
         "TAXONOMY.md",
         "CONSTRAINTS.md",
         "enforcement-map.md",
-        "GEMINI.md",
         "agent-env-map.conf",
     }
 
