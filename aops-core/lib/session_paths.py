@@ -8,9 +8,17 @@ where HH is the 24-hour local time when the session was created.
 """
 
 import os
+from datetime import datetime
 from pathlib import Path
 
 from lib import session_naming
+
+
+def _parse_date_arg(date: str | None) -> datetime | None:
+    """Parse a date/ISO-8601 string into a datetime, or None to let callers default to now."""
+    if date is None:
+        return None
+    return datetime.fromisoformat(date).astimezone()
 
 
 def get_claude_project_folder() -> str:
@@ -154,14 +162,24 @@ def get_hook_log_path(
     if env_hook_log_path := os.environ.get("AOPS_HOOK_LOG_PATH"):
         return Path(env_hook_log_path)
 
-    filename = session_naming.get_hook_log_filename(session_id, date=date)
+    filename = session_naming.generate_session_filename(
+        session_id,
+        timestamp=_parse_date_arg(date),
+        artifact_type="hooks",
+        crew_name=session_naming.resolve_crew_name(),
+    )
 
-    # Unify hook logging: Always prefer centralized AOPS_SESSIONS if available
+    # Unify hook logging: Always prefer centralized AOPS_SESSIONS if reachable
     aops_sessions = os.environ.get("AOPS_SESSIONS")
     if aops_sessions:
         logs_dir = Path(aops_sessions).resolve() / "hooks"
-        logs_dir.mkdir(parents=True, exist_ok=True)
-        return logs_dir / filename
+        try:
+            logs_dir.mkdir(parents=True, exist_ok=True)
+            return logs_dir / filename
+        except (PermissionError, OSError):
+            # AOPS_SESSIONS points to an unreachable host path (common in crew
+            # containers without a volume mount). Fall through to local path.
+            pass
 
     # Determine log directory based on session type
     if _is_gemini_session(session_id, transcript_path):
@@ -243,7 +261,12 @@ def get_session_file_path(
     Returns:
         Path to session state file
     """
-    filename = session_naming.get_session_filename(session_id, date=date)
+    filename = session_naming.generate_session_filename(
+        session_id,
+        timestamp=_parse_date_arg(date),
+        artifact_type="insights",
+        crew_name=session_naming.resolve_crew_name(),
+    )
     return get_session_status_dir(session_id, transcript_path) / filename
 
 
@@ -343,14 +366,25 @@ def get_gate_file_path(
     if env_path := os.environ.get(env_var):
         return Path(env_path)
 
-    filename = session_naming.get_gate_filename(gate, session_id, date=date)
+    # Gates reuse the shared base name then append {-gate}.md
+    base = session_naming.generate_base_name(
+        session_id,
+        timestamp=_parse_date_arg(date),
+        crew_name=session_naming.resolve_crew_name(),
+    )
+    filename = f"{base}-{gate}.md"
 
-    # Unify gate logging: Always prefer centralized AOPS_SESSIONS if available
+    # Unify gate logging: Always prefer centralized AOPS_SESSIONS if reachable
     aops_sessions = os.environ.get("AOPS_SESSIONS")
     if aops_sessions:
         logs_dir = Path(aops_sessions).resolve() / "hooks"
-        logs_dir.mkdir(parents=True, exist_ok=True)
-        return logs_dir / filename
+        try:
+            logs_dir.mkdir(parents=True, exist_ok=True)
+            return logs_dir / filename
+        except (PermissionError, OSError):
+            # AOPS_SESSIONS points to an unreachable host path (common in crew
+            # containers without a volume mount). Fall through to local path.
+            pass
 
     if _is_gemini_session(session_id, transcript_path):
         logs_dir = get_gemini_logs_dir(transcript_path)

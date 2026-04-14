@@ -176,12 +176,14 @@ class SessionState(BaseModel):
 
         # Search for files matching this session_id on today or yesterday
         for date_compact in [today, yesterday]:
-            # New format: YYYYMMDD-HH-hash.json (try all hours)
-            new_pattern = f"{date_compact}-??-{short_hash}.json"
-            # Legacy format: YYYYMMDD-hash.json
+            # Unified v4+ format: YYYYMMDD-HHMM-hash-shortform-slug.json
+            unified_pattern = f"{date_compact}-????-{short_hash}-*.json"
+            # Legacy v3 format: YYYYMMDD-HH-hash.json
+            hh_pattern = f"{date_compact}-??-{short_hash}.json"
+            # Super-legacy format: YYYYMMDD-hash.json
             legacy_pattern = f"{date_compact}-{short_hash}.json"
 
-            for pattern in [new_pattern, legacy_pattern]:
+            for pattern in [unified_pattern, hh_pattern, legacy_pattern]:
                 matches = list(status_dir.glob(pattern))
                 if matches:
                     # Use the most recent file if multiple matches
