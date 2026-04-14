@@ -106,7 +106,6 @@ def sync_client_log(session_path: Path, session_id: str, date: datetime | None =
         base = session_naming.generate_base_name(
             session_id=session_id,
             timestamp=date,
-            slug="client",
             crew_name=session_naming.resolve_crew_name(),
         )
         target_name = f"{base}-client{session_path.suffix}"
