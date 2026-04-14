@@ -35,7 +35,6 @@ from lib.insights_generator import (  # noqa: E402
     write_insights_file,
 )
 from lib.paths import get_sessions_repo, get_transcripts_dir  # noqa: E402
-from lib.session_naming import get_session_filename  # noqa: E402
 from lib.session_reader import find_sessions  # noqa: E402
 from lib.transcript_parser import (  # noqa: E402
     SessionProcessor,
@@ -81,7 +80,8 @@ def sync_client_log(session_path: Path, session_id: str, date: datetime | None =
     """Sync raw client log to $AOPS_SESSIONS/client-logs/ with unified naming.
 
     Prefer hardlink for efficiency, fallback to copy for cross-filesystem scenarios.
-    Naming follows: YYYYMMDD-HH-shorthash-client.jsonl
+    Naming follows the unified convention from specs/session-naming-convention.md:
+      {YYYYMMDD}-{HHMM}-{session_id}-{shortform}-{slug}-client.{ext}
     """
     if session_path.is_dir():
         # Antigravity brain sessions are directories, skip for now
@@ -90,20 +90,25 @@ def sync_client_log(session_path: Path, session_id: str, date: datetime | None =
     try:
         sessions_root = get_sessions_repo()
         client_logs_dir = sessions_root / "client-logs"
-        client_logs_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            client_logs_dir.mkdir(parents=True, exist_ok=True)
+        except (PermissionError, OSError) as e:
+            # AOPS_SESSIONS may point to an unreachable host path (crew
+            # containers without a volume mount). Skip sync quietly.
+            print(f"⚠️  client-logs dir unreachable ({e}); skipping sync", file=sys.stderr)
+            return
 
         # Fallback to mtime if date not provided (prevents non-deterministic naming)
         if date is None:
             date = datetime.fromtimestamp(session_path.stat().st_mtime).astimezone()
 
-        # Unified naming: YYYYMMDD-HH-shorthash-client[.jsonl|.json]
-        # Preserves source extension: Claude uses .jsonl, Gemini uses .json
-        target_name = get_session_filename(
-            session_id,
-            date.isoformat(),
-            slug="client",
-            suffix=session_path.suffix,
+        # Preserve source extension: Claude uses .jsonl, Gemini uses .json
+        base = session_naming.generate_base_name(
+            session_id=session_id,
+            timestamp=date,
+            crew_name=session_naming.resolve_crew_name(),
         )
+        target_name = f"{base}-client{session_path.suffix}"
         target_path = client_logs_dir / target_name
 
         # Skip if already current (check mtime)

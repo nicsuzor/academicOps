@@ -213,7 +213,7 @@ class TestSessionPaths(unittest.TestCase):
                         import re
 
                         self.assertTrue(
-                            re.search(r"20260124-\d{2}-07328230-custodiet\.md", str(gate_path))
+                            re.search(r"20260124-\d{4}-07328230-.*-custodiet\.md", str(gate_path))
                         )
 
     def test_get_gate_file_path_gemini_prefix(self):
@@ -245,7 +245,7 @@ class TestSessionPaths(unittest.TestCase):
                 import re
 
                 self.assertTrue(
-                    re.search(rf"20260124-\d{{2}}-{expected_hash}-custodiet\.md", str(gate_path))
+                    re.search(rf"20260124-\d{{4}}-{expected_hash}-.*-custodiet\.md", str(gate_path))
                 )
 
     def test_get_gate_file_path_gemini_polecat(self):
@@ -270,7 +270,7 @@ class TestSessionPaths(unittest.TestCase):
                 import re
 
                 self.assertTrue(
-                    re.search(r"logs/20260124-\d{2}-07328230-custodiet\.md", str(gate_path))
+                    re.search(r"logs/20260124-\d{4}-07328230-.*-custodiet\.md", str(gate_path))
                 )
 
 
