@@ -2842,16 +2842,20 @@ def sweep(ctx, stale_days):
                 print(f"    ⚠ Could not parse updatedAt '{updated_at_str}': {e}")
 
 
-def _clone_has_changes(repo_path: Path) -> bool:
-    """Check if a crew clone has any changes (committed or uncommitted) vs its upstream.
+def _clone_has_changes(repo_path: Path, branch_name: str) -> bool:
+    """Check if a crew branch has pushed work not yet merged to the default branch.
+
+    Fetches fresh state from origin before checking, so this is correct even
+    when the local clone is stale (e.g. after a Docker session where commits
+    happened inside the container and were pushed directly to origin).
 
     Returns True if:
-    - There are uncommitted changes in the working tree
-    - The content of the current branch differs from the upstream default branch
-    Returns False if the clone is clean and identical to origin/HEAD.
+    - There are uncommitted local changes in the working tree, OR
+    - The remote crew branch has commits with content not yet in the default branch
+    Returns False if the remote branch is absent, merged, or squash-merged.
     """
     try:
-        # Check for uncommitted changes (staged or unstaged)
+        # Check for uncommitted local changes (catches non-Docker in-progress work)
         status = subprocess.run(
             ["git", "status", "--porcelain"],
             cwd=repo_path,
@@ -2862,8 +2866,7 @@ def _clone_has_changes(repo_path: Path) -> bool:
         if status.returncode == 0 and status.stdout.strip():
             return True
 
-        # Check for commits beyond the merge base with origin's default branch
-        # First, determine the default branch
+        # Determine the default branch name
         head_result = subprocess.run(
             ["git", "symbolic-ref", "refs/remotes/origin/HEAD"],
             cwd=repo_path,
@@ -2871,22 +2874,65 @@ def _clone_has_changes(repo_path: Path) -> bool:
             text=True,
             timeout=10,
         )
-        if head_result.returncode == 0:
-            default_branch = head_result.stdout.strip()  # e.g., refs/remotes/origin/main
-        else:
-            default_branch = "origin/main"
+        default_ref = (
+            head_result.stdout.strip()
+            if head_result.returncode == 0
+            else "refs/remotes/origin/main"
+        )
+        default_branch_short = default_ref.removeprefix("refs/remotes/origin/")
 
-        # git diff --quiet returns 0 if no differences, 1 if there are differences
-        diff = subprocess.run(
-            ["git", "diff", "--quiet", default_branch, "HEAD"],
+        # Fetch fresh state for the crew branch and the default branch.
+        # Best-effort: continue even if offline or branch doesn't exist yet.
+        subprocess.run(
+            ["git", "fetch", "origin", branch_name, default_branch_short],
             cwd=repo_path,
             capture_output=True,
+            timeout=15,
+            check=False,
+        )
+
+        # If the remote crew branch doesn't exist, nothing was pushed — safe to nuke.
+        remote_branch_ref = f"refs/remotes/origin/{branch_name}"
+        ref_check = subprocess.run(
+            ["git", "rev-parse", "--verify", "--quiet", remote_branch_ref],
+            cwd=repo_path,
+            capture_output=True,
+        )
+        if ref_check.returncode != 0:
+            return False
+
+        # Count commits on the remote crew branch not reachable from remote default.
+        rev_count = subprocess.run(
+            ["git", "rev-list", "--count", f"{default_ref}..{remote_branch_ref}"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
             timeout=10,
         )
-        return diff.returncode != 0
-    except (FileNotFoundError, subprocess.TimeoutExpired):
-        # If we can't determine, assume there are changes (safe default)
-        return True
+        if rev_count.returncode == 0:
+            count = int(rev_count.stdout.strip())
+            if count == 0:
+                # All commits are ancestors of the default branch (normal merge).
+                return False
+
+            # Commits exist beyond the default branch. Check if content is identical —
+            # this handles squash-merge/rebase where commits land in main with
+            # different SHAs but the same file content.
+            diff = subprocess.run(
+                ["git", "diff", "--quiet", default_ref, remote_branch_ref],
+                cwd=repo_path,
+                capture_output=True,
+                timeout=10,
+            )
+            if diff.returncode == 0:
+                # Content identical to default → squash-merged → safe to nuke.
+                return False
+            return True  # Genuine unmerged work exists — preserve.
+
+    except (FileNotFoundError, subprocess.TimeoutExpired, ValueError):
+        pass
+    # If we can't determine, assume there are changes (safe default).
+    return True
 
 
 def _branch_has_open_pr(branch_name: str, repo_path: Path) -> bool:
@@ -3341,7 +3387,7 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
     auto_nuke = False
     nuke_reason = ""
     if not keep:
-        if not _clone_has_changes(work_dir):
+        if not _clone_has_changes(work_dir, branch_name):
             auto_nuke = True
             nuke_reason = "no changes made"
         elif _branch_has_open_pr(branch_name, work_dir):
