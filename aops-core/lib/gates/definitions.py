@@ -106,7 +106,7 @@ GATE_CONFIGS = [
     # --- Handover ---
     # Gate starts OPEN (so short interactive chats don't require handover).
     # Closes when work begins (task bound or write tool used).
-    # Opens when /handover skill completes. Policy blocks Stop when CLOSED.
+    # Opens when /dump skill completes. Policy blocks Stop when CLOSED.
     GateConfig(
         name="handover",
         description="Requires Framework Reflection before exit.",
