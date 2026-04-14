@@ -121,6 +121,17 @@ def get_repo_name(project_dir: str | None = None) -> str:
     return _sanitize(basename)
 
 
+def resolve_crew_name() -> str | None:
+    """Resolve crew name from environment.
+
+    Reads $POLECAT_CREW_NAME. Returns None (manual/polecat-run session) if unset
+    or empty. Call this explicitly at runtime call sites — keep pure naming
+    functions env-free so tests don't leak host env.
+    """
+    name = os.environ.get("POLECAT_CREW_NAME")
+    return name or None
+
+
 def get_session_shortform(
     crew_name: str | None = None,
     repo: str | None = None,

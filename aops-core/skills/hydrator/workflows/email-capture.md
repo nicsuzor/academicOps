@@ -23,7 +23,7 @@ backend: scripts
 2. **Step 1: Fetch and Check Responses** - Get recent emails and check if already responded to.
 3. **Step 2: Analyze and Classify** - Categorize into Actionable, Important FYI, or Safe to ignore.
 4. **Step 3 & 4: Context and Categorization** - Query PKB for project matching and confidence scoring.
-5. **Step 5: Infer Priority** - Assign P0-P3 based on deadlines and signals.
+5. **Step 5: Infer Priority and Metadata** - Assign P0-P3 based on deadlines and extract structured metadata (`due`, `effort`, `consequence`).
 6. **Step 6: Create "Ready for Action" Tasks** - Generate summaries, note attachment filenames, preserve links, and create tasks.
 7. **Step 7: Duplicate Prevention** - Handled by Step 0 above. There is no server-side dedup on creation.
 8. **Step 8: Present Information and Summary** - Show Important FYI content and created tasks.

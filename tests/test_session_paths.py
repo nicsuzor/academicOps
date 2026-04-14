@@ -80,9 +80,8 @@ class TestSessionPaths(unittest.TestCase):
             # Patch Path.home()
             with patch.object(Path, "home", return_value=Path(tmpdir)):
                 # Pass UUID session_id (no gemini- prefix) but with Gemini transcript_path
-                input_data = {"transcript_path": transcript_path}
                 result = session_paths.get_session_status_dir(
-                    "07328230-44d4-414b-9fec-191a6eec0948", input_data=input_data
+                    "07328230-44d4-414b-9fec-191a6eec0948", transcript_path=transcript_path
                 )
                 # Should detect Gemini from transcript_path and return gemini_base
                 self.assertEqual(result, gemini_base)
@@ -92,7 +91,7 @@ class TestSessionPaths(unittest.TestCase):
         # UUID session_id (no gemini- prefix) with Gemini transcript_path
         result = session_paths._is_gemini_session(
             "07328230-44d4-414b-9fec-191a6eec0948",
-            {"transcript_path": "/home/user/.gemini/tmp/hash/chats/session.json"},
+            transcript_path="/home/user/.gemini/tmp/hash/chats/session.json",
         )
         self.assertTrue(result)
 
@@ -214,7 +213,7 @@ class TestSessionPaths(unittest.TestCase):
                         import re
 
                         self.assertTrue(
-                            re.search(r"20260124-\d{2}-07328230-custodiet\.md", str(gate_path))
+                            re.search(r"20260124-\d{4}-07328230-.*-custodiet\.md", str(gate_path))
                         )
 
     def test_get_gate_file_path_gemini_prefix(self):
@@ -246,7 +245,7 @@ class TestSessionPaths(unittest.TestCase):
                 import re
 
                 self.assertTrue(
-                    re.search(rf"20260124-\d{{2}}-{expected_hash}-custodiet\.md", str(gate_path))
+                    re.search(rf"20260124-\d{{4}}-{expected_hash}-.*-custodiet\.md", str(gate_path))
                 )
 
     def test_get_gate_file_path_gemini_polecat(self):
@@ -271,7 +270,7 @@ class TestSessionPaths(unittest.TestCase):
                 import re
 
                 self.assertTrue(
-                    re.search(r"logs/20260124-\d{2}-07328230-custodiet\.md", str(gate_path))
+                    re.search(r"logs/20260124-\d{4}-07328230-.*-custodiet\.md", str(gate_path))
                 )
 
 

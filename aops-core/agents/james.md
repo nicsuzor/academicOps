@@ -1,7 +1,7 @@
 ---
 name: james
 description: "The Orchestrator — multi-agent review coordinator. Commissions rbg (compliance), pauli (strategy), marsha (QA), evaluates their output, iterates, and synthesises a unified APPROVE/REVISE/ESCALATE recommendation. Use for: PR reviews, design reviews, any artifact needing multi-perspective assessment."
-model: opus
+model: sonnet
 color: orange
 tools:
   - read_file

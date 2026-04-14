@@ -206,12 +206,13 @@ The skill gathers information from multiple sources and composes the note. The o
 
 1. **Create or open** the note (verify carryover tasks against live PKB state)
 2. **Invoke `/email`** to triage inbox (creates tasks with full context; returns FYI items for the daily note)
-3. **Compose Focus** (load task data, reason about recommendations, engage user on priorities)
-4. **Sync progress** (session JSONs, merged PRs, task completions → Work Log + Today's Story)
-5. **Sweep review-status tasks** (see below)
-6. **Output** terminal briefing and halt
+3. **Sweep mobile captures** — scan `$ACA_DATA/notes/mobile-captures/`, route each unprocessed capture to `/q` (task) or `/remember` (knowledge), delete the original, summarise in the note. See [[instructions/mobile-capture-triage]].
+4. **Compose Focus** (load task data, reason about recommendations, engage user on priorities)
+5. **Sync progress** (session JSONs, merged PRs, task completions → Work Log + Today's Story)
+6. **Sweep review-status tasks** (see below)
+7. **Output** terminal briefing and halt
 
-### Review Sweep (Step 5)
+### Review Sweep (Step 6)
 
 `status="review"` means the task needs human/manager review — typically after a failure or blocked execution path. This sweep does **not** redefine that lifecycle state. Instead, it catches tasks that are still marked `review` even though repository evidence suggests the work may already be complete and the task status was never updated (status drift).
 
