@@ -2881,8 +2881,25 @@ def _clone_has_changes(repo_path: Path, branch_name: str) -> bool:
         )
         default_branch_short = default_ref.removeprefix("refs/remotes/origin/")
 
-        # Fetch fresh state for the crew branch and the default branch.
-        # Best-effort: continue even if offline or branch doesn't exist yet.
+        # Use ls-remote to check branch existence on origin.
+        # Cleanly separates "branch absent" (exit 0, empty stdout) from
+        # "can't reach origin" (exit non-0 → unknown state → preserve).
+        remote_branch_ref = f"refs/remotes/origin/{branch_name}"
+        ls_remote = subprocess.run(
+            ["git", "ls-remote", "origin", f"refs/heads/{branch_name}"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if ls_remote.returncode != 0:
+            # Can't reach origin — cannot determine state; safe default is preserve.
+            return True
+        if not ls_remote.stdout.strip():
+            # Origin reachable but branch absent — nothing was pushed, safe to nuke.
+            return False
+
+        # Branch exists on remote. Fetch fresh state to update local tracking refs.
         subprocess.run(
             ["git", "fetch", "origin", branch_name, default_branch_short],
             cwd=repo_path,
@@ -2890,17 +2907,6 @@ def _clone_has_changes(repo_path: Path, branch_name: str) -> bool:
             timeout=15,
             check=False,
         )
-
-        # If the remote crew branch doesn't exist, nothing was pushed — safe to nuke.
-        remote_branch_ref = f"refs/remotes/origin/{branch_name}"
-        ref_check = subprocess.run(
-            ["git", "rev-parse", "--verify", "--quiet", remote_branch_ref],
-            cwd=repo_path,
-            capture_output=True,
-            timeout=10,
-        )
-        if ref_check.returncode != 0:
-            return False
 
         # Count commits on the remote crew branch not reachable from remote default.
         rev_count = subprocess.run(
