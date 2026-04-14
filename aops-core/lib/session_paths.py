@@ -18,9 +18,6 @@ def _parse_date_arg(date: str | None) -> datetime | None:
     """Parse a date/ISO-8601 string into a datetime, or None to let callers default to now."""
     if date is None:
         return None
-    if "T" in date:
-        return datetime.fromisoformat(date).astimezone()
-    # Simple YYYY-MM-DD: pin to midnight local time; generate_* funcs then use that.
     return datetime.fromisoformat(date).astimezone()
 
 
