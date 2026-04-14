@@ -2897,6 +2897,7 @@ def _clone_has_changes(repo_path: Path, branch_name: str) -> bool:
             ["git", "rev-parse", "--verify", "--quiet", remote_branch_ref],
             cwd=repo_path,
             capture_output=True,
+            timeout=10,
         )
         if ref_check.returncode != 0:
             return False
