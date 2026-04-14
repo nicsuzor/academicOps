@@ -19,6 +19,20 @@ from lib.session_naming import (
 TS = datetime(2026, 4, 11, 14, 30, 0, tzinfo=UTC)
 
 
+@pytest.fixture(autouse=True)
+def _isolate_env(monkeypatch):
+    """Strip host env that would leak into shortform generation."""
+    for var in (
+        "POLECAT_CREW_NAME",
+        "AOPS_MACHINE",
+        "GEMINI_SESSION_ID",
+        "CLAUDE_SESSION_ID",
+        "AOPS_SESSION_STATE_DIR",
+        "CLAUDE_PROJECT_DIR",
+    ):
+        monkeypatch.delenv(var, raising=False)
+
+
 # --- get_session_short_hash ---
 
 
