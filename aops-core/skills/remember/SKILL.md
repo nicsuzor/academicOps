@@ -2,7 +2,7 @@
 name: remember
 type: skill
 category: instruction
-description: Write knowledge to markdown AND sync to PKB. MUST invoke - do not write markdown directly.
+description: Persist knowledge via PKB. PKB IS $ACA_DATA — never write to $ACA_DATA directly with Write/Edit.
 triggers:
   - "remember this"
   - "save to memory"
@@ -12,16 +12,26 @@ needs_task: false
 mode: execution
 domain:
   - operations
-allowed-tools: Read,Write,Edit,mcp__pkb__create_memory,mcp__pkb__search
+allowed-tools: mcp__pkb__create,mcp__pkb__create_memory,mcp__pkb__append,mcp__pkb__get_document,mcp__pkb__search
 owner: pauli
-version: 2.0.0
+version: 3.0.0
 ---
 
 # Remember Skill
 
 > **Taxonomy note**: This skill provides domain expertise (HOW) for knowledge capture and persistence. See [[TAXONOMY.md]] for the skill/workflow distinction.
 
-Persist knowledge to markdown + PKB. **Both writes required** for semantic search.
+Persist knowledge via PKB. **PKB IS `$ACA_DATA`** — managed properly. The PKB MCP owns all writes, reads, indexing, deduplication, and linking. **Agents MUST NOT use `Write` or `Edit` on any path under `$ACA_DATA`** — that bypasses PKB's invariants and silently fails on environments where `$ACA_DATA` is a remote or differently-permissioned mount.
+
+## Hard Rules
+
+- ❌ `Write` or `Edit` on `$ACA_DATA/**` — forbidden.
+- ❌ `Glob` / `Grep` on `$ACA_DATA/**` for semantic discovery — use `mcp__pkb__search`.
+- ✅ `mcp__pkb__create` to create a document (projects, context, knowledge, meeting notes).
+- ✅ `mcp__pkb__create_memory` to add a memory/note.
+- ✅ `mcp__pkb__append` to extend an existing document.
+- ✅ `mcp__pkb__get_document` to read.
+- ✅ `mcp__pkb__search` to find existing content before creating.
 
 ## Memory Model
 
@@ -55,14 +65,14 @@ The episodic/semantic distinction mirrors how biological memory works. Complemen
 
 ## Storage Hierarchy (Critical)
 
-**PKB is the universal index.** Write to your primary storage AND PKB for semantic search retrieval.
+**PKB is the single write interface for `$ACA_DATA`.** The markdown tree under `$ACA_DATA/` is PKB's internal representation, not a parallel target. A successful PKB call is the canonical persistence event; no filesystem follow-up is needed or allowed.
 
-| What                  | Primary Storage                         | Also Sync To |
-| --------------------- | --------------------------------------- | ------------ |
-| **Epics/projects**    | PKB (`type="epic"` or `type="project"`) | PKB index    |
-| **Tasks/issues**      | GitHub Issues (`gh issue create`)       | PKB index    |
-| **Durable knowledge** | `$ACA_DATA/` markdown files             | PKB index    |
-| **Session findings**  | Task body updates                       | PKB index    |
+| What                  | Write Via                                       | Notes                                      |
+| --------------------- | ----------------------------------------------- | ------------------------------------------ |
+| **Epics/projects**    | `mcp__pkb__create` (`type="epic"/"project"`)    | Hub docs; PKB stores under `projects/`     |
+| **Tasks/issues**      | `gh issue create` (GitHub is primary)           | PKB indexes via separate sync              |
+| **Durable knowledge** | `mcp__pkb__create` or `mcp__pkb__create_memory` | PKB stores under `knowledge/`, `context/`… |
+| **Session findings**  | `mcp__pkb__update_task` on the parent task      | Episodic → task body, not a new doc        |
 
 See [[base-memory-capture]] workflow for when and how to invoke this skill.
 
@@ -114,22 +124,21 @@ Is this about the user? (projects, goals, context, tasks)
 
 ## Workflow
 
-1. **Search first**: `mcp__pkb__search(query="topic")` + `Glob` under `$ACA_DATA/`
-2. **If match**: Augment existing file
-3. **If no match**: Create new file with frontmatter:
+1. **Search first**: `mcp__pkb__search(query="topic")`. Do not `Glob` or `Grep` `$ACA_DATA/` — PKB search is authoritative and respects indexing invariants.
+2. **If match**: Extend the existing document via `mcp__pkb__append(id=..., content=...)`, or update task bodies via `mcp__pkb__update_task` for episodic additions. Do not fetch, edit locally, and rewrite.
+3. **If no match**: Create via one of:
 
-```markdown
----
-title: Descriptive Title
-type: note|project|knowledge|moc|meeting-note|daily-note
-tags: [relevant, tags]
-created: YYYY-MM-DD
----
-
-Content with [[wikilinks]] to related concepts.
+```
+mcp__pkb__create(
+  title="Descriptive Title",
+  body="Content with [[wikilinks]] to related concepts.",
+  type="note" | "project" | "knowledge" | "moc" | "meeting-note",
+  tags=["relevant", "tags"],
+  # created / path / frontmatter fields handled by PKB
+)
 ```
 
-4. **Sync to PKB**:
+or, for lightweight atomic memories (observations, pointers, short facts):
 
 ```
 mcp__pkb__create_memory(
@@ -138,6 +147,8 @@ mcp__pkb__create_memory(
   tags=["relevant", "tags"]
 )
 ```
+
+The body uses the frontmatter-less markdown shown in the format references below; PKB adds frontmatter (id, created, permalink) on write. **Never write the file yourself.**
 
 ## Graph Integration
 
@@ -169,7 +180,7 @@ When a memory references an external issue, bug, or resource, **always link it e
 
 ## Semantic Search
 
-Use PKB semantic search for `$ACA_DATA/` content. Never grep for markdown in the knowledge base. Give agents enough context to make decisions - never use algorithmic matching (fuzzy, keyword, regex).
+Use `mcp__pkb__search` for all `$ACA_DATA/` content. **Never `grep`/`Glob`/`Read` markdown in the knowledge base** — you will see stale, unindexed, or partial state. PKB's semantic search respects the index and deduplication invariants that direct filesystem access bypasses. Give agents enough context to make decisions — never use algorithmic matching (fuzzy, keyword, regex).
 
 ## Abstraction Level (CRITICAL for Framework Work)
 
@@ -346,7 +357,10 @@ Task(
 
 ## Output
 
-Report both operations:
+Report the PKB write:
 
-- File: `[path]`
-- Memory: `[hash]`
+- Tool: `mcp__pkb__create` | `create_memory` | `append`
+- Title: `[title]`
+- ID / permalink: `[returned by PKB]`
+
+Do **not** report a filesystem path — PKB owns the storage location. Referencing the filesystem path invites future agents to bypass PKB and edit it directly.

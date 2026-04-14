@@ -96,7 +96,5 @@ Tasks created during decomposition will often be picked up by a **different agen
 ## Critical Rules
 
 - **Completeness & Actionability**: All tasks together must achieve the original epic; every task must be completable in a single session.
-- **Verification**: Every epic must include at least one QA/review task.
-- **Conservative expansion**: If a task can be done in one sitting, don't decompose further.
-- **Graph placement**: Every created task must be connected to the graph — parented under a live (not done) epic, with dependencies to related work. A task with zero downstream weight and a completed parent is effectively invisible to prioritisation. Check: is the parent epic still active? Do any other tasks depend on this work?
-- **Scope drift tracking**: When a PR or decision changes the scope of existing tasks, update the affected task bodies. Decomposition is not fire-and-forget — if upstream work narrows or shifts the problem, downstream tasks must be refreshed or they become stale.
+- **Verification & expansion**: Every epic includes at least one QA/review task; don't decompose a task that fits one sitting.
+- **Graph placement & drift**: Parent every task under a live epic with real dependencies; refresh affected task bodies when upstream scope shifts. Orphaned or stale tasks are invisible to prioritisation.
