@@ -20,13 +20,13 @@ supersedes: pr-process.md
 - [[.github/workflows/agent-merge-prep.yml]] → cron-driven merge prep agent
 - [[.github/workflows/merge-prep-cron.yml]] → `workflow_run` trigger watches "Axiom Review" completion + cron fallback
 - [[.github/workflows/agent-enforcer.yml]] → reusable enforcer for other repos (not wired into this repo's pipeline)
-- GitHub Ruleset: required checks = `PR Review Pipeline / lint / Lint`, `PR Review Pipeline / typecheck / Type Check`, `PR Review Pipeline / pytest / Pytest`, `Axiom Review / Axiom Review`
+- GitHub Ruleset: required checks = `PR Review Pipeline / lint / Lint`, `PR Review Pipeline / typecheck / Type Check`, `PR Review Pipeline / pytest / Pytest`, `Axiom Review / Axiom Review`, `merge-prep-status`
 
 ## Overview
 
 **As** the repository maintainer,
 **I want** a PR pipeline where bots handle all preparation automatically on a timer,
-**So that** when I look at a PR, it is already reviewed, fixed, and ready — and I approve once to merge.
+**So that** when I look at a PR, it is already reviewed, fixed, and ready — and I provide the final approval to merge.
 
 The previous pipeline ([[specs/pr-process.md]]) required a human LGTM to trigger merge-prep. This created a sequencing problem: merge-prep fixes failing checks, so it cannot wait for checks to pass before running. The new design inverts the dependency — merge-prep runs automatically on a cron, bots prepare everything, and the human approves or denies once at the end.
 
@@ -110,13 +110,16 @@ Two workflows run independently on every `pull_request` push:
 
 ### CI Pipeline (`pr-pipeline.yml`) — sequential
 
-Three CI jobs run sequentially: lint → typecheck → pytest.
+The CI pipeline runs four jobs: initialization, lint, typecheck, and pytest.
 
-| Workflow   | File            | Job name     | Required check?                 | Action                                                        |
-| ---------- | --------------- | ------------ | ------------------------------- | ------------------------------------------------------------- |
-| Lint       | `lint.yml`      | `Lint`       | Yes (`Lint / Lint`)             | `ruff check --fix` + `ruff format`. Autofix + push if needed. |
-| Type Check | `typecheck.yml` | `Type Check` | Yes (`Type Check / Type Check`) | `basedpyright`. Read-only.                                    |
-| Pytest     | `pytest.yml`    | `Pytest`     | Yes (`Pytest / Pytest`)         | `pytest -m "not slow"`. Read-only.                            |
+**Initialization (Always Pending Until Triage):** To prevent PRs from appearing "green" before the Merge-Prep Agent has triaged reviews, the pipeline starts with an `initialize` job. This job sets the `merge-prep-status` commit status to `pending` on the latest SHA. Because this status is required by the ruleset, the PR remains in a "yellow" state until the agent explicitly sets it to `success` (after triage) or `failure` (after persistent errors).
+
+| Workflow   | File              | Job name     | Required check?                 | Action                                                        |
+| ---------- | ----------------- | ------------ | ------------------------------- | ------------------------------------------------------------- |
+| Init       | `pr-pipeline.yml` | `Initialize` | Yes (`merge-prep-status`)       | Sets `merge-prep-status: pending` via GitHub Statuses API.    |
+| Lint       | `lint.yml`        | `Lint`       | Yes (`Lint / Lint`)             | `ruff check --fix` + `ruff format`. Autofix + push if needed. |
+| Type Check | `typecheck.yml`   | `Type Check` | Yes (`Type Check / Type Check`) | `basedpyright`. Read-only.                                    |
+| Pytest     | `pytest.yml`      | `Pytest`     | Yes (`Pytest / Pytest`)         | `pytest -m "not slow"`. Read-only.                            |
 
 **Why sequential?** When lint pushes an autofix commit, typecheck and pytest haven't started yet — no wasted compute on the cancelled run. The `cancel-in-progress` concurrency group cancels the old run and a new pipeline starts on the clean commit.
 
@@ -306,7 +309,7 @@ No separate auto-merge configuration needed — the merge is executed by the wor
 rules:
   - type: pull_request
     parameters:
-      required_approving_review_count: 1
+      required_approving_review_count: 2
       dismiss_stale_reviews_on_push: false
 
   - type: required_status_checks
@@ -317,11 +320,12 @@ rules:
         - context: "PR Review Pipeline / typecheck / Type Check"  # pr-pipeline.yml → typecheck.yml
         - context: "PR Review Pipeline / pytest / Pytest"      # pr-pipeline.yml → pytest.yml
         - context: "Axiom Review / Axiom Review"               # pr-review.yml (independent)
+        - context: "merge-prep-status"                         # agent-merge-prep.yml (status API)
 ```
 
 **Note on check run names:** The compound format (`Caller / Callee`) is produced by `workflow_call`. The caller job name and callee job name must both match to produce the expected check run name. Changing either job name will break the required status check. The `PR Review Pipeline` prefix comes from the `pr-pipeline.yml` workflow name.
 
-**Note:** The `required_approving_review_count: 1` is still needed for PRs where merge-prep doesn't run (e.g., trivial changes merged directly).
+**Two Approvals Requirement:** The ruleset requires 2 approvals. Approval #1 is provided by the Merge-Prep Agent after its successful run. Approval #2 is provided by the maintainer. Both are required for the PR to satisfy branch protection. This is supplemented by the environment gate in Phase 3.
 
 ## GitHub Environment: `production`
 
