@@ -14,7 +14,7 @@ needs_task: false
 mode: execution
 domain:
   - operations
-allowed-tools: Read,Bash,Grep,Write,Edit,AskUserQuestion,Skill,~~email
+allowed-tools: Read,Bash,Grep,Write,Edit,AskUserQuestion,Skill,mcp__pkb__delete,~~email
 owner: pauli
 version: 3.0.0
 permalink: skills-daily
