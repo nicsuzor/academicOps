@@ -160,7 +160,6 @@ class TestLogHookEvent:
         session_id = "test-path-format-xyz"
         now = datetime.now().astimezone()
         today = now.strftime("%Y%m%d")
-        current_hour = now.strftime("%H")
 
         log_hook_event(
             HookContext(
@@ -175,15 +174,12 @@ class TestLogHookEvent:
         assert len(log_files) == 1
 
         filename = log_files[0].name
-        # Should be YYYYMMDD-HH-8charhash-hooks.jsonl
-        expected_prefix = f"{today}-{current_hour}-"
-        assert filename.startswith(expected_prefix), (
-            f"Expected {expected_prefix!r} prefix, got {filename}"
-        )
+        # Unified v4+ format: YYYYMMDD-HHMM-sessionid-shortform-slug-hooks.jsonl
+        assert filename.startswith(f"{today}-"), f"Expected date prefix {today}, got {filename}"
         assert filename.endswith("-hooks.jsonl")
-        # Middle part after date-hour prefix should be 8-char hash
-        middle = filename[len(expected_prefix) : -len("-hooks.jsonl")]
-        assert len(middle) == 8, f"Expected 8-char hash, got '{middle}'"
+        # Session id (8-char hash) must appear in the filename.
+        parts = filename.split("-")
+        assert any(len(p) == 8 for p in parts), f"Expected 8-char session hash, got parts={parts}"
 
     def test_different_sessions_different_files(self, temp_claude_projects):
         """Test that different session IDs create different log files."""

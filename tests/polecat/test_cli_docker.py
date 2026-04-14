@@ -658,60 +658,130 @@ class TestPassPkbUrlSandbox:
 class TestCloneHasChanges:
     """Tests for _clone_has_changes — used for auto-nuke of crew with no work."""
 
-    def _init_repo(self, path):
-        """Create a git repo with one commit and a remote-like ref."""
-        subprocess.run(["git", "init"], cwd=path, check=True, capture_output=True)
+    BRANCH = "crew/test"
+
+    def _init_repo_with_remote(self, path):
+        """Create a git repo with a real local bare remote (required for ls-remote)."""
+        remote = path / "origin.git"
+        remote.mkdir()
+        subprocess.run(["git", "init", "--bare"], cwd=remote, check=True, capture_output=True)
+
+        repo = path / "repo"
+        repo.mkdir()
+        for cmd in [
+            ["git", "init"],
+            ["git", "config", "user.email", "test@test"],
+            ["git", "config", "user.name", "Test"],
+            ["git", "remote", "add", "origin", str(remote)],
+        ]:
+            subprocess.run(cmd, cwd=repo, check=True, capture_output=True)
+        (repo / "file.txt").write_text("initial")
+        subprocess.run(["git", "add", "."], cwd=repo, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "init"], cwd=repo, check=True, capture_output=True)
         subprocess.run(
-            ["git", "config", "user.email", "test@test"], cwd=path, check=True, capture_output=True
+            ["git", "push", "origin", "HEAD:main"], cwd=repo, check=True, capture_output=True
         )
-        subprocess.run(
-            ["git", "config", "user.name", "Test"], cwd=path, check=True, capture_output=True
-        )
-        (path / "file.txt").write_text("initial")
-        subprocess.run(["git", "add", "."], cwd=path, check=True, capture_output=True)
-        subprocess.run(["git", "commit", "-m", "init"], cwd=path, check=True, capture_output=True)
-        # Create a fake origin/main ref pointing at HEAD
-        subprocess.run(
-            ["git", "update-ref", "refs/remotes/origin/main", "HEAD"],
-            cwd=path,
-            check=True,
-            capture_output=True,
-        )
-        # Set symbolic HEAD for origin
+        subprocess.run(["git", "fetch", "origin"], cwd=repo, check=True, capture_output=True)
         subprocess.run(
             ["git", "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main"],
-            cwd=path,
+            cwd=repo,
             check=True,
             capture_output=True,
         )
+        return repo
 
-    def test_no_changes_returns_false(self, tmp_path):
-        repo = tmp_path / "repo"
-        repo.mkdir()
-        self._init_repo(repo)
-        assert _clone_has_changes(repo) is False
+    def test_no_changes_no_remote_branch_returns_false(self, tmp_path):
+        """No remote crew branch exists — nothing was pushed, safe to nuke."""
+        repo = self._init_repo_with_remote(tmp_path)
+        # crew/test not on remote → ls-remote returns empty → False
+        assert _clone_has_changes(repo, self.BRANCH) is False
 
     def test_uncommitted_changes_returns_true(self, tmp_path):
-        repo = tmp_path / "repo"
-        repo.mkdir()
-        self._init_repo(repo)
+        """Local uncommitted changes → preserve (detected before remote check)."""
+        repo = self._init_repo_with_remote(tmp_path)
         (repo / "new_file.txt").write_text("uncommitted")
-        assert _clone_has_changes(repo) is True
+        assert _clone_has_changes(repo, self.BRANCH) is True
 
-    def test_committed_changes_returns_true(self, tmp_path):
-        repo = tmp_path / "repo"
-        repo.mkdir()
-        self._init_repo(repo)
-        (repo / "new_file.txt").write_text("committed")
+    def test_pushed_commits_returns_true(self, tmp_path):
+        """Remote crew branch has commits not in main → preserve.
+
+        This is the Docker case: local clone may be stale (no local commits),
+        but the agent pushed real work to origin/crew/test.
+        """
+        repo = self._init_repo_with_remote(tmp_path)
+        (repo / "new_file.txt").write_text("committed and pushed")
         subprocess.run(["git", "add", "."], cwd=repo, check=True, capture_output=True)
         subprocess.run(
             ["git", "commit", "-m", "new work"], cwd=repo, check=True, capture_output=True
         )
-        assert _clone_has_changes(repo) is True
+        subprocess.run(
+            ["git", "push", "origin", f"HEAD:{self.BRANCH}"],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+        )
+        assert _clone_has_changes(repo, self.BRANCH) is True
+
+    def test_remote_branch_merged_returns_false(self, tmp_path):
+        """Remote crew branch exists but its commits are already in main → nuke."""
+        repo = self._init_repo_with_remote(tmp_path)
+        # Push crew/test at the same commit as main (merged or never diverged)
+        subprocess.run(
+            ["git", "push", "origin", f"HEAD:{self.BRANCH}"],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+        )
+        assert _clone_has_changes(repo, self.BRANCH) is False
+
+    def test_squash_merged_returns_false(self, tmp_path):
+        """Branch has commits beyond main but identical content (squash-merge) → nuke."""
+        repo = self._init_repo_with_remote(tmp_path)
+        # Create and push a crew/test commit
+        (repo / "feature.txt").write_text("feature work")
+        subprocess.run(["git", "add", "."], cwd=repo, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-m", "feature"], cwd=repo, check=True, capture_output=True
+        )
+        subprocess.run(
+            ["git", "push", "origin", f"HEAD:{self.BRANCH}"],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+        )
+        # Squash merge: create a new main commit with the same tree (same content, different SHA)
+        tree = subprocess.run(
+            ["git", "rev-parse", "HEAD^{tree}"],
+            cwd=repo,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        parent = subprocess.run(
+            ["git", "rev-parse", "HEAD~1"],
+            cwd=repo,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        squash = subprocess.run(
+            ["git", "commit-tree", tree, "-p", parent, "-m", "squash: feature"],
+            cwd=repo,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        subprocess.run(
+            ["git", "push", "origin", f"{squash}:refs/heads/main", "--force"],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+        )
+        assert _clone_has_changes(repo, self.BRANCH) is False
 
     def test_nonexistent_path_returns_true(self, tmp_path):
         """Safe default: if path doesn't exist, assume changes (don't auto-nuke)."""
-        assert _clone_has_changes(tmp_path / "nonexistent") is True
+        assert _clone_has_changes(tmp_path / "nonexistent", self.BRANCH) is True
 
 
 # ---------------------------------------------------------------------------
