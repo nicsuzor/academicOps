@@ -116,7 +116,7 @@ The CI pipeline runs four jobs: initialization, lint, typecheck, and pytest.
 
 | Workflow   | File              | Job name     | Required check?                 | Action                                                        |
 | ---------- | ----------------- | ------------ | ------------------------------- | ------------------------------------------------------------- |
-| Init       | `pr-pipeline.yml` | `Initialize` | No (sets status)                | Sets `merge-prep-status: pending` via GitHub Statuses API.    |
+| Init       | `pr-pipeline.yml` | `Initialize` | Yes (`merge-prep-status`)       | Sets `merge-prep-status: pending` via GitHub Statuses API.    |
 | Lint       | `lint.yml`        | `Lint`       | Yes (`Lint / Lint`)             | `ruff check --fix` + `ruff format`. Autofix + push if needed. |
 | Type Check | `typecheck.yml`   | `Type Check` | Yes (`Type Check / Type Check`) | `basedpyright`. Read-only.                                    |
 | Pytest     | `pytest.yml`      | `Pytest`     | Yes (`Pytest / Pytest`)         | `pytest -m "not slow"`. Read-only.                            |
