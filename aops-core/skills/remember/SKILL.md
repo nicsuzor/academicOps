@@ -12,7 +12,7 @@ needs_task: false
 mode: execution
 domain:
   - operations
-allowed-tools: mcp__pkb__create,mcp__pkb__create_memory,mcp__pkb__append,mcp__pkb__get_document,mcp__pkb__search
+allowed-tools: mcp__pkb__create,mcp__pkb__create_memory,mcp__pkb__append,mcp__pkb__get_document,mcp__pkb__search,mcp__pkb__update_task
 owner: pauli
 version: 3.0.0
 ---
