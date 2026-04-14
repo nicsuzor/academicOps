@@ -740,7 +740,9 @@ class TestCloneHasChanges:
         # Create and push a crew/test commit
         (repo / "feature.txt").write_text("feature work")
         subprocess.run(["git", "add", "."], cwd=repo, check=True, capture_output=True)
-        subprocess.run(["git", "commit", "-m", "feature"], cwd=repo, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-m", "feature"], cwd=repo, check=True, capture_output=True
+        )
         subprocess.run(
             ["git", "push", "origin", f"HEAD:{self.BRANCH}"],
             cwd=repo,
