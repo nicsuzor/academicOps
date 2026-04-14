@@ -19,7 +19,7 @@ def _parse_date_arg(date: str | None) -> datetime | None:
     if date is None:
         return None
     if "T" in date:
-        return datetime.fromisoformat(date)
+        return datetime.fromisoformat(date).astimezone()
     # Simple YYYY-MM-DD: pin to midnight local time; generate_* funcs then use that.
     return datetime.fromisoformat(date).astimezone()
 
@@ -385,6 +385,8 @@ def get_gate_file_path(
             logs_dir.mkdir(parents=True, exist_ok=True)
             return logs_dir / filename
         except (PermissionError, OSError):
+            # AOPS_SESSIONS points to an unreachable host path (common in crew
+            # containers without a volume mount). Fall through to local path.
             pass
 
     if _is_gemini_session(session_id, transcript_path):
