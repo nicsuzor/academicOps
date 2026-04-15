@@ -133,4 +133,6 @@ class TestGenerateCrewName:
         (crew_dir / "weasel_ab12" / "aops").mkdir(parents=True)
 
         name = m.generate_crew_name()
-        assert name not in m.list_crew()
+        # generate_crew_name() must not return any of the exhausted pool names,
+        # and must not return the specifically pre-occupied suffixed name.
+        assert name not in {"weasel", "badger", "ferret", "weasel_ab12"}

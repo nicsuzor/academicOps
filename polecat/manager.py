@@ -391,8 +391,9 @@ class PolecatManager:
             if not d.is_dir():
                 continue
             # Skip empty dirs — these are partially-cleaned remnants, not real crews.
-            has_content = any(True for _ in d.iterdir())
-            if has_content:
+            # Guard against the setup window: setup_crew_worktree() creates the dir
+            # before populating it; a lock file signals that work is in progress.
+            if self._crew_lock_path(d.name).exists() or any(d.iterdir()):
                 result.append(d.name)
             else:
                 # Best-effort removal of the empty husk so it doesn't pile up.
