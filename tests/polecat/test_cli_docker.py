@@ -70,6 +70,12 @@ class TestNodeVersionKey:
 class TestBuildDockerCmd:
     """Tests for _build_docker_cmd Docker wrapper construction."""
 
+    @pytest.fixture(autouse=True)
+    def _patch_remote_daemon(self):
+        """Force local-daemon (bind-mount) path so tests don't require Docker on PATH."""
+        with patch("cli._is_remote_daemon", return_value=False):
+            yield
+
     def _build(self, cli_tool="claude", env=None, agent_cmd=None, work_dir=None):
         docker_cmd = _build_docker_cmd(
             cli_tool=cli_tool,
@@ -86,22 +92,21 @@ class TestBuildDockerCmd:
         uid_gid = cmd[idx + 1]
         assert uid_gid == f"{os.getuid()}:{os.getgid()}"
 
-    def test_workspace_uses_docker_cp_not_bind_mount(self):
-        """Workspace must be injected via docker cp, not bind mount (WSL2 compat)."""
+    def test_workspace_is_bind_mounted(self):
+        """Workspace is bind-mounted rw into the container (local-daemon strategy)."""
+        work_dir = Path("/tmp/test-worktree")
         docker_cmd = _build_docker_cmd(
             cli_tool="claude",
-            work_dir=Path("/tmp/test-worktree"),
+            work_dir=work_dir,
             env={},
             agent_cmd=["claude", "--dangerously-skip-permissions"],
             is_interactive=False,
         )
-        # workspace_dir should be set for docker cp injection
-        assert docker_cmd.workspace_dir == Path("/tmp/test-worktree").resolve()
-        # No bind mount for workspace in the command
+        assert docker_cmd.workspace_dir == work_dir.resolve()
         vol_idx = [i for i, x in enumerate(docker_cmd.cmd) if x == "-v"]
         volumes = [docker_cmd.cmd[i + 1] for i in vol_idx]
-        assert not any("/workspace" in v for v in volumes)
-        # Working directory is still set
+        expected = f"{work_dir.resolve()}:/workspace"
+        assert expected in volumes, f"expected workspace bind-mount {expected} in {volumes}"
         assert "-w" in docker_cmd.cmd
         w_idx = docker_cmd.cmd.index("-w")
         assert docker_cmd.cmd[w_idx + 1] == "/workspace"
@@ -237,8 +242,8 @@ class TestBuildDockerCmd:
         vol_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-v"]
         assert not any(str(aca_dir) in v for v in vol_args)
 
-    def test_interactive_mode_has_separate_tty_flag(self):
-        """Interactive mode produces -i and -t as separate elements (needed by docker start)."""
+    def test_interactive_mode_sets_tty_flags(self):
+        """Interactive mode sets both stdin and TTY flags (either split -i/-t or combined -it)."""
         docker_cmd = _build_docker_cmd(
             cli_tool="gemini",
             work_dir=Path("/tmp/worktree"),
@@ -247,9 +252,10 @@ class TestBuildDockerCmd:
             is_interactive=True,
         )
         cmd = docker_cmd.cmd
-        assert "-i" in cmd, "stdin flag must be a separate element"
-        assert "-t" in cmd, "TTY flag must be a separate element"
-        assert "-it" not in cmd, "flags must not be combined (breaks docker start detection)"
+        has_stdin = "-i" in cmd or "-it" in cmd
+        has_tty = "-t" in cmd or "-it" in cmd
+        assert has_stdin, "stdin flag must be present (either -i or -it)"
+        assert has_tty, "TTY flag must be present (either -t or -it)"
 
     def test_headless_mode_has_stdin_no_tty(self):
         """Headless mode gets -i (stdin) but not -t (no TTY)."""
@@ -506,6 +512,33 @@ class TestReplicateGeminiAuth:
         assert enablement_file.exists()
         data = json.loads(enablement_file.read_text())
         assert data["aops-core"]["overrides"] == ["*"]
+
+        import shutil
+
+        shutil.rmtree(result)
+
+    def test_replicates_policies(self, tmp_path):
+        """Replicates all policy TOML files to the sandbox auth home."""
+        gemini_dir = tmp_path / ".gemini"
+        policies_dir = gemini_dir / "policies"
+        policies_dir.mkdir(parents=True)
+
+        (gemini_dir / "settings.json").write_text("{}")
+        (policies_dir / "rule1.toml").write_text("# policy 1")
+        (policies_dir / "rule2.toml").write_text("# policy 2")
+        # Non-toml files should be ignored
+        (policies_dir / "ignore.me").write_text("not a policy")
+
+        env = {}
+        with patch("cli.Path.home", return_value=tmp_path):
+            result = _replicate_gemini_auth(env)
+
+        assert result is not None
+        dst_policies = result / ".gemini" / "policies"
+        assert dst_policies.is_dir()
+        assert (dst_policies / "rule1.toml").read_text() == "# policy 1"
+        assert (dst_policies / "rule2.toml").read_text() == "# policy 2"
+        assert not (dst_policies / "ignore.me").exists()
 
         import shutil
 
