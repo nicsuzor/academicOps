@@ -703,6 +703,9 @@ class PolecatManager:
                     check=True,
                     capture_output=True,
                 )
+
+                # Check freshness and update mirror branch from local
+                self.check_mirror_freshness(project)
             return True
         except subprocess.CalledProcessError as e:
             print(f"⚠ Mirror sync failed for {project}: {e}", file=sys.stderr)
@@ -965,14 +968,25 @@ class PolecatManager:
                 continue
             try:
                 with metrics.time_operation("sync", project=project, mode="full"):
+                    # 1. Fetch from origin (gets latest from remote)
                     subprocess.run(
                         ["git", "fetch", "--all", "--prune"],
                         cwd=mirror_path,
                         check=True,
                         capture_output=True,
                     )
-                print(f"✓ {project}")
-                results[project] = True
+
+                    # 2. Check freshness and update mirror branch from local repo
+                    # This handles the case where local is ahead of origin, or
+                    # fetch from origin updated remote tracking refs but not local refs.
+                    is_fresh, message = self.check_mirror_freshness(project)
+                    if not is_fresh:
+                        print(f"⚠ {project}: {message}")
+                        results[project] = False
+                    else:
+                        print(f"✓ {project}")
+                        results[project] = True
+
             except subprocess.CalledProcessError as e:
                 print(f"✗ {project}: {e}")
                 results[project] = False
@@ -1172,7 +1186,7 @@ class PolecatManager:
             print(f"🔄 Syncing {project} mirror before worktree setup...")
             self.safe_sync_mirror(project)
 
-            # Check freshness and warn if stale
+            # Check freshness status (already updated inside safe_sync_mirror)
             is_fresh, message = self.check_mirror_freshness(project)
             if not is_fresh:
                 print(f"⚠ {message}", file=sys.stderr)
