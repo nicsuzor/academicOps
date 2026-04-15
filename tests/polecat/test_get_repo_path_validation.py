@@ -146,9 +146,7 @@ class TestGetRepoPathValidation:
 
 
 class TestPolecatManagerDirectoryLayout:
-    def test_polecats_dir_is_worktrees_subdir(
-        self, polecat_home: Path, aca_data: Path
-    ):
+    def test_polecats_dir_is_worktrees_subdir(self, polecat_home: Path, aca_data: Path):
         """polecats_dir must be $POLECAT_HOME/worktrees/, not $POLECAT_HOME itself.
 
         Regression: previously polecats_dir == home_dir, so stale-cleanup
@@ -160,9 +158,7 @@ class TestPolecatManagerDirectoryLayout:
             f"polecats_dir should be home/worktrees/, got {manager.polecats_dir}"
         )
 
-    def test_repos_and_crew_are_home_siblings(
-        self, polecat_home: Path, aca_data: Path
-    ):
+    def test_repos_and_crew_are_home_siblings(self, polecat_home: Path, aca_data: Path):
         """repos_dir and crew_dir must be direct children of home_dir, not under worktrees/.
 
         This ensures they are excluded from worktree-iteration loops by being
