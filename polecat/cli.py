@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import functools
 import json
 import os
 import re
@@ -7,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import NamedTuple
@@ -412,6 +414,52 @@ class DockerSock(NamedTuple):
     host_path: Path
 
 
+@functools.lru_cache(maxsize=1)
+def _docker_daemon_host() -> str:
+    """Return the docker daemon endpoint URL (cached for the process lifetime).
+
+    Used by `_is_remote_daemon()` to choose between the local bind-mount
+    container strategy and the remote docker-cp strategy.
+    """
+    # 1. Honour explicit DOCKER_HOST.
+    explicit = os.environ.get("DOCKER_HOST")
+    if explicit:
+        return explicit
+    # 2. Otherwise ask the docker CLI which context is active.
+    try:
+        result = subprocess.run(
+            ["docker", "context", "inspect", "--format", "{{.Endpoints.docker.Host}}"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=5,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return result.stdout.strip()
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+    # 3. Default to a local unix socket so we land on bind-mount strategy.
+    return "unix:///var/run/docker.sock"
+
+
+def _is_remote_daemon() -> bool:
+    """True when the docker daemon is not on the local host filesystem.
+
+    Local daemons (`unix://...`) can serve bind mounts directly. Remote
+    daemons (`ssh://`, `tcp://`, `npipe://`) cannot — paths in `-v` flags
+    resolve daemon-side, where the host worktree usually doesn't exist.
+
+    Override with `POLECAT_FORCE_STAGING=cp` (force remote/cp path) or
+    `POLECAT_FORCE_STAGING=bind` (force local/bind-mount path).
+    """
+    override = os.environ.get("POLECAT_FORCE_STAGING")
+    if override == "cp":
+        return True
+    if override == "bind":
+        return False
+    return not _docker_daemon_host().startswith("unix://")
+
+
 def _find_docker_sock(env: dict, home: Path | None = None) -> DockerSock | None:
     """Return Docker socket paths to mount, or None if unavailable.
 
@@ -712,20 +760,22 @@ def _build_docker_cmd(
     cmd.extend(["-e", f"GIT_COMMITTER_NAME={git_name}"])
     cmd.extend(["-e", f"GIT_COMMITTER_EMAIL={git_email}"])
 
-    # Workspace directory — injected via docker cp in _run_docker_container()
-    # to avoid bind mount failures on WSL2/Docker Desktop where bind-mounted
-    # volumes silently appear as empty directories.
+    # Workspace directory.
+    # Local daemon: bind-mount host worktree → /workspace (rw, agent must commit).
+    # Remote daemon: injected via docker cp in _run_docker_container() because
+    # bind mounts resolve daemon-side and the host worktree isn't there.
     workspace_dir = work_dir.resolve()
     cmd.extend(["-w", "/workspace"])
+    if not _is_remote_daemon():
+        cmd.extend(["-v", f"{workspace_dir}:/workspace"])
 
     # Mount authentication and plugin cache for Claude/Gemini.
     # Also mount for "shell" mode so users can run either CLI interactively.
     home = Path.home()
     staging_dir: Path | None = None
     if cli_tool in ("claude", "shell", "gemini"):
-        # Create a staging directory for auth files.  Files are injected into the
-        # container via `docker cp` (not bind mounts), so any writable temp dir works
-        # regardless of platform (WSL2, Colima, DinD).
+        # Create a staging directory for auth files. Bind-mounted (ro) into
+        # /tmp/staging on local daemons; injected via docker cp on remote ones.
         tmp_root = home / ".aops" / "tmp"
         tmp_root.mkdir(parents=True, exist_ok=True)
         staging_dir = Path(tempfile.mkdtemp(prefix="staging-", dir=tmp_root))
@@ -733,6 +783,8 @@ def _build_docker_cmd(
         if tmp_files is not None:
             tmp_files.append(staging_dir)
         _staging_dir = staging_dir
+        if not _is_remote_daemon():
+            cmd.extend(["-v", f"{staging_dir}:/tmp/staging:ro"])
 
     if cli_tool in ("claude", "shell"):
         assert (
@@ -856,19 +908,20 @@ def _build_docker_cmd(
     cmd.extend(["-e", "GIT_TERMINAL_PROMPT=0"])
 
     # Session storage: transcripts persist beyond container lifetime.
-    # Bind mounts silently fail on WSL2/Docker Desktop so callers use
-    # extract_paths in _run_docker_container() to docker-cp sessions out
-    # after the container stops.  Named volumes (DinD) still work.
+    # Local daemon → bind-mount session_dir for live host visibility.
+    # Remote daemon → mkdir only; callers extract via docker cp after run.
+    # session_volume (named volume) is the DinD path and overrides both.
     if cli_tool in ("claude", "shell", "gemini"):
+        if cli_tool in ("claude", "shell"):
+            session_container_path = f"{container_home}/.claude/projects"
+        else:
+            session_container_path = f"{container_home}/.gemini/tmp"
         if session_volume:
-            # Named volume: preferred in DinD where bind-mount paths may not be
-            # accessible from the outer Docker daemon.
-            if cli_tool in ("claude", "shell"):
-                cmd.extend(["-v", f"{session_volume}:{container_home}/.claude/projects"])
-            else:
-                cmd.extend(["-v", f"{session_volume}:{container_home}/.gemini/tmp"])
+            cmd.extend(["-v", f"{session_volume}:{session_container_path}"])
         elif session_dir:
             session_dir.mkdir(parents=True, exist_ok=True)
+            if not _is_remote_daemon():
+                cmd.extend(["-v", f"{session_dir}:{session_container_path}"])
 
     cmd.append(image)
     cmd.extend(agent_cmd)
@@ -977,28 +1030,43 @@ def _run_docker_container(
     gemini: bool = False,
     task_id: str | None = None,
 ) -> subprocess.CompletedProcess:
-    """Launch a Docker container, injecting workspace and staging files via docker cp.
+    """Launch a Docker container.
 
-    Uses ``docker create`` + ``docker cp`` + ``docker start`` instead of
-    ``docker run`` when workspace, staging files, or extraction is needed.
-    This avoids bind mount issues on WSL2/Docker Desktop where file mounts
-    appear as empty directories.
+    Local daemon: plain ``docker run`` — workspace/session/staging are bind
+    mounts added by ``_build_docker_cmd``. A ``--name polecat-{nonce}`` flag
+    lets the PKB watchdog target the container by name.
 
-    If ``extract_paths`` is provided, copies files out of the container after
-    it exits (before ``docker rm``).  Each entry is a ``(container_path,
-    host_path)`` tuple.  This is the reliable way to get session transcripts
-    out of the container, since bind-mounted session dirs may silently fail on
-    WSL2/Docker Desktop.
-
-    When no workspace_dir, staging_dir, or extract_paths is set, falls back
-    to a plain ``docker run``.
+    Remote daemon (or ``POLECAT_FORCE_STAGING=cp``): bind mounts cannot reach
+    a remote daemon's filesystem, so we fall back to ``docker create`` +
+    ``docker cp`` (workspace, staging in; ``extract_paths`` out) +
+    ``docker start -a``.
     """
     cmd = list(docker_cmd.cmd)  # copy to avoid mutation
 
-    needs_cp = docker_cmd.staging_dir or docker_cmd.workspace_dir or extract_paths
-    if not needs_cp:
-        # No staging, workspace injection, or extraction needed — plain docker run
-        return subprocess.run(cmd, cwd=cwd, env=env, capture_output=capture_output, text=text)
+    if not _is_remote_daemon():
+        # Local: bind mounts already in cmd. Add --name for watchdog targeting.
+        container_name = f"polecat-{task_id or uuid.uuid4().hex[:8]}"
+        cmd[3:3] = ["--name", container_name]
+
+        watchdog_cancel: threading.Event | None = None
+        watchdog_thread: threading.Thread | None = None
+        if gemini and task_id:
+            watchdog_cancel = threading.Event()
+            watchdog_thread = threading.Thread(
+                target=_pkb_termination_watchdog,
+                args=(container_name, task_id, watchdog_cancel),
+                name=f"polecat-watchdog-{task_id}",
+                daemon=True,
+            )
+            watchdog_thread.start()
+
+        try:
+            return subprocess.run(cmd, cwd=cwd, env=env, capture_output=capture_output, text=text)
+        finally:
+            if watchdog_cancel is not None:
+                watchdog_cancel.set()
+            if watchdog_thread is not None:
+                watchdog_thread.join(timeout=5.0)
 
     # Replace "docker run --rm" with "docker create" (no --rm, we clean up manually)
     # The cmd starts with ["docker", "run", "--rm", ...]
