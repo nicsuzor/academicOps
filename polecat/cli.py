@@ -22,9 +22,96 @@ from manager import PolecatManager
 from observability import metrics
 from validation import TaskIDValidationError, validate_task_id_or_raise
 
-# Max turns for headless Claude runs — must be high enough to accommodate hook
-# overhead (hydration gate, custodiet compliance check) plus actual task work.
-HEADLESS_CLAUDE_MAX_TURNS = "50"
+# Turn budget for headless Claude runs.
+#
+# Claude SDK semantics: one "turn" = one full agentic loop iteration.
+# An iteration starts when the model generates a response (which may contain
+# multiple tool_use blocks) and ends when all tool results are returned.
+# Calling 10 tools in a single response still counts as ONE turn.
+#
+# Tiered defaults by task effort (XS/S/M/L from task frontmatter):
+#   XS  →  40  (trivial, single-file edits)
+#   S   →  70  (small, a few files)
+#   M   → 100  (typical PR-scoped work — the new default)
+#   L   → 150  (large, multi-component or epic-decomposition-shaped)
+#   (no effort field) → 100
+#
+# Hook overhead: each session fires ~2-4 hook turns (hydration gate,
+# custodiet compliance check). These count against the budget.
+_EFFORT_TO_MAX_TURNS: dict[str, int] = {
+    "xs": 40,
+    "s": 70,
+    "m": 100,
+    "l": 150,
+}
+_DEFAULT_MAX_TURNS = 100
+
+
+def _compute_max_turns(task) -> str:
+    """Return the --max-turns value for a headless Claude run.
+
+    Derives the budget from the task's ``effort`` field (XS/S/M/L).
+    Falls back to _DEFAULT_MAX_TURNS when the field is absent or unrecognised.
+    Returns a string because subprocess args must be strings.
+    """
+    effort = getattr(task, "effort", None)
+    if effort:
+        turns = _EFFORT_TO_MAX_TURNS.get(effort.lower(), _DEFAULT_MAX_TURNS)
+    else:
+        turns = _DEFAULT_MAX_TURNS
+    return str(turns)
+
+
+def _emit_budget_hit_diagnostic(stdout: str, stderr: str, max_turns: str) -> None:
+    """Detect and log a turn-budget exhaustion event.
+
+    Scans agent output for Claude's "Reached max turns" message.
+    When found, extracts the last tool call name from the output so
+    supervisors can see where the agent was when the budget ran out,
+    without having to dig through the full transcript.
+    """
+    combined = (stdout or "") + (stderr or "")
+    if "Reached max turns" not in combined:
+        return
+
+    print(
+        f"\n⛔ Turn budget exhausted (--max-turns {max_turns}).",
+        file=sys.stderr,
+    )
+    print(
+        "   Claude SDK semantics: one 'turn' = one assistant response + all tool results.\n"
+        "   Multiple tool calls within one response count as a single turn.",
+        file=sys.stderr,
+    )
+
+    # Find the last tool call name in the output.
+    # Claude prints tool use as "Tool: <name>" or similar patterns.
+    # We also look for JSON "tool_use" blocks and the CLI's "● <ToolName>" spinner lines.
+    last_tool: str | None = None
+
+    # Pattern: CLI spinner output "● ToolName(..." or "✓ ToolName(" or "✗ ToolName("
+    spinner_pattern = re.compile(r"[●✓✗⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]\s+([A-Za-z][A-Za-z0-9_]*)\s*\(")
+    for m in spinner_pattern.finditer(combined):
+        last_tool = m.group(1)
+
+    if last_tool:
+        print(f"   Last tool call observed: {last_tool}", file=sys.stderr)
+    else:
+        # Fall back: scan for any line containing a known tool-call pattern
+        tool_line_pattern = re.compile(
+            r"(?:Tool|tool_use|tool_name)[^\n]*?([A-Za-z][A-Za-z0-9_]{3,})"
+        )
+        for m in tool_line_pattern.finditer(combined):
+            last_tool = m.group(1)
+        if last_tool:
+            print(f"   Last tool call observed: {last_tool}", file=sys.stderr)
+        else:
+            print("   Last tool call: (could not parse — check transcript)", file=sys.stderr)
+
+    print(
+        "   Supervisor action: raise effort tag (e.g. effort: L) or investigate over-exploration.",
+        file=sys.stderr,
+    )
 
 
 # --- GitHub helpers (inlined from deleted polecat/github.py) ---
@@ -3129,6 +3216,25 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
     Claims a task, spawns a worktree, and runs claude with the task context.
     On successful completion (exit code 0), automatically runs `polecat finish`.
 
+    Turn budget (--max-turns semantics):
+        One "turn" = one full agentic loop iteration: the model generates a
+        response (potentially with many tool_use blocks) and all tool results
+        are returned.  Calling 10 tools in a single response still counts as
+        ONE turn.  The budget is derived from the task's effort field:
+
+            XS  →  40 turns   (trivial, single-file edits)
+            S   →  70 turns   (small, a few files)
+            M   → 100 turns   (typical PR-scoped work — default)
+            L   → 150 turns   (large, multi-component)
+            (no effort field) → 100 turns
+
+        Hook overhead (~2–4 turns per session for the hydration gate and
+        custodiet compliance check) counts against the budget.
+
+        When the budget is exhausted polecat emits a diagnostic showing the
+        last observed tool call so supervisors can assess over-exploration
+        without reading the full transcript.
+
     Examples:
         polecat run -p aops              # Run next ready task from aops project
         polecat run -t task-123          # Run specific task
@@ -3296,7 +3402,7 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
             cmd.append(prompt)
         else:
             # Headless: use -p for print mode
-            cmd.extend(["-p", prompt, "--max-turns", HEADLESS_CLAUDE_MAX_TURNS])
+            cmd.extend(["-p", prompt, "--max-turns", _compute_max_turns(task)])
 
     # Set session type environment variable for hooks to detect
     # Use sanitized env: SSH stripped, git auth set to bot token only
@@ -3429,6 +3535,11 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
                 print(f"📝 Transcript saved: {transcript_path}")
             except OSError as e:
                 print(f"⚠️  Warning: Failed to save transcript: {e}", file=sys.stderr)
+
+            # Detect turn-budget exhaustion and emit supervisor-friendly diagnostic
+            _emit_budget_hit_diagnostic(
+                result.stdout, result.stderr, _compute_max_turns(task)
+            )
 
             # Analyze the transcript for failures
             analyze_func = getattr(manager, "analyze_transcript", None)

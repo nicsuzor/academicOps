@@ -33,6 +33,7 @@ class PkbTask:
         self.assignee: str | None = fm.get("assignee")
         self.pr_url: str | None = fm.get("pr_url")
         self.pr: str | None = fm.get("pr")
+        self.effort: str | None = fm.get("effort")  # XS/S/M/L — used for budget
         # Parse modified timestamp
         mod_raw = fm.get("modified")
         self.modified: datetime | None = None
