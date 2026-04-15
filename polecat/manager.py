@@ -703,6 +703,10 @@ class PolecatManager:
                     check=True,
                     capture_output=True,
                 )
+
+                # Update local branches in mirror to match origin/local (if safe)
+                self._update_mirror_local_refs(mirror_path, project)
+
             return True
         except subprocess.CalledProcessError as e:
             print(f"⚠ Mirror sync failed for {project}: {e}", file=sys.stderr)
@@ -711,6 +715,69 @@ class PolecatManager:
             # Network errors, etc - non-fatal for offline operation
             print(f"⚠ Mirror sync failed for {project}: {e}", file=sys.stderr)
             return False
+
+    def _update_mirror_local_refs(self, mirror_path: Path, project: str) -> None:
+        """Updates the local default branch in the mirror to match origin.
+
+        Only updates if the branch is not currently checked out in any worktree.
+        """
+        config = self.projects.get(project)
+        if not config:
+            return
+        branch = config.get("default_branch", "main")
+
+        # Check if branch is checked out
+        exclude_refspecs = self._worktree_exclude_refspecs(mirror_path)
+        if f"^refs/heads/{branch}" in exclude_refspecs:
+            # Branch is checked out, skip updating it directly
+            return
+
+        # Attempt to update mirror's local branch to match origin/branch
+        # origin/branch comes from the fetch we just did.
+        try:
+            # Get origin's SHA for the branch
+            origin_result = subprocess.run(
+                ["git", "rev-parse", f"refs/remotes/origin/{branch}"],
+                cwd=mirror_path,
+                capture_output=True,
+                text=True,
+            )
+            if origin_result.returncode != 0:
+                return
+            origin_sha = origin_result.stdout.strip()
+
+            # Get local mirror branch's SHA
+            local_result = subprocess.run(
+                ["git", "rev-parse", f"refs/heads/{branch}"],
+                cwd=mirror_path,
+                capture_output=True,
+                text=True,
+            )
+            if local_result.returncode != 0:
+                # Local branch doesn't exist, create it
+                subprocess.run(
+                    ["git", "branch", branch, origin_sha],
+                    cwd=mirror_path,
+                    check=True,
+                    capture_output=True,
+                )
+                return
+
+            local_sha = local_result.stdout.strip()
+
+            if local_sha != origin_sha:
+                # Update local mirror branch to match origin
+                # Since it's a bare mirror and not checked out, this is safe.
+                subprocess.run(
+                    ["git", "update-ref", f"refs/heads/{branch}", origin_sha],
+                    cwd=mirror_path,
+                    check=True,
+                    capture_output=True,
+                )
+                print(f"  Updated mirror {branch} to {origin_sha[:8]}")
+
+        except Exception as e:
+            print(f"  ⚠ Failed to update mirror local ref: {e}", file=sys.stderr)
 
     def _worktree_exclude_refspecs(self, mirror_path: Path) -> list[str]:
         """Return negative refspecs to exclude branches checked out in worktrees.
@@ -963,19 +1030,15 @@ class PolecatManager:
                 print(f"⊘ {project}: no mirror (run 'polecat init' first)")
                 results[project] = False
                 continue
-            try:
-                with metrics.time_operation("sync", project=project, mode="full"):
-                    subprocess.run(
-                        ["git", "fetch", "--all", "--prune"],
-                        cwd=mirror_path,
-                        check=True,
-                        capture_output=True,
-                    )
+
+            # Use safe_sync_mirror which handles both origin and local,
+            # and updates the local mirror branch ref.
+            success = self.safe_sync_mirror(project)
+            if success:
                 print(f"✓ {project}")
-                results[project] = True
-            except subprocess.CalledProcessError as e:
-                print(f"✗ {project}: {e}")
-                results[project] = False
+            else:
+                print(f"✗ {project}")
+            results[project] = success
         return results
 
     def claim_next_task(self, caller: str, project: str | None = None):
