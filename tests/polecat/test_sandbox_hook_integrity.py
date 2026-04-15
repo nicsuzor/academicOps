@@ -78,10 +78,12 @@ export UV_CACHE_DIR="/tmp/uv-cache-test"
 
 # Run the router with synthetic SessionStart, capturing stderr
 STDERR_FILE=$(mktemp)
+set +e
 echo '%%%SYNTHETIC_INPUT%%%' | \
     uv --directory "$AOPS_CORE_DIR" run python "$ROUTER_PY" --client claude SessionStart \
-    > /dev/null 2>"$STDERR_FILE" || true
+    > /dev/null 2>"$STDERR_FILE"
 ROUTER_EXIT=$?
+set -e
 
 echo "ROUTER_FOUND=true"
 echo "EXIT_CODE=$ROUTER_EXIT"
