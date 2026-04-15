@@ -19,6 +19,7 @@ import re
 import subprocess
 import sys
 import time
+import uuid
 from pathlib import Path
 
 import pytest
@@ -218,8 +219,8 @@ class TestAllInvocationPaths:
         # Unique sentinel per invocation — the agent writes this into /workspace
         # so we can later assert the file appears on the host's bind-mounted
         # worktree (proves bind-mount, since cp never reverse-extracts /workspace).
-        sentinel_name = f".polecat-bind-mount-sentinel-{backend}-{int(time.time())}"
-        sentinel_value = f"crew-{backend}-{int(time.time())}"
+        sentinel_name = f".polecat-bind-mount-sentinel-{backend}-{uuid.uuid4().hex[:8]}"
+        sentinel_value = f"crew-{backend}-{uuid.uuid4().hex[:8]}"
         prompt = _make_mega_prompt(sentinel_name, sentinel_value)
 
         cmd = [

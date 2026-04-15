@@ -434,12 +434,23 @@ def _docker_daemon_host() -> str:
             check=False,
             timeout=5,
         )
-        if result.returncode == 0 and result.stdout.strip():
-            return result.stdout.strip()
-    except (FileNotFoundError, subprocess.TimeoutExpired):
-        pass
-    # 3. Default to a local unix socket so we land on bind-mount strategy.
-    return "unix:///var/run/docker.sock"
+    except FileNotFoundError as exc:
+        raise RuntimeError(
+            "Cannot determine Docker daemon host: `docker` CLI not found. "
+            "Set DOCKER_HOST explicitly or ensure `docker` is on PATH."
+        ) from exc
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError(
+            "Cannot determine Docker daemon host: `docker context inspect` timed out. "
+            "Set DOCKER_HOST explicitly."
+        ) from exc
+    if result.returncode != 0 or not result.stdout.strip():
+        raise RuntimeError(
+            f"Cannot determine Docker daemon host: `docker context inspect` exited "
+            f"{result.returncode}. Set DOCKER_HOST explicitly. "
+            f"stderr: {result.stderr.strip()!r}"
+        )
+    return result.stdout.strip()
 
 
 def _is_remote_daemon() -> bool:
@@ -1048,25 +1059,25 @@ def _run_docker_container(
         container_name = f"polecat-{task_id or uuid.uuid4().hex[:8]}"
         cmd[3:3] = ["--name", container_name]
 
-        watchdog_cancel: threading.Event | None = None
-        watchdog_thread: threading.Thread | None = None
+        _watchdog_cancel = None
+        _watchdog_thread = None
         if gemini and task_id:
-            watchdog_cancel = threading.Event()
-            watchdog_thread = threading.Thread(
+            _watchdog_cancel = threading.Event()
+            _watchdog_thread = threading.Thread(
                 target=_pkb_termination_watchdog,
-                args=(container_name, task_id, watchdog_cancel),
+                args=(container_name, task_id, _watchdog_cancel),
                 name=f"polecat-watchdog-{task_id}",
                 daemon=True,
             )
-            watchdog_thread.start()
+            _watchdog_thread.start()
 
         try:
             return subprocess.run(cmd, cwd=cwd, env=env, capture_output=capture_output, text=text)
         finally:
-            if watchdog_cancel is not None:
-                watchdog_cancel.set()
-            if watchdog_thread is not None:
-                watchdog_thread.join(timeout=5.0)
+            if _watchdog_cancel is not None:
+                _watchdog_cancel.set()
+            if _watchdog_thread is not None:
+                _watchdog_thread.join(timeout=5.0)
 
     # Replace "docker run --rm" with "docker create" (no --rm, we clean up manually)
     # The cmd starts with ["docker", "run", "--rm", ...]
