@@ -65,7 +65,14 @@ def _compute_max_turns(task) -> str:
     effort = getattr(task, "effort", None)
     turns = _DEFAULT_MAX_TURNS
     if isinstance(effort, str) and effort:
-        turns = _EFFORT_TO_MAX_TURNS.get(effort.lower(), _DEFAULT_MAX_TURNS)
+        turns = _EFFORT_TO_MAX_TURNS.get(effort.lower())
+        if turns is None:
+            print(
+                f"⚠️  Unrecognised effort value '{effort}' — "
+                f"expected XS/S/M/L. Using default {_DEFAULT_MAX_TURNS} turns.",
+                file=sys.stderr,
+            )
+            turns = _DEFAULT_MAX_TURNS
     return str(turns)
 
 
