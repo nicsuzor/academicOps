@@ -98,20 +98,20 @@ This is the baseline. Phase 6 re-runs graph_stats to measure what changed.
 
 Extract insights from session transcripts that agents may not have saved during the session.
 
-**Input**: Session transcripts in `$AOPS_SESSIONS/` (JSONL files)
+**Input**: Session transcripts in `$AOPS_SESSIONS/` (Markdown files)
 **Output**: Knowledge notes created via /remember skill
 
 ### Process
 
-1. Find transcripts not yet mined: check for `.mined` marker files or `mined_transcripts.json` manifest
-2. For each unmined transcript (up to 5 per cycle):
-   a. Read the transcript (use `aops-core/scripts/transcript.py` to convert if needed)
+1. Find transcripts not yet mined: check for `mined: YYYY-MM-DD` in frontmatter.
+2. For each unmined transcript (up to 15 per cycle):
+   a. Read the transcript carefully, noting decisions, patterns, facts, and problems. Look for things that are worth remembering but didn't make it into tasks or notes during the session. This is the agent's judgment call — not every detail needs to be saved, but important insights should be.
    b. Identify extractable insights: decisions made, patterns observed, facts learned, problems solved
    c. For each insight: search PKB first (`mcp__pkb__search`) to avoid duplicates
    d. Create knowledge notes via /remember skill with proper provenance:
    - `sources: ["Session transcript <session-id> <date>"]`
    - `confidence: provisional` (single source)
-     e. Mark transcript as mined
+     e. Mark transcript as mined: add `mined: YYYY-MM-DD` to frontmatter (but DO NOT modify the content — transcripts are preserved as-is)
 
 ### Critical Rules
 
@@ -127,7 +127,7 @@ Transcript mining requires access to `$AOPS_SESSIONS`. On GitHub Actions, this d
 
 ### Batch Limit
 
-Process up to 5 transcripts per cycle. Each transcript may yield 0-10 insights. Time budget: 5 minutes.
+Process up to 15 transcripts per cycle.
 
 ## Phase 2b: Knowledge Consolidation
 
