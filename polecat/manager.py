@@ -1198,6 +1198,8 @@ class PolecatManager:
                     capture_output=True,
                 )
                 if result.returncode == 0:
+                    # Existing valid worktree - still verify it's based on recent main
+                    self._verify_worktree_setup(worktree_path, branch_name, default_branch)
                     return worktree_path
                 # Worktree exists but is broken (orphan branch or corrupted)
                 print(
@@ -1484,7 +1486,14 @@ class PolecatManager:
             )
 
         # 2. Verify branch is based on recent main
-        # Get the merge-base between our branch and origin/main (if available)
+        # Ensure we have the latest origin/main for comparison
+        subprocess.run(
+            ["git", "fetch", "origin", default_branch],
+            cwd=worktree_path,
+            capture_output=True,
+        )
+
+        # Get the merge-base between our branch and origin/main
         merge_base_result = subprocess.run(
             ["git", "merge-base", "HEAD", f"origin/{default_branch}"],
             cwd=worktree_path,
@@ -1492,24 +1501,84 @@ class PolecatManager:
             text=True,
         )
         if merge_base_result.returncode == 0:
+            merge_base = merge_base_result.stdout.strip()
             # Check how many commits behind origin/main we are
-            commits_behind = subprocess.run(
+            commits_behind_res = subprocess.run(
                 [
                     "git",
                     "rev-list",
                     "--count",
-                    f"{merge_base_result.stdout.strip()}..origin/{default_branch}",
+                    f"{merge_base}..origin/{default_branch}",
                 ],
                 cwd=worktree_path,
                 capture_output=True,
                 text=True,
             )
-            if commits_behind.returncode == 0 and int(commits_behind.stdout.strip()) > 10:
-                print(
-                    f"⚠ Worktree is {commits_behind.stdout.strip()} commits behind "
-                    f"origin/{default_branch}. Consider rebasing.",
-                    file=sys.stderr,
-                )
+            if commits_behind_res.returncode == 0:
+                commits_behind = int(commits_behind_res.stdout.strip())
+                if commits_behind > 0:
+                    # Check if worktree is clean
+                    status_res = subprocess.run(
+                        ["git", "status", "--porcelain"],
+                        cwd=worktree_path,
+                        capture_output=True,
+                        text=True,
+                    )
+                    is_clean = status_res.returncode == 0 and not status_res.stdout.strip()
+
+                    REBASE_THRESHOLD = 5
+
+                    if is_clean:
+                        if commits_behind <= REBASE_THRESHOLD:
+                            # Silent rebase
+                            rebase_res = subprocess.run(
+                                ["git", "rebase", f"origin/{default_branch}"],
+                                cwd=worktree_path,
+                                capture_output=True,
+                                text=True,
+                            )
+                            if rebase_res.returncode != 0:
+                                subprocess.run(["git", "rebase", "--abort"], cwd=worktree_path)
+                                raise RuntimeError(
+                                    f"Worktree is {commits_behind} commits behind origin/{default_branch} "
+                                    "and auto-rebase failed with conflicts. Please rebase manually."
+                                )
+                        else:
+                            # Logged rebase
+                            print(
+                                f"🔄 Worktree is {commits_behind} commits behind origin/{default_branch}. Auto-rebasing..."
+                            )
+                            rebase_res = subprocess.run(
+                                ["git", "rebase", f"origin/{default_branch}"],
+                                cwd=worktree_path,
+                                capture_output=True,
+                                text=True,
+                            )
+                            if rebase_res.returncode == 0:
+                                print("  ✅ Rebase successful")
+                            else:
+                                print(
+                                    f"  ❌ Auto-rebase failed: {rebase_res.stderr.strip()}",
+                                    file=sys.stderr,
+                                )
+                                print("  Aborting rebase...", file=sys.stderr)
+                                subprocess.run(["git", "rebase", "--abort"], cwd=worktree_path)
+                                # Halt with instruction
+                                raise RuntimeError(
+                                    f"Worktree is {commits_behind} commits behind origin/{default_branch} "
+                                    "and auto-rebase failed with conflicts. Please rebase manually."
+                                )
+                    else:
+                        # Not clean
+                        if commits_behind > REBASE_THRESHOLD:
+                            # Halt because we can't auto-rebase a dirty worktree and it's too far behind
+                            raise RuntimeError(
+                                f"Worktree is {commits_behind} commits behind origin/{default_branch} "
+                                "but has uncommitted changes. Please commit or stash, then rebase manually."
+                            )
+                        else:
+                            # Silent skip for small behind-by when not clean
+                            pass
 
         # Note: Worktrees inherit the mirror's remotes, which already have
         # the correct origin push URL (git@github.com:...). No need to
