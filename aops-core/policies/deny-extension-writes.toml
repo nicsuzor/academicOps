@@ -1,4 +1,10 @@
 # academicOps: Protect extension files from being modified by the agent
+#
+# Priority semantics: higher number wins (Gemini CLI policy engine).
+# These rules use priority=100 so they override the sandbox allow rules
+# (priority=50 in sandbox.toml), ensuring extension/config files remain
+# protected even inside a worktree sandbox session.
+# Ref: https://cloud.google.com/gemini/docs/codeassist/policy-engine
 [[rule]]
 toolName = "Write"
 argsPattern = ".*\\.gemini/extensions/.*"

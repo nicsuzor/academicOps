@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import fcntl
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -1525,7 +1526,7 @@ class PolecatManager:
                 file=sys.stderr,
             )
 
-    def create_sandbox_settings(self, worktree_path: Path) -> Path:
+    def create_sandbox_settings(self, worktree_path: Path) -> None:
         """Write .claude/settings.json and .gemini/policies/sandbox.toml to sandbox access.
 
         The settings permit Write and Edit operations within the worktree directory.
@@ -1533,12 +1534,13 @@ class PolecatManager:
         project directory, so we only need allow rules -- no blanket deny rules.
 
         For Gemini CLI, we use the Policy Engine to restrict file operations.
+        Priority semantics: higher number wins. sandbox.toml uses allow=50 and
+        deny=10 so that allow beats deny inside the worktree. deny-extension-writes
+        uses deny=100 which beats sandbox allow=50, preserving extension protection.
+        See: https://cloud.google.com/gemini/docs/codeassist/policy-engine
 
         Args:
             worktree_path: Absolute path to the worktree root directory
-
-        Returns:
-            Path to the created Claude settings file
         """
         import json
 
@@ -1564,8 +1566,8 @@ class PolecatManager:
         gemini_policies_dir = worktree_path / ".gemini" / "policies"
         gemini_policies_dir.mkdir(parents=True, exist_ok=True)
 
-        # We need to escape backslashes for the regex in TOML
-        worktree_regex = worktree_str.replace("\\", "\\\\").replace(".", "\\.")
+        # Use re.escape() to handle all regex metacharacters in the path robustly.
+        worktree_regex = re.escape(worktree_str)
         policy_content = f"""# academicOps: Sandbox agent to this worktree
 [[rule]]
 toolName = "Write"
@@ -1593,8 +1595,6 @@ denyMessage = "File edits are restricted to the worktree: {worktree_str}"
 """
         policy_path = gemini_policies_dir / "sandbox.toml"
         policy_path.write_text(policy_content)
-
-        return settings_path
 
     def _verify_worktree_setup(self, worktree_path: Path, branch_name: str, default_branch: str):
         """Verify worktree is correctly set up for the PR workflow.

@@ -5,6 +5,7 @@ Verifies that create_sandbox_settings() produces a .gemini/policies/sandbox.toml
 that permits Write and Edit operations within the worktree directory.
 """
 
+import re
 import sys
 from pathlib import Path
 from unittest.mock import patch
@@ -51,10 +52,9 @@ class TestCreateGeminiPolicy:
         content = policy_path.read_text()
 
         worktree_str = str(worktree.resolve())
-        # The regex should match the worktree path
-        assert f'argsPattern = "^{worktree_str.replace(".", "\\.")}.*"' in content.replace(
-            "\\\\", "\\"
-        )
+        # re.escape() is used in manager.py — verify the pattern matches exactly.
+        expected_pattern = 'argsPattern = "^' + re.escape(worktree_str) + '.*"'
+        assert expected_pattern in content
         assert 'decision = "allow"' in content
         assert "priority = 50" in content
 
