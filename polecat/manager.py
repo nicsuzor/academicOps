@@ -1705,6 +1705,9 @@ class PolecatManager:
 
         Args:
             worktree_path: Absolute path to the worktree root directory
+
+        Returns:
+            Path to the created Claude settings file
         """
         import json
 
