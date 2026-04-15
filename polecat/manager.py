@@ -1399,8 +1399,33 @@ class PolecatManager:
             text=True,
         )
 
+        branch_exists = False
         if branch_exists_result.stdout.strip():
-            # Exists remotely — fetch then checkout and track
+            # Exists remotely — check if it is already merged into the default branch.
+            # If so, we want to start fresh from the current tip of the default branch.
+            remote_sha = branch_exists_result.stdout.split()[0]
+            is_merged_result = subprocess.run(
+                ["git", "merge-base", "--is-ancestor", remote_sha, f"origin/{default_branch}"],
+                cwd=worktree_path,
+                capture_output=True,
+            )
+            if is_merged_result.returncode == 0:
+                print(
+                    f"  Branch {branch_name} (at {remote_sha[:8]}) is already merged into {default_branch}."
+                )
+                print(f"  Deleting stale remote branch and starting fresh from {default_branch}...")
+                subprocess.run(
+                    ["git", "push", "origin", "--delete", branch_name],
+                    cwd=worktree_path,
+                    capture_output=True,
+                    check=True,
+                )
+                branch_exists = False
+            else:
+                branch_exists = True
+
+        if branch_exists:
+            # Exists remotely and not merged — fetch then checkout and track
             subprocess.run(
                 ["git", "fetch", "origin", branch_name],
                 cwd=worktree_path,
