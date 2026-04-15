@@ -986,17 +986,34 @@ class PolecatManager:
                     )
                     return False
 
-                # Fetch from local repo (should always succeed)
-                subprocess.run(
-                    ["git", "fetch", "local", *exclude_refspecs],
-                    cwd=mirror_path,
-                    check=True,
-                    capture_output=True,
-                )
+                # Branches checked out in worktrees are excluded from the
+                # normal origin fetch above. Update them by fetching into a
+                # temporary ref namespace (bypasses git's "branch is checked
+                # out" guard) and then fast-forwarding the real branch ref.
+                for excl_refspec in exclude_refspecs:
+                    branch = excl_refspec.removeprefix("^refs/heads/")
+                    tmp_ref = f"refs/fetch-tmp/{branch}"
+                    fetch_result = subprocess.run(
+                        ["git", "fetch", "origin", f"refs/heads/{branch}:{tmp_ref}"],
+                        cwd=mirror_path,
+                        capture_output=True,
+                        check=False,
+                    )
+                    if fetch_result.returncode == 0:
+                        subprocess.run(
+                            ["git", "update-ref", f"refs/heads/{branch}", tmp_ref],
+                            cwd=mirror_path,
+                            check=False,
+                            capture_output=True,
+                        )
+                        subprocess.run(
+                            ["git", "update-ref", "-d", tmp_ref],
+                            cwd=mirror_path,
+                            check=False,
+                            capture_output=True,
+                        )
 
-                # Check freshness and update mirror branch from local
-                is_fresh, _ = self.check_mirror_freshness(project)
-                return is_fresh
+                return True
         except subprocess.CalledProcessError as e:
             print(f"⚠ Mirror sync failed for {project}: {e}", file=sys.stderr)
             return False
