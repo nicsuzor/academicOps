@@ -207,6 +207,106 @@ class TestCrewWorktreeNoUpstream:
         )
 
 
+class TestCrewBranchFlush:
+    """Regression: reusing a crew name must not resume from stale state.
+
+    The original bug: nuke_crew only deleted the local branch, leaving
+    origin/crew/<name> intact. The next setup_crew_worktree would then
+    check out the stale remote branch. And even on the fresh-branch path,
+    the clone's default branch came from the (possibly stale) bare mirror,
+    never from origin.
+    """
+
+    def test_nuke_flushes_remote_branch(
+        self, local_clone: Path, bare_origin: Path, manager: PolecatManager
+    ):
+        """nuke_crew must delete the remote crew branch on origin."""
+        worktree = manager.setup_crew_worktree("test-worker", "test")
+        # Verify remote branch exists (setup pushed it)
+        ls = _git(
+            ["ls-remote", "--heads", str(bare_origin), "crew/test-worker"],
+            cwd=local_clone,
+        )
+        assert ls.stdout.strip(), "precondition: remote branch should exist after setup"
+
+        manager.nuke_crew("test-worker", force=True)
+
+        ls = _git(
+            ["ls-remote", "--heads", str(bare_origin), "crew/test-worker"],
+            cwd=local_clone,
+        )
+        assert not ls.stdout.strip(), (
+            "nuke_crew must delete origin/crew/test-worker; it is still present"
+        )
+        assert not worktree.exists()
+
+    def test_nuke_preserves_remote_when_pr_open(
+        self,
+        local_clone: Path,
+        bare_origin: Path,
+        manager: PolecatManager,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        """nuke_crew(force=True) must preserve the remote branch when an open PR exists.
+
+        force=True means "bypass the unmerged-WIP safety check", not "destroy PRs".
+        The local worktree and local branch should still be cleaned up.
+        """
+        worktree = manager.setup_crew_worktree("test-worker", "test")
+        ls = _git(
+            ["ls-remote", "--heads", str(bare_origin), "crew/test-worker"],
+            cwd=local_clone,
+        )
+        assert ls.stdout.strip(), "precondition: remote branch should exist after setup"
+
+        # Force the classifier to report an open PR without needing real GitHub.
+        monkeypatch.setattr(
+            PolecatManager,
+            "_crew_branch_open_pr",
+            lambda self, repo_path, branch_name: "https://example.com/pr/1",
+        )
+
+        manager.nuke_crew("test-worker", force=True)
+
+        ls = _git(
+            ["ls-remote", "--heads", str(bare_origin), "crew/test-worker"],
+            cwd=local_clone,
+        )
+        assert ls.stdout.strip(), (
+            "nuke_crew(force=True) must preserve origin/crew/test-worker when an open PR "
+            "exists; the branch was deleted"
+        )
+        assert not worktree.exists(), "local worktree cleanup should still happen"
+
+    def test_new_crew_starts_from_fresh_origin_main(
+        self, local_clone: Path, bare_origin: Path, tmp_path: Path, manager: PolecatManager
+    ):
+        """After nuke + recreate, the crew branch must base on the latest origin/main,
+        even if the bare mirror's copy of main is stale.
+        """
+        manager.setup_crew_worktree("test-worker", "test")
+        manager.nuke_crew("test-worker", force=True)
+
+        # Advance origin/main from a side clone (simulates someone else pushing).
+        side = tmp_path / "side"
+        _git(["clone", str(bare_origin), str(side)], cwd=tmp_path)
+        _git(["config", "user.email", "side@test.example"], cwd=side)
+        _git(["config", "user.name", "Side"], cwd=side)
+        (side / "new.txt").write_text("newer main\n")
+        _git(["add", "new.txt"], cwd=side)
+        _git(["commit", "-m", "advance main"], cwd=side)
+        _git(["push", "origin", "main"], cwd=side)
+        new_main_tip = _git(["rev-parse", "HEAD"], cwd=side).stdout.strip()
+
+        # Recreate crew — must pick up the new origin/main tip.
+        worktree = manager.setup_crew_worktree("test-worker", "test")
+        crew_tip = _git(["rev-parse", "HEAD"], cwd=worktree).stdout.strip()
+        assert crew_tip == new_main_tip, (
+            f"New crew branch should base on fresh origin/main ({new_main_tip[:7]}), "
+            f"but is at {crew_tip[:7]} — mirror staleness not fixed"
+        )
+
+
 # ---------------------------------------------------------------------------
 # Tests: _do_setup_worktree()
 # ---------------------------------------------------------------------------

@@ -629,5 +629,56 @@
         "gemini_decision": "allow"
       }
     }
+  ],
+  "handover_gate_opens": [
+    {
+      "id": "gemini-slash-dump",
+      "description": "Handover gate opens when /dump slash command is injected as UserPromptSubmit",
+      "_synthetic": "real-tool-synthetic-gate",
+      "hook_event": "UserPromptSubmit",
+      "tool_name": null,
+      "tool_input": {},
+      "raw_input": {
+        "hook_event_name": "UserPromptSubmit",
+        "session_id": "12af6b7e-e16b-41d6-b20e-8b3d3edf0b85",
+        "prompt": "# /dump - Session Handover & Context Dump\n\nForce graceful handover when work must stop or session must end."
+      },
+      "is_subagent": false,
+      "gate_overrides": {
+        "handover": {
+          "status": "closed"
+        }
+      },
+      "expected": {
+        "verdict": "allow"
+      }
+    },
+    {
+      "id": "gemini-pauli-dump",
+      "description": "Handover gate opens when Pauli subagent is delegated to for handover",
+      "_synthetic": "real-tool-synthetic-gate",
+      "hook_event": "PreToolUse",
+      "tool_name": "pauli",
+      "tool_input": {
+        "query": "Please execute the /dump or handover procedure for the current task. I have completed task-ab2fe612."
+      },
+      "raw_input": {
+        "hook_event_name": "PreToolUse",
+        "session_id": "63218396-862d-4cdb-b9ef-8c82774cb854",
+        "tool_name": "pauli",
+        "tool_input": {
+          "query": "Please execute the /dump or handover procedure for the current task. I have completed task-ab2fe612."
+        }
+      },
+      "is_subagent": false,
+      "gate_overrides": {
+        "handover": {
+          "status": "closed"
+        }
+      },
+      "expected": {
+        "verdict": "allow"
+      }
+    }
   ]
 }

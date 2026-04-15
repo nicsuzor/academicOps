@@ -129,6 +129,7 @@ def _make_context(scenario: dict) -> HookContext:
         tool_input=scenario.get("tool_input", {}),
         is_subagent=scenario.get("is_subagent", False),
         subagent_type=scenario.get("subagent_type"),
+        raw_input=scenario.get("raw_input", {}),
     )
 
 
@@ -282,4 +283,25 @@ class TestGateModeEnvVarOverrides:
         assert result.verdict == expected_verdict, (
             f"{gate_name} gate with {env_var}={mode}: "
             f"expected {expected_verdict.value}, got {result.verdict.value}"
+        )
+
+
+class TestHandoverGateOpens:
+    SCENARIOS = _flatten_scenarios("handover_gate_opens")
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    def test_handover_gate_opens_on_event(self, router, scenario):
+        state = _make_session_state(scenario)
+        ctx = _make_context(scenario)
+
+        router._dispatch_gates(ctx, state)
+
+        # The handover gate should now be OPEN
+        assert state.gates["handover"].status == GateStatus.OPEN, (
+            f"[{scenario['id']}] Handover gate should be OPEN in response, "
+            f"but got {state.gates['handover'].status}"
         )

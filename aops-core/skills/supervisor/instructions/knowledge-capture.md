@@ -14,6 +14,9 @@ Post-merge, supervisor extracts learnings and files structured follow-ups.
    - Commit messages
    - Task body
    - Review comments
+   - Polecat transcripts (`$POLECAT_HOME/polecats/<task-id>.jsonl`, markdown
+     in `$AOPS_SESSIONS/transcripts/`) — for decisions, struggles, and
+     execution patterns not visible in the PR
 
 2. Extract learnings:
    - Decisions made

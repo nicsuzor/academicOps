@@ -22,4 +22,4 @@ Invoke pauli (the Logician) on the provided document or plan.
 
 Invoke: `Agent(subagent_type="aops-core:pauli", prompt="<document or file path>")`
 
-Pass through all arguments. Pauli applies the 10 cognitive moves and returns a structured strategic review.
+Pass through all arguments. Pauli returns a structured strategic review.

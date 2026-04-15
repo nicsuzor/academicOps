@@ -104,12 +104,13 @@ GATE_CONFIGS = [
         ],
     ),
     # --- Handover ---
-    # Gate starts CLOSED.
-    # Opens when /handover skill completes. Policy blocks Stop when CLOSED.
+    # Gate starts OPEN (so short interactive chats don't require handover).
+    # Closes when work begins (task bound or write tool used).
+    # Opens when /dump skill completes. Policy blocks Stop when CLOSED.
     GateConfig(
         name="handover",
         description="Requires Framework Reflection before exit.",
-        initial_status=GateStatus.CLOSED,
+        initial_status=GateStatus.OPEN,
         triggers=[
             # Task bound: update_task with status=in_progress -> Close
             # Work has begun, so handover will be required before exit.
@@ -118,6 +119,17 @@ GATE_CONFIGS = [
                     hook_event="PostToolUse",
                     tool_name_pattern="update_task",
                     tool_input_pattern="in_progress",
+                ),
+                transition=GateTransition(
+                    target_status=GateStatus.CLOSED,
+                    system_message_key="handover.bound",
+                ),
+            ),
+            # Write tool used -> Close
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="PostToolUse",
+                    custom_check="is_write_tool",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,
@@ -134,6 +146,29 @@ GATE_CONFIGS = [
                     hook_event="PostToolUse",
                     tool_name_pattern="^(Skill|activate_skill)$",
                     subagent_type_pattern="^(aops-core:)?(handover|dump)$",
+                ),
+                transition=GateTransition(
+                    target_status=GateStatus.OPEN,
+                    system_message_key="handover.complete",
+                ),
+            ),
+            # Gemini /dump via slash command injection (UserPromptSubmit containing /dump template)
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="UserPromptSubmit",
+                    prompt_pattern=r"^\s*#\s*/dump\s*-\s*Session Handover",
+                ),
+                transition=GateTransition(
+                    target_status=GateStatus.OPEN,
+                    system_message_key="handover.complete",
+                ),
+            ),
+            # Gemini fallback to Pauli subagent for /dump
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="PreToolUse",
+                    tool_name_pattern="^pauli$",
+                    tool_input_pattern=r"/dump|handover",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,

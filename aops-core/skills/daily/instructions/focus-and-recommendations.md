@@ -151,11 +151,15 @@ Select ~10 recommendations using judgment (approx 2 per category):
 - Format: `🚨 **DEADLINE TODAY**: [id] [[Title]] - Due HH:MM TZ (detail)`
 - This category is NON-OPTIONAL - if ANY task has `due` within 24h, it MUST appear first
 - Even if task seems low priority, imminent deadline overrides priority ranking
+- `list_tasks(format="json")` now returns `due`, `effort`, `consequence`, and `focus_score` per task — use these fields when available
+- `task_summary` returns `deadlines: { overdue, due_today, due_this_week }` counts — use these for the Deadline Dashboard (see below)
+- When a task has a `consequence` field, include the consequence text in the recommendation (e.g. `🚨 **DEADLINE TODAY**: [id] [[Title]] - Due HH:MM TZ | Consequence: <consequence text>`)
 
 **SHOULD (deadline/commitment pressure)**:
 
 - Check `days_until_due` - negative = overdue
 - Priority: overdue → due this week → P0 without dates (note: "due today" now goes to DEADLINE TODAY)
+- **Effort-awareness**: If a task's `effort` estimate exceeds the time remaining before its deadline, treat it as critical and promote it to DEADLINE TODAY — regardless of absolute days remaining. Example: a task with `effort: "3 weeks"` due in 2 weeks is critical. Reference `urgency_ratio`: when `effort / time_remaining >= 1.0`, promote to DEADLINE TODAY.
 
 **DEEP (long-term goal advancement)**:
 
@@ -181,6 +185,23 @@ Select ~10 recommendations using judgment (approx 2 per category):
 - Tasks that unblock other work or team members
 - Infrastructure/tooling improvements, blocked issues
 - Technical debt slowing down current work
+
+### Deadline Dashboard
+
+Before listing the first recommendation in the Focus section, insert a deadline summary line using `task_summary`:
+
+```python
+summary = mcp__pkb__task_summary()
+deadlines = summary.get("deadlines", {})
+overdue = deadlines.get("overdue", 0)
+due_today = deadlines.get("due_today", 0)
+due_this_week = deadlines.get("due_this_week", 0)
+```
+
+- If any count is non-zero, insert: `Deadlines: X overdue | Y due today | Z due this week`
+- Omit the line entirely if all counts are zero
+- If `overdue > 0`, surface overdue tasks first in the SHOULD section — include their `consequence` text if set
+- This line appears immediately before the first recommendation (after the priority bars and Pending Decisions line)
 
 **Framework work warning**: If `academicOps`/`aops` has 3+ items in `todays_work`:
 
