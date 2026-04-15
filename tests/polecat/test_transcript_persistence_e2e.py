@@ -59,8 +59,6 @@ sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 
 from tests.conftest import _docker_available  # noqa: E402
 
-TERMINAL_STATUSES = {"done", "merge_ready", "blocked", "cancelled"}
-
 # Instruction for the success case: complete trivially so polecat exits cleanly.
 _SUCCESS_INSTRUCTION = (
     "Call release_task with status=done and summary='e2e transcript persistence check'."
@@ -104,15 +102,6 @@ def _pkb_available() -> bool:
         return True
     except Exception:
         return False
-
-
-def _poll_status(task_id: str) -> str | None:
-    from polecat.pkb_bridge import get_task as pkb_get_task  # type: ignore
-
-    task = pkb_get_task(task_id)
-    if task is None:
-        return None
-    return task.status
 
 
 def _get_sessions_base() -> Path:
@@ -185,20 +174,6 @@ def _cleanup_task(client, task_id: str) -> None:
         print(f"cleanup: failed to delete task {task_id}: {e}", file=sys.stderr)
 
 
-# ---------------------------------------------------------------------------
-# Shared skip guards (applied to every test in this module)
-# ---------------------------------------------------------------------------
-
-_E2E_SKIPIFS = [
-    pytest.mark.skipif(
-        os.environ.get("POLECAT_E2E") != "1",
-        reason="E2E test — opt in with POLECAT_E2E=1",
-    ),
-    pytest.mark.skipif(not _docker_available(), reason="Docker / aops-crew image unavailable"),
-    pytest.mark.skipif(not _pkb_available(), reason="PKB MCP server unreachable"),
-]
-
-
 def _require_project() -> str:
     project = os.environ.get("POLECAT_E2E_PROJECT")
     if not project:
@@ -231,7 +206,7 @@ def _resolve_scratch_parent(project: str) -> str:
 )
 @pytest.mark.skipif(not _docker_available(), reason="Docker / aops-crew image unavailable")
 @pytest.mark.skipif(not _pkb_available(), reason="PKB MCP server unreachable")
-def test_real_transcript_persists_on_success(tmp_path: Path) -> None:
+def test_real_transcript_persists_on_success() -> None:
     """Real Claude session transcript must exist and be ≥ 10 KB after a clean run."""
     from polecat.pkb_bridge import _get_client  # type: ignore
 
@@ -308,7 +283,7 @@ def test_real_transcript_persists_on_success(tmp_path: Path) -> None:
     ),
     strict=False,
 )
-def test_real_transcript_persists_on_max_turns(tmp_path: Path) -> None:
+def test_real_transcript_persists_on_max_turns() -> None:
     """Real transcript must be ≥ 10 KB even when the turn budget is exhausted.
 
     Without ``--max-turns N`` passthrough, polecat derives the budget from the
@@ -403,7 +378,7 @@ def test_real_transcript_persists_on_max_turns(tmp_path: Path) -> None:
 )
 @pytest.mark.skipif(not _docker_available(), reason="Docker / aops-crew image unavailable")
 @pytest.mark.skipif(not _pkb_available(), reason="PKB MCP server unreachable")
-def test_real_transcript_persists_on_graceful_shutdown(tmp_path: Path) -> None:
+def test_real_transcript_persists_on_graceful_shutdown() -> None:
     """Real transcript must be extracted even when polecat receives SIGTERM.
 
     Sends SIGTERM to the polecat subprocess 30 seconds after launch (giving the
