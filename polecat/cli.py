@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import functools
 import json
 import os
 import re
@@ -6,9 +7,18 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
+import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import NamedTuple
+
+# Issue #521: Gemini workers have no Stop hook; polecat must poll PKB and
+# kill the container after the task transitions to a terminal status.
+TERMINAL_PKB_STATUSES = frozenset({"done", "merge_ready", "blocked", "cancelled"})
+DEFAULT_TERMINATION_GRACE_SECONDS = 60
+TERMINATION_SIGKILL_DELAY_SECONDS = 30
+TERMINATION_POLL_INTERVAL_SECONDS = 10
 
 # Add aops-core to path for lib imports
 SCRIPT_DIR = Path(__file__).parent.resolve()
@@ -22,9 +32,102 @@ from manager import PolecatManager
 from observability import metrics
 from validation import TaskIDValidationError, validate_task_id_or_raise
 
-# Max turns for headless Claude runs — must be high enough to accommodate hook
-# overhead (hydration gate, custodiet compliance check) plus actual task work.
-HEADLESS_CLAUDE_MAX_TURNS = "50"
+# Turn budget for headless Claude runs.
+#
+# Claude SDK semantics: one "turn" = one full agentic loop iteration.
+# An iteration starts when the model generates a response (which may contain
+# multiple tool_use blocks) and ends when all tool results are returned.
+# Calling 10 tools in a single response still counts as ONE turn.
+#
+# Tiered defaults by task effort (XS/S/M/L from task frontmatter):
+#   XS  →  40  (trivial, single-file edits)
+#   S   →  70  (small, a few files)
+#   M   → 100  (typical PR-scoped work — the new default)
+#   L   → 150  (large, multi-component or epic-decomposition-shaped)
+#   (no effort field) → 100
+#
+# Hook overhead: each session fires ~2-4 hook turns (hydration gate,
+# custodiet compliance check). These count against the budget.
+_EFFORT_TO_MAX_TURNS: dict[str, int] = {
+    "xs": 40,
+    "s": 70,
+    "m": 100,
+    "l": 150,
+}
+_DEFAULT_MAX_TURNS = 100
+
+
+def _compute_max_turns(task) -> str:
+    """Return the --max-turns value for a headless Claude run.
+
+    Derives the budget from the task's ``effort`` field (XS/S/M/L).
+    Falls back to _DEFAULT_MAX_TURNS when the field is absent or unrecognised.
+    Returns a string because subprocess args must be strings.
+    """
+    effort = getattr(task, "effort", None)
+    turns = _DEFAULT_MAX_TURNS
+    if isinstance(effort, str) and effort:
+        turns = _EFFORT_TO_MAX_TURNS.get(effort.lower())
+        if turns is None:
+            print(
+                f"⚠️  Unrecognised effort value '{effort}' — "
+                f"expected XS/S/M/L. Using default {_DEFAULT_MAX_TURNS} turns.",
+                file=sys.stderr,
+            )
+            turns = _DEFAULT_MAX_TURNS
+    return str(turns)
+
+
+def _emit_budget_hit_diagnostic(stdout: str, stderr: str, max_turns: str) -> None:
+    """Detect and log a turn-budget exhaustion event.
+
+    Scans agent output for Claude's "Reached max turns" message.
+    When found, extracts the last tool call name from the output so
+    supervisors can see where the agent was when the budget ran out,
+    without having to dig through the full transcript.
+    """
+    combined = (stdout or "") + (stderr or "")
+    if "Reached max turns" not in combined:
+        return
+
+    print(
+        f"\n⛔ Turn budget exhausted (--max-turns {max_turns}).",
+        file=sys.stderr,
+    )
+    print(
+        "   Claude SDK semantics: one 'turn' = one assistant response + all tool results.\n"
+        "   Multiple tool calls within one response count as a single turn.",
+        file=sys.stderr,
+    )
+
+    # Find the last tool call name in the output.
+    # Claude prints tool use as "Tool: <name>" or similar patterns.
+    # We also look for JSON "tool_use" blocks and the CLI's "● <ToolName>" spinner lines.
+    last_tool: str | None = None
+
+    # Pattern: CLI spinner output "● ToolName(..." or "✓ ToolName(" or "✗ ToolName("
+    spinner_pattern = re.compile(r"[●✓✗⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]\s+([A-Za-z][A-Za-z0-9_]*)\s*\(")
+    for m in spinner_pattern.finditer(combined):
+        last_tool = m.group(1)
+
+    if last_tool:
+        print(f"   Last tool call observed: {last_tool}", file=sys.stderr)
+    else:
+        # Fall back: scan for any line containing a known tool-call pattern
+        tool_line_pattern = re.compile(
+            r"(?:Tool|tool_use|tool_name)[^\n]*?\b([A-Za-z][A-Za-z0-9_]*)\b"
+        )
+        for m in tool_line_pattern.finditer(combined):
+            last_tool = m.group(1)
+        if last_tool:
+            print(f"   Last tool call observed: {last_tool}", file=sys.stderr)
+        else:
+            print("   Last tool call: (could not parse — check transcript)", file=sys.stderr)
+
+    print(
+        "   Supervisor action: raise effort tag (e.g. effort: L) or investigate over-exploration.",
+        file=sys.stderr,
+    )
 
 
 # --- GitHub helpers (inlined from deleted polecat/github.py) ---
@@ -404,6 +507,63 @@ class DockerSock(NamedTuple):
     host_path: Path
 
 
+@functools.lru_cache(maxsize=1)
+def _docker_daemon_host() -> str:
+    """Return the docker daemon endpoint URL (cached for the process lifetime).
+
+    Used by `_is_remote_daemon()` to choose between the local bind-mount
+    container strategy and the remote docker-cp strategy.
+    """
+    # 1. Honour explicit DOCKER_HOST.
+    explicit = os.environ.get("DOCKER_HOST")
+    if explicit:
+        return explicit
+    # 2. Otherwise ask the docker CLI which context is active.
+    try:
+        result = subprocess.run(
+            ["docker", "context", "inspect", "--format", "{{.Endpoints.docker.Host}}"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=5,
+        )
+    except FileNotFoundError as exc:
+        raise RuntimeError(
+            "Cannot determine Docker daemon host: `docker` CLI not found. "
+            "Set DOCKER_HOST explicitly or ensure `docker` is on PATH."
+        ) from exc
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError(
+            "Cannot determine Docker daemon host: `docker context inspect` timed out. "
+            "Set DOCKER_HOST explicitly."
+        ) from exc
+    if result.returncode != 0 or not result.stdout.strip():
+        raise RuntimeError(
+            f"Cannot determine Docker daemon host: `docker context inspect` exited "
+            f"{result.returncode}. Set DOCKER_HOST explicitly. "
+            f"stderr: {result.stderr.strip()!r}"
+        )
+    return result.stdout.strip()
+
+
+def _is_remote_daemon() -> bool:
+    """True when the docker daemon is not on the local host filesystem.
+
+    Local daemons (`unix://...`) can serve bind mounts directly. Remote
+    daemons (`ssh://`, `tcp://`, `npipe://`) cannot — paths in `-v` flags
+    resolve daemon-side, where the host worktree usually doesn't exist.
+
+    Override with `POLECAT_FORCE_STAGING=cp` (force remote/cp path) or
+    `POLECAT_FORCE_STAGING=bind` (force local/bind-mount path).
+    """
+    override = os.environ.get("POLECAT_FORCE_STAGING")
+    if override == "cp":
+        return True
+    if override == "bind":
+        return False
+    return not _docker_daemon_host().startswith("unix://")
+
+
 def _find_docker_sock(env: dict, home: Path | None = None) -> DockerSock | None:
     """Return Docker socket paths to mount, or None if unavailable.
 
@@ -459,6 +619,176 @@ def _find_docker_sock(env: dict, home: Path | None = None) -> DockerSock | None:
     return None
 
 
+# ---------------------------------------------------------------------------
+# Docker memory helpers
+# ---------------------------------------------------------------------------
+
+_DOCKER_LOW_MEMORY_THRESHOLD_GB = 3.0
+_DOCKER_MEMORY_LIMIT_WARN_RATIO = 0.8
+
+
+def _get_docker_daemon_memory() -> int | None:
+    """Return Docker daemon total memory in bytes, or None if unavailable."""
+    try:
+        result = subprocess.run(
+            ["docker", "info", "--format", "{{.MemTotal}}"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return int(result.stdout.strip())
+    except (subprocess.TimeoutExpired, ValueError, FileNotFoundError):
+        pass
+    return None
+
+
+def _is_colima_env(env: dict) -> bool:
+    """Check if the current Docker environment is Colima."""
+    sock = _find_docker_sock(env)
+    if sock is None:
+        return False
+    return ".colima" in str(sock.host_path)
+
+
+def _format_oom_message(env: dict, daemon_mem_bytes: int | None = None) -> str:
+    """Format a clear OOM error message with platform-specific remediation."""
+    lines = [
+        "",
+        "\u274c  Container killed by Out-Of-Memory (OOM) killer — exit code 137",
+        "",
+    ]
+    if daemon_mem_bytes is not None:
+        mem_gb = daemon_mem_bytes / (1024**3)
+        lines.append(f"   Docker daemon has {mem_gb:.1f} GB memory available.")
+
+    if _is_colima_env(env):
+        lines.extend(
+            [
+                "",
+                "   Remediation (Colima):",
+                "     colima stop && colima start --memory 8 --cpu 4",
+            ]
+        )
+    elif sys.platform == "darwin":
+        lines.extend(
+            [
+                "",
+                "   Remediation (Docker Desktop):",
+                "     Increase memory in Docker Desktop > Settings > Resources > Memory",
+            ]
+        )
+    else:
+        lines.extend(
+            [
+                "",
+                "   Remediation (Linux):",
+                "     Check available memory with 'free -h'. Close other applications",
+                "     or increase system swap.",
+            ]
+        )
+
+    lines.extend(
+        [
+            "",
+            "   You can also set a container memory limit to fail predictably:",
+            "     POLECAT_DOCKER_MEMORY=6g polecat crew <project>",
+            "     polecat crew --memory 6g <project>",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def _resolve_memory_limit(cli_flag: str | None, config: dict | None = None) -> str | None:
+    """Resolve container memory limit from CLI flag, env var, or config.
+
+    Priority: CLI flag > POLECAT_DOCKER_MEMORY env var > polecat.yaml docker.memory > None
+    """
+    if cli_flag:
+        return cli_flag
+    env_val = os.environ.get("POLECAT_DOCKER_MEMORY")
+    if env_val:
+        return env_val
+    if config and config.get("docker", {}).get("memory"):
+        return config["docker"]["memory"]
+    return None
+
+
+def _warn_low_docker_memory(
+    memory_limit: str | None,
+    env: dict,
+    daemon_mem_bytes: int | None = None,
+) -> None:
+    """Print a warning if Docker daemon memory is too low."""
+    if daemon_mem_bytes is None:
+        daemon_mem_bytes = _get_docker_daemon_memory()
+    if daemon_mem_bytes is None:
+        return  # can't determine — skip warning
+
+    mem_gb = daemon_mem_bytes / (1024**3)
+
+    if mem_gb < _DOCKER_LOW_MEMORY_THRESHOLD_GB:
+        print(
+            f"\u26a0\ufe0f  Warning: Docker daemon has only {mem_gb:.1f} GB memory. "
+            "Crew sessions typically need 4-6 GB.",
+            file=sys.stderr,
+        )
+        if _is_colima_env(env):
+            print(
+                "   Increase with: colima stop && colima start --memory 8",
+                file=sys.stderr,
+            )
+        elif sys.platform == "darwin":
+            print(
+                "   Increase in Docker Desktop > Settings > Resources > Memory",
+                file=sys.stderr,
+            )
+
+    if memory_limit:
+        # Parse memory limit to bytes for comparison
+        limit_bytes = _parse_memory_string(memory_limit)
+        if limit_bytes and limit_bytes > daemon_mem_bytes * _DOCKER_MEMORY_LIMIT_WARN_RATIO:
+            print(
+                f"\u26a0\ufe0f  Warning: Memory limit ({memory_limit}) exceeds 80% of "
+                f"Docker daemon memory ({mem_gb:.1f} GB).",
+                file=sys.stderr,
+            )
+
+
+def _parse_memory_string(mem_str: str) -> int | None:
+    """Parse Docker memory string (e.g. '4g', '2048m', '1073741824') to bytes."""
+    mem_str = mem_str.strip().lower()
+    try:
+        if mem_str.endswith("g"):
+            return int(float(mem_str[:-1]) * 1024**3)
+        elif mem_str.endswith("m"):
+            return int(float(mem_str[:-1]) * 1024**2)
+        elif mem_str.endswith("k"):
+            return int(float(mem_str[:-1]) * 1024)
+        elif mem_str.endswith("b"):
+            return int(float(mem_str[:-1]))
+        else:
+            return int(mem_str)
+    except ValueError:
+        return None
+
+
+def _init_container_memory(
+    memory: str | None,
+    manager,
+    env: dict,
+) -> tuple[str | None, int | None]:
+    """Resolve container memory limit and emit daemon-memory warnings.
+
+    Returns (memory_limit, daemon_mem_bytes) for use in OOM reporting.
+    """
+    memory_limit = _resolve_memory_limit(memory, manager.config)
+    daemon_mem = _get_docker_daemon_memory()
+    _warn_low_docker_memory(memory_limit, env, daemon_mem)
+    return memory_limit, daemon_mem
+
+
 def _build_docker_cmd(
     cli_tool: str,
     work_dir: Path,
@@ -468,6 +798,7 @@ def _build_docker_cmd(
     tmp_files: list[Path] | None = None,
     session_dir: Path | None = None,
     session_volume: str | None = None,
+    memory_limit: str | None = None,
 ) -> DockerCmd:
     """Build a Docker command with appropriate mounts and env for an agent session.
 
@@ -481,6 +812,9 @@ def _build_docker_cmd(
     If session_volume is provided and cli_tool is "claude" or "shell", uses it as a
     Docker named volume at /home/worker/.claude/projects. Preferred in DinD environments
     where bind-mounted paths may not be host-visible.
+
+    If memory_limit is provided (e.g. "4g", "2048m"), sets ``--memory`` and
+    ``--memory-swap`` on the container to prevent silent OOM kills.
 
     If session_dir is provided (and session_volume is not), mounts it as a bind mount at
     /home/worker/.claude/projects so Claude session transcripts persist on the host.
@@ -497,6 +831,13 @@ def _build_docker_cmd(
     cmd.append("-i")
     if is_interactive:
         cmd.append("-t")
+
+    # Container memory limit — prevents silent OOM kills.
+    # Setting --memory-swap equal to --memory disables swap so the OOM kill
+    # fires at the configured limit with a clean exit code 137.
+    if memory_limit:
+        cmd.extend(["--memory", memory_limit])
+        cmd.extend(["--memory-swap", memory_limit])
 
     # Run as current user — Claude Code refuses --dangerously-skip-permissions under root
     uid = os.getuid()
@@ -523,20 +864,22 @@ def _build_docker_cmd(
     cmd.extend(["-e", f"GIT_COMMITTER_NAME={git_name}"])
     cmd.extend(["-e", f"GIT_COMMITTER_EMAIL={git_email}"])
 
-    # Workspace directory — injected via docker cp in _run_docker_container()
-    # to avoid bind mount failures on WSL2/Docker Desktop where bind-mounted
-    # volumes silently appear as empty directories.
+    # Workspace directory.
+    # Local daemon: bind-mount host worktree → /workspace (rw, agent must commit).
+    # Remote daemon: injected via docker cp in _run_docker_container() because
+    # bind mounts resolve daemon-side and the host worktree isn't there.
     workspace_dir = work_dir.resolve()
     cmd.extend(["-w", "/workspace"])
+    if not _is_remote_daemon():
+        cmd.extend(["-v", f"{workspace_dir}:/workspace"])
 
     # Mount authentication and plugin cache for Claude/Gemini.
     # Also mount for "shell" mode so users can run either CLI interactively.
     home = Path.home()
     staging_dir: Path | None = None
     if cli_tool in ("claude", "shell", "gemini"):
-        # Create a staging directory for auth files.  Files are injected into the
-        # container via `docker cp` (not bind mounts), so any writable temp dir works
-        # regardless of platform (WSL2, Colima, DinD).
+        # Create a staging directory for auth files. Bind-mounted (ro) into
+        # /tmp/staging on local daemons; injected via docker cp on remote ones.
         tmp_root = home / ".aops" / "tmp"
         tmp_root.mkdir(parents=True, exist_ok=True)
         staging_dir = Path(tempfile.mkdtemp(prefix="staging-", dir=tmp_root))
@@ -544,6 +887,8 @@ def _build_docker_cmd(
         if tmp_files is not None:
             tmp_files.append(staging_dir)
         _staging_dir = staging_dir
+        if not _is_remote_daemon():
+            cmd.extend(["-v", f"{staging_dir}:/tmp/staging:ro"])
 
     if cli_tool in ("claude", "shell"):
         assert (
@@ -667,23 +1012,115 @@ def _build_docker_cmd(
     cmd.extend(["-e", "GIT_TERMINAL_PROMPT=0"])
 
     # Session storage: transcripts persist beyond container lifetime.
-    # Bind mounts silently fail on WSL2/Docker Desktop so callers use
-    # extract_paths in _run_docker_container() to docker-cp sessions out
-    # after the container stops.  Named volumes (DinD) still work.
+    # Local daemon → bind-mount session_dir for live host visibility.
+    # Remote daemon → mkdir only; callers extract via docker cp after run.
+    # session_volume (named volume) is the DinD path and overrides both.
     if cli_tool in ("claude", "shell", "gemini"):
+        if cli_tool in ("claude", "shell"):
+            session_container_path = f"{container_home}/.claude/projects"
+        else:
+            session_container_path = f"{container_home}/.gemini/tmp"
         if session_volume:
-            # Named volume: preferred in DinD where bind-mount paths may not be
-            # accessible from the outer Docker daemon.
-            if cli_tool in ("claude", "shell"):
-                cmd.extend(["-v", f"{session_volume}:{container_home}/.claude/projects"])
-            else:
-                cmd.extend(["-v", f"{session_volume}:{container_home}/.gemini/tmp"])
+            cmd.extend(["-v", f"{session_volume}:{session_container_path}"])
         elif session_dir:
             session_dir.mkdir(parents=True, exist_ok=True)
+            if not _is_remote_daemon():
+                cmd.extend(["-v", f"{session_dir}:{session_container_path}"])
 
     cmd.append(image)
     cmd.extend(agent_cmd)
     return DockerCmd(cmd=cmd, staging_dir=_staging_dir, workspace_dir=workspace_dir)
+
+
+def _pkb_termination_watchdog(
+    container_id: str,
+    task_id: str,
+    cancel_event: threading.Event,
+) -> None:
+    """Poll PKB for task terminal status; kill the container when reached.
+
+    Issue #521 fix: Gemini CLI has no Stop hook, so polecat must detect
+    task completion externally. Polls PKB every
+    ``TERMINATION_POLL_INTERVAL_SECONDS`` via ``polecat.pkb_bridge.get_task``.
+    When the task reaches a terminal status (done / merge_ready / blocked /
+    cancelled) the watchdog waits ``POLECAT_TERMINATION_GRACE_SECONDS``
+    (default 60), sends SIGTERM to the container, then SIGKILL after
+    ``TERMINATION_SIGKILL_DELAY_SECONDS`` more.
+
+    ``cancel_event`` is set by the main thread when the CLI exits cleanly
+    on its own; the watchdog then returns without killing anything.
+    """
+    try:
+        from polecat.pkb_bridge import get_task as pkb_get_task
+    except Exception as exc:  # pragma: no cover — defensive
+        print(
+            f"   [termination watchdog] unable to import pkb_bridge: {exc}",
+            file=sys.stderr,
+        )
+        return
+
+    _grace_env = os.environ.get("POLECAT_TERMINATION_GRACE_SECONDS")
+    if _grace_env is not None:
+        try:
+            grace_seconds = int(_grace_env)
+        except ValueError:
+            print(
+                f"   [termination watchdog] POLECAT_TERMINATION_GRACE_SECONDS={_grace_env!r} "
+                f"is not a valid integer — failing fast (P#8). Aborting watchdog.",
+                file=sys.stderr,
+            )
+            return
+    else:
+        grace_seconds = DEFAULT_TERMINATION_GRACE_SECONDS
+
+    while not cancel_event.is_set():
+        try:
+            task = pkb_get_task(task_id)
+        except Exception as exc:  # pragma: no cover — network/transient
+            print(
+                f"   [termination watchdog] PKB poll failed for {task_id}: {exc}",
+                file=sys.stderr,
+            )
+            task = None
+
+        status = getattr(task, "status", None) if task is not None else None
+        if status in TERMINAL_PKB_STATUSES:
+            print(
+                f"   [termination watchdog] task {task_id} status={status!r}; "
+                f"grace={grace_seconds}s before SIGTERM",
+                file=sys.stderr,
+            )
+            # Grace period — respect cancellation so a natural exit wins.
+            if cancel_event.wait(timeout=grace_seconds):
+                return
+            try:
+                subprocess.run(
+                    ["docker", "kill", "--signal=TERM", container_id],
+                    capture_output=True,
+                    check=False,
+                )
+            except Exception as exc:  # pragma: no cover — docker transient
+                print(
+                    f"   [termination watchdog] docker kill TERM failed: {exc}",
+                    file=sys.stderr,
+                )
+            if cancel_event.wait(timeout=TERMINATION_SIGKILL_DELAY_SECONDS):
+                return
+            try:
+                subprocess.run(
+                    ["docker", "kill", "--signal=KILL", container_id],
+                    capture_output=True,
+                    check=False,
+                )
+            except Exception as exc:  # pragma: no cover — docker transient
+                print(
+                    f"   [termination watchdog] docker kill KILL failed: {exc}",
+                    file=sys.stderr,
+                )
+            return
+
+        if cancel_event.wait(timeout=TERMINATION_POLL_INTERVAL_SECONDS):
+            return
 
 
 def _run_docker_container(
@@ -694,29 +1131,46 @@ def _run_docker_container(
     capture_output: bool = False,
     text: bool = True,
     extract_paths: list[tuple[str, Path]] | None = None,
+    gemini: bool = False,
+    task_id: str | None = None,
 ) -> subprocess.CompletedProcess:
-    """Launch a Docker container, injecting workspace and staging files via docker cp.
+    """Launch a Docker container.
 
-    Uses ``docker create`` + ``docker cp`` + ``docker start`` instead of
-    ``docker run`` when workspace, staging files, or extraction is needed.
-    This avoids bind mount issues on WSL2/Docker Desktop where file mounts
-    appear as empty directories.
+    Local daemon: plain ``docker run`` — workspace/session/staging are bind
+    mounts added by ``_build_docker_cmd``. A ``--name polecat-{nonce}`` flag
+    lets the PKB watchdog target the container by name.
 
-    If ``extract_paths`` is provided, copies files out of the container after
-    it exits (before ``docker rm``).  Each entry is a ``(container_path,
-    host_path)`` tuple.  This is the reliable way to get session transcripts
-    out of the container, since bind-mounted session dirs may silently fail on
-    WSL2/Docker Desktop.
-
-    When no workspace_dir, staging_dir, or extract_paths is set, falls back
-    to a plain ``docker run``.
+    Remote daemon (or ``POLECAT_FORCE_STAGING=cp``): bind mounts cannot reach
+    a remote daemon's filesystem, so we fall back to ``docker create`` +
+    ``docker cp`` (workspace, staging in; ``extract_paths`` out) +
+    ``docker start -a``.
     """
     cmd = list(docker_cmd.cmd)  # copy to avoid mutation
 
-    needs_cp = docker_cmd.staging_dir or docker_cmd.workspace_dir or extract_paths
-    if not needs_cp:
-        # No staging, workspace injection, or extraction needed — plain docker run
-        return subprocess.run(cmd, cwd=cwd, env=env, capture_output=capture_output, text=text)
+    if not _is_remote_daemon():
+        # Local: bind mounts already in cmd. Add --name for watchdog targeting.
+        container_name = f"polecat-{task_id or uuid.uuid4().hex[:8]}"
+        cmd[3:3] = ["--name", container_name]
+
+        _watchdog_cancel = None
+        _watchdog_thread = None
+        if gemini and task_id:
+            _watchdog_cancel = threading.Event()
+            _watchdog_thread = threading.Thread(
+                target=_pkb_termination_watchdog,
+                args=(container_name, task_id, _watchdog_cancel),
+                name=f"polecat-watchdog-{task_id}",
+                daemon=True,
+            )
+            _watchdog_thread.start()
+
+        try:
+            return subprocess.run(cmd, cwd=cwd, env=env, capture_output=capture_output, text=text)
+        finally:
+            if _watchdog_cancel is not None:
+                _watchdog_cancel.set()
+            if _watchdog_thread is not None:
+                _watchdog_thread.join(timeout=5.0)
 
     # Replace "docker run --rm" with "docker create" (no --rm, we clean up manually)
     # The cmd starts with ["docker", "run", "--rm", ...]
@@ -730,15 +1184,70 @@ def _run_docker_container(
     container_id = result.stdout.strip()
 
     try:
-        # Copy workspace into the container (avoids bind mount failures on WSL2)
+        # Copy workspace into the container and fix ownership.
+        # docker cp writes files as root, but the container runs as the host UID
+        # (--user flag). We tar with --owner/--group to set the correct UID:GID
+        # during injection so pre-commit hooks, uv, and git can write to /workspace.
         if docker_cmd.workspace_dir:
-            cp_result = subprocess.run(
-                ["docker", "cp", f"{docker_cmd.workspace_dir}/.", f"{container_id}:/workspace"],
-                capture_output=True,
-                text=True,
-                cwd=cwd,
-                env=env,
+            user_spec = next(
+                (cmd[i + 1] for i, x in enumerate(cmd) if x == "--user"),
+                None,
             )
+            if user_spec:
+                uid_str, gid_str = (user_spec.split(":") + [user_spec])[:2]
+                # tar with forced ownership | docker cp from stdin
+                tar_cmd = [
+                    "tar",
+                    "-cf",
+                    "-",
+                ]
+                if sys.platform == "darwin":
+                    tar_cmd.extend(["--no-mac-metadata", "--no-xattrs"])
+                tar_cmd.extend(
+                    [
+                        "--owner",
+                        uid_str,
+                        "--group",
+                        gid_str,
+                        "-C",
+                        str(docker_cmd.workspace_dir),
+                        ".",
+                    ]
+                )
+                tar_proc = subprocess.Popen(
+                    tar_cmd,
+                    stdout=subprocess.PIPE,
+                    cwd=cwd,
+                )
+                cp_result = subprocess.run(
+                    ["docker", "cp", "-", f"{container_id}:/workspace"],
+                    stdin=tar_proc.stdout,
+                    capture_output=True,
+                    text=True,
+                    cwd=cwd,
+                    env=env,
+                )
+                assert tar_proc.stdout is not None
+                tar_proc.stdout.close()
+                tar_proc.wait()
+                if tar_proc.returncode != 0:
+                    print(
+                        f"tar failed (exit {tar_proc.returncode}) archiving workspace",
+                        file=sys.stderr,
+                    )
+                    if cp_result.returncode != 0:
+                        print(f"docker cp (workspace) failed: {cp_result.stderr}", file=sys.stderr)
+                    return subprocess.CompletedProcess(
+                        args=tar_cmd, returncode=tar_proc.returncode, stdout="", stderr=""
+                    )
+            else:
+                cp_result = subprocess.run(
+                    ["docker", "cp", f"{docker_cmd.workspace_dir}/.", f"{container_id}:/workspace"],
+                    capture_output=True,
+                    text=True,
+                    cwd=cwd,
+                    env=env,
+                )
             if cp_result.returncode != 0:
                 print(f"docker cp (workspace) failed: {cp_result.stderr}", file=sys.stderr)
                 return cp_result
@@ -762,9 +1271,31 @@ def _run_docker_container(
             start_cmd.append("-i")
         start_cmd.append(container_id)
 
-        run_result = subprocess.run(
-            start_cmd, cwd=cwd, env=env, capture_output=capture_output, text=text
-        )
+        # Issue #521: Gemini workers have no Stop hook, so polecat must
+        # watch PKB for a terminal status and kill the container when
+        # observed. Claude workers terminate via their own Stop hook —
+        # leave that path unchanged.
+        watchdog_cancel: threading.Event | None = None
+        watchdog_thread: threading.Thread | None = None
+        if gemini and task_id:
+            watchdog_cancel = threading.Event()
+            watchdog_thread = threading.Thread(
+                target=_pkb_termination_watchdog,
+                args=(container_id, task_id, watchdog_cancel),
+                name=f"polecat-watchdog-{task_id}",
+                daemon=True,
+            )
+            watchdog_thread.start()
+
+        try:
+            run_result = subprocess.run(
+                start_cmd, cwd=cwd, env=env, capture_output=capture_output, text=text
+            )
+        finally:
+            if watchdog_cancel is not None:
+                watchdog_cancel.set()
+            if watchdog_thread is not None:
+                watchdog_thread.join(timeout=5.0)
 
         # Extract files from container before cleanup (belt-and-suspenders
         # for session persistence — bind mounts silently fail on WSL2).
@@ -995,7 +1526,7 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
 # Priority 900 (Admin tier level) to ensure it takes precedence over user/workspace rules.
 
 [[rule]]
-toolName = ["write_file", "replace", "run_shell_command"]
+toolName = ["write_file", "replace"]
 argsPattern = {{ file_path = "{work_dir_str}/**" }}
 decision = "allow"
 priority = 900
@@ -1067,6 +1598,14 @@ description = "Deny writes outside the work directory"
                     json.dump(enablement, f, indent=2)
             except (json.JSONDecodeError, OSError):
                 shutil.copy2(enablement_src, dst_extensions / "extension-enablement.json")
+
+    # Replicate policies so that policy engine is active in sandbox sessions.
+    src_policies = gemini_dir / "policies"
+    if src_policies.is_dir():
+        dst_policies = target_dir / "policies"
+        dst_policies.mkdir(parents=True, exist_ok=True)
+        for policy in src_policies.glob("*.toml"):
+            shutil.copy2(policy, dst_policies / policy.name)
 
     # Make all replicated files and directories writable by any UID.
     # Gemini's sandbox container may run as a different user than the host
@@ -1553,34 +2092,12 @@ def sync(ctx, check, quiet, mirrors_only):
                     print(f"  {project_name}: path not found ({repo_path})")
                 continue
 
-            if check:
-                # Just report status
-                success, msg = _sync_working_repo(repo_path, auto_commit=False, quiet=quiet)
-                if not success or not quiet:
-                    print(f"  {msg}")
-                if not success:
-                    needs_attention.append(project_name)
-            else:
-                success, msg = _sync_working_repo(repo_path, auto_commit=False, quiet=quiet)
-                if not success or not quiet:
-                    print(f"  {msg}")
-                if not success:
-                    needs_attention.append(project_name)
-
-        # Also sync AOPS_SESSIONS — fail fast if not a git repo
-        sessions_path = _get_sessions_base()
-        if not (sessions_path / ".git").exists():
-            print(
-                f"  ✗ sessions: not a git repo ({sessions_path}). Run 'polecat init'.",
-                file=sys.stderr,
-            )
-            needs_attention.append("sessions")
-        else:
-            success, msg = _sync_working_repo(sessions_path, auto_commit=True, quiet=quiet)
+            auto_commit = bool(project_cfg.get("auto_commit", False)) and not check
+            success, msg = _sync_working_repo(repo_path, auto_commit=auto_commit, quiet=quiet)
             if not success or not quiet:
                 print(f"  {msg}")
             if not success:
-                needs_attention.append("sessions")
+                needs_attention.append(project_name)
 
         if not quiet:
             if needs_attention:
@@ -2530,16 +3047,20 @@ def sweep(ctx, stale_days):
                 print(f"    ⚠ Could not parse updatedAt '{updated_at_str}': {e}")
 
 
-def _clone_has_changes(repo_path: Path) -> bool:
-    """Check if a crew clone has any changes (committed or uncommitted) vs its upstream.
+def _clone_has_changes(repo_path: Path, branch_name: str) -> bool:
+    """Check if a crew branch has pushed work not yet merged to the default branch.
+
+    Fetches fresh state from origin before checking, so this is correct even
+    when the local clone is stale (e.g. after a Docker session where commits
+    happened inside the container and were pushed directly to origin).
 
     Returns True if:
-    - There are uncommitted changes in the working tree
-    - The content of the current branch differs from the upstream default branch
-    Returns False if the clone is clean and identical to origin/HEAD.
+    - There are uncommitted local changes in the working tree, OR
+    - The remote crew branch has commits with content not yet in the default branch
+    Returns False if the remote branch is absent, merged, or squash-merged.
     """
     try:
-        # Check for uncommitted changes (staged or unstaged)
+        # Check for uncommitted local changes (catches non-Docker in-progress work)
         status = subprocess.run(
             ["git", "status", "--porcelain"],
             cwd=repo_path,
@@ -2550,8 +3071,7 @@ def _clone_has_changes(repo_path: Path) -> bool:
         if status.returncode == 0 and status.stdout.strip():
             return True
 
-        # Check for commits beyond the merge base with origin's default branch
-        # First, determine the default branch
+        # Determine the default branch name
         head_result = subprocess.run(
             ["git", "symbolic-ref", "refs/remotes/origin/HEAD"],
             cwd=repo_path,
@@ -2559,22 +3079,72 @@ def _clone_has_changes(repo_path: Path) -> bool:
             text=True,
             timeout=10,
         )
-        if head_result.returncode == 0:
-            default_branch = head_result.stdout.strip()  # e.g., refs/remotes/origin/main
-        else:
-            default_branch = "origin/main"
+        default_ref = (
+            head_result.stdout.strip()
+            if head_result.returncode == 0
+            else "refs/remotes/origin/main"
+        )
+        default_branch_short = default_ref.removeprefix("refs/remotes/origin/")
 
-        # git diff --quiet returns 0 if no differences, 1 if there are differences
-        diff = subprocess.run(
-            ["git", "diff", "--quiet", default_branch, "HEAD"],
+        # Use ls-remote to check branch existence on origin.
+        # Cleanly separates "branch absent" (exit 0, empty stdout) from
+        # "can't reach origin" (exit non-0 → unknown state → preserve).
+        remote_branch_ref = f"refs/remotes/origin/{branch_name}"
+        ls_remote = subprocess.run(
+            ["git", "ls-remote", "origin", f"refs/heads/{branch_name}"],
             cwd=repo_path,
             capture_output=True,
+            text=True,
             timeout=10,
         )
-        return diff.returncode != 0
-    except (FileNotFoundError, subprocess.TimeoutExpired):
-        # If we can't determine, assume there are changes (safe default)
-        return True
+        if ls_remote.returncode != 0:
+            # Can't reach origin — cannot determine state; safe default is preserve.
+            return True
+        if not ls_remote.stdout.strip():
+            # Origin reachable but branch absent — nothing was pushed, safe to nuke.
+            return False
+
+        # Branch exists on remote. Fetch fresh state to update local tracking refs.
+        subprocess.run(
+            ["git", "fetch", "origin", branch_name, default_branch_short],
+            cwd=repo_path,
+            capture_output=True,
+            timeout=15,
+            check=False,
+        )
+
+        # Count commits on the remote crew branch not reachable from remote default.
+        rev_count = subprocess.run(
+            ["git", "rev-list", "--count", f"{default_ref}..{remote_branch_ref}"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if rev_count.returncode == 0:
+            count = int(rev_count.stdout.strip())
+            if count == 0:
+                # All commits are ancestors of the default branch (normal merge).
+                return False
+
+            # Commits exist beyond the default branch. Check if content is identical —
+            # this handles squash-merge/rebase where commits land in main with
+            # different SHAs but the same file content.
+            diff = subprocess.run(
+                ["git", "diff", "--quiet", default_ref, remote_branch_ref],
+                cwd=repo_path,
+                capture_output=True,
+                timeout=10,
+            )
+            if diff.returncode == 0:
+                # Content identical to default → squash-merged → safe to nuke.
+                return False
+            return True  # Genuine unmerged work exists — preserve.
+
+    except (FileNotFoundError, subprocess.TimeoutExpired, ValueError):
+        pass
+    # If we can't determine, assume there are changes (safe default).
+    return True
 
 
 def _branch_has_open_pr(branch_name: str, repo_path: Path) -> bool:
@@ -2603,9 +3173,10 @@ def _branch_has_open_pr(branch_name: str, repo_path: Path) -> bool:
 @click.option("--interactive", "-i", is_flag=True, help="Drop into an interactive shell (no agent)")
 @click.option("--resume", "-r", help="Resume existing crew worker by name")
 @click.option("--keep", "-k", is_flag=True, help="Keep worktree even if a PR is open")
+@click.option("--memory", default=None, help="Container memory limit (e.g. 4g, 2048m)")
 @click.argument("agent_args", nargs=-1, type=click.UNPROCESSED)
 @click.pass_context
-def crew_alias(ctx, target, extra, name, gemini, interactive, resume, keep, agent_args):
+def crew_alias(ctx, target, extra, name, gemini, interactive, resume, keep, memory, agent_args):
     """Shorthand for 'crew'. See 'polecat crew --help'."""
     ctx.invoke(
         crew,
@@ -2616,6 +3187,7 @@ def crew_alias(ctx, target, extra, name, gemini, interactive, resume, keep, agen
         interactive=interactive,
         resume=resume,
         keep=keep,
+        memory=memory,
         agent_args=agent_args,
     )
 
@@ -2628,9 +3200,10 @@ def crew_alias(ctx, target, extra, name, gemini, interactive, resume, keep, agen
 @click.option("--interactive", "-i", is_flag=True, help="Drop into an interactive shell (no agent)")
 @click.option("--resume", "-r", help="Resume existing crew worker by name")
 @click.option("--keep", "-k", is_flag=True, help="Keep worktree even if a PR is open")
+@click.option("--memory", default=None, help="Container memory limit (e.g. 4g, 2048m)")
 @click.argument("agent_args", nargs=-1, type=click.UNPROCESSED)
 @click.pass_context
-def crew(ctx, target, extra, name, gemini, interactive, resume, keep, agent_args):
+def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, agent_args):
     """Start an interactive crew session with worker isolation.
 
     Crew workers are persistent, named agents for interactive collaboration.
@@ -2751,6 +3324,82 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, agent_args
                     )
                     if merge_result.stderr:
                         print(f"      Git error: {merge_result.stderr.strip()}")
+
+                # Detect divergence between local crew branch and its origin
+                # counterpart (e.g. force-push upstream). The previous
+                # implementation silently ignored this.
+                crew_branch = f"crew/{crew_name}"
+                remote_ref = f"refs/remotes/origin/{crew_branch}"
+                remote_exists = (
+                    subprocess.run(
+                        ["git", "rev-parse", "--verify", "--quiet", remote_ref],
+                        cwd=project_dir,
+                        capture_output=True,
+                    ).returncode
+                    == 0
+                )
+                local_exists = (
+                    subprocess.run(
+                        ["git", "rev-parse", "--verify", "--quiet", f"refs/heads/{crew_branch}"],
+                        cwd=project_dir,
+                        capture_output=True,
+                    ).returncode
+                    == 0
+                )
+                if remote_exists and local_exists:
+                    local_anc = (
+                        subprocess.run(
+                            [
+                                "git",
+                                "merge-base",
+                                "--is-ancestor",
+                                f"refs/heads/{crew_branch}",
+                                remote_ref,
+                            ],
+                            cwd=project_dir,
+                            capture_output=True,
+                        ).returncode
+                        == 0
+                    )
+                    remote_anc = (
+                        subprocess.run(
+                            [
+                                "git",
+                                "merge-base",
+                                "--is-ancestor",
+                                remote_ref,
+                                f"refs/heads/{crew_branch}",
+                            ],
+                            cwd=project_dir,
+                            capture_output=True,
+                        ).returncode
+                        == 0
+                    )
+                    if local_anc and not remote_anc:
+                        ahead = subprocess.run(
+                            [
+                                "git",
+                                "rev-list",
+                                "--count",
+                                f"refs/heads/{crew_branch}..{remote_ref}",
+                            ],
+                            cwd=project_dir,
+                            capture_output=True,
+                            text=True,
+                        ).stdout.strip()
+                        print(
+                            f"   \u26a0 {crew_branch} is {ahead} commits behind "
+                            f"origin/{crew_branch}. Run 'git pull --ff-only' "
+                            f"inside the crew session."
+                        )
+                    elif not local_anc and not remote_anc:
+                        print(
+                            f"   \u274c {crew_branch} has DIVERGED from "
+                            f"origin/{crew_branch} (likely force-push upstream). "
+                            f"Local and remote have commits the other doesn't. "
+                            f"Resolve manually: 'git log --oneline --graph "
+                            f"HEAD origin/{crew_branch}'."
+                        )
         projects = list(clone_paths.keys())
     else:
         try:
@@ -2825,6 +3474,9 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, agent_args
     project_slug = target or projects[0]
     session_dir = _get_sessions_base() / "crew" / crew_name / project_slug
 
+    # Resolve container memory limit and check daemon memory
+    memory_limit, daemon_mem = _init_container_memory(memory, manager, env)
+
     tmp_gemini_home = None
     tmp_files: list[Path] = []
     if gemini:
@@ -2850,6 +3502,7 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, agent_args
             is_interactive=not headless,
             tmp_files=tmp_files,
             session_dir=session_dir,
+            memory_limit=memory_limit,
         )
 
         # Copy replicated .gemini/ auth into staging_dir so docker cp injects
@@ -2873,6 +3526,7 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, agent_args
             is_interactive=True,
             tmp_files=tmp_files,
             session_dir=session_dir,
+            memory_limit=memory_limit,
         )
         final_cmd = docker_cmd.cmd
     else:
@@ -2887,6 +3541,7 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, agent_args
             is_interactive=not headless,
             tmp_files=tmp_files,
             session_dir=session_dir,
+            memory_limit=memory_limit,
         )
         final_cmd = docker_cmd.cmd
     print(f"   Sessions: {session_dir}")
@@ -2897,6 +3552,7 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, agent_args
         final_cmd[0] = resolved
 
     set_terminal_title(f"crew:{crew_name}")
+    result = None
     try:
         if docker_cmd and docker_cmd.staging_dir:
             # Extract session transcripts after the container stops.
@@ -2907,14 +3563,14 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, agent_args
                 extract.append(("/home/worker/.gemini/tmp", session_dir))
             else:
                 extract.append(("/home/worker/.claude/projects", session_dir))
-            _run_docker_container(
+            result = _run_docker_container(
                 docker_cmd,
                 cwd=work_dir,
                 env=env,
                 extract_paths=extract,
             )
         else:
-            subprocess.run(final_cmd, cwd=work_dir, env=env)
+            result = subprocess.run(final_cmd, cwd=work_dir, env=env)
     except FileNotFoundError:
         print(f"Error: '{cli_tool}' command not found.", file=sys.stderr)
         sys.exit(1)
@@ -2934,6 +3590,8 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, agent_args
                 tmp_file.unlink(missing_ok=True)
 
     print("-" * 50)
+    if result is not None and result.returncode == 137:
+        print(_format_oom_message(env, daemon_mem))
     print(f"\n\U0001f4cb Crew '{crew_name}' session ended.")
 
     # Auto-cleanup: nuke clone if no changes were made or a PR is open
@@ -2941,7 +3599,7 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, agent_args
     auto_nuke = False
     nuke_reason = ""
     if not keep:
-        if not _clone_has_changes(work_dir):
+        if not _clone_has_changes(work_dir, branch_name):
             auto_nuke = True
             nuke_reason = "no changes made"
         elif _branch_has_open_pr(branch_name, work_dir):
@@ -3093,12 +3751,34 @@ class _IssueTask:
     is_flag=True,
     help="Skip automatic 'polecat finish' on successful completion",
 )
+@click.option("--memory", default=None, help="Container memory limit (e.g. 4g, 2048m)")
 @click.pass_context
-def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no_auto_finish):
+def run(
+    ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no_auto_finish, memory
+):
     """Run a polecat cycle: claim → setup → work → finish.
 
     Claims a task, spawns a worktree, and runs claude with the task context.
     On successful completion (exit code 0), automatically runs `polecat finish`.
+
+    Turn budget (--max-turns semantics):
+        One "turn" = one full agentic loop iteration: the model generates a
+        response (potentially with many tool_use blocks) and all tool results
+        are returned.  Calling 10 tools in a single response still counts as
+        ONE turn.  The budget is derived from the task's effort field:
+
+            XS  →  40 turns   (trivial, single-file edits)
+            S   →  70 turns   (small, a few files)
+            M   → 100 turns   (typical PR-scoped work — default)
+            L   → 150 turns   (large, multi-component)
+            (no effort field) → 100 turns
+
+        Hook overhead (~2–4 turns per session for the hydration gate and
+        custodiet compliance check) counts against the budget.
+
+        When the budget is exhausted polecat emits a diagnostic showing the
+        last observed tool call so supervisors can assess over-exploration
+        without reading the full transcript.
 
     Examples:
         polecat run -p aops              # Run next ready task from aops project
@@ -3242,10 +3922,19 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
     if gemini:
         # Gemini CLI — run inside our Docker container (not --sandbox, which
         # uses bind mounts that fail on WSL2/Docker Desktop).
+        #
+        # Sandbox allowlist (#522): Gemini's workspace sandbox blocks reads of
+        # files outside /workspace, including the aops-core extension's
+        # GEMINI.md and sibling skills. Explicitly widen the allowlist to the
+        # extension directory so read_file / activate_skill work.  Keep this
+        # list narrow — DO NOT blanket-widen; each entry is a specific dir
+        # the agent needs to reach.
         cmd = [
             "gemini",
             "--approval-mode",
             "yolo",
+            "--include-directories",
+            "/home/worker/.gemini/extensions/aops-core",
         ]
 
         if interactive:
@@ -3267,12 +3956,15 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
             cmd.append(prompt)
         else:
             # Headless: use -p for print mode
-            cmd.extend(["-p", prompt, "--max-turns", HEADLESS_CLAUDE_MAX_TURNS])
+            cmd.extend(["-p", prompt, "--max-turns", _compute_max_turns(task)])
 
     # Set session type environment variable for hooks to detect
     # Use sanitized env: SSH stripped, git auth set to bot token only
     env = _make_worker_env(interactive=interactive, work_dir=worktree_path)
     env["POLECAT_SESSION_TYPE"] = "polecat"
+
+    # Resolve container memory limit and check daemon memory
+    memory_limit, daemon_mem = _init_container_memory(memory, manager, env)
 
     tmp_gemini_home = None
     tmp_files: list[Path] = []
@@ -3301,6 +3993,7 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
             is_interactive=interactive,
             tmp_files=tmp_files,
             session_dir=run_session_dir,
+            memory_limit=memory_limit,
         )
 
         # Copy replicated .gemini/ auth into staging_dir so docker cp injects
@@ -3324,6 +4017,7 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
             is_interactive=interactive,
             tmp_files=tmp_files,
             session_dir=run_session_dir,
+            memory_limit=memory_limit,
         )
         final_cmd = docker_cmd.cmd
     print(f"   Sessions: {run_session_dir}")
@@ -3353,6 +4047,8 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
                     cwd=worktree_path,
                     env=env,
                     extract_paths=_extract,
+                    gemini=gemini,
+                    task_id=task.id,
                 )
             else:
                 result = subprocess.run(
@@ -3371,6 +4067,8 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
                     capture_output=True,
                     text=True,
                     extract_paths=_extract,
+                    gemini=gemini,
+                    task_id=task.id,
                 )
             else:
                 result = subprocess.run(
@@ -3400,6 +4098,9 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
                 print(f"📝 Transcript saved: {transcript_path}")
             except OSError as e:
                 print(f"⚠️  Warning: Failed to save transcript: {e}", file=sys.stderr)
+
+            # Detect turn-budget exhaustion and emit supervisor-friendly diagnostic
+            _emit_budget_hit_diagnostic(result.stdout, result.stderr, _compute_max_turns(task))
 
             # Analyze the transcript for failures
             analyze_func = getattr(manager, "analyze_transcript", None)
@@ -3495,7 +4196,10 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
             print("📝 Auto-finish disabled. Run `polecat finish` when ready.")
             print(f"   Worktree: {worktree_path}")
     else:
-        print(f"\n⚠️  Agent exited with code {exit_code}. Skipping auto-finish.")
+        if exit_code == 137:
+            print(_format_oom_message(env, daemon_mem))
+        else:
+            print(f"\n⚠️  Agent exited with code {exit_code}. Skipping auto-finish.")
         print(f"   Worktree: {worktree_path}")
         print(f"   To finish manually: cd {worktree_path} && polecat finish")
 

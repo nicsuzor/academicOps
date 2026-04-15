@@ -20,6 +20,14 @@ REPO="${REPO:-nicsuzor/academicOps}"
 WORKFLOWS_DIR=".github/workflows"
 RULESET_FILE=".github/rulesets/pr-review-and-merge.yml"
 
+# ── API-driven commit statuses ───────────────────────────────────────────────
+# These are required status checks that are set via the GitHub Statuses API
+# (not by a workflow job). They have no corresponding job name in workflow files
+# and must be explicitly listed here to pass validation.
+API_DRIVEN_STATUSES=(
+  "merge-prep-status"   # set by agent-merge-prep.yml and pr-pipeline.yml Initialize job
+)
+
 # ── Extract required check names ────────────────────────────────────────────
 
 if [[ "${1:-}" == "--repo" ]] && [[ -n "${2:-}" ]]; then
@@ -68,6 +76,20 @@ ERRORS=0
 echo "Checking alignment..."
 
 while IFS= read -r required; do
+  # Check if this is a known API-driven commit status (not a workflow job name)
+  is_api_driven=false
+  for api_status in "${API_DRIVEN_STATUSES[@]}"; do
+    if [[ "$required" == "$api_status" ]]; then
+      is_api_driven=true
+      break
+    fi
+  done
+
+  if [[ "$is_api_driven" == "true" ]]; then
+    echo "  ✓ '$required' — API-driven commit status (set via GitHub Statuses API, not a job name)"
+    continue
+  fi
+
   # GitHub Actions prepends the caller workflow and job ID for reusable workflows
   # e.g., "PR Review Pipeline / lint / Lint". We strip everything up to the last " / "
   # to match against the actual job name defined in the reusable workflow YAML.

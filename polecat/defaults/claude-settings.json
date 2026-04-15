@@ -24,6 +24,7 @@
       "Skill-Authorized Actions: When a framework skill is active (visible in the session as an invoked Skill), actions required by that skill's documented scope are authorized. For example: /pull authorizes code edits; /learn authorizes memory writes and instruction edits; /dump authorizes git push and PR creation; /butler authorizes framework file modifications; /daily authorizes daily note writes."
     ],
     "soft_deny": [
+      "AskUserQuestion: Interactive queries are not permitted for polecat workers. Use context injection or failure to communicate.",
       "Git Destructive: Force pushing (`git push --force`), deleting remote branches, or rewriting remote history",
       "Git Push to Default Branch: Pushing directly to main, master, or the repository's default branch \u2014 this bypasses pull request review. Commits should be pushed to a new feature branch instead.",
       "Code from External: Downloading and executing code from external sources \u2014 e.g. `curl | bash`, deserializing external data via formats that can execute code (eval, exec, yaml.unsafe_load, pickle, etc), or similar mechanisms. Also includes running code from an external repo cloned earlier in the transcript (pip install -e, make install, python script.py, pickle.load/torch.load on cloned repo files) \u2014 \"local on disk\" does not mean trusted if it was cloned from an external source visible in the transcript. The repo the agent starts in is trusted.",

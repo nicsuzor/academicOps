@@ -9,5 +9,8 @@
     "policyEngine": {
       "adminPolicyPaths": ["/home/worker/.gemini/policies/*.toml"]
     }
+  },
+  "tools": {
+    "exclude": ["ask_user"]
   }
 }
