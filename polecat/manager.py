@@ -1273,6 +1273,7 @@ class PolecatManager:
                     ["git", "push", "origin", "--delete", branch_name],
                     cwd=worktree_path,
                     capture_output=True,
+                    check=True,
                 )
                 branch_exists = False
             else:
