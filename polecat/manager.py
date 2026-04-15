@@ -563,8 +563,6 @@ class PolecatManager:
         default_branch = project_config.get("default_branch", "main")
 
         crew_path = self.crew_dir / name
-        crew_path.mkdir(exist_ok=True)
-
         worktree_path = crew_path / project
         branch_name = f"crew/{name}"
 
@@ -574,6 +572,10 @@ class PolecatManager:
                 f"Use 'polecat crew -r {name}' to resume, or 'polecat nuke {name}' to start fresh."
             )
 
+        # Acquire the lock BEFORE creating crew_path so that list_crew()'s
+        # lock-file guard closes the race window completely: without this
+        # ordering, list_crew() could see an empty, lock-free dir and delete it
+        # before the lock file is created.
         lock_path = self._crew_lock_path(name)
         with open(lock_path, "w") as lock_file:
             try:
@@ -583,6 +585,8 @@ class PolecatManager:
                     f"Another crew operation is in progress for '{name}'. "
                     f"Wait for it to finish, or remove {lock_path} if stale."
                 ) from exc
+
+            crew_path.mkdir(exist_ok=True)
 
             # Check residual remote crew branch before we clone anything.
             # Classify against the local source repo (has github auth + gh CLI).
