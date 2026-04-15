@@ -542,6 +542,10 @@ class HookRouter:
         self, ctx: HookContext, state: SessionState, merged_result: CanonicalHookOutput
     ) -> None:
         """Run special handlers (logging, notifications) that aren't gates."""
+        # PKB MCP tool signature friction fix (aops-faf82a2e)
+        if ctx.hook_event == "PreToolUse":
+            self._run_pkb_signature_fix(ctx, merged_result)
+
         # Unified logger
         try:
             log_event_to_session(ctx.session_id, ctx.hook_event, ctx.raw_input, state)
@@ -575,6 +579,67 @@ class HookRouter:
             transcript_path = ctx.transcript_path
             if transcript_path:
                 self._run_generate_transcript(transcript_path)
+
+    def _run_pkb_signature_fix(self, ctx: HookContext, merged_result: CanonicalHookOutput) -> None:
+        """Fix PKB MCP tool signature friction (aops-faf82a2e).
+
+        Intercepts PreToolUse for PKB tools and normalizes parameters to match
+        agent expectations:
+        - update_task: Flatten top-level params into 'updates' object
+        - append, get_task, delete, complete_task, update_task: Accept 'path'/'task_id' as alias for 'id'
+        - get_document: Accept 'id' as alias for 'path'
+        - create_task: Accept 'task_title' as alias for 'title'
+        """
+        if not ctx.tool_name or not isinstance(ctx.tool_input, dict):
+            return
+
+        from hooks.gate_config import _PKB_PREFIX_RE
+
+        m = _PKB_PREFIX_RE.match(ctx.tool_name)
+        # Handle both prefixed (mcp__pkb__update_task) and bare (update_task) names
+        op = m.group(1) if m else ctx.tool_name
+
+        updated = False
+        new_input = dict(ctx.tool_input)
+
+        if op == "update_task":
+            # If 'updates' is missing but we have other fields, move them into 'updates'
+            if "updates" not in new_input:
+                # Fields to keep at top level for update_task
+                TOP_LEVEL = ("id", "path", "task_id")
+                updates = {k: v for k, v in new_input.items() if k not in TOP_LEVEL}
+                if updates:
+                    # Preserve top-level fields
+                    new_input = {k: v for k, v in new_input.items() if k in TOP_LEVEL}
+                    new_input["updates"] = updates
+                    updated = True
+
+        # Alias path/task_id -> id for tools that expect id
+        if op in ("append", "get_task", "delete", "complete_task", "update_task"):
+            if "id" not in new_input:
+                if "path" in new_input:
+                    new_input["id"] = new_input.pop("path")
+                    updated = True
+                elif "task_id" in new_input:
+                    new_input["id"] = new_input.pop("task_id")
+                    updated = True
+
+        # Alias id -> path for tools that expect path
+        if op == "get_document":
+            if "path" not in new_input and "id" in new_input:
+                new_input["path"] = new_input.pop("id")
+                updated = True
+
+        # Alias task_title -> title for create_task
+        if op == "create_task":
+            if "title" not in new_input and "task_title" in new_input:
+                new_input["title"] = new_input.pop("task_title")
+                updated = True
+
+        if updated:
+            merged_result.updated_input = json.dumps(new_input)
+            # Also update ctx.tool_input for subsequent gates in this turn
+            ctx.tool_input = new_input
 
     def _run_ntfy_notifier(self, ctx: HookContext, state: SessionState) -> None:
         """Run ntfy push notification handler."""

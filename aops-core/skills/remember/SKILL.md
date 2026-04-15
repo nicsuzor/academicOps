@@ -112,7 +112,7 @@ Is this about the user? (projects, goals, context, tasks)
 
 - Individual agent actions: "Completed X on DATE" → `mcp__pkb__create_task(title="...", type="task", project="<project>", parent="<parent-id>")`
 - Debugging logs: "Discovered bug in Y" → `mcp__pkb__create_task(title="...", type="task", project="<project>", parent="<parent-id>", tags=["bug"])`
-- Experiment step-by-step records: "Tried approach A" → `mcp__pkb__update_task(id="...", updates={"body": "..."})`
+- Experiment step-by-step records: "Tried approach A" → `mcp__pkb__update_task(id="...", body="...")`
 
 **Rule**: If it describes agent activity or debugging, it's operational episodic → tasks MCP.
 

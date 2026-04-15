@@ -104,7 +104,7 @@ active → in_progress → merge_ready (PR filed) → done (after merge)
 Use `update_task` to claim:
 
 ```
-update_task(id="<task-id>", updates={"status": "in_progress", "assignee": "polecat"})
+update_task(id="<task-id>", status="in_progress", assignee="polecat")
 ```
 
 ### Releasing Tasks
@@ -131,7 +131,7 @@ release_task(id, status, summary, pr_url?, branch?, blocker?, reason?)
 
 ### Why `release_task` Instead of `update_task`
 
-`update_task(updates={...})` requires a nested JSON object, which agents frequently serialize as a string instead of an object, drop fields on retry, or forget entirely. `release_task` uses flat string parameters and always requires a summary, making it harder to lose information than to capture it.
+`update_task` historically required a nested `updates={...}` JSON object, which agents frequently serialized as a string instead of an object, dropped fields on retry, or forgot entirely. While it now supports flat parameters for convenience, `release_task` remains preferred for terminal transitions because it uses flat string parameters and always requires a summary, making it harder to lose information than to capture it.
 
 `update_task` remains for non-terminal field changes (priority, tags, assignee, body). It soft-hints toward `release_task` when a terminal status is detected.
 

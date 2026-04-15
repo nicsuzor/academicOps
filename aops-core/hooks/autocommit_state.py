@@ -53,14 +53,14 @@ def generate_commit_message(tool_name: str, tool_input: dict[str, Any]) -> str:
 
     # Task operations (suffix matching for client-agnostic tool names)
     if re.search(r"(?:__|^|:)create_task$", tool_name):
-        title = tool_input.get("title", tool_input.get("task_title", ""))
+        title = tool_input.get("title") or tool_input.get("task_title") or ""
         if title:
             return f"task: create '{title[:60]}'"
         return "task: create"
 
     if re.search(r"(?:__|^|:)update_task$", tool_name):
-        task_id = tool_input.get("id", "")
-        title = tool_input.get("title", tool_input.get("task_title"))
+        task_id = tool_input.get("id") or tool_input.get("task_id") or tool_input.get("path") or ""
+        title = tool_input.get("title") or tool_input.get("task_title")
         if title:
             return f"task: update '{title[:60]}'"
         if task_id:

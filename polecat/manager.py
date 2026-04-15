@@ -1351,6 +1351,8 @@ class PolecatManager:
                     capture_output=True,
                 )
                 if result.returncode == 0:
+                    # Existing valid worktree - still verify it's based on recent main
+                    self._verify_worktree_setup(worktree_path, branch_name, default_branch)
                     return worktree_path
                 # Worktree exists but is broken (orphan branch or corrupted)
                 print(
@@ -1407,8 +1409,33 @@ class PolecatManager:
             text=True,
         )
 
+        branch_exists = False
         if branch_exists_result.stdout.strip():
-            # Exists remotely — fetch then checkout and track
+            # Exists remotely — check if it is already merged into the default branch.
+            # If so, we want to start fresh from the current tip of the default branch.
+            remote_sha = branch_exists_result.stdout.split()[0]
+            is_merged_result = subprocess.run(
+                ["git", "merge-base", "--is-ancestor", remote_sha, f"origin/{default_branch}"],
+                cwd=worktree_path,
+                capture_output=True,
+            )
+            if is_merged_result.returncode == 0:
+                print(
+                    f"  Branch {branch_name} (at {remote_sha[:8]}) is already merged into {default_branch}."
+                )
+                print(f"  Deleting stale remote branch and starting fresh from {default_branch}...")
+                subprocess.run(
+                    ["git", "push", "origin", "--delete", branch_name],
+                    cwd=worktree_path,
+                    capture_output=True,
+                    check=True,
+                )
+                branch_exists = False
+            else:
+                branch_exists = True
+
+        if branch_exists:
+            # Exists remotely and not merged — fetch then checkout and track
             subprocess.run(
                 ["git", "fetch", "origin", branch_name],
                 cwd=worktree_path,
@@ -1645,7 +1672,7 @@ class PolecatManager:
                 file=sys.stderr,
             )
 
-    def create_sandbox_settings(self, worktree_path: Path) -> None:
+    def create_sandbox_settings(self, worktree_path: Path) -> Path:
         """Write .claude/settings.json and .gemini/policies/sandbox.toml to sandbox access.
 
         The settings permit Write and Edit operations within the worktree directory.
@@ -1715,6 +1742,8 @@ denyMessage = "File edits are restricted to the worktree: {worktree_str}"
         policy_path = gemini_policies_dir / "sandbox.toml"
         policy_path.write_text(policy_content)
 
+        return settings_path
+
     def _verify_worktree_setup(self, worktree_path: Path, branch_name: str, default_branch: str):
         """Verify worktree is correctly set up for the PR workflow.
 
@@ -1743,7 +1772,20 @@ denyMessage = "File edits are restricted to the worktree: {worktree_str}"
             )
 
         # 2. Verify branch is based on recent main
-        # Get the merge-base between our branch and origin/main (if available)
+        # Ensure we have the latest origin/main for comparison
+        fetch_result = subprocess.run(
+            ["git", "fetch", "origin", default_branch],
+            cwd=worktree_path,
+            capture_output=True,
+            text=True,
+        )
+        if fetch_result.returncode != 0:
+            raise RuntimeError(
+                f"Failed to fetch origin/{default_branch} in {worktree_path}: "
+                f"{fetch_result.stderr.strip()}"
+            )
+
+        # Get the merge-base between our branch and origin/main
         merge_base_result = subprocess.run(
             ["git", "merge-base", "HEAD", f"origin/{default_branch}"],
             cwd=worktree_path,
@@ -1751,13 +1793,14 @@ denyMessage = "File edits are restricted to the worktree: {worktree_str}"
             text=True,
         )
         if merge_base_result.returncode == 0:
+            merge_base = merge_base_result.stdout.strip()
             # Check how many commits behind origin/main we are
             commits_behind_res = subprocess.run(
                 [
                     "git",
                     "rev-list",
                     "--count",
-                    f"{merge_base_result.stdout.strip()}..origin/{default_branch}",
+                    f"{merge_base}..origin/{default_branch}",
                 ],
                 cwd=worktree_path,
                 capture_output=True,

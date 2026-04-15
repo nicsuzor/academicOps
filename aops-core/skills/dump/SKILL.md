@@ -64,7 +64,7 @@ Execute the [[base-handover]] workflow. The steps are:
    ```
    If no PR was filed: use `status="review"` with `reason="session ended, work incomplete"`.
    If no task was claimed, create a historical task first.
-   **Fallback**: If `mcp__pkb__release_task` is not available, use `mcp__pkb__update_task(id="<task-id>", updates={"status": "merge_ready"})`.
+   **Fallback**: If `mcp__pkb__release_task` is not available, use `mcp__pkb__update_task(id="<task-id>", status="merge_ready")`.
    **Note (Gemini workers, #521)**: Calling `release_task` with a terminal status (done/merge_ready/blocked/cancelled) is what lets the polecat supervisor detect termination via PKB polling and shut the container down — Gemini has no Stop hook, so skipping this will leave the worker running until an external timeout.
 3. **File follow-up tasks** for outstanding work — use [[decompose]] principles and ensure all have a **parent** set to the current task or epic
 4. **Persist discoveries to memory** (optional)
