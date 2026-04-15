@@ -507,6 +507,33 @@ class TestReplicateGeminiAuth:
 
         shutil.rmtree(result)
 
+    def test_replicates_policies(self, tmp_path):
+        """Replicates all policy TOML files to the sandbox auth home."""
+        gemini_dir = tmp_path / ".gemini"
+        policies_dir = gemini_dir / "policies"
+        policies_dir.mkdir(parents=True)
+
+        (gemini_dir / "settings.json").write_text("{}")
+        (policies_dir / "rule1.toml").write_text("# policy 1")
+        (policies_dir / "rule2.toml").write_text("# policy 2")
+        # Non-toml files should be ignored
+        (policies_dir / "ignore.me").write_text("not a policy")
+
+        env = {}
+        with patch("cli.Path.home", return_value=tmp_path):
+            result = _replicate_gemini_auth(env)
+
+        assert result is not None
+        dst_policies = result / ".gemini" / "policies"
+        assert dst_policies.is_dir()
+        assert (dst_policies / "rule1.toml").read_text() == "# policy 1"
+        assert (dst_policies / "rule2.toml").read_text() == "# policy 2"
+        assert not (dst_policies / "ignore.me").exists()
+
+        import shutil
+
+        shutil.rmtree(result)
+
     def test_replicated_settings_is_minimal(self, tmp_path):
         """Replicated settings.json uses controlled template, not user settings.
 

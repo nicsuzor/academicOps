@@ -1021,6 +1021,14 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
             except (json.JSONDecodeError, OSError):
                 shutil.copy2(enablement_src, dst_extensions / "extension-enablement.json")
 
+    # Replicate policies so that policy engine is active in sandbox sessions.
+    src_policies = gemini_dir / "policies"
+    if src_policies.is_dir():
+        dst_policies = target_dir / "policies"
+        dst_policies.mkdir(parents=True, exist_ok=True)
+        for policy in src_policies.glob("*.toml"):
+            shutil.copy2(policy, dst_policies / policy.name)
+
     # Make all replicated files and directories writable by any UID.
     # Gemini's sandbox container may run as a different user than the host
     # and needs to write temp files (projects.json.tmp, settings updates).

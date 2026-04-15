@@ -1419,21 +1419,19 @@ class PolecatManager:
             )
 
     def create_sandbox_settings(self, worktree_path: Path) -> Path:
-        """Write .claude/settings.json to a worktree to sandbox file access.
+        """Write .claude/settings.json and .gemini/policies/sandbox.toml to sandbox access.
 
         The settings permit Write and Edit operations within the worktree directory.
         Claude Code's default sandbox already restricts file operations to the
         project directory, so we only need allow rules -- no blanket deny rules.
 
-        Previously this method included deny rules (Write(**), Edit(**)) but
-        Claude Code uses deny-wins semantics, so blanket deny rules override
-        specific allow rules, breaking Write/Edit tools inside the worktree.
+        For Gemini CLI, we use the Policy Engine to restrict file operations.
 
         Args:
             worktree_path: Absolute path to the worktree root directory
 
         Returns:
-            Path to the created settings file
+            Path to the created Claude settings file
         """
         import json
 
@@ -1441,6 +1439,7 @@ class PolecatManager:
         claude_dir = worktree_path / ".claude"
         claude_dir.mkdir(exist_ok=True)
 
+        # 1. Claude Settings
         settings = {
             "permissions": {
                 "allow": [
@@ -1453,6 +1452,40 @@ class PolecatManager:
         settings_path = claude_dir / "settings.json"
         with open(settings_path, "w") as f:
             json.dump(settings, f, indent=2)
+
+        # 2. Gemini Policy
+        gemini_policies_dir = worktree_path / ".gemini" / "policies"
+        gemini_policies_dir.mkdir(parents=True, exist_ok=True)
+
+        # We need to escape backslashes for the regex in TOML
+        worktree_regex = worktree_str.replace("\\", "\\\\").replace(".", "\\.")
+        policy_content = f"""# academicOps: Sandbox agent to this worktree
+[[rule]]
+toolName = "Write"
+argsPattern = "^{worktree_regex}.*"
+decision = "allow"
+priority = 50
+
+[[rule]]
+toolName = "Edit"
+argsPattern = "^{worktree_regex}.*"
+decision = "allow"
+priority = 50
+
+[[rule]]
+toolName = "Write"
+decision = "deny"
+priority = 10
+denyMessage = "File writes are restricted to the worktree: {worktree_str}"
+
+[[rule]]
+toolName = "Edit"
+decision = "deny"
+priority = 10
+denyMessage = "File edits are restricted to the worktree: {worktree_str}"
+"""
+        policy_path = gemini_policies_dir / "sandbox.toml"
+        policy_path.write_text(policy_content)
 
         return settings_path
 

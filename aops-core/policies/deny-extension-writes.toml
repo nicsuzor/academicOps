@@ -1,0 +1,44 @@
+# academicOps: Protect extension files from being modified by the agent
+[[rule]]
+toolName = "Write"
+argsPattern = ".*\\.gemini/extensions/.*"
+decision = "deny"
+priority = 100
+denyMessage = "Modifying extension files is prohibited to ensure framework integrity."
+
+[[rule]]
+toolName = "Edit"
+argsPattern = ".*\\.gemini/extensions/.*"
+decision = "deny"
+priority = 100
+denyMessage = "Modifying extension files is prohibited to ensure framework integrity."
+
+# Protect other configuration files
+[[rule]]
+toolName = "Write"
+argsPattern = ".*\\.claude/.*\\.json"
+decision = "deny"
+priority = 100
+denyMessage = "Modifying Claude configuration files is prohibited."
+
+[[rule]]
+toolName = "Edit"
+argsPattern = ".*\\.claude/.*\\.json"
+decision = "deny"
+priority = 100
+denyMessage = "Modifying Claude configuration files is prohibited."
+
+# Protect Gemini configuration
+[[rule]]
+toolName = "Write"
+argsPattern = ".*\\.gemini/settings\\.json"
+decision = "deny"
+priority = 100
+denyMessage = "Modifying Gemini settings.json is prohibited."
+
+[[rule]]
+toolName = "Edit"
+argsPattern = ".*\\.gemini/settings\\.json"
+decision = "deny"
+priority = 100
+denyMessage = "Modifying Gemini settings.json is prohibited."
