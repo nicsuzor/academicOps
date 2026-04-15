@@ -26,7 +26,6 @@ the default suite:
 * Docker + ``aops-crew`` image must be present.
 * ``PKB_MCP_URL`` must be set and reachable.
 
-Plan: ``/Users/suzor/.claude/plans/fluttering-frolicking-boot.md``.
 Task:  task-5ddb64df.
 """
 
