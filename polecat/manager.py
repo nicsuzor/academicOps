@@ -1493,7 +1493,7 @@ class PolecatManager:
         )
         if merge_base_result.returncode == 0:
             # Check how many commits behind origin/main we are
-            commits_behind = subprocess.run(
+            commits_behind_res = subprocess.run(
                 [
                     "git",
                     "rev-list",
@@ -1504,12 +1504,45 @@ class PolecatManager:
                 capture_output=True,
                 text=True,
             )
-            if commits_behind.returncode == 0 and int(commits_behind.stdout.strip()) > 10:
-                print(
-                    f"⚠ Worktree is {commits_behind.stdout.strip()} commits behind "
-                    f"origin/{default_branch}. Consider rebasing.",
-                    file=sys.stderr,
-                )
+            if commits_behind_res.returncode == 0:
+                count = int(commits_behind_res.stdout.strip())
+                if count > 0:
+                    # Threshold for silent rebase
+                    threshold = 5
+                    if count > threshold:
+                        print(
+                            f"🔄 Worktree is {count} commits behind origin/{default_branch}. "
+                            f"Attempting auto-rebase...",
+                            file=sys.stderr,
+                        )
+
+                    rebase_result = subprocess.run(
+                        ["git", "rebase", f"origin/{default_branch}"],
+                        cwd=worktree_path,
+                        capture_output=True,
+                        text=True,
+                    )
+
+                    if rebase_result.returncode != 0:
+                        # Conflicts: halt with instruction
+                        subprocess.run(
+                            ["git", "rebase", "--abort"],
+                            cwd=worktree_path,
+                            capture_output=True,
+                        )
+                        print(
+                            f"❌ Auto-rebase failed with conflicts. "
+                            f"Worktree is {count} commits behind origin/{default_branch}. "
+                            f"Please resolve manually in {worktree_path}.",
+                            file=sys.stderr,
+                        )
+                        raise RuntimeError(
+                            f"Worktree at {worktree_path} is too stale and cannot be cleanly rebased "
+                            f"onto origin/{default_branch}. Conflicts detected during rebase."
+                        )
+
+                    if count > threshold:
+                        print("  ✅ Rebase successful.", file=sys.stderr)
 
         # Note: Worktrees inherit the mirror's remotes, which already have
         # the correct origin push URL (git@github.com:...). No need to
