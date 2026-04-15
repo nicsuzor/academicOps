@@ -1343,6 +1343,8 @@ class PolecatManager:
                     capture_output=True,
                 )
                 if result.returncode == 0:
+                    # Existing valid worktree - still verify it's based on recent main
+                    self._verify_worktree_setup(worktree_path, branch_name, default_branch)
                     return worktree_path
                 # Worktree exists but is broken (orphan branch or corrupted)
                 print(
@@ -1762,7 +1764,20 @@ denyMessage = "File edits are restricted to the worktree: {worktree_str}"
             )
 
         # 2. Verify branch is based on recent main
-        # Get the merge-base between our branch and origin/main (if available)
+        # Ensure we have the latest origin/main for comparison
+        fetch_result = subprocess.run(
+            ["git", "fetch", "origin", default_branch],
+            cwd=worktree_path,
+            capture_output=True,
+            text=True,
+        )
+        if fetch_result.returncode != 0:
+            raise RuntimeError(
+                f"Failed to fetch origin/{default_branch} in {worktree_path}: "
+                f"{fetch_result.stderr.strip()}"
+            )
+
+        # Get the merge-base between our branch and origin/main
         merge_base_result = subprocess.run(
             ["git", "merge-base", "HEAD", f"origin/{default_branch}"],
             cwd=worktree_path,
@@ -1770,13 +1785,14 @@ denyMessage = "File edits are restricted to the worktree: {worktree_str}"
             text=True,
         )
         if merge_base_result.returncode == 0:
+            merge_base = merge_base_result.stdout.strip()
             # Check how many commits behind origin/main we are
             commits_behind_res = subprocess.run(
                 [
                     "git",
                     "rev-list",
                     "--count",
-                    f"{merge_base_result.stdout.strip()}..origin/{default_branch}",
+                    f"{merge_base}..origin/{default_branch}",
                 ],
                 cwd=worktree_path,
                 capture_output=True,
