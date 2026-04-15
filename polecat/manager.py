@@ -1415,27 +1415,26 @@ class PolecatManager:
                     print(f"  ⚠ Could not delete remote branch {branch_name}: {stderr}")
 
                 # Create fresh from default branch
-                subprocess.run(["git", "checkout", default_branch], cwd=worktree_path, check=False)
+                subprocess.run(["git", "checkout", default_branch], cwd=worktree_path, check=True)
                 subprocess.run(
                     ["git", "checkout", "-b", branch_name], cwd=worktree_path, check=True
                 )
             else:
                 # SAFEGUARD: Hard-fail if target branch is too far behind origin/main
                 # and not merged. This prevents agents from burning turns on massive rebase/merge noise.
-                commits_behind = int(
-                    subprocess.run(
-                        [
-                            "git",
-                            "rev-list",
-                            "--count",
-                            f"origin/{branch_name}..origin/{default_branch}",
-                        ],
-                        cwd=worktree_path,
-                        capture_output=True,
-                        text=True,
-                    ).stdout.strip()
-                    or "0"
+                _rev_list_result = subprocess.run(
+                    [
+                        "git",
+                        "rev-list",
+                        "--count",
+                        f"origin/{branch_name}..origin/{default_branch}",
+                    ],
+                    cwd=worktree_path,
+                    capture_output=True,
+                    text=True,
+                    check=True,
                 )
+                commits_behind = int(_rev_list_result.stdout.strip() or "0")
 
                 if commits_behind > 100:
                     raise RuntimeError(
