@@ -1105,19 +1105,13 @@ class PolecatManager:
                 print(f"⊘ {project}: no mirror (run 'polecat init' first)")
                 results[project] = False
                 continue
-            try:
-                with metrics.time_operation("sync", project=project, mode="full"):
-                    subprocess.run(
-                        ["git", "fetch", "--all", "--prune"],
-                        cwd=mirror_path,
-                        check=True,
-                        capture_output=True,
-                    )
+
+            success = self.safe_sync_mirror(project)
+            if success:
                 print(f"✓ {project}")
-                results[project] = True
-            except subprocess.CalledProcessError as e:
-                print(f"✗ {project}: {e}")
-                results[project] = False
+            else:
+                print(f"✗ {project}")
+            results[project] = success
         return results
 
     def claim_next_task(self, caller: str, project: str | None = None):
