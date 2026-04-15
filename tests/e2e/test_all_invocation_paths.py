@@ -563,25 +563,17 @@ class TestAllInvocationPaths:
     def test_workspace_available_in_container(self, session):
         """Repo worktree is mounted at /workspace inside the container.
 
-        The MEGA_PROMPT asks the agent to stat /workspace/.git and run
-        `git rev-parse --abbrev-ref HEAD` from /workspace. If either surfaces
-        in the agent output or the session transcript, we've proven the
-        worktree was reachable inside the container — which is exactly what
-        the bind-mount refactor must preserve.
+        The MEGA_PROMPT asks the agent to stat /workspace/.git and echo
+        WORKSPACE_VERIFIED=true. If that string appears in the agent output
+        or the session transcript, the worktree was reachable — which is
+        exactly what the bind-mount refactor must preserve.
         """
-        import re
-
         combined = session["combined"]
         session_file = session.get("session_file")
         raw_log = session_file.read_text() if session_file and session_file.exists() else ""
         all_text = raw_log + combined
 
-        has_workspace_marker = "WORKSPACE_VERIFIED=true" in all_text or bool(
-            re.search(r"\bWORKSPACE_VERIFIED\s*=\s*true\b", all_text, re.IGNORECASE)
-        )
-        has_git_branch_evidence = bool(re.search(r"\b(main|master|feat/|fix/|chore/)", all_text))
-
-        assert has_workspace_marker or has_git_branch_evidence, (
+        assert "WORKSPACE_VERIFIED=true" in all_text, (
             f"[{session['param']}] No evidence the repo worktree was available at /workspace. "
             f"Agent output (last 1000 chars): {all_text[-1000:]}"
         )
