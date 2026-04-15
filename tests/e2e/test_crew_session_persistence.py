@@ -10,13 +10,18 @@ suite in test_all_invocation_paths.py (TestAllInvocationPaths.test_session_persi
 
 import sys
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
 
 @pytest.fixture
 def build_docker_cmd():
-    """Import _build_docker_cmd from polecat."""
+    """Import _build_docker_cmd from polecat.
+
+    Patches _is_remote_daemon to False so these unit tests exercise the
+    local-daemon (bind-mount) code path without requiring Docker on PATH.
+    """
     repo_root = Path(__file__).resolve().parents[2]
     polecat_dir = str(repo_root / "polecat")
     aops_core_dir = str(repo_root / "aops-core")
@@ -27,7 +32,8 @@ def build_docker_cmd():
     from cli import _build_docker_cmd
 
     def _build_and_return_cmd(**kwargs):
-        return _build_docker_cmd(**kwargs).cmd
+        with patch("cli._is_remote_daemon", return_value=False):
+            return _build_docker_cmd(**kwargs).cmd
 
     return _build_and_return_cmd
 

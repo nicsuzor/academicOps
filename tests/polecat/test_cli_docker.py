@@ -70,6 +70,12 @@ class TestNodeVersionKey:
 class TestBuildDockerCmd:
     """Tests for _build_docker_cmd Docker wrapper construction."""
 
+    @pytest.fixture(autouse=True)
+    def _patch_remote_daemon(self):
+        """Force local-daemon (bind-mount) path so tests don't require Docker on PATH."""
+        with patch("cli._is_remote_daemon", return_value=False):
+            yield
+
     def _build(self, cli_tool="claude", env=None, agent_cmd=None, work_dir=None):
         docker_cmd = _build_docker_cmd(
             cli_tool=cli_tool,
