@@ -1516,6 +1516,19 @@ class PolecatManager:
                             file=sys.stderr,
                         )
 
+                    # Guard: dirty working tree causes rebase to fail immediately
+                    dirty_check = subprocess.run(
+                        ["git", "status", "--porcelain"],
+                        cwd=worktree_path,
+                        capture_output=True,
+                        text=True,
+                    )
+                    if dirty_check.stdout.strip():
+                        raise RuntimeError(
+                            f"Worktree at {worktree_path} has uncommitted changes; "
+                            f"cannot auto-rebase. Commit or stash changes first."
+                        )
+
                     rebase_result = subprocess.run(
                         ["git", "rebase", f"origin/{default_branch}"],
                         cwd=worktree_path,
@@ -1524,7 +1537,7 @@ class PolecatManager:
                     )
 
                     if rebase_result.returncode != 0:
-                        # Conflicts: halt with instruction
+                        # Rebase failed: abort and surface error
                         subprocess.run(
                             ["git", "rebase", "--abort"],
                             cwd=worktree_path,
