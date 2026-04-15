@@ -586,7 +586,7 @@ class HookRouter:
         Intercepts PreToolUse for PKB tools and normalizes parameters to match
         agent expectations:
         - update_task: Flatten top-level params into 'updates' object
-        - append, get_task, delete, complete_task: Accept 'path' as alias for 'id'
+        - append, get_task, delete, complete_task, update_task: Accept 'path'/'task_id' as alias for 'id'
         - get_document: Accept 'id' as alias for 'path'
         - create_task: Accept 'task_title' as alias for 'title'
         """
