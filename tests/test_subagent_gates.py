@@ -316,6 +316,10 @@ class TestExtractSubagentType:
         assert result == "dump"
         assert is_skill is True
 
+        result, is_skill = extract_subagent_type("activate_skill", {"name": "/dump"})
+        assert result == "dump"
+        assert is_skill is True
+
     def test_unknown_tool_returns_none(self):
         """Non-spawn tools return (None, False)."""
         result, is_skill = extract_subagent_type("Read", {"file_path": "test.py"})

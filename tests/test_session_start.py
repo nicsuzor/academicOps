@@ -28,12 +28,12 @@ def test_session_start_message_generation(tmp_path: Path, monkeypatch) -> None:
     hook_log = tmp_path / "hooks.jsonl"
     monkeypatch.setattr(
         "hooks.session_env_setup.get_hook_log_path",
-        lambda sid, inp=None: hook_log,
+        lambda sid, transcript_path=None, date=None: hook_log,
     )
 
     state_file = status_dir / "20260410-10-abc12345.json"
     # Patch in both modules that import get_session_file_path
-    state_file_fn = lambda sid, date=None, input_data=None: state_file
+    state_file_fn = lambda sid, date=None, transcript_path=None: state_file
     monkeypatch.setattr(
         "hooks.session_env_setup.get_session_file_path",
         state_file_fn,

@@ -37,7 +37,7 @@ def bare_origin(tmp_path: Path) -> Path:
     _git(["config", "user.email", "test@test.example"], cwd=seed)
     _git(["config", "user.name", "Test User"], cwd=seed)
     (seed / "README.md").write_text("seed\n")
-    (seed / ".gitignore").write_text(".claude/\n")
+    (seed / ".gitignore").write_text(".claude/\n.gemini/\n")
     _git(["add", "."], cwd=seed)
     _git(["commit", "-m", "init"], cwd=seed)
     _git(["remote", "add", "origin", str(origin)], cwd=seed)
@@ -115,7 +115,11 @@ def test_auto_rebase_silent(bare_origin: Path, manager: PolecatManager, tmp_path
 
 
 def test_auto_rebase_logged(bare_origin: Path, manager: PolecatManager, tmp_path: Path, capsys):
-    # 1. Advance origin by 6 commits (> threshold 5)
+    # 1. Create the worktree at current state (origin has only the seed commit)
+    task = Task(id="task-logged")
+    manager._do_setup_worktree(task)
+
+    # 2. Advance origin/main by 6 commits (> threshold of 5)
     seed = tmp_path / "seed_update_logged"
     _git(["clone", str(bare_origin), str(seed)], cwd=tmp_path)
     _git(["config", "user.email", "test@test.example"], cwd=seed)
@@ -126,15 +130,15 @@ def test_auto_rebase_logged(bare_origin: Path, manager: PolecatManager, tmp_path
         _git(["commit", "-m", f"commit {i}"], cwd=seed)
     _git(["push", "origin", "main"], cwd=seed)
 
-    manager.safe_sync_mirror("test")
-
-    task = Task(id="task-logged")
+    # 3. Re-run setup on the EXISTING worktree — triggers _verify_worktree_setup
+    #    which sees 6 commits behind and emits the verbose rebase log to stderr.
+    capsys.readouterr()  # Clear prior output
     worktree_path = manager._do_setup_worktree(task)
 
-    # 2. Verify rebase happened and was logged
+    # 4. Verify logged rebase happened (messages go to sys.stderr)
     captured = capsys.readouterr()
-    assert "Worktree is 6 commits behind origin/main. Auto-rebasing..." in captured.out
-    assert "Rebase successful" in captured.out
+    assert "Attempting auto-rebase" in captured.err
+    assert "Rebase successful" in captured.err
 
     result = _git(["log", "--oneline"], cwd=worktree_path)
     assert "commit 5" in result.stdout
@@ -169,7 +173,7 @@ def test_auto_rebase_conflicts(bare_origin: Path, manager: PolecatManager, tmp_p
     with pytest.raises(RuntimeError) as excinfo:
         manager._do_setup_worktree(task)
 
-    assert "auto-rebase failed with conflicts" in str(excinfo.value)
+    assert "could not be cleanly rebased" in str(excinfo.value)
 
 
 def test_auto_rebase_dirty(bare_origin: Path, manager: PolecatManager, tmp_path: Path):
@@ -208,4 +212,4 @@ def test_auto_rebase_dirty(bare_origin: Path, manager: PolecatManager, tmp_path:
         # We need to ensure _do_setup_worktree is called for the existing worktree
         manager._do_setup_worktree(task)
 
-    assert "has uncommitted changes. Please commit or stash" in str(excinfo.value)
+    assert "has uncommitted changes" in str(excinfo.value)

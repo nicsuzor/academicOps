@@ -647,7 +647,7 @@ def extract_timeline_events(turns: list[Any], session_id: str) -> list[dict[str,
                         "timestamp": ts,
                         "type": "task_create",
                         "task_id": None,  # not known until result
-                        "task_title": inp.get("task_title", ""),
+                        "task_title": inp.get("title", inp.get("task_title", "")),
                         "project": inp.get("project"),
                     }
                 )
