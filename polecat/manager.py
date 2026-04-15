@@ -278,19 +278,38 @@ class PolecatManager:
         return pkb_update_task(task_id, **kwargs)
 
     def generate_crew_name(self) -> str:
-        """Generate a random crew name, avoiding active crew names."""
-        import random
+        """Generate a unique crew name, avoiding names already in use.
 
-        active_crew = self.list_crew()
+        Picks from the configured name pool when possible.  If the pool is
+        exhausted (all base names have an existing crew directory), falls back
+        to appending a short random hex suffix (e.g. ``weasel_3f7a``) so that
+        stale directories never block new crew creation.
+        """
+        import random
+        import secrets
+
+        active_crew = set(self.list_crew())
         available = [n for n in self.crew_names if n not in active_crew]
 
-        if not available:
-            raise RuntimeError(
-                f"All crew names are in use: {sorted(self.list_crew())}. "
-                "Run 'polecat nuke <name>' to clean up idle workers before creating a new one."
-            )
+        if available:
+            return random.choice(available)
 
-        return random.choice(available)
+        # Pool exhausted: generate name_XXXX until we find a free slot.
+        # With 4 hex chars (65 536 combinations per base name) collisions are
+        # extremely unlikely, but we retry up to 200 times to be safe.
+        for _ in range(200):
+            base = random.choice(self.crew_names)
+            suffix = secrets.token_hex(2)  # 4 hex chars
+            name = f"{base}_{suffix}"
+            if name not in active_crew:
+                return name
+
+        # Should never happen in practice — only if 200 random draws all
+        # collide with existing names.
+        raise RuntimeError(
+            "Unable to generate a unique crew name after 200 attempts. "
+            "Run 'polecat nuke <name>' to clean up stale crew directories."
+        )
 
     def resolve_project_alias(self, alias: str) -> str:
         """Resolve a project alias to its canonical slug.
@@ -359,10 +378,29 @@ class PolecatManager:
         return slug
 
     def list_crew(self) -> list[str]:
-        """List active crew worker names."""
+        """List crew worker directories.
+
+        Returns all crew directories, including ones whose sessions have ended
+        but were preserved (e.g. via --keep or because they had unmerged work).
+        Skips empty directories that are clearly the result of a failed cleanup.
+        """
         if not self.crew_dir.exists():
             return []
-        return [d.name for d in self.crew_dir.iterdir() if d.is_dir()]
+        result = []
+        for d in self.crew_dir.iterdir():
+            if not d.is_dir():
+                continue
+            # Skip empty dirs — these are partially-cleaned remnants, not real crews.
+            has_content = any(True for _ in d.iterdir())
+            if has_content:
+                result.append(d.name)
+            else:
+                # Best-effort removal of the empty husk so it doesn't pile up.
+                try:
+                    d.rmdir()
+                except OSError:
+                    pass
+        return result
 
     def _crew_branch_open_pr(self, repo_path: Path, branch_name: str) -> str | None:
         """Return PR URL if branch has an open PR on GitHub, else None."""
