@@ -1738,11 +1738,17 @@ denyMessage = "File edits are restricted to the worktree: {worktree_str}"
 
         # 2. Verify branch is based on recent main
         # Ensure we have the latest origin/main for comparison
-        subprocess.run(
+        fetch_result = subprocess.run(
             ["git", "fetch", "origin", default_branch],
             cwd=worktree_path,
             capture_output=True,
+            text=True,
         )
+        if fetch_result.returncode != 0:
+            raise RuntimeError(
+                f"Failed to fetch origin/{default_branch} in {worktree_path}: "
+                f"{fetch_result.stderr.strip()}"
+            )
 
         # Get the merge-base between our branch and origin/main
         merge_base_result = subprocess.run(
