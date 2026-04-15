@@ -87,6 +87,13 @@ class EventDetector:
         """Check if pattern dict is a subset of data dict.
 
         Supports both top-level parameters and nested 'updates' object (PKB friction).
+
+        Constraint: Strategy 2 (nested updates) requires ALL pattern keys to be
+        present in the 'updates' dict. Patterns that mix top-level fields (e.g. 'id')
+        with nested fields (e.g. 'status') will not match via either strategy.
+        Current rules use only single-key patterns, so this is not an issue today.
+        If multi-key patterns are added that span both levels, this method must be
+        extended (e.g. split pattern keys by scope).
         """
         # Strategy 1: Top-level match (e.g. status="in_progress")
         top_match = True
@@ -98,6 +105,7 @@ class EventDetector:
             return True
 
         # Strategy 2: Nested 'updates' object (e.g. updates={"status": "in_progress"})
+        # NOTE: All pattern keys must live in 'updates' — see constraint above.
         updates = data.get("updates")
         if isinstance(updates, dict):
             for key, value in pattern.items():
