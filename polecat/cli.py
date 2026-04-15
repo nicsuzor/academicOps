@@ -1865,34 +1865,12 @@ def sync(ctx, check, quiet, mirrors_only):
                     print(f"  {project_name}: path not found ({repo_path})")
                 continue
 
-            if check:
-                # Just report status
-                success, msg = _sync_working_repo(repo_path, auto_commit=False, quiet=quiet)
-                if not success or not quiet:
-                    print(f"  {msg}")
-                if not success:
-                    needs_attention.append(project_name)
-            else:
-                success, msg = _sync_working_repo(repo_path, auto_commit=False, quiet=quiet)
-                if not success or not quiet:
-                    print(f"  {msg}")
-                if not success:
-                    needs_attention.append(project_name)
-
-        # Also sync AOPS_SESSIONS — fail fast if not a git repo
-        sessions_path = _get_sessions_base()
-        if not (sessions_path / ".git").exists():
-            print(
-                f"  ✗ sessions: not a git repo ({sessions_path}). Run 'polecat init'.",
-                file=sys.stderr,
-            )
-            needs_attention.append("sessions")
-        else:
-            success, msg = _sync_working_repo(sessions_path, auto_commit=True, quiet=quiet)
+            auto_commit = bool(project_cfg.get("auto_commit", False)) and not check
+            success, msg = _sync_working_repo(repo_path, auto_commit=auto_commit, quiet=quiet)
             if not success or not quiet:
                 print(f"  {msg}")
             if not success:
-                needs_attention.append("sessions")
+                needs_attention.append(project_name)
 
         if not quiet:
             if needs_attention:
