@@ -92,10 +92,9 @@ def test_gemini_md_imports_resolve():
 
     # Check all GEMINI.md files in the repository
     for gemini_file in REPO_ROOT.rglob("GEMINI.md"):
-        # Ignore things in dist/ or .gemini/ if they somehow got in there
-        if ".gemini" in gemini_file.parts or "dist" in gemini_file.parts:
+        # Ignore things in dist/, .gemini/ or .claude/ if they somehow got in there
+        if any(part in (".gemini", "dist", ".claude", ".aops") for part in gemini_file.parts):
             continue
-
         content = gemini_file.read_text()
         for match in import_pattern.finditer(content):
             imported_filename = match.group(1)

@@ -20,4 +20,10 @@ def check_custom_condition(
                 return False
         return True
 
+    if name == "is_write_tool":
+        from hooks.gate_config import get_tool_category
+
+        tool_input = ctx.tool_input if isinstance(ctx.tool_input, dict) else None
+        return ctx.tool_name is not None and get_tool_category(ctx.tool_name, tool_input) == "write"
+
     return False

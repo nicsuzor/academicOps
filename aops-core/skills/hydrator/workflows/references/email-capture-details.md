@@ -44,12 +44,18 @@ Query the PKB for relevant context (projects, goals, relationships). Match actio
 
 ## Step 5 & 6: Priority and Task Creation
 
-### Infer Priority
+### Infer Priority and Metadata
 
-- **P0 (Urgent)**: Deadlines < 48h, OSB votes, explicit urgent markers.
-- **P1 (High)**: Deadlines < 1 week, grant/paper deadlines.
-- **P2 (Normal)**: General correspondence, FYI with follow-up.
-- **P3 (Low)**: No deadline, administrative.
+1. **Infer Priority**:
+   - **P0 (Urgent)**: Deadlines < 48h, OSB votes, explicit urgent markers.
+   - **P1 (High)**: Deadlines < 1 week, grant/paper deadlines.
+   - **P2 (Normal)**: General correspondence, FYI with follow-up.
+   - **P3 (Low)**: No deadline, administrative.
+
+2. **Extract Structured Metadata**:
+   - **due**: Extract deadline from email body. Format: ISO date (YYYY-MM-DD).
+   - **effort**: Estimate effort required for the task. Format: duration (0.5d, 1d, 1w).
+   - **consequence**: Extract stated or implied consequences if the task is not completed.
 
 ### Create "Ready for Action" Tasks
 
@@ -102,7 +108,15 @@ Entry ID: [entry_id]
 
 - [ ] [Specific action item]
 - [ ] [Deadline: YYYY-MM-DD]
+
+## Metadata
+
+- **due**: YYYY-MM-DD
+- **effort**: [duration]
+- **consequence**: [prose]
 ```
+
+**PKB field storage (MANDATORY)**: Pass `due`, `effort`, and `consequence` as explicit parameters to `mcp__pkb__create_task` — not only in the body template. The PKB uses `due` as a structured field for deadline-aware prioritization (`days_until_due`); writing it only in body prose leaves that computed property empty and silently breaks deadline-based task ordering.
 
 #### Resource Handling
 

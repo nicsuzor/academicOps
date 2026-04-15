@@ -12,20 +12,6 @@
     "framework",
     "workflow"
   ],
-  "userConfig": {
-    "ACA_DATA": {
-      "title": "Knowledge Base Path",
-      "description": "Path to your personal knowledge base directory (e.g., ~/brain)",
-      "type": "directory",
-      "sensitive": false
-    },
-    "PKB_MCP_URL": {
-      "title": "PKB Server URL",
-      "description": "HTTP endpoint for pkb MCP server (e.g., http://localhost:3001/mcp)",
-      "type": "string",
-      "sensitive": false
-    }
-  },
   "mcpServers": "./.mcp.json",
   "autoMode": {
     "environment": [

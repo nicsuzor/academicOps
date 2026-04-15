@@ -60,11 +60,9 @@ rules:
   # ─────────────────────────────────────────
   - type: pull_request
     parameters:
-      required_approving_review_count: 1
+      required_approving_review_count: 2
       # Approval #1: Merge Prep (github-actions[bot]) — runs on cron, approves when ready
-      # Agent Review uses a commit status check (context: "Agent Review") rather than
-      # gh pr review, so it cannot be overridden by a later merge-prep approval.
-      # The "Agent Review" required status check below enforces this gate.
+      # Approval #2: Human Maintainer
       dismiss_stale_reviews_on_push: false
       require_code_owner_review: false
       require_last_push_approval: false
@@ -73,7 +71,6 @@ rules:
         - rebase
         - squash
         - merge
-      # Note: All three merge methods are currently enabled in the live ruleset.
 
   # ─────────────────────────────────────────
   # Required status checks
@@ -89,6 +86,7 @@ rules:
         - context: "PR Review Pipeline / typecheck / Type Check"
         - context: "PR Review Pipeline / pytest / Pytest"
         - context: "Axiom Review / Axiom Review"
+        - context: "merge-prep-status"
 
   # ─────────────────────────────────────────
   # Code quality (CodeQL / Copilot analysis)
