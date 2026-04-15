@@ -1063,8 +1063,6 @@ class PolecatManager:
                 results[project] = False
                 continue
 
-            # Use safe_sync_mirror which handles both origin and local,
-            # and updates the local mirror branch ref.
             success = self.safe_sync_mirror(project)
             if success:
                 print(f"✓ {project}")
