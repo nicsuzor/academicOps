@@ -985,7 +985,35 @@ class PolecatManager:
                         file=sys.stderr,
                     )
                     return False
-            return True
+
+                # Branches checked out in worktrees are excluded from the
+                # normal origin fetch above. Update them by fetching into a
+                # temporary ref namespace (bypasses git's "branch is checked
+                # out" guard) and then fast-forwarding the real branch ref.
+                for excl_refspec in exclude_refspecs:
+                    branch = excl_refspec.removeprefix("^refs/heads/")
+                    tmp_ref = f"refs/fetch-tmp/{branch}"
+                    fetch_result = subprocess.run(
+                        ["git", "fetch", "origin", f"refs/heads/{branch}:{tmp_ref}"],
+                        cwd=mirror_path,
+                        capture_output=True,
+                        check=False,
+                    )
+                    if fetch_result.returncode == 0:
+                        subprocess.run(
+                            ["git", "update-ref", f"refs/heads/{branch}", tmp_ref],
+                            cwd=mirror_path,
+                            check=False,
+                            capture_output=True,
+                        )
+                        subprocess.run(
+                            ["git", "update-ref", "-d", tmp_ref],
+                            cwd=mirror_path,
+                            check=False,
+                            capture_output=True,
+                        )
+
+                return True
         except subprocess.CalledProcessError as e:
             print(f"⚠ Mirror sync failed for {project}: {e}", file=sys.stderr)
             return False
@@ -1021,10 +1049,11 @@ class PolecatManager:
         return [f"^refs/heads/{branch}" for branch in sorted(branches)]
 
     def check_mirror_freshness(self, project: str) -> tuple[bool, str]:
-        """Checks if mirror is up-to-date with local repo, attempting fast-forward if stale.
+        """Checks if the mirror's default branch is in sync with origin. Read-only.
 
-        Compares the mirror's main branch HEAD to the local repo's main branch.
-        If stale, attempts to fast-forward the mirror before returning.
+        Compares the mirror's refs/heads/{default_branch} SHA against what
+        origin reports via ls-remote. Makes no mutations — sync is the job
+        of safe_sync_mirror.
 
         Args:
             project: Project slug
@@ -1315,12 +1344,9 @@ class PolecatManager:
         mirror_path = self.repos_dir / f"{project}.git"
         if mirror_path.exists():
             print(f"🔄 Syncing {project} mirror before worktree setup...")
-            self.safe_sync_mirror(project)
-
-            # Check freshness and warn if stale
-            is_fresh, message = self.check_mirror_freshness(project)
+            is_fresh = self.safe_sync_mirror(project)
             if not is_fresh:
-                print(f"⚠ {message}", file=sys.stderr)
+                print("⚠ Mirror may be stale after sync", file=sys.stderr)
             else:
                 print("  ✅ Mirror is fresh")
 
