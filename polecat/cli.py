@@ -1437,6 +1437,7 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
         "trustedFolders.json",
         "projects.json",
         "state.json",
+        "policies",
     ]
 
     existing_files = [f for f in auth_files if (gemini_dir / f).exists()]
@@ -1458,7 +1459,18 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
     target_dir.mkdir(parents=True)
     os.chmod(target_dir, 0o777)
 
+    policies_dir = target_dir / "policies"
+    policies_dir.mkdir(exist_ok=True)
+    os.chmod(policies_dir, 0o777)
+
     for f in existing_files:
+        if f == "policies":
+            src_policies = gemini_dir / "policies"
+            if src_policies.is_dir():
+                for policy_file in src_policies.glob("*.toml"):
+                    shutil.copy2(policy_file, policies_dir / policy_file.name)
+            continue
+
         if f == "trustedFolders.json" and work_dir:
             try:
                 with open(gemini_dir / f) as src_f:
@@ -1501,6 +1513,42 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
         # Follow symlinks to copy the actual file content, not the link itself.
         # This is critical for ~/.gemini/settings.json which is often symlinked.
         shutil.copy2(gemini_dir / f, target_dir / f, follow_symlinks=True)
+
+    # Copy our default framework policies
+    deny_ext_src = SCRIPT_DIR / "defaults" / "deny-extension-writes.toml"
+    if not deny_ext_src.exists():
+        raise RuntimeError(f"Missing bundled policy file: {deny_ext_src}")
+    shutil.copy2(deny_ext_src, policies_dir / "deny-extension-writes.toml")
+
+    # Generate sandbox policy if work_dir is provided
+    if work_dir:
+        work_dir_str = str(work_dir.resolve())
+        sandbox_policy = f"""# Polecat Sandbox Policy
+# Priority 900 (Admin tier level) to ensure it takes precedence over user/workspace rules.
+
+[[rule]]
+toolName = ["write_file", "replace"]
+argsPattern = {{ file_path = "{work_dir_str}/**" }}
+decision = "allow"
+priority = 900
+description = "Allow writes within the work directory"
+
+[[rule]]
+toolName = "run_shell_command"
+commandRegex = ".*{work_dir_str}.*"
+decision = "allow"
+priority = 900
+description = "Allow shell commands referencing the work directory"
+
+[[rule]]
+toolName = ["write_file", "replace", "run_shell_command"]
+decision = "deny"
+priority = 899
+deny_message = "Sandbox violation: Writing outside the work directory ({work_dir_str}) is prohibited."
+description = "Deny writes outside the work directory"
+"""
+        with open(policies_dir / "polecat-sandbox.toml", "w") as f_policy:
+            f_policy.write(sandbox_policy)
 
     # If trustedFolders.json didn't exist but we have a work_dir, create it
     if "trustedFolders.json" not in existing_files and work_dir:
