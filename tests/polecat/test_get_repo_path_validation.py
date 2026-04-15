@@ -141,6 +141,42 @@ class TestGetRepoPathValidation:
 
 
 # ---------------------------------------------------------------------------
+# PolecatManager directory layout
+# ---------------------------------------------------------------------------
+
+
+class TestPolecatManagerDirectoryLayout:
+    def test_polecats_dir_is_worktrees_subdir(
+        self, polecat_home: Path, aca_data: Path
+    ):
+        """polecats_dir must be $POLECAT_HOME/worktrees/, not $POLECAT_HOME itself.
+
+        Regression: previously polecats_dir == home_dir, so stale-cleanup
+        loops iterated the whole home directory (sessions/, polecat.yaml, etc.)
+        as if they were worktree candidates.
+        """
+        manager = PolecatManager(home_dir=polecat_home)
+        assert manager.polecats_dir == polecat_home / "worktrees", (
+            f"polecats_dir should be home/worktrees/, got {manager.polecats_dir}"
+        )
+
+    def test_repos_and_crew_are_home_siblings(
+        self, polecat_home: Path, aca_data: Path
+    ):
+        """repos_dir and crew_dir must be direct children of home_dir, not under worktrees/.
+
+        This ensures they are excluded from worktree-iteration loops by being
+        outside polecats_dir entirely, rather than relying on an exclude set.
+        """
+        manager = PolecatManager(home_dir=polecat_home)
+        assert manager.repos_dir == polecat_home / ".repos"
+        assert manager.crew_dir == polecat_home / "crew"
+        # They must NOT be under polecats_dir (the worktrees subdir)
+        assert not manager.repos_dir.is_relative_to(manager.polecats_dir)
+        assert not manager.crew_dir.is_relative_to(manager.polecats_dir)
+
+
+# ---------------------------------------------------------------------------
 # setup_worktree validation
 # ---------------------------------------------------------------------------
 
