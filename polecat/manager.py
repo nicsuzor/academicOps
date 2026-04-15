@@ -1434,7 +1434,7 @@ class PolecatManager:
                     text=True,
                     check=True,
                 )
-                commits_behind = int(_rev_list_result.stdout.strip() or "0")
+                commits_behind = int(_rev_list_result.stdout.strip())
 
                 if commits_behind > 100:
                     raise RuntimeError(
