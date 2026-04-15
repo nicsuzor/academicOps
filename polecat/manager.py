@@ -1296,16 +1296,16 @@ class PolecatManager:
                     f"Starting fresh from {default_branch}."
                 )
                 # Try to delete the remote branch to avoid later push collisions
-                try:
-                    subprocess.run(
-                        ["git", "push", "origin", "--delete", branch_name],
-                        cwd=worktree_path,
-                        capture_output=True,
-                    )
+                delete_result = subprocess.run(
+                    ["git", "push", "origin", "--delete", branch_name],
+                    cwd=worktree_path,
+                    capture_output=True,
+                )
+                if delete_result.returncode == 0:
                     print(f"  ✅ Deleted stale remote branch {branch_name}")
-                except Exception:
-                    # Non-fatal if we lack permissions or it's protected
-                    pass
+                else:
+                    stderr = delete_result.stderr.decode(errors="replace").strip()
+                    print(f"  ⚠ Could not delete remote branch {branch_name}: {stderr}")
 
                 # Create fresh from default branch
                 subprocess.run(["git", "checkout", default_branch], cwd=worktree_path, check=False)
