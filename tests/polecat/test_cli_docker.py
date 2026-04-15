@@ -629,6 +629,46 @@ class TestReplicateGeminiAuth:
 
         shutil.rmtree(result)
 
+    def test_replicate_gemini_policies(self, tmp_path):
+        """Verify Gemini policies are replicated and sandbox policy is generated."""
+        gemini_dir = tmp_path / ".gemini"
+        policies_src = gemini_dir / "policies"
+        policies_src.mkdir(parents=True)
+        (policies_src / "user-policy.toml").write_text("user policy content")
+
+        # Create auth file so it doesn't bail early
+        (gemini_dir / "settings.json").write_text("{}")
+
+        work_dir = tmp_path / "my-project"
+        work_dir.mkdir()
+
+        env = {}
+        with patch("cli.Path.home", return_value=tmp_path):
+            result = _replicate_gemini_auth(env, work_dir=work_dir)
+
+        assert result is not None
+        replicated_policies = result / ".gemini" / "policies"
+        assert replicated_policies.is_dir()
+
+        # User policy replicated
+        assert (replicated_policies / "user-policy.toml").read_text() == "user policy content"
+
+        # Sandbox policy generated
+        sandbox_policy = replicated_policies / "polecat-sandbox.toml"
+        assert sandbox_policy.exists()
+        content = sandbox_policy.read_text()
+        assert str(work_dir.resolve()) in content
+        assert 'decision = "allow"' in content
+        assert 'decision = "deny"' in content
+
+        # Default framework policy copied (if exists in repo)
+        # In tests, REPO_ROOT/polecat/defaults/deny-extension-writes.toml should exist
+        assert (replicated_policies / "deny-extension-writes.toml").exists()
+
+        import shutil
+
+        shutil.rmtree(result)
+
 
 class TestPassPkbUrlSandbox:
     """Tests for _pass_pkb_url_sandbox — called by both crew -g and run -g."""

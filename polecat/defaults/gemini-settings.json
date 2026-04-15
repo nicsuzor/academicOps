@@ -4,5 +4,10 @@
   },
   "model": {
     "selectedModel": "gemini-3.1-pro-preview"
+  },
+  "security": {
+    "policyEngine": {
+      "adminPolicyPaths": ["/home/worker/.gemini/policies/*.toml"]
+    }
   }
 }

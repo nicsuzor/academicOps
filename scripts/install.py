@@ -220,6 +220,9 @@ def main():
     gemini_dir = Path.home() / ".gemini"
     gemini_dir.mkdir(exist_ok=True)
 
+    policies_dir = gemini_dir / "policies"
+    policies_dir.mkdir(exist_ok=True)
+
     src_gemini_md = aops_root / "aops-core" / "GEMINI.md"
     if src_gemini_md.exists():
         shutil.copy2(src_gemini_md, gemini_dir / "GEMINI.md")
@@ -229,6 +232,12 @@ def main():
     if src_core_md.exists():
         shutil.copy2(src_core_md, gemini_dir / "CORE.md")
         print("✓ Copied CORE.md to ~/.gemini/CORE.md")
+
+    # Install default policies
+    src_policy = aops_root / "polecat" / "defaults" / "deny-extension-writes.toml"
+    if src_policy.exists():
+        shutil.copy2(src_policy, policies_dir / "deny-extension-writes.toml")
+        print("✓ Installed Gemini policy: deny-extension-writes.toml")
 
     ag_dir = gemini_dir / "antigravity"
     ag_dir.mkdir(parents=True, exist_ok=True)
