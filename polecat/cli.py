@@ -1516,8 +1516,9 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
 
     # Copy our default framework policies
     deny_ext_src = SCRIPT_DIR / "defaults" / "deny-extension-writes.toml"
-    if deny_ext_src.exists():
-        shutil.copy2(deny_ext_src, policies_dir / "deny-extension-writes.toml")
+    if not deny_ext_src.exists():
+        raise RuntimeError(f"Missing bundled policy file: {deny_ext_src}")
+    shutil.copy2(deny_ext_src, policies_dir / "deny-extension-writes.toml")
 
     # Generate sandbox policy if work_dir is provided
     if work_dir:
