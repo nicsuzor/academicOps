@@ -62,10 +62,7 @@ def _extract_task_id(resp: object) -> str | None:
     return None
 
 
-# Known-stable fallback parent under the aops project: an active "Framework
-# maintenance and tooling improvements" epic with mixed scratch children.
-# Can be overridden via POLECAT_E2E_PARENT.
-_DEFAULT_AOPS_SCRATCH_PARENT = "task-0d77545a"
+from tests.polecat.conftest import _DEFAULT_AOPS_SCRATCH_PARENT  # noqa: E402
 
 TESTS_DIR = Path(__file__).parent.resolve()
 REPO_ROOT = TESTS_DIR.parent.parent

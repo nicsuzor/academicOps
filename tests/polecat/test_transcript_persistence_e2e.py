@@ -46,8 +46,7 @@ import pytest
 
 _TASK_ID_RE = re.compile(r"(task-[0-9a-f]+|epic-[0-9a-f]+|aops-[0-9a-f]+)")
 
-# Mirrors test_polecat_termination_e2e.py — keep in sync.
-_DEFAULT_AOPS_SCRATCH_PARENT = "task-0d77545a"
+from tests.polecat.conftest import _DEFAULT_AOPS_SCRATCH_PARENT  # noqa: E402
 
 TESTS_DIR = Path(__file__).parent.resolve()
 REPO_ROOT = TESTS_DIR.parent.parent
@@ -199,7 +198,12 @@ def _polecat_cmd(task_id: str, project: str) -> list[str]:
 
 def _cleanup(proc: subprocess.Popen | None, client: object | None, task_id: str | None) -> None:
     if proc is not None and proc.poll() is None:
-        proc.kill()
+        try:
+            # Kill the process group to clean up Docker children (relevant when
+            # start_new_session=True makes proc.pid the process group leader).
+            os.killpg(proc.pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError, AttributeError):
+            proc.kill()
         try:
             proc.wait(timeout=30)
         except subprocess.TimeoutExpired:
@@ -254,7 +258,7 @@ def shared_sessions_dir(monkeypatch: pytest.MonkeyPatch) -> Path:
     a natural fit: same volume as the real sessions dir, isolated per-test,
     cleaned up on teardown.
     """
-    base = Path.home() / ".aops" / "test-sessions" / f"e2e-{uuid.uuid4().hex[:8]}"
+    base = _polecat_home() / "test-sessions" / f"e2e-{uuid.uuid4().hex[:8]}"
     base.mkdir(parents=True, exist_ok=True)
     monkeypatch.setenv("AOPS_SESSIONS", str(base))
     try:
