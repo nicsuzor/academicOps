@@ -84,13 +84,28 @@ class EventDetector:
         ]
 
     def _match_pattern(self, data: dict[str, Any], pattern: dict[str, Any]) -> bool:
-        """Check if pattern dict is a subset of data dict."""
+        """Check if pattern dict is a subset of data dict.
+
+        Supports both top-level parameters and nested 'updates' object (PKB friction).
+        """
+        # Strategy 1: Top-level match (e.g. status="in_progress")
+        top_match = True
         for key, value in pattern.items():
-            if key not in data:
-                return False
-            if data[key] != value:
-                return False
-        return True
+            if key not in data or data[key] != value:
+                top_match = False
+                break
+        if top_match:
+            return True
+
+        # Strategy 2: Nested 'updates' object (e.g. updates={"status": "in_progress"})
+        updates = data.get("updates")
+        if isinstance(updates, dict):
+            for key, value in pattern.items():
+                if updates.get(key) != value:
+                    return False
+            return True
+
+        return False
 
     def _check_result_success(self, tool_result: dict[str, Any]) -> bool:
         """Check if tool result indicates success."""

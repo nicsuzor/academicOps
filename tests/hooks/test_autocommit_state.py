@@ -60,6 +60,11 @@ class TestGenerateCommitMessageRegex:
         msg = generate_commit_message("create_task", {"task_title": "My task"})
         assert msg == "task: create 'My task'"
 
+    def test_create_task_with_title_param(self):
+        """create_task with 'title' instead of 'task_title' should match."""
+        msg = generate_commit_message("create_task", {"title": "My task"})
+        assert msg == "task: create 'My task'"
+
     def test_colon_separated_create_task(self):
         """tasks:create_task should match (colon-separated MCP name)."""
         msg = generate_commit_message("tasks:create_task", {"task_title": "My task"})
@@ -76,6 +81,11 @@ class TestGenerateCommitMessageRegex:
             "mcp__plugin_aops-core_tasks__create_task", {"task_title": "Test"}
         )
         assert msg == "task: create 'Test'"
+
+    def test_update_task_with_title_param(self):
+        """update_task with 'title' instead of 'task_title' should match."""
+        msg = generate_commit_message("update_task", {"id": "abc123", "title": "New Title"})
+        assert msg == "task: update 'New Title'"
 
     def test_complete_task_singular(self):
         """complete_task should match (bare name)."""
