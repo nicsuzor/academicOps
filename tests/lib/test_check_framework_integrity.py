@@ -84,8 +84,8 @@ def test_skills_index_valid_entry_passes(plugin_root: Path) -> None:
 
 def test_command_valid_entry_passes(plugin_root: Path) -> None:
     """SKILLS.md entry with matching commands/<name>.md passes."""
-    make_command(plugin_root, "dump")
-    make_skills_index(plugin_root, ["dump"])
+    make_command(plugin_root, "pull")
+    make_skills_index(plugin_root, ["pull"])
 
     errors = check_index_skills(plugin_root)
 

@@ -19,6 +19,7 @@ import re
 import subprocess
 import sys
 import time
+import uuid
 from pathlib import Path
 
 import pytest
@@ -37,7 +38,7 @@ TEST_FIXTURE_TASK_ID = "e2e-test-fixture"
 
 # Mega-prompt for crew paths (passed directly via -p).
 # Must match the task body for run paths so assertions work on both.
-MEGA_PROMPT = """\
+MEGA_PROMPT_TEMPLATE = """\
 Do ALL of the following steps and report results exactly as labeled:
 
 1. SANDBOX CHECK:
@@ -48,9 +49,25 @@ Do ALL of the following steps and report results exactly as labeled:
 2. BINARY CHECK:
    - Run: which aops
 
+3. WORKSPACE CHECK:
+   - Run: test -d /workspace/.git && echo "WORKSPACE_VERIFIED=true" || echo "WORKSPACE_VERIFIED=false"
+   - Run: git -C /workspace rev-parse --abbrev-ref HEAD
+
+4. WORKSPACE WRITE (proves bind-mount, not cp):
+   - Run: echo "{sentinel}" > /workspace/{sentinel_name}
+   - Run: ls -la /workspace/{sentinel_name}
+
 Reply with ALL outputs clearly labeled. Do NOT skip any step.
-Do NOT create any commits, PRs, or modify any files. Just report the results.\
+Do NOT create any commits or PRs. The single file write in step 4 is required.\
 """
+
+
+def _make_mega_prompt(sentinel_name: str, sentinel_value: str) -> str:
+    return MEGA_PROMPT_TEMPLATE.format(sentinel_name=sentinel_name, sentinel=sentinel_value)
+
+
+# Back-compat alias for any callers still importing MEGA_PROMPT (no sentinel).
+MEGA_PROMPT = _make_mega_prompt(".polecat-bind-mount-sentinel", "ok")
 
 
 def _check_fixture_task():
@@ -199,6 +216,13 @@ class TestAllInvocationPaths:
         repo = get_repo_root()
         crew_name = f"test-{backend}"
 
+        # Unique sentinel per invocation — the agent writes this into /workspace
+        # so we can later assert the file appears on the host's bind-mounted
+        # worktree (proves bind-mount, since cp never reverse-extracts /workspace).
+        sentinel_name = f".polecat-bind-mount-sentinel-{backend}-{uuid.uuid4().hex[:8]}"
+        sentinel_value = f"crew-{backend}-{uuid.uuid4().hex[:8]}"
+        prompt = _make_mega_prompt(sentinel_name, sentinel_value)
+
         cmd = [
             sys.executable,
             "-m",
@@ -214,11 +238,9 @@ class TestAllInvocationPaths:
 
         cmd.append("--")
         if backend == "gemini":
-            cmd.extend(build_gemini_agent_cmd(MEGA_PROMPT, include_binary=False))
+            cmd.extend(build_gemini_agent_cmd(prompt, include_binary=False))
         else:
-            cmd.extend(
-                build_claude_agent_cmd(MEGA_PROMPT, output_format="text", include_binary=False)
-            )
+            cmd.extend(build_claude_agent_cmd(prompt, output_format="text", include_binary=False))
 
         env = os.environ.copy()
         cwd = os.getcwd()
@@ -276,6 +298,9 @@ class TestAllInvocationPaths:
             "hook_files_content": hook_files_content,
             "session_file": session_file,
             "tool_calls": tool_calls,
+            "sentinel_name": sentinel_name,
+            "sentinel_value": sentinel_value,
+            "started_at": started_at,
         }
 
     def _run_polecat(self, tmp_path, backend, timeout=None):
@@ -493,6 +518,66 @@ class TestAllInvocationPaths:
                     f"raw={raw['output']['verdict']!r}, "
                     f"parsed={parsed.hook_verdict!r}"
                 )
+
+    def test_workspace_writes_visible_on_host(self, session):
+        """Bind-mount only: a file the agent wrote inside /workspace appears on
+        the host's clone of the worktree.
+
+        Under the old docker-cp staging this would FAIL, because cp only goes
+        host→container at start; the container's edits to /workspace are
+        discarded by `docker rm -f`. Under bind-mount staging the agent's write
+        lands directly on the host filesystem.
+
+        Currently scoped to the crew path because _run_polecat reuses a
+        PKB-fixture prompt we don't currently template. Run path coverage will
+        come when the prompt fixture supports per-invocation substitution.
+        """
+        if session["path_type"] != "crew":
+            pytest.skip("sentinel write only injected on the crew path")
+
+        sentinel_name = session["sentinel_name"]
+        sentinel_value = session["sentinel_value"]
+        started_at = session["started_at"]
+
+        # Search the polecat home for the sentinel — the worktree clone lives
+        # somewhere under it (manager.crew_dir / crew_name for `crew repo`).
+        polecat_home = Path(os.environ.get("POLECAT_HOME", str(Path.home() / ".polecat")))
+        matches = [
+            p
+            for p in polecat_home.rglob(sentinel_name)
+            if p.is_file() and p.stat().st_mtime >= started_at
+        ]
+
+        assert matches, (
+            f"[{session['param']}] Agent wrote /workspace/{sentinel_name} inside "
+            f"the container, but no file by that name appears on the host under "
+            f"{polecat_home}. This proves the worktree was NOT bind-mounted "
+            f"(cp-only staging discards in-container writes)."
+        )
+
+        content = matches[0].read_text().strip()
+        assert sentinel_value in content, (
+            f"[{session['param']}] Sentinel found at {matches[0]} but content "
+            f"{content!r} does not contain expected {sentinel_value!r}."
+        )
+
+    def test_workspace_available_in_container(self, session):
+        """Repo worktree is mounted at /workspace inside the container.
+
+        The MEGA_PROMPT asks the agent to stat /workspace/.git and echo
+        WORKSPACE_VERIFIED=true. If that string appears in the agent output
+        or the session transcript, the worktree was reachable — which is
+        exactly what the bind-mount refactor must preserve.
+        """
+        combined = session["combined"]
+        session_file = session.get("session_file")
+        raw_log = session_file.read_text() if session_file and session_file.exists() else ""
+        all_text = raw_log + combined
+
+        assert "WORKSPACE_VERIFIED=true" in all_text, (
+            f"[{session['param']}] No evidence the repo worktree was available at /workspace. "
+            f"Agent output (last 1000 chars): {all_text[-1000:]}"
+        )
 
     def test_session_persists(self, session):
         """Session file is written and contains user+assistant entries."""

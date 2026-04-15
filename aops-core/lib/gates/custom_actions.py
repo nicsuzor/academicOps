@@ -120,10 +120,7 @@ def create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path:
         )
 
     # Write to predictable gate file path — fail fast on disk errors
-    input_data = ctx.raw_input or {}
-    if "session_id" not in input_data:
-        input_data = {**input_data, "session_id": session_id}
-    gate_path = get_gate_file_path(gate, session_id, input_data)
+    gate_path = get_gate_file_path(gate, session_id, transcript_path=ctx.transcript_path)
     gate_path.parent.mkdir(parents=True, exist_ok=True)
     gate_path.write_text(content, encoding="utf-8")
     return gate_path

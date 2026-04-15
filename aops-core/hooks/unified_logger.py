@@ -48,12 +48,11 @@ def log_hook_event(
         return
 
     # Path resolution — fail fast (no silent swallowing)
-    input_data = ctx.raw_input
-    date = input_data.get("date")
+    date = ctx.raw_input.get("date")
     if date is None:
         date = datetime.now().astimezone().strftime("%Y-%m-%d")
 
-    log_path = get_hook_log_path(session_id, input_data, date)
+    log_path = get_hook_log_path(session_id, transcript_path=ctx.transcript_path, date=date)
 
     # Process metrics — best-effort (psutil may fail in sandboxed envs)
     try:

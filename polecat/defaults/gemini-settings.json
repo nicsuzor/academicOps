@@ -4,5 +4,8 @@
   },
   "model": {
     "selectedModel": "gemini-3.1-pro-preview"
+  },
+  "tools": {
+    "exclude": ["ask_user"]
   }
 }
