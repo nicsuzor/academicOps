@@ -29,12 +29,29 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ─── Step 0: Initialize ──────────────────────────────────────────
+  # Set merge-prep-status to pending immediately. This ensures the PR
+  # stays "yellow" until the Merge-Prep Agent triages reviews.
+  initialize:
+    name: Initialize
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set pending status
+        run: |
+          gh api "repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }}" \
+            -f state="pending" \
+            -f context="merge-prep-status" \
+            -f description="Waiting for bazaar window and triage..."
+        env:
+          GH_TOKEN: ${{ github.token }}
+
   # ─── Step 1: Lint ─────────────────────────────────────────────────
   # If lint autofixes and pushes (using AOPS_BOT_GH_TOKEN), the push
   # triggers a new synchronize event. This run is cancelled and the
   # pipeline restarts on the clean commit.
   lint:
     name: Lint
+    needs: [initialize]
     uses: ./.github/workflows/lint.yml
     secrets: inherit
 
