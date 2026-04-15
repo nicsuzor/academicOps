@@ -1639,7 +1639,7 @@ class PolecatManager:
                 file=sys.stderr,
             )
 
-    def create_sandbox_settings(self, worktree_path: Path) -> None:
+    def create_sandbox_settings(self, worktree_path: Path) -> Path:
         """Write .claude/settings.json and .gemini/policies/sandbox.toml to sandbox access.
 
         The settings permit Write and Edit operations within the worktree directory.
@@ -1708,6 +1708,8 @@ denyMessage = "File edits are restricted to the worktree: {worktree_str}"
 """
         policy_path = gemini_policies_dir / "sandbox.toml"
         policy_path.write_text(policy_content)
+
+        return settings_path
 
     def _verify_worktree_setup(self, worktree_path: Path, branch_name: str, default_branch: str):
         """Verify worktree is correctly set up for the PR workflow.
