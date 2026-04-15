@@ -763,8 +763,14 @@ class PolecatManager:
                             capture_output=True,
                             check=False,
                         )
-                    self._delete_crew_branch_remote(repo_path, branch_name)
-                    self._delete_crew_branch_mirror(project, branch_name)
+                    if state == "open_pr":
+                        print(
+                            f"Preserving remote branch {branch_name} — open PR: "
+                            f"{info.get('pr_url')}"
+                        )
+                    else:
+                        self._delete_crew_branch_remote(repo_path, branch_name)
+                        self._delete_crew_branch_mirror(project, branch_name)
 
             if crew_path.exists():
                 shutil.rmtree(crew_path)
@@ -781,8 +787,18 @@ class PolecatManager:
 
         Prefers bare mirror in $POLECAT_HOME/polecat/.repos/ if it exists (for isolation).
         Falls back to local project path from config.
+
+        Fails fast if ``task.project`` is missing or unknown — silent defaults
+        to the academicOps repo were causing tasks to operate against the wrong
+        repository.
         """
-        project = task.project or "aops"
+        if not task.project:
+            raise ValueError(
+                f"Task {task.id} has no project set — cannot resolve repo path. "
+                f"Set task.project explicitly; silent fallbacks are disabled."
+            )
+
+        project = task.project
 
         # Check for bare mirror first
         mirror_path = self.repos_dir / f"{project}.git"
@@ -792,8 +808,11 @@ class PolecatManager:
         if project in self.projects:
             return self.projects[project]["path"]
 
-        # Default fallback
-        return REPO_ROOT
+        raise ValueError(
+            f"Task {task.id} references unknown project {project!r} — "
+            f"not in polecat.yaml and no bare mirror at {mirror_path}. "
+            f"Known projects: {sorted(self.projects.keys())}"
+        )
 
     def _get_remote_url(self, repo_path: Path) -> str:
         """Gets the origin remote URL from a git repository."""
@@ -1242,7 +1261,15 @@ class PolecatManager:
         Always syncs before work to handle stateless environments.
         """
 
-        project = task.project if task.project else "aops"
+        # Fail fast on missing project — no silent fallback. get_repo_path()
+        # below will raise with a clearer message if project is invalid, but
+        # we also need ``project`` here for mirror/sync lookups.
+        if not task.project:
+            raise ValueError(
+                f"Task {task.id} has no project set — cannot set up worktree. "
+                f"Set task.project explicitly; silent fallbacks are disabled."
+            )
+        project = task.project
 
         # --- SYNC BEFORE WORK ---
         # Critical for containerized/stateless environments where workers start fresh.
@@ -1265,7 +1292,7 @@ class PolecatManager:
 
         worktree_path = self.polecats_dir / task.id
         branch_name = f"polecat/{task.id}"
-        default_branch = self.projects.get(task.project or "aops", {}).get("default_branch", "main")
+        default_branch = self.projects.get(project, {}).get("default_branch", "main")
 
         if worktree_path.exists():
             # Validate it's actually a git repo
@@ -1671,16 +1698,54 @@ class PolecatManager:
         if self.storage is not None:
             task = self.storage.get_task(task_id)
         else:
-            from polecat.pkb_bridge import get_task as pkb_get_task
+            try:
+                from polecat.pkb_bridge import get_task as pkb_get_task
 
-            task = pkb_get_task(task_id)
+                task = pkb_get_task(task_id)
+            except Exception:
+                # Network/transient error — treat as "task not found" so the
+                # worktree URL-recovery path below can run rather than
+                # propagating an exception that bypasses cleanup entirely.
+                task = None
+        worktree_path = self.polecats_dir / task_id
+
         if task:
             repo_path = self.get_repo_path(task)
         else:
-            # Fallback: assume academicOps if task deleted
-            repo_path = REPO_ROOT
-
-        worktree_path = self.polecats_dir / task_id
+            # Task lookup failed (e.g. task deleted). Try to recover from the
+            # worktree's own origin URL rather than silently falling back to
+            # REPO_ROOT — falling back to academicOps could delete branches
+            # from the wrong repo on a task_id collision.
+            repo_path = None
+            if worktree_path.exists() and (worktree_path / ".git").exists():
+                try:
+                    remote_url = self._get_remote_url(worktree_path)
+                except (subprocess.CalledProcessError, FileNotFoundError):
+                    remote_url = None
+                if remote_url:
+                    for name, cfg in self.projects.items():
+                        candidate = cfg.get("path")
+                        if candidate is None:
+                            continue
+                        try:
+                            candidate_url = self._get_remote_url(Path(candidate))
+                        except (subprocess.CalledProcessError, FileNotFoundError):
+                            continue
+                        if candidate_url == remote_url:
+                            repo_path = Path(candidate)
+                            break
+                        mirror = self.repos_dir / f"{name}.git"
+                        if mirror.exists() and str(mirror) == remote_url:
+                            repo_path = mirror
+                            break
+            if repo_path is None:
+                raise ValueError(
+                    f"Cannot nuke worktree for task {task_id}: task lookup "
+                    f"failed and the worktree's origin URL could not be "
+                    f"matched against any configured project. Refusing to "
+                    f"fall back to REPO_ROOT (would risk operating on the "
+                    f"wrong repository)."
+                )
         branch_name = f"polecat/{task_id}"
 
         # Safety check: verify branch is merged before deletion

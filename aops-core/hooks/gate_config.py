@@ -547,7 +547,7 @@ def extract_subagent_type(
         for param in param_names:
             value = tool_input.get(param)
             if isinstance(value, str):
-                stripped = value.strip()
+                stripped = value.strip().lstrip("/")
                 if stripped:
                     return stripped, is_skill
         return None, is_skill

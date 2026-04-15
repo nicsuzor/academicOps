@@ -221,9 +221,11 @@ DOCKER_IMAGE := aops-crew
 SANDBOX_IMAGE := $(DOCKER_IMAGE)
 
 # Build the Docker image used for crew/worker agent environments and Gemini sandboxing
+# CLAUDE_CODE_VERSION busts the layer cache so the installer always runs fresh,
+# picking up the latest release. Pass an explicit version to pin.
 build-docker:
 	@echo "Building aops crew image..."
-	@docker build -t $(DOCKER_IMAGE) .
+	@docker build --build-arg CLAUDE_CODE_VERSION=$$(date +%s) --build-arg RUST_CACHEBUST=$$(date +%s) -t $(DOCKER_IMAGE) .
 	@echo "✓ Image built: $(DOCKER_IMAGE)"
 	@echo "  Use with: GEMINI_SANDBOX_IMAGE=$(DOCKER_IMAGE) gemini --sandbox"
 

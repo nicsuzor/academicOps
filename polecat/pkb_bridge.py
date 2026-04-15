@@ -10,7 +10,7 @@ import json
 import os
 import sys
 import urllib.request
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 
@@ -33,7 +33,11 @@ class PkbTask:
         self.assignee: str | None = fm.get("assignee")
         self.pr_url: str | None = fm.get("pr_url")
         self.pr: str | None = fm.get("pr")
-        self.effort: str | None = fm.get("effort")  # XS/S/M/L — used for budget
+        self.due: str | None = data.get("due")  # ISO date string like "2026-05-13"
+        self.effort: str | None = data.get("effort")  # XS/S/M/L tier — used for turn-budget
+        self.consequence: str | None = data.get(
+            "consequence"
+        )  # Free text describing what happens if missed
         # Parse modified timestamp
         mod_raw = fm.get("modified")
         self.modified: datetime | None = None
@@ -45,6 +49,17 @@ class PkbTask:
                     self.modified = datetime.fromisoformat(mod_raw)
                 except ValueError:
                     pass
+
+    @property
+    def days_until_due(self) -> int | None:
+        """Days until due date. Negative = overdue. None = no due date set."""
+        if not self.due:
+            return None
+        try:
+            due_date = date.fromisoformat(self.due)
+            return (due_date - date.today()).days
+        except (ValueError, TypeError):
+            return None
 
 
 def _parse_sse_json(raw: str) -> dict | None:
@@ -121,6 +136,18 @@ class PkbClient:
         )
         if resp is None:
             return None
+        # Top-level JSON-RPC error (e.g. -32602 "Missing required parameter"). The
+        # MCP server returns these instead of a result object, so any code path
+        # that reads resp["result"] without checking this will see {} and silently
+        # return None, corrupting the caller. Surface the message to stderr so
+        # future failures aren't silent — match the isError branch's semantics
+        # (log + return None).
+        if "error" in resp:
+            err = resp["error"] or {}
+            code = err.get("code", "?")
+            msg = err.get("message", str(err))
+            print(f"PKB MCP error {code} ({name}): {msg}", file=sys.stderr)
+            return None
         result = resp.get("result", {})
         if result.get("isError"):
             content = result.get("content")
@@ -191,7 +218,8 @@ def get_task(task_id: str) -> PkbTask | None:
 def update_task(task_id: str, **kwargs: Any) -> bool:
     """Update task fields via the PKB MCP server.
 
-    Supported kwargs: status, assignee, priority, project, tags, body, pr_url.
+    Supported kwargs: status, assignee, priority, project, tags, body, pr_url,
+    due, effort, consequence.
     Pass ``None`` to remove a field.
     """
     updates = dict(kwargs)
@@ -241,6 +269,12 @@ def save_task(task: PkbTask) -> bool:
         updates["body"] = task.body
     if task.pr_url is not None:
         updates["pr_url"] = task.pr_url
+    if task.due is not None:
+        updates["due"] = task.due
+    if task.effort is not None:
+        updates["effort"] = task.effort
+    if task.consequence is not None:
+        updates["consequence"] = task.consequence
     return update_task(task.id, **updates)
 
 

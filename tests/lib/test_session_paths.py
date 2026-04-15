@@ -13,11 +13,13 @@ def _clear_env_vars(monkeypatch):
         "AOPS_SESSION_STATE_DIR",
         "AOPS_HOOK_LOG_PATH",
         "AOPS_GATE_FILE_CUSTODIET",
-        "AOPS_GATE_FILE_CUSTODIET",
         "GEMINI_SESSION_ID",
+        "POLECAT_CREW_NAME",
     )
     for var in ENV_VARS_TO_CLEAR:
         monkeypatch.delenv(var, raising=False)
+    # Pin machine name so tests don't depend on host hostname
+    monkeypatch.setenv("AOPS_MACHINE", "testmachine")
 
 
 class TestIsGeminiSession:
@@ -35,8 +37,9 @@ class TestIsGeminiSession:
 
     def test_detection_via_transcript_path(self):
         """Test detection when transcript_path contains '/.gemini/'."""
-        input_data = {"transcript_path": "/home/user/.gemini/tmp/hash/chats/session.json"}
-        assert _is_gemini_session("some-id", input_data) is True
+        assert (
+            _is_gemini_session("some-id", "/home/user/.gemini/tmp/hash/chats/session.json") is True
+        )
 
     def test_detection_via_state_dir_env(self):
         """Test detection when AOPS_SESSION_STATE_DIR contains '/.gemini/'."""
@@ -74,9 +77,10 @@ class TestGetGateFilePath:
 
         path = get_gate_file_path(gate, session_id, date=date)
 
-        # Expected: ~/.claude/projects/<project>/YYYYMMDD-HH-<shorthash>-<gate>.md
-        # Short hash for "550e8400..." is "550e8400"; hour from ISO date is "10"
-        assert str(path).endswith("20240520-10-550e8400-custodiet.md")
+        # Unified naming: {YYYYMMDD}-{HHMM}-{session_id}-{shortform}-{slug}-{gate}.md
+        # shortform here (no crew): workspace-testmachine-claude (repo=cwd basename)
+        assert "20240520-1000-550e8400-" in str(path)
+        assert str(path).endswith("-testmachine-claude-session-custodiet.md")
         # Verify parent directory was created (via mkdir(parents=True, exist_ok=True))
         expected_parent = tmp_path / ".claude" / "projects" / "-home-user-project"
         assert expected_parent.exists()
@@ -93,12 +97,14 @@ class TestGetGateFilePath:
         gate = "custodiet"
         date = "2024-05-20T10:00:00+00:00"
 
-        path = get_gate_file_path(gate, session_id, date=date)
+        # Set GEMINI_SESSION_ID so naming-layer provider detection agrees with
+        # the path-level _is_gemini_session mock.
+        with patch.dict(os.environ, {"GEMINI_SESSION_ID": session_id}):
+            path = get_gate_file_path(gate, session_id, date=date)
 
-        # Short hash for "gemini-session-123" will be a SHA256 prefix because of '-'
         short_hash = get_session_short_hash(session_id)
-        # Hour extracted from ISO date is "10"
-        assert str(path).endswith(f"20240520-10-{short_hash}-custodiet.md")
+        assert f"20240520-1000-{short_hash}-" in str(path)
+        assert str(path).endswith("-testmachine-gemini-session-custodiet.md")
 
     def test_polecat_worker_uuid_as_gemini(self, tmp_path):
         """Test that UUID session IDs are handled as Gemini if indicators are present."""
@@ -113,7 +119,8 @@ class TestGetGateFilePath:
             path = get_gate_file_path("custodiet", session_id, date="2024-05-20T10:00:00+00:00")
 
             assert "/.gemini/tmp/fakehash/logs" in str(path)
-            assert str(path).endswith("20240520-10-550e8400-custodiet.md")
+            assert "20240520-1000-550e8400-" in str(path)
+            assert str(path).endswith("-testmachine-gemini-session-custodiet.md")
             assert path.parent == gemini_logs_dir
 
     def test_gemini_missing_logs_dir_raises_error(self):
