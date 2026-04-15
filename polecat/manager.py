@@ -1049,10 +1049,11 @@ class PolecatManager:
         return [f"^refs/heads/{branch}" for branch in sorted(branches)]
 
     def check_mirror_freshness(self, project: str) -> tuple[bool, str]:
-        """Checks if mirror is up-to-date with local repo, attempting fast-forward if stale.
+        """Checks if the mirror's default branch is in sync with origin. Read-only.
 
-        Compares the mirror's main branch HEAD to the local repo's main branch.
-        If stale, attempts to fast-forward the mirror before returning.
+        Compares the mirror's refs/heads/{default_branch} SHA against what
+        origin reports via ls-remote. Makes no mutations — sync is the job
+        of safe_sync_mirror.
 
         Args:
             project: Project slug
