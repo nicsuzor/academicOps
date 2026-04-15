@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
-"""Unit tests for polecat/pkb_bridge.py error handling.
+"""Tests for polecat/pkb_bridge.py — friction fixes and error handling.
 
-Regression: ``PkbClient.call_tool`` used to do ``resp.get("result", {})``
-which silently returned ``None`` whenever the server produced a top-level
-JSON-RPC ``error`` object (e.g. ``-32602 "Missing required parameter"``).
-Every caller saw ``None`` with no log line — corrupt-by-default.
+Friction-fix tests: cover alias support (id/task_id, title/task_title, id/path)
+added in the PKB MCP tool signature friction PR.
 
-These tests mock ``PkbClient._post`` so they run offline and in the default
-suite (unit scope).
+Error-handling tests: regression for ``PkbClient.call_tool`` silently returning
+``None`` whenever the server produced a top-level JSON-RPC ``error`` object.
 """
 
 from __future__ import annotations
@@ -15,12 +13,132 @@ from __future__ import annotations
 import sys
 from datetime import date
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 REPO_ROOT = Path(__file__).parent.parent.parent.resolve()
 sys.path.insert(0, str(REPO_ROOT / "polecat"))
 
-from polecat.pkb_bridge import PkbClient, PkbTask  # noqa: E402
+from polecat.pkb_bridge import (  # noqa: E402
+    PkbClient,
+    PkbTask,
+    append,
+    complete_task,
+    create_task,
+    get_task,
+    update_task,
+)
+
+# ---------------------------------------------------------------------------
+# Friction-fix tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def mock_client():
+    with patch("polecat.pkb_bridge._get_client") as mock:
+        client = MagicMock()
+        mock.return_value = client
+        yield client
+
+
+def test_get_task_positional_id(mock_client):
+    mock_client.call_tool.return_value = {"frontmatter": {"id": "task-1", "title": "Test"}}
+
+    task = get_task("task-1")
+
+    assert task.id == "task-1"
+    mock_client.call_tool.assert_called_once_with("get_task", {"id": "task-1"})
+
+
+def test_get_task_named_id(mock_client):
+    mock_client.call_tool.return_value = {"frontmatter": {"id": "task-1", "title": "Test"}}
+
+    task = get_task(id="task-1")
+
+    assert task.id == "task-1"
+    mock_client.call_tool.assert_called_once_with("get_task", {"id": "task-1"})
+
+
+def test_complete_task_positional_id(mock_client):
+    mock_client.call_tool.return_value = {"success": True}
+
+    complete_task("task-1")
+
+    mock_client.call_tool.assert_called_once_with("complete_task", {"id": "task-1"})
+
+
+def test_complete_task_named_id(mock_client):
+    mock_client.call_tool.return_value = {"success": True}
+
+    complete_task(id="task-1")
+
+    mock_client.call_tool.assert_called_once_with("complete_task", {"id": "task-1"})
+
+
+def test_create_task_with_title(mock_client):
+    mock_client.call_tool.return_value = {"id": "task-123"}
+
+    task_id = create_task(title="My Title")
+
+    assert task_id == "task-123"
+    mock_client.call_tool.assert_called_once_with("create_task", {"title": "My Title"})
+
+
+def test_create_task_with_task_title_alias(mock_client):
+    mock_client.call_tool.return_value = {"id": "task-123"}
+
+    # Friction fix: 'task_title' should be accepted as 'title'
+    task_id = create_task(task_title="My Title")
+
+    assert task_id == "task-123"
+    mock_client.call_tool.assert_called_once_with("create_task", {"title": "My Title"})
+
+
+def test_update_task_positional_id(mock_client):
+    mock_client.call_tool.return_value = {"success": True}
+
+    update_task("task-1", status="done")
+
+    mock_client.call_tool.assert_called_once_with(
+        "update_task", {"id": "task-1", "updates": {"status": "done"}}
+    )
+
+
+def test_update_task_named_id(mock_client):
+    mock_client.call_tool.return_value = {"success": True}
+
+    # Friction fix: 'id' as named arg should work
+    update_task(id="task-1", status="done")
+
+    mock_client.call_tool.assert_called_once_with(
+        "update_task", {"id": "task-1", "updates": {"status": "done"}}
+    )
+
+
+def test_append_with_id(mock_client):
+    mock_client.call_tool.return_value = {"success": True}
+
+    append(id="doc-1", content="hello")
+
+    mock_client.call_tool.assert_called_once_with("append", {"id": "doc-1", "content": "hello"})
+
+
+def test_append_with_path_alias(mock_client):
+    mock_client.call_tool.return_value = {"success": True}
+
+    # Friction fix: 'path' should be accepted as 'id'
+    append(path="notes/todo.md", content="hello")
+
+    mock_client.call_tool.assert_called_once_with(
+        "append", {"id": "notes/todo.md", "content": "hello"}
+    )
+
+
+# ---------------------------------------------------------------------------
+# Error-handling tests (PkbClient.call_tool)
+# ---------------------------------------------------------------------------
 
 
 def _make_client() -> PkbClient:
