@@ -58,7 +58,7 @@ Execute the [[base-handover]] workflow. The steps are:
    ```
    If no PR was filed: use `status="review"` with `reason="session ended, work incomplete"`.
    If no task was claimed, create a historical task first.
-   **Fallback**: If `mcp__pkb__release_task` is not available, use `mcp__pkb__update_task(id="<task-id>", updates={"status": "merge_ready"})`.
+   **Fallback**: If `mcp__pkb__release_task` is not available, use `mcp__pkb__update_task(id="<task-id>", status="merge_ready")`.
 3. **File follow-up tasks** for outstanding work — use [[decompose]] principles and ensure all have a **parent** set to the current task or epic
 4. **Persist discoveries to memory** (optional)
    4.5. **Codify learnings** — framework improvement → `gh issue create` in aops repo; project-scoped → update `./.agents/workflows/`; see [[references/handover-details]]

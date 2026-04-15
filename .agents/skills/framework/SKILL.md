@@ -174,11 +174,11 @@ Every task MUST follow this lifecycle. No shortcuts.
 
    IF task exists:
      mcp__plugin_aops-core_tasks__get_task(id="<id>")
-     mcp__plugin_aops-core_tasks__update_task(id="<id>", updates={"status": "active"})
+     mcp__plugin_aops-core_tasks__update_task(id="<id>", status="active")
 
    IF creating new tracked work:
-     mcp__plugin_aops-core_tasks__create_task(task_title="[description]", type="task", project="aops", priority=2)
-     mcp__plugin_aops-core_tasks__update_task(id="<id>", updates={"status": "active"})
+     mcp__plugin_aops-core_tasks__create_task(title="[description]", type="task", project="aops", priority=2)
+     mcp__plugin_aops-core_tasks__update_task(id="<id>", status="active")
 
    IF quick ad-hoc work (< 15 min, no dependencies):
      Use TodoWrite for session tracking only
@@ -236,7 +236,7 @@ Every task MUST follow this lifecycle. No shortcuts.
    - If no rule exists, propose one first
 
 3. UPDATE TASK AS YOU WORK (if tracking with task)
-   mcp__plugin_aops-core_tasks__update_task(id="<id>", updates={"body": "[progress note]"})
+   mcp__plugin_aops-core_tasks__update_task(id="<id>", body="[progress note]")
 
 4. ITERATION LOOP
    If implementation reveals plan was incomplete:
