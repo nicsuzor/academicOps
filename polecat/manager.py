@@ -1531,14 +1531,15 @@ class PolecatManager:
                             capture_output=True,
                         )
                         print(
-                            f"❌ Auto-rebase failed with conflicts. "
+                            f"❌ Auto-rebase failed. "
                             f"Worktree is {count} commits behind origin/{default_branch}. "
-                            f"Please resolve manually in {worktree_path}.",
+                            f"Please resolve manually in {worktree_path}.\n"
+                            f"{rebase_result.stderr.strip()}",
                             file=sys.stderr,
                         )
                         raise RuntimeError(
-                            f"Worktree at {worktree_path} is too stale and cannot be cleanly rebased "
-                            f"onto origin/{default_branch}. Conflicts detected during rebase."
+                            f"Worktree at {worktree_path} could not be cleanly rebased "
+                            f"onto origin/{default_branch}. Rebase failed: {rebase_result.stderr.strip()}"
                         )
 
                     if count > threshold:
