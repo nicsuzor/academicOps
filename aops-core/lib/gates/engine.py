@@ -107,6 +107,12 @@ class GenericGate:
             if not re.search(condition.subagent_type_pattern, ctx.subagent_type):
                 return False
 
+        # 3.8 Prompt Pattern
+        if condition.prompt_pattern:
+            prompt = ctx.raw_input.get("prompt", "")
+            if not re.search(condition.prompt_pattern, prompt):
+                return False
+
         # 4. State Metrics Checks
         if condition.min_ops_since_open is not None:
             if state.ops_since_open < condition.min_ops_since_open:

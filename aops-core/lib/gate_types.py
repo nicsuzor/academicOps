@@ -45,6 +45,7 @@ class GateCondition(BaseModel):
     tool_name_pattern: str | None = None  # Regex
     tool_input_pattern: str | None = None  # Regex on stringified tool input dict
     subagent_type_pattern: str | None = None  # Regex on subagent type
+    prompt_pattern: str | None = None  # Regex on raw_input.prompt
     excluded_tool_categories: list[str] | None = None  # Skip if tool is in these categories
 
     # State checks

@@ -152,11 +152,21 @@ def format_gate_status_icons(state: SessionState) -> str:
 
 
 def get_parent_pid(pid: int) -> int | None:
-    """Get parent PID from /proc/[pid]/stat."""
+    """Get parent PID cross-platform (supports Linux and macOS)."""
     try:
-        with open(f"/proc/{pid}/stat") as f:
-            return int(f.read().split()[3])
-    except (OSError, IndexError, ValueError):
+        import sys
+
+        if sys.platform == "darwin":
+            import subprocess
+
+            output = subprocess.check_output(
+                ["ps", "-o", "ppid=", "-p", str(pid)], encoding="utf-8"
+            )
+            return int(output.strip())
+        else:
+            with open(f"/proc/{pid}/stat") as f:
+                return int(f.read().split()[3])
+    except Exception:
         return None
 
 

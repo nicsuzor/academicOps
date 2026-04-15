@@ -230,6 +230,17 @@ def main():
         shutil.copy2(src_core_md, gemini_dir / "CORE.md")
         print("✓ Copied CORE.md to ~/.gemini/CORE.md")
 
+    # Install Gemini Policies
+    print("Installing Gemini policies...")
+    policies_dir = gemini_dir / "policies"
+    policies_dir.mkdir(exist_ok=True)
+    src_policies = aops_root / "aops-core" / "policies"
+    if src_policies.exists() and src_policies.is_dir():
+        for item in src_policies.iterdir():
+            if item.is_file() and item.suffix == ".toml":
+                shutil.copy2(item, policies_dir / item.name)
+                print(f"  ✓ Copied {item.name} to ~/.gemini/policies/")
+
     ag_dir = gemini_dir / "antigravity"
     ag_dir.mkdir(parents=True, exist_ok=True)
     global_workflows = ag_dir / "global_workflows"

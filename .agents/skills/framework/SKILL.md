@@ -177,7 +177,7 @@ Every task MUST follow this lifecycle. No shortcuts.
      mcp__plugin_aops-core_tasks__update_task(id="<id>", updates={"status": "active"})
 
    IF creating new tracked work:
-     mcp__plugin_aops-core_tasks__create_task(task_title="[description]", type="task", project="aops", priority=2)
+     mcp__plugin_aops-core_tasks__create_task(title="[description]", type="task", project="aops", priority=2)
      mcp__plugin_aops-core_tasks__update_task(id="<id>", updates={"status": "active"})
 
    IF quick ad-hoc work (< 15 min, no dependencies):

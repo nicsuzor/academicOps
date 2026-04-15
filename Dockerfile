@@ -22,6 +22,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gnupg \
     make \
     cron \
+    procps \
     ca-certificates \
     && curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash - \
     && apt-get install -y nodejs \
@@ -38,14 +39,32 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && ln -s /usr/bin/fdfind /usr/local/bin/fd \
     && ln -s /usr/bin/batcat /usr/local/bin/bat
 
+# Pre-install Playwright's Chromium browser and its system dependencies.
+# Marsha and other workers run browser verification via `playwright`; without
+# this, each container has to run `npx playwright install-deps` at runtime —
+# slow, often fails offline, and needs sudo under the `worker` user.
+#
+# `install-deps` auto-detects the distro and runs `apt-get install -y` for the
+# chromium-required packages (libnss3, libatk-1.0, libcups2, fonts, ...). Must
+# run as root (we still are here) before the USER switch further down.
+# `playwright install chromium` downloads the browser binaries. We set
+# PLAYWRIGHT_BROWSERS_PATH=/ms-playwright (system-wide) before the install so
+# the binaries land in a location the unprivileged `worker` user can read at
+# runtime. The env var stays set for all subsequent stages and containers.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN npx --yes playwright@1.59.1 install-deps chromium \
+    && npx --yes playwright@1.59.1 install chromium \
+    && chmod -R a+rX /ms-playwright \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
 # Install uv system-wide (standard for aops framework per P#93)
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Install Gemini CLI and code quality tools globally (Claude installed separately below)
 RUN npm install -g @google/gemini-cli markdownlint-cli2 dprint ccstatusline && npm cache clean --force
 
-# Create data directory, hand ownership to worker
-RUN mkdir -p /data && chown worker:worker /data
+# Create data and workspace directories, hand ownership to worker
+RUN mkdir -p /data /workspace && chown worker:worker /data /workspace
 
 # ── Switch to non-root user for all remaining operations ───────────────
 
@@ -57,9 +76,14 @@ ENV HOME=/home/worker \
 
 # Install Claude Code via native installer — npm package lacks the full binary
 # and causes .claude.json config migration issues on startup.
+# CLAUDE_CODE_VERSION busts the Docker layer cache so rebuilds pick up the latest.
+# Pass --build-arg CLAUDE_CODE_VERSION=x.y.z to pin, or leave empty to get latest.
+ARG CLAUDE_CODE_VERSION
 RUN curl -fsSL https://claude.ai/install.sh | bash
 
-# Install Rust toolchain via rustup
+# RUST_CACHEBUST is intentionally unused in the RUN command — it only invalidates
+# this layer so rebuilds always fetch the latest Rust toolchain from rustup.
+ARG RUST_CACHEBUST
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal
 
 # Install Python-based CLI tools as user (installs to ~/.local/bin)
