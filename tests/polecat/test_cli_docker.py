@@ -575,8 +575,9 @@ class TestReplicateGeminiAuth:
 
         # Hooks explicitly enabled
         assert replicated["hooksConfig"]["enabled"] is True
-        # No auth selectedType (Gemini auto-detects — avoids auth mismatch crash)
-        assert "security" not in replicated
+        # No auth selectedType (Gemini auto-detects — avoids auth mismatch crash).
+        # security.policyEngine is allowed (template-defined); security.auth must not leak.
+        assert replicated.get("security", {}).get("auth") is None
         # User baggage stripped
         assert "mcpServers" not in replicated
         assert "ui" not in replicated
