@@ -2820,9 +2820,8 @@ def nuke(ctx, target, force):
 
     # 1. Cleanup stale worktrees
     if manager.polecats_dir.exists():
-        exclude = {".repos", "crew"}
         for d in manager.polecats_dir.iterdir():
-            if d.is_dir() and not d.name.startswith(".") and d.name not in exclude:
+            if d.is_dir() and not d.name.startswith("."):
                 task_id = d.name
                 if manager.storage is not None:
                     task = manager.storage.get_task(task_id)
@@ -2833,7 +2832,18 @@ def nuke(ctx, target, force):
                 if not task:
                     is_stale = True
                 else:
-                    repo_path = manager.get_repo_path(task)
+                    # A malformed task (e.g. missing 'project') raises
+                    # ValueError from get_repo_path. Treat that as "can't
+                    # verify staleness" and skip rather than aborting the
+                    # entire sweep.
+                    try:
+                        repo_path = manager.get_repo_path(task)
+                    except ValueError as e:
+                        print(
+                            f"Warning: skipping {task_id}: {e}",
+                            file=sys.stderr,
+                        )
+                        continue
                     branch_name = f"polecat/{task_id}"
 
                     # Check if branch is merged or deleted
@@ -2897,12 +2907,9 @@ def list_polecats(ctx):
         print("No polecats directory found.")
         return
 
-    # Directories to exclude from listing (system dirs)
-    exclude = {".repos", "crew"}
-
     found = False
     for item in manager.polecats_dir.iterdir():
-        if item.is_dir() and not item.name.startswith(".") and item.name not in exclude:
+        if item.is_dir() and not item.name.startswith("."):
             print(f"{item.name} -> {item}")
             found = True
 
@@ -5023,11 +5030,10 @@ def summary(ctx, since, project):
 
     try:
         # Count active polecats (worktrees)
-        exclude = {".repos", "crew", ".git"}
         active_polecats = [
             d.name
             for d in manager.polecats_dir.iterdir()
-            if d.is_dir() and not d.name.startswith(".") and d.name not in exclude
+            if d.is_dir() and not d.name.startswith(".")
         ]
 
         # Count crew workers
