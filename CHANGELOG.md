@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **polecat:** PKB-poll termination watchdog kills runaway Gemini workers once their task reaches a terminal PKB status ([#521](https://github.com/nicsuzor/academicOps/issues/521))
+
 ## [0.3.18](https://github.com/nicsuzor/academicOps/compare/v0.3.17...v0.3.18) (2026-04-08)
 
 ### Features

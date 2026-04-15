@@ -10,7 +10,7 @@ import json
 import os
 import sys
 import urllib.request
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 
@@ -33,6 +33,11 @@ class PkbTask:
         self.assignee: str | None = fm.get("assignee")
         self.pr_url: str | None = fm.get("pr_url")
         self.pr: str | None = fm.get("pr")
+        self.due: str | None = data.get("due")  # ISO date string like "2026-05-13"
+        self.effort: str | None = data.get("effort")  # XS/S/M/L tier — used for turn-budget
+        self.consequence: str | None = data.get(
+            "consequence"
+        )  # Free text describing what happens if missed
         # Parse modified timestamp
         mod_raw = fm.get("modified")
         self.modified: datetime | None = None
@@ -44,6 +49,17 @@ class PkbTask:
                     self.modified = datetime.fromisoformat(mod_raw)
                 except ValueError:
                     pass
+
+    @property
+    def days_until_due(self) -> int | None:
+        """Days until due date. Negative = overdue. None = no due date set."""
+        if not self.due:
+            return None
+        try:
+            due_date = date.fromisoformat(self.due)
+            return (due_date - date.today()).days
+        except (ValueError, TypeError):
+            return None
 
 
 def _parse_sse_json(raw: str) -> dict | None:
@@ -120,6 +136,18 @@ class PkbClient:
         )
         if resp is None:
             return None
+        # Top-level JSON-RPC error (e.g. -32602 "Missing required parameter"). The
+        # MCP server returns these instead of a result object, so any code path
+        # that reads resp["result"] without checking this will see {} and silently
+        # return None, corrupting the caller. Surface the message to stderr so
+        # future failures aren't silent — match the isError branch's semantics
+        # (log + return None).
+        if "error" in resp:
+            err = resp["error"] or {}
+            code = err.get("code", "?")
+            msg = err.get("message", str(err))
+            print(f"PKB MCP error {code} ({name}): {msg}", file=sys.stderr)
+            return None
         result = resp.get("result", {})
         if result.get("isError"):
             content = result.get("content")
@@ -179,22 +207,82 @@ def _parse_task_ids_from_markdown(text: str) -> list[str]:
     return ids
 
 
-def get_task(task_id: str) -> PkbTask | None:
-    """Retrieve a task by ID via the PKB MCP server."""
-    data = _get_client().call_tool("get_task", {"id": task_id})
+def get_task(task_id: str | None = None, id: str | None = None) -> PkbTask | None:
+    """Retrieve a task by ID via the PKB MCP server.
+
+    Supports both 'task_id' (positional) and 'id' (named) to reduce friction.
+    """
+    final_id = task_id or id
+    if not final_id:
+        raise ValueError("Task ID must be provided")
+    data = _get_client().call_tool("get_task", {"id": final_id})
     if data is None or not isinstance(data, dict):
         return None
     return PkbTask(data)
 
 
-def update_task(task_id: str, **kwargs: Any) -> bool:
+def complete_task(task_id: str | None = None, id: str | None = None) -> bool:
+    """Mark a task as complete via the PKB MCP server.
+
+    Supports both 'task_id' (positional) and 'id' (named) to reduce friction.
+    """
+    final_id = task_id or id
+    if not final_id:
+        raise ValueError("Task ID must be provided")
+    result = _get_client().call_tool("complete_task", {"id": final_id})
+    return result is not None
+
+
+def create_task(
+    title: str | None = None, task_title: str | None = None, **kwargs: Any
+) -> str | None:
+    """Create a new task in the PKB.
+
+    Supports both 'title' and 'task_title' (as an alias) to reduce friction.
+    Returns the created task ID.
+    """
+    final_title = title or task_title
+    if not final_title:
+        raise ValueError("Task title must be provided")
+
+    params = dict(kwargs)
+    params["title"] = final_title
+
+    result = _get_client().call_tool("create_task", params)
+    if result and isinstance(result, dict):
+        # Result might be the task object itself
+        return result.get("id")
+    return str(result) if result else None
+
+
+def update_task(task_id: str | None = None, id: str | None = None, **kwargs: Any) -> bool:
     """Update task fields via the PKB MCP server.
 
-    Supported kwargs: status, assignee, priority, project, tags, body, pr_url.
+    Supports both 'task_id' (positional) and 'id' (named) to reduce friction.
+    Supported kwargs: status, assignee, priority, project, tags, body, pr_url,
+    due, effort, consequence.
     Pass ``None`` to remove a field.
     """
+    final_id = task_id or id
+    if not final_id:
+        raise ValueError("Task ID must be provided")
+
     updates = dict(kwargs)
-    result = _get_client().call_tool("update_task", {"id": task_id, "updates": updates})
+
+    result = _get_client().call_tool("update_task", {"id": final_id, "updates": updates})
+    return result is not None
+
+
+def append(id: str | None = None, content: str = "", path: str | None = None) -> bool:
+    """Append content to a document.
+
+    Supports both 'id' and 'path' (as an alias for id) to reduce friction.
+    """
+    doc_id = id or path
+    if not doc_id:
+        raise ValueError("Either 'id' or 'path' must be provided to append")
+
+    result = _get_client().call_tool("append", {"id": doc_id, "content": content})
     return result is not None
 
 
@@ -240,6 +328,12 @@ def save_task(task: PkbTask) -> bool:
         updates["body"] = task.body
     if task.pr_url is not None:
         updates["pr_url"] = task.pr_url
+    if task.due is not None:
+        updates["due"] = task.due
+    if task.effort is not None:
+        updates["effort"] = task.effort
+    if task.consequence is not None:
+        updates["consequence"] = task.consequence
     return update_task(task.id, **updates)
 
 

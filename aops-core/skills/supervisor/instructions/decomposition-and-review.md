@@ -6,7 +6,7 @@ The supervisor decomposes large tasks into PR-sized subtasks.
 
 **PR-Sized Definition** (all must be true):
 
-- Estimated effort ≤ 4 hours
+- Estimated effort ≤ 0.5d (4 hours)
 - Touches ≤ 10 files
 - Single logical unit (one "why")
 - Testable in isolation
@@ -75,7 +75,7 @@ If any check fails, fix the hierarchy BEFORE proceeding with decomposition.
 
 | ID        | Title       | Estimate | Confidence |
 | --------- | ----------- | -------- | ---------- |
-| subtask-1 | Description | 2h       | medium     |
+| subtask-1 | Description | 0.5d     | medium     |
 
 ### Dependency Graph
 
@@ -93,6 +93,12 @@ subtask-1 ~> subtask-3 (informs)
 ### Risks
 
 - Risk 1 (mitigation: ...)
+
+### High-Risk Tags
+
+[For each subtask that meets ANY critic-gate trigger criterion
+(see [[worker-dispatch]] "Critic Gate"), add the `high-risk` tag.
+This ensures the dispatch-time critic gate activates for these tasks.]
 ```
 
 ## Phase 2: Multi-Agent Review

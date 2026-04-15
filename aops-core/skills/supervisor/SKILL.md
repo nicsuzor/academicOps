@@ -98,6 +98,18 @@ aops task <task-id> | jules new --repo <owner>/<repo>
 The supervisor decides WHICH task to dispatch next based on priority,
 dependencies, and capacity — then dispatches one at a time.
 
+For tightly coupled subtasks, the supervisor can use **coordinated branch
+dispatch** — a shared feature branch with a draft PR, polecats pushing
+sequentially. See [[instructions/worker-dispatch]] "Coordinated Branch
+Dispatch" for the protocol. Individual dispatch remains the default.
+
+**Critic-gated dispatch**: Tasks tagged `high-risk` or meeting blast-radius
+criteria (irreversible operations, external system modifications, actions
+that close recovery paths) require independent critic review before dispatch.
+The supervisor prepares a dispatch review context with rollback plan, invokes
+Pauli for safety assessment, and refuses dispatch if rollback requires physical
+intervention. See [[instructions/worker-dispatch]] "Critic Gate."
+
 > See [[instructions/worker-dispatch]] for pre-dispatch validation, worker
 > selection, and dispatch protocol.
 

@@ -26,9 +26,13 @@ from cli import (
     _build_docker_cmd,
     _clone_has_changes,
     _find_docker_sock,
+    _format_oom_message,
+    _is_colima_env,
     _node_version_key,
+    _parse_memory_string,
     _pass_pkb_url_sandbox,
     _replicate_gemini_auth,
+    _resolve_memory_limit,
 )
 
 
@@ -66,6 +70,12 @@ class TestNodeVersionKey:
 class TestBuildDockerCmd:
     """Tests for _build_docker_cmd Docker wrapper construction."""
 
+    @pytest.fixture(autouse=True)
+    def _patch_remote_daemon(self):
+        """Force local-daemon (bind-mount) path so tests don't require Docker on PATH."""
+        with patch("cli._is_remote_daemon", return_value=False):
+            yield
+
     def _build(self, cli_tool="claude", env=None, agent_cmd=None, work_dir=None):
         docker_cmd = _build_docker_cmd(
             cli_tool=cli_tool,
@@ -82,22 +92,21 @@ class TestBuildDockerCmd:
         uid_gid = cmd[idx + 1]
         assert uid_gid == f"{os.getuid()}:{os.getgid()}"
 
-    def test_workspace_uses_docker_cp_not_bind_mount(self):
-        """Workspace must be injected via docker cp, not bind mount (WSL2 compat)."""
+    def test_workspace_is_bind_mounted(self):
+        """Workspace is bind-mounted rw into the container (local-daemon strategy)."""
+        work_dir = Path("/tmp/test-worktree")
         docker_cmd = _build_docker_cmd(
             cli_tool="claude",
-            work_dir=Path("/tmp/test-worktree"),
+            work_dir=work_dir,
             env={},
             agent_cmd=["claude", "--dangerously-skip-permissions"],
             is_interactive=False,
         )
-        # workspace_dir should be set for docker cp injection
-        assert docker_cmd.workspace_dir == Path("/tmp/test-worktree")
-        # No bind mount for workspace in the command
+        assert docker_cmd.workspace_dir == work_dir.resolve()
         vol_idx = [i for i, x in enumerate(docker_cmd.cmd) if x == "-v"]
         volumes = [docker_cmd.cmd[i + 1] for i in vol_idx]
-        assert not any("/workspace" in v for v in volumes)
-        # Working directory is still set
+        expected = f"{work_dir.resolve()}:/workspace"
+        assert expected in volumes, f"expected workspace bind-mount {expected} in {volumes}"
         assert "-w" in docker_cmd.cmd
         w_idx = docker_cmd.cmd.index("-w")
         assert docker_cmd.cmd[w_idx + 1] == "/workspace"
@@ -233,8 +242,8 @@ class TestBuildDockerCmd:
         vol_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-v"]
         assert not any(str(aca_dir) in v for v in vol_args)
 
-    def test_interactive_mode_has_separate_tty_flag(self):
-        """Interactive mode produces -i and -t as separate elements (needed by docker start)."""
+    def test_interactive_mode_sets_tty_flags(self):
+        """Interactive mode sets both stdin and TTY flags (either split -i/-t or combined -it)."""
         docker_cmd = _build_docker_cmd(
             cli_tool="gemini",
             work_dir=Path("/tmp/worktree"),
@@ -243,9 +252,10 @@ class TestBuildDockerCmd:
             is_interactive=True,
         )
         cmd = docker_cmd.cmd
-        assert "-i" in cmd, "stdin flag must be a separate element"
-        assert "-t" in cmd, "TTY flag must be a separate element"
-        assert "-it" not in cmd, "flags must not be combined (breaks docker start detection)"
+        has_stdin = "-i" in cmd or "-it" in cmd
+        has_tty = "-t" in cmd or "-it" in cmd
+        assert has_stdin, "stdin flag must be present (either -i or -it)"
+        assert has_tty, "TTY flag must be present (either -t or -it)"
 
     def test_headless_mode_has_stdin_no_tty(self):
         """Headless mode gets -i (stdin) but not -t (no TTY)."""
@@ -507,6 +517,33 @@ class TestReplicateGeminiAuth:
 
         shutil.rmtree(result)
 
+    def test_replicates_policies(self, tmp_path):
+        """Replicates all policy TOML files to the sandbox auth home."""
+        gemini_dir = tmp_path / ".gemini"
+        policies_dir = gemini_dir / "policies"
+        policies_dir.mkdir(parents=True)
+
+        (gemini_dir / "settings.json").write_text("{}")
+        (policies_dir / "rule1.toml").write_text("# policy 1")
+        (policies_dir / "rule2.toml").write_text("# policy 2")
+        # Non-toml files should be ignored
+        (policies_dir / "ignore.me").write_text("not a policy")
+
+        env = {}
+        with patch("cli.Path.home", return_value=tmp_path):
+            result = _replicate_gemini_auth(env)
+
+        assert result is not None
+        dst_policies = result / ".gemini" / "policies"
+        assert dst_policies.is_dir()
+        assert (dst_policies / "rule1.toml").read_text() == "# policy 1"
+        assert (dst_policies / "rule2.toml").read_text() == "# policy 2"
+        assert not (dst_policies / "ignore.me").exists()
+
+        import shutil
+
+        shutil.rmtree(result)
+
     def test_replicated_settings_is_minimal(self, tmp_path):
         """Replicated settings.json uses controlled template, not user settings.
 
@@ -654,57 +691,314 @@ class TestPassPkbUrlSandbox:
 class TestCloneHasChanges:
     """Tests for _clone_has_changes — used for auto-nuke of crew with no work."""
 
-    def _init_repo(self, path):
-        """Create a git repo with one commit and a remote-like ref."""
-        subprocess.run(["git", "init"], cwd=path, check=True, capture_output=True)
+    BRANCH = "crew/test"
+
+    def _init_repo_with_remote(self, path):
+        """Create a git repo with a real local bare remote (required for ls-remote)."""
+        remote = path / "origin.git"
+        remote.mkdir()
+        subprocess.run(["git", "init", "--bare"], cwd=remote, check=True, capture_output=True)
+
+        repo = path / "repo"
+        repo.mkdir()
+        for cmd in [
+            ["git", "init"],
+            ["git", "config", "user.email", "test@test"],
+            ["git", "config", "user.name", "Test"],
+            ["git", "remote", "add", "origin", str(remote)],
+        ]:
+            subprocess.run(cmd, cwd=repo, check=True, capture_output=True)
+        (repo / "file.txt").write_text("initial")
+        subprocess.run(["git", "add", "."], cwd=repo, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "init"], cwd=repo, check=True, capture_output=True)
         subprocess.run(
-            ["git", "config", "user.email", "test@test"], cwd=path, check=True, capture_output=True
+            ["git", "push", "origin", "HEAD:main"], cwd=repo, check=True, capture_output=True
         )
-        subprocess.run(
-            ["git", "config", "user.name", "Test"], cwd=path, check=True, capture_output=True
-        )
-        (path / "file.txt").write_text("initial")
-        subprocess.run(["git", "add", "."], cwd=path, check=True, capture_output=True)
-        subprocess.run(["git", "commit", "-m", "init"], cwd=path, check=True, capture_output=True)
-        # Create a fake origin/main ref pointing at HEAD
-        subprocess.run(
-            ["git", "update-ref", "refs/remotes/origin/main", "HEAD"],
-            cwd=path,
-            check=True,
-            capture_output=True,
-        )
-        # Set symbolic HEAD for origin
+        subprocess.run(["git", "fetch", "origin"], cwd=repo, check=True, capture_output=True)
         subprocess.run(
             ["git", "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main"],
-            cwd=path,
+            cwd=repo,
             check=True,
             capture_output=True,
         )
+        return repo
 
-    def test_no_changes_returns_false(self, tmp_path):
-        repo = tmp_path / "repo"
-        repo.mkdir()
-        self._init_repo(repo)
-        assert _clone_has_changes(repo) is False
+    def test_no_changes_no_remote_branch_returns_false(self, tmp_path):
+        """No remote crew branch exists — nothing was pushed, safe to nuke."""
+        repo = self._init_repo_with_remote(tmp_path)
+        # crew/test not on remote → ls-remote returns empty → False
+        assert _clone_has_changes(repo, self.BRANCH) is False
 
     def test_uncommitted_changes_returns_true(self, tmp_path):
-        repo = tmp_path / "repo"
-        repo.mkdir()
-        self._init_repo(repo)
+        """Local uncommitted changes → preserve (detected before remote check)."""
+        repo = self._init_repo_with_remote(tmp_path)
         (repo / "new_file.txt").write_text("uncommitted")
-        assert _clone_has_changes(repo) is True
+        assert _clone_has_changes(repo, self.BRANCH) is True
 
-    def test_committed_changes_returns_true(self, tmp_path):
-        repo = tmp_path / "repo"
-        repo.mkdir()
-        self._init_repo(repo)
-        (repo / "new_file.txt").write_text("committed")
+    def test_pushed_commits_returns_true(self, tmp_path):
+        """Remote crew branch has commits not in main → preserve.
+
+        This is the Docker case: local clone may be stale (no local commits),
+        but the agent pushed real work to origin/crew/test.
+        """
+        repo = self._init_repo_with_remote(tmp_path)
+        (repo / "new_file.txt").write_text("committed and pushed")
         subprocess.run(["git", "add", "."], cwd=repo, check=True, capture_output=True)
         subprocess.run(
             ["git", "commit", "-m", "new work"], cwd=repo, check=True, capture_output=True
         )
-        assert _clone_has_changes(repo) is True
+        subprocess.run(
+            ["git", "push", "origin", f"HEAD:{self.BRANCH}"],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+        )
+        assert _clone_has_changes(repo, self.BRANCH) is True
+
+    def test_remote_branch_merged_returns_false(self, tmp_path):
+        """Remote crew branch exists but its commits are already in main → nuke."""
+        repo = self._init_repo_with_remote(tmp_path)
+        # Push crew/test at the same commit as main (merged or never diverged)
+        subprocess.run(
+            ["git", "push", "origin", f"HEAD:{self.BRANCH}"],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+        )
+        assert _clone_has_changes(repo, self.BRANCH) is False
+
+    def test_squash_merged_returns_false(self, tmp_path):
+        """Branch has commits beyond main but identical content (squash-merge) → nuke."""
+        repo = self._init_repo_with_remote(tmp_path)
+        # Create and push a crew/test commit
+        (repo / "feature.txt").write_text("feature work")
+        subprocess.run(["git", "add", "."], cwd=repo, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-m", "feature"], cwd=repo, check=True, capture_output=True
+        )
+        subprocess.run(
+            ["git", "push", "origin", f"HEAD:{self.BRANCH}"],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+        )
+        # Squash merge: create a new main commit with the same tree (same content, different SHA)
+        tree = subprocess.run(
+            ["git", "rev-parse", "HEAD^{tree}"],
+            cwd=repo,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        parent = subprocess.run(
+            ["git", "rev-parse", "HEAD~1"],
+            cwd=repo,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        squash = subprocess.run(
+            ["git", "commit-tree", tree, "-p", parent, "-m", "squash: feature"],
+            cwd=repo,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        subprocess.run(
+            ["git", "push", "origin", f"{squash}:refs/heads/main", "--force"],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+        )
+        assert _clone_has_changes(repo, self.BRANCH) is False
 
     def test_nonexistent_path_returns_true(self, tmp_path):
         """Safe default: if path doesn't exist, assume changes (don't auto-nuke)."""
-        assert _clone_has_changes(tmp_path / "nonexistent") is True
+        assert _clone_has_changes(tmp_path / "nonexistent", self.BRANCH) is True
+
+
+# ---------------------------------------------------------------------------
+# Docker memory management
+# ---------------------------------------------------------------------------
+
+
+class TestParseMemoryString:
+    """Tests for _parse_memory_string."""
+
+    def test_gigabytes(self):
+        assert _parse_memory_string("4g") == 4 * 1024**3
+
+    def test_megabytes(self):
+        assert _parse_memory_string("2048m") == 2048 * 1024**2
+
+    def test_kilobytes(self):
+        assert _parse_memory_string("512k") == 512 * 1024
+
+    def test_bytes_suffix(self):
+        assert _parse_memory_string("1073741824b") == 1073741824
+
+    def test_plain_integer(self):
+        assert _parse_memory_string("1073741824") == 1073741824
+
+    def test_uppercase(self):
+        assert _parse_memory_string("4G") == 4 * 1024**3
+
+    def test_fractional(self):
+        assert _parse_memory_string("1.5g") == int(1.5 * 1024**3)
+
+    def test_whitespace_stripped(self):
+        assert _parse_memory_string("  4g  ") == 4 * 1024**3
+
+    def test_invalid_returns_none(self):
+        assert _parse_memory_string("abc") is None
+
+    def test_empty_string_returns_none(self):
+        assert _parse_memory_string("") is None
+
+
+class TestResolveMemoryLimit:
+    """Tests for _resolve_memory_limit priority: CLI > env > config > None."""
+
+    def test_cli_flag_wins(self, monkeypatch):
+        monkeypatch.setenv("POLECAT_DOCKER_MEMORY", "2g")
+        config = {"docker": {"memory": "1g"}}
+        assert _resolve_memory_limit("4g", config) == "4g"
+
+    def test_env_var_when_no_cli(self, monkeypatch):
+        monkeypatch.setenv("POLECAT_DOCKER_MEMORY", "2g")
+        config = {"docker": {"memory": "1g"}}
+        assert _resolve_memory_limit(None, config) == "2g"
+
+    def test_config_when_no_cli_or_env(self, monkeypatch):
+        monkeypatch.delenv("POLECAT_DOCKER_MEMORY", raising=False)
+        config = {"docker": {"memory": "1g"}}
+        assert _resolve_memory_limit(None, config) == "1g"
+
+    def test_none_when_nothing_set(self, monkeypatch):
+        monkeypatch.delenv("POLECAT_DOCKER_MEMORY", raising=False)
+        assert _resolve_memory_limit(None, None) is None
+
+    def test_none_when_config_empty(self, monkeypatch):
+        monkeypatch.delenv("POLECAT_DOCKER_MEMORY", raising=False)
+        assert _resolve_memory_limit(None, {}) is None
+
+    def test_none_when_config_docker_has_no_memory(self, monkeypatch):
+        monkeypatch.delenv("POLECAT_DOCKER_MEMORY", raising=False)
+        assert _resolve_memory_limit(None, {"docker": {}}) is None
+
+
+class TestBuildDockerCmdMemory:
+    """Tests for memory flags in _build_docker_cmd."""
+
+    def _build(self, memory_limit=None, **kwargs):
+        docker_cmd = _build_docker_cmd(
+            cli_tool=kwargs.get("cli_tool", "claude"),
+            work_dir=kwargs.get("work_dir", Path("/tmp/worktree")),
+            env=kwargs.get("env", {}),
+            agent_cmd=kwargs.get("agent_cmd", ["claude", "--dangerously-skip-permissions"]),
+            is_interactive=kwargs.get("is_interactive", False),
+            memory_limit=memory_limit,
+        )
+        return docker_cmd.cmd
+
+    def test_memory_limit_flags_added(self):
+        cmd = self._build(memory_limit="4g")
+        assert "--memory" in cmd
+        mem_idx = cmd.index("--memory")
+        assert cmd[mem_idx + 1] == "4g"
+        assert "--memory-swap" in cmd
+        swap_idx = cmd.index("--memory-swap")
+        assert cmd[swap_idx + 1] == "4g"
+
+    def test_no_memory_flags_when_none(self):
+        cmd = self._build(memory_limit=None)
+        assert "--memory" not in cmd
+        assert "--memory-swap" not in cmd
+
+    def test_memory_swap_equals_memory(self):
+        """--memory-swap == --memory disables swap for predictable OOM."""
+        cmd = self._build(memory_limit="6g")
+        mem_idx = cmd.index("--memory")
+        swap_idx = cmd.index("--memory-swap")
+        assert cmd[mem_idx + 1] == cmd[swap_idx + 1] == "6g"
+
+
+class TestIsColimaEnv:
+    """Tests for _is_colima_env."""
+
+    def test_colima_socket(self):
+        from cli import DockerSock
+
+        sock = DockerSock(
+            mount_source=Path("/var/run/docker.sock"),
+            host_path=Path("/Users/testuser/.colima/default/docker.sock"),
+        )
+        with patch("cli._find_docker_sock", return_value=sock):
+            assert _is_colima_env({}) is True
+
+    def test_standard_socket(self):
+        from cli import DockerSock
+
+        sock = DockerSock(
+            mount_source=Path("/var/run/docker.sock"),
+            host_path=Path("/var/run/docker.sock"),
+        )
+        with patch("cli._find_docker_sock", return_value=sock):
+            assert _is_colima_env({}) is False
+
+    def test_no_socket(self):
+        with patch("cli._find_docker_sock", return_value=None):
+            assert _is_colima_env({}) is False
+
+
+class TestFormatOomMessage:
+    """Tests for _format_oom_message."""
+
+    def test_colima_remediation(self):
+        from cli import DockerSock
+
+        sock = DockerSock(
+            mount_source=Path("/var/run/docker.sock"),
+            host_path=Path("/Users/testuser/.colima/default/docker.sock"),
+        )
+        with patch("cli._find_docker_sock", return_value=sock):
+            msg = _format_oom_message({}, daemon_mem_bytes=2 * 1024**3)
+        assert "exit code 137" in msg
+        assert "2.0 GB" in msg
+        assert "colima stop" in msg
+        assert "colima start --memory" in msg
+
+    def test_linux_remediation(self):
+        with (
+            patch("cli._find_docker_sock", return_value=None),
+            patch("cli.sys.platform", "linux"),
+        ):
+            msg = _format_oom_message({})
+        assert "exit code 137" in msg
+        assert "free -h" in msg
+
+    def test_docker_desktop_remediation(self):
+        from cli import DockerSock
+
+        sock = DockerSock(
+            mount_source=Path("/var/run/docker.sock"),
+            host_path=Path("/var/run/docker.sock"),
+        )
+        with (
+            patch("cli._find_docker_sock", return_value=sock),
+            patch("cli.sys.platform", "darwin"),
+        ):
+            msg = _format_oom_message({})
+        assert "Docker Desktop" in msg
+        assert "Settings" in msg
+
+    def test_includes_polecat_docker_memory_hint(self):
+        with patch("cli._find_docker_sock", return_value=None):
+            msg = _format_oom_message({})
+        assert "POLECAT_DOCKER_MEMORY" in msg
+        assert "--memory" in msg
+
+    def test_no_daemon_mem_omits_gb_line(self):
+        with patch("cli._find_docker_sock", return_value=None):
+            msg = _format_oom_message({}, daemon_mem_bytes=None)
+        assert "GB memory available" not in msg

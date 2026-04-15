@@ -59,7 +59,7 @@ def generate_commit_message(tool_name: str, tool_input: dict[str, Any]) -> str:
         return "task: create"
 
     if re.search(r"(?:__|^|:)update_task$", tool_name):
-        task_id = tool_input.get("id") or tool_input.get("task_id") or ""
+        task_id = tool_input.get("id") or tool_input.get("task_id") or tool_input.get("path") or ""
         title = tool_input.get("title") or tool_input.get("task_title")
         if title:
             return f"task: update '{title[:60]}'"

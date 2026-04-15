@@ -6,9 +6,9 @@ category: maintenance
 
 # Memory Sync Workflow
 
-Reconcile markdown files with PKB to ensure semantic search stays current.
+Reconcile the on-disk markdown tree with the PKB index. **This is a repair path for legacy or externally-authored files**, not a workflow any agent should rely on during normal capture. Normal capture flows through PKB MCP exclusively (see [[capture-workflow]] and `SKILL.md` hard rules); if an agent is tempted to "write then sync", the skill is being used wrong.
 
-**When to Run**: After direct markdown edits, periodically as part of `/planner` maintain mode, or when semantic search seems stale.
+**When to Run**: When the on-disk tree is edited by a non-PKB actor (user hand-edit, external import, git merge bringing in new files), or periodically as part of `/planner` maintain mode to catch drift.
 
 ## Sync Modes
 
@@ -44,7 +44,7 @@ The planner skill's maintain mode includes memory sync as part of its periodic m
 
 ### With Remember Skill
 
-This workflow is the **repair path** for when the dual-write pattern is bypassed. Normal flow is atomic (markdown + PKB). Direct edits cause drift, which this workflow reconciles.
+This workflow is the **repair path** for drift introduced by non-PKB actors (user hand-edits, external imports, git merges). The normal capture flow is a single PKB MCP call — there is no "dual write" to reconcile under correct usage. If this workflow runs often in a healthy system, investigate which actor is bypassing PKB.
 
 ## Success Criteria
 

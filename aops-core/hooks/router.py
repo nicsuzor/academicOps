@@ -152,11 +152,21 @@ def format_gate_status_icons(state: SessionState) -> str:
 
 
 def get_parent_pid(pid: int) -> int | None:
-    """Get parent PID from /proc/[pid]/stat."""
+    """Get parent PID cross-platform (supports Linux and macOS)."""
     try:
-        with open(f"/proc/{pid}/stat") as f:
-            return int(f.read().split()[3])
-    except (OSError, IndexError, ValueError):
+        import sys
+
+        if sys.platform == "darwin":
+            import subprocess
+
+            output = subprocess.check_output(
+                ["ps", "-o", "ppid=", "-p", str(pid)], encoding="utf-8"
+            )
+            return int(output.strip())
+        else:
+            with open(f"/proc/{pid}/stat") as f:
+                return int(f.read().split()[3])
+    except Exception:
         return None
 
 
@@ -604,11 +614,15 @@ class HookRouter:
                     new_input["updates"] = updates
                     updated = True
 
-        # Alias path -> id for tools that expect id
-        if op in ("append", "get_task", "delete", "complete_task"):
-            if "id" not in new_input and "path" in new_input:
-                new_input["id"] = new_input.pop("path")
-                updated = True
+        # Alias path/task_id -> id for tools that expect id
+        if op in ("append", "get_task", "delete", "complete_task", "update_task"):
+            if "id" not in new_input:
+                if "path" in new_input:
+                    new_input["id"] = new_input.pop("path")
+                    updated = True
+                elif "task_id" in new_input:
+                    new_input["id"] = new_input.pop("task_id")
+                    updated = True
 
         # Alias id -> path for tools that expect path
         if op == "get_document":
