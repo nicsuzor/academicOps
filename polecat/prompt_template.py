@@ -67,7 +67,7 @@ If executing:
 
 For `type: learn` tasks specifically:
 1. Investigate per task instructions
-2. Write findings to task body via `update_task(id, updates={{"body": "..."}})`
+2. Write findings to task body via `update_task(id, body="...")`
 3. Decompose actionable items into subtasks
 4. Decomposition IS completion for learn tasks
 

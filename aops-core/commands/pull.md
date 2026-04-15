@@ -27,14 +27,14 @@ permalink: commands/pull
 
 1. **List ready tasks**: Call `mcp__pkb__list_tasks(status="ready", limit=10)` to find ready tasks sorted by priority + downstream weight.
 2. **Select task**: Review the list and select the highest priority task (lowest priority number, e.g., P0).
-3. **Claim task**: Call `mcp__pkb__update_task(id="<task-id>", updates={"status": "in_progress", "assignee": "polecat"})` to claim it.
+3. **Claim task**: Call `mcp__pkb__update_task(id="<task-id>", status="in_progress", assignee="polecat")` to claim it.
 
 **If a specific task ID is provided** (`/pull <task-id>`):
 
 1. Call `mcp__pkb__get_task(id="<task-id>")` to load it.
 2. If the task has children (leaf=false), navigate to the first ready leaf subtask instead.
 3. If the task is already `in_progress`, skip claim and proceed directly to Step 1.5.
-4. Otherwise, claim with `mcp__pkb__update_task(id="<task-id>", updates={"status": "in_progress", "assignee": "polecat"})`.
+4. Otherwise, claim with `mcp__pkb__update_task(id="<task-id>", status="in_progress", assignee="polecat")`.
 
 **If no tasks are ready**:
 
