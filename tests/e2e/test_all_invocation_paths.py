@@ -169,7 +169,7 @@ class TestAllInvocationPaths:
         return False
 
     @staticmethod
-    def _find_latest_session_logs(started_after: float = 0):
+    def _find_latest_session_logs(started_after: float = 0, crew_name: str | None = None):
         """Discover the most-recently-modified session file and hook log.
 
         Searches for both Claude JSONL and Gemini JSON session files.
@@ -177,14 +177,33 @@ class TestAllInvocationPaths:
         Args:
             started_after: Unix timestamp — only consider files modified after
                 this time. Prevents picking up stale files from unrelated sessions.
+            crew_name: Optional crew name embedded in hook log filenames (e.g.
+                "test-claude").  When set, filters hook files to those whose
+                filename contains the crew name, avoiding cross-session races
+                where a concurrent session's hook log is created in the same
+                time window.
 
         Returns:
             (hook_files_content, session_file, tool_calls)
         """
+        from lib.paths import get_sessions_repo
+
         from tests.conftest import parse_tool_calls
 
-        aops_sessions = Path(os.environ.get("AOPS_SESSIONS", Path.home() / ".aops" / "sessions"))
-        hook_files = sorted(aops_sessions.rglob("*-hooks.jsonl"), key=os.path.getmtime)
+        aops_sessions = get_sessions_repo()
+
+        def _hook_birthtime(f: Path) -> float:
+            st = f.stat()
+            # st_birthtime is macOS/BSD; fall back to st_ctime on Linux
+            return getattr(st, "st_birthtime", st.st_ctime)
+
+        hook_files = sorted(aops_sessions.rglob("*-hooks.jsonl"), key=_hook_birthtime)
+        if started_after:
+            hook_files = [f for f in hook_files if _hook_birthtime(f) >= started_after]
+        if crew_name:
+            # Filenames sanitize crew names with allow_dashes=False: "test-claude" → "testclaude"
+            sanitized_crew = crew_name.replace("-", "")
+            hook_files = [f for f in hook_files if sanitized_crew in f.name]
         hook_file = hook_files[-1] if hook_files else None
         hook_files_content = hook_file.read_text() if hook_file else ""
 
@@ -284,7 +303,8 @@ class TestAllInvocationPaths:
 
         combined = proc.stdout + proc.stderr
         hook_files_content, session_file, tool_calls = self._find_latest_session_logs(
-            started_after=started_at
+            started_after=started_at,
+            crew_name=crew_name,
         )
 
         return {
@@ -564,20 +584,56 @@ class TestAllInvocationPaths:
     def test_workspace_available_in_container(self, session):
         """Repo worktree is mounted at /workspace inside the container.
 
-        The MEGA_PROMPT asks the agent to stat /workspace/.git and echo
-        WORKSPACE_VERIFIED=true. If that string appears in the agent output
-        or the session transcript, the worktree was reachable — which is
-        exactly what the bind-mount refactor must preserve.
+        Two verification strategies depending on path type:
+
+        - crew path: the bind-mount target is on the host, so we locate the
+          worktree via the sentinel file (same lookup as
+          test_workspace_writes_visible_on_host) and assert `.git` is a
+          directory there.  A git-worktree-add would leave a `.git` FILE; a
+          proper git clone leaves a `.git` DIRECTORY.  Since `/workspace` is
+          a bind-mount of that host path, what we see on the host is exactly
+          what the agent sees inside the container.
+
+        - run path: the agent echoes WORKSPACE_VERIFIED=true via the bash
+          command in the MEGA_PROMPT.  The session transcript (JSONL) is
+          accessible on the host for this path, so the string appears in
+          raw_log or combined.
         """
         combined = session["combined"]
         session_file = session.get("session_file")
         raw_log = session_file.read_text() if session_file and session_file.exists() else ""
         all_text = raw_log + combined
 
-        assert "WORKSPACE_VERIFIED=true" in all_text, (
-            f"[{session['param']}] No evidence the repo worktree was available at /workspace. "
-            f"Agent output (last 1000 chars): {all_text[-1000:]}"
-        )
+        if session["path_type"] == "crew":
+            # Host-side verification: find the worktree via sentinel file and
+            # check that .git is a directory (proves the mount points at a
+            # proper full clone, not a git-worktree-add file).
+            sentinel_name = session["sentinel_name"]
+            started_at = session["started_at"]
+            polecat_home = Path(os.environ.get("POLECAT_HOME", str(Path.home() / ".polecat")))
+            sentinel_matches = [
+                p
+                for p in polecat_home.rglob(sentinel_name)
+                if p.is_file() and p.stat().st_mtime >= started_at
+            ]
+            if not sentinel_matches:
+                pytest.skip(
+                    f"[{session['param']}] Sentinel file not found on host — "
+                    "cannot verify workspace via host-side check "
+                    "(test_workspace_writes_visible_on_host would also fail)"
+                )
+            worktree_path = sentinel_matches[0].parent
+            git_dir = worktree_path / ".git"
+            assert git_dir.is_dir(), (
+                f"[{session['param']}] Worktree at {worktree_path} has "
+                f"{'a .git file' if git_dir.is_file() else 'no .git entry'} "
+                "— agent saw a git-worktree-add mount, not a full clone."
+            )
+        else:
+            assert "WORKSPACE_VERIFIED=true" in all_text, (
+                f"[{session['param']}] No evidence the repo worktree was available at /workspace. "
+                f"Agent output (last 1000 chars): {all_text[-1000:]}"
+            )
 
     def test_session_persists(self, session):
         """Session file is written and contains user+assistant entries."""

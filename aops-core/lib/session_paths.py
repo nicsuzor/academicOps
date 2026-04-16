@@ -192,8 +192,15 @@ def get_hook_log_path(
         # Claude: ~/.claude/projects/<project>/YYYYMMDD-HH-<shorthash>-hooks.jsonl
         project_folder = get_claude_project_folder()
         claude_projects_dir = Path.home() / ".claude" / "projects" / project_folder
-        claude_projects_dir.mkdir(parents=True, exist_ok=True)
-        return claude_projects_dir / filename
+        try:
+            claude_projects_dir.mkdir(parents=True, exist_ok=True)
+            return claude_projects_dir / filename
+        except (PermissionError, OSError):
+            # Home directory is inaccessible (polecat containers where the host
+            # UID's home dir doesn't exist inside the container). Fall back to /tmp.
+            fallback_dir = Path("/tmp") / "aops-hooks"
+            fallback_dir.mkdir(parents=True, exist_ok=True)
+            return fallback_dir / filename
 
 
 def get_session_status_dir(
@@ -240,8 +247,15 @@ def get_session_status_dir(
     # Same logic as session_env_setup.sh: ~/.claude/projects/-<cwd-with-dashes>/
     project_folder = get_claude_project_folder()
     status_dir = Path.home() / ".claude" / "projects" / project_folder
-    status_dir.mkdir(parents=True, exist_ok=True)
-    return status_dir
+    try:
+        status_dir.mkdir(parents=True, exist_ok=True)
+        return status_dir
+    except (PermissionError, OSError):
+        # Home directory is inaccessible (polecat containers where the host
+        # UID's home dir doesn't exist inside the container). Fall back to /tmp.
+        fallback_dir = Path("/tmp") / "aops-state"
+        fallback_dir.mkdir(parents=True, exist_ok=True)
+        return fallback_dir
 
 
 def get_session_file_path(
@@ -394,8 +408,15 @@ def get_gate_file_path(
     else:
         project_folder = get_claude_project_folder()
         claude_projects_dir = Path.home() / ".claude" / "projects" / project_folder
-        claude_projects_dir.mkdir(parents=True, exist_ok=True)
-        return claude_projects_dir / filename
+        try:
+            claude_projects_dir.mkdir(parents=True, exist_ok=True)
+            return claude_projects_dir / filename
+        except (PermissionError, OSError):
+            # Home directory is inaccessible (polecat containers where the host
+            # UID's home dir doesn't exist inside the container). Fall back to /tmp.
+            fallback_dir = Path("/tmp") / "aops-gates"
+            fallback_dir.mkdir(parents=True, exist_ok=True)
+            return fallback_dir / filename
 
 
 def get_all_gate_file_paths(
