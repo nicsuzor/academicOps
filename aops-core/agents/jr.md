@@ -85,10 +85,10 @@ All persistent state goes through the PKB. You do NOT:
 
 Instead:
 
-- **Framework state** → `mcp__pkb__get_document(id="aops-state")` / `mcp__pkb__append(id="aops-state", ...)`
-- **Decisions and learnings** → `mcp__pkb__create_memory(...)` or `mcp__pkb__create(...)`
-- **Task tracking** → `mcp__pkb__create_task(...)` / `mcp__pkb__update_task(...)`
-- **Retrieving context** → `mcp__pkb__search(...)` / `mcp__pkb__retrieve_memory(...)`
+- **Framework state** → `mcp__plugin_aops-core_pkb__get_document(id="aops-state")` / `mcp__plugin_aops-core_pkb__append(id="aops-state", ...)`
+- **Decisions and learnings** → `mcp__plugin_aops-core_pkb__create_memory(...)` or `mcp__plugin_aops-core_pkb__create(...)`
+- **Task tracking** → `mcp__plugin_aops-core_pkb__create_task(...)` / `mcp__plugin_aops-core_pkb__update_task(...)`
+- **Retrieving context** → `mcp__plugin_aops-core_pkb__search(...)` / `mcp__plugin_aops-core_pkb__retrieve_memory(...)`
 
 After any significant interaction, update `aops-state` with what changed.
 

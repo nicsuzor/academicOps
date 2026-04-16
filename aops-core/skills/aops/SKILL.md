@@ -253,12 +253,12 @@ Every task MUST follow this lifecycle. No shortcuts.
 1. TASK TRACKING (choose based on context)
 
    IF task exists:
-     pkb__get_task(id="<id>")
-     pkb__update_task(id="<id>", status="active")
+     mcp__plugin_aops-core_pkb__get_task(id="<id>")
+     mcp__plugin_aops-core_pkb__update_task(id="<id>", status="active")
 
    IF creating new tracked work:
-     pkb__create_task(title="[description]", type="task", project="aops", priority=2)
-     pkb__update_task(id="<id>", status="active")
+     mcp__plugin_aops-core_pkb__create_task(title="[description]", type="task", project="aops", priority=2)
+     mcp__plugin_aops-core_pkb__update_task(id="<id>", status="active")
 
    IF quick ad-hoc work (< 15 min, no dependencies):
      Use TodoWrite for session tracking only
@@ -266,8 +266,8 @@ Every task MUST follow this lifecycle. No shortcuts.
 2. LOAD CONTEXT (as needed)
    - Read AXIOMS.md if verifying principles
    - Read VISION.md if checking scope alignment
-   - pkb__search(query="[topic]") for prior work
-   - pkb__get_document(id="aops-state") for current framework state
+   - mcp__plugin_aops-core_pkb__search(query="[topic]") for prior work
+   - mcp__plugin_aops-core_pkb__get_document(id="aops-state") for current framework state
 ```
 
 ### Phase 2: Planning (For Non-Trivial Work)
@@ -318,9 +318,9 @@ IF git operations fail:
 2. RUN TESTS — uv run pytest tests/ -v --tb=short
 3. FORMAT AND COMMIT — ./scripts/format.sh, git add, git commit
 4. PUSH — git pull --rebase, git push, git status
-5. COMPLETE TASK — pkb__complete_task(id="<id>")
+5. COMPLETE TASK — mcp__plugin_aops-core_pkb__complete_task(id="<id>")
 6. PERSIST LEARNINGS — Skill(skill="remember") for key decisions
-7. UPDATE PKB STATE — pkb__append(id="aops-state", content="[what changed]")
+7. UPDATE PKB STATE — mcp__plugin_aops-core_pkb__append(id="aops-state", content="[what changed]")
 ```
 
 ---
