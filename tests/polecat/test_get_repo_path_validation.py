@@ -190,9 +190,8 @@ class TestNukeMalformedTaskSkip:
         """
         from unittest.mock import patch
 
-        from click.testing import CliRunner
-
         from cli import main
+        from click.testing import CliRunner
 
         manager = PolecatManager(home_dir=polecat_home)
         (manager.polecats_dir / "task-malformed").mkdir()
