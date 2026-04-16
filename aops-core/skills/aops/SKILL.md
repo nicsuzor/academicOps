@@ -54,11 +54,11 @@ When updating the PKB state document:
 
 **PKB is the source of truth.** Use PKB tools for all knowledge access:
 
-- `pkb__search` — find prior decisions, context, constraints
-- `pkb__get_document` — load specific documents
-- `pkb__pkb_context` — get graph overview
-- `pkb__create` / `pkb__append` — persist new knowledge
-- `pkb__list_tasks` / `pkb__task_search` — find active work
+- `mcp__plugin_aops-core_pkb__search` — find prior decisions, context, constraints
+- `mcp__plugin_aops-core_pkb__get_document` — load specific documents
+- `mcp__plugin_aops-core_pkb__pkb_context` — get graph overview
+- `mcp__plugin_aops-core_pkb__create` / `mcp__plugin_aops-core_pkb__append` — persist new knowledge
+- `mcp__plugin_aops-core_pkb__list_tasks` / `mcp__plugin_aops-core_pkb__task_search` — find active work
 
 ---
 

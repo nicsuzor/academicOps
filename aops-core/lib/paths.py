@@ -132,16 +132,15 @@ def get_config_dir() -> Path:
 
 
 def get_workflows_dir() -> Path:
-    """Get workflows directory (inside framework skill, project-local).
+    """Get workflows directory (inside aops skill).
 
-    Returns the .agents/skills/framework/workflows/ path relative to the repo root.
+    Returns the aops-core/skills/aops/workflows/ path.
     Raises FileNotFoundError if the directory does not exist.
     """
-    repo_root = get_plugin_root().parent
-    agent_workflows = repo_root / ".agents" / "skills" / "framework" / "workflows"
-    if not agent_workflows.exists():
-        raise FileNotFoundError(f"Framework workflows directory not found at {agent_workflows}")
-    return agent_workflows
+    workflows = get_plugin_root() / "skills" / "aops" / "workflows"
+    if not workflows.exists():
+        raise FileNotFoundError(f"Framework workflows directory not found at {workflows}")
+    return workflows
 
 
 def get_indices_dir() -> Path:

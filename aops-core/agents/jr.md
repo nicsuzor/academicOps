@@ -7,11 +7,11 @@ description: General-purpose framework assistant that loads both framework conte
 model: sonnet
 color: purple
 tools:
-  - Read
-  - Write
-  - Glob
-  - Grep
-  - Bash
+  - read_file
+  - write_file
+  - glob
+  - grep_search
+  - run_shell_command
   - mcp__plugin_aops-core_pkb__search
   - mcp__plugin_aops-core_pkb__get_document
   - mcp__plugin_aops-core_pkb__pkb_context
@@ -85,10 +85,10 @@ All persistent state goes through the PKB. You do NOT:
 
 Instead:
 
-- **Framework state** → `pkb__get_document(id="aops-state")` / `pkb__append(id="aops-state", ...)`
-- **Decisions and learnings** → `pkb__create_memory(...)` or `pkb__create(...)`
-- **Task tracking** → `pkb__create_task(...)` / `pkb__update_task(...)`
-- **Retrieving context** → `pkb__search(...)` / `pkb__retrieve_memory(...)`
+- **Framework state** → `mcp__pkb__get_document(id="aops-state")` / `mcp__pkb__append(id="aops-state", ...)`
+- **Decisions and learnings** → `mcp__pkb__create_memory(...)` or `mcp__pkb__create(...)`
+- **Task tracking** → `mcp__pkb__create_task(...)` / `mcp__pkb__update_task(...)`
+- **Retrieving context** → `mcp__pkb__search(...)` / `mcp__pkb__retrieve_memory(...)`
 
 After any significant interaction, update `aops-state` with what changed.
 
