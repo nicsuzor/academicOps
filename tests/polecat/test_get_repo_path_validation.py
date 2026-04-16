@@ -173,6 +173,50 @@ class TestPolecatManagerDirectoryLayout:
 
 
 # ---------------------------------------------------------------------------
+# Nuke stale-sweep: malformed-task skip
+# ---------------------------------------------------------------------------
+
+
+class TestNukeMalformedTaskSkip:
+    """Regression: ValueError from get_repo_path must not abort the sweep."""
+
+    def test_malformed_task_warns_and_continues(self, polecat_home: Path, aca_data: Path):
+        """nuke (no target) skips a task whose project is None and keeps running.
+
+        Regression guard for the try/except ValueError in cli.py nuke():
+        (a) one directory exists under polecats_dir,
+        (b) storage returns a Task with project=None,
+        (c) the sweep must exit 0 and emit a warning — not raise.
+        """
+        from unittest.mock import patch
+
+        from click.testing import CliRunner
+
+        from cli import main
+
+        manager = PolecatManager(home_dir=polecat_home)
+        (manager.polecats_dir / "task-malformed").mkdir()
+
+        malformed = Task(id="task-malformed", project=None)
+
+        runner = CliRunner(mix_stderr=False)
+        with patch("polecat.pkb_bridge.get_task", return_value=malformed):
+            result = runner.invoke(
+                main,
+                ["--home", str(polecat_home), "nuke"],
+                catch_exceptions=False,
+            )
+
+        assert result.exit_code == 0, (
+            f"nuke aborted instead of skipping malformed task\n"
+            f"stdout: {result.output!r}\nstderr: {result.stderr!r}"
+        )
+        assert "Warning: skipping task-malformed" in result.stderr, (
+            f"Expected warning in stderr; got: {result.stderr!r}"
+        )
+
+
+# ---------------------------------------------------------------------------
 # setup_worktree validation
 # ---------------------------------------------------------------------------
 

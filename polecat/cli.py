@@ -2832,10 +2832,18 @@ def nuke(ctx, target, force):
                 if not task:
                     is_stale = True
                 else:
-                    # A malformed task (e.g. missing 'project') raises
-                    # ValueError from get_repo_path. Treat that as "can't
-                    # verify staleness" and skip rather than aborting the
-                    # entire sweep.
+                    # A malformed task raises ValueError from get_repo_path.
+                    # Two distinct cases:
+                    #   1. task.project is None/empty — structural data problem.
+                    #   2. task.project names a project removed from polecat.yaml
+                    #      — the project is no longer resolvable, so this
+                    #      worktree will be silently skipped on every sweep and
+                    #      never automatically cleaned up.
+                    #
+                    # Both are intentionally deferred: case 2 requires
+                    # PKB-driven discovery (iterate tasks, not the filesystem)
+                    # tracked in task-df1e5aa3. Skipping is strictly safer
+                    # than aborting the whole sweep.
                     try:
                         repo_path = manager.get_repo_path(task)
                     except ValueError as e:
