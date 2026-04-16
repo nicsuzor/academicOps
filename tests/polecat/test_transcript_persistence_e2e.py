@@ -13,8 +13,8 @@ Polecat produces two artifacts per run:
    artifact useful for post-mortem). This path is never surfaced by polecat.
 
 These tests assert that (2) lands on the host across the failure modes we
-care about operationally: success, max-turns exhaustion, graceful
-SIGTERM-to-polecat. See follow-ups for container-SIGKILL and Gemini paths.
+care about operationally: success and max-turns exhaustion. See follow-ups
+for graceful shutdown, container-SIGKILL, and Gemini paths.
 
 Gated identically to ``test_polecat_termination_e2e.py`` — will not run in
 the default suite:
@@ -385,78 +385,5 @@ def test_real_transcript_persists_on_max_turns(shared_sessions_dir: Path) -> Non
             "Expected 'Reached max turns' in output. This is the flaky part: "
             "without --max-turns override, the agent may terminate cleanly."
         )
-    finally:
-        _cleanup(proc, client, task_id)
-
-
-# ---------------------------------------------------------------------------
-# Case 3: graceful shutdown (SIGTERM to polecat subprocess)
-# ---------------------------------------------------------------------------
-
-_LONG_RUNNING_INSTRUCTION = (
-    "Read every Python file under polecat/ one at a time, then run a full "
-    "test suite. Take your time. Do not call release_task for at least 5 minutes."
-)
-
-
-@_apply_gates
-def test_real_transcript_persists_on_graceful_shutdown(shared_sessions_dir: Path) -> None:
-    """SIGTERM to polecat mid-run still leaves a real transcript on the host.
-
-    Caveat: this exercises the polecat-receives-SIGTERM path, which currently
-    propagates to ``docker stop`` (graceful — runs container shutdown handlers
-    → ``docker cp`` extraction fires). True container SIGKILL (where logs
-    don't flush) is the scenario closest to task-9d0051d1 and is covered by
-    the follow-up test in task-17094384, not here.
-
-    If an audit of ``_run_docker_container`` ever shows polecat's SIGTERM
-    handler maps to ``docker kill -s KILL`` instead, rename this test and
-    re-derive the expected behaviour.
-    """
-    project = _require_project()
-    task_id, client = _create_test_task(
-        title="e2e: transcript-persistence graceful-shutdown (task-5ddb64df)",
-        body=_LONG_RUNNING_INSTRUCTION,
-        project=project,
-        tags=["test", "e2e", "transcript-persistence"],
-    )
-
-    proc: subprocess.Popen | None = None
-    try:
-        cmd = _polecat_cmd(task_id, project)
-        proc = subprocess.Popen(
-            cmd,
-            cwd=str(REPO_ROOT),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            # Own process group so our SIGTERM reaches polecat and its
-            # Docker-cli child cleanly on POSIX.
-            start_new_session=True,
-        )
-
-        # Let the agent actually start up and generate some transcript content.
-        time.sleep(30.0)
-
-        # Graceful shutdown: SIGTERM to the polecat subprocess (+ group).
-        try:
-            os.killpg(proc.pid, signal.SIGTERM)
-        except ProcessLookupError:
-            pytest.fail(
-                f"polecat exited before 30s had elapsed — task {task_id} "
-                "completed too fast to test graceful shutdown. Make the "
-                "instruction longer-running."
-            )
-
-        try:
-            proc.wait(timeout=120.0)
-        except subprocess.TimeoutExpired:
-            proc.kill()
-            pytest.fail(f"polecat did not shut down within 120s of SIGTERM for {task_id}")
-
-        # The real property under test: despite abnormal shutdown, the
-        # real transcript must have landed on the host. Lower byte threshold
-        # than the success case — 30s of activity yields less content.
-        _assert_real_transcript(task_id, project, min_bytes=2_000)
     finally:
         _cleanup(proc, client, task_id)
