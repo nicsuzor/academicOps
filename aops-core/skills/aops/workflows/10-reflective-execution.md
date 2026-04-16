@@ -55,80 +55,25 @@ Before proceeding, ask: did the process work as designed?
 
 The loop only works if learnings are persisted as tasks. Otherwise they evaporate.
 
-### At session start
+At session start, create or bind to a parent task. All findings become children via `pkb__create_task(title="Finding: [specific]", parent="<session-task-id>", tags=["learning", "<domain>"])`.
 
-Create or bind to a parent task for the session's work. All findings are children.
+For plans needing feedback: `pkb__create_task(title="Review: [plan] — [question]", tags=["feedback"])`.
+For follow-up verification: `pkb__create_task(title="Verify: [change] — did it work?", tags=["verification"])`.
 
-### At each reflection point
-
-If you found something worth acting on:
-
-```
-mcp__pkb__create_task(
-  title="[specific finding, not generic]",
-  parent="<session-task-id>",
-  tags=["learning", "<domain>"]
-)
-```
-
-**Title examples**:
-
-- Good: "Finding: hydrator workflow missing checkpoint after context gathering"
-- Bad: "Finding #3"
-
-### For plans that need feedback
-
-When creating or revising a plan, create an explicit feedback task:
-
-```
-mcp__pkb__create_task(
-  title="Review: [plan description] — get feedback on [specific question]",
-  tags=["feedback", "<domain>"]
-)
-```
-
-### For follow-up learning
-
-When completing work that changed instructions or methodology:
-
-```
-mcp__pkb__create_task(
-  title="Verify: [change description] — did it work in practice?",
-  tags=["verification", "<domain>"],
-  body="Check in 3 sessions whether [specific observable outcome]."
-)
-```
+Good titles are specific ("hydrator missing checkpoint after context gathering"), not generic ("Finding #3").
 
 ## Strategic Alignment
 
 Before starting, and when strategic misalignment is detected:
 
-1. **Identify the governing vision document** for this domain:
-   - Framework work → `$AOPS/docs/VISION.md` + `$ACA_DATA/.agent/BUTLER.md`
-   - Research project → the project's methodology doc
-   - Teaching → course design docs
+1. **Identify the governing vision document** — framework: `VISION.md` + PKB `aops-state`; research: project methodology doc; teaching: course design docs.
 2. **Check alignment**: Does this work serve the vision, or has it drifted?
-3. **If drifted**: Stop. Surface the tension to the user. Don't silently continue.
-
-## Fix-vs-Defer Boundary
-
-- **Fix inline**: Obvious bugs, wrong guidance, missing edge cases — anything where the correct fix is clear and localised.
-- **Defer**: Design changes, structural rethinking, new features surfaced by the work. File as a task with specific title.
-
-## Scope
-
-When explicitly dogfooding (e.g., "dogfood this", interactive framework session), the agent has scope over both the task being executed AND the instructions being tested. This is not scope expansion — it is the task. Custodiet should not flag inline fixes to the dogfooded artifact as out-of-scope.
+3. **If drifted**: Stop. Surface the tension to the user.
 
 ## Key Rules
 
 1. **Reflect per step.** Not per session.
 2. **File tasks for learnings.** If it's not in PKB, it didn't happen.
 3. **Fix instructions, not just current work.** The next agent must benefit.
-4. **Small improvements compound.** One instruction tweak per session adds up.
-5. **Check strategic fit.** Vision alignment prevents wasted energy.
-
-## Related
-
-- `aops-core/commands/learn.md` — the framework's immune system (root cause → enforcement)
-- `aops-core/skills/hydrator/workflows/dogfooding.md` — the original framework-specific version
-- `specs/feedback-loops.md` — the full Observe→Analyze→Diagnose→Intervene→Verify architecture
+4. **Fix inline** obvious bugs and wrong guidance; **defer** design changes as tasks.
+5. **Dogfooding scope**: when explicitly dogfooding, scope covers both the task AND the instructions being tested.
