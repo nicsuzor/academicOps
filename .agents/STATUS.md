@@ -2,7 +2,7 @@
 
 **Last updated**: 2026-03-09
 
-> **Authoritative scope**: This document describes the state of the aops framework codebase and its immediately-connected infrastructure. It is kept current by the butler on each invocation. Automated reviewers (axiom-review, review-and-fix, etc.) read this document -- accuracy matters. If something is described as "working" here, it is integrated and tested. If it is described as "planned", it does not yet exist in production.
+> **Authoritative scope**: This document describes the state of the aops framework codebase and its immediately-connected infrastructure. It is kept current by the aops skill (jr agent) on each invocation. Automated reviewers (axiom-review, review-and-fix, etc.) read this document -- accuracy matters. If something is described as "working" here, it is integrated and tested. If it is described as "planned", it does not yet exist in production.
 >
 > **Canonical direction**: This document reflects actual state. When the codebase or infrastructure changes, update this document to match reality -- do not change behavior to match this document. If there is a discrepancy between this document and the actual codebase, the codebase is correct and this document needs updating.
 
@@ -172,7 +172,7 @@ The canonical index is `aops-core/SKILLS.md` with 25 entries (8 commands + 17 sk
 
 | Domain            | Skills                                                       |
 | ----------------- | ------------------------------------------------------------ |
-| framework         | `butler`, `critic`, `enforcer`                               |
+| framework         | `aops`, `critic`, `enforcer`                                 |
 | operations        | `daily`, `planner`, `remember`, `sleep`, `worker`            |
 | academic          | `analyst`, `research`                                        |
 | quality-assurance | `qa`                                                         |
