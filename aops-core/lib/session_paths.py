@@ -201,7 +201,7 @@ def get_hook_log_path(
                 f"WARNING: hook log dir {claude_projects_dir} inaccessible ({e}); falling back to /tmp/aops-hooks",
                 file=sys.stderr,
             )
-            fallback_dir = Path("/tmp") / "aops-hooks"
+            fallback_dir = Path("/tmp") / f"aops-hooks-{os.getuid()}" / project_folder
             fallback_dir.mkdir(parents=True, exist_ok=True)
             return fallback_dir / filename
 
@@ -258,7 +258,7 @@ def get_session_status_dir(
             f"WARNING: session status dir {status_dir} inaccessible ({e}); falling back to /tmp/aops-state",
             file=sys.stderr,
         )
-        fallback_dir = Path("/tmp") / "aops-state"
+        fallback_dir = Path("/tmp") / f"aops-state-{os.getuid()}" / project_folder
         fallback_dir.mkdir(parents=True, exist_ok=True)
         return fallback_dir
 
@@ -421,7 +421,7 @@ def get_gate_file_path(
                 f"WARNING: gate file dir {claude_projects_dir} inaccessible ({e}); falling back to /tmp/aops-gates",
                 file=sys.stderr,
             )
-            fallback_dir = Path("/tmp") / "aops-gates"
+            fallback_dir = Path("/tmp") / f"aops-gates-{os.getuid()}" / project_folder
             fallback_dir.mkdir(parents=True, exist_ok=True)
             return fallback_dir / filename
 
