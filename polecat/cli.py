@@ -3860,7 +3860,7 @@ def run(
             sys.exit(3)
 
     # CLI --project/-p overrides task.project (e.g. task has no project set)
-    if project and not is_issue:
+    if project:
         task.project = project
 
     if is_issue:
