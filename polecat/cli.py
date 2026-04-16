@@ -1039,7 +1039,7 @@ def _build_docker_cmd(
         "HANDOVER_GATE_MODE": "warn",
         "QA_GATE_MODE": "warn",
         "CUSTODIET_GATE_MODE": "warn",
-        "HYDRATION_GATE_MODE": "warn",
+        "HYDRATION_GATE_MODE": "off",  # gate_config.py: os.environ.get("HYDRATION_GATE_MODE", "off")
     }
     for _gm_key, _gm_default in _gate_mode_defaults.items():
         if _gm_key not in env:
