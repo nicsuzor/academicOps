@@ -42,13 +42,18 @@ _SYNTHETIC_SESSION_START = json.dumps(
 )
 
 # Script that invokes the hook router inside the container and captures stderr
-# separately so we can inspect it. The router is installed as part of the
-# aops-core Claude plugin — find it via `claude plugin list`.
+# separately so we can inspect it. Prefers /workspace/aops-core (local source,
+# mounted from the repo root) so changes are reflected immediately without
+# rebuilding the image. Falls back to the installed plugin if not present.
 _HOOK_INVOKE_SCRIPT = r"""
 set -e
 
-# Locate the installed plugin's router.py
-PLUGIN_DIR=$(find /home -path '*/aops-core/hooks/router.py' -print -quit 2>/dev/null || true)
+# Prefer local source from /workspace so changes are reflected without
+# image rebuilds. Fall back to the installed plugin.
+PLUGIN_DIR=$(find /workspace -path '*/aops-core/hooks/router.py' -maxdepth 6 -print -quit 2>/dev/null || true)
+if [ -z "$PLUGIN_DIR" ]; then
+    PLUGIN_DIR=$(find /home -path '*/aops-core/hooks/router.py' -print -quit 2>/dev/null || true)
+fi
 if [ -z "$PLUGIN_DIR" ]; then
     PLUGIN_DIR=$(find /root -path '*/aops-core/hooks/router.py' -print -quit 2>/dev/null || true)
 fi
@@ -131,13 +136,18 @@ class TestSandboxHookIntegrity:
             pytest.skip("Docker not available or aops-crew image not built")
 
     @pytest.fixture(scope="class")
-    def hook_results(self, tmp_path_factory) -> dict:
-        """Run the hook router inside an aops-crew container and capture output."""
+    def hook_results(self) -> dict:
+        """Run the hook router inside an aops-crew container and capture output.
+
+        Uses REPO_ROOT as work_dir so:
+        1. Colima's virtiofs can bind-mount it (repo is under ~/, inside Colima's
+           shared path — unlike tmp_path_factory dirs in /var/folders).
+        2. Local aops-core source is available at /workspace/aops-core so the
+           hook script uses it instead of the installed image plugin — changes
+           are reflected immediately without image rebuilds.
+        """
         if not _docker_available():
             pytest.skip("Docker not available or aops-crew image not built")
-
-        work_dir = tmp_path_factory.mktemp("hook-integrity")
-        (work_dir / "placeholder").write_text("x")
 
         env = {
             "POLECAT_SESSION_TYPE": "polecat",
@@ -146,7 +156,7 @@ class TestSandboxHookIntegrity:
         tmp_files: list[Path] = []
         docker_cmd = _build_docker_cmd(
             cli_tool="claude",
-            work_dir=work_dir,
+            work_dir=REPO_ROOT,
             env=env,
             agent_cmd=["bash", "-c", _HOOK_INVOKE_SCRIPT],
             is_interactive=False,

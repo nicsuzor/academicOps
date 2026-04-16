@@ -6,14 +6,14 @@ color: pink
 tools:
   - read_file
   - run_shell_command
-  - mcp__playwright__browser_navigate
-  - mcp__playwright__browser_snapshot
-  - mcp__playwright__browser_take_screenshot
-  - mcp__playwright__browser_click
-  - mcp__playwright__browser_wait_for
-  - mcp__playwright__browser_evaluate
-  - mcp__playwright__browser_type
-  - mcp__playwright__browser_resize
+  - mcp_playwright_browser_navigate
+  - mcp_playwright_browser_snapshot
+  - mcp_playwright_browser_take_screenshot
+  - mcp_playwright_browser_click
+  - mcp_playwright_browser_wait_for
+  - mcp_playwright_browser_evaluate
+  - mcp_playwright_browser_type
+  - mcp_playwright_browser_resize
 ---
 
 # Marsha — The QA Reviewer

@@ -5,11 +5,11 @@ color: blue
 model: sonnet
 tools:
   - read_file
-  - mcp__pkb__search
-  - mcp__pkb__get_document
-  - mcp__pkb__pkb_context
-  - mcp__pkb__graph_stats
-  - mcp__pkb__find_duplicates
+  - mcp_pkb_search
+  - mcp_pkb_get_document
+  - mcp_pkb_pkb_context
+  - mcp_pkb_graph_stats
+  - mcp_pkb_find_duplicates
 # Note: tools: restricts local subagent invocation only.
 # GHA workflow grants Bash+Read via claude_args for PR review tasks.
 ---

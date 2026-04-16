@@ -1027,6 +1027,25 @@ def _build_docker_cmd(
             if not _is_remote_daemon():
                 cmd.extend(["-v", f"{session_dir}:{session_container_path}"])
 
+    # Ensure gate mode vars have explicit values inside the container.
+    # The hook router emits WARNING and silently defaults to 'warn' when these
+    # are unset — in polecat containers they won't be set unless forwarded here.
+    # We forward from env (caller's dict) first, then os.environ, then the same
+    # 'warn' default that gate_config.py uses. The existing forwarding loop above
+    # only forwards vars present in the caller's env dict, so vars not in env
+    # (e.g. when only POLECAT_SESSION_TYPE is provided) would be silently skipped.
+    _gate_mode_defaults = {
+        "COMMIT_GATE_MODE": "warn",
+        "HANDOVER_GATE_MODE": "warn",
+        "QA_GATE_MODE": "warn",
+        "CUSTODIET_GATE_MODE": "warn",
+        "HYDRATION_GATE_MODE": "off",  # gate_config.py: os.environ.get("HYDRATION_GATE_MODE", "off")
+    }
+    for _gm_key, _gm_default in _gate_mode_defaults.items():
+        if _gm_key not in env:
+            _gm_val = os.environ.get(_gm_key, _gm_default)
+            cmd.extend(["-e", f"{_gm_key}={_gm_val}"])
+
     cmd.append(image)
     cmd.extend(agent_cmd)
     return DockerCmd(cmd=cmd, staging_dir=_staging_dir, workspace_dir=workspace_dir)
