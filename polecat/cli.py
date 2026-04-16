@@ -2248,8 +2248,8 @@ def finish(ctx, no_push, do_nuke, force, force_done, project):
         print(f"Error: Task {task_id} not found in task database", file=sys.stderr)
         sys.exit(1)
 
-    # CLI --project/-p overrides task.project (e.g. task has no project field)
-    if project and not task.project:
+    # CLI --project/-p overrides task.project
+    if project:
         task.project = project
 
     # --- SAFEGUARD 0: Completion Protection ---
