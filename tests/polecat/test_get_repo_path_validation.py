@@ -198,7 +198,7 @@ class TestNukeMalformedTaskSkip:
 
         malformed = Task(id="task-malformed", project=None)
 
-        runner = CliRunner(mix_stderr=False)
+        runner = CliRunner()
         with patch("polecat.pkb_bridge.get_task", return_value=malformed):
             result = runner.invoke(
                 main,
