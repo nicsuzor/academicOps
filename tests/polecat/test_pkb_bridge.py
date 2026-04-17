@@ -269,6 +269,27 @@ class TestCreateTaskChecklistWarning:
         with pytest.warns(UserWarning, match="checklist items"):
             create_task(title="T", body="- [x] done step\n")
 
+    def test_warns_on_uppercase_x(self, mock_client):
+        mock_client.call_tool.return_value = self._task_response
+        with pytest.warns(UserWarning, match="checklist items"):
+            create_task(title="T", body="- [X] done step\n")
+
+    def test_warns_on_asterisk_marker(self, mock_client):
+        mock_client.call_tool.return_value = self._task_response
+        with pytest.warns(UserWarning, match="checklist items"):
+            create_task(title="T", body="* [ ] step one\n")
+
+    def test_warns_on_plus_marker(self, mock_client):
+        mock_client.call_tool.return_value = self._task_response
+        with pytest.warns(UserWarning, match="checklist items"):
+            create_task(title="T", body="+ [ ] step one\n")
+
+    def test_no_false_positive_mid_line(self, mock_client, recwarn):
+        mock_client.call_tool.return_value = self._task_response
+        create_task(title="T", body="mention of - [x] not at line start")
+        checklist_warnings = [w for w in recwarn.list if "checklist" in str(w.message).lower()]
+        assert not checklist_warnings
+
     def test_no_warning_without_checklist(self, mock_client, recwarn):
         mock_client.call_tool.return_value = self._task_response
         create_task(title="T", body="Plain context, no checklist here.")

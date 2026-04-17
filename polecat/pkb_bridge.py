@@ -260,11 +260,11 @@ def create_task(
 
     # Warn if body contains checklist items — these should be subtasks instead
     body = params.get("body", "")
-    if body and re.search(r"- \[[ x]\]", body):
+    if isinstance(body, str) and re.search(r"(?m)^\s*[-*+]\s+\[[ xX]\]", body):
         warnings.warn(
-            "Task body contains checklist items ('- [ ]'). "
+            "Task body contains checklist items. "
             "Checklists in task bodies diverge from the subtask graph over time. "
-            "Use create_subtask() or decompose_task() instead of embedding "
+            "Use create_task(parent=...) or decompose_task() instead of embedding "
             "checklists in the body. See: Nectar incident.",
             stacklevel=2,
         )
