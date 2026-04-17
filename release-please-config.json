@@ -31,11 +31,6 @@
           "type": "json",
           "path": ".claude-plugin/marketplace.json",
           "jsonpath": "$.plugins[?(@.name == 'aops-core')].version"
-        },
-        {
-          "type": "toml",
-          "path": "uv.lock",
-          "jsonpath": "$.package[?(@.name == 'academicops')].version"
         }
       ]
     }
