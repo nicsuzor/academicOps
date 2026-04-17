@@ -251,12 +251,45 @@ Projects can extend the index system via `.agents/`:
 ```
 project/
 └── .agents/
-    ├── context-map.json    # JIT context mapping
+    ├── context-map.json    # Repo documentation index for agent discovery
     └── workflows/          # Project-specific workflows
         └── TESTING.md
 ```
 
 The hydrator checks for project indices and includes them when present.
+
+### Context Map Consumption
+
+`.agents/context-map.json` is a repo-local, machine-queryable index mapping topics and keywords to documentation files. It works at two levels:
+
+**Level 1 — Platform-agnostic (any agent, any client)**
+
+The map is a plain JSON file. Any agent can read it directly:
+
+```
+cat .agents/context-map.json
+```
+
+No hooks, no framework dependency. Agents on Claude Code, Gemini CLI, Codex, or any future client can read the file and decide which entries are relevant to the current task.
+
+**Level 2 — aops-integrated (automatic via hydration pipeline)**
+
+The `UserPromptSubmit` hook automatically injects the full context map as a documentation index hint. This happens via `_inject_context_map_hints()` in `router.py`, which:
+
+1. Loads `.agents/context-map.json` from the working directory (`ctx.cwd`) only — no fallback
+2. Injects the full entry list as an "Available Documentation" section in the hook's context injection
+3. Leaves relevance decisions to the LLM (P#49: no Python pre-filtering for semantic decisions)
+
+**Implementation**: `lib/context_map.py` provides `load_context_map()` and `format_context_hints()`. Tests in `tests/lib/test_context_map.py`.
+
+**Design decisions**:
+
+| Question              | Answer                                                               |
+| --------------------- | -------------------------------------------------------------------- |
+| When is it loaded?    | JIT at hydration time (every UserPromptSubmit)                       |
+| Who loads it?         | Lightweight hydrator in `router.py`                                  |
+| How much gets loaded? | Full map injected — LLM decides which entries are relevant           |
+| Platform dependency?  | None — the JSON file is self-contained. aops integration is additive |
 
 ## Agent Execution
 

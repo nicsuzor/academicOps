@@ -411,10 +411,11 @@ class HookRouter:
     def _run_lightweight_hydrator(
         self, ctx: HookContext, state: SessionState, merged_result: CanonicalHookOutput
     ) -> None:
-        """Inject lightweight hydrator skills-routing hint.
+        """Inject lightweight hydrator skills-routing hint and context map matches.
 
         Delivery: via the UserPromptSubmit hook hint (non-blocking).
         Template: hydration.warn (repurposed for routing table).
+        Context map: .agents/context-map.json full entry list injected for LLM.
         """
         if ctx.is_subagent:
             return
@@ -439,6 +440,39 @@ class HookRouter:
                     merged_result.context_injection = hint
         except Exception as e:
             print(f"WARNING: lightweight_hydrator error: {e}", file=sys.stderr)
+
+        # Context map: match user prompt against .agents/context-map.json
+        self._inject_context_map_hints(ctx, merged_result)
+
+    def _inject_context_map_hints(
+        self, ctx: HookContext, merged_result: CanonicalHookOutput
+    ) -> None:
+        """Inject .agents/context-map.json entries as context hints.
+
+        Looks for context-map.json in the working directory (ctx.cwd) only.
+        Injects the full entry list so the LLM can decide relevance (P#49).
+        """
+        try:
+            from lib.context_map import format_context_hints, load_context_map
+
+            if not ctx.cwd:
+                return
+            repo_root = Path(ctx.cwd)
+            if not (repo_root / ".agents" / "context-map.json").exists():
+                return
+
+            docs = load_context_map(repo_root)
+            if not docs:
+                return
+
+            hint = format_context_hints(docs)
+            if hint:
+                if merged_result.context_injection:
+                    merged_result.context_injection = f"{merged_result.context_injection}\n\n{hint}"
+                else:
+                    merged_result.context_injection = hint
+        except Exception as e:
+            print(f"WARNING: context_map injection error: {e}", file=sys.stderr)
 
     def execute_hooks(self, ctx: HookContext) -> CanonicalHookOutput:
         """Run all configured gates for the event and merge results.
