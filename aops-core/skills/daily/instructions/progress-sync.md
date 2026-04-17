@@ -14,7 +14,7 @@ polecat sweep
 
 **Outcome**: Tasks for merged PRs move to `done`, tasks with requested changes move back to `review`, and stale PRs are flagged.
 
-**Extended sweep** (when `polecat sweep` is unavailable or as a supplement):
+**Extended sweep** (when `polecat sweep` is unavailable or as a supplement — mirrors SKILL.md Step 7, kept self-contained so it works without the full skill context):
 
 1. Call `list_tasks(status="merge_ready")` and `list_tasks(status="review")` to get all candidate tasks.
 2. For tasks with a `pr_url` in frontmatter: query the PR state via `gh pr view <number> --json state,mergedAt,url`. If `state == "MERGED"`, call `complete_task` with the merge timestamp + URL as evidence.
