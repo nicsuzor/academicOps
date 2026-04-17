@@ -78,7 +78,12 @@ def test_complete_task_named_id(mock_client):
 
 
 def test_create_task_with_title(mock_client):
-    mock_client.call_tool.return_value = {"id": "task-123"}
+    # create_task now returns structured JSON matching get_task shape
+    mock_client.call_tool.return_value = {
+        "frontmatter": {"id": "task-123"},
+        "body": "",
+        "path": "/tasks/task-123.md",
+    }
 
     task_id = create_task(title="My Title")
 
@@ -87,7 +92,11 @@ def test_create_task_with_title(mock_client):
 
 
 def test_create_task_with_task_title_alias(mock_client):
-    mock_client.call_tool.return_value = {"id": "task-123"}
+    mock_client.call_tool.return_value = {
+        "frontmatter": {"id": "task-123"},
+        "body": "",
+        "path": "/tasks/task-123.md",
+    }
 
     # Friction fix: 'task_title' should be accepted as 'title'
     task_id = create_task(task_title="My Title")

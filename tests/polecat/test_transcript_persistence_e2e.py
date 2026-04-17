@@ -61,7 +61,7 @@ TERMINAL_STATUSES = {"done", "merge_ready", "blocked", "cancelled"}
 def _extract_task_id(resp: object) -> str | None:
     if isinstance(resp, dict):
         fm = resp.get("frontmatter") or {}
-        return fm.get("id") or resp.get("id")
+        return fm.get("id")
     if isinstance(resp, str):
         m = _TASK_ID_RE.search(resp)
         if m:
@@ -163,6 +163,7 @@ def _create_test_task(title: str, body: str, project: str, tags: list[str]) -> t
     client = _get_client()
     scratch_parent_id = _resolve_scratch_parent(project)
 
+    # PKB create_task now accepts project/status directly.
     create_result = client.call_tool(
         "create_task",
         {
@@ -170,6 +171,8 @@ def _create_test_task(title: str, body: str, project: str, tags: list[str]) -> t
             "body": body,
             "parent": scratch_parent_id,
             "tags": tags,
+            "project": project,
+            "status": "ready",
         },
     )
     assert create_result is not None, "PKB create_task returned None"
@@ -177,13 +180,6 @@ def _create_test_task(title: str, body: str, project: str, tags: list[str]) -> t
     task_id = _extract_task_id(create_result)
     if not task_id:
         pytest.fail(f"Could not extract task id from PKB create_task response: {create_result!r}")
-
-    update_resp = client.call_tool(
-        "update_task",
-        {"id": task_id, "updates": {"project": project, "status": "ready"}},
-    )
-    if update_resp is None:
-        pytest.fail(f"Failed to set project/status on task {task_id}")
 
     return task_id, client
 

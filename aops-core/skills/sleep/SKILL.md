@@ -276,6 +276,17 @@ Process tasks the user has explicitly flagged for refiling via the dashboard's R
 
 **Delegates to the Planner agent's `maintain` mode.** Sleep selects the strategy based on graph_stats; Planner executes it.
 
+### Convergence Detection
+
+Before doing any work, compare the current `metrics_hash` from `graph_stats` against the previous cycle's hash (recorded in Phase 0 or the prior cycle's Phase 6 output).
+
+- **If `metrics_hash` is identical to the last cycle**: the graph has converged. Skip Phase 5b entirely and log "graph converged — no structural changes needed."
+- **If 2 consecutive cycles produce no-ops** (no items processed because all metrics are below thresholds AND `metrics_hash` unchanged): the graph is stable. Cancel the active-loop cron if running via `/loop`, and log "terminal condition: 2 consecutive no-ops, graph maintenance complete."
+
+This prevents infinite reorganization cycles when the graph is already healthy.
+
+### Strategy Selection
+
 Each cycle, pick ONE strategy based on what graph_stats shows needs the most attention:
 
 | Condition                            | Strategy            | Planner Activity                                                              |
@@ -286,16 +297,64 @@ Each cycle, pick ONE strategy based on what graph_stats shows needs the most att
 | `orphan_count` > 20                  | Fix orphans         | Reparent — connect or archive disconnected nodes                              |
 | All metrics healthy                  | Densify edges       | Densify — use strategies to add dependency edges                              |
 
-**Type-aware orphan detection**: `pkb_orphans` now reports both missing-parent AND wrong-type-parent orphans (e.g., a task parented directly to a project instead of an epic). Phase 5b should treat wrong-type-parent orphans the same as missing-parent orphans when selecting a reparent strategy.
+### Concrete Agent Instructions
+
+When a strategy is selected, the agent should execute these specific actions:
+
+**Split oversized containers**: If an epic has >20 direct children, split it. Read the children, group by theme, create sub-epics, and `bulk_reparent` children into the new sub-epics. An epic with 40 tasks about "infrastructure" might split into "CI/CD", "monitoring", and "deployment" sub-epics.
+
+**Find misparented tasks**: Use `pkb_orphans` to find wrong-type-parent orphans (e.g., a task parented directly to a project instead of an epic). For each, find an appropriate epic under the same project and reparent. If no suitable epic exists, create one.
+
+**Nest loose tasks**: For `flat_tasks` (tasks with no parent), read the task title and body, search for related epics/projects via `search`, and `bulk_reparent` to the best match. If no match exists, check if 3+ loose tasks share a theme — if so, create an epic to contain them.
+
+**Connect disconnected epics**: For each disconnected epic, read its title and children to infer which project it belongs to. Search for matching projects and reparent. If no project matches, flag for human review.
+
+### Known Metric Limitations
+
+The `graph_stats` metrics have known blind spots. The agent must understand these to avoid wasted effort:
+
+- **`disconnected_epics`**: Only counts epics with no parent at all. It does NOT detect epics parented to the wrong project. A well-connected but misplaced epic reads as healthy.
+- **`flat_tasks`**: Counts tasks with neither parent nor children. Tasks parented to a catch-all "misc" epic show as connected even if the grouping is meaningless. Low `flat_tasks` does not mean the graph is well-organized.
+- **`max_depth`**: Reports the deepest nesting level but says nothing about whether depth is appropriate. A chain of goal → project → epic → task → subtask (depth 5) is healthy; a chain of epic → epic → epic → epic → task (depth 5) from over-splitting is not.
+- **`orphan_count`**: Includes wrong-type-parent orphans (good), but does not catch tasks parented to archived/cancelled containers. A task under a cancelled epic is effectively orphaned but won't appear here.
+- **`metrics_hash`**: A hash of all metric values. Use this for convergence detection — if the hash is unchanged between cycles, the graph metrics have stabilized.
+
+**Implication**: Don't treat all-green metrics as "done." Use metrics to prioritize, but spot-check qualitatively. Read a sample of supposedly-healthy subtrees to verify the structure makes sense.
+
+### What NOT to Do
+
+- **Don't reorganize for aesthetics.** If a task is correctly parented but the grouping isn't pretty, leave it alone. The goal is actionability, not taxonomy.
+- **Don't create epics speculatively.** Only create a new epic when you have 3+ tasks that clearly belong together. A single orphan task doesn't justify a new container.
+- **Don't reparent based on keyword matching alone.** A task titled "Review API docs" doesn't necessarily belong under an "API" epic — read the body to understand context.
+- **Don't split epics that are actively being worked.** If an oversized epic has many `in_progress` tasks, splitting it mid-flight creates confusion. Flag it for the next quiet period.
+- **Don't chase `projects_without_goals` mechanically.** Many projects legitimately don't map to a formal goal. Only link when the relationship is genuine and clear.
+- **Don't undo prior human decisions.** If a task was manually reparented or an epic was manually structured, respect that structure even if your heuristics disagree.
+
+### Type-Aware Orphan Detection
+
+`pkb_orphans` reports both missing-parent AND wrong-type-parent orphans (e.g., a task parented directly to a project instead of an epic). Phase 5b should treat wrong-type-parent orphans the same as missing-parent orphans when selecting a reparent strategy.
 
 See `aops-core/skills/planner/SKILL.md` → `maintain` mode for full activity reference.
 
-**Bounded effort**: Process a configurable number of items per cycle (default 100, set via `batch_limit` workflow input). Use `mcp__pkb__bulk_reparent` for efficiency when processing multiple items with the same parent. Quality over quantity.
+### Bounded Effort
 
-**Autonomous vs. flagged**:
+Process a configurable number of items per cycle (default 100, set via `batch_limit` workflow input). Use `mcp__pkb__bulk_reparent` for efficiency when processing multiple items with the same parent. Quality over quantity.
+
+### Autonomous vs. Flagged
 
 - **Obvious**: Task title mentions the project/epic by name → reparent autonomously
 - **Ambiguous**: Flag for user review in the cycle log, don't apply
+
+### Terminal Condition
+
+Graph maintenance is complete when EITHER of:
+
+1. **Convergence**: `metrics_hash` unchanged for 2 consecutive cycles (see Convergence Detection above)
+2. **Two consecutive no-ops**: Two cycles in a row where Phase 5b processed zero items
+
+Note: when all structural metrics are healthy, the strategy table selects "Densify edges". Densify runs normally; if it produces no structural changes, `metrics_hash` converges and condition 1 fires. Do not short-circuit before densify has a chance to run.
+
+When terminal condition is met during an active loop: cancel the cron/loop and log the final `graph_stats` snapshot. Do not keep cycling — diminishing returns waste compute.
 
 **Measure after**: Re-run `graph_stats` in Phase 6 to confirm the metric improved.
 
