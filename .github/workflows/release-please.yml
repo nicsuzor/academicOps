@@ -29,5 +29,30 @@ jobs:
           manifest-file: .release-please-manifest.json
           release-as: ${{ inputs.release_as}}
 
+      - name: Checkout PR branch
+        if: ${{ steps.release.outputs.pr }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ fromJson(steps.release.outputs.pr).headBranchName }}
+          token: ${{ secrets.AOPS_DIST_PAT }}
+
+      - name: Install uv
+        if: ${{ steps.release.outputs.pr }}
+        uses: astral-sh/setup-uv@v4
+
+      - name: Update uv.lock
+        if: ${{ steps.release.outputs.pr }}
+        run: |
+          uv lock
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add uv.lock
+          if git diff --cached --quiet; then
+            echo "uv.lock is already up to date"
+          else
+            git commit -m "chore: update uv.lock for release"
+            git push
+          fi
+
       # build-extension.yml triggers automatically via push:tags and release:published
       # events when AOPS_DIST_PAT creates the tag/release above.
