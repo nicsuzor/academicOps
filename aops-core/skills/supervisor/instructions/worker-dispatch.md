@@ -360,8 +360,8 @@ mark the task `done` manually. See `aops-fdc9d0e2`.
 ## Remote Dispatch via SSH + tmux
 
 When the supervisor is running on a different machine from the polecat host
-(e.g., running `/supervisor` on a laptop while polecats execute on `nicwin`
-WSL2), use SSH + tmux so workers survive network interruptions (lid close,
+(e.g., running `/supervisor` on a laptop while polecats execute on a remote
+host), use SSH + tmux so workers survive network interruptions (lid close,
 VPN drop, etc.).
 
 ### Environment Discovery
@@ -373,7 +373,7 @@ Before dispatching, verify the remote machine is ready:
 ssh -o ConnectTimeout=10 TARGET_HOST "echo connected"
 
 # Polecat availability (alias loaded in interactive zsh)
-ssh TARGET_HOST "zsh -i -c 'polecat --help'" 2>&1 | head -5
+ssh TARGET_HOST "zsh -i -c 'polecat --help'" 2>&1
 
 # tmux availability
 ssh TARGET_HOST "which tmux"
@@ -382,7 +382,7 @@ ssh TARGET_HOST "which tmux"
 If any check fails, report the failure and stop. Do not improvise alternatives.
 
 **Reachability pre-check for incident tasks**: If a task requires the worker
-to SSH into a _third_ machine (e.g., `services-new` from `nicwin`), verify
+to SSH into a _third_ machine (e.g., `services-new` from `TARGET_HOST`), verify
 that hop before dispatch:
 
 ```bash
@@ -406,7 +406,7 @@ tmux's default-shell setting.
 **Verify sessions are running** after dispatch:
 
 ```bash
-ssh TARGET_HOST "tmux list-sessions"
+ssh TARGET_HOST "tmux has-session -t 'polecat-TASKID' && echo \"Session 'polecat-TASKID' is running\""
 ```
 
 Session existence is the primary verification signal. A synchronous headless
@@ -441,7 +441,7 @@ confirm the append landed (MCP append tools can silently fail):
 - **Critic gate**: [verdict + 1-sentence reasoning] (or N/A for normal-risk)
 - **Reachability**: [verified / not applicable / FAILED]
 - **tmux session**: [created / already_existed / failed]
-- **Session verified**: [yes — via tmux list-sessions]
+- **Session verified**: [yes — via tmux has-session (confirmed by success message)]
 - **PKB log confirmed**: [yes — read-back verified / no — append may have failed]
 
 ### Environment Observations
@@ -452,9 +452,9 @@ confirm the append landed (MCP append tools can silently fail):
 ### Example
 
 ```bash
-# Typical dispatch to nicwin WSL2
-ssh nicwin "tmux new-session -d -s 'polecat-task-abc12345' 'zsh -i -c \"polecat run -t task-abc12345 -p brain\"'"
-ssh nicwin "tmux list-sessions"
+# Typical dispatch to a remote host (e.g., via SSH+tmux)
+ssh TARGET_HOST "tmux new-session -d -s 'polecat-task-abc12345' 'zsh -i -c \"polecat run -t task-abc12345 -p brain\"'"
+ssh TARGET_HOST "tmux has-session -t 'polecat-task-abc12345' && echo \"Session 'polecat-task-abc12345' is running\""
 ```
 
 ---
