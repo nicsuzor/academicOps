@@ -1782,6 +1782,43 @@ def _clear_stale_git_lock(repo_path: Path) -> bool:
     return True
 
 
+def _auto_resolve_merge(repo_path: Path, name: str) -> tuple[bool, str]:
+    """Auto-resolve merge conflicts by keeping local (ours) versions."""
+    unmerged = subprocess.run(
+        ["git", "diff", "--name-only", "--diff-filter=U"],
+        cwd=repo_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    ).stdout.strip()
+    if not unmerged:
+        return False, f"{name}: pull failed (non-conflict reason)"
+
+    subprocess.run(
+        ["git", "checkout", "--ours", "."],
+        cwd=repo_path,
+        capture_output=True,
+        check=False,
+    )
+    subprocess.run(["git", "add", "."], cwd=repo_path, capture_output=True, check=False)
+    commit = subprocess.run(
+        ["git", "commit", "--no-edit"],
+        cwd=repo_path,
+        capture_output=True,
+        check=False,
+        env={**os.environ, "GIT_EDITOR": "true"},
+    )
+    if commit.returncode != 0:
+        return False, f"{name}: merge commit failed after conflict resolution"
+
+    conflict_files = unmerged.splitlines()
+    print(
+        f"⚠ {name}: merge conflict auto-resolved (kept local) in {len(conflict_files)} file(s)",
+        file=sys.stderr,
+    )
+    return True, f"{name}: auto-resolved {len(conflict_files)} merge conflict(s)"
+
+
 def _auto_resolve_rebase(repo_path: Path, name: str, ahead_count: int) -> tuple[bool, str]:
     """Auto-resolve conflicts during an in-progress rebase.
 
@@ -1923,7 +1960,11 @@ def _auto_resolve_rebase(repo_path: Path, name: str, ahead_count: int) -> tuple[
 
 
 def _sync_working_repo(
-    repo_path: Path, *, auto_commit: bool = False, quiet: bool = False
+    repo_path: Path,
+    *,
+    auto_commit: bool = False,
+    quiet: bool = False,
+    merge_strategy: str = "rebase",
 ) -> tuple[bool, str]:
     """Sync a working repo: fetch, pull/push, auto-resolve conflicts.
 
@@ -2006,15 +2047,18 @@ def _sync_working_repo(
                     check=False,
                 )
 
-            # Pull with rebase
+            pull_flag = "--rebase" if merge_strategy == "rebase" else "--no-rebase"
             pull = subprocess.run(
-                ["git", "pull", "--rebase", "--quiet"],
+                ["git", "pull", pull_flag, "--quiet"],
                 cwd=repo_path,
                 capture_output=True,
                 check=False,
             )
             if pull.returncode != 0:
-                ok, resolve_msg = _auto_resolve_rebase(repo_path, name, ahead_count)
+                if merge_strategy == "merge":
+                    ok, resolve_msg = _auto_resolve_merge(repo_path, name)
+                else:
+                    ok, resolve_msg = _auto_resolve_rebase(repo_path, name, ahead_count)
                 if not ok:
                     return False, resolve_msg
 
@@ -2048,17 +2092,19 @@ def _sync_working_repo(
         return False, f"{name}: pull failed"
 
     elif ahead_count > 0:
-        # If also behind, rebase local commits on top of remote before pushing
         if behind_count > 0:
+            pull_flag = "--rebase" if merge_strategy == "rebase" else "--no-rebase"
             pull = subprocess.run(
-                ["git", "pull", "--rebase", "--quiet"],
+                ["git", "pull", pull_flag, "--quiet"],
                 cwd=repo_path,
                 capture_output=True,
                 check=False,
             )
             if pull.returncode != 0:
-                # Attempt to auto-resolve rebase conflicts (same logic as dirty path)
-                ok, resolve_msg = _auto_resolve_rebase(repo_path, name, ahead_count)
+                if merge_strategy == "merge":
+                    ok, resolve_msg = _auto_resolve_merge(repo_path, name)
+                else:
+                    ok, resolve_msg = _auto_resolve_rebase(repo_path, name, ahead_count)
                 if not ok:
                     return False, resolve_msg
         push = subprocess.run(
@@ -2113,7 +2159,10 @@ def sync(ctx, check, quiet, mirrors_only):
                 continue
 
             auto_commit = bool(project_cfg.get("auto_commit", False)) and not check
-            success, msg = _sync_working_repo(repo_path, auto_commit=auto_commit, quiet=quiet)
+            merge_strategy = project_cfg.get("merge_strategy", "merge" if auto_commit else "rebase")
+            success, msg = _sync_working_repo(
+                repo_path, auto_commit=auto_commit, quiet=quiet, merge_strategy=merge_strategy
+            )
             if not success or not quiet:
                 print(f"  {msg}")
             if not success:
