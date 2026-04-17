@@ -70,15 +70,16 @@ the epic needs on each invocation.
 ORIENT → DECOMPOSE → DISPATCH → MONITOR → REACT → INTEGRATE → COMPLETE
 ```
 
-| Phase     | What happens                                             | Instructions                              |
-| --------- | -------------------------------------------------------- | ----------------------------------------- |
-| Orient    | Read epic, verify child statuses, decide what to do next | [[instructions/supervision-loop]]         |
-| Decompose | Break work into PR-sized subtasks                        | [[instructions/decomposition-and-review]] |
-| Dispatch  | Send individual tasks to workers via `polecat run`       | [[instructions/worker-dispatch]]          |
-| Monitor   | Check PKB task statuses and GitHub PRs                   | [[instructions/supervision-loop]]         |
-| React     | Handle failures, conflicts, scope changes                | [[instructions/supervision-loop]]         |
-| Integrate | Verify, merge, sync                                      | [[instructions/supervision-loop]]         |
-| Complete  | Update epic, capture knowledge, file follow-ups          | [[instructions/knowledge-capture]]        |
+| Phase           | What happens                                             | Instructions                                                   |
+| --------------- | -------------------------------------------------------- | -------------------------------------------------------------- |
+| Orient          | Read epic, verify child statuses, decide what to do next | [[instructions/supervision-loop]]                              |
+| Decompose       | Break work into PR-sized subtasks                        | [[instructions/decomposition-and-review]]                      |
+| Dispatch        | Send individual tasks to workers via `polecat run`       | [[instructions/worker-dispatch]]                               |
+| Remote Dispatch | SSH + tmux dispatch to a remote polecat host             | [[instructions/worker-dispatch#remote-dispatch-via-ssh--tmux]] |
+| Monitor         | Check PKB task statuses and GitHub PRs                   | [[instructions/supervision-loop]]                              |
+| React           | Handle failures, conflicts, scope changes                | [[instructions/supervision-loop]]                              |
+| Integrate       | Verify, merge, sync                                      | [[instructions/supervision-loop]]                              |
+| Complete        | Update epic, capture knowledge, file follow-ups          | [[instructions/knowledge-capture]]                             |
 
 ## Dispatch
 

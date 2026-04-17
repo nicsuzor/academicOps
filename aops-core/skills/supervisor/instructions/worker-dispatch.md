@@ -357,6 +357,108 @@ mark the task `done` manually. See `aops-fdc9d0e2`.
 
 ---
 
+## Remote Dispatch via SSH + tmux
+
+When the supervisor is running on a different machine from the polecat host
+(e.g., running `/supervisor` on a laptop while polecats execute on `nicwin`
+WSL2), use SSH + tmux so workers survive network interruptions (lid close,
+VPN drop, etc.).
+
+### Environment Discovery
+
+Before dispatching, verify the remote machine is ready:
+
+```bash
+# SSH connectivity
+ssh -o ConnectTimeout=10 TARGET_HOST "echo connected"
+
+# Polecat availability (alias loaded in interactive zsh)
+ssh TARGET_HOST "zsh -i -c 'polecat --help'" 2>&1 | head -5
+
+# tmux availability
+ssh TARGET_HOST "which tmux"
+```
+
+If any check fails, report the failure and stop. Do not improvise alternatives.
+
+**Reachability pre-check for incident tasks**: If a task requires the worker
+to SSH into a _third_ machine (e.g., `services-new` from `nicwin`), verify
+that hop before dispatch:
+
+```bash
+ssh TARGET_HOST "ssh -o ConnectTimeout=5 REMOTE_TARGET 'echo reachable'" 2>&1
+```
+
+If unreachable, set the task to `blocked` with the reason and skip it. Do not
+dispatch a worker that cannot reach its target.
+
+### Dispatch
+
+For each task, SSH into the target host and create a named tmux session:
+
+```bash
+ssh TARGET_HOST "tmux new-session -d -s 'polecat-TASKID' 'zsh -i -c \"polecat run -t TASKID -p PROJECT\"'"
+```
+
+The `zsh -i -c` wrapping ensures the polecat alias is available regardless of
+tmux's default-shell setting.
+
+**Verify sessions are running** after dispatch:
+
+```bash
+ssh TARGET_HOST "tmux list-sessions"
+```
+
+Session existence is the primary verification signal. A synchronous headless
+supervisor cannot poll pane output — accept session existence as sufficient.
+
+**Append a dispatch log** to each task body via PKB, then **read back** to
+confirm the append landed (MCP append tools can silently fail):
+
+```
+[ISO timestamp] TARGET_HOST: Dispatched to polecat via SSH+tmux session 'polecat-TASKID'
+```
+
+### Ground Rules
+
+1. **Do NOT monitor or poll.** Dispatch, verify sessions started, and report.
+2. **If SSH fails**, report immediately. Retry once at most.
+3. **If tmux session already exists** with that name, check if it's running a
+   polecat. If yes, report and skip. Do not create a duplicate.
+4. **Do NOT modify task status.** Polecat handles status transitions.
+5. **Critic gate still applies.** HIGH-risk tasks must pass the gate (above)
+   before SSH dispatch. The gate runs locally; dispatch is the last step.
+6. **Report operational observations.** Repo drift, required rebases, stale
+   mirrors, unexpected startup errors — include these in the dispatch report.
+
+### Report Format
+
+```markdown
+## Remote Dispatch Report — TARGET_HOST
+
+### [task-id] ([short title])
+
+- **Critic gate**: [verdict + 1-sentence reasoning] (or N/A for normal-risk)
+- **Reachability**: [verified / not applicable / FAILED]
+- **tmux session**: [created / already_existed / failed]
+- **Session verified**: [yes — via tmux list-sessions]
+- **PKB log confirmed**: [yes — read-back verified / no — append may have failed]
+
+### Environment Observations
+
+[Anything noteworthy: repo drift, rebase required, stale state, access issues]
+```
+
+### Example
+
+```bash
+# Typical dispatch to nicwin WSL2
+ssh nicwin "tmux new-session -d -s 'polecat-task-abc12345' 'zsh -i -c \"polecat run -t task-abc12345 -p brain\"'"
+ssh nicwin "tmux list-sessions"
+```
+
+---
+
 ## Parallel Execution Coordination
 
 Workers coordinate through the task system, not through the supervisor:
