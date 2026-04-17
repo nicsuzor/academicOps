@@ -214,15 +214,21 @@ class PolecatManager:
         # Ensure home directory exists
         self.home_dir.mkdir(parents=True, exist_ok=True)
 
-        # Global location for all active agents (directly in home_dir)
-        self.polecats_dir = self.home_dir
+        # Location for active polecat worktrees. A dedicated subdirectory so
+        # stale-cleanup loops have a bounded namespace to iterate — the home
+        # dir also holds sessions/, polecat.yaml, and other non-worktree state
+        # that must never be treated as deletion candidates.
+        self.polecats_dir = self.home_dir / "worktrees"
+        self.polecats_dir.mkdir(parents=True, exist_ok=True)
 
-        # Hidden directory for bare mirror repos
-        self.repos_dir = self.polecats_dir / ".repos"
+        # Hidden directory for bare mirror repos (at home_dir, not under
+        # polecats_dir, so it's excluded from worktree iteration).
+        self.repos_dir = self.home_dir / ".repos"
         self.repos_dir.mkdir(exist_ok=True)
 
-        # Directory for persistent crew workers
-        self.crew_dir = self.polecats_dir / "crew"
+        # Directory for persistent crew workers (at home_dir, distinct from
+        # per-task worktrees).
+        self.crew_dir = self.home_dir / "crew"
         self.crew_dir.mkdir(exist_ok=True)
 
         # Load project registry from config file
@@ -1972,10 +1978,10 @@ denyMessage = "File edits are restricted to the worktree: {worktree_str}"
                 task = None
         worktree_path = self.polecats_dir / task_id
 
-        if task:
+        if task and task.project:
             repo_path = self.get_repo_path(task)
         else:
-            # Task lookup failed (e.g. task deleted). Try to recover from the
+            # Task has no project, or task lookup failed (e.g. task deleted).  Try to recover from the
             # worktree's own origin URL rather than silently falling back to
             # REPO_ROOT — falling back to academicOps could delete branches
             # from the wrong repo on a task_id collision.
