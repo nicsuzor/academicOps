@@ -31,7 +31,7 @@ Single source-of-truth for **which files, from which environments, get archived 
 | **worker**            | Polecat autonomous worker process inside container  | Same as container      | Same as container                              |
 | **host (manual)**     | Developer running `claude` or `gemini` CLI directly | Yes                    | Yes                                            |
 
-Key consequence: `$AOPS_SESSIONS` is a **host-side** path. When hooks/scripts run inside containers, the env var points to a host path that may be unreachable (`PermissionError`/`OSError`). All code that writes to `$AOPS_SESSIONS` must handle this gracefully (fallback to provider-local paths).
+Key consequence: `$AOPS_SESSIONS` is a **host-side** path. When hooks/scripts run inside containers, the env var points to a host path that may be unreachable (`PermissionError`/`OSError`). Code currently falls back to provider-local paths when `$AOPS_SESSIONS` is unreachable — this is a known gap (Section 6, Gap #2), not intended design. The target state is that `$AOPS_SESSIONS` is always reachable or hooks fail fast.
 
 ---
 
