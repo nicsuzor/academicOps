@@ -75,7 +75,7 @@ ORIENT → DECOMPOSE → DISPATCH → MONITOR → REACT → INTEGRATE → COMPLE
 | Orient    | Read epic, verify child statuses, decide what to do next | [[instructions/supervision-loop]]                                                                |
 | Decompose | Break work into PR-sized subtasks                        | [[instructions/decomposition-and-review]]                                                        |
 | Dispatch  | Send tasks to workers (local or remote via SSH+tmux)     | [[instructions/worker-dispatch]], [[instructions/worker-dispatch#remote-dispatch-via-ssh--tmux]] |
-| Monitor   | Check PKB task statuses and GitHub PRs                   | [[instructions/supervision-loop]]                                                                |
+| Monitor   | Event-driven: background notifications + PR Monitor      | [[instructions/supervision-loop]]                                                                |
 | React     | Handle failures, conflicts, scope changes                | [[instructions/supervision-loop]]                                                                |
 | Integrate | Verify, merge, sync                                      | [[instructions/supervision-loop]]                                                                |
 | Complete  | Update epic, capture knowledge, file follow-ups          | [[instructions/knowledge-capture]]                                                               |
@@ -195,9 +195,35 @@ polecat run -t <task-id> -p <project> -g    # gemini
 aops task <task-id> | jules new --repo <owner>/<repo>  # jules
 ```
 
-### Monitoring
+### Monitoring (Event-Driven — Default)
+
+Use event-driven monitoring to avoid burning tokens on polling loops.
+See [[instructions/supervision-loop#event-driven-monitoring-default]] for
+full details and the ready-to-paste Monitor script.
 
 ```bash
+# 1. Dispatch workers in background — get notified on exit
+polecat run -t <task-id> -p <project>  # Bash run_in_background: true
+
+# 2. Start persistent PR-state Monitor (one for all branches)
+# See supervision-loop.md for the full script — use Monitor tool to stream it
+
+# 3. Safety-net wakeup (1800s+ only — NOT primary monitoring)
+# ScheduleWakeup(delaySeconds=1800, reason="safety-net stall check")
+```
+
+| Mechanism                      | What it watches        | How it notifies             |
+| ------------------------------ | ---------------------- | --------------------------- |
+| `run_in_background` completion | Worker exit            | Automatic Bash notification |
+| Persistent Monitor script      | PR state transitions   | Monitor tool line events    |
+| ScheduleWakeup (1800s+ safety) | Stalled/missed signals | Timer-based fallback        |
+
+**Anti-pattern**: `polecat list` / `gh pr list` every 4–5 min via
+ScheduleWakeup — wastes tokens and context. Use only as one-shot fallback
+when event-driven monitoring is unavailable.
+
+```bash
+# Fallback commands (one-shot, NOT for polling loops)
 polecat list                           # active polecats
 gh pr list --state open --limit 20     # open PRs
 polecat reset-stalled --hours 4        # reset hung tasks
