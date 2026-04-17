@@ -28,8 +28,9 @@ RUN useradd -m -d /home/pkb -s /bin/bash pkb
 
 # Download pkb binary from latest nicsuzor/mem release
 RUN PLATFORM="x86_64-linux" \
-    && MEM_TAG=$(curl -s https://api.github.com/repos/nicsuzor/mem/releases/latest \
+    && MEM_TAG=$(curl -sf https://api.github.com/repos/nicsuzor/mem/releases/latest \
          | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/') \
+    && [ -n "$MEM_TAG" ] || { echo "ERROR: failed to resolve MEM_TAG from GitHub API"; exit 1; } \
     && curl -fsSL "https://github.com/nicsuzor/mem/releases/download/${MEM_TAG}/mem-${MEM_TAG}-${PLATFORM}.tar.gz" \
          -o /tmp/mem.tar.gz \
     && tar xzf /tmp/mem.tar.gz -C /tmp \
