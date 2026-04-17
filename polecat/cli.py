@@ -2282,8 +2282,9 @@ def checkout(ctx, task_id, caller):
     is_flag=True,
     help="Force task status to 'done' even if no git changes detected",
 )
+@click.option("--project", "-p", default=None, help="Override task project (used by auto-finish)")
 @click.pass_context
-def finish(ctx, no_push, do_nuke, force, force_done):
+def finish(ctx, no_push, do_nuke, force, force_done, project):
     """Mark current task as ready for merge.
 
     Must be run from within a polecat worktree.
@@ -2314,6 +2315,10 @@ def finish(ctx, no_push, do_nuke, force, force_done):
     if not task:
         print(f"Error: Task {task_id} not found in task database", file=sys.stderr)
         sys.exit(1)
+
+    # CLI --project/-p overrides task.project
+    if project:
+        task.project = project
 
     # --- SAFEGUARD 0: Completion Protection ---
     # If the task is already DONE, or in review/merge phase, do NOT override it.
@@ -3922,6 +3927,10 @@ def run(
             print("No ready tasks found.")
             sys.exit(3)
 
+    # CLI --project/-p overrides task.project (e.g. task has no project set)
+    if project:
+        task.project = project
+
     if is_issue:
         print(f"🎯 Issue: {task.title} ({getattr(task, 'issue_url', '') or task.id})")
     else:
@@ -3966,7 +3975,7 @@ def run(
         task_id=task.id,
         task_title=task.title,
         task_type=task.type.value if hasattr(task.type, "value") else str(task.type),  # type: ignore[reportAttributeAccessIssue]
-        task_project=task.project or "",
+        task_project=project or task.project or "",
         task_body=task_body,
         task_meta={
             "parent": task.parent,
@@ -4038,7 +4047,7 @@ def run(
     tmp_gemini_home = None
     tmp_files: list[Path] = []
     # Compute session directory for transcript persistence.
-    project_slug = task.project or project or worktree_path.name
+    project_slug = project or task.project or worktree_path.name
     run_session_dir = _get_sessions_base() / "polecats" / task.id / project_slug
 
     if gemini:
@@ -4250,7 +4259,9 @@ def run(
             try:
                 os.chdir(worktree_path)
                 # Pass force_done if we detected a completion signal
-                ctx.invoke(finish, no_push=False, do_nuke=True, force_done=auto_force_done)
+                ctx.invoke(
+                    finish, no_push=False, do_nuke=True, force_done=auto_force_done, project=project
+                )
                 print("✅ Auto-finish completed.")
             except SystemExit as e:
                 if e.code != 0:
