@@ -406,7 +406,7 @@ tmux's default-shell setting.
 **Verify sessions are running** after dispatch:
 
 ```bash
-ssh TARGET_HOST "tmux has-session -t 'polecat-TASKID'"
+ssh TARGET_HOST "tmux has-session -t 'polecat-TASKID' && echo \"Session 'polecat-TASKID' is running\""
 ```
 
 Session existence is the primary verification signal. A synchronous headless
@@ -441,7 +441,7 @@ confirm the append landed (MCP append tools can silently fail):
 - **Critic gate**: [verdict + 1-sentence reasoning] (or N/A for normal-risk)
 - **Reachability**: [verified / not applicable / FAILED]
 - **tmux session**: [created / already_existed / failed]
-- **Session verified**: [yes — via tmux has-session]
+- **Session verified**: [yes — via tmux has-session (confirmed by success message)]
 - **PKB log confirmed**: [yes — read-back verified / no — append may have failed]
 
 ### Environment Observations
@@ -454,7 +454,7 @@ confirm the append landed (MCP append tools can silently fail):
 ```bash
 # Typical dispatch to a remote host (e.g., via SSH+tmux)
 ssh TARGET_HOST "tmux new-session -d -s 'polecat-task-abc12345' 'zsh -i -c \"polecat run -t task-abc12345 -p brain\"'"
-ssh TARGET_HOST "tmux has-session -t 'polecat-task-abc12345'"
+ssh TARGET_HOST "tmux has-session -t 'polecat-task-abc12345' && echo \"Session 'polecat-task-abc12345' is running\""
 ```
 
 ---
