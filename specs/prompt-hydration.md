@@ -251,12 +251,47 @@ Projects can extend the index system via `.agents/`:
 ```
 project/
 └── .agents/
-    ├── context-map.json    # JIT context mapping
+    ├── context-map.json    # Repo documentation index for agent discovery
     └── workflows/          # Project-specific workflows
         └── TESTING.md
 ```
 
 The hydrator checks for project indices and includes them when present.
+
+### Context Map Consumption
+
+`.agents/context-map.json` is a repo-local, machine-queryable index mapping topics and keywords to documentation files. It works at two levels:
+
+**Level 1 — Platform-agnostic (any agent, any client)**
+
+The map is a plain JSON file. Any agent can read it directly:
+
+```
+cat .agents/context-map.json | jq '.docs[] | select(.keywords[] | test("hydration"))'
+```
+
+No hooks, no framework dependency. Agents on Claude Code, Gemini CLI, Codex, or any future client can consume it by reading the file and filtering entries by keyword.
+
+**Level 2 — aops-integrated (automatic via hydration pipeline)**
+
+The `UserPromptSubmit` hook automatically matches the user's prompt against context-map keywords and injects relevant documentation paths as context hints. This happens via `_inject_context_map_hints()` in `router.py`, which:
+
+1. Loads `.agents/context-map.json` from the working directory (falls back to aops repo root)
+2. Tokenizes the user prompt and scores each map entry by keyword overlap
+3. Injects the top matches (up to 5) as a "Relevant Documentation" section in the hook's context injection
+
+**Scoring**: Curated keyword matching (not free-text NLP). Keywords are explicitly authored in the map for this purpose — they function as index terms, like library catalog tags. Exact multi-word keyword matches score +2, partial overlap +1, topic matches +2, description overlap capped at +3.
+
+**Implementation**: `lib/context_map.py` provides `load_context_map()`, `search_context_map()`, and `format_context_hints()`. Tests in `tests/lib/test_context_map.py`.
+
+**Design decisions**:
+
+| Question              | Answer                                                               |
+| --------------------- | -------------------------------------------------------------------- |
+| When is it loaded?    | JIT at hydration time (every UserPromptSubmit)                       |
+| Who loads it?         | Lightweight hydrator in `router.py`                                  |
+| How much gets loaded? | Full map loaded, but only matched entries injected (max 5)           |
+| Platform dependency?  | None — the JSON file is self-contained. aops integration is additive |
 
 ## Agent Execution
 

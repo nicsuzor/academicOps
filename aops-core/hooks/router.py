@@ -411,10 +411,11 @@ class HookRouter:
     def _run_lightweight_hydrator(
         self, ctx: HookContext, state: SessionState, merged_result: CanonicalHookOutput
     ) -> None:
-        """Inject lightweight hydrator skills-routing hint.
+        """Inject lightweight hydrator skills-routing hint and context map matches.
 
         Delivery: via the UserPromptSubmit hook hint (non-blocking).
         Template: hydration.warn (repurposed for routing table).
+        Context map: .agents/context-map.json keyword matching against prompt.
         """
         if ctx.is_subagent:
             return
@@ -439,6 +440,52 @@ class HookRouter:
                     merged_result.context_injection = hint
         except Exception as e:
             print(f"WARNING: lightweight_hydrator error: {e}", file=sys.stderr)
+
+        # Context map: match user prompt against .agents/context-map.json
+        self._inject_context_map_hints(ctx, merged_result)
+
+    def _inject_context_map_hints(
+        self, ctx: HookContext, merged_result: CanonicalHookOutput
+    ) -> None:
+        """Match user prompt against .agents/context-map.json and inject hints.
+
+        Looks for context-map.json in the working directory (ctx.cwd). Falls back
+        to the aops-core repo root. Matches prompt tokens against curated keywords
+        and injects relevant file paths as context hints.
+        """
+        try:
+            from lib.context_map import (
+                format_context_hints,
+                load_context_map,
+                search_context_map,
+            )
+
+            # Determine repo root from cwd or fall back to this repo
+            repo_root = Path(ctx.cwd) if ctx.cwd else AOPS_CORE_DIR.parent
+            if not (repo_root / ".agents" / "context-map.json").exists():
+                # Fall back to the aops repo itself
+                repo_root = AOPS_CORE_DIR.parent
+
+            docs = load_context_map(repo_root)
+            if not docs:
+                return
+
+            prompt = ctx.raw_input.get("prompt", "")
+            if not prompt:
+                return
+
+            matches = search_context_map(docs, prompt)
+            if not matches:
+                return
+
+            hint = format_context_hints(matches)
+            if hint:
+                if merged_result.context_injection:
+                    merged_result.context_injection = f"{merged_result.context_injection}\n\n{hint}"
+                else:
+                    merged_result.context_injection = hint
+        except Exception as e:
+            print(f"WARNING: context_map injection error: {e}", file=sys.stderr)
 
     def execute_hooks(self, ctx: HookContext) -> CanonicalHookOutput:
         """Run all configured gates for the event and merge results.
