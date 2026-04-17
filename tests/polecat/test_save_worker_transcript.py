@@ -1,15 +1,10 @@
-"""Unit tests for save_worker_transcript and _find_real_transcript.
-
-Validates that the stub JSON includes real_transcript_path and
-real_transcript_size_bytes when a real Claude session transcript exists
-under the run_session_dir.
-"""
+"""Unit tests for save_worker_transcript and _find_real_transcript."""
 
 from __future__ import annotations
 
 import json
+import os
 import sys
-import time
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -59,6 +54,8 @@ try:
     sys.modules.pop("cli", None)
     from cli import _find_real_transcript, save_worker_transcript
 finally:
+    # Remove the stub-loaded cli so other test modules get a clean import.
+    sys.modules.pop("cli", None)
     # Restore original modules; remove stubs we inserted.
     for _mod, _orig in _saved.items():
         if _orig is None:
@@ -123,11 +120,10 @@ class TestFindRealTranscript:
 
         old = workspace / "old.jsonl"
         old.write_text('{"old": true}\n')
-
-        time.sleep(0.05)
-
         new = workspace / "new.jsonl"
         new.write_text('{"new": true}\n')
+        # Pin old's mtime deterministically in the past rather than relying on sleep.
+        os.utime(old, (old.stat().st_atime, new.stat().st_mtime - 1))
 
         result = _find_real_transcript(tmp_path / "run")
         assert result is not None
@@ -154,7 +150,7 @@ class TestSaveWorkerTranscript:
             exit_code=0,
             agent_type="claude",
             home_dir=session_layout["home_dir"],
-            run_session_dir=session_layout["run_session_dir"],
+            real_transcript=session_layout["real_transcript"],
         )
 
         assert stub_path.exists()
@@ -186,9 +182,6 @@ class TestSaveWorkerTranscript:
         home_dir = tmp_path / "home"
         home_dir.mkdir()
 
-        run_session_dir = tmp_path / "sessions" / "polecats" / "task-empty"
-        (run_session_dir / "-workspace").mkdir(parents=True)
-
         stub_path = save_worker_transcript(
             task_id="task-empty",
             stdout="",
@@ -196,7 +189,7 @@ class TestSaveWorkerTranscript:
             exit_code=0,
             agent_type="claude",
             home_dir=home_dir,
-            run_session_dir=run_session_dir,
+            real_transcript=None,
         )
 
         entry = json.loads(stub_path.read_text().strip().split("\n")[-1])

@@ -345,7 +345,7 @@ def save_worker_transcript(
     exit_code: int,
     agent_type: str,
     home_dir: Path,
-    run_session_dir: Path | None = None,
+    real_transcript: Path | None = None,
 ) -> Path:
     """Save worker output to transcript file.
 
@@ -359,8 +359,8 @@ def save_worker_transcript(
         exit_code: Process exit code
         agent_type: "claude" or "gemini"
         home_dir: Polecat home directory (fallback if AOPS_SESSIONS not set)
-        run_session_dir: Session directory for this run (used to locate the
-            real Claude Code transcript)
+        real_transcript: Resolved path to the real Claude Code session
+            transcript (caller obtains via _find_real_transcript)
 
     Returns:
         Path to the transcript file
@@ -380,8 +380,6 @@ def save_worker_transcript(
         transcript_dir.mkdir(parents=True, exist_ok=True)
 
         transcript_file = transcript_dir / f"{task_id}.jsonl"
-
-        real_transcript = _find_real_transcript(run_session_dir)
 
         entry = {
             "timestamp": datetime.now().astimezone().isoformat(),
@@ -4206,6 +4204,7 @@ def run(
 
             # Save transcript to $POLECAT_HOME/polecats/<task-id>.jsonl
             try:
+                real_transcript = _find_real_transcript(run_session_dir)
                 transcript_path = save_worker_transcript(
                     task_id=task.id,
                     stdout=result.stdout,
@@ -4213,9 +4212,8 @@ def run(
                     exit_code=exit_code,
                     agent_type=cli_tool,
                     home_dir=manager.home_dir,
-                    run_session_dir=run_session_dir,
+                    real_transcript=real_transcript,
                 )
-                real_transcript = _find_real_transcript(run_session_dir)
                 if real_transcript:
                     print(f"📝 Transcript: {real_transcript}")
                 else:
