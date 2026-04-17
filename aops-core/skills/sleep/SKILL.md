@@ -317,7 +317,7 @@ The `graph_stats` metrics have known blind spots. The agent must understand thes
 - **`flat_tasks`**: Counts tasks with neither parent nor children. Tasks parented to a catch-all "misc" epic show as connected even if the grouping is meaningless. Low `flat_tasks` does not mean the graph is well-organized.
 - **`max_depth`**: Reports the deepest nesting level but says nothing about whether depth is appropriate. A chain of goal → project → epic → task → subtask (depth 5) is healthy; a chain of epic → epic → epic → epic → task (depth 5) from over-splitting is not.
 - **`orphan_count`**: Includes wrong-type-parent orphans (good), but does not catch tasks parented to archived/cancelled containers. A task under a cancelled epic is effectively orphaned but won't appear here.
-- **`metrics_hash`**: A hash of all metric values. Use this for convergence detection — if the hash is unchanged between cycles, the graph structure hasn't changed.
+- **`metrics_hash`**: A hash of all metric values. Use this for convergence detection — if the hash is unchanged between cycles, the graph metrics have stabilized.
 
 **Implication**: Don't treat all-green metrics as "done." Use metrics to prioritize, but spot-check qualitatively. Read a sample of supposedly-healthy subtrees to verify the structure makes sense.
 
@@ -347,11 +347,12 @@ Process a configurable number of items per cycle (default 100, set via `batch_li
 
 ### Terminal Condition
 
-Graph maintenance is complete when ANY of:
+Graph maintenance is complete when EITHER of:
 
 1. **Convergence**: `metrics_hash` unchanged for 2 consecutive cycles (see Convergence Detection above)
 2. **Two consecutive no-ops**: Two cycles in a row where Phase 5b processed zero items
-3. **All metrics below thresholds**: `disconnected_epics` ≤ 10, `projects_without_goals` ≤ 10, `flat_tasks` ≤ 100, `orphan_count` ≤ 20
+
+Note: when all structural metrics are healthy, the strategy table selects "Densify edges". Densify runs normally; if it produces no structural changes, `metrics_hash` converges and condition 1 fires. Do not short-circuit before densify has a chance to run.
 
 When terminal condition is met during an active loop: cancel the cron/loop and log the final `graph_stats` snapshot. Do not keep cycling — diminishing returns waste compute.
 
