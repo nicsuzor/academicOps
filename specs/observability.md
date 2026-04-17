@@ -293,7 +293,7 @@ From empirical audit 2026-04-16 (`kb-d8f58167`) and QA sweep 2026-04-14 (`task-b
 | **No `.gitignore` for ephemeral dirs in `$AOPS_SESSIONS`** | `client-logs/`, `hooks/`, `polecats/`, `crew/` are intentionally not git-tracked (Section 7.3), but the repo has no `.gitignore` to enforce this — risk of accidentally staging large files | `task-1dc07d00`               |
 | **Polecat worker stub ≠ Claude transcript**                | `$POLECAT_HOME/polecats/{id}.jsonl` is outer shell output; actual Claude session lives in container then extracted. Confused multiple debugging sessions | `task-bbd1b7e3`               |
 | **Minutes collision**                                      | Some paths still use `HH` (hour only), causing filename collisions for sessions in same hour                                                             | Migrating via `task-3e7d048b` |
-| **Orphaned status files**                                  | Status JSONs in container `/tmp` or `~/.gemini/tmp/` not cleaned up or extracted                                                                         | Open                          |
+| **Orphaned status files**                                  | Status JSONs in container `/tmp` or `~/.gemini/tmp/` not cleaned up or extracted — sub-issue of container observability remediation                      | `task-bbd1b7e3`               |
 | **No `$AOPS_MACHINE` in env**                              | Shortform requires `AOPS_MACHINE`; fallback to container hostname (`aops-crew`) is useless                                                               | `task-bbd1b7e3`               |
 
 ---
