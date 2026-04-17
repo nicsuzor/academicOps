@@ -15,7 +15,7 @@ This is the same repo discovery used by Step 4.2.5 (merged PR query). The repo l
 For each tracked repo:
 
 ```bash
-cd <repo_path> && gh pr list --state open --json number,title,isDraft,mergeable,createdAt,reviewDecision,headRefName,url,author,statusCheckRollup,additions,deletions,changedFiles,labels --limit 30 2>/dev/null
+cd <repo_path> && gh pr list --state open --json number,title,isDraft,mergeable,createdAt,reviewDecision,headRefName,url,author,statusCheckRollup,additions,deletions,changedFiles,labels --limit 100 2>/dev/null
 ```
 
 **Graceful degradation**: If `gh` CLI is unavailable or authentication fails for a repo, note it inline ("GitHub CLI unavailable for [repo] — skipped") and continue to the next repo. If all repos fail, skip the entire section and note "GitHub unavailable — skipped workflow monitoring" in natural language. Never produce empty tables or error codes.
@@ -32,7 +32,7 @@ Classify each open PR into one of the following buckets, in order of prominence:
 | **Stale**              | Open >7 days AND not draft AND no recent activity                                                                        | Flag with age and recommendation   |
 | **Draft / autonomous** | `isDraft == true` OR author is a bot/polecat-worker                                                                      | Collapsed into count               |
 
-**CI status derivation**: Extract from `statusCheckRollup`. Classify as passing (all succeed), failing (any failure — name the failing check), pending (any in progress, none failing), or no checks (empty rollup).
+**CI status derivation**: Extract from `statusCheckRollup`. Classify as passing (all succeed), failing (any failure — name the failing checks), pending (any in progress, none failing), or no checks (empty rollup).
 
 **A PR can appear in only one bucket.** Apply rules top-to-bottom — a stale PR that also needs fixes goes in "Needs fixes" (the more actionable bucket). A draft PR always goes in "Draft / autonomous" regardless of other signals.
 
@@ -69,7 +69,7 @@ _X open PRs total — Y ready to merge, Z need attention_
 **Formatting rules:**
 
 - **Ready to merge** PRs are bold with direct URLs. These are one-click decisions.
-- **Draft / autonomous** PRs collapse into a single count line. Do not list them individually unless there are ≤2 — they are background work and should not compete for attention.
+- **Draft / autonomous** PRs: If there are >2, collapse into a single count line. If there are ≤2, list them individually but keep them visually secondary. They are background work and should not compete for attention.
 - **Stale** PRs include age and a suggested action (close, rebase, or review).
 - Include size (`+additions/-deletions, N files`) for ready-to-merge PRs to help gauge merge confidence.
 - Omit empty buckets entirely. If nothing is ready to merge, don't show the heading.
