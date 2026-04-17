@@ -449,9 +449,9 @@ class HookRouter:
     ) -> None:
         """Match user prompt against .agents/context-map.json and inject hints.
 
-        Looks for context-map.json in the working directory (ctx.cwd). Falls back
-        to the aops-core repo root. Matches prompt tokens against curated keywords
-        and injects relevant file paths as context hints.
+        Looks for context-map.json in the working directory (ctx.cwd) only.
+        Matches prompt tokens against curated keywords and injects relevant
+        file paths as context hints.
         """
         try:
             from lib.context_map import (
@@ -460,11 +460,11 @@ class HookRouter:
                 search_context_map,
             )
 
-            # Determine repo root from cwd or fall back to this repo
-            repo_root = Path(ctx.cwd) if ctx.cwd else AOPS_CORE_DIR.parent
+            if not ctx.cwd:
+                return
+            repo_root = Path(ctx.cwd)
             if not (repo_root / ".agents" / "context-map.json").exists():
-                # Fall back to the aops repo itself
-                repo_root = AOPS_CORE_DIR.parent
+                return
 
             docs = load_context_map(repo_root)
             if not docs:
