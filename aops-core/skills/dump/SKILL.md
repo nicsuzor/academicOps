@@ -78,23 +78,23 @@ Execute the [[base-handover]] workflow. The steps are:
 
    Use [[decompose]] principles for structure. Every task must have a `parent`.
 
-   **Example — RIGHT pattern** (from a HASS debugging session):
+   **Example — RIGHT pattern** (from a debugging session):
    ```
    mcp__pkb__create_task(
-     title="Investigate HACS Anthropic Conversation integration",
-     parent="epic-hass-maintenance",
+     title="Investigate [[New Integration]] for [[Project]]",
+     parent="[[epic-project-maintenance]]",
      priority=3,
-     tags=["hass", "hacs", "draft"],
-     body="HACS shows Anthropic Conversation integration available. Evaluate whether it replaces current OpenAI Conversation setup.\n\n## AC\n- [ ] Compare feature set with current integration\n- [ ] Decision: adopt or skip"
+     tags=["[[project]]", "draft"],
+     body="[[New Integration]] available. Evaluate whether it replaces current [[Existing Tool]] setup.\n\n## AC\n- [ ] Compare feature set with current setup\n- [ ] Decision: adopt or skip"
    )
    ```
 
    **Example — WRONG pattern**:
    ```
    # In a memory file or session notes:
-   - TODO: look into HACS Anthropic integration
-   - TODO: fix broken kitchen automation
-   - TODO: reauth Tado
+   - TODO: look into [[New Integration]]
+   - TODO: fix broken [[automation]]
+   - TODO: reauth [[Third-Party Service]]
    ```
    These are invisible to the task graph. They will be forgotten.
 
