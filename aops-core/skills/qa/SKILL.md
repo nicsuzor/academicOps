@@ -168,8 +168,10 @@ Agent(subagent_type="aops-core:qa", model="opus", prompt="
 Qualitative assessment of [FEATURE] against user stories in [SPEC].
 
 For each section: trace the data pipeline from source to output.
-Verify data correctness, not just that output appears. Cross-verify against actual sources.
-Go deep on 2-3 critical sections rather than skimming everything.
+1. Verify data freshness, not just existence. Check updates over time for real-time displays.
+2. Explicitly test fallback chains. Disable them and verify the primary source works independently.
+3. Verify during an active session (real runtime state).
+4. Identify design-level findings: if data is misleading or UX doesn't serve its purpose, report it.
 
 Evaluate fitness-for-purpose. Cite specific evidence. Report honestly.
 ")

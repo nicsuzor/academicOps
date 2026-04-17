@@ -6,93 +6,85 @@
 
 ## [0.3.19](https://github.com/nicsuzor/academicOps/compare/v0.3.18...v0.3.19) (2026-04-16)
 
-
 ### Features
 
-* **daily:** mobile capture sweep routes to /q or /remember and deletes originals ([#552](https://github.com/nicsuzor/academicOps/issues/552)) ([f78ed95](https://github.com/nicsuzor/academicOps/commit/f78ed956f85fcde375361737e33a5b1e187d5de8))
-* **daily:** surface deadline metadata and effort-aware urgency in focus instructions ([#533](https://github.com/nicsuzor/academicOps/issues/533)) ([cd7cc1e](https://github.com/nicsuzor/academicOps/commit/cd7cc1ea8bf7b412205f6151610d3680abee5203))
-* **gemini:** support Gemini CLI policy engine ([#569](https://github.com/nicsuzor/academicOps/issues/569)) ([d9e43ae](https://github.com/nicsuzor/academicOps/commit/d9e43ae0c3273f431b840a7602440686f0cb2e6a))
-* **pkb:** fix MCP tool signature friction and inconsistent parameter names ([#564](https://github.com/nicsuzor/academicOps/issues/564)) ([2eeb77b](https://github.com/nicsuzor/academicOps/commit/2eeb77b1c33b017974fcc101ecc390d18e4b1ff3))
-* **polecat:** add due, effort, consequence fields and days_until_due to PkbTask ([#534](https://github.com/nicsuzor/academicOps/issues/534)) ([f748f39](https://github.com/nicsuzor/academicOps/commit/f748f39f2c89ab9d6389dbde673ab3a5e696f5c2))
-* **polecat:** Docker OOM detection and container memory management ([#536](https://github.com/nicsuzor/academicOps/issues/536)) ([14606ca](https://github.com/nicsuzor/academicOps/commit/14606ca051c8b91da38be11d5559421f9839e7e0))
-* **sessions:** integrate unified naming into hook logs and status files ([#515](https://github.com/nicsuzor/academicOps/issues/515)) ([1d05843](https://github.com/nicsuzor/academicOps/commit/1d058436508f6eea6b651aa45ae0b9b55b60d2e8))
-* **skills:** add /dogfood skill, /trend-review command, and custodiet review ([#538](https://github.com/nicsuzor/academicOps/issues/538)) ([2ccd37e](https://github.com/nicsuzor/academicOps/commit/2ccd37e80f71acc8a72e3878a1c0db1f0595868d))
-* **skills:** convert /dump command to full skill for Gemini hook compatibility ([be4424b](https://github.com/nicsuzor/academicOps/commit/be4424b058d0aad9c5e35a09f29df518432740c7))
-* **supervisor:** critic-gated dispatch, coordinated branches, transcript reading ([#517](https://github.com/nicsuzor/academicOps/issues/517)) ([b70c8ae](https://github.com/nicsuzor/academicOps/commit/b70c8ae5e26351eacbebd1de3a5b51a1dc2986d3))
-* use release_task for task completion in pull, dump, and polecat finish ([#491](https://github.com/nicsuzor/academicOps/issues/491)) ([a70665c](https://github.com/nicsuzor/academicOps/commit/a70665c565eb28e6e4459cb04329677a3f95ae13))
-* **workflow:** refine PR pipeline with 2 approvals and always-pending status ([#553](https://github.com/nicsuzor/academicOps/issues/553)) ([d93f598](https://github.com/nicsuzor/academicOps/commit/d93f5985607209f4257fd3a84b2ace2c66dcfe7b))
-
+- **daily:** mobile capture sweep routes to /q or /remember and deletes originals ([#552](https://github.com/nicsuzor/academicOps/issues/552)) ([f78ed95](https://github.com/nicsuzor/academicOps/commit/f78ed956f85fcde375361737e33a5b1e187d5de8))
+- **daily:** surface deadline metadata and effort-aware urgency in focus instructions ([#533](https://github.com/nicsuzor/academicOps/issues/533)) ([cd7cc1e](https://github.com/nicsuzor/academicOps/commit/cd7cc1ea8bf7b412205f6151610d3680abee5203))
+- **gemini:** support Gemini CLI policy engine ([#569](https://github.com/nicsuzor/academicOps/issues/569)) ([d9e43ae](https://github.com/nicsuzor/academicOps/commit/d9e43ae0c3273f431b840a7602440686f0cb2e6a))
+- **pkb:** fix MCP tool signature friction and inconsistent parameter names ([#564](https://github.com/nicsuzor/academicOps/issues/564)) ([2eeb77b](https://github.com/nicsuzor/academicOps/commit/2eeb77b1c33b017974fcc101ecc390d18e4b1ff3))
+- **polecat:** add due, effort, consequence fields and days_until_due to PkbTask ([#534](https://github.com/nicsuzor/academicOps/issues/534)) ([f748f39](https://github.com/nicsuzor/academicOps/commit/f748f39f2c89ab9d6389dbde673ab3a5e696f5c2))
+- **polecat:** Docker OOM detection and container memory management ([#536](https://github.com/nicsuzor/academicOps/issues/536)) ([14606ca](https://github.com/nicsuzor/academicOps/commit/14606ca051c8b91da38be11d5559421f9839e7e0))
+- **sessions:** integrate unified naming into hook logs and status files ([#515](https://github.com/nicsuzor/academicOps/issues/515)) ([1d05843](https://github.com/nicsuzor/academicOps/commit/1d058436508f6eea6b651aa45ae0b9b55b60d2e8))
+- **skills:** add /dogfood skill, /trend-review command, and custodiet review ([#538](https://github.com/nicsuzor/academicOps/issues/538)) ([2ccd37e](https://github.com/nicsuzor/academicOps/commit/2ccd37e80f71acc8a72e3878a1c0db1f0595868d))
+- **skills:** convert /dump command to full skill for Gemini hook compatibility ([be4424b](https://github.com/nicsuzor/academicOps/commit/be4424b058d0aad9c5e35a09f29df518432740c7))
+- **supervisor:** critic-gated dispatch, coordinated branches, transcript reading ([#517](https://github.com/nicsuzor/academicOps/issues/517)) ([b70c8ae](https://github.com/nicsuzor/academicOps/commit/b70c8ae5e26351eacbebd1de3a5b51a1dc2986d3))
+- use release_task for task completion in pull, dump, and polecat finish ([#491](https://github.com/nicsuzor/academicOps/issues/491)) ([a70665c](https://github.com/nicsuzor/academicOps/commit/a70665c565eb28e6e4459cb04329677a3f95ae13))
+- **workflow:** refine PR pipeline with 2 approvals and always-pending status ([#553](https://github.com/nicsuzor/academicOps/issues/553)) ([d93f598](https://github.com/nicsuzor/academicOps/commit/d93f5985607209f4257fd3a84b2ace2c66dcfe7b))
 
 ### Bug Fixes
 
-* 12 test failures for v0.3.19 release ([#580](https://github.com/nicsuzor/academicOps/issues/580)) ([87a002a](https://github.com/nicsuzor/academicOps/commit/87a002a940846b8ce81ef0572cbe0a140097b412))
-* correct transcript_path type and stale COWORK_MD_INCLUDE ([#535](https://github.com/nicsuzor/academicOps/issues/535)) ([df5f8f9](https://github.com/nicsuzor/academicOps/commit/df5f8f98b7513790abc54b4951e860fb0d0515ad))
-* **crew:** flush remote branches and refuse stale state on reuse ([#512](https://github.com/nicsuzor/academicOps/issues/512)) ([01655cf](https://github.com/nicsuzor/academicOps/commit/01655cfa23f372c3441a9ee97da19c7f599196e0))
-* docker cp for workspace injection + test suite hardening ([#504](https://github.com/nicsuzor/academicOps/issues/504)) ([f105f1e](https://github.com/nicsuzor/academicOps/commit/f105f1e6fe800d04f0dd1740e36d64f9e384d143))
-* docker cp workspace + end-state integration tests ([#501](https://github.com/nicsuzor/academicOps/issues/501)) ([3f71cbe](https://github.com/nicsuzor/academicOps/commit/3f71cbe6793a7cbb6459e6918a71566d920bda8c))
-* **gates:** respect GateConfig.initial_status in SessionState.create() ([#497](https://github.com/nicsuzor/academicOps/issues/497)) ([56a45a7](https://github.com/nicsuzor/academicOps/commit/56a45a7f701a224760c6ec841e30f3d2832f1245))
-* **hooks:** fail fast on path resolution, fix transcript parser schema mismatch ([e956a95](https://github.com/nicsuzor/academicOps/commit/e956a95e383423e9da964868ebb72985025d096e))
-* **hooks:** fix Gemini session path resolution by ensuring transcript_path is passed down after being popped from raw_input ([69c3e8c](https://github.com/nicsuzor/academicOps/commit/69c3e8c67d9c0ab0b7a910301487dbc31ed22a56))
-* **hooks:** fix syntax errors and tests after refactoring path resolution ([30d0837](https://github.com/nicsuzor/academicOps/commit/30d08376d4ce9c976fcfa57aebc235dd49dd73f3))
-* **instructions:** use correct update_task(updates={...}) object syntax ([#488](https://github.com/nicsuzor/academicOps/issues/488)) ([ff1b081](https://github.com/nicsuzor/academicOps/commit/ff1b081e6fa366f459d28d4548010f1a831125bb))
-* **plugin:** remove userConfig; rely on host env vars for ACA_DATA and PKB_MCP_URL ([#530](https://github.com/nicsuzor/academicOps/issues/530)) ([8155433](https://github.com/nicsuzor/academicOps/commit/8155433e983d40f1dade615655b15e9812689454))
-* **polecat:** clean Gemini termination, sandbox/image gaps, and fail-fast repo resolution ([#524](https://github.com/nicsuzor/academicOps/issues/524)) ([21e37ce](https://github.com/nicsuzor/academicOps/commit/21e37cee910627998a5afbfe97921dc243f2e492))
-* **polecat:** detect merged branches and start fresh on re-dispatch ([#561](https://github.com/nicsuzor/academicOps/issues/561)) ([3d595ea](https://github.com/nicsuzor/academicOps/commit/3d595eac2d4e65203767142bf9c2058507854786))
-* **polecat:** implement auto-rebase for stale worktrees ([#560](https://github.com/nicsuzor/academicOps/issues/560)) ([a007742](https://github.com/nicsuzor/academicOps/commit/a0077421dffdafc63bb08d896562e63a347b928e))
-* **polecat:** implement auto-rebase for stale worktrees ([#572](https://github.com/nicsuzor/academicOps/issues/572)) ([315d13c](https://github.com/nicsuzor/academicOps/commit/315d13c2cdbb13eda28228ccb6af031f30c1340a))
-* **polecat:** pc sync reports success but doesn't close stale-mirror warning ([#568](https://github.com/nicsuzor/academicOps/issues/568)) ([d6a7255](https://github.com/nicsuzor/academicOps/commit/d6a725533899c91d57b1dd31e7a0b66755d3a055))
-* **polecat:** polecat sync doesn't close stale-mirror warning ([#558](https://github.com/nicsuzor/academicOps/issues/558)) ([1e53ad3](https://github.com/nicsuzor/academicOps/commit/1e53ad3121a7acd43fc2d63c9e2a7887f9575e32))
-* **polecat:** prevent crew auto-nuke from deleting pushed but un-PRed branches ([#545](https://github.com/nicsuzor/academicOps/issues/545)) ([762ed2f](https://github.com/nicsuzor/academicOps/commit/762ed2f9172df39869c816dbe6ff723d65347b2b))
-* **polecat:** strip macOS xattrs during workspace tar injection ([ed495a3](https://github.com/nicsuzor/academicOps/commit/ed495a34da0faf9ee04ebe5dec32a32c32bc3b0d))
-* **polecat:** update prompt_template to use release_task for task handoff ([994d081](https://github.com/nicsuzor/academicOps/commit/994d081e9a8b8d30614c2ca3451c7e1d05d134ba))
-* pr-review.yml handles pull_request events correctly + clean up orphans ([#510](https://github.com/nicsuzor/academicOps/issues/510)) ([3cdb1c3](https://github.com/nicsuzor/academicOps/commit/3cdb1c3018c422abbd9571ad4eb85da3670ffab2))
-* **remember:** PKB owns $ACA_DATA — no direct filesystem writes ([#544](https://github.com/nicsuzor/academicOps/issues/544)) ([044744e](https://github.com/nicsuzor/academicOps/commit/044744ec3b90c143e992a9d8481cf9683bc0f51e))
-* **sessions:** wire hook/status/gate/client artifacts to unified naming ([#551](https://github.com/nicsuzor/academicOps/issues/551)) ([a39165d](https://github.com/nicsuzor/academicOps/commit/a39165d75d055d14304bfe86a23972d466f28ad3))
-* **tests:** handle pre-patch Docker images in e2e hook assertions ([cde0a81](https://github.com/nicsuzor/academicOps/commit/cde0a814fad07ee0f4082601549f4b1501b8d498))
-* **tests:** match roundtrip entries by index, not event name ([7d28155](https://github.com/nicsuzor/academicOps/commit/7d281553221acd16326993bb5f2a34657a49decb))
-
+- 12 test failures for v0.3.19 release ([#580](https://github.com/nicsuzor/academicOps/issues/580)) ([87a002a](https://github.com/nicsuzor/academicOps/commit/87a002a940846b8ce81ef0572cbe0a140097b412))
+- correct transcript_path type and stale COWORK_MD_INCLUDE ([#535](https://github.com/nicsuzor/academicOps/issues/535)) ([df5f8f9](https://github.com/nicsuzor/academicOps/commit/df5f8f98b7513790abc54b4951e860fb0d0515ad))
+- **crew:** flush remote branches and refuse stale state on reuse ([#512](https://github.com/nicsuzor/academicOps/issues/512)) ([01655cf](https://github.com/nicsuzor/academicOps/commit/01655cfa23f372c3441a9ee97da19c7f599196e0))
+- docker cp for workspace injection + test suite hardening ([#504](https://github.com/nicsuzor/academicOps/issues/504)) ([f105f1e](https://github.com/nicsuzor/academicOps/commit/f105f1e6fe800d04f0dd1740e36d64f9e384d143))
+- docker cp workspace + end-state integration tests ([#501](https://github.com/nicsuzor/academicOps/issues/501)) ([3f71cbe](https://github.com/nicsuzor/academicOps/commit/3f71cbe6793a7cbb6459e6918a71566d920bda8c))
+- **gates:** respect GateConfig.initial_status in SessionState.create() ([#497](https://github.com/nicsuzor/academicOps/issues/497)) ([56a45a7](https://github.com/nicsuzor/academicOps/commit/56a45a7f701a224760c6ec841e30f3d2832f1245))
+- **hooks:** fail fast on path resolution, fix transcript parser schema mismatch ([e956a95](https://github.com/nicsuzor/academicOps/commit/e956a95e383423e9da964868ebb72985025d096e))
+- **hooks:** fix Gemini session path resolution by ensuring transcript_path is passed down after being popped from raw_input ([69c3e8c](https://github.com/nicsuzor/academicOps/commit/69c3e8c67d9c0ab0b7a910301487dbc31ed22a56))
+- **hooks:** fix syntax errors and tests after refactoring path resolution ([30d0837](https://github.com/nicsuzor/academicOps/commit/30d08376d4ce9c976fcfa57aebc235dd49dd73f3))
+- **instructions:** use correct update_task(updates={...}) object syntax ([#488](https://github.com/nicsuzor/academicOps/issues/488)) ([ff1b081](https://github.com/nicsuzor/academicOps/commit/ff1b081e6fa366f459d28d4548010f1a831125bb))
+- **plugin:** remove userConfig; rely on host env vars for ACA_DATA and PKB_MCP_URL ([#530](https://github.com/nicsuzor/academicOps/issues/530)) ([8155433](https://github.com/nicsuzor/academicOps/commit/8155433e983d40f1dade615655b15e9812689454))
+- **polecat:** clean Gemini termination, sandbox/image gaps, and fail-fast repo resolution ([#524](https://github.com/nicsuzor/academicOps/issues/524)) ([21e37ce](https://github.com/nicsuzor/academicOps/commit/21e37cee910627998a5afbfe97921dc243f2e492))
+- **polecat:** detect merged branches and start fresh on re-dispatch ([#561](https://github.com/nicsuzor/academicOps/issues/561)) ([3d595ea](https://github.com/nicsuzor/academicOps/commit/3d595eac2d4e65203767142bf9c2058507854786))
+- **polecat:** implement auto-rebase for stale worktrees ([#560](https://github.com/nicsuzor/academicOps/issues/560)) ([a007742](https://github.com/nicsuzor/academicOps/commit/a0077421dffdafc63bb08d896562e63a347b928e))
+- **polecat:** implement auto-rebase for stale worktrees ([#572](https://github.com/nicsuzor/academicOps/issues/572)) ([315d13c](https://github.com/nicsuzor/academicOps/commit/315d13c2cdbb13eda28228ccb6af031f30c1340a))
+- **polecat:** pc sync reports success but doesn't close stale-mirror warning ([#568](https://github.com/nicsuzor/academicOps/issues/568)) ([d6a7255](https://github.com/nicsuzor/academicOps/commit/d6a725533899c91d57b1dd31e7a0b66755d3a055))
+- **polecat:** polecat sync doesn't close stale-mirror warning ([#558](https://github.com/nicsuzor/academicOps/issues/558)) ([1e53ad3](https://github.com/nicsuzor/academicOps/commit/1e53ad3121a7acd43fc2d63c9e2a7887f9575e32))
+- **polecat:** prevent crew auto-nuke from deleting pushed but un-PRed branches ([#545](https://github.com/nicsuzor/academicOps/issues/545)) ([762ed2f](https://github.com/nicsuzor/academicOps/commit/762ed2f9172df39869c816dbe6ff723d65347b2b))
+- **polecat:** strip macOS xattrs during workspace tar injection ([ed495a3](https://github.com/nicsuzor/academicOps/commit/ed495a34da0faf9ee04ebe5dec32a32c32bc3b0d))
+- **polecat:** update prompt_template to use release_task for task handoff ([994d081](https://github.com/nicsuzor/academicOps/commit/994d081e9a8b8d30614c2ca3451c7e1d05d134ba))
+- pr-review.yml handles pull_request events correctly + clean up orphans ([#510](https://github.com/nicsuzor/academicOps/issues/510)) ([3cdb1c3](https://github.com/nicsuzor/academicOps/commit/3cdb1c3018c422abbd9571ad4eb85da3670ffab2))
+- **remember:** PKB owns $ACA_DATA — no direct filesystem writes ([#544](https://github.com/nicsuzor/academicOps/issues/544)) ([044744e](https://github.com/nicsuzor/academicOps/commit/044744ec3b90c143e992a9d8481cf9683bc0f51e))
+- **sessions:** wire hook/status/gate/client artifacts to unified naming ([#551](https://github.com/nicsuzor/academicOps/issues/551)) ([a39165d](https://github.com/nicsuzor/academicOps/commit/a39165d75d055d14304bfe86a23972d466f28ad3))
+- **tests:** handle pre-patch Docker images in e2e hook assertions ([cde0a81](https://github.com/nicsuzor/academicOps/commit/cde0a814fad07ee0f4082601549f4b1501b8d498))
+- **tests:** match roundtrip entries by index, not event name ([7d28155](https://github.com/nicsuzor/academicOps/commit/7d281553221acd16326993bb5f2a34657a49decb))
 
 ### Code Refactoring
 
-* consolidate axioms, redesign RBG + Pauli agents ([#503](https://github.com/nicsuzor/academicOps/issues/503)) ([0caaa10](https://github.com/nicsuzor/academicOps/commit/0caaa10f40d18ba7d10354b1c2ae27aedb845e6e))
-* embed axioms in agent definitions, remove AXIOMS.md ([#500](https://github.com/nicsuzor/academicOps/issues/500)) ([a904047](https://github.com/nicsuzor/academicOps/commit/a904047964db2d11c670523a2c8b2c41f9cf5cb5))
-* **gates:** handover gate starts open, triggers on write tools ([#527](https://github.com/nicsuzor/academicOps/issues/527)) ([ffc54da](https://github.com/nicsuzor/academicOps/commit/ffc54daf98a8366c0256be9e7d2b8f2e7939d732))
-* **polecat:** bind mounts for local docker, cp for remote ([#567](https://github.com/nicsuzor/academicOps/issues/567)) ([be8c281](https://github.com/nicsuzor/academicOps/commit/be8c281ca60133e0e5d07e1c5749666bb6f3a805))
-* **session_paths:** use transcript_path instead of input_data dict directly ([94a2ad2](https://github.com/nicsuzor/academicOps/commit/94a2ad20f4f91ceb897355dd52867268c16cff20))
-
+- consolidate axioms, redesign RBG + Pauli agents ([#503](https://github.com/nicsuzor/academicOps/issues/503)) ([0caaa10](https://github.com/nicsuzor/academicOps/commit/0caaa10f40d18ba7d10354b1c2ae27aedb845e6e))
+- embed axioms in agent definitions, remove AXIOMS.md ([#500](https://github.com/nicsuzor/academicOps/issues/500)) ([a904047](https://github.com/nicsuzor/academicOps/commit/a904047964db2d11c670523a2c8b2c41f9cf5cb5))
+- **gates:** handover gate starts open, triggers on write tools ([#527](https://github.com/nicsuzor/academicOps/issues/527)) ([ffc54da](https://github.com/nicsuzor/academicOps/commit/ffc54daf98a8366c0256be9e7d2b8f2e7939d732))
+- **polecat:** bind mounts for local docker, cp for remote ([#567](https://github.com/nicsuzor/academicOps/issues/567)) ([be8c281](https://github.com/nicsuzor/academicOps/commit/be8c281ca60133e0e5d07e1c5749666bb6f3a805))
+- **session_paths:** use transcript_path instead of input_data dict directly ([94a2ad2](https://github.com/nicsuzor/academicOps/commit/94a2ad20f4f91ceb897355dd52867268c16cff20))
 
 ### Documentation
 
-* **framework:** add hook forensics reference and enhance workflow 09 ([02239b2](https://github.com/nicsuzor/academicOps/commit/02239b2d7efe2c3014e0c7c58e076cf5c6535b48))
-* **framework:** hook forensics reference and workflow 09 enhancement ([#490](https://github.com/nicsuzor/academicOps/issues/490)) ([1f75985](https://github.com/nicsuzor/academicOps/commit/1f759854bf6baebd235e925e03e6ac0d8c33d1ce))
-* **merge-prep:** require mergeable end-state and raise bar for halting ([#575](https://github.com/nicsuzor/academicOps/issues/575)) ([cc6fe3a](https://github.com/nicsuzor/academicOps/commit/cc6fe3a80e8e2e91a5bdfaa78442c26c1d126b44))
-* **spec:** formalize task lifecycle with release_task and canonical statuses ([5122a8c](https://github.com/nicsuzor/academicOps/commit/5122a8c8525d11d25f42d22cfddd243b115ac0c3))
-* **supervisor:** MONITOR-phase guidance for polecat lifecycle and non-PR work ([#523](https://github.com/nicsuzor/academicOps/issues/523)) ([588e059](https://github.com/nicsuzor/academicOps/commit/588e059cc7bb4d3e874cdb49ba23566ca7327002))
-* **supervisor:** remove dispatch-log references, point to task body ([#519](https://github.com/nicsuzor/academicOps/issues/519)) ([d54fdd7](https://github.com/nicsuzor/academicOps/commit/d54fdd7adf43983284086dbabc5a046fbb8cbba6))
-
+- **framework:** add hook forensics reference and enhance workflow 09 ([02239b2](https://github.com/nicsuzor/academicOps/commit/02239b2d7efe2c3014e0c7c58e076cf5c6535b48))
+- **framework:** hook forensics reference and workflow 09 enhancement ([#490](https://github.com/nicsuzor/academicOps/issues/490)) ([1f75985](https://github.com/nicsuzor/academicOps/commit/1f759854bf6baebd235e925e03e6ac0d8c33d1ce))
+- **merge-prep:** require mergeable end-state and raise bar for halting ([#575](https://github.com/nicsuzor/academicOps/issues/575)) ([cc6fe3a](https://github.com/nicsuzor/academicOps/commit/cc6fe3a80e8e2e91a5bdfaa78442c26c1d126b44))
+- **spec:** formalize task lifecycle with release_task and canonical statuses ([5122a8c](https://github.com/nicsuzor/academicOps/commit/5122a8c8525d11d25f42d22cfddd243b115ac0c3))
+- **supervisor:** MONITOR-phase guidance for polecat lifecycle and non-PR work ([#523](https://github.com/nicsuzor/academicOps/issues/523)) ([588e059](https://github.com/nicsuzor/academicOps/commit/588e059cc7bb4d3e874cdb49ba23566ca7327002))
+- **supervisor:** remove dispatch-log references, point to task body ([#519](https://github.com/nicsuzor/academicOps/issues/519)) ([d54fdd7](https://github.com/nicsuzor/academicOps/commit/d54fdd7adf43983284086dbabc5a046fbb8cbba6))
 
 ### CI/CD
 
-* move build to nicsuzor/aops via repository_dispatch ([#505](https://github.com/nicsuzor/academicOps/issues/505)) ([fe12f1e](https://github.com/nicsuzor/academicOps/commit/fe12f1e5d11eb5115e7aa793a6e4277f6b63a9a7))
-* self-document dispatcher + fix release-create cwd in aops build ([#507](https://github.com/nicsuzor/academicOps/issues/507)) ([a841caa](https://github.com/nicsuzor/academicOps/commit/a841caafa6b70446611b9ba1edbbec4e20642a28))
-
+- move build to nicsuzor/aops via repository_dispatch ([#505](https://github.com/nicsuzor/academicOps/issues/505)) ([fe12f1e](https://github.com/nicsuzor/academicOps/commit/fe12f1e5d11eb5115e7aa793a6e4277f6b63a9a7))
+- self-document dispatcher + fix release-create cwd in aops build ([#507](https://github.com/nicsuzor/academicOps/issues/507)) ([a841caa](https://github.com/nicsuzor/academicOps/commit/a841caafa6b70446611b9ba1edbbec4e20642a28))
 
 ### Build System
 
-* ensure latest rust version in docker image ([#529](https://github.com/nicsuzor/academicOps/issues/529)) ([e5be399](https://github.com/nicsuzor/academicOps/commit/e5be39912aaf788d4c12db3407f1cf27836e33ae))
-
+- ensure latest rust version in docker image ([#529](https://github.com/nicsuzor/academicOps/issues/529)) ([e5be399](https://github.com/nicsuzor/academicOps/commit/e5be39912aaf788d4c12db3407f1cf27836e33ae))
 
 ### Tests
 
-* **hooks:** add cross-platform tests for get_parent_pid and process tree climbing ([21f7892](https://github.com/nicsuzor/academicOps/commit/21f7892ddb99d3771a63fdc7aa9fc5d158cbea05))
-* **polecat:** add e2e test for real transcript persistence on host ([#570](https://github.com/nicsuzor/academicOps/issues/570)) ([2d3d73a](https://github.com/nicsuzor/academicOps/commit/2d3d73a488c748a0ed3a965b89be655117d2bf3d))
-* **polecat:** e2e tests for real transcript persistence on the host ([#574](https://github.com/nicsuzor/academicOps/issues/574)) ([f735f4b](https://github.com/nicsuzor/academicOps/commit/f735f4b86d11a2cf39f1c2930f55e8c7e6512ee8))
-* **polecat:** red tests for sandbox hook silent failures ([#557](https://github.com/nicsuzor/academicOps/issues/557)) ([852f425](https://github.com/nicsuzor/academicOps/commit/852f425d8bee3febc903b45c942aa220ad6b4d50))
-
+- **hooks:** add cross-platform tests for get_parent_pid and process tree climbing ([21f7892](https://github.com/nicsuzor/academicOps/commit/21f7892ddb99d3771a63fdc7aa9fc5d158cbea05))
+- **polecat:** add e2e test for real transcript persistence on host ([#570](https://github.com/nicsuzor/academicOps/issues/570)) ([2d3d73a](https://github.com/nicsuzor/academicOps/commit/2d3d73a488c748a0ed3a965b89be655117d2bf3d))
+- **polecat:** e2e tests for real transcript persistence on the host ([#574](https://github.com/nicsuzor/academicOps/issues/574)) ([f735f4b](https://github.com/nicsuzor/academicOps/commit/f735f4b86d11a2cf39f1c2930f55e8c7e6512ee8))
+- **polecat:** red tests for sandbox hook silent failures ([#557](https://github.com/nicsuzor/academicOps/issues/557)) ([852f425](https://github.com/nicsuzor/academicOps/commit/852f425d8bee3febc903b45c942aa220ad6b4d50))
 
 ### Miscellaneous
 
-* repo-wide audit — delete 155 outdated files (-30,777 lines) ([#499](https://github.com/nicsuzor/academicOps/issues/499)) ([f632f76](https://github.com/nicsuzor/academicOps/commit/f632f76418e39d8ac07c0dd5a7af370c4e48a68e))
+- repo-wide audit — delete 155 outdated files (-30,777 lines) ([#499](https://github.com/nicsuzor/academicOps/issues/499)) ([f632f76](https://github.com/nicsuzor/academicOps/commit/f632f76418e39d8ac07c0dd5a7af370c4e48a68e))
 
 ## [0.3.18](https://github.com/nicsuzor/academicOps/compare/v0.3.17...v0.3.18) (2026-04-08)
 
