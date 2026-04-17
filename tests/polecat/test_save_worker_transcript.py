@@ -3,8 +3,6 @@
 Validates that the stub JSON includes real_transcript_path and
 real_transcript_size_bytes when a real Claude session transcript exists
 under the run_session_dir.
-
-Task: task-b0928ed2
 """
 
 from __future__ import annotations

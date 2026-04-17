@@ -381,7 +381,6 @@ def save_worker_transcript(
 
         transcript_file = transcript_dir / f"{task_id}.jsonl"
 
-        # Locate the real Claude Code session transcript
         real_transcript = _find_real_transcript(run_session_dir)
 
         entry = {
