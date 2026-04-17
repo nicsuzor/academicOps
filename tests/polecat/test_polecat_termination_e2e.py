@@ -43,10 +43,6 @@ from pathlib import Path
 
 import pytest
 
-# PKB create_task returns a plain text confirmation like:
-#   "Task created: `/data/brain/tasks/task-3c8847bb-<slug>.md`"
-# from which we extract the task ID. The call_tool helper passes text
-# through for non-JSON responses.
 _TASK_ID_RE = re.compile(r"(task-[0-9a-f]+|epic-[0-9a-f]+|aops-[0-9a-f]+)")
 
 
@@ -54,7 +50,7 @@ def _extract_task_id(resp: object) -> str | None:
     """Pull a task id out of a PKB create_task response."""
     if isinstance(resp, dict):
         fm = resp.get("frontmatter") or {}
-        return fm.get("id") or resp.get("id")
+        return fm.get("id")
     if isinstance(resp, str):
         m = _TASK_ID_RE.search(resp)
         if m:
@@ -150,11 +146,7 @@ def test_gemini_terminates_after_release_task(tmp_path: Path) -> None:
             "Set POLECAT_E2E_PARENT to an existing epic ID under that project."
         )
 
-    # NOTE: PKB's create_task MCP tool does not accept project/status/type
-    # arguments via the bridge schema — it only sets parent/title/body/tags.
-    # We set project and status as a follow-up update_task call. Without
-    # project, polecat fails with "Task ... has no project set — cannot
-    # set up worktree".
+    # PKB create_task now accepts project/status/type directly.
     create_result = client.call_tool(
         "create_task",
         {
@@ -162,6 +154,8 @@ def test_gemini_terminates_after_release_task(tmp_path: Path) -> None:
             "body": _WORKER_INSTRUCTION,
             "parent": scratch_parent_id,
             "tags": ["test", "e2e", "polecat-termination"],
+            "project": project,
+            "status": "ready",
         },
     )
     assert create_result is not None, "PKB create_task returned None"
@@ -169,14 +163,6 @@ def test_gemini_terminates_after_release_task(tmp_path: Path) -> None:
     task_id = _extract_task_id(create_result)
     if not task_id:
         pytest.fail(f"Could not extract task id from PKB create_task response: {create_result!r}")
-
-    # Attach project + ready status so polecat can dispatch the task.
-    update_resp = client.call_tool(
-        "update_task",
-        {"id": task_id, "updates": {"project": project, "status": "ready"}},
-    )
-    if update_resp is None:
-        pytest.fail(f"Failed to set project/status on task {task_id}")
 
     transcript_path = (
         Path(os.environ.get("POLECAT_HOME", Path.home() / ".aops"))
