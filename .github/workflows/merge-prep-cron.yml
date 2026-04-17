@@ -58,7 +58,8 @@ jobs:
           gh workflow run agent-merge-prep.yml \
             --repo "${{ github.repository }}" \
             --ref "refs/heads/$HEAD_REF" \
-            -f pr_number="$PR_NUM"
+            -f pr_number="$PR_NUM" \
+            -f force=true
 
           echo "Dispatched merge-prep for PR #$PR_NUM"
 
