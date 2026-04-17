@@ -82,7 +82,7 @@ All artifact types across all 6 session types. "Current" means what the code act
 | **Session types**                 | manual-gemini, crew-gemini, polecat-gemini                                                              |
 | **Archive target (manual)**       | `$AOPS_SESSIONS/client-logs/{base}-client.jsonl` (converted to JSONL)                                   |
 | **Archive target (polecat/crew)** | Extracted via `docker cp` from `/home/worker/.gemini/tmp` → `$AOPS_SESSIONS/polecats/{task_id}/{slug}/` |
-| **Naming**                        | Gemini names it; framework renames on sync                                                              |
+| **Naming**                        | **Current**: Gemini names it; framework renames on sync. **Target**: unified v4 with `-client` suffix  |
 | **Processor**                     | `transcript.py` (reads + converts); `_extract_gemini_sessions()` in `polecat/cli.py`                    |
 | **When processed**                | Post-session / post-container-stop                                                                      |
 | **Git-tracked**                   | No (same as Claude client log)                                                                          |
@@ -100,7 +100,7 @@ All artifact types across all 6 session types. "Current" means what the code act
 | **Fallback of last resort**                    | `/tmp/aops-hooks-{uid}/{project_folder}/{base}-hooks.jsonl`                                                                    |
 | **Session types**                              | All 6                                                                                                                          |
 | **Archive target**                             | `$AOPS_SESSIONS/hooks/` (written directly if reachable; NOT synced otherwise)                                                  |
-| **Naming**                                     | **Current**: partial unified (uses `generate_session_filename` but `sync_client_log` uses legacy). **Target**: full unified v4 |
+| **Naming**                                     | **Current**: partial unified (`generate_session_filename` used for path, but `session_paths.py` callers still emit legacy `YYYYMMDD-HH-shorthash`). **Target**: full unified v4 |
 | **Processor**                                  | None — hook logs are not post-processed; they're the raw observation stream                                                    |
 | **When processed**                             | Not processed — read directly for debugging                                                                                    |
 | **Git-tracked**                                | No — `hooks/` is NOT added to git                                                                                              |
@@ -180,7 +180,7 @@ All artifact types across all 6 session types. "Current" means what the code act
 | **Path**           | `$AOPS_SESSIONS/transcripts/{base}-full.md`                                                           |
 | **Session types**  | All 6 (wherever a client log exists)                                                                  |
 | **Archive target** | Already at final destination in `$AOPS_SESSIONS/transcripts/`                                         |
-| **Naming**         | **Current**: partially unified (transcript.py uses `generate_base_name`). **Target**: full unified v4 |
+| **Naming**         | **Current**: unified (transcript.py uses `generate_base_name` which produces the full v4 pattern; variant suffix `-full` is by design). **Target**: already unified — no migration needed |
 | **Processor**      | `/sleep` skill (Pauli) — mines for insights; marks `mined: {date}` in frontmatter                     |
 | **When processed** | `/sleep` cycle; also read by `/daily` for session flow reconstruction                                 |
 | **Git-tracked**    | Yes — `git add transcripts/` in `transcript.py`                                                       |
@@ -287,10 +287,10 @@ From empirical audit 2026-04-16 (`kb-d8f58167`) and QA sweep 2026-04-14 (`task-b
 | Gap                                                        | Description                                                                                                                                              | Task                          |
 | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
 | **Gemini hook log dir missing**                            | `~/.gemini/tmp/logs/` not created in polecat containers; hook logs silently lost                                                                         | `task-c9667cd0`               |
-| **AOPS_SESSIONS unreachable in containers**                | Hook logs + gate files fall back to local provider paths, never sync to host                                                                             | `task-bbd1b7e3`               |
+| **AOPS_SESSIONS unreachable in containers**                | Hook logs + gate files fall back to local provider paths; for polecat/crew sessions `docker cp` extracts them to host but into `polecats/{id}/` not `$AOPS_SESSIONS/hooks/`; for manual sessions they are simply lost | `task-bbd1b7e3`               |
 | **`sync_client_log` uses legacy naming**                   | Copies client logs with source filename stem, not unified v4 pattern                                                                                     | `task-56e41c5f` (reopen)      |
 | **`session_paths.py` hook/status/gate emit legacy format** | `get_hook_log_path()` and `get_gate_file_path()` still use legacy `YYYYMMDD-HH-shorthash` in some paths                                                  | `task-c3e9823a`               |
-| **`client-logs/` + `hooks/` not git-tracked**              | `transcript.py` only stages `transcripts/` and `summaries/`; hook logs and client logs live only on local disk                                           | Open                          |
+| **No `.gitignore` for ephemeral dirs in `$AOPS_SESSIONS`** | `client-logs/`, `hooks/`, `polecats/`, `crew/` are intentionally not git-tracked (Section 7.3), but the repo has no `.gitignore` to enforce this — risk of accidentally staging large files | `task-1dc07d00`               |
 | **Polecat worker stub ≠ Claude transcript**                | `$POLECAT_HOME/polecats/{id}.jsonl` is outer shell output; actual Claude session lives in container then extracted. Confused multiple debugging sessions | `task-bbd1b7e3`               |
 | **Minutes collision**                                      | Some paths still use `HH` (hour only), causing filename collisions for sessions in same hour                                                             | Migrating via `task-3e7d048b` |
 | **Orphaned status files**                                  | Status JSONs in container `/tmp` or `~/.gemini/tmp/` not cleaned up or extracted                                                                         | Open                          |
@@ -299,6 +299,8 @@ From empirical audit 2026-04-16 (`kb-d8f58167`) and QA sweep 2026-04-14 (`task-b
 ---
 
 ## 7. `$AOPS_SESSIONS` Retirement Analysis
+
+> **Architectural note**: A general convention in the framework states that "all data files, including archives, should be stored under `$ACA_DATA`." Session observability artifacts are an explicit, justified exception to that rule — see Section 7.2 for the analysis. The deviation is intentional; this section explains why.
 
 ### 7.1 What `$AOPS_SESSIONS` currently does
 
