@@ -127,12 +127,7 @@ def _assert_real_transcript(task_id: str, project: str, min_bytes: int) -> Path:
 
 
 def _assert_stub(task_id: str, expect_real_path: bool = True) -> Path:
-    """Assert the summary stub landed and optionally references the real transcript.
-
-    Since task-b0928ed2, the stub includes ``real_transcript_path`` and
-    ``real_transcript_size_bytes`` fields pointing at the full Claude session
-    transcript.
-    """
+    """Assert the summary stub landed and optionally references the real transcript."""
     stub = _polecat_home() / "polecats" / f"{task_id}.jsonl"
     assert stub.is_file(), f"Missing stub: {stub}"
     size = stub.stat().st_size
@@ -146,8 +141,7 @@ def _assert_stub(task_id: str, expect_real_path: bool = True) -> Path:
         last_line = stub.read_text().strip().split("\n")[-1]
         entry = json.loads(last_line)
         assert entry.get("real_transcript_path"), (
-            f"Stub at {stub} is missing real_transcript_path — "
-            f"task-b0928ed2 should have added it. Entry: {entry}"
+            f"Stub at {stub} is missing real_transcript_path. Entry: {entry}"
         )
         real_path = Path(entry["real_transcript_path"])
         assert real_path.exists(), (
