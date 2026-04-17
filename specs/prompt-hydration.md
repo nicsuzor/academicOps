@@ -276,11 +276,11 @@ No hooks, no framework dependency. Agents on Claude Code, Gemini CLI, Codex, or 
 
 The `UserPromptSubmit` hook automatically matches the user's prompt against context-map keywords and injects relevant documentation paths as context hints. This happens via `_inject_context_map_hints()` in `router.py`, which:
 
-1. Loads `.agents/context-map.json` from the working directory (falls back to aops repo root)
+1. Loads `.agents/context-map.json` from the working directory (`ctx.cwd`) only — no fallback
 2. Tokenizes the user prompt and scores each map entry by keyword overlap
 3. Injects the top matches (up to 5) as a "Relevant Documentation" section in the hook's context injection
 
-**Scoring**: Curated keyword matching (not free-text NLP). Keywords are explicitly authored in the map for this purpose — they function as index terms, like library catalog tags. Exact multi-word keyword matches score +2, partial overlap +1, topic matches +2, description overlap capped at +3.
+**Scoring**: Curated keyword matching only (not free-text NLP). Keywords are explicitly authored in the map for this purpose — they function as index terms, like library catalog tags. Exact multi-word keyword matches score +2, partial overlap +1, topic matches +2.
 
 **Implementation**: `lib/context_map.py` provides `load_context_map()`, `search_context_map()`, and `format_context_hints()`. Tests in `tests/lib/test_context_map.py`.
 

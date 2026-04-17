@@ -49,6 +49,8 @@ for _mod in _MODS_TO_STUB:
     else:
         _saved[_mod] = sys.modules[_mod]
 
+_original_cli = sys.modules.get("cli")
+
 try:
     # Force re-import if cli was already partially loaded
     sys.modules.pop("cli", None)
@@ -56,6 +58,12 @@ try:
 finally:
     # Remove the stub-loaded cli so other test modules get a clean import.
     sys.modules.pop("cli", None)
+    # Restore the real cli module if it was present before stub loading.
+    # Without this, patch("cli.*") in test_cli_docker.py resolves a fresh
+    # import that doesn't match the _is_colima_env.__globals__ dict from
+    # the earlier real import, silently defeating the mocks.
+    if _original_cli is not None:
+        sys.modules["cli"] = _original_cli
     # Restore original modules; remove stubs we inserted.
     for _mod, _orig in _saved.items():
         if _orig is None:

@@ -74,12 +74,12 @@ class TestLoadContextMap:
         docs = load_context_map(tmp_path)
         assert docs == []
 
-    def test_returns_empty_for_invalid_json(self, tmp_path):
+    def test_raises_for_invalid_json(self, tmp_path):
         agents_dir = tmp_path / ".agents"
         agents_dir.mkdir()
         (agents_dir / "context-map.json").write_text("not json{")
-        docs = load_context_map(tmp_path)
-        assert docs == []
+        with pytest.raises(json.JSONDecodeError):
+            load_context_map(tmp_path)
 
     def test_returns_empty_for_missing_docs_key(self, tmp_path):
         agents_dir = tmp_path / ".agents"
