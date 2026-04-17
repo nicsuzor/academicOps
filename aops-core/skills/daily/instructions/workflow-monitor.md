@@ -2,7 +2,7 @@
 
 ## Step 6: Monitor Workflows
 
-Surface outstanding workflow signals in "What Needs Attention" and auto-close tasks whose completion can be inferred from merged PRs or sent emails. This step runs after progress sync and before the task completion sweep.
+Surface outstanding workflow signals in "What Needs Attention". This step runs after progress sync and before the task completion sweep (Step 7). Task auto-close logic lives in Step 7 — not here.
 
 ### Step 6.1: Discover Tracked Repos
 
@@ -15,7 +15,7 @@ This is the same repo discovery used by Step 4.2.5 (merged PR query). The repo l
 For each tracked repo:
 
 ```bash
-cd <repo_path> && gh pr list --state open --json number,title,isDraft,mergeable,createdAt,reviewDecision,headRefName,url,author,statusCheckRollup,additions,deletions,changedFiles,labels --limit 100 2>/dev/null
+cd <repo_path> && gh pr list --state open --json number,title,isDraft,mergeable,createdAt,updatedAt,reviewDecision,headRefName,url,author,statusCheckRollup,additions,deletions,changedFiles,labels --limit 100 2>/dev/null
 ```
 
 **Graceful degradation**: If `gh` CLI is unavailable or authentication fails for a repo, note it inline ("GitHub CLI unavailable for [repo] — skipped") and continue to the next repo. If all repos fail, skip the entire section and note "GitHub unavailable — skipped workflow monitoring" in natural language. Never produce empty tables or error codes.
@@ -29,7 +29,7 @@ Classify each open PR into one of the following buckets, in order of prominence:
 | **Ready to merge**     | `mergeable == "MERGEABLE"` AND `reviewDecision == "APPROVED"` AND CI passing (all checks in `statusCheckRollup` succeed) | Bold, direct URL, one-click action |
 | **Needs review**       | `mergeable == "MERGEABLE"` AND `reviewDecision` is empty/pending AND not draft                                           | Brief context line with URL        |
 | **Needs fixes**        | `mergeable == "CONFLICTING"` OR CI failing OR `reviewDecision == "CHANGES_REQUESTED"`                                    | Name the specific blocker          |
-| **Stale**              | Open >7 days AND not draft AND no recent activity                                                                        | Flag with age and recommendation   |
+| **Stale**              | `createdAt` >7 days ago AND `updatedAt` >7 days ago AND not draft                                                        | Flag with age and recommendation   |
 | **Draft / autonomous** | `isDraft == true` OR author is a bot/polecat-worker                                                                      | Collapsed into count               |
 
 **CI status derivation**: Extract from `statusCheckRollup`. Classify as passing (all succeed), failing (any failure — name the failing checks), pending (any in progress, none failing), or no checks (empty rollup).
