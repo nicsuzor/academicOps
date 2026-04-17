@@ -23,6 +23,8 @@ polecat sweep
 5. **Ambiguous cases**: Surface in the daily note under "Needs your call" in "What Needs Attention" (see [[instructions/workflow-monitor]] Step 6.5). Never auto-close ambiguous cases.
 6. **Report** in Work Log: `N tasks auto-closed from merged PRs`, `N tasks auto-closed from sent emails`, `N flagged for user decision`.
 
+**Steps 4.1, 4.1.5, 4.2, 4.2.5, and 4.2.6 — run in parallel.** These data-gathering steps are independent: they read from different sources (shell scripts, PKB, session JSONs, GitHub) and produce separate outputs that are merged only at composition time. Agent teams should dispatch concurrent subagents for each; single-agent environments should issue all data-fetching tool calls simultaneously rather than sequentially.
+
 ### Step 4.1: Narrative Path Reconstruction (Compass Model)
 
 Instead of a mechanical table, build a narrative timeline of the day's work using the `show_path.py` script. This helps the user recover context and identify "where they are" in the day's story.

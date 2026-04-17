@@ -12,6 +12,8 @@ This is the same repo discovery used by Step 4.2.5 (merged PR query). The repo l
 
 ### Step 6.2: Fetch Open PRs Across Repos
 
+**Run per-repo fetches in parallel.** Each repo query is independent — agent teams should dispatch a concurrent subagent per repo; single-agent environments should issue all `gh pr list` calls simultaneously rather than repo-by-repo. Merge results after all fetches complete.
+
 For each tracked repo:
 
 ```bash

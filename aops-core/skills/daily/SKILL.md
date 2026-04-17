@@ -223,15 +223,23 @@ The daily note is a _shared document_ between the agent and the user. The owners
 
 ## Pipeline
 
-The skill gathers information from multiple sources and composes the note. The order below is a typical sequence, not a rigid pipeline — the agent may adjust based on what's available:
+The skill gathers information from multiple sources and composes the note. Independent steps should be run concurrently — agent teams should fan out to parallel subagents for each independent group; single-agent environments (Gemini CLI, etc.) should issue all independent tool calls simultaneously rather than waiting for each to complete before starting the next.
 
 1. **Create or open** the note (verify carryover tasks against live PKB state)
+
+**Steps 2–3 — run in parallel** (independent; no shared dependencies):
+
 2. **Invoke `/email`** to triage inbox (creates tasks with full context; returns FYI items for the daily note)
 3. **Sweep mobile captures** — scan `$ACA_DATA/notes/mobile-captures/`, route each unprocessed capture to `/q` (task) or `/remember` (knowledge), delete the original, summarise in the note. See [[instructions/mobile-capture-triage]].
-4. **Compose Focus** (load task data, reason about recommendations, engage user on priorities)
-5. **Sync progress** (session JSONs, merged PRs, task completions → Work Log + Today's Story)
-6. **Monitor workflows** — surface outstanding PRs in "What Needs Attention" and auto-close completable tasks. See [[instructions/workflow-monitor]].
-7. **Sweep review/merge_ready tasks** (see below)
+
+4. **Compose Focus** (load task data, reason about recommendations, engage user on priorities) — begin after Steps 2–3 complete so that email-created tasks are included in recommendations
+
+**Steps 5–6 — run in parallel** (independent; each reads from different data sources and neither writes output the other depends on):
+
+5. **Sync progress** (session JSONs, merged PRs, task completions → Work Log + Today's Story) — data-gathering sub-steps within this step also run in parallel; see [[instructions/progress-sync]]
+6. **Monitor workflows** — surface outstanding PRs in "What Needs Attention". See [[instructions/workflow-monitor]] for per-repo concurrent fetching.
+
+7. **Sweep review/merge_ready tasks** (after Steps 5 and 6 complete — see below)
 8. **Output** terminal briefing and halt
 
 ### Task Completion Sweep (Step 7)
