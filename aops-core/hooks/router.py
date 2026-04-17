@@ -415,7 +415,7 @@ class HookRouter:
 
         Delivery: via the UserPromptSubmit hook hint (non-blocking).
         Template: hydration.warn (repurposed for routing table).
-        Context map: .agents/context-map.json keyword matching against prompt.
+        Context map: .agents/context-map.json full entry list injected for LLM.
         """
         if ctx.is_subagent:
             return
