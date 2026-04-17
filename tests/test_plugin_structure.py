@@ -107,7 +107,9 @@ class TestGovernanceFiles:
             assert "AXIOMS.md" in content, "rbg.md must either embed axioms or reference AXIOMS.md"
             # Axioms are now bundled inside the plugin tree (plugin-relative path)
             axioms_file = PLUGIN_ROOT / ".agents" / "rules" / "AXIOMS.md"
-            assert axioms_file.exists(), "AXIOMS.md must exist at aops-core/.agents/rules/AXIOMS.md (plugin-relative)"
+            assert axioms_file.exists(), (
+                "AXIOMS.md must exist at aops-core/.agents/rules/AXIOMS.md (plugin-relative)"
+            )
             axioms_content = axioms_file.read_text()
             assert "P#1" in axioms_content, "AXIOMS.md must contain axiom P#1"
             assert "P#99" in axioms_content, "AXIOMS.md must contain axiom P#99"
