@@ -50,6 +50,24 @@ _Suggested sequence_: Committee vote is critical — deadline today. Then tackle
 
 Invited to join [[Journal Name]] editorial board. Application via online form.
 
+### Outstanding Workflows
+
+**Ready to merge:**
+
+- **[#489](url)** [[academicOps]] — Release 0.3.19 (+12/-3, 2 files) — _merge now_
+
+**Needs review:**
+
+- [#501](url) [[buttermilk]] — Add extraction pipeline — awaiting review (2d)
+
+**Needs fixes:**
+
+- [#495](url) [[academicOps]] — Fix crontab paths — merge conflicts
+
+* 3 draft/autonomous PRs across 2 repos
+
+_8 open PRs total — 1 ready to merge, 4 need attention_
+
 ## Today's Story
 
 [[Day of week]]. [[Key deadline task]] deadline is tomorrow — critical. Two supervision enquiries arrived overnight. [[Project Collaborator]] needs exact data column for project evaluation. No sessions or merged PRs yet.
@@ -72,7 +90,7 @@ No sessions today.
 
 ## Design Notes
 
-**Five sections, not twelve.** Focus, What Needs Attention, Today's Story, Work Log, Carryover/Abandoned. The v2 template had separate Task Tree, Session Log, Today's Path, Project Accomplishments, Mobile Captures, Open PRs, Terminal Overwhelm Analysis, and Reflection sections — these either merge into the Work Log or are folded into the sections they serve.
+**Five sections, not twelve.** Focus, What Needs Attention, Today's Story, Work Log, Carryover/Abandoned. The v2 template had separate Task Tree, Session Log, Today's Path, Project Accomplishments, Mobile Captures, Open PRs, Terminal Overwhelm Analysis, and Reflection sections — these either merge into the Work Log or are folded into the sections they serve. Outstanding Workflows lives inside "What Needs Attention" as a decision-oriented summary — the full PR tables remain in Work Log for reference.
 
 **No empty placeholders.** If a section has no content, omit it or use a brief natural-language statement. Never leave empty tables, "n/a" metrics, or `<!-- user notes -->` HTML comments visible. The note should read as a composed document, not a filled-in form.
 

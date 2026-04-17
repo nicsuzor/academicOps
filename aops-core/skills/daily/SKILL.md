@@ -76,21 +76,42 @@ The first thing the user sees. Combines priority overview and curated task recom
 
 > See [[instructions/focus-and-recommendations]] for task data loading and recommendation reasoning.
 
-### 2. What Needs Attention (FYI + Captures)
+### 2. What Needs Attention (FYI + Captures + Outstanding Workflows)
 
-Email triage and mobile captures, presented as a briefing the user reads _in the note itself_ — not by opening individual emails.
+Email triage, mobile captures, and outstanding workflow signals, presented as a briefing the user reads _in the note itself_ — not by opening individual emails or checking GitHub.
 
 **Contains**:
 
 - Email threads grouped by conversation, with enough content that the user doesn't need to open the email
 - Mobile captures triaged from `notes/mobile-captures/`
 - Each actionable item has a task created immediately (not batched to later)
+- **Outstanding workflows** — open PRs across tracked repos, bucketed by actionability (see below)
 
 **Quality guidance**: FYI items involving real people (students, collaborators, funders) get full context — who said what, what's being asked, what the deadline is. Automated notifications, newsletters, and low-signal items get a single line or are omitted entirely. The agent triages by significance, not by recency.
 
 **Bidirectional contract**: If the user adds notes or annotations below any FYI item, those are preserved on subsequent runs. The agent regenerates its content above user annotations but never deletes below them.
 
 > See [[instructions/briefing-and-triage]] for email triage, sent-mail cross-referencing, and task creation.
+
+#### Outstanding Workflows subsection
+
+A snapshot of open PRs across tracked repos that need human decisions, surfaced directly in "What Needs Attention" so the user doesn't have to open GitHub. This is the decision-oriented complement to the Work Log's full PR tables — only PRs requiring action appear here.
+
+**Bucketing** (in order of prominence):
+
+1. **Ready to merge** — mergeable + approved + CI passing. These are one-click actions. Visually prominent.
+2. **Needs review** — mergeable, awaiting human review. Brief context on what the PR does.
+3. **Needs fixes** — conflicting, CI failing, or changes requested. Name the specific blocker.
+4. **Stale** — open >7 days with no activity. Candidate for close or rebase.
+5. **Draft / autonomous** — draft PRs or polecat-worker PRs. Collapsed or single-line. These are background work and should not compete for attention.
+
+**Formatting**: Proportional — ready-to-merge PRs get a bold line with direct URL. Draft/autonomous PRs collapse into a count ("+ N draft/autonomous PRs"). Include direct PR URLs for one-click action on all non-collapsed items.
+
+**Graceful degradation**: If `gh` CLI is unavailable or authentication fails, note the gap in natural language ("GitHub CLI unavailable — skipped workflow monitoring") and continue. Never error or produce empty table structures.
+
+**Repo list**: Use the project registry from `$POLECAT_HOME/polecat.yaml` (same source as Step 4.2.5). This is configurable — repos are added/removed by editing polecat.yaml, not by changing skill code.
+
+> See [[instructions/workflow-monitor]] for the full procedure.
 
 ### 3. Today's Story
 
@@ -202,35 +223,48 @@ The daily note is a _shared document_ between the agent and the user. The owners
 
 ## Pipeline
 
-The skill gathers information from multiple sources and composes the note. The order below is a typical sequence, not a rigid pipeline — the agent may adjust based on what's available:
+The skill gathers information from multiple sources and composes the note. Independent steps should be run concurrently — agent teams should fan out to parallel subagents for each independent group; single-agent environments (Gemini CLI, etc.) should issue all independent tool calls simultaneously rather than waiting for each to complete before starting the next.
 
 1. **Create or open** the note (verify carryover tasks against live PKB state)
+
+**Steps 2–3 — run in parallel** (independent; no shared dependencies):
+
 2. **Invoke `/email`** to triage inbox (creates tasks with full context; returns FYI items for the daily note)
 3. **Sweep mobile captures** — scan `$ACA_DATA/notes/mobile-captures/`, route each unprocessed capture to `/q` (task) or `/remember` (knowledge), delete the original, summarise in the note. See [[instructions/mobile-capture-triage]].
-4. **Compose Focus** (load task data, reason about recommendations, engage user on priorities)
-5. **Sync progress** (session JSONs, merged PRs, task completions → Work Log + Today's Story)
-6. **Sweep review-status tasks** (see below)
-7. **Output** terminal briefing and halt
 
-### Review Sweep (Step 6)
+4. **Compose Focus** (load task data, reason about recommendations, engage user on priorities) — begin after Steps 2–3 complete so that email-created tasks are included in recommendations
 
-`status="review"` means the task needs human/manager review — typically after a failure or blocked execution path. This sweep does **not** redefine that lifecycle state. Instead, it catches tasks that are still marked `review` even though repository evidence suggests the work may already be complete and the task status was never updated (status drift).
+**Steps 5–6 — run in parallel** (independent; each reads from different data sources and neither writes output the other depends on):
+
+5. **Sync progress** (session JSONs, merged PRs, task completions → Work Log + Today's Story) — data-gathering sub-steps within this step also run in parallel; see [[instructions/progress-sync]]
+6. **Monitor workflows** — surface outstanding PRs in "What Needs Attention". See [[instructions/workflow-monitor]] for per-repo concurrent fetching.
+
+7. **Sweep review/merge_ready tasks** (after Steps 5 and 6 complete — see below)
+8. **Output** terminal briefing and halt
+
+### Task Completion Sweep (Step 7)
+
+This sweep closes the loop on tasks whose completion can be inferred from external signals — merged PRs and sent emails. It covers both `status="review"` (tasks awaiting human review) and `status="merge_ready"` (tasks with filed PRs awaiting merge). The sweep does **not** redefine lifecycle states — it catches tasks where the underlying work is already done but the task status was never updated (status drift).
 
 **Procedure:**
 
-1. Call `list_tasks(status="review")` to get all tasks currently in review.
+1. Call `list_tasks(status="review")` and `list_tasks(status="merge_ready")` to get all candidate tasks.
 2. Group tasks by repository, then check for merge evidence repo-by-repo:
-   - First inspect each task's `evidence`, `notes`, and `description` for a linked PR number, PR URL, task ID, task title, and any linked branch name
+   - First inspect each task's `evidence`, `notes`, `description`, and frontmatter for a linked PR number, PR URL (`pr_url`), task ID, task title, and any linked branch name
    - For each repo represented by those tasks, fetch merged PRs once with `gh pr list --state merged --json number,title,url,mergedAt,body,headRefName`
-   - Match tasks locally against the fetched PR set: PR number already linked on the task, task ID in PR body, `headRefName` matching the task's linked branch, or PR title substring-matching the task title
+   - Match tasks locally against the fetched PR set: PR number already linked on the task, `pr_url` in frontmatter, task ID in PR body, `headRefName` matching the task's linked branch, or PR title matching the task title (using whole-word boundaries)
    - Only if a specific candidate PR number is already known and the batch result lacks needed detail, use `gh pr view <number> --json state,url,mergedAt,headRefName` as a targeted confirmation step
-3. **Auto-complete only clear status-drift cases**: If a merged PR is found and the task's remaining `review` status appears stale rather than an active human-review step, call `mcp__pkb__complete_task` with a completion note explaining the sweep reconciled an out-of-date task state and evidence including the PR URL and merge timestamp. No human confirmation needed — the merge is sufficient evidence.
-4. **Flag stale tasks**: If a task has been in `review` status for more than 14 days with no merge evidence found, flag it for user triage. Do not auto-close or auto-abandon stale tasks — surface them explicitly in the Focus section with a brief summary (task ID, title, age, what was expected to close it).
-5. **Report summary**: Include a brief sweep summary in the Work Log section:
-   - `N tasks auto-completed from merged PRs`
-   - `N tasks flagged as stale (>14d in review)` — list task IDs inline
+3. **Auto-complete clear cases**: If a merged PR is found matching the task, call `mcp__pkb__complete_task` with a completion note explaining the sweep reconciled an out-of-date task state, including the PR URL and merge timestamp as evidence. No human confirmation needed — the merge is sufficient evidence. This applies to both `review` and `merge_ready` tasks.
+4. **Sent-email evidence**: For tasks where the completion signal is a sent email rather than a PR (e.g., reply-required tasks created by `/email`), cross-reference against recent sent items. If a sent reply matches the task's correspondent + subject (using whole-word boundaries) within 48 hours of task creation, call `mcp__pkb__complete_task` with the sent email as evidence. Only auto-close when the match is unambiguous — same correspondent, subject match, sent after task creation.
+5. **Ambiguous cases → "Needs your call"**: When evidence exists but is ambiguous (partial subject match, sent email to a different recipient in the same thread, PR closed but not merged), surface the task in the daily note under a "Needs your call" heading within "What Needs Attention". Include the PR/email link and a one-click closure suggestion. **Never auto-close ambiguous cases.**
+6. **Flag stale tasks**: If a task has been in `review` or `merge_ready` status for more than 14 days with no merge or email evidence found, flag it for user triage. Do not auto-close or auto-abandon stale tasks — surface them explicitly in the Focus section with a brief summary (task ID, title, age, what was expected to close it).
+7. **Report summary**: Include a brief sweep summary in the Work Log section:
+   - `N tasks auto-closed from merged PRs`
+   - `N tasks auto-closed from sent emails`
+   - `N flagged for user decision`
+   - `N flagged as stale (>14d in review/merge_ready)` — list task IDs inline
 
-**What counts as evidence**: A merged PR linked to the task by any of: PR number already linked on task, task ID in PR body, `headRefName` matching task's linked branch, PR title substring-matching task title. A closed-but-not-merged PR is not evidence of completion — flag it separately if found.
+**What counts as evidence**: A merged PR linked to the task by any of: `pr_url` in frontmatter, PR number already linked on task, task ID in PR body, `headRefName` matching task's linked branch, PR title matching task title (whole-word boundaries). A sent email matching correspondent + subject (whole-word boundaries) within 48 hours of task creation. A closed-but-not-merged PR is **not** evidence of completion — flag it separately under "Needs your call".
 
 > Detailed procedures for each step are in the `instructions/` subdirectory. These procedures describe best practices and edge cases — they are guidance for the agent, not scripts to execute mechanically (P#116).
 
