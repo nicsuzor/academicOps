@@ -66,8 +66,39 @@ Execute the [[base-handover]] workflow. The steps are:
    If no task was claimed, create a historical task first.
    **Fallback**: If `mcp__pkb__release_task` is not available, use `mcp__pkb__update_task(id="<task-id>", status="merge_ready")`.
    **Note (Gemini workers, #521)**: Calling `release_task` with a terminal status (done/merge_ready/blocked/cancelled) is what lets the polecat supervisor detect termination via PKB polling and shut the container down — Gemini has no Stop hook, so skipping this will leave the worker running until an external timeout.
-3. **File follow-up tasks** for outstanding work — use [[decompose]] principles and ensure all have a **parent** set to the current task or epic
-4. **Persist discoveries to memory** (optional)
+3. **File follow-up tasks** (MANDATORY — [[capture-outstanding-work]])
+
+   Every concrete follow-up **must** become a PKB task via `mcp__pkb__create_task`. Do NOT capture actionable items as prose in memory files, session notes, or daily notes — those are invisible to `/daily`, the task graph, and prioritisation.
+
+   **The rule**: Memory = non-actionable context (learnings, discoveries, preferences). Task = anything someone should act on.
+
+   For each follow-up:
+   - **Clear scope?** → Create task with full AC, appropriate priority, and `parent` set to the current task or epic.
+   - **Fuzzy scope?** → Create task with `status: seed`, minimal AC (even just a one-liner), and tag `draft`. A seed task with loose links is infinitely better than a prose bullet that nobody will ever see again. Refine later via `/planner`.
+
+   Use [[decompose]] principles for structure. Every task must have a `parent`.
+
+   **Example — RIGHT pattern** (from a HASS debugging session):
+   ```
+   mcp__pkb__create_task(
+     title="Investigate HACS Anthropic Conversation integration",
+     parent="epic-hass-maintenance",
+     priority=3,
+     tags=["hass", "hacs", "draft"],
+     body="HACS shows Anthropic Conversation integration available. Evaluate whether it replaces current OpenAI Conversation setup.\n\n## AC\n- [ ] Compare feature set with current integration\n- [ ] Decision: adopt or skip"
+   )
+   ```
+
+   **Example — WRONG pattern**:
+   ```
+   # In a memory file or session notes:
+   - TODO: look into HACS Anthropic integration
+   - TODO: fix broken kitchen automation
+   - TODO: reauth Tado
+   ```
+   These are invisible to the task graph. They will be forgotten.
+
+4. **Persist discoveries to memory** (optional — non-actionable context only)
    4.5. **Codify learnings** — framework improvement → `gh issue create` in aops repo; project-scoped → update `./.agents/workflows/`; see [[references/handover-details]]
 5. **Output Framework Reflection** (include `**Proposed changes**` field referencing what was filed/updated)
 6. **Output Summary to user** — LAST step, after everything else (see format below)
@@ -98,7 +129,7 @@ After the Framework Reflection, output this as the **very last thing** before st
 
 **What was done**: [1–3 sentences]
 **Task(s) worked**: [task-id-1], [task-id-2]
-**Follow-up items**:
+**Follow-up items** (each MUST be a PKB task — no prose-only items):
 - [Description] → [task-id]  (or "None")
 
 Next: `/pull <task-id>` to resume, or `/pull` to pick from queue.
