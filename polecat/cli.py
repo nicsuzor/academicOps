@@ -2426,21 +2426,9 @@ def finish(ctx, no_push, do_nuke, force, force_done, project):
                 print("📭 No changes detected, but --force-done specified.")
                 print("✅ Proceeding to mark as DONE (verified complete without changes).")
                 _finish_evidence = f"{task.title} — completed without code changes (--force-done)"
-                try:
-                    from polecat.pkb_bridge import complete_task as pkb_complete
+                from polecat.pkb_bridge import complete_task as pkb_complete
 
-                    pkb_complete(task_id, completion_evidence=_finish_evidence)
-                except Exception:
-                    try:
-                        from lib.task_model import TaskStatus
-
-                        task.status = TaskStatus.DONE.value
-                        manager.storage.save_task(task)
-                    except ImportError:
-                        from polecat.pkb_bridge import save_task as pkb_save
-
-                        task.status = "done"
-                        pkb_save(task)
+                pkb_complete(task_id, completion_evidence=_finish_evidence)
                 print(f"✅ Task {task_id} marked as DONE.")
 
                 # Optionally nuke
@@ -2508,21 +2496,9 @@ def finish(ctx, no_push, do_nuke, force, force_done, project):
                     _finish_evidence = (
                         f"{task.title} — completed without code changes (--force-done)"
                     )
-                    try:
-                        from polecat.pkb_bridge import complete_task as pkb_complete
+                    from polecat.pkb_bridge import complete_task as pkb_complete
 
-                        pkb_complete(task_id, completion_evidence=_finish_evidence)
-                    except Exception:
-                        try:
-                            from lib.task_model import TaskStatus
-
-                            task.status = TaskStatus.DONE
-                            manager.storage.save_task(task)
-                        except ImportError:
-                            from polecat.pkb_bridge import save_task as pkb_save
-
-                            task.status = "done"
-                            pkb_save(task)
+                    pkb_complete(task_id, completion_evidence=_finish_evidence)
                     print(f"✅ Task {task_id} marked as DONE.")
                     if do_nuke:
                         print("Nuking worktree...")
@@ -3064,7 +3040,7 @@ def sweep(ctx, stale_days):
     else:
         from polecat.pkb_bridge import list_tasks as pkb_list_tasks
 
-        tasks = list(pkb_list_tasks(status="merge_ready"))
+        tasks = pkb_list_tasks(status="merge_ready")
         tasks.extend(pkb_list_tasks(status="review"))
 
     # For review tasks, only include those that have a PR reference
@@ -3130,13 +3106,9 @@ def sweep(ctx, stale_days):
             pr_number = pr_status.get("number", "?")
             merged_date = merged_at[:10] if merged_at else "unknown date"
             evidence = f"PR #{pr_number} merged {merged_date}"
-            try:
-                from polecat.pkb_bridge import complete_task as pkb_complete
+            from polecat.pkb_bridge import complete_task as pkb_complete
 
-                pkb_complete(task.id, completion_evidence=evidence)
-            except Exception:
-                task.status = "done"
-                _save(task)
+            pkb_complete(task.id, completion_evidence=evidence)
             # Cleanup worktree
             try:
                 manager.nuke_worktree(task.id, force=True)
