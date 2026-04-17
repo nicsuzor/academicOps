@@ -4,15 +4,24 @@
 
 Update daily note from session JSON files and narrative path reconstruction.
 
-### Step 4.0: PR Status Sweep
+### Step 4.0: Task Completion Sweep
 
-Before syncing progress, run a sweep of all tasks in `merge_ready` status to synchronize with GitHub PR states. This ensures the task graph accurately reflects merged or blocked work.
+Before syncing progress, run a sweep of tasks in `merge_ready` and `review` status to synchronize with external signals (merged PRs, sent emails). This ensures the task graph accurately reflects completed, blocked, or stale work.
 
 ```bash
 polecat sweep
 ```
 
 **Outcome**: Tasks for merged PRs move to `done`, tasks with requested changes move back to `review`, and stale PRs are flagged.
+
+**Extended sweep** (when `polecat sweep` is unavailable or as a supplement):
+
+1. Call `list_tasks(status="merge_ready")` and `list_tasks(status="review")` to get all candidate tasks.
+2. For tasks with a `pr_url` in frontmatter: query the PR state via `gh pr view <number> --json state,mergedAt,url`. If `state == "MERGED"`, call `complete_task` with the merge timestamp + URL as evidence.
+3. For tasks **without** a `pr_url`: match by `headRefName` substring or task ID in PR body against merged PRs fetched in Step 4.2.5. Same auto-complete rule applies.
+4. **Sent-email evidence**: For tasks where the completion signal is a sent email (e.g., reply-required tasks from `/email`), cross-reference against recent sent items. Auto-close only when the match is unambiguous — same correspondent, subject line overlap, sent after task creation within ~48 hours.
+5. **Ambiguous cases**: Surface in the daily note under "Needs your call" in "What Needs Attention" (see [[instructions/workflow-monitor]] Step 6.5). Never auto-close ambiguous cases.
+6. **Report** in Work Log: `N tasks auto-closed from merged PRs`, `N tasks auto-closed from sent emails`, `N flagged for user decision`.
 
 ### Step 4.1: Narrative Path Reconstruction (Compass Model)
 
