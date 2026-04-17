@@ -226,6 +226,21 @@ mcp__pkb__create_task(
 )
 ```
 
+## Body Content Coherence
+
+Task bodies should contain context, acceptance criteria, and rationale — not checklists that duplicate the subtask graph.
+
+**Anti-pattern: Parallel tracking**
+
+When a task body contains `- [ ]` checklist items AND has subtasks tracking the same work, the two inevitably diverge. Completed subtasks don't update the body checklist, creating false "no progress" signals.
+
+**Rules:**
+
+1. Don't put `- [ ]` checklists in task bodies if the items will be tracked as subtasks
+2. When decomposing a task, replace any source checklist with a reference to children (e.g., "Decomposed into N subtasks — see children")
+3. The `body` parameter in `create_task` is for markdown body content, not frontmatter — don't pass `body` as a frontmatter key
+4. The subtask graph is the single source of truth for progress tracking
+
 ## Task Assignment
 
 Tasks can be assigned to a specific actor:

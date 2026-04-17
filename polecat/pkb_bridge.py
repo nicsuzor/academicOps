@@ -8,8 +8,10 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import urllib.request
+import warnings
 from datetime import date, datetime
 from typing import Any
 
@@ -255,6 +257,17 @@ def create_task(
 
     params = dict(kwargs)
     params["title"] = final_title
+
+    # Warn if body contains checklist items — these should be subtasks instead
+    body = params.get("body", "")
+    if body and re.search(r"- \[[ x]\]", body):
+        warnings.warn(
+            "Task body contains checklist items ('- [ ]'). "
+            "Checklists in task bodies diverge from the subtask graph over time. "
+            "Use create_subtask() or decompose_task() instead of embedding "
+            "checklists in the body. See: Nectar incident.",
+            stacklevel=2,
+        )
 
     result = _get_client().call_tool("create_task", params)
     if result and isinstance(result, dict):

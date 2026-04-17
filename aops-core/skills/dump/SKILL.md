@@ -78,6 +78,8 @@ Execute the [[base-handover]] workflow. The steps are:
 
    Use [[decompose]] principles for structure. Every task must have a `parent`.
 
+   **Do not put `- [ ]` checklists in parent task bodies** when filing subtasks — the subtask graph is the single source of truth. If the parent body has a checklist that duplicates the new subtasks, replace it with a reference to children.
+
    **Example — RIGHT pattern** (from a debugging session):
    ```
    mcp__pkb__create_task(

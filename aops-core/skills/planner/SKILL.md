@@ -150,6 +150,7 @@ Break validated epics into structured task trees.
 **Critical rules**:
 
 - Every subtask MUST have clear acceptance criteria. If you can't write AC, keep the step in the parent body instead of creating a hollow subtask.
+- **No parallel tracking**: Don't put checklists (`- [ ]`) in task bodies if the items will be tracked as subtasks. Body checklists and subtask graphs inevitably diverge, creating false "no progress" signals (see: Nectar incident). When decomposing, replace the source checklist with a reference to children (e.g., "See subtasks below").
 - All tasks together must achieve the original epic (completeness).
 - Every task must be completable in a single session (actionability).
 - Every epic must include at least one QA/review task (verification).
@@ -318,6 +319,7 @@ User prompt
 5. **Graph integrity** — every task has a parent, every edge has a reason
 6. **Small, frequent attention** — 15–30 min maintain sessions, ~10 tasks per densify pass
 7. **Decomposition requires AC** — never create subtasks without clear acceptance criteria; keep steps in parent body instead
+8. **No parallel tracking** — never put `- [ ]` checklists in task bodies when items are tracked as subtasks; after decomposition, replace the body checklist with a reference to children
 
 ## Work Hierarchy
 
