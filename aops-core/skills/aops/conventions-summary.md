@@ -2,13 +2,13 @@
 name: framework-conventions-summary
 title: Framework Conventions Summary
 category: ref
-description: Condensed framework conventions for JIT injection. Full skill at skills/framework/SKILL.md.
+description: Condensed framework conventions for JIT injection. Full skill at aops-core/skills/aops/SKILL.md.
 permalink: framework-conventions-summary
 ---
 
 # Framework Conventions (Summary)
 
-**Full skill**: [[skills/framework/SKILL.md]] - invoke `Skill(skill='framework')` for component patterns, workflows, compliance refactoring.
+**Full skill**: [[aops-core/skills/aops/SKILL.md]] - invoke `Skill(skill='aops')` for component patterns, workflows, compliance refactoring.
 
 ## Categorical Imperative (MANDATORY)
 

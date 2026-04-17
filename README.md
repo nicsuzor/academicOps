@@ -17,7 +17,7 @@ An automation framework for academic work, built as a Claude Code / Gemini CLI p
 ┌─────────▼─────────┐   ┌─────────▼─────────┐   ┌─────────▼─────────┐
 │    TASK SYSTEM     │   │      SKILLS        │   │   SESSION HOOKS   │
 │                    │   │                    │   │                    │
-│  capture ideas     │   │  /daily   /butler  │   │  load context     │
+│  capture ideas     │   │  /daily   /aops    │   │  load context     │
 │  track work        │   │  /plan    /learn   │   │  autocommit       │
 │  search context    │   │  /qa      /email   │   │  sync state       │
 │  connect knowledge │   │  /pull    /sleep   │   │  capture session  │
@@ -70,7 +70,7 @@ Skills are Claude Code / Gemini CLI extensions that know how to do specific thin
 | Skill                | Purpose                                              |
 | -------------------- | ---------------------------------------------------- |
 | `/plan`              | Effectual planning, decomposition, graph maintenance |
-| `/butler`            | Institutional memory, framework coordination         |
+| `/aops`              | Institutional memory, framework coordination         |
 | `/daily`             | Daily notes, briefing, progress sync                 |
 | `/learn`             | Capture friction and failures, fix instructions      |
 | `/qa`                | Independent verification against acceptance criteria |
