@@ -2425,16 +2425,22 @@ def finish(ctx, no_push, do_nuke, force, force_done, project):
             if force_done:
                 print("📭 No changes detected, but --force-done specified.")
                 print("✅ Proceeding to mark as DONE (verified complete without changes).")
+                _finish_evidence = f"{task.title} — completed without code changes (--force-done)"
                 try:
-                    from lib.task_model import TaskStatus
+                    from polecat.pkb_bridge import complete_task as pkb_complete
 
-                    task.status = TaskStatus.DONE.value
-                    manager.storage.save_task(task)
-                except ImportError:
-                    from polecat.pkb_bridge import save_task as pkb_save
+                    pkb_complete(task_id, completion_evidence=_finish_evidence)
+                except Exception:
+                    try:
+                        from lib.task_model import TaskStatus
 
-                    task.status = "done"
-                    pkb_save(task)
+                        task.status = TaskStatus.DONE.value
+                        manager.storage.save_task(task)
+                    except ImportError:
+                        from polecat.pkb_bridge import save_task as pkb_save
+
+                        task.status = "done"
+                        pkb_save(task)
                 print(f"✅ Task {task_id} marked as DONE.")
 
                 # Optionally nuke
@@ -2499,16 +2505,24 @@ def finish(ctx, no_push, do_nuke, force, force_done, project):
                         "📭 No changes detected (local main fallback), but --force-done specified."
                     )
                     print("✅ Proceeding to mark as DONE (verified complete without changes).")
+                    _finish_evidence = (
+                        f"{task.title} — completed without code changes (--force-done)"
+                    )
                     try:
-                        from lib.task_model import TaskStatus
+                        from polecat.pkb_bridge import complete_task as pkb_complete
 
-                        task.status = TaskStatus.DONE
-                        manager.storage.save_task(task)
-                    except ImportError:
-                        from polecat.pkb_bridge import save_task as pkb_save
+                        pkb_complete(task_id, completion_evidence=_finish_evidence)
+                    except Exception:
+                        try:
+                            from lib.task_model import TaskStatus
 
-                        task.status = "done"
-                        pkb_save(task)
+                            task.status = TaskStatus.DONE
+                            manager.storage.save_task(task)
+                        except ImportError:
+                            from polecat.pkb_bridge import save_task as pkb_save
+
+                            task.status = "done"
+                            pkb_save(task)
                     print(f"✅ Task {task_id} marked as DONE.")
                     if do_nuke:
                         print("Nuking worktree...")
@@ -3026,10 +3040,10 @@ def list_polecats(ctx):
 @click.option("--stale-days", default=3, help="Days before flagging a PR as stale (default: 3)")
 @click.pass_context
 def sweep(ctx, stale_days):
-    """Scan 'merge_ready' tasks and update status based on GitHub PR state.
+    """Scan 'merge_ready' and 'review' tasks and update status based on GitHub PR state.
 
-    Checks each task in 'merge_ready' status for its corresponding PR.
-    - If merged: sets task to 'done', cleans up worktree/branch.
+    Checks each task in 'merge_ready' or 'review' (with pr_url) status for its corresponding PR.
+    - If merged: marks task done with completion evidence, cleans up worktree/branch.
     - If closed (not merged): sets task back to 'review'.
     - If changes requested: sets task back to 'review' and appends comments.
     - If stale (>N days): flags for attention in task body.
@@ -3038,20 +3052,40 @@ def sweep(ctx, stale_days):
 
     manager = PolecatManager(home_dir=ctx.obj.get("home"))
 
+    tasks: list = []
     if manager.storage is not None:
         try:
             from lib.task_model import TaskStatus
 
-            tasks = manager.storage.list_tasks(status=TaskStatus.MERGE_READY)
+            tasks = list(manager.storage.list_tasks(status=TaskStatus.MERGE_READY))
+            tasks.extend(manager.storage.list_tasks(status=TaskStatus.REVIEW))
         except ImportError:
             tasks = []
     else:
         from polecat.pkb_bridge import list_tasks as pkb_list_tasks
 
-        tasks = pkb_list_tasks(status="merge_ready")
+        tasks = list(pkb_list_tasks(status="merge_ready"))
+        tasks.extend(pkb_list_tasks(status="review"))
+
+    # For review tasks, only include those that have a PR reference
+    filtered_tasks = []
+    for t in tasks:
+        status_str = str(t.status).lower().replace("taskstatus.", "")
+        if status_str == "merge_ready":
+            filtered_tasks.append(t)
+        elif status_str == "review":
+            pr_ref = t.pr_url or (str(t.pr) if hasattr(t, "pr") and t.pr else None)
+            if not pr_ref:
+                # Check body for PR URL
+                match = re.search(r"https://github\.com/[^/]+/[^/]+/pull/(\d+)", t.body or "")
+                if match:
+                    filtered_tasks.append(t)
+            else:
+                filtered_tasks.append(t)
+    tasks = filtered_tasks
 
     if not tasks:
-        print("No tasks in MERGE_READY status.")
+        print("No tasks in MERGE_READY or REVIEW (with PR) status.")
         return
 
     def _save(t):
@@ -3062,7 +3096,7 @@ def sweep(ctx, stale_days):
 
             pkb_save(t)
 
-    print(f"Sweeping {len(tasks)} tasks in MERGE_READY status...")
+    print(f"Sweeping {len(tasks)} tasks in MERGE_READY/REVIEW status...")
 
     for task in tasks:
         pr_ref = task.pr_url or (str(task.pr) if task.pr else None)
@@ -3093,8 +3127,16 @@ def sweep(ctx, stale_days):
         # 1. PR Merged
         if state == "MERGED" or merged_at:
             print("    ✅ PR Merged! Marking task as DONE.")
-            task.status = "done"
-            _save(task)
+            pr_number = pr_status.get("number", "?")
+            merged_date = merged_at[:10] if merged_at else "unknown date"
+            evidence = f"PR #{pr_number} merged {merged_date}"
+            try:
+                from polecat.pkb_bridge import complete_task as pkb_complete
+
+                pkb_complete(task.id, completion_evidence=evidence)
+            except Exception:
+                task.status = "done"
+                _save(task)
             # Cleanup worktree
             try:
                 manager.nuke_worktree(task.id, force=True)

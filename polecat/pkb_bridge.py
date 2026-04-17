@@ -221,15 +221,23 @@ def get_task(task_id: str | None = None, id: str | None = None) -> PkbTask | Non
     return PkbTask(data)
 
 
-def complete_task(task_id: str | None = None, id: str | None = None) -> bool:
+def complete_task(
+    task_id: str | None = None,
+    id: str | None = None,
+    completion_evidence: str | None = None,
+) -> bool:
     """Mark a task as complete via the PKB MCP server.
 
     Supports both 'task_id' (positional) and 'id' (named) to reduce friction.
+    ``completion_evidence`` describes what was done — required by the PKB server.
     """
     final_id = task_id or id
     if not final_id:
         raise ValueError("Task ID must be provided")
-    result = _get_client().call_tool("complete_task", {"id": final_id})
+    params: dict[str, Any] = {"id": final_id}
+    if completion_evidence:
+        params["completion_evidence"] = completion_evidence
+    result = _get_client().call_tool("complete_task", params)
     return result is not None
 
 
