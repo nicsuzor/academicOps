@@ -84,11 +84,13 @@ Task system, knowledge base, and MCP tool interfaces.
 
 How the framework watches itself and improves.
 
-| Spec                           | Status | Purpose                                                                       |
-| ------------------------------ | ------ | ----------------------------------------------------------------------------- |
-| [[framework-observability.md]] | ✅     | Self-reflexive observation pipeline (observe → analyze → improve)             |
-| [[feedback-loops.md]]          | ✅     | Structured feedback: observations → heuristic updates                         |
-| [[sleep-cycle.md]]             | 📋     | Scheduled consolidation: write-optimised artifacts → read-optimised knowledge |
+| Spec                             | Status | Purpose                                                                              |
+| -------------------------------- | ------ | ------------------------------------------------------------------------------------ |
+| [[framework-observability.md]]   | ✅     | Self-reflexive observation pipeline (observe → analyze → improve)                    |
+| [[observability.md]]             | ✅     | **SSoT**: files × environments × processes table; $AOPS_SESSIONS retirement analysis |
+| [[session-naming-convention.md]] | ✅     | Canonical naming convention for all session artifacts (v4 unified format)            |
+| [[feedback-loops.md]]            | ✅     | Structured feedback: observations → heuristic updates                                |
+| [[sleep-cycle.md]]               | 📋     | Scheduled consolidation: write-optimised artifacts → read-optimised knowledge        |
 
 **Supporting documents** (schemas and templates, not standalone specs):
 
@@ -135,7 +137,8 @@ Scheduling:   effectual-planning-agent → strategic-triage → daily (recommend
               sleep-cycle ↔ strategic-triage (sibling scheduled agents)
 Constraints:  workflow-system-spec → workflow-constraints → predicate-registry → constraint-checking-tests
 Execution:    non-interactive-agent-workflow → polecat-swarms → polecat-supervision → worker-hypervisor
-Observability: framework-observability → session-insights-prompt → session-insights-metrics-schema → feedback-loops
+Observability: observability.md (SSoT: files×envs×processes) → framework-observability → session-insights-prompt → session-insights-metrics-schema → feedback-loops
+              session-naming-convention → observability.md
 ```
 
 ## Maintenance

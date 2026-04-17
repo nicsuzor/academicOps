@@ -7,7 +7,7 @@ tier: observability
 depends_on: []
 tags: [spec, observability, architecture]
 created: 2026-01-24
-related: [[workflow-system-spec]], [[enforcement]], [[session-insights-prompt]]
+related: [[workflow-system-spec]], [[enforcement]], [[session-insights-prompt]], [[observability.md]], [[session-naming-convention.md]]
 ---
 
 # Framework Observability Architecture
@@ -311,3 +311,5 @@ Users can test the observability system by:
 - [[enforcement]] - How rules are enforced via hooks
 - [[session-insights-prompt]] - Full schema for insights JSON
 - [[feedback-loops]] - How observations become improvements
+- [[observability.md]] - **SSoT**: files × environments × processes table; $AOPS_SESSIONS retirement analysis
+- [[session-naming-convention.md]] - Canonical naming convention for all session artifacts
