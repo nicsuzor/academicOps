@@ -19,9 +19,9 @@ services:
       - "8026:8026"
     volumes:
       # PKB data directory (knowledge graph, vector store, documents)
-      - /opt/nic/brain:/data
+      - ${PKB_DATA_DIR:-/opt/nic/brain}:/data
       # BGE-M3 embedding model (read-only — shared with host)
-      - /opt/debian/cache/aops/models/bge-m3:/models/bge-m3:ro
+      - ${PKB_MODEL_DIR_HOST:-/opt/debian/cache/aops/models/bge-m3}:/models/bge-m3:ro
     environment:
       - ACA_DATA=/data
       - PKB_MODEL_DIR=/models/bge-m3
