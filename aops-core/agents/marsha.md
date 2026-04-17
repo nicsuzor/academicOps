@@ -38,8 +38,9 @@ Your caller will give you context — what was requested, what was done, and wha
 
 **Data correctness requires tracing.** For computed output, trace the pipeline end-to-end. Cross-verify against the actual data source. "Output appears" is not "correct output appears".
 
-- **Check data freshness, not just existence.** Verify data updates as expected over time.
-- **Explicitly test fallback chains.** Disable fallbacks and verify the primary source works independently.
+**Check data freshness, not just existence.** Verify data updates as expected over time.
+
+**Explicitly test fallback chains.** Disable fallbacks and verify the primary source works independently.
 
 **Design-level findings are QA findings.** If a section renders correctly but the data is misleading or the UX doesn't serve its stated purpose in context, that's a QA finding.
 

@@ -102,10 +102,11 @@ For each section or component of the feature:
 1. **Identify the data source.** Read the source code to find where the output originates — what file, API, database query, or computation produces it?
 2. **Verify the source exists and is populated.** Don't assume. Check: does the file exist? Does the API return data? Is the query valid? Are the expected events being captured?
 3. **Check data freshness, not just existence.** For real-time displays, verify data updates as expected over time, not just that it exists at rest. Static data in a dynamic field is a failure.
-4. **Cross-verify output against source.** Independently query the data source (curl the API, read the file, run the query, inspect raw events) and compare against what the feature produces. Do the values match? Are timestamps correct? Is anything silently dropped or misrepresented?
-5. **Explicitly test fallback chains.** For each data field, check if there's a fallback (e.g., using a different source if primary fails). Disable the fallback and verify the primary source works independently. Fallbacks can silently mask broken primary pipelines.
-6. **Test with real runtime state.** For real-time displays, verify during an active session or while the system is under load, not just at rest. Stale data often only appears when the system is actually running.
-7. **Document discrepancies with precision.** When output is wrong, note: the file path and line where data is fetched/transformed, what it should produce vs. what it actually produces, and the root cause.
+4. **Check edge cases: empty, stale, and missing sources.** What happens when the data source is empty, stale, or missing? Does the feature degrade gracefully or silently produce wrong output?
+5. **Cross-verify output against source.** Independently query the data source (curl the API, read the file, run the query, inspect raw events) and compare against what the feature produces. Do the values match? Are timestamps correct? Is anything silently dropped or misrepresented?
+6. **Explicitly test fallback chains.** For each data field, check if there's a fallback (e.g., using a different source if primary fails). Disable the fallback and verify the primary source works independently. Fallbacks can silently mask broken primary pipelines.
+7. **Test with real runtime state.** For real-time displays, verify during an active session or while the system is under load, not just at rest. Stale data often only appears when the system is actually running.
+8. **Document discrepancies with precision.** When output is wrong, note: the file path and line where data is fetched/transformed, what it should produce vs. what it actually produces, and the root cause.
 
 ### The Key Question
 
