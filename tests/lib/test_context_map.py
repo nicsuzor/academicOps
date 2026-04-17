@@ -1,4 +1,4 @@
-"""Tests for lib/context_map.py — context map loading and keyword matching."""
+"""Tests for lib/context_map.py — context map loading and formatting."""
 
 import json
 
@@ -6,7 +6,6 @@ import pytest
 from lib.context_map import (
     format_context_hints,
     load_context_map,
-    search_context_map,
 )
 
 
@@ -89,64 +88,23 @@ class TestLoadContextMap:
         assert docs == []
 
 
-class TestSearchContextMap:
-    def test_finds_taxonomy_for_epic_question(self, sample_docs):
-        matches = search_context_map(sample_docs, "what is an epic")
-        assert len(matches) > 0
-        assert matches[0]["topic"] == "taxonomy"
-
-    def test_finds_axioms_for_principle_query(self, sample_docs):
-        matches = search_context_map(sample_docs, "what are the axioms and principles")
-        topics = [m["topic"] for m in matches]
-        assert "axioms" in topics
-
-    def test_finds_hydration_for_hydrator_query(self, sample_docs):
-        matches = search_context_map(sample_docs, "how does prompt hydration work")
-        topics = [m["topic"] for m in matches]
-        assert "prompt_hydration" in topics
-
-    def test_returns_empty_for_unrelated_query(self, sample_docs):
-        matches = search_context_map(sample_docs, "kubernetes deployment yaml")
-        assert matches == []
-
-    def test_returns_empty_for_empty_prompt(self, sample_docs):
-        assert search_context_map(sample_docs, "") == []
-
-    def test_returns_empty_for_empty_docs(self):
-        assert search_context_map([], "some query") == []
-
-    def test_respects_max_results(self, sample_docs):
-        matches = search_context_map(sample_docs, "test axiom hydration taxonomy", max_results=2)
-        assert len(matches) <= 2
-
-    def test_results_sorted_by_score(self, sample_docs):
-        matches = search_context_map(sample_docs, "taxonomy epic task definitions", min_score=1)
-        if len(matches) > 1:
-            for i in range(len(matches) - 1):
-                assert matches[i]["_score"] >= matches[i + 1]["_score"]
-
-    def test_higher_score_for_exact_keyword_match(self, sample_docs):
-        """Entries with exact keyword matches should score higher."""
-        matches = search_context_map(sample_docs, "taxonomy", min_score=1)
-        assert len(matches) > 0
-        assert matches[0]["topic"] == "taxonomy"
-
-
 class TestFormatContextHints:
-    def test_formats_matches(self, sample_docs):
-        matches = [
-            {**sample_docs[0], "_score": 5},
-            {**sample_docs[1], "_score": 3},
-        ]
-        result = format_context_hints(matches)
+    def test_formats_all_docs(self, sample_docs):
+        result = format_context_hints(sample_docs)
         assert "context-map.json" in result
         assert "TAXONOMY.md" in result
         assert "AXIOMS.md" in result
+        assert "prompt-hydration.md" in result
+        assert "README.md" in result
 
-    def test_returns_empty_for_no_matches(self):
+    def test_returns_empty_for_no_docs(self):
         assert format_context_hints([]) == ""
 
     def test_includes_read_instruction(self, sample_docs):
-        matches = [{**sample_docs[0], "_score": 5}]
-        result = format_context_hints(matches)
-        assert "Read these files" in result
+        result = format_context_hints(sample_docs)
+        assert "Read relevant files" in result
+
+    def test_includes_all_descriptions(self, sample_docs):
+        result = format_context_hints(sample_docs)
+        for doc in sample_docs:
+            assert doc["description"] in result

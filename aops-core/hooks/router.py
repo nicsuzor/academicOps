@@ -447,18 +447,13 @@ class HookRouter:
     def _inject_context_map_hints(
         self, ctx: HookContext, merged_result: CanonicalHookOutput
     ) -> None:
-        """Match user prompt against .agents/context-map.json and inject hints.
+        """Inject .agents/context-map.json entries as context hints.
 
         Looks for context-map.json in the working directory (ctx.cwd) only.
-        Matches prompt tokens against curated keywords and injects relevant
-        file paths as context hints.
+        Injects the full entry list so the LLM can decide relevance (P#49).
         """
         try:
-            from lib.context_map import (
-                format_context_hints,
-                load_context_map,
-                search_context_map,
-            )
+            from lib.context_map import format_context_hints, load_context_map
 
             if not ctx.cwd:
                 return
@@ -470,15 +465,7 @@ class HookRouter:
             if not docs:
                 return
 
-            prompt = ctx.raw_input.get("prompt", "")
-            if not prompt:
-                return
-
-            matches = search_context_map(docs, prompt)
-            if not matches:
-                return
-
-            hint = format_context_hints(matches)
+            hint = format_context_hints(docs)
             if hint:
                 if merged_result.context_injection:
                     merged_result.context_injection = f"{merged_result.context_injection}\n\n{hint}"
