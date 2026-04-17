@@ -17,21 +17,19 @@ related:
 
 Single source-of-truth for **which files, from which environments, get archived where, processed by which jobs, and when**. Covers all 6 session types across the full artifact lifecycle.
 
-> **Prior work**: `kb-d8f58167` (empirical audit 2026-04-16), `specs/framework-observability.md` (pipeline architecture), `specs/session-naming-convention.md` (naming spec). This document synthesises and extends all three.
-
 ---
 
 ## 1. Environment Topology
 
-| Environment           | Description                                         | Provider access        | `$AOPS_SESSIONS` reachable?                    |
-| --------------------- | --------------------------------------------------- | ---------------------- | ---------------------------------------------- |
-| **host**              | Developer machine running `polecat` CLI             | Yes                    | Yes (it's set here)                            |
-| **polecat container** | Docker container spawned by `polecat run`           | Via volume mounts only | Often NO — host path inaccessible in container |
-| **crew container**    | Docker container spawned by `polecat crew`          | Via volume mounts only | Often NO                                       |
-| **worker**            | Polecat autonomous worker process inside container  | Same as container      | Same as container                              |
-| **host (manual)**     | Developer running `claude` or `gemini` CLI directly | Yes                    | Yes                                            |
+| Environment           | Description                                                            | Provider access        | `$AOPS_SESSIONS` reachable?                                        |
+| --------------------- | ---------------------------------------------------------------------- | ---------------------- | ------------------------------------------------------------------ |
+| **host**              | Developer machine running `polecat` CLI                                | Yes                    | Yes (it's set here)                                                |
+| **polecat container** | Docker container (= the polecat worker) spawned by `polecat run`       | Via volume mounts only | Only a per-polecat subdirectory is mounted — full path unreachable |
+| **crew container**    | Docker container spawned by `polecat crew`                             | Via volume mounts only | Same as polecat container                                          |
+| **PKB server**        | VM container running the `mem` MCP server; syncs back via git crontab  | Via PKB MCP            | No — not needed; PKB MCP provides read/write access                |
+| **host (manual)**     | Developer running `claude` or `gemini` CLI directly                    | Yes                    | Yes                                                                |
 
-Key consequence: `$AOPS_SESSIONS` is a **host-side** path. When hooks/scripts run inside containers, the env var points to a host path that may be unreachable (`PermissionError`/`OSError`). Code currently falls back to provider-local paths when `$AOPS_SESSIONS` is unreachable — this is a known gap (Section 6, Gap #2), not intended design. The target state is that `$AOPS_SESSIONS` is always reachable or hooks fail fast.
+Polecat isolation design: the framework mounts a per-polecat subdirectory of `$AOPS_SESSIONS` into the container, not the full `$AOPS_SESSIONS` tree. This maintains container isolation. A polecat worker therefore cannot access `$AOPS_SESSIONS` directly and is not expected to — data access goes through the PKB MCP. The current fallback behaviour (writing to provider-local paths when the mount is unreachable) is a known gap (Section 6, Gap #2), not intended design. The target state is that session artifacts land in the mounted subdirectory or hooks fail fast.
 
 ---
 
@@ -59,18 +57,19 @@ All artifact types across all 6 session types. "Current" means what the code act
 
 ### 3.1 Claude Client Log (raw session JSONL)
 
-| Attribute          | Value                                                                                                       |
-| ------------------ | ----------------------------------------------------------------------------------------------------------- |
-| **File type**      | `*.jsonl` (one JSON object per line — tool calls, responses, usage)                                         |
-| **Producer**       | Claude Code CLI                                                                                             |
-| **Initial path**   | `~/.claude/projects/{project_folder}/{session_id}.jsonl` (host or container `/home/worker`)                 |
-| **Session types**  | manual-claude, crew-claude, polecat-claude                                                                  |
-| **Archive target** | `$AOPS_SESSIONS/client-logs/{base}-client.jsonl` via `sync_client_log()` in `transcript.py`                 |
-| **Naming**         | **Current**: source file stem (not unified). **Target**: unified v4 with `-client` suffix                   |
-| **Processor**      | `transcript.py::sync_client_log()` — copies/hardlinks to `client-logs/`                                     |
-| **When processed** | Post-session, on manual `transcript.py` run or `/sleep` backfill                                            |
-| **Git-tracked**    | No — `client-logs/` is NOT added to git in current `transcript.py` (`git add transcripts/ summaries/` only) |
-| **Retention**      | Ephemeral — raw source; transcript is the durable artifact                                                  |
+| Attribute                       | Value                                                                                                       |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| **File type**                   | `*.jsonl` (one JSON object per line — tool calls, responses, usage)                                         |
+| **Producer**                    | Claude Code CLI                                                                                             |
+| **Internal path (container)**   | `/home/worker/.claude/projects/{project_folder}/{session_id}.jsonl`                                         |
+| **Internal path (host)**        | `~/.claude/projects/{project_folder}/{session_id}.jsonl`                                                    |
+| **Host-side path (after sync)** | `$AOPS_SESSIONS/client-logs/{base}-client.jsonl` via `sync_client_log()` in `transcript.py`                 |
+| **Session types**               | manual-claude, crew-claude, polecat-claude                                                                  |
+| **Naming**                      | **Current**: source file stem (not unified). **Target**: unified v4 with `-client` suffix                   |
+| **Processor**                   | `transcript.py::sync_client_log()` — copies/hardlinks to `client-logs/`                                     |
+| **When processed**              | Post-session, on manual `transcript.py` run or `/sleep` backfill                                            |
+| **Git-tracked**                 | No — `client-logs/` is NOT added to git in current `transcript.py` (`git add transcripts/ summaries/` only) |
+| **Retention**                   | Ephemeral — raw source; transcript is the durable artifact                                                  |
 
 ### 3.2 Gemini Chat Log (raw session JSON)
 
@@ -78,11 +77,12 @@ All artifact types across all 6 session types. "Current" means what the code act
 | --------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | **File type**                     | `session-*.json` (Gemini internal format)                                                               |
 | **Producer**                      | Gemini CLI                                                                                              |
-| **Initial path**                  | `~/.gemini/tmp/{hash}/chats/session-{uuid}.json` (host or container `/home/worker`)                     |
+| **Internal path (container)**     | `/home/worker/.gemini/tmp/{hash}/chats/session-{uuid}.json`                                             |
+| **Internal path (host)**          | `~/.gemini/tmp/{hash}/chats/session-{uuid}.json`                                                        |
+| **Host-side path (manual)**       | `$AOPS_SESSIONS/client-logs/{base}-client.jsonl` (converted to JSONL)                                   |
+| **Host-side path (polecat/crew)** | Extracted via `docker cp` → `$AOPS_SESSIONS/polecats/{task_id}/{slug}/` or `crew/{name}/{slug}/`         |
 | **Session types**                 | manual-gemini, crew-gemini, polecat-gemini                                                              |
-| **Archive target (manual)**       | `$AOPS_SESSIONS/client-logs/{base}-client.jsonl` (converted to JSONL)                                   |
-| **Archive target (polecat/crew)** | Extracted via `docker cp` from `/home/worker/.gemini/tmp` → `$AOPS_SESSIONS/polecats/{task_id}/{slug}/` |
-| **Naming**                        | **Current**: Gemini names it; framework renames on sync. **Target**: unified v4 with `-client` suffix  |
+| **Naming**                        | **Current**: Gemini names it; framework renames on sync. **Target**: unified v4 with `-client` suffix   |
 | **Processor**                     | `transcript.py` (reads + converts); `_extract_gemini_sessions()` in `polecat/cli.py`                    |
 | **When processed**                | Post-session / post-container-stop                                                                      |
 | **Git-tracked**                   | No (same as Claude client log)                                                                          |
@@ -90,86 +90,85 @@ All artifact types across all 6 session types. "Current" means what the code act
 
 ### 3.3 Hook Log
 
-| Attribute                                      | Value                                                                                                                          |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| **File type**                                  | `*-hooks.jsonl` (one JSON object per hook invocation)                                                                          |
-| **Producer**                                   | `aops-core/hooks/unified_logger.py` via `session_paths.get_hook_log_path()`                                                    |
-| **Initial path (if $AOPS_SESSIONS reachable)** | `$AOPS_SESSIONS/hooks/{base}-hooks.jsonl`                                                                                      |
-| **Initial path (Claude fallback)**             | `~/.claude/projects/{project_folder}/{base}-hooks.jsonl`                                                                       |
-| **Initial path (Gemini fallback)**             | `~/.gemini/tmp/{hash}/logs/{base}-hooks.jsonl` (dir often missing in containers — Gap #1)                                      |
-| **Fallback of last resort**                    | `/tmp/aops-hooks-{uid}/{project_folder}/{base}-hooks.jsonl`                                                                    |
-| **Session types**                              | All 6                                                                                                                          |
-| **Archive target**                             | `$AOPS_SESSIONS/hooks/` (written directly if reachable; NOT synced otherwise)                                                  |
-| **Naming**                                     | **Current**: partial unified (`generate_session_filename` used for path, but `session_paths.py` callers still emit legacy `YYYYMMDD-HH-shorthash`). **Target**: full unified v4 |
-| **Processor**                                  | None — hook logs are not post-processed; they're the raw observation stream                                                    |
-| **When processed**                             | Not processed — read directly for debugging                                                                                    |
-| **Git-tracked**                                | No — `hooks/` is NOT added to git                                                                                              |
-| **Retention**                                  | Debugging value only; safe to delete after session ends without incident                                                       |
+| Attribute                       | Value                                                                                                                          |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| **File type**                   | `*-hooks.jsonl` (one JSON object per hook invocation)                                                                          |
+| **Producer**                    | `aops-core/hooks/unified_logger.py` via `session_paths.get_hook_log_path()`                                                    |
+| **Host-side path (target)**     | `$AOPS_SESSIONS/hooks/{base}-hooks.jsonl`                                                                                      |
+| **Fallback (Claude)**           | `~/.claude/projects/{project_folder}/{base}-hooks.jsonl`                                                                       |
+| **Fallback (Gemini)**           | `~/.gemini/tmp/{hash}/logs/{base}-hooks.jsonl` (dir often missing in containers — Gap #1)                                      |
+| **Fallback of last resort**     | `/tmp/aops-hooks-{uid}/{project_folder}/{base}-hooks.jsonl`                                                                    |
+| **Session types**               | All 6                                                                                                                          |
+| **Naming**                      | **Current**: partial unified (`generate_session_filename` used for path, but `session_paths.py` callers still emit legacy `YYYYMMDD-HH-shorthash`). **Target**: full unified v4 |
+| **Processor**                   | None — hook logs are not post-processed; they're the raw observation stream                                                    |
+| **When processed**              | Not processed — read directly for debugging                                                                                    |
+| **Git-tracked**                 | No — `hooks/` is NOT added to git                                                                                              |
+| **Retention**                   | Debugging value only; safe to delete after session ends without incident                                                       |
 
 ### 3.4 Gate Files (custodiet, etc.)
 
-| Attribute          | Value                                                                                         |
-| ------------------ | --------------------------------------------------------------------------------------------- |
-| **File type**      | `*-custodiet.md` (Markdown audit document)                                                    |
-| **Producer**       | `aops-core/hooks/custodiet_gate.py` via `session_paths.get_gate_file_path()`                  |
-| **Initial path**   | Same resolution logic as hook log: prefer `$AOPS_SESSIONS/hooks/`, fallback to provider-local |
-| **Session types**  | All 6 (wherever custodiet gate is enabled)                                                    |
-| **Archive target** | `$AOPS_SESSIONS/hooks/{base}-custodiet.md`                                                    |
-| **Naming**         | `{base}-{gate_name}.md` where gate name = `custodiet`                                         |
-| **Processor**      | `aops-core:rbg` agent reads on-demand; not batch-processed                                    |
-| **When processed** | On compliance check request (periodic within session)                                         |
-| **Git-tracked**    | No                                                                                            |
-| **Retention**      | Session-scoped; ephemeral                                                                     |
+| Attribute                   | Value                                                                                         |
+| --------------------------- | --------------------------------------------------------------------------------------------- |
+| **File type**               | `*-custodiet.md` (Markdown audit document)                                                    |
+| **Producer**                | `aops-core/hooks/custodiet_gate.py` via `session_paths.get_gate_file_path()`                  |
+| **Host-side path (target)** | `$AOPS_SESSIONS/hooks/{base}-custodiet.md`                                                    |
+| **Fallback**                | Same resolution logic as hook log: fallback to provider-local paths                           |
+| **Session types**           | All 6 (wherever custodiet gate is enabled)                                                    |
+| **Naming**                  | `{base}-{gate_name}.md` where gate name = `custodiet`                                         |
+| **Processor**               | `aops-core:rbg` agent reads on-demand; not batch-processed                                    |
+| **When processed**          | On compliance check request (periodic within session)                                         |
+| **Git-tracked**             | No                                                                                            |
+| **Retention**               | Session-scoped; ephemeral                                                                     |
 
 ### 3.5 Session Status JSON (SessionState)
 
-| Attribute                 | Value                                                                                      |
-| ------------------------- | ------------------------------------------------------------------------------------------ |
-| **File type**             | `*.json` (structured session state for cross-hook coordination)                            |
-| **Producer**              | `aops-core/lib/session_state.py` via `SessionState.create()` at session start              |
-| **Initial path (Claude)** | `~/.claude/projects/{project_folder}/{base}.json`                                          |
-| **Initial path (Gemini)** | `~/.gemini/tmp/{hash}/{base}.json`                                                         |
-| **Env override**          | `AOPS_SESSION_STATE_DIR` — set by router hook at SessionStart and persisted                |
-| **Session types**         | All 6                                                                                      |
-| **Archive target**        | NOT archived — runtime-only coordination file                                              |
-| **Naming**                | Uses `generate_session_filename(..., artifact_type="insights")` — naming correctly unified |
-| **Processor**             | Read by hooks throughout session; finalized by Stop hook                                   |
-| **When processed**        | Continuously during session                                                                |
-| **Git-tracked**           | No                                                                                         |
-| **Retention**             | Ephemeral runtime artifact; safe to delete after session ends                              |
+| Attribute                  | Value                                                                                      |
+| -------------------------- | ------------------------------------------------------------------------------------------ |
+| **File type**              | `*.json` (structured session state for cross-hook coordination)                            |
+| **Producer**               | `aops-core/lib/session_state.py` via `SessionState.create()` at session start              |
+| **Internal path (Claude)** | `~/.claude/projects/{project_folder}/{base}.json`                                          |
+| **Internal path (Gemini)** | `~/.gemini/tmp/{hash}/{base}.json`                                                         |
+| **Env override**           | `AOPS_SESSION_STATE_DIR` — set by router hook at SessionStart and persisted                |
+| **Session types**          | All 6                                                                                      |
+| **Archive target**         | NOT archived — runtime-only coordination file                                              |
+| **Naming**                 | Uses `generate_session_filename(..., artifact_type="insights")` — naming correctly unified |
+| **Processor**              | Read by hooks throughout session; finalized by Stop hook                                   |
+| **When processed**         | Continuously during session                                                                |
+| **Git-tracked**            | No                                                                                         |
+| **Retention**              | Ephemeral runtime artifact; safe to delete after session ends                              |
 
 ### 3.6 Polecat Worker Transcript Stub
 
-| Attribute          | Value                                                                                                                |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------- |
-| **File type**      | `{task_id}.jsonl` (captured stdout/stderr of the autonomous worker process)                                          |
-| **Producer**       | `polecat/cli.py::save_worker_transcript()` — captures `polecat run` output                                           |
-| **Initial path**   | `$POLECAT_HOME/polecats/{task_id}.jsonl`                                                                             |
-| **Session types**  | polecat-claude, polecat-gemini                                                                                       |
-| **Archive target** | Stays in `$POLECAT_HOME/polecats/` — NOT synced to `$AOPS_SESSIONS`                                                  |
-| **Naming**         | `{task_id}.jsonl` — does NOT follow unified naming convention                                                        |
-| **Processor**      | `polecat/cli.py::analyze_transcript()` on run completion (failure analysis)                                          |
-| **When processed** | Immediately post-container-stop                                                                                      |
-| **Git-tracked**    | No                                                                                                                   |
-| **Retention**      | Debugging stub; real transcript is the Claude/Gemini client log extracted from container                             |
-| **Note**           | This is the "stub" that confused the dogfood session — it's the outer shell output, not the inner Claude session log |
+| Attribute          | Value                                                                                            |
+| ------------------ | ------------------------------------------------------------------------------------------------ |
+| **File type**      | `{task_id}.jsonl` (captured stdout/stderr of the autonomous worker process)                      |
+| **Producer**       | `polecat/cli.py::save_worker_transcript()` — captures `polecat run` output                       |
+| **Host-side path** | `$POLECAT_HOME/polecats/{task_id}.jsonl`                                                         |
+| **Session types**  | polecat-claude, polecat-gemini                                                                   |
+| **Archive target** | Stays in `$POLECAT_HOME/polecats/` — NOT synced to `$AOPS_SESSIONS`                              |
+| **Naming**         | `{task_id}.jsonl` — does NOT follow unified naming convention                                    |
+| **Processor**      | `polecat/cli.py::analyze_transcript()` on run completion (failure analysis)                      |
+| **When processed** | Immediately post-container-stop                                                                  |
+| **Git-tracked**    | No                                                                                               |
+| **Retention**      | Debugging stub; real transcript is the Claude/Gemini client log extracted from container         |
+| **Note**           | This is the outer shell (polecat process) output, not the inner Claude/Gemini session log        |
 
 ### 3.7 Extracted Container Session Files (polecat/crew)
 
-| Attribute                         | Value                                                                                           |
-| --------------------------------- | ----------------------------------------------------------------------------------------------- |
-| **File type**                     | All provider session files extracted from container                                             |
-| **Producer**                      | `polecat/cli.py::_run_docker_container()` via `docker cp` post-container-stop                   |
-| **Initial path (polecat-claude)** | Container: `/home/worker/.claude/projects/` → Host: `$AOPS_SESSIONS/polecats/{task_id}/{slug}/` |
-| **Initial path (polecat-gemini)** | Container: `/home/worker/.gemini/tmp/` → Host: `$AOPS_SESSIONS/polecats/{task_id}/{slug}/`      |
-| **Initial path (crew-claude)**    | Container: `/home/worker/.claude/projects/` → Host: `$AOPS_SESSIONS/crew/{crew_name}/{slug}/`   |
-| **Initial path (crew-gemini)**    | Container: `/home/worker/.gemini/tmp/` → Host: `$AOPS_SESSIONS/crew/{crew_name}/{slug}/`        |
-| **Session types**                 | polecat-claude, polecat-gemini, crew-claude, crew-gemini                                        |
-| **Archive target**                | Subdirectory of `$AOPS_SESSIONS` (see above) — treated as raw material for `transcript.py`      |
-| **Processor**                     | `transcript.py` discovers these and generates transcripts + insights                            |
-| **When processed**                | On next manual or `/sleep`-triggered `transcript.py` run                                        |
-| **Git-tracked**                   | No (raw files); transcripts and summaries derived from them are git-tracked                     |
-| **Retention**                     | Source material; safe to delete once transcript + insights generated                            |
+| Attribute                           | Value                                                                                           |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------- |
+| **File type**                       | All provider session files extracted from container                                             |
+| **Producer**                        | `polecat/cli.py::_run_docker_container()` via `docker cp` post-container-stop                   |
+| **Host-side path (polecat-claude)** | `$AOPS_SESSIONS/polecats/{task_id}/{slug}/` (extracted from `/home/worker/.claude/projects/`)   |
+| **Host-side path (polecat-gemini)** | `$AOPS_SESSIONS/polecats/{task_id}/{slug}/` (extracted from `/home/worker/.gemini/tmp/`)        |
+| **Host-side path (crew-claude)**    | `$AOPS_SESSIONS/crew/{crew_name}/{slug}/` (extracted from `/home/worker/.claude/projects/`)     |
+| **Host-side path (crew-gemini)**    | `$AOPS_SESSIONS/crew/{crew_name}/{slug}/` (extracted from `/home/worker/.gemini/tmp/`)          |
+| **Session types**                   | polecat-claude, polecat-gemini, crew-claude, crew-gemini                                        |
+| **Archive target**                  | Subdirectory of `$AOPS_SESSIONS` (see above) — treated as raw material for `transcript.py`      |
+| **Processor**                       | `transcript.py` discovers these and generates transcripts + insights                            |
+| **When processed**                  | On next manual or `/sleep`-triggered `transcript.py` run                                        |
+| **Git-tracked**                     | No (raw files); transcripts and summaries derived from them are git-tracked                     |
+| **Retention**                       | Source material; safe to delete once transcript + insights generated                            |
 
 ### 3.8 Transcript — Full
 
@@ -177,7 +176,7 @@ All artifact types across all 6 session types. "Current" means what the code act
 | ------------------ | ----------------------------------------------------------------------------------------------------- |
 | **File type**      | `*-full.md` (complete session transcript in readable Markdown)                                        |
 | **Producer**       | `aops-core/scripts/transcript.py`                                                                     |
-| **Path**           | `$AOPS_SESSIONS/transcripts/{base}-full.md`                                                           |
+| **Host-side path** | `$AOPS_SESSIONS/transcripts/{base}-full.md`                                                           |
 | **Session types**  | All 6 (wherever a client log exists)                                                                  |
 | **Archive target** | Already at final destination in `$AOPS_SESSIONS/transcripts/`                                         |
 | **Naming**         | **Current**: unified (transcript.py uses `generate_base_name` which produces the full v4 pattern; variant suffix `-full` is by design). **Target**: already unified — no migration needed |
@@ -192,7 +191,7 @@ All artifact types across all 6 session types. "Current" means what the code act
 | ------------------ | --------------------------------------------------------------- |
 | **File type**      | `*-abridged.md` (abbreviated transcript: prompts + key outputs) |
 | **Producer**       | `aops-core/scripts/transcript.py`                               |
-| **Path**           | `$AOPS_SESSIONS/transcripts/{base}-abridged.md`                 |
+| **Host-side path** | `$AOPS_SESSIONS/transcripts/{base}-abridged.md`                 |
 | **Session types**  | All 6                                                           |
 | **Archive target** | Already at final destination                                    |
 | **Git-tracked**    | Yes (same `git add transcripts/`)                               |
@@ -204,7 +203,7 @@ All artifact types across all 6 session types. "Current" means what the code act
 | ------------------ | --------------------------------------------------------------------------------------------------- |
 | **File type**      | `*.json` (structured: summary, outcome, accomplishments, friction, token metrics, skill_compliance) |
 | **Producer**       | `aops-core/lib/insights_generator.py` via `transcript.py::_process_reflection()`                    |
-| **Path**           | `$AOPS_SESSIONS/summaries/{base}.json`                                                              |
+| **Host-side path** | `$AOPS_SESSIONS/summaries/{base}.json`                                                              |
 | **Session types**  | All 6 (requires Framework Reflection in transcript)                                                 |
 | **Archive target** | Already at final destination                                                                        |
 | **Naming**         | Uses unified naming via `get_insights_file_path()`                                                  |
@@ -219,7 +218,7 @@ All artifact types across all 6 session types. "Current" means what the code act
 | ------------------ | ----------------------------------------------------- |
 | **File type**      | `{YYYYMMDD}-daily.md`                                 |
 | **Producer**       | `/daily` skill (Pauli)                                |
-| **Path**           | `$ACA_DATA/brain/daily/{YYYYMMDD}-daily.md`           |
+| **Host-side path** | `$ACA_DATA/brain/daily/{YYYYMMDD}-daily.md`           |
 | **Session types**  | N/A (meta-artifact synthesised from session insights) |
 | **Archive target** | Already at final destination in PKB                   |
 | **Processor**      | Human review; `/daily` updates it during day          |
@@ -355,18 +354,21 @@ These must be writable by the running agent/hook process in real-time. They cann
 - `transcripts/` — processed, human-readable, permanent record → YES
 - `summaries/` — structured insights, consumed by `/daily` and `/sleep` → YES
 
-**What should NOT be git-tracked (local-only in `$AOPS_SESSIONS`):**
+**What should NOT be git-tracked:**
 
 - `client-logs/` — large raw JSONL; transcript is the derived artifact → NO
 - `hooks/` — debugging-only; ephemeral → NO
 - `polecats/` — extracted container raw files; transcript is the derived artifact → NO
 - `crew/` — same as polecats → NO
 
+**Current state**: ephemeral artifacts currently live in two inconsistent locations — some inside `$AOPS_SESSIONS` (`.gitignore`d or at risk of being accidentally staged), some under `$POLECAT_HOME` directly (e.g. `$POLECAT_HOME/polecats/`). The target is one consistent approach: either (a) all ephemeral staging inside `$AOPS_SESSIONS` with a `.gitignore` to exclude them, or (b) all ephemeral staging in a separate `$POLECAT_HOME/cache/` or `$POLECAT_HOME/staging/` tree, with `$AOPS_SESSIONS` reserved for git-tracked output only. The choice is tracked in `task-1dc07d00`.
+
 **Migration plan (if/when implementing):**
 
-1. Add `client-logs/`, `hooks/`, `polecats/`, `crew/` to `.gitignore` in the `$AOPS_SESSIONS` repo if not already.
-2. Consider splitting: `$AOPS_SESSIONS` git repo tracks only `transcripts/` + `summaries/`; a separate `$AOPS_CACHE` or `$POLECAT_HOME/cache/` holds ephemeral staging artifacts.
-3. The `$AOPS_SESSIONS` env var continues to point to the git repo; staging artifacts use `$POLECAT_HOME/staging/` or similar.
+1. Decide (a) vs (b) in `task-1dc07d00`.
+2. If (a): add `client-logs/`, `hooks/`, `polecats/`, `crew/` to `.gitignore` in the `$AOPS_SESSIONS` repo.
+3. If (b): introduce `$AOPS_CACHE` pointing to `$POLECAT_HOME/staging/`; redirect all ephemeral writers.
+4. The `$AOPS_SESSIONS` env var continues to point to the git repo in either case.
 
 This is spec-only; implementation is out of scope for this task.
 
