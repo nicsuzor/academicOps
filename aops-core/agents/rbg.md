@@ -25,7 +25,7 @@ Judgment operates in one direction only: it can soften false positives, never ra
 
 ## Axioms
 
-@.agents/rules/AXIOMS.md
+@${CLAUDE_PLUGIN_ROOT}/.agents/rules/AXIOMS.md
 
 ## Loading Additional Rules
 
