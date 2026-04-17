@@ -126,21 +126,37 @@ def _assert_real_transcript(task_id: str, project: str, min_bytes: int) -> Path:
     return path
 
 
-def _assert_stub(task_id: str) -> Path:
-    """Assert the 215-byte summary stub also landed. Documents current behaviour.
+def _assert_stub(task_id: str, expect_real_path: bool = True) -> Path:
+    """Assert the summary stub landed and optionally references the real transcript.
 
-    If follow-up task-b0928ed2 ("stub records real transcript path") lands,
-    update the size bound.
+    Since task-b0928ed2, the stub includes ``real_transcript_path`` and
+    ``real_transcript_size_bytes`` fields pointing at the full Claude session
+    transcript.
     """
     stub = _polecat_home() / "polecats" / f"{task_id}.jsonl"
     assert stub.is_file(), f"Missing stub: {stub}"
     size = stub.stat().st_size
-    # Current stub is ~215 bytes; allow generous headroom so we don't
-    # re-break this assertion every time the stub schema gains a field.
+    # Stub now includes real_transcript_path/size fields; allow generous headroom.
     assert 100 <= size <= 5_000, (
         f"Stub at {stub} is {size}B — outside expected 100–5000B range. "
         f"If the stub schema changed intentionally, update this bound."
     )
+
+    if expect_real_path:
+        last_line = stub.read_text().strip().split("\n")[-1]
+        entry = json.loads(last_line)
+        assert entry.get("real_transcript_path"), (
+            f"Stub at {stub} is missing real_transcript_path — "
+            f"task-b0928ed2 should have added it. Entry: {entry}"
+        )
+        real_path = Path(entry["real_transcript_path"])
+        assert real_path.exists(), (
+            f"real_transcript_path in stub points to non-existent file: {real_path}"
+        )
+        assert entry.get("real_transcript_size_bytes", 0) > 0, (
+            f"real_transcript_size_bytes should be > 0, got {entry.get('real_transcript_size_bytes')}"
+        )
+
     return stub
 
 
