@@ -165,7 +165,88 @@ discovers something is bigger than expected.
 
 ### MONITOR
 
-For each dispatched/pr_open item:
+#### Event-Driven Monitoring (Default)
+
+The supervisor uses **event-driven monitoring** — not polling. Three
+mechanisms deliver state changes without burning tokens:
+
+1. **Background polecat completion notifications.** Dispatch workers with
+   `run_in_background: true` on the Bash tool call. The Bash tool emits an
+   automatic notification when the background process exits. No polling
+   needed — the supervisor is interrupted when work finishes.
+
+   ```bash
+   # Dispatch in background — supervisor gets notified on exit
+   polecat run -t task-abc123 -p aops   # run_in_background: true
+   ```
+
+2. **Persistent Monitor for PR state transitions.** A single Monitor
+   watches all dispatched task branches and emits one event per state
+   change. Start it once during DISPATCH, and it runs for the rest of the
+   session.
+
+   ```bash
+   # Monitor PR state for all dispatched polecat branches
+   while true; do
+     for branch in $(git for-each-ref --format='%(refname:strip=3)' 'refs/remotes/origin/polecat/*'); do
+       task_id=$(echo "$branch" | sed 's|polecat/||')
+       pr_json=$(gh pr list --head "$branch" --json number,state,statusCheckRollup,reviews --limit 1 2>/dev/null)
+       if [ "$pr_json" != "[]" ] && [ -n "$pr_json" ]; then
+         pr_num=$(echo "$pr_json" | jq -r '.[0].number')
+         pr_state=$(echo "$pr_json" | jq -r '.[0].state')
+         checks=$(echo "$pr_json" | jq -r '.[0].statusCheckRollup // [] | map(.conclusion // .status) | join(",")')
+         reviews=$(echo "$pr_json" | jq -r '.[0].reviews // [] | map(.state) | join(",")')
+         state_key="${pr_state}|${checks}|${reviews}"
+         state_file="/tmp/pr-state-${task_id}"
+         prev=$(cat "$state_file" 2>/dev/null || echo "")
+         if [ "$state_key" != "$prev" ]; then
+           echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] ${task_id} PR#${pr_num}: state=${pr_state} checks=${checks} reviews=${reviews}"
+           echo "$state_key" > "$state_file"
+         fi
+       fi
+     done
+     sleep 60
+   done
+   ```
+
+   Use the Monitor tool to stream this — each printed line becomes a
+   notification that wakes the supervisor. State transitions to watch for:
+
+   | Transition                        | Supervisor action                    |
+   | --------------------------------- | ------------------------------------ |
+   | no-pr → opened                    | Record PR in work items              |
+   | opened → checks-passing           | Wait for review                      |
+   | checks-failing                    | REACT: read logs, re-dispatch or fix |
+   | review: CHANGES_REQUESTED         | REACT: read comments                 |
+   | review: APPROVED + checks-passing | INTEGRATE: merge                     |
+   | merged                            | Update status → done                 |
+
+3. **ScheduleWakeup as safety net only.** Set a long interval (1800s+) as
+   a catch-all in case a notification is missed or a worker stalls without
+   producing a signal. This is NOT the primary monitoring mechanism.
+
+   ```
+   ScheduleWakeup(delaySeconds=1800, reason="safety-net check for stalled workers")
+   ```
+
+#### Anti-Pattern: Polling
+
+**Do not** poll `polecat list`, `gh pr list`, or read background output
+files on a short interval (every 4–5 minutes). This burns tokens and
+context window — especially when supervising 3–4 concurrent workers over
+30+ minutes.
+
+| Anti-pattern                              | Replacement                                 |
+| ----------------------------------------- | ------------------------------------------- |
+| `ScheduleWakeup(300s)` + `polecat list`   | `run_in_background` completion notification |
+| `ScheduleWakeup(300s)` + `gh pr list`     | Persistent Monitor script (above)           |
+| Repeated reads of background output files | Wait for background task notification       |
+
+#### Fallback: One-Shot Check Per Invocation
+
+If event-driven monitoring is not possible (e.g., resumed session,
+different machine, no long-running Monitor), fall back to a single check
+per invocation. For each dispatched/pr_open item:
 
 - Check PKB for status changes
 - Check GitHub for PRs (`gh pr list`, `gh pr view`)
@@ -395,6 +476,11 @@ pkb get task-XXXXXXXX | claude -p "You are the supervisor. Orient and act."
 
 ## Anti-Patterns
 
+- **Polling for worker status**: Don't run `polecat list`, `gh pr list`, or
+  read background output files on a short interval (every 4–5 min). Use
+  event-driven monitoring instead (see MONITOR phase above). Polling 4
+  concurrent workers every 5 minutes over a 30-minute session wastes
+  hundreds of thousands of tokens on redundant context.
 - **Tight polling loops**: Don't `watch` or `sleep` between checks. Check once,
   checkpoint, exit. Come back later.
 - **Environment-specific state**: Don't write paths, PIDs, or container IDs into
