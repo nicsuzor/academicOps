@@ -43,8 +43,6 @@ from pathlib import Path
 
 import pytest
 
-# PKB create_task now returns structured JSON (matching get_task shape).
-# Legacy fallback regex kept for backwards compatibility with older servers.
 _TASK_ID_RE = re.compile(r"(task-[0-9a-f]+|epic-[0-9a-f]+|aops-[0-9a-f]+)")
 
 
@@ -52,7 +50,7 @@ def _extract_task_id(resp: object) -> str | None:
     """Pull a task id out of a PKB create_task response."""
     if isinstance(resp, dict):
         fm = resp.get("frontmatter") or {}
-        return fm.get("id") or resp.get("id")
+        return fm.get("id")
     if isinstance(resp, str):
         m = _TASK_ID_RE.search(resp)
         if m:

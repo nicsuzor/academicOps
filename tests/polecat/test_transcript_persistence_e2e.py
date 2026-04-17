@@ -61,7 +61,7 @@ TERMINAL_STATUSES = {"done", "merge_ready", "blocked", "cancelled"}
 def _extract_task_id(resp: object) -> str | None:
     if isinstance(resp, dict):
         fm = resp.get("frontmatter") or {}
-        return fm.get("id") or resp.get("id")
+        return fm.get("id")
     if isinstance(resp, str):
         m = _TASK_ID_RE.search(resp)
         if m:

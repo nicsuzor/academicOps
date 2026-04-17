@@ -250,9 +250,13 @@ def create_task(
 
     result = _get_client().call_tool("create_task", params)
     if result and isinstance(result, dict):
-        # Structured response: id lives in frontmatter dict
-        fm = result.get("frontmatter") or {}
-        return fm.get("id") or result.get("id")
+        fm = result.get("frontmatter")
+        if not fm or not fm.get("id"):
+            raise RuntimeError(
+                f"PKB create_task response missing frontmatter.id — "
+                f"is the server running nicsuzor/mem#194? Got: {result!r}"
+            )
+        return fm["id"]
     return str(result) if result else None
 
 
