@@ -188,7 +188,7 @@ mechanisms deliver state changes without burning tokens:
    ```bash
    # Monitor PR state for all dispatched polecat branches
    while true; do
-     for branch in $(git branch -r --list 'origin/polecat/*' | sed 's|origin/||'); do
+     for branch in $(git for-each-ref --format='%(refname:strip=3)' 'refs/remotes/origin/polecat/*'); do
        task_id=$(echo "$branch" | sed 's|polecat/||')
        pr_json=$(gh pr list --head "$branch" --json number,state,statusCheckRollup,reviews --limit 1 2>/dev/null)
        if [ "$pr_json" != "[]" ] && [ -n "$pr_json" ]; then
@@ -200,7 +200,7 @@ mechanisms deliver state changes without burning tokens:
          state_file="/tmp/pr-state-${task_id}"
          prev=$(cat "$state_file" 2>/dev/null || echo "")
          if [ "$state_key" != "$prev" ]; then
-           echo "[$(date -Iseconds)] ${task_id} PR#${pr_num}: state=${pr_state} checks=${checks} reviews=${reviews}"
+           echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] ${task_id} PR#${pr_num}: state=${pr_state} checks=${checks} reviews=${reviews}"
            echo "$state_key" > "$state_file"
          fi
        fi
