@@ -1972,10 +1972,10 @@ denyMessage = "File edits are restricted to the worktree: {worktree_str}"
                 task = None
         worktree_path = self.polecats_dir / task_id
 
-        if task:
+        if task and task.project:
             repo_path = self.get_repo_path(task)
         else:
-            # Task lookup failed (e.g. task deleted). Try to recover from the
+            # Task has no project, or task lookup failed (e.g. task deleted).  Try to recover from the
             # worktree's own origin URL rather than silently falling back to
             # REPO_ROOT — falling back to academicOps could delete branches
             # from the wrong repo on a task_id collision.
