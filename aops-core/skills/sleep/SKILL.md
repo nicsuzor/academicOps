@@ -349,7 +349,7 @@ Process a configurable number of items per cycle (default 100, set via `batch_li
 
 Graph maintenance is complete when ANY of:
 
-1. **Convergence**: `metrics_hash` unchanged from prior cycle (graph didn't change)
+1. **Convergence**: `metrics_hash` unchanged for 2 consecutive cycles (see Convergence Detection above)
 2. **Two consecutive no-ops**: Two cycles in a row where Phase 5b processed zero items
 3. **All metrics below thresholds**: `disconnected_epics` ≤ 10, `projects_without_goals` ≤ 10, `flat_tasks` ≤ 100, `orphan_count` ≤ 20
 
