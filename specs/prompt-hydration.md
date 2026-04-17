@@ -267,10 +267,10 @@ The hydrator checks for project indices and includes them when present.
 The map is a plain JSON file. Any agent can read it directly:
 
 ```
-cat .agents/context-map.json | jq '.docs[] | select(.keywords[] | test("hydration"))'
+cat .agents/context-map.json
 ```
 
-No hooks, no framework dependency. Agents on Claude Code, Gemini CLI, Codex, or any future client can consume it by reading the file and filtering entries by keyword.
+No hooks, no framework dependency. Agents on Claude Code, Gemini CLI, Codex, or any future client can read the file and decide which entries are relevant to the current task.
 
 **Level 2 — aops-integrated (automatic via hydration pipeline)**
 
