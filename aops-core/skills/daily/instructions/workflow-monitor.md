@@ -78,7 +78,7 @@ _X open PRs total — Y ready to merge, Z need attention_
 
 ### Step 6.5: "Needs Your Call" — Ambiguous Completions
 
-This step surfaces tasks where completion evidence exists but is ambiguous. These come from the task completion sweep (Step 7) but are written here during workflow monitoring.
+This step defines the format and location for ambiguous completion cases. The content is populated during Step 7 (Task Completion Sweep) — not here. Step 6.5 runs before Step 7, so this subsection is written into the note by Step 7 when it identifies ambiguous cases.
 
 ```markdown
 ### Needs Your Call
