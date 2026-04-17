@@ -321,6 +321,23 @@ def reset_terminal_title() -> None:
     sys.stdout.flush()
 
 
+def _find_real_transcript(run_session_dir: Path | None) -> Path | None:
+    """Find the real Claude Code session transcript under the run session dir.
+
+    Globs ``<run_session_dir>/-workspace/*.jsonl`` and returns the newest by
+    mtime, or ``None`` if nothing is found.
+    """
+    if run_session_dir is None:
+        return None
+    workspace = run_session_dir / "-workspace"
+    if not workspace.is_dir():
+        return None
+    jsonls = list(workspace.glob("*.jsonl"))
+    if not jsonls:
+        return None
+    return max(jsonls, key=lambda p: p.stat().st_mtime)
+
+
 def save_worker_transcript(
     task_id: str,
     stdout: str,
@@ -328,6 +345,7 @@ def save_worker_transcript(
     exit_code: int,
     agent_type: str,
     home_dir: Path,
+    real_transcript: Path | None = None,
 ) -> Path:
     """Save worker output to transcript file.
 
@@ -341,6 +359,8 @@ def save_worker_transcript(
         exit_code: Process exit code
         agent_type: "claude" or "gemini"
         home_dir: Polecat home directory (fallback if AOPS_SESSIONS not set)
+        real_transcript: Resolved path to the real Claude Code session
+            transcript (caller obtains via _find_real_transcript)
 
     Returns:
         Path to the transcript file
@@ -370,6 +390,10 @@ def save_worker_transcript(
             "success": exit_code == 0,
             "stdout": stdout or "",
             "stderr": stderr or "",
+            "real_transcript_path": str(real_transcript) if real_transcript else None,
+            "real_transcript_size_bytes": (
+                real_transcript.stat().st_size if real_transcript else None
+            ),
         }
 
         with open(transcript_file, "a") as f:
@@ -4180,6 +4204,7 @@ def run(
 
             # Save transcript to $POLECAT_HOME/polecats/<task-id>.jsonl
             try:
+                real_transcript = _find_real_transcript(run_session_dir)
                 transcript_path = save_worker_transcript(
                     task_id=task.id,
                     stdout=result.stdout,
@@ -4187,8 +4212,12 @@ def run(
                     exit_code=exit_code,
                     agent_type=cli_tool,
                     home_dir=manager.home_dir,
+                    real_transcript=real_transcript,
                 )
-                print(f"📝 Transcript saved: {transcript_path}")
+                if real_transcript:
+                    print(f"📝 Transcript: {real_transcript}")
+                else:
+                    print(f"📝 Transcript stub: {transcript_path}")
             except OSError as e:
                 print(f"⚠️  Warning: Failed to save transcript: {e}", file=sys.stderr)
 
