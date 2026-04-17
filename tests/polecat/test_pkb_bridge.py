@@ -250,6 +250,38 @@ class TestCallToolErrorHandling:
             assert client.call_tool("anything", {}) is None
 
 
+class TestCreateTaskChecklistWarning:
+    """create_task warns when body contains - [ ] checklists (subtask divergence prevention)."""
+
+    _task_response = {
+        "frontmatter": {"id": "task-123"},
+        "body": "",
+        "path": "/tasks/task-123.md",
+    }
+
+    def test_warns_on_unchecked_item(self, mock_client):
+        mock_client.call_tool.return_value = self._task_response
+        with pytest.warns(UserWarning, match="checklist items"):
+            create_task(title="T", body="Steps:\n- [ ] step one\n")
+
+    def test_warns_on_checked_item(self, mock_client):
+        mock_client.call_tool.return_value = self._task_response
+        with pytest.warns(UserWarning, match="checklist items"):
+            create_task(title="T", body="- [x] done step\n")
+
+    def test_no_warning_without_checklist(self, mock_client, recwarn):
+        mock_client.call_tool.return_value = self._task_response
+        create_task(title="T", body="Plain context, no checklist here.")
+        checklist_warnings = [w for w in recwarn.list if "checklist" in str(w.message).lower()]
+        assert not checklist_warnings
+
+    def test_no_warning_on_empty_body(self, mock_client, recwarn):
+        mock_client.call_tool.return_value = self._task_response
+        create_task(title="T")
+        checklist_warnings = [w for w in recwarn.list if "checklist" in str(w.message).lower()]
+        assert not checklist_warnings
+
+
 class TestPkbTaskDeadlineFields:
     def _make_task(self, extra: dict | None = None) -> PkbTask:
         data: dict = {
