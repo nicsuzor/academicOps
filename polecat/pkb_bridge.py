@@ -229,7 +229,7 @@ def complete_task(
     """Mark a task as complete via the PKB MCP server.
 
     Supports both 'task_id' (positional) and 'id' (named) to reduce friction.
-    ``completion_evidence`` describes what was done — required by the PKB server.
+    ``completion_evidence`` describes what was done — optional but strongly recommended.
     """
     final_id = task_id or id
     if not final_id:
