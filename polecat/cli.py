@@ -3582,7 +3582,7 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
         cmd = [
             "claude",
             "--permission-mode=plan",
-            "--dangerously-skip-permissions",
+            "--allow-dangerously-skip-permissions",
             "--setting-sources=user,project",
         ]
 

@@ -80,17 +80,18 @@ Note: the `dispatched` status in the local work items table maps to
 
 ### Work Item Statuses
 
-| Status         | Meaning                                                           |
-| -------------- | ----------------------------------------------------------------- |
-| ready          | Decomposed, ready to dispatch                                     |
-| dispatched     | Sent to worker, waiting for PR                                    |
-| pr_open        | PR filed, under review                                            |
-| pr_approved    | Approved, ready to merge                                          |
-| done           | Merged and verified                                               |
-| blocked        | Waiting on a dependency — will be unblocked automatically         |
-| needs_decision | Requires human judgment before work can proceed — do not dispatch |
-| failed         | Worker failed, needs re-dispatch or replan                        |
-| branch_queued  | Ready, waiting for feature branch lock (coordinated dispatch)     |
+| Status         | Meaning                                                                                                 |
+| -------------- | ------------------------------------------------------------------------------------------------------- |
+| ready          | Decomposed, ready to dispatch                                                                           |
+| dispatched     | Sent to worker, waiting for PR                                                                          |
+| pr_open        | PR filed, under review                                                                                  |
+| pr_approved    | Approved, ready to merge                                                                                |
+| merge_ready    | PKB status: PR exists, CI passing, awaiting merge — do not re-dispatch; trigger merge agent or add LGTM |
+| done           | Merged and verified                                                                                     |
+| blocked        | Waiting on a dependency — will be unblocked automatically                                               |
+| needs_decision | Requires human judgment before work can proceed — do not dispatch                                       |
+| failed         | Worker failed, needs re-dispatch or replan                                                              |
+| branch_queued  | Ready, waiting for feature branch lock (coordinated dispatch)                                           |
 
 **`branch_queued` lifecycle** (coordinated dispatch only):
 

@@ -73,7 +73,7 @@ This phase exists because of a specific, observed failure: a dogfooding supervis
 
 2. **Identify the data.** Where does the input come from? What format is it in? What's the expected output? A contextless agent can't ask you — the instructions must answer these questions. **Verify by reading sample files** — don't describe data you haven't inspected.
 
-3. **Write the instructions.** Save to `specs/drafts/<task-name>-instructions.md`. The document must be self-contained:
+3. **Write the instructions.** Work directly in the target skill file if the instructions are mature enough to belong there. Only use `specs/drafts/` for scaffolding that doesn't yet fit anywhere — and **delete it when the session ends**. The document must be self-contained:
    - What to do and why
    - Where to find the data (exact paths, not variables the agent won't have)
    - How to sample if the data is large
@@ -81,13 +81,17 @@ This phase exists because of a specific, observed failure: a dogfooding supervis
    - Where to save the output
    - Ground rules (evidence standards, uncertainty handling)
 
+   Learnings that belong in a skill go into the skill immediately. Learnings too narrow for the skill go into PKB. Don't leave stray markdown files in the repo.
+
 4. **Reflect before delegating.** Read the instructions as if you knew nothing about this codebase. What's ambiguous? What requires knowledge the agent won't have?
 
 ### Phase 2: Commission Contextless Execution
 
 **Goal**: Test the instructions by delegating to an agent with NO prior context.
 
-1. **Launch a subagent** with ONLY the instruction file as context. Do not brief it verbally — if the instructions need verbal supplementation, they're incomplete.
+1. **Scope the first iteration small.** Start with N=2 representative tasks. Verify the pipeline accepts tasks, workers spawn, and output is observable before scaling. Only increase batch size when the first N=2 run completes cleanly. Finding 2 failures from 2 tasks is as informative as 2 failures from 10 — at a fraction of the cost.
+
+2. **Launch a subagent** with ONLY the instruction file as context. Do not brief it verbally — if the instructions need verbal supplementation, they're incomplete.
 
    ```
    Agent(
@@ -96,9 +100,11 @@ This phase exists because of a specific, observed failure: a dogfooding supervis
    )
    ```
 
-2. **Do not interfere.** Let the agent succeed or fail on the instructions alone. The friction IS the data.
+3. **Do not interfere.** Let the agent succeed or fail on the instructions alone. The friction IS the data.
 
-3. **Record what happens.** When the agent completes, **read the full output** — not just a summary. Note:
+   **Exception — redirect, don't kill.** If new guidance arrives while the agent is running and making progress, use `SendMessage` to redirect scope rather than `TaskStop` + restart. Only use `TaskStop` if the agent is actively causing harm (wrong files, dangerous scope expansion). A scope-narrowing correction (e.g. "do 2 tasks not 10") does not justify a kill-and-restart — send the update and let the agent self-correct. Killing a productive agent discards accumulated work and pays full cold-start cost on the replacement.
+
+4. **Record what happens.** When the agent completes, **read the full output** — not just a summary. Note:
    - Did it find the data? If not, what was missing from the instructions?
    - Did it understand the task? Where did it misinterpret?
    - Where did it get stuck? Was that because the instructions were wrong, ambiguous, or assumed knowledge the agent didn't have?
@@ -125,7 +131,7 @@ This phase exists because of a specific, observed failure: a dogfooding supervis
    | Instructions too long/complex                | Simplify, split into phases          |
    | Data format wasn't what instructions assumed | Update data source description       |
 
-3. **Update the instructions.** Edit `specs/drafts/<task-name>-instructions.md` with fixes. Be careful not to over-fit to this specific execution — the instructions should work for the category of task, not just this instance.
+3. **Update the instructions.** Edit them in-place (skill file, or wherever they now live). Be careful not to over-fit to this specific execution — the instructions should work for the category of task, not just this instance.
 
 4. **Optionally re-run.** If friction was severe (agent couldn't complete the task), commission a second contextless execution with the updated instructions. If friction was minor (agent completed but output could be better), one iteration may suffice.
 
@@ -206,6 +212,9 @@ These were observed during dogfooding runs and should be watched for:
 | Mischaracterized enforcement architecture                                               | Iteration 2 concluded "zero enforcement" because it examined only the gate system message (always "Compliance verified"), missing that the agent receives verdicts directly via the Agent tool result | Verify the actual delivery mechanism before making claims about enforcement channels. Trace the full data flow: who sends what to whom, and through which channel. |
 | Useless early samples wasted deep-review time                                           | Instruction to sample from "earliest week" led to March sessions with empty narratives and free-text verdicts — infrastructure failures, not compliance test cases                                    | Qualify sampling guidance by data quality: note which periods have usable structured data vs. which are infrastructure-failure era                                 |
 | Subagent found real findings but misframed aggregate conclusion                         | Iteration 2's session-level analysis was correct (RBG accuracy, false positives, etc.) but the aggregate conclusion ("zero enforcement") was wrong because it examined the wrong enforcement channel  | When aggregating, verify that the aggregate conclusion follows from the individual findings. A correct finding + wrong causal chain = wrong conclusion.            |
+| Full batch dispatched on first iteration                                                | Agent dispatched N=10 tasks on iteration 1; user had to intervene. Two failures from 2 tasks is as informative as 2 from 10 at a fraction of the cost.                                                | **First iteration scope**: cap at N=2. Verify pipeline health before scaling.                                                                                      |
+| Killed productive agent on scope correction                                             | Scope narrowing arrived mid-run; agent used `TaskStop` + restart instead of `SendMessage`. Discarded real findings, paid full cold-start cost on replacement.                                         | Use `SendMessage` to redirect a running agent. Only `TaskStop` for active harm (wrong files, dangerous expansion).                                                 |
+| Created draft spec file instead of editing skill                                        | Agent wrote `specs/drafts/dogfood-instructions.md` as working artifact rather than editing the skill directly. File persisted after session, cluttering the repo.                                     | Work directly in the skill file. Use `specs/drafts/` only for scaffolding; delete it when the session ends.                                                        |
 
 ## Related
 
