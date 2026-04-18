@@ -1,0 +1,25 @@
+# academicOps: Allow compliance agents to run in all modes including plan mode.
+#
+# When Gemini CLI runs with --approval-mode plan (read-only mode), non-read-only
+# tools require explicit approval. Compliance agents (rbg, marsha) MUST be
+# accessible even in plan mode — they are framework infrastructure that audit
+# the agent's own behavior, not user-directed write operations.
+#
+# This mirrors Claude Code's behavior where compliance agents are categorized as
+# "infrastructure" in gate_config.py and bypass all gates unconditionally.
+#
+# Priority 950: higher than sandbox allow (900) so compliance agents are never
+# blocked by more restrictive sandbox or workspace policies.
+# See: https://cloud.google.com/gemini/docs/codeassist/policy-engine
+
+[[rule]]
+toolName = "aops_core_rbg"
+decision = "allow"
+priority = 950
+description = "Allow rbg compliance agent in all modes including plan mode"
+
+[[rule]]
+toolName = "aops_core_marsha"
+decision = "allow"
+priority = 950
+description = "Allow marsha QA agent in all modes including plan mode"

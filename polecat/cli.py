@@ -1563,6 +1563,14 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
         raise RuntimeError(f"Missing bundled policy file: {deny_ext_src}")
     shutil.copy2(deny_ext_src, policies_dir / "deny-extension-writes.toml")
 
+    # Allow compliance agents (rbg, marsha) in all modes including plan mode.
+    # Without this, --approval-mode plan (read-only mode) blocks agent tools,
+    # preventing the custodiet compliance gate from invoking aops_core_rbg.
+    compliance_src = SCRIPT_DIR / "defaults" / "compliance-agents.toml"
+    if not compliance_src.exists():
+        raise RuntimeError(f"Missing bundled policy file: {compliance_src}")
+    shutil.copy2(compliance_src, policies_dir / "compliance-agents.toml")
+
     # Generate sandbox policy if work_dir is provided
     if work_dir:
         work_dir_str = str(work_dir.resolve())
@@ -3575,8 +3583,17 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
         # Gemini: run inside our Docker container (not --sandbox, which uses
         # bind mounts that fail on WSL2/Docker Desktop).  Auth files are staged
         # via docker cp, and session transcripts are extracted after the run.
-        # Note: --approval-mode is set by agent_args (passed after '--').
-        cmd = ["gemini"]
+        # --approval-mode plan mirrors Claude crew's --permission-mode=plan:
+        # reads are auto-approved, writes require policy-level allow rules.
+        # compliance-agents.toml (admin policy) ensures aops_core_rbg is
+        # accessible even in plan mode so the custodiet gate can always fire.
+        cmd = [
+            "gemini",
+            "--approval-mode",
+            "plan",
+            "--include-directories",
+            "/home/worker/.gemini/extensions/aops-core",
+        ]
     else:
         # Claude Code: sandbox via project settings.json + setting-sources
         cmd = [
