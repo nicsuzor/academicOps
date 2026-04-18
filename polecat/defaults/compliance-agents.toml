@@ -9,8 +9,6 @@
 # tier_base + (priority/1000), which always beats the default-tier plan-mode
 # deny (tier 1). Priority 950 also beats the sandbox allow policy at 900
 # within the same tier.
-#
-# See: https://geminicli.com/docs/reference/policy-engine/
 
 [[rule]]
 toolName = ["aops_core_rbg", "aops_core_custodiet", "aops_core_audit", "aops_core_enforcer"]
