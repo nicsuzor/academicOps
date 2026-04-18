@@ -1,16 +1,16 @@
 # academicOps: Allow compliance agents to run in all modes including plan mode.
 #
-# When Gemini CLI runs with --approval-mode plan (read-only mode), non-read-only
-# tools require explicit approval. Compliance agents (rbg, marsha) MUST be
-# accessible even in plan mode — they are framework infrastructure that audit
-# the agent's own behavior, not user-directed write operations.
+# Two-layer defense against the custodiet deadlock (gate fires → rbg blocked → deadlock):
+#   1. engine.py skips the ops counter when POLECAT_APPROVAL_MODE=plan (primary guard)
+#   2. These policy rules ensure rbg/marsha can never be blocked by sandbox or
+#      workspace policies in any mode (secondary, also fixes non-plan-mode cases)
 #
-# This mirrors Claude Code's behavior where compliance agents are categorized as
-# "spawn" in gate_config.py and bypass all gates unconditionally.
+# User-tier policies (~/.gemini/policies/) use tier 4 in the formula
+# tier_base + (priority/1000), which always beats the default-tier plan-mode
+# deny (tier 1). Priority 950 also beats the sandbox allow policy at 900
+# within the same tier.
 #
-# Priority 950: higher than sandbox allow (900) so compliance agents are never
-# blocked by more restrictive sandbox or workspace policies.
-# See: https://cloud.google.com/gemini/docs/codeassist/policy-engine
+# See: https://geminicli.com/docs/reference/policy-engine/
 
 [[rule]]
 toolName = ["aops_core_rbg", "aops_core_custodiet", "aops_core_audit", "aops_core_enforcer"]

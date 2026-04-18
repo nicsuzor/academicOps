@@ -3584,8 +3584,6 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
         # via docker cp, and session transcripts are extracted after the run.
         # --approval-mode plan mirrors Claude crew's --permission-mode=plan:
         # reads are auto-approved, writes require policy-level allow rules.
-        # compliance-agents.toml (admin policy) ensures aops_core_rbg is
-        # accessible even in plan mode so the custodiet gate can always fire.
         cmd = [
             "gemini",
             "--approval-mode",
@@ -3612,6 +3610,11 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
     env["POLECAT_SESSION_TYPE"] = "crew"
     env["POLECAT_CREW_NAME"] = crew_name
     env["POLECAT_WORKTREE"] = str(work_dir)
+    # Both Gemini (--approval-mode plan) and Claude (--permission-mode=plan) crew
+    # sessions run in plan mode. Signal this to the gate engine so it skips the
+    # custodiet ops counter — the gate must not fire when rbg cannot be invoked.
+    if not interactive:
+        env["POLECAT_APPROVAL_MODE"] = "plan"
 
     # Compute session directory for Claude transcript persistence.
     project_slug = target or projects[0]
