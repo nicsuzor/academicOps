@@ -65,12 +65,6 @@
       "keywords": ["heuristic", "guideline", "best practice", "evidence-based", "decomposition", "task sequencing"]
     },
     {
-      "topic": "rules",
-      "path": "aops-core/RULES.md",
-      "description": "Quick reference for axioms and heuristics — numbered principle lookup",
-      "keywords": ["rules", "axiom", "heuristic", "principle", "governance", "lookup", "numbered rules"]
-    },
-    {
       "topic": "constraints",
       "path": "aops-core/CONSTRAINTS.md",
       "description": "Hard rules for framework internals — file length limits, naming conventions, enforced by pre-commit hooks",

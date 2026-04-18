@@ -1,14 +1,14 @@
 ---
-title: Enforcement Mechanisms Guide
+title: Enforcement Design Guide
 type: reference
-category: docs
-description: Living document on how to effectively enforce agent behaviors
-tags: [framework, enforcement, learning]
+category: ref
+description: How to design enforcement mechanisms — mechanism ladder, prompt strength, when each layer works
+tags: [framework, enforcement, design]
 ---
 
-# Enforcement Mechanisms
+# Enforcement Design
 
-**Purpose**: Practical guide for choosing HOW to enforce a behavior. For architectural philosophy, see [[enforcement|specs/enforcement.md]]. For current active rules, see [[RULES]].
+**Purpose**: Practical guide for choosing HOW to enforce a behavior. For architectural philosophy, see [[enforcement|specs/enforcement.md]]. Universal axioms live in `aops-core/AXIOMS.md` and are loaded only by the `rbg` agent.
 
 ## Mechanism Ladder
 

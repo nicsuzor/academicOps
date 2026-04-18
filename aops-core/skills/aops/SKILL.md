@@ -217,14 +217,14 @@ Is this work where the process itself should be examined?
 
 This framework is a **validated logical system**. Every component must be derivable from axioms and institutional memory:
 
-| Priority | Document      | Contains                       |
-| -------- | ------------- | ------------------------------ |
-| 0        | This Skill    | Institutional Memory           |
-| 1        | AXIOMS.md     | Inviolable principles          |
-| 2        | HEURISTICS.md | Empirically validated guidance |
-| 3        | VISION.md     | What we're building            |
+| Priority | Document      | Contains                                        |
+| -------- | ------------- | ----------------------------------------------- |
+| 0        | This Skill    | Institutional Memory                            |
+| 1        | (axioms)      | Inviolable principles — enforced by `rbg` agent |
+| 2        | HEURISTICS.md | Empirically validated guidance                  |
+| 3        | VISION.md     | What we're building                             |
 
-**Derivation rule**: Every convention MUST trace to an axiom. If it can't, the convention is invalid.
+**Derivation rule**: Every convention MUST trace to an axiom. If it can't, the convention is invalid. To check derivation, invoke `rbg` — do not read axioms directly.
 
 ### File Boundaries (ENFORCED)
 
@@ -264,7 +264,7 @@ Every task MUST follow this lifecycle. No shortcuts.
      Use TodoWrite for session tracking only
 
 2. LOAD CONTEXT (as needed)
-   - Read AXIOMS.md if verifying principles
+   - Invoke `rbg` if verifying axiomatic principles
    - Read VISION.md if checking scope alignment
    - mcp__plugin_aops-core_pkb__search(query="[topic]") for prior work
    - mcp__plugin_aops-core_pkb__get_document(id="aops-state") for current framework state

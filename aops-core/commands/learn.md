@@ -93,7 +93,7 @@ If no existing issue is found, perform a root cause analysis to include in the n
 - File: [path to the relevant file]
 
 **Expected vs Actual**:
-- Expected: [What VISION.md / AXIOMS.md says should happen]
+- Expected: [What VISION.md or the relevant axiom says should happen]
 - Actual: [What happened]
 ```
 

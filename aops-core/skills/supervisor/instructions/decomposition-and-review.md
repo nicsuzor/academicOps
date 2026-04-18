@@ -139,7 +139,7 @@ Before invoking reviewers, prepare a context document containing:
 
 ## Relevant Principles
 
-[Extract relevant AXIOMS/HEURISTICS for this domain]
+[Extract relevant principles/heuristics for this domain — invoke `rbg` for axiom checks]
 ```
 
 **Step 2: Invoke Reviewers in Parallel**

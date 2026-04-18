@@ -17,7 +17,7 @@ Every action must be justifiable as a universal rule. No one-off changes.
 ### Before ANY Change
 
 1. **State the rule**: What generalizable principle justifies this action?
-2. **Check rule exists**: Is this in AXIOMS, this skill, or documented elsewhere?
+2. **Check rule exists**: Is this in this skill or documented elsewhere? (Axiom-level checks: invoke `rbg`.)
 3. **If no rule exists**: Propose the rule. Get user approval. Document it.
 4. **Ad-hoc actions are PROHIBITED**: If you can't generalize it, don't do it.
 
@@ -30,15 +30,15 @@ Every action must be justifiable as a universal rule. No one-off changes.
 
 ## Authoritative Source Chain
 
-| Priority | Document      | Contains              |
-| -------- | ------------- | --------------------- |
-| 1        | AXIOMS.md     | Inviolable principles |
-| 2        | HEURISTICS.md | Validated guidance    |
-| 3        | VISION.md     | What we're building   |
-| 4        | This skill    | Derived conventions   |
-| 5        | INDEX.md      | File tree             |
+| Priority | Document      | Contains                                        |
+| -------- | ------------- | ----------------------------------------------- |
+| 1        | (axioms)      | Inviolable principles — enforced by `rbg` agent |
+| 2        | HEURISTICS.md | Validated guidance                              |
+| 3        | VISION.md     | What we're building                             |
+| 4        | This skill    | Derived conventions                             |
+| 5        | INDEX.md      | File tree                                       |
 
-**Rule**: Every convention must trace to an axiom. If it can't, the convention is invalid.
+**Rule**: Every convention must trace to an axiom. If it can't, the convention is invalid. Invoke `rbg` to verify derivation.
 
 ## HALT Protocol
 
@@ -57,7 +57,7 @@ Each piece of information exists in exactly ONE location. Reference, don't repea
 
 | Information       | Authoritative Location |
 | ----------------- | ---------------------- |
-| Principles        | AXIOMS.md              |
+| Principles        | Enforced by `rbg`      |
 | File tree         | INDEX.md               |
 | Feature inventory | README.md              |
 | Framework vision  | VISION.md              |

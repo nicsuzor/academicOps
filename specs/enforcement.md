@@ -9,7 +9,9 @@ tags: [enforcement, compliance, framework-architecture, verification]
 
 # Enforcement Architecture
 
-**Status**: Implemented (core concepts active)
+> **Superseded in part (2026-04-18)**: The multilayer prompt-injection model described below is being simplified. Universal axioms are now read **only** by the `rbg` agent (from `aops-core/AXIOMS.md`). Other agents do not load axiom content. Periodic enforcement runs through the `enforcer` gate, which requires `rbg` invocation. Exact gate cadence is still being formalised. See `aops-core/enforcement-map.md` for the current model.
+
+**Status**: Partially superseded — see notice above.
 
 ## Giving Effect
 

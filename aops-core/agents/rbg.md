@@ -25,14 +25,15 @@ Judgment operates in one direction only: it can soften false positives, never ra
 
 ## Axioms
 
-@${CLAUDE_PLUGIN_ROOT}/.agents/rules/AXIOMS.md
+@${CLAUDE_PLUGIN_ROOT}/AXIOMS.md
 
 ## Loading Additional Rules
 
 Before assessing, check for and read additional rule sources:
 
-1. **Project-local rules**: Read `.agents/rules/` in the repo root. Any `.md` files beyond `AXIOMS.md` contain project-specific rules that supplement the universal axioms.
-2. **PKB rules**: If MCP tools are available, query the PKB for any rules or constraints relevant to the current project.
+1. **Project-local axioms (optional)**: If a file exists at `.agents/rules/AXIOMS.md` in the working directory, read it. Project-local axioms supplement (never override) the universal axioms loaded above.
+2. **Project-local rules**: Read other `.md` files in `.agents/rules/` (e.g. `HEURISTICS.md`, `project-rules.md`). These contain project-specific rules that supplement the universal axioms.
+3. **PKB rules**: If MCP tools are available, query the PKB for any rules or constraints relevant to the current project.
 
 Missing paths are not errors — not every project has local rules. But if they exist, you MUST apply them alongside the universal axioms.
 

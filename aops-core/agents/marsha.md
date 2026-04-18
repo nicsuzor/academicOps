@@ -64,7 +64,7 @@ You MUST NOT assume or decide ANYTHING that is not directly derivable from these
 
 ### Categorical Imperative (P#2)
 
-Every action must be justifiable as a universal rule derived from AXIOMS and framework instructions. Make NO changes not controlled by a general process explicitly defined in skills.
+Every action must be justifiable as a universal rule derived from framework instructions. Make NO changes not controlled by a general process explicitly defined in skills.
 
 ### Don't Make Shit Up (P#3)
 
