@@ -11,7 +11,6 @@ import os
 import re
 import sys
 import urllib.request
-import warnings
 from datetime import date, datetime
 from typing import Any
 
@@ -258,15 +257,14 @@ def create_task(
     params = dict(kwargs)
     params["title"] = final_title
 
-    # Warn if body contains checklist items — these should be subtasks instead
+    # Reject checklist items in body — they diverge from the subtask graph
     body = params.get("body", "")
     if isinstance(body, str) and re.search(r"(?m)^\s*[-*+]\s+\[[ xX]\]", body):
-        warnings.warn(
+        raise ValueError(
             "Task body contains checklist items. "
             "Checklists in task bodies diverge from the subtask graph over time. "
             "Use create_task(parent=...) or decompose_task() instead of embedding "
-            "checklists in the body. See: Nectar incident.",
-            stacklevel=2,
+            "checklists in the body. See: Nectar incident."
         )
 
     result = _get_client().call_tool("create_task", params)
