@@ -1563,14 +1563,6 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
         raise RuntimeError(f"Missing bundled policy file: {deny_ext_src}")
     shutil.copy2(deny_ext_src, policies_dir / "deny-extension-writes.toml")
 
-    # Allow compliance agents (rbg, marsha) in all modes including plan mode.
-    # Without this, --approval-mode plan (read-only mode) blocks agent tools,
-    # preventing the custodiet compliance gate from invoking aops_core_rbg.
-    compliance_src = SCRIPT_DIR / "defaults" / "compliance-agents.toml"
-    if not compliance_src.exists():
-        raise RuntimeError(f"Missing bundled policy file: {compliance_src}")
-    shutil.copy2(compliance_src, policies_dir / "compliance-agents.toml")
-
     # Generate sandbox policy if work_dir is provided
     if work_dir:
         work_dir_str = str(work_dir.resolve())
@@ -1658,6 +1650,13 @@ description = "Deny writes outside the work directory"
         dst_policies.mkdir(parents=True, exist_ok=True)
         for policy in src_policies.glob("*.toml"):
             shutil.copy2(policy, dst_policies / policy.name)
+
+    # Copy bundled admin policies AFTER user policies so they always take
+    # precedence — a same-named user file must not override an admin policy.
+    compliance_src = SCRIPT_DIR / "defaults" / "compliance-agents.toml"
+    if not compliance_src.exists():
+        raise RuntimeError(f"Missing bundled policy file: {compliance_src}")
+    shutil.copy2(compliance_src, policies_dir / "compliance-agents.toml")
 
     # Make all replicated files and directories writable by any UID.
     # Gemini's sandbox container may run as a different user than the host

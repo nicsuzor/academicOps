@@ -6,20 +6,20 @@
 # the agent's own behavior, not user-directed write operations.
 #
 # This mirrors Claude Code's behavior where compliance agents are categorized as
-# "infrastructure" in gate_config.py and bypass all gates unconditionally.
+# "spawn" in gate_config.py and bypass all gates unconditionally.
 #
 # Priority 950: higher than sandbox allow (900) so compliance agents are never
 # blocked by more restrictive sandbox or workspace policies.
 # See: https://cloud.google.com/gemini/docs/codeassist/policy-engine
 
 [[rule]]
-toolName = "aops_core_rbg"
+toolName = ["aops_core_rbg", "aops_core_custodiet", "aops_core_audit", "aops_core_enforcer"]
 decision = "allow"
 priority = 950
-description = "Allow rbg compliance agent in all modes including plan mode"
+description = "Allow rbg compliance agent (and legacy aliases) in all modes including plan mode"
 
 [[rule]]
-toolName = "aops_core_marsha"
+toolName = ["aops_core_marsha", "aops_core_qa"]
 decision = "allow"
 priority = 950
-description = "Allow marsha QA agent in all modes including plan mode"
+description = "Allow marsha QA agent (and legacy alias) in all modes including plan mode"
