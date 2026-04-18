@@ -250,6 +250,49 @@ class TestCallToolErrorHandling:
             assert client.call_tool("anything", {}) is None
 
 
+class TestCreateTaskChecklistWarning:
+    """create_task raises ValueError when body contains - [ ] checklists (subtask divergence prevention)."""
+
+    _task_response = {
+        "frontmatter": {"id": "task-123"},
+        "body": "",
+        "path": "/tasks/task-123.md",
+    }
+
+    def test_raises_on_unchecked_item(self, mock_client):
+        with pytest.raises(ValueError, match="checklist items"):
+            create_task(title="T", body="Steps:\n- [ ] step one\n")
+
+    def test_raises_on_checked_item(self, mock_client):
+        with pytest.raises(ValueError, match="checklist items"):
+            create_task(title="T", body="- [x] done step\n")
+
+    def test_raises_on_uppercase_x(self, mock_client):
+        with pytest.raises(ValueError, match="checklist items"):
+            create_task(title="T", body="- [X] done step\n")
+
+    def test_raises_on_asterisk_marker(self, mock_client):
+        with pytest.raises(ValueError, match="checklist items"):
+            create_task(title="T", body="* [ ] step one\n")
+
+    def test_raises_on_plus_marker(self, mock_client):
+        with pytest.raises(ValueError, match="checklist items"):
+            create_task(title="T", body="+ [ ] step one\n")
+
+    def test_no_false_positive_mid_line(self, mock_client):
+        mock_client.call_tool.return_value = self._task_response
+        # Should not raise — mid-line text is not a checklist item
+        create_task(title="T", body="mention of - [x] not at line start")
+
+    def test_no_error_without_checklist(self, mock_client):
+        mock_client.call_tool.return_value = self._task_response
+        create_task(title="T", body="Plain context, no checklist here.")
+
+    def test_no_error_on_empty_body(self, mock_client):
+        mock_client.call_tool.return_value = self._task_response
+        create_task(title="T")
+
+
 class TestPkbTaskDeadlineFields:
     def _make_task(self, extra: dict | None = None) -> PkbTask:
         data: dict = {

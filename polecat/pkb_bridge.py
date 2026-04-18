@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import urllib.request
 from datetime import date, datetime
@@ -255,6 +256,16 @@ def create_task(
 
     params = dict(kwargs)
     params["title"] = final_title
+
+    # Reject checklist items in body — they diverge from the subtask graph
+    body = params.get("body", "")
+    if isinstance(body, str) and re.search(r"(?m)^\s*[-*+]\s+\[[ xX]\]", body):
+        raise ValueError(
+            "Task body contains checklist items. "
+            "Checklists in task bodies diverge from the subtask graph over time. "
+            "Use create_task(parent=...) or decompose_task() instead of embedding "
+            "checklists in the body. See: Nectar incident."
+        )
 
     result = _get_client().call_tool("create_task", params)
     if result and isinstance(result, dict):
