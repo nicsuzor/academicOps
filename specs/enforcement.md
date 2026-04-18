@@ -1,7 +1,7 @@
 ---
 title: Enforcement Architecture
 type: spec
-status: implemented
+status: current
 tier: core
 depends_on: []
 tags: [enforcement, compliance, framework-architecture, verification]
@@ -9,294 +9,234 @@ tags: [enforcement, compliance, framework-architecture, verification]
 
 # Enforcement Architecture
 
-> **Superseded in part (2026-04-18)**: The multilayer prompt-injection model described below is being simplified. Universal axioms are now read **only** by the `rbg` agent (from `aops-core/AXIOMS.md`). Other agents do not load axiom content. Periodic enforcement runs through the `enforcer` gate, which requires `rbg` invocation. Exact gate cadence is still being formalised. See `aops-core/enforcement-map.md` for the current model.
+**Purpose.** This document is the design statement for how the aops framework enforces its rules and maintains quality. Enforcement is **responsive, proportionate, and evidence-driven**: most work happens cheaply and constantly at the base of the pyramid; heavier measures escalate only when lower layers produce evidence they are insufficient.
 
-**Status**: Partially superseded — see notice above.
+**Sibling documents.** Three specs form this package:
 
-## Giving Effect
+- **`specs/enforcement.md`** (this file) — the design statement. When to reach for it: deciding where a new rule, gate, or check should live; understanding why enforcement is shaped the way it is.
+- **`specs/enforcement-map.md`** — current-state source of truth, keyed by **failure mode**. When to reach for it: looking up which mechanism currently catches a specific failure and what evidence supports that assignment. Changes as the framework evolves.
+- **`specs/enforcement-mechanisms.md`** — per-mechanism reference catalogue. When to reach for it: the authoritative details (trigger, location, scope, status) for a single mechanism.
+- **`specs/ultra-vires-enforcer.md`** — design doc for the specific internal mechanism: the `enforcer` agent (formerly `custodiet`) plus its PreToolUse gate.
 
-- [[aops-core/hooks/router.py]] - Central hook router and state manager
-- [[aops-core/lib/gates/registry.py]] - Registry for all active enforcement gates
-- [[aops-core/lib/gates/definitions.py]] - Declarative gate configurations (Hydration, Custodiet, QA, etc.)
-- [[aops-core/lib/gates/engine.py]] - Generic gate engine executing triggers and policies
-- [[aops-core/AXIOMS.md]] - Layer 1: Immutable principles loaded at session start
-- [[aops-core/hooks/user_prompt_submit.py]] - Layer 2: Prompt hydration and intent routing
-- [[aops-core/agents/custodiet.md]] - Layer 2.5: Drift detection and axiom violation checking
-- [[aops-core/hooks/policy_enforcer.py]] - Layer 4: PostToolUse pattern detection hooks
-- [[aops-core/hooks/gate_config.py]] - Gate mode and tool category configuration
-- [[aops-core/agents/qa.md]] - Layer 5: Independent verification agent
-- [[aops-core/framework/enforcement-map.md]] - Registry of all active enforcement mechanisms
+## Two views of the same mechanisms
 
-## Enforcement Model
+The framework has ~40 distinct enforcement mechanisms. Two independent organising principles are useful for thinking about them:
+
+1. **The pipeline (temporal view).** When in the flow of work does a mechanism fire? Capture → hydration → decomposition → execution → handover → review → merge → follow-up → evidence loop. The mermaid graph in §3 shows this. Labels are `L0`–`L11`, one per pipeline layer.
+2. **The pyramid (escalation view).** How frequently does a mechanism fire, and how invasive is it when it does? Base (high-volume, cheap, non-blocking) → middle (moderate, triggered, warns or opens gates) → tip (rare, heavy, blocks or requires human). The tier table in §4 shows this.
+
+These views are **orthogonal**. The same mechanism appears in both. A pipeline-L4 mechanism (soft gate) may be base-tier (runs every tool call, cheap) or middle-tier (triggered on threshold). The L-number is cross-reference, not a tier criterion.
+
+When making a framework change, use the pipeline to decide _when_ the intervention fires; use the pyramid to decide _how heavily_ — and always prefer a base-tier intervention unless evidence from the §5 loop shows it is insufficient.
+
+## §3 Pipeline view (temporal)
 
 ```mermaid
-graph TD
-    subgraph "Layer 1: Prompts"
-        A[AXIOMS.md]
-        B[Agent .md]
-    end
-
-    subgraph "Layer 2: Intent Router"
-        D[Classify Prompt]
-        E[Inject Guidance]
-    end
-
-    subgraph "Layer 3: Gates (Synchronous)"
-        F[Hydration Gate]
-        G[Custodiet Countdown]
-        H[QA/Handover Gates]
-    end
-
-    subgraph "Layer 4: Detection & Deny"
-        I[PostToolUse Hooks]
-        J[settings.json Deny]
-    end
-
-    subgraph "Layer 5: Review"
-        K[QA Agent]
-        L[PR Pipeline]
-    end
-
-    A & B --> D
-    D --> E
-    E --> F
-    F --> G
-    G --> H
-    H --> I
-    I --> J
-    J --> K
-    K --> L
+flowchart TD
+  subgraph L0[L0 Capture]
+    Q["/q, PKB MCP, inbox default, complexity eval"]
+  end
+  subgraph L1[L1 Context injection]
+    HYD["session_env_setup, hydrator, skills routing, CLAUDE.md, status strip"]
+  end
+  subgraph L2[L2 Decomposition]
+    DEC["/planner, task templates, proof-of-compliance fields"]
+  end
+  subgraph L3[L3 Workflow composition]
+    WF["Phase 3 — not yet formalised"]
+  end
+  subgraph L4[L4 Soft gates]
+    GATES["hydration gate, enforcer gate, QA gate (planned), unified logger"]
+  end
+  subgraph L5[L5 Hard blocks]
+    HARD["policy_enforcer.py, deny rules, credential isolation"]
+  end
+  subgraph L6[L6 Observability]
+    LOGS["session logs, task-file append, STATUS.md"]
+  end
+  subgraph L7[L7 Agent review]
+    AGENTS["rbg, enforcer, qa/marsha, pauli"]
+  end
+  subgraph L8[L8 Handover]
+    HAND["/dump, framework reflection, handover gate, commit gate"]
+  end
+  subgraph L9[L9 Review pipeline]
+    REV["james, review-pr, GHA pr-review, agent-enforcer, linters"]
+  end
+  subgraph L10[L10 Merge gates]
+    MERGE["agent-merge-prep, branch protection, loop detector, project-owner"]
+  end
+  subgraph L11[L11 Follow-up]
+    FUP["task closure, unblocked downstream, cross-reference"]
+  end
+  subgraph EV[Evidence loop]
+    LEARN["/learn → GH issues → /aops → spec/axiom/hook change"]
+  end
+  L0 --> L1 --> L2 --> L3 --> L4 --> L5 --> L6 --> L7 --> L8 --> L9 --> L10 --> L11
+  L4 -. fail .-> LEARN
+  L7 -. fail .-> LEARN
+  L9 -. fail .-> LEARN
+  L11 --> LEARN
+  LEARN -. spec/axiom/hook change .-> L0
 ```
 
-**Purpose**: Architectural philosophy for why enforcement works the way it does. For practical mechanism selection, see [[ENFORCEMENT|docs/ENFORCEMENT.md]]. For current active rules, see [[RULES]].
+Edges show control-flow in the common path (top to bottom) and the three most common failure-to-evidence arcs (dotted). The evidence loop closes back to L0 because the _output_ of the loop is spec/axiom/template changes, which propagate forward through the whole pipeline from its start.
 
-How the aops framework influences agent behavior. We cannot force compliance - only create encouragement with detection.
+Full catalogue of mechanisms per layer: **see `specs/enforcement-mechanisms.md`**.
 
-## The Hard Truth
+## §4 Pyramid view (escalation)
 
-**We cannot force agent behavior.** Claude Code has no mechanism to prevent an agent from skipping steps. Any "enforcement" is actually "encouragement with detection."
+**Responsive regulation theory.** The framework cannot force any agent to do anything — we can only create _encouragement with detection_. Given that, the choice of _where to intervene_ should follow the principle of least invasion: use the lightest mechanism that catches the failure, and escalate only when evidence shows the lighter mechanism is insufficient. The pyramid makes this choice architecture explicit.
 
-**But prompt injection IS enforcement.** "Soft" doesn't mean "not real." Prompt-level rules (Level 1 in the enforcement ladder) are the most common enforcement mechanism. When we say a rule is "enforced via CORE.md injection at SessionStart," that IS the enforcement. Don't dismiss it as "no enforcement" just because there's no blocking hook.
+The L-numbers in the table below are pipeline cross-reference, not tier criteria. Mechanisms are placed in tiers based on **frequency of activation × invasiveness when active** — not on where they sit in the pipeline.
 
-**The knowing-doing gap**: Agents read AXIOMS, understand them, and still skip steps due to:
+| Tier       | Definition                                                             | Mechanisms (with pipeline layer cross-reference)                                                                                                                                                                                                                                                                                                                   |
+| ---------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Base**   | High-volume, low-invasiveness, non-blocking, runs constantly           | lightweight hydrator (L1), skills routing table (L1), CLAUDE.md / AGENTS.md load (L1), gate status strip (L1), session_env_setup (L1), unified logger (L6), task-file append (L6), session logs (L6), task template conventions (L2)                                                                                                                               |
+| **Middle** | Moderate volume, triggered by threshold or event, warns or opens gates | hydration gate (L4), enforcer gate (L4), enforcer subagent invocation (L7), QA gate — planned (L4), /planner decomposition checks (L2), proof-of-compliance tool fields (L2), rbg subagent invocation (L7), qa / marsha subagent invocation (L7), james orchestration (L9), pr-reviewer GHA (L9), agent-enforcer GHA (L9), linter workflows (L9), commit gate (L8) |
+| **Tip**    | Rare, heavy — hard-blocks or requires human judgment                   | policy_enforcer.py hard blocks (L5), settings.json deny rules (L5), credential isolation (L5), handover gate (L8), agent-merge-prep auto-merge (L10), branch protection (L10), loop detector (L10), project-owner / admin approval (L10)                                                                                                                           |
 
-- Efficiency pressure (verification takes tokens)
-- Confidence from pattern-matching
-- No immediate consequence
-- Helpful instinct to appear competent
+**Escalation rules.**
 
-## Layer Defense Model
+- **Escalate up** when the evidence loop (§5) shows a base-tier mechanism is being bypassed or ignored with reproducible consequences.
+- **De-escalate down** when evidence shows a tip-tier measure has been unnecessary for a full feedback cycle — a middle-tier warn or base-tier reminder may be sufficient.
+- **Never guess.** If there is no evidence one way or the other, the current tier placement holds. Changes are made from §5 evidence, not from authorial intuition.
 
-No single layer is reliable. We combine:
+## §5 Evidence loop
 
-### Layer 1: Prompts (Instruction Surface)
+The pyramid _learns_ by a seven-step architecture. Each step names its inputs, outputs, implementation status, and location.
 
-| Location  | Loaded When   | Scope         |
-| --------- | ------------- | ------------- |
-| AXIOMS.md | Session start | Universal     |
-| Agent .md | Agent spawned | Task-specific |
+**Step 1 — Failure detection.** _(Implemented at sources; aggregation partial.)_ Signals originate at any pipeline layer: RBG findings, QA / marsha fails, /retro observations, user-reported problems, post-merge regressions, /sleep staleness findings, hook log patterns. Currently aggregated through ad-hoc agent invocation, not a single pipeline.
 
-**Limitation**: Agents can read and ignore.
+**Step 2 — `/learn` files anonymised GitHub issue.** _(Implemented.)_ Skill at `aops-core/commands/learn.md`. Anonymisation is mandatory; root-cause-analysis schema is enforced in issue body; deduplication by search-first. Repo is the framework repo. Labels: `bug`, `criticality:<level>`, plus layer-specific tags (e.g. `framework`, `enforcement`, `axiom`).
 
-### Layer 2: Prompt Hydration (Soft Gate)
+**Step 3 — Evidence accumulation.** _(Implemented via GitHub issues as durable store.)_ Issues cluster around patterns; volume × criticality informs priority. No separate database — the issue list is the evidence base.
 
-The [[specs/prompt-hydration]] process classifies prompts and suggests workflows.
+**Step 4 — `/aops` pattern detection.** _(Aspirational — principal known gap.)_ Intended behaviour: periodic read of issue labels / bodies / close-status, detection of recurring failure modes, mapping to pyramid layers where intervention needs to change. Not yet mechanically implemented.
 
-**What it does**: Injects context, classification, and task-specific guidance
-**What it can't do**: Force agent to follow guidance
+**Step 5 — Recommendation generation.** _(Aspirational.)_ Intended behaviour: `/aops` produces a proposed enforcement adjustment — which layer, which mechanism, escalate or de-escalate, what spec/axiom/hook change. Not yet implemented.
 
-#### Hydration Gate (Mechanical Enforcement)
+**Step 6 — Human decision + implementation.** _(Implemented as the normal task flow.)_ User approves the change; an agent implements it via the usual `/q` → decomposition → execution route; spec / code / axiom is updated through PR pipeline.
 
-**Gate**: `hydration` (PreToolUse)
-**Status**: Active (warn-only mode by default)
+**Step 7 — Closing the loop.** _(Partially implemented.)_ Issues referenced by the implementing PR close automatically; `specs/enforcement-map.md` failure-mode row updates to reflect the new intervention. The _automatic_ map-row update is not yet wired — done manually in the PR.
 
-Blocks/warns when agent attempts to use tools before invoking prompt-hydrator subagent.
+**Principal gap.** Steps 4–5 are the unbuilt piece. Failure evidence is captured reliably (Step 2) and implementation flow exists (Step 6), but the _recommendation_ connecting them is aspirational. A follow-up task should scope what `/aops` needs to do — this is deliberately not resolved in Phase 1 because the scope depends on the enforcement-map structure this document is defining.
 
-**Gate Behavior**:
+## §6 Per-mechanism reference
 
-- **Off mode** (default, `HYDRATION_GATE_MODE=off`): Gate is disabled; no tools are blocked or warned.
-- **Warn mode** (`HYDRATION_GATE_MODE=warn`): Logs warning to stderr, allows tool use
-- **Block mode** (`HYDRATION_GATE_MODE=block`): Blocks all tools (exit code 2) until hydrator invoked
+See **`specs/enforcement-mechanisms.md`** for the authoritative catalogue. Each mechanism is documented with a fixed schema:
 
-**Bypass Conditions**:
+```
+### <Mechanism name>
+- **Pipeline layer**: L<n>
+- **Pyramid tier**: base | middle | tip
+- **Trigger**: <event or condition>
+- **Purpose**: <one sentence>
+- **Location**: <file:line or module path>
+- **Scope**: polecat | crew | interactive | GHA | all
+- **Status**: active | warn-only | planned | disabled
+```
 
-- Subagent sessions (`is_subagent` in HookContext) - subagents inherit hydration from parent
-- Infrastructure tools (`get_task`, `create_task`, etc.) - allows framework initialization
-- Always available tools (`AskUserQuestion`, `TodoWrite`) - allows communication and planning
-- Compliance agents (`prompt-hydrator`, `custodiet`, etc.) - allows enforcement itself to run
+Tier-spanning mechanisms (e.g. `/dump` handover: middle when the handover gate is open, tip when it blocks Stop) carry both tiers in the **Pyramid tier** field with a conditional clause.
 
-**Implementation**: `aops-core/lib/gates/definitions.py` defines the hydration gate. It starts `CLOSED` on `UserPromptSubmit` and opens `JIT` when the `prompt-hydrator` is dispatched.
+## §7 Scope limits
 
-### Layer 2.5: JIT Compliance Audit
+### §7.1 Known-clients only
 
-Periodic compliance checking at strategic checkpoints.
+The framework's agent-based enforcement (rbg, enforcer, qa / marsha, pauli, james) applies **only to known clients**: polecat, crew, and interactive sessions invoked through the aops plugin. GHA agents inherit via prompt inlining at build time (see `scripts/build.py` — intentionally out of scope this cycle).
 
-#### User Intervention Priority
+**Unknown third-party agents** running on arbitrary platforms are out of scope. The framework cannot reach them, and no gate mechanism assumes they exist. The only mechanism for third-party alignment is prompt-level: by shaping the specs / axioms / templates that any agent reads, the framework influences what third-party agents do. The pipeline is _not_ a perimeter around a trust boundary.
 
-On every `UserPromptSubmit`, the instruction includes:
+### §7.2 Per-client coverage table
 
-> If this prompt is a correction, suggestion, or redirection from the user while you were working on something else: **HALT your current work immediately**.
+| Client                  | Hooks?               | Gates? | rbg/enforcer?      | /dump? | PR pipeline? |
+| ----------------------- | -------------------- | ------ | ------------------ | ------ | ------------ |
+| Polecat                 | Yes                  | Yes    | Yes                | Yes    | Yes          |
+| Crew (Claude Code)      | Yes                  | Yes    | Yes                | Yes    | Yes          |
+| Interactive (local CLI) | Yes                  | Yes    | Yes                | Yes    | Yes          |
+| GHA review agents       | No (inlined prompts) | No     | Yes (prompt-level) | No     | N/A          |
+| Third-party agents      | No                   | No     | No                 | No     | No           |
 
-This addresses the "steamroller" pattern where agents continue planned work instead of responding to user corrections.
+## §8 Operator impact — env var rename
 
-#### Periodic Compliance Check (Custodiet)
+The `custodiet` agent and gate have been renamed to `enforcer`. Operators with values set in shell profiles or `~/.env.local`:
 
-**Gate**: `custodiet` (PreToolUse)
-**Status**: Active (warn mode by default)
+| Old                             | New                            |
+| ------------------------------- | ------------------------------ |
+| `CUSTODIET_GATE_MODE`           | `ENFORCER_GATE_MODE`           |
+| `CUSTODIET_TOOL_CALL_THRESHOLD` | `ENFORCER_TOOL_CALL_THRESHOLD` |
 
-Tracks tool calls and demands a compliance check after a threshold (default: 50).
+Migration is a breaking change unless a backward-compat alias is added at load time — decision deferred to the rename commit.
 
-**Implementation**: `aops-core/lib/gates/engine.py` manages a countdown. When `ops_since_open >= threshold`, the gate triggers a warning or block on mutating tools (Edit, Write, Bash).
+## §9 Workflow composition (Phase 3 placeholder)
 
-**What it does**: Catches drift and violations mid-execution before user has to intervene
-**What it can't do**: Force agent to follow corrections (still relies on agent compliance)
+Task-creating agents compose compliant workflows by combining axioms, heuristics, and procedures at task-creation time. The agent enumerates which axioms apply to the task, which heuristics flag likely hazards, and which procedures are the current recommended sequence — then assembles them into a workflow the executing agent runs.
 
-### Layer 3: Observable Checkpoints
+**This layer is not yet formalised.** It is named here as pipeline L3 so the pyramid/map/mechanism specs have a consistent reference point. Phase 3 of `task-e64e29c5` and parent-epic `task-b5fec0b5` Thread 4 (workflows-as-logical-statements) carry the design work.
 
-TodoWrite and Plan Mode create visible artifacts user can review.
+## §10 Design principles
 
-**What this enables**: User sees if verification steps exist, creates paper trail
-**Limitation**: Agent can skip entirely
+1. **Layer defences** — no single mechanism is reliable. Combine base, middle, and tip tiers for any failure mode worth catching.
+2. **Prefer observable over invisible** — TodoWrite, task bodies, STATUS.md, gate icons. If a mechanism fires and the user cannot see it, the mechanism has not enforced.
+3. **Accept imperfection** — enforcement is encouragement with detection, not coercion. Design for drift, not for prevention.
+4. **Measure before changing** — the §5 evidence loop is the authority for tier changes. Authorial intuition is not evidence.
+5. **Least invasion first** — conventions before templates; templates before gates; soft gates before hard blocks; hard blocks before human approval. Escalate only on §5 evidence.
+6. **Show, don't tell** — where compliance is claimed, require information that demonstrates it. Tool signatures and task templates should carry the proof into the schema rather than accept reassurance.
 
-### Layer 4: Detection & Deny
+## §11 Component responsibilities
 
-- **PostToolUse Hooks**: Detect patterns like claims without evidence or diagnosis without reading.
-- **Deny Rules**: Hard blocks in `settings.json` or policy engines for sensitive paths (e.g., `~/.claude/*.json`).
+Enforcement failures fall into five root-cause categories:
 
-### Layer 5: Post-Hoc Verification
+| Category          | Definition                                                 |
+| ----------------- | ---------------------------------------------------------- |
+| Clarity Failure   | Instruction ambiguous or insufficiently emphasised         |
+| Context Failure   | Component did not provide relevant information when needed |
+| Blocking Failure  | Component did not block what it promised to block          |
+| Detection Failure | Component did not catch a violation it promised to catch   |
+| Gap               | No component existed for this case — create one            |
 
-- **QA Agent**: Independent subagent verifies work against original request and acceptance criteria.
-- **Handover Gate**: Blocks session exit until a valid Framework Reflection is provided and `/dump` is run.
+Multiple categories can apply; defence-in-depth can fail at multiple layers.
 
-## User Expectations
+### Root-cause analysis protocol
 
-The enforcement system ensures framework compliance through real-time gating and diagnostic feedback. Users can expect the following behaviors:
+1. Was there a rule? Check AXIOMS / HEURISTICS.
+2. Did the hydrator suggest the correct workflow?
+3. Did the agent follow the workflow? If yes, was output correct?
+4. Should a PreToolUse hook have blocked? Check hook rules.
+5. Should a PostToolUse hook have detected? Check detection hooks.
+6. Should a deny rule have blocked? Check `settings.json` / `policy_enforcer.py`.
+7. Should a pre-commit hook have caught? Check `.pre-commit-config.yaml`.
 
-### 1. Hydration Enforcement
+If all components met their responsibilities and the failure still occurred: **Gap** — create a new mechanism at the appropriate tier.
 
-- **Expectation**: Every new user prompt or session start must be hydrated by the `prompt-hydrator` before any non-infrastructure tools (Read, Edit, etc.) are used.
-- **Behavior**: If the agent skips hydration, the system will warn (default) or block tool use. The gate opens automatically when the hydrator subagent is dispatched.
-- **Verification**: Attempting a `Read` or `Edit` immediately after a user prompt without invoking the hydrator should trigger a `HYDRATION_GATE` warning or block.
+## §12 Verification — "Can it" ≠ "Does it"
 
-### 2. Periodic Compliance Audits (Custodiet)
+The top failure pattern in this framework is conflating capability with actual state. An agent that checks whether code _could_ work, or what defaults _would_ be, has not verified that anything _is_ working.
 
-- **Expectation**: Agents are subject to periodic compliance checks to detect drift and axiom violations.
-- **Behavior**: After 50 tool calls (default), the system warns or blocks mutating tools (Edit, Write, Bash) until the `custodiet` subagent verifies the session. A countdown (e.g., "◇ 5") appears in the gate status strip as the threshold approaches.
-- **Verification**: Performing 50+ tool calls without a compliance check should trigger the `CUSTODIET_GATE` policy.
+| Agent checked              | Should have checked |
+| -------------------------- | ------------------- |
+| Framework default value    | Actual config file  |
+| Code capability exists     | Feature is enabled  |
+| Tool exists                | Tool is configured  |
+| "Should work" / "probably" | Observed output     |
 
-### 3. Session-End Verification (QA & Handover)
+Evidence types, in decreasing order of trust:
 
-- **Expectation**: A session cannot be closed until work is verified and documented.
-- **Behavior**: The `Stop` event is blocked if:
-  - A "Framework Reflection" is missing or malformed in the agent's response. _(Handover gate — active)_
-  - The `/dump` skill has not been run (if a task was bound to the session). _(Handover gate — active)_
-  - The `/qa` skill (or `qa` agent) has not been invoked to verify results. _(QA gate — planned, not yet enforced: gate starts OPEN and has no closing trigger)_
-- **Verification**: Running `Stop` without a Framework Reflection or `/dump` should return a `HANDOVER_GATE` block. The `QA_GATE` block is not yet active.
+| Type              | Definition                                 |
+| ----------------- | ------------------------------------------ |
+| `actual_state`    | Config files read, runtime output captured |
+| `default_only`    | Only defaults checked                      |
+| `capability_only` | Only documented capabilities               |
+| `none`            | No evidence gathered                       |
 
-### 4. Commitment Safety
+Conclusions require `actual_state`. Anything less is a claim, not a finding.
 
-- **Expectation**: No work is left uncommitted or unpushed upon session exit.
-- **Behavior**: The system blocks session exit if uncommitted changes exist in the repository. It warns if there are unpushed commits.
-- **Verification**: Modifying a file and attempting to exit without committing should trigger the `COMMIT_GATE` block.
+---
 
-### 5. Path & Credential Protection
+**Related specs**
 
-- **Expectation**: Critical framework files and user credentials are isolated from agent modification.
-- **Behavior**: Writes to protected paths (e.g., `.claude/settings.json`, `$AOPS/aops-core/hooks/`) are blocked via `settings.json` deny rules. Agents operate with a limited-scope GitHub PAT and no SSH agent access.
-- **Verification**: Attempting to write to `~/.claude/settings.json` should be blocked by the underlying client or a hard deny rule.
-
-### 6. Transparent Gate Status
-
-- **Expectation**: Users and agents can see the current state of enforcement gates.
-- **Behavior**: A status icon strip (e.g., `💧 ◇ 12 ▶ aops-123`) is appended to system messages, indicating pending hydration, custodiet countdowns, and active task bindings.
-- **Verification**: The icon strip should appear in the system message of every hook response where gates are active.
-
-## Verification: The Top Failure Pattern
-
-**"Can it?" ≠ "Does it?"**
-
-Agents conflate capability with actual state:
-
-| Agent checked           | Should have checked |
-| ----------------------- | ------------------- |
-| Framework default value | Actual config file  |
-| Code capability exists  | Feature is enabled  |
-| Tool exists             | Tool is configured  |
-
-**Evidence Types** (require actual_state for conclusions):
-
-- `actual_state` - Config files read, runtime output captured
-- `default_only` - Only defaults checked
-- `capability_only` - Only documented capabilities
-- `none` - No evidence gathered
-
-## Design Principles
-
-1. **Layer defenses** - No single mechanism reliable
-2. **Prefer observable over invisible** - TodoWrite/Plan create artifacts
-3. **Accept imperfection** - Influence, not force
-4. **Measure before changing** - Track compliance first
-5. **Least invasive first** - Conventions before gates
-
-## Component Responsibilities
-
-When failures occur, we distinguish:
-
-- **PROXIMATE CAUSE**: Agent made a mistake (non-deterministic, outside our control)
-- **ROOT CAUSE**: Framework component failed its responsibility (deterministic, within our control)
-
-> Root Cause = Component did not provide what it promised, OR did not block what it promised, OR did not detect what it promised.
-
-### Root Cause Categories
-
-| Category          | Definition                                             |
-| ----------------- | ------------------------------------------------------ |
-| Clarity Failure   | Instruction ambiguous or insufficiently emphasized     |
-| Context Failure   | Component didn't provide relevant information          |
-| Blocking Failure  | Component didn't block what it should have             |
-| Detection Failure | Component didn't catch violation it should have        |
-| Gap               | No component exists for this case - need to create one |
-
-**Note**: Multiple categories can apply (defense-in-depth failed at multiple layers).
-
-### Responsibilities by Phase
-
-#### Pre-Execution Phase
-
-| Component             | Responsibility                                                | Verification                                          |
-| --------------------- | ------------------------------------------------------------- | ----------------------------------------------------- |
-| AXIOMS/HEURISTICS     | Rules stated unambiguously with reasoning                     | Each rule has single interpretation + WHY             |
-| Intent Router         | Correct classification, relevant context, workflow suggestion | Classification matches human judgment                 |
-| Guardrails            | Task-specific emphasis applied                                | Guardrails in output match task type table            |
-| Intervention Reminder | User corrections take priority over in-progress work          | Agent halts current work on user intervention         |
-| Compliance Auditor    | Detect principle violations mid-execution                     | Check fires at threshold, returns relevant violations |
-
-#### Execution Phase
-
-| Component         | Responsibility                       | Verification                            |
-| ----------------- | ------------------------------------ | --------------------------------------- |
-| Agent Abstraction | Correct behavior when agent followed | Agent execution produces correct output |
-| PreToolUse Hooks  | Block prohibited operations          | Hook fires on known bad input           |
-| Tool Restriction  | Wrong tools unavailable              | Tool not in allowed list                |
-
-#### Post-Execution Phase
-
-| Component         | Responsibility                       | Verification                     |
-| ----------------- | ------------------------------------ | -------------------------------- |
-| PostToolUse Hooks | Detect violations, demand correction | Hook detects violation in output |
-| Deny Rules        | Absolute prevention                  | Operation blocked                |
-| Pre-Commit Hooks  | Block prohibited commits             | pre-commit run catches violation |
-
-### Root Cause Analysis Protocol
-
-When analyzing a failure:
-
-1. **Was there a rule?** Check AXIOMS/HEURISTICS for applicable rule
-2. **Did router suggest correct workflow?** Check hydrator output
-3. **Did agent follow workflow?** If yes, was output correct?
-4. **Should PreToolUse have blocked?** Check hook rules
-5. **Should PostToolUse have detected?** Check detection hooks
-6. **Should deny rule have blocked?** Check settings.json
-7. **Should pre-commit have caught?** Check .pre-commit-config.yaml
-
-If all components met their responsibilities but failure still occurred: **Gap** - create new enforcement at appropriate level.
+- `specs/enforcement-map.md` — current-state failure-mode registry
+- `specs/enforcement-mechanisms.md` — per-mechanism reference catalogue
+- `specs/ultra-vires-enforcer.md` — enforcer agent + gate internal design
+- `aops-core/AXIOMS.md` — universal axioms (read only by `rbg`)
+- `.agents/rules/HEURISTICS.md` — advisory heuristics

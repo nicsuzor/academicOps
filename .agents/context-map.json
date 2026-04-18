@@ -104,7 +104,7 @@
         "tool category",
         "compliance",
         "hydration gate",
-        "custodiet gate",
+        "enforcer gate",
         "env var",
         "gate mode"
       ]
@@ -170,10 +170,10 @@
       "keywords": ["plugin", "architecture", "aops-core", "aops-tools", "distribution", "component boundaries"]
     },
     {
-      "topic": "custodiet",
-      "path": "specs/ultra-vires-custodiet.md",
+      "topic": "enforcer",
+      "path": "specs/ultra-vires-enforcer.md",
       "description": "Ultra vires detection specification — authority boundaries, scope drift detection, compliance checking",
-      "keywords": ["custodiet", "ultra vires", "authority", "compliance", "audit", "scope", "drift"]
+      "keywords": ["enforcer", "ultra vires", "authority", "compliance", "audit", "scope", "drift"]
     },
     {
       "topic": "polecat_system",

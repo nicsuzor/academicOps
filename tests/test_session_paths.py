@@ -176,7 +176,7 @@ class TestSessionPaths(unittest.TestCase):
             ):
                 try:
                     gate_path = session_paths.get_gate_file_path(
-                        "custodiet",
+                        "enforcer",
                         "07328230-44d4-414b-9fec-191a6eec0948",
                         {},  # No transcript_path - simulating polecat worker
                     )
@@ -187,7 +187,7 @@ class TestSessionPaths(unittest.TestCase):
 
                 self.assertIsNotNone(gate_path, "get_gate_file_path should return a path")
                 self.assertIsInstance(gate_path, Path, "Expected Path object")
-                self.assertIn("custodiet", str(gate_path), "Gate name should appear in path")
+                self.assertIn("enforcer", str(gate_path), "Gate name should appear in path")
                 self.assertIn(".gemini", str(gate_path), "Path should be in Gemini directory")
 
     def test_get_gate_file_path_claude(self):
@@ -200,12 +200,12 @@ class TestSessionPaths(unittest.TestCase):
                 with patch("lib.session_paths.get_claude_project_folder", return_value="-project"):
                     # Clear env vars that leak from live sessions
                     with patch.dict(os.environ, {}, clear=False):
-                        os.environ.pop("AOPS_GATE_FILE_CUSTODIET", None)
+                        os.environ.pop("AOPS_GATE_FILE_ENFORCER", None)
                         os.environ.pop("AOPS_SESSIONS", None)
                         os.environ.pop("GEMINI_SESSION_ID", None)
                         os.environ.pop("AOPS_SESSION_STATE_DIR", None)
                         gate_path = session_paths.get_gate_file_path(
-                            "custodiet", "07328230-44d4-414b-9fec-191a6eec0948", date="2026-01-24"
+                            "enforcer", "07328230-44d4-414b-9fec-191a6eec0948", date="2026-01-24"
                         )
 
                         self.assertIn(".claude/projects/-project", str(gate_path))
@@ -213,7 +213,7 @@ class TestSessionPaths(unittest.TestCase):
                         import re
 
                         self.assertTrue(
-                            re.search(r"20260124-\d{4}-07328230-.*-custodiet\.md", str(gate_path))
+                            re.search(r"20260124-\d{4}-07328230-.*-enforcer\.md", str(gate_path))
                         )
 
     def test_get_gate_file_path_gemini_prefix(self):
@@ -233,10 +233,10 @@ class TestSessionPaths(unittest.TestCase):
                 patch.object(Path, "home", return_value=Path(tmpdir)),
                 patch.dict(os.environ, env_overrides, clear=False),
             ):
-                os.environ.pop("AOPS_GATE_FILE_CUSTODIET", None)
+                os.environ.pop("AOPS_GATE_FILE_ENFORCER", None)
                 os.environ.pop("AOPS_SESSIONS", None)
                 gate_path = session_paths.get_gate_file_path(
-                    "custodiet", "gemini-2026-01-24-abc12345", date="2026-01-24"
+                    "enforcer", "gemini-2026-01-24-abc12345", date="2026-01-24"
                 )
 
                 self.assertIn(".gemini/tmp", str(gate_path))
@@ -245,7 +245,7 @@ class TestSessionPaths(unittest.TestCase):
                 import re
 
                 self.assertTrue(
-                    re.search(rf"20260124-\d{{4}}-{expected_hash}-.*-custodiet\.md", str(gate_path))
+                    re.search(rf"20260124-\d{{4}}-{expected_hash}-.*-enforcer\.md", str(gate_path))
                 )
 
     def test_get_gate_file_path_gemini_polecat(self):
@@ -260,17 +260,17 @@ class TestSessionPaths(unittest.TestCase):
                 patch.object(Path, "home", return_value=Path(tmpdir)),
                 patch.dict(os.environ, {"AOPS_SESSION_STATE_DIR": str(state_dir)}, clear=False),
             ):
-                os.environ.pop("AOPS_GATE_FILE_CUSTODIET", None)
+                os.environ.pop("AOPS_GATE_FILE_ENFORCER", None)
                 os.environ.pop("AOPS_SESSIONS", None)
                 gate_path = session_paths.get_gate_file_path(
-                    "custodiet", "07328230-44d4-414b-9fec-191a6eec0948", date="2026-01-24"
+                    "enforcer", "07328230-44d4-414b-9fec-191a6eec0948", date="2026-01-24"
                 )
 
                 self.assertIn(".gemini/tmp/abc123hash", str(gate_path))
                 import re
 
                 self.assertTrue(
-                    re.search(r"logs/20260124-\d{4}-07328230-.*-custodiet\.md", str(gate_path))
+                    re.search(r"logs/20260124-\d{4}-07328230-.*-enforcer\.md", str(gate_path))
                 )
 
 

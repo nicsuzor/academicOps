@@ -238,7 +238,7 @@ When running batch retros, the orchestrator should:
 1. Create a task list for all sessions to process
 2. Maintain max 4 parallel agents
 3. Track progress via TaskUpdate
-4. Set `CUSTODIET_GATE_MODE=off` to avoid ~200K tokens of compliance overhead on a user-directed loop
+4. Set `ENFORCER_GATE_MODE=off` to avoid ~200K tokens of compliance overhead on a user-directed loop
 5. After all sessions complete, produce a summary with verdict distribution and top recurring themes
 
 ## What This Command Does NOT Do

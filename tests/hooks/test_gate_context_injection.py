@@ -42,10 +42,10 @@ def _reinit_gates():
 
 @pytest.fixture(autouse=True)
 def _pin_gate_modes(monkeypatch):
-    monkeypatch.setenv("CUSTODIET_GATE_MODE", "block")
+    monkeypatch.setenv("ENFORCER_GATE_MODE", "block")
     monkeypatch.setenv("QA_GATE_MODE", "block")
     monkeypatch.setenv("HANDOVER_GATE_MODE", "block")
-    monkeypatch.setenv("CUSTODIET_TOOL_CALL_THRESHOLD", "50")
+    monkeypatch.setenv("ENFORCER_TOOL_CALL_THRESHOLD", "50")
     _reinit_gates()
     yield
     _reinit_gates()
@@ -206,10 +206,10 @@ class TestStopBlockHasContextInjection:
 class TestPreToolUseBlockHasContextInjection:
     """PreToolUse blocks must always produce non-empty context_injection."""
 
-    def test_custodiet_block_has_context(self, router):
-        """Custodiet gate blocking at threshold must include context_injection."""
+    def test_enforcer_block_has_context(self, router):
+        """Enforcer gate blocking at threshold must include context_injection."""
         state = SessionState.create("test-ptu-ctx")
-        state.gates["custodiet"].ops_since_open = 75
+        state.gates["enforcer"].ops_since_open = 75
 
         ctx = HookContext(
             session_id="test-ptu-ctx",
@@ -223,7 +223,7 @@ class TestPreToolUseBlockHasContextInjection:
         assert result is not None
         assert result.verdict != GateVerdict.ALLOW
         assert result.context_injection and len(result.context_injection) > 0, (
-            f"Custodiet block has no context_injection. "
+            f"Enforcer block has no context_injection. "
             f"verdict={result.verdict.value}, "
             f"context_injection={result.context_injection!r}"
         )

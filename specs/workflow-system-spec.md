@@ -312,7 +312,7 @@ A task is **skill-sized** when it can be fully completed by invoking a single sk
 | ------------------------------------------- | ------------ | ----------------------------- |
 | "Create a test for the hook"                | ✅ Yes       | → python-dev skill            |
 | "Generate a flowchart of the process"       | ✅ Yes       | → flowchart skill             |
-| "Debug the custodiet hook"                  | ❌ No        | Multiple skills, unclear path |
+| "Debug the enforcer hook"                   | ❌ No        | Multiple skills, unclear path |
 | "Analyze compliance rates from transcripts" | ✅ Yes       | → analyst skill               |
 | "Convert document to markdown"              | ✅ Yes       | → convert-to-md skill         |
 
@@ -368,7 +368,7 @@ When an agent claims a task, apply this decision tree:
 
 **Example decomposition**:
 
-"Debug the custodiet hook" →
+"Debug the enforcer hook" →
 
 1. "Use python-dev skill to create a reproducible test case"
 2. "Use analyst skill to analyze compliance rates from transcripts"

@@ -51,7 +51,7 @@ Use this technique when:
 - You need exact format compliance (no preamble, no elaboration)
 - Other emphasis techniques haven't achieved sufficient compliance
 
-Example (custodiet agent):
+Example (enforcer agent):
 
 ```
 **CRITICAL: Your output is parsed programmatically.** The calling hook extracts
@@ -95,7 +95,7 @@ parsing failures and break the enforcement pipeline.
 
 **Spec Location**: [specs/enforcement.md | task body | N/A]
 
-**Escalation**: [auto | critic | custodiet | human]
+**Escalation**: [auto | critic | enforcer | human]
 ```
 
 **Escalation Matrix**:
@@ -120,14 +120,14 @@ parsing failures and break the enforcement pipeline.
 
 - `/learn` command requires this format before framework edits
 - PreToolUse hook can validate format presence for framework file edits
-- Critic/custodiet receive the justification block as input
+- Critic/enforcer receive the justification block as input
 
 **Fails when**:
 
 - Agent fabricates "Rules Loaded" without actually reading
 - Format becomes boilerplate (agent copy-pastes without reasoning)
 
-**Mitigation**: Custodiet can spot-check that claimed principles are actually relevant to the change.
+**Mitigation**: Enforcer can spot-check that claimed principles are actually relevant to the change.
 
 ## When Each Mechanism Works
 

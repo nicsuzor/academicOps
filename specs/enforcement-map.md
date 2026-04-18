@@ -1,32 +1,70 @@
 ---
-name: enforcement-map
 title: Enforcement Map
 type: state
 category: state
-description: How framework rules are enforced. Axioms are inviolable and enforced by the rbg agent.
-permalink: enforcement-map
-tags: [framework, enforcement]
+description: Current-state registry of framework failure modes and which mechanisms catch them. Keyed by failure mode, not by mechanism. Evidence is GitHub issues.
+tier: core
+depends_on: [enforcement]
+tags: [framework, enforcement, failure-modes, state]
 ---
 
 # Enforcement Map
 
-## Universal Axioms
+This is the **current-state** companion to `specs/enforcement.md`. Where that document is the design statement (the pyramid, the pipeline, the principles), this one is the live registry: **"for this failure mode, this is the mechanism that catches it today, and here is the evidence base."**
 
-**Source**: `aops-core/AXIOMS.md` (canonical, plugin-relative).
-**Optional project supplement**: `.agents/rules/AXIOMS.md` in the working directory — adds, never overrides.
-**Reader**: only the `rbg` agent. No other agent loads axiom content.
+The design doc evolves slowly; this map evolves as the framework learns. When the §5 evidence loop in `specs/enforcement.md` completes a cycle — a pattern surfaces, a fix ships — a row in this map changes.
 
-## Enforcement Mechanism
+## Conventions
 
-| Layer       | Mechanism                                                                                          |
-| ----------- | -------------------------------------------------------------------------------------------------- |
-| Periodic    | The `enforcer` gate fires at intervals and requires `rbg` invocation. Tools block until satisfied. |
-| Targeted    | Other agents invoke `rbg` for axiom-derivation or compliance checks when needed.                   |
-| Hard blocks | `policy_enforcer.py` denies specific destructive operations at PreToolUse.                         |
-| Heuristics  | Advisory guidance in `HEURISTICS.md` — informs, does not block.                                    |
+- **One row per failure mode.** Not per mechanism. Mechanisms appear in multiple rows.
+- **Evidence is GitHub issues.** Columns cite issue numbers from the framework repo.
+- **Intervention point is expressed as `L<n> / <tier>`** — pipeline layer and pyramid tier from `specs/enforcement.md`.
+- **Status** tracks the specific intervention for this failure mode, not the mechanism globally. A mechanism can be `active` overall but `planned` against a particular failure mode.
 
-## Open Items
+## Failure-mode registry
 
-- Exact invocation cadence and trigger rules for the `enforcer` gate are still being formalised.
-- Project-local axioms (`.agents/rules/AXIOMS.md`) loading is `rbg`-only — see `aops-core/agents/rbg.md`.
-- GHA agents (built into `scripts/build.py`) are intended to follow `rbg` precisely; the inlining mechanism is left as-is for now.
+| Failure mode                                                                                            | Evidence (GH issues)                                                         | Intervention point                              | Mechanism                                                                                                               | Mode                                  | Status                                                                           |
+| ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------- | -------------------------------------------------------------------------------- |
+| **Criterion substitution** — reviewer re-defines the acceptance criterion to make a failing change pass | #621                                                                         | L7 / middle; L9 / middle                        | rbg subagent + pr-reviewer GHA                                                                                          | warn → block                          | warn-only                                                                        |
+| **Planner capture embeds action items as body prose** — task created without decomposing into subtasks  | #582                                                                         | L0 / base; L2 / middle                          | `/q` + `/planner` decomposition checks                                                                                  | warn                                  | warn-only                                                                        |
+| **Plan mode bypasses Gap Principle** — agent drafts a plan without applying P#71 gap-first reasoning    | #559                                                                         | L1 / base; L2 / middle                          | lightweight hydrator + planner template                                                                                 | inject + warn                         | warn-only                                                                        |
+| **Agent exceeds session scope** (ultra-vires Type B — deliberate scope expansion at TodoWrite)          | (see `specs/ultra-vires-enforcer.md`)                                        | L4 / middle; L7 / middle                        | enforcer gate + rbg invocation                                                                                          | warn (default) / block (configurable) | warn-only                                                                        |
+| **Reactive helpfulness** (ultra-vires Type A — agent investigates after an error without authorization) | (see `specs/ultra-vires-enforcer.md`)                                        | L4 / middle                                     | enforcer gate (PostToolUse on tool error)                                                                               | warn                                  | planned                                                                          |
+| **Unverified completion claim** — agent marks task done without `actual_state` evidence                 | P#17, P#103 — no single issue yet, pattern observed repeatedly in QA reviews | L2 / middle; L7 / middle; L8 / middle           | proof-of-compliance fields (`completion_evidence`, `release_task.summary`) + qa / marsha review + /dump release summary | inject (schema) + warn                | active (partial — only `release_task.summary` and `completion_evidence` enforce) |
+| **Hydration skipped in subagent** — parent-skipped hydration cascades to children                       | (pattern — verify in session logs)                                           | L1 / base                                       | lightweight hydrator                                                                                                    | inject                                | active — known gap: subagent inherit-from-parent means parent skip propagates    |
+| **Enforcer threshold exceeded without compliance check**                                                | (pattern tracked by gate state)                                              | L4 / middle                                     | enforcer gate countdown                                                                                                 | warn / block                          | active                                                                           |
+| **Destructive git bypass** — e.g. `git reset --hard`, `git push --force`, `stash drop`                  | Historical pattern; policy_enforcer.py coverage                              | L5 / tip                                        | policy_enforcer.py PreToolUse                                                                                           | block                                 | active                                                                           |
+| **Credential leak path** — env files or secrets written to shared locations                             | (prevention-only; no runtime verification)                                   | L5 / tip                                        | credential isolation at SessionStart                                                                                    | block                                 | active — known gap: no runtime re-verification                                   |
+| **Oversized or prohibited `.md` writes** — e.g. writes to `*-GUIDE.md`, oversized root-level docs       | Historical pattern                                                           | L5 / tip                                        | policy_enforcer.py PreToolUse                                                                                           | block                                 | active                                                                           |
+| **QA not performed before completion claim** — epic closed without QA task graduating                   | (pattern — QA gate is planned)                                               | L4 / middle                                     | QA gate                                                                                                                 | warn → block                          | planned                                                                          |
+| **Handover without framework reflection** — session Stop with bound task but no reflection block        | Pattern observed in /dump audits                                             | L8 / middle; L8 / tip when handover gate blocks | handover gate + /dump skill                                                                                             | warn / block                          | active                                                                           |
+| **Commit without task reference** — commit in a task context with no PKB backlink                       | Pattern                                                                      | L8 / middle                                     | commit gate                                                                                                             | warn                                  | active                                                                           |
+| **PR merged past branch-protection state** — e.g. admin-override without review                         | Historical; branch-protection enforced                                       | L10 / tip                                       | branch protection                                                                                                       | block                                 | active                                                                           |
+| **Review-loop oscillation** — PR comment cycle exceeds threshold without progress                       | Pattern                                                                      | L10 / tip                                       | loop detector                                                                                                           | warn → block                          | active — verify threshold                                                        |
+| **Downstream task blocked after upstream done** — `depends_on` not surfaced post-merge                  | Pattern                                                                      | L11 / base                                      | task-completion unblocked surfacing                                                                                     | inject                                | active (partial)                                                                 |
+| **Framework pattern not learned** — same failure repeats across sessions without `/learn` filing        | (meta — this row exists because the loop itself can fail)                    | Evidence loop / Step 2                          | `/learn` skill                                                                                                          | warn                                  | active                                                                           |
+| **Pattern not detected across issues** — Steps 4–5 of evidence loop unimplemented                       | (meta — principal known gap, see `specs/enforcement.md` §5)                  | Evidence loop / Step 4                          | `/aops` pattern detection                                                                                               | —                                     | aspirational                                                                     |
+
+## How to add a row
+
+1. Observe the failure in the field (QA / marsha fail, /retro, /sleep, user report, post-merge regression).
+2. If no existing GH issue tracks the pattern, file one via `/learn`. The `/learn` skill enforces the root-cause-analysis schema and anonymisation. Labels should include the layer (e.g. `framework`, `enforcement`) and criticality.
+3. Decide the intervention point by walking the pipeline layers in order: is this a capture / context / decomposition / execution / review / handover / merge / follow-up problem? Then pick the pyramid tier using the least-invasion principle (`specs/enforcement.md` §10 principle 5).
+4. Add the row here with a link to the GH issue(s). Set status based on whether the mechanism currently covers the failure mode (`active`), is configurable but off (`warn-only`), or does not yet exist (`planned` / `aspirational`).
+5. When a PR ships that changes the intervention, update the row in the same PR.
+
+## Known-gap flags
+
+These rows call out framework gaps rather than mechanisms currently catching the failure:
+
+- **Criterion substitution** — rbg and pr-reviewer both flag, but the block is warn-only; no gate prevents merge.
+- **Reactive helpfulness** — PostToolUse detection planned (`specs/ultra-vires-enforcer.md` Phase 2); currently only the periodic enforcer-gate countdown catches drift after the fact.
+- **QA gate** — never closes; epics can complete without a verified QA task.
+- **Subagent hydration inherit** — parent's skip cascades; no subagent-independent hydration.
+- **`/aops` pattern detection + recommendation** — Steps 4–5 of the evidence loop are aspirational. Failure evidence accumulates in GH issues, but no mechanism reads the pattern and proposes a pyramid adjustment.
+
+## Related
+
+- `specs/enforcement.md` — design statement (pipeline, pyramid, evidence loop)
+- `specs/enforcement-mechanisms.md` — per-mechanism reference catalogue
+- `specs/ultra-vires-enforcer.md` — enforcer agent and gate internal design

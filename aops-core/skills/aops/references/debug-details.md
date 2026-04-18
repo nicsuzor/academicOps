@@ -263,7 +263,7 @@ Look for these patterns:
 | **Timeout with few tool calls**  | Stuck in loop                     | Check for recursive spawns                      |
 | **Timeout with many tool calls** | Over-engineered workflow          | Prescribed overkill; add "trivial task" bypass  |
 | **Tool error cascade**           | First error caused confusion      | Fix the first error; later ones are symptoms    |
-| **Custodiet CANNOT_ASSESS**      | Audit file has incomplete context | Expected for short sessions; not a real failure |
+| **Enforcer CANNOT_ASSESS**       | Audit file has incomplete context | Expected for short sessions; not a real failure |
 | **Write "file not read" error**  | Tried to create new file          | Use Bash heredoc or fix Write tool handling     |
 
 ### 5. Example: Demo Test Timeout Investigation
@@ -286,11 +286,11 @@ cd $AOPS && uv run python scripts/session_transcript.py \
 
 1. Turn 1 took **2 minutes 34 seconds** (way too long)
 2. Prescribed full **TDD workflow with 5 todo items**
-3. Custodiet spawned but returned `CANNOT_ASSESS` (incomplete context)
+3. Enforcer spawned but returned `CANNOT_ASSESS` (incomplete context)
 4. Write tool failed ("file not read"), Bash heredoc also failed ("file exists")
 5. Session timed out before completing
 
-**Root cause**: Framework overhead (TDD prescription + custodiet) consumed all time on a trivial task.
+**Root cause**: Framework overhead (TDD prescription + enforcer) consumed all time on a trivial task.
 
 **Axiom violations identified**:
 

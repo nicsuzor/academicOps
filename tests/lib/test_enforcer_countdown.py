@@ -1,6 +1,6 @@
-"""Tests for custodiet countdown warning feature.
+"""Tests for enforcer countdown warning feature.
 
-Tests the subtle countdown warning that appears before the custodiet
+Tests the subtle countdown warning that appears before the enforcer
 threshold is reached, giving agents advance notice to run compliance checks.
 """
 
@@ -148,13 +148,13 @@ class TestCountdownIntegration:
     """Integration tests for countdown with full gate check flow."""
 
     @pytest.fixture
-    def custodiet_like_gate(self) -> GenericGate:
-        """Create a gate similar to custodiet with countdown."""
+    def enforcer_like_gate(self) -> GenericGate:
+        """Create a gate similar to the enforcer with countdown."""
         from lib.gate_types import GateCondition, GatePolicy
 
         config = GateConfig(
-            name="custodiet_test",
-            description="Custodiet-like gate for testing",
+            name="enforcer_test",
+            description="Enforcer-like gate for testing",
             countdown=CountdownConfig(
                 start_before=5,
                 threshold=15,
@@ -189,30 +189,30 @@ class TestCountdownIntegration:
 
     def test_countdown_appears_before_block(
         self,
-        custodiet_like_gate: GenericGate,
+        enforcer_like_gate: GenericGate,
         session_state: SessionState,
         hook_context: HookContext,
     ) -> None:
         """Countdown message appears in check() result before threshold."""
-        gate_state = session_state.get_gate("custodiet_test")
+        gate_state = session_state.get_gate("enforcer_test")
         gate_state.ops_since_open = 12
 
-        result = custodiet_like_gate.check(hook_context, session_state)
+        result = enforcer_like_gate.check(hook_context, session_state)
         assert result is not None
         assert result.verdict == GateVerdict.ALLOW
         assert "3 turns until check required" in result.system_message
 
     def test_policy_blocks_at_threshold(
         self,
-        custodiet_like_gate: GenericGate,
+        enforcer_like_gate: GenericGate,
         session_state: SessionState,
         hook_context: HookContext,
     ) -> None:
         """Policy blocks at threshold, no countdown (not needed)."""
-        gate_state = session_state.get_gate("custodiet_test")
+        gate_state = session_state.get_gate("enforcer_test")
         gate_state.ops_since_open = 15
 
-        result = custodiet_like_gate.check(hook_context, session_state)
+        result = enforcer_like_gate.check(hook_context, session_state)
         assert result is not None
         assert result.verdict == GateVerdict.DENY
         # Policy message, not countdown
@@ -272,9 +272,9 @@ class TestCountdownIntegration:
         """
         from lib.gate_types import GateCondition, GatePolicy
 
-        # Create gate with temp_path in countdown template (like custodiet)
+        # Create gate with temp_path in countdown template (like the enforcer)
         config = GateConfig(
-            name="custodiet",  # Use actual gate name for path computation
+            name="enforcer",  # Use actual gate name for path computation
             description="Gate with temp_path in countdown",
             countdown=CountdownConfig(
                 start_before=5,
@@ -295,7 +295,7 @@ class TestCountdownIntegration:
         gate = GenericGate(config)
 
         # Set ops to be in countdown window
-        gate_state = session_state.get_gate("custodiet")
+        gate_state = session_state.get_gate("enforcer")
         gate_state.ops_since_open = 12
         # NOTE: temp_path is NOT set in metrics - this is the bug condition
 
@@ -306,4 +306,4 @@ class TestCountdownIntegration:
         # Should NOT show "(not available)" - should compute path deterministically
         assert "(not available)" not in result.system_message
         # Should show a valid file path (contains session hash and gate name)
-        assert "custodiet.md" in result.system_message
+        assert "enforcer.md" in result.system_message

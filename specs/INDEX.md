@@ -26,7 +26,7 @@ How the system works today. Required reading for understanding the framework.
 | [[prompt-hydration.md]]         | ✅     | Transform raw prompt into execution plan. Includes optimisation proposals (merged from former selective-injection and hydration-overhead specs) |
 | [[session-start-injection.md]]  | ✅     | Three-tier context loading (baseline + JIT)                                                                                                     |
 | [[hook-router.md]]              | ✅     | Single dispatch entry point for all hooks                                                                                                       |
-| [[ultra-vires-custodiet.md]]    | 🔶     | Drift detection (agent defined, automated gate archived)                                                                                        |
+| [[ultra-vires-enforcer.md]]     | 🔶     | Drift detection (agent defined, automated gate archived)                                                                                        |
 | [[workflow-system-spec.md]]     | 📋     | Composable markdown-based workflow engine                                                                                                       |
 | [[plugin-architecture.md]]      | ✅     | Component boundaries (aops-core vs aops-tools)                                                                                                  |
 | [[verification-system.md]]      | 📋     | Verify-first enforcement (design decision, not yet implemented)                                                                                 |
