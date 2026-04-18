@@ -41,7 +41,7 @@ GATE_CONFIGS = [
             GateTrigger(
                 condition=GateCondition(
                     hook_event="^(PreToolUse|SubagentStart|SubagentStop)$",
-                    subagent_type_pattern="^(aops-core:)?(enforcer|rbg)$",
+                    subagent_type_pattern="^(aops[-_]core[:_])?(enforcer|rbg)$",
                 ),
                 transition=GateTransition(
                     reset_ops_counter=True,

@@ -3,7 +3,7 @@ name: enforcer-instruction
 title: Enforcer Instruction Template
 category: template
 description: |
-  Short instruction injected by PostToolUse hook (enforcer_gate.py).
+  Short instruction injected by PostToolUse hook (the enforcer_gate policy).
   Tells main agent to invoke enforcer (compliance) agent with temp file path.
   Variables: {temp_path} - Path to temp file with full compliance context
 ---
