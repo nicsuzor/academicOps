@@ -90,14 +90,25 @@ flowchart LR
 ### State Machine
 
 ```
-active → in_progress → merge_ready (PR filed) → done (after merge)
-                     → done (non-code task completed)
-                     → review (needs human attention)
-                     → blocked (external dependency)
-                     → cancelled (abandoned)
-         ↕
-      waiting (deferred for later)
+draft → active → in_progress → merge_ready (PR filed) → done (after merge)
+                             → done (non-code task completed)
+                             → review (needs human attention)
+                             → blocked (external dependency)
+                             → cancelled (abandoned)
+                ↕
+             waiting (deferred for later)
 ```
+
+**`draft → active` graduation** requires the task to have:
+
+1. Concrete acceptance criteria (non-empty body with AC or checklist)
+2. Explicit effort estimate OR explicit `complexity` field
+3. No high-uncertainty blockers (blockers must be explicit `depends_on` links, not vague body text)
+4. Either leaf (no children) OR decomposed into subtasks where all children have a status other than `draft`
+
+Tasks created via `create_task` default to `draft`. They must be manually or automatically graduated to `active` before they appear in the ready queue.
+
+This gate exists to prevent agents from picking up half-baked tasks before they have been properly planned. See [[specs/orchestrator-boundary.md]] for context.
 
 ### Claiming Tasks
 
@@ -137,17 +148,21 @@ release_task(id, status, summary, pr_url?, branch?, blocker?, reason?)
 
 ### Canonical Statuses
 
-| Status        | Meaning                                 | Terminal? |
-| ------------- | --------------------------------------- | --------- |
-| `active`      | Ready to be worked on                   | No        |
-| `in_progress` | Currently being worked on               | No        |
-| `merge_ready` | Work complete, PR filed, awaiting merge | No        |
-| `review`      | Needs human/manager review              | No        |
-| `blocked`     | Waiting on external dependency          | No        |
-| `waiting`     | Deferred for later                      | No        |
-| `draft`       | Early/incomplete/seed content           | No        |
-| `done`        | Completed successfully                  | Yes       |
-| `cancelled`   | Abandoned/no longer relevant            | Yes       |
+| Status        | Meaning                                           | Terminal? | Ready queue? |
+| ------------- | ------------------------------------------------- | --------- | ------------ |
+| `draft`       | Created but not yet planned — AC/estimate/complexity missing | No        | No           |
+| `active`      | Planned and ready to be worked on                 | No        | Yes          |
+| `in_progress` | Currently being worked on                         | No        | No           |
+| `merge_ready` | Work complete, PR filed, awaiting merge           | No        | No           |
+| `review`      | Needs human/manager review                        | No        | No           |
+| `blocked`     | Waiting on external dependency                    | No        | No           |
+| `waiting`     | Deferred for later                                | No        | No           |
+| `done`        | Completed successfully                            | Yes       | No           |
+| `cancelled`   | Abandoned/no longer relevant                      | Yes       | No           |
+
+**Default on create**: `draft`. Tasks must be explicitly graduated to `active` (manually or by a planner agent verifying the graduation conditions above).
+
+**Implementation note**: The `draft` → `active` graduation is currently manual. Automated graduation (a planner agent verifying conditions) is a planned improvement — see [[specs/orchestrator-boundary.md]].
 
 Additional statuses exist (`paused`, `someday`, `submitted`, `accepted`) — see `graph.rs` for the full list and alias mappings.
 
