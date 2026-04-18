@@ -56,7 +56,7 @@ The constraint exists today as a **prompt-level instruction only** (Level 2 in t
 | Make feature commits                    | Polecat commits on its own branch |
 | Push code and open PRs for feature work | Polecat handles its own PR        |
 
-**Exception**: Hotfixes, one-liners, and urgent fixes may bypass this boundary at human request. The test is whether it was explicitly requested and whether the work is truly too small to queue.
+**Exception**: Hotfixes, one-liners, and urgent fixes may bypass this boundary only when the user explicitly requests direct execution. The agent cannot judge whether work is "too small to queue" — that classification belongs to the user.
 
 ## Enforcement Strategy
 
@@ -70,7 +70,7 @@ Prompt-level instruction in `aops` SKILL.md: "Delegate Implementation: Create ta
 
 **Phase 1 (Level 2 — emphatic instruction):** Strengthen the prompt-level constraint.
 
-- Add explicit "cannot do" list to AXIOMS.md as a new axiom (or HEURISTICS.md)
+- Add explicit "cannot do" list to HEURISTICS.md (not AXIOMS.md — orchestrator-specific behavior tables do not belong in universal axioms)
 - Update `user_prompt_submit.py` hydrator to classify work requests and inject a reminder that they should be queued, not executed directly
 - Add to routing table: `type: work-request` → inject "create a task and dispatch to polecat; do not execute directly"
 
