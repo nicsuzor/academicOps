@@ -628,6 +628,9 @@ def translate_tool_calls(text: str, platform: str) -> str:
 
     # 2. Dynamic replacement for Gemini/Claude compatibility (Task/Skill)
     if platform == "gemini":
+        # Replace Claude plugin path variable with Gemini equivalent
+        text = text.replace("${CLAUDE_PLUGIN_ROOT}", "${extensionPath}")
+
         # Convert mcp__server__tool to mcp_server_tool in body (matches frontmatter)
         import re
 

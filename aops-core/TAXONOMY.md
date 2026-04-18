@@ -154,17 +154,22 @@ The tree hierarchy is a **spanning tree** of the underlying dependency graph. It
 
 ## Status Values and Transitions
 
-| Status        | Meaning                                                              |
-| ------------- | -------------------------------------------------------------------- |
-| `inbox`       | Captured but not yet triaged — unknown priority, unknown readiness   |
-| `ready`       | All hard dependencies resolved, uncertainty low enough to act        |
-| `in_progress` | Claimed by an agent or human — actively being worked                 |
-| `merge_ready` | Work complete and committed, waiting for review/merge                |
-| `done`        | Complete — no further action required                                |
-| `blocked`     | Waiting on an external dependency that cannot be resolved internally |
-| `cancelled`   | Will not be done — decision made to drop                             |
+| Status        | Meaning                                                                         |
+| ------------- | ------------------------------------------------------------------------------- |
+| `inbox`       | **Default.** Captured but not yet triaged — unknown priority, unknown readiness |
+| `ready`       | Decomposed to leaf tasks with all hard dependencies resolved                    |
+| `queued`      | User has manually marked this task available for agent dispatch                 |
+| `in_progress` | Claimed by an agent or human — actively being worked                            |
+| `merge_ready` | Work complete and committed, waiting for review/merge                           |
+| `done`        | Complete — no further action required                                           |
+| `blocked`     | Waiting on an external dependency that cannot be resolved internally            |
+| `cancelled`   | Will not be done — decision made to drop                                        |
 
-**Ready means ready**: A task should only appear as `ready` when uncertainty is low AND all upstream `DependsOn` edges are resolved — not merely when it has no children.
+**Default is `inbox`**: Every new node starts as `inbox` regardless of how it was created.
+
+**`ready` means decomposed**: A task graduates to `ready` once it has been decomposed into leaf tasks and all upstream `DependsOn` edges are resolved. Ready signals that the work is well-understood and unblocked — not that an agent should pick it up immediately.
+
+**`queued` is a human gate**: The user manually promotes tasks from `ready` to `queued` to make them available for agent dispatch. This preserves human control over what agents work on next. Agents pull only from `queued`.
 
 **Propagation**: Completion of a node should trigger readiness re-evaluation of all nodes that depend on it. The system surfaces dependency chains so that cascading unblocks are visible.
 
@@ -256,6 +261,18 @@ Workflows define WHAT steps to take and in WHAT order. Skills define HOW to exec
 | Discovery or spike — not directly actionable?               | **Learn**    |
 | Sequence of steps describing WHAT to do?                    | **Workflow** |
 | Instructions for HOW to do one step?                        | **Skill**    |
+
+### Status lifecycle
+
+```
+inbox → ready → queued → in_progress → merge_ready → done
+                                     ↘ blocked
+```
+
+- `inbox` is the default for all new nodes
+- `ready` is set automatically when decomposition is complete and dependencies are resolved
+- `queued` is set **manually by the user** — the human gate before agent dispatch
+- Agents pull only from `queued`
 
 ### Edge type guide
 

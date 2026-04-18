@@ -55,3 +55,20 @@ def test_translate_tool_calls_body_gemini():
     body_list = "Tools: mcp__pkb__list_tasks, mcp__pkb__get_task."
     translated = translate_tool_calls(body_list, "gemini")
     assert translated == "Tools: mcp_pkb_list_tasks, mcp_pkb_get_task."
+
+
+def test_translate_plugin_root_gemini():
+    """Test that CLAUDE_PLUGIN_ROOT is replaced with extensionPath in Gemini body text."""
+    body = "Include @${CLAUDE_PLUGIN_ROOT}/aops-core/AXIOMS.md in your context."
+    translated = translate_tool_calls(body, "gemini")
+    assert "${CLAUDE_PLUGIN_ROOT}" not in translated
+    assert "${extensionPath}" in translated
+    assert translated == "Include @${extensionPath}/aops-core/AXIOMS.md in your context."
+
+
+def test_translate_plugin_root_claude_unchanged():
+    """Test that CLAUDE_PLUGIN_ROOT is NOT replaced when building for Claude."""
+    body = "Include @${CLAUDE_PLUGIN_ROOT}/aops-core/AXIOMS.md in your context."
+    translated = translate_tool_calls(body, "claude")
+    assert "${CLAUDE_PLUGIN_ROOT}" in translated
+    assert "${extensionPath}" not in translated
