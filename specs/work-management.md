@@ -104,7 +104,7 @@ draft → active → in_progress → merge_ready (PR filed) → done (after merg
 1. Concrete acceptance criteria (non-empty body with AC or checklist)
 2. Explicit effort estimate OR explicit `complexity` field
 3. No high-uncertainty blockers (blockers must be explicit `depends_on` links, not vague body text)
-4. Either leaf (no children) OR decomposed into subtasks where children represent all the work
+4. Either leaf (no children) OR decomposed into subtasks where all children have a status other than `draft`
 
 Tasks created via `create_task` default to `draft`. They must be manually or automatically graduated to `active` before they appear in the ready queue.
 
@@ -150,7 +150,7 @@ release_task(id, status, summary, pr_url?, branch?, blocker?, reason?)
 
 | Status        | Meaning                                           | Terminal? | Ready queue? |
 | ------------- | ------------------------------------------------- | --------- | ------------ |
-| `draft`       | Created but not yet planned — AC/estimate missing | No        | No           |
+| `draft`       | Created but not yet planned — AC/estimate/complexity missing | No        | No           |
 | `active`      | Planned and ready to be worked on                 | No        | Yes          |
 | `in_progress` | Currently being worked on                         | No        | No           |
 | `merge_ready` | Work complete, PR filed, awaiting merge           | No        | No           |

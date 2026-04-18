@@ -84,7 +84,7 @@ Prompt-level instruction in `aops` SKILL.md: "Delegate Implementation: Create ta
 
 - Move detection to PreToolUse
 - Block Write/Edit to project source files unless `POLECAT_WORKER_MODE=1` is set (polecat workers set this in their sandbox)
-- Exceptions: `specs/`, `docs/`, `.agents/`, `aops-core/` (framework files — orchestrator may edit these)
+- Exceptions: `specs/`, `docs/`, `.agents/`, `aops-core/` (framework files — orchestrator may edit these). The `aops-core/` exception covers configuration, hooks, and skill files (framework maintenance). New framework features requiring substantial implementation should still be delegated to polecat workers.
 
 ### Why Not Hard Block Immediately?
 
