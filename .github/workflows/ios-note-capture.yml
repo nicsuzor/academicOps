@@ -62,6 +62,7 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           claude_args: |
+            --model sonnet
             --allowedTools "Read,Write,Edit,Bash(mkdir:*),Bash(date:*)"
             --max-turns 5
           prompt: |
