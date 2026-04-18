@@ -155,4 +155,4 @@ jobs:
             PR ref: ${{ matrix.item.ref }}
 
             Set PR_NUMBER=${{ matrix.item.pr_number }} for use in your commands.
-          claude_args: '--model claude-sonnet-4-6 --allowed-tools "Bash,Edit,Read,Write,Glob,Grep"'
+          claude_args: '--model sonnet --allowed-tools "Bash,Edit,Read,Write,Glob,Grep"'

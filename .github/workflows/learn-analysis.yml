@@ -28,6 +28,7 @@ jobs:
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
           plugins: 'code-review@claude-code-plugins'
           allowed_bots: '*'
+          claude_args: '--model sonnet'
           prompt: |
             A new framework bug or learning incident has been reported in Issue #${{ github.event.issue.number }}:
             Title: ${{ github.event.issue.title }}
