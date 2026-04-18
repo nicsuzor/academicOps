@@ -95,6 +95,15 @@ polecat run -t <task-id> -p <project> -g
 aops task <task-id> | jules new --repo <owner>/<repo>
 ```
 
+> **`polecat` not on PATH?** In non-interactive shells (Bash tool, cron, CI), the `polecat`/`pc` alias
+> may not be loaded. Use the canonical form: `uv run --project $AOPS $AOPS/polecat/cli.py <args>`
+> (`$AOPS` = `/Users/suzor/src/academicOps` on the primary machine).
+
+**Polecat exit codes** (relevant for scripted supervisors):
+
+- Exit 0 + "✅ already done" → task was `done`; graceful noop, move on
+- Exit 2 + "🔒 Task is locked" → task is `merge_ready` with an open PR; check and merge, do not retry dispatch
+
 The supervisor decides WHICH task to dispatch next based on priority,
 dependencies, and capacity — then dispatches one at a time.
 
