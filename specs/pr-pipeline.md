@@ -16,11 +16,10 @@ supersedes: pr-process.md
 - [[.github/workflows/lint.yml]] → uses `AOPS_BOT_GH_TOKEN` for checkout so autofix pushes trigger workflow restart
 - [[.github/workflows/typecheck.yml]] → basedpyright type checking
 - [[.github/workflows/pytest.yml]] → unit tests
-- [[.github/workflows/pr-review.yml]] → standalone Axiom Review (Claude PR reviewer, no settle delay)
+- [[.github/workflows/agent-enforcer.yml]] → axiom compliance reviewer; fires automatically on `workflow_run` (PR Review Pipeline completion) + reusable via `workflow_call` for other repos
 - [[.github/workflows/agent-merge-prep.yml]] → cron-driven merge prep agent
-- [[.github/workflows/merge-prep-cron.yml]] → `workflow_run` trigger watches "Axiom Review" completion + cron fallback
-- [[.github/workflows/agent-enforcer.yml]] → reusable enforcer for other repos (not wired into this repo's pipeline)
-- GitHub Ruleset: required checks = `PR Review Pipeline / lint / Lint`, `PR Review Pipeline / typecheck / Type Check`, `PR Review Pipeline / pytest / Pytest`, `Axiom Review / Axiom Review`, `merge-prep-status`
+- [[.github/workflows/merge-prep-cron.yml]] → `workflow_run` trigger watches "PR Review Pipeline" completion + 30-min cron fallback
+- GitHub Ruleset: required checks = `PR Review Pipeline / lint / Lint`, `PR Review Pipeline / typecheck / Type Check`, `PR Review Pipeline / pytest / Pytest`, `merge-prep-status`
 
 ## Overview
 
@@ -37,7 +36,7 @@ The previous pipeline ([[specs/pr-process.md]]) required a human LGTM to trigger
 3. **No labels for coordination.** Labels are unreliable state machines. In-progress detection uses `gh run list`; halt state uses the `merge-prep-status` commit status API. No load-bearing labels; no comment-text scanning.
 4. **Environment gate for graduation.** Merge-prep signals readiness by triggering a `summary-and-merge.yml` workflow. Job 1 posts a decision brief (summary of all changes, reviews, and fixes). Job 2 requires the `production` environment — the maintainer clicks "Approve" in the GitHub UI to merge. One click, no PR comment archaeology needed.
 5. **Event-driven + cron fallback.** Merge-prep dispatch fires immediately when Phase 1 checks complete (`workflow_run` trigger), plus a 30-minute cron as safety net. The existing qualification logic (age gate, in-progress check, commit status) handles premature firings gracefully. No human trigger needed, no label gate.
-6. **Sequential CI, independent review.** CI checks run sequentially (lint → typecheck → pytest) so that if lint pushes an autofix commit, typecheck and pytest haven't started yet — no wasted compute on the cancelled run. Axiom Review runs as a separate workflow, independent of the CI pipeline. Lint uses a PAT (`AOPS_BOT_GH_TOKEN`) for checkout so autofix pushes trigger a new `synchronize` event, restarting the pipeline on the clean commit with correct check run names on the actual HEAD.
+6. **Sequential CI, independent review.** CI checks run sequentially (lint → typecheck → pytest) so that if lint pushes an autofix commit, typecheck and pytest haven't started yet — no wasted compute on the cancelled run. The Enforcer fires independently after CI completes (`workflow_run` on PR Review Pipeline), not on every push — reducing review frequency while preserving axiom compliance coverage. Lint uses a PAT (`AOPS_BOT_GH_TOKEN`) for checkout so autofix pushes trigger a new `synchronize` event, restarting the pipeline on the clean commit with correct check run names on the actual HEAD.
 7. **GitHub affordances only.** Required status checks, PR reviews, commit status API, environments, and auto-merge handle state. No custom orchestration where GitHub provides a native mechanism. No comment parsing; no label-based state machines.
 
 ## Architecture: Four Phases
@@ -56,8 +55,8 @@ flowchart TD
 
     TC --> Test["<b>Pytest</b><br/>Unit tests<br/><i>Required status check</i>"]
 
-    %% Axiom Review (independent workflow)
-    PR --> AR["<b>Axiom Review</b><br/>PR reviewer agent<br/>Posts review feedback"]
+    %% Enforcer (fires after CI completes)
+    Test --> AR["<b>Enforcer Review</b><br/>Axiom compliance agent<br/>Posts review feedback"]
 
     AR --> ARV{Verdict}
     ARV -- REQUEST_CHANGES --> Blocked["<b>Merge blocked</b><br/>Author or agent revises"]
@@ -127,19 +126,19 @@ The CI pipeline runs four jobs: initialization, lint, typecheck, and pytest.
 
 **Loop safety:** Lint is idempotent — the second run finds nothing to fix, no push, pipeline completes normally.
 
-### Axiom Review (`pr-review.yml`) — independent
+### Enforcer Review (`agent-enforcer.yml`) — fires after CI
 
-The Axiom Review workflow runs independently of the CI pipeline, triggered by the same `pull_request` events.
+The Enforcer fires automatically via `workflow_run` when the PR Review Pipeline completes. This means one enforcer run per CI cycle (not per push), reducing Claude API calls compared to a per-push trigger.
 
-**PR event handling:** On `pull_request` events, the workflow extracts the PR number and ref directly from the event context, producing a single-item matrix that reviews only the triggering PR. On `workflow_dispatch` without a PR number, it discovers all open PRs for batch review. On `workflow_call` or `workflow_dispatch` with a PR number, it reviews only the specified PR.
+**PR discovery:** The enforcer extracts the PR number from the triggering branch name (`github.event.workflow_run.head_branch`). If no open PR is found for that branch, it exits cleanly. `branches-ignore: [main, release-please*]` prevents spurious fires on non-PR branches.
 
-**Missing prompt file:** If the PR branch lacks `.github/agents/pr-reviewer.agent.md` (e.g. old branches), the review step is skipped gracefully instead of failing.
+**Enforcement:** The enforcer agent checks compliance against axioms and project rules. It can push fixes directly to the PR branch (`Enforcer-By: agent` trailer) or post a `REQUEST_CHANGES` review for issues requiring human judgment.
 
-**Axiom Review:** The PR reviewer agent (`pr-reviewer.agent.md`) checks compliance against axioms, heuristics, and project rules. Posts review feedback via `claude-code-action`. Read-only — never pushes code.
+**Loop detection:** Skips if the last commit has an agent trailer (`Enforcer-By`, `Autofix-By`, `Merge-Prep-By`) to avoid processing its own output.
 
-Check run name: `Axiom Review / Axiom Review` (required status check in ruleset).
+**Reusable:** Also available as `workflow_call` for installation on other repos.
 
-**No Agent Fix in the pipeline.** CI failures are handled by the Merge-Prep Agent (Phase 2), which already triages all review feedback and fixes issues. This simplifies the pipeline and avoids duplicate fix attempts.
+**Not a required status check.** The enforcer's review is read by the Merge-Prep Agent as part of its normal triage — no separate required check needed.
 
 ## Phase 2: Merge Prep (Cron-Driven)
 
@@ -298,10 +297,9 @@ No separate auto-merge configuration needed — the merge is executed by the wor
 | `lint.yml`             | Ruff lint + format with autofix. Uses `AOPS_BOT_GH_TOKEN` so pushes trigger workflow restart. |
 | `typecheck.yml`        | basedpyright. Read-only gate.                                                                 |
 | `pytest.yml`           | Unit tests. Read-only gate.                                                                   |
-| `pr-review.yml`        | Standalone Axiom Review. Triggers on `pull_request` + dispatch/call.                          |
-| `merge-prep-cron.yml`  | Dispatcher: `workflow_run` (Axiom Review) + cron. Label-free qualification.                   |
+| `merge-prep-cron.yml`  | Dispatcher: `workflow_run` (PR Review Pipeline) + 30-min cron. Label-free qualification.      |
 | `agent-merge-prep.yml` | Merge-prep agent: triage reviews, fix issues, approve, set status.                            |
-| `agent-enforcer.yml`   | Reusable enforcer for other repos (dispatch/call only, not wired into this repo).             |
+| `agent-enforcer.yml`   | Axiom compliance reviewer. Fires on `workflow_run` (PR Review Pipeline) + `workflow_call`.    |
 
 ## GitHub Ruleset
 
@@ -319,7 +317,6 @@ rules:
         - context: "PR Review Pipeline / lint / Lint"          # pr-pipeline.yml → lint.yml
         - context: "PR Review Pipeline / typecheck / Type Check"  # pr-pipeline.yml → typecheck.yml
         - context: "PR Review Pipeline / pytest / Pytest"      # pr-pipeline.yml → pytest.yml
-        - context: "Axiom Review / Axiom Review"               # pr-review.yml (independent)
         - context: "merge-prep-status"                         # agent-merge-prep.yml (status API)
 ```
 

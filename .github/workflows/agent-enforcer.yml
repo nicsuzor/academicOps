@@ -13,6 +13,13 @@
 name: "Agent: Enforcer Review"
 
 on:
+  workflow_run:
+    workflows:
+      - "PR Review Pipeline"
+    types: [completed]
+    branches-ignore:
+      - main
+      - 'release-please*'
   workflow_dispatch:
     inputs:
       pr_number:
@@ -40,7 +47,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     concurrency:
-      group: agent-enforcer-${{ inputs.pr_number || github.event.pull_request.number }}
+      group: agent-enforcer-${{ inputs.pr_number || github.event.pull_request.number || github.event.workflow_run.head_branch }}
       cancel-in-progress: true
     permissions:
       contents: write
@@ -50,11 +57,39 @@ jobs:
       issues: write
       actions: read
     steps:
+      - name: Extract PR from workflow_run event
+        if: github.event_name == 'workflow_run'
+        id: workflow-run-pr
+        run: |
+          HEAD_BRANCH="${{ github.event.workflow_run.head_branch }}"
+          PR_NUM=$(gh pr list --head "$HEAD_BRANCH" --repo "${{ github.repository }}" \
+            --json number -q '.[0].number' 2>/dev/null || echo "")
+          if [ -z "$PR_NUM" ]; then
+            echo "No open PR found for branch $HEAD_BRANCH — skipping"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            REF=$(gh pr view "$PR_NUM" --repo "${{ github.repository }}" --json headRefName -q '.headRefName')
+            {
+              echo "pr_number=$PR_NUM"
+              echo "ref=$REF"
+              echo "skip=false"
+            } >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+
       - name: Determine PR info
-        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]'
+        if: (github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]') && steps.workflow-run-pr.outputs.skip != 'true'
         id: pr-info
         run: |
-          if [ -n "$INPUT_PR_NUMBER" ]; then
+          if [ -n "$WORKFLOW_RUN_PR_NUMBER" ]; then
+            SHA=$(gh pr view "$WORKFLOW_RUN_PR_NUMBER" --repo "${{ github.repository }}" --json headRefOid -q '.headRefOid')
+            {
+              echo "pr_number=$WORKFLOW_RUN_PR_NUMBER"
+              echo "ref=$WORKFLOW_RUN_REF"
+              echo "sha=$SHA"
+            } >> "$GITHUB_OUTPUT"
+          elif [ -n "$INPUT_PR_NUMBER" ]; then
             if [ ! -d .git ]; then
               git init
               git remote add origin ${{ github.server_url }}/${{ github.repository }} || true
@@ -75,6 +110,8 @@ jobs:
           fi
         env:
           GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+          WORKFLOW_RUN_PR_NUMBER: ${{ steps.workflow-run-pr.outputs.pr_number }}
+          WORKFLOW_RUN_REF: ${{ steps.workflow-run-pr.outputs.ref }}
           INPUT_PR_NUMBER: ${{ inputs.pr_number }}
           INPUT_REF: ${{ inputs.ref }}
           EVENT_PR_NUMBER: ${{ github.event.pull_request.number }}
