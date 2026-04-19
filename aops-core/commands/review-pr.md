@@ -88,14 +88,14 @@ Before commissioning agents, classify the PR using the signals below. The classi
 
 ### Signals (apply in order; first match wins)
 
-1. **Known system bot** — author is `app/github-actions` AND branch matches `release-plz-*` → **Tier 1** (release sanity).
-2. **Trusted automation** — branch matches `sleep/consolidation-*` AND `additions < 500` → **Tier 1** (knowledge-only sanity).
-3. **Stale task** — PR body contains `Closes <taskid>` (or equivalent) AND that task is `done`/`cancelled`/`wontfix` in PKB → **Tier 0: reject on sight**. If PKB lookup fails or is ambiguous, fall through to the next signal — do not guess.
-4. **Architectural language** — PR body contains phrases asserting architectural scope: "radically simplify", "consolidate N tools", "redesign", "replace X with Y", "rewrite" → **Tier 3** regardless of branch/size.
+1. **Stale task** — PR has a linked task (check `gh pr view --json closingIssuesReferences` first; fall back to `Closes <taskid>` in body) AND that task is `done`/`cancelled`/`wontfix` in PKB → **Tier 0: reject on sight**. If PKB lookup fails or is ambiguous, fall through to the next signal — do not guess.
+2. **Known system bot** — author is `app/github-actions` AND branch matches `release-plz-*` → **Tier 1** (release sanity).
+3. **Trusted automation** — branch matches `sleep/consolidation-*` AND `additions < 500` → **Tier 1** (knowledge-only sanity).
+4. **Architectural scope** — Does the PR body assert architectural scope: consolidation, replacement, radical simplification, major redesign, or system rewrite? Assess the claim — don't just pattern-match the words. A "rewrite" of a 10-line helper is not architectural; a "minor refactor" that replaces a subsystem is. If yes → **Tier 3** regardless of branch/size.
 5. **Size** — `additions >= 500` OR `changedFiles >= 20` → **Tier 3**.
-6. **Small polecat, active task** — branch matches `polecat/*`, body closes an active task, `additions < 200`, `changedFiles < 10`, no architectural language → **Tier 1**.
+6. **Small polecat, active task** — branch matches `polecat/*`, body closes an active task, `additions < 200`, `changedFiles < 10`, no architectural scope → **Tier 1**.
 7. **Medium polecat** — same as 6 but larger → **Tier 2** (RBG only).
-8. **Human-authored** — author is not a known bot (not `botnicbot`, not `app/github-actions`) → **Tier 2 minimum** (human PRs have no automated mandate constraint).
+8. **Human-authored** — author is not a known bot (not `botnicbot`, not `app/github-actions`) → **Tier 2 minimum** (human PRs have no automated mandate constraint). If a new automation actor appears (e.g. renovate, dependabot, a new GHA bot), add it to the known-bot list here and in signals 2–3 before routing it as Tier 1.
 9. **Non-polecat bot branch** — branch matches `fix/*`, `nic/*`, `feat/*` → **Tier 2 minimum**.
 10. **No task closure claim** — no identifiable task ID in the body → **Tier 2 minimum** (Tier 3 if also large).
 
