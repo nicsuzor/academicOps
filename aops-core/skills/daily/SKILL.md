@@ -14,7 +14,7 @@ needs_task: false
 mode: execution
 domain:
   - operations
-allowed-tools: Read,Bash,Grep,Write,Edit,AskUserQuestion,Skill,~~email
+allowed-tools: Read,Bash,Grep,Write,Edit,AskUserQuestion,Skill,mcp__pkb__delete,~~email
 owner: pauli
 version: 3.0.0
 permalink: skills-daily
@@ -232,14 +232,15 @@ The skill gathers information from multiple sources and composes the note. Indep
 2. **Invoke `/email`** to triage inbox (creates tasks with full context; returns FYI items for the daily note)
 3. **Sweep mobile captures** — scan `$ACA_DATA/notes/mobile-captures/`, route each unprocessed capture to `/q` (task) or `/remember` (knowledge), delete the original, summarise in the note. See [[instructions/mobile-capture-triage]].
 
-4. **Compose Focus** (load task data, reason about recommendations, engage user on priorities) — begin after Steps 2–3 complete so that email-created tasks are included in recommendations
+4. **Compose Focus** (load task data, reason about recommendations, engage user on priorities)
+5. **Sync progress** (session JSONs, merged PRs, task completions → Work Log + Today's Story)
+**Steps 4–6 — run in parallel** (independent; each reads from different data sources and neither writes output the other depends on):
 
-**Steps 5–6 — run in parallel** (independent; each reads from different data sources and neither writes output the other depends on):
-
+4. **Compose Focus** (load task data, reason about recommendations, engage user on priorities) — begin after launching parallel agents in background
 5. **Sync progress** (session JSONs, merged PRs, task completions → Work Log + Today's Story) — data-gathering sub-steps within this step also run in parallel; see [[instructions/progress-sync]]
-6. **Monitor workflows** — surface outstanding PRs in "What Needs Attention". See [[instructions/workflow-monitor]] for per-repo concurrent fetching.
+6. **Monitor workflows** — surface outstanding PRs in "What Needs Attention". See [[instructions/workflow-monitor]] for per-repo concurrent fetching. 
 
-7. **Sweep review/merge_ready tasks** (after Steps 5 and 6 complete — see below)
+7. Task completion: **Sweep review/merge_ready tasks** (after Steps 4-6 complete — see below)
 8. **Output** terminal briefing and halt
 
 ### Task Completion Sweep (Step 7)
