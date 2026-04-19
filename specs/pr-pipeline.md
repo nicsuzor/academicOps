@@ -170,6 +170,8 @@ The agent workflow (`agent-merge-prep.yml`) performs pre-checks, then either inv
 
 **Fast-path (no Claude call):** If all CI checks pass, no `CHANGES_REQUESTED` reviews remain, and the PR has no merge conflicts, the Claude agent is skipped entirely. The workflow proceeds directly to the graduation steps (approve, set status, trigger summary-and-merge). This preserves the architectural invariant — the Merge-Prep Agent always gates graduation — while avoiding expensive Claude API calls when nothing needs fixing.
 
+**PR classifier (judgement layer on top of the mechanical fast-path):** The mechanical fast-path catches "nothing failed". It does not catch stale-task PRs, over-engineered implementations, or intent mismatches. Those risks are addressed by the tier classifier defined in [[aops-core/commands/review-pr.md]] Step 3 (signals 1–10, Tier 0–3 definitions). The classifier is currently specified for the local `review-pr` command; integrating it into `agent-merge-prep.yml` is a follow-up so the pipeline can auto-reject stale-task PRs (Tier 0) and auto-approve trusted sanity-check PRs (Tier 1) without invoking the full Claude agent. Until that integration, the full agent path below handles these cases via its normal review triage.
+
 **Full agent path (Claude call):** When there is work to do (failing checks, unresolved reviews, or conflicts):
 
 4. Resolves merge conflicts if present (`git merge origin/main --no-edit`).
