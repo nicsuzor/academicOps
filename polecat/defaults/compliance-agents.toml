@@ -5,10 +5,8 @@
 #   2. These policy rules ensure rbg/marsha can never be blocked by sandbox or
 #      workspace policies in any mode (secondary, also fixes non-plan-mode cases)
 #
-# User-tier policies (~/.gemini/policies/) use tier 4 in the formula
-# tier_base + (priority/1000), which always beats the default-tier plan-mode
-# deny (tier 1). Priority 950 also beats the sandbox allow policy at 900
-# within the same tier.
+# Priority 950 is set high to ensure these allow rules take precedence over
+# more restrictive sandbox or workspace policies.
 
 [[rule]]
 toolName = ["aops_core_rbg", "aops_core_custodiet", "aops_core_audit", "aops_core_enforcer"]
