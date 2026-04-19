@@ -1701,6 +1701,19 @@ def is_interactive() -> bool:
     return sys.stdin.isatty()
 
 
+def _bootstrap_or_exit() -> None:
+    from polecat.bootstrap import BootstrapError, validate_bootstrap
+
+    try:
+        validate_bootstrap(aops_path=os.environ.get("AOPS"))
+    except BootstrapError as e:
+        print("\n❌ Bootstrap validation failed:", file=sys.stderr)
+        for err in e.errors:
+            print(f"  - {err}", file=sys.stderr)
+        print("", file=sys.stderr)
+        sys.exit(1)
+
+
 @click.group()
 @click.option(
     "--home",
@@ -2171,17 +2184,7 @@ def sync(ctx, check, quiet, mirrors_only):
         polecat sync --quiet      # Only show issues
         polecat sync --mirrors-only  # Only sync bare mirrors
     """
-    from polecat.bootstrap import BootstrapError, validate_bootstrap
-
-    # Perform fail-fast bootstrap validation
-    try:
-        validate_bootstrap(aops_path=os.environ.get("AOPS"))
-    except BootstrapError as e:
-        print("\n❌ Bootstrap validation failed:", file=sys.stderr)
-        for err in e.errors:
-            print(f"  - {err}", file=sys.stderr)
-        print("", file=sys.stderr)
-        sys.exit(1)
+    _bootstrap_or_exit()
 
     manager = PolecatManager(home_dir=ctx.obj.get("home"))
 
@@ -3045,17 +3048,7 @@ def sweep(ctx, stale_days):
     """
     from datetime import timedelta
 
-    from polecat.bootstrap import BootstrapError, validate_bootstrap
-
-    # Perform fail-fast bootstrap validation
-    try:
-        validate_bootstrap(aops_path=os.environ.get("AOPS"))
-    except BootstrapError as e:
-        print("\n❌ Bootstrap validation failed:", file=sys.stderr)
-        for err in e.errors:
-            print(f"  - {err}", file=sys.stderr)
-        print("", file=sys.stderr)
-        sys.exit(1)
+    _bootstrap_or_exit()
 
     manager = PolecatManager(home_dir=ctx.obj.get("home"))
 
@@ -3959,17 +3952,7 @@ def run(
     """
     import subprocess
 
-    from polecat.bootstrap import BootstrapError, validate_bootstrap
-
-    # Perform fail-fast bootstrap validation
-    try:
-        validate_bootstrap(aops_path=os.environ.get("AOPS"))
-    except BootstrapError as e:
-        print("\n❌ Bootstrap validation failed:", file=sys.stderr)
-        for err in e.errors:
-            print(f"  - {err}", file=sys.stderr)
-        print("", file=sys.stderr)
-        sys.exit(1)
+    _bootstrap_or_exit()
 
     if issue and task_id:
         print("Error: --issue and --task-id are mutually exclusive.", file=sys.stderr)
@@ -4944,17 +4927,7 @@ def swarm(ctx, claude, gemini, project, caller, dry_run):
     Spawns N claude and M gemini workers, managing CPU affinity.
     Restarting workers on success, stopping on failure.
     """
-    from polecat.bootstrap import BootstrapError, validate_bootstrap
-
-    # Perform fail-fast bootstrap validation
-    try:
-        validate_bootstrap(aops_path=os.environ.get("AOPS"))
-    except BootstrapError as e:
-        print("\n❌ Bootstrap validation failed:", file=sys.stderr)
-        for err in e.errors:
-            print(f"  - {err}", file=sys.stderr)
-        print("", file=sys.stderr)
-        sys.exit(1)
+    _bootstrap_or_exit()
 
     try:
         from swarm import run_swarm
