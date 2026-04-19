@@ -15,13 +15,13 @@ cd "$REPO_ROOT"
 echo "--- 🎨 Formatting with dprint (Markdown/JSON/TOML) ---"
 uv run dprint fmt --allow-no-files
 
-echo "--- 🐍 Formatting with ruff ---"
-# ruff format formats files in-place
-uv run ruff format .
-
 echo "--- 🔍 Linting with ruff (auto-fix) ---"
 # ruff check --fix auto-fixes what it can
 uv run ruff check --fix .
+
+echo "--- 🐍 Formatting with ruff ---"
+# ruff format runs after check so linter fixes are properly formatted
+uv run ruff format .
 
 echo "--- 🏛️  Checking framework integrity ---"
 # This mirrors the check-framework-integrity hook
