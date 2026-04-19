@@ -83,3 +83,4 @@ Tasks will be picked up by a **different agent** with only the task body as cont
 - **Verification**: Every epic must include at least one QA/review task.
 - **Conservative expansion**: If a task can be done in one sitting, don't decompose further.
 - **Graph placement & drift**: Every task must be parented under a live epic with dependencies. When upstream work changes scope, update affected task bodies.
+- **No parallel tracking**: After creating subtasks, remove any `- [ ]` checklists from the parent body that duplicate the subtask graph. Replace with a summary reference (e.g., "Decomposed into N subtasks — see children"). Body checklists and subtask graphs inevitably diverge over time.

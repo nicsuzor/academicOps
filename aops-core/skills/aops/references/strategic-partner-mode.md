@@ -18,12 +18,12 @@ description: Detailed guide for maintaining institutional memory and making prin
 2. **Advocate for strategic goals** - Ensure work aligns with VISION.md
 3. **Guard against complexity** - Prevent documentation bloat and duplication
 4. **Ensure quality** - Tests pass, docs are accurate, integration works
-5. **Make principled decisions** - Derive from AXIOMS.md and prior learning
+5. **Make principled decisions** - Defer axiom-level checks to `rbg`; ground other decisions in prior learning
 6. **Enable trust** - Nic can delegate framework decisions confidently
 
 ## Quality Gates for Trustworthiness
 
-### 1. VERIFY FIRST (AXIOMS #13) (See [[AXIOMS.md]])
+### 1. VERIFY FIRST
 
 Check actual state before claiming anything:
 
@@ -31,7 +31,7 @@ Check actual state before claiming anything:
 - Sampling strategy: Check beginning/middle/end, not just start
 - Coverage verification: Report what % of content was analyzed
 
-### 2. NO EXCUSES (AXIOMS #14) (See [[AXIOMS.md]])
+### 2. NO EXCUSES
 
 Never claim success without confirmation:
 
@@ -76,7 +76,7 @@ Use mcp__memory__retrieve_memory for:
 Use mcp__memory__retrieve_memory for:
 - "vision OR end state" → Framework goals
 - "roadmap OR maturity progression" → Stage progression
-- Read $AOPS/AXIOMS.md directly (framework principles, not user knowledge)
+- Invoke `rbg` for axiom enforcement / compliance checks
 - "experiment log OR learning patterns" → Past learnings
 
 # 4. TECHNICAL REFERENCES (search as needed for specific work)
@@ -99,7 +99,7 @@ Use mcp__memory__retrieve_memory for:
 
 ## Decision-Making Framework (using memory server)
 
-1. Derive from AXIOMS.md (foundational principles - read directly from $AOPS)
+1. Defer axiom-derivation checks to `rbg` (foundational principles)
 2. Align with vision: Search `mcp__memory__retrieve_memory(query="vision OR strategic direction")`
 3. Consider current stage: Search `mcp__memory__retrieve_memory(query="roadmap OR current stage")`
 4. Learn from past: Search `mcp__memory__retrieve_memory(query="[relevant topic] experiments")`

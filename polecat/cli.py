@@ -47,7 +47,7 @@ from validation import TaskIDValidationError, validate_task_id_or_raise
 #   (no effort field) → 100
 #
 # Hook overhead: each session fires ~2-4 hook turns (hydration gate,
-# custodiet compliance check). These count against the budget.
+# enforcer compliance check). These count against the budget.
 _EFFORT_TO_MAX_TURNS: dict[str, int] = {
     "xs": 40,
     "s": 70,
@@ -1001,7 +1001,7 @@ def _build_docker_cmd(
                 "CLAUDE_CODE_OAUTH_TOKEN",
                 "COLORTERM",
                 "FORCE_COLOR",
-                "CUSTODIET_TOOL_CALL_THRESHOLD",
+                "ENFORCER_TOOL_CALL_THRESHOLD",
             )
         ):
             cmd.extend(["-e", f"{key}={val}"])
@@ -1062,7 +1062,7 @@ def _build_docker_cmd(
         "COMMIT_GATE_MODE": "warn",
         "HANDOVER_GATE_MODE": "warn",
         "QA_GATE_MODE": "warn",
-        "CUSTODIET_GATE_MODE": "warn",
+        "ENFORCER_GATE_MODE": "warn",
         "HYDRATION_GATE_MODE": "off",  # gate_config.py: os.environ.get("HYDRATION_GATE_MODE", "off")
     }
     for _gm_key, _gm_default in _gate_mode_defaults.items():
@@ -1651,6 +1651,13 @@ description = "Deny writes outside the work directory"
         for policy in src_policies.glob("*.toml"):
             shutil.copy2(policy, dst_policies / policy.name)
 
+    # Copy bundled admin policies AFTER user policies so they always take
+    # precedence — a same-named user file must not override an admin policy.
+    compliance_src = SCRIPT_DIR / "defaults" / "compliance-agents.toml"
+    if not compliance_src.exists():
+        raise RuntimeError(f"Missing bundled policy file: {compliance_src}")
+    shutil.copy2(compliance_src, policies_dir / "compliance-agents.toml")
+
     # Make all replicated files and directories writable by any UID.
     # Gemini's sandbox container may run as a different user than the host
     # and needs to write temp files (projects.json.tmp, settings updates).
@@ -1692,6 +1699,19 @@ def _extract_gemini_sessions(tmp_gemini_home: Path, session_dir: Path) -> None:
 def is_interactive() -> bool:
     """Check if we're running in an interactive terminal."""
     return sys.stdin.isatty()
+
+
+def _bootstrap_or_exit() -> None:
+    from polecat.bootstrap import BootstrapError, validate_bootstrap
+
+    try:
+        validate_bootstrap(aops_path=os.environ.get("AOPS"))
+    except BootstrapError as e:
+        print("\n❌ Bootstrap validation failed:", file=sys.stderr)
+        for err in e.errors:
+            print(f"  - {err}", file=sys.stderr)
+        print("", file=sys.stderr)
+        sys.exit(1)
 
 
 @click.group()
@@ -2164,6 +2184,8 @@ def sync(ctx, check, quiet, mirrors_only):
         polecat sync --quiet      # Only show issues
         polecat sync --mirrors-only  # Only sync bare mirrors
     """
+    _bootstrap_or_exit()
+
     manager = PolecatManager(home_dir=ctx.obj.get("home"))
 
     # --- Phase 1: Working repos ---
@@ -3026,6 +3048,8 @@ def sweep(ctx, stale_days):
     """
     from datetime import timedelta
 
+    _bootstrap_or_exit()
+
     manager = PolecatManager(home_dir=ctx.obj.get("home"))
 
     tasks: list = []
@@ -3575,8 +3599,15 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
         # Gemini: run inside our Docker container (not --sandbox, which uses
         # bind mounts that fail on WSL2/Docker Desktop).  Auth files are staged
         # via docker cp, and session transcripts are extracted after the run.
-        # Note: --approval-mode is set by agent_args (passed after '--').
-        cmd = ["gemini"]
+        # --approval-mode plan mirrors Claude crew's --permission-mode=plan:
+        # reads are auto-approved, writes require policy-level allow rules.
+        cmd = [
+            "gemini",
+            "--approval-mode",
+            "plan",
+            "--include-directories",
+            "/home/worker/.gemini/extensions/aops-core",
+        ]
     else:
         # Claude Code: sandbox via project settings.json + setting-sources
         cmd = [
@@ -3596,6 +3627,11 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
     env["POLECAT_SESSION_TYPE"] = "crew"
     env["POLECAT_CREW_NAME"] = crew_name
     env["POLECAT_WORKTREE"] = str(work_dir)
+    # Both Gemini (--approval-mode plan) and Claude (--permission-mode=plan) crew
+    # sessions run in plan mode. Signal this to the gate engine so it skips the
+    # custodiet ops counter — the gate must not fire when rbg cannot be invoked.
+    if not interactive:
+        env["POLECAT_APPROVAL_MODE"] = "plan"
 
     # Compute session directory for Claude transcript persistence.
     project_slug = target or projects[0]
@@ -3901,7 +3937,7 @@ def run(
             (no effort field) → 100 turns
 
         Hook overhead (~2–4 turns per session for the hydration gate and
-        custodiet compliance check) counts against the budget.
+        enforcer compliance check) counts against the budget.
 
         When the budget is exhausted polecat emits a diagnostic showing the
         last observed tool call so supervisors can assess over-exploration
@@ -3915,6 +3951,8 @@ def run(
         polecat run -p aops --no-auto-finish  # Skip auto-finish on success
     """
     import subprocess
+
+    _bootstrap_or_exit()
 
     if issue and task_id:
         print("Error: --issue and --task-id are mutually exclusive.", file=sys.stderr)
@@ -4889,6 +4927,8 @@ def swarm(ctx, claude, gemini, project, caller, dry_run):
     Spawns N claude and M gemini workers, managing CPU affinity.
     Restarting workers on success, stopping on failure.
     """
+    _bootstrap_or_exit()
+
     try:
         from swarm import run_swarm
     except ImportError:

@@ -384,7 +384,7 @@ def validate_insights_schema(insights: dict[str, Any]) -> None:
     # Validate numeric fields
     numeric_fields = [
         "subagent_count",
-        "custodiet_blocks",
+        "enforcer_blocks",
         "acceptance_criteria_count",
         "user_mood",
     ]

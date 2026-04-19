@@ -1,9 +1,9 @@
 ---
-name: custodiet-policy-message
-title: Custodiet Policy Short Message
+name: enforcer-policy-message
+title: Enforcer Policy Short Message
 category: template
 description: |
-  Short user-facing message when custodiet gate blocks a tool call.
+  Short user-facing message when enforcer gate blocks a tool call.
   Variables: {ops_since_open} - number of ops since last compliance check
 ---
 

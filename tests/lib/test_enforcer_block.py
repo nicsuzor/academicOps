@@ -13,8 +13,8 @@ from pathlib import Path
 SCRIPT_PATH = Path(__file__).parents[2] / "aops-core" / "scripts" / "compliance_block.py"
 
 
-class TestCustodietBlockCLI:
-    """Test custodiet_block.py CLI behavior."""
+class TestEnforcerBlockCLI:
+    """Test compliance_block.py CLI behavior (enforcer gate block flag)."""
 
     def test_missing_args_returns_error(self) -> None:
         """Script returns exit code 1 when called without args."""
@@ -37,7 +37,7 @@ class TestCustodietBlockCLI:
         assert "Usage:" in result.stderr
 
     def test_valid_args_sets_block(self, tmp_path: Path, monkeypatch) -> None:
-        """Script sets custodiet block when called with valid args."""
+        """Script sets enforcer block when called with valid args."""
         # Set up isolated session state directory
         state_dir = tmp_path / "claude-session"
         state_dir.mkdir()
@@ -60,14 +60,14 @@ class TestCustodietBlockCLI:
         assert "Block" in result.stdout
         assert "test-session-123" in result.stdout
 
-    def test_custodiet_disabled_message(self, tmp_path: Path) -> None:
-        """Script shows 'not enforced' message when CUSTODIET_DISABLED=1."""
+    def test_enforcer_disabled_message(self, tmp_path: Path) -> None:
+        """Script shows 'not enforced' message when ENFORCER_DISABLED=1."""
         state_dir = tmp_path / "claude-session"
         state_dir.mkdir()
 
         env = {
             "CLAUDE_SESSION_STATE_DIR": str(state_dir),
-            "CUSTODIET_DISABLED": "1",
+            "ENFORCER_DISABLED": "1",
         }
         result = subprocess.run(
             [
@@ -82,17 +82,17 @@ class TestCustodietBlockCLI:
         )
 
         assert result.returncode == 0
-        assert "not enforced" in result.stdout.lower() or "CUSTODIET_DISABLED" in result.stdout
+        assert "not enforced" in result.stdout.lower() or "ENFORCER_DISABLED" in result.stdout
 
-    def test_custodiet_enabled_message(self, tmp_path: Path) -> None:
-        """Script shows standard message when custodiet is enabled."""
+    def test_enforcer_enabled_message(self, tmp_path: Path) -> None:
+        """Script shows standard message when the enforcer is enabled."""
         state_dir = tmp_path / "claude-session"
         state_dir.mkdir()
 
-        # Explicitly unset CUSTODIET_DISABLED
+        # Explicitly unset ENFORCER_DISABLED
         env = subprocess.os.environ.copy()
         env["CLAUDE_SESSION_STATE_DIR"] = str(state_dir)
-        env.pop("CUSTODIET_DISABLED", None)
+        env.pop("ENFORCER_DISABLED", None)
 
         result = subprocess.run(
             [
@@ -111,7 +111,7 @@ class TestCustodietBlockCLI:
         assert "not enforced" not in result.stdout.lower()
 
 
-class TestCustodietBlockIntegration:
+class TestEnforcerBlockIntegration:
     """Integration tests verifying block is actually persisted."""
 
     def test_block_is_persisted_to_session_state(self, tmp_path: Path) -> None:
@@ -148,11 +148,11 @@ class TestCustodietBlockIntegration:
         # Read and verify the state directly
         state = json.loads(session_files[0].read_text())
         # <!-- NS: these tests need to be refactored for the new pydantic objects. -->
-        assert state["gates"]["custodiet"]["blocked"] is True
-        assert state["gates"]["custodiet"]["block_reason"] == "Policy violation reason"
+        assert state["gates"]["enforcer"]["blocked"] is True
+        assert state["gates"]["enforcer"]["block_reason"] == "Policy violation reason"
 
     def test_block_recorded_even_when_disabled(self, tmp_path: Path) -> None:
-        """Block is recorded even when CUSTODIET_DISABLED=1 (just not enforced)."""
+        """Block is recorded even when ENFORCER_DISABLED=1 (just not enforced)."""
         import json
 
         state_dir = tmp_path / "claude-session"
@@ -161,7 +161,7 @@ class TestCustodietBlockIntegration:
         env = {
             **subprocess.os.environ,
             "AOPS_SESSION_STATE_DIR": str(state_dir),
-            "CUSTODIET_DISABLED": "1",
+            "ENFORCER_DISABLED": "1",
         }
 
         result = subprocess.run(
@@ -184,5 +184,5 @@ class TestCustodietBlockIntegration:
         assert len(session_files) == 1
 
         state = json.loads(session_files[0].read_text())
-        assert state["gates"]["custodiet"]["blocked"] is True
-        assert state["gates"]["custodiet"]["block_reason"] == "Recorded but not enforced"
+        assert state["gates"]["enforcer"]["blocked"] is True
+        assert state["gates"]["enforcer"]["block_reason"] == "Recorded but not enforced"

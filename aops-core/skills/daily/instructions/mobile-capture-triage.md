@@ -4,7 +4,7 @@ Process unprocessed mobile captures into durable PKB state (tasks or knowledge),
 
 ## When this runs
 
-After email triage (section 2) and before Focus composition (section 3). Runs on every `/daily` invocation.
+After email triage (section 2) and before Focus composition (section 4). Runs on every `/daily` invocation.
 
 ## 1. Scan
 

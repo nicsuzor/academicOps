@@ -117,6 +117,8 @@ do_sync() {
     # Sync all configured git repos and bare mirrors via polecat sync
     echo "==> Syncing repositories..."
     uv run --project "${AOPS}" "${AOPS}/polecat/cli.py" sync --quiet 2>&1 || echo "Warning: polecat sync failed"
+    # Prune stale remote-tracking refs (branches deleted on remote after squash-merge)
+    git -C "${AOPS}" fetch --prune --quiet 2>&1 || echo "Warning: git fetch --prune failed"
 }
 
 do_sweep() {

@@ -50,7 +50,7 @@ These fields are typically provided by Claude at session end from session state.
 - **workflows_used**: Array of workflow names (e.g., `["tdd"]`, `["plan-mode"]`, or `[]` if unknown)
 - **subagents_invoked**: Array of subagent names (e.g., `["prompt-hydrator", "critic", "qa"]`)
 - **subagent_count**: Integer count of subagents invoked
-- **custodiet_blocks**: Integer count of custodiet blocks (0 if none)
+- **enforcer_blocks**: Integer count of enforcer blocks (0 if none)
 - **stop_reason**: String describing how session ended (e.g., `"end_turn"`, `"user_stopped"`, `"unknown"`)
 - **critic_verdict**: One of `"PROCEED"`, `"REVISE"`, `"HALT"`, or `null` if critic not invoked
 - **acceptance_criteria_count**: Integer count of acceptance criteria, or `null` if not applicable
@@ -312,7 +312,7 @@ Structure:
     "by_agent": {
       "main": { "input": 35000, "output": 8000 },
       "prompt-hydrator": { "input": 3000, "output": 1000 },
-      "custodiet": { "input": 2000, "output": 500 }
+      "enforcer": { "input": 2000, "output": 500 }
     },
     "efficiency": {
       "cache_hit_rate": 0.67,
@@ -334,7 +334,7 @@ Structure:
   - Each model has `input` and `output` counts
 - **by_agent**: Token breakdown by agent/subagent
   - `main`: Primary agent tokens
-  - Other keys: Subagent names (e.g., `prompt-hydrator`, `custodiet`, `critic`)
+  - Other keys: Subagent names (e.g., `prompt-hydrator`, `enforcer`, `critic`)
 - **efficiency**: Derived metrics for analysis
   - `cache_hit_rate`: Float 0.0-1.0, ratio of cache reads to total input
   - `tokens_per_minute`: Average token throughput
@@ -361,7 +361,7 @@ Output ONLY this JSON structure (no markdown code fences, no explanatory text be
   "workflows_used": ["workflow1"],
   "subagents_invoked": ["agent1", "agent2"],
   "subagent_count": 2,
-  "custodiet_blocks": 0,
+  "enforcer_blocks": 0,
   "stop_reason": "end_turn",
   "critic_verdict": "PROCEED",
   "acceptance_criteria_count": 3,
@@ -422,7 +422,7 @@ Output ONLY this JSON structure (no markdown code fences, no explanatory text be
     "by_agent": {
       "main": { "input": 35000, "output": 8000 },
       "prompt-hydrator": { "input": 3000, "output": 1000 },
-      "custodiet": { "input": 2000, "output": 500 }
+      "enforcer": { "input": 2000, "output": 500 }
     },
     "efficiency": {
       "cache_hit_rate": 0.67,

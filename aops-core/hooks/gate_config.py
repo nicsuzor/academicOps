@@ -21,7 +21,7 @@ from typing import Any
 # Categorize TOOL NAMES by their side effects. This determines which gates
 # must pass before the tool can be used.
 #
-# IMPORTANT: Only TOOL NAMES go here. Agent/skill names (custodiet, etc.)
+# IMPORTANT: Only TOOL NAMES go here. Agent/skill names (enforcer, etc.)
 # are subagent_type values, not tool names. They belong in
 # COMPLIANCE_SUBAGENT_TYPES below.
 #
@@ -140,7 +140,7 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "save_memory",
     },
     # Spawn: tools that invoke subagents or skills.
-    # Always allowed if the target subagent is a compliance agent (custodiet, etc).
+    # Always allowed if the target subagent is a compliance agent (enforcer, etc).
     "spawn": {
         "Agent",  # Claude Code: spawn subagent (current tool name)
         "Task",  # Claude Code: spawn subagent (legacy/alias)
@@ -153,13 +153,13 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "TaskList",
         "aops_core_rbg",
         "aops_core_marsha",
-        "aops_core_custodiet",
+        "aops_core_enforcer",
         "aops_core_qa",
         "aops_core_audit",
         "aops_core_butler",
     },
-    # Read-only tools: no side effects. Exempt from custodiet gate.
-    # Custodiet gate exempts them because compliance only tracks write operations.
+    # Read-only tools: no side effects. Exempt from enforcer gate.
+    # Enforcer gate exempts them because compliance only tracks write operations.
     "read_only": {
         # --- Claude Code built-in ---
         "Read",
@@ -304,29 +304,18 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
 
 COMPLIANCE_SUBAGENT_TYPES: frozenset[str] = frozenset(
     {
-        # rbg (The Judge) — canonical name for compliance enforcement agent.
-        # Legacy aliases: custodiet, enforcer, audit, auditor.
-        "rbg",
-        "aops-core:rbg",
-        "aops_core_rbg",
-        "custodiet",
-        "aops-core:custodiet",
-        "aops_core_custodiet",
+        # enforcer — Haiku-class narrow compliance agent (periodic gate review).
         "enforcer",
         "aops-core:enforcer",
         "aops_core_enforcer",
-        "audit",
-        "aops-core:audit",
-        "aops_core_audit",
-        "auditor",
-        # marsha (The QA Reviewer) — canonical name for QA agent.
-        # Legacy alias: qa.
+        # rbg (The Judge) — sonnet-class ad-hoc axiom review.
+        "rbg",
+        "aops-core:rbg",
+        "aops_core_rbg",
+        # marsha (The QA Reviewer).
         "marsha",
         "aops-core:marsha",
         "aops_core_marsha",
-        "qa",
-        "aops-core:qa",
-        "aops_core_qa",
     }
 )
 
@@ -354,14 +343,9 @@ SPAWN_TOOLS: dict[str, tuple[tuple[str, ...], bool]] = {
     "delegate_to_agent": (("name", "agent_name"), False),
     "activate_skill": (("skill", "name"), True),
     # Gemini: bare agent tools (Strategy 2)
-    # Canonical names
+    "aops_core_enforcer": ((), False),
     "aops_core_rbg": ((), False),
     "aops_core_marsha": ((), False),
-    # Legacy aliases
-    "aops_core_custodiet": ((), False),
-    "aops_core_qa": ((), False),
-    "aops_core_audit": ((), False),
-    "aops_core_butler": ((), False),
     # Codex: add entries when tool names are known
     # GitHub Copilot: add entries when tool names are known
 }
@@ -393,8 +377,8 @@ def _gate_mode(var: str, default: str = "warn") -> str:
 
 HANDOVER_GATE_MODE = _gate_mode("HANDOVER_GATE_MODE")
 QA_GATE_MODE = _gate_mode("QA_GATE_MODE")
-CUSTODIET_GATE_MODE = _gate_mode("CUSTODIET_GATE_MODE")
-CUSTODIET_TOOL_CALL_THRESHOLD = int(os.environ.get("CUSTODIET_TOOL_CALL_THRESHOLD", "50"))
+ENFORCER_GATE_MODE = _gate_mode("ENFORCER_GATE_MODE")
+ENFORCER_TOOL_CALL_THRESHOLD = int(os.environ.get("ENFORCER_TOOL_CALL_THRESHOLD", "50"))
 HYDRATION_GATE_MODE = os.environ.get("HYDRATION_GATE_MODE", "off")
 COMMIT_GATE_MODE = _gate_mode("COMMIT_GATE_MODE")
 
@@ -481,8 +465,8 @@ def get_tool_category(tool_name: str, tool_input: dict[str, Any] | None = None) 
 
     # 2. Compliance agent spawns (Agent/Task + compliance subagent_type, or tool_name
     # is the compliance agent name directly) are infrastructure.
-    # This ensures dispatching the custodiet is never blocked by any gate,
-    # including custodiet's own ops-threshold policy.
+    # This ensures dispatching the enforcer is never blocked by any gate,
+    # including the enforcer's own ops-threshold policy.
     extracted_st, _ = extract_subagent_type(tool_name, tool_input or {})
     if extracted_st and extracted_st in COMPLIANCE_SUBAGENT_TYPES:
         return "infrastructure"
@@ -516,14 +500,14 @@ def extract_subagent_type(
 
     Two extraction strategies:
     1. Direct match: tool_name IS the agent name (e.g. Gemini reports
-       tool_name="custodiet" rather than "delegate_to_agent").
+       tool_name="enforcer" rather than "delegate_to_agent").
        Matched against COMPLIANCE_SUBAGENT_TYPES.
     2. SPAWN_TOOLS table: tool_name is a spawning tool (e.g. "Agent",
        "delegate_to_agent") and the agent name is in tool_input.
 
     Args:
         tool_name: The tool being called (e.g. "Task", "delegate_to_agent",
-            or the agent name directly like "custodiet").
+            or the agent name directly like "enforcer").
         tool_input: The tool's input parameters.
 
     Returns:

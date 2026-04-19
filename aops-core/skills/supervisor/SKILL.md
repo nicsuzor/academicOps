@@ -131,7 +131,7 @@ merges via GitHub UI or auto-merge for clean PRs.
 
 1. **rbg-and-marsha** — scope/compliance + acceptance checks. Runs first on
    PR open/synchronize, giving bot reviewers (Gemini, Copilot) time to post.
-2. **claude-review** — bot comment triage. Runs after custodiet-and-qa (~3 min
+2. **claude-review** — bot comment triage. Runs after enforcer-and-qa (~3 min
    delay). Triages bot reviewer comments as genuine bug / valid improvement /
    false positive / scope creep, and pushes fixes for actionable items.
 3. **claude-lgtm-merge** — human-triggered merge agent. Fires on human LGTM
@@ -143,7 +143,7 @@ merges via GitHub UI or auto-merge for clean PRs.
 - PRs that modify workflow files (`.github/workflows/`) cannot get pipeline
   review due to OIDC validation (workflow content must match default branch).
   These PRs need manual review and admin merge.
-- Bot reviewers take 2–5 min to post. The pipeline ordering (custodiet first)
+- Bot reviewers take 2–5 min to post. The pipeline ordering (enforcer first)
   provides enough delay for most, but Copilot may occasionally post after
   triage runs.
 

@@ -70,7 +70,7 @@ class TestSessionEnvSetup:
         # Gate mode env vars are set in pytest.ini_options env, so they are
         # already in the environment — the hook should NOT re-persist them
         # (unless they are enforced by agent-env-map.conf literals).
-        assert "CUSTODIET_GATE_MODE" not in content
+        assert "ENFORCER_GATE_MODE" not in content
         assert "QA_GATE_MODE" not in content
         assert "HANDOVER_GATE_MODE" not in content
 
@@ -89,7 +89,7 @@ class TestSessionEnvSetup:
         gate_vars = [
             "HANDOVER_GATE_MODE",
             "QA_GATE_MODE",
-            "CUSTODIET_GATE_MODE",
+            "ENFORCER_GATE_MODE",
             "HYDRATION_GATE_MODE",
         ]
         # Set gate mode vars to "" to simulate them being absent.

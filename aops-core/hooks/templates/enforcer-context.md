@@ -1,6 +1,6 @@
 ---
-name: custodiet-context
-title: Custodiet Context Template
+name: enforcer-context
+title: Enforcer Context Template
 category: template
 description: |
   Template written to temp file for rbg compliance subagent.
@@ -40,7 +40,7 @@ Review the session narrative against your axioms and workflow anti-patterns. Cit
 
 - **Skill authority**: When `{active_skill}` is not "none", the Active Skill Context section above describes what that skill authorizes. Do NOT flag actions that fall within this authorized scope.
 - **User-directed actions**: If the session narrative shows the USER invoked a skill (via `/skillname` or `Skill(skill=...)`), subsequent actions required by that skill are user-directed, not agent-initiated scope expansion.
-- **Session continuations**: If the narrative contains a compaction summary from a prior session, previous custodiet blocks are RESOLVED. Focus on current activity, not historical events.
+- **Session continuations**: If the narrative contains a compaction summary from a prior session, previous enforcer / custodiet blocks are RESOLVED. Focus on current activity, not historical events.
 - **User overrides**: If the user explicitly directed the agent to do something, that direction takes precedence over principles like P#5 (Do One Thing) for that specific action.
 
 Return your assessment in the specified format (OK, WARN, BLOCK, or error).

@@ -1,4 +1,5 @@
 import logging
+import os
 import re
 import time
 from typing import Any
@@ -531,7 +532,13 @@ class GenericGate:
         # The parent's Agent tool call increments by 1, and internal subagent calls
         # are ignored (aops-d8ee59cc). The router already sets is_subagent=False for
         # spawn tool calls in the parent session, so no special SPAWN_TOOLS handling needed.
-        should_increment = not context.is_subagent
+        #
+        # Plan-mode sessions (POLECAT_APPROVAL_MODE=plan) skip counting entirely.
+        # In plan mode the agent can only make read-only calls, so compliance
+        # enforcement is moot. The gate must not fire when rbg invocation is
+        # restricted — policy rules are a second defense but this is the primary guard.
+        in_plan_mode = os.environ.get("POLECAT_APPROVAL_MODE") == "plan"
+        should_increment = not context.is_subagent and not in_plan_mode
 
         if should_increment:
             if state.status == GateStatus.OPEN:

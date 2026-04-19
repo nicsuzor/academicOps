@@ -1,25 +1,25 @@
 #!/usr/bin/env python3
-"""Demo test for Custodiet Subagent Transcripts.
+"""Demo test for Enforcer Subagent Transcripts.
 
-Demonstrates custodiet's compliance checking by reading REAL subagent transcripts
-from past sessions. This shows exactly what context custodiet receives and how
+Demonstrates the enforcer's compliance checking by reading REAL subagent transcripts
+from past sessions. This shows exactly what context the enforcer receives and how
 it evaluates compliance.
 
 Unlike test_compliance_detection.py (which runs new headless sessions), this test
-reads existing transcripts to prove custodiet behavior in the wild.
+reads existing transcripts to prove enforcer behavior in the wild.
 
 The workflow:
-1. Find custodiet subagent transcripts in ~/.claude/projects/*/subagents/
+1. Find enforcer subagent transcripts in ~/.claude/projects/*/subagents/
 2. Parse the JSONL to extract the conversation
-3. Show the audit file content custodiet received
-4. Show custodiet's compliance verdict (OK or ATTENTION)
+3. Show the audit file content the enforcer received
+4. Show the enforcer's compliance verdict (OK or ATTENTION)
 
-Run with: uv run pytest tests/demo/test_demo_custodiet_transcript.py -v -s -n 0 -m demo
+Run with: uv run pytest tests/demo/test_demo_enforcer_transcript.py -v -s -n 0 -m demo
 
 Related:
-- hooks/custodiet_gate.py - PostToolUse hook that triggers custodiet
-- agents/custodiet.md - Custodiet agent system prompt
-- hooks/templates/custodiet-context.md - Audit file template
+- hooks/enforcer_gate.py - PostToolUse hook that triggers the enforcer
+- agents/enforcer.md - Enforcer agent system prompt
+- hooks/templates/enforcer-context.md - Audit file template
 """
 
 import json
@@ -27,11 +27,14 @@ from pathlib import Path
 
 import pytest
 
+_LEGACY_SCAN_TOKENS = ('"enforcer"', '"custodiet"', "claude-compliance/audit_")
 
-def find_custodiet_transcripts(limit: int = 10) -> list[Path]:
-    """Find subagent transcripts that contain custodiet activity.
 
-    Custodiet transcripts contain the string "custodiet" or read from
+def find_enforcer_transcripts(limit: int = 10) -> list[Path]:
+    """Find subagent transcripts that contain enforcer activity.
+
+    Enforcer transcripts contain the string "enforcer" (or the legacy
+    "custodiet" for historical sessions) or read from
     /tmp/claude-compliance/audit_*.md files.
     """
     projects_dir = Path.home() / ".claude" / "projects"
@@ -43,10 +46,10 @@ def find_custodiet_transcripts(limit: int = 10) -> list[Path]:
     # Search all subagent directories
     for subagent_dir in projects_dir.rglob("subagents"):
         for jsonl_file in subagent_dir.glob("agent-*.jsonl"):
-            # Quick check: does file mention custodiet or audit files?
+            # Quick check: does file mention enforcer or audit files?
             try:
                 content = jsonl_file.read_text()
-                if "claude-compliance/audit_" in content or '"custodiet"' in content:
+                if any(token in content for token in _LEGACY_SCAN_TOKENS):
                     transcripts.append(jsonl_file)
                     if len(transcripts) >= limit:
                         return transcripts
@@ -56,8 +59,8 @@ def find_custodiet_transcripts(limit: int = 10) -> list[Path]:
     return transcripts
 
 
-def parse_custodiet_transcript(transcript_path: Path) -> dict:
-    """Parse a custodiet subagent transcript into structured data.
+def parse_enforcer_transcript(transcript_path: Path) -> dict:
+    """Parse an enforcer subagent transcript into structured data.
 
     Returns:
         Dict with:
@@ -67,7 +70,7 @@ def parse_custodiet_transcript(transcript_path: Path) -> dict:
         - audit_content: str (first ~2000 chars of audit file)
         - session_context: str (extracted Session Context section)
         - verdict: str ("OK" or "ATTENTION" or "unknown")
-        - full_response: str (custodiet's full analysis)
+        - full_response: str (the enforcer's full analysis)
     """
     result = {
         "agent_id": "",
@@ -141,7 +144,7 @@ def parse_custodiet_transcript(transcript_path: Path) -> dict:
                                 end = start + 2000
                             result["session_context"] = file_content[start:end]
 
-    # Find custodiet's response (last assistant message)
+    # Find the enforcer's response (last assistant message)
     for entry in reversed(entries):
         if entry.get("type") == "assistant":
             msg = entry.get("message", {})
@@ -166,35 +169,35 @@ def parse_custodiet_transcript(transcript_path: Path) -> dict:
 
 
 @pytest.mark.demo
-class TestCustodietTranscriptDemo:
-    """Demo test showing real custodiet subagent transcripts."""
+class TestEnforcerTranscriptDemo:
+    """Demo test showing real enforcer subagent transcripts."""
 
-    def test_demo_show_custodiet_transcript(self) -> None:
-        """Demo: Parse and display a real custodiet subagent transcript.
+    def test_demo_show_enforcer_transcript(self) -> None:
+        """Demo: Parse and display a real enforcer subagent transcript.
 
-        This test reads actual custodiet transcripts from past sessions,
-        showing exactly what context custodiet received and how it responded.
+        This test reads actual enforcer transcripts from past sessions,
+        showing exactly what context the enforcer received and how it responded.
 
         The output demonstrates:
-        1. What prompt triggers custodiet
-        2. What session context custodiet sees (Original Request, TodoWrite, Tools, etc.)
-        3. How custodiet evaluates compliance
+        1. What prompt triggers the enforcer
+        2. What session context the enforcer sees (Original Request, TodoWrite, Tools, etc.)
+        3. How the enforcer evaluates compliance
         4. The verdict (OK or ATTENTION with specific violation)
         """
         print("\n" + "=" * 80)
-        print("CUSTODIET TRANSCRIPT DEMO: Real Compliance Check Evidence")
+        print("ENFORCER TRANSCRIPT DEMO: Real Compliance Check Evidence")
         print("=" * 80)
 
-        # === STEP 1: Find Custodiet Transcripts ===
-        print("\n--- STEP 1: Discover Custodiet Transcripts ---")
-        transcripts = find_custodiet_transcripts(limit=20)
+        # === STEP 1: Find Enforcer Transcripts ===
+        print("\n--- STEP 1: Discover Enforcer Transcripts ---")
+        transcripts = find_enforcer_transcripts(limit=20)
 
         if not transcripts:
             pytest.skip(
-                "No custodiet transcripts found in ~/.claude/projects/. Ensure custodiet is active."
+                "No enforcer transcripts found in ~/.claude/projects/. Ensure the enforcer is active."
             )
 
-        print(f"Found {len(transcripts)} custodiet transcript(s)")
+        print(f"Found {len(transcripts)} enforcer transcript(s)")
 
         # === STEP 2: Parse and Display Transcripts ===
         print("\n--- STEP 2: Parse Transcript Content ---")
@@ -205,7 +208,7 @@ class TestCustodietTranscriptDemo:
         max_examples = 3
 
         for transcript_path in transcripts:
-            parsed = parse_custodiet_transcript(transcript_path)
+            parsed = parse_enforcer_transcript(transcript_path)
 
             if parsed["verdict"] == "OK":
                 ok_count += 1
@@ -221,10 +224,10 @@ class TestCustodietTranscriptDemo:
                 print(f"Verdict: {parsed['verdict']}")
                 print(f"{'=' * 60}")
 
-                print("\n>>> PROMPT (what triggered custodiet):")
+                print("\n>>> PROMPT (what triggered the enforcer):")
                 print(f"    {parsed['prompt'][:100]}...")
 
-                print("\n>>> SESSION CONTEXT (what custodiet analyzed):")
+                print("\n>>> SESSION CONTEXT (what the enforcer analyzed):")
                 # Show key parts of session context
                 context = parsed["session_context"]
                 if context:
@@ -235,7 +238,7 @@ class TestCustodietTranscriptDemo:
                     if len(context) > 1500:
                         print("    ...")
 
-                print("\n>>> CUSTODIET RESPONSE:")
+                print("\n>>> ENFORCER RESPONSE:")
                 response = parsed["full_response"]
                 if response:
                     # Show full response for ATTENTION, truncated for OK
@@ -258,12 +261,12 @@ class TestCustodietTranscriptDemo:
         print(f"  - ATTENTION (violations): {attention_count}")
         print(f"  - Unknown/parsing failed: {len(transcripts) - ok_count - attention_count}")
 
-        # === STEP 4: Show What Custodiet Receives ===
+        # === STEP 4: Show What the Enforcer Receives ===
         print("\n" + "=" * 80)
-        print("WHAT CUSTODIET RECEIVES")
+        print("WHAT THE ENFORCER RECEIVES")
         print("=" * 80)
         print("""
-Custodiet subagent receives an audit file containing:
+The enforcer subagent receives an audit file containing:
 
 1. **Original User Request** - First non-meta user prompt
 2. **Recent User Prompts** - Last N prompts (truncated)
@@ -286,7 +289,7 @@ The subagent then returns either:
         print("=" * 80)
 
         criteria = [
-            ("Custodiet transcripts found", len(transcripts) > 0),
+            ("Enforcer transcripts found", len(transcripts) > 0),
             ("At least one transcript parsed", examples_shown > 0),
             ("Verdicts extracted", ok_count + attention_count > 0),
         ]
@@ -302,11 +305,11 @@ The subagent then returns either:
         print("DEMO SUMMARY")
         print("=" * 80)
         print("""
-This demo proved custodiet's real-world behavior by reading actual
+This demo proved the enforcer's real-world behavior by reading actual
 subagent transcripts from past sessions.
 
 Key findings:
-- Custodiet fires every ~5 action tools (threshold-based)
+- The enforcer fires every ~5 action tools (threshold-based)
 - Each check receives rich session context for drift analysis
 - Verdicts are minimal: "OK" or structured "ATTENTION" with remediation
 

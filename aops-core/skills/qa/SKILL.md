@@ -50,7 +50,7 @@ QA is not a checklist. It is a judgment call: does this work serve the people it
 ```
 /qa                                           # Quick verification of current work
 /qa Verify the authentication feature         # Specific feature verification
-/qa Analyze custodiet gate effectiveness      # Operational effectiveness analysis
+/qa Analyze enforcer gate effectiveness      # Operational effectiveness analysis
 /qa Design QA criteria for the new epic       # Upstream criteria design
 ```
 

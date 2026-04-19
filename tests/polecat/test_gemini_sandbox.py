@@ -48,16 +48,20 @@ def _gemini_branch_source() -> str:
 
     We bound the slice narrowly so unrelated changes elsewhere don't mask
     regressions here.
+
+    Note: the ``crew`` command also has an ``if gemini:`` block that builds a
+    gemini command, but it uses ``--approval-mode plan``.  The ``run`` command
+    uses ``--approval-mode yolo`` (full auto-approve for polecat tasks).  We
+    anchor on ``"yolo"`` to select the correct block.
     """
     text = CLI_PY.read_text()
-    # Match from the first 'if gemini:' that sets up the inner CLI cmd
-    # (identified by the adjacent '"gemini"' literal and '--approval-mode')
-    # up to the following 'else:' or 'else:  # Claude CLI' sibling.
+    # Anchor on the run-function's gemini block by requiring '"yolo"' nearby,
+    # which distinguishes it from the crew-function's '"plan"' block.
     m = re.search(
-        r"if gemini:\s*\n(?:.*\n){0,40}?\s*cmd\s*=\s*\[\s*\n\s*\"gemini\",",
+        r"if gemini:\s*\n(?:.*\n){0,40}?\s*cmd\s*=\s*\[\s*\n\s*\"gemini\",(?:.*\n){0,10}?\s*\"yolo\",",
         text,
     )
-    assert m is not None, "could not locate gemini cmd construction in polecat/cli.py"
+    assert m is not None, "could not locate run-function gemini cmd construction in polecat/cli.py"
     start = m.start()
     # Find the matching else: for this if. Scan forward for a line that
     # starts (at the same indent) with 'else:' — polecat/cli.py uses 4-space
