@@ -158,6 +158,8 @@ make install-hooks         # activate pre-commit hooks
 
 Or use `make install-dev` to build, install the plugin locally, and activate hooks in one step.
 
+Run `./scripts/format.sh` manually before committing if pre-commit hooks aren't firing.
+
 ## Testing and release
 
 ```bash
