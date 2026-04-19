@@ -84,17 +84,64 @@ If `.agents/CORE.md` is absent, look for `README.md` as fallback context.
 
 ## Step 3: Triage the PR
 
-Before commissioning agents, assess the PR's nature and complexity. This determines which agents to run and where.
+Before commissioning agents, classify the PR using the signals below. The classifier routes PRs into **four tiers** so that cheap PRs get cheap review and the expensive three-agent panel is reserved for changes that need it.
 
-### Complexity classification
+### Signals (apply in order; first match wins)
 
-| Class        | Criteria                                                   | Agents               |
-| ------------ | ---------------------------------------------------------- | -------------------- |
-| **Trivial**  | Docs-only, typos, minor config, single-file cosmetic       | RBG only             |
-| **Standard** | Feature, bug fix, refactor, multi-file changes             | RBG + Pauli          |
-| **Complex**  | Architectural change, new system, runtime behaviour change | RBG + Pauli + Marsha |
+1. **Stale task** — PR has a linked task (check `gh pr view --json closingIssuesReferences` first; fall back to `Closes <taskid>` in body) AND that task is `done`/`cancelled`/`wontfix` in PKB → **Tier 0: reject on sight**. If PKB lookup fails or is ambiguous, fall through to the next signal — do not guess.
+2. **Known system bot** — author is `app/github-actions` AND branch matches `release-plz-*` → **Tier 1** (release sanity).
+3. **Trusted automation** — branch matches `sleep/consolidation-*` AND `additions < 500` → **Tier 1** (knowledge-only sanity).
+4. **Architectural scope** — Does the PR body assert architectural scope: consolidation, replacement, radical simplification, major redesign, or system rewrite? Assess the claim — don't just pattern-match the words. A "rewrite" of a 10-line helper is not architectural; a "minor refactor" that replaces a subsystem is. If yes → **Tier 3** regardless of branch/size.
+5. **Size** — `additions >= 500` OR `changedFiles >= 20` → **Tier 3**.
+6. **Small polecat, active task** — branch matches `polecat/*`, body closes an active task, `additions < 200`, `changedFiles < 10`, no architectural scope → **Tier 1**.
+7. **Medium polecat** — same as 6 but larger → **Tier 2** (RBG only).
+8. **Human-authored** — author is not a known bot (not `botnicbot`, not `app/github-actions`) → **Tier 2 minimum** (human PRs have no automated mandate constraint). If a new automation actor appears (e.g. renovate, dependabot, a new GHA bot), add it to the known-bot list here and in signals 2–3 before routing it as Tier 1.
+9. **Non-polecat bot branch** — branch matches `fix/*`, `nic/*`, `feat/*` → **Tier 2 minimum**.
+10. **No task closure claim** — no identifiable task ID in the body → **Tier 2 minimum** (Tier 3 if also large).
 
-### Has-tests heuristic (for Marsha)
+### Tier definitions
+
+#### Tier 0 — Reject on sight
+
+Linked task is closed/cancelled/wontfix. No agents. Post an explanation comment and close the PR:
+
+```bash
+gh pr close $PR_NUMBER -R $REPO_REF --comment "Closing — the linked task is $TASK_STATUS in the PKB. If this work should proceed, reopen the task first with an updated mandate."
+```
+
+Edge case: the task may have been marked `done` by a prior merge of the same work — this is a duplicate PR, not stale work. Close with "already merged via #<other-PR>" if you can identify it. If genuinely uncertain, escalate to Nic rather than closing.
+
+#### Tier 1 — Sanity check (no agents, ~30–60 seconds)
+
+Read the diff directly and run three checks:
+
+1. **Intent match** — Does the diff do what the PR body claims? A sleep PR should add daily notes and knowledge files. A polecat task PR should implement what the task description says. Size should be proportional to the mandate (a "add a filter parameter" task producing 344 lines fails this check).
+2. **Bloat check** — Does anything visibly exceed the task's mandate? New abstractions that weren't called for, generalisations beyond the immediate need, scope creep, premature abstractions?
+3. **Unexpected operations** — Any deletions not described in the body? Any changes to files outside the expected scope for this PR class?
+
+Pass all three → approve (no commissioning).
+
+```bash
+gh pr review $PR_NUMBER -R $REPO_REF --approve --body "Tier 1 sanity check: intent matches, scope clean, no unexpected operations. — James"
+```
+
+Any flag → escalate to Tier 2 (for scope/intent concerns) or Tier 3 (for architectural concerns).
+
+#### Tier 2 — RBG only
+
+Commission RBG on the diff. Handle the verdict:
+
+- `OK` → approve with RBG summary.
+- `WARN` → read findings. Advisory findings → approve with note. Scope/authorisation findings → escalate to Tier 3.
+- `BLOCK` → escalate to Tier 3.
+
+Add Marsha only if BOTH: the change touches runtime behaviour (MCP tool, CLI, server startup, data pipeline) AND the change is testable locally in under 5 minutes.
+
+#### Tier 3 — Full James
+
+Commission RBG + Pauli + Marsha (Marsha applied per the has-tests heuristic below). Full cycle per Steps 4–7 of this command.
+
+### Has-tests heuristic (Tier 3 only — whether Marsha is included)
 
 Commission Marsha when ANY of these are true:
 
@@ -105,17 +152,23 @@ Commission Marsha when ANY of these are true:
 
 ---
 
-## Step 4: Commission Agents
+## Step 4: Commission Agents (Tier 2 and Tier 3 only)
 
-Before commissioning any agents, present your plan and obtain explicit approval (Axiom P#50):
+**Tier 0 PRs** close in Step 3 and never reach this step.
+**Tier 1 PRs** approve in Step 3 without commissioning anyone.
+
+For **Tier 2 and Tier 3**, present your plan and obtain explicit approval (Axiom P#50):
 
 ```
-Agents to run: RBG (always) [+ Pauli] [+ Marsha]
-Reason: <one-line rationale based on PR complexity>
+Tier: $TIER
+Agents to run: RBG [+ Pauli] [+ Marsha]
+Reason: <one-line rationale referencing the signal that put this PR into this tier>
 Proceed? (yes/no)
 ```
 
 Wait for confirmation before continuing. If the user declines, ask what they want instead.
+
+**Batch mode (optional)**: when reviewing a queue of PRs in one session, the user may grant per-session authorisation covering all Tier 2 reviews in the batch. Tier 3 still confirms per PR. Do not assume batch authorisation — ask for it explicitly at the start of the session.
 
 ### Routing principles
 
