@@ -55,10 +55,10 @@ echo "POLECAT_SESSION_TYPE=$POLECAT_SESSION_TYPE"
 echo "POLECAT_CREW_NAME=$POLECAT_CREW_NAME"
 echo "MY_SECRET=$MY_SECRET"
 echo "DATABASE_URL=$DATABASE_URL"
-echo "CUSTODIET_GATE_MODE=$CUSTODIET_GATE_MODE"
+echo "ENFORCER_GATE_MODE=$ENFORCER_GATE_MODE"
 echo "HANDOVER_GATE_MODE=$HANDOVER_GATE_MODE"
 echo "QA_GATE_MODE=$QA_GATE_MODE"
-echo "CUSTODIET_TOOL_CALL_THRESHOLD=$CUSTODIET_TOOL_CALL_THRESHOLD"
+echo "ENFORCER_TOOL_CALL_THRESHOLD=$ENFORCER_TOOL_CALL_THRESHOLD"
 echo "AOPS_SESSIONS=$AOPS_SESSIONS"
 echo "AOPS_CUSTOM_VAR=$AOPS_CUSTOM_VAR"
 echo "TZ_VAL=$TZ"
@@ -114,10 +114,10 @@ class TestDockerEndState:
             "POLECAT_CREW_NAME": "integration-test",
             "MY_SECRET": "should-not-leak",
             "DATABASE_URL": "postgres://should-not-leak",
-            "CUSTODIET_GATE_MODE": "block",
+            "ENFORCER_GATE_MODE": "block",
             "HANDOVER_GATE_MODE": "warn",
             "QA_GATE_MODE": "warn",
-            "CUSTODIET_TOOL_CALL_THRESHOLD": "50",
+            "ENFORCER_TOOL_CALL_THRESHOLD": "50",
             "AOPS_SESSIONS": "/tmp/test-sessions",
             "AOPS_CUSTOM_VAR": "custom-value",
             "GIT_AUTHOR_NAME": "integration-bot",
@@ -244,10 +244,10 @@ class TestDockerEndState:
 
     def test_gate_mode_vars_reach_container(self, env_results):
         """Gate mode variables reach the container for hook enforcement."""
-        assert env_results["CUSTODIET_GATE_MODE"] == "block"
+        assert env_results["ENFORCER_GATE_MODE"] == "block"
         assert env_results["HANDOVER_GATE_MODE"] == "warn"
         assert env_results["QA_GATE_MODE"] == "warn"
-        assert env_results["CUSTODIET_TOOL_CALL_THRESHOLD"] == "50"
+        assert env_results["ENFORCER_TOOL_CALL_THRESHOLD"] == "50"
 
     def test_aops_prefixed_env_reaches_container(self, env_results):
         """AOPS_* env vars are forwarded."""

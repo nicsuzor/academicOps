@@ -57,7 +57,7 @@ This is the most important field for forensics. Written by `unified_logger.py:69
 | Artifact              | Location                              | Pattern                                                   |
 | --------------------- | ------------------------------------- | --------------------------------------------------------- |
 | Hook JSONL            | `$AOPS_SESSIONS/hooks/`               | `<YYYYMMDD>-<session-short-hash>-hooks.jsonl`             |
-| Custodiet audit       | `$AOPS_SESSIONS/hooks/`               | `<YYYYMMDD>-<session-short-hash>-custodiet.md`            |
+| Enforcer audit        | `$AOPS_SESSIONS/hooks/`               | `<YYYYMMDD>-<session-short-hash>-enforcer.md`             |
 | Session state         | `$AOPS_SESSION_STATE_DIR/`            | `<YYYYMMDD>-<HH>-<session-short-hash>.json`               |
 | Transcript (full)     | `$POLECAT_HOME/sessions/transcripts/` | `<YYYYMMDD>-<HH>-<worktree-name>-<session>-*-full.md`     |
 | Transcript (abridged) | `$POLECAT_HOME/sessions/transcripts/` | `<YYYYMMDD>-<HH>-<worktree-name>-<session>-*-abridged.md` |
@@ -77,16 +77,16 @@ This is the most important field for forensics. Written by `unified_logger.py:69
 
 ## Gate Forensics
 
-### Custodiet / RBG Gate
+### Enforcer / RBG Gate
 
-The compliance gate periodically requires the agent to invoke the rbg (formerly custodiet) subagent.
+The compliance gate periodically requires the agent to invoke the enforcer (Haiku) or rbg (Sonnet) subagent.
 
 **Configuration**:
 
-- Threshold: `CUSTODIET_TOOL_CALL_THRESHOLD` env var (default: **50 operations**)
+- Threshold: `ENFORCER_TOOL_CALL_THRESHOLD` env var (default: **50 operations**)
 - Countdown starts: 7 operations before threshold (`start_before=7`)
 - Counter: tracks `ops_since_open` (incremented on PostToolUse for non-subagent calls)
-- Resets: when custodiet/rbg subagent completes (SubagentStop event)
+- Resets: when enforcer/rbg subagent completes (SubagentStop event)
 
 **IMPORTANT**: The gate counts **operations** (tool calls), NOT turns (user prompts). A single turn may produce 5-10 tool calls. "11 turns" ≈ 50 operations.
 
@@ -96,20 +96,20 @@ The compliance gate periodically requires the agent to invoke the rbg (formerly 
 # Count total operations in a session
 grep -c '"hook_event":"PostToolUse"' <hooks.jsonl>
 
-# Check if custodiet was dispatched (and how many times)
+# Check if enforcer was dispatched (and how many times)
 grep -E '"hook_event":"SubagentSt' <hooks.jsonl> | \
   python3 -c "
 import sys, json
 for line in sys.stdin:
     d = json.loads(line.strip())
     st = d.get('subagent_type', '')
-    if 'custodiet' in st or 'rbg' in st:
+    if 'enforcer' in st or 'rbg' in st:
         evt = d.get('hook_event')
         v = d.get('output', {}).get('verdict')
         print(f'{evt}: type={st}, verdict={v}')
 "
 
-# Check if custodiet blocked (verdict=deny on PreToolUse after threshold)
+# Check if enforcer blocked (verdict=deny on PreToolUse after threshold)
 grep '"hook_event":"PreToolUse"' <hooks.jsonl> | \
   python3 -c "
 import sys, json
@@ -125,7 +125,7 @@ for line in sys.stdin:
 
 **What to look for**:
 
-- `SubagentStart` with `subagent_type` containing `custodiet` or `rbg` = gate check started
+- `SubagentStart` with `subagent_type` containing `enforcer` or `rbg` = gate check started
 - `SubagentStop` with same type + `verdict=allow` = gate cleared, counter reset
 - PreToolUse with `verdict=deny` and system_message mentioning "Compliance check" = gate blocking tools
 - Multiple SubagentStart/Stop pairs = gate firing repeatedly (normal in long sessions)
@@ -192,10 +192,10 @@ done
 
 ## Common Patterns
 
-### Pattern: Custodiet firing repeatedly in long sessions
+### Pattern: Enforcer firing repeatedly in long sessions
 
 **Sessions**: `fafa268a` (193 ops, 10+ dispatches), `c7909ba1` (211 ops), `ac37cbc3` (268 ops)
-**Meaning**: Normal. Long sessions accumulate many operations. The gate fires every ~50 ops, custodiet evaluates, returns OK, counter resets, work continues.
+**Meaning**: Normal. Long sessions accumulate many operations. The gate fires every ~50 ops, enforcer evaluates, returns OK, counter resets, work continues.
 
 ### Pattern: 4 Stop denies then auto-approve
 

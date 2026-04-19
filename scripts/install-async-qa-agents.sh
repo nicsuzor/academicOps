@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # install-async-qa-agents.sh
 #
-# Install the async QA review agents (hydrator-reviewer + custodiet-reviewer)
+# Install the async QA review agents (hydrator-reviewer + enforcer-reviewer)
 # into a target GitHub repository.
 #
 # These agents post advisory comments on PRs:
 #   - hydrator-reviewer: identifies applicable workflows and quality gates
-#   - custodiet-reviewer: detects scope drift and principle violations
+#   - enforcer-reviewer: detects scope drift and principle violations
 #
 # USAGE
 #   ./install-async-qa-agents.sh <target-repo-path>
@@ -21,12 +21,12 @@
 #
 # WHAT GETS INSTALLED
 #   .github/agents/hydrator-reviewer.md   — workflow guidance agent prompt
-#   .github/agents/custodiet-reviewer.md  — compliance reviewer agent prompt
+#   .github/agents/enforcer-reviewer.md  — compliance reviewer agent prompt
 #   .github/workflows/async-qa-review.yml — GitHub Actions trigger workflow
 #
 # INVOCATION (local, once installed)
 #   Task(subagent_type='aops-core:hydrator-reviewer', prompt='PR #42 in owner/repo')
-#   Task(subagent_type='aops-core:custodiet-reviewer', prompt='PR #42 in owner/repo')
+#   Task(subagent_type='aops-core:enforcer-reviewer', prompt='PR #42 in owner/repo')
 
 set -euo pipefail
 
@@ -55,7 +55,7 @@ mkdir -p "$TARGET/.github/agents"
 mkdir -p "$TARGET/.github/workflows"
 
 # Install agent prompts
-for agent in hydrator-reviewer custodiet-reviewer; do
+for agent in hydrator-reviewer enforcer-reviewer; do
     src="$AGENTS_SRC/$agent.md"
     dst="$TARGET/.github/agents/$agent.md"
     if [[ ! -f "$src" ]]; then
@@ -88,12 +88,12 @@ echo ""
 echo "  2. Commit the installed files:"
 echo "       cd $TARGET"
 echo "       git add .github/agents/hydrator-reviewer.md \\"
-echo "               .github/agents/custodiet-reviewer.md \\"
+echo "               .github/agents/enforcer-reviewer.md \\"
 echo "               .github/workflows/async-qa-review.yml"
-echo "       git commit -m 'ci: add async QA review agents (hydrator-reviewer + custodiet-reviewer)'"
+echo "       git commit -m 'ci: add async QA review agents (hydrator-reviewer + enforcer-reviewer)'"
 echo ""
 echo "  3. The agents will run automatically on the next PR open/sync/reopen."
 echo ""
 echo "  4. To invoke locally (requires aops task server + memory MCP):"
 echo "       Task(subagent_type='aops-core:hydrator-reviewer', prompt='PR #<N> in <owner/repo>')"
-echo "       Task(subagent_type='aops-core:custodiet-reviewer', prompt='PR #<N> in <owner/repo>')"
+echo "       Task(subagent_type='aops-core:enforcer-reviewer', prompt='PR #<N> in <owner/repo>')"

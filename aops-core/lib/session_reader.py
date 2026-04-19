@@ -836,7 +836,7 @@ def _extract_skill_scope_from_file(path: Path) -> str | None:
     1. Frontmatter 'description' field
     2. First ## Workflow section (first 500 chars)
 
-    Returns a brief summary suitable for custodiet context.
+    Returns a brief summary suitable for enforcer context.
     """
     try:
         content = path.read_text()
@@ -883,7 +883,7 @@ def _extract_todos(entries: list[Any]) -> dict[str, Any] | None:
     """Extract current TodoWrite state with full todo list.
 
     Returns complete todo information for compliance checking,
-    not just counts - custodiet needs to see the full plan.
+    not just counts - enforcer needs to see the full plan.
     """
     state = parse_todowrite_state(entries)
     if state is None:
@@ -900,7 +900,7 @@ def _extract_errors(entries: list[Any], max_turns: int) -> list[dict[str, Any]]:
     """Extract recent tool errors with tool name and input context.
 
     Correlates tool_result errors with their corresponding tool_use blocks
-    to provide actionable context for custodiet compliance checking.
+    to provide actionable context for enforcer compliance checking.
     """
     # First pass: build map of tool_use_id -> tool info
     tool_use_map: dict[str, dict[str, Any]] = {}
@@ -957,7 +957,7 @@ def _extract_errors(entries: list[Any], max_turns: int) -> list[dict[str, Any]]:
 def _extract_files_modified(entries: list[Any]) -> list[str]:
     """Extract unique list of files modified via Edit/Write tools.
 
-    Used by custodiet for scope assessment - are we touching files
+    Used by enforcer for scope assessment - are we touching files
     unrelated to the original request?
     """
     files: set[str] = set()

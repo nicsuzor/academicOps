@@ -208,7 +208,7 @@ description: Working hypotheses validated by evidence.
 
 ## User System Expertise > Agent Hypotheses (P#74)
 
-**Statement**: When user makes specific, repeated assertions about their own codebase or system behavior, trust the assertion and verify with ONE minimal test. Do NOT spawn investigation/critic/custodiet to "validate" user claims about their own system.
+**Statement**: When user makes specific, repeated assertions about their own codebase or system behavior, trust the assertion and verify with ONE minimal test. Do NOT spawn investigation/critic/enforcer to "validate" user claims about their own system.
 
 **Corollaries**:
 

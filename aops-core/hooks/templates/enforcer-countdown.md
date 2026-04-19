@@ -1,9 +1,9 @@
 ---
-name: custodiet-countdown
-title: Custodiet Countdown Warning
+name: enforcer-countdown
+title: Enforcer Countdown Warning
 category: template
 description: |
-  Countdown warning shown before custodiet threshold is reached.
+  Countdown warning shown before enforcer threshold is reached.
   Variables: {remaining}, {temp_path}
 ---
 

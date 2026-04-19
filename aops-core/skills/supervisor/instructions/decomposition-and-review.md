@@ -110,7 +110,7 @@ Supervisor invokes reviewer agents and synthesizes their feedback before human a
 
 | Reviewer          | Role                                                        | Mandatory                                 | Model  |
 | ----------------- | ----------------------------------------------------------- | ----------------------------------------- | ------ |
-| RBG (custodiet)   | Authority check: is task within granted scope?              | Yes                                       | —      |
+| RBG (enforcer)    | Authority check: is task within granted scope?              | Yes                                       | —      |
 | Pauli             | Pedantic review: assumptions, logical errors, missing cases | Yes                                       | opus   |
 | Domain specialist | Subject matter expertise                                    | If task.tags intersect specialist.domains | varies |
 
@@ -139,7 +139,7 @@ Before invoking reviewers, prepare a context document containing:
 
 ## Relevant Principles
 
-[Extract relevant AXIOMS/HEURISTICS for this domain]
+[Extract relevant principles/heuristics for this domain — invoke `rbg` for axiom checks]
 ```
 
 **Step 2: Invoke Reviewers in Parallel**
@@ -184,7 +184,7 @@ Return your assessment in this exact format:
 )
 
 rbg_task = Task(
-    subagent_type='aops-core:custodiet',
+    subagent_type='aops-core:enforcer',
     model='haiku',
     prompt='''Verify this task is within granted authority:
 
@@ -364,7 +364,7 @@ Respond with:
 **Pauli Position** (after debate):
 [Their final position]
 
-**Custodiet Position** (after debate):
+**Enforcer Position** (after debate):
 [Their final position]
 
 ### Core Tension

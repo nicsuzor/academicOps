@@ -10,7 +10,7 @@ Usage:
     from lib.template_registry import TemplateRegistry
 
     registry = TemplateRegistry.instance()
-    content = registry.render("custodiet.policy_message", {})
+    content = registry.render("enforcer.policy_message", {})
 
 Exit behavior: Functions raise exceptions (fail-fast P#8). Callers handle graceful degradation.
 """
@@ -39,9 +39,9 @@ class TemplateSpec:
     """Specification for a gate template.
 
     Attributes:
-        name: Unique identifier, e.g., "custodiet.policy_message"
+        name: Unique identifier, e.g., "enforcer.policy_message"
         category: What kind of template (user message, context, subagent)
-        filename: Template file name, e.g., "custodiet-policy-message.md"
+        filename: Template file name, e.g., "enforcer-policy-message.md"
         required_vars: Variables that MUST be provided to render
         optional_vars: Variables that MAY be provided (default to empty string)
         description: Human-readable purpose
@@ -81,18 +81,18 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         description="Lightweight skills-routing hint (formerly hydration warning)",
         env_override="HYDRATION_WARN_TEMPLATE",
     ),
-    # --- Custodiet gate ---
-    "custodiet.context": TemplateSpec(
-        name="custodiet.context",
+    # --- Enforcer gate ---
+    "enforcer.context": TemplateSpec(
+        name="enforcer.context",
         category=TemplateCategory.SUBAGENT_INSTRUCTION,
-        filename="custodiet-context.md",
+        filename="enforcer-context.md",
         required_vars=(
             "session_context",
             "tool_name",
         ),
         optional_vars=("session_id", "gate_name", "active_skill", "skill_scope"),
-        description="Full context for custodiet compliance check",
-        env_override="CUSTODIET_CONTEXT_TEMPLATE",
+        description="Full context for enforcer compliance check",
+        env_override="ENFORCER_CONTEXT_TEMPLATE",
     ),
     "qa.context": TemplateSpec(
         name="qa.context",
@@ -105,52 +105,52 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         optional_vars=("session_id", "gate_name"),
         description="Session context for QA verification before exit",
     ),
-    "custodiet.verified": TemplateSpec(
-        name="custodiet.verified",
+    "enforcer.verified": TemplateSpec(
+        name="enforcer.verified",
         category=TemplateCategory.USER_MESSAGE,
-        filename="custodiet-verified.md",
+        filename="enforcer-verified.md",
         required_vars=(),
-        description="Status message when custodiet compliance check passes",
+        description="Status message when enforcer compliance check passes",
     ),
-    "custodiet.policy_message": TemplateSpec(
-        name="custodiet.policy_message",
+    "enforcer.policy_message": TemplateSpec(
+        name="enforcer.policy_message",
         category=TemplateCategory.USER_MESSAGE,
-        filename="custodiet-policy-message.md",
+        filename="enforcer-policy-message.md",
         required_vars=(),
         optional_vars=("ops_since_open",),
-        description="Short message when custodiet gate blocks a tool call",
+        description="Short message when enforcer gate blocks a tool call",
     ),
-    "custodiet.policy_context": TemplateSpec(
-        name="custodiet.policy_context",
+    "enforcer.policy_context": TemplateSpec(
+        name="enforcer.policy_context",
         category=TemplateCategory.CONTEXT_INJECTION,
-        filename="custodiet-policy-context.md",
+        filename="enforcer-policy-context.md",
         required_vars=("temp_path",),
         optional_vars=("ops_since_open",),
-        description="Full context injection when custodiet gate blocks",
-        env_override="CUSTODIET_POLICY_CONTEXT_TEMPLATE",
+        description="Full context injection when enforcer gate blocks",
+        env_override="ENFORCER_POLICY_CONTEXT_TEMPLATE",
     ),
-    "custodiet.countdown": TemplateSpec(
-        name="custodiet.countdown",
+    "enforcer.countdown": TemplateSpec(
+        name="enforcer.countdown",
         category=TemplateCategory.USER_MESSAGE,
-        filename="custodiet-countdown.md",
+        filename="enforcer-countdown.md",
         required_vars=("remaining", "temp_path"),
         optional_vars=("threshold", "current", "gate_name"),
-        description="Countdown warning before custodiet threshold",
+        description="Countdown warning before enforcer threshold",
     ),
-    "custodiet.instruction": TemplateSpec(
-        name="custodiet.instruction",
+    "enforcer.instruction": TemplateSpec(
+        name="enforcer.instruction",
         category=TemplateCategory.CONTEXT_INJECTION,
-        filename="custodiet-instruction.md",
+        filename="enforcer-instruction.md",
         required_vars=("temp_path",),
-        description="Instruction to invoke custodiet skill",
-        env_override="CUSTODIET_INSTRUCTION_TEMPLATE",
+        description="Instruction to invoke enforcer agent",
+        env_override="ENFORCER_INSTRUCTION_TEMPLATE",
     ),
-    "custodiet.audit": TemplateSpec(
-        name="custodiet.audit",
+    "enforcer.audit": TemplateSpec(
+        name="enforcer.audit",
         category=TemplateCategory.SUBAGENT_INSTRUCTION,
-        filename="custodiet-audit.md",
+        filename="enforcer-audit.md",
         required_vars=("session_id", "gate_name", "tool_name"),
-        description="Audit context for custodiet gate",
+        description="Audit context for enforcer gate",
     ),
     # --- QA gate: trigger and policy messages ---
     "qa.complete": TemplateSpec(

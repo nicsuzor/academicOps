@@ -211,7 +211,7 @@ After classifying PRs, recommend specific agent actions for each. The available 
 
 | Agent              | Workflow               | Trigger                                                        | Purpose                                                              |
 | ------------------ | ---------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------- |
-| **Custodiet**      | `agent-custodiet.yml`  | `workflow_dispatch` with `target_type`, `target_number`, `ref` | Scope compliance review. APPROVE or REQUEST CHANGES                  |
+| **Enforcer**       | `agent-enforcer.yml`   | `workflow_dispatch` with `target_type`, `target_number`, `ref` | Scope compliance review. APPROVE or REQUEST CHANGES                  |
 | **Merge Prep**     | `agent-merge-prep.yml` | `workflow_dispatch` with `pr_number`, `ref`                    | Reads ALL review feedback, pushes fixes, sets Merge Prep status      |
 | **`@claude`**      | `claude.yml`           | Comment `@claude <instruction>` on PR                          | Ad-hoc fixes. General-purpose                                        |
 | **Copilot Worker** | Copilot Coding Agent   | `@copilot` comment or issue assignment                         | Autonomous task execution following `.github/agents/worker.agent.md` |
@@ -219,7 +219,7 @@ After classifying PRs, recommend specific agent actions for each. The available 
 
 **Typical pipeline for a new PR**:
 
-1. Custodiet reviews (scope compliance) → APPROVE or REQUEST CHANGES
+1. Enforcer reviews (scope compliance) → APPROVE or REQUEST CHANGES
 2. If CHANGES_REQUESTED → trigger Merge Prep to fix feedback
 3. Merge Prep pushes fixes → CI re-runs → sets "Merge Prep" status
 4. PR auto-merges when all checks pass
@@ -233,7 +233,7 @@ After classifying PRs, recommend specific agent actions for each. The available 
 
 ### Step 4.3: Verify Descriptions
 
-**CRITICAL**: Gemini mining may hallucinate. Cross-check accomplishment descriptions against actual changes (git log, file content). Per AXIOMS #2, do not propagate fabricated descriptions.
+**CRITICAL**: Gemini mining may hallucinate. Cross-check accomplishment descriptions against actual changes (git log, file content). Do not propagate fabricated descriptions.
 
 ### Step 4.4: Update Daily Note Sections
 

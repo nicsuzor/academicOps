@@ -8,7 +8,7 @@ description: Context descriptor for framework PRs — changes to skills, agents,
 
 ## When This Applies
 
-A PR that modifies the framework itself — skills, agents, hooks, enforcement maps, workflow infrastructure, gate logic, context loading. This includes changes to agent definitions, skill SKILL.md files, AXIOMS.md, hook routing, or plugin manifests.
+A PR that modifies the framework itself — skills, agents, hooks, enforcement maps, workflow infrastructure, gate logic, context loading. This includes changes to agent definitions, skill SKILL.md files, the universal axioms, hook routing, or plugin manifests.
 
 Framework PRs are higher stakes than code PRs. They shape how all future work gets done. A bad agent definition compounds. A broken hook fires on every session. A removed axiom weakens the whole enforcement model.
 

@@ -10,7 +10,7 @@ description: Generate user-facing briefing for tasks requiring approval or decis
 
 **When**: User needs to review and make decisions on tasks blocking progress.
 
-**Key principle**: Surface issues requiring human judgment with complete context so the user can make informed decisions quickly. Per AXIOMS #22 (Acceptance Criteria Own Success) - agents cannot make decisions that modify requirements or weaken criteria.
+**Key principle**: Surface issues requiring human judgment with complete context so the user can make informed decisions quickly. Acceptance criteria are user-owned — agents cannot make decisions that modify requirements or weaken criteria.
 
 **CRITICAL**: This workflow generates briefings, not recommendations. Per categorical imperative, agents must not make subjective recommendations - instead provide structured consequence analysis for each option.
 

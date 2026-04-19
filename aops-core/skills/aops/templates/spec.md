@@ -21,7 +21,7 @@ tags:
 
 ## Acceptance Criteria
 
-**CRITICAL**: These criteria are USER-OWNED and define what "done" means. Agents CANNOT modify, weaken, or reinterpret these criteria (see [[AXIOMS.md]] #22).
+**CRITICAL**: These criteria are USER-OWNED and define what "done" means. Agents CANNOT modify, weaken, or reinterpret these criteria.
 
 ### Success Criteria (ALL must pass)
 
@@ -67,7 +67,7 @@ tags:
 - [Edge cases we'll handle later]
 - [Related but separate problems]
 
-**Boundary rationale**: [Why these boundaries? What makes this a "do one thing" task per [[AXIOMS.md]]?]
+**Boundary rationale**: [Why these boundaries? What makes this a single, coherent task?]
 
 ## Dependencies
 
@@ -168,7 +168,7 @@ Each test should map to specific acceptance criteria from above. Reference which
 
 ### Error Handling Strategy
 
-**Fail-fast cases** (halt immediately, per [[AXIOMS.md]]):
+**Fail-fast cases** (halt immediately):
 
 - [e.g., "Task file malformed"]
 - [e.g., "Required metadata missing"]
@@ -311,7 +311,7 @@ Before marking this task as complete:
 - [ ] Documentation complete (code, user, maintenance)
 - [ ] Experiment log entry created
 - [ ] No documentation conflicts introduced
-- [ ] Code follows [[AXIOMS.md]] principles (fail-fast, DRY, explicit)
+- [ ] Code passes `rbg` review (axiom compliance)
 - [ ] Monitoring in place and working
 - [ ] Rollout plan executed successfully
 

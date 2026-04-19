@@ -276,20 +276,20 @@ class SessionState(BaseModel):
 # --- Utility Functions ---
 
 
-def is_custodiet_enabled() -> bool:
-    """Check if custodiet is enabled via env var."""
-    return os.environ.get("CUSTODIET_DISABLED") != "1"
+def is_enforcer_enabled() -> bool:
+    """Check if enforcer is enabled via env var."""
+    return os.environ.get("ENFORCER_DISABLED") != "1"
 
 
-def set_custodiet_block(session_id: str, reason: str) -> None:
-    """Set custodiet block on a session.
+def set_enforcer_block(session_id: str, reason: str) -> None:
+    """Set enforcer block on a session.
 
     This is used by external scripts (compliance_block.py) to block
     session when policy violations are detected.
     """
     state = SessionState.load(session_id)
-    gate = state.get_gate("custodiet")
+    gate = state.get_gate("enforcer")
     gate.blocked = True
     gate.block_reason = reason
-    state.gates["custodiet"] = gate
+    state.gates["enforcer"] = gate
     state.save()

@@ -1,6 +1,6 @@
 from hooks.gate_config import (
-    CUSTODIET_GATE_MODE,
-    CUSTODIET_TOOL_CALL_THRESHOLD,
+    ENFORCER_GATE_MODE,
+    ENFORCER_TOOL_CALL_THRESHOLD,
     HANDOVER_GATE_MODE,
     QA_GATE_MODE,
 )
@@ -22,31 +22,31 @@ from lib.gate_types import (
 # to gate.on_subagent_start() (fixed in aops-55bcf1a2).
 
 GATE_CONFIGS = [
-    # --- Custodiet ---
+    # --- Enforcer ---
     GateConfig(
-        name="custodiet",
+        name="enforcer",
         description="Enforces periodic compliance checks.",
         initial_status=GateStatus.OPEN,
         countdown=CountdownConfig(
             start_before=7,
-            threshold=CUSTODIET_TOOL_CALL_THRESHOLD,
-            message_key="custodiet.countdown",
+            threshold=ENFORCER_TOOL_CALL_THRESHOLD,
+            message_key="enforcer.countdown",
         ),
         triggers=[
-            # Custodiet check -> Reset
+            # Enforcer check -> Reset
             # PreToolUse is included so the trigger fires (resetting the counter)
-            # BEFORE the policy evaluates. Without it, Agent(custodiet) is itself
-            # is blocked when ops >= threshold (deadlock: can't dispatch the agent
+            # BEFORE the policy evaluates. Without it, Agent(enforcer) is itself
+            # blocked when ops >= threshold (deadlock: can't dispatch the agent
             # that would reset the counter).
             GateTrigger(
                 condition=GateCondition(
                     hook_event="^(PreToolUse|SubagentStart|SubagentStop)$",
-                    subagent_type_pattern="^(aops-core:)?(custodiet|rbg)$",
+                    subagent_type_pattern="^(aops[-_]core[:_])?(enforcer|rbg)$",
                 ),
                 transition=GateTransition(
                     reset_ops_counter=True,
-                    system_message_key="custodiet.verified",
-                    context_key="custodiet.verified",
+                    system_message_key="enforcer.verified",
+                    context_key="enforcer.verified",
                 ),
             ),
         ],
@@ -55,12 +55,12 @@ GATE_CONFIGS = [
             GatePolicy(
                 condition=GateCondition(
                     hook_event="PreToolUse",
-                    min_ops_since_open=CUSTODIET_TOOL_CALL_THRESHOLD,
+                    min_ops_since_open=ENFORCER_TOOL_CALL_THRESHOLD,
                     excluded_tool_categories=["infrastructure", "always_available", "read_only"],
                 ),
-                verdict=CUSTODIET_GATE_MODE,
-                message_key="custodiet.policy_message",
-                context_key="custodiet.policy_context",
+                verdict=ENFORCER_GATE_MODE,
+                message_key="enforcer.policy_message",
+                context_key="enforcer.policy_context",
                 custom_action="prepare_compliance_report",
             ),
         ],

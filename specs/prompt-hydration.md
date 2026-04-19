@@ -470,12 +470,12 @@ Main agent receives filtered principles only (~100-200 tokens)
 **User prompt:**
 
 ```
-check the custodiet agent -- make sure it doesn't use inline python:
+check the enforcer agent -- make sure it doesn't use inline python:
 
   ⎿  Bash(python3 -c "
   import sys; sys.path.insert(0, '/home/nic/src/academicOps/lib')
-  from session_state import set_custodiet_block
-  set_custodiet_block('$CLAUDE_SESSION_ID', 'Agent modified setup.sh without user approval after discovering root cause - violates P#5 (Do One Thing) and
+  from session_state import set_enforcer_block
+  set_enforcer_block('$CLAUDE_SESSION_ID', 'Agent modified setup.sh without user approval after discovering root cause - violates P#5 (Do One Thing) and
   P#31
   (Acceptance Criteria Own Success)')
   "
@@ -489,13 +489,13 @@ check the custodiet agent -- make sure it doesn't use inline python:
 ````markdown
 ## Prompt Hydration
 
-**Intent**: Audit custodiet agent implementation to ensure it uses packaged scripts instead of inline Python for operations like setting session state
+**Intent**: Audit enforcer agent implementation to ensure it uses packaged scripts instead of inline Python for operations like setting session state
 **Workflow**: design (Verification required)
 **Guardrails**: verify_before_complete, test_changes
 
 ### Relevant Context
 
-- Custodiet agent: `$AOPS/aops-core/agents/custodiet.md`
+- Enforcer agent: `$AOPS/aops-core/agents/enforcer.md`
 - Session state library: `$AOPS/aops-core/lib/session_state.py`
 - Framework rule: Tools should use packaged scripts, not inline code (maintainability, testability)
 
@@ -505,7 +505,7 @@ check the custodiet agent -- make sure it doesn't use inline python:
 ## Execution Steps
 
 1. Create task to track this issue
-2. Read custodiet agent and identify inline Python usage
+2. Read enforcer agent and identify inline Python usage
 3. Create packaged script in lib/ for the operation
 4. Update agent to call script instead of inline Python
 5. CHECKPOINT: Run tests to verify agent still functions correctly

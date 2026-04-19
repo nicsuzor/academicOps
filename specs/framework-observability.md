@@ -31,7 +31,7 @@ The framework cannot directly observe agent behavior (agents are probabilistic).
 
 1. **Session artifacts** - JSONL transcripts, tool invocations, timestamps
 2. **Structured outputs** - Framework Reflections, insights JSON, task updates
-3. **Enforcement events** - Hook triggers, custodiet blocks, policy violations
+3. **Enforcement events** - Hook triggers, enforcer blocks, policy violations
 
 These observables create an audit trail that humans and agents can analyze.
 
@@ -209,7 +209,7 @@ These feed into the [[aops-core/commands/learn.md|learn]] workflow for root caus
 | Hook                                  | Event        | Observable Generated            |
 | ------------------------------------- | ------------ | ------------------------------- |
 | `sessionstart_load_axioms.py`         | SessionStart | Session initialization logged   |
-| `custodiet_gate.py`                   | PostToolUse  | Block events, drift detection   |
+| `enforcer_gate.py`                    | PostToolUse  | Block events, drift detection   |
 | `aops-core/scripts/transcript.py`     | Stop         | Framework Reflection extraction |
 | `aops-core/hooks/autocommit_state.py` | PostToolUse  | State file updates              |
 
