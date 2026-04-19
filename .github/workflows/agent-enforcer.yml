@@ -159,4 +159,4 @@ jobs:
             PR head SHA: ${{ steps.pr-info.outputs.sha }}
 
             Enforcement Mode: warn
-          claude_args: '--allowed-tools "Bash,Read"'
+          claude_args: '--model sonnet --allowed-tools "Bash,Read"'

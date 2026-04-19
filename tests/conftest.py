@@ -28,7 +28,7 @@ from .paths import (
 log = logging.getLogger(__name__)
 
 # Max turns for Claude in test fixtures — higher than the default of 3 to allow
-# for hook overhead (hydration gate, custodiet) before reaching the actual task.
+# for hook overhead (hydration gate, enforcer) before reaching the actual task.
 TEST_CLAUDE_MAX_TURNS = "10"
 
 # Base CLI args for each backend — single source of truth for headless execution.

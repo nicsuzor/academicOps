@@ -19,7 +19,7 @@ version: 2.0.0
 
 ## Core Process
 
-1. **Understand the Target**: What are we decomposing -- a project, an epic (needs tasks), or a task (needs actions)? Clarify the primary objective and constraints. 
+1. **Understand the Target**: What are we decomposing -- a project, an epic (needs tasks), or a task (needs actions)? Clarify the primary objective and constraints.
    - **Target structure**: `Project → Epic → Task → Action` (see [[TAXONOMY.md]])
    - **Property Check**: Examine the parent's `scope`, `uncertainty`, and `criticality`.
    - **High Uncertainty**: Priority is to reduce uncertainty. The decomposition should lean heavily into evidence gathering, audits, or probes (Step 3).
@@ -31,17 +31,17 @@ version: 2.0.0
 
 4. **Cross-cutting Impact & Prerequisites** — Ask two questions: (a) "What other projects consume or depend on what's changing?" Search PKB for affected tasks/epics; create sibling tasks in THOSE projects with `depends_on` pointing back here. (b) "What must be true for this change to work?" For each unmet prerequisite, create a prep task that implementation `depends_on`. Both often live in different projects.
 
-5. **Derive a composite Workflow**: 
-    - Identify which workflow or combination of workflows are relevant for the particular task. 
-    - Every epic needs phases, but the phases depend on the type of work. 
-    - The composite workflow's steps become the decomposition skeleton.
+5. **Derive a composite Workflow**:
+   - Identify which workflow or combination of workflows are relevant for the particular task.
+   - Every epic needs phases, but the phases depend on the type of work.
+   - The composite workflow's steps become the decomposition skeleton.
 
 6. **Map workflow steps to tasks**: Each step becomes one or more tasks. See [[decomposition-patterns]] for temporal, functional, and complexity patterns.
 
 7. **Define Deliverables**: For each task, specify the concrete output. A task without a clear deliverable isn't actionable.
 
-8. **Identify Dependencies**: Which tasks must complete before others can start? 
-    - Use the [[planning]] skill's dependency-type heuristic: "What happens if the dependency never completes?" If impossible → hard dependency. If less informed → soft dependency.
+8. **Identify Dependencies**: Which tasks must complete before others can start?
+   - Use the [[planning]] skill's dependency-type heuristic: "What happens if the dependency never completes?" If impossible → hard dependency. If less informed → soft dependency.
 
 9. **Estimate Effort**: Assign rough duration (0.5d, 1d, 1w). Tasks over 0.5d probably need further decomposition. Single-session tasks (1–4 hours) are the right duration.
 
@@ -83,3 +83,4 @@ Tasks will be picked up by a **different agent** with only the task body as cont
 - **Verification**: Every epic must include at least one QA/review task.
 - **Conservative expansion**: If a task can be done in one sitting, don't decompose further.
 - **Graph placement & drift**: Every task must be parented under a live epic with dependencies. When upstream work changes scope, update affected task bodies.
+- **No parallel tracking**: After creating subtasks, remove any `- [ ]` checklists from the parent body that duplicate the subtask graph. Replace with a summary reference (e.g., "Decomposed into N subtasks — see children"). Body checklists and subtask graphs inevitably diverge over time.

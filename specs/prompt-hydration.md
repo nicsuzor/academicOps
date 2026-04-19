@@ -251,12 +251,45 @@ Projects can extend the index system via `.agents/`:
 ```
 project/
 └── .agents/
-    ├── context-map.json    # JIT context mapping
+    ├── context-map.json    # Repo documentation index for agent discovery
     └── workflows/          # Project-specific workflows
         └── TESTING.md
 ```
 
 The hydrator checks for project indices and includes them when present.
+
+### Context Map Consumption
+
+`.agents/context-map.json` is a repo-local, machine-queryable index mapping topics and keywords to documentation files. It works at two levels:
+
+**Level 1 — Platform-agnostic (any agent, any client)**
+
+The map is a plain JSON file. Any agent can read it directly:
+
+```
+cat .agents/context-map.json
+```
+
+No hooks, no framework dependency. Agents on Claude Code, Gemini CLI, Codex, or any future client can read the file and decide which entries are relevant to the current task.
+
+**Level 2 — aops-integrated (automatic via hydration pipeline)**
+
+The `UserPromptSubmit` hook automatically injects the full context map as a documentation index hint. This happens via `_inject_context_map_hints()` in `router.py`, which:
+
+1. Loads `.agents/context-map.json` from the working directory (`ctx.cwd`) only — no fallback
+2. Injects the full entry list as an "Available Documentation" section in the hook's context injection
+3. Leaves relevance decisions to the LLM (P#49: no Python pre-filtering for semantic decisions)
+
+**Implementation**: `lib/context_map.py` provides `load_context_map()` and `format_context_hints()`. Tests in `tests/lib/test_context_map.py`.
+
+**Design decisions**:
+
+| Question              | Answer                                                               |
+| --------------------- | -------------------------------------------------------------------- |
+| When is it loaded?    | JIT at hydration time (every UserPromptSubmit)                       |
+| Who loads it?         | Lightweight hydrator in `router.py`                                  |
+| How much gets loaded? | Full map injected — LLM decides which entries are relevant           |
+| Platform dependency?  | None — the JSON file is self-contained. aops integration is additive |
 
 ## Agent Execution
 
@@ -437,12 +470,12 @@ Main agent receives filtered principles only (~100-200 tokens)
 **User prompt:**
 
 ```
-check the custodiet agent -- make sure it doesn't use inline python:
+check the enforcer agent -- make sure it doesn't use inline python:
 
   ⎿  Bash(python3 -c "
   import sys; sys.path.insert(0, '/home/nic/src/academicOps/lib')
-  from session_state import set_custodiet_block
-  set_custodiet_block('$CLAUDE_SESSION_ID', 'Agent modified setup.sh without user approval after discovering root cause - violates P#5 (Do One Thing) and
+  from session_state import set_enforcer_block
+  set_enforcer_block('$CLAUDE_SESSION_ID', 'Agent modified setup.sh without user approval after discovering root cause - violates P#5 (Do One Thing) and
   P#31
   (Acceptance Criteria Own Success)')
   "
@@ -456,13 +489,13 @@ check the custodiet agent -- make sure it doesn't use inline python:
 ````markdown
 ## Prompt Hydration
 
-**Intent**: Audit custodiet agent implementation to ensure it uses packaged scripts instead of inline Python for operations like setting session state
+**Intent**: Audit enforcer agent implementation to ensure it uses packaged scripts instead of inline Python for operations like setting session state
 **Workflow**: design (Verification required)
 **Guardrails**: verify_before_complete, test_changes
 
 ### Relevant Context
 
-- Custodiet agent: `$AOPS/aops-core/agents/custodiet.md`
+- Enforcer agent: `$AOPS/aops-core/agents/enforcer.md`
 - Session state library: `$AOPS/aops-core/lib/session_state.py`
 - Framework rule: Tools should use packaged scripts, not inline code (maintainability, testability)
 
@@ -472,7 +505,7 @@ check the custodiet agent -- make sure it doesn't use inline python:
 ## Execution Steps
 
 1. Create task to track this issue
-2. Read custodiet agent and identify inline Python usage
+2. Read enforcer agent and identify inline Python usage
 3. Create packaged script in lib/ for the operation
 4. Update agent to call script instead of inline Python
 5. CHECKPOINT: Run tests to verify agent still functions correctly

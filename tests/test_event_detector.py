@@ -18,6 +18,13 @@ class TestEventDetector:
         assert StateChange.BIND_TASK in changes
         assert StateChange.UNBIND_TASK not in changes
 
+    def test_task_binding_update_task_nested_updates(self):
+        # Claiming a task via nested updates (PKB signature)
+        changes = detect_tool_state_changes(
+            "update_task", {"updates": {"status": "in_progress"}, "id": "task-1"}
+        )
+        assert StateChange.BIND_TASK in changes
+
     def test_task_binding_update_task_active_ignored(self):
         # Setting to active (ready) is NOT claiming
         changes = detect_tool_state_changes("update_task", {"status": "active", "id": "task-1"})
@@ -38,6 +45,13 @@ class TestEventDetector:
         changes = detect_tool_state_changes("update_task", {"status": "done", "id": "task-1"})
         assert StateChange.UNBIND_TASK in changes
         assert StateChange.BIND_TASK not in changes
+
+    def test_task_unbinding_update_task_nested_done(self):
+        # Marking done via nested updates
+        changes = detect_tool_state_changes(
+            "update_task", {"updates": {"status": "done"}, "id": "task-1"}
+        )
+        assert StateChange.UNBIND_TASK in changes
 
     def test_task_unbinding_update_task_cancelled(self):
         # Marking cancelled via update_task

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import fcntl
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -213,15 +214,21 @@ class PolecatManager:
         # Ensure home directory exists
         self.home_dir.mkdir(parents=True, exist_ok=True)
 
-        # Global location for all active agents (directly in home_dir)
-        self.polecats_dir = self.home_dir
+        # Location for active polecat worktrees. A dedicated subdirectory so
+        # stale-cleanup loops have a bounded namespace to iterate — the home
+        # dir also holds sessions/, polecat.yaml, and other non-worktree state
+        # that must never be treated as deletion candidates.
+        self.polecats_dir = self.home_dir / "worktrees"
+        self.polecats_dir.mkdir(parents=True, exist_ok=True)
 
-        # Hidden directory for bare mirror repos
-        self.repos_dir = self.polecats_dir / ".repos"
+        # Hidden directory for bare mirror repos (at home_dir, not under
+        # polecats_dir, so it's excluded from worktree iteration).
+        self.repos_dir = self.home_dir / ".repos"
         self.repos_dir.mkdir(exist_ok=True)
 
-        # Directory for persistent crew workers
-        self.crew_dir = self.polecats_dir / "crew"
+        # Directory for persistent crew workers (at home_dir, distinct from
+        # per-task worktrees).
+        self.crew_dir = self.home_dir / "crew"
         self.crew_dir.mkdir(exist_ok=True)
 
         # Load project registry from config file
@@ -278,19 +285,38 @@ class PolecatManager:
         return pkb_update_task(task_id, **kwargs)
 
     def generate_crew_name(self) -> str:
-        """Generate a random crew name, avoiding active crew names."""
-        import random
+        """Generate a unique crew name, avoiding names already in use.
 
-        active_crew = self.list_crew()
+        Picks from the configured name pool when possible.  If the pool is
+        exhausted (all base names have an existing crew directory), falls back
+        to appending a short random hex suffix (e.g. ``weasel_3f7a``) so that
+        stale directories never block new crew creation.
+        """
+        import random
+        import secrets
+
+        active_crew = set(self.list_crew())
         available = [n for n in self.crew_names if n not in active_crew]
 
-        if not available:
-            raise RuntimeError(
-                f"All crew names are in use: {sorted(self.list_crew())}. "
-                "Run 'polecat nuke <name>' to clean up idle workers before creating a new one."
-            )
+        if available:
+            return random.choice(available)
 
-        return random.choice(available)
+        # Pool exhausted: generate name_XXXX until we find a free slot.
+        # With 4 hex chars (65 536 combinations per base name) collisions are
+        # extremely unlikely, but we retry up to 200 times to be safe.
+        for _ in range(200):
+            base = random.choice(self.crew_names)
+            suffix = secrets.token_hex(2)  # 4 hex chars
+            name = f"{base}_{suffix}"
+            if name not in active_crew:
+                return name
+
+        # Should never happen in practice — only if 200 random draws all
+        # collide with existing names.
+        raise RuntimeError(
+            "Unable to generate a unique crew name after 200 attempts. "
+            "Run 'polecat nuke <name>' to clean up stale crew directories."
+        )
 
     def resolve_project_alias(self, alias: str) -> str:
         """Resolve a project alias to its canonical slug.
@@ -359,10 +385,30 @@ class PolecatManager:
         return slug
 
     def list_crew(self) -> list[str]:
-        """List active crew worker names."""
+        """List crew worker directories.
+
+        Returns all crew directories, including ones whose sessions have ended
+        but were preserved (e.g. via --keep or because they had unmerged work).
+        Skips empty directories that are clearly the result of a failed cleanup.
+        """
         if not self.crew_dir.exists():
             return []
-        return [d.name for d in self.crew_dir.iterdir() if d.is_dir()]
+        result = []
+        for d in self.crew_dir.iterdir():
+            if not d.is_dir():
+                continue
+            # Skip empty dirs — these are partially-cleaned remnants, not real crews.
+            # Guard against the setup window: setup_crew_worktree() creates the dir
+            # before populating it; a lock file signals that work is in progress.
+            if self._crew_lock_path(d.name).exists() or any(d.iterdir()):
+                result.append(d.name)
+            else:
+                # Best-effort removal of the empty husk so it doesn't pile up.
+                try:
+                    d.rmdir()
+                except OSError:
+                    pass
+        return result
 
     def _crew_branch_open_pr(self, repo_path: Path, branch_name: str) -> str | None:
         """Return PR URL if branch has an open PR on GitHub, else None."""
@@ -524,8 +570,6 @@ class PolecatManager:
         default_branch = project_config.get("default_branch", "main")
 
         crew_path = self.crew_dir / name
-        crew_path.mkdir(exist_ok=True)
-
         worktree_path = crew_path / project
         branch_name = f"crew/{name}"
 
@@ -535,6 +579,10 @@ class PolecatManager:
                 f"Use 'polecat crew -r {name}' to resume, or 'polecat nuke {name}' to start fresh."
             )
 
+        # Acquire the lock BEFORE creating crew_path so that list_crew()'s
+        # lock-file guard closes the race window completely: without this
+        # ordering, list_crew() could see an empty, lock-free dir and delete it
+        # before the lock file is created.
         lock_path = self._crew_lock_path(name)
         with open(lock_path, "w") as lock_file:
             try:
@@ -544,6 +592,8 @@ class PolecatManager:
                     f"Another crew operation is in progress for '{name}'. "
                     f"Wait for it to finish, or remove {lock_path} if stale."
                 ) from exc
+
+            crew_path.mkdir(exist_ok=True)
 
             # Check residual remote crew branch before we clone anything.
             # Classify against the local source repo (has github auth + gh CLI).
@@ -941,7 +991,35 @@ class PolecatManager:
                         file=sys.stderr,
                     )
                     return False
-            return True
+
+                # Branches checked out in worktrees are excluded from the
+                # normal origin fetch above. Update them by fetching into a
+                # temporary ref namespace (bypasses git's "branch is checked
+                # out" guard) and then fast-forwarding the real branch ref.
+                for excl_refspec in exclude_refspecs:
+                    branch = excl_refspec.removeprefix("^refs/heads/")
+                    tmp_ref = f"refs/fetch-tmp/{branch}"
+                    fetch_result = subprocess.run(
+                        ["git", "fetch", "origin", f"refs/heads/{branch}:{tmp_ref}"],
+                        cwd=mirror_path,
+                        capture_output=True,
+                        check=False,
+                    )
+                    if fetch_result.returncode == 0:
+                        subprocess.run(
+                            ["git", "update-ref", f"refs/heads/{branch}", tmp_ref],
+                            cwd=mirror_path,
+                            check=False,
+                            capture_output=True,
+                        )
+                        subprocess.run(
+                            ["git", "update-ref", "-d", tmp_ref],
+                            cwd=mirror_path,
+                            check=False,
+                            capture_output=True,
+                        )
+
+                return True
         except subprocess.CalledProcessError as e:
             print(f"⚠ Mirror sync failed for {project}: {e}", file=sys.stderr)
             return False
@@ -977,10 +1055,11 @@ class PolecatManager:
         return [f"^refs/heads/{branch}" for branch in sorted(branches)]
 
     def check_mirror_freshness(self, project: str) -> tuple[bool, str]:
-        """Checks if mirror is up-to-date with local repo, attempting fast-forward if stale.
+        """Checks if the mirror's default branch is in sync with origin. Read-only.
 
-        Compares the mirror's main branch HEAD to the local repo's main branch.
-        If stale, attempts to fast-forward the mirror before returning.
+        Compares the mirror's refs/heads/{default_branch} SHA against what
+        origin reports via ls-remote. Makes no mutations — sync is the job
+        of safe_sync_mirror.
 
         Args:
             project: Project slug
@@ -1062,19 +1141,13 @@ class PolecatManager:
                 print(f"⊘ {project}: no mirror (run 'polecat init' first)")
                 results[project] = False
                 continue
-            try:
-                with metrics.time_operation("sync", project=project, mode="full"):
-                    subprocess.run(
-                        ["git", "fetch", "--all", "--prune"],
-                        cwd=mirror_path,
-                        check=True,
-                        capture_output=True,
-                    )
+
+            success = self.safe_sync_mirror(project)
+            if success:
                 print(f"✓ {project}")
-                results[project] = True
-            except subprocess.CalledProcessError as e:
-                print(f"✗ {project}: {e}")
-                results[project] = False
+            else:
+                print(f"✗ {project}")
+            results[project] = success
         return results
 
     def claim_next_task(self, caller: str, project: str | None = None):
@@ -1277,12 +1350,9 @@ class PolecatManager:
         mirror_path = self.repos_dir / f"{project}.git"
         if mirror_path.exists():
             print(f"🔄 Syncing {project} mirror before worktree setup...")
-            self.safe_sync_mirror(project)
-
-            # Check freshness and warn if stale
-            is_fresh, message = self.check_mirror_freshness(project)
+            is_fresh = self.safe_sync_mirror(project)
             if not is_fresh:
-                print(f"⚠ {message}", file=sys.stderr)
+                print("⚠ Mirror may be stale after sync", file=sys.stderr)
             else:
                 print("  ✅ Mirror is fresh")
 
@@ -1305,6 +1375,8 @@ class PolecatManager:
                     capture_output=True,
                 )
                 if result.returncode == 0:
+                    # Existing valid worktree - still verify it's based on recent main
+                    self._verify_worktree_setup(worktree_path, branch_name, default_branch)
                     return worktree_path
                 # Worktree exists but is broken (orphan branch or corrupted)
                 print(
@@ -1361,19 +1433,118 @@ class PolecatManager:
             text=True,
         )
 
+        branch_exists = False
         if branch_exists_result.stdout.strip():
-            # Exists remotely — fetch then checkout and track
+            # Exists remotely — check if it is already merged into the default branch.
+            # If so, we want to start fresh from the current tip of the default branch.
+            remote_sha = branch_exists_result.stdout.split()[0]
+            is_merged_result = subprocess.run(
+                ["git", "merge-base", "--is-ancestor", remote_sha, f"origin/{default_branch}"],
+                cwd=worktree_path,
+                capture_output=True,
+            )
+            if is_merged_result.returncode == 0:
+                print(
+                    f"  Branch {branch_name} (at {remote_sha[:8]}) is already merged into {default_branch}."
+                )
+                print(f"  Deleting stale remote branch and starting fresh from {default_branch}...")
+                subprocess.run(
+                    ["git", "push", "origin", "--delete", branch_name],
+                    cwd=worktree_path,
+                    capture_output=True,
+                    check=True,
+                )
+                branch_exists = False
+            else:
+                branch_exists = True
+
+        if branch_exists:
+            # Exists remotely and not merged — fetch then checkout and track
             subprocess.run(
                 ["git", "fetch", "origin", branch_name],
                 cwd=worktree_path,
                 capture_output=True,
                 check=True,
             )
+
+            # --- FIX: Avoid reusing stale merged branches ---
+            # If the branch is already merged into origin/{default_branch}, it's stale.
+            # Start fresh from the default branch instead.
+
+            # Fetch default branch to ensure origin/{default_branch} is up to date
             subprocess.run(
-                ["git", "checkout", "-b", branch_name, f"origin/{branch_name}"],
+                ["git", "fetch", "origin", default_branch],
                 cwd=worktree_path,
+                capture_output=True,
                 check=True,
             )
+
+            # Check if origin/{branch_name} is merged into origin/{default_branch}
+            is_merged = (
+                subprocess.run(
+                    [
+                        "git",
+                        "merge-base",
+                        "--is-ancestor",
+                        f"origin/{branch_name}",
+                        f"origin/{default_branch}",
+                    ],
+                    cwd=worktree_path,
+                ).returncode
+                == 0
+            )
+
+            if is_merged:
+                print(
+                    f"  🗑 Branch {branch_name} is already merged into {default_branch}. "
+                    f"Starting fresh from {default_branch}."
+                )
+                # Try to delete the remote branch to avoid later push collisions
+                delete_result = subprocess.run(
+                    ["git", "push", "origin", "--delete", branch_name],
+                    cwd=worktree_path,
+                    capture_output=True,
+                )
+                if delete_result.returncode == 0:
+                    print(f"  ✅ Deleted stale remote branch {branch_name}")
+                else:
+                    stderr = delete_result.stderr.decode(errors="replace").strip()
+                    print(f"  ⚠ Could not delete remote branch {branch_name}: {stderr}")
+
+                # Create fresh from default branch
+                subprocess.run(["git", "checkout", default_branch], cwd=worktree_path, check=True)
+                subprocess.run(
+                    ["git", "checkout", "-b", branch_name], cwd=worktree_path, check=True
+                )
+            else:
+                # SAFEGUARD: Hard-fail if target branch is too far behind origin/main
+                # and not merged. This prevents agents from burning turns on massive rebase/merge noise.
+                _rev_list_result = subprocess.run(
+                    [
+                        "git",
+                        "rev-list",
+                        "--count",
+                        f"origin/{branch_name}..origin/{default_branch}",
+                    ],
+                    cwd=worktree_path,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+                commits_behind = int(_rev_list_result.stdout.strip())
+
+                if commits_behind > 100:
+                    raise RuntimeError(
+                        f"Target branch {branch_name} is {commits_behind} commits behind {default_branch}. "
+                        "This looks like a stale unmerged branch from a previous run. "
+                        "Please delete the remote branch or merge manually before re-dispatching."
+                    )
+
+                subprocess.run(
+                    ["git", "checkout", "-b", branch_name, f"origin/{branch_name}"],
+                    cwd=worktree_path,
+                    check=True,
+                )
         else:
             # Create fresh from default branch. Note: clone usually checks out default branch.
             subprocess.run(["git", "checkout", default_branch], cwd=worktree_path, check=False)
@@ -1526,21 +1697,23 @@ class PolecatManager:
             )
 
     def create_sandbox_settings(self, worktree_path: Path) -> Path:
-        """Write .claude/settings.json to a worktree to sandbox file access.
+        """Write .claude/settings.json and .gemini/policies/sandbox.toml to sandbox access.
 
         The settings permit Write and Edit operations within the worktree directory.
         Claude Code's default sandbox already restricts file operations to the
         project directory, so we only need allow rules -- no blanket deny rules.
 
-        Previously this method included deny rules (Write(**), Edit(**)) but
-        Claude Code uses deny-wins semantics, so blanket deny rules override
-        specific allow rules, breaking Write/Edit tools inside the worktree.
+        For Gemini CLI, we use the Policy Engine to restrict file operations.
+        Priority semantics: higher number wins. sandbox.toml uses allow=50 and
+        deny=10 so that allow beats deny inside the worktree. deny-extension-writes
+        uses deny=100 which beats sandbox allow=50, preserving extension protection.
+        See: https://cloud.google.com/gemini/docs/codeassist/policy-engine
 
         Args:
             worktree_path: Absolute path to the worktree root directory
 
         Returns:
-            Path to the created settings file
+            Path to the created Claude settings file
         """
         import json
 
@@ -1548,6 +1721,7 @@ class PolecatManager:
         claude_dir = worktree_path / ".claude"
         claude_dir.mkdir(exist_ok=True)
 
+        # 1. Claude Settings
         settings = {
             "permissions": {
                 "allow": [
@@ -1560,6 +1734,40 @@ class PolecatManager:
         settings_path = claude_dir / "settings.json"
         with open(settings_path, "w") as f:
             json.dump(settings, f, indent=2)
+
+        # 2. Gemini Policy
+        gemini_policies_dir = worktree_path / ".gemini" / "policies"
+        gemini_policies_dir.mkdir(parents=True, exist_ok=True)
+
+        # Use re.escape() to handle all regex metacharacters in the path robustly.
+        worktree_regex = re.escape(worktree_str)
+        policy_content = f"""# academicOps: Sandbox agent to this worktree
+[[rule]]
+toolName = "Write"
+argsPattern = "^{worktree_regex}.*"
+decision = "allow"
+priority = 50
+
+[[rule]]
+toolName = "Edit"
+argsPattern = "^{worktree_regex}.*"
+decision = "allow"
+priority = 50
+
+[[rule]]
+toolName = "Write"
+decision = "deny"
+priority = 10
+denyMessage = "File writes are restricted to the worktree: {worktree_str}"
+
+[[rule]]
+toolName = "Edit"
+decision = "deny"
+priority = 10
+denyMessage = "File edits are restricted to the worktree: {worktree_str}"
+"""
+        policy_path = gemini_policies_dir / "sandbox.toml"
+        policy_path.write_text(policy_content)
 
         return settings_path
 
@@ -1591,7 +1799,20 @@ class PolecatManager:
             )
 
         # 2. Verify branch is based on recent main
-        # Get the merge-base between our branch and origin/main (if available)
+        # Ensure we have the latest origin/main for comparison
+        fetch_result = subprocess.run(
+            ["git", "fetch", "origin", default_branch],
+            cwd=worktree_path,
+            capture_output=True,
+            text=True,
+        )
+        if fetch_result.returncode != 0:
+            raise RuntimeError(
+                f"Failed to fetch origin/{default_branch} in {worktree_path}: "
+                f"{fetch_result.stderr.strip()}"
+            )
+
+        # Get the merge-base between our branch and origin/main
         merge_base_result = subprocess.run(
             ["git", "merge-base", "HEAD", f"origin/{default_branch}"],
             cwd=worktree_path,
@@ -1599,24 +1820,72 @@ class PolecatManager:
             text=True,
         )
         if merge_base_result.returncode == 0:
+            merge_base = merge_base_result.stdout.strip()
             # Check how many commits behind origin/main we are
-            commits_behind = subprocess.run(
+            commits_behind_res = subprocess.run(
                 [
                     "git",
                     "rev-list",
                     "--count",
-                    f"{merge_base_result.stdout.strip()}..origin/{default_branch}",
+                    f"{merge_base}..origin/{default_branch}",
                 ],
                 cwd=worktree_path,
                 capture_output=True,
                 text=True,
             )
-            if commits_behind.returncode == 0 and int(commits_behind.stdout.strip()) > 10:
-                print(
-                    f"⚠ Worktree is {commits_behind.stdout.strip()} commits behind "
-                    f"origin/{default_branch}. Consider rebasing.",
-                    file=sys.stderr,
-                )
+            if commits_behind_res.returncode == 0:
+                count = int(commits_behind_res.stdout.strip())
+                if count > 0:
+                    # Threshold for silent rebase
+                    threshold = 5
+                    if count > threshold:
+                        print(
+                            f"🔄 Worktree is {count} commits behind origin/{default_branch}. "
+                            f"Attempting auto-rebase...",
+                            file=sys.stderr,
+                        )
+
+                    # Guard: dirty working tree causes rebase to fail immediately
+                    dirty_check = subprocess.run(
+                        ["git", "status", "--porcelain"],
+                        cwd=worktree_path,
+                        capture_output=True,
+                        text=True,
+                    )
+                    if dirty_check.stdout.strip():
+                        raise RuntimeError(
+                            f"Worktree at {worktree_path} has uncommitted changes; "
+                            f"cannot auto-rebase. Commit or stash changes first."
+                        )
+
+                    rebase_result = subprocess.run(
+                        ["git", "rebase", f"origin/{default_branch}"],
+                        cwd=worktree_path,
+                        capture_output=True,
+                        text=True,
+                    )
+
+                    if rebase_result.returncode != 0:
+                        # Rebase failed: abort and surface error
+                        subprocess.run(
+                            ["git", "rebase", "--abort"],
+                            cwd=worktree_path,
+                            capture_output=True,
+                        )
+                        print(
+                            f"❌ Auto-rebase failed. "
+                            f"Worktree is {count} commits behind origin/{default_branch}. "
+                            f"Please resolve manually in {worktree_path}.\n"
+                            f"{rebase_result.stderr.strip()}",
+                            file=sys.stderr,
+                        )
+                        raise RuntimeError(
+                            f"Worktree at {worktree_path} could not be cleanly rebased "
+                            f"onto origin/{default_branch}. Rebase failed: {rebase_result.stderr.strip()}"
+                        )
+
+                    if count > threshold:
+                        print("  ✅ Rebase successful.", file=sys.stderr)
 
         # Note: Worktrees inherit the mirror's remotes, which already have
         # the correct origin push URL (git@github.com:...). No need to
@@ -1709,10 +1978,10 @@ class PolecatManager:
                 task = None
         worktree_path = self.polecats_dir / task_id
 
-        if task:
+        if task and task.project:
             repo_path = self.get_repo_path(task)
         else:
-            # Task lookup failed (e.g. task deleted). Try to recover from the
+            # Task has no project, or task lookup failed (e.g. task deleted).  Try to recover from the
             # worktree's own origin URL rather than silently falling back to
             # REPO_ROOT — falling back to academicOps could delete branches
             # from the wrong repo on a task_id collision.

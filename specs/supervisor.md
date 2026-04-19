@@ -124,7 +124,7 @@ Worker output flows through the same merge pipeline regardless of mode:
 
 1. Worker finishes → `polecat finish` → branch pushed, task `merge_ready`
 2. PR created on GitHub (branch name: `polecat/<task-id>`)
-3. PR review pipeline runs (custodiet, QA, Claude review)
+3. PR review pipeline runs (enforcer, QA, Claude review)
 4. GitHub auto-merge on approval
 5. Task marked `done` on merge (GitHub Action)
 

@@ -19,6 +19,7 @@ import re
 import subprocess
 import sys
 import time
+import uuid
 from pathlib import Path
 
 import pytest
@@ -37,7 +38,7 @@ TEST_FIXTURE_TASK_ID = "e2e-test-fixture"
 
 # Mega-prompt for crew paths (passed directly via -p).
 # Must match the task body for run paths so assertions work on both.
-MEGA_PROMPT = """\
+MEGA_PROMPT_TEMPLATE = """\
 Do ALL of the following steps and report results exactly as labeled:
 
 1. SANDBOX CHECK:
@@ -48,9 +49,25 @@ Do ALL of the following steps and report results exactly as labeled:
 2. BINARY CHECK:
    - Run: which aops
 
+3. WORKSPACE CHECK:
+   - Run: test -d /workspace/.git && echo "WORKSPACE_VERIFIED=true" || echo "WORKSPACE_VERIFIED=false"
+   - Run: git -C /workspace rev-parse --abbrev-ref HEAD
+
+4. WORKSPACE WRITE (proves bind-mount, not cp):
+   - Run: echo "{sentinel}" > /workspace/{sentinel_name}
+   - Run: ls -la /workspace/{sentinel_name}
+
 Reply with ALL outputs clearly labeled. Do NOT skip any step.
-Do NOT create any commits, PRs, or modify any files. Just report the results.\
+Do NOT create any commits or PRs. The single file write in step 4 is required.\
 """
+
+
+def _make_mega_prompt(sentinel_name: str, sentinel_value: str) -> str:
+    return MEGA_PROMPT_TEMPLATE.format(sentinel_name=sentinel_name, sentinel=sentinel_value)
+
+
+# Back-compat alias for any callers still importing MEGA_PROMPT (no sentinel).
+MEGA_PROMPT = _make_mega_prompt(".polecat-bind-mount-sentinel", "ok")
 
 
 def _check_fixture_task():
@@ -152,7 +169,7 @@ class TestAllInvocationPaths:
         return False
 
     @staticmethod
-    def _find_latest_session_logs(started_after: float = 0):
+    def _find_latest_session_logs(started_after: float = 0, crew_name: str | None = None):
         """Discover the most-recently-modified session file and hook log.
 
         Searches for both Claude JSONL and Gemini JSON session files.
@@ -160,14 +177,33 @@ class TestAllInvocationPaths:
         Args:
             started_after: Unix timestamp — only consider files modified after
                 this time. Prevents picking up stale files from unrelated sessions.
+            crew_name: Optional crew name embedded in hook log filenames (e.g.
+                "test-claude").  When set, filters hook files to those whose
+                filename contains the crew name, avoiding cross-session races
+                where a concurrent session's hook log is created in the same
+                time window.
 
         Returns:
             (hook_files_content, session_file, tool_calls)
         """
+        from lib.paths import get_sessions_repo
+
         from tests.conftest import parse_tool_calls
 
-        aops_sessions = Path(os.environ.get("AOPS_SESSIONS", Path.home() / ".aops" / "sessions"))
-        hook_files = sorted(aops_sessions.rglob("*-hooks.jsonl"), key=os.path.getmtime)
+        aops_sessions = get_sessions_repo()
+
+        def _hook_birthtime(f: Path) -> float:
+            st = f.stat()
+            # st_birthtime is macOS/BSD; fall back to st_ctime on Linux
+            return getattr(st, "st_birthtime", st.st_ctime)
+
+        hook_files = sorted(aops_sessions.rglob("*-hooks.jsonl"), key=_hook_birthtime)
+        if started_after:
+            hook_files = [f for f in hook_files if _hook_birthtime(f) >= started_after]
+        if crew_name:
+            # Filenames sanitize crew names with allow_dashes=False: "test-claude" → "testclaude"
+            sanitized_crew = crew_name.replace("-", "")
+            hook_files = [f for f in hook_files if sanitized_crew in f.name]
         hook_file = hook_files[-1] if hook_files else None
         hook_files_content = hook_file.read_text() if hook_file else ""
 
@@ -199,6 +235,13 @@ class TestAllInvocationPaths:
         repo = get_repo_root()
         crew_name = f"test-{backend}"
 
+        # Unique sentinel per invocation — the agent writes this into /workspace
+        # so we can later assert the file appears on the host's bind-mounted
+        # worktree (proves bind-mount, since cp never reverse-extracts /workspace).
+        sentinel_name = f".polecat-bind-mount-sentinel-{backend}-{uuid.uuid4().hex[:8]}"
+        sentinel_value = f"crew-{backend}-{uuid.uuid4().hex[:8]}"
+        prompt = _make_mega_prompt(sentinel_name, sentinel_value)
+
         cmd = [
             sys.executable,
             "-m",
@@ -214,11 +257,9 @@ class TestAllInvocationPaths:
 
         cmd.append("--")
         if backend == "gemini":
-            cmd.extend(build_gemini_agent_cmd(MEGA_PROMPT, include_binary=False))
+            cmd.extend(build_gemini_agent_cmd(prompt, include_binary=False))
         else:
-            cmd.extend(
-                build_claude_agent_cmd(MEGA_PROMPT, output_format="text", include_binary=False)
-            )
+            cmd.extend(build_claude_agent_cmd(prompt, output_format="text", include_binary=False))
 
         env = os.environ.copy()
         cwd = os.getcwd()
@@ -262,7 +303,8 @@ class TestAllInvocationPaths:
 
         combined = proc.stdout + proc.stderr
         hook_files_content, session_file, tool_calls = self._find_latest_session_logs(
-            started_after=started_at
+            started_after=started_at,
+            crew_name=crew_name,
         )
 
         return {
@@ -276,6 +318,9 @@ class TestAllInvocationPaths:
             "hook_files_content": hook_files_content,
             "session_file": session_file,
             "tool_calls": tool_calls,
+            "sentinel_name": sentinel_name,
+            "sentinel_value": sentinel_value,
+            "started_at": started_at,
         }
 
     def _run_polecat(self, tmp_path, backend, timeout=None):
@@ -493,6 +538,102 @@ class TestAllInvocationPaths:
                     f"raw={raw['output']['verdict']!r}, "
                     f"parsed={parsed.hook_verdict!r}"
                 )
+
+    def test_workspace_writes_visible_on_host(self, session):
+        """Bind-mount only: a file the agent wrote inside /workspace appears on
+        the host's clone of the worktree.
+
+        Under the old docker-cp staging this would FAIL, because cp only goes
+        host→container at start; the container's edits to /workspace are
+        discarded by `docker rm -f`. Under bind-mount staging the agent's write
+        lands directly on the host filesystem.
+
+        Currently scoped to the crew path because _run_polecat reuses a
+        PKB-fixture prompt we don't currently template. Run path coverage will
+        come when the prompt fixture supports per-invocation substitution.
+        """
+        if session["path_type"] != "crew":
+            pytest.skip("sentinel write only injected on the crew path")
+
+        sentinel_name = session["sentinel_name"]
+        sentinel_value = session["sentinel_value"]
+        started_at = session["started_at"]
+
+        # Search the polecat home for the sentinel — the worktree clone lives
+        # somewhere under it (manager.crew_dir / crew_name for `crew repo`).
+        polecat_home = Path(os.environ.get("POLECAT_HOME", str(Path.home() / ".polecat")))
+        matches = [
+            p
+            for p in polecat_home.rglob(sentinel_name)
+            if p.is_file() and p.stat().st_mtime >= started_at
+        ]
+
+        assert matches, (
+            f"[{session['param']}] Agent wrote /workspace/{sentinel_name} inside "
+            f"the container, but no file by that name appears on the host under "
+            f"{polecat_home}. This proves the worktree was NOT bind-mounted "
+            f"(cp-only staging discards in-container writes)."
+        )
+
+        content = matches[0].read_text().strip()
+        assert sentinel_value in content, (
+            f"[{session['param']}] Sentinel found at {matches[0]} but content "
+            f"{content!r} does not contain expected {sentinel_value!r}."
+        )
+
+    def test_workspace_available_in_container(self, session):
+        """Repo worktree is mounted at /workspace inside the container.
+
+        Two verification strategies depending on path type:
+
+        - crew path: the bind-mount target is on the host, so we locate the
+          worktree via the sentinel file (same lookup as
+          test_workspace_writes_visible_on_host) and assert `.git` is a
+          directory there.  A git-worktree-add would leave a `.git` FILE; a
+          proper git clone leaves a `.git` DIRECTORY.  Since `/workspace` is
+          a bind-mount of that host path, what we see on the host is exactly
+          what the agent sees inside the container.
+
+        - run path: the agent echoes WORKSPACE_VERIFIED=true via the bash
+          command in the MEGA_PROMPT.  The session transcript (JSONL) is
+          accessible on the host for this path, so the string appears in
+          raw_log or combined.
+        """
+        combined = session["combined"]
+        session_file = session.get("session_file")
+        raw_log = session_file.read_text() if session_file and session_file.exists() else ""
+        all_text = raw_log + combined
+
+        if session["path_type"] == "crew":
+            # Host-side verification: find the worktree via sentinel file and
+            # check that .git is a directory (proves the mount points at a
+            # proper full clone, not a git-worktree-add file).
+            sentinel_name = session["sentinel_name"]
+            started_at = session["started_at"]
+            polecat_home = Path(os.environ.get("POLECAT_HOME", str(Path.home() / ".polecat")))
+            sentinel_matches = [
+                p
+                for p in polecat_home.rglob(sentinel_name)
+                if p.is_file() and p.stat().st_mtime >= started_at
+            ]
+            if not sentinel_matches:
+                pytest.skip(
+                    f"[{session['param']}] Sentinel file not found on host — "
+                    "cannot verify workspace via host-side check "
+                    "(test_workspace_writes_visible_on_host would also fail)"
+                )
+            worktree_path = sentinel_matches[0].parent
+            git_dir = worktree_path / ".git"
+            assert git_dir.is_dir(), (
+                f"[{session['param']}] Worktree at {worktree_path} has "
+                f"{'a .git file' if git_dir.is_file() else 'no .git entry'} "
+                "— agent saw a git-worktree-add mount, not a full clone."
+            )
+        else:
+            assert "WORKSPACE_VERIFIED=true" in all_text, (
+                f"[{session['param']}] No evidence the repo worktree was available at /workspace. "
+                f"Agent output (last 1000 chars): {all_text[-1000:]}"
+            )
 
     def test_session_persists(self, session):
         """Session file is written and contains user+assistant entries."""

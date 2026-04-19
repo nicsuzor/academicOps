@@ -60,11 +60,9 @@ rules:
   # ─────────────────────────────────────────
   - type: pull_request
     parameters:
-      required_approving_review_count: 1
+      required_approving_review_count: 2
       # Approval #1: Merge Prep (github-actions[bot]) — runs on cron, approves when ready
-      # Agent Review uses a commit status check (context: "Agent Review") rather than
-      # gh pr review, so it cannot be overridden by a later merge-prep approval.
-      # The "Agent Review" required status check below enforces this gate.
+      # Approval #2: Human Maintainer
       dismiss_stale_reviews_on_push: false
       require_code_owner_review: false
       require_last_push_approval: false
@@ -73,7 +71,6 @@ rules:
         - rebase
         - squash
         - merge
-      # Note: All three merge methods are currently enabled in the live ruleset.
 
   # ─────────────────────────────────────────
   # Required status checks
@@ -85,10 +82,26 @@ rules:
       # The merge queue handles rebasing; strict mode is redundant and adds friction.
       do_not_enforce_on_create: false
       required_status_checks:
-        - context: "PR Review Pipeline / lint / Lint"
-        - context: "PR Review Pipeline / typecheck / Type Check"
-        - context: "PR Review Pipeline / pytest / Pytest"
-        - context: "Axiom Review / Axiom Review"
+        # Context names must match the check-run name GitHub actually emits.
+        # For reusable-workflow calls, that is "<caller-job-name> / <callee-job-name>"
+        # (NOT "<workflow-name> / <caller-job-id> / <callee-job-name>"). In pr-pipeline.yml:
+        #   job `lint`      name: Lint       → calls lint.yml      job name: Lint      → "Lint / Lint"
+        #   job `typecheck` name: Type Check → calls typecheck.yml job name: Type Check → "Type Check / Type Check"
+        #   job `pytest`    name: Pytest     → calls pytest.yml    job name: Pytest    → "Pytest / Pytest"
+        - context: "Lint / Lint"
+        - context: "Type Check / Type Check"
+        - context: "Pytest / Pytest"
+        # merge-prep-status is an API-driven commit status (see pr-pipeline.yml Initialize
+        # job and agent-merge-prep.yml). It is the true merge gate — merge-prep triages
+        # Axiom Review output before setting success.
+        - context: "merge-prep-status"
+        # NOTE: "Axiom Review" (pr-review.yml) is intentionally NOT required here.
+        # Its job uses a strategy matrix, so GitHub emits dynamic names like
+        # "Axiom Review (558, polecat/task-a984b5ad)" which cannot match a static
+        # required context. Axiom Review is gated transitively via merge-prep-status
+        # (merge-prep reads and triages its review output). To require it directly,
+        # add a non-matrix gate job downstream of `review` with a fixed name, or
+        # publish a commit status via the Statuses API.
 
   # ─────────────────────────────────────────
   # Code quality (CodeQL / Copilot analysis)

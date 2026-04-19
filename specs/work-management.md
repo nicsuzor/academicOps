@@ -90,21 +90,32 @@ flowchart LR
 ### State Machine
 
 ```
-active → in_progress → merge_ready (PR filed) → done (after merge)
-                     → done (non-code task completed)
-                     → review (needs human attention)
-                     → blocked (external dependency)
-                     → cancelled (abandoned)
-         ↕
-      waiting (deferred for later)
+draft → active → in_progress → merge_ready (PR filed) → done (after merge)
+                             → done (non-code task completed)
+                             → review (needs human attention)
+                             → blocked (external dependency)
+                             → cancelled (abandoned)
+                ↕
+             waiting (deferred for later)
 ```
+
+**`draft → active` graduation** requires the task to have:
+
+1. Concrete acceptance criteria (non-empty body with AC or checklist)
+2. Explicit effort estimate OR explicit `complexity` field
+3. No high-uncertainty blockers (blockers must be explicit `depends_on` links, not vague body text)
+4. Either leaf (no children) OR decomposed into subtasks where all children have a status other than `draft`
+
+Tasks created via `create_task` default to `draft`. They must be manually or automatically graduated to `active` before they appear in the ready queue.
+
+This gate exists to prevent agents from picking up half-baked tasks before they have been properly planned. See [[specs/orchestrator-boundary.md]] for context.
 
 ### Claiming Tasks
 
 Use `update_task` to claim:
 
 ```
-update_task(id="<task-id>", updates={"status": "in_progress", "assignee": "polecat"})
+update_task(id="<task-id>", status="in_progress", assignee="polecat")
 ```
 
 ### Releasing Tasks
@@ -131,23 +142,27 @@ release_task(id, status, summary, pr_url?, branch?, blocker?, reason?)
 
 ### Why `release_task` Instead of `update_task`
 
-`update_task(updates={...})` requires a nested JSON object, which agents frequently serialize as a string instead of an object, drop fields on retry, or forget entirely. `release_task` uses flat string parameters and always requires a summary, making it harder to lose information than to capture it.
+`update_task` historically required a nested `updates={...}` JSON object, which agents frequently serialized as a string instead of an object, dropped fields on retry, or forgot entirely. While it now supports flat parameters for convenience, `release_task` remains preferred for terminal transitions because it uses flat string parameters and always requires a summary, making it harder to lose information than to capture it.
 
 `update_task` remains for non-terminal field changes (priority, tags, assignee, body). It soft-hints toward `release_task` when a terminal status is detected.
 
 ### Canonical Statuses
 
-| Status        | Meaning                                 | Terminal? |
-| ------------- | --------------------------------------- | --------- |
-| `active`      | Ready to be worked on                   | No        |
-| `in_progress` | Currently being worked on               | No        |
-| `merge_ready` | Work complete, PR filed, awaiting merge | No        |
-| `review`      | Needs human/manager review              | No        |
-| `blocked`     | Waiting on external dependency          | No        |
-| `waiting`     | Deferred for later                      | No        |
-| `draft`       | Early/incomplete/seed content           | No        |
-| `done`        | Completed successfully                  | Yes       |
-| `cancelled`   | Abandoned/no longer relevant            | Yes       |
+| Status        | Meaning                                           | Terminal? | Ready queue? |
+| ------------- | ------------------------------------------------- | --------- | ------------ |
+| `draft`       | Created but not yet planned — AC/estimate/complexity missing | No        | No           |
+| `active`      | Planned and ready to be worked on                 | No        | Yes          |
+| `in_progress` | Currently being worked on                         | No        | No           |
+| `merge_ready` | Work complete, PR filed, awaiting merge           | No        | No           |
+| `review`      | Needs human/manager review                        | No        | No           |
+| `blocked`     | Waiting on external dependency                    | No        | No           |
+| `waiting`     | Deferred for later                                | No        | No           |
+| `done`        | Completed successfully                            | Yes       | No           |
+| `cancelled`   | Abandoned/no longer relevant                      | Yes       | No           |
+
+**Default on create**: `draft`. Tasks must be explicitly graduated to `active` (manually or by a planner agent verifying the graduation conditions above).
+
+**Implementation note**: The `draft` → `active` graduation is currently manual. Automated graduation (a planner agent verifying conditions) is a planned improvement — see [[specs/orchestrator-boundary.md]].
 
 Additional statuses exist (`paused`, `someday`, `submitted`, `accepted`) — see `graph.rs` for the full list and alias mappings.
 
@@ -225,6 +240,21 @@ mcp__pkb__create_task(
     depends_on=["webapp-auth-epic"]  # Links to parent
 )
 ```
+
+## Body Content Coherence
+
+Task bodies should contain context, acceptance criteria, and rationale — not checklists that duplicate the subtask graph.
+
+**Anti-pattern: Parallel tracking**
+
+When a task body contains `- [ ]` checklist items AND has subtasks tracking the same work, the two inevitably diverge. Completed subtasks don't update the body checklist, creating false "no progress" signals.
+
+**Rules:**
+
+1. Don't put `- [ ]` checklists in task bodies if the items will be tracked as subtasks
+2. When decomposing a task, replace any source checklist with a reference to children (e.g., "Decomposed into N subtasks — see children")
+3. The `body` parameter in `create_task` is for markdown body content, not frontmatter — don't pass `body` as a frontmatter key
+4. The subtask graph is the single source of truth for progress tracking
 
 ## Task Assignment
 

@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
-"""Unit tests for polecat/pkb_bridge.py error handling.
+"""Tests for polecat/pkb_bridge.py — friction fixes and error handling.
 
-Regression: ``PkbClient.call_tool`` used to do ``resp.get("result", {})``
-which silently returned ``None`` whenever the server produced a top-level
-JSON-RPC ``error`` object (e.g. ``-32602 "Missing required parameter"``).
-Every caller saw ``None`` with no log line — corrupt-by-default.
+Friction-fix tests: cover alias support (id/task_id, title/task_title, id/path)
+added in the PKB MCP tool signature friction PR.
 
-These tests mock ``PkbClient._post`` so they run offline and in the default
-suite (unit scope).
+Error-handling tests: regression for ``PkbClient.call_tool`` silently returning
+``None`` whenever the server produced a top-level JSON-RPC ``error`` object.
 """
 
 from __future__ import annotations
@@ -15,12 +13,141 @@ from __future__ import annotations
 import sys
 from datetime import date
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 REPO_ROOT = Path(__file__).parent.parent.parent.resolve()
 sys.path.insert(0, str(REPO_ROOT / "polecat"))
 
-from polecat.pkb_bridge import PkbClient, PkbTask  # noqa: E402
+from polecat.pkb_bridge import (  # noqa: E402
+    PkbClient,
+    PkbTask,
+    append,
+    complete_task,
+    create_task,
+    get_task,
+    update_task,
+)
+
+# ---------------------------------------------------------------------------
+# Friction-fix tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def mock_client():
+    with patch("polecat.pkb_bridge._get_client") as mock:
+        client = MagicMock()
+        mock.return_value = client
+        yield client
+
+
+def test_get_task_positional_id(mock_client):
+    mock_client.call_tool.return_value = {"frontmatter": {"id": "task-1", "title": "Test"}}
+
+    task = get_task("task-1")
+
+    assert task.id == "task-1"
+    mock_client.call_tool.assert_called_once_with("get_task", {"id": "task-1"})
+
+
+def test_get_task_named_id(mock_client):
+    mock_client.call_tool.return_value = {"frontmatter": {"id": "task-1", "title": "Test"}}
+
+    task = get_task(id="task-1")
+
+    assert task.id == "task-1"
+    mock_client.call_tool.assert_called_once_with("get_task", {"id": "task-1"})
+
+
+def test_complete_task_positional_id(mock_client):
+    mock_client.call_tool.return_value = {"success": True}
+
+    complete_task("task-1")
+
+    mock_client.call_tool.assert_called_once_with("complete_task", {"id": "task-1"})
+
+
+def test_complete_task_named_id(mock_client):
+    mock_client.call_tool.return_value = {"success": True}
+
+    complete_task(id="task-1")
+
+    mock_client.call_tool.assert_called_once_with("complete_task", {"id": "task-1"})
+
+
+def test_create_task_with_title(mock_client):
+    # create_task now returns structured JSON matching get_task shape
+    mock_client.call_tool.return_value = {
+        "frontmatter": {"id": "task-123"},
+        "body": "",
+        "path": "/tasks/task-123.md",
+    }
+
+    task_id = create_task(title="My Title")
+
+    assert task_id == "task-123"
+    mock_client.call_tool.assert_called_once_with("create_task", {"title": "My Title"})
+
+
+def test_create_task_with_task_title_alias(mock_client):
+    mock_client.call_tool.return_value = {
+        "frontmatter": {"id": "task-123"},
+        "body": "",
+        "path": "/tasks/task-123.md",
+    }
+
+    # Friction fix: 'task_title' should be accepted as 'title'
+    task_id = create_task(task_title="My Title")
+
+    assert task_id == "task-123"
+    mock_client.call_tool.assert_called_once_with("create_task", {"title": "My Title"})
+
+
+def test_update_task_positional_id(mock_client):
+    mock_client.call_tool.return_value = {"success": True}
+
+    update_task("task-1", status="done")
+
+    mock_client.call_tool.assert_called_once_with(
+        "update_task", {"id": "task-1", "updates": {"status": "done"}}
+    )
+
+
+def test_update_task_named_id(mock_client):
+    mock_client.call_tool.return_value = {"success": True}
+
+    # Friction fix: 'id' as named arg should work
+    update_task(id="task-1", status="done")
+
+    mock_client.call_tool.assert_called_once_with(
+        "update_task", {"id": "task-1", "updates": {"status": "done"}}
+    )
+
+
+def test_append_with_id(mock_client):
+    mock_client.call_tool.return_value = {"success": True}
+
+    append(id="doc-1", content="hello")
+
+    mock_client.call_tool.assert_called_once_with("append", {"id": "doc-1", "content": "hello"})
+
+
+def test_append_with_path_alias(mock_client):
+    mock_client.call_tool.return_value = {"success": True}
+
+    # Friction fix: 'path' should be accepted as 'id'
+    append(path="notes/todo.md", content="hello")
+
+    mock_client.call_tool.assert_called_once_with(
+        "append", {"id": "notes/todo.md", "content": "hello"}
+    )
+
+
+# ---------------------------------------------------------------------------
+# Error-handling tests (PkbClient.call_tool)
+# ---------------------------------------------------------------------------
 
 
 def _make_client() -> PkbClient:
@@ -121,6 +248,49 @@ class TestCallToolErrorHandling:
         client = _make_client()
         with patch.object(PkbClient, "_post", return_value=None):
             assert client.call_tool("anything", {}) is None
+
+
+class TestCreateTaskChecklistWarning:
+    """create_task raises ValueError when body contains - [ ] checklists (subtask divergence prevention)."""
+
+    _task_response = {
+        "frontmatter": {"id": "task-123"},
+        "body": "",
+        "path": "/tasks/task-123.md",
+    }
+
+    def test_raises_on_unchecked_item(self, mock_client):
+        with pytest.raises(ValueError, match="checklist items"):
+            create_task(title="T", body="Steps:\n- [ ] step one\n")
+
+    def test_raises_on_checked_item(self, mock_client):
+        with pytest.raises(ValueError, match="checklist items"):
+            create_task(title="T", body="- [x] done step\n")
+
+    def test_raises_on_uppercase_x(self, mock_client):
+        with pytest.raises(ValueError, match="checklist items"):
+            create_task(title="T", body="- [X] done step\n")
+
+    def test_raises_on_asterisk_marker(self, mock_client):
+        with pytest.raises(ValueError, match="checklist items"):
+            create_task(title="T", body="* [ ] step one\n")
+
+    def test_raises_on_plus_marker(self, mock_client):
+        with pytest.raises(ValueError, match="checklist items"):
+            create_task(title="T", body="+ [ ] step one\n")
+
+    def test_no_false_positive_mid_line(self, mock_client):
+        mock_client.call_tool.return_value = self._task_response
+        # Should not raise — mid-line text is not a checklist item
+        create_task(title="T", body="mention of - [x] not at line start")
+
+    def test_no_error_without_checklist(self, mock_client):
+        mock_client.call_tool.return_value = self._task_response
+        create_task(title="T", body="Plain context, no checklist here.")
+
+    def test_no_error_on_empty_body(self, mock_client):
+        mock_client.call_tool.return_value = self._task_response
+        create_task(title="T")
 
 
 class TestPkbTaskDeadlineFields:

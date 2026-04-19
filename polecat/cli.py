@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import functools
 import json
 import os
 import re
@@ -7,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import NamedTuple
@@ -30,9 +32,102 @@ from manager import PolecatManager
 from observability import metrics
 from validation import TaskIDValidationError, validate_task_id_or_raise
 
-# Max turns for headless Claude runs — must be high enough to accommodate hook
-# overhead (hydration gate, custodiet compliance check) plus actual task work.
-HEADLESS_CLAUDE_MAX_TURNS = "50"
+# Turn budget for headless Claude runs.
+#
+# Claude SDK semantics: one "turn" = one full agentic loop iteration.
+# An iteration starts when the model generates a response (which may contain
+# multiple tool_use blocks) and ends when all tool results are returned.
+# Calling 10 tools in a single response still counts as ONE turn.
+#
+# Tiered defaults by task effort (XS/S/M/L from task frontmatter):
+#   XS  →  40  (trivial, single-file edits)
+#   S   →  70  (small, a few files)
+#   M   → 100  (typical PR-scoped work — the new default)
+#   L   → 150  (large, multi-component or epic-decomposition-shaped)
+#   (no effort field) → 100
+#
+# Hook overhead: each session fires ~2-4 hook turns (hydration gate,
+# enforcer compliance check). These count against the budget.
+_EFFORT_TO_MAX_TURNS: dict[str, int] = {
+    "xs": 40,
+    "s": 70,
+    "m": 100,
+    "l": 150,
+}
+_DEFAULT_MAX_TURNS = 100
+
+
+def _compute_max_turns(task) -> str:
+    """Return the --max-turns value for a headless Claude run.
+
+    Derives the budget from the task's ``effort`` field (XS/S/M/L).
+    Falls back to _DEFAULT_MAX_TURNS when the field is absent or unrecognised.
+    Returns a string because subprocess args must be strings.
+    """
+    effort = getattr(task, "effort", None)
+    turns = _DEFAULT_MAX_TURNS
+    if isinstance(effort, str) and effort:
+        turns = _EFFORT_TO_MAX_TURNS.get(effort.lower())
+        if turns is None:
+            print(
+                f"⚠️  Unrecognised effort value '{effort}' — "
+                f"expected XS/S/M/L. Using default {_DEFAULT_MAX_TURNS} turns.",
+                file=sys.stderr,
+            )
+            turns = _DEFAULT_MAX_TURNS
+    return str(turns)
+
+
+def _emit_budget_hit_diagnostic(stdout: str, stderr: str, max_turns: str) -> None:
+    """Detect and log a turn-budget exhaustion event.
+
+    Scans agent output for Claude's "Reached max turns" message.
+    When found, extracts the last tool call name from the output so
+    supervisors can see where the agent was when the budget ran out,
+    without having to dig through the full transcript.
+    """
+    combined = (stdout or "") + (stderr or "")
+    if "Reached max turns" not in combined:
+        return
+
+    print(
+        f"\n⛔ Turn budget exhausted (--max-turns {max_turns}).",
+        file=sys.stderr,
+    )
+    print(
+        "   Claude SDK semantics: one 'turn' = one assistant response + all tool results.\n"
+        "   Multiple tool calls within one response count as a single turn.",
+        file=sys.stderr,
+    )
+
+    # Find the last tool call name in the output.
+    # Claude prints tool use as "Tool: <name>" or similar patterns.
+    # We also look for JSON "tool_use" blocks and the CLI's "● <ToolName>" spinner lines.
+    last_tool: str | None = None
+
+    # Pattern: CLI spinner output "● ToolName(..." or "✓ ToolName(" or "✗ ToolName("
+    spinner_pattern = re.compile(r"[●✓✗⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]\s+([A-Za-z][A-Za-z0-9_]*)\s*\(")
+    for m in spinner_pattern.finditer(combined):
+        last_tool = m.group(1)
+
+    if last_tool:
+        print(f"   Last tool call observed: {last_tool}", file=sys.stderr)
+    else:
+        # Fall back: scan for any line containing a known tool-call pattern
+        tool_line_pattern = re.compile(
+            r"(?:Tool|tool_use|tool_name)[^\n]*?\b([A-Za-z][A-Za-z0-9_]*)\b"
+        )
+        for m in tool_line_pattern.finditer(combined):
+            last_tool = m.group(1)
+        if last_tool:
+            print(f"   Last tool call observed: {last_tool}", file=sys.stderr)
+        else:
+            print("   Last tool call: (could not parse — check transcript)", file=sys.stderr)
+
+    print(
+        "   Supervisor action: raise effort tag (e.g. effort: L) or investigate over-exploration.",
+        file=sys.stderr,
+    )
 
 
 # --- GitHub helpers (inlined from deleted polecat/github.py) ---
@@ -226,6 +321,23 @@ def reset_terminal_title() -> None:
     sys.stdout.flush()
 
 
+def _find_real_transcript(run_session_dir: Path | None) -> Path | None:
+    """Find the real Claude Code session transcript under the run session dir.
+
+    Globs ``<run_session_dir>/-workspace/*.jsonl`` and returns the newest by
+    mtime, or ``None`` if nothing is found.
+    """
+    if run_session_dir is None:
+        return None
+    workspace = run_session_dir / "-workspace"
+    if not workspace.is_dir():
+        return None
+    jsonls = list(workspace.glob("*.jsonl"))
+    if not jsonls:
+        return None
+    return max(jsonls, key=lambda p: p.stat().st_mtime)
+
+
 def save_worker_transcript(
     task_id: str,
     stdout: str,
@@ -233,6 +345,7 @@ def save_worker_transcript(
     exit_code: int,
     agent_type: str,
     home_dir: Path,
+    real_transcript: Path | None = None,
 ) -> Path:
     """Save worker output to transcript file.
 
@@ -246,6 +359,8 @@ def save_worker_transcript(
         exit_code: Process exit code
         agent_type: "claude" or "gemini"
         home_dir: Polecat home directory (fallback if AOPS_SESSIONS not set)
+        real_transcript: Resolved path to the real Claude Code session
+            transcript (caller obtains via _find_real_transcript)
 
     Returns:
         Path to the transcript file
@@ -275,6 +390,10 @@ def save_worker_transcript(
             "success": exit_code == 0,
             "stdout": stdout or "",
             "stderr": stderr or "",
+            "real_transcript_path": str(real_transcript) if real_transcript else None,
+            "real_transcript_size_bytes": (
+                real_transcript.stat().st_size if real_transcript else None
+            ),
         }
 
         with open(transcript_file, "a") as f:
@@ -410,6 +529,63 @@ class DockerSock(NamedTuple):
 
     mount_source: Path
     host_path: Path
+
+
+@functools.lru_cache(maxsize=1)
+def _docker_daemon_host() -> str:
+    """Return the docker daemon endpoint URL (cached for the process lifetime).
+
+    Used by `_is_remote_daemon()` to choose between the local bind-mount
+    container strategy and the remote docker-cp strategy.
+    """
+    # 1. Honour explicit DOCKER_HOST.
+    explicit = os.environ.get("DOCKER_HOST")
+    if explicit:
+        return explicit
+    # 2. Otherwise ask the docker CLI which context is active.
+    try:
+        result = subprocess.run(
+            ["docker", "context", "inspect", "--format", "{{.Endpoints.docker.Host}}"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=5,
+        )
+    except FileNotFoundError as exc:
+        raise RuntimeError(
+            "Cannot determine Docker daemon host: `docker` CLI not found. "
+            "Set DOCKER_HOST explicitly or ensure `docker` is on PATH."
+        ) from exc
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError(
+            "Cannot determine Docker daemon host: `docker context inspect` timed out. "
+            "Set DOCKER_HOST explicitly."
+        ) from exc
+    if result.returncode != 0 or not result.stdout.strip():
+        raise RuntimeError(
+            f"Cannot determine Docker daemon host: `docker context inspect` exited "
+            f"{result.returncode}. Set DOCKER_HOST explicitly. "
+            f"stderr: {result.stderr.strip()!r}"
+        )
+    return result.stdout.strip()
+
+
+def _is_remote_daemon() -> bool:
+    """True when the docker daemon is not on the local host filesystem.
+
+    Local daemons (`unix://...`) can serve bind mounts directly. Remote
+    daemons (`ssh://`, `tcp://`, `npipe://`) cannot — paths in `-v` flags
+    resolve daemon-side, where the host worktree usually doesn't exist.
+
+    Override with `POLECAT_FORCE_STAGING=cp` (force remote/cp path) or
+    `POLECAT_FORCE_STAGING=bind` (force local/bind-mount path).
+    """
+    override = os.environ.get("POLECAT_FORCE_STAGING")
+    if override == "cp":
+        return True
+    if override == "bind":
+        return False
+    return not _docker_daemon_host().startswith("unix://")
 
 
 def _find_docker_sock(env: dict, home: Path | None = None) -> DockerSock | None:
@@ -712,20 +888,22 @@ def _build_docker_cmd(
     cmd.extend(["-e", f"GIT_COMMITTER_NAME={git_name}"])
     cmd.extend(["-e", f"GIT_COMMITTER_EMAIL={git_email}"])
 
-    # Workspace directory — injected via docker cp in _run_docker_container()
-    # to avoid bind mount failures on WSL2/Docker Desktop where bind-mounted
-    # volumes silently appear as empty directories.
+    # Workspace directory.
+    # Local daemon: bind-mount host worktree → /workspace (rw, agent must commit).
+    # Remote daemon: injected via docker cp in _run_docker_container() because
+    # bind mounts resolve daemon-side and the host worktree isn't there.
     workspace_dir = work_dir.resolve()
     cmd.extend(["-w", "/workspace"])
+    if not _is_remote_daemon():
+        cmd.extend(["-v", f"{workspace_dir}:/workspace"])
 
     # Mount authentication and plugin cache for Claude/Gemini.
     # Also mount for "shell" mode so users can run either CLI interactively.
     home = Path.home()
     staging_dir: Path | None = None
     if cli_tool in ("claude", "shell", "gemini"):
-        # Create a staging directory for auth files.  Files are injected into the
-        # container via `docker cp` (not bind mounts), so any writable temp dir works
-        # regardless of platform (WSL2, Colima, DinD).
+        # Create a staging directory for auth files. Bind-mounted (ro) into
+        # /tmp/staging on local daemons; injected via docker cp on remote ones.
         tmp_root = home / ".aops" / "tmp"
         tmp_root.mkdir(parents=True, exist_ok=True)
         staging_dir = Path(tempfile.mkdtemp(prefix="staging-", dir=tmp_root))
@@ -733,6 +911,8 @@ def _build_docker_cmd(
         if tmp_files is not None:
             tmp_files.append(staging_dir)
         _staging_dir = staging_dir
+        if not _is_remote_daemon():
+            cmd.extend(["-v", f"{staging_dir}:/tmp/staging:ro"])
 
     if cli_tool in ("claude", "shell"):
         assert (
@@ -821,7 +1001,7 @@ def _build_docker_cmd(
                 "CLAUDE_CODE_OAUTH_TOKEN",
                 "COLORTERM",
                 "FORCE_COLOR",
-                "CUSTODIET_TOOL_CALL_THRESHOLD",
+                "ENFORCER_TOOL_CALL_THRESHOLD",
             )
         ):
             cmd.extend(["-e", f"{key}={val}"])
@@ -856,19 +1036,39 @@ def _build_docker_cmd(
     cmd.extend(["-e", "GIT_TERMINAL_PROMPT=0"])
 
     # Session storage: transcripts persist beyond container lifetime.
-    # Bind mounts silently fail on WSL2/Docker Desktop so callers use
-    # extract_paths in _run_docker_container() to docker-cp sessions out
-    # after the container stops.  Named volumes (DinD) still work.
+    # Local daemon → bind-mount session_dir for live host visibility.
+    # Remote daemon → mkdir only; callers extract via docker cp after run.
+    # session_volume (named volume) is the DinD path and overrides both.
     if cli_tool in ("claude", "shell", "gemini"):
+        if cli_tool in ("claude", "shell"):
+            session_container_path = f"{container_home}/.claude/projects"
+        else:
+            session_container_path = f"{container_home}/.gemini/tmp"
         if session_volume:
-            # Named volume: preferred in DinD where bind-mount paths may not be
-            # accessible from the outer Docker daemon.
-            if cli_tool in ("claude", "shell"):
-                cmd.extend(["-v", f"{session_volume}:{container_home}/.claude/projects"])
-            else:
-                cmd.extend(["-v", f"{session_volume}:{container_home}/.gemini/tmp"])
+            cmd.extend(["-v", f"{session_volume}:{session_container_path}"])
         elif session_dir:
             session_dir.mkdir(parents=True, exist_ok=True)
+            if not _is_remote_daemon():
+                cmd.extend(["-v", f"{session_dir}:{session_container_path}"])
+
+    # Ensure gate mode vars have explicit values inside the container.
+    # The hook router emits WARNING and silently defaults to 'warn' when these
+    # are unset — in polecat containers they won't be set unless forwarded here.
+    # We forward from env (caller's dict) first, then os.environ, then the same
+    # 'warn' default that gate_config.py uses. The existing forwarding loop above
+    # only forwards vars present in the caller's env dict, so vars not in env
+    # (e.g. when only POLECAT_SESSION_TYPE is provided) would be silently skipped.
+    _gate_mode_defaults = {
+        "COMMIT_GATE_MODE": "warn",
+        "HANDOVER_GATE_MODE": "warn",
+        "QA_GATE_MODE": "warn",
+        "ENFORCER_GATE_MODE": "warn",
+        "HYDRATION_GATE_MODE": "off",  # gate_config.py: os.environ.get("HYDRATION_GATE_MODE", "off")
+    }
+    for _gm_key, _gm_default in _gate_mode_defaults.items():
+        if _gm_key not in env:
+            _gm_val = os.environ.get(_gm_key, _gm_default)
+            cmd.extend(["-e", f"{_gm_key}={_gm_val}"])
 
     cmd.append(image)
     cmd.extend(agent_cmd)
@@ -977,28 +1177,43 @@ def _run_docker_container(
     gemini: bool = False,
     task_id: str | None = None,
 ) -> subprocess.CompletedProcess:
-    """Launch a Docker container, injecting workspace and staging files via docker cp.
+    """Launch a Docker container.
 
-    Uses ``docker create`` + ``docker cp`` + ``docker start`` instead of
-    ``docker run`` when workspace, staging files, or extraction is needed.
-    This avoids bind mount issues on WSL2/Docker Desktop where file mounts
-    appear as empty directories.
+    Local daemon: plain ``docker run`` — workspace/session/staging are bind
+    mounts added by ``_build_docker_cmd``. A ``--name polecat-{nonce}`` flag
+    lets the PKB watchdog target the container by name.
 
-    If ``extract_paths`` is provided, copies files out of the container after
-    it exits (before ``docker rm``).  Each entry is a ``(container_path,
-    host_path)`` tuple.  This is the reliable way to get session transcripts
-    out of the container, since bind-mounted session dirs may silently fail on
-    WSL2/Docker Desktop.
-
-    When no workspace_dir, staging_dir, or extract_paths is set, falls back
-    to a plain ``docker run``.
+    Remote daemon (or ``POLECAT_FORCE_STAGING=cp``): bind mounts cannot reach
+    a remote daemon's filesystem, so we fall back to ``docker create`` +
+    ``docker cp`` (workspace, staging in; ``extract_paths`` out) +
+    ``docker start -a``.
     """
     cmd = list(docker_cmd.cmd)  # copy to avoid mutation
 
-    needs_cp = docker_cmd.staging_dir or docker_cmd.workspace_dir or extract_paths
-    if not needs_cp:
-        # No staging, workspace injection, or extraction needed — plain docker run
-        return subprocess.run(cmd, cwd=cwd, env=env, capture_output=capture_output, text=text)
+    if not _is_remote_daemon():
+        # Local: bind mounts already in cmd. Add --name for watchdog targeting.
+        container_name = f"polecat-{task_id or uuid.uuid4().hex[:8]}"
+        cmd[3:3] = ["--name", container_name]
+
+        _watchdog_cancel = None
+        _watchdog_thread = None
+        if gemini and task_id:
+            _watchdog_cancel = threading.Event()
+            _watchdog_thread = threading.Thread(
+                target=_pkb_termination_watchdog,
+                args=(container_name, task_id, _watchdog_cancel),
+                name=f"polecat-watchdog-{task_id}",
+                daemon=True,
+            )
+            _watchdog_thread.start()
+
+        try:
+            return subprocess.run(cmd, cwd=cwd, env=env, capture_output=capture_output, text=text)
+        finally:
+            if _watchdog_cancel is not None:
+                _watchdog_cancel.set()
+            if _watchdog_thread is not None:
+                _watchdog_thread.join(timeout=5.0)
 
     # Replace "docker run --rm" with "docker create" (no --rm, we clean up manually)
     # The cmd starts with ["docker", "run", "--rm", ...]
@@ -1265,6 +1480,7 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
         "trustedFolders.json",
         "projects.json",
         "state.json",
+        "policies",
     ]
 
     existing_files = [f for f in auth_files if (gemini_dir / f).exists()]
@@ -1286,7 +1502,18 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
     target_dir.mkdir(parents=True)
     os.chmod(target_dir, 0o777)
 
+    policies_dir = target_dir / "policies"
+    policies_dir.mkdir(exist_ok=True)
+    os.chmod(policies_dir, 0o777)
+
     for f in existing_files:
+        if f == "policies":
+            src_policies = gemini_dir / "policies"
+            if src_policies.is_dir():
+                for policy_file in src_policies.glob("*.toml"):
+                    shutil.copy2(policy_file, policies_dir / policy_file.name)
+            continue
+
         if f == "trustedFolders.json" and work_dir:
             try:
                 with open(gemini_dir / f) as src_f:
@@ -1329,6 +1556,42 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
         # Follow symlinks to copy the actual file content, not the link itself.
         # This is critical for ~/.gemini/settings.json which is often symlinked.
         shutil.copy2(gemini_dir / f, target_dir / f, follow_symlinks=True)
+
+    # Copy our default framework policies
+    deny_ext_src = SCRIPT_DIR / "defaults" / "deny-extension-writes.toml"
+    if not deny_ext_src.exists():
+        raise RuntimeError(f"Missing bundled policy file: {deny_ext_src}")
+    shutil.copy2(deny_ext_src, policies_dir / "deny-extension-writes.toml")
+
+    # Generate sandbox policy if work_dir is provided
+    if work_dir:
+        work_dir_str = str(work_dir.resolve())
+        sandbox_policy = f"""# Polecat Sandbox Policy
+# Priority 900 (Admin tier level) to ensure it takes precedence over user/workspace rules.
+
+[[rule]]
+toolName = ["write_file", "replace"]
+argsPattern = {{ file_path = "{work_dir_str}/**" }}
+decision = "allow"
+priority = 900
+description = "Allow writes within the work directory"
+
+[[rule]]
+toolName = "run_shell_command"
+commandRegex = ".*{work_dir_str}.*"
+decision = "allow"
+priority = 900
+description = "Allow shell commands referencing the work directory"
+
+[[rule]]
+toolName = ["write_file", "replace", "run_shell_command"]
+decision = "deny"
+priority = 899
+deny_message = "Sandbox violation: Writing outside the work directory ({work_dir_str}) is prohibited."
+description = "Deny writes outside the work directory"
+"""
+        with open(policies_dir / "polecat-sandbox.toml", "w") as f_policy:
+            f_policy.write(sandbox_policy)
 
     # If trustedFolders.json didn't exist but we have a work_dir, create it
     if "trustedFolders.json" not in existing_files and work_dir:
@@ -1379,6 +1642,21 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
                     json.dump(enablement, f, indent=2)
             except (json.JSONDecodeError, OSError):
                 shutil.copy2(enablement_src, dst_extensions / "extension-enablement.json")
+
+    # Replicate policies so that policy engine is active in sandbox sessions.
+    src_policies = gemini_dir / "policies"
+    if src_policies.is_dir():
+        dst_policies = target_dir / "policies"
+        dst_policies.mkdir(parents=True, exist_ok=True)
+        for policy in src_policies.glob("*.toml"):
+            shutil.copy2(policy, dst_policies / policy.name)
+
+    # Copy bundled admin policies AFTER user policies so they always take
+    # precedence — a same-named user file must not override an admin policy.
+    compliance_src = SCRIPT_DIR / "defaults" / "compliance-agents.toml"
+    if not compliance_src.exists():
+        raise RuntimeError(f"Missing bundled policy file: {compliance_src}")
+    shutil.copy2(compliance_src, policies_dir / "compliance-agents.toml")
 
     # Make all replicated files and directories writable by any UID.
     # Gemini's sandbox container may run as a different user than the host
@@ -1535,6 +1813,43 @@ def _clear_stale_git_lock(repo_path: Path) -> bool:
     return True
 
 
+def _auto_resolve_merge(repo_path: Path, name: str) -> tuple[bool, str]:
+    """Auto-resolve merge conflicts by keeping local (ours) versions."""
+    unmerged = subprocess.run(
+        ["git", "diff", "--name-only", "--diff-filter=U"],
+        cwd=repo_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    ).stdout.strip()
+    if not unmerged:
+        return False, f"{name}: pull failed (non-conflict reason)"
+
+    subprocess.run(
+        ["git", "checkout", "--ours", "."],
+        cwd=repo_path,
+        capture_output=True,
+        check=False,
+    )
+    subprocess.run(["git", "add", "."], cwd=repo_path, capture_output=True, check=False)
+    commit = subprocess.run(
+        ["git", "commit", "--no-edit"],
+        cwd=repo_path,
+        capture_output=True,
+        check=False,
+        env={**os.environ, "GIT_EDITOR": "true"},
+    )
+    if commit.returncode != 0:
+        return False, f"{name}: merge commit failed after conflict resolution"
+
+    conflict_files = unmerged.splitlines()
+    print(
+        f"⚠ {name}: merge conflict auto-resolved (kept local) in {len(conflict_files)} file(s)",
+        file=sys.stderr,
+    )
+    return True, f"{name}: auto-resolved {len(conflict_files)} merge conflict(s)"
+
+
 def _auto_resolve_rebase(repo_path: Path, name: str, ahead_count: int) -> tuple[bool, str]:
     """Auto-resolve conflicts during an in-progress rebase.
 
@@ -1676,7 +1991,11 @@ def _auto_resolve_rebase(repo_path: Path, name: str, ahead_count: int) -> tuple[
 
 
 def _sync_working_repo(
-    repo_path: Path, *, auto_commit: bool = False, quiet: bool = False
+    repo_path: Path,
+    *,
+    auto_commit: bool = False,
+    quiet: bool = False,
+    merge_strategy: str = "rebase",
 ) -> tuple[bool, str]:
     """Sync a working repo: fetch, pull/push, auto-resolve conflicts.
 
@@ -1759,15 +2078,18 @@ def _sync_working_repo(
                     check=False,
                 )
 
-            # Pull with rebase
+            pull_flag = "--rebase" if merge_strategy == "rebase" else "--no-rebase"
             pull = subprocess.run(
-                ["git", "pull", "--rebase", "--quiet"],
+                ["git", "pull", pull_flag, "--quiet"],
                 cwd=repo_path,
                 capture_output=True,
                 check=False,
             )
             if pull.returncode != 0:
-                ok, resolve_msg = _auto_resolve_rebase(repo_path, name, ahead_count)
+                if merge_strategy == "merge":
+                    ok, resolve_msg = _auto_resolve_merge(repo_path, name)
+                else:
+                    ok, resolve_msg = _auto_resolve_rebase(repo_path, name, ahead_count)
                 if not ok:
                     return False, resolve_msg
 
@@ -1801,17 +2123,19 @@ def _sync_working_repo(
         return False, f"{name}: pull failed"
 
     elif ahead_count > 0:
-        # If also behind, rebase local commits on top of remote before pushing
         if behind_count > 0:
+            pull_flag = "--rebase" if merge_strategy == "rebase" else "--no-rebase"
             pull = subprocess.run(
-                ["git", "pull", "--rebase", "--quiet"],
+                ["git", "pull", pull_flag, "--quiet"],
                 cwd=repo_path,
                 capture_output=True,
                 check=False,
             )
             if pull.returncode != 0:
-                # Attempt to auto-resolve rebase conflicts (same logic as dirty path)
-                ok, resolve_msg = _auto_resolve_rebase(repo_path, name, ahead_count)
+                if merge_strategy == "merge":
+                    ok, resolve_msg = _auto_resolve_merge(repo_path, name)
+                else:
+                    ok, resolve_msg = _auto_resolve_rebase(repo_path, name, ahead_count)
                 if not ok:
                     return False, resolve_msg
         push = subprocess.run(
@@ -1865,34 +2189,15 @@ def sync(ctx, check, quiet, mirrors_only):
                     print(f"  {project_name}: path not found ({repo_path})")
                 continue
 
-            if check:
-                # Just report status
-                success, msg = _sync_working_repo(repo_path, auto_commit=False, quiet=quiet)
-                if not success or not quiet:
-                    print(f"  {msg}")
-                if not success:
-                    needs_attention.append(project_name)
-            else:
-                success, msg = _sync_working_repo(repo_path, auto_commit=False, quiet=quiet)
-                if not success or not quiet:
-                    print(f"  {msg}")
-                if not success:
-                    needs_attention.append(project_name)
-
-        # Also sync AOPS_SESSIONS — fail fast if not a git repo
-        sessions_path = _get_sessions_base()
-        if not (sessions_path / ".git").exists():
-            print(
-                f"  ✗ sessions: not a git repo ({sessions_path}). Run 'polecat init'.",
-                file=sys.stderr,
+            auto_commit = bool(project_cfg.get("auto_commit", False)) and not check
+            merge_strategy = project_cfg.get("merge_strategy", "merge" if auto_commit else "rebase")
+            success, msg = _sync_working_repo(
+                repo_path, auto_commit=auto_commit, quiet=quiet, merge_strategy=merge_strategy
             )
-            needs_attention.append("sessions")
-        else:
-            success, msg = _sync_working_repo(sessions_path, auto_commit=True, quiet=quiet)
             if not success or not quiet:
                 print(f"  {msg}")
             if not success:
-                needs_attention.append("sessions")
+                needs_attention.append(project_name)
 
         if not quiet:
             if needs_attention:
@@ -2008,8 +2313,9 @@ def checkout(ctx, task_id, caller):
     is_flag=True,
     help="Force task status to 'done' even if no git changes detected",
 )
+@click.option("--project", "-p", default=None, help="Override task project (used by auto-finish)")
 @click.pass_context
-def finish(ctx, no_push, do_nuke, force, force_done):
+def finish(ctx, no_push, do_nuke, force, force_done, project):
     """Mark current task as ready for merge.
 
     Must be run from within a polecat worktree.
@@ -2040,6 +2346,10 @@ def finish(ctx, no_push, do_nuke, force, force_done):
     if not task:
         print(f"Error: Task {task_id} not found in task database", file=sys.stderr)
         sys.exit(1)
+
+    # CLI --project/-p overrides task.project
+    if project:
+        task.project = project
 
     # --- SAFEGUARD 0: Completion Protection ---
     # If the task is already DONE, or in review/merge phase, do NOT override it.
@@ -2122,16 +2432,10 @@ def finish(ctx, no_push, do_nuke, force, force_done):
             if force_done:
                 print("📭 No changes detected, but --force-done specified.")
                 print("✅ Proceeding to mark as DONE (verified complete without changes).")
-                try:
-                    from lib.task_model import TaskStatus
+                _finish_evidence = f"{task.title} — completed without code changes (--force-done)"
+                from polecat.pkb_bridge import complete_task as pkb_complete
 
-                    task.status = TaskStatus.DONE.value
-                    manager.storage.save_task(task)
-                except ImportError:
-                    from polecat.pkb_bridge import save_task as pkb_save
-
-                    task.status = "done"
-                    pkb_save(task)
+                pkb_complete(task_id, completion_evidence=_finish_evidence)
                 print(f"✅ Task {task_id} marked as DONE.")
 
                 # Optionally nuke
@@ -2196,16 +2500,12 @@ def finish(ctx, no_push, do_nuke, force, force_done):
                         "📭 No changes detected (local main fallback), but --force-done specified."
                     )
                     print("✅ Proceeding to mark as DONE (verified complete without changes).")
-                    try:
-                        from lib.task_model import TaskStatus
+                    _finish_evidence = (
+                        f"{task.title} — completed without code changes (--force-done)"
+                    )
+                    from polecat.pkb_bridge import complete_task as pkb_complete
 
-                        task.status = TaskStatus.DONE
-                        manager.storage.save_task(task)
-                    except ImportError:
-                        from polecat.pkb_bridge import save_task as pkb_save
-
-                        task.status = "done"
-                        pkb_save(task)
+                    pkb_complete(task_id, completion_evidence=_finish_evidence)
                     print(f"✅ Task {task_id} marked as DONE.")
                     if do_nuke:
                         print("Nuking worktree...")
@@ -2614,9 +2914,8 @@ def nuke(ctx, target, force):
 
     # 1. Cleanup stale worktrees
     if manager.polecats_dir.exists():
-        exclude = {".repos", "crew"}
         for d in manager.polecats_dir.iterdir():
-            if d.is_dir() and not d.name.startswith(".") and d.name not in exclude:
+            if d.is_dir() and not d.name.startswith("."):
                 task_id = d.name
                 if manager.storage is not None:
                     task = manager.storage.get_task(task_id)
@@ -2627,7 +2926,26 @@ def nuke(ctx, target, force):
                 if not task:
                     is_stale = True
                 else:
-                    repo_path = manager.get_repo_path(task)
+                    # A malformed task raises ValueError from get_repo_path.
+                    # Two distinct cases:
+                    #   1. task.project is None/empty — structural data problem.
+                    #   2. task.project names a project removed from polecat.yaml
+                    #      — the project is no longer resolvable, so this
+                    #      worktree will be silently skipped on every sweep and
+                    #      never automatically cleaned up.
+                    #
+                    # Both are intentionally deferred: case 2 requires
+                    # PKB-driven discovery (iterate tasks, not the filesystem)
+                    # tracked in task-df1e5aa3. Skipping is strictly safer
+                    # than aborting the whole sweep.
+                    try:
+                        repo_path = manager.get_repo_path(task)
+                    except ValueError as e:
+                        print(
+                            f"Warning: skipping {task_id}: {e}",
+                            file=sys.stderr,
+                        )
+                        continue
                     branch_name = f"polecat/{task_id}"
 
                     # Check if branch is merged or deleted
@@ -2691,12 +3009,9 @@ def list_polecats(ctx):
         print("No polecats directory found.")
         return
 
-    # Directories to exclude from listing (system dirs)
-    exclude = {".repos", "crew"}
-
     found = False
     for item in manager.polecats_dir.iterdir():
-        if item.is_dir() and not item.name.startswith(".") and item.name not in exclude:
+        if item.is_dir() and not item.name.startswith("."):
             print(f"{item.name} -> {item}")
             found = True
 
@@ -2708,10 +3023,10 @@ def list_polecats(ctx):
 @click.option("--stale-days", default=3, help="Days before flagging a PR as stale (default: 3)")
 @click.pass_context
 def sweep(ctx, stale_days):
-    """Scan 'merge_ready' tasks and update status based on GitHub PR state.
+    """Scan 'merge_ready' and 'review' tasks and update status based on GitHub PR state.
 
-    Checks each task in 'merge_ready' status for its corresponding PR.
-    - If merged: sets task to 'done', cleans up worktree/branch.
+    Checks each task in 'merge_ready' or 'review' (with pr_url) status for its corresponding PR.
+    - If merged: marks task done with completion evidence, cleans up worktree/branch.
     - If closed (not merged): sets task back to 'review'.
     - If changes requested: sets task back to 'review' and appends comments.
     - If stale (>N days): flags for attention in task body.
@@ -2720,20 +3035,40 @@ def sweep(ctx, stale_days):
 
     manager = PolecatManager(home_dir=ctx.obj.get("home"))
 
+    tasks: list = []
     if manager.storage is not None:
         try:
             from lib.task_model import TaskStatus
 
-            tasks = manager.storage.list_tasks(status=TaskStatus.MERGE_READY)
+            tasks = list(manager.storage.list_tasks(status=TaskStatus.MERGE_READY))
+            tasks.extend(manager.storage.list_tasks(status=TaskStatus.REVIEW))
         except ImportError:
             tasks = []
     else:
         from polecat.pkb_bridge import list_tasks as pkb_list_tasks
 
         tasks = pkb_list_tasks(status="merge_ready")
+        tasks.extend(pkb_list_tasks(status="review"))
+
+    # For review tasks, only include those that have a PR reference
+    filtered_tasks = []
+    for t in tasks:
+        status_str = str(t.status).lower().replace("taskstatus.", "")
+        if status_str == "merge_ready":
+            filtered_tasks.append(t)
+        elif status_str == "review":
+            pr_ref = t.pr_url or (str(t.pr) if hasattr(t, "pr") and t.pr else None)
+            if not pr_ref:
+                # Check body for PR URL
+                match = re.search(r"https://github\.com/[^/]+/[^/]+/pull/(\d+)", t.body or "")
+                if match:
+                    filtered_tasks.append(t)
+            else:
+                filtered_tasks.append(t)
+    tasks = filtered_tasks
 
     if not tasks:
-        print("No tasks in MERGE_READY status.")
+        print("No tasks in MERGE_READY or REVIEW (with PR) status.")
         return
 
     def _save(t):
@@ -2744,7 +3079,7 @@ def sweep(ctx, stale_days):
 
             pkb_save(t)
 
-    print(f"Sweeping {len(tasks)} tasks in MERGE_READY status...")
+    print(f"Sweeping {len(tasks)} tasks in MERGE_READY/REVIEW status...")
 
     for task in tasks:
         pr_ref = task.pr_url or (str(task.pr) if task.pr else None)
@@ -2775,8 +3110,12 @@ def sweep(ctx, stale_days):
         # 1. PR Merged
         if state == "MERGED" or merged_at:
             print("    ✅ PR Merged! Marking task as DONE.")
-            task.status = "done"
-            _save(task)
+            pr_number = pr_status.get("number", "?")
+            merged_date = merged_at[:10] if merged_at else "unknown date"
+            evidence = f"PR #{pr_number} merged {merged_date}"
+            from polecat.pkb_bridge import complete_task as pkb_complete
+
+            pkb_complete(task.id, completion_evidence=evidence)
             # Cleanup worktree
             try:
                 manager.nuke_worktree(task.id, force=True)
@@ -2842,16 +3181,20 @@ def sweep(ctx, stale_days):
                 print(f"    ⚠ Could not parse updatedAt '{updated_at_str}': {e}")
 
 
-def _clone_has_changes(repo_path: Path) -> bool:
-    """Check if a crew clone has any changes (committed or uncommitted) vs its upstream.
+def _clone_has_changes(repo_path: Path, branch_name: str) -> bool:
+    """Check if a crew branch has pushed work not yet merged to the default branch.
+
+    Fetches fresh state from origin before checking, so this is correct even
+    when the local clone is stale (e.g. after a Docker session where commits
+    happened inside the container and were pushed directly to origin).
 
     Returns True if:
-    - There are uncommitted changes in the working tree
-    - The content of the current branch differs from the upstream default branch
-    Returns False if the clone is clean and identical to origin/HEAD.
+    - There are uncommitted local changes in the working tree, OR
+    - The remote crew branch has commits with content not yet in the default branch
+    Returns False if the remote branch is absent, merged, or squash-merged.
     """
     try:
-        # Check for uncommitted changes (staged or unstaged)
+        # Check for uncommitted local changes (catches non-Docker in-progress work)
         status = subprocess.run(
             ["git", "status", "--porcelain"],
             cwd=repo_path,
@@ -2862,8 +3205,7 @@ def _clone_has_changes(repo_path: Path) -> bool:
         if status.returncode == 0 and status.stdout.strip():
             return True
 
-        # Check for commits beyond the merge base with origin's default branch
-        # First, determine the default branch
+        # Determine the default branch name
         head_result = subprocess.run(
             ["git", "symbolic-ref", "refs/remotes/origin/HEAD"],
             cwd=repo_path,
@@ -2871,22 +3213,72 @@ def _clone_has_changes(repo_path: Path) -> bool:
             text=True,
             timeout=10,
         )
-        if head_result.returncode == 0:
-            default_branch = head_result.stdout.strip()  # e.g., refs/remotes/origin/main
-        else:
-            default_branch = "origin/main"
+        default_ref = (
+            head_result.stdout.strip()
+            if head_result.returncode == 0
+            else "refs/remotes/origin/main"
+        )
+        default_branch_short = default_ref.removeprefix("refs/remotes/origin/")
 
-        # git diff --quiet returns 0 if no differences, 1 if there are differences
-        diff = subprocess.run(
-            ["git", "diff", "--quiet", default_branch, "HEAD"],
+        # Use ls-remote to check branch existence on origin.
+        # Cleanly separates "branch absent" (exit 0, empty stdout) from
+        # "can't reach origin" (exit non-0 → unknown state → preserve).
+        remote_branch_ref = f"refs/remotes/origin/{branch_name}"
+        ls_remote = subprocess.run(
+            ["git", "ls-remote", "origin", f"refs/heads/{branch_name}"],
             cwd=repo_path,
             capture_output=True,
+            text=True,
             timeout=10,
         )
-        return diff.returncode != 0
-    except (FileNotFoundError, subprocess.TimeoutExpired):
-        # If we can't determine, assume there are changes (safe default)
-        return True
+        if ls_remote.returncode != 0:
+            # Can't reach origin — cannot determine state; safe default is preserve.
+            return True
+        if not ls_remote.stdout.strip():
+            # Origin reachable but branch absent — nothing was pushed, safe to nuke.
+            return False
+
+        # Branch exists on remote. Fetch fresh state to update local tracking refs.
+        subprocess.run(
+            ["git", "fetch", "origin", branch_name, default_branch_short],
+            cwd=repo_path,
+            capture_output=True,
+            timeout=15,
+            check=False,
+        )
+
+        # Count commits on the remote crew branch not reachable from remote default.
+        rev_count = subprocess.run(
+            ["git", "rev-list", "--count", f"{default_ref}..{remote_branch_ref}"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if rev_count.returncode == 0:
+            count = int(rev_count.stdout.strip())
+            if count == 0:
+                # All commits are ancestors of the default branch (normal merge).
+                return False
+
+            # Commits exist beyond the default branch. Check if content is identical —
+            # this handles squash-merge/rebase where commits land in main with
+            # different SHAs but the same file content.
+            diff = subprocess.run(
+                ["git", "diff", "--quiet", default_ref, remote_branch_ref],
+                cwd=repo_path,
+                capture_output=True,
+                timeout=10,
+            )
+            if diff.returncode == 0:
+                # Content identical to default → squash-merged → safe to nuke.
+                return False
+            return True  # Genuine unmerged work exists — preserve.
+
+    except (FileNotFoundError, subprocess.TimeoutExpired, ValueError):
+        pass
+    # If we can't determine, assume there are changes (safe default).
+    return True
 
 
 def _branch_has_open_pr(branch_name: str, repo_path: Path) -> bool:
@@ -3190,14 +3582,21 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
         # Gemini: run inside our Docker container (not --sandbox, which uses
         # bind mounts that fail on WSL2/Docker Desktop).  Auth files are staged
         # via docker cp, and session transcripts are extracted after the run.
-        # Note: --approval-mode is set by agent_args (passed after '--').
-        cmd = ["gemini"]
+        # --approval-mode plan mirrors Claude crew's --permission-mode=plan:
+        # reads are auto-approved, writes require policy-level allow rules.
+        cmd = [
+            "gemini",
+            "--approval-mode",
+            "plan",
+            "--include-directories",
+            "/home/worker/.gemini/extensions/aops-core",
+        ]
     else:
         # Claude Code: sandbox via project settings.json + setting-sources
         cmd = [
             "claude",
             "--permission-mode=plan",
-            "--dangerously-skip-permissions",
+            "--allow-dangerously-skip-permissions",
             "--setting-sources=user,project",
         ]
 
@@ -3211,6 +3610,11 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
     env["POLECAT_SESSION_TYPE"] = "crew"
     env["POLECAT_CREW_NAME"] = crew_name
     env["POLECAT_WORKTREE"] = str(work_dir)
+    # Both Gemini (--approval-mode plan) and Claude (--permission-mode=plan) crew
+    # sessions run in plan mode. Signal this to the gate engine so it skips the
+    # custodiet ops counter — the gate must not fire when rbg cannot be invoked.
+    if not interactive:
+        env["POLECAT_APPROVAL_MODE"] = "plan"
 
     # Compute session directory for Claude transcript persistence.
     project_slug = target or projects[0]
@@ -3341,7 +3745,7 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
     auto_nuke = False
     nuke_reason = ""
     if not keep:
-        if not _clone_has_changes(work_dir):
+        if not _clone_has_changes(work_dir, branch_name):
             auto_nuke = True
             nuke_reason = "no changes made"
         elif _branch_has_open_pr(branch_name, work_dir):
@@ -3503,6 +3907,25 @@ def run(
     Claims a task, spawns a worktree, and runs claude with the task context.
     On successful completion (exit code 0), automatically runs `polecat finish`.
 
+    Turn budget (--max-turns semantics):
+        One "turn" = one full agentic loop iteration: the model generates a
+        response (potentially with many tool_use blocks) and all tool results
+        are returned.  Calling 10 tools in a single response still counts as
+        ONE turn.  The budget is derived from the task's effort field:
+
+            XS  →  40 turns   (trivial, single-file edits)
+            S   →  70 turns   (small, a few files)
+            M   → 100 turns   (typical PR-scoped work — default)
+            L   → 150 turns   (large, multi-component)
+            (no effort field) → 100 turns
+
+        Hook overhead (~2–4 turns per session for the hydration gate and
+        enforcer compliance check) counts against the budget.
+
+        When the budget is exhausted polecat emits a diagnostic showing the
+        last observed tool call so supervisors can assess over-exploration
+        without reading the full transcript.
+
     Examples:
         polecat run -p aops              # Run next ready task from aops project
         polecat run -t task-123          # Run specific task
@@ -3576,6 +3999,10 @@ def run(
             print("No ready tasks found.")
             sys.exit(3)
 
+    # CLI --project/-p overrides task.project (e.g. task has no project set)
+    if project:
+        task.project = project
+
     if is_issue:
         print(f"🎯 Issue: {task.title} ({getattr(task, 'issue_url', '') or task.id})")
     else:
@@ -3620,7 +4047,7 @@ def run(
         task_id=task.id,
         task_title=task.title,
         task_type=task.type.value if hasattr(task.type, "value") else str(task.type),  # type: ignore[reportAttributeAccessIssue]
-        task_project=task.project or "",
+        task_project=project or task.project or "",
         task_body=task_body,
         task_meta={
             "parent": task.parent,
@@ -3679,7 +4106,7 @@ def run(
             cmd.append(prompt)
         else:
             # Headless: use -p for print mode
-            cmd.extend(["-p", prompt, "--max-turns", HEADLESS_CLAUDE_MAX_TURNS])
+            cmd.extend(["-p", prompt, "--max-turns", _compute_max_turns(task)])
 
     # Set session type environment variable for hooks to detect
     # Use sanitized env: SSH stripped, git auth set to bot token only
@@ -3692,7 +4119,7 @@ def run(
     tmp_gemini_home = None
     tmp_files: list[Path] = []
     # Compute session directory for transcript persistence.
-    project_slug = task.project or project or worktree_path.name
+    project_slug = project or task.project or worktree_path.name
     run_session_dir = _get_sessions_base() / "polecats" / task.id / project_slug
 
     if gemini:
@@ -3810,6 +4237,7 @@ def run(
 
             # Save transcript to $POLECAT_HOME/polecats/<task-id>.jsonl
             try:
+                real_transcript = _find_real_transcript(run_session_dir)
                 transcript_path = save_worker_transcript(
                     task_id=task.id,
                     stdout=result.stdout,
@@ -3817,10 +4245,17 @@ def run(
                     exit_code=exit_code,
                     agent_type=cli_tool,
                     home_dir=manager.home_dir,
+                    real_transcript=real_transcript,
                 )
-                print(f"📝 Transcript saved: {transcript_path}")
+                if real_transcript:
+                    print(f"📝 Transcript: {real_transcript}")
+                else:
+                    print(f"📝 Transcript stub: {transcript_path}")
             except OSError as e:
                 print(f"⚠️  Warning: Failed to save transcript: {e}", file=sys.stderr)
+
+            # Detect turn-budget exhaustion and emit supervisor-friendly diagnostic
+            _emit_budget_hit_diagnostic(result.stdout, result.stderr, _compute_max_turns(task))
 
             # Analyze the transcript for failures
             analyze_func = getattr(manager, "analyze_transcript", None)
@@ -3901,7 +4336,9 @@ def run(
             try:
                 os.chdir(worktree_path)
                 # Pass force_done if we detected a completion signal
-                ctx.invoke(finish, no_push=False, do_nuke=True, force_done=auto_force_done)
+                ctx.invoke(
+                    finish, no_push=False, do_nuke=True, force_done=auto_force_done, project=project
+                )
                 print("✅ Auto-finish completed.")
             except SystemExit as e:
                 if e.code != 0:
@@ -4742,11 +5179,10 @@ def summary(ctx, since, project):
 
     try:
         # Count active polecats (worktrees)
-        exclude = {".repos", "crew", ".git"}
         active_polecats = [
             d.name
             for d in manager.polecats_dir.iterdir()
-            if d.is_dir() and not d.name.startswith(".") and d.name not in exclude
+            if d.is_dir() and not d.name.startswith(".")
         ]
 
         # Count crew workers

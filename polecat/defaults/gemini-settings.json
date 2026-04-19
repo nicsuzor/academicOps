@@ -3,7 +3,12 @@
     "enabled": true
   },
   "model": {
-    "selectedModel": "gemini-3.1-pro-preview"
+    "name": "auto-gemini-3"
+  },
+  "security": {
+    "policyEngine": {
+      "adminPolicyPaths": ["/home/worker/.gemini/policies/*.toml"]
+    }
   },
   "tools": {
     "exclude": ["ask_user"]

@@ -170,10 +170,10 @@ class TestSubagentTypeExtraction:
             "hook_event_name": "PreToolUse",
             "session_id": "test-123",
             "tool_name": "Task",
-            "tool_input": {"subagent_type": "custodiet", "prompt": "Check compliance"},
+            "tool_input": {"subagent_type": "enforcer", "prompt": "Check compliance"},
         }
         ctx = router_instance.normalize_input(raw)
-        assert ctx.subagent_type == "custodiet"
+        assert ctx.subagent_type == "enforcer"
 
     def test_gemini_delegate_to_agent_name(self, router_instance):
         """Gemini delegate_to_agent with name= extracts correctly."""
@@ -181,10 +181,10 @@ class TestSubagentTypeExtraction:
             "hook_event_name": "PreToolUse",
             "session_id": "test-123",
             "tool_name": "delegate_to_agent",
-            "tool_input": {"name": "custodiet", "query": "Check compliance"},
+            "tool_input": {"name": "enforcer", "query": "Check compliance"},
         }
         ctx = router_instance.normalize_input(raw)
-        assert ctx.subagent_type == "custodiet"
+        assert ctx.subagent_type == "enforcer"
 
     def test_gemini_delegate_to_agent_agent_name(self, router_instance):
         """Gemini delegate_to_agent with agent_name= also works."""
@@ -192,10 +192,10 @@ class TestSubagentTypeExtraction:
             "hook_event_name": "PreToolUse",
             "session_id": "test-123",
             "tool_name": "delegate_to_agent",
-            "tool_input": {"agent_name": "custodiet", "query": "Check compliance"},
+            "tool_input": {"agent_name": "enforcer", "query": "Check compliance"},
         }
         ctx = router_instance.normalize_input(raw)
-        assert ctx.subagent_type == "custodiet"
+        assert ctx.subagent_type == "enforcer"
 
     def test_activate_skill_name(self, router_instance):
         """activate_skill with name= extracts correctly."""
@@ -203,10 +203,10 @@ class TestSubagentTypeExtraction:
             "hook_event_name": "PreToolUse",
             "session_id": "test-123",
             "tool_name": "activate_skill",
-            "tool_input": {"name": "custodiet"},
+            "tool_input": {"name": "enforcer"},
         }
         ctx = router_instance.normalize_input(raw)
-        assert ctx.subagent_type == "custodiet"
+        assert ctx.subagent_type == "enforcer"
 
     def test_skill_tool_uses_skill_param(self, router_instance):
         """Skill tool extracts from 'skill' param (not 'subagent_type')."""
@@ -248,7 +248,122 @@ class TestSubagentTypeExtraction:
             "hook_event_name": "PreToolUse",
             "session_id": "test-123",
             "tool_name": "delegate_to_agent",
-            "tool_input": {"name": "aops-core:custodiet", "query": "Check compliance"},
+            "tool_input": {"name": "aops-core:enforcer", "query": "Check compliance"},
         }
         ctx = router_instance.normalize_input(raw)
-        assert ctx.subagent_type == "aops-core:custodiet"
+        assert ctx.subagent_type == "aops-core:enforcer"
+
+
+class TestPkbSignatureFix:
+    @pytest.fixture
+    def router_instance(self, monkeypatch):
+        # Mock get_session_data to avoid reading shared PID session map during xdist tests
+        monkeypatch.setattr("hooks.router.get_session_data", lambda: {})
+        return HookRouter()
+
+    def test_update_task_flattening(self, router_instance):
+        raw = {
+            "tool_name": "update_task",
+            "tool_input": {"id": "task-1", "status": "done", "assignee": "nic"},
+            "hook_event_name": "BeforeTool",
+        }
+        ctx = router_instance.normalize_input(raw, gemini_event="BeforeTool")
+        result = CanonicalHookOutput()
+        router_instance._run_pkb_signature_fix(ctx, result)
+
+        assert result.updated_input is not None
+        import json
+
+        updated = json.loads(result.updated_input)
+        assert updated["id"] == "task-1"
+        assert updated["updates"] == {"status": "done", "assignee": "nic"}
+
+    def test_update_task_prefixed_flattening(self, router_instance):
+        raw = {
+            "tool_name": "mcp__pkb__update_task",
+            "tool_input": {"id": "task-1", "status": "done"},
+            "hook_event_name": "PreToolUse",
+        }
+        ctx = router_instance.normalize_input(raw)
+        result = CanonicalHookOutput()
+        router_instance._run_pkb_signature_fix(ctx, result)
+
+        assert result.updated_input is not None
+        import json
+
+        updated = json.loads(result.updated_input)
+        assert updated["id"] == "task-1"
+        assert updated["updates"] == {"status": "done"}
+
+    def test_append_path_alias(self, router_instance):
+        raw = {
+            "tool_name": "append",
+            "tool_input": {"path": "tasks/test.md", "content": "more info"},
+            "hook_event_name": "BeforeTool",
+        }
+        ctx = router_instance.normalize_input(raw, gemini_event="BeforeTool")
+        result = CanonicalHookOutput()
+        router_instance._run_pkb_signature_fix(ctx, result)
+
+        assert result.updated_input is not None
+        import json
+
+        updated = json.loads(result.updated_input)
+        assert updated["id"] == "tasks/test.md"
+        assert updated["content"] == "more info"
+
+    def test_create_task_title_alias(self, router_instance):
+        raw = {
+            "tool_name": "create_task",
+            "tool_input": {"task_title": "My Task", "project": "aops"},
+            "hook_event_name": "BeforeTool",
+        }
+        ctx = router_instance.normalize_input(raw, gemini_event="BeforeTool")
+        result = CanonicalHookOutput()
+        router_instance._run_pkb_signature_fix(ctx, result)
+
+        assert result.updated_input is not None
+        import json
+
+        updated = json.loads(result.updated_input)
+        assert updated["title"] == "My Task"
+        assert updated["project"] == "aops"
+
+    def test_get_task_path_alias(self, router_instance):
+        raw = {
+            "tool_name": "get_task",
+            "tool_input": {"path": "tasks/1.md"},
+            "hook_event_name": "BeforeTool",
+        }
+        ctx = router_instance.normalize_input(raw, gemini_event="BeforeTool")
+        result = CanonicalHookOutput()
+        router_instance._run_pkb_signature_fix(ctx, result)
+        import json
+
+        assert json.loads(result.updated_input)["id"] == "tasks/1.md"
+
+    def test_get_document_id_alias(self, router_instance):
+        raw = {
+            "tool_name": "get_document",
+            "tool_input": {"id": "tasks/1.md"},
+            "hook_event_name": "BeforeTool",
+        }
+        ctx = router_instance.normalize_input(raw, gemini_event="BeforeTool")
+        result = CanonicalHookOutput()
+        router_instance._run_pkb_signature_fix(ctx, result)
+        import json
+
+        assert json.loads(result.updated_input)["path"] == "tasks/1.md"
+
+    def test_no_fix_if_already_correct(self, router_instance):
+        raw = {
+            "tool_name": "update_task",
+            "tool_input": {"id": "task-1", "updates": {"status": "done"}},
+            "hook_event_name": "BeforeTool",
+        }
+        ctx = router_instance.normalize_input(raw, gemini_event="BeforeTool")
+        result = CanonicalHookOutput()
+        router_instance._run_pkb_signature_fix(ctx, result)
+
+        # Should not set updated_input if already has 'updates'
+        assert result.updated_input is None

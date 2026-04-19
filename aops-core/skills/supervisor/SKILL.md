@@ -70,15 +70,15 @@ the epic needs on each invocation.
 ORIENT → DECOMPOSE → DISPATCH → MONITOR → REACT → INTEGRATE → COMPLETE
 ```
 
-| Phase     | What happens                                             | Instructions                              |
-| --------- | -------------------------------------------------------- | ----------------------------------------- |
-| Orient    | Read epic, verify child statuses, decide what to do next | [[instructions/supervision-loop]]         |
-| Decompose | Break work into PR-sized subtasks                        | [[instructions/decomposition-and-review]] |
-| Dispatch  | Send individual tasks to workers via `polecat run`       | [[instructions/worker-dispatch]]          |
-| Monitor   | Check PKB task statuses and GitHub PRs                   | [[instructions/supervision-loop]]         |
-| React     | Handle failures, conflicts, scope changes                | [[instructions/supervision-loop]]         |
-| Integrate | Verify, merge, sync                                      | [[instructions/supervision-loop]]         |
-| Complete  | Update epic, capture knowledge, file follow-ups          | [[instructions/knowledge-capture]]        |
+| Phase     | What happens                                             | Instructions                                                                                     |
+| --------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Orient    | Read epic, verify child statuses, decide what to do next | [[instructions/supervision-loop]]                                                                |
+| Decompose | Break work into PR-sized subtasks                        | [[instructions/decomposition-and-review]]                                                        |
+| Dispatch  | Send tasks to workers (local or remote via SSH+tmux)     | [[instructions/worker-dispatch]], [[instructions/worker-dispatch#remote-dispatch-via-ssh--tmux]] |
+| Monitor   | Event-driven: background notifications + PR Monitor      | [[instructions/supervision-loop]]                                                                |
+| React     | Handle failures, conflicts, scope changes                | [[instructions/supervision-loop]]                                                                |
+| Integrate | Verify, merge, sync                                      | [[instructions/supervision-loop]]                                                                |
+| Complete  | Update epic, capture knowledge, file follow-ups          | [[instructions/knowledge-capture]]                                                               |
 
 ## Dispatch
 
@@ -94,6 +94,15 @@ polecat run -t <task-id> -p <project> -g
 # Jules (async, Google infrastructure)
 aops task <task-id> | jules new --repo <owner>/<repo>
 ```
+
+> **`polecat` not on PATH?** In non-interactive shells (Bash tool, cron, CI), the `polecat`/`pc` alias
+> may not be loaded. Use the canonical form: `uv run --project $AOPS $AOPS/polecat/cli.py <args>`
+> (`$AOPS` = `/Users/suzor/src/academicOps` on the primary machine).
+
+**Polecat exit codes** (relevant for scripted supervisors):
+
+- Exit 0 + "✅ already done" → task was `done`; graceful noop, move on
+- Exit 2 + "🔒 Task is locked" → task is `merge_ready` with an open PR; check and merge, do not retry dispatch
 
 The supervisor decides WHICH task to dispatch next based on priority,
 dependencies, and capacity — then dispatches one at a time.
@@ -123,7 +132,7 @@ merges via GitHub UI or auto-merge for clean PRs.
 
 1. **rbg-and-marsha** — scope/compliance + acceptance checks. Runs first on
    PR open/synchronize, giving bot reviewers (Gemini, Copilot) time to post.
-2. **claude-review** — bot comment triage. Runs after custodiet-and-qa (~3 min
+2. **claude-review** — bot comment triage. Runs after enforcer-and-qa (~3 min
    delay). Triages bot reviewer comments as genuine bug / valid improvement /
    false positive / scope creep, and pushes fixes for actionable items.
 3. **claude-lgtm-merge** — human-triggered merge agent. Fires on human LGTM
@@ -135,7 +144,7 @@ merges via GitHub UI or auto-merge for clean PRs.
 - PRs that modify workflow files (`.github/workflows/`) cannot get pipeline
   review due to OIDC validation (workflow content must match default branch).
   These PRs need manual review and admin merge.
-- Bot reviewers take 2–5 min to post. The pipeline ordering (custodiet first)
+- Bot reviewers take 2–5 min to post. The pipeline ordering (enforcer first)
   provides enough delay for most, but Copilot may occasionally post after
   triage runs.
 
@@ -195,9 +204,35 @@ polecat run -t <task-id> -p <project> -g    # gemini
 aops task <task-id> | jules new --repo <owner>/<repo>  # jules
 ```
 
-### Monitoring
+### Monitoring (Event-Driven — Default)
+
+Use event-driven monitoring to avoid burning tokens on polling loops.
+See [[instructions/supervision-loop#event-driven-monitoring-default]] for
+full details and the ready-to-paste Monitor script.
 
 ```bash
+# 1. Dispatch workers in background — get notified on exit
+polecat run -t <task-id> -p <project>  # Bash run_in_background: true
+
+# 2. Start persistent PR-state Monitor (one for all branches)
+# See supervision-loop.md for the full script — use Monitor tool to stream it
+
+# 3. Safety-net wakeup (1800s+ only — NOT primary monitoring)
+# ScheduleWakeup(delaySeconds=1800, reason="safety-net stall check")
+```
+
+| Mechanism                      | What it watches        | How it notifies             |
+| ------------------------------ | ---------------------- | --------------------------- |
+| `run_in_background` completion | Worker exit            | Automatic Bash notification |
+| Persistent Monitor script      | PR state transitions   | Monitor tool line events    |
+| ScheduleWakeup (1800s+ safety) | Stalled/missed signals | Timer-based fallback        |
+
+**Anti-pattern**: `polecat list` / `gh pr list` every 4–5 min via
+ScheduleWakeup — wastes tokens and context. Use only as one-shot fallback
+when event-driven monitoring is unavailable.
+
+```bash
+# Fallback commands (one-shot, NOT for polling loops)
 polecat list                           # active polecats
 gh pr list --state open --limit 20     # open PRs
 polecat reset-stalled --hours 4        # reset hung tasks

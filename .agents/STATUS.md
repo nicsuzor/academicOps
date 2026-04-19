@@ -2,7 +2,7 @@
 
 **Last updated**: 2026-03-09
 
-> **Authoritative scope**: This document describes the state of the aops framework codebase and its immediately-connected infrastructure. It is kept current by the butler on each invocation. Automated reviewers (axiom-review, review-and-fix, etc.) read this document -- accuracy matters. If something is described as "working" here, it is integrated and tested. If it is described as "planned", it does not yet exist in production.
+> **Authoritative scope**: This document describes the state of the aops framework codebase and its immediately-connected infrastructure. It is kept current by the aops skill (jr agent) on each invocation. Automated reviewers (axiom-review, review-and-fix, etc.) read this document -- accuracy matters. If something is described as "working" here, it is integrated and tested. If it is described as "planned", it does not yet exist in production.
 >
 > **Canonical direction**: This document reflects actual state. When the codebase or infrastructure changes, update this document to match reality -- do not change behavior to match this document. If there is a discrepancy between this document and the actual codebase, the codebase is correct and this document needs updating.
 
@@ -136,11 +136,11 @@ Predicate-based gate engine at `aops-core/lib/gates/`:
 **Tool categories** (gate_config.py `TOOL_CATEGORIES`):
 
 - `infrastructure` -- PKB tools, AskUserQuestion, TodoWrite, EnterPlanMode, ExitPlanMode. Bypass ALL gates.
-- `spawn` -- Agent, Task, Skill, delegate_to_agent, activate_skill. Subject to hydration gate; always allowed when dispatching a compliance agent (hydrator, custodiet, etc.).
-- `read_only` -- Read, Glob, Grep, WebFetch, and read-equivalent tools. Subject to hydration gate; exempt from custodiet.
+- `spawn` -- Agent, Task, Skill, delegate_to_agent, activate_skill. Subject to hydration gate; always allowed when dispatching a compliance agent (hydrator, enforcer, etc.).
+- `read_only` -- Read, Glob, Grep, WebFetch, and read-equivalent tools. Subject to hydration gate; exempt from enforcer.
 - `write` -- Bash, Edit, Write, run_shell_command, etc. Subject to all gates.
 
-**Hydration gate policy**: Only `infrastructure` tools bypass the hydration gate. `spawn` tools (including Agent/Skill) are blocked until hydration completes. Read-only tools are also subject to hydration (forced hydration before exploration). Gate opens JIT when the hydrator is dispatched (PreToolUse trigger). Custodiet excludes both `infrastructure` and `read_only`.
+**Hydration gate policy**: Only `infrastructure` tools bypass the hydration gate. `spawn` tools (including Agent/Skill) are blocked until hydration completes. Read-only tools are also subject to hydration (forced hydration before exploration). Gate opens JIT when the hydrator is dispatched (PreToolUse trigger). Enforcer excludes both `infrastructure` and `read_only`.
 
 ### Hydration System -- WORKING
 
@@ -172,7 +172,7 @@ The canonical index is `aops-core/SKILLS.md` with 25 entries (8 commands + 17 sk
 
 | Domain            | Skills                                                       |
 | ----------------- | ------------------------------------------------------------ |
-| framework         | `butler`, `critic`, `enforcer`                               |
+| framework         | `aops`, `critic`, `enforcer`                                 |
 | operations        | `daily`, `planner`, `remember`, `sleep`, `worker`            |
 | academic          | `analyst`, `research`                                        |
 | quality-assurance | `qa`                                                         |
@@ -194,7 +194,7 @@ The Curia is the named agent team that operates across local sessions and GitHub
 | Agent        | Charter            | Local Skill | GitHub Agent                                                         | Mechanical (Hook/Gate)                  |
 | ------------ | ------------------ | ----------- | -------------------------------------------------------------------- | --------------------------------------- |
 | **Hydrator** | Context enrichment | `hydrator`  | --                                                                   | hydration gate, `user_prompt_submit.py` |
-| **Auditor**  | Rule enforcement   | `custodiet` | `auditor.agent.md`                                                   | `policy_enforcer.py`                    |
+| **Auditor**  | Rule enforcement   | `enforcer`  | `auditor.agent.md`                                                   | `policy_enforcer.py`                    |
 | **Critic**   | Strategic review   | `critic`    | `assessor.agent.md` (→ `critic.agent.md`†), `summary-brief.agent.md` | --                                      |
 | **QA**       | Acceptance testing | `qa`        | `qa.agent.md`                                                        | QA gate                                 |
 | **Advocate** | Voice matching     | -- (future) | -- (future)                                                          | --                                      |
@@ -230,31 +230,31 @@ Gemini CLI extension installed at `~/.gemini/extensions/aops-core/`. Missing 7 o
 
 ## Key Decisions
 
-| Decision                                                 | Rationale                                                                                                                                                                                                                 | Date       |
-| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| Butler/Framework consolidation                           | Merged framework and audit skills with the Butler to create a context-aware core (Framework Skill v7.2.0+) that holds institutional knowledge and owns the verification layer.                                            | 2026-03-18 |
-| Delete qa.agent.md and strategic-review.agent.md         | Neither was invoked by any workflow; dead weight. Conceptual-review and custodiet-reviewer cover these concerns. (New portable qa.agent.md created 2026-03-09 with different purpose: PR verification, not issue review.) | 2026-03-03 |
-| custodiet-reviewer reads AXIOMS.md dynamically           | Hardcoded axiom list missed new axioms (e.g. P#45 Feedback Loops). Dynamic reading ensures full coverage.                                                                                                                 | 2026-03-03 |
-| conceptual-review uses assumption audit lens             | Effectual reasoning: treat all unvalidated parameters as assumptions requiring feedback loops, not settled decisions.                                                                                                     | 2026-03-03 |
-| PKB server is Rust-native (replaces Python task scripts) | Performance, reliability, single binary deployment. CLI + MCP from same codebase.                                                                                                                                         | 2026-02-22 |
-| All PKB tools are `infrastructure` in gate system        | PKB is framework infrastructure. Gates must never block PKB access. (Was `always_available` pre-PR #730.)                                                                                                                 | 2026-03-04 |
-| Hydration gate: only `infrastructure` exempt             | Read-only and `spawn` tools (Agent, Skill, etc.) are blocked until hydration. Gate opens JIT on hydrator PreToolUse.                                                                                                      | 2026-03-04 |
-| Agent tool in `spawn` category (not `infrastructure`)    | Prevents bypassing hydration via Agent spawns; compliance agents get a pre-dispatch trigger bypass instead.                                                                                                               | 2026-03-04 |
-| Import convention: qualified paths from aops-core/       | Bare imports caused dual sys.modules entries breaking importlib.reload() in tests.                                                                                                                                        | 2026-03-01 |
-| Gate verdict + replay regression tests                   | 150 scenario tests + 31 real-event replay tests to prevent gate regressions permanently.                                                                                                                                  | 2026-03-01 |
-| "Agent" and "Task" are both `spawn` tools                | Claude Code's subagent tool is "Agent" not "Task". Gate config must list both. (Moved from `always_available` in PR #730.)                                                                                                | 2026-02-28 |
-| Iterative stale task sweep                               | 236+ open tasks with significant junk; batch-review with human decisions, not bulk auto-cancel                                                                                                                            | 2026-02-23 |
-| Conceptual review agent reads STATUS.md                  | Without strategic context, the review agent cannot catch PRs that delete working components (PR 582 post-mortem)                                                                                                          | 2026-02-23 |
-| Pipeline cascade limit (max 3 runs)                      | PR 582 showed bots triggering bots in unbounded loops; comment-based counting bounds total cycles                                                                                                                         | 2026-02-23 |
-| LGTM triggers lint re-run if failing                     | PR 585 showed LGTM silently failing when lint was stale; merge workflow now checks and re-triggers                                                                                                                        | 2026-02-23 |
-| Transcript path: $AOPS_SESSIONS/polecats/                | Worker transcripts go to sessions repo, not old ~/.aops/transcripts path                                                                                                                                                  | 2026-02-23 |
-| Commit trailer for loop detection                        | Author name unreliable (multiple bots use github-actions[bot])                                                                                                                                                            | 2026-02-22 |
-| All workflows get workflow_dispatch                      | Manual re-run capability for debugging and recovery                                                                                                                                                                       | 2026-02-22 |
-| Review dismissal by agents                               | Agents should dismiss reviews they've addressed; humans override remaining                                                                                                                                                | 2026-02-22 |
-| All merge methods enabled                                | Flexibility for different PR types                                                                                                                                                                                        | 2026-02-22 |
-| Tests at repo root, not in aops-core                     | Single test suite covering all components                                                                                                                                                                                 | prior      |
-| Skills are read-only (P#23)                              | Mutable state in $ACA_DATA only                                                                                                                                                                                           | prior      |
-| Categorical imperative (P#2)                             | Every change must be a universal rule                                                                                                                                                                                     | prior      |
+| Decision                                                 | Rationale                                                                                                                                                                                                                | Date       |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------- |
+| Butler/Framework consolidation                           | Merged framework and audit skills with the Butler to create a context-aware core (Framework Skill v7.2.0+) that holds institutional knowledge and owns the verification layer.                                           | 2026-03-18 |
+| Delete qa.agent.md and strategic-review.agent.md         | Neither was invoked by any workflow; dead weight. Conceptual-review and enforcer-reviewer cover these concerns. (New portable qa.agent.md created 2026-03-09 with different purpose: PR verification, not issue review.) | 2026-03-03 |
+| enforcer-reviewer reads AXIOMS.md dynamically            | Hardcoded axiom list missed new axioms (e.g. P#45 Feedback Loops). Dynamic reading ensures full coverage.                                                                                                                | 2026-03-03 |
+| conceptual-review uses assumption audit lens             | Effectual reasoning: treat all unvalidated parameters as assumptions requiring feedback loops, not settled decisions.                                                                                                    | 2026-03-03 |
+| PKB server is Rust-native (replaces Python task scripts) | Performance, reliability, single binary deployment. CLI + MCP from same codebase.                                                                                                                                        | 2026-02-22 |
+| All PKB tools are `infrastructure` in gate system        | PKB is framework infrastructure. Gates must never block PKB access. (Was `always_available` pre-PR #730.)                                                                                                                | 2026-03-04 |
+| Hydration gate: only `infrastructure` exempt             | Read-only and `spawn` tools (Agent, Skill, etc.) are blocked until hydration. Gate opens JIT on hydrator PreToolUse.                                                                                                     | 2026-03-04 |
+| Agent tool in `spawn` category (not `infrastructure`)    | Prevents bypassing hydration via Agent spawns; compliance agents get a pre-dispatch trigger bypass instead.                                                                                                              | 2026-03-04 |
+| Import convention: qualified paths from aops-core/       | Bare imports caused dual sys.modules entries breaking importlib.reload() in tests.                                                                                                                                       | 2026-03-01 |
+| Gate verdict + replay regression tests                   | 150 scenario tests + 31 real-event replay tests to prevent gate regressions permanently.                                                                                                                                 | 2026-03-01 |
+| "Agent" and "Task" are both `spawn` tools                | Claude Code's subagent tool is "Agent" not "Task". Gate config must list both. (Moved from `always_available` in PR #730.)                                                                                               | 2026-02-28 |
+| Iterative stale task sweep                               | 236+ open tasks with significant junk; batch-review with human decisions, not bulk auto-cancel                                                                                                                           | 2026-02-23 |
+| Conceptual review agent reads STATUS.md                  | Without strategic context, the review agent cannot catch PRs that delete working components (PR 582 post-mortem)                                                                                                         | 2026-02-23 |
+| Pipeline cascade limit (max 3 runs)                      | PR 582 showed bots triggering bots in unbounded loops; comment-based counting bounds total cycles                                                                                                                        | 2026-02-23 |
+| LGTM triggers lint re-run if failing                     | PR 585 showed LGTM silently failing when lint was stale; merge workflow now checks and re-triggers                                                                                                                       | 2026-02-23 |
+| Transcript path: $AOPS_SESSIONS/polecats/                | Worker transcripts go to sessions repo, not old ~/.aops/transcripts path                                                                                                                                                 | 2026-02-23 |
+| Commit trailer for loop detection                        | Author name unreliable (multiple bots use github-actions[bot])                                                                                                                                                           | 2026-02-22 |
+| All workflows get workflow_dispatch                      | Manual re-run capability for debugging and recovery                                                                                                                                                                      | 2026-02-22 |
+| Review dismissal by agents                               | Agents should dismiss reviews they've addressed; humans override remaining                                                                                                                                               | 2026-02-22 |
+| All merge methods enabled                                | Flexibility for different PR types                                                                                                                                                                                       | 2026-02-22 |
+| Tests at repo root, not in aops-core                     | Single test suite covering all components                                                                                                                                                                                | prior      |
+| Skills are read-only (P#23)                              | Mutable state in $ACA_DATA only                                                                                                                                                                                          | prior      |
+| Categorical imperative (P#2)                             | Every change must be a universal rule                                                                                                                                                                                    | prior      |
 
 ## Open Questions
 
@@ -273,15 +273,15 @@ Gemini CLI extension installed at `~/.gemini/extensions/aops-core/`. Missing 7 o
 
 - **Butler/Framework consolidation** -- Merged framework and audit skills with the Butler to create a context-aware core. Core operational logic (Learn As You Go, Verification Loops) migrated to **Framework Skill (v7.2.0+)**.
 - **Curia agent team legibility** -- Named agent team ("The Curia") with roster at `.agents/curia/CURIA.md`. Renamed GitHub agents (axiom-review -> auditor, review-and-fix -> critic). Cross-references added to all skills, agents, and hooks. Portable QA agent (`qa.agent.md`) works on any repo. Curia alias "auditor" added to gate config (assessor/advocate removed — not compliance bypass agents).
-- **Review agent consolidation** (PR #705) -- deleted qa.agent.md and strategic-review.agent.md (both unused); custodiet-reviewer now reads AXIOMS.md dynamically; conceptual-review refocused on assumption audit + effectual reasoning.
-- **Conceptual review agent** -- Replaced gatekeeper/custodiet/hydrator-reviewer issue-review pattern with strategic-review and conceptual-review agents.
+- **Review agent consolidation** (PR #705) -- deleted qa.agent.md and strategic-review.agent.md (both unused); enforcer-reviewer now reads AXIOMS.md dynamically; conceptual-review refocused on assumption audit + effectual reasoning.
+- **Conceptual review agent** -- Replaced gatekeeper/enforcer/hydrator-reviewer issue-review pattern with strategic-review and conceptual-review agents.
 - Gate hardening sprint: 150 verdict tests, 31 replay tests, Agent tool fix, import convention fix, gate status strip -- 2026-02-28 / 2026-03-01
 - PR pipeline post-mortem and fixes (cascade limit, LGTM check-status, strategic gatekeeper) -- 2026-02-23
 - Stale task sweep iterations 1-4 -- 2026-02-23
 - **Specs audit and INDEX.md rewrite** (2026-03-07) -- Full inventory of 42 specs; INDEX.md rebuilt with 6 tiers, status tracking, dependency chains, and maintenance guide. Audit documented in `specs/AUDIT-specs-2026-03-07.md`.
 - **Fail-fast on missing framework files** (PR #813) -- Context loaders raise FileNotFoundError instead of returning sentinel or empty string. Ensures deployment issues are surfaced immediately.
 - **Stitch design assets cleanup** -- Removed 8.9MB unused stitch design assets and dead aliases.
-- **Review agent consolidation** (PR #705) -- deleted qa.agent.md and strategic-review.agent.md (both unused); custodiet-reviewer now reads AXIOMS.md dynamically.
+- **Review agent consolidation** (PR #705) -- deleted qa.agent.md and strategic-review.agent.md (both unused); enforcer-reviewer now reads AXIOMS.md dynamically.
 - **PKB server deployed** -- Rust-native CLI + MCP server replacing Python task scripts. 18 MCP tools, deep gate integration.
 - Gate hardening sprint: 150 verdict tests, 31 replay tests, Agent tool fix, import convention fix -- 2026-02-28 / 2026-03-01
 
@@ -292,7 +292,7 @@ Gemini CLI extension installed at `~/.gemini/extensions/aops-core/`. Missing 7 o
 - Address task lifecycle gap (auto-close tasks when PRs merge)
 - Strengthen hydrator guardrails
 - Complete Gemini extension file gap (task `aops-9d899fb4`)
-- Wire custodiet-reviewer into a GitHub Actions workflow
+- Wire enforcer-reviewer into a GitHub Actions workflow
 
 ### Medium-term
 
@@ -313,7 +313,7 @@ _Update log_ (keep last 3 entries; older history is in git):
 
 - **2026-03-09**: Curia agent team legibility. Created `.agents/curia/CURIA.md` roster mapping 5 named agents to implementations across surfaces. Renamed GitHub agents: axiom-review -> auditor, review-and-fix -> critic (file: assessor.agent.md, pending workflow rename). Updated workflow YAMLs. Added cross-references to all skills, GitHub agents, and hooks. Created portable `qa.agent.md` (works on any repo via fallback methodology). Added Curia alias "auditor" to gate_config.py (assessor/advocate removed — not compliance bypass roles).
 - **2026-03-05**: Added v0.3 acceptance tests (`tests/acceptance/v0.3-release.md`) -- 12 tests covering hydrator routing accuracy across workflow discrimination, academic workflows, project-scoped workflow loading, skill bypass, multi-intent splitting, and batch routing. Added "Acceptance Tests" section to Components. Documented hydrator test harness gap as Open Question #6 and near-term roadmap item. Both v1.1 and v0.3 tests blocked on harness fix.
-- **2026-03-04**: Gate hardening (PR #730). Tool categories refactored: `always_available` split into `infrastructure` (PKB, meta tools) and `spawn` (Agent, Task, Skill, delegate_to_agent). Spawn tools now blocked by hydration gate. Custodiet deadlock fixed: PreToolUse trigger resets counter before policy evaluates. Test fixtures rebuilt from live production logs (861 provenance-tracked scenarios). Gate test count: 150+ verdict tests + 31 replay tests.
+- **2026-03-04**: Gate hardening (PR #730). Tool categories refactored: `always_available` split into `infrastructure` (PKB, meta tools) and `spawn` (Agent, Task, Skill, delegate_to_agent). Spawn tools now blocked by hydration gate. Enforcer deadlock fixed: PreToolUse trigger resets counter before policy evaluates. Test fixtures rebuilt from live production logs (861 provenance-tracked scenarios). Gate test count: 150+ verdict tests + 31 replay tests.
 - **2026-03-09**: Butler invocation and full STATUS.md refresh. Corrected skills count: 36 entries in canonical SKILLS.md (8 commands + 28 skills), 28 skill definitions in `aops-core/skills/`, 17 in `.agents/skills/`. Added skills duplication as Open Question #7. Added knowledge diffusion as Open Question #8. Added Gemini Extension, Overwhelm Dashboard, and Specs System sections. Updated architecture tree to show `aops-core/skills/` and key index files. Added recent completions (specs audit, fail-fast, stitch cleanup). Trimmed older key decisions table for readability. Corrected update log entry that incorrectly said agent count went from "5 -> 3" (there are still 5 agents in `.github/agents/`).
 - **2026-03-05**: Added v0.3 acceptance tests (`tests/acceptance/v0.3-release.md`) -- 12 tests covering hydrator routing accuracy. Added "Acceptance Tests" section. Documented hydrator test harness gap as Open Question #6.
 - **2026-03-04**: Gate hardening (PR #730). Tool categories refactored: `always_available` split into `infrastructure` and `spawn`. Test fixtures rebuilt from live production logs (861 provenance-tracked scenarios).

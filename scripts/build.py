@@ -628,6 +628,9 @@ def translate_tool_calls(text: str, platform: str) -> str:
 
     # 2. Dynamic replacement for Gemini/Claude compatibility (Task/Skill)
     if platform == "gemini":
+        # Replace Claude plugin path variable with Gemini equivalent
+        text = text.replace("${CLAUDE_PLUGIN_ROOT}", "${extensionPath}")
+
         # Convert mcp__server__tool to mcp_server_tool in body (matches frontmatter)
         import re
 
@@ -1016,11 +1019,10 @@ def build_aops_cowork(
     }
     # Top-level markdown files to include
     COWORK_MD_INCLUDE = {
+        "AXIOMS.md",
         "HEURISTICS.md",
-        "RULES.md",
         "TAXONOMY.md",
         "CONSTRAINTS.md",
-        "enforcement-map.md",
         "agent-env-map.conf",
     }
 
@@ -1286,7 +1288,6 @@ _GHA_OPS_SECTION = """\
 
 _GHA_TRAILER_MAP: dict[str, tuple[str, str]] = {
     "enforcer": ("Review-By", "aops-enforcer"),
-    "custodiet": ("Audit-By", "aops-custodiet"),
     "qa": ("QA-By", "aops-qa"),
 }
 
@@ -1328,7 +1329,7 @@ def _strip_agent_body_h1(body: str) -> str:
 def generate_gha_agents(aops_root: Path, dist_root: Path) -> None:
     """Generate GHA agent prompts from canonical aops-core/agents/ sources.
 
-    Reads enforcer.md, custodiet.md, and qa.md — the review agents —
+    Reads enforcer.md and qa.md — the review agents —
     transforms them for GitHub Actions context (no plugin, axioms inlined),
     and writes to dist/gha-agents/.
 
@@ -1349,7 +1350,7 @@ def generate_gha_agents(aops_root: Path, dist_root: Path) -> None:
     axioms_body = axioms_body.strip()
 
     # Review agents only — dev-standards and framework-ops are CC-only subagents
-    review_agents = ["enforcer", "custodiet", "qa"]
+    review_agents = ["enforcer", "qa"]
 
     for agent_name in review_agents:
         src_path = agents_src / f"{agent_name}.md"
@@ -1414,14 +1415,6 @@ _GHA_WORKFLOW_AGENTS: dict[str, dict[str, str | bool | int]] = {
         "tools": "Bash,Edit,Read,Write",
         "trailer": "Enforcer-By: agent",
         "timeout": 30,
-    },
-    "custodiet": {
-        "display_name": "Compliance Review",
-        "description": "Workflow enforcement — catches scope explosion and plan-less execution",
-        "can_push": False,
-        "tools": "Bash(gh:*),Read",
-        "trailer": "Audit-By: agent",
-        "timeout": 15,
     },
     "qa": {
         "display_name": "QA Verification",
@@ -1552,7 +1545,7 @@ jobs:
 def generate_reusable_workflows(aops_root: Path, dist_root: Path) -> None:
     """Generate reusable GHA workflows for the dist repo.
 
-    For each review agent (enforcer, custodiet, qa), generates a workflow YAML
+    For each review agent (enforcer, qa), generates a workflow YAML
     that can be called from other repos:
         uses: nicsuzor/aops/.github/workflows/agent-enforcer.yml@main
 

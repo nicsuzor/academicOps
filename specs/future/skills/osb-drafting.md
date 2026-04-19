@@ -19,7 +19,7 @@ permalink: skills-osb-drafting
 
 - OSB MCP server running (test: `mcp__osb__search` available)
 - Case announcement or full case document accessible
-- If MCP unavailable: HALT and report infrastructure gap (per AXIOMS.md fail-fast)
+- If MCP unavailable: HALT and report infrastructure gap (fail-fast)
 
 ## Workflow
 

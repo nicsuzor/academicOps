@@ -55,10 +55,10 @@ echo "POLECAT_SESSION_TYPE=$POLECAT_SESSION_TYPE"
 echo "POLECAT_CREW_NAME=$POLECAT_CREW_NAME"
 echo "MY_SECRET=$MY_SECRET"
 echo "DATABASE_URL=$DATABASE_URL"
-echo "CUSTODIET_GATE_MODE=$CUSTODIET_GATE_MODE"
+echo "ENFORCER_GATE_MODE=$ENFORCER_GATE_MODE"
 echo "HANDOVER_GATE_MODE=$HANDOVER_GATE_MODE"
 echo "QA_GATE_MODE=$QA_GATE_MODE"
-echo "CUSTODIET_TOOL_CALL_THRESHOLD=$CUSTODIET_TOOL_CALL_THRESHOLD"
+echo "ENFORCER_TOOL_CALL_THRESHOLD=$ENFORCER_TOOL_CALL_THRESHOLD"
 echo "AOPS_SESSIONS=$AOPS_SESSIONS"
 echo "AOPS_CUSTOM_VAR=$AOPS_CUSTOM_VAR"
 echo "TZ_VAL=$TZ"
@@ -114,10 +114,10 @@ class TestDockerEndState:
             "POLECAT_CREW_NAME": "integration-test",
             "MY_SECRET": "should-not-leak",
             "DATABASE_URL": "postgres://should-not-leak",
-            "CUSTODIET_GATE_MODE": "block",
+            "ENFORCER_GATE_MODE": "block",
             "HANDOVER_GATE_MODE": "warn",
             "QA_GATE_MODE": "warn",
-            "CUSTODIET_TOOL_CALL_THRESHOLD": "50",
+            "ENFORCER_TOOL_CALL_THRESHOLD": "50",
             "AOPS_SESSIONS": "/tmp/test-sessions",
             "AOPS_CUSTOM_VAR": "custom-value",
             "GIT_AUTHOR_NAME": "integration-bot",
@@ -159,50 +159,63 @@ class TestDockerEndState:
                     f.unlink(missing_ok=True)
 
     @pytest.fixture(scope="class")
-    def workspace_results(self, tmp_path_factory) -> dict[str, str]:
-        """Container verifying workspace files arrived via docker cp."""
+    def workspace_results(self) -> dict[str, str]:
+        """Container verifying workspace files arrived via docker cp.
+
+        Uses ~/.aops/tmp for the work directory so Colima's virtiofs can see it
+        (Colima mounts the home directory; pytest's tmp_path_factory creates dirs
+        in /var/folders which is outside Colima's shared paths).
+        """
         if not _docker_available():
             pytest.skip("Docker not available or aops-crew image not built")
 
-        work_dir = tmp_path_factory.mktemp("ws-test")
-        (work_dir / "test-file.txt").write_text("hello-workspace")
-        (work_dir / "subdir").mkdir()
-        (work_dir / "subdir" / "nested.txt").write_text("nested-content")
+        import tempfile
 
-        script = (
-            'echo "WS_FILE_COUNT=$(find /workspace -type f | wc -l)"\n'
-            'echo "WS_CONTENT=$(cat /workspace/test-file.txt 2>/dev/null || echo MISSING)"\n'
-            'echo "WS_NESTED=$(cat /workspace/subdir/nested.txt 2>/dev/null || echo MISSING)"\n'
-            'echo "WS_CWD=$(pwd)"\n'
-        )
-
-        tmp_files: list[Path] = []
-        docker_cmd = _build_docker_cmd(
-            cli_tool="claude",
-            work_dir=work_dir,
-            env={},
-            agent_cmd=["bash", "-c", script],
-            is_interactive=False,
-            tmp_files=tmp_files,
-        )
+        tmp_root = Path.home() / ".aops" / "tmp"
+        tmp_root.mkdir(parents=True, exist_ok=True)
+        work_dir = Path(tempfile.mkdtemp(prefix="ws-test-", dir=tmp_root))
 
         try:
-            result = _run_docker_container(
-                docker_cmd,
-                capture_output=True,
-                text=True,
+            (work_dir / "test-file.txt").write_text("hello-workspace")
+            (work_dir / "subdir").mkdir()
+            (work_dir / "subdir" / "nested.txt").write_text("nested-content")
+
+            script = (
+                'echo "WS_FILE_COUNT=$(find /workspace -type f | wc -l)"\n'
+                'echo "WS_CONTENT=$(cat /workspace/test-file.txt 2>/dev/null || echo MISSING)"\n'
+                'echo "WS_NESTED=$(cat /workspace/subdir/nested.txt 2>/dev/null || echo MISSING)"\n'
+                'echo "WS_CWD=$(pwd)"\n'
             )
-            assert result.returncode == 0, (
-                f"Container exited {result.returncode}:\n"
-                f"stdout: {result.stdout}\nstderr: {result.stderr}"
+
+            tmp_files: list[Path] = []
+            docker_cmd = _build_docker_cmd(
+                cli_tool="claude",
+                work_dir=work_dir,
+                env={},
+                agent_cmd=["bash", "-c", script],
+                is_interactive=False,
+                tmp_files=tmp_files,
             )
-            return _parse_kv_output(result.stdout)
+
+            try:
+                result = _run_docker_container(
+                    docker_cmd,
+                    capture_output=True,
+                    text=True,
+                )
+                assert result.returncode == 0, (
+                    f"Container exited {result.returncode}:\n"
+                    f"stdout: {result.stdout}\nstderr: {result.stderr}"
+                )
+                return _parse_kv_output(result.stdout)
+            finally:
+                for f in tmp_files:
+                    if f.is_dir():
+                        shutil.rmtree(f, ignore_errors=True)
+                    else:
+                        f.unlink(missing_ok=True)
         finally:
-            for f in tmp_files:
-                if f.is_dir():
-                    shutil.rmtree(f, ignore_errors=True)
-                else:
-                    f.unlink(missing_ok=True)
+            shutil.rmtree(work_dir, ignore_errors=True)
 
     # --- Group 1: Environment variable forwarding ---
 
@@ -231,10 +244,10 @@ class TestDockerEndState:
 
     def test_gate_mode_vars_reach_container(self, env_results):
         """Gate mode variables reach the container for hook enforcement."""
-        assert env_results["CUSTODIET_GATE_MODE"] == "block"
+        assert env_results["ENFORCER_GATE_MODE"] == "block"
         assert env_results["HANDOVER_GATE_MODE"] == "warn"
         assert env_results["QA_GATE_MODE"] == "warn"
-        assert env_results["CUSTODIET_TOOL_CALL_THRESHOLD"] == "50"
+        assert env_results["ENFORCER_TOOL_CALL_THRESHOLD"] == "50"
 
     def test_aops_prefixed_env_reaches_container(self, env_results):
         """AOPS_* env vars are forwarded."""

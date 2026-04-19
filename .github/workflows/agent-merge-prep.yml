@@ -209,7 +209,7 @@ jobs:
             Read ALL reviews from every source (our agents + Gemini + Copilot + anyone).
             Triage them all. Fix what's warranted. Dismiss what's not. Post your summary.
 
-          claude_args: '--allowed-tools "Bash,Edit,Read,Write"'
+          claude_args: '--model sonnet --allowed-tools "Bash,Edit,Read,Write"'
 
       # ── Post-agent: success path ──
 

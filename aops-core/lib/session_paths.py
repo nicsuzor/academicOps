@@ -8,6 +8,7 @@ where HH is the 24-hour local time when the session was created.
 """
 
 import os
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -192,8 +193,17 @@ def get_hook_log_path(
         # Claude: ~/.claude/projects/<project>/YYYYMMDD-HH-<shorthash>-hooks.jsonl
         project_folder = get_claude_project_folder()
         claude_projects_dir = Path.home() / ".claude" / "projects" / project_folder
-        claude_projects_dir.mkdir(parents=True, exist_ok=True)
-        return claude_projects_dir / filename
+        try:
+            claude_projects_dir.mkdir(parents=True, exist_ok=True)
+            return claude_projects_dir / filename
+        except (PermissionError, OSError) as e:
+            print(
+                f"WARNING: hook log dir {claude_projects_dir} inaccessible ({e}); falling back to /tmp/aops-hooks",
+                file=sys.stderr,
+            )
+            fallback_dir = Path("/tmp") / f"aops-hooks-{os.getuid()}" / project_folder
+            fallback_dir.mkdir(parents=True, exist_ok=True)
+            return fallback_dir / filename
 
 
 def get_session_status_dir(
@@ -240,8 +250,17 @@ def get_session_status_dir(
     # Same logic as session_env_setup.sh: ~/.claude/projects/-<cwd-with-dashes>/
     project_folder = get_claude_project_folder()
     status_dir = Path.home() / ".claude" / "projects" / project_folder
-    status_dir.mkdir(parents=True, exist_ok=True)
-    return status_dir
+    try:
+        status_dir.mkdir(parents=True, exist_ok=True)
+        return status_dir
+    except (PermissionError, OSError) as e:
+        print(
+            f"WARNING: session status dir {status_dir} inaccessible ({e}); falling back to /tmp/aops-state",
+            file=sys.stderr,
+        )
+        fallback_dir = Path("/tmp") / f"aops-state-{os.getuid()}" / project_folder
+        fallback_dir.mkdir(parents=True, exist_ok=True)
+        return fallback_dir
 
 
 def get_session_file_path(
@@ -336,7 +355,7 @@ def find_recent_hooks_logs(n: int) -> list[Path]:
     return [path for _, path in hooks_logs[:n]]
 
 
-GATE_NAMES = ("custodiet",)
+GATE_NAMES = ("enforcer",)
 
 
 def get_gate_file_path(
@@ -354,7 +373,7 @@ def get_gate_file_path(
     Checks AOPS_GATE_FILE_<GATE> env var first for session-stable path.
 
     Args:
-        gate: Gate name (custodiet, qa, handover)
+        gate: Gate name (enforcer, qa, handover)
         session_id: Session ID from Claude Code or Gemini CLI
         transcript_path: Optional transcript path for Gemini detection
         date: Optional date in YYYY-MM-DD format (defaults to today)
@@ -394,8 +413,17 @@ def get_gate_file_path(
     else:
         project_folder = get_claude_project_folder()
         claude_projects_dir = Path.home() / ".claude" / "projects" / project_folder
-        claude_projects_dir.mkdir(parents=True, exist_ok=True)
-        return claude_projects_dir / filename
+        try:
+            claude_projects_dir.mkdir(parents=True, exist_ok=True)
+            return claude_projects_dir / filename
+        except (PermissionError, OSError) as e:
+            print(
+                f"WARNING: gate file dir {claude_projects_dir} inaccessible ({e}); falling back to /tmp/aops-gates",
+                file=sys.stderr,
+            )
+            fallback_dir = Path("/tmp") / f"aops-gates-{os.getuid()}" / project_folder
+            fallback_dir.mkdir(parents=True, exist_ok=True)
+            return fallback_dir / filename
 
 
 def get_all_gate_file_paths(

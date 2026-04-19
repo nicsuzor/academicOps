@@ -72,8 +72,8 @@ def configured_registry(templates_dir: Path):
 
 def test_get_spec_returns_correct_spec(registry):
     """Verify spec lookup works for known templates."""
-    spec = registry.get_spec("custodiet.context")
-    assert spec.name == "custodiet.context"
+    spec = registry.get_spec("enforcer.context")
+    assert spec.name == "enforcer.context"
     assert spec.required_vars is not None
 
 
@@ -87,12 +87,12 @@ def test_get_spec_unknown_raises(registry):
 def test_get_spec_all_registered_templates(registry):
     """All expected templates are registered."""
     expected_names = [
-        "custodiet.context",
-        "custodiet.instruction",
-        "custodiet.verified",
-        "custodiet.policy_message",
-        "custodiet.policy_context",
-        "custodiet.countdown",
+        "enforcer.context",
+        "enforcer.instruction",
+        "enforcer.verified",
+        "enforcer.policy_message",
+        "enforcer.policy_context",
+        "enforcer.countdown",
         "qa.complete",
         "qa.policy_message",
         "qa.policy_context",
@@ -224,7 +224,7 @@ def test_list_templates_all(registry):
     """Lists all registered template names."""
     names = registry.list_templates()
     assert len(names) >= 10  # At least 10 templates defined
-    assert "custodiet.context" in names
+    assert "enforcer.context" in names
 
 
 def test_list_templates_by_category(registry):
@@ -235,10 +235,10 @@ def test_list_templates_by_category(registry):
     assert len(user_messages) >= 1
 
     subagent = registry.list_templates(category=TemplateCategory.SUBAGENT_INSTRUCTION)
-    assert "custodiet.context" in subagent
+    assert "enforcer.context" in subagent
 
     # User messages should not include subagent instructions
-    assert "custodiet.context" not in user_messages
+    assert "enforcer.context" not in user_messages
 
 
 # =============================================================================
@@ -410,11 +410,11 @@ def test_spec_category_assignment(registry):
     from lib.template_registry import TemplateCategory
 
     # Context injection
-    assert registry.get_spec("custodiet.instruction").category == TemplateCategory.CONTEXT_INJECTION
+    assert registry.get_spec("enforcer.instruction").category == TemplateCategory.CONTEXT_INJECTION
     assert registry.get_spec("stop.handover_block").category == TemplateCategory.CONTEXT_INJECTION
 
     # Subagent instruction
-    assert registry.get_spec("custodiet.context").category == TemplateCategory.SUBAGENT_INSTRUCTION
+    assert registry.get_spec("enforcer.context").category == TemplateCategory.SUBAGENT_INSTRUCTION
 
 
 # =============================================================================

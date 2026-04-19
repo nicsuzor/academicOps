@@ -220,7 +220,7 @@ Practising what we preach:
 
 ## Future Work
 
-- **Spec-reviewer agent instantiation**: This workflow could be instantiated as a `spec-reviewer` agent, replacing the ad-hoc 5-pass review used on PR #648. With docs-as-code orchestration, this becomes a PR reviewer role alongside gatekeeper and custodiet.
+- **Spec-reviewer agent instantiation**: This workflow could be instantiated as a `spec-reviewer` agent, replacing the ad-hoc 5-pass review used on PR #648. With docs-as-code orchestration, this becomes a PR reviewer role alongside gatekeeper and enforcer.
 - **Manuscript pre-submission review**: This workflow with literature + methodology + attribution lenses, applied to draft manuscripts before journal submission.
 - **Lens effectiveness tracking**: Instrument which lenses produce the most actionable feedback, enabling evidence-based registry curation.
 - **Multi-pass sequencing conventions**: Dogfooding validates (N=2) that multi-pass reviews (thorough level) benefit from sequencing lenses by phase -- alignment/strategic concerns first, feasibility/assumption concerns second. Issue #676 demonstrated this directly: Pass 1's architectural resolution (rejecting the local governor in favour of the bazaar model) changed the artifact so fundamentally that Pass 2's assumption hygiene findings were only productive because they targeted the revised design. Formalise pass ordering conventions based on accumulated evidence.

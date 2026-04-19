@@ -101,15 +101,26 @@ For each section or component of the feature:
 
 1. **Identify the data source.** Read the source code to find where the output originates — what file, API, database query, or computation produces it?
 2. **Verify the source exists and is populated.** Don't assume. Check: does the file exist? Does the API return data? Is the query valid? Are the expected events being captured?
-3. **Cross-verify output against source.** Independently query the data source (curl the API, read the file, run the query, inspect raw events) and compare against what the feature produces. Do the values match? Are timestamps correct? Is anything silently dropped or misrepresented?
-4. **Check edge cases.** What happens when the data source is empty, stale, or missing? Does the feature degrade gracefully or silently produce wrong output?
-5. **Document discrepancies with precision.** When output is wrong, note: the file path and line where data is fetched/transformed, what it should produce vs. what it actually produces, and the root cause.
+3. **Check data freshness, not just existence.** For real-time displays, verify data updates as expected over time, not just that it exists at rest. Static data in a dynamic field is a failure.
+4. **Check edge cases: empty, stale, and missing sources.** What happens when the data source is empty, stale, or missing? Does the feature degrade gracefully or silently produce wrong output?
+5. **Cross-verify output against source.** Independently query the data source (curl the API, read the file, run the query, inspect raw events) and compare against what the feature produces. Do the values match? Are timestamps correct? Is anything silently dropped or misrepresented?
+6. **Explicitly test fallback chains.** For each data field, check if there's a fallback (e.g., using a different source if primary fails). Disable the fallback and verify the primary source works independently. Fallbacks can silently mask broken primary pipelines.
+7. **Test with real runtime state.** For real-time displays, verify during an active session or while the system is under load, not just at rest. Stale data often only appears when the system is actually running.
+8. **Document discrepancies with precision.** When output is wrong, note: the file path and line where data is fetched/transformed, what it should produce vs. what it actually produces, and the root cause.
 
 ### The Key Question
 
 > "Is this the RIGHT data?" — not just "Does data appear?"
 
 A dashboard can render beautifully, a transcript can read plausibly, a report can look complete — and still be fundamentally broken if it's reading from the wrong source, misinterpreting data, dropping events, or showing stale values as current. Output that looks plausible is the most dangerous kind of incorrect output.
+
+### Design-Level Findings are QA Findings
+
+QA is not just about bugs; it's about fitness-for-purpose. If a section renders correctly and matches the spec, but the data is misleading or the UX doesn't serve its stated purpose in context, that's a QA finding. Examples:
+
+- "The prompt count matches the database but includes failed attempts, making it misleading for cost estimation."
+- "The fallback chain works, but it masks a critical failure in the primary data source that the user needs to know about."
+- "The data is correct but the information density is too high for the 'anxious academic' persona."
 
 ### Anti-Pattern: Breadth-First Surface Sweeps
 

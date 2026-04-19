@@ -3,7 +3,7 @@
 PreToolUse policy enforcer for Claude Code.
 
 Implements deterministic protection rules that don't require LLM judgment.
-Scope drift detection and axiom compliance are handled by the custodiet skill
+Scope drift detection and axiom compliance are handled by the enforcer gate
 (local sessions) and auditor.agent.md (GitHub PRs). See .agents/curia/CURIA.md.
 
 Blocks operations that violate framework principles:
