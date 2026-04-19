@@ -97,7 +97,6 @@ aops task <task-id> | jules new --repo <owner>/<repo>
 
 > **`polecat` not on PATH?** In non-interactive shells (Bash tool, cron, CI), the `polecat`/`pc` alias
 > may not be loaded. Use the canonical form: `uv run --project $AOPS $AOPS/polecat/cli.py <args>`
-> (`$AOPS` = `/Users/suzor/src/academicOps` on the primary machine).
 
 **Polecat exit codes** (relevant for scripted supervisors):
 
