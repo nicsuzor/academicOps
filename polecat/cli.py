@@ -1651,6 +1651,13 @@ description = "Deny writes outside the work directory"
         for policy in src_policies.glob("*.toml"):
             shutil.copy2(policy, dst_policies / policy.name)
 
+    # Copy bundled admin policies AFTER user policies so they always take
+    # precedence — a same-named user file must not override an admin policy.
+    compliance_src = SCRIPT_DIR / "defaults" / "compliance-agents.toml"
+    if not compliance_src.exists():
+        raise RuntimeError(f"Missing bundled policy file: {compliance_src}")
+    shutil.copy2(compliance_src, policies_dir / "compliance-agents.toml")
+
     # Make all replicated files and directories writable by any UID.
     # Gemini's sandbox container may run as a different user than the host
     # and needs to write temp files (projects.json.tmp, settings updates).
@@ -3575,8 +3582,15 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
         # Gemini: run inside our Docker container (not --sandbox, which uses
         # bind mounts that fail on WSL2/Docker Desktop).  Auth files are staged
         # via docker cp, and session transcripts are extracted after the run.
-        # Note: --approval-mode is set by agent_args (passed after '--').
-        cmd = ["gemini"]
+        # --approval-mode plan mirrors Claude crew's --permission-mode=plan:
+        # reads are auto-approved, writes require policy-level allow rules.
+        cmd = [
+            "gemini",
+            "--approval-mode",
+            "plan",
+            "--include-directories",
+            "/home/worker/.gemini/extensions/aops-core",
+        ]
     else:
         # Claude Code: sandbox via project settings.json + setting-sources
         cmd = [
@@ -3596,6 +3610,11 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
     env["POLECAT_SESSION_TYPE"] = "crew"
     env["POLECAT_CREW_NAME"] = crew_name
     env["POLECAT_WORKTREE"] = str(work_dir)
+    # Both Gemini (--approval-mode plan) and Claude (--permission-mode=plan) crew
+    # sessions run in plan mode. Signal this to the gate engine so it skips the
+    # custodiet ops counter — the gate must not fire when rbg cannot be invoked.
+    if not interactive:
+        env["POLECAT_APPROVAL_MODE"] = "plan"
 
     # Compute session directory for Claude transcript persistence.
     project_slug = target or projects[0]

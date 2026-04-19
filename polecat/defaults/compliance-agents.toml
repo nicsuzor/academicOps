@@ -1,0 +1,21 @@
+# academicOps: Allow compliance agents to run in all modes including plan mode.
+#
+# Two-layer defense against the custodiet deadlock (gate fires → rbg blocked → deadlock):
+#   1. engine.py skips the ops counter when POLECAT_APPROVAL_MODE=plan (primary guard)
+#   2. These policy rules ensure rbg/marsha can never be blocked by sandbox or
+#      workspace policies in any mode (secondary, also fixes non-plan-mode cases)
+#
+# Priority 950 is set high to ensure these allow rules take precedence over
+# more restrictive sandbox or workspace policies.
+
+[[rule]]
+toolName = ["aops_core_rbg", "aops_core_custodiet", "aops_core_audit", "aops_core_enforcer"]
+decision = "allow"
+priority = 950
+description = "Allow rbg compliance agent (and legacy aliases) in all modes including plan mode"
+
+[[rule]]
+toolName = ["aops_core_marsha", "aops_core_qa"]
+decision = "allow"
+priority = 950
+description = "Allow marsha QA agent (and legacy alias) in all modes including plan mode"
