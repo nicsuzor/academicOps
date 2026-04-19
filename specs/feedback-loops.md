@@ -256,7 +256,7 @@ Track these to measure framework health:
 | ------------------------------ | ------------------------- | ------------------------------- |
 | Skill compliance rate          | insights.skill_compliance | > 0.9                           |
 | Session success rate           | insights.outcome          | > 0.8                           |
-| Custodiet false positive rate  | insights.custodiet_blocks | < 0.1                           |
+| Enforcer false positive rate   | insights.enforcer_blocks  | < 0.1                           |
 | Learning observation frequency | count of learn-type tasks | Stable or decreasing            |
 | Time to root cause             | task creation → fix       | < 24 hours for recurring issues |
 
@@ -282,7 +282,7 @@ At the end of every session, the agent is expected to emit a `## Framework Refle
 
 ### 3. Transparent Observability
 
-Reflections and operational metrics (token usage, skill compliance, custodiet blocks) are aggregated into:
+Reflections and operational metrics (token usage, skill compliance, enforcer blocks) are aggregated into:
 
 - **Session Insights**: Structured JSON files providing a detailed post-mortem of every session.
 - **Project Dashboards**: Daily summaries that highlight project alignment, recent accomplishments, and recurring friction points.

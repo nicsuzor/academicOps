@@ -77,7 +77,7 @@ No PRs merged today.
 
 ## Step 4.3: Verify Descriptions
 
-**CRITICAL**: Gemini mining may hallucinate. Cross-check accomplishment descriptions against actual changes (git log, file content). Per AXIOMS #2, do not propagate fabricated descriptions.
+**CRITICAL**: Gemini mining may hallucinate. Cross-check accomplishment descriptions against actual changes (git log, file content). Do not propagate fabricated descriptions.
 
 ## Step 4.4: Update Daily Note Sections
 

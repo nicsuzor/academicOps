@@ -10,7 +10,7 @@ description: Document agent behavior patterns as learn-type tasks for later synt
 
 **When**: After observing agent behavior patterns, errors, or framework gaps that should be tracked.
 
-**Key principle**: Per AXIOMS #28 (Current State Machine) - episodic observations go to tasks, not direct file edits. Analysis happens later via workflow 05 (QA Verification).
+**Key principle**: Episodic observations go to tasks, not direct file edits (Current State Machine). Analysis happens later via workflow 05 (QA Verification).
 
 **IMPORTANT**: This workflow creates `type="learn"` tasks for **observational tracking only**. To file high-quality bug reports directly to GitHub Issues for others to pick up, use `/learn` instead.
 
@@ -114,13 +114,13 @@ Report to user:
 
 We don't control agents - they're probabilistic. Root causes must be framework component failures:
 
-| Category          | Definition                                         | Fix Location                              |
-| ----------------- | -------------------------------------------------- | ----------------------------------------- |
-| Clarity Failure   | Instruction ambiguous or insufficiently emphasized | AXIOMS, skill text, guardrail instruction |
-| Context Failure   | Component didn't provide relevant information      | Intent router                             |
-| Blocking Failure  | Should have blocked but didn't                     | PreToolUse hook, deny rule                |
-| Detection Failure | Should have caught but didn't                      | PostToolUse hook                          |
-| Gap               | No component exists for this case                  | Create new enforcement                    |
+| Category          | Definition                                         | Fix Location                      |
+| ----------------- | -------------------------------------------------- | --------------------------------- |
+| Clarity Failure   | Instruction ambiguous or insufficiently emphasized | skill text, guardrail instruction |
+| Context Failure   | Component didn't provide relevant information      | Intent router                     |
+| Blocking Failure  | Should have blocked but didn't                     | PreToolUse hook, deny rule        |
+| Detection Failure | Should have caught but didn't                      | PostToolUse hook                  |
+| Gap               | No component exists for this case                  | Create new enforcement            |
 
 ## Constraints
 

@@ -170,10 +170,10 @@ class TestSubagentTypeExtraction:
             "hook_event_name": "PreToolUse",
             "session_id": "test-123",
             "tool_name": "Task",
-            "tool_input": {"subagent_type": "custodiet", "prompt": "Check compliance"},
+            "tool_input": {"subagent_type": "enforcer", "prompt": "Check compliance"},
         }
         ctx = router_instance.normalize_input(raw)
-        assert ctx.subagent_type == "custodiet"
+        assert ctx.subagent_type == "enforcer"
 
     def test_gemini_delegate_to_agent_name(self, router_instance):
         """Gemini delegate_to_agent with name= extracts correctly."""
@@ -181,10 +181,10 @@ class TestSubagentTypeExtraction:
             "hook_event_name": "PreToolUse",
             "session_id": "test-123",
             "tool_name": "delegate_to_agent",
-            "tool_input": {"name": "custodiet", "query": "Check compliance"},
+            "tool_input": {"name": "enforcer", "query": "Check compliance"},
         }
         ctx = router_instance.normalize_input(raw)
-        assert ctx.subagent_type == "custodiet"
+        assert ctx.subagent_type == "enforcer"
 
     def test_gemini_delegate_to_agent_agent_name(self, router_instance):
         """Gemini delegate_to_agent with agent_name= also works."""
@@ -192,10 +192,10 @@ class TestSubagentTypeExtraction:
             "hook_event_name": "PreToolUse",
             "session_id": "test-123",
             "tool_name": "delegate_to_agent",
-            "tool_input": {"agent_name": "custodiet", "query": "Check compliance"},
+            "tool_input": {"agent_name": "enforcer", "query": "Check compliance"},
         }
         ctx = router_instance.normalize_input(raw)
-        assert ctx.subagent_type == "custodiet"
+        assert ctx.subagent_type == "enforcer"
 
     def test_activate_skill_name(self, router_instance):
         """activate_skill with name= extracts correctly."""
@@ -203,10 +203,10 @@ class TestSubagentTypeExtraction:
             "hook_event_name": "PreToolUse",
             "session_id": "test-123",
             "tool_name": "activate_skill",
-            "tool_input": {"name": "custodiet"},
+            "tool_input": {"name": "enforcer"},
         }
         ctx = router_instance.normalize_input(raw)
-        assert ctx.subagent_type == "custodiet"
+        assert ctx.subagent_type == "enforcer"
 
     def test_skill_tool_uses_skill_param(self, router_instance):
         """Skill tool extracts from 'skill' param (not 'subagent_type')."""
@@ -248,10 +248,10 @@ class TestSubagentTypeExtraction:
             "hook_event_name": "PreToolUse",
             "session_id": "test-123",
             "tool_name": "delegate_to_agent",
-            "tool_input": {"name": "aops-core:custodiet", "query": "Check compliance"},
+            "tool_input": {"name": "aops-core:enforcer", "query": "Check compliance"},
         }
         ctx = router_instance.normalize_input(raw)
-        assert ctx.subagent_type == "aops-core:custodiet"
+        assert ctx.subagent_type == "aops-core:enforcer"
 
 
 class TestPkbSignatureFix:

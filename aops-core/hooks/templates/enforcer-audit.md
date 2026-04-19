@@ -1,4 +1,4 @@
-# Custodiet Workflow Enforcement Audit
+# Enforcer Workflow Enforcement Audit
 
 **Session**: {session_id}
 **Gate**: {gate_name}

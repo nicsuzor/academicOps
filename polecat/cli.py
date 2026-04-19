@@ -47,7 +47,7 @@ from validation import TaskIDValidationError, validate_task_id_or_raise
 #   (no effort field) → 100
 #
 # Hook overhead: each session fires ~2-4 hook turns (hydration gate,
-# custodiet compliance check). These count against the budget.
+# enforcer compliance check). These count against the budget.
 _EFFORT_TO_MAX_TURNS: dict[str, int] = {
     "xs": 40,
     "s": 70,
@@ -1001,7 +1001,7 @@ def _build_docker_cmd(
                 "CLAUDE_CODE_OAUTH_TOKEN",
                 "COLORTERM",
                 "FORCE_COLOR",
-                "CUSTODIET_TOOL_CALL_THRESHOLD",
+                "ENFORCER_TOOL_CALL_THRESHOLD",
             )
         ):
             cmd.extend(["-e", f"{key}={val}"])
@@ -1062,7 +1062,7 @@ def _build_docker_cmd(
         "COMMIT_GATE_MODE": "warn",
         "HANDOVER_GATE_MODE": "warn",
         "QA_GATE_MODE": "warn",
-        "CUSTODIET_GATE_MODE": "warn",
+        "ENFORCER_GATE_MODE": "warn",
         "HYDRATION_GATE_MODE": "off",  # gate_config.py: os.environ.get("HYDRATION_GATE_MODE", "off")
     }
     for _gm_key, _gm_default in _gate_mode_defaults.items():
@@ -3901,7 +3901,7 @@ def run(
             (no effort field) → 100 turns
 
         Hook overhead (~2–4 turns per session for the hydration gate and
-        custodiet compliance check) counts against the budget.
+        enforcer compliance check) counts against the budget.
 
         When the budget is exhausted polecat emits a diagnostic showing the
         last observed tool call so supervisors can assess over-exploration

@@ -27,7 +27,7 @@ General-purpose extraction skill that intelligently routes to specialized workfl
 
 ## Framework Context
 
-[[AXIOMS.md]] — including [[AXIOMS.md#P52]] (Read-Then-Write Memory)
+Universal axioms apply (enforced by `rbg`). P#52 (Read-Then-Write Memory) is especially relevant.
 
 ## Search Before Creating
 

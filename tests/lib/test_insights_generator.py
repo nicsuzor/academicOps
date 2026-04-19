@@ -90,7 +90,7 @@ class TestSchemaValidation:
             "workflows_used": ["tdd"],
             "subagents_invoked": ["critic"],
             "subagent_count": 1,
-            "custodiet_blocks": 0,
+            "enforcer_blocks": 0,
             "stop_reason": "end_turn",
             "critic_verdict": "PROCEED",
             "acceptance_criteria_count": 3,

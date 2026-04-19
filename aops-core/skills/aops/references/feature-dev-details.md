@@ -22,7 +22,7 @@ No coding or development work without an approved plan:
 
 ## Core Principles
 
-This workflow enforces framework principles from [[AXIOMS.md]]:
+This workflow enforces framework principles (axioms enforced by `rbg`):
 
 - **Plan-First**: Approved plan before any implementation
 - **Mandatory Second Opinion**: Plans and conclusions must be reviewed by critic agent before presenting to user
@@ -196,7 +196,7 @@ Feature development follows eight phases:
 **During Implementation**:
 
 - Reference existing documentation, don't duplicate
-- Follow standard tools (per AXIOMS.md #9)
+- Follow standard tools
 - No workarounds or silent failures
 - If blocked, update experiment log and halt (don't work around)
 
@@ -376,7 +376,7 @@ Use TodoWrite at key points:
 
 **This workflow enforces**:
 
-- All axioms from [[AXIOMS.md]]
+- Universal axioms (compliance verified by `rbg`)
 - Test-first development
 - Documentation integrity
 - Fail-fast behavior

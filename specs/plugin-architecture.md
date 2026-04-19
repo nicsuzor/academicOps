@@ -14,7 +14,7 @@ tags: [architecture, plugins]
 - [[aops-core/.mcp.json]] - Core plugin MCP server definitions (gemini, memory, task_manager)
 - [[aops-core/hooks/hooks.json]] - Core plugin hook registrations
 - [[aops-core/skills/]] - Core skills directory (audit, framework, remember, etc.)
-- [[aops-core/agents/]] - Core agents directory (critic, custodiet, prompt-hydrator, qa)
+- [[aops-core/agents/]] - Core agents directory (critic, enforcer, prompt-hydrator, qa)
 - [[aops-tools/.mcp.json]] - Tools plugin MCP server definitions (context7, outlook, playwright)
 - [[aops-tools/skills/]] - Tools skills directory (analyst, daily, excalidraw, pdf, etc.)
 
@@ -48,7 +48,7 @@ This document defines the component assignments for the academicOps plugin ecosy
 **Agents**:
 
 - `critic` - Second-opinion review of plans and conclusions
-- `custodiet` - Ultra vires detector (catches agents acting beyond authority)
+- `enforcer` - Ultra vires detector (catches agents acting beyond authority)
 - `framework` - Framework infrastructure work with explicit skill access
 - `prompt-hydrator` - Transform terse prompts into complete execution plans
 - `qa` - Independent end-to-end verification before completion
@@ -99,7 +99,7 @@ This document defines the component assignments for the academicOps plugin ecosy
 
 - Framework agents
 
-(hydrator, custodiet, qa, critic)
+(hydrator, enforcer, qa, critic)
 
 - Core workflows (/learn)
 - Audit capabilities
