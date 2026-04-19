@@ -4,15 +4,26 @@
 
 Update daily note from session JSON files and narrative path reconstruction.
 
-### Step 4.0: PR Status Sweep
+### Step 4.0: Task Completion Sweep
 
-Before syncing progress, run a sweep of all tasks in `merge_ready` status to synchronize with GitHub PR states. This ensures the task graph accurately reflects merged or blocked work.
+Before syncing progress, run a sweep of tasks in `merge_ready` and `review` status to synchronize with external signals (merged PRs, sent emails). This ensures the task graph accurately reflects completed, blocked, or stale work.
 
 ```bash
 polecat sweep
 ```
 
 **Outcome**: Tasks for merged PRs move to `done`, tasks with requested changes move back to `review`, and stale PRs are flagged.
+
+**Extended sweep** (when `polecat sweep` is unavailable or as a supplement — mirrors SKILL.md Step 7, kept self-contained so it works without the full skill context):
+
+1. Call `list_tasks(status="merge_ready")` and `list_tasks(status="review")` to get all candidate tasks.
+2. For tasks with a `pr_url` in frontmatter: query the PR state via `gh pr view <number> --json state,mergedAt,url`. If `state == "MERGED"`, call `complete_task` with the merge timestamp + URL as evidence.
+3. For tasks **without** a `pr_url`: match by `headRefName` substring or task ID in PR body against merged PRs fetched in Step 4.2.5. Same auto-complete rule applies.
+4. **Sent-email evidence**: For tasks where the completion signal is a sent email (e.g., reply-required tasks from `/email`), cross-reference against recent sent items. Auto-close (using `mcp__pkb__complete_task`) only when the match is unambiguous — same correspondent, subject line matching (using whole-word boundaries), sent after task creation within ~48 hours.
+5. **Ambiguous cases**: Surface in the daily note under "Needs your call" in "What Needs Attention" (see [[instructions/workflow-monitor]] Step 6.5). Never auto-close ambiguous cases.
+6. **Report** in Work Log: `N tasks auto-closed from merged PRs`, `N tasks auto-closed from sent emails`, `N flagged for user decision`.
+
+**Steps 4.1, 4.1.5, 4.2, 4.2.5, and 4.2.6 — run in parallel.** These data-gathering steps are independent: they read from different sources (shell scripts, PKB, session JSONs, GitHub) and produce separate outputs that are merged only at composition time. Agent teams should dispatch concurrent subagents for each; single-agent environments should issue all data-fetching tool calls simultaneously rather than sequentially.
 
 ### Step 4.1: Narrative Path Reconstruction (Compass Model)
 
@@ -200,7 +211,7 @@ After classifying PRs, recommend specific agent actions for each. The available 
 
 | Agent              | Workflow               | Trigger                                                        | Purpose                                                              |
 | ------------------ | ---------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------- |
-| **Custodiet**      | `agent-custodiet.yml`  | `workflow_dispatch` with `target_type`, `target_number`, `ref` | Scope compliance review. APPROVE or REQUEST CHANGES                  |
+| **Enforcer**       | `agent-enforcer.yml`   | `workflow_dispatch` with `target_type`, `target_number`, `ref` | Scope compliance review. APPROVE or REQUEST CHANGES                  |
 | **Merge Prep**     | `agent-merge-prep.yml` | `workflow_dispatch` with `pr_number`, `ref`                    | Reads ALL review feedback, pushes fixes, sets Merge Prep status      |
 | **`@claude`**      | `claude.yml`           | Comment `@claude <instruction>` on PR                          | Ad-hoc fixes. General-purpose                                        |
 | **Copilot Worker** | Copilot Coding Agent   | `@copilot` comment or issue assignment                         | Autonomous task execution following `.github/agents/worker.agent.md` |
@@ -208,7 +219,7 @@ After classifying PRs, recommend specific agent actions for each. The available 
 
 **Typical pipeline for a new PR**:
 
-1. Custodiet reviews (scope compliance) → APPROVE or REQUEST CHANGES
+1. Enforcer reviews (scope compliance) → APPROVE or REQUEST CHANGES
 2. If CHANGES_REQUESTED → trigger Merge Prep to fix feedback
 3. Merge Prep pushes fixes → CI re-runs → sets "Merge Prep" status
 4. PR auto-merges when all checks pass
@@ -222,7 +233,7 @@ After classifying PRs, recommend specific agent actions for each. The available 
 
 ### Step 4.3: Verify Descriptions
 
-**CRITICAL**: Gemini mining may hallucinate. Cross-check accomplishment descriptions against actual changes (git log, file content). Per AXIOMS #2, do not propagate fabricated descriptions.
+**CRITICAL**: Gemini mining may hallucinate. Cross-check accomplishment descriptions against actual changes (git log, file content). Do not propagate fabricated descriptions.
 
 ### Step 4.4: Update Daily Note Sections
 

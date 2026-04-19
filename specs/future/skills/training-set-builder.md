@@ -13,7 +13,7 @@ Extract structured training examples (source → feedback → revised → contex
 
 ## Framework Context
 
-[[AXIOMS.md]]
+Universal axioms apply (enforced by `rbg`).
 
 ## Purpose
 

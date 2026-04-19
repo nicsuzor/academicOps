@@ -19,7 +19,7 @@ note: "Future direction — connects to RBG agent axiom enforcement and constrai
 - [[specs/future/constraint-checking-tests.md]] - Test specification for predicate validation
 - [[specs/enforcement.md]] - Runtime enforcement layer (gates, detection, review)
 - [[agents/rbg.md]] - The Judge: axiom compliance checking uses predicate-like reasoning
-- [[agents/custodiet.md]] - Periodic compliance audit (potential consumer of formal predicates)
+- [[agents/enforcer.md]] - Periodic compliance audit (potential consumer of formal predicates)
 
 Standard predicate definitions for workflow constraint checking. Provides the semantic foundation for expressing workflow constraints as logical statements rather than procedural steps.
 
@@ -50,7 +50,7 @@ The predicate registry formalises what the RBG agent already does instinctively 
 
 - **Composable constraints** in workflow definitions (`BEFORE commit: tests_pass AND critic_reviewed`)
 - **Mechanical verification** where possible (test predicates, file predicates)
-- **Qualitative verification** delegated to RBG/custodiet where judgment is required (heuristic predicates)
+- **Qualitative verification** delegated to RBG/enforcer where judgment is required (heuristic predicates)
 - **Transparent audit trails** showing exactly which predicates passed/failed and why
 
 ## Predicate Categories
@@ -179,5 +179,5 @@ When adding a predicate to a workflow:
 - [[workflow-constraints]] - Constraint specification format
 - [[enforcement]] - Runtime enforcement architecture (layers 1-5)
 - [[agents/rbg.md]] - The Judge: qualitative axiom compliance
-- [[agents/custodiet.md]] - Periodic compliance auditor (potential predicate consumer)
-- [[specs/ultra-vires-custodiet.md]] - Custodiet behaviour specification
+- [[agents/enforcer.md]] - Periodic compliance auditor (potential predicate consumer)
+- [[specs/ultra-vires-enforcer.md]] - Enforcer behaviour specification

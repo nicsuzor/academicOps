@@ -81,7 +81,9 @@ ENV HOME=/home/worker \
 ARG CLAUDE_CODE_VERSION
 RUN curl -fsSL https://claude.ai/install.sh | bash
 
-# Install Rust toolchain via rustup
+# RUST_CACHEBUST is intentionally unused in the RUN command — it only invalidates
+# this layer so rebuilds always fetch the latest Rust toolchain from rustup.
+ARG RUST_CACHEBUST
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal
 
 # Install Python-based CLI tools as user (installs to ~/.local/bin)

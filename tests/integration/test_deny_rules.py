@@ -35,6 +35,14 @@ def test_deny_rules_block_claude_dir_write(claude_headless):
         "access denied",
         "deny rule",
         "restricted",
+        # In headless non-interactive mode, the autoMode soft_deny rule triggers a
+        # permission prompt that Claude cannot resolve — the write is effectively
+        # blocked and Claude reports it as a permission request:
+        "asking for permission",
+        "requires permission",
+        "permission request",
+        "permission to write",
+        "needs permission",
     ]
 
     found_denial = any(indicator in response_text for indicator in deny_indicators)

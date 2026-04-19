@@ -26,7 +26,7 @@ How the system works today. Required reading for understanding the framework.
 | [[prompt-hydration.md]]         | ✅     | Transform raw prompt into execution plan. Includes optimisation proposals (merged from former selective-injection and hydration-overhead specs) |
 | [[session-start-injection.md]]  | ✅     | Three-tier context loading (baseline + JIT)                                                                                                     |
 | [[hook-router.md]]              | ✅     | Single dispatch entry point for all hooks                                                                                                       |
-| [[ultra-vires-custodiet.md]]    | 🔶     | Drift detection (agent defined, automated gate archived)                                                                                        |
+| [[ultra-vires-enforcer.md]]     | 🔶     | Drift detection (agent defined, automated gate archived)                                                                                        |
 | [[workflow-system-spec.md]]     | 📋     | Composable markdown-based workflow engine                                                                                                       |
 | [[plugin-architecture.md]]      | ✅     | Component boundaries (aops-core vs aops-tools)                                                                                                  |
 | [[verification-system.md]]      | 📋     | Verify-first enforcement (design decision, not yet implemented)                                                                                 |
@@ -84,11 +84,13 @@ Task system, knowledge base, and MCP tool interfaces.
 
 How the framework watches itself and improves.
 
-| Spec                           | Status | Purpose                                                                       |
-| ------------------------------ | ------ | ----------------------------------------------------------------------------- |
-| [[framework-observability.md]] | ✅     | Self-reflexive observation pipeline (observe → analyze → improve)             |
-| [[feedback-loops.md]]          | ✅     | Structured feedback: observations → heuristic updates                         |
-| [[sleep-cycle.md]]             | 📋     | Scheduled consolidation: write-optimised artifacts → read-optimised knowledge |
+| Spec                             | Status | Purpose                                                                              |
+| -------------------------------- | ------ | ------------------------------------------------------------------------------------ |
+| [[framework-observability.md]]   | ✅     | Self-reflexive observation pipeline (observe → analyze → improve)                    |
+| [[observability.md]]             | ✅     | **SSoT**: files × environments × processes table; $AOPS_SESSIONS retirement analysis |
+| [[session-naming-convention.md]] | ✅     | Canonical naming convention for all session artifacts (v4 unified format)            |
+| [[feedback-loops.md]]            | ✅     | Structured feedback: observations → heuristic updates                                |
+| [[sleep-cycle.md]]               | 📋     | Scheduled consolidation: write-optimised artifacts → read-optimised knowledge        |
 
 **Supporting documents** (schemas and templates, not standalone specs):
 
@@ -135,7 +137,8 @@ Scheduling:   effectual-planning-agent → strategic-triage → daily (recommend
               sleep-cycle ↔ strategic-triage (sibling scheduled agents)
 Constraints:  workflow-system-spec → workflow-constraints → predicate-registry → constraint-checking-tests
 Execution:    non-interactive-agent-workflow → polecat-swarms → polecat-supervision → worker-hypervisor
-Observability: framework-observability → session-insights-prompt → session-insights-metrics-schema → feedback-loops
+Observability: observability.md (SSoT: files×envs×processes) → framework-observability → session-insights-prompt → session-insights-metrics-schema → feedback-loops
+              session-naming-convention → observability.md
 ```
 
 ## Maintenance

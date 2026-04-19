@@ -26,7 +26,7 @@ def create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path:
     active_skill = None
     skill_scope = None
     if transcript_path:
-        if gate == "custodiet":
+        if gate == "enforcer":
             from lib.session_reader import (
                 SessionProcessor,
                 _extract_recent_skill,
@@ -42,7 +42,7 @@ def create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path:
                     Path(transcript_path), load_agents=False, load_hooks=False
                 )
             except Exception:
-                logger.warning("Failed to parse transcript for custodiet audit", exc_info=True)
+                logger.warning("Failed to parse transcript for enforcer audit", exc_info=True)
 
             try:
                 session_context = build_audit_session_context(transcript_path, entries=entries)
@@ -135,11 +135,11 @@ def execute_custom_action(
     before returning. Policy templates depend on this metric being present.
     """
     if name == "prepare_compliance_report":
-        temp_path = create_audit_file(ctx.session_id, "custodiet", ctx)
+        temp_path = create_audit_file(ctx.session_id, "enforcer", ctx)
         state.metrics["temp_path"] = str(temp_path)
 
         registry = TemplateRegistry.instance()
-        instruction = registry.render("custodiet.instruction", {"temp_path": str(temp_path)})
+        instruction = registry.render("enforcer.instruction", {"temp_path": str(temp_path)})
 
         return GateResult.allow(
             system_message=f"Compliance report ready: {temp_path}",

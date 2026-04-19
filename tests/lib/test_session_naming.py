@@ -50,8 +50,8 @@ class TestSessionNaming(unittest.TestCase):
         session_id = "550e8400-e29b-41d4-a716-446655440000"
         date = "2026-04-11"
         hour = "10"
-        filename = session_naming.get_gate_filename("custodiet", session_id, date=date, hour=hour)
-        self.assertEqual(filename, "20260411-10-550e8400-custodiet.md")
+        filename = session_naming.get_gate_filename("enforcer", session_id, date=date, hour=hour)
+        self.assertEqual(filename, "20260411-10-550e8400-enforcer.md")
 
     def test_iso_date_extraction(self):
         session_id = "550e8400-e29b-41d4-a716-446655440000"

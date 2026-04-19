@@ -38,7 +38,7 @@ The supervisor decomposes large tasks into PR-sized subtasks.
    b. For each **execution** subtask: "Is this conditional on a decision that hasn't been made?" — if yes, add the decision task to `depends_on`
    c. For each **writing** subtask: "What analysis/data needs to be final before this can be written?" — if it depends on analysis results, add the analysis task to `depends_on`
    d. If the parent task produces **academic output** (paper, report, benchmark, analysis): ensure methodology tasks exist (methodological justification, validation approach, claim-evidence audit, limitations completeness)
-9. Append decomposition summary to task body
+9. Append decomposition summary to task body. **Remove any `- [ ]` checklists** from the body that are now tracked as subtasks — the subtask graph is the single source of truth. Keeping both causes divergence over time.
 10. Set task status to 'consensus'
 ```
 
@@ -65,6 +65,7 @@ If any check fails, fix the hierarchy BEFORE proceeding with decomposition.
 | Execution is gated   | Execution task is unconditional but depends on a decision outcome | Add decision task to `depends_on`                        |
 | Writing has data     | Writing task depends on analysis results not yet complete         | Add analysis task to `depends_on`                        |
 | Academic methodology | Academic output has no justification/validation/audit tasks       | Add methodology layer tasks (see [[decompose]] workflow) |
+| No parallel tracking | Parent body contains `- [ ]` items that duplicate subtask titles  | Remove body checklists; replace with "See subtasks"      |
 
 **Output Format** (appended to task body):
 
@@ -109,7 +110,7 @@ Supervisor invokes reviewer agents and synthesizes their feedback before human a
 
 | Reviewer          | Role                                                        | Mandatory                                 | Model  |
 | ----------------- | ----------------------------------------------------------- | ----------------------------------------- | ------ |
-| RBG (custodiet)   | Authority check: is task within granted scope?              | Yes                                       | —      |
+| RBG (enforcer)    | Authority check: is task within granted scope?              | Yes                                       | —      |
 | Pauli             | Pedantic review: assumptions, logical errors, missing cases | Yes                                       | opus   |
 | Domain specialist | Subject matter expertise                                    | If task.tags intersect specialist.domains | varies |
 
@@ -138,7 +139,7 @@ Before invoking reviewers, prepare a context document containing:
 
 ## Relevant Principles
 
-[Extract relevant AXIOMS/HEURISTICS for this domain]
+[Extract relevant principles/heuristics for this domain — invoke `rbg` for axiom checks]
 ```
 
 **Step 2: Invoke Reviewers in Parallel**
@@ -183,7 +184,7 @@ Return your assessment in this exact format:
 )
 
 rbg_task = Task(
-    subagent_type='aops-core:custodiet',
+    subagent_type='aops-core:enforcer',
     model='haiku',
     prompt='''Verify this task is within granted authority:
 
@@ -363,7 +364,7 @@ Respond with:
 **Pauli Position** (after debate):
 [Their final position]
 
-**Custodiet Position** (after debate):
+**Enforcer Position** (after debate):
 [Their final position]
 
 ### Core Tension

@@ -79,7 +79,7 @@ class TestEnvVarDetection:
             assert is_subagent_session({}) is True
 
     def test_claude_subagent_type_env(self):
-        with patch.dict(os.environ, {"CLAUDE_SUBAGENT_TYPE": "custodiet"}, clear=False):
+        with patch.dict(os.environ, {"CLAUDE_SUBAGENT_TYPE": "enforcer"}, clear=False):
             assert is_subagent_session({}) is True
 
     def test_claude_parent_session_id_env(self):

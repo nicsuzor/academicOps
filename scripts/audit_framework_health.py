@@ -723,8 +723,8 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         "hooks/overdue_enforcement.py",
         "hooks/command_intercept.py",
         "hooks/data/reminders.txt",
-        "hooks/templates/custodiet-context.j2",
-        "archived/hooks/custodiet_gate.py",
+        "hooks/templates/enforcer-context.j2",
+        "archived/hooks/enforcer_gate.py",
         # Old aops-tools paths (now merged into aops-core)
         "aops-tools/tasks_server.py",
         "aops-tools/fast-indexer/",
@@ -756,7 +756,6 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         "workflows/base-tdd.md",
         "workflows/audit.md",
         "workflows/hydrate.md",
-        "agents/custodiet.md",
         "agents/prompt-hydrator.md",
         "agents/effectual-planner.md",
         "agents/qa.md",
@@ -773,7 +772,7 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         "hooks/policy_enforcer.py",
         "hooks/task_binding.py",
         "hooks/templates/prompt-hydrator-context.md",
-        "hooks/templates/custodiet-instruction.md",
+        "hooks/templates/enforcer-instruction.md",
         "lib/session_reader.py",
         "lib/session_state.py",
     }

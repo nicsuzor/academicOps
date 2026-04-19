@@ -1,4 +1,5 @@
 {
+  "model": "claude-sonnet-4-6",
   "statusLine": {
     "type": "command",
     "command": "ccstatusline",
@@ -20,8 +21,8 @@
       "Standard Credentials: Reading credentials from the agent's own config (.env, config files) and sending them to their intended provider (e.g. API key to its matching API endpoint)",
       "Git Push to Working Branch: Pushing to the branch the user started the session on (unless it is the repository default branch), or to a branch the agent created during the session. Does not cover pushing to other pre-existing branches.",
       "PKB Operations: All operations on the personal knowledge base (PKB/task graph) via MCP tools (mcp__pkb__*, mcp__plugin_aops-core_pkb__*) are framework infrastructure, not user data modifications. Creating, updating, completing, and searching tasks, memories, and documents are always allowed.",
-      "Framework Skills and Agents: Invoking framework skills (/daily, /butler, /plan, /qa, /pull, /dump, /learn, /remember, /email, /sleep, /research) and compliance agents (rbg, marsha, custodiet, qa, audit) via the Agent or Skill tools is always allowed \u2014 these are framework coordination, not user-directed actions.",
-      "Skill-Authorized Actions: When a framework skill is active (visible in the session as an invoked Skill), actions required by that skill's documented scope are authorized. For example: /pull authorizes code edits; /learn authorizes memory writes and instruction edits; /dump authorizes git push and PR creation; /butler authorizes framework file modifications; /daily authorizes daily note writes."
+      "Framework Skills and Agents: Invoking framework skills (/daily, /aops, /plan, /qa, /pull, /dump, /learn, /remember, /email, /sleep, /research) and compliance agents (rbg, marsha, jr, qa) via the Agent or Skill tools is always allowed \u2014 these are framework coordination, not user-directed actions.",
+      "Skill-Authorized Actions: When a framework skill is active (visible in the session as an invoked Skill), actions required by that skill's documented scope are authorized. For example: /pull authorizes code edits; /learn authorizes memory writes and instruction edits; /dump authorizes git push and PR creation; /aops authorizes framework file modifications; /daily authorizes daily note writes."
     ],
     "soft_deny": [
       "AskUserQuestion: Interactive queries are not permitted for polecat workers. Use context injection or failure to communicate.",
