@@ -148,17 +148,17 @@ release_task(id, status, summary, pr_url?, branch?, blocker?, reason?)
 
 ### Canonical Statuses
 
-| Status        | Meaning                                           | Terminal? | Ready queue? |
-| ------------- | ------------------------------------------------- | --------- | ------------ |
+| Status        | Meaning                                                      | Terminal? | Ready queue? |
+| ------------- | ------------------------------------------------------------ | --------- | ------------ |
 | `draft`       | Created but not yet planned — AC/estimate/complexity missing | No        | No           |
-| `active`      | Planned and ready to be worked on                 | No        | Yes          |
-| `in_progress` | Currently being worked on                         | No        | No           |
-| `merge_ready` | Work complete, PR filed, awaiting merge           | No        | No           |
-| `review`      | Needs human/manager review                        | No        | No           |
-| `blocked`     | Waiting on external dependency                    | No        | No           |
-| `waiting`     | Deferred for later                                | No        | No           |
-| `done`        | Completed successfully                            | Yes       | No           |
-| `cancelled`   | Abandoned/no longer relevant                      | Yes       | No           |
+| `active`      | Planned and ready to be worked on                            | No        | Yes          |
+| `in_progress` | Currently being worked on                                    | No        | No           |
+| `merge_ready` | Work complete, PR filed, awaiting merge                      | No        | No           |
+| `review`      | Needs human/manager review                                   | No        | No           |
+| `blocked`     | Waiting on external dependency                               | No        | No           |
+| `waiting`     | Deferred for later                                           | No        | No           |
+| `done`        | Completed successfully                                       | Yes       | No           |
+| `cancelled`   | Abandoned/no longer relevant                                 | Yes       | No           |
 
 **Default on create**: `draft`. Tasks must be explicitly graduated to `active` (manually or by a planner agent verifying the graduation conditions above).
 

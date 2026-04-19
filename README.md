@@ -154,6 +154,7 @@ command claude plugin marketplace add nicsuzor/aops
 git clone git@github.com:nicsuzor/academicOps.git && cd academicOps
 uv sync                    # install dependencies
 make install-hooks         # activate pre-commit hooks
+./scripts/format.sh        # format and lint code
 ```
 
 Or use `make install-dev` to build, install the plugin locally, and activate hooks in one step.
