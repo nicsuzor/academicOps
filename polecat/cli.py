@@ -2171,7 +2171,7 @@ def sync(ctx, check, quiet, mirrors_only):
         polecat sync --quiet      # Only show issues
         polecat sync --mirrors-only  # Only sync bare mirrors
     """
-    from polecat.bootstrap import validate_bootstrap, BootstrapError
+    from polecat.bootstrap import BootstrapError, validate_bootstrap
 
     # Perform fail-fast bootstrap validation
     try:
@@ -3044,7 +3044,8 @@ def sweep(ctx, stale_days):
     - If stale (>N days): flags for attention in task body.
     """
     from datetime import timedelta
-    from polecat.bootstrap import validate_bootstrap, BootstrapError
+
+    from polecat.bootstrap import BootstrapError, validate_bootstrap
 
     # Perform fail-fast bootstrap validation
     try:
@@ -3957,7 +3958,8 @@ def run(
         polecat run -p aops --no-auto-finish  # Skip auto-finish on success
     """
     import subprocess
-    from polecat.bootstrap import validate_bootstrap, BootstrapError
+
+    from polecat.bootstrap import BootstrapError, validate_bootstrap
 
     # Perform fail-fast bootstrap validation
     try:
@@ -4942,7 +4944,7 @@ def swarm(ctx, claude, gemini, project, caller, dry_run):
     Spawns N claude and M gemini workers, managing CPU affinity.
     Restarting workers on success, stopping on failure.
     """
-    from polecat.bootstrap import validate_bootstrap, BootstrapError
+    from polecat.bootstrap import BootstrapError, validate_bootstrap
 
     # Perform fail-fast bootstrap validation
     try:
