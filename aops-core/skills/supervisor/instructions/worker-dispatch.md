@@ -25,7 +25,7 @@ Load worker registry before dispatch. Each worker has:
 Before dispatching ANY task to a worker, the supervisor must validate:
 
 1. **PKB consistency**: The task exists, with matching content, in all three places the worker's bootstrap will consult:
-   - Local disk (`ls /home/nic/brain/tasks/task-<id>*`)
+   - Local disk (`ls $ACA_DATA/tasks/task-<id>*`)
    - Local CLI index (`pkb show task-<id>`)
    - Remote PKB MCP (`get_task` via MCP)
 
@@ -42,7 +42,7 @@ Before dispatching ANY task to a worker, the supervisor must validate:
 
 **If validation fails**: Update the task with findings, set status to `blocked`, and skip it. Do NOT dispatch tasks that will produce wasted work.
 
-**Recovery from a stuck claim**: If a polecat claimed a task but exited before spawning a worktree (no entry in `polecat list`, no directory under `~/.aops/worktrees/`, but task shows `status: in_progress` with `assignee: polecat`): run `polecat reset-stalled --hours 0 --force`, then re-dispatch once pre-dispatch validation passes.
+**Recovery from a stuck claim**: If a polecat claimed a task but exited before spawning a worktree (no entry in `polecat list`, no directory under `$POLECAT_HOME/worktrees/`, but task shows `status: in_progress` with `assignee: polecat`): run `polecat reset-stalled --hours 0 --force`, then re-dispatch once pre-dispatch validation passes.
 
 **Why this matters**: Without runtime hydration (gate is off), this pre-dispatch check is the last opportunity to catch tasks aimed at deprecated code. The 2026-03-22 dogfood run lost a full worker cycle to a task targeting superseded Python files (GH #224). The 2026-04-20 dogfood run lost a claim cycle to MCP/disk divergence.
 
