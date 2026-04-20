@@ -25,6 +25,8 @@ summary = mcp__pkb__task_summary()
 `ready` = leaf tasks with claimable types (task/bug/feature), active status, all dependencies met.
 This is the ONLY consumer-facing view. Use `summary["ready"]` as the denominator for priority bars.
 
+> **Note (taxonomy)**: Daily planning legitimately surfaces `ready` (decomposed-but-not-yet-queued) tasks because the whole point of the daily review is to help the user decide what to promote from `ready` → `queued` for agent dispatch. See [[TAXONOMY]] §Status Values. Agent dispatch (`/pull`) pulls from `queued`, NOT `ready`.
+
 **Format**: `P0 ░░░░░░░░░░ 9/333` where:
 
 - `9` = `summary["by_priority"]["p0"]`
