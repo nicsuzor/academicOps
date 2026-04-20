@@ -24,7 +24,10 @@ import sys
 from pathlib import Path
 
 if len(sys.argv) < 5:
-    print(f"usage: {sys.argv[0]} <source.md> <note-id> <replacements.json> <output.md>", file=sys.stderr)
+    print(
+        f"usage: {sys.argv[0]} <source.md> <note-id> <replacements.json> <output.md>",
+        file=sys.stderr,
+    )
     sys.exit(2)
 src, note_id, mapping_path, out = sys.argv[1:5]
 source = Path(src).read_text()
