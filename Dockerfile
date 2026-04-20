@@ -19,6 +19,7 @@ ENV ACA_DATA=/data \
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     git \
+    gcc \
     gnupg \
     make \
     cron \
