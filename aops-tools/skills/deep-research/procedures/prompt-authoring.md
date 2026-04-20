@@ -23,15 +23,15 @@ A good deep-research prompt has five sections:
 
 ## Worked examples
 
-The `pkb-weight-*` spike series ([[task-454ec614]], [[task-744da956]], [[task-d1a916cf]]) are good templates. Each spike body includes:
+Prior spike tasks in your PKB are good templates. Search for tasks tagged `deep-research` or with type `spike` to find examples. A well-structured spike body includes:
 
 - A two-paragraph "Problem" framing
 - A numbered list of 5-6 named traditions (OKR / AHP / MCDA / Bayesian elicitation / Fermi / Delphi)
 - For each: protocol + failure modes + calibration + validation
-- Explicit user context: "single-user system, I set weights with justification, weights influence prioritisation but never hard-gate, I want 30-second capture with periodic recalibration"
+- Explicit user context: constraints, friction budgets, how output feeds downstream decisions
 - `Cite sources. Flag where consensus is thin.`
 
-Read those three prompts before drafting a new one.
+Read a few recent spike prompts before drafting a new one to calibrate the level of detail.
 
 ## Anti-patterns
 

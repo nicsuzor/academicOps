@@ -69,9 +69,9 @@ mv "${MDFILE[0]}" "$OUT/doc.md"
 mv "${DOCXFILE[0]}" "$OUT/doc.docx"
 
 # Extract images from the .docx archive. Word stores them under word/media/.
-# They are typically image1.png, image2.png, ... matching the ![][imageN]
-# placeholders in the Google Docs markdown export — so a direct name match
-# usually works. We also emit a manifest so the caller can verify numbering.
+# WARNING: docx storage order does NOT match markdown ![][imageN] prose order.
+# The caller must map figures by visual context — see pkb-capture.md Step 3.
+# We emit MANIFEST.txt so the caller can enumerate what was extracted.
 
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT

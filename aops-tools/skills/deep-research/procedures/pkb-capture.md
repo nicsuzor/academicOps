@@ -21,7 +21,7 @@ The script produces, in that output directory:
 
 - `<slug>.md` — markdown export (the primary content)
 - `<slug>.docx` — docx export (source for image extraction)
-- `figures/image1.png, image2.png, …` — extracted from the `.docx`'s `word/media/` folder, numbered to match the `![][imageN]` refs in the markdown
+- `figures/image1.png, image2.png, …` — extracted from the `.docx`'s `word/media/` folder in storage order (NOT necessarily matching `![][imageN]` prose order — see Step 3)
 
 If the script fails, halt with the error. Do not invent alternative downloads.
 
@@ -53,7 +53,7 @@ For each `![][imageN]` reference in the markdown:
    - Decorative → skip
 4. Build a map JSON (`{"1": {"kind": "latex", "tex": "..."}, ...}`) keyed by markdown ref number.
 
-**Batching**: for docs with more than ~10 figures, transcribe all of them, then present the transcription table (not each image) to the user in a single batch. Per-image HITL is fine for short docs but exhausts longer ones — user feedback on [[task-744da956]] capture: "stop fucking asking me, just get it done". Default to batch.
+**Batching**: for docs with more than ~10 figures, transcribe all of them, then present the transcription table (not each image) to the user in a single batch. Per-image HITL is fine for short docs but exhausts longer ones. Default to batch.
 
 **Never** send images to an external transcription service (Mathpix, OCR.space, Vertex AI, etc.). Agent vision only.
 
@@ -84,7 +84,7 @@ tags: [deep-research, <topic-specific tags>, ...]
 **Filename convention**:
 
 - Single brief: `<topic-slug>-<task-id>-<short-slug>.md`
-- Set of related briefs (same epic, same theme): shared prefix + task-id + slug, e.g. `pkb-weight-454ec614-edge-elicitation.md`, `pkb-weight-744da956-target-severity.md`. The shared prefix makes them sort together and scan as a series.
+- Set of related briefs (same epic, same theme): shared prefix + task-id + slug, e.g. `pkb-weight-<task-id-1>-edge-elicitation.md`, `pkb-weight-<task-id-2>-target-severity.md`. The shared prefix makes them sort together and scan as a series.
 
 ## Step 6: Write the body
 

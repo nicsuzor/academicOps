@@ -23,6 +23,9 @@ import re
 import sys
 from pathlib import Path
 
+if len(sys.argv) < 5:
+    print(f"usage: {sys.argv[0]} <source.md> <note-id> <replacements.json> <output.md>", file=sys.stderr)
+    sys.exit(2)
 src, note_id, mapping_path, out = sys.argv[1:5]
 source = Path(src).read_text()
 mapping = json.loads(Path(mapping_path).read_text())
@@ -54,7 +57,7 @@ lines = rewritten.splitlines()
 cleaned = []
 i = 0
 while i < len(lines):
-    if re.match(r"^\[image\d+\]:\s*<", lines[i]):
+    if re.match(r"^\[image\d+\]:\s*<?data:image/", lines[i]):
         i += 1
         # skip following blank lines
         while i < len(lines) and lines[i].strip() == "":
@@ -70,10 +73,7 @@ while cleaned and cleaned[-1].strip() == "":
 Path(out).write_text("\n".join(cleaned) + "\n")
 print(f"wrote {out}: {len(cleaned)} lines", file=sys.stderr)
 
-# Sanity: flag any remaining unknown refs
-unknown = re.findall(r"!\[\]\[image(\d+)\]", "\n".join(cleaned))
-if unknown:
-    print(f"WARNING: {len(unknown)} unmapped refs remain: {sorted(set(unknown))}", file=sys.stderr)
+# Sanity: flag any refs that had no mapping entry
 unmapped = re.findall(r"\*\*\[UNMAPPED image\d+\]\*\*", "\n".join(cleaned))
 if unmapped:
     print(f"WARNING: {len(unmapped)} UNMAPPED markers in output", file=sys.stderr)
