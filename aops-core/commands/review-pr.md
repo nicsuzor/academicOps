@@ -541,7 +541,10 @@ Then commission RBG again on the updated state before proceeding to approval.
 If the PR changes a public interface (function signature, tool schema, return shape, CLI flag, MCP surface), search callers in sibling repos before approving:
 
 ```bash
-# Tool / function names that moved, renamed, or changed shape
+# Set to the function/class/tool name that changed (from the diff)
+CHANGED_SYMBOL="<name_of_changed_symbol>"
+
+# Search callers in sibling repos
 for repo in ~/src/academicOps ~/brain ~/src/mem; do
   [ -d "$repo" ] && grep -rn "$CHANGED_SYMBOL" "$repo" --include="*.py" --include="*.rs" --include="*.md" 2>/dev/null | head -20
 done
