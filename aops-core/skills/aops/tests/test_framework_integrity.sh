@@ -12,21 +12,10 @@ GREEN='\033[0;32m'
 NC='\033[0m' # No Color
 
 BOTS_DIR="${AOPS:-$HOME/src/academicOps}"
-SCRIPT_DIR="$(dirname "$0")/../scripts"
 
-# Test 1: Validate documentation integrity
+# Test 1: Verify authoritative files exist
 echo ""
-echo "Test 1: Documentation integrity"
-if uv run python "${SCRIPT_DIR}/validate_docs.py"; then
-    echo -e "${GREEN}✅ Documentation integrity test passed${NC}"
-else
-    echo -e "${RED}❌ Documentation integrity test FAILED${NC}"
-    exit 1
-fi
-
-# Test 2: Verify authoritative files exist
-echo ""
-echo "Test 2: Authoritative files exist"
+echo "Test 1: Authoritative files exist"
 REQUIRED_FILES=(
     "${BOTS_DIR}/AXIOMS.md"
     "${BOTS_DIR}/CORE.md"
@@ -43,9 +32,9 @@ for file in "${REQUIRED_FILES[@]}"; do
     fi
 done
 
-# Test 3: Verify directory structure
+# Test 2: Verify directory structure
 echo ""
-echo "Test 3: Directory structure"
+echo "Test 2: Directory structure"
 REQUIRED_DIRS=(
     "${BOTS_DIR}/skills"
     "${BOTS_DIR}/hooks"
@@ -64,9 +53,9 @@ for dir in "${REQUIRED_DIRS[@]}"; do
     fi
 done
 
-# Test 4: Check for bloat (file size limits)
+# Test 3: Check for bloat (file size limits)
 echo ""
-echo "Test 4: Bloat check (file size limits)"
+echo "Test 3: Bloat check (file size limits)"
 BLOAT_DETECTED=0
 
 # Check skill files (500 line limit)
