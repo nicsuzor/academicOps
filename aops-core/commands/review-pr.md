@@ -84,11 +84,11 @@ Additionally, fetch `.agents/context-map.json` if present and extract its top-le
 
 ```bash
 # Locally:
-jq -r '.spec_dirs // [] | .[]' .agents/context-map.json 2>/dev/null
+jq -r '.spec_dirs // [] | join(", ")' .agents/context-map.json 2>/dev/null
 
 # Cross-repo via gh:
 gh api repos/$REPO_REF/contents/.agents/context-map.json --jq '.content | @base64d' 2>/dev/null \
-  | jq -r '.spec_dirs // [] | .[]' 2>/dev/null
+  | jq -r '.spec_dirs // [] | join(", ")' 2>/dev/null
 ```
 
 Store the result in `$SPEC_DIRS` (may be empty). It will be surfaced to Pauli in Step 4.
