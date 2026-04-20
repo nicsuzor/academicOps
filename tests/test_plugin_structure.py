@@ -102,8 +102,8 @@ class TestGovernanceFiles:
         content = rbg_file.read_text()
         assert "## Axioms" in content, "rbg.md must contain axioms section"
         # Axioms may be inline or loaded via @ reference to AXIOMS.md
-        if "P#1" not in content:
-            # Must reference AXIOMS.md which must contain P#1 and P#99
+        if "A1" not in content:
+            # Must reference AXIOMS.md which must contain A1 (Closure) and A7 (Delegated Authority)
             assert "AXIOMS.md" in content, "rbg.md must either embed axioms or reference AXIOMS.md"
             # Axioms live at the plugin root (canonical location)
             axioms_file = PLUGIN_ROOT / "AXIOMS.md"
@@ -111,8 +111,8 @@ class TestGovernanceFiles:
                 "AXIOMS.md must exist at aops-core/AXIOMS.md (plugin-relative)"
             )
             axioms_content = axioms_file.read_text()
-            assert "P#1" in axioms_content, "AXIOMS.md must contain axiom P#1"
-            assert "P#99" in axioms_content, "AXIOMS.md must contain axiom P#99"
+            assert "A1" in axioms_content, "AXIOMS.md must contain axiom A1"
+            assert "A7" in axioms_content, "AXIOMS.md must contain axiom A7"
 
     def test_heuristics_file_exists(self) -> None:
         """HEURISTICS.md must exist in framework directory."""

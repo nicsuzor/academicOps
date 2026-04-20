@@ -482,6 +482,12 @@ Before spawning an Explore subagent or any research-oriented subagent, the main 
 
 The heuristics below were relocated from AXIOMS.md during the 2026-04-18 axiom rework. They describe how the framework itself is built, rather than universal rules for agent conduct. A follow-up task will migrate them into a dedicated framework skill; until then, they live here.
 
+## Self-Documenting (P#10)
+
+Documentation-as-code first; never make separate documentation files.
+
+**Derivation**: Separate documentation drifts from code. Embedded documentation stays synchronized with implementation.
+
 ## Always Dogfooding (P#22)
 
 Use real projects as development guides, test cases, and tutorials. Never create fake examples.
@@ -512,7 +518,7 @@ We work in git repositories — git is the backup system.
 
 No coding without an approved plan.
 
-**Derivation**: Coding without a plan leads to rework and scope creep. Plans ensure alignment with user intent before investment. Not universal — small typo fixes and single-line changes don't need a formal plan.
+**Derivation**: Coding without a plan leads to rework and scope creep. Plans ensure alignment with user intent before investment. Not universal — trivial non-functional changes (typos, whitespace, comment wording) don't need a formal plan.
 
 ## Just-In-Time Context (P#43)
 

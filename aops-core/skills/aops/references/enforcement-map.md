@@ -42,7 +42,7 @@ The enforcer gate runs periodically (every ~7 tool calls) to check for:
 
 - Ultra vires behavior (acting beyond granted authority)
 - Scope creep (work expanding beyond original request)
-- Infrastructure failure workarounds (violates P#9, P#25)
+- Infrastructure failure workarounds (violates A8 — Halt on Failure)
 - SSOT violations
 
 ### Output Formats
