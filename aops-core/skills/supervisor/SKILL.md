@@ -67,18 +67,29 @@ The supervisor is NOT a pipeline — it's a loop that enters at whatever phase
 the epic needs on each invocation.
 
 ```
-ORIENT → DECOMPOSE → DISPATCH → MONITOR → REACT → INTEGRATE → COMPLETE
+ORIENT → DECOMPOSE → (plan-review gate) → WAITING → DISPATCH → MONITOR → REACT → INTEGRATE → COMPLETE
 ```
 
-| Phase     | What happens                                             | Instructions                                                                                     |
-| --------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| Orient    | Read epic, verify child statuses, decide what to do next | [[instructions/supervision-loop]]                                                                |
-| Decompose | Break work into PR-sized subtasks                        | [[instructions/decomposition-and-review]]                                                        |
-| Dispatch  | Send tasks to workers (local or remote via SSH+tmux)     | [[instructions/worker-dispatch]], [[instructions/worker-dispatch#remote-dispatch-via-ssh--tmux]] |
-| Monitor   | Event-driven: background notifications + PR Monitor      | [[instructions/supervision-loop]]                                                                |
-| React     | Handle failures, conflicts, scope changes                | [[instructions/supervision-loop]]                                                                |
-| Integrate | Verify, merge, sync                                      | [[instructions/supervision-loop]]                                                                |
-| Complete  | Update epic, capture knowledge, file follow-ups          | [[instructions/knowledge-capture]]                                                               |
+| Phase     | What happens                                                          | Instructions                                                                                     | Exit condition                                                                           |
+| --------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| Orient    | Read epic, verify child statuses, decide what to do next              | [[instructions/supervision-loop]]                                                                | Next phase selected                                                                      |
+| Decompose | Break work into PR-sized subtasks; run Phase 2 review                 | [[instructions/decomposition-and-review]]                                                        | Synthesis complete; plan-review gate evaluated                                           |
+| Waiting   | Plan-review halt — decomposition synthesized, awaiting human approval | [[instructions/decomposition-and-review#plan-review-gate-phase-25]]                              | **Parent task promoted to `queued` by human** (status transition IS the approval record) |
+| Dispatch  | Send tasks to workers (local or remote via SSH+tmux)                  | [[instructions/worker-dispatch]], [[instructions/worker-dispatch#remote-dispatch-via-ssh--tmux]] | Worker fired; task status → `in_progress`                                                |
+| Monitor   | Event-driven: background notifications + PR Monitor                   | [[instructions/supervision-loop]]                                                                | State change event observed                                                              |
+| React     | Handle failures, conflicts, scope changes                             | [[instructions/supervision-loop]]                                                                | Issue resolved or re-dispatched                                                          |
+| Integrate | Verify, merge, sync                                                   | [[instructions/supervision-loop]]                                                                | PR merged; task → done                                                                   |
+| Complete  | Update epic, capture knowledge, file follow-ups                       | [[instructions/knowledge-capture]]                                                               | Epic done; knowledge captured                                                            |
+
+**`Waiting` is a real halt state**, not a transient phase. After Phase 2
+synthesis, if the parent task's `status != "queued"` the supervisor posts a
+summary comment on the task, sets parent `status = "waiting"`, emits a
+user-facing summary, and **STOPS**. No subtasks are moved out of
+`inbox`/`ready`. The loop resumes only when the human promotes the parent
+to `queued` — that status transition is the approval record (no separate
+marker or metadata). See
+[[instructions/decomposition-and-review#plan-review-gate-phase-25]] for the
+exact check.
 
 ## Dispatch
 
