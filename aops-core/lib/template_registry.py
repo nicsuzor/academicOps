@@ -187,7 +187,7 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         category=TemplateCategory.USER_MESSAGE,
         filename="handover-complete.md",
         required_vars=(),
-        description="Status message when handover/dump skill completes",
+        description="Status message when end_session / handover / dump skill completes",
     ),
     "handover.policy_message": TemplateSpec(
         name="handover.policy_message",
