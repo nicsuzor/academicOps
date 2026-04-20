@@ -170,7 +170,7 @@ GATE_CONFIGS = [
                 condition=GateCondition(
                     hook_event="PreToolUse",
                     tool_name_pattern="^pauli$",
-                    tool_input_pattern=r"/dump|/end_session|handover",
+                    tool_input_pattern=r"/?\b(dump|end_session)\b|\bhandover\b",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
