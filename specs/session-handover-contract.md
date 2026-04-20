@@ -32,6 +32,7 @@ Agents must emit a terse terminal summary at the end of a session. This replaces
 - **Branch**: name.
 - **Issue**: URL (if bound).
 - **Follow-ups**: List of task IDs created for future work.
+- **Summary**: One-sentence result-oriented summary (the `release_summary` value, max 500 chars).
 
 **Example**:
 
@@ -43,6 +44,7 @@ Agents must emit a terse terminal summary at the end of a session. This replaces
 - **PR**: https://github.com/nicsuzor/academicOps/pull/123
 - **Branch**: `feat/handover-contract`
 - **Follow-ups**: `task-98face0b`, `task-228e2d6e`
+- **Summary**: Implemented YAML schema extension and terminal output spec for session handover
 ```
 
 ## 2. `release_task` Requirements
@@ -110,10 +112,10 @@ The "Recent Sessions" panel in the **Overwhelm Dashboard** becomes the primary h
 | `release_task` logic | `pkb/tools/task_tools.py`        | 📋     |
 | `end_session` skill  | `aops-core/skills/dump/SKILL.md` | 📋     |
 | `/recap` definition  | `aops-core/commands/recap.toml`  | 📋     |
-| Dashboard Panel      | `polecat/observability.py`       | 📋     |
+| Dashboard Panel      | `scripts/synthesize_dashboard.py` | 📋     |
 
 ## 8. Backwards Compatibility
 
 - **No shims**: Existing `## Framework Reflection` blocks are not migrated.
 - **Deprecation**: Agents should be prompted to stop using the old format immediately upon implementation of this spec.
-- **Breaking**: Parsers relying on regex-extraction from `## Framework Reflection` will be retired once the dashboard is fully functional.
+- **Breaking**: Parsers relying on regex-extraction from `## Framework Reflection` will be retired once the dashboard is fully functional. This includes `aops-core/lib/reflection_detector.py`, which should be explicitly deprecated at implementation time.
