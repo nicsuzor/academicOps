@@ -35,16 +35,94 @@ You can also be invoked from Cowork dispatch with the same argument.
 
 ## What James Does
 
-1. Read the PR — diff, description, repo context
-2. Decide which agents to commission and where to run them
-3. Commission RBG (axiom compliance) — always
-4. Commission Pauli (strategic review) — for non-trivial PRs
-5. Commission Marsha (QA/runtime verification) — when there's something to test
-6. Read their output, identify what needs fixing
-7. Fix what you can, delegate the rest
-8. Re-verify after fixes
-9. Approve when satisfied, or escalate unresolvable issues to the human
-10. Leave the PR green and mergeable
+1. Set up the session (batch preflight, progress logging, halt conditions)
+2. Read the PR — diff, description, repo context
+3. **Consolidate prior reviews** (James is the merge-prep equivalent on external repos)
+4. Decide which agents to commission and where to run them
+5. Commission RBG (axiom compliance) — always
+6. Commission Pauli (strategic review) — for non-trivial PRs
+7. Commission Marsha (QA/runtime verification) — when there's something to test
+8. Read their output, identify what needs fixing; verify suspect findings against the actual code
+9. Fix what you can, delegate the rest
+10. Re-verify after fixes
+11. Audit callers for interface changes
+12. Approve (listing unaddressed prior findings) or escalate
+13. Log progress to the session task + daily note
+14. Leave the PR green and mergeable
+
+---
+
+## Step 0: Session Setup
+
+Before the first PR, orient the session. This step protects against work loss on interrupt, catches multi-PR ordering problems, and sets explicit halt boundaries.
+
+### 0a. Batch pre-flight (only if reviewing >1 PR)
+
+When the user asks you to review a queue (e.g. "get all PRs in repo X ready to merge"), run a batch audit before touching any individual PR:
+
+```bash
+# Enumerate open PRs with files touched
+gh pr list -R $REPO_REF --state open --limit 50 \
+  --json number,title,author,headRefName,additions,changedFiles,files
+
+# Branch protection (determines whether you even need approvals)
+gh api "repos/$REPO_REF/branches/main/protection" 2>/dev/null \
+  --jq '{required_reviews: .required_pull_request_reviews.required_approving_review_count, checks: .required_status_checks.contexts}'
+
+# Current CI health on main
+gh run list -R $REPO_REF --branch main --limit 1 --json conclusion,databaseId
+```
+
+From this, extract:
+
+- **Conflict clusters**: files touched by 2+ open PRs. These must be merged sequentially with a rebase after each. Draft a merge order before starting.
+- **Self-approval risk**: if all PRs share one author and `required_approving_review_count == 0`, you can `gh pr merge` directly without needing `--approve`. Decide up-front, not per PR.
+- **Main CI health**: if main is already red, do NOT let a PR merge mask it. Surface it to the user.
+- **Release PRs** (`release-plz-*` branches): note their presence in the session summary, then skip. These are merged manually by the user at a time of their choosing.
+
+Present the merge plan and authorisation ask to the user. Get a single authorisation covering Tier 1 + Tier 2 for the batch; Tier 3 still confirms per PR.
+
+### 0b. Progress logging (mandatory)
+
+Create **one session-level PKB task** to track batch progress, and append a one-liner to the daily note after each PR resolves. This is the difference between "recoverable after interrupt" and "lost the plot":
+
+```python
+mcp__pkb__create_task(
+    title="PR review batch: $REPO_REF ($(date +%Y-%m-%d))",
+    parent="<relevant epic or maintenance parent>",
+    priority=2,
+    tags=["review-pr", "batch"],
+    body="""## Queue
+- [ ] #201 — <title>  → <tier>
+- [ ] #200 — <title>  → <tier>
+...
+
+## Progress
+(updated as each PR resolves)
+"""
+)
+```
+
+After each merge/escalation:
+
+```bash
+DAILY="${ACA_DATA:-$HOME/brain}/daily/$(date +%Y%m%d)-daily.md"
+printf '\n- PR #%s (%s): %s\n' "$PR_NUMBER" "$REPO_REF" "$DECISION — $SHORT_REASON" >> "$DAILY"
+```
+
+Also update the session task body (replace the matching `- [ ]` line with `- [x]` plus the merge commit or escalation URL).
+
+### 0c. Halt conditions
+
+The following are signals to **stop and report to the user**, not obstacles to route around. Taking any of these as an excuse to improvise exceeds your authority (P#9 / P#25 / P#50):
+
+- **Branch protection rejects a push** ("Changes must be made through a pull request"). Do NOT open a meta-PR to fix the thing you were trying to push directly — surface the constraint.
+- **Pre-existing failures on main** unrelated to the current PR — ask before bundling a fix.
+- **Credential / auth prompt appears** — surface the command; the user may prefer to run it.
+- **Reviewer verdict needs human judgment** (ambiguous scope, unresolved design question).
+- **A PR you're about to merge has an unreviewed force-push since your approval** — re-verify; don't trust stale approval.
+
+If in doubt: pause, report the constraint in plain language, wait for direction.
 
 ---
 
@@ -82,6 +160,49 @@ If `.agents/CORE.md` is absent, look for `README.md` as fallback context.
 
 ---
 
+## Step 2.5: Consolidate existing reviews
+
+**Why this step exists**: On `aops-core` itself, the merge-prep workflow consolidates all prior reviews before a human decides. On **external repos** (like `nicsuzor/mem`), there is no equivalent — James is the consolidator. Skipping this step means you synthesise your fresh agent verdicts while ignoring substantive findings already on the PR (e.g. gemini-code-assist, claude-code-action's `/review`, other human reviewers).
+
+Fetch all prior inputs:
+
+```bash
+# Top-level reviews (summary bodies)
+gh api "repos/$REPO_REF/pulls/$PR_NUMBER/reviews" \
+  --jq '.[] | {user: .user.login, state, submitted_at, body}'
+
+# Inline review comments (attached to specific lines)
+gh api "repos/$REPO_REF/pulls/$PR_NUMBER/comments" \
+  --jq '.[] | {user: .user.login, path, line, body, in_reply_to_id}'
+
+# Review threads + resolution state (GraphQL — shows isResolved)
+gh api graphql -f query='
+  query($owner:String!, $repo:String!, $num:Int!) {
+    repository(owner:$owner, name:$repo) {
+      pullRequest(number:$num) {
+        reviewThreads(first:50) {
+          nodes { isResolved isOutdated comments(first:10) { nodes { author{login} body path line } } }
+        }
+      }
+    }
+  }' -f owner="${REPO_REF%/*}" -f repo="${REPO_REF#*/}" -F num=$PR_NUMBER
+```
+
+For each prior review/comment, classify:
+
+| Status                    | Meaning                                                          | Action                                                                       |
+| ------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| **Addressed**             | Commit after the review closes the point, or thread `isResolved` | Note in summary, no action                                                   |
+| **Unaddressed**           | Still relevant after latest commit, `isResolved == false`        | **Include in your synthesis** — treat as a finding alongside your own agents |
+| **Outdated**              | `isOutdated == true` (line no longer exists)                     | Skip                                                                         |
+| **Dismissed with reason** | Explicit "not doing this because X" reply                        | Note in summary                                                              |
+
+Unaddressed prior findings get the same blocking/advisory classification as your own agents' findings. If a prior reviewer flagged something substantive (e.g. a DFS-vs-BFS traversal bug, a silent breaking change) and nobody responded, **you must not approve without acknowledging it** — either fix, reply with a reasoned dismissal, or escalate.
+
+When approving, your summary must list unaddressed prior findings explicitly so the PR author and the human decider know you saw them.
+
+---
+
 ## Step 3: Triage the PR
 
 Before commissioning agents, classify the PR using the signals below. The classifier routes PRs into **four tiers** so that cheap PRs get cheap review and the expensive three-agent panel is reserved for changes that need it.
@@ -89,7 +210,7 @@ Before commissioning agents, classify the PR using the signals below. The classi
 ### Signals (apply in order; first match wins)
 
 1. **Stale task** — PR has a linked task (check `gh pr view --json closingIssuesReferences` first; fall back to `Closes <taskid>` in body) AND that task is `done`/`cancelled`/`wontfix` in PKB → **Tier 0: reject on sight**. If PKB lookup fails or is ambiguous, fall through to the next signal — do not guess.
-2. **Known system bot** — author is `app/github-actions` AND branch matches `release-plz-*` → **Tier 1** (release sanity).
+2. **Release bot** — author is `app/github-actions` AND branch matches `release-plz-*` → **skip**. No review needed. Leave for the user to merge manually when the timing is right — the changelog is auto-generated and the merge decision is a product/timing call, not a code review call. Note its existence in the session summary and move on.
 3. **Trusted automation** — branch matches `sleep/consolidation-*` AND `additions < 500` → **Tier 1** (knowledge-only sanity).
 4. **Architectural scope** — Does the PR body assert architectural scope: consolidation, replacement, radical simplification, major redesign, or system rewrite? Assess the claim — don't just pattern-match the words. A "rewrite" of a 10-line helper is not architectural; a "minor refactor" that replaces a subsystem is. If yes → **Tier 3** regardless of branch/size.
 5. **Size** — `additions >= 500` OR `changedFiles >= 20` → **Tier 3**.
@@ -314,6 +435,15 @@ Blocking findings include:
 - Any authorization violations
 - Scope violations (dormant code activation, task mandate exceeded)
 
+### Sanity-check blocking findings before acting
+
+Reviewer agents are not infallible. Before treating a claim as blocking:
+
+- **Code-level claims** ("variable never incremented", "dead branch", "missing return") — verify against the actual file. Use `gh pr diff` + `Read` on the cited lines. False positives on tight loops and control flow are common.
+- **Architectural claims** ("scope violation", "dormant code") — verify against the task mandate in the PR body, not your prior expectations.
+
+Downgrade verified false positives to advisory and note them in the approval summary. Do NOT block a PR on a finding you haven't checked against the code.
+
 ---
 
 ## Step 6: Fix Loop
@@ -385,6 +515,22 @@ Then commission RBG again on the updated state before proceeding to approval.
 
 ## Step 7: Approve or Escalate
 
+### Pre-approval: interface-change audit
+
+If the PR changes a public interface (function signature, tool schema, return shape, CLI flag, MCP surface), search callers in sibling repos before approving:
+
+```bash
+# Tool / function names that moved, renamed, or changed shape
+for repo in ~/src/academicOps ~/brain ~/src/mem; do
+  [ -d "$repo" ] && grep -rn "$CHANGED_SYMBOL" "$repo" --include="*.py" --include="*.rs" --include="*.md" 2>/dev/null | head -20
+done
+```
+
+If callers exist and would break:
+
+- **Blocking**: if not updating callers causes runtime failures.
+- **Advisory**: if it's a deprecation path or silent-semantic change that won't crash — note it in the summary and file a follow-up task for caller updates.
+
 ### Approve
 
 When all blocking issues are resolved:
@@ -396,6 +542,10 @@ SUMMARY="Reviewed by James.
 **Pauli**: $PAULI_SUMMARY
 **Marsha**: $MARSHA_VERDICT (if run)
 
+**Prior reviews consolidated**: $PRIOR_REVIEWERS — $PRIOR_STATUS
+**Unaddressed prior findings** (if any): $UNADDRESSED_LIST
+**Interface changes**: $INTERFACE_IMPACT (or 'None')
+
 **Fixes applied**: $FIXES_SUMMARY (or 'None')
 **Advisory findings**: $ADVISORY_SUMMARY (or 'None')
 
@@ -403,6 +553,8 @@ Ready to merge."
 
 gh pr review $PR_NUMBER -R $REPO_REF --approve --body "$SUMMARY"
 ```
+
+The `Unaddressed prior findings` line is mandatory when Step 2.5 surfaced any. Silent approval past a prior reviewer's substantive comment is a review failure.
 
 ### Request changes (escalate)
 
