@@ -2,7 +2,7 @@
 name: pull
 type: command
 category: instruction
-description: Pull a task from queue, claim it (mark active), and mark complete when done
+description: Pull a task from queue, claim it (mark in_progress), and mark complete when done
 triggers:
   - "pull task"
   - "get work"
@@ -19,7 +19,7 @@ permalink: commands/pull
 
 # /pull - Pull, Claim, and Complete a Task
 
-**Purpose**: Get a task from the dispatch queue (status `queued`), claim it (mark status active), and mark it complete when finished.
+**Purpose**: Get a task from the dispatch queue (status `queued`), claim it (mark status `in_progress`), and mark it complete when finished.
 
 ## Workflow
 
