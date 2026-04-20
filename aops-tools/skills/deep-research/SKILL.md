@@ -63,7 +63,7 @@ Follow [[pkb-capture]]. Short version:
 - `scripts/fetch.sh <url> <outdir>` — pulls markdown + docx, extracts images
 - For every image in the doc: load it, transcribe (LaTeX if math, prose if diagram), rewrite the image reference in the markdown with real alt-text AND keep the image file committed
 - Frontmatter with `source`, `gdoc_id`, `spike`, `parent_epic`, `feeds`
-- Filename convention: `<common-theme>-<task-id>-<slug>.md` when multiple briefs form a set (e.g. `pkb-weight-454ec614-edge-elicitation.md`); a single standalone brief uses `<topic>-<task-id>-<slug>.md`
+- Filename convention: `<common-theme>-<task-id>-<slug>.md` when multiple briefs form a set (e.g. `pkb-weight-<task-id-1>-edge-elicitation.md`); a single standalone brief uses `<topic>-<task-id>-<slug>.md`
 - Store images under `knowledge/<topic>/figures/<note-id>/<imageN>.png`
 - Update the sourcing task: set `research_output: <note-id>`, add `**Captured**: <date> to [[<note-id>]]`, and mark `done` if acceptance criteria are met
 
