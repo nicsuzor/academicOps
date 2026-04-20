@@ -48,6 +48,13 @@ Write state to the task body and commit BEFORE dispatching. If killed between
 checkpoint and action, the next instance sees pre-action state and retries
 safely. Record-then-fire, not fire-then-record.
 
+Supervisor state appends to the epic body (a `## Supervisor Log` section with
+timestamped entries) are part of the supervisor contract — **not** scope creep.
+Downstream enforcers should not flag these as P#5 violations; if one does,
+correct the enforcer, not the supervisor. Keep entries terse and factual:
+dispatch timestamps, task IDs, exit conditions, recovery actions. One line per
+event is usually enough.
+
 ### Idempotent Operations
 
 Every supervisor action is safe to repeat. Dispatching a task that's already
@@ -203,6 +210,26 @@ External triggers that start the supervision loop.
 - PKB MCP unreachable from sandbox containers — workers can't update task status.
 - Pre-dispatch validation is critical: with hydration gate off, the supervisor's
   pre-dispatch check is the last chance to catch tasks targeting deprecated code.
+- **Polecat stream noise ≠ failure.** Gemini workers routinely emit loud-looking
+  stderr during boot — corrupted-credentials warnings, sandbox policy TOML parse
+  errors, "Hook system message: Task bound" hook-loop spam, missing-MCP-tool
+  errors (e.g. `release_task` not wired into the worker's MCP surface). These
+  are transient/cosmetic in many cases and the worker can still complete, push,
+  and open a PR. Do NOT halt on stderr keywords — wait for a terminal signal:
+  `polecat finish`, PR URL, or process exit with non-zero status. "PR's up" /
+  "Task updated" in the stream IS the success signal.
+- **MCP / CLI / disk three-way divergence.** After a `git pull`, the local
+  filesystem has the task file, the local `pkb show` CLI usually finds it, but
+  the remote PKB MCP (tailscale host) can lag by minutes. Polecat's bootstrap
+  validation hits the MCP and will exit if the task isn't there yet, leaving
+  the task claimed but no worktree. Recovery: `polecat reset-stalled --hours 0
+  --force` then re-dispatch. Pre-flight: `pkb show <task-id>` AND a PKB MCP
+  `get_task` before dispatching a freshly-pulled task.
+- **`merge-prep-status: waiting for bazaar window and triage`** — gating
+  mechanism is not fully documented here. A PR may have all CI checks green
+  but still sit in this pending state indefinitely. Supervisor cannot clear
+  this; a human LGTM or explicit admin merge is required. **TODO**: document
+  bazaar-window rules and how supervisor should act when encountered.
 
 ## Quick Reference
 
