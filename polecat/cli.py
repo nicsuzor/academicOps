@@ -2220,6 +2220,16 @@ def sync(ctx, check, quiet, mirrors_only):
 
     # --- Phase 2: Bare mirrors ---
     if check:
+        if not quiet:
+            print(f"Checking mirrors in {manager.repos_dir}...")
+        for project in manager.projects:
+            mirror_path = manager.repos_dir / f"{project}.git"
+            if mirror_path.exists():
+                fresh, msg = manager.check_mirror_freshness(project)
+                if not fresh or not quiet:
+                    print(f"  {project}: {msg}")
+            elif not quiet:
+                print(f"  ⊘ {project}: no mirror")
         return
     if not quiet:
         print(f"Syncing mirrors in {manager.repos_dir}...")
