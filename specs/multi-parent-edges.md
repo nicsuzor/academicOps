@@ -5,7 +5,7 @@ status: draft
 owner: aops
 parent_epic: task-18da4781
 feeds_pilot: task-0779b81b
-last_updated: 2026-04-20
+last_updated: 2026-04-20 (prototype extension)
 ---
 
 # Multi-parent edges and target-node severity propagation
@@ -69,6 +69,31 @@ No character cap in MVP; `/maintain` reviews it.
 - Severe-keyword gatekeeping on consequence prose → agent-side check during `/maintain`.
 - Post-mortem integrity audit → manual cadence in `/maintain` until dogfooding proves we need automation.
 
+## 1.6 Prototype nodes (standing obligations)
+
+A target node represents a one-shot terminal event with a specific `due`. That shape is wrong for **recurring / class-like obligations** (e.g. OSB voting, peer-review load) whose individual instances each have their own deadlines but share the same severity / goal_type / consequence.
+
+Rather than force a faux-target with a refreshed `due`, introduce a second node type:
+
+```yaml
+type: prototype
+edge_template:
+  severity: 3
+  goal_type: committed
+  weight: Expected
+  consequence: "<prose applicable to any instance>"
+```
+
+Semantics:
+
+- A prototype has no `due` of its own. It is not a target; it is a class definition.
+- Tasks linking via `contributes_to: [{to: <prototype-id>, inherits_from: <prototype-id>}]` have their edge materialised at creation time by copying `edge_template` fields into the edge YAML.
+- **Inheritance is one-time copy at edge creation.** Editing the prototype does not retroactively rewrite existing edges — past edges represent past beliefs. Re-stamping is an explicit opt-in operation.
+- `inherits_from:` on an edge is a provenance breadcrumb, not a live reference. The urgency-propagation BFS reads only the materialised edge values — it does not need to know about prototypes.
+- Obsidian graph treats prototypes as first-class nodes; knowledge notes and tasks can link to them by wikilink.
+
+Instance-level fields (override prototype defaults): `weight` and `why` on the edge itself. Prototype-inherited fields fill gaps.
+
 ## 2. `contributes_to` edge schema
 
 Tasks declare contribution to one or more targets via a multi-parent-capable edge (distinct from the single `parent` / `blocks` relationships).
@@ -80,7 +105,27 @@ contributes_to:
   - to: <target-id>
     weight: Expected             # Renooij-Witteman verbal term (brief 2 §4)
     why: "contractual obligation to mark by 28 Apr"
+
+  # Prototype-backed variant (§1.6):
+  - to: <prototype-id>
+    weight: Certain              # resolved at edge-creation time from prototype.edge_template
+    why: "contractual OSB voting obligation (inherited from prototype)"
+    inherits_from: <prototype-id>  # provenance breadcrumb; not a live reference
 ```
+
+Resolution order at edge creation (agent-side, or future server-side `link()` MCP verb):
+
+1. If `inherits_from:` is set, copy absent fields from the referenced prototype's `edge_template` into the edge.
+2. Instance-level fields (anything the caller set explicitly on the edge) win over prototype defaults.
+3. Once materialised, the edge is self-contained — the BFS reads only the edge YAML.
+
+### 2.5 Belief semantics
+
+Every edge is a **belief**, not a fact: "I currently think task T contributes to O with weight W, as of this edit, because `why`." This framing is load-bearing for §4 calibration: drift, audit, fallibility, prototype inheritance, and the side-log all derive from treating edges as dated estimates rather than ground truth.
+
+Implementation corollary: history does **not** live on the edge itself. Edges stay as lightweight YAML list items on the source task; belief-drift history (Brier pairs, re-weight events, decay checkpoints) lives in a side-log in `mem` keyed on `(source, target, type)`, written only when the calibration ritual fires. The side-log is deferred until §4 justifies it.
+
+Reified edges-as-nodes rejected: breaks Obsidian's markdown grain, noisies the graph view, pays calibration cost before the ritual earns its keep.
 
 ### 2.2 Weight scale — Renooij-Witteman
 
