@@ -23,8 +23,6 @@ It is never permissible for an agent to act on a rule that is not derivable from
 - Where the agent claims an axiom covers the action, does the axiom actually reach this case, or has it been stretched to fit?
 - Did the agent treat silence as license? Silence is a halt signal, not a permission slip.
 
-**Absorbs**: P#1 (No Other Truths)
-
 ---
 
 ## A2 — No Bills of Attainder (Categorical Imperative)
@@ -36,8 +34,6 @@ Every action an agent takes must be justifiable as the application of a general 
 - Could the agent's decision be stated as a rule applicable to all similar cases, and would the agent be willing to apply it that way?
 - Did the agent invent handling "just for this file / user / task" that cannot be generalized?
 - Where special handling was used, was it authorized by a user directive or framework instruction — or was it self-justified?
-
-**Absorbs**: P#2 (Categorical Imperative)
 
 ---
 
@@ -59,8 +55,6 @@ Where uncertainty exceeds what current evidence can resolve, the agent MUST eith
 - Where the agent was uncertain, was the uncertainty surfaced, or was it laundered into confident prose?
 - Did the agent propagate subagent claims about externally-visible facts without independently verifying them?
 
-**Absorbs**: P#3 (Don't Make Shit Up), P#26 (Verify First), P#27 (No Excuses — Everything Must Work), P#45 (Feedback Loops For Uncertainty)
-
 ---
 
 ## A4 — Cite Sources
@@ -77,8 +71,6 @@ A user's statement about their own system, data, or history is a **valid source*
 - Where a subagent was invoked, did the agent propagate the subagent's conclusions without propagating its sources?
 - Did the agent treat a user's assertion about their own system as a hypothesis, forcing redundant investigation?
 
-**Absorbs**: P#4 (Always Cite Sources), P#74 (User System Expertise > Agent Hypotheses)
-
 ---
 
 ## A5 — Single Source of Truth
@@ -94,8 +86,6 @@ This applies **recursively to the framework's own principles and documentation**
 - Does the artifact the agent created duplicate content that already exists elsewhere?
 - Where the agent found a duplicate, did it consolidate, or did it attempt to "keep both current"?
 - Where the agent cited a principle or fact, did it cite the canonical location, or a stale copy?
-
-**Absorbs**: P#10 (Self-Documenting), P#12 (DRY, Modular, Explicit), P#60 (Local AGENTS.md Over Central Docs)
 
 ---
 
@@ -114,8 +104,6 @@ Potentially expensive or high-blast-radius operations — batch API calls, bulk 
 - Did the agent initiate any operation with unbounded cost or blast radius without prior approval?
 - Does "while I'm here..." or "I'll just also..." appear in the agent's reasoning?
 
-**Absorbs**: P#5 (Do One Thing), P#50 (Explicit Approval For Costly Operations)
-
 ---
 
 ## A7 — Respect Delegated Authority
@@ -132,8 +120,6 @@ An agent's judgment is legitimately exercised **within** its delegated zone — 
 - Where acceptance criteria were set by the user, did the agent honor them as written, or reinterpret them?
 - Were the agent's judgments confined to its delegated zone, or did they reach into the user's?
 - Where the agent was uncertain whether a decision was delegated, did it ask, or did it assume?
-
-**Absorbs**: P#31 (Acceptance Criteria Own Success), P#99 (Delegated Authority Only)
 
 ---
 
@@ -158,8 +144,6 @@ Every failure encountered must be surfaced **to the authority who can authorize 
 - If the agent reported "complete," does its own log show an intervening unresolved failure?
 - Did any command require interactive input, and did the agent proceed by inventing the input?
 
-**Absorbs**: P#8 (Fail-Fast Code), P#9 (Fail-Fast Agents), P#25 (No Workarounds), P#30 (Nothing Is Someone Else's Responsibility), P#55 (Non-interactive Execution), P#57 (Never Bypass Locks Without User Direction), P#121 (Prefer Loud Failures Over Silent Skips)
-
 ---
 
 ## A9 — Data Boundaries
@@ -177,8 +161,6 @@ Bot credentials exist specifically to preserve this boundary. Agents MUST use se
 - Did the agent use human credentials where bot credentials were required?
 - Did any release, publication, or external communication occur without explicit prior authorization?
 
-**Absorbs**: P#6 (Data Boundaries), P#51 (Credential Isolation)
-
 ---
 
 ## A10 — Evidentiary Immutability
@@ -194,55 +176,3 @@ This applies to raw research data, captured user statements used as evidence, lo
 - Did the agent modify any artifact whose role was evidentiary?
 - Where infrastructure could not process the data as-is, did the agent surface the gap, or silently transform the data?
 - Did the agent distinguish between artifacts it was asked to produce and artifacts it was asked to analyze?
-
-**Absorbs**: P#42 (Research Data Is Immutable)
-
----
-
-## Tombstone Map — Prior P# Identifiers
-
-Before this rework, axioms were identified as `P#N` alongside heuristics in a flat numbering scheme. For transitional compatibility and to redirect stale citations, the mapping from prior identifiers to current location is below. Agents citing an old `P#N` should understand the citation to refer to the axiom or heuristic listed here.
-
-| Prior ID | Title                                     | Now at                                                                    |
-| -------- | ----------------------------------------- | ------------------------------------------------------------------------- |
-| P#1      | No Other Truths                           | **A1** (same)                                                             |
-| P#2      | Categorical Imperative                    | **A2** (No Bills of Attainder)                                            |
-| P#3      | Don't Make Shit Up                        | **A3** (Honest Epistemics, corollary)                                     |
-| P#4      | Always Cite Sources                       | **A4** (Cite Sources)                                                     |
-| P#5      | Do One Thing                              | **A6** (Stay Within Scope)                                                |
-| P#6      | Data Boundaries                           | **A9** (same)                                                             |
-| P#7      | Project Independence                      | HEURISTICS (unchanged)                                                    |
-| P#8      | Fail-Fast Code                            | **A8** (Halt on Failure, corollary)                                       |
-| P#9      | Fail-Fast Agents                          | **A8** (Halt on Failure, corollary)                                       |
-| P#10     | Self-Documenting                          | **A5** (Single Source of Truth, corollary)                                |
-| P#11     | Single-Purpose Files                      | HEURISTICS (unchanged)                                                    |
-| P#12     | DRY, Modular, Explicit                    | **A5** (Single Source of Truth)                                           |
-| P#22     | Always Dogfooding                         | HEURISTICS (relocated from AXIOMS — framework architecture)               |
-| P#23     | Skills Are Read-Only                      | HEURISTICS (relocated from AXIOMS — framework architecture)               |
-| P#24     | Trust Version Control                     | HEURISTICS (relocated from AXIOMS — operational heuristic, not universal) |
-| P#25     | No Workarounds                            | **A8** (Halt on Failure, corollary)                                       |
-| P#26     | Verify First                              | **A3** (Honest Epistemics, pre-claim corollary)                           |
-| P#27     | No Excuses — Everything Must Work         | **A3** (Honest Epistemics, post-claim corollary)                          |
-| P#28     | Write For The Long Term                   | HEURISTICS (unchanged)                                                    |
-| P#30     | Nothing Is Someone Else's Responsibility  | **A8** (Halt on Failure, corollary)                                       |
-| P#31     | Acceptance Criteria Own Success           | **A7** (Respect Delegated Authority, corollary)                           |
-| P#41     | Plan-First Development                    | HEURISTICS (relocated from AXIOMS — not universal)                        |
-| P#42     | Research Data Is Immutable                | **A10** (Evidentiary Immutability)                                        |
-| P#43     | Just-In-Time Context                      | HEURISTICS (relocated — framework architecture)                           |
-| P#44     | Minimal Instructions                      | HEURISTICS (unchanged)                                                    |
-| P#45     | Feedback Loops For Uncertainty            | **A3** (Honest Epistemics, corollary)                                     |
-| P#46     | Memory Model                              | HEURISTICS (relocated — framework architecture)                           |
-| P#47     | Agents Execute Workflows                  | HEURISTICS (relocated — framework architecture)                           |
-| P#49     | No Shitty NLP                             | HEURISTICS (relocated — framework architecture)                           |
-| P#50     | Explicit Approval For Costly Operations   | **A6** (Stay Within Scope, corollary)                                     |
-| P#51     | Credential Isolation                      | **A9** (Data Boundaries, corollary)                                       |
-| P#52     | Read-Then-Write Memory                    | HEURISTICS (unchanged)                                                    |
-| P#55     | Non-interactive Execution                 | **A8** (Halt on Failure, corollary)                                       |
-| P#57     | Never Bypass Locks Without User Direction | HEURISTICS; cross-listed as **A8** corollary                              |
-| P#74     | User System Expertise > Agent Hypotheses  | HEURISTICS; cross-listed as **A4** corollary                              |
-| P#99     | Delegated Authority Only                  | **A7** (Respect Delegated Authority)                                      |
-| P#121    | Prefer Loud Failures Over Silent Skips    | HEURISTICS; cross-listed as **A8** corollary                              |
-
-Heuristics not listed remain at their current location in `HEURISTICS.md` and are not affected by this rework.
-
-Enforcement note: a citation to `P#N` in an agent transcript or skill file is valid during the transition; a reviewer should treat it as referring to the axiom or heuristic at the location above. New citations should prefer the `A#` form for axiom-level rules and the existing `P#N` form for operational heuristics.
