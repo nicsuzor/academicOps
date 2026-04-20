@@ -8,8 +8,8 @@
 # Produces, in <output-dir>:
 #   doc.md                — markdown export
 #   doc.docx              — docx export (source for figure extraction)
-#   figures/image1.png…   — extracted from docx's word/media/, re-named to match
-#                           the ![][imageN] references that the markdown export uses
+#   figures/image1.png…   — extracted from docx's word/media/ (Note: numbering
+#                           may not match markdown references and requires mapping)
 #
 # Requires: rclone with a configured `gdrive:` remote (run `rclone config` once).
 # Fails fast on any error. No fallback to gcloud / API keys.
