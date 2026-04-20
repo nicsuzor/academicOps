@@ -211,6 +211,15 @@ jobs:
 
           claude_args: '--model sonnet --allowed-tools "Bash,Edit,Read,Write"'
 
+      - name: Upload Claude session artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-session-${{ github.job }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ~/.claude/projects/
+          if-no-files-found: ignore
+          retention-days: 30
+
       # ── Post-agent: success path ──
 
       - name: Handle success

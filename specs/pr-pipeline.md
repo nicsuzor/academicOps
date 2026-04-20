@@ -291,17 +291,65 @@ Merge happens as part of Job 2 in `summary-and-merge.yml`. After environment app
 
 No separate auto-merge configuration needed — the merge is executed by the workflow job itself, not by GitHub's auto-merge feature.
 
+## Session Artifacts (Observability)
+
+All three agent workflows upload Claude session files as GHA artifacts on every run, including failures. This enables post-mortem analysis of turn usage, tool call sequences, and failure modes — without which resource exhaustion failures (e.g. `FatalTurnLimitedError`) are impossible to diagnose correctly.
+
+### Pattern
+
+Each agent job uses a three-part pattern:
+
+1. **`continue-on-error: true`** on the agent step — allows cleanup steps to always run.
+2. **Upload artifact** (immediately after agent step, `if: always()`):
+   ```yaml
+   - name: Upload Claude session artifacts
+     if: always()
+     uses: actions/upload-artifact@v4
+     with:
+       name: claude-session-${{ github.job }}-${{ github.run_id }}-${{ github.run_attempt }}
+       path: ~/.claude/projects/
+       if-no-files-found: ignore
+       retention-days: 30
+   ```
+3. **Propagate exit status** (final step, `if: always()`):
+   ```yaml
+   - name: Propagate agent exit status
+     if: always()
+     run: |
+       if [ "${{ steps.claude.outcome }}" != "success" ]; then
+         echo "::error::Agent run failed. Session artifacts uploaded for post-mortem analysis."
+         exit 1
+       fi
+   ```
+
+**`agent-merge-prep.yml` exception:** Merge-prep omits the propagate step because it uses explicit `Handle success` / `Handle failure` steps with their own exit codes and commit status API calls. It does upload artifacts.
+
+### Accessing artifacts
+
+In the GHA run view → **Artifacts** section, download `claude-session-{job}-{run_id}-{attempt}`. Then:
+
+```bash
+uv run python aops-core/scripts/transcript.py <path/to/session.jsonl>
+```
+
+Session files live at `~/.claude/projects/-workspace/*.jsonl` on the runner (project dir name = workspace path with `/` → `-`).
+
+**Retention:** 30 days. Sufficient for PR post-mortems; adjustable.
+
+**Why not Gemini CLI?** Consumer repos using Gemini CLI (e.g. `nicsuzor/mem`) need equivalent steps targeting `~/.gemini/tmp/`. That is tracked as a follow-up in the consumer repo — this spec covers the academicOps Claude workflows only.
+
 ## Workflow Files
 
-| File                   | Purpose                                                                                       |
-| ---------------------- | --------------------------------------------------------------------------------------------- |
-| `pr-pipeline.yml`      | CI orchestrator: sequential lint → typecheck → pytest. Triggers on `pull_request`.            |
-| `lint.yml`             | Ruff lint + format with autofix. Uses `AOPS_BOT_GH_TOKEN` so pushes trigger workflow restart. |
-| `typecheck.yml`        | basedpyright. Read-only gate.                                                                 |
-| `pytest.yml`           | Unit tests. Read-only gate.                                                                   |
-| `merge-prep-cron.yml`  | Dispatcher: `workflow_run` (PR Review Pipeline) + 30-min cron. Label-free qualification.      |
-| `agent-merge-prep.yml` | Merge-prep agent: triage reviews, fix issues, approve, set status.                            |
-| `agent-enforcer.yml`   | Axiom compliance reviewer. Fires on `workflow_run` (PR Review Pipeline) + `workflow_call`.    |
+| File                   | Purpose                                                                                                               |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `pr-pipeline.yml`      | CI orchestrator: sequential lint → typecheck → pytest. Triggers on `pull_request`.                                    |
+| `lint.yml`             | Ruff lint + format with autofix. Uses `AOPS_BOT_GH_TOKEN` so pushes trigger workflow restart.                         |
+| `typecheck.yml`        | basedpyright. Read-only gate.                                                                                         |
+| `pytest.yml`           | Unit tests. Read-only gate.                                                                                           |
+| `merge-prep-cron.yml`  | Dispatcher: `workflow_run` (PR Review Pipeline) + 30-min cron. Label-free qualification.                              |
+| `agent-merge-prep.yml` | Merge-prep agent: triage reviews, fix issues, approve, set status. Uploads session artifacts.                         |
+| `agent-enforcer.yml`   | Axiom compliance reviewer. Fires on `workflow_run` (PR Review Pipeline) + `workflow_call`. Uploads session artifacts. |
+| `claude.yml`           | Interactive Claude Code agent triggered by `@claude` mentions. Uploads session artifacts.                             |
 
 ## GitHub Ruleset
 
