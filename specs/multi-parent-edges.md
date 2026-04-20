@@ -126,11 +126,11 @@ Where:
 
 - `S_lex(s)` — step function:
   - `s == 4 && goal_type == "committed"` → `10_000`
-  - else → scalar from priority→weight table (reuse existing priority mapping: P0=5, P1=3, P2=2, P3=1, default=0.5; adopt target.severity→P-level isomorphism: SEV0=P3, SEV1=P2, SEV2=P1, SEV3=P0).
+  - else → scalar from priority→weight table (reuse existing priority mapping: P0=5, P1=3, P2=2, P3=1, default=0.5; adopt target.severity→P-level isomorphism: SEV0=P3, SEV1=P2, SEV2=P1, SEV3=P0, SEV4=P0).
 
 - `W_edge` — the numeric anchor from the Renooij-Witteman term (§2.2).
 
-- `Slack = due - now - e'` where `e'` is the estimated execution time (sum of descendant task scope × uncertainty). Least Slack Time, not Earliest Deadline First — LST uses execution estimates to prevent starvation of large critical tasks (brief 3 §4.2).
+- `Slack = due - now - e'` where `e'` is the estimated execution time (sum of descendant task scope × uncertainty). Least Slack Time, not Earliest Deadline First — LST uses execution estimates to prevent starvation of large critical tasks (brief 3 §4.2). `e'` MUST be pre-computed and cached per target during graph update (not recomputed per BFS visit) to avoid O(N²) traversal cost.
 
 - `f(Slack)` — piecewise-exponential (brief 3 §4.4):
   - `Slack > safe_horizon` → `ε` (negligible; don't clutter focus weeks out)

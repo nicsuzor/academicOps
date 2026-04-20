@@ -80,6 +80,7 @@ Task system, knowledge base, and MCP tool interfaces.
 | [[mcp-decomposition-tools.md]] | ✅     | Data access layer for task decomposition (dumb server, smart agent) |
 | [[pkb-server-spec.md]]         | 📋     | Combined CLI + MCP server for knowledge base (mem/Rust)             |
 | [[bd-markdown-integration.md]] | 📋     | Connect tasks to project markdown with auto-decomposition           |
+| [[multi-parent-edges.md]]      | 📋     | Target-node severity ladder + `contributes_to` edge urgency propagation via BFS |
 
 ## Tier 5: Observability & Learning
 
