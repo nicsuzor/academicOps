@@ -2184,8 +2184,6 @@ def sync(ctx, check, quiet, mirrors_only):
         polecat sync --quiet      # Only show issues
         polecat sync --mirrors-only  # Only sync bare mirrors
     """
-    _bootstrap_or_exit()
-
     manager = PolecatManager(home_dir=ctx.obj.get("home"))
 
     # --- Phase 1: Working repos ---
@@ -2221,6 +2219,8 @@ def sync(ctx, check, quiet, mirrors_only):
                 print()
 
     # --- Phase 2: Bare mirrors ---
+    if check:
+        return
     if not quiet:
         print(f"Syncing mirrors in {manager.repos_dir}...")
     results = manager.sync_all_mirrors()
