@@ -1,4 +1,5 @@
 {
+  "spec_dirs": ["specs/"],
   "docs": [
     {
       "topic": "project_overview",

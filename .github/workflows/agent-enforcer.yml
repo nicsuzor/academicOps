@@ -161,6 +161,7 @@ jobs:
       - name: Run Enforcer Review
         id: review
         if: (github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]') && steps.loop-check.outputs.skip != 'true'
+        continue-on-error: true
         uses: anthropics/claude-code-action@v1
         env:
           GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
@@ -197,3 +198,20 @@ jobs:
 
             Enforcement Mode: warn
           claude_args: '--model sonnet --allowed-tools "Bash,Read"'
+
+      - name: Upload Claude session artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-session-${{ github.job }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ~/.claude/projects/
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Propagate agent exit status
+        if: always()
+        run: |
+          if [ "${{ steps.review.outcome }}" != "success" ]; then
+            echo "::error::Enforcer agent run failed. Session artifacts uploaded for post-mortem analysis."
+            exit 1
+          fi

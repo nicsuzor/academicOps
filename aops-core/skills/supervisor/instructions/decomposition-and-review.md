@@ -272,7 +272,7 @@ if parent.status != "queued":
         pauli_verdict=pauli.verdict,
         rbg_verdict=rbg.verdict,
     )
-    post_task_comment(task_id, comment)
+    mcp__pkb__append(id=task_id, content=comment)
     update_task(id=task_id, updates={"status": "waiting"})
     emit_user_summary(
         f"Plan-review gate: {task_id} is {parent.status!r}. "

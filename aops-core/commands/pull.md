@@ -19,24 +19,26 @@ permalink: commands/pull
 
 # /pull - Pull, Claim, and Complete a Task
 
-**Purpose**: Get a task from the ready queue, claim it (mark status active), and mark it complete when finished.
+**Purpose**: Get a task from the dispatch queue (status `queued`), claim it (mark status active), and mark it complete when finished.
 
 ## Workflow
 
 ### Step 1: Get and Claim a Task
 
-1. **List ready tasks**: Call `mcp__pkb__list_tasks(status="ready", limit=10)` to find ready tasks sorted by priority + downstream weight.
+Per [[TAXONOMY]] §Status Values: agents pull only from `queued` (the human-gated dispatch queue). Tasks in `ready` are decomposed-but-unapproved and MUST NOT be claimed here — the user promotes `ready` → `queued` manually.
+
+1. **List queued tasks**: Call `mcp__pkb__list_tasks(status="queued", limit=10)` to find dispatchable tasks sorted by priority + downstream weight.
 2. **Select task**: Review the list and select the highest priority task (lowest priority number, e.g., P0).
 3. **Claim task**: Call `mcp__pkb__update_task(id="<task-id>", status="in_progress", assignee="polecat")` to claim it.
 
 **If a specific task ID is provided** (`/pull <task-id>`):
 
 1. Call `mcp__pkb__get_task(id="<task-id>")` to load it.
-2. If the task has children (leaf=false), navigate to the first ready leaf subtask instead.
+2. If the task has children (leaf=false), navigate to the first queued leaf subtask instead.
 3. If the task is already `in_progress`, skip claim and proceed directly to Step 1.5.
 4. Otherwise, claim with `mcp__pkb__update_task(id="<task-id>", status="in_progress", assignee="polecat")`.
 
-**If no tasks are ready**:
+**If no tasks are queued**:
 
 - Check active/inbox tasks for any that can be worked on.
 - If none exist, report and halt.
@@ -287,8 +289,8 @@ This captures what was done so work history is never lost.
 
 ## Arguments
 
-- `/pull` - Get highest priority ready task from the global queue
-- `/pull <task-id>` - Claim a specific task (or its first ready leaf if it has children)
+- `/pull` - Get highest priority queued task from the global dispatch queue
+- `/pull <task-id>` - Claim a specific task (or its first queued leaf if it has children)
 
 ## Implementation Note
 

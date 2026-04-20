@@ -93,18 +93,18 @@ Note: the `dispatched` status in the local work items table maps to
 | blocked        | Waiting on a dependency — will be unblocked automatically                                               |
 | needs_decision | Requires human judgment before work can proceed — do not dispatch                                       |
 | failed         | Worker failed, needs re-dispatch or replan                                                              |
-| branch_queued  | Ready, waiting for feature branch lock (coordinated dispatch)                                           |
+| branch_queued  | Queued, waiting for feature branch lock (coordinated dispatch)                                          |
 
 **`branch_queued` lifecycle** (coordinated dispatch only):
 
-- **Enters**: During DISPATCH, when a task is ready but another task holds the
+- **Enters**: During DISPATCH, when a task is queued but another task holds the
   feature branch lock. Set by the supervisor when choosing coordinated dispatch.
 - **Exits → dispatched**: When the branch-locked task completes (worker calls
   `mcp__pkb__release_task`), the supervisor transitions the next `branch_queued`
-  item to `ready`, then dispatches it normally.
-- **Exits → ready** (fallback): If the branch-locked task is reset by
+  item to `queued`, then dispatches it normally.
+- **Exits → queued** (fallback): If the branch-locked task is reset by
   `polecat reset-stalled`, the branch lock is implicitly released. The
-  supervisor transitions `branch_queued` items to `ready` on next ORIENT.
+  supervisor transitions `branch_queued` items to `queued` on next ORIENT.
 - **Stale-check interaction**: `branch_queued` tasks are NOT stale — they are
   intentionally waiting. Do not reset them. Only the actively dispatched
   branch-locked task can go stale.

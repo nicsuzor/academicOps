@@ -97,6 +97,12 @@ If no existing issue is found, perform a root cause analysis to include in the n
 - Actual: [What happened]
 ```
 
+> **Resource exhaustion failures** (turn limits, timeouts, quota exceeded): do NOT diagnose
+> "limit is too low" without first investigating the consumption pattern. Fetch the full
+> session log, count tool calls/turns, and look for loops, retries, or redundant operations.
+> Only recommend raising a threshold when consumption is confirmed legitimate. Stopping at
+> the error message is symptom diagnosis, not root cause analysis.
+
 ### 4. Determine Criticality Flags
 
 Assess the severity of the issue to apply the correct labels. Critical issues will float to the top of the queue.
@@ -118,12 +124,13 @@ gh issue create --repo nicsuzor/academicOps --title "Bug: <brief-slug>" --body-f
 
 ## Anti-patterns (things this command must NOT do)
 
-| Anti-pattern              | Why it's wrong                          | What to do instead                                         |
-| :------------------------ | :-------------------------------------- | :--------------------------------------------------------- |
-| Create a PKB task         | We use GitHub Issues to track bugs now. | File a GitHub issue or comment on an existing one.         |
-| Attempt a direct fix      | `/learn` no longer makes code changes.  | Let someone else pick up the issue.                        |
-| Include PII in the report | Violates privacy rules.                 | Anonymise all transcripts and logs before submission.      |
-| Create duplicate issues   | Dilutes the volume indicator.           | Search `gh issue list` first and comment to bump activity. |
+| Anti-pattern                                            | Why it's wrong                                                                | What to do instead                                                                       |
+| :------------------------------------------------------ | :---------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------- |
+| Create a PKB task                                       | We use GitHub Issues to track bugs now.                                       | File a GitHub issue or comment on an existing one.                                       |
+| Attempt a direct fix                                    | `/learn` no longer makes code changes.                                        | Let someone else pick up the issue.                                                      |
+| Include PII in the report                               | Violates privacy rules.                                                       | Anonymise all transcripts and logs before submission.                                    |
+| Create duplicate issues                                 | Dilutes the volume indicator.                                                 | Search `gh issue list` first and comment to bump activity.                               |
+| Diagnose "limit too low" without inspecting consumption | Raising the threshold masks efficiency bugs, loops, or misconfigured tooling. | Fetch the full log and count turns/tool calls before concluding the limit needs raising. |
 
 ## Framework Reflection
 
