@@ -276,6 +276,30 @@ During MONITOR, read BOTH:
 Use worker notes to update the work items table, decide whether the task
 truly needs follow-up, and inform subsequent task specs with lessons learned.
 
+#### Reading Polecat Stream Output (Don't Panic)
+
+When streaming a polecat's stdout/stderr, expect a lot of noise that looks
+catastrophic but isn't. Gemini workers in particular emit:
+
+- "Failed to load API key from storage: Error: Corrupted credentials file detected…"
+- "Policy file error in deny-extension-writes.toml / polecat-sandbox.toml"
+- "Error executing tool mcp_pkb_release_task: Tool … not found. Did you mean…"
+- "Hook system message: ▶ Task bound. Handover required before exit." repeated 20+ times
+
+None of these are terminal. Workers with these warnings have still produced
+clean PRs. **Do not halt the supervision on stream keywords.** The authoritative
+terminal signals are:
+
+- Worker process exits with non-zero status (background task notification)
+- `polecat finish` output appears
+- PR URL is posted to the stream ("PR's up: https://…")
+- "Task updated" / "Mission accomplished" appears after a release_task call
+
+If you read scary text but the process is still running and no terminal signal
+has arrived, **keep waiting**. Filter your Monitor for terminal signals, not for
+words like "Error" or "Corrupted". 2026-04-20 dogfood: supervisor nearly killed a
+gemini polecat that was in fact seconds away from opening PR #640.
+
 #### Polecat Lifecycle Signals
 
 PKB status and PR state are the primary signals, but for ambiguous cases also
