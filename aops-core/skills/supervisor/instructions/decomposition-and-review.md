@@ -248,6 +248,65 @@ Then:
 update_task(id=task_id, updates={"status": "waiting", "body": synthesis_markdown})
 ```
 
+---
+
+## Plan-Review Gate (Phase 2.5)
+
+After synthesizing Pauli + RBG verdicts (Phase 2) and BEFORE any DISPATCH
+action, the supervisor MUST check the parent task's status. Per
+[[../../../TAXONOMY.md]] (status transitions — see `TAXONOMY.md:172`),
+agents pull only from `queued`. The transition from `ready` → `queued` is
+the **human approval record** — no separate marker, no extra metadata.
+
+**Gate check** (run exactly once, immediately after Phase 2 synthesis):
+
+```python
+parent = get_task(task_id)
+
+if parent.status != "queued":
+    # Plan-review halt — human has not yet approved the decomposition.
+    comment = render_synthesis_summary(
+        subtask_count=len(subtasks),
+        files_affected=sorted_unique_files(subtasks),
+        key_risks=extracted_risks,
+        pauli_verdict=pauli.verdict,
+        rbg_verdict=rbg.verdict,
+    )
+    post_task_comment(task_id, comment)
+    update_task(id=task_id, updates={"status": "waiting"})
+    emit_user_summary(
+        f"Plan-review gate: {task_id} is {parent.status!r}. "
+        f"Decomposition complete with {len(subtasks)} subtasks. "
+        f"Promote to 'queued' to release for dispatch."
+    )
+    # Do NOT transition any subtask out of inbox/ready.
+    # Do NOT dispatch. STOP here. Resume from ORIENT only
+    # after the human promotes parent to 'queued'.
+    return HALT
+
+# parent.status == "queued": human has approved. Proceed to DISPATCH as today.
+```
+
+**Semantics** (explicit):
+
+- If `parent.status != "queued"` (e.g. `ready`, `inbox`, `waiting`): **HALT**.
+  - Post synthesis summary as a comment on the parent task (subtask count,
+    files affected, key risks, Pauli + RBG verdicts).
+  - Set parent `status = "waiting"`.
+  - Emit a user-facing summary describing what needs human review.
+  - Do NOT transition any subtask out of `inbox` / `ready`.
+  - Do NOT dispatch. STOP.
+  - Resume only after the user promotes the parent to `queued`; on the next
+    ORIENT the supervisor re-enters and falls through this gate to DISPATCH.
+- If `parent.status == "queued"`: the human has approved. Proceed to
+  DISPATCH exactly as today.
+
+**Approval record**: there is no separate approval marker or metadata — the
+status transition `ready → queued` performed by the human **is** the
+approval record. Do not invent parallel approval tracking.
+
+---
+
 **On NEEDS_REVISION**:
 
 ```markdown
