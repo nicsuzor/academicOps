@@ -82,7 +82,9 @@ Note: the `dispatched` status in the local work items table maps to
 
 | Status         | Meaning                                                                                                 |
 | -------------- | ------------------------------------------------------------------------------------------------------- |
-| ready          | Decomposed, ready to dispatch                                                                           |
+| ready          | Decomposed, awaiting human approval (NOT dispatchable)                                                  |
+| queued         | Human-approved, dispatchable                                                                            |
+| waiting        | Gate halted — parent task not yet queued; supervisor will resume on promotion                           |
 | dispatched     | Sent to worker, waiting for PR                                                                          |
 | pr_open        | PR filed, under review                                                                                  |
 | pr_approved    | Approved, ready to merge                                                                                |

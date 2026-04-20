@@ -80,6 +80,19 @@ gh api repos/$REPO_REF/contents/.agents/CORE.md --jq '.content | @base64d' 2>/de
 
 If `.agents/CORE.md` is absent, look for `README.md` as fallback context.
 
+Additionally, fetch `.agents/context-map.json` if present and extract its top-level `spec_dirs` field (an array of directories containing authoritative specs). If the file is absent, the field is missing, or the array is empty, continue without error — this is graceful degradation, not a failure:
+
+```bash
+# Locally:
+jq -r '.spec_dirs // [] | .[]' .agents/context-map.json 2>/dev/null
+
+# Cross-repo via gh:
+gh api repos/$REPO_REF/contents/.agents/context-map.json --jq '.content | @base64d' 2>/dev/null \
+  | jq -r '.spec_dirs // [] | .[]' 2>/dev/null
+```
+
+Store the result in `$SPEC_DIRS` (may be empty). It will be surfaced to Pauli in Step 4.
+
 ---
 
 ## Step 3: Triage the PR
@@ -254,6 +267,14 @@ Apply your 10 cognitive moves. Focus on:
 
 Be specific and actionable. Rate severity (fatal/major/minor) for each finding.
 ```
+
+When `$SPEC_DIRS` (collected in Step 2) is non-empty, append the following line to the Pauli prompt above. When `$SPEC_DIRS` is absent or empty, OMIT the line entirely — no placeholder text, no error:
+
+```
+Scan the following spec directories for authoritative specs covering the domain of this PR: {spec_dirs}. If a relevant spec exists, verify the PR's implementation matches the spec's intent. Flag divergence explicitly.
+```
+
+(`{spec_dirs}` is rendered as the comma-separated list from `$SPEC_DIRS`, e.g. `specs/` or `docs/specs/, packages/core/specs/`.)
 
 #### Marsha — QA/Runtime Verification (complex PRs or testable changes)
 
