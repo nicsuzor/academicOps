@@ -33,6 +33,7 @@ For each unmapped doc: "Would an agent benefit from discovering this via keyword
 
 ```json
 {
+  "spec_dirs": ["specs/"],
   "docs": [
     {
       "topic": "short_snake_case_identifier",
@@ -44,16 +45,39 @@ For each unmapped doc: "Would an agent benefit from discovering this via keyword
 }
 ```
 
+For a secondary repo whose specs live under `docs/specs/`, the same field would be:
+
+```json
+{
+  "spec_dirs": ["docs/specs/"],
+  "docs": [ ... ]
+}
+```
+
 ### 5. Report changes
 
 Summarise entries added, removed, updated — in the commit message or response.
 
 ## Schema Rules
 
+### Top-level fields
+
+- **`spec_dirs`**: Array of directories containing authoritative specs; consumed by `/review-pr` and Pauli to surface spec divergence. Paths are relative to repo root and should end with `/` for clarity. Omit or leave empty (`[]`) if the repo has no dedicated spec directory — consumers degrade gracefully. Example: `"spec_dirs": ["specs/"]` for this repo; `"spec_dirs": ["docs/specs/"]` for a secondary repo whose specs live under `docs/`.
+- **`docs`**: Array of documentation entries (see below).
+
+### `docs[]` entry fields
+
 - **`topic`**: Unique snake_case identifier, descriptive of content not filename.
 - **`path`**: Relative to repo root. Must resolve to an existing file or directory.
 - **`description`**: One sentence answering "what will I learn?" not "what is this file."
 - **`keywords`**: 5-15 lowercase terms/phrases including both formal terms and natural language queries.
+
+### Audit checklist
+
+When auditing, verify each of these fields:
+
+- [ ] `spec_dirs` — present if the repo has an authoritative specs directory; each entry resolves to an existing directory; consumers (`/review-pr`, Pauli) will find specs there.
+- [ ] `docs` — curated, not exhaustive; each entry's `path` exists; descriptions are accurate; keywords cover both formal terms and natural-language queries.
 
 ## Anti-Patterns
 
