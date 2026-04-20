@@ -48,6 +48,7 @@ Procedures for specific work types that humans and agents follow.
 
 | Spec                              | Status | Purpose                                                                        |
 | --------------------------------- | ------ | ------------------------------------------------------------------------------ |
+| [[session-handover-contract.md]]  | 📋     | **Retires Framework Reflection**. Structured YAML-based handover contract.     |
 | [[pr-pipeline.md]]                | ✅     | PR lifecycle: bots prepare, human decides. Supersedes `archived/pr-process.md` |
 | [[collaborate-workflow.md]]       | ✅     | Interactive collaboration sessions with transcript processing                  |
 | [[decision-queue-spec.md]]        | ✅     | Batch decision processing (extract → annotate → apply)                         |
