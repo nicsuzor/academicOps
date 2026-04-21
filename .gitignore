@@ -349,3 +349,6 @@ data/
 screenshots/
 # uv.lock removed from gitignore to allow frozen builds in CI
 test_result*.json
+
+# Pre-built binaries for local hooks
+.bin/

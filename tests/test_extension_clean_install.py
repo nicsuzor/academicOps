@@ -52,6 +52,21 @@ BUILTIN_TOOLS = {
     "pauli",
     "rbg",
     "activate_skill",
+    # Claude Code built-in tools (PascalCase)
+    "Read",
+    "Write",
+    "Edit",
+    "Grep",
+    "Glob",
+    "Bash",
+    "Skill",
+    "Agent",
+    "WebFetch",
+    "WebSearch",
+    "TodoWrite",
+    "TodoRead",
+    "NotebookRead",
+    "NotebookEdit",
 }
 
 
