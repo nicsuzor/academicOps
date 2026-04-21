@@ -1,6 +1,6 @@
 <aops-warning>You have stopped calling tools without finishing. Please complete your assigned work.
 
-**When ending a work session**, you MUST invoke the `end_session` Skill (default) and follow all required steps. Use `/dump` instead only for emergency / cross-machine / interrupted-session handovers that need extended context capture.
+**When ending a work session**, you MUST invoke the `/dump` (end_session) skill and follow all required steps.
 
 - It is not sufficient to enact the steps without invoking the skill — this will not be recognised by the system.
 - Using mutating tools (Edit, Write, Bash, git) after the skill completes will reset this gate and require another `end_session` (or `/dump`) invocation.
