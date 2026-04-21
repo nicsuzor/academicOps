@@ -188,8 +188,10 @@ jobs:
                    -f message="Superseded by new review" -f event="DISMISS"
                ```
             6. Use `gh pr review` to file your review (APPROVE or REQUEST_CHANGES).
+               - Only file a review if violations are found or if you pushed fixes.
+               - If no violations are found and no fixes were pushed, do NOT file a review and DO NOT post any comment.
                - Start the review body with `## Enforcer Review` so it can be identified for future dismissal.
-               - Keep it concise: list violations with axiom numbers, or confirm no violations found.
+               - Keep it concise: list violations with axiom numbers.
 
             If you push fixes, use this commit trailer: `Enforcer-By: agent`
 

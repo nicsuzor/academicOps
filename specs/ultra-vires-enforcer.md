@@ -170,18 +170,30 @@ Why middle, not base? A base-tier mechanism runs every action — the enforcer r
 
 ```markdown
 ## Compliance check: OK
-
-No issues detected. Continue current work.
 ```
 
-### Attention
+### WARN
 
 ```markdown
-## Compliance check: ATTENTION
+## Compliance check: WARN
 
 **Issue**: [one-sentence description]
 **Principle**: [axiom/heuristic number and name]
+**Evidence**: [short quote or reference]
 **Correction**: [what to do instead]
+```
+
+### BLOCK
+
+Use BLOCK only when the violation is clear and the correction is non-negotiable.
+
+```markdown
+## Compliance check: BLOCK
+
+**Issue**: [one-sentence description]
+**Principle**: [axiom/heuristic number and name]
+**Evidence**: [short quote or reference]
+**Required action**: [what MUST happen before continuing]
 ```
 
 ## Implementation evolution
