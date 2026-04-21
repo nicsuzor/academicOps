@@ -78,18 +78,6 @@ def convert_mcp_to_gemini(mcp_config: dict[str, Any]) -> dict[str, Any]:
     return gemini_mcp
 
 
-def convert_gemini_to_antigravity(gemini_mcps: dict[str, Any]) -> dict[str, Any]:
-    """Convert Gemini MCP config to Antigravity format (adding 'args' as empty if missing)."""
-    ag_mcps = {}
-    for name, config in gemini_mcps.items():
-        ag_mcps[name] = {
-            "command": config.get("command"),
-            "args": config.get("args", []),
-            "env": config.get("env", {}),
-        }
-    return ag_mcps
-
-
 def check_installed_plugin_version(
     plugin_name: str,
     source_commit: str,
