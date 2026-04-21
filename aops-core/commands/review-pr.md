@@ -436,7 +436,7 @@ Produce a PASS, FAIL, or REVISE verdict with specific evidence.
 
 Wait for all commissioned agents to complete. Then:
 
-1. Parse RBG's verdict (`OK` / `WARN` / `BLOCK`)
+1. Parse RBG's verdict (`OK` / `WARN` / `BLOCK`). Empty output = `OK`.
 2. Extract Pauli's findings, sorted by severity
 3. Read Marsha's verdict (`PASS` / `FAIL` / `REVISE`) if commissioned
 

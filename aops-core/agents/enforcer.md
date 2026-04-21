@@ -73,11 +73,7 @@ Missing paths are not errors — not every project has local rules.
 
 ### OK
 
-```markdown
-## Compliance check: OK
-
-No issues detected. Continue current work.
-```
+If no issues are detected, emit NO OUTPUT. Do not post a comment or any text.
 
 ### WARN
 

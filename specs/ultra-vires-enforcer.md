@@ -168,16 +168,12 @@ Why middle, not base? A base-tier mechanism runs every action — the enforcer r
 
 ### OK
 
-```markdown
-## Compliance check: OK
+If no issues are detected, emit NO OUTPUT. Do not post a comment or any text.
 
-No issues detected. Continue current work.
-```
-
-### Attention
+### WARN
 
 ```markdown
-## Compliance check: ATTENTION
+## Compliance check: WARN
 
 **Issue**: [one-sentence description]
 **Principle**: [axiom/heuristic number and name]
