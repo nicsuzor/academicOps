@@ -240,7 +240,7 @@ These are the interactive counterpart to sleep Phase 4. In maintain mode, the hu
 
 **Staleness verification procedure**:
 
-1. `list_tasks(status="active", stale_days=90)` — get candidates
+1. `list_tasks(status="queued", stale_days=90)` — get candidates
 2. For each: read task, search email/calendar for completion evidence
    - `messages_search` for sent mail matching task subject/keywords
    - `calendar_list_events` for past meetings matching task context
@@ -331,4 +331,4 @@ Projects: bounded efforts (tree roots). Epics: PR-sized verifiable work. Tasks: 
 
 ## Status Values
 
-`seed` → `growing` → `active` → `complete` (or `blocked`, `dormant`, `dead`)
+Canonical — see [[aops-core/TAXONOMY.md#status-values-and-transitions]]. Typical flow: `inbox` → `ready` → `queued` → `in_progress` → `merge_ready` → `done` (with `blocked`, `paused`, `someday`, `cancelled` as alternatives).

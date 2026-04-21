@@ -114,7 +114,7 @@ def _reset_fixture_task():
     try:
         from polecat.pkb_bridge import update_task
 
-        update_task(TEST_FIXTURE_TASK_ID, status="active", assignee="polecat")
+        update_task(TEST_FIXTURE_TASK_ID, status="queued", assignee="polecat")
     except Exception:
         pass  # Best-effort; local reset below is the fallback
 
@@ -124,7 +124,7 @@ def _reset_fixture_task():
     if not task_file.exists():
         return
     content = task_file.read_text()
-    content = re.sub(r"(?m)^status:\s+\S+", "status: active", content, count=1)
+    content = re.sub(r"(?m)^status:\s+\S+", "status: queued", content, count=1)
     # Strip any "Completion Evidence" or "Outcome" sections appended by previous
     # runs — agents see these and triage ("prior work") instead of executing.
     content = re.sub(r"\n## Completion Evidence.*", "", content, flags=re.DOTALL)

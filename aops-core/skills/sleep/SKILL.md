@@ -215,7 +215,7 @@ Three activities, run in order. Each is bounded per cycle.
 
 ### Activity 2: Staleness Verification (evidence-based)
 
-Target: active tasks with age >= 90 days.
+Target: non-terminal tasks (inbox/ready/queued/in_progress/merge_ready/review/blocked) with age >= 90 days.
 
 For each candidate (up to 20 per cycle):
 

@@ -76,12 +76,12 @@ The predicate registry formalises what the RBG agent already does instinctively 
 
 ### Task State Predicates
 
-| Predicate                 | Meaning                       | Planning Check                             | Runtime Check                             |
-| ------------------------- | ----------------------------- | ------------------------------------------ | ----------------------------------------- |
-| `task_claimed`            | Task is bound to session      | Plan has task update with status="active"  | Task exists with status="active"          |
-| `one_task_in_progress`    | Only one task active          | Plan doesn't claim multiple tasks          | MCP query shows exactly one active task   |
-| `task_exists`             | Task exists in system         | Plan references task ID                    | `get_task(id)` succeeds                   |
-| `implementation_complete` | All implementation steps done | All implementation TodoWrite items present | All implementation todos marked completed |
+| Predicate                 | Meaning                       | Planning Check                                 | Runtime Check                             |
+| ------------------------- | ----------------------------- | ---------------------------------------------- | ----------------------------------------- |
+| `task_claimed`            | Task is bound to session      | Plan has task update with status="in_progress" | Task exists with status="in_progress"     |
+| `one_task_in_progress`    | Only one task active          | Plan doesn't claim multiple tasks              | MCP query shows exactly one active task   |
+| `task_exists`             | Task exists in system         | Plan references task ID                        | `get_task(id)` succeeds                   |
+| `implementation_complete` | All implementation steps done | All implementation TodoWrite items present     | All implementation todos marked completed |
 
 ### Content Predicates
 

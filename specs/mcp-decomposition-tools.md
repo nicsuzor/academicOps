@@ -269,7 +269,7 @@ def get_tasks_with_topology(
         - is_leaf: bool
         - created: datetime
         - modified: datetime
-        - ready_days: float | None      # days since became ready (if status=active)
+        - ready_days: float | None      # days since became ready (if status=queued)
     """
 ```
 
@@ -347,7 +347,7 @@ def _tasks_created_since(storage: TaskStorage, days: int) -> list[Task]:
     """Return tasks created in last N days."""
 
 def _compute_ready_days(task: Task) -> float | None:
-    """Days since task became ready (status=active, deps satisfied)."""
+    """Days since task became ready (status=queued, deps satisfied)."""
 ```
 
 **Removed:** `_compute_word_overlap()` - no NLP in server per P#78.
