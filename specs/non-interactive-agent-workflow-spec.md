@@ -53,7 +53,7 @@ Complete lifecycle for non-interactive agent operation: task selection through P
 ### Phase 4: Knowledge & Follow-up
 
 - **Retention**: Structured learnings (decisions, mistakes, patterns) are extracted from every completed task and persisted to the knowledge base.
-- **Continuity**: Technical debt or required improvements identified during execution are automatically captured as follow-up tasks in the `pending` queue.
+- **Continuity**: Technical debt or required improvements identified during execution are automatically captured as follow-up tasks in the `inbox` queue.
 
 ## What Is Code vs What Is Prompt
 
@@ -84,83 +84,33 @@ Complete lifecycle for non-interactive agent operation: task selection through P
 
 ## Task State Machine
 
-### States
+Task statuses are canonical — see [[aops-core/TAXONOMY.md#status-values-and-transitions]] for definitions and the authoritative transition graph. The phase labels in this spec (Phase 1 Decomposition, Phase 2 Review, Phase 3 Approval, Phase 4 Execution, Phase 5 Merge, Phase 6 Capture) describe workflow stages within a single canonical status, not separate status values.
 
-| Status        | Phase | Meaning                                                             |
-| ------------- | ----- | ------------------------------------------------------------------- |
-| `pending`     | -     | In queue, not claimed                                               |
-| `active`      | 1     | Agent claimed, beginning work                                       |
-| `decomposing` | 1     | Effectual planner iterating                                         |
-| `consensus`   | 2     | Multi-agent review in progress                                      |
-| `waiting`     | 3     | Awaiting user decision                                              |
-| `in_progress` | 4     | Worker executing approved plan                                      |
-| `review`      | 5     | PR submitted, awaiting review consensus (submitted, not yet merged) |
-| `merge_ready` | 5     | Reviews done, awaiting merge approval                               |
-| `done`        | 6     | Merged, knowledge captured                                          |
-| `blocked`     | any   | External dependency, with unblock condition                         |
-| `dormant`     | -     | User-initiated backburner                                           |
-| `failed`      | any   | Unrecoverable error, with diagnostic                                |
-| `cancelled`   | -     | Abandoned, with reason                                              |
+### Phase → Status Mapping
 
-### Transition Table
+| Workflow Phase                   | Canonical Status                                            |
+| -------------------------------- | ----------------------------------------------------------- |
+| Not yet claimed                  | `queued`                                                    |
+| Phase 1: decomposition & review  | `in_progress` (supervisor phase: decomposing)               |
+| Phase 2: multi-agent consensus   | `in_progress` (supervisor phase: consensus)                 |
+| Phase 3: awaiting human approval | `review`                                                    |
+| Phase 4: worker executing plan   | `in_progress`                                               |
+| Phase 5: PR filed, CI / reviews  | `merge_ready` (post-filing) or `review` (changes requested) |
+| Phase 6: merged, capture         | `done`                                                      |
+| External dependency              | `blocked`                                                   |
+| Deferred by human                | `paused` (resume intended) or `someday` (parked)            |
+| Unrecoverable error              | `blocked` (with diagnostic) or `cancelled`                  |
+| Abandoned                        | `cancelled`                                                 |
 
-All transitions require idempotency key and timestamp.
-
-```
-FROM          -> TO           | TRIGGER                      | GUARD
-pending       -> active       | polecat claims               | lock acquired
-pending       -> cancelled    | user cancels                 | -
-active        -> decomposing  | begin breakdown              | -
-active        -> blocked      | dependency discovered        | unblock_condition set
-active        -> failed       | claim timeout (30s)          | -
-decomposing   -> decomposing  | iteration complete           | depth < MAX_DEPTH (10)
-decomposing   -> consensus    | proposal ready               | all subtasks PR-sized
-decomposing   -> blocked      | external dependency found    | unblock_condition set
-decomposing   -> failed       | depth >= MAX_DEPTH           | diagnostic: "irreducible"
-decomposing   -> failed       | exception                    | diagnostic: error message
-decomposing   -> cancelled    | user cancels                 | -
-consensus     -> waiting      | all reviewers APPROVE        | -
-consensus     -> decomposing  | any reviewer BLOCK           | feedback attached
-consensus     -> waiting      | timeout (30min)              | escalate: unresolved concerns
-consensus     -> failed       | all reviewers unavailable    | diagnostic: "no reviewers"
-consensus     -> cancelled    | user cancels                 | -
-waiting       -> in_progress  | user approves                | -
-waiting       -> decomposing  | user requests changes        | feedback attached
-waiting       -> pending      | user sends back              | assignee cleared
-waiting       -> dormant      | user backburners             | -
-waiting       -> cancelled    | user cancels                 | reason attached
-waiting       -> failed       | timeout (7 days)             | diagnostic: "approval timeout"
-in_progress   -> review       | PR submitted (PR filed)      | pr_url or pr set
-in_progress   -> blocked      | dependency discovered        | unblock_condition set
-in_progress   -> failed       | worker crash                 | diagnostic: crash report
-in_progress   -> failed       | timeout (24h no progress)    | diagnostic: "stalled"
-in_progress   -> cancelled    | user cancels                 | cleanup triggered
-review        -> merge_ready  | review consensus reached     | all APPROVE
-review        -> in_progress  | changes requested            | pr_comments attached
-review        -> blocked      | dependency discovered        | unblock_condition set
-review        -> failed       | timeout (7 days no activity) | diagnostic: "review timeout"
-review        -> cancelled    | PR closed without merge      | -
-merge_ready   -> done         | user approves merge          | merged = true
-merge_ready   -> review       | last-minute concern          | -
-merge_ready   -> cancelled    | user declines                | reason attached
-blocked       -> [prior]      | unblock_condition met        | restore prior state
-blocked       -> failed       | timeout (14 days)            | diagnostic: "blocked timeout"
-blocked       -> cancelled    | user cancels                 | -
-dormant       -> pending      | user reactivates             | priority recalculated
-dormant       -> cancelled    | user cancels                 | -
-done          -> [terminal]   | -                            | knowledge extraction complete
-failed        -> pending      | user retries                 | reset with diagnostic
-failed        -> cancelled    | user abandons                | -
-cancelled     -> [terminal]   | -                            | -
-```
+Internal phase tracking (decomposing / consensus / etc.) lives in the task body as supervisor phase annotations, not as status values.
 
 ### State Invariants
 
 - `blocked` must have `unblock_condition` field set
-- `failed` must have `diagnostic` field set
-- `cancelled` must have `reason` field set
 - `in_progress` must have `worker_id` field set
-- `review` must have `pr_url` or `pr` field set
+- `merge_ready` / `review` (post-filing) must have `pr_url` or `pr` field set
+- `cancelled` must have a reason recorded in the task body or `summary` field
+- Unrecoverable execution errors are recorded as a `diagnostic` in the task body before transitioning to `blocked` or `cancelled`
 
 ---
 
@@ -175,8 +125,8 @@ Polecat worker calls `claim_next_task()` with atomic lock.
 | Operation                      | Timeout | On Timeout                        |
 | ------------------------------ | ------- | --------------------------------- |
 | Lock acquisition               | 30s     | Retry 3x, then skip task          |
-| Hydration                      | 60s     | -> `failed`                       |
-| Single decomposition iteration | 10min   | -> `failed`                       |
+| Hydration                      | 60s     | -> `blocked` with diagnostic      |
+| Single decomposition iteration | 10min   | -> `blocked` with diagnostic      |
 | Total decomposition            | 2h      | Force checkpoint, surface to user |
 
 ### PR-Sized Definition
@@ -193,9 +143,9 @@ A task is PR-sized when ALL of:
 
 MAX_DEPTH = 10 iterations. If exceeded:
 
-- Task -> `failed` with diagnostic "irreducible after 10 iterations"
+- Task -> `blocked` with diagnostic "irreducible after 10 iterations"
 - Surfaces to user with full decomposition history
-- User can: manually decompose, mark as `blocked`, or `cancel`
+- User can: manually decompose, keep as `blocked`, or `cancel`
 
 ### Output Format
 
@@ -259,7 +209,7 @@ specialists:
 ### Execution: Parallel with Short-Circuit on BLOCK
 
 1. All reviewers invoked simultaneously
-2. If ANY returns BLOCK: short-circuit, cancel pending reviewers, return to `decomposing`
+2. If ANY returns BLOCK: short-circuit, cancel pending reviewers, return to decomposition phase (stays `in_progress`)
 3. Else wait for all (with individual 10min timeouts)
 4. Aggregate responses
 
@@ -276,12 +226,12 @@ suggestions: []  # Optional improvements
 
 ### Aggregation Rules
 
-| Condition                | Result                           |
-| ------------------------ | -------------------------------- |
-| All APPROVE              | -> `waiting`                     |
-| Any BLOCK                | -> `decomposing` (with feedback) |
-| Any ESCALATE             | -> `waiting` (escalated: true)   |
-| Mixed CONCERN (no BLOCK) | -> Debate round                  |
+| Condition                | Result                                                            |
+| ------------------------ | ----------------------------------------------------------------- |
+| All APPROVE              | -> `review` (awaiting human)                                      |
+| Any BLOCK                | -> stay `in_progress`, decomposition phase re-run (with feedback) |
+| Any ESCALATE             | -> `review` (escalated: true)                                     |
+| Mixed CONCERN (no BLOCK) | -> Debate round                                                   |
 
 ### Debate Protocol
 
@@ -289,7 +239,7 @@ Max 2 rounds. Each round:
 
 1. Reviewers see all concerns from previous round
 2. Each reviewer has 5 minutes to respond: WITHDRAW (concede) or MAINTAIN (defend)
-3. If all concerns WITHDRAWN -> `waiting`
+3. If all concerns WITHDRAWN -> `review` (awaiting human)
 4. After round 2, any unresolved concerns synthesized for user
 
 Debate timeout: 10 minutes per round. On timeout: assume MAINTAIN, proceed to synthesis.
@@ -318,10 +268,10 @@ Resolution: UNRESOLVED - user must decide
 
 ### Decision States
 
-Task in `waiting` has:
+Task in `review` (Phase 3, awaiting user decision) has:
 
 - `approval_type`: `standard` | `escalated`
-- `decision_deadline`: timestamp (7 days from entering `waiting`)
+- `decision_deadline`: timestamp (7 days from entering `review`)
 - `concerns`: list of unresolved concerns (if any)
 
 ### Batch Interface: Daily Note Section
@@ -354,27 +304,27 @@ aops decisions --escalated        # Only escalated
 aops decisions approve abc123     # Approve
 aops decisions approve abc123 --note "proceeed with caution"
 aops decisions changes abc123 "need spike on X first"
-aops decisions back abc123        # Send back to pending
-aops decisions backburner abc123  # Move to dormant
+aops decisions back abc123        # Send back to queued
+aops decisions backburner abc123  # Move to paused
 aops decisions cancel abc123 "out of scope"
 ```
 
 ### User Actions
 
-| Action          | Task State       | Notes                                |
-| --------------- | ---------------- | ------------------------------------ |
-| Approve         | -> `in_progress` | Subtasks created, first claimed      |
-| Request Changes | -> `decomposing` | Feedback attached                    |
-| Send Back       | -> `pending`     | Assignee cleared, ready for re-claim |
-| Backburner      | -> `dormant`     | Preserved but inactive               |
-| Cancel          | -> `cancelled`   | Reason required                      |
+| Action          | Task State                      | Notes                                |
+| --------------- | ------------------------------- | ------------------------------------ |
+| Approve         | -> `in_progress`                | Subtasks created, first claimed      |
+| Request Changes | -> `in_progress` (re-decompose) | Feedback attached                    |
+| Send Back       | -> `queued`                     | Assignee cleared, ready for re-claim |
+| Backburner      | -> `paused`                     | Preserved but inactive; resume later |
+| Cancel          | -> `cancelled`                  | Reason required                      |
 
 ### Timeout Behavior
 
 If 7 days pass without user action:
 
-- Standard approvals: -> `failed` with diagnostic "approval timeout"
-- Escalated: Daily reminder on day 3, 5, 7; then `failed`
+- Standard approvals: -> `blocked` with diagnostic "approval timeout"
+- Escalated: Daily reminder on day 3, 5, 7; then `blocked`
 
 ---
 
@@ -455,7 +405,7 @@ Worker must update task every 30 minutes with:
 - Files touched
 - Any blockers discovered
 
-If no update for 60 minutes: ping worker. If no response for 24 hours: -> `failed`.
+If no update for 60 minutes: ping worker. If no response for 24 hours: -> `blocked` with diagnostic.
 
 ---
 
@@ -493,7 +443,7 @@ GitHub webhooks are not guaranteed. Mitigation:
 - All APPROVE -> `merge_ready`
 - Any BLOCK -> `in_progress` (changes requested, feedback in PR comments)
 - Mixed CONCERN -> Debate in PR comments (max 2 rounds)
-- Timeout (7 days no activity) -> `failed`
+- Timeout (7 days no activity) -> `blocked` with "review timeout" diagnostic
 
 ### Merge Approval
 
@@ -592,7 +542,7 @@ Rules for auto-creating follow-ups:
 | Estimate >50% off             | `learn` task to improve estimation | No                |
 | Pattern discovered            | Link to knowledge, no task         | N/A               |
 
-Follow-ups created in `pending` with `parent` set to original task.
+Follow-ups created in `inbox` (or `queued` if immediately dispatchable) with `parent` set to original task.
 
 Infinite loop prevention: Follow-ups have `depth` field. Max depth = 2. Beyond that, log but don't create.
 
@@ -739,22 +689,22 @@ This deliberate indirection prevents over-reaction to single incidents.
 | Lock acquisition    | 3           | 10s, 30s, 60s      | Skip task       |
 | GitHub API          | 3           | 1s, 5s, 30s        | Proceed without |
 | Reviewer invocation | 2           | 30s, 60s           | Timeout verdict |
-| Worker ping         | 3           | 5min, 15min, 30min | -> `failed`     |
+| Worker ping         | 3           | 5min, 15min, 30min | -> `blocked`    |
 
 ### Cleanup on Failure/Cancellation
 
-When task -> `failed` or `cancelled` from `in_progress`:
+When task -> `blocked` (with diagnostic) or `cancelled` from `in_progress`:
 
 1. If branch exists: delete branch (or mark for cleanup)
 2. If PR exists: close PR with comment explaining
 3. Release worker lock
 4. Log final state to task body
 
-### Recovery from `failed`
+### Recovery from a blocked/diagnosed failure
 
-User can retry a failed task:
+User can retry a task that halted with a diagnostic:
 
-1. Task -> `pending`
+1. Task -> `queued`
 2. `diagnostic` from failure preserved in body
 3. `retry_count` incremented
 4. If `retry_count` >= 3: require user confirmation with explanation
@@ -771,11 +721,12 @@ Every state transition logged to `data/aops-core/audit/transitions.jsonl`:
 {
   "ts": "2026-02-12T10:30:00Z",
   "task": "abc123",
-  "from": "consensus",
-  "to": "waiting",
+  "from": "in_progress",
+  "to": "review",
+  "phase": "consensus -> awaiting_approval",
   "trigger": "all_approve",
   "actor": "system",
-  "idempotency_key": "abc123-consensus-1707734400"
+  "idempotency_key": "abc123-review-1707734400"
 }
 ```
 
@@ -800,27 +751,22 @@ Every state transition logged to `data/aops-core/audit/transitions.jsonl`:
 
 ## Migration
 
-### New States
+### Status Alignment
 
-Add to task schema: `decomposing`, `consensus`, `merge_ready`, `dormant`, `failed`
+All statuses referenced in this spec are canonical — see [[aops-core/TAXONOMY.md#status-values-and-transitions]]. The workflow uses: `inbox`, `queued`, `in_progress`, `merge_ready`, `review`, `done`, `blocked`, `paused`, `someday`, `cancelled`. Supervisor sub-phases (decomposing, consensus, debate) live in the task body as annotations, not as status values.
 
 ### New Fields
 
 - `unblock_condition`: string (for `blocked`)
-- `diagnostic`: string (for `failed`)
-- `pr`: int (for `review`, `merge_ready`)
+- `diagnostic`: string (for tasks that halted on unrecoverable error)
+- `pr`: int (for `merge_ready`)
 - `issue`: int (for linking GitHub issues)
-- `pr_url`: string (for `review`, `merge_ready`)
+- `pr_url`: string (for `merge_ready`)
 - `worker_id`: string (for `in_progress`)
-- `approval_type`: enum (for `waiting`)
-- `decision_deadline`: timestamp (for `waiting`)
+- `approval_type`: enum (for `review` phase-3 tasks)
+- `decision_deadline`: timestamp (for `review` phase-3 tasks)
 - `retry_count`: int
 - `depth`: int (for decomposition tracking)
-
-### Backward Compatibility
-
-Existing tasks in `active`, `in_progress`, `review`, `done` continue to work.
-New states only apply to tasks entering workflow after migration.
 
 ---
 

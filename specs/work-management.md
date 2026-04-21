@@ -76,7 +76,7 @@ flowchart LR
 
 ## User Expectations
 
-- **State Transparency**: Users can always see the exact, real-time status of all work. The system must support statuses including `active`, `in_progress`, `done`, `blocked`, `cancelled`, `review`, `merge_ready`, and `waiting`.
+- **State Transparency**: Users can always see the exact, real-time status of all work. Canonical statuses are defined in [[aops-core/TAXONOMY.md#status-values-and-transitions]].
 - **Justification (The "Why")**: Every task must be anchored in the hierarchy (Goal → Project → Epic → Task). Users can always trace why a task exists by examining its parent field.
 - **Actionable Visibility**: Users can query for actionable work and receive a prioritized list of unblocked leaf tasks that are ready for execution.
 - **Multi-Session Continuity**: Work state is persisted in markdown files, allowing work started in one session to be safely paused and accurately resumed in another by any agent.
@@ -90,23 +90,22 @@ flowchart LR
 ### State Machine
 
 ```
-draft → active → in_progress → merge_ready (PR filed) → done (after merge)
-                             → done (non-code task completed)
-                             → review (needs human attention)
-                             → blocked (external dependency)
-                             → cancelled (abandoned)
-                ↕
-             waiting (deferred for later)
+inbox → ready → queued → in_progress → merge_ready (PR filed) → done (after merge)
+                                     → done (non-code task completed)
+                                     → blocked (external dependency)
+                                     → cancelled (abandoned)
 ```
 
-**`draft → active` graduation** requires the task to have:
+See [[aops-core/TAXONOMY.md#status-values-and-transitions]] for canonical status definitions.
+
+**`inbox → ready` graduation** requires the task to have:
 
 1. Concrete acceptance criteria (non-empty body with AC or checklist)
 2. Explicit effort estimate OR explicit `complexity` field
 3. No high-uncertainty blockers (blockers must be explicit `depends_on` links, not vague body text)
-4. Either leaf (no children) OR decomposed into subtasks where all children have a status other than `draft`
+4. Either leaf (no children) OR decomposed into subtasks where all children are beyond `inbox`
 
-Tasks created via `create_task` default to `draft`. They must be manually or automatically graduated to `active` before they appear in the ready queue.
+Tasks created via `create_task` default to `inbox`. They graduate to `ready` automatically once decomposition and dependency resolution are complete. The human then manually promotes `ready → queued` to make them available for agent dispatch.
 
 This gate exists to prevent agents from picking up half-baked tasks before they have been properly planned. See [[specs/orchestrator-boundary.md]] for context.
 
@@ -130,7 +129,6 @@ release_task(id, status, summary, pr_url?, branch?, blocker?, reason?)
 | ------------- | -------- | --------- | --------- | --------- |
 | `merge_ready` | REQUIRED | soft-warn | -         | -         |
 | `done`        | REQUIRED | optional  | -         | -         |
-| `review`      | REQUIRED | -         | -         | soft-warn |
 | `blocked`     | REQUIRED | -         | soft-warn | -         |
 | `cancelled`   | REQUIRED | -         | -         | soft-warn |
 
@@ -146,25 +144,11 @@ release_task(id, status, summary, pr_url?, branch?, blocker?, reason?)
 
 `update_task` remains for non-terminal field changes (priority, tags, assignee, body). It soft-hints toward `release_task` when a terminal status is detected.
 
-### Canonical Statuses
+### Statuses
 
-| Status        | Meaning                                                      | Terminal? | Ready queue? |
-| ------------- | ------------------------------------------------------------ | --------- | ------------ |
-| `draft`       | Created but not yet planned — AC/estimate/complexity missing | No        | No           |
-| `active`      | Planned and ready to be worked on                            | No        | Yes          |
-| `in_progress` | Currently being worked on                                    | No        | No           |
-| `merge_ready` | Work complete, PR filed, awaiting merge                      | No        | No           |
-| `review`      | Needs human/manager review                                   | No        | No           |
-| `blocked`     | Waiting on external dependency                               | No        | No           |
-| `waiting`     | Deferred for later                                           | No        | No           |
-| `done`        | Completed successfully                                       | Yes       | No           |
-| `cancelled`   | Abandoned/no longer relevant                                 | Yes       | No           |
+Statuses are canonical — see [[aops-core/TAXONOMY.md#status-values-and-transitions]]. The work-management subsystem uses the canonical set without extensions.
 
-**Default on create**: `draft`. Tasks must be explicitly graduated to `active` (manually or by a planner agent verifying the graduation conditions above).
-
-**Implementation note**: The `draft` → `active` graduation is currently manual. Automated graduation (a planner agent verifying conditions) is a planned improvement — see [[specs/orchestrator-boundary.md]].
-
-Additional statuses exist (`paused`, `someday`, `submitted`, `accepted`) — see `graph.rs` for the full list and alias mappings.
+**Default on create**: `inbox`. Tasks graduate to `ready` once decomposition and dependency resolution are complete. The human manually promotes `ready → queued` to make tasks available for agent dispatch. Agents pull only from `queued`.
 
 ## Multi-Project Organization
 

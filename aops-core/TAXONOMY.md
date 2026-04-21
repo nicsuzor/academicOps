@@ -154,16 +154,19 @@ The tree hierarchy is a **spanning tree** of the underlying dependency graph. It
 
 ## Status Values and Transitions
 
-| Status        | Meaning                                                                         |
-| ------------- | ------------------------------------------------------------------------------- |
-| `inbox`       | **Default.** Captured but not yet triaged — unknown priority, unknown readiness |
-| `ready`       | Decomposed to leaf tasks with all hard dependencies resolved                    |
-| `queued`      | User has manually marked this task available for agent dispatch                 |
-| `in_progress` | Claimed by an agent or human — actively being worked                            |
-| `merge_ready` | Work complete and committed, waiting for review/merge                           |
-| `done`        | Complete — no further action required                                           |
-| `blocked`     | Waiting on an external dependency that cannot be resolved internally            |
-| `cancelled`   | Will not be done — decision made to drop                                        |
+| Status        | Meaning                                                                          |
+| ------------- | -------------------------------------------------------------------------------- |
+| `inbox`       | **Default.** Captured but not yet triaged — unknown priority, unknown readiness  |
+| `ready`       | Decomposed to leaf tasks with all hard dependencies resolved                     |
+| `queued`      | User has manually marked this task available for agent dispatch                  |
+| `in_progress` | Claimed by an agent or human — actively being worked                             |
+| `merge_ready` | Work complete and committed, waiting for review/merge                            |
+| `review`      | Awaiting human review — either mid-flight attention or post-PR changes requested |
+| `done`        | Complete — no further action required                                            |
+| `blocked`     | Waiting on an external dependency that cannot be resolved internally             |
+| `paused`      | Intentionally stopped with intent to resume — work was in-flight but deferred    |
+| `someday`     | Parked idea — may never be worked; differs from `inbox` by explicit deferral     |
+| `cancelled`   | Will not be done — decision made to drop                                         |
 
 **Default is `inbox`**: Every new node starts as `inbox` regardless of how it was created.
 
@@ -172,8 +175,6 @@ The tree hierarchy is a **spanning tree** of the underlying dependency graph. It
 **`queued` is a human gate**: The user manually promotes tasks from `ready` to `queued` to make them available for agent dispatch. This preserves human control over what agents work on next. Agents pull only from `queued`.
 
 **Propagation**: Completion of a node should trigger readiness re-evaluation of all nodes that depend on it. The system surfaces dependency chains so that cascading unblocks are visible.
-
-**Canonical authority**: This is the canonical status set. Discrepancies in other framework documents (e.g. implementation specs using additional statuses like `active`, `waiting`, or `review`) should be resolved by updating those documents to align with this list or explicitly scoping their additional statuses to their subsystem.
 
 ---
 
@@ -266,7 +267,9 @@ Workflows define WHAT steps to take and in WHAT order. Skills define HOW to exec
 
 ```
 inbox → ready → queued → in_progress → merge_ready → done
+                                     ↘ review
                                      ↘ blocked
+                                     ↘ cancelled
 ```
 
 - `inbox` is the default for all new nodes

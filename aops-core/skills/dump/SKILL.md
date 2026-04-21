@@ -74,7 +74,7 @@ Execute the [[base-handover]] workflow. The steps are:
 
    For each follow-up:
    - **Clear scope?** → Create task with full AC, appropriate priority, and `parent` set to the current task or epic.
-   - **Fuzzy scope?** → Create task with `status: seed`, minimal AC (even just a one-liner), and tag `draft`. A seed task with loose links is infinitely better than a prose bullet that nobody will ever see again. Refine later via `/planner`.
+   - **Fuzzy scope?** → Create task with `status: inbox`, minimal AC (even just a one-liner), and tag `draft`. An inbox task with loose links is infinitely better than a prose bullet that nobody will ever see again. Refine later via `/planner`.
 
    Use [[decompose]] principles for structure. Every task must have a `parent`.
 

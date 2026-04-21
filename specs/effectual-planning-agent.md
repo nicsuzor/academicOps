@@ -135,7 +135,7 @@ Projects are bounded efforts (tree roots). Epics are PR-sized units of verifiabl
 
 **Node lifecycle**
 
-Status values: `seed` → `growing` → `active` → `complete` (or `blocked`, `dormant`, `dead`)
+Status values follow the canonical set — see [[aops-core/TAXONOMY.md#status-values-and-transitions]]. Typical flow: `inbox` → `ready` → `queued` → `in_progress` → `merge_ready` → `done` (with `blocked`, `paused`, `someday`, `cancelled` as alternative terminal/pause states).
 
 Nodes can divide (emit children), merge (consolidate), or promote subtasks to full nodes.
 

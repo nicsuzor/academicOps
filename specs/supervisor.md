@@ -113,7 +113,7 @@ Workers never call `gemini -p` or `claude -p` directly.
 
 Both modes read from the same PKB task queue. Tasks are eligible for dispatch when:
 
-- `status` is `active` or `ready`
+- `status` is `queued`
 - `assignee` is `polecat` or `bot`
 - All `depends_on` are satisfied
 - Task is a leaf (no children)
@@ -265,7 +265,7 @@ The Refinery processes `merge_ready` tasks regardless of which mode produced the
 `polecat/engineer.py` — the `Engineer` class:
 
 1. **Scan**: Find oldest `merge_ready` task
-2. **Claim merge slot**: Transition to `merging` (one at a time)
+2. **Claim merge slot**: Lock task for processing (one at a time)
 3. **Verify**: Fetch, check for unpushed commits
 4. **Merge**: Squash merge to main
 5. **Test**: Run `uv run pytest`
@@ -276,7 +276,7 @@ The Refinery processes `merge_ready` tasks regardless of which mode produced the
 
 On merge failure:
 
-- Task status: `merging` → `review`
+- Task status: `merge_ready` → `review`
 - Refinery Report appended to task body with timestamp and error
 - Categorized: conflicts, tests_failed, dirty_worktree, other
 - Returns to human intervention
@@ -311,21 +311,13 @@ To customize for a different deployment, modify WORKERS.md only.
 ## Status Lifecycle
 
 ```
-active → in_progress → merge_ready → merging → done
-                │              │           │
-                │              │           └→ review (merge failed)
-                │              └→ review (engineer review)
+queued → in_progress → merge_ready → done
+                │              │
+                │              └→ review (engineer review or merge failed)
                 └→ blocked (dependency, failure)
 ```
 
-- `active` / `ready`: Eligible for claiming
-- `in_progress`: Worker executing
-- `merge_ready`: Worker finished, PR ready
-- `merging`: Refinery processing (merge slot claimed)
-- `review`: Engineer review or merge failure
-- `waiting`: Human decision gate (supervisor Phase 3)
-- `done`: Merged and complete
-- `blocked`: Unresolved issue
+See [[aops-core/TAXONOMY.md#status-values-and-transitions]] for canonical status definitions. The supervisor uses the canonical set without extensions.
 
 ## Appendix: Atomic Locking (Non-Task Batches)
 

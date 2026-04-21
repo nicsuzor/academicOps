@@ -64,54 +64,42 @@ The supervisor maintains structured state in the epic task body. This is the
 
 ### Work Items
 
-| # | ID       | Title       | Status  | Worker | PR   | Notes           |
-| - | -------- | ----------- | ------- | ------ | ---- | --------------- |
-| 1 | task-abc | Fix widget  | done    | claude | #234 | merged 10:45    |
-| 2 | task-def | Add tests   | pr_open | gemini | #235 | CI passing      |
-| 3 | task-ghi | Update docs | ready   | —      | —    | unblocked by #1 |
+| # | ID       | Title       | Status      | Worker | PR   | Notes           |
+| - | -------- | ----------- | ----------- | ------ | ---- | --------------- |
+| 1 | task-abc | Fix widget  | done        | claude | #234 | merged 10:45    |
+| 2 | task-def | Add tests   | merge_ready | gemini | #235 | CI passing      |
+| 3 | task-ghi | Update docs | ready       | —      | —    | unblocked by #1 |
 
 ### Activity Log
 
 [ISO timestamp] [environment]: [what the supervisor did]
 ```
 
-Note: the `dispatched` status in the local work items table maps to
-`in_progress` in PKB task status.
-
 ### Work Item Statuses
 
-| Status         | Meaning                                                                                                 |
-| -------------- | ------------------------------------------------------------------------------------------------------- |
-| ready          | Decomposed, awaiting human approval (NOT dispatchable)                                                  |
-| queued         | Human-approved, dispatchable                                                                            |
-| waiting        | Gate halted — parent task not yet queued; supervisor will resume on promotion                           |
-| dispatched     | Sent to worker, waiting for PR                                                                          |
-| pr_open        | PR filed, under review                                                                                  |
-| pr_approved    | Approved, ready to merge                                                                                |
-| merge_ready    | PKB status: PR exists, CI passing, awaiting merge — do not re-dispatch; trigger merge agent or add LGTM |
-| done           | Merged and verified                                                                                     |
-| blocked        | Waiting on a dependency — will be unblocked automatically                                               |
-| needs_decision | Requires human judgment before work can proceed — do not dispatch                                       |
-| failed         | Worker failed, needs re-dispatch or replan                                                              |
-| branch_queued  | Queued, waiting for feature branch lock (coordinated dispatch)                                          |
+The supervisor uses canonical PKB task statuses — see [[aops-core/TAXONOMY.md#status-values-and-transitions]].
 
-**`branch_queued` lifecycle** (coordinated dispatch only):
+| Status        | Meaning in the supervisor loop                                                                                                                                      |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ready`       | Decomposed, awaiting human approval (NOT dispatchable). Also the halt state when a plan-review gate fires — parent not yet queued; supervisor resumes on promotion. |
+| `queued`      | Human-approved, dispatchable. Includes tasks waiting for a feature branch lock during coordinated dispatch (detected via the `feature_branch` field on siblings).   |
+| `in_progress` | Dispatched to a worker, or worker executing — covers both the "sent, waiting for PR" and "actively working" phases                                                  |
+| `merge_ready` | PR filed / CI passing / awaiting merge — do not re-dispatch; trigger merge agent or add LGTM                                                                        |
+| `review`      | Requires human judgment — PR changes requested, review gate fired, or decision required before work can proceed. Supervisor does NOT dispatch.                      |
+| `done`        | Merged and verified                                                                                                                                                 |
+| `blocked`     | Waiting on a dependency — will be unblocked automatically when the dependency transitions to `done`                                                                 |
+| `paused`      | Intentionally stopped; supervisor does not dispatch until human resumes                                                                                             |
+| `cancelled`   | Abandoned; supervisor ignores                                                                                                                                       |
 
-- **Enters**: During DISPATCH, when a task is queued but another task holds the
-  feature branch lock. Set by the supervisor when choosing coordinated dispatch.
-- **Exits → dispatched**: When the branch-locked task completes (worker calls
-  `mcp__pkb__release_task`), the supervisor transitions the next `branch_queued`
-  item to `queued`, then dispatches it normally.
-- **Exits → queued** (fallback): If the branch-locked task is reset by
-  `polecat reset-stalled`, the branch lock is implicitly released. The
-  supervisor transitions `branch_queued` items to `queued` on next ORIENT.
-- **Stale-check interaction**: `branch_queued` tasks are NOT stale — they are
-  intentionally waiting. Do not reset them. Only the actively dispatched
-  branch-locked task can go stale.
+**Coordinated dispatch (feature branch lock)**: When a task is `queued` but another
+task holds the feature branch lock, leave it `queued` and skip dispatch. The branch
+lock is a sibling-task property, not a separate status. When the lock-holder reaches
+a terminal status (`done`, `merge_ready`, `cancelled`) or is reset by
+`polecat reset-stalled`, the supervisor dispatches the next waiting `queued` item on
+the next ORIENT tick. These tasks are NOT stale — only the actively dispatched
+branch-locked task can go stale.
 
-`needs_decision` maps to PKB task status `needs_review`. Agents cannot claim
-tasks in these statuses, so setting them is an enforceable gate — not an
-advisory note in the body.
+`review` is an enforceable gate — agents cannot claim tasks in this status.
 
 ## Verification, Not Interrogation
 
@@ -139,8 +127,8 @@ not fact-checking. Verification is execution — automate it.
 
 - Check PKB task status (not just what the work items table says — query live)
 - Check child task status (a parent may be done if all children are done)
-- If dispatched: check for PRs (`gh pr list --search "head:polecat/{id}"`)
-- If pr_open: check review/CI status
+- If `in_progress`: check for PRs (`gh pr list --search "head:polecat/{id}"`)
+- If `merge_ready`: check review/CI status
 - Check git log for recent changes to task files
 - Has anything been merged since last checkpoint?
 
@@ -164,7 +152,7 @@ discovers something is bigger than expected.
    - AC is implementable against current codebase?
 3. Record dispatch in the task file BEFORE firing the worker
 4. Fire the worker: `polecat run -t <id> -p <project>`
-5. Update status to `dispatched`
+5. Update status to `in_progress`
 
 ### MONITOR
 
@@ -184,12 +172,12 @@ mechanisms deliver state changes without burning tokens:
    ```
 
 2. **Persistent Monitor for PR state transitions.** A single Monitor
-   watches all dispatched task branches and emits one event per state
+   watches all in-progress task branches and emits one event per state
    change. Start it once during DISPATCH, and it runs for the rest of the
    session.
 
    ```bash
-   # Monitor PR state for all dispatched polecat branches
+   # Monitor PR state for all in-progress polecat branches
    while true; do
      for branch in $(git for-each-ref --format='%(refname:strip=3)' 'refs/remotes/origin/polecat/*'); do
        task_id=$(echo "$branch" | sed 's|polecat/||')
@@ -249,7 +237,7 @@ context window — especially when supervising 3–4 concurrent workers over
 
 If event-driven monitoring is not possible (e.g., resumed session,
 different machine, no long-running Monitor), fall back to a single check
-per invocation. For each dispatched/pr_open item:
+per invocation. For each `in_progress` / `merge_ready` item:
 
 - Check PKB for status changes
 - Check GitHub for PRs (`gh pr list`, `gh pr view`)
@@ -273,7 +261,7 @@ During MONITOR, read BOTH:
   task body for worker-appended notes.
 - Check GitHub: `gh pr list --search "head:polecat/<task-id>"`
 - If using coordinated branch: check that the feature branch has expected
-  commits from the last dispatched worker before dispatching the next.
+  commits from the previous worker before dispatching the next.
 
 Use worker notes to update the work items table, decide whether the task
 truly needs follow-up, and inform subsequent task specs with lessons learned.
@@ -334,8 +322,8 @@ these tasks:
 - **Don't** check the polecat worktree's git log for commits — the worktree
   may have zero commits even on a successful run.
 - **Do** check `$ACA_DATA` (brain repo) `git log --since` for auto-sync
-  commits that touch task/knowledge/project files, plus the dispatched task's
-  body for worker-appended evidence.
+  commits that touch task/knowledge/project files, plus the task's body for
+  worker-appended evidence.
 - **Do** read the transcript if the brain-side signals are thin.
 
 The dispatch task body is still the primary evidence surface — workers should
@@ -398,14 +386,14 @@ parallel dispatch report shape) lists deferred verification:
 
 ### REACT
 
-| Problem                           | Response                                           |
-| --------------------------------- | -------------------------------------------------- |
-| Worker failed (no PR, task reset) | Re-dispatch, possibly different worker             |
-| PR has merge conflicts            | Close PR, re-dispatch on fresh base                |
-| PR got CHANGES_REQUESTED          | Read review comments, decide: fix or re-dispatch   |
-| Task bigger than expected         | Decompose further, add work items                  |
-| Dependency discovered             | Add depends_on, mark dependent as blocked          |
-| Academic integrity concern        | Set task status to `needs_review`, do not dispatch |
+| Problem                           | Response                                         |
+| --------------------------------- | ------------------------------------------------ |
+| Worker failed (no PR, task reset) | Re-dispatch, possibly different worker           |
+| PR has merge conflicts            | Close PR, re-dispatch on fresh base              |
+| PR got CHANGES_REQUESTED          | Read review comments, decide: fix or re-dispatch |
+| Task bigger than expected         | Decompose further, add work items                |
+| Dependency discovered             | Add depends_on, mark dependent as blocked        |
+| Academic integrity concern        | Set task status to `review`, do not dispatch     |
 
 ### INTEGRATE
 
@@ -427,20 +415,20 @@ All work items done:
 ## Holding Work for Human Judgment
 
 When a task requires human judgment before work can proceed (academic integrity
-concern, methodology question, scope ambiguity), set the **PKB task status** to
-`needs_review` and the work items table status to `needs_decision`.
+concern, methodology question, scope ambiguity), set the task status to
+`review`.
 
-This is an enforced gate. Agents cannot claim tasks in `needs_review` status,
+This is an enforced gate. Agents cannot claim tasks in `review` status,
 so the work is held without relying on anyone checking a body note.
 
 ```bash
 # Hold a task for human decision
-pkb update <task-id> --status needs_review --note "Reason: <why human input needed>"
+pkb update <task-id> --status review --note "Reason: <why human input needed>"
 ```
 
-Update the work items table status to `needs_decision`. The supervisor will
+The supervisor will
 skip these items during DISPATCH until the human resolves them by changing
-the status back to `active` (ready to dispatch).
+the status back to `queued` (ready to dispatch).
 
 ## State Recovery
 
@@ -451,7 +439,7 @@ or corrupted, recover from the nearest available source:
    task file are in git history.
 2. **PKB search**: `pkb search "<epic title>"` — prior snapshots of the task
    may be indexed.
-3. **Open PRs**: `gh pr list --search "head:polecat/"` — dispatched work items
+3. **Open PRs**: `gh pr list --search "head:polecat/"` — in-progress work items
    leave PRs as evidence.
 4. **Child task status**: Query PKB for tasks with `parent: <epic-id>` to
    reconstruct the work items table.
@@ -515,4 +503,4 @@ pkb get task-XXXXXXXX | claude -p "You are the supervisor. Orient and act."
 - **Silent failures**: If something breaks, write it into the task file. The next
   supervisor instance needs to know.
 - **Delegating judgment**: If a work item involves academic output, methodology,
-  or citations — set task status to `needs_review`. Never auto-merge.
+  or citations — set task status to `review`. Never auto-merge.

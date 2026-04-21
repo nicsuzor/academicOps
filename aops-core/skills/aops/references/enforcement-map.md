@@ -81,7 +81,7 @@ Or set at session start in `session_env_setup.sh`.
 
 **Location**: `aops-core/skills/supervisor/instructions/decomposition-and-review.md` — Phase 2.5
 
-**What it enforces**: After decomposition + Phase 2 review synthesis, the supervisor MUST check whether the parent task's `status == "queued"` before dispatching any subtasks. If the parent is not yet `queued`, the supervisor posts a synthesis summary, sets parent `status = "waiting"`, and STOPS — no subtasks are dispatched.
+**What it enforces**: After decomposition + Phase 2 review synthesis, the supervisor MUST check whether the parent task's `status == "queued"` before dispatching any subtasks. If the parent is not yet `queued`, the supervisor posts a synthesis summary, sets parent `status = "ready"`, and STOPS — no subtasks are dispatched.
 
 **Condition**: `parent.status != "queued"` → HALT; `parent.status == "queued"` → proceed to DISPATCH.
 

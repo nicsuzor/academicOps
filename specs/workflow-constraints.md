@@ -323,7 +323,7 @@ Run `/pull` to execute, or continue with other work.
 
 When user runs `/pull`:
 
-1. `list_tasks(status="active")` returns candidate tasks
+1. `list_tasks(status="queued")` returns candidate tasks
 2. If specific task ID provided: claim that task
 3. If no ID: claim highest priority active task
 4. Apply workflow constraints during execution
