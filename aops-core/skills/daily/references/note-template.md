@@ -9,6 +9,15 @@ description: Daily note structure template (SSoT)
 This template defines the sections and their purpose. The agent composes each section using judgment about what matters most in context — the template is a structural guide, not a form to fill in.
 
 ````markdown
+---
+title: "Daily Summary - YYYY-MM-DD"
+type: daily
+date: YYYY-MM-DD
+daily_narrative: null
+daily_story: []
+narrative_generated: null
+---
+
 # Daily Summary - YYYY-MM-DD
 
 ## Focus

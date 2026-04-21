@@ -49,11 +49,9 @@ Write a 2-4 sentence natural language summary to the `## Today's Story` section.
   4. If research sessions exist but produced no GitHub artifacts, that's normal — research produces understanding, not commits. Write about what was explored, decided, or advanced.
   5. If NO research work happened and the day was all infrastructure, note that honestly: "Infrastructure day — no research progress."
 
-**Synthesized Narrative for Dashboard**: Prepare a copy of this 2-4 sentence summary (excluding the "Dropped Threads" bullet) to be used as `daily_narrative` in `synthesis.json`. In Step 5.3.1, you must update both `daily_narrative` (prose) and `daily_story` (bullets).
+### Step 5.3.1: Update daily note frontmatter with narrative
 
-### Step 5.3.1: Update synthesis.json with narrative
-
-After writing Today's Story to the daily note, update the `daily_story` field in `$AOPS_SESSIONS/synthesis.json`. This is the **sole write point** for `daily_story` — Step 4.7 writes only structural data (sessions, PRs, accomplishments), not narrative. This avoids generating a narrative twice per /daily run with incomplete context the first time.
+After writing Today's Story to the daily note, update the frontmatter fields. This is the sole write point for the daily narrative — the cron synthesis script does not generate it.
 
 1. Adapt Today's Story from prose (Step 5.3) into 3-5 bullet points:
    - Second person ("you started...", "you got pulled into...")
@@ -61,11 +59,12 @@ After writing Today's Story to the daily note, update the `daily_story` field in
    - Cover: what started, what got sidetracked, what remains undone
    - Weight by human engagement (prompt count from Step 4.2), not agent output volume. Lead with what the human interacted with, not what autonomous agents produced.
    - **Lead bullets with research/academic work.** Infrastructure gets last bullet position. If research sessions had high engagement (2+ prompts), they are always bullet #1.
-2. Read existing `$AOPS_SESSIONS/synthesis.json`
-3. Update `daily_story` array and `narrative_generated` timestamp
-4. Write back atomically (preserve all other fields)
-
-If `$AOPS_SESSIONS` is not set or synthesis.json doesn't exist, skip silently.
+2. Read the daily note file
+3. Update the YAML frontmatter fields:
+   - `daily_narrative`: the 2-4 sentence prose summary (excluding "Dropped Threads" bullet)
+   - `daily_story`: the bullet array from step 1
+   - `narrative_generated`: ISO 8601 timestamp
+4. Write the file back
 
 ### Step 5.4: Terminal Briefing Output
 

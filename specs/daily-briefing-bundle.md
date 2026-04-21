@@ -191,8 +191,8 @@ YAML frontmatter (type: bundle, date, item_counts)
 
 ### Generate (agent)
 
-1. **Read daily note** — extract Focus items, FYI summaries, carryover, task tree
-2. **Read synthesis.json** if available — structured task data
+1. **Read daily note** — extract Focus items, FYI summaries, carryover, task tree; read `daily_story`/`daily_narrative` from frontmatter
+2. **Read synthesis.json** if available — session/PR/alignment aggregates (cron-generated; no narrative here)
 3. **Load yesterday's bundle** — carry forward unprocessed annotations
 4. **Enrich** — for each decision item: `get_task(id)` for full context, `messages_get(entry_id)` for email threading, `calendar_list_upcoming(days=2)` for calendar
 5. **Classify** items into sections (Decision/Calendar/Email/FYI/Carryover)
@@ -234,16 +234,17 @@ Scan for `<!-- @nic: -->` annotations without matching `<!-- @claude: -->` respo
 
 ## Data Sources
 
-| Source         | Tool                                                    | Purpose                         |
-| -------------- | ------------------------------------------------------- | ------------------------------- |
-| Daily note     | Read file                                               | Focus items, FYIs, carryover    |
-| synthesis.json | Read file                                               | Structured task data            |
-| Task details   | `get_task(id)`                                          | Full context for coversheets    |
-| Calendar       | `calendar_list_today`, `calendar_list_upcoming(days=2)` | Meeting schedule + tomorrow     |
-| Email content  | `messages_get(entry_id)`                                | Threading info for drafts       |
-| Email search   | `messages_search`                                       | Find related emails for context |
-| Draft creation | `messages_reply`, `messages_create_draft`               | Approved draft staging          |
-| Annotations    | `/annotations` skill                                    | Process `@nic:` comments        |
+| Source                  | Tool                                                    | Purpose                         |
+| ----------------------- | ------------------------------------------------------- | ------------------------------- |
+| Daily note              | Read file                                               | Focus items, FYIs, carryover    |
+| Daily note frontmatter  | Read file                                               | `daily_story`, `daily_narrative` — the day's narrative summary |
+| synthesis.json          | Read file                                               | Session/PR/alignment aggregates (cron-generated structural data) |
+| Task details            | `get_task(id)`                                          | Full context for coversheets    |
+| Calendar                | `calendar_list_today`, `calendar_list_upcoming(days=2)` | Meeting schedule + tomorrow     |
+| Email content           | `messages_get(entry_id)`                                | Threading info for drafts       |
+| Email search            | `messages_search`                                       | Find related emails for context |
+| Draft creation          | `messages_reply`, `messages_create_draft`               | Approved draft staging          |
+| Annotations             | `/annotations` skill                                    | Process `@nic:` comments        |
 
 ## Giving Effect
 
