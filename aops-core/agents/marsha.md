@@ -4,16 +4,15 @@ description: "The QA Reviewer — runtime verification and intent checking. Assu
 model: sonnet
 color: pink
 tools:
-  - read_file
-  - run_shell_command
-  - mcp_playwright_browser_navigate
-  - mcp_playwright_browser_snapshot
-  - mcp_playwright_browser_take_screenshot
-  - mcp_playwright_browser_click
-  - mcp_playwright_browser_wait_for
-  - mcp_playwright_browser_evaluate
-  - mcp_playwright_browser_type
-  - mcp_playwright_browser_resize
+  - Read
+  - Bash
+  - Skill
+  - mcp__playwright__browser_navigate
+mcpServers:
+  - playwright
+skills:
+  - qa
+subagents: []
 ---
 
 # Marsha — The QA Reviewer

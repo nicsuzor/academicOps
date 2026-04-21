@@ -11,20 +11,15 @@ tests focus on run-specific behavior: task routing, prompt building, exit codes.
 
 import os
 import subprocess
-import sys
 
 import pytest
 
 
 def _polecat_env(polecat_home):
-    """Build an env dict for running polecat CLI.
-
-    Strips PKB_MCP_URL so tests don't talk to the real PKB server.
-    """
+    """Build an env dict for running polecat CLI."""
     env = os.environ.copy()
     env["POLECAT_HOME"] = str(polecat_home)
     env["PYTHONPATH"] = os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
-    env.pop("PKB_MCP_URL", None)
     return env
 
 
@@ -90,17 +85,21 @@ class TestPolecatRunCLI:
 
         result = subprocess.run(
             [
-                sys.executable,
+                "uv",
+                "run",
+                "python",
                 "-m",
                 "polecat.cli",
                 "--home",
                 str(temp_polecat_home),
                 "run",
+                "--project",
+                "nonexistent-test-project-zyx987",
             ],
             env=env,
             capture_output=True,
             text=True,
-            timeout=30,
+            timeout=90,
             cwd=_polecat_cwd(),
         )
 
@@ -118,7 +117,9 @@ class TestPolecatRunCLI:
 
         result = subprocess.run(
             [
-                sys.executable,
+                "uv",
+                "run",
+                "python",
                 "-m",
                 "polecat.cli",
                 "--home",
@@ -145,7 +146,9 @@ class TestPolecatRunCLI:
 
         result = subprocess.run(
             [
-                sys.executable,
+                "uv",
+                "run",
+                "python",
                 "-m",
                 "polecat.cli",
                 "--home",

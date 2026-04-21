@@ -4,8 +4,14 @@ description: "The Orchestrator — multi-agent review coordinator. Commissions r
 model: sonnet
 color: orange
 tools:
-  - read_file
-  - run_shell_command
+  - Read
+  - Bash
+  - Agent
+  - Skill
+skills:
+  - strategic-review
+subagents:
+  - "*"
 ---
 
 # James — The Orchestrator
