@@ -3601,13 +3601,18 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
         # via docker cp, and session transcripts are extracted after the run.
         # --approval-mode plan mirrors Claude crew's --permission-mode=plan:
         # reads are auto-approved, writes require policy-level allow rules.
-        cmd = [
-            "gemini",
-            "--approval-mode",
-            "plan",
-            "--include-directories",
-            "/home/worker/.gemini/extensions/aops-core",
-        ]
+        # Only inject approval-mode if agent_args doesn't already provide one —
+        # callers may pass --approval-mode via extra args after '--'.
+        _has_approval = agent_args and "--approval-mode" in agent_args
+        cmd = ["gemini"]
+        if not _has_approval:
+            cmd.extend(["--approval-mode", "plan"])
+        cmd.extend(
+            [
+                "--include-directories",
+                "/home/worker/.gemini/extensions/aops-core",
+            ]
+        )
     else:
         # Claude Code: sandbox via project settings.json + setting-sources
         cmd = [
