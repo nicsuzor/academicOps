@@ -8,13 +8,6 @@ tools:
   - Bash
   - Skill
   - mcp__playwright__browser_navigate
-  - mcp__playwright__browser_snapshot
-  - mcp__playwright__browser_take_screenshot
-  - mcp__playwright__browser_click
-  - mcp__playwright__browser_wait_for
-  - mcp__playwright__browser_evaluate
-  - mcp__playwright__browser_type
-  - mcp__playwright__browser_resize
 mcpServers:
   - playwright
 skills:
