@@ -6,9 +6,10 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
-# Known built-in tools allowed in Gemini CLI agents.
+# Known built-in tools allowed in Gemini CLI and Claude Code agents.
 # Everything else must be an MCP tool (starting with mcp_ or mcp__)
 BUILTIN_TOOLS = {
+    # Gemini CLI built-ins (lowercase)
     "read_file",
     "run_shell_command",
     "bash",
@@ -24,6 +25,22 @@ BUILTIN_TOOLS = {
     "str_replace_editor",
     "brave_web_search",
     "list_directory",
+    # Claude Code built-ins (PascalCase)
+    "Read",
+    "Write",
+    "Edit",
+    "Glob",
+    "Grep",
+    "Bash",
+    "NotebookEdit",
+    "WebFetch",
+    "WebSearch",
+    "Task",
+    "TodoWrite",
+    "ExitPlanMode",
+    "AskUserQuestion",
+    "Skill",
+    "ToolSearch",
     # Specific agent tools
     "codebase_investigator",
     "cli_help",
