@@ -7,10 +7,6 @@ tools:
   - Read
   - Skill
   - mcp__pkb__search
-  - mcp__pkb__get_document
-  - mcp__pkb__pkb_context
-  - mcp__pkb__graph_stats
-  - mcp__pkb__find_duplicates
 mcpServers:
   - pkb
 disallowedTools:
