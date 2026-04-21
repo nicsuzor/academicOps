@@ -239,13 +239,13 @@ Parse responses into structured verdicts:
 
 - [Any non-blocking improvements from reviewers]
 
-→ Proceeding to human approval gate (status='ready')
+→ Proceeding to human approval gate (status='review')
 ```
 
 Then:
 
 ```python
-update_task(id=task_id, updates={"status": "ready", "body": synthesis_markdown})
+update_task(id=task_id, updates={"status": "review", "body": synthesis_markdown})
 ```
 
 ---
@@ -255,7 +255,7 @@ update_task(id=task_id, updates={"status": "ready", "body": synthesis_markdown})
 After synthesizing Pauli + RBG verdicts (Phase 2) and BEFORE any DISPATCH
 action, the supervisor MUST check the parent task's status. Per
 [[../../../TAXONOMY.md]] (status transitions — see `TAXONOMY.md:172`),
-agents pull only from `queued`. The transition from `ready` → `queued` is
+agents pull only from `queued`. The transition from `review` → `queued` is
 the **human approval record** — no separate marker, no extra metadata.
 
 **Gate check** (run exactly once, immediately after Phase 2 synthesis):
@@ -273,7 +273,7 @@ if parent.status != "queued":
         rbg_verdict=rbg.verdict,
     )
     mcp__pkb__append(id=task_id, content=comment)
-    update_task(id=task_id, updates={"status": "ready"})
+    update_task(id=task_id, updates={"status": "review"})
     emit_user_summary(
         f"Plan-review gate: {task_id} is {parent.status!r}. "
         f"Decomposition complete with {len(subtasks)} subtasks. "
@@ -289,10 +289,10 @@ if parent.status != "queued":
 
 **Semantics** (explicit):
 
-- If `parent.status != "queued"` (e.g. `ready`, `inbox`): **HALT**.
+- If `parent.status != "queued"` (e.g. `review`, `inbox`): **HALT**.
   - Post synthesis summary as a comment on the parent task (subtask count,
     files affected, key risks, Pauli + RBG verdicts).
-  - Set parent `status = "ready"`.
+  - Set parent `status = "review"`.
   - Emit a user-facing summary describing what needs human review.
   - Do NOT transition any subtask out of `inbox` / `ready`.
   - Do NOT dispatch. STOP.
@@ -302,7 +302,7 @@ if parent.status != "queued":
   DISPATCH exactly as today.
 
 **Approval record**: there is no separate approval marker or metadata — the
-status transition `ready → queued` performed by the human **is** the
+status transition `review → queued` performed by the human **is** the
 approval record. Do not invent parallel approval tracking.
 
 ---
@@ -333,7 +333,7 @@ approval record. Do not invent parallel approval tracking.
 Then:
 
 ```python
-update_task(id=task_id, updates={"status": "ready", "body": synthesis_markdown})
+update_task(id=task_id, updates={"status": "in_progress", "body": synthesis_markdown})
 # Re-enter Phase 1 with reviewer feedback
 ```
 
@@ -435,7 +435,7 @@ Respond with:
 2. **Narrow scope**: Accept RBG's constraint
 3. **Request more info**: Specific question to resolve
 
-→ Awaiting human decision (status='ready')
+→ Awaiting human decision (status='review')
 ```
 
 ---

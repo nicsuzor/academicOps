@@ -80,7 +80,7 @@ ready_tasks = mcp__pkb__list_tasks(
     limit=50
 )
 
-# Get review tasks assigned to user (awaiting human action/decision)
+# Get review tasks assigned to user (awaiting human judgment)
 review_tasks = mcp__pkb__list_tasks(
     status="review",
     assignee="nic",

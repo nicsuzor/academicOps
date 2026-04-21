@@ -92,6 +92,7 @@ flowchart LR
 ```
 inbox → ready → queued → in_progress → merge_ready (PR filed) → done (after merge)
                                      → done (non-code task completed)
+                                     → review (needs human attention)
                                      → blocked (external dependency)
                                      → cancelled (abandoned)
 ```

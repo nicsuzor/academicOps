@@ -4688,9 +4688,11 @@ def reset_stalled(ctx, project, hours, dry_run, force):
                 try:
                     from lib.task_model import TaskStatus
 
-                    task.status = getattr(
+                    _status_attr = getattr(
                         TaskStatus, "QUEUED", getattr(TaskStatus, "ACTIVE", None)
-                    ).value
+                    )
+                    if _status_attr is not None:
+                        task.status = _status_attr.value
                 except (ImportError, AttributeError):
                     pass
                 manager.storage.save_task(task)
