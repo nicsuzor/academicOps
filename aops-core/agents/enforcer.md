@@ -79,8 +79,6 @@ Missing paths are not errors — not every project has local rules.
 
 ```markdown
 ## Compliance check: OK
-
-No issues detected. Continue current work.
 ```
 
 ### WARN

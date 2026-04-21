@@ -83,20 +83,6 @@ The `session_id` is the primary join key for all session artifacts and tasks.
 - **Propagation**: Must be available to all hooks and tools throughout the session.
 - **Override/Fallback**: If the env var is missing, the `mem` implementation is the Source of Truth for minting a stable ID to prevent ID fragmentation across tools.
 
-## 4. `/recap` Command
-
-A new `/recap` command (or tool-assisted prompt) provides a terse in-session view of work done so far.
-
-- **Implementation**: A thin wrapper around `list_tasks(session_id=$AOPS_SESSION_ID)`.
-- **Output**: Terminal-friendly list of tasks touched/released in the current session.
-
-## 5. `/dump` Fate
-
-The `/dump` command is **retained** but rescoped. It is no longer the default session-end workflow.
-
-- **Usage**: Emergency handover, machine/environment/project transfers, or resuming an interrupted session.
-- **Implementation**: Alias for a "full" capture that includes machine state and environment context, whereas `end_session` (via `release_task`) focuses on the logical work delta.
-
 ## 6. Dashboard Integration
 
 The "Recent Sessions" panel in the **Overwhelm Dashboard** becomes the primary human surface for post-break review.
@@ -106,13 +92,13 @@ The "Recent Sessions" panel in the **Overwhelm Dashboard** becomes the primary h
 
 ## 7. Giving Effect
 
-| Component            | Implementation File              | Status |
-| -------------------- | -------------------------------- | ------ |
-| `mem` YAML Schema    | `pkb/schemas/task.py`            | 📋     |
-| `release_task` logic | `pkb/tools/task_tools.py`        | 📋     |
-| `end_session` skill  | `aops-core/skills/dump/SKILL.md` | 📋     |
-| `/recap` definition  | `aops-core/commands/recap.toml`  | 📋     |
-| Dashboard Panel      | `scripts/synthesize_dashboard.py` | 📋     |
+| Component                  | Implementation File               | Status |
+| -------------------------- | --------------------------------- | ------ |
+| `mem` YAML Schema          | `pkb/schemas/task.py`             | 📋     |
+| `release_task` logic       | `pkb/tools/task_tools.py`         | 📋     |
+| `dump` (end_session) skill | `aops-core/skills/dump/SKILL.md`  | 📋     |
+| `/recap` definition        | `aops-core/commands/recap.toml`   | 📋     |
+| Dashboard Panel            | `scripts/synthesize_dashboard.py` | 📋     |
 
 ## 8. Backwards Compatibility
 

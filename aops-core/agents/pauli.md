@@ -6,11 +6,12 @@ model: inherit
 tools:
   - Read
   - Skill
-  - mcp__pkb__search
-mcpServers:
-  - pkb
+# Note: tools: restricts local subagent invocation only.
+# GHA workflow grants Bash+Read via claude_args for PR review tasks.
 disallowedTools:
   - Write
+mcpServers:
+  - pkb
 skills:
   - remember
   - planner
