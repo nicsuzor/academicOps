@@ -197,7 +197,7 @@ Check:
 2. Are there any scope expansions not explicitly authorized?
 3. Do any subtasks assume permissions not granted?
 
-Output exactly: OK, WARN, or BLOCK (see rbg format spec). Empty output = OK.
+Output exactly: OK, WARN, or BLOCK (see rbg format spec)
 ''',
     description='Authority verification'
 )

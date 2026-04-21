@@ -168,7 +168,9 @@ Why middle, not base? A base-tier mechanism runs every action — the enforcer r
 
 ### OK
 
-If no issues are detected, emit NO OUTPUT. Do not post a comment or any text.
+```markdown
+## Compliance check: OK
+```
 
 ### WARN
 
@@ -177,7 +179,21 @@ If no issues are detected, emit NO OUTPUT. Do not post a comment or any text.
 
 **Issue**: [one-sentence description]
 **Principle**: [axiom/heuristic number and name]
+**Evidence**: [short quote or reference]
 **Correction**: [what to do instead]
+```
+
+### BLOCK
+
+Use BLOCK only when the violation is clear and the correction is non-negotiable.
+
+```markdown
+## Compliance check: BLOCK
+
+**Issue**: [one-sentence description]
+**Principle**: [axiom/heuristic number and name]
+**Evidence**: [short quote or reference]
+**Required action**: [what MUST happen before continuing]
 ```
 
 ## Implementation evolution

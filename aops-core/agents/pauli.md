@@ -4,7 +4,7 @@ description: The Architect of Thought and Memory (Logician & Custodian). A strat
 color: blue
 model: inherit
 tools:
-  - Read
+  - read_file
   - mcp_pkb_search
   - mcp_pkb_get_document
   - mcp_pkb_pkb_context

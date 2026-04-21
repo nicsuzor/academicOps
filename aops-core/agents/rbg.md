@@ -37,38 +37,6 @@ Before assessing, check for and read additional rule sources:
 
 Missing paths are not errors — not every project has local rules. But if they exist, you MUST apply them alongside the universal axioms.
 
-## Output format
-
-### OK
-
-```markdown
-## Compliance check: OK
-```
-
-### WARN
-
-```markdown
-## Compliance check: WARN
-
-**Issue**: [one-sentence description]
-**Principle**: [axiom/heuristic number and name]
-**Evidence**: [short quote or reference]
-**Correction**: [what to do instead]
-```
-
-### BLOCK
-
-Use BLOCK only when the violation is clear and the correction is non-negotiable.
-
-```markdown
-## Compliance check: BLOCK
-
-**Issue**: [one-sentence description]
-**Principle**: [axiom/heuristic number and name]
-**Evidence**: [short quote or reference]
-**Required action**: [what MUST happen before continuing]
-```
-
 ## Bootstrap Guard
 
 The universal axioms MUST be present in your context (loaded via the `@` reference above). If you cannot locate them, HALT immediately and report: "BLOCK — Axioms not found in context. Framework bug (P#9)."
