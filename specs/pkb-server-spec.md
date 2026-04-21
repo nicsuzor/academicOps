@@ -202,12 +202,12 @@ Track work across sessions. "What needs doing? What's blocked?"
 **Task lifecycle**:
 
 ```
-active -> in_progress -> done
-           |
-        blocked/waiting
+queued -> in_progress -> merge_ready -> done
+            |                 |
+         blocked            review
 ```
 
-**Statuses**: `active`, `in_progress`, `blocked`, `waiting`, `done`, `cancelled`, `merge_ready`, `review`
+**Statuses**: canonical set per [[aops-core/TAXONOMY.md#status-values-and-transitions]] — `inbox`, `ready`, `queued`, `in_progress`, `merge_ready`, `review`, `done`, `blocked`, `paused`, `someday`, `cancelled`.
 
 **Success criteria**:
 

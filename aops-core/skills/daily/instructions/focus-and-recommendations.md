@@ -73,14 +73,14 @@ Copy the `formatted` field from the response directly into the code block.
 Count tasks awaiting user decisions (for decision queue summary):
 
 ```python
-# Get waiting tasks assigned to user
-waiting_tasks = mcp__pkb__list_tasks(
-    status="waiting",
+# Get ready tasks assigned to user (awaiting human promotion to queued)
+ready_tasks = mcp__pkb__list_tasks(
+    status="ready",
     assignee="nic",
     limit=50
 )
 
-# Get review tasks assigned to user
+# Get review tasks assigned to user (awaiting human judgment)
 review_tasks = mcp__pkb__list_tasks(
     status="review",
     assignee="nic",
@@ -90,7 +90,7 @@ review_tasks = mcp__pkb__list_tasks(
 # Filter to decision-type tasks (exclude project/epic/goal)
 EXCLUDED_TYPES = ["project", "epic", "goal"]
 decisions = [
-    t for t in (waiting_tasks + review_tasks)
+    t for t in (ready_tasks + review_tasks)
     if t.type not in EXCLUDED_TYPES
 ]
 

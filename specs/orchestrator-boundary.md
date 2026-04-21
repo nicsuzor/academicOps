@@ -100,7 +100,7 @@ The orchestrator cannot be safely locked until:
 2. PKB MCP is reachable from polecat sandbox containers
 3. Turn budget is calibrated to avoid exhaustion on M-complexity tasks
 4. The zero-changes detection loop is fully resolved (not just marked review)
-5. `create_task` defaults to `draft` (not `active`), so half-baked tasks don't surface in the ready queue before the orchestrator locks
+5. `create_task` defaults to `inbox` (not `queued`), so half-baked tasks don't surface for dispatch before the orchestrator locks
 
 ## Related Design Decisions
 

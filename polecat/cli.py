@@ -2291,13 +2291,16 @@ def checkout(ctx, task_id, caller):
     try:
         from lib.task_model import TaskStatus
 
-        if task.status == TaskStatus.ACTIVE:
+        if task.status in (
+            getattr(TaskStatus, "QUEUED", None),
+            getattr(TaskStatus, "ACTIVE", None),
+        ):
             task.status = TaskStatus.IN_PROGRESS.value
             task.assignee = caller
             manager.storage.save_task(task)
             print(f"Claimed: {task.title}", file=sys.stderr)
     except ImportError:
-        if task.status == "active":
+        if task.status in ("queued", "active"):
             from polecat.pkb_bridge import update_task as pkb_update_task
 
             pkb_update_task(task_id, status="in_progress", assignee=caller)
@@ -2369,16 +2372,19 @@ def finish(ctx, no_push, do_nuke, force, force_done, project):
     # --- SAFEGUARD 0: Completion Protection ---
     # If the task is already DONE, or in review/merge phase, do NOT override it.
     # This prevents the "infinite retry loop" where auto-finish resets a manually completed task.
-    _TERMINAL_STATUSES = ("done", "review", "merge_ready", "merging", "cancelled")
+    _TERMINAL_STATUSES = ("done", "review", "merge_ready", "cancelled")
     try:
         from lib.task_model import TaskStatus
 
-        terminal_or_pr_statuses = (
-            TaskStatus.DONE,
-            TaskStatus.REVIEW,
-            TaskStatus.MERGE_READY,
-            TaskStatus.MERGING,
-            TaskStatus.CANCELLED,
+        terminal_or_pr_statuses = tuple(
+            s
+            for s in (
+                getattr(TaskStatus, "DONE", None),
+                getattr(TaskStatus, "REVIEW", None),
+                getattr(TaskStatus, "MERGE_READY", None),
+                getattr(TaskStatus, "CANCELLED", None),
+            )
+            if s is not None
         )
 
         if task.status in terminal_or_pr_statuses:
@@ -3601,13 +3607,18 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
         # via docker cp, and session transcripts are extracted after the run.
         # --approval-mode plan mirrors Claude crew's --permission-mode=plan:
         # reads are auto-approved, writes require policy-level allow rules.
-        cmd = [
-            "gemini",
-            "--approval-mode",
-            "plan",
-            "--include-directories",
-            "/home/worker/.gemini/extensions/aops-core",
-        ]
+        # Only inject approval-mode if agent_args doesn't already provide one —
+        # callers may pass --approval-mode via extra args after '--'.
+        _has_approval = agent_args and "--approval-mode" in agent_args
+        cmd = ["gemini"]
+        if not _has_approval:
+            cmd.extend(["--approval-mode", "plan"])
+        cmd.extend(
+            [
+                "--include-directories",
+                "/home/worker/.gemini/extensions/aops-core",
+            ]
+        )
     else:
         # Claude Code: sandbox via project settings.json + setting-sources
         cmd = [
@@ -3985,7 +3996,7 @@ def run(
         status_str = task.status.value if hasattr(task.status, "value") else str(task.status or "")
 
         _DONE_STATUSES = ("done", "cancelled")
-        _LOCKED_STATUSES = ("merge_ready", "review", "merging")
+        _LOCKED_STATUSES = ("merge_ready", "review")
 
         if status_str in _DONE_STATUSES:
             print(f"✅ Task {task_id} is already '{status_str}'.")
@@ -4676,14 +4687,18 @@ def reset_stalled(ctx, project, hours, dry_run, force):
     reset_count = 0
     for task in stalled:
         try:
-            task.status = "active"
+            task.status = "queued"
             task.assignee = None
             if manager.storage is not None:
                 try:
                     from lib.task_model import TaskStatus
 
-                    task.status = TaskStatus.ACTIVE.value
-                except ImportError:
+                    _status_attr = getattr(
+                        TaskStatus, "QUEUED", getattr(TaskStatus, "ACTIVE", None)
+                    )
+                    if _status_attr is not None:
+                        task.status = _status_attr.value
+                except (ImportError, AttributeError):
                     pass
                 manager.storage.save_task(task)
             else:

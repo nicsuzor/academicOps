@@ -89,7 +89,7 @@ $POLECAT_HOME/polecat/
 A Python library that handles the lifecycle:
 
 - **`claim_next_task(caller, project)`**:
-  - Finds the highest priority `active` task.
+  - Finds the highest priority `queued` task.
   - Atomically locks it and updates status to `in_progress`.
   - Assigns it to the caller (e.g., `nic`, `bot`).
 - **`setup_worktree(task)`**:

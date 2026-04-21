@@ -14,10 +14,10 @@ mock Docker) cannot catch real integration failures like the Gemini auth
 regression (EAI_AGAIN) that triggered this work.
 """
 
+import json
 import os
 import re
 import subprocess
-import sys
 import time
 import uuid
 from pathlib import Path
@@ -85,6 +85,25 @@ def _check_fixture_task():
         return False
 
 
+def _cleanup_run_worktree():
+    """Delete the remote branch and local worktree created by pc run for the fixture task.
+
+    pc run creates polecat/<task-id> on origin and a local clone under ~/.aops/worktrees/.
+    Without cleanup, subsequent runs fail with "stale unmerged branch" from polecat's guard.
+    """
+    branch = f"polecat/{TEST_FIXTURE_TASK_ID}"
+    subprocess.run(
+        ["git", "push", "origin", "--delete", branch],
+        capture_output=True,
+        check=False,
+    )
+    worktree = Path.home() / ".aops" / "worktrees" / TEST_FIXTURE_TASK_ID
+    if worktree.exists():
+        import shutil
+
+        shutil.rmtree(worktree, ignore_errors=True)
+
+
 def _reset_fixture_task():
     """Reset the test fixture task to active status so it can be re-run.
 
@@ -95,7 +114,7 @@ def _reset_fixture_task():
     try:
         from polecat.pkb_bridge import update_task
 
-        update_task(TEST_FIXTURE_TASK_ID, status="active", assignee="polecat")
+        update_task(TEST_FIXTURE_TASK_ID, status="queued", assignee="polecat")
     except Exception:
         pass  # Best-effort; local reset below is the fallback
 
@@ -105,7 +124,7 @@ def _reset_fixture_task():
     if not task_file.exists():
         return
     content = task_file.read_text()
-    content = re.sub(r"(?m)^status:\s+\S+", "status: active", content, count=1)
+    content = re.sub(r"(?m)^status:\s+\S+", "status: queued", content, count=1)
     # Strip any "Completion Evidence" or "Outcome" sections appended by previous
     # runs — agents see these and triage ("prior work") instead of executing.
     content = re.sub(r"\n## Completion Evidence.*", "", content, flags=re.DOTALL)
@@ -169,7 +188,11 @@ class TestAllInvocationPaths:
         return False
 
     @staticmethod
-    def _find_latest_session_logs(started_after: float = 0, crew_name: str | None = None):
+    def _find_latest_session_logs(
+        started_after: float = 0,
+        crew_name: str | None = None,
+        backend: str | None = None,
+    ):
         """Discover the most-recently-modified session file and hook log.
 
         Searches for both Claude JSONL and Gemini JSON session files.
@@ -182,6 +205,9 @@ class TestAllInvocationPaths:
                 filename contains the crew name, avoiding cross-session races
                 where a concurrent session's hook log is created in the same
                 time window.
+            backend: "claude" or "gemini". When set, filters session files by
+                expected format (.jsonl for Claude, session-*.json for Gemini)
+                to prevent cross-backend contamination.
 
         Returns:
             (hook_files_content, session_file, tool_calls)
@@ -205,7 +231,26 @@ class TestAllInvocationPaths:
             sanitized_crew = crew_name.replace("-", "")
             hook_files = [f for f in hook_files if sanitized_crew in f.name]
         hook_file = hook_files[-1] if hook_files else None
-        hook_files_content = hook_file.read_text() if hook_file else ""
+        if hook_file:
+            raw = hook_file.read_text()
+            # run-claude and run-gemini share the same session dir (same task+project),
+            # so they may append to the same hook log. Filter entries by client_type so
+            # each backend only sees its own hooks.
+            if backend in ("claude", "gemini"):
+                filtered_lines = []
+                for line in raw.splitlines():
+                    try:
+                        entry = json.loads(line)
+                        ct = entry.get("client_type")
+                        if ct is None or ct == backend:
+                            filtered_lines.append(line)
+                    except json.JSONDecodeError:
+                        filtered_lines.append(line)
+                hook_files_content = "\n".join(filtered_lines)
+            else:
+                hook_files_content = raw
+        else:
+            hook_files_content = ""
 
         is_session = TestAllInvocationPaths._is_session_file
         claude_dir = Path.home() / ".claude" / "projects"
@@ -221,6 +266,15 @@ class TestAllInvocationPaths:
         # Filter by modification time to avoid picking up unrelated sessions
         if started_after:
             session_files = [f for f in session_files if f.stat().st_mtime >= started_after]
+
+        # Filter by expected file format for the backend to prevent cross-session
+        # contamination when Claude and Gemini sessions run in the same time window.
+        if backend == "claude":
+            session_files = [f for f in session_files if f.suffix == ".jsonl"]
+        elif backend == "gemini":
+            session_files = [
+                f for f in session_files if f.suffix == ".json" and f.name.startswith("session-")
+            ]
 
         session_files = sorted(session_files, key=os.path.getmtime)
         session_file = session_files[-1] if session_files else None
@@ -243,7 +297,9 @@ class TestAllInvocationPaths:
         prompt = _make_mega_prompt(sentinel_name, sentinel_value)
 
         cmd = [
-            sys.executable,
+            "uv",
+            "run",
+            "python",
             "-m",
             "polecat.cli",
             "crew",
@@ -280,7 +336,7 @@ class TestAllInvocationPaths:
 
         # Always clean up any previous run first
         subprocess.run(
-            [sys.executable, "-m", "polecat.cli", "nuke", crew_name, "--force"],
+            ["uv", "run", "python", "-m", "polecat.cli", "nuke", crew_name, "--force"],
             capture_output=True,
             check=False,
             env=env,
@@ -305,6 +361,7 @@ class TestAllInvocationPaths:
         hook_files_content, session_file, tool_calls = self._find_latest_session_logs(
             started_after=started_at,
             crew_name=crew_name,
+            backend=backend,
         )
 
         return {
@@ -336,7 +393,9 @@ class TestAllInvocationPaths:
         _reset_fixture_task()
 
         cmd = [
-            sys.executable,
+            "uv",
+            "run",
+            "python",
             "-m",
             "polecat.cli",
             "run",
@@ -364,6 +423,10 @@ class TestAllInvocationPaths:
         ]:
             env.pop(key, None)
 
+        # Static sentinel the fixture task always writes to /workspace
+        sentinel_name = ".polecat-bind-mount-sentinel"
+        sentinel_value = "ok"
+
         started_at = time.time()
         try:
             proc = subprocess.run(
@@ -381,9 +444,26 @@ class TestAllInvocationPaths:
         finally:
             _reset_fixture_task()
 
+        # --no-auto-finish leaves the worktree in place; capture the sentinel
+        # before _cleanup_run_worktree() deletes the worktree directory.
+        worktree = Path.home() / ".aops" / "worktrees" / TEST_FIXTURE_TASK_ID
+        sentinel_file = worktree / sentinel_name
+        sentinel_on_host = sentinel_file.exists()
+        sentinel_content = sentinel_file.read_text().strip() if sentinel_on_host else ""
+        _cleanup_run_worktree()
+
+        # --no-auto-finish leaves the worktree in place; capture the sentinel
+        # before _cleanup_run_worktree() deletes the worktree directory.
+        worktree = Path.home() / ".aops" / "worktrees" / TEST_FIXTURE_TASK_ID
+        sentinel_file = worktree / sentinel_name
+        sentinel_on_host = sentinel_file.exists()
+        sentinel_content = sentinel_file.read_text().strip() if sentinel_on_host else ""
+        _cleanup_run_worktree()
+
         combined = proc.stdout + proc.stderr
         hook_files_content, session_file, tool_calls = self._find_latest_session_logs(
-            started_after=started_at
+            started_after=started_at,
+            backend=backend,
         )
 
         return {
@@ -397,6 +477,11 @@ class TestAllInvocationPaths:
             "hook_files_content": hook_files_content,
             "session_file": session_file,
             "tool_calls": tool_calls,
+            "sentinel_name": sentinel_name,
+            "sentinel_value": sentinel_value,
+            "sentinel_on_host": sentinel_on_host,
+            "sentinel_content": sentinel_content,
+            "started_at": started_at,
         }
 
     # --- Assertions (all parse the shared session result) ---
@@ -484,11 +569,9 @@ class TestAllInvocationPaths:
             f"{entries[0]['hook_event']!r}, expected 'SessionStart'"
         )
 
-        # client_type: must match backend when present, or be None on old images
         ct = entries[0].get("client_type")
-        assert ct is None or ct == session["backend"], (
-            f"[{session['param']}] client_type={ct!r}, "
-            f"expected {session['backend']!r} or None (pre-patch image)"
+        assert ct == session["backend"], (
+            f"[{session['param']}] client_type={ct!r}, expected {session['backend']!r}"
         )
 
     def test_hook_transcript_roundtrip(self, session, tmp_path):
@@ -543,43 +626,49 @@ class TestAllInvocationPaths:
         """Bind-mount only: a file the agent wrote inside /workspace appears on
         the host's clone of the worktree.
 
-        Under the old docker-cp staging this would FAIL, because cp only goes
-        host→container at start; the container's edits to /workspace are
-        discarded by `docker rm -f`. Under bind-mount staging the agent's write
-        lands directly on the host filesystem.
+        Under docker-cp staging this FAILS because cp only goes host→container
+        at start; in-container writes are discarded by `docker rm -f`. Under
+        bind-mount staging the write lands directly on the host filesystem.
 
-        Currently scoped to the crew path because _run_polecat reuses a
-        PKB-fixture prompt we don't currently template. Run path coverage will
-        come when the prompt fixture supports per-invocation substitution.
+        crew path: worktree persists after the run, so we search polecat_home
+        for the sentinel file (unique per invocation to avoid stale matches).
+        run path: worktree is captured before _cleanup_run_worktree() deletes
+        it; the result is stored in the session dict.
         """
-        if session["path_type"] != "crew":
-            pytest.skip("sentinel write only injected on the crew path")
-
         sentinel_name = session["sentinel_name"]
         sentinel_value = session["sentinel_value"]
-        started_at = session["started_at"]
 
-        # Search the polecat home for the sentinel — the worktree clone lives
-        # somewhere under it (manager.crew_dir / crew_name for `crew repo`).
-        polecat_home = Path(os.environ.get("POLECAT_HOME", str(Path.home() / ".polecat")))
-        matches = [
-            p
-            for p in polecat_home.rglob(sentinel_name)
-            if p.is_file() and p.stat().st_mtime >= started_at
-        ]
-
-        assert matches, (
-            f"[{session['param']}] Agent wrote /workspace/{sentinel_name} inside "
-            f"the container, but no file by that name appears on the host under "
-            f"{polecat_home}. This proves the worktree was NOT bind-mounted "
-            f"(cp-only staging discards in-container writes)."
-        )
-
-        content = matches[0].read_text().strip()
-        assert sentinel_value in content, (
-            f"[{session['param']}] Sentinel found at {matches[0]} but content "
-            f"{content!r} does not contain expected {sentinel_value!r}."
-        )
+        if session["path_type"] == "run":
+            assert session["sentinel_on_host"], (
+                f"[{session['param']}] Agent wrote /workspace/{sentinel_name} inside "
+                f"the container, but the file was not found on the host worktree at "
+                f"~/.aops/worktrees/{TEST_FIXTURE_TASK_ID}/{sentinel_name}. "
+                f"This proves the worktree was NOT bind-mounted "
+                f"(cp-only staging discards in-container writes)."
+            )
+            assert sentinel_value in session["sentinel_content"], (
+                f"[{session['param']}] Sentinel found but content "
+                f"{session['sentinel_content']!r} does not contain {sentinel_value!r}."
+            )
+        else:
+            started_at = session["started_at"]
+            polecat_home = Path(os.environ.get("POLECAT_HOME", str(Path.home() / ".polecat")))
+            matches = [
+                p
+                for p in polecat_home.rglob(sentinel_name)
+                if p.is_file() and p.stat().st_mtime >= started_at
+            ]
+            assert matches, (
+                f"[{session['param']}] Agent wrote /workspace/{sentinel_name} inside "
+                f"the container, but no file by that name appears on the host under "
+                f"{polecat_home}. This proves the worktree was NOT bind-mounted "
+                f"(cp-only staging discards in-container writes)."
+            )
+            content = matches[0].read_text().strip()
+            assert sentinel_value in content, (
+                f"[{session['param']}] Sentinel found at {matches[0]} but content "
+                f"{content!r} does not contain expected {sentinel_value!r}."
+            )
 
     def test_workspace_available_in_container(self, session):
         """Repo worktree is mounted at /workspace inside the container.
