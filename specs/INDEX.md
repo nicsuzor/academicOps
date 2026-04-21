@@ -27,6 +27,7 @@ How the system works today. Required reading for understanding the framework.
 | [[session-start-injection.md]]  | ✅     | Three-tier context loading (baseline + JIT)                                                                                                     |
 | [[hook-router.md]]              | ✅     | Single dispatch entry point for all hooks                                                                                                       |
 | [[ultra-vires-enforcer.md]]     | 🔶     | Drift detection (agent defined, automated gate archived)                                                                                        |
+| [[agent-authority.md]]          | 📋     | Agent permissions + skill delegation — frontmatter schema, deny-by-default, authority non-transit                                               |
 | [[workflow-system-spec.md]]     | 📋     | Composable markdown-based workflow engine                                                                                                       |
 | [[plugin-architecture.md]]      | ✅     | Component boundaries (aops-core vs aops-tools)                                                                                                  |
 | [[verification-system.md]]      | 📋     | Verify-first enforcement (design decision, not yet implemented)                                                                                 |
@@ -74,12 +75,12 @@ Coherent subsystem for parallel agent work via git worktrees.
 
 Task system, knowledge base, and MCP tool interfaces.
 
-| Spec                           | Status | Purpose                                                             |
-| ------------------------------ | ------ | ------------------------------------------------------------------- |
-| [[work-management.md]]         | ✅     | Task CRUD, dependencies, strategic tracking via MCP                 |
-| [[mcp-decomposition-tools.md]] | ✅     | Data access layer for task decomposition (dumb server, smart agent) |
-| [[pkb-server-spec.md]]         | 📋     | Combined CLI + MCP server for knowledge base (mem/Rust)             |
-| [[bd-markdown-integration.md]] | 📋     | Connect tasks to project markdown with auto-decomposition           |
+| Spec                           | Status | Purpose                                                                         |
+| ------------------------------ | ------ | ------------------------------------------------------------------------------- |
+| [[work-management.md]]         | ✅     | Task CRUD, dependencies, strategic tracking via MCP                             |
+| [[mcp-decomposition-tools.md]] | ✅     | Data access layer for task decomposition (dumb server, smart agent)             |
+| [[pkb-server-spec.md]]         | 📋     | Combined CLI + MCP server for knowledge base (mem/Rust)                         |
+| [[bd-markdown-integration.md]] | 📋     | Connect tasks to project markdown with auto-decomposition                       |
 | [[multi-parent-edges.md]]      | 📋     | Target-node severity ladder + `contributes_to` edge urgency propagation via BFS |
 
 ## Tier 5: Observability & Learning
