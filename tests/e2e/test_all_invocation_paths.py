@@ -443,6 +443,7 @@ class TestAllInvocationPaths:
             pytest.fail(f"run-{backend} timed out after {timeout}s")
         finally:
             _reset_fixture_task()
+            _cleanup_run_worktree()
 
         # --no-auto-finish leaves the worktree in place; capture the sentinel
         # before _cleanup_run_worktree() deletes the worktree directory.
