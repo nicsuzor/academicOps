@@ -452,14 +452,6 @@ class TestAllInvocationPaths:
         sentinel_content = sentinel_file.read_text().strip() if sentinel_on_host else ""
         _cleanup_run_worktree()
 
-        # --no-auto-finish leaves the worktree in place; capture the sentinel
-        # before _cleanup_run_worktree() deletes the worktree directory.
-        worktree = Path.home() / ".aops" / "worktrees" / TEST_FIXTURE_TASK_ID
-        sentinel_file = worktree / sentinel_name
-        sentinel_on_host = sentinel_file.exists()
-        sentinel_content = sentinel_file.read_text().strip() if sentinel_on_host else ""
-        _cleanup_run_worktree()
-
         combined = proc.stdout + proc.stderr
         hook_files_content, session_file, tool_calls = self._find_latest_session_logs(
             started_after=started_at,
