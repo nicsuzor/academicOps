@@ -9,6 +9,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 # Known built-in tools allowed in Gemini CLI agents.
 # Everything else must be an MCP tool (starting with mcp_ or mcp__)
 BUILTIN_TOOLS = {
+    # Gemini CLI built-in tools
     "read_file",
     "run_shell_command",
     "bash",
@@ -24,7 +25,7 @@ BUILTIN_TOOLS = {
     "str_replace_editor",
     "brave_web_search",
     "list_directory",
-    # Specific agent tools
+    # Gemini CLI specific agent tools
     "codebase_investigator",
     "cli_help",
     "generalist",
@@ -35,6 +36,21 @@ BUILTIN_TOOLS = {
     "pauli",
     "rbg",
     "activate_skill",
+    # Claude Code built-in tools (PascalCase)
+    "Read",
+    "Write",
+    "Edit",
+    "Grep",
+    "Glob",
+    "Bash",
+    "Skill",
+    "Agent",
+    "WebFetch",
+    "WebSearch",
+    "TodoWrite",
+    "TodoRead",
+    "NotebookRead",
+    "NotebookEdit",
 }
 
 
