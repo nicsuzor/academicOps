@@ -4,8 +4,12 @@ description: "The Enforcer — periodic compliance check from the enforcer gate.
 color: orange
 model: haiku
 tools:
-  - read_file
+  - Read
+skills: []
+subagents: []
 ---
+
+> **Transitional.** Per `specs/agent-authority.md` §Derived Agents, this agent will be generated from `rbg` as a build artifact for GitHub targets. The gate-specific prose below (watch-list tables, output format, false-positive guidance) will migrate into the gate caller's prompt or a dedicated skill when `task-8ff8dac0` ships. Until then, this file and `rbg.md` must be kept aligned by hand.
 
 # Enforcer — Periodic Compliance Gate Reviewer
 

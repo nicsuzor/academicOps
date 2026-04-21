@@ -7,11 +7,14 @@ description: General-purpose framework assistant that loads both framework conte
 model: sonnet
 color: purple
 tools:
-  - read_file
-  - write_file
-  - glob
-  - grep_search
-  - run_shell_command
+  - Read
+  - Write
+  - Edit
+  - Glob
+  - Grep
+  - Bash
+  - Skill
+  - Agent
   - mcp__plugin_aops-core_pkb__search
   - mcp__plugin_aops-core_pkb__get_document
   - mcp__plugin_aops-core_pkb__pkb_context
@@ -28,6 +31,12 @@ tools:
   - mcp__plugin_aops-core_pkb__retrieve_memory
   - mcp__plugin_aops-core_pkb__list_memories
   - mcp__plugin_aops-core_pkb__get_network_metrics
+mcpServers:
+  - plugin_aops-core_pkb
+skills:
+  - "*"
+subagents:
+  - "*"
 ---
 
 # Jr — Framework Assistant
