@@ -4,25 +4,22 @@ description: The Architect of Thought and Memory (Logician & Custodian). A strat
 color: blue
 model: inherit
 tools:
-  - read_file
-  - mcp_pkb_search
-  - mcp_pkb_get_document
-  - mcp_pkb_pkb_context
-  - mcp_pkb_graph_stats
-  - mcp_pkb_find_duplicates
+  - Read
+  - Skill
 # Note: tools: restricts local subagent invocation only.
 # GHA workflow grants Bash+Read via claude_args for PR review tasks.
 disallowedTools:
   - Write
-permissionMode: bypassPermissions
-maxTurns: false
+mcpServers:
+  - pkb
 skills:
   - remember
   - planner
-mcpServers:
-  - pkb
-background: false
+subagents: []
+permissionMode: bypassPermissions
+maxTurns: false
 effort: high
+background: false
 isolation: false
 ---
 
