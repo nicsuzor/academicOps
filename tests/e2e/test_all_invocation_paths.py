@@ -423,6 +423,10 @@ class TestAllInvocationPaths:
         ]:
             env.pop(key, None)
 
+        # Static sentinel the fixture task always writes to /workspace
+        sentinel_name = ".polecat-bind-mount-sentinel"
+        sentinel_value = "ok"
+
         started_at = time.time()
         try:
             proc = subprocess.run(
@@ -439,7 +443,14 @@ class TestAllInvocationPaths:
             pytest.fail(f"run-{backend} timed out after {timeout}s")
         finally:
             _reset_fixture_task()
-            _cleanup_run_worktree()
+
+        # --no-auto-finish leaves the worktree in place; capture the sentinel
+        # before _cleanup_run_worktree() deletes the worktree directory.
+        worktree = Path.home() / ".aops" / "worktrees" / TEST_FIXTURE_TASK_ID
+        sentinel_file = worktree / sentinel_name
+        sentinel_on_host = sentinel_file.exists()
+        sentinel_content = sentinel_file.read_text().strip() if sentinel_on_host else ""
+        _cleanup_run_worktree()
 
         combined = proc.stdout + proc.stderr
         hook_files_content, session_file, tool_calls = self._find_latest_session_logs(
@@ -458,6 +469,11 @@ class TestAllInvocationPaths:
             "hook_files_content": hook_files_content,
             "session_file": session_file,
             "tool_calls": tool_calls,
+            "sentinel_name": sentinel_name,
+            "sentinel_value": sentinel_value,
+            "sentinel_on_host": sentinel_on_host,
+            "sentinel_content": sentinel_content,
+            "started_at": started_at,
         }
 
     # --- Assertions (all parse the shared session result) ---
@@ -602,43 +618,49 @@ class TestAllInvocationPaths:
         """Bind-mount only: a file the agent wrote inside /workspace appears on
         the host's clone of the worktree.
 
-        Under the old docker-cp staging this would FAIL, because cp only goes
-        host→container at start; the container's edits to /workspace are
-        discarded by `docker rm -f`. Under bind-mount staging the agent's write
-        lands directly on the host filesystem.
+        Under docker-cp staging this FAILS because cp only goes host→container
+        at start; in-container writes are discarded by `docker rm -f`. Under
+        bind-mount staging the write lands directly on the host filesystem.
 
-        Currently scoped to the crew path because _run_polecat reuses a
-        PKB-fixture prompt we don't currently template. Run path coverage will
-        come when the prompt fixture supports per-invocation substitution.
+        crew path: worktree persists after the run, so we search polecat_home
+        for the sentinel file (unique per invocation to avoid stale matches).
+        run path: worktree is captured before _cleanup_run_worktree() deletes
+        it; the result is stored in the session dict.
         """
-        if session["path_type"] != "crew":
-            pytest.skip("sentinel write only injected on the crew path")
-
         sentinel_name = session["sentinel_name"]
         sentinel_value = session["sentinel_value"]
-        started_at = session["started_at"]
 
-        # Search the polecat home for the sentinel — the worktree clone lives
-        # somewhere under it (manager.crew_dir / crew_name for `crew repo`).
-        polecat_home = Path(os.environ.get("POLECAT_HOME", str(Path.home() / ".polecat")))
-        matches = [
-            p
-            for p in polecat_home.rglob(sentinel_name)
-            if p.is_file() and p.stat().st_mtime >= started_at
-        ]
-
-        assert matches, (
-            f"[{session['param']}] Agent wrote /workspace/{sentinel_name} inside "
-            f"the container, but no file by that name appears on the host under "
-            f"{polecat_home}. This proves the worktree was NOT bind-mounted "
-            f"(cp-only staging discards in-container writes)."
-        )
-
-        content = matches[0].read_text().strip()
-        assert sentinel_value in content, (
-            f"[{session['param']}] Sentinel found at {matches[0]} but content "
-            f"{content!r} does not contain expected {sentinel_value!r}."
-        )
+        if session["path_type"] == "run":
+            assert session["sentinel_on_host"], (
+                f"[{session['param']}] Agent wrote /workspace/{sentinel_name} inside "
+                f"the container, but the file was not found on the host worktree at "
+                f"~/.aops/worktrees/{TEST_FIXTURE_TASK_ID}/{sentinel_name}. "
+                f"This proves the worktree was NOT bind-mounted "
+                f"(cp-only staging discards in-container writes)."
+            )
+            assert sentinel_value in session["sentinel_content"], (
+                f"[{session['param']}] Sentinel found but content "
+                f"{session['sentinel_content']!r} does not contain {sentinel_value!r}."
+            )
+        else:
+            started_at = session["started_at"]
+            polecat_home = Path(os.environ.get("POLECAT_HOME", str(Path.home() / ".polecat")))
+            matches = [
+                p
+                for p in polecat_home.rglob(sentinel_name)
+                if p.is_file() and p.stat().st_mtime >= started_at
+            ]
+            assert matches, (
+                f"[{session['param']}] Agent wrote /workspace/{sentinel_name} inside "
+                f"the container, but no file by that name appears on the host under "
+                f"{polecat_home}. This proves the worktree was NOT bind-mounted "
+                f"(cp-only staging discards in-container writes)."
+            )
+            content = matches[0].read_text().strip()
+            assert sentinel_value in content, (
+                f"[{session['param']}] Sentinel found at {matches[0]} but content "
+                f"{content!r} does not contain expected {sentinel_value!r}."
+            )
 
     def test_workspace_available_in_container(self, session):
         """Repo worktree is mounted at /workspace inside the container.
