@@ -63,7 +63,7 @@ tools: <list<string>>        # Tool allowlist (canonical names above). Empty lis
 
 ```yaml
 color: <string>              # Display hint; no authority semantics
-mcpServers: <list<string>>   # MCP servers the agent may use. Implicitly grants every `mcp__<server>__*` tool unless narrowed by `tools`.
+mcpServers: <list<string>>   # MCP servers the agent may use. Implicitly grants every mcp__<server>__* tool. Use disallowedTools to narrow this set.
 disallowedTools: <list<string>>  # Explicit denylist. Overrides grants from `tools` and `mcpServers`.
 skills: <list<string>>       # Skill allowlist. If present, agent may invoke only these via the Skill tool. If omitted, no skill invocation is permitted.
 subagents: <list<string>>    # Sub-agent allowlist for the Agent tool. If omitted, no subagent spawning is permitted.
