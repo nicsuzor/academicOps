@@ -80,9 +80,9 @@ ready_tasks = mcp__pkb__list_tasks(
     limit=50
 )
 
-# Get blocked tasks assigned to user (awaiting human unblock)
-blocked_tasks = mcp__pkb__list_tasks(
-    status="blocked",
+# Get review tasks assigned to user (awaiting human action/decision)
+review_tasks = mcp__pkb__list_tasks(
+    status="review",
     assignee="nic",
     limit=50
 )
@@ -90,7 +90,7 @@ blocked_tasks = mcp__pkb__list_tasks(
 # Filter to decision-type tasks (exclude project/epic/goal)
 EXCLUDED_TYPES = ["project", "epic", "goal"]
 decisions = [
-    t for t in (ready_tasks + blocked_tasks)
+    t for t in (ready_tasks + review_tasks)
     if t.type not in EXCLUDED_TYPES
 ]
 
