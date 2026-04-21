@@ -20,10 +20,16 @@ repos:
         exclude: '^archived/'
 
   # GitHub Actions workflow linting
-  - repo: https://github.com/rhysd/actionlint
-    rev: v1.7.11
+  # ⚠️ DURABILITY NOTE: This MUST stay a binary-backed hook (no 'language: golang')
+  # because the polecat sandbox lacks libc6-dev/pthread.h required for Go builds.
+  # To upgrade: bump VERSION in scripts/run-actionlint.sh.
+  - repo: local
     hooks:
       - id: actionlint
+        name: actionlint
+        entry: scripts/run-actionlint.sh
+        language: script
+        types: [yaml]
         files: ^\.github/workflows/.*\.(?:yml|yaml)$
 
   # Standard hooks
