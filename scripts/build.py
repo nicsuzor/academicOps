@@ -11,10 +11,7 @@ import shutil
 import subprocess
 import sys
 import tarfile
-import urllib.request
 from pathlib import Path
-
-import jsonschema
 
 # Add shared lib to path (assuming scripts/lib exists)
 SCRIPT_DIR = Path(__file__).parent.resolve()
@@ -22,7 +19,6 @@ sys.path.append(str(SCRIPT_DIR / "lib"))
 
 try:
     from build_utils import (
-        convert_gemini_to_antigravity,
         convert_mcp_to_gemini,
         get_git_commit_sha,
         safe_copy,
@@ -648,28 +644,6 @@ def translate_tool_calls(text: str, platform: str) -> str:
     return text
 
 
-def validate_settings_file(settings_data: dict, schema_url: str):
-    """Validate settings data against the official Gemini CLI JSON schema."""
-    try:
-        print(f"  Validating settings against {schema_url}...")
-        # Use a session or simple request to get the schema
-        with urllib.request.urlopen(schema_url) as response:
-            schema = json.loads(response.read().decode())
-
-        # Filter out AcademicOps-specific fields if they somehow got into settings
-        # (Though they shouldn't be in the settings files we generate)
-        filtered_data = {
-            k: v
-            for k, v in settings_data.items()
-            if k in schema.get("properties", {}) or k == "$schema"
-        }
-
-        jsonschema.validate(instance=filtered_data, schema=schema)
-        print("  ✓ Settings validation successful")
-    except Exception as e:
-        print(f"  ⚠️  Settings validation failed: {e}")
-
-
 def build_aops_core(
     aops_root: Path,
     dist_root: Path,
@@ -1116,8 +1090,6 @@ def build_antigravity(aops_root: Path, dist_root: Path, all_mcps: dict):
     ag_dist.mkdir(parents=True)
 
     # 1. Global Workflows
-    # In setup.sh, it linked ~/.gemini/GEMINI.md -> global_workflows/GEMINI.md
-    # Here we create the structure.
     global_workflows = ag_dist / "global_workflows"
     global_workflows.mkdir()
 
@@ -1134,29 +1106,6 @@ def build_antigravity(aops_root: Path, dist_root: Path, all_mcps: dict):
         for item in commands_src.iterdir():
             if item.is_file() and not item.name.startswith("."):
                 safe_copy(item, global_workflows / item.name)
-
-    # We can prepare the link target for installation time, or just leave empty dir
-
-    # 2. MCP Config (Antigravity format)
-    # Convert all gathered Gemini MCPs to Antigravity format
-    ag_mcps = convert_gemini_to_antigravity(all_mcps)
-
-    mcp_config = {"mcpServers": ag_mcps}
-
-    # Validate against Gemini settings schema
-    # (Since this is a settings snippet)
-    validate_settings_file(
-        mcp_config,
-        "https://raw.githubusercontent.com/google-gemini/gemini-cli/main/schemas/settings.schema.json",
-    )
-
-    with open(ag_dist / "mcp_config.json", "w") as f:
-        json.dump(mcp_config, f, indent=2)
-        f.write("\n")
-
-    # 3. Rules (AXIOMS, HEURISTICS, core.md)
-    # NOTE: Antigravity doesn't use rules directly yet - setup.sh links from source to .agents/rules.
-    # Keeping this comment for future reference if we want to distribute rules from dist.
 
     print("✓ Built antigravity dist")
 
