@@ -41,7 +41,9 @@ Missing paths are not errors — not every project has local rules. But if they 
 
 ### OK
 
-If no issues are detected, emit NO OUTPUT. Do not post a comment or any text.
+```markdown
+## Compliance check: OK
+```
 
 ### WARN
 
