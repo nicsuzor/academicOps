@@ -1192,6 +1192,44 @@ def find_sessions(
                     potential_session_files.extend(claude_sessions_dir.glob("*.jsonl"))
                     potential_session_files.extend(claude_sessions_dir.glob("*.json"))
 
+                # Also scan for Claude state files (*-claude-session.json) as an index.
+                # Claude stores its JSONL one level deeper (-workspace/) so the glob above
+                # misses them. The SessionStart hook persists jsonl_path into the state file,
+                # letting us locate the JSONL without knowing its exact depth.
+                seen_session_ids: set[str] = set()
+                for state_file in worker_dir.rglob("*-claude-session.json"):
+                    try:
+                        import json as _json
+
+                        data = _json.loads(state_file.read_text())
+                        jsonl_path_str = data.get("jsonl_path")
+                        if not jsonl_path_str:
+                            continue
+                        # jsonl_path may be a container-internal path; look for the
+                        # file by name as a sibling of the state file.
+                        jsonl_name = Path(jsonl_path_str).name
+                        jsonl_candidate = state_file.parent / jsonl_name
+                        if not jsonl_candidate.exists():
+                            continue
+                        sid = jsonl_candidate.stem
+                        if sid in seen_session_ids:
+                            continue
+                        seen_session_ids.add(sid)
+                        mtime = datetime.fromtimestamp(jsonl_candidate.stat().st_mtime, tz=UTC)
+                        if since and mtime < since:
+                            continue
+                        sessions.append(
+                            SessionInfo(
+                                path=jsonl_candidate,
+                                project=worker_project,
+                                session_id=sid,
+                                last_modified=mtime,
+                                source="claude",
+                            )
+                        )
+                    except Exception:
+                        continue
+
                 for session_file in potential_session_files:
                     if (
                         session_file.name.startswith("agent-")
@@ -1202,6 +1240,10 @@ def find_sessions(
 
                     # Determine session_id
                     session_id = session_file.stem
+
+                    # Skip if already found via state-file index
+                    if session_id in seen_session_ids:
+                        continue
 
                     # Get modification time
                     mtime = datetime.fromtimestamp(session_file.stat().st_mtime, tz=UTC)
