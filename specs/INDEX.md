@@ -106,12 +106,16 @@ How the framework watches itself and improves.
 
 How tasks are surfaced, scored, and visualised for the human.
 
-| Spec                       | Status | Purpose                                                                        |
-| -------------------------- | ------ | ------------------------------------------------------------------------------ |
-| [[intentions.md]]          | 🗄️      | ~~Intentions~~ Deprecated 2026-03-27. PKB priority is the sole ranking signal. |
-| [[overwhelm-dashboard.md]] | ✅     | Streamlit dashboard for cognitive load management                              |
-| [[task-focus-scoring.md]]  | ✅     | Hot/cold classification and ready-queue ranking                                |
-| [[task-map.md]]            | ✅     | Network graph visualisation (subsection of overwhelm-dashboard)                |
+| Spec                       | Status | Purpose                                                         |
+| -------------------------- | ------ | --------------------------------------------------------------- |
+| [[overwhelm-dashboard.md]] | ✅     | Streamlit dashboard for cognitive load management               |
+| [[task-focus-scoring.md]]  | ✅     | Hot/cold classification and ready-queue ranking                 |
+| [[task-map.md]]            | ✅     | Network graph visualisation (subsection of overwhelm-dashboard) |
+
+> **Note**: "Intent" is expressed through PKB priority — a small number of P1
+> tasks signal current focus. There is no separate intentions spec, config file,
+> or tag. The earlier `intentions.yaml` / `intention` tag system was removed
+> 2026-03-27; see `docs/VISION.md` for the rationale.
 
 ## Archived
 
@@ -135,7 +139,6 @@ Major spec dependency chains (changing upstream specs may invalidate downstream)
 
 ```
 Planning:     effectual-planning-agent → conceptual-review → research-decomposition
-Intentions:   (deprecated — intentions.md archived 2026-03-27)
 Scheduling:   effectual-planning-agent → strategic-triage → daily (recommendations)
               sleep-cycle ↔ strategic-triage (sibling scheduled agents)
 Constraints:  workflow-system-spec → workflow-constraints → predicate-registry → constraint-checking-tests

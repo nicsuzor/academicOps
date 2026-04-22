@@ -286,6 +286,6 @@ Things we don't know yet and are planning to find out:
 
 4. **Historical value.** How much should we preserve vs. archive vs. delete? When is a dead project worth keeping?
 
-5. ~~**Daily skill alignment.**~~ **Resolved 2026-03-27.** The daily skill uses category-based recommendations (SHOULD/DEEP/ENJOY/QUICK/UNBLOCK) with PKB priority (P0-P4) as the ranking signal. Daily note "My priorities" is the SSoT for today-specific focus. Intentions infrastructure was removed — see [[intentions.md]] (deprecated) for historical context.
+5. ~~**Daily skill alignment.**~~ **Resolved 2026-03-27.** The daily skill uses category-based recommendations (SHOULD/DEEP/ENJOY/QUICK/UNBLOCK) with PKB priority (P0-P4) as the ranking signal. Daily note "My priorities" is the SSoT for today-specific focus. The earlier intentions infrastructure (`intentions.yaml` and the `intention` tag) was removed — current "intent" is expressed as tasks with `priority: P1`; see `docs/VISION.md` for the rationale.
 
 These are the assumptions we're testing by building and using the system.
