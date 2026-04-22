@@ -135,13 +135,6 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
     persist["AOPS_HOOK_LOG_PATH"] = str(hook_log_path)
     persist["AOPS_SESSION_STATE_PATH"] = str(state_file_path)
 
-    # Persist JSONL path so transcript.py can locate this session's conversation file
-    # even when it's nested deeper than session_reader.py's glob depth.
-    if transcript_path:
-        persist["AOPS_SESSION_JSONL_PATH"] = transcript_path
-        state.jsonl_path = transcript_path
-        state.save()
-
     # 4. Persist gate file paths
     gate_paths = get_all_gate_file_paths(ctx.session_id, transcript_path=ctx.transcript_path)
     for gate_name, gate_path in gate_paths.items():

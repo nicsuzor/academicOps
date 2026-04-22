@@ -136,9 +136,6 @@ class SessionState(BaseModel):
     # Session insights (written at close)
     insights: dict[str, Any] | None = None
 
-    # Path to the JSONL conversation file (set at SessionStart, host-side path)
-    jsonl_path: str | None = None
-
     @classmethod
     def create(cls, session_id: str) -> SessionState:
         """Create new session state."""
