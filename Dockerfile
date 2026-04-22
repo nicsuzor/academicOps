@@ -104,11 +104,12 @@ RUN claude plugin marketplace add ${AOPS_REPO_URL} \
     && claude plugin marketplace update academicOps \
     && claude plugin install aops-core@academicOps
 
-# Install pkb binary from nicsuzor/mem releases
+# Install pkb binary from nicsuzor/mem releases.
+# Uses /releases list (not /latest) so empty releases with no uploaded assets are skipped.
 RUN TMPDIR=$(mktemp -d) \
     && PLATFORM="x86_64-linux" \
-    && MEM_TAG=$(curl -s https://api.github.com/repos/nicsuzor/mem/releases/latest \
-         | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/') \
+    && MEM_TAG=$(curl -s https://api.github.com/repos/nicsuzor/mem/releases \
+         | jq -r '[.[] | select(.assets | map(select(.name | endswith("'"${PLATFORM}"'.tar.gz"))) | length > 0)][0].tag_name') \
     && curl -fsSL "https://github.com/nicsuzor/mem/releases/download/${MEM_TAG}/mem-${MEM_TAG}-${PLATFORM}.tar.gz" \
          -o "${TMPDIR}/mem.tar.gz" \
     && tar xzf "${TMPDIR}/mem.tar.gz" -C "${TMPDIR}" \
@@ -130,6 +131,17 @@ d = json.loads(p.read_text()); \
 [d.__setitem__(k, {**v, 'overrides': ['*']}) for k, v in d.items()]; \
 p.write_text(json.dumps(d, indent=2))" ; \
     fi
+
+# Pre-build Python project venv at a stable image path.
+# UV_PROJECT_ENVIRONMENT redirects uv away from the bind-mounted source dir (/workspace),
+# preventing shebang conflicts (venv scripts baked with /home/worker paths, not /workspace)
+# and eliminating per-container reinstalls on startup.
+# Layer cache: only invalidates when pyproject.toml or uv.lock changes — all expensive
+# installs above stay cached across dep bumps.
+# --extra dev: includes pre-commit and dprint-py needed for git commit hooks in the container.
+ENV UV_PROJECT_ENVIRONMENT=/home/worker/.venv
+COPY --chown=worker:worker pyproject.toml uv.lock /tmp/aops-deps/
+RUN cd /tmp/aops-deps && uv sync --frozen --no-install-project --group dev
 
 # Install default ccstatusline and Claude Code settings.
 # These defaults are overridden at runtime if the host stages replacements.

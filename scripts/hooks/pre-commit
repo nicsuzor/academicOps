@@ -13,7 +13,7 @@ cd "$REPO_ROOT"
 # Bootstrap PATH (same as hooks/router.sh and scripts/run-mcp.sh)
 [[ -f "$REPO_ROOT/aops-core/scripts/ensure-path.sh" ]] && source "$REPO_ROOT/aops-core/scripts/ensure-path.sh"
 
-exec uv run pre-commit hook-impl \
+exec uv run python -m pre_commit hook-impl \
   --config=.pre-commit-config.yaml \
   --hook-type=pre-commit \
   --hook-dir "$HERE" \
