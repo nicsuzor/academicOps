@@ -15,6 +15,7 @@ Used by:
 from __future__ import annotations
 
 import glob
+import json
 import logging
 import re
 from datetime import UTC, datetime
@@ -1181,13 +1182,15 @@ def find_sessions(
 
                 # Find session files in both project subdirs and directly in the dir
                 # (Support both standard Claude and flat layouts)
+                # rglob finds JSONL files at any depth — needed because Claude stores
+                # sessions in a -workspace/ subdir one level deeper than Gemini.
                 potential_session_files = []
                 if claude_sessions_dir.exists():
-                    # Check for sessions in project subdirs
+                    # Check for sessions in project subdirs (recurse to catch -workspace/)
                     for project_dir in claude_sessions_dir.iterdir():
                         if project_dir.is_dir() and not project_dir.name.endswith("-hooks"):
-                            potential_session_files.extend(project_dir.glob("*.jsonl"))
-                            potential_session_files.extend(project_dir.glob("*.json"))
+                            potential_session_files.extend(project_dir.rglob("*.jsonl"))
+                            potential_session_files.extend(project_dir.rglob("*.json"))
                     # Check for sessions directly in the dir
                     potential_session_files.extend(claude_sessions_dir.glob("*.jsonl"))
                     potential_session_files.extend(claude_sessions_dir.glob("*.json"))
@@ -1197,6 +1200,7 @@ def find_sessions(
                         session_file.name.startswith("agent-")
                         or session_file.name.endswith("-hooks.jsonl")
                         or session_file.name.endswith("-hooks.json")
+                        or session_file.name.endswith("-claude-session.json")
                     ):
                         continue
 
@@ -1245,9 +1249,7 @@ def find_sessions(
                 project_name = "cowork"
                 if metadata_json.exists():
                     try:
-                        import json as _json
-
-                        meta = _json.loads(metadata_json.read_text())
+                        meta = json.loads(metadata_json.read_text())
                         title = meta.get("title", "")
                         if title:
                             # Use title words for project name (keep it short)
