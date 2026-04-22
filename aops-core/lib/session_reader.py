@@ -1182,13 +1182,15 @@ def find_sessions(
 
                 # Find session files in both project subdirs and directly in the dir
                 # (Support both standard Claude and flat layouts)
+                # rglob finds JSONL files at any depth — needed because Claude stores
+                # sessions in a -workspace/ subdir one level deeper than Gemini.
                 potential_session_files = []
                 if claude_sessions_dir.exists():
-                    # Check for sessions in project subdirs
+                    # Check for sessions in project subdirs (recurse to catch -workspace/)
                     for project_dir in claude_sessions_dir.iterdir():
                         if project_dir.is_dir() and not project_dir.name.endswith("-hooks"):
-                            potential_session_files.extend(project_dir.glob("*.jsonl"))
-                            potential_session_files.extend(project_dir.glob("*.json"))
+                            potential_session_files.extend(project_dir.rglob("*.jsonl"))
+                            potential_session_files.extend(project_dir.rglob("*.json"))
                     # Check for sessions directly in the dir
                     potential_session_files.extend(claude_sessions_dir.glob("*.jsonl"))
                     potential_session_files.extend(claude_sessions_dir.glob("*.json"))
