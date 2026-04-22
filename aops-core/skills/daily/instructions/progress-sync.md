@@ -23,7 +23,7 @@ polecat sweep
 5. **Ambiguous cases**: Surface in the daily note under "Needs your call" in "What Needs Attention" (see [[instructions/workflow-monitor]] Step 6.5). Never auto-close ambiguous cases.
 6. **Report** in Work Log: `N tasks auto-closed from merged PRs`, `N tasks auto-closed from sent emails`, `N flagged for user decision`.
 
-**Steps 4.1, 4.1.5, 4.2, 4.2.5, and 4.2.6 — run in parallel.** These data-gathering steps are independent: they read from different sources (shell scripts, PKB, session JSONs, GitHub) and produce separate outputs that are merged only at composition time. Agent teams should dispatch concurrent subagents for each; single-agent environments should issue all data-fetching tool calls simultaneously rather than sequentially.
+**Steps 4.1, 4.1.5, 4.2, and 4.2.5 — run in parallel.** These data-gathering steps are independent: they read from different sources (shell scripts, PKB, session JSONs, GitHub) and produce separate outputs that are merged only at composition time. Agent teams should dispatch concurrent subagents for each; single-agent environments should issue all data-fetching tool calls simultaneously rather than sequentially.
 
 ### Step 4.1: Narrative Path Reconstruction (Compass Model)
 
@@ -128,82 +128,11 @@ _N PRs merged today across M repos_
 
 **Error handling**: If `gh` CLI is unavailable or authentication fails for a repo, note it inline and continue to the next repo.
 
-### Step 4.2.6: Open PR Review (Decision Queue)
+### Step 4.2.6: (retired — moved to Outstanding Workflows)
 
-Fetch open PRs that need human decisions from **all tracked repositories** in `$POLECAT_HOME/polecat.yaml`.
+Open PR handling lives in `## What Needs Attention / Outstanding Workflows` only. See [[instructions/workflow-monitor]] Step 6 for the bucketing rules (Ready to merge, Needs review, Needs fixes, Stale, Draft/autonomous), the `gh pr list` query, and the decision-oriented formatting. The Work Log does not carry a parallel Open PRs table.
 
-**Per-repo query** (use the enriched field set for decision support):
-
-```bash
-cd <repo_path> && gh pr list --state open --json number,title,author,createdAt,headRefName,url,isDraft,reviewDecision,statusCheckRollup,additions,deletions,changedFiles,mergeable,body,labels --limit 30 2>/dev/null
-```
-
-**For each open PR**, extract and summarize:
-
-- **PR number, title, author** — basic identification
-- **Size**: `+additions/-deletions (N files)` — helps gauge review effort
-- **Age**: days since `createdAt` — flag PRs older than 7 days as stale
-- **CI status**: Derive from `statusCheckRollup` — passing/failing/pending/skipped/no checks. For failing, name the specific check that failed (e.g., "type check failing" not just "failing")
-- **Mergeable**: From `mergeable` field — MERGEABLE/CONFLICTING/UNKNOWN. Conflicts are blockers
-- **Reviews**: From `reviewDecision` — APPROVED/CHANGES_REQUESTED/empty (pending)
-- **Body preview**: First ~100 chars of `body` — gives context for what the PR does
-- **Draft status**: From `isDraft` — drafts are lower priority
-
-**Format in daily note** (fully replace the `## Open PRs` section), grouped by repo:
-
-```markdown
-## Open PRs
-
-### academicOps (7 open)
-
-| PR          | Title                        | Author | Size           | Age | CI                 | Mergeable | Action                     |
-| ----------- | ---------------------------- | ------ | -------------- | --- | ------------------ | --------- | -------------------------- |
-| [#631](url) | Agent launch controls in TUI | @agent | +144/-4 (2f)   | 0d  | passing            | conflict  | fix conflicts then merge   |
-| [#630](url) | Fix crontab broken paths     | @user  | +149/-34 (6f)  | 0d  | type check failing | conflict  | fix type check + conflicts |
-| [#640](url) | Add extraction skill         | @agent | +1048/-17 (6f) | 0d  | skipped            | unknown   | review — large new skill   |
-
-### my-other-project (10 open)
-
-| PR          | Title                   | Author | Size            | Age | CI      | Mergeable | Action                       |
-| ----------- | ----------------------- | ------ | --------------- | --- | ------- | --------- | ---------------------------- |
-| [#304](url) | Unify processor classes | @user  | +471/-424 (22f) | 74d | failing | conflict  | close or rebase — very stale |
-
-_N open PRs across M repos — X ready to merge, Y need fixes, Z need review_
-```
-
-**Decision-oriented**: The "Action" column is the key output. Classify each:
-
-- **merge** — CI green, reviews clear, no conflicts, ready to merge now
-- **approve + merge** — CI green, no conflicts, needs human approval then merge
-- **review** — needs substantive human review (add brief reason: "large new skill", "architectural change")
-- **fix [specific issue]** — name the blocker (e.g., "fix type check", "fix conflicts", "fix lint")
-- **trigger CI** — checks didn't run or are stale
-- **close or rebase** — stale (>30 days) AND conflicting or superseded by newer work. Age alone is not enough to recommend closing; check if the work is still relevant
-- **draft — [context]** — draft PR; describe what it's waiting for. Check the branch name and body for clues (e.g., "sub-PR of #630", "WIP: needs tests"). Never recommend closing a draft just because it's a draft — drafts represent in-progress work
-- **waiting** — blocked on external dependency
-
-**PR relationships**: Before classifying, check for relationships between PRs:
-
-- Branch names like `copilot/sub-pr-630` or `fix/pr576-followup` indicate a PR is related to another. Note the relationship in the Action column (e.g., "draft — sub-PR of #630, addresses review feedback")
-- Multiple PRs touching the same area may be a sequence — note which should merge first
-- If a repo has systemic CI failures across many PRs, identify the root cause PR (often a CI/config fix) and recommend merging it first to unblock the rest
-
-**Headline summary**: After the tables, add a brief narrative:
-
-```markdown
-### Summary
-
-- **N open PRs** across M repos — **X ready to merge, Y need fixes**
-- [repo] has N PRs with passing CI ready to merge right now
-- [repo] has systemic CI failures — likely shared issue (describe)
-- [repo] has a N-day-old stale PR — candidate for close
-```
-
-**Presentation**: Group PRs by theme/story, not just by repo. When multiple PRs form a coherent body of work (e.g., "TUI overhaul: 7 PRs ready to merge"), present them as a group with a narrative description of what they collectively achieve. Individual PR numbers are meaningless to the human — what matters is what's happening and what decisions are needed.
-
-**Empty state**: If no open PRs across all repos: "No open PRs."
-
-**Error handling**: If `gh` CLI is unavailable for a repo, note it inline and continue. If all repos fail, skip and note "GitHub unavailable — skipped open PR review."
+When composing the Outstanding Workflows subsection, the agent may apply the PR-action classification heuristics below inline (e.g., note "fix type check + conflicts" next to the PR in its bucket) rather than in a separate table.
 
 ### Step 4.2.7: PR Action Pipeline
 
