@@ -920,17 +920,32 @@ def _build_docker_cmd(
         )  # always set: ("claude","shell") ⊆ ("claude","shell","gemini")
         claude_json = home / ".claude.json"
         claude_dir = home / ".claude"
+        # Stage a modified .claude.json rather than touching the user's actual config.
+        # Three flags are needed for fully headless operation inside Docker:
+        #   bypassPermissionsModeAccepted — skips the --dangerously-skip-permissions prompt.
+        #   hasTrustDialogAccepted — suppresses "Skipping project agents due to untrusted
+        #     folder" so CLAUDE.md and framework hooks are loaded from /workspace.
+        #   hasCompletedProjectOnboarding — suppresses the first-run onboarding wizard
+        #     that would otherwise block a headless session on new projects.
         if claude_json.exists():
-            # Claude needs bypassPermissionsModeAccepted=true for --dangerously-skip-permissions
-            # to work without an interactive prompt. Create a copy with this flag set
-            # rather than modifying the user's actual config.
-            with open(claude_json) as f:
-                config = json.load(f)
-            config["bypassPermissionsModeAccepted"] = True
-            staged_claude_json = staging_dir / ".claude.json"
-            fd = os.open(staged_claude_json, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-            with os.fdopen(fd, "w") as f:
-                json.dump(config, f)
+            try:
+                with open(claude_json) as f:
+                    config = json.load(f)
+                if not isinstance(config, dict):
+                    config = {}
+            except (json.JSONDecodeError, OSError):
+                config = {}
+        else:
+            config = {}
+        config["bypassPermissionsModeAccepted"] = True
+        projects = config.setdefault("projects", {})
+        workspace_project = projects.setdefault("/workspace", {})
+        workspace_project["hasTrustDialogAccepted"] = True
+        workspace_project["hasCompletedProjectOnboarding"] = True
+        staged_claude_json = staging_dir / ".claude.json"
+        fd = os.open(staged_claude_json, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w") as f:
+            json.dump(config, f)
         if claude_dir.exists():
             # Copy only the auth files Claude needs at runtime — not the whole directory.
             # The plugin installation is baked into the image (see Dockerfile), so mounting
@@ -1518,9 +1533,12 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
             try:
                 with open(gemini_dir / f) as src_f:
                     trust_data = json.load(src_f)
-                # Inject the work directory into trust data
-                # We use TRUST_FOLDER which is the most common entry type
+                # Inject both the host work_dir and the in-container mount path.
+                # Gemini matches trust against the running CWD: inside the polecat
+                # Docker container that's /workspace, on the host it's work_dir.
+                # Adding both covers either invocation without an extra parameter.
                 trust_data[str(work_dir.resolve())] = "TRUST_FOLDER"
+                trust_data["/workspace"] = "TRUST_FOLDER"
                 with open(target_dir / f, "w") as dest_f:
                     json.dump(trust_data, dest_f, indent=2)
                 continue
@@ -1593,10 +1611,15 @@ description = "Deny writes outside the work directory"
         with open(policies_dir / "polecat-sandbox.toml", "w") as f_policy:
             f_policy.write(sandbox_policy)
 
-    # If trustedFolders.json didn't exist but we have a work_dir, create it
+    # If trustedFolders.json didn't exist but we have a work_dir, create it.
+    # Cover both the host path and the in-container mount (/workspace) so the
+    # trust prompt is suppressed regardless of where Gemini runs.
     if "trustedFolders.json" not in existing_files and work_dir:
         try:
-            trust_data = {str(work_dir.resolve()): "TRUST_FOLDER"}
+            trust_data = {
+                str(work_dir.resolve()): "TRUST_FOLDER",
+                "/workspace": "TRUST_FOLDER",
+            }
             with open(target_dir / "trustedFolders.json", "w") as f:
                 json.dump(trust_data, f, indent=2)
         except OSError as e:
