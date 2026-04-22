@@ -275,6 +275,56 @@ class TestBuildDockerCmd:
         assert "--user" in cmd
 
 
+class TestClaudeStagedConfig:
+    """Tests for the staged .claude.json written by _build_docker_cmd."""
+
+    @pytest.fixture(autouse=True)
+    def _patch_remote_daemon(self):
+        with patch("cli._is_remote_daemon", return_value=False):
+            yield
+
+    def test_workspace_trust_flags_with_existing_source(self, tmp_path):
+        """Staged .claude.json has /workspace trust flags when ~/.claude.json exists."""
+        source = {"bypassPermissionsModeAccepted": False, "someKey": "value"}
+        (tmp_path / ".claude.json").write_text(json.dumps(source))
+
+        with patch("cli.Path.home", return_value=tmp_path):
+            docker_cmd = _build_docker_cmd(
+                cli_tool="claude",
+                work_dir=Path("/tmp/worktree"),
+                env={},
+                agent_cmd=["claude", "--dangerously-skip-permissions"],
+                is_interactive=False,
+            )
+
+        assert docker_cmd.staging_dir is not None
+        staged = json.loads((docker_cmd.staging_dir / ".claude.json").read_text())
+        workspace = staged["projects"]["/workspace"]
+        assert workspace["hasTrustDialogAccepted"] is True
+        assert workspace["hasCompletedProjectOnboarding"] is True
+        assert staged["bypassPermissionsModeAccepted"] is True
+        assert staged["someKey"] == "value"
+
+    def test_workspace_trust_flags_without_source(self, tmp_path):
+        """Staged .claude.json is created with trust flags even when ~/.claude.json is absent."""
+        with patch("cli.Path.home", return_value=tmp_path):
+            docker_cmd = _build_docker_cmd(
+                cli_tool="claude",
+                work_dir=Path("/tmp/worktree"),
+                env={},
+                agent_cmd=["claude", "--dangerously-skip-permissions"],
+                is_interactive=False,
+            )
+
+        assert docker_cmd.staging_dir is not None
+        staged_path = docker_cmd.staging_dir / ".claude.json"
+        assert staged_path.exists(), "staged .claude.json must be created even without source"
+        staged = json.loads(staged_path.read_text())
+        workspace = staged["projects"]["/workspace"]
+        assert workspace["hasTrustDialogAccepted"] is True
+        assert workspace["hasCompletedProjectOnboarding"] is True
+
+
 class TestFindDockerSock:
     """Live tests for _find_docker_sock — no mocking, real filesystem paths in tmp_path."""
 
@@ -662,6 +712,47 @@ class TestReplicateGeminiAuth:
             if f.is_file():
                 fmode = os.stat(f).st_mode & 0o777
                 assert fmode & 0o004, f"{f.name} not world-readable: {oct(fmode)}"
+
+        import shutil
+
+        shutil.rmtree(result)
+
+    def test_workspace_added_to_existing_trusted_folders(self, tmp_path):
+        """/workspace is injected into an existing trustedFolders.json."""
+        gemini_dir = tmp_path / ".gemini"
+        gemini_dir.mkdir(parents=True)
+        (gemini_dir / "settings.json").write_text("{}")
+        existing = {"/home/user/project": "TRUST_FOLDER"}
+        (gemini_dir / "trustedFolders.json").write_text(json.dumps(existing))
+
+        work_dir = tmp_path / "project"
+        work_dir.mkdir()
+        with patch("cli.Path.home", return_value=tmp_path):
+            result = _replicate_gemini_auth({}, work_dir=work_dir)
+
+        assert result is not None
+        trust = json.loads((result / ".gemini" / "trustedFolders.json").read_text())
+        assert trust.get("/workspace") == "TRUST_FOLDER"
+
+        import shutil
+
+        shutil.rmtree(result)
+
+    def test_workspace_added_when_trusted_folders_created(self, tmp_path):
+        """/workspace is included when trustedFolders.json is created from scratch."""
+        gemini_dir = tmp_path / ".gemini"
+        gemini_dir.mkdir(parents=True)
+        (gemini_dir / "settings.json").write_text("{}")
+
+        work_dir = tmp_path / "project"
+        work_dir.mkdir()
+        with patch("cli.Path.home", return_value=tmp_path):
+            result = _replicate_gemini_auth({}, work_dir=work_dir)
+
+        assert result is not None
+        trust = json.loads((result / ".gemini" / "trustedFolders.json").read_text())
+        assert trust.get("/workspace") == "TRUST_FOLDER"
+        assert trust.get(str(work_dir.resolve())) == "TRUST_FOLDER"
 
         import shutil
 

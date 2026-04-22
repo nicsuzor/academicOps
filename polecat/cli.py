@@ -920,14 +920,21 @@ def _build_docker_cmd(
         )  # always set: ("claude","shell") ⊆ ("claude","shell","gemini")
         claude_json = home / ".claude.json"
         claude_dir = home / ".claude"
-        # Claude needs bypassPermissionsModeAccepted=true for --dangerously-skip-permissions
-        # to work without an interactive prompt, plus a per-project trust entry for
-        # /workspace so it loads project agents/hooks instead of printing
-        # "Skipping project agents due to untrusted folder". Stage a modified copy
-        # rather than touching the user's actual config.
+        # Stage a modified .claude.json rather than touching the user's actual config.
+        # Three flags are needed for fully headless operation inside Docker:
+        #   bypassPermissionsModeAccepted — skips the --dangerously-skip-permissions prompt.
+        #   hasTrustDialogAccepted — suppresses "Skipping project agents due to untrusted
+        #     folder" so CLAUDE.md and framework hooks are loaded from /workspace.
+        #   hasCompletedProjectOnboarding — suppresses the first-run onboarding wizard
+        #     that would otherwise block a headless session on new projects.
         if claude_json.exists():
-            with open(claude_json) as f:
-                config = json.load(f)
+            try:
+                with open(claude_json) as f:
+                    config = json.load(f)
+                if not isinstance(config, dict):
+                    config = {}
+            except (json.JSONDecodeError, OSError):
+                config = {}
         else:
             config = {}
         config["bypassPermissionsModeAccepted"] = True
