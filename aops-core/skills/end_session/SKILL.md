@@ -1,6 +1,6 @@
 ---
-name: end_session
-alias: dump
+name: dump
+alias: end_session
 type: skill
 category: instruction
 description: Complete end-of-session handover: commit, push, file a PR, call release_task with structured session fields, emit a terse 5-10 line handover block, halt.
