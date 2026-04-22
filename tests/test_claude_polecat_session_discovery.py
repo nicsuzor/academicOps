@@ -1,12 +1,10 @@
-"""Regression test: find_sessions discovers Claude polecat sessions via state-file index.
+"""Regression test: find_sessions discovers Claude polecat sessions via rglob.
 
-Claude Code stores its JSONL one level deeper than the standard glob depth
+Claude Code stores its JSONL one level deeper than a shallow glob reaches
 (e.g. <worker>/claude-sessions/<project>/-workspace/<id>.jsonl).  The fix
-adds a secondary scan for *-claude-session.json state files whose jsonl_path
-field points to the JSONL, allowing discovery regardless of nesting depth.
+uses rglob to find JSONL files at any depth under each project directory.
 """
 
-import json
 import sys
 from pathlib import Path
 
@@ -24,16 +22,11 @@ def test_find_sessions_discovers_deeply_nested_claude_polecat_jsonl(
 ) -> None:
     """
     A Claude polecat session whose JSONL lives in a -workspace subdirectory
-    (below the glob depth) is discovered via the *-claude-session.json index.
-
-    Without the state-file index scan, find_sessions would return an empty list
-    because glob("*.jsonl") only reaches one level deep from claude_sessions_dir.
+    is discovered by rglob even though a shallow glob would miss it.
     """
     sessions_root = tmp_path / "sessions"
     monkeypatch.setenv("AOPS_SESSIONS", str(sessions_root))
 
-    # JSONL is nested one level deeper than the standard glob reaches:
-    # <sessions>/polecats/<worker>/claude-sessions/<project>/-workspace/<id>.jsonl
     workspace_dir = (
         sessions_root / "polecats" / "worker1" / "claude-sessions" / "project" / "-workspace"
     )
@@ -42,13 +35,6 @@ def test_find_sessions_discovers_deeply_nested_claude_polecat_jsonl(
     session_id = "abcdef123456"
     jsonl_file = workspace_dir / f"{session_id}.jsonl"
     jsonl_file.write_text('{"type":"say","text":"hello"}\n')
-
-    # State file is a sibling of the JSONL; jsonl_path stores the container-internal
-    # absolute path (which won't resolve on the host — only the filename matters).
-    state_file = workspace_dir / f"{session_id}-claude-session.json"
-    state_file.write_text(
-        json.dumps({"jsonl_path": f"/container/internal/path/{session_id}.jsonl"})
-    )
 
     result = find_sessions(
         claude_projects_dir=tmp_path / "no-claude",
@@ -59,26 +45,24 @@ def test_find_sessions_discovers_deeply_nested_claude_polecat_jsonl(
 
     session_ids = [s.session_id for s in result]
     assert session_id in session_ids, (
-        f"Expected session {session_id!r} to be discovered via state-file index; got: {session_ids}"
+        f"Expected session {session_id!r} to be discovered via rglob; got: {session_ids}"
     )
 
 
-def test_find_sessions_skips_state_file_without_jsonl_path(
+def test_find_sessions_excludes_claude_session_state_files(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """State files with no jsonl_path field are silently skipped."""
+    """*-claude-session.json state files are not returned as sessions."""
     sessions_root = tmp_path / "sessions"
     monkeypatch.setenv("AOPS_SESSIONS", str(sessions_root))
 
-    # Put the state file in -workspace/ so it's below the glob's reach but
-    # still found by rglob; no jsonl_path means it should be silently skipped.
     workspace_dir = (
         sessions_root / "polecats" / "worker2" / "claude-sessions" / "proj" / "-workspace"
     )
     workspace_dir.mkdir(parents=True)
 
-    state_file = workspace_dir / "no-path-claude-session.json"
-    state_file.write_text(json.dumps({"other_field": "value"}))
+    state_file = workspace_dir / "abc123-claude-session.json"
+    state_file.write_text('{"session_id": "abc123"}')
 
     result = find_sessions(
         claude_projects_dir=tmp_path / "no-claude",
@@ -86,4 +70,4 @@ def test_find_sessions_skips_state_file_without_jsonl_path(
         include_antigravity=False,
         include_cowork=False,
     )
-    assert result == []
+    assert result == [], f"State files must not appear as sessions; got: {result}"
