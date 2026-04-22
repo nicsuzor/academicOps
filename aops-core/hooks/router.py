@@ -586,8 +586,9 @@ class HookRouter:
         except Exception as e:
             print(f"WARNING: unified_logger error: {e}", file=sys.stderr)
 
-        # ntfy push notifications
-        if ctx.hook_event in ("SessionStart", "Stop", "PostToolUse"):
+        # ntfy push notifications (not on Stop — ntfy has a 5s network timeout
+        # which equals the entire Stop hook budget and causes timeouts)
+        if ctx.hook_event in ("SessionStart", "PostToolUse"):
             self._run_ntfy_notifier(ctx, state)
 
         # Session env setup on start
