@@ -1183,11 +1183,16 @@ def find_sessions(
                 # (Support both standard Claude and flat layouts)
                 potential_session_files = []
                 if claude_sessions_dir.exists():
-                    # Check for sessions in project subdirs
+                    # Check for sessions in project subdirs (and one level deeper for Claude -workspace layout)
                     for project_dir in claude_sessions_dir.iterdir():
                         if project_dir.is_dir() and not project_dir.name.endswith("-hooks"):
                             potential_session_files.extend(project_dir.glob("*.jsonl"))
                             potential_session_files.extend(project_dir.glob("*.json"))
+                            # Claude CLI stores sessions inside a project-hash subdir (e.g. -workspace/<uuid>.jsonl)
+                            for subdir in project_dir.iterdir():
+                                if subdir.is_dir() and not subdir.name.endswith("-hooks"):
+                                    potential_session_files.extend(subdir.glob("*.jsonl"))
+                                    potential_session_files.extend(subdir.glob("*.json"))
                     # Check for sessions directly in the dir
                     potential_session_files.extend(claude_sessions_dir.glob("*.jsonl"))
                     potential_session_files.extend(claude_sessions_dir.glob("*.json"))
