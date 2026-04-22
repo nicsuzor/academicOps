@@ -15,6 +15,7 @@ Used by:
 from __future__ import annotations
 
 import glob
+import json
 import logging
 import re
 from datetime import UTC, datetime
@@ -1199,16 +1200,17 @@ def find_sessions(
                 seen_session_ids: set[str] = set()
                 for state_file in worker_dir.rglob("*-claude-session.json"):
                     try:
-                        import json as _json
-
-                        data = _json.loads(state_file.read_text())
+                        data = json.loads(state_file.read_text())
                         jsonl_path_str = data.get("jsonl_path")
                         if not jsonl_path_str:
                             continue
-                        # jsonl_path may be a container-internal path; look for the
-                        # file by name as a sibling of the state file.
-                        jsonl_name = Path(jsonl_path_str).name
-                        jsonl_candidate = state_file.parent / jsonl_name
+                        # jsonl_path may be a container-internal absolute path.
+                        # Try relative-to-state-file first (handles relative paths);
+                        # fall back to filename-only sibling lookup (handles absolute
+                        # container paths where only the filename is stable).
+                        jsonl_candidate = state_file.parent / jsonl_path_str
+                        if not jsonl_candidate.exists():
+                            jsonl_candidate = state_file.parent / Path(jsonl_path_str).name
                         if not jsonl_candidate.exists():
                             continue
                         sid = jsonl_candidate.stem
@@ -1227,7 +1229,8 @@ def find_sessions(
                                 source="claude",
                             )
                         )
-                    except Exception:
+                    except Exception as e:
+                        logging.debug("skipping state file %s: %s", state_file, e)
                         continue
 
                 for session_file in potential_session_files:
@@ -1287,9 +1290,7 @@ def find_sessions(
                 project_name = "cowork"
                 if metadata_json.exists():
                     try:
-                        import json as _json
-
-                        meta = _json.loads(metadata_json.read_text())
+                        meta = json.loads(metadata_json.read_text())
                         title = meta.get("title", "")
                         if title:
                             # Use title words for project name (keep it short)
