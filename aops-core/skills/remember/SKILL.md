@@ -122,6 +122,44 @@ Is this about the user? (projects, goals, context, tasks)
 - **Meeting/call notes** (`type: meeting-note`) — contemporaneous records of conversations, captured close to the event
 - **Contemporaneous observations** that may not be edited later — primary sources valued for their accuracy at the time of capture
 
+## Canonical Topic Notes (Enduring Memory)
+
+Semantic memory is organized around **canonical notes per first-class topic**. For every tool, project, skill, agent, or concept that matters, there is ONE note that holds the current understanding in stable sections. New insights route _into_ that note, updating the relevant section — they do not spawn parallel narrow notes.
+
+**First-class topics** include tools (`mem`, `zotmcp`, `omcp`, the PKB MCP server), projects, skills (`/sleep`, `/planner`, `/remember`), agents (`pauli`), and named concepts ("task hierarchy", "enforcement pyramid", "sleep-cycle design"). If a thing has a name and will be worked on again, it is first-class.
+
+**Stable sections** are the schema for a topic. Typical scaffolds:
+
+- Tools: `Overview` / `Installation` / `Usage` / `Common Operations` / `Known Issues` / `Related`
+- Projects: `Overview` / `Status` / `Decisions` / `Open Questions` / `Related`
+- Concepts: `Definition` / `Implications` / `Examples` / `Open Questions`
+
+Scaffolds are starting points — reshape as the material demands. The point is that agents know where to look and where to write.
+
+### Routing Decision (before creating any new note)
+
+1. _Is there a canonical note for this topic?_
+   - **Yes** → update the relevant section via `mcp__pkb__append`, add to `sources:`, reconcile stale peers (see below).
+   - **No, but the topic is first-class** → create the canonical note with a section scaffold via `mcp__pkb__create`, then populate the relevant section.
+   - **No, and the observation is genuinely topic-less / one-off** → a narrow note is acceptable, but link it from the nearest canonical note so it's discoverable.
+
+**Anti-pattern**: a separate file per observation (e.g. `kb-xxxx-tool-install-from-releases-not-source.md`). That content belongs _inside_ the tool's canonical note, under `Installation`. Narrow observation-files are episodic residue, not durable memory.
+
+### Reconciliation (mandatory during updates)
+
+Whenever you update a canonical topic note, search PKB for peer notes on the same topic and reconcile contradictions as part of the same write:
+
+- Keep the stronger note (more sources, better synthesis, clearer thesis).
+- Merge unique content from the weaker into the stronger.
+- Retire the weaker: delete, or set `superseded_by:` pointing to the canonical.
+- Update wikilinks that referenced the retired note.
+
+Reconciliation is part of synthesis, not a separate cleanup chore. Never leave contradictory guidance in the PKB for a future agent to trip over. This applies to every write, not just `/sleep`-time consolidation.
+
+### Canonical notes vs MOCs
+
+A canonical topic note _is_ the knowledge; a Map of Content _indexes_ related canonical notes. Don't conflate them. You reach for a MOC when a topic area has 5+ canonical notes that need a navigational hub (see [Maps of Content (MOCs)](#maps-of-content-mocs) below).
+
 ## Workflow
 
 1. **Search first**: `mcp__pkb__search(query="topic")`. Do not `Glob` or `Grep` `$ACA_DATA/` — PKB search is authoritative and respects indexing invariants.
