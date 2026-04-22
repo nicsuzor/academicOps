@@ -742,7 +742,7 @@ def run_synthesis() -> None:
     """
     synth_script = FRAMEWORK_ROOT / "scripts" / "synthesize_dashboard.py"
     if not synth_script.exists():
-        print(f"⚠️  synthesize_dashboard.py not found; skipping synthesis", file=sys.stderr)
+        print("⚠️  synthesize_dashboard.py not found; skipping synthesis", file=sys.stderr)
         return
     try:
         result = subprocess.run(
