@@ -47,6 +47,9 @@ These principles govern all consolidation work — manual `/sleep` invocations a
 5. **Respect uncertainty** — use confidence levels honestly. Don't upgrade `provisional` to `established` without additional evidence from independent sources.
 6. **Quality over quantity** — one well-sourced synthesis note is worth more than ten unsourced assertions. Bounded effort per cycle prevents bulk low-quality output.
 7. **Note maturity** — `seedling` (single source, provisional) → `budding` (corroborated by 2+ sources) → `evergreen` (reviewed, stable, established). Maturity progresses through evidence, not time.
+8. **Enduring over episodic** — every first-class topic (tool, project, skill, concept) should have ONE canonical note with stable sections kept up to date. New insights route INTO that note; they do not spawn parallel narrow notes. "Install from GitHub release, not cargo" is an Installation update to the `mem` note, not a standalone entry. Proliferation of narrow observation-notes is a failure mode — the goal is durable memory, not a log of episodes.
+9. **Reconcile as you go** — whenever you add to a topic's canonical note, actively find and supersede/patch/retire stale or conflicting prior notes on the same topic. Never leave contradictory guidance lying around for the next agent to trip over. Reconciliation is part of the synthesis step, not a separate chore.
+10. **Judgment over procedure (pauli)** — the memory agent owns synthesis. Where this skill offers a heuristic, treat it as a starting point. Pauli may deviate — merge differently, rescope a topic note, collapse parallel notes, or restructure a section scaffold — when the material warrants it, provided Values 1-7 still hold. Pauli is trusted to decide what endures.
 
 ## How It Works
 
@@ -99,7 +102,7 @@ This is the baseline. Phase 6 re-runs graph_stats to measure what changed.
 Extract insights from session transcripts that agents may not have saved during the session.
 
 **Input**: Session transcripts in `$AOPS_SESSIONS/` (Markdown files)
-**Output**: Knowledge notes created via /remember skill
+**Output**: Updates to canonical topic notes (preferred); new canonical notes where the topic lacks one; rarely, a linked narrow note for genuinely topic-less observations.
 
 ### Process
 
@@ -107,10 +110,13 @@ Extract insights from session transcripts that agents may not have saved during 
 2. For each unmined transcript (up to 15 per cycle):
    a. Read the transcript carefully, noting decisions, patterns, facts, and problems. Look for things that are worth remembering but didn't make it into tasks or notes during the session. This is the agent's judgment call — not every detail needs to be saved, but important insights should be.
    b. Identify extractable insights: decisions made, patterns observed, facts learned, problems solved
-   c. For each insight: search PKB first (`mcp__pkb__search`) to avoid duplicates
-   d. Create knowledge notes via /remember skill with proper provenance:
-   - `sources: ["Session transcript <session-id> <date>"]`
-   - `confidence: provisional` (single source)
+   c. For each insight, identify the **first-class topic** it is about — not the symptom, the subject. "cargo build failed for mem MCP server" is _about_ `mem` the tool, and the lesson lives in its `Installation` section. The insight itself is episodic; the topic is enduring.
+   d. Route the insight to its canonical topic note (see Phase 2b "Enduring Topic Notes"):
+   - Search PKB (`mcp__pkb__search`) for an existing canonical note on that topic.
+   - **If it exists**: update the relevant section with the new knowledge, add the transcript to `sources:`, and **reconcile** — find any stale or conflicting notes on the same topic and supersede/patch/retire them (don't leave contradictory entries alongside).
+   - **If it doesn't exist and the topic is first-class**: create the canonical note with a coherent section scaffold (e.g., Overview / Installation / Usage / Known Issues / Related), then populate the relevant section. Do not create a narrow one-observation file.
+   - **If the observation is genuinely one-off and topic-less**: a narrow note is acceptable, but link it from the nearest canonical note so future readers find it.
+   - Provenance: `sources: ["Session transcript <session-id> <date>"]`, `confidence: provisional` for single-source additions.
      e. Mark transcript as mined: add `mined: YYYY-MM-DD` to frontmatter (but DO NOT modify the content — transcripts are preserved as-is)
 
 ### Critical Rules
@@ -136,14 +142,36 @@ Transform episodic memory into durable semantic knowledge. This is the core of t
 ### The Consolidation Pipeline
 
 ```
-Daily notes / Meeting notes / Task bodies (episodic)
-        ↓ extract observations
-Atomic observations with provenance
-        ↓ detect patterns across 3+ observations
-Synthesis notes (semantic knowledge)
-        ↓ accumulate related synthesis
+Daily notes / Meeting notes / Task bodies / Transcripts (episodic)
+        ↓ identify the first-class topic each insight is *about*
+Canonical topic notes (enduring memory, stable sections)
+        ↓ accumulate related topics
 Maps of Content (navigational hubs)
 ```
+
+### Enduring Topic Notes (Primary Output)
+
+The primary output of consolidation is a **canonical note per first-class topic**, kept up to date as observations arrive. This is enduring memory — the thing a future agent retrieves to do the work right the first time.
+
+**First-class topics** include:
+
+- Tools: `mem`, the PKB MCP server, `buttermilk`, `zotmcp`, `omcp`
+- Projects: specific named research projects
+- Skills and agents: `/sleep`, `/planner`, `pauli`, `/qa`
+- Concepts: "task hierarchy", "enforcement pyramid", "sleep-cycle design"
+
+A canonical note has **stable sections** agents expect to find and update over time. For a tool, typical scaffold: `Overview`, `Installation`, `Usage`, `Common Operations`, `Known Issues`, `Related`. The scaffold is a schema — incoming observations get routed into the right section, not appended as free-form fragments.
+
+**Decision rule** (apply before creating any new note):
+
+1. _Is there a canonical note for this topic?_
+   - **Yes** → update the relevant section, add to `sources:`, reconcile stale peers.
+   - **No, but the topic is first-class** → create the canonical note with a section scaffold, then populate the relevant section.
+   - **No, and the observation is genuinely topic-less / one-off** → a narrow note is acceptable, but link it from the nearest canonical note so it's discoverable.
+
+**Anti-pattern**: `kb-<hash>-mem-pkb-install-from-github-releases-not-cargo.md` as a new file. That content belongs _inside_ the canonical `mem` note's `Installation` section. Narrow observation-notes are episodic residue, not durable memory.
+
+**Pauli's judgment applies**: if the topic scaffold needs reshaping, reshape it. If two canonical notes should merge, merge them. If a section is growing unwieldy, split the topic. The heuristics above are a starting point; the memory agent owns the outcome.
 
 ### Process
 
@@ -152,53 +180,47 @@ Maps of Content (navigational hubs)
    - Meeting notes without `consolidated: YYYY-MM-DD`
    - Completed tasks with substantive body content
 
-2. **Extract observations**: For each candidate (up to 10 per cycle):
-   a. Read the episodic content carefully
-   b. Identify atomic facts, decisions, patterns, and insights
-   c. Search PKB for existing knowledge notes on the same topics
-   d. Either augment existing knowledge notes or create new ones
-   e. Use observation notation format (see /remember skill)
-   f. Always include provenance: `sources: ["[[source-note]]"]`
-   g. Mark the episodic source as `consolidated: YYYY-MM-DD` in its frontmatter (but DO NOT modify the content — episodic notes are preserved as-is)
+2. **Route observations to canonical topic notes**: For each candidate:
+   a. Read the episodic content carefully.
+   b. For each atomic fact, decision, pattern, or insight, identify the first-class topic it is _about_.
+   c. Apply the Decision rule above: update an existing canonical note, create one, or (rarely) file a narrow note linked from the nearest canonical.
+   d. **Reconcile during synthesis**: as you update a topic note, search PKB for peer notes on the same topic. When you find stale or conflicting entries:
+   - Keep the stronger note (more sources, better synthesis, clearer thesis).
+   - Merge any unique content from the weaker into the stronger.
+   - Retire the weaker (delete or set `superseded_by:` pointing to the canonical).
+   - Update wikilinks that referenced the retired note.
+   - Reconciliation is **mandatory**, not optional cleanup.
+     e. Provenance: `sources: ["[[source-note]]"]` on every synthesized section.
+     f. Mark the episodic source as `consolidated: YYYY-MM-DD` in its frontmatter (but DO NOT modify the content — episodic notes are preserved as-is).
 
-3. **Detect synthesis opportunities**: When 3+ observations exist on the same topic:
-   a. Create or update a synthesis note that integrates the observations
-   b. Synthesis note frontmatter includes all source observations
-   c. `confidence` level based on evidence strength:
+3. **Promote maturity as evidence accumulates**: A section moves `seedling → budding → evergreen` as independent sources corroborate it. Update `confidence` on the relevant section (or note-level `confidence` if the whole note stabilizes):
    - `established`: 3+ independent sources agree
    - `provisional`: pattern emerging but limited evidence
    - `speculative`: single inference, needs verification
 
-4. **Generate MOCs**: When a topic area has 5+ related knowledge notes:
-   a. Check if a MOC already exists for that topic
-   b. If not, create one with curated links and brief annotations
-   c. If yes, update with new entries
+4. **Generate MOCs**: When a topic area has 5+ related canonical notes:
+   a. Check if a MOC already exists for that topic area.
+   b. If not, create one with curated links and brief annotations.
+   c. If yes, update with new entries.
 
 ### Critical Rules
 
-- **Extract, don't invent** — only create knowledge that is grounded in the source material
+- **Extract, don't invent** — only create knowledge that is grounded in the source material.
+- **Enduring over episodic** — route insights into canonical topic notes, not new narrow files. Narrow files are a failure mode.
+- **Reconcile as you go** — when updating a topic, actively supersede/retire stale peer notes. Never leave contradictions behind.
 - **Preserve episodic originals** — NEVER modify the content of daily notes, meeting notes, or task bodies. Only add `consolidated: YYYY-MM-DD` to their frontmatter.
-- **Provenance chain** — every synthesized fact must trace back to specific sources
+- **Provenance chain** — every synthesized fact must trace back to specific sources.
 - **Abstraction ladder** — climb one rung at a time. Don't leap from a single meeting note to a broad generalization.
 - **Leave editorializing to the user** — agents extract patterns and connections. Value judgments and strategic implications are the user's domain.
 
-### Knowledge Note Deduplication
-
-Before creating new knowledge notes, check for overlapping existing notes. When two notes cover substantially the same topic:
-
-- Keep the stronger note (more sources, better synthesis, clearer thesis)
-- Merge any unique content from the weaker note into the stronger
-- Delete the weaker note
-- Update any `superseded_by` or wikilink references
-
-This is distinct from Phase 4's task dedup — it operates on `knowledge/` files by reading and comparing content qualitatively, not by title/embedding similarity.
-
 ### Bounded Effort
 
-- Up to 10 episodic sources consolidated per cycle
-- Up to 3 synthesis notes created/updated per cycle
-- Up to 1 MOC created per cycle
-- Time budget: 10 minutes
+Pauli paces the work. The following are default guide-rails, not hard limits — if the material calls for more (e.g., a topic with many scattered peer notes that should be collapsed in one pass) or less, pauli decides.
+
+- Default: ~10 episodic sources consolidated per cycle
+- Default: ~3 canonical topic notes created/significantly-restructured per cycle
+- Default: ~1 MOC created per cycle
+- Time budget: ~10 minutes; stop when the next action would be lower-quality than the last
 
 ## Phase 4: Data Quality Reconciliation
 
