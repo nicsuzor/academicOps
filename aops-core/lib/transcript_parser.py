@@ -1867,6 +1867,7 @@ class SessionProcessor:
                     "tool_name": entry.tool_name,
                     "tool_input": entry.tool_input,
                     "agent_id": entry.agent_id,
+                    "hook_context_injection": entry.hook_context_injection,
                     "start_time": entry.timestamp,
                     "end_time": entry.timestamp,
                 }
@@ -2210,6 +2211,8 @@ class SessionProcessor:
         variant: str = "full",
         source_file: str | Path | None = None,
         reflection_header: str | None = None,
+        usage_stats: UsageStats | None = None,
+        session_duration_minutes: float | None = None,
     ) -> str:
         """Format session entries as readable markdown."""
         session_uuid = session.uuid
@@ -2238,9 +2241,10 @@ class SessionProcessor:
                 files_loaded = turn.get("files_loaded")
                 tool_name = turn.get("tool_name")
                 agent_id = turn.get("agent_id")
+                hook_context_injection = turn.get("hook_context_injection")
 
                 is_error = exit_code is not None and exit_code != 0
-                has_content = content or skills_matched or files_loaded
+                has_content = content or skills_matched or files_loaded or hook_context_injection
                 if not full_mode and not has_content and not is_error:
                     continue
 
@@ -2259,7 +2263,13 @@ class SessionProcessor:
                     hook_detail = f": agent-{agent_id}"
                 markdown += f"- Hook({hook_name}{hook_detail}){status}\n"
 
-                if full_mode and not content and not skills_matched and not files_loaded:
+                if (
+                    full_mode
+                    and not content
+                    and not skills_matched
+                    and not files_loaded
+                    and not hook_context_injection
+                ):
                     markdown += "  - (no output)\n"
                 if skills_matched:
                     skills_str = ", ".join(f"`{s}`" for s in skills_matched)
@@ -2273,6 +2283,13 @@ class SessionProcessor:
                     else:
                         display_content = content[:200] + "..." if len(content) > 200 else content
                         markdown += f"  - {display_content}\n"
+                if hook_context_injection:
+                    inj_preview = (
+                        hook_context_injection[:300] + "..."
+                        if len(hook_context_injection) > 300
+                        else hook_context_injection
+                    )
+                    markdown += f"  - Injected context ({len(hook_context_injection):,} chars): `{inj_preview[:80]}...`\n"
                 markdown += "\n"
                 continue
 
@@ -2281,21 +2298,29 @@ class SessionProcessor:
                 continue
 
             turn_number += 1
+
+            # Retrieve assistant_sequence early so we can count tool calls for the meta line
+            assistant_sequence = (
+                turn.assistant_sequence
+                if isinstance(turn, ConversationTurn)
+                else turn.get("assistant_sequence", [])
+            )
+
             timing_info = (
                 turn.timing_info if isinstance(turn, ConversationTurn) else turn.get("timing_info")
             )
-            timing_str = ""
-            if timing_info:
-                parts = []
-                if timing_info.is_first and timing_info.start_time_local:
-                    local_time = timing_info.start_time_local.isoformat()
-                    parts.append(local_time)
-                elif timing_info.offset_from_start:
-                    parts.append(f"at +{timing_info.offset_from_start}")
-                if timing_info.duration:
-                    parts.append(f"took {timing_info.duration}")
 
-                # Add token counts if available
+            # Build per-turn meta line (shown below the heading, not crammed into it)
+            meta_parts = []
+            if timing_info:
+                if timing_info.is_first and timing_info.start_time_local:
+                    ts = timing_info.start_time_local
+                    meta_parts.append(ts.strftime("%Y-%m-%d %H:%M:%S"))
+                elif timing_info.offset_from_start:
+                    meta_parts.append(f"+{timing_info.offset_from_start}")
+                if timing_info.duration:
+                    meta_parts.append(f"took {timing_info.duration}")
+
                 if isinstance(turn, ConversationTurn):
                     input_tokens = turn.input_tokens
                     output_tokens = turn.output_tokens
@@ -2307,15 +2332,17 @@ class SessionProcessor:
                     cache_read = turn.get("cache_read_tokens")
                     cache_create = turn.get("cache_create_tokens")
                 if input_tokens is not None and output_tokens is not None:
-                    token_parts = [f"{input_tokens:,} in / {output_tokens:,} out"]
+                    meta_parts.append(f"{input_tokens:,} in / {output_tokens:,} out")
                     if cache_read:
-                        token_parts.append(f"{cache_read:,} cache↓")
+                        meta_parts.append(f"{cache_read:,} cache↓")
                     if cache_create:
-                        token_parts.append(f"{cache_create:,} cache↑")
-                    parts.append(" ".join(token_parts) + " tokens")
+                        meta_parts.append(f"{cache_create:,} cache↑")
 
-                if parts:
-                    timing_str = f" ({', '.join(parts)})"
+            tool_count = sum(1 for item in assistant_sequence if item.get("type") == "tool")
+            if tool_count:
+                meta_parts.append(f"{tool_count} tool call{'s' if tool_count != 1 else ''}")
+
+            timing_meta = f"_{' · '.join(meta_parts)}_\n\n" if meta_parts else ""
 
             user_message = (
                 turn.user_message
@@ -2328,7 +2355,7 @@ class SessionProcessor:
             if user_message:
                 if is_meta:
                     command_name = self._extract_command_name(user_message)
-                    markdown += f"## User (Turn {turn_number}{timing_str})\n\n"
+                    markdown += f"## User (Turn {turn_number})\n\n{timing_meta}"
                     markdown += f"**Invoked: {command_name}**\n\n"
                     if full_mode:
                         markdown += f"```markdown\n{user_message}\n```\n\n"
@@ -2339,15 +2366,22 @@ class SessionProcessor:
                             display_content = user_message
                         markdown += f"```markdown\n{display_content}\n```\n\n"
                 else:
-                    # Extract summary for heading
+                    # Extract summary for heading (first non-empty line)
                     summary = user_message.split("\n")[0].strip()
                     if len(summary) > 60:
                         summary = summary[:57] + "..."
 
+                    # Body: demote headings and wrap in blockquote so user content
+                    # can't corrupt the transcript's own heading structure
                     if not full_mode and len(user_message) > 500:
-                        markdown += f"## User (Turn {turn_number}{timing_str}) - {summary}\n\n{user_message[:500]}... [truncated]\n\n"
+                        body = _quote_block(_adjust_heading_levels(user_message[:500], 2))
+                        body += "\n> ... [truncated]"
                     else:
-                        markdown += f"## User (Turn {turn_number}{timing_str}) - {summary}\n\n{user_message}\n\n"
+                        body = _quote_block(_adjust_heading_levels(user_message, 2))
+
+                    markdown += (
+                        f"## User (Turn {turn_number}) — {summary}\n\n{timing_meta}{body}\n\n"
+                    )
 
                 inline_hooks = (
                     turn.inline_hooks
@@ -2405,11 +2439,16 @@ class SessionProcessor:
                                 display_content = content
                             markdown += f"```\n{display_content}\n```\n\n"
 
-            assistant_sequence = (
-                turn.assistant_sequence
-                if isinstance(turn, ConversationTurn)
-                else turn.get("assistant_sequence", [])
-            )
+                        hook_injection = hook.get("hook_context_injection")
+                        if hook_injection:
+                            injection_preview = (
+                                hook_injection[:300] + "..."
+                                if len(hook_injection) > 300
+                                else hook_injection
+                            )
+                            markdown += f"_Injected context ({len(hook_injection):,} chars):_\n\n"
+                            markdown += f"```\n{injection_preview}\n```\n\n"
+
             if assistant_sequence:
                 in_actions_section = False
                 agent_header_emitted = False
@@ -2555,6 +2594,21 @@ class SessionProcessor:
 
         source_yaml = f'source_file: "{source_file}"\n' if source_file else ""
 
+        stats_yaml = ""
+        if usage_stats and usage_stats.has_data():
+            total_tool_calls = sum(v.get("count", 0) for v in usage_stats.by_tool.values())
+            stats_yaml = "stats:\n"
+            stats_yaml += f"  input_tokens: {usage_stats.input_tokens}\n"
+            stats_yaml += f"  output_tokens: {usage_stats.output_tokens}\n"
+            if usage_stats.cache_read_input_tokens:
+                stats_yaml += f"  cache_read_tokens: {usage_stats.cache_read_input_tokens}\n"
+            if usage_stats.cache_creation_input_tokens:
+                stats_yaml += f"  cache_created_tokens: {usage_stats.cache_creation_input_tokens}\n"
+            if total_tool_calls:
+                stats_yaml += f"  tool_calls: {total_tool_calls}\n"
+            if session_duration_minutes is not None:
+                stats_yaml += f"  duration_minutes: {session_duration_minutes:.1f}\n"
+
         frontmatter = f"""---
 title: "{title} ({variant})"
 type: session
@@ -2565,22 +2619,22 @@ tags:
   - {variant}
 date: {date_str}
 session_id: {session_uuid}
-{source_yaml}{files_yaml}---
+{source_yaml}{stats_yaml}{files_yaml}---
 
 """
 
         header = f"# {title}\n\n"
 
         first_request = self._extract_first_user_request(entries)
-        session_context = "## Session Context\n\n"
-        session_context += "**Declared Workflow**: None\n"
-        session_context += "**Approach**: direct\n\n"
+        session_context = "## Overview\n\n"
         if first_request:
-            session_context += f"**Original User Request** (first prompt): {first_request}\n\n"
+            # Blockquote and demote headings so user content can't corrupt doc structure
+            quoted_request = _quote_block(_adjust_heading_levels(first_request, 2))
+            session_context += f"**Original Request:**\n\n{quoted_request}\n\n"
         else:
-            session_context += "**Original User Request** (first prompt): (not found)\n\n"
+            session_context += "**Original Request:** (not found)\n\n"
 
-        # Add enhanced context summary
+        # Tools used, token totals, files touched
         context_summary = self._generate_context_summary(entries, agent_entries)
         if context_summary:
             session_context += context_summary

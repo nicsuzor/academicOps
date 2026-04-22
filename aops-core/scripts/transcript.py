@@ -1017,6 +1017,8 @@ Examples:
                     variant="full",
                     source_file=str(session_path.resolve()),
                     reflection_header=reflection_header,
+                    usage_stats=usage_stats,
+                    session_duration_minutes=session_duration_minutes,
                 )
                 with open(full_path, "w", encoding="utf-8") as f:
                     f.write(markdown_full)
@@ -1034,6 +1036,8 @@ Examples:
                     variant="abridged",
                     source_file=str(session_path.resolve()),
                     reflection_header=reflection_header,
+                    usage_stats=usage_stats,
+                    session_duration_minutes=session_duration_minutes,
                 )
                 with open(abridged_path, "w", encoding="utf-8") as f:
                     f.write(markdown_abridged)
@@ -1192,6 +1196,8 @@ Examples:
                 variant="full",
                 source_file=str(session_path.resolve()),
                 reflection_header=reflection_header,
+                usage_stats=usage_stats,
+                session_duration_minutes=session_duration_minutes,
             )
             with open(full_path, "w", encoding="utf-8") as f:
                 f.write(markdown_full)
@@ -1208,6 +1214,8 @@ Examples:
                 variant="abridged",
                 source_file=str(session_path.resolve()),
                 reflection_header=reflection_header,
+                usage_stats=usage_stats,
+                session_duration_minutes=session_duration_minutes,
             )
             with open(abridged_path, "w", encoding="utf-8") as f:
                 f.write(markdown_abridged)
@@ -1301,6 +1309,8 @@ Examples:
             variant="full",
             source_file=str(session_path.resolve()),
             reflection_header=reflection_header,
+            usage_stats=usage_stats,
+            session_duration_minutes=session_duration_minutes,
         )
         with open(full_path, "w", encoding="utf-8") as f:
             f.write(markdown_full)
@@ -1318,6 +1328,8 @@ Examples:
             variant="abridged",
             source_file=str(session_path.resolve()),
             reflection_header=reflection_header,
+            usage_stats=usage_stats,
+            session_duration_minutes=session_duration_minutes,
         )
         with open(abridged_path, "w", encoding="utf-8") as f:
             f.write(markdown_abridged)

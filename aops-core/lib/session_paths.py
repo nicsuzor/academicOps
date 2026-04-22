@@ -19,7 +19,9 @@ def _parse_date_arg(date: str | None) -> datetime | None:
     """Parse a date/ISO-8601 string into a datetime, or None to let callers default to now."""
     if date is None:
         return None
-    return datetime.fromisoformat(date).astimezone()
+    dt = datetime.fromisoformat(date)
+    # Only attach local timezone for naive datetimes; preserve explicit tz as-is
+    return dt if dt.tzinfo is not None else dt.astimezone()
 
 
 def get_claude_project_folder() -> str:
