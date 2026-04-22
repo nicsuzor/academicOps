@@ -687,7 +687,6 @@ class HookRouter:
 
             from hooks.ntfy_notifier import (
                 notify_session_start,
-                notify_session_stop,
                 notify_subagent_stop,
                 notify_task_bound,
                 notify_task_completed,
@@ -695,9 +694,6 @@ class HookRouter:
 
             if ctx.hook_event == "SessionStart":
                 notify_session_start(config, ctx.session_id)
-            elif ctx.hook_event == "Stop":
-                current_task = state.main_agent.current_task
-                notify_session_stop(config, ctx.session_id, current_task)
             elif ctx.hook_event == "PostToolUse":
                 TASK_BINDING_TOOLS = {
                     "mcp__pkb__update_task",

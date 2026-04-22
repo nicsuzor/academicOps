@@ -141,7 +141,7 @@ p.write_text(json.dumps(d, indent=2))" ; \
 # --extra dev: includes pre-commit and dprint-py needed for git commit hooks in the container.
 ENV UV_PROJECT_ENVIRONMENT=/home/worker/.venv
 COPY --chown=worker:worker pyproject.toml uv.lock /tmp/aops-deps/
-RUN cd /tmp/aops-deps && uv sync --frozen --group dev
+RUN cd /tmp/aops-deps && uv sync --frozen --no-install-project --group dev
 
 # Install default ccstatusline and Claude Code settings.
 # These defaults are overridden at runtime if the host stages replacements.
