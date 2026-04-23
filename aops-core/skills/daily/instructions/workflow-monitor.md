@@ -47,8 +47,8 @@ Write the subsection into "What Needs Attention" in the daily note. Format propo
 
 **Ready to merge:**
 
-- **[#123](url)** [[repo]] — PR title (+N/-M, N files) — _merge now_
-- **[#456](url)** [[repo]] — PR title (+N/-M, N files) — _merge now_
+- [ ] [#123](url) [[repo]] — PR title (+N/-M, N files) — _merge now_
+- [ ] [#456](url) [[repo]] — PR title (+N/-M, N files) — _merge now_
 
 **Needs review:**
 
@@ -70,7 +70,7 @@ _X open PRs total — Y ready to merge, Z need attention_
 
 **Formatting rules:**
 
-- **Ready to merge** PRs are bold with direct URLs. These are one-click decisions.
+- **Ready to merge** PRs render as `- [ ]` checkboxes with direct URLs. One-click decisions the user can tick off in their editor as they merge them. User ticks are preserved on regeneration (bidirectional contract — see `SKILL.md`).
 - **Draft / autonomous** PRs: If there are >2, collapse into a single count line. If there are ≤2, list them individually but keep them visually secondary. They are background work and should not compete for attention.
 - **Stale** PRs include age and a suggested action (close, rebase, or review).
 - Include size (`+additions/-deletions, N files`) for ready-to-merge PRs to help gauge merge confidence.
@@ -98,17 +98,15 @@ This step defines the format and location for ambiguous completion cases. The co
 
 ### Step 6.6: Relationship to Work Log
 
-The Work Log (Section 4 of the note) contains the full Open PR tables with detailed classification, CI status, and action recommendations (see [[instructions/progress-sync]] Step 4.2.6). The "Outstanding Workflows" subsection in "What Needs Attention" is a curated, decision-oriented summary — not a duplicate of the Work Log tables.
+The Outstanding Workflows subsection in "What Needs Attention" is the **single source** for open PRs in the daily note. The Work Log no longer carries a parallel "Open PRs" table — it was removed because it duplicated the same PR data in full-table form, padding the note without adding signal.
 
 **What goes where:**
 
-| Signal                                     | What Needs Attention             | Work Log                             |
-| ------------------------------------------ | -------------------------------- | ------------------------------------ |
-| Ready-to-merge PRs                         | Bold line with URL + "merge now" | Full table row with CI, size, action |
-| PRs needing review                         | Brief line with URL              | Full table row with details          |
-| All open PRs (complete list)               | No — only actionable ones        | Yes — full table                     |
-| Merged PRs                                 | No                               | Yes — merged PR table                |
-| PR action pipeline (agent recommendations) | No                               | Yes — Step 4.2.7                     |
-| Task completion sweep results              | "Needs your call" for ambiguous  | Sweep summary counts                 |
-
-If the Work Log's Open PRs section (Step 4.2.6) is being composed in the same run, the agent should ensure consistency — same PR data, same classification, just different presentation for different audiences (decision-maker vs. record-keeper).
+| Signal                                     | What Needs Attention                        | Work Log              |
+| ------------------------------------------ | ------------------------------------------- | --------------------- |
+| Open PRs (all buckets)                     | Yes — this is the canonical place           | No                    |
+| Ready-to-merge PRs                         | `- [ ]` checkbox with URL + "merge now"     | No                    |
+| PRs needing review / fixes / stale         | Listed under their bucket heading           | No                    |
+| Merged PRs                                 | No                                          | Yes — merged PR table |
+| PR action pipeline (agent recommendations) | Called out inline with the PR in its bucket | No (retired)          |
+| Task completion sweep results              | "Needs your call" for ambiguous             | Sweep summary counts  |

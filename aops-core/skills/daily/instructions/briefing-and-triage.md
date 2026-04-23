@@ -88,15 +88,20 @@ From [sender] to [recipients], [date]:
 [1 sentence summary of what this means / why it matters]
 
 - **→ Task**: [task-id] Task title (if action required)
+- [ ] acknowledged
 
 ### [Single Email Topic]
 
 From [sender], [date]:
 
 > [Actual email content — verbatim, not summarised]
+
+- [ ] acknowledged
 ```
 
-**Incremental**: Cross-reference against the existing FYI section in today's note. If an email thread is already summarised there, skip it. Preserve any user annotations below existing FYI items.
+**Acknowledged checkbox**: Every FYI item ends with a `- [ ] acknowledged` line. Users tick it in their editor once they've read the item; this lets the item stay in the note as context without it continuing to feel unread. Ticks survive regeneration (bidirectional contract — agent regenerates above user edits).
+
+**Incremental**: Cross-reference against the existing FYI section in today's note. If an email thread is already summarised there, skip it. Preserve any user annotations below existing FYI items, including ticked `acknowledged` checkboxes — do not reset them to unchecked.
 
 **Archive flow (user confirmation required)**:
 

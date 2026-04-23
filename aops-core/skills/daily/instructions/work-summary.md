@@ -4,6 +4,18 @@
 
 After progress sync, generate a brief natural language summary of the day's work. This is the **key output** that the user sees both in the daily note and in the terminal. When running multiple times a day, emphasize recent momentum and context shifts.
 
+### Work date vs. calendar date
+
+The target note for every write in this section is the daily note for the **work date** — the date whose work is being summarised — **not** today's calendar date. A summary written at 01:30 on 2026-04-23 about 2026-04-22's work must land in `20260422-daily.md`.
+
+Resolve the work date in this order:
+
+1. If the user explicitly names a date, use that.
+2. Otherwise, default to the most recent date with session activity in `$AOPS_SESSIONS/summaries/`.
+3. If the resolved 'work date' differs from today's calendar date, confirm once with the user (AskUserQuestion: "Summarise work for YYYY-MM-DD?") before writing.
+
+Every reference to "the daily note" below means the work-date note.
+
 ### Step 5.1: Gather Inputs
 
 Collect from the sections already populated:
@@ -25,7 +37,9 @@ Identify what has changed since the last `/daily` run:
 
 ### Step 5.3: Generate Today's Story
 
-Write a 2-4 sentence natural language summary to the `## Today's Story` section. This replaces (not appends to) the existing Today's Story content.
+Write a 2-4 sentence natural language summary to the work-date note's `## Today's Story` section. This replaces (not appends to) the existing Today's Story content.
+
+**Empty-story suppression**: If no sessions have occurred on the 'work date' yet (e.g. the morning run before any work has happened), omit the ## Today's Story and ### Session Flow sections entirely rather than emitting empty headings or placeholder prose. If there is no content to write, skip the rest of this step and Step 5.3.1, and proceed to Step 5.4.
 
 **Current Momentum**: If this is a repeat run, ensure the first sentence summarizes the work done **since the last update**.
 
@@ -51,7 +65,7 @@ Write a 2-4 sentence natural language summary to the `## Today's Story` section.
 
 ### Step 5.3.1: Update daily note frontmatter with narrative
 
-After writing Today's Story to the daily note, update the frontmatter fields. This is the sole write point for the daily narrative — the cron synthesis script does not generate it.
+After writing Today's Story to the work-date note, update that same note's frontmatter fields. This is the sole write point for the daily narrative — the cron synthesis script does not generate it. Read and write the work-date note, never "today's note" if they differ.
 
 1. Adapt Today's Story from prose (Step 5.3) into 3-5 bullet points:
    - Second person ("you started...", "you got pulled into...")
@@ -59,7 +73,7 @@ After writing Today's Story to the daily note, update the frontmatter fields. Th
    - Cover: what started, what got sidetracked, what remains undone
    - Weight by human engagement (prompt count from Step 4.2), not agent output volume. Lead with what the human interacted with, not what autonomous agents produced.
    - **Lead bullets with research/academic work.** Infrastructure gets last bullet position. If research sessions had high engagement (2+ prompts), they are always bullet #1.
-2. Read the daily note file
+2. Read the work-date note file
 3. Update the YAML frontmatter fields:
    - `daily_narrative`: the 2-4 sentence prose summary (excluding "Dropped Threads" bullet)
    - `daily_story`: the bullet array from step 1
