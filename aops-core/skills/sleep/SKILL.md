@@ -46,10 +46,8 @@ These principles govern all consolidation work — manual `/sleep` invocations a
 4. **Leave editorializing to the user** — agents extract patterns and connections. Value judgments and strategic implications are the user's domain.
 5. **Respect uncertainty** — use confidence levels honestly. Don't upgrade `provisional` to `established` without additional evidence from independent sources.
 6. **Quality over quantity** — one well-sourced synthesis note is worth more than ten unsourced assertions. Bounded effort per cycle prevents bulk low-quality output.
-7. **Note maturity** — `seedling` (single source, provisional) → `budding` (corroborated by 2+ sources) → `evergreen` (reviewed, stable, established). Maturity progresses through evidence, not time.
-8. **Enduring over episodic** — every first-class topic (tool, project, skill, concept) should have ONE canonical note with stable sections kept up to date. New insights route INTO that note; they do not spawn parallel narrow notes. "Install from GitHub release, not cargo" is an Installation update to the `mem` note, not a standalone entry. Proliferation of narrow observation-notes is a failure mode — the goal is durable memory, not a log of episodes.
-9. **Reconcile as you go** — whenever you add to a topic's canonical note, actively find and supersede/patch/retire stale or conflicting prior notes on the same topic. Never leave contradictory guidance lying around for the next agent to trip over. Reconciliation is part of the synthesis step, not a separate chore.
-10. **Judgment over procedure (pauli)** — the memory agent owns synthesis. Where this skill offers a heuristic, treat it as a starting point. Pauli may deviate — merge differently, rescope a topic note, collapse parallel notes, or restructure a section scaffold — when the material warrants it, provided Values 1-7 still hold. Pauli is trusted to decide what endures.
+7. **Note maturity, MOCs, observation notation, provenance, abstraction level** — governed by [[remember]]. This skill defers to `/remember` for the mechanics of writing and organising semantic knowledge (canonical topic notes, reconciliation, maturity levels, MOC creation, provenance chains). Do not duplicate or contradict those rules here.
+8. **Judgment over procedure (pauli)** — the memory agent owns synthesis. Where this skill or `/remember` offers a heuristic, treat it as a starting point. Pauli may deviate — merge differently, rescope a topic note, collapse parallel notes, restructure a section scaffold — when the material warrants it, provided Values 1-6 still hold. Pauli is trusted to decide what endures.
 
 ## How It Works
 
@@ -74,16 +72,16 @@ The agent works through these in order, using judgment about what needs attentio
 | ----- | --------------------------- | ------------------------------------------------------- |
 | 0     | Graph Health                | Run `graph_stats` — baseline measurement for this cycle |
 | 1     | Session Backfill            | Run `/session-insights batch` for pending transcripts   |
-| 1b    | Transcript Mining           | Extract unsaved insights from session transcripts       |
-| 2     | Episode Replay              | Scan recent activity, identify promotion candidates     |
-| 2b    | Knowledge Consolidation     | Transform episodic content into semantic knowledge      |
-| 3     | Index Refresh               | Update mechanical framework indices (`SKILLS.md`, etc.) |
-| 4     | Data Quality Reconciliation | Dedup, staleness verification, misclassification        |
-| 5     | Staleness Sweep             | Detect orphans, stale docs, under-specified tasks       |
-| 5a    | Refile Processing           | Re-parent user-flagged tasks via /planner, remove flag  |
-| 5b    | Graph Maintenance           | Densify, reparent, or connect — pick ONE strategy       |
-| 5c    | PKB Quality Review          | Qualitative assessment of knowledge note quality        |
-| 6     | Brain Sync                  | Commit and push `$ACA_DATA`; re-run `graph_stats`       |
+| 2     | Transcript Mining           | Extract unsaved insights from session transcripts       |
+| 3     | Episode Replay              | Scan recent activity, identify promotion candidates     |
+| 4     | Knowledge Consolidation     | Transform episodic content into semantic knowledge      |
+| 5     | Index Refresh               | Update mechanical framework indices (`SKILLS.md`, etc.) |
+| 6     | Data Quality Reconciliation | Dedup, staleness verification, misclassification        |
+| 7     | Staleness Sweep             | Detect orphans, stale docs, under-specified tasks       |
+| 8     | Refile Processing           | Re-parent user-flagged tasks via /planner, remove flag  |
+| 9     | Graph Maintenance           | Densify, reparent, or connect — pick ONE strategy       |
+| 10    | Consolidation Self-Check    | Lightweight sanity check of this cycle's own output     |
+| 11    | Brain Sync                  | Commit and push `$ACA_DATA`; re-run `graph_stats`       |
 
 ## Phase 0: Graph Health Baseline
 
@@ -95,9 +93,9 @@ Run `graph_stats` at the start of every cycle. Record:
 - `orphan_count` — truly disconnected nodes
 - `stale_count` — tasks not modified in 7+ days while in_progress
 
-This is the baseline. Phase 6 re-runs graph_stats to measure what changed.
+This is the baseline. Phase 11 re-runs graph_stats to measure what changed.
 
-## Phase 1b: Transcript Mining
+## Phase 2: Transcript Mining
 
 Extract insights from session transcripts that agents may not have saved during the session.
 
@@ -110,22 +108,16 @@ Extract insights from session transcripts that agents may not have saved during 
 2. For each unmined transcript (up to 15 per cycle):
    a. Read the transcript carefully, noting decisions, patterns, facts, and problems. Look for things that are worth remembering but didn't make it into tasks or notes during the session. This is the agent's judgment call — not every detail needs to be saved, but important insights should be.
    b. Identify extractable insights: decisions made, patterns observed, facts learned, problems solved
-   c. For each insight, identify the **first-class topic** it is about — not the symptom, the subject. "cargo build failed for mem MCP server" is _about_ `mem` the tool, and the lesson lives in its `Installation` section. The insight itself is episodic; the topic is enduring.
-   d. Route the insight to its canonical topic note (see Phase 2b "Enduring Topic Notes"):
-   - Search PKB (`mcp__pkb__search`) for an existing canonical note on that topic.
-   - **If it exists**: update the relevant section with the new knowledge, add the transcript to `sources:`, and **reconcile** — find any stale or conflicting notes on the same topic and supersede/patch/retire them (don't leave contradictory entries alongside).
-   - **If it doesn't exist and the topic is first-class**: create the canonical note with a coherent section scaffold (e.g., Overview / Installation / Usage / Known Issues / Related), then populate the relevant section. Do not create a narrow one-observation file.
-   - **If the observation is genuinely one-off and topic-less**: a narrow note is acceptable, but link it from the nearest canonical note so future readers find it.
-   - Provenance: `sources: ["Session transcript <session-id> <date>"]`, `confidence: provisional` for single-source additions.
-     e. Mark transcript as mined: add `mined: YYYY-MM-DD` to frontmatter (but DO NOT modify the content — transcripts are preserved as-is)
+   c. For each insight, identify the **first-class topic** it is about — not the symptom, the subject. "cargo build failed for mem MCP server" is about `mem` the tool, and the lesson lives in its `Installation` section.
+   d. Route the insight per [[remember]]'s **Canonical Topic Notes** discipline: update the canonical note if it exists, create one with a section scaffold if the topic is first-class and missing, reconcile stale peers as part of the same write. Provenance: `sources: ["Session transcript <session-id> <date>"]`, `confidence: provisional` for single-source additions.
+   e. Mark transcript as mined: add `mined: YYYY-MM-DD` to frontmatter (but DO NOT modify the content — transcripts are preserved as-is)
 
 ### Critical Rules
 
 - **NEVER fabricate** — only extract what is actually stated or clearly implied in the transcript
 - **NEVER editorialize** — extract facts and observations, not opinions about what the user should do
-- **Provenance required** — every extracted fact must cite the session it came from
-- **Dedup first** — always search PKB before creating. If the insight was already saved during the session, skip it
-- **Respect abstraction level** — extract generalizable patterns, not implementation minutiae (see /remember skill's Abstraction Level section)
+- **Skip duplicates** — if the insight was already saved during the session (canonical note already contains the same knowledge), skip it
+- All writes follow [[remember]] (provenance, abstraction level, canonical topic notes, reconciliation)
 
 ### Environment Guard
 
@@ -135,7 +127,7 @@ Transcript mining requires access to `$AOPS_SESSIONS`. On GitHub Actions, this d
 
 Process up to 15 transcripts per cycle.
 
-## Phase 2b: Knowledge Consolidation
+## Phase 4: Knowledge Consolidation
 
 Transform episodic memory into durable semantic knowledge. This is the core of the sleep cycle's value — it mirrors the cognitive process of semanticization, where temporal memories are decontextualized into lasting understanding.
 
@@ -149,29 +141,11 @@ Canonical topic notes (enduring memory, stable sections)
 Maps of Content (navigational hubs)
 ```
 
-### Enduring Topic Notes (Primary Output)
+### Defer to /remember
 
-The primary output of consolidation is a **canonical note per first-class topic**, kept up to date as observations arrive. This is enduring memory — the thing a future agent retrieves to do the work right the first time.
+The HOW of writing and organising semantic knowledge — canonical topic notes, stable section scaffolds, the routing decision, mandatory reconciliation, maturity levels, observation notation, provenance, abstraction level, MOC creation, wikilink conventions — all lives in [[remember]]. Read it and apply it. This phase does not restate those rules.
 
-**First-class topics** include:
-
-- Tools: `mem`, the PKB MCP server, `buttermilk`, `zotmcp`, `omcp`
-- Projects: specific named research projects
-- Skills and agents: `/sleep`, `/planner`, `pauli`, `/qa`
-- Concepts: "task hierarchy", "enforcement pyramid", "sleep-cycle design"
-
-A canonical note has **stable sections** agents expect to find and update over time. For a tool, typical scaffold: `Overview`, `Installation`, `Usage`, `Common Operations`, `Known Issues`, `Related`. The scaffold is a schema — incoming observations get routed into the right section, not appended as free-form fragments.
-
-**Decision rule** (apply before creating any new note):
-
-1. _Is there a canonical note for this topic?_
-   - **Yes** → update the relevant section, add to `sources:`, reconcile stale peers.
-   - **No, but the topic is first-class** → create the canonical note with a section scaffold, then populate the relevant section.
-   - **No, and the observation is genuinely topic-less / one-off** → a narrow note is acceptable, but link it from the nearest canonical note so it's discoverable.
-
-**Anti-pattern**: `kb-<hash>-mem-pkb-install-from-github-releases-not-cargo.md` as a new file. That content belongs _inside_ the canonical `mem` note's `Installation` section. Narrow observation-notes are episodic residue, not durable memory.
-
-**Pauli's judgment applies**: if the topic scaffold needs reshaping, reshape it. If two canonical notes should merge, merge them. If a section is growing unwieldy, split the topic. The heuristics above are a starting point; the memory agent owns the outcome.
+What this phase adds on top is: _which_ episodic material to mine (candidacy + freshness), _when_ MOCs are warranted for the current graph state, and pacing.
 
 ### Process
 
@@ -180,51 +154,22 @@ A canonical note has **stable sections** agents expect to find and update over t
    - Meeting notes without `consolidated: YYYY-MM-DD`
    - Completed tasks with substantive body content
 
-2. **Route observations to canonical topic notes**: For each candidate:
-   a. Read the episodic content carefully.
-   b. For each atomic fact, decision, pattern, or insight, identify the first-class topic it is _about_.
-   c. Apply the Decision rule above: update an existing canonical note, create one, or (rarely) file a narrow note linked from the nearest canonical.
-   d. **Reconcile during synthesis**: as you update a topic note, search PKB for peer notes on the same topic. When you find stale or conflicting entries:
-   - Keep the stronger note (more sources, better synthesis, clearer thesis).
-   - Merge any unique content from the weaker into the stronger.
-   - Retire the weaker (delete or set `superseded_by:` pointing to the canonical).
-   - Update wikilinks that referenced the retired note.
-   - Reconciliation is **mandatory**, not optional cleanup.
-     e. Provenance: `sources: ["[[source-note]]"]` on every synthesized section.
-     f. Mark the episodic source as `consolidated: YYYY-MM-DD` in its frontmatter (but DO NOT modify the content — episodic notes are preserved as-is).
+2. **Route observations to canonical topic notes**: For each candidate, follow [[remember]]'s Canonical Topic Notes discipline — identify the first-class topic each insight is about, update the canonical note (or create one with a scaffold if missing), reconcile stale peers in the same write. Then mark the episodic source as `consolidated: YYYY-MM-DD` in its frontmatter (do NOT modify the episodic content itself).
 
-3. **Promote maturity as evidence accumulates**: A section moves `seedling → budding → evergreen` as independent sources corroborate it. Update `confidence` on the relevant section (or note-level `confidence` if the whole note stabilizes):
-   - `established`: 3+ independent sources agree
-   - `provisional`: pattern emerging but limited evidence
-   - `speculative`: single inference, needs verification
+3. **Create MOCs only when warranted**: When a topic area has accumulated 5+ canonical notes and would benefit from navigation, create or update a MOC per [[remember]]'s Maps of Content guidance. Skip this step by default — MOCs are earned, not scheduled.
 
-4. **Generate MOCs**: When a topic area has 5+ related canonical notes:
-   a. Check if a MOC already exists for that topic area.
-   b. If not, create one with curated links and brief annotations.
-   c. If yes, update with new entries.
+### Pacing
 
-### Critical Rules
+Pauli paces the work. Defaults are guide-rails, not hard limits — deviate when the material warrants (e.g., a topic with many scattered peers that should be collapsed in one pass justifies more work than usual).
 
-- **Extract, don't invent** — only create knowledge that is grounded in the source material.
-- **Enduring over episodic** — route insights into canonical topic notes, not new narrow files. Narrow files are a failure mode.
-- **Reconcile as you go** — when updating a topic, actively supersede/retire stale peer notes. Never leave contradictions behind.
-- **Preserve episodic originals** — NEVER modify the content of daily notes, meeting notes, or task bodies. Only add `consolidated: YYYY-MM-DD` to their frontmatter.
-- **Provenance chain** — every synthesized fact must trace back to specific sources.
-- **Abstraction ladder** — climb one rung at a time. Don't leap from a single meeting note to a broad generalization.
-- **Leave editorializing to the user** — agents extract patterns and connections. Value judgments and strategic implications are the user's domain.
+- ~10 episodic sources consolidated per cycle
+- ~3 canonical topic notes created or significantly restructured per cycle
+- ~1 MOC created per cycle when earned
+- Time budget ~10 minutes; stop when the next action would be lower-quality than the last
 
-### Bounded Effort
+## Phase 6: Data Quality Reconciliation
 
-Pauli paces the work. The following are default guide-rails, not hard limits — if the material calls for more (e.g., a topic with many scattered peer notes that should be collapsed in one pass) or less, pauli decides.
-
-- Default: ~10 episodic sources consolidated per cycle
-- Default: ~3 canonical topic notes created/significantly-restructured per cycle
-- Default: ~1 MOC created per cycle
-- Time budget: ~10 minutes; stop when the next action would be lower-quality than the last
-
-## Phase 4: Data Quality Reconciliation
-
-Before structural work, fix the data. Structural metrics are meaningless when the graph is inflated with duplicates, stale items, and misclassified content. Data quality MUST run before Graph Maintenance (Phase 5b).
+Before structural work, fix the data. Structural metrics are meaningless when the graph is inflated with duplicates, stale items, and misclassified content. Data quality MUST run before Graph Maintenance (Phase 9).
 
 Three activities, run in order. Each is bounded per cycle.
 
@@ -267,17 +212,17 @@ For matches:
 - Ambiguous → flag in cycle summary
 - Batch limit: up to 30 per cycle.
 
-**Time budget**: Phase 4 gets 10 minutes max. Exit the phase when time is up.
+**Time budget**: Phase 6 gets 10 minutes max. Exit the phase when time is up.
 
-## Phase 5: Tools Available
+## Phase 7: Staleness Sweep
 
-The agent uses these as **signals**, not as deterministic verdicts:
+Detect orphans, stale docs, and under-specified tasks. The agent uses these as **signals**, not as deterministic verdicts:
 
 - **PKB orphan detection**: `mcp__pkb__pkb_orphans()`
 - **Git log**: Recent commits, task changes since last cycle
 - **Own judgment**: The agent reads flagged tasks and decides whether they genuinely need attention.
 
-## Phase 5a: Refile Processing
+## Phase 8: Refile Processing
 
 Process tasks the user has explicitly flagged for refiling via the dashboard's REFILE button. These are user-initiated reparent requests and take priority over automated graph maintenance.
 
@@ -292,17 +237,17 @@ Process tasks the user has explicitly flagged for refiling via the dashboard's R
 
 - **No batch limit** — these are explicit user requests; process all of them
 - **Commits directly to main** — this is mechanical/autonomous work, not knowledge creation
-- **Runs before Phase 5b** so graph metrics reflect the refile changes
+- **Runs before Phase 9** so graph metrics reflect the refile changes
 
-## Phase 5b: Graph Maintenance
+## Phase 9: Graph Maintenance
 
 **Delegates to the Planner agent's `maintain` mode.** Sleep selects the strategy based on graph_stats; Planner executes it.
 
 ### Convergence Detection
 
-Before doing any work, compare the current `metrics_hash` from `graph_stats` against the previous cycle's hash (recorded in Phase 0 or the prior cycle's Phase 6 output).
+Before doing any work, compare the current `metrics_hash` from `graph_stats` against the previous cycle's hash (recorded in Phase 0 or the prior cycle's Phase 11 output).
 
-- **If `metrics_hash` is identical to the last cycle**: the graph has converged. Skip Phase 5b entirely and log "graph converged — no structural changes needed."
+- **If `metrics_hash` is identical to the last cycle**: the graph has converged. Skip Phase 9 entirely and log "graph converged — no structural changes needed."
 - **If 2 consecutive cycles produce no-ops** (no items processed because all metrics are below thresholds AND `metrics_hash` unchanged): the graph is stable. Cancel the active-loop cron if running via `/loop`, and log "terminal condition: 2 consecutive no-ops, graph maintenance complete."
 
 This prevents infinite reorganization cycles when the graph is already healthy.
@@ -354,7 +299,7 @@ The `graph_stats` metrics have known blind spots. The agent must understand thes
 
 ### Type-Aware Orphan Detection
 
-`pkb_orphans` reports both missing-parent AND wrong-type-parent orphans (e.g., a task parented directly to a project instead of an epic). Phase 5b should treat wrong-type-parent orphans the same as missing-parent orphans when selecting a reparent strategy.
+`pkb_orphans` reports both missing-parent AND wrong-type-parent orphans (e.g., a task parented directly to a project instead of an epic). Phase 9 should treat wrong-type-parent orphans the same as missing-parent orphans when selecting a reparent strategy.
 
 See `aops-core/skills/planner/SKILL.md` → `maintain` mode for full activity reference.
 
@@ -372,15 +317,15 @@ Process a configurable number of items per cycle (default 100, set via `batch_li
 Graph maintenance is complete when EITHER of:
 
 1. **Convergence**: `metrics_hash` unchanged for 2 consecutive cycles (see Convergence Detection above)
-2. **Two consecutive no-ops**: Two cycles in a row where Phase 5b processed zero items
+2. **Two consecutive no-ops**: Two cycles in a row where Phase 9 processed zero items
 
 Note: when all structural metrics are healthy, the strategy table selects "Densify edges". Densify runs normally; if it produces no structural changes, `metrics_hash` converges and condition 1 fires. Do not short-circuit before densify has a chance to run.
 
 When terminal condition is met during an active loop: cancel the cron/loop and log the final `graph_stats` snapshot. Do not keep cycling — diminishing returns waste compute.
 
-**Measure after**: Re-run `graph_stats` in Phase 6 to confirm the metric improved.
+**Measure after**: Re-run `graph_stats` in Phase 11 to confirm the metric improved.
 
-## Phase 5c: Consolidation Self-Check (Lightweight)
+## Phase 10: Consolidation Self-Check (Lightweight)
 
 A 2-minute sanity check of THIS cycle's own output. This is NOT a quality review — the real quality gate is the `/qa` review on the consolidation PR (see "Output" section below).
 
@@ -418,8 +363,8 @@ This closes the loop: consolidation → QA review → quality findings → proce
 When running via `/loop` or `/active-loop`, the sleep cycle follows the active-loop protocol:
 
 1. Read the DRAFT PR body for prior cycle learnings
-2. Use the "Next" field from the last cycle to inform this cycle's Phase 5b strategy
-3. After Phase 6, update the PR body with the cycle log entry
+2. Use the "Next" field from the last cycle to inform this cycle's Phase 9 strategy
+3. After Phase 11, update the PR body with the cycle log entry
 
 ## Design Principles
 
@@ -432,12 +377,12 @@ When running via `/loop` or `/active-loop`, the sleep cycle follows the active-l
 
 ## Output: Consolidation PR
 
-Knowledge creation (Phases 1b, 2b) produces output of uncertain quality. This output MUST go through a QA gate before reaching the main branch. The sleep cycle creates a PR — it never commits knowledge directly to main.
+Knowledge creation (Phases 2, 4) produces output of uncertain quality. This output MUST go through a QA gate before reaching the main branch. The sleep cycle creates a PR — it never commits knowledge directly to main.
 
 ### Process
 
-1. Mechanical work (Phase 0, 3, 4, 5, 5b, 6) commits directly to main — deterministic and verifiable.
-2. Knowledge work (Phases 1b, 2b) commits to a branch: `sleep/consolidation-YYYY-MM-DD-HHMM`
+1. Mechanical work (Phases 0, 1, 3, 5, 6, 7, 8, 9, 10, 11) commits directly to main — deterministic and verifiable.
+2. Knowledge work (Phases 2, 4) commits to a branch: `sleep/consolidation-YYYY-MM-DD-HHMM`
 3. At the end of the cycle, create a PR from the branch against main.
 4. The `/qa` skill reviews the PR for fitness-for-purpose (triggered by PR creation or manual invocation).
 5. Merge only after QA passes. During supervised phase, human reviews the QA decision.

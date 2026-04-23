@@ -1,7 +1,7 @@
 ---
 name: marsha
 description: "The QA Reviewer — runtime verification and intent checking. Assumes IT'S BROKEN until proven otherwise. Has browser + shell access to actually run things. Use for: verifying code changes work, checking output correctness, catching criterion substitution. Produces PASS/FAIL/REVISE verdicts."
-model: sonnet
+model: inherit
 color: pink
 tools:
   - Read

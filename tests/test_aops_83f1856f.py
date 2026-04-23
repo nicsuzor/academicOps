@@ -50,9 +50,10 @@ class TestUserPromptTruncation:
             variant="abridged",
         )
 
-        # Should be truncated to 500 chars + suffix
+        # Should be truncated to 500 chars + suffix (truncation notice on its own blockquote line)
         assert len(long_message) > 500
-        assert "A" * 500 + "... [truncated]" in markdown
+        assert "A" * 500 in markdown
+        assert "... [truncated]" in markdown
         assert "A" * 600 not in markdown
 
     def test_full_user_prompt_full_mode(self, processor, session_summary):
