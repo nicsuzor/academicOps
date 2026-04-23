@@ -142,7 +142,7 @@ def is_project_source_write(
     file_path = tool_input.get("file_path") or tool_input.get("path")
     if not isinstance(file_path, str) or not file_path.strip():
         return False
-    return not is_framework_path(file_path, cwd)
+    return _normalize_relative(file_path, cwd) is not None and not is_framework_path(file_path, cwd)
 
 
 def classify_prompt(prompt: str) -> str:

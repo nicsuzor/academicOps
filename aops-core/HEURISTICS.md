@@ -453,7 +453,7 @@ When an agent observes unexpected behavior — a tool firing unexpectedly, a fil
 
 **Derivation**: Emerged from a session process failure (2026-03-17).
 
-<a id="P119"></a>
+<a id="P122"></a>
 
 ## Orchestrator Is a Dispositor (P#122)
 
@@ -485,6 +485,8 @@ The general CLI agent (main Claude Code session) is a **dispositor** — it unde
 **How to apply**: When a prompt reads as a work request (implementation, refactor, new feature), prefer `create_task(...)` + dispatch over directly invoking Edit/Write on project source. The Level 4 detection hook (PostToolUse, warn-only) surfaces when project source is written outside a worker session so drift is caught without blocking legitimate framework work.
 
 **Derivation**: Extends P#47 (Agents Execute Workflows) and P#116 (Delegate Agency to Capable Agents). Just as workflows belong in workflow files, feature execution belongs in worker sessions. The orchestrator's agency is strategic coordination, not keystrokes.
+
+<a id="P119"></a>
 
 ## Bound Subagent Scope Before Dispatch (P#119)
 
