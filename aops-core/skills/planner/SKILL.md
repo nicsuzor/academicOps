@@ -74,7 +74,7 @@ Quick task capture with minimal overhead. Speed is the priority — no enrichmen
 
 **When**: User says "/q X", "queue task", "new task:", "save for later"
 
-**Allowed tools**: `mcp__pkb__create_task`, `mcp__pkb__task_search`, `mcp__pkb__update_task`, `mcp__pkb__get_task`
+**Allowed tools**: `mcp__pkb__create_task`, `mcp__pkb__task_search`, `mcp__pkb__update_task`, `mcp__pkb__get_task`, `mcp__pkb__get_task_children`
 
 **Workflow**:
 
@@ -87,7 +87,22 @@ Quick task capture with minimal overhead. Speed is the priority — no enrichmen
    - `effort`: duration (0.5d, 1d, 1w)
    - `consequence`: prose description of what happens if not done
 6. Create task with body template (Problem, Solution, Files, AC). Pass `due`, `effort`, and `consequence` as explicit PKB parameters to `mcp__pkb__create_task` (not only in body prose) — the PKB uses `due` as a structured field for deadline-aware prioritization.
-7. Report and HALT — no execution.
+7. **Report with context tree**: Fetch siblings via `mcp__pkb__get_task_children(parent_id)` and print a compact ASCII tree showing parent + siblings + the new task, marking the new task with `← NEW`. Then HALT — no execution.
+
+   Format:
+   ```
+   <parent-id> (<parent title>)
+   ├── <sibling-id> (<sibling title>)
+   ├── <sibling-id> (<sibling title>)
+   └── <new-id> (<new title>)   ← NEW
+   ```
+
+   Use `└──` for the last child, `├──` for others. If the new task has no siblings, render as parent → new task only:
+   ```
+   <parent-id> (<parent title>)
+   └── <new-id> (<new title>)   ← NEW
+   ```
+   Show only immediate family (parent + its children); do not recurse into ancestors or grandchildren.
 
 **Key rule**: Commission don't code. Route to swarm for execution.
 
