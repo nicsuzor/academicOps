@@ -53,6 +53,18 @@ class TestValidFormat:
         m = validate_pr_url_format("https://github.com/foo/my.repo/pull/1")
         assert m.group("repo") == "my.repo"
 
+    def test_repo_starting_with_dot(self):
+        m = validate_pr_url_format("https://github.com/foo/.github/pull/1")
+        assert m.group("repo") == ".github"
+
+    def test_repo_starting_with_underscore(self):
+        m = validate_pr_url_format("https://github.com/foo/_templates/pull/1")
+        assert m.group("repo") == "_templates"
+
+    def test_commit_sha_uppercase(self):
+        m = validate_pr_url_format("https://github.com/a/b/commit/9841E951ABCDEF0")
+        assert m.group("sha") == "9841E951ABCDEF0"
+
 
 class TestInvalidFormat:
     @pytest.mark.parametrize(
@@ -117,7 +129,7 @@ class TestLiveVerify:
         monkeypatch.delenv("POLECAT_SKIP_PR_URL_CHECK", raising=False)
         with patch("validation.shutil.which", return_value=None):
             verify_pr_url_live("https://github.com/a/b/pull/1")
-        err = capsys.readouterr().out
+        err = capsys.readouterr().err
         assert "gh not installed" in err
 
     def test_gh_resolves_pr(self, monkeypatch):

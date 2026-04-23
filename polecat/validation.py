@@ -29,6 +29,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 
 # Maximum task ID length to prevent DoS/buffer issues
 MAX_TASK_ID_LENGTH = 100
@@ -185,11 +186,11 @@ def validate_task_id_or_raise(task_id: str) -> str:
 GITHUB_URL_PATTERN = re.compile(
     r"^https://github\.com/"
     r"(?P<org>[A-Za-z0-9][A-Za-z0-9-]*)/"
-    r"(?P<repo>[A-Za-z0-9][A-Za-z0-9._-]*)/"
+    r"(?P<repo>[A-Za-z0-9._][A-Za-z0-9._-]*)/"
     r"(?:"
     r"pull/(?P<pr>\d+)"
     r"|issues/(?P<issue>\d+)"
-    r"|commit/(?P<sha>[0-9a-f]{7,40})"
+    r"|commit/(?P<sha>[0-9a-fA-F]{7,40})"
     r")/?$"
 )
 
@@ -251,6 +252,7 @@ def verify_pr_url_live(pr_url: str, expected_org: str | None = None) -> None:
         print(
             f"  ⚠️  gh not installed; cannot live-verify pr_url={pr_url}. "
             f"Set POLECAT_SKIP_PR_URL_CHECK=1 to silence this warning.",
+            file=sys.stderr,
             flush=True,
         )
         return

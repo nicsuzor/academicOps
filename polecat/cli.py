@@ -2892,7 +2892,12 @@ def finish(ctx, no_push, do_nuke, force, force_done, project):
         )
         if not released:
             raise RuntimeError("release_task returned False")
-    except Exception:
+    except Exception as _release_exc:
+        from polecat.validation import PRURLValidationError as _PRURLValidationError
+
+        if isinstance(_release_exc, _PRURLValidationError):
+            print(f"  ❌  A3/A8 integrity gate — pr_url rejected: {_release_exc}", file=sys.stderr)
+            sys.exit(1)
         # Fallback to old path if release_task not available yet
         try:
             from lib.task_model import TaskStatus
