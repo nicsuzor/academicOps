@@ -27,7 +27,6 @@ tools:
   - mcp__playwright__browser_resize
   - mcp__playwright__browser_tabs
   - mcp__playwright__browser_close
-  - mcp__playwright__browser_run_code
 mcpServers:
   - playwright
 skills:
