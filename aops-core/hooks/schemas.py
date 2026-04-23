@@ -27,6 +27,13 @@ class HookContext(BaseModel):
     slug: str | None = None
     client_type: str | None = None  # "claude" or "gemini" (set from --client flag)
 
+    # Metadata (aops-d9ba7159)
+    machine: str | None = None
+    provider: str | None = None
+    crew: str | None = None
+    repo: str | None = None
+    task_id: str | None = None
+
     # Precomputed values (computed once in router.normalize_input())
     session_short_hash: str = Field(
         default="", description="8-char hash of session_id (computed once at normalization)."
