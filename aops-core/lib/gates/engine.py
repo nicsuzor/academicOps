@@ -142,9 +142,17 @@ class GenericGate:
         self, ctx: HookContext, state: GateState, session_state: SessionState
     ) -> dict[str, Any]:
         """Build the variable dict available for template rendering."""
+        # Expose tool_input.file_path / path when present so templates can refer
+        # to the specific file involved (e.g. orchestrator-boundary warning).
+        file_path = ""
+        if isinstance(ctx.tool_input, dict):
+            fp = ctx.tool_input.get("file_path") or ctx.tool_input.get("path")
+            if isinstance(fp, str):
+                file_path = fp
         return {
             "session_id": ctx.session_id,
             "tool_name": ctx.tool_name or "",
+            "file_path": file_path,
             "gate_status": getattr(state.status, "value", state.status),
             "ops_since_open": state.ops_since_open,
             "ops_since_close": state.ops_since_close,
@@ -546,7 +554,27 @@ class GenericGate:
             else:
                 state.ops_since_close += 1
 
-        return self._evaluate_triggers(context, session_state)
+        trigger_result = self._evaluate_triggers(context, session_state)
+        policy_result = self._evaluate_policies(context, session_state)
+
+        if trigger_result and policy_result:
+            # Policy verdict dominates; merge messages from both.
+            return GateResult(
+                verdict=policy_result.verdict,
+                system_message="\n".join(
+                    filter(None, [trigger_result.system_message, policy_result.system_message])
+                )
+                or None,
+                context_injection="\n\n".join(
+                    filter(
+                        None,
+                        [trigger_result.context_injection, policy_result.context_injection],
+                    )
+                )
+                or None,
+                metadata={**trigger_result.metadata, **policy_result.metadata},
+            )
+        return policy_result or trigger_result
 
     def on_user_prompt(
         self, context: HookContext, session_state: SessionState
