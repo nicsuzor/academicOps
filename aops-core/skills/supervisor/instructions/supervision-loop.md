@@ -77,7 +77,7 @@ The supervisor maintains structured state in the epic task body. This is the
 
 ### Work Item Statuses
 
-The supervisor uses canonical PKB task statuses — see [[aops-core/skills/remember/references/TAXONOMY.md#status-values-and-transitions]].
+The supervisor uses canonical PKB task statuses — see [[../../../remember/references/TAXONOMY.md#status-values-and-transitions]].
 
 | Status        | Meaning in the supervisor loop                                                                                                                                      |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
