@@ -322,7 +322,19 @@ def release_task(
 
     Captures what was done (summary) when transitioning to a handoff status.
     Flat parameters — no nested objects.
+
+    When ``pr_url`` is provided, it is format-validated and (unless
+    ``POLECAT_SKIP_PR_URL_CHECK=1``) live-verified via ``gh`` before the
+    release is recorded. This is the A3/A8 integrity gate: the framework
+    must not accept a fabricated PR URL as evidence of completion.
+    Validation failures raise ``PRURLValidationError``; the MCP call is not
+    made and the task stays in its pre-release state.
     """
+    if pr_url:
+        from polecat.validation import verify_pr_url_live
+
+        verify_pr_url_live(pr_url)
+
     params: dict[str, Any] = {"id": task_id, "status": status, "summary": summary}
     if pr_url:
         params["pr_url"] = pr_url
