@@ -2,7 +2,7 @@
 name: rbg
 description: "The Judge — framework and project principle enforcement. Applies axioms with judgment, not mechanical matching. May fix clear, mechanical violations directly; flags anything requiring judgment for the caller."
 color: red
-model: sonnet
+model: inherit
 tools:
   - Read
   - Grep
