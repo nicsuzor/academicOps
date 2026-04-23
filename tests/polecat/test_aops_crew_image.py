@@ -125,3 +125,45 @@ def test_playwright_chromium_runnable() -> None:
     assert "HeadlessChrome" in result.stdout or "Chrome" in result.stdout, (
         f"Unexpected --version output from chromium: {result.stdout!r}"
     )
+
+
+@pytest.mark.integration
+def test_cc_can_link() -> None:
+    """``cc`` must be able to link a trivial C program in the aops-crew image.
+
+    Rust's cargo invokes ``cc`` as the default linker. Pre-fix, the image
+    installed ``gcc`` (binary only) but not ``libc6-dev``, so linking failed
+    with ``cannot find Scrt1.o`` / ``cannot find crti.o``. Cargo surfaced this
+    as a missing-linker error and polecat workers skipped compilation checks
+    on Rust PRs (the ``mem`` repo).
+
+    The fix installs ``build-essential`` (which pulls in gcc, g++, make,
+    libc6-dev, dpkg-dev). This test asserts that a minimal C source compiles
+    and links end-to-end.
+    """
+    if not _docker_available():
+        pytest.skip("Docker not available or aops-crew image not built")
+    if not _image_built():
+        pytest.skip("aops-crew image not built locally")
+
+    script = (
+        "set -e; "
+        'printf "int main(void){return 0;}\\n" > /tmp/t.c; '
+        "cc /tmp/t.c -o /tmp/t && /tmp/t && echo LINK_OK"
+    )
+
+    result = subprocess.run(
+        ["docker", "run", "--rm", "aops-crew", "sh", "-c", script],
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+
+    assert result.returncode == 0 and "LINK_OK" in result.stdout, (
+        "cc failed to link a trivial C program in aops-crew image "
+        f"(exit={result.returncode}).\n"
+        f"stdout={result.stdout!r}\n"
+        f"stderr={result.stderr!r}\n"
+        "libc6-dev is likely missing — ensure the Dockerfile installs "
+        "`build-essential` (not just `gcc`)."
+    )
