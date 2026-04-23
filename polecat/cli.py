@@ -1724,6 +1724,26 @@ def is_interactive() -> bool:
     return sys.stdin.isatty()
 
 
+def _require_pkb_url_or_exit() -> None:
+    """Emit a friendly one-liner and exit(2) if PKB_MCP_URL is unset.
+
+    Runs before :func:`_bootstrap_or_exit` so the most common missing-env
+    failure produces remediation guidance rather than a generic bootstrap
+    banner (and certainly not the bare ``RuntimeError`` from
+    ``pkb_bridge._get_client``).  Exit code 2 distinguishes config failures
+    from other bootstrap errors (1) and from exit 3 (empty queue).
+    """
+    if os.environ.get("PKB_MCP_URL"):
+        return
+    print(
+        "polecat: PKB_MCP_URL is not set.\n"
+        "  Start the PKB MCP server and export its URL, e.g.:\n"
+        "      export PKB_MCP_URL=http://localhost:8026/mcp",
+        file=sys.stderr,
+    )
+    sys.exit(2)
+
+
 def _bootstrap_or_exit() -> None:
     from polecat.bootstrap import BootstrapError, validate_bootstrap
 
@@ -3996,6 +4016,7 @@ def run(
     """
     import subprocess
 
+    _require_pkb_url_or_exit()
     _bootstrap_or_exit()
 
     if issue and task_id:
