@@ -283,3 +283,20 @@ polecat sync                           # sync mirrors after merging
 | Reasonable adds/dels, targeted files | `gh pr merge <N> --squash --delete-branch`                  |
 | Code already in main (stale branch)  | `gh pr close <N> --comment "Stale branch"`                  |
 | Massive deletions (stale mirror)     | `gh pr close <N> --comment "Repo nuke"` then `polecat sync` |
+
+## Task Assignment Rules
+
+- **Default assignee**: Set to `polecat` or leave unassigned.
+- **Human assignment**: Never assign to `nic` unless the task reduces to a genuine binary human choice (e.g., "Do we use Pattern A or Pattern B?").
+- **Decision subtasks**: When a real choice IS needed, create a minimal choice subtask that blocks the epic, providing full context to decide. Never assign the parent epic back to `nic`.
+- **Underspecified tasks**: Even underspecified epics should not go to `nic`: file a research/decomposition task for an agent to do the legwork first.
+
+## Handover
+
+**Always leave a loose thread.** Every agent that completes work as part of a chain MUST leave at least one PKB task that says what comes next — unless the work is fully complete with no follow-ups. Use `mcp__pkb__append` to record information mid-workflow and `mcp__pkb__complete_task` to close a task with a final note.
+
+- If dispatch is blocked: file a refinement/blocking task.
+- If a phase is complete but the epic remains: ensure the next subtask is clear and in `ready` or `queued`.
+- Never assume the user knows the graph. Link to the next task explicitly.
+
+Example: `mcp__pkb__create_task(parent="epic-123", title="Phase 2: Implementation", body="Phase 1 (Research) complete. Next: implement the proposed changes in src/...")`

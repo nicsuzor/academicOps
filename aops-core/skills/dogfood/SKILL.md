@@ -169,7 +169,7 @@ This is the hardest phase. Commission a separate reviewer agent — ideally a di
    - A different reviewer agent?
    - A slightly different question in the same category?
 
-3. **File follow-ups.** If the dogfooding revealed issues beyond the instructions themselves (framework bugs, missing data, broken tools), file tasks for those separately.
+3. **File follow-ups.** If the dogfooding revealed issues beyond the instructions themselves (framework bugs, missing data, broken tools), file tasks for those separately. **Always file follow-up tasks for friction items, promotion work, and unfinished phases.**
 
 4. **Assess category coverage.** Does this one example adequately test the skill, or is the category broad enough that another example from a different part of the space would reveal new issues? Common reasons to run another example:
    - The first example was narrow (e.g., only one platform, one time period, one data source)
@@ -215,6 +215,11 @@ These were observed during dogfooding runs and should be watched for:
 | Full batch dispatched on first iteration                                                | Agent dispatched N=10 tasks on iteration 1; user had to intervene. Two failures from 2 tasks is as informative as 2 from 10 at a fraction of the cost.                                                | **First iteration scope**: cap at N=2. Verify pipeline health before scaling.                                                                                      |
 | Killed productive agent on scope correction                                             | Scope narrowing arrived mid-run; agent used `TaskStop` + restart instead of `SendMessage`. Discarded real findings, paid full cold-start cost on replacement.                                         | Use `SendMessage` to redirect a running agent. Only `TaskStop` for active harm (wrong files, dangerous expansion).                                                 |
 | Created draft spec file instead of editing skill                                        | Agent wrote `specs/drafts/dogfood-instructions.md` as working artifact rather than editing the skill directly. File persisted after session, cluttering the repo.                                     | Work directly in the skill file. Use `specs/drafts/` only for scaffolding; delete it when the session ends.                                                        |
+| **Concluded task without filing follow-up**                                             | Agent finished work but didn't leave a loose thread in the PKB                                                                                                                                        | **Always leave a loose thread.** Before exiting, file a task for what comes next.                                                                                  |
+
+## Handover
+
+**Always leave a loose thread.** Before exiting, file a follow-up task for any friction items, instruction promotions, or unfinished phases. A summary in chat is not enough; the next step must exist in the PKB as a discrete task.
 
 ## Related
 
