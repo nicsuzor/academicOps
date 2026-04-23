@@ -1756,6 +1756,7 @@ priority = 50
 
 [[rule]]
 toolName = "run_shell_command"
+commandRegex = ".*{worktree_regex}.*"
 decision = "allow"
 priority = 50
 

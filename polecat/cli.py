@@ -1596,12 +1596,13 @@ description = "Allow writes within the work directory"
 
 [[rule]]
 toolName = "run_shell_command"
+commandRegex = ".*{work_dir_str}.*"
 decision = "allow"
 priority = 900
-description = "Allow autonomous shell execution"
+description = "Allow shell commands referencing the work directory"
 
 [[rule]]
-toolName = ["write_file", "replace"]
+toolName = ["write_file", "replace", "run_shell_command"]
 decision = "deny"
 priority = 899
 deny_message = "Sandbox violation: Writing outside the work directory ({work_dir_str}) is prohibited."
