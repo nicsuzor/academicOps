@@ -76,7 +76,7 @@ flowchart LR
 
 ## User Expectations
 
-- **State Transparency**: Users can always see the exact, real-time status of all work. Canonical statuses are defined in [[aops-core/TAXONOMY.md#status-values-and-transitions]].
+- **State Transparency**: Users can always see the exact, real-time status of all work. Canonical statuses are defined in [[aops-core/skills/remember/references/TAXONOMY.md#status-values-and-transitions]].
 - **Justification (The "Why")**: Every task must be anchored in the hierarchy (Goal → Project → Epic → Task). Users can always trace why a task exists by examining its parent field.
 - **Actionable Visibility**: Users can query for actionable work and receive a prioritized list of unblocked leaf tasks that are ready for execution.
 - **Multi-Session Continuity**: Work state is persisted in markdown files, allowing work started in one session to be safely paused and accurately resumed in another by any agent.
@@ -97,7 +97,7 @@ inbox → ready → queued → in_progress → merge_ready (PR filed) → done (
                                      → cancelled (abandoned)
 ```
 
-See [[aops-core/TAXONOMY.md#status-values-and-transitions]] for canonical status definitions.
+See [[aops-core/skills/remember/references/TAXONOMY.md#status-values-and-transitions]] for canonical status definitions.
 
 **`inbox → ready` graduation** requires the task to have:
 
@@ -147,7 +147,7 @@ release_task(id, status, summary, pr_url?, branch?, blocker?, reason?)
 
 ### Statuses
 
-Statuses are canonical — see [[aops-core/TAXONOMY.md#status-values-and-transitions]]. The work-management subsystem uses the canonical set without extensions.
+Statuses are canonical — see [[aops-core/skills/remember/references/TAXONOMY.md#status-values-and-transitions]]. The work-management subsystem uses the canonical set without extensions.
 
 **Default on create**: `inbox`. Tasks graduate to `ready` once decomposition and dependency resolution are complete. The human manually promotes `ready → queued` to make tasks available for agent dispatch. Agents pull only from `queued`.
 
