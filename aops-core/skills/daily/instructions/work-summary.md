@@ -39,7 +39,7 @@ Identify what has changed since the last `/daily` run:
 
 Write a 2-4 sentence natural language summary to the work-date note's `## Today's Story` section. This replaces (not appends to) the existing Today's Story content.
 
-**Empty-story suppression**: If no sessions have occurred on the work date yet (e.g. the morning run before any work has happened), omit the `## Today's Story` and `### Session Flow` sections entirely rather than emitting empty headings or placeholder prose. Skip the rest of this step and jump to Step 5.3.1 only if there is real content to write.
+**Empty-story suppression**: If no sessions have occurred on the 'work date' yet (e.g. the morning run before any work has happened), omit the ## Today's Story and ### Session Flow sections entirely rather than emitting empty headings or placeholder prose. If there is no content to write, skip the rest of this step and Step 5.3.1, and proceed to Step 5.4.
 
 **Current Momentum**: If this is a repeat run, ensure the first sentence summarizes the work done **since the last update**.
 
