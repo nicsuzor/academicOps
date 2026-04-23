@@ -2923,8 +2923,14 @@ def finish(ctx, no_push, do_nuke, force, force_done, project):
 @main.command()
 @click.argument("target", required=False)
 @click.option("--force", "-f", is_flag=True, help="Delete even if work is not merged")
+@click.option(
+    "--allow-unpushed",
+    is_flag=True,
+    help="Bypass the A3/A8 integrity gate that refuses to destroy unpushed commits. "
+    "Use only when you are sure the commits can be discarded.",
+)
 @click.pass_context
-def nuke(ctx, target, force):
+def nuke(ctx, target, force, allow_unpushed):
     """Destroy a polecat or crew worker, or clean up stale branches when run without args."""
     manager = PolecatManager(home_dir=ctx.obj.get("home"))
 
@@ -2941,7 +2947,7 @@ def nuke(ctx, target, force):
         # Fallback to worktree logic
         try:
             validate_task_id_or_raise(target)
-            manager.nuke_worktree(target, force=force)
+            manager.nuke_worktree(target, force=force, allow_unpushed=allow_unpushed)
             print(f"Nuked polecat {target}")
             return
         except TaskIDValidationError:
