@@ -33,10 +33,13 @@ For each unmapped doc: "Would an agent benefit from discovering this via keyword
 
 ```json
 {
+  "version": "1.1.0",
   "spec_dirs": ["specs/"],
+  "includes": [".agents/subproject/context-map.json"],
   "docs": [
     {
       "topic": "short_snake_case_identifier",
+      "type": "spec",
       "path": "relative/path/from/repo/root.md",
       "description": "What will I learn by reading this?",
       "keywords": ["formal term", "natural language query an agent might use"]
@@ -45,7 +48,7 @@ For each unmapped doc: "Would an agent benefit from discovering this via keyword
 }
 ```
 
-For a secondary repo whose specs live under `docs/specs/`, the same field would be:
+For a secondary repo whose specs live under `docs/specs/`, use:
 
 ```json
 {
@@ -56,21 +59,11 @@ For a secondary repo whose specs live under `docs/specs/`, the same field would 
 
 ### 5. Report changes
 
-Summarise entries added, removed, updated — in the commit message or response.
+Summarise entries added, removed, updated — in the commit message or response. Use `mcp__pkb__append` to record mid-workflow if a task is in progress.
 
-## Schema Rules
+## Schema
 
-### Top-level fields
-
-- **`spec_dirs`**: Array of directories containing authoritative specs; consumed by `/review-pr` and Pauli to surface spec divergence. Paths are relative to repo root and should end with `/` for clarity. Omit or leave empty (`[]`) if the repo has no dedicated spec directory — consumers degrade gracefully. Example: `"spec_dirs": ["specs/"]` for this repo; `"spec_dirs": ["docs/specs/"]` for a secondary repo whose specs live under `docs/`.
-- **`docs`**: Array of documentation entries (see below).
-
-### `docs[]` entry fields
-
-- **`topic`**: Unique snake_case identifier, descriptive of content not filename.
-- **`path`**: Relative to repo root. Must resolve to an existing file or directory.
-- **`description`**: One sentence answering "what will I learn?" not "what is this file."
-- **`keywords`**: 5-15 lowercase terms/phrases including both formal terms and natural language queries.
+Full field definitions and design rationale are in **[[specs/context-map-schema.md]]** (SSoT). Key fields: `version`, `spec_dirs`, `includes`, `docs[]` (each entry has `topic`, `type`, `path`, `description`, `keywords`).
 
 ### Audit checklist
 

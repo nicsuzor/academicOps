@@ -233,16 +233,16 @@ Scan for `<!-- @nic: -->` annotations without matching `<!-- @claude: -->` respo
 
 ## Data Sources
 
-| Source                 | Tool                                                    | Purpose                                                          |
-| ---------------------- | ------------------------------------------------------- | ---------------------------------------------------------------- |
-| Daily note             | Read file                                               | Focus items, FYIs, carryover                                     |
-| Daily note frontmatter | Read file                                               | `daily_story`, `daily_narrative` — the day's narrative summary   |
-| Task details           | `get_task(id)`                                          | Full context for coversheets                                     |
-| Calendar               | `calendar_list_today`, `calendar_list_upcoming(days=2)` | Meeting schedule + tomorrow                                      |
-| Email content          | `messages_get(entry_id)`                                | Threading info for drafts                                        |
-| Email search           | `messages_search`                                       | Find related emails for context                                  |
-| Draft creation         | `messages_reply`, `messages_create_draft`               | Approved draft staging                                           |
-| Annotations            | `/annotations` skill                                    | Process `@nic:` comments                                         |
+| Source                 | Tool                                                    | Purpose                                                        |
+| ---------------------- | ------------------------------------------------------- | -------------------------------------------------------------- |
+| Daily note             | Read file                                               | Focus items, FYIs, carryover                                   |
+| Daily note frontmatter | Read file                                               | `daily_story`, `daily_narrative` — the day's narrative summary |
+| Task details           | `get_task(id)`                                          | Full context for coversheets                                   |
+| Calendar               | `calendar_list_today`, `calendar_list_upcoming(days=2)` | Meeting schedule + tomorrow                                    |
+| Email content          | `messages_get(entry_id)`                                | Threading info for drafts                                      |
+| Email search           | `messages_search`                                       | Find related emails for context                                |
+| Draft creation         | `messages_reply`, `messages_create_draft`               | Approved draft staging                                         |
+| Annotations            | `/annotations` skill                                    | Process `@nic:` comments                                       |
 
 ## Giving Effect
 
