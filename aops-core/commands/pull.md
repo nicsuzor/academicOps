@@ -25,7 +25,7 @@ permalink: commands/pull
 
 ### Step 1: Get and Claim a Task
 
-Per [[TAXONOMY]] §Status Values: agents pull only from `queued` (the human-gated dispatch queue). Tasks in `ready` are decomposed-but-unapproved and MUST NOT be claimed here — the user promotes `ready` → `queued` manually.
+Per [[../skills/remember/references/TAXONOMY.md]] §Status Values: agents pull only from `queued` (the human-gated dispatch queue). Tasks in `ready` are decomposed-but-unapproved and MUST NOT be claimed here — the user promotes `ready` → `queued` manually.
 
 1. **List queued tasks**: Call `mcp__pkb__list_tasks(status="queued", limit=10)` to find dispatchable tasks sorted by priority + downstream weight.
 2. **Select task**: Review the list and select the highest priority task (lowest priority number, e.g., P0).

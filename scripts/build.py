@@ -1057,7 +1057,6 @@ def build_aops_cowork(
     COWORK_MD_INCLUDE = {
         "AXIOMS.md",
         "HEURISTICS.md",
-        "TAXONOMY.md",
         "CONSTRAINTS.md",
         "agent-env-map.conf",
     }
