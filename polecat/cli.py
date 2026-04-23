@@ -1898,7 +1898,6 @@ def _auto_resolve_rebase(repo_path: Path, name: str, ahead_count: int) -> tuple[
     import fnmatch
 
     expendable_patterns = [
-        "synthesis.json",
         "graph*.json",
         "graph*.dot",
         "graph*.svg",

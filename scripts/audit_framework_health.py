@@ -364,7 +364,6 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         "Just-in-Time",
         "Semantic Search",
         "meta-framework",
-        "synthesis.json",
         "AOPS",
         "X",
         "task skill",
