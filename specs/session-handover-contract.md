@@ -92,13 +92,12 @@ The "Recent Sessions" panel in the **Overwhelm Dashboard** becomes the primary h
 
 ## 7. Giving Effect
 
-| Component                  | Implementation File               | Status |
-| -------------------------- | --------------------------------- | ------ |
-| `mem` YAML Schema          | `pkb/schemas/task.py`             | 📋     |
-| `release_task` logic       | `pkb/tools/task_tools.py`         | 📋     |
-| `dump` (end_session) skill | `aops-core/skills/dump/SKILL.md`  | 📋     |
-| `/recap` definition        | `aops-core/commands/recap.toml`   | 📋     |
-| Dashboard Panel            | `scripts/synthesize_dashboard.py` | 📋     |
+| Component                  | Implementation File              | Status |
+| -------------------------- | -------------------------------- | ------ |
+| `mem` YAML Schema          | `pkb/schemas/task.py`            | 📋     |
+| `release_task` logic       | `pkb/tools/task_tools.py`        | 📋     |
+| `dump` (end_session) skill | `aops-core/skills/dump/SKILL.md` | 📋     |
+| `/recap` definition        | `aops-core/commands/recap.toml`  | 📋     |
 
 ## 8. Backwards Compatibility
 

@@ -54,7 +54,7 @@ These fields are typically provided by Claude at session end from session state.
 - **stop_reason**: String describing how session ended (e.g., `"end_turn"`, `"user_stopped"`, `"unknown"`)
 - **critic_verdict**: One of `"PROCEED"`, `"REVISE"`, `"HALT"`, or `null` if critic not invoked
 - **acceptance_criteria_count**: Integer count of acceptance criteria, or `null` if not applicable
-- **user_prompt_count**: Integer count of user prompts in the session (from `timeline_events` where `type == "user_prompt"`). Pre-computed by `transcript_parser.py` for downstream consumers (daily skill engagement classification, `synthesize_dashboard.py`). `null` if timeline events unavailable.
+- **user_prompt_count**: Integer count of user prompts in the session (from `timeline_events` where `type == "user_prompt"`). Pre-computed by `transcript_parser.py` for downstream consumers (daily skill engagement classification). `null` if timeline events unavailable.
 
 ### 3. Learning Observations (Rich analysis)
 

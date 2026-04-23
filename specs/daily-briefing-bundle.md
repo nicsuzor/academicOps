@@ -27,7 +27,7 @@ The **briefing bundle** (this spec) is a morning snapshot. It reads the daily no
 | **Updated by** | Agent (repeatedly)                                | Agent (once) → Nic (annotations) → Agent (processing)        |
 | **Persists**   | Yes — SSoT for the day                            | No — actions flow back to PKB and Outlook                    |
 
-**The bundle is a downstream consumer.** It reads the daily note and synthesis.json rather than re-querying data sources. New queries are only for what the daily note doesn't provide: full task context for coversheets, email content for drafts, and calendar details.
+**The bundle is a downstream consumer.** It reads the daily note rather than re-querying data sources. New queries are only for what the daily note doesn't provide: full task context for coversheets, email content for drafts, and calendar details.
 
 **What the daily note should NOT try to do** (that's the bundle's job): write coversheets, draft emails, make recommendations with annotation targets, or produce self-contained decision items. The daily note surfaces priorities; the bundle makes them actionable.
 
@@ -192,15 +192,14 @@ YAML frontmatter (type: bundle, date, item_counts)
 ### Generate (agent)
 
 1. **Read daily note** — extract Focus items, FYI summaries, carryover, task tree; read `daily_story`/`daily_narrative` from frontmatter
-2. **Read synthesis.json** if available — session/PR/alignment aggregates (cron-generated; no narrative here)
-3. **Load yesterday's bundle** — carry forward unprocessed annotations
-4. **Enrich** — for each decision item: `get_task(id)` for full context, `messages_get(entry_id)` for email threading, `calendar_list_upcoming(days=2)` for calendar
-5. **Classify** items into sections (Decision/Calendar/Email/FYI/Carryover)
-6. **Order** within sections: deadline today > overdue > calendar-driven > high-priority > email > FYI
-7. **Draft** coversheets, email replies, FYI summaries
-8. **Write** Executive Summary
-9. **Self-review** — verify task IDs resolve, check density limits, trim if >15 items, ensure every item has checkbox and annotation target
-10. **Export** to `daily/YYYYMMDD-bundle.md`
+2. **Load yesterday's bundle** — carry forward unprocessed annotations
+3. **Enrich** — for each decision item: `get_task(id)` for full context, `messages_get(entry_id)` for email threading, `calendar_list_upcoming(days=2)` for calendar
+4. **Classify** items into sections (Decision/Calendar/Email/FYI/Carryover)
+5. **Order** within sections: deadline today > overdue > calendar-driven > high-priority > email > FYI
+6. **Draft** coversheets, email replies, FYI summaries
+7. **Write** Executive Summary
+8. **Self-review** — verify task IDs resolve, check density limits, trim if >15 items, ensure every item has checkbox and annotation target
+9. **Export** to `daily/YYYYMMDD-bundle.md`
 
 ### Review (Nic)
 
@@ -238,7 +237,6 @@ Scan for `<!-- @nic: -->` annotations without matching `<!-- @claude: -->` respo
 | ---------------------- | ------------------------------------------------------- | ---------------------------------------------------------------- |
 | Daily note             | Read file                                               | Focus items, FYIs, carryover                                     |
 | Daily note frontmatter | Read file                                               | `daily_story`, `daily_narrative` — the day's narrative summary   |
-| synthesis.json         | Read file                                               | Session/PR/alignment aggregates (cron-generated structural data) |
 | Task details           | `get_task(id)`                                          | Full context for coversheets                                     |
 | Calendar               | `calendar_list_today`, `calendar_list_upcoming(days=2)` | Meeting schedule + tomorrow                                      |
 | Email content          | `messages_get(entry_id)`                                | Threading info for drafts                                        |
