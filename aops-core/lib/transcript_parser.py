@@ -579,6 +579,7 @@ def reflection_to_insights(
         "proposed_changes": reflection.get("proposed_changes", []),
         # Metadata (aops-d9ba7159)
         "machine": os.environ.get("AOPS_MACHINE"),
+        "hostname": session_naming.get_hostname(),
         "provider": session_naming.get_provider_name(),
         "crew": os.environ.get("POLECAT_CREW_NAME"),
         "repo": project,
@@ -997,6 +998,7 @@ class SessionSummary:
 
     # Metadata (aops-d9ba7159)
     machine: str | None = None
+    hostname: str | None = None
     provider: str | None = None
     crew: str | None = None
     repo: str | None = None
@@ -1371,6 +1373,7 @@ class SessionProcessor:
 
         # Fallback to environment/inference if missing
         summary.machine = summary.machine or os.environ.get("AOPS_MACHINE")
+        summary.hostname = summary.hostname or session_naming.get_hostname()
         summary.provider = summary.provider or (
             "gemini" if ".gemini/" in str(file_path) else "claude"
         )
@@ -2661,6 +2664,8 @@ class SessionProcessor:
         metadata_yaml = ""
         if session.machine:
             metadata_yaml += f"machine: {session.machine}\n"
+        if session.hostname:
+            metadata_yaml += f"hostname: {session.hostname}\n"
         if session.provider:
             metadata_yaml += f"provider: {session.provider}\n"
         if session.crew:
