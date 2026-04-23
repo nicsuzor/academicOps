@@ -74,7 +74,7 @@ Quick task capture with minimal overhead. Speed is the priority — no enrichmen
 
 **When**: User says "/q X", "queue task", "new task:", "save for later"
 
-**Allowed tools**: `mcp__pkb__create_task`, `mcp__pkb__task_search`, `mcp__pkb__update_task`, `mcp__pkb__get_task`
+**Allowed tools**: `mcp__pkb__create_task`, `mcp__pkb__task_search`, `mcp__pkb__update_task`, `mcp__pkb__get_task`, `mcp__pkb__get_task_children`
 
 **Workflow**:
 
