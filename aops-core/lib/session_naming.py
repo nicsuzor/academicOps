@@ -255,6 +255,13 @@ def parse_session_filename(filename: str) -> ParsedFilename | None:
     Old: {YYYYMMDD}-{HHMM}-{session_id}-{crew}-{repo}-{machine}-{provider}-{slug}{-variant}.{ext}
     New: {YYYYMMDD}-{HHMM}-{session_id}-{crew}-{repo}-{slug}{-variant}.{ext}
 
+    **Known limitation — new format is structurally ambiguous**: crew and repo
+    cannot be reliably distinguished from a multi-word slug without a delimiter.
+    The heuristic used (>=6 parts → assume crew+repo; <6 parts → repo only) will
+    misparse manual sessions with multi-word slugs (e.g. `date-time-id-repo-fix-the-bug`
+    → crew=repo, repo=fix, slug=bug). Frontmatter is authoritative for all metadata;
+    treat parsed crew/repo as low-confidence when machine/provider are both None.
+
     Args:
         filename: Filename string (with or without directory prefix)
 
