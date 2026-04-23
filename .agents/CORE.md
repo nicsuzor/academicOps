@@ -37,4 +37,8 @@ The framework uses named agents with distinct personalities and areas of experti
 - **Always include a clear dismissal message** explaining why: what was fixed, or which human decision overrides the concern.
 - **Never dismiss a review you haven't addressed.**
 
+## Agent Rules
+
+- **Always leave a loose thread.** Before completing work that is part of a chain, file the next task in the PKB so the chain isn't dropped. A summary message in chat is not sufficient; it disappears when the user multitasks. Use `create_task` with a clear parent, title, and body.
+
 See [[README.md]] for framework usage documentation.

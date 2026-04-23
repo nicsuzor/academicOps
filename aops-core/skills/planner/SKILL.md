@@ -319,9 +319,21 @@ User prompt
 5. **Graph integrity** — every task has a parent, every edge has a reason
 6. **Small, frequent attention** — 15–30 min maintain sessions, ~10 tasks per densify pass
 7. **Decomposition requires AC** — never create subtasks without clear acceptance criteria; keep steps in parent body instead
-8. **No parallel tracking** — never put `- [ ]` checklists in task bodies when items are tracked as subtasks; after decomposition, replace the body checklist with a reference to children
 
-## Work Hierarchy
+- **No parallel tracking** — never put `- [ ]` checklists in task bodies when items are tracked as subtasks; after decomposition, replace the body checklist with a reference to children
+
+## Task Assignment Rules
+
+- **Default assignee**: Set to `polecat` or leave unassigned.
+- **Human assignment**: Never assign to `nic` unless the task reduces to a genuine binary human choice (e.g., "Do we use Pattern A or Pattern B?").
+- **Decision subtasks**: When a choice is needed, create a minimal choice subtask that blocks the epic, providing full context to decide. Keep the epic assigned to an agent (or unassigned).
+- **Underspecified tasks**: Do not assign to `nic` for clarification. Instead, file a research or decomposition task for an agent to do the legwork first.
+
+## Handover
+
+**Always leave a loose thread.** Every decomposition or planning session must result in actionable next steps in the PKB. If planning is blocked, file the task that unblocks it. Before exiting, ensure the user knows exactly what the next agent should do.
+
+## References
 
 ```
 PROJECT → EPIC → TASK → ACTION

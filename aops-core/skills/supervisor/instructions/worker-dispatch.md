@@ -40,7 +40,7 @@ Before dispatching ANY task to a worker, the supervisor must validate:
 
 4. **AC implementability**: Can the acceptance criteria be met with the current codebase? If AC references APIs, tools, or patterns that no longer exist, the task needs updating before dispatch.
 
-**If validation fails**: Update the task with findings, set status to `blocked`, and skip it. Do NOT dispatch tasks that will produce wasted work.
+**If validation fails**: Update the task with findings, set status to `blocked`, and skip it. **Always leave a loose thread**: ensure a follow-up task is filed to resolve the blocker. Do NOT dispatch tasks that will produce wasted work.
 
 **Recovery from a stuck claim**: If a polecat claimed a task but exited before spawning a worktree (no entry in `polecat list`, no directory under `$POLECAT_HOME/worktrees/`, but task shows `status: in_progress` with `assignee: polecat`): run `polecat reset-stalled --hours 0 --force`, then re-dispatch once pre-dispatch validation passes.
 
