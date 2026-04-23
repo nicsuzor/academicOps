@@ -68,7 +68,7 @@ When a task is released, the following fields are written to its YAML frontmatte
 
 If `release_task` is called without a bound task ID (or for a task that doesn't exist), it must:
 
-1. Create a minimal task file in the `adhoc-sessions/` directory (requires `TAXONOMY.md` update).
+1. Create a minimal task file in the `adhoc-sessions/` directory (requires `aops-core/skills/remember/references/TAXONOMY.md` update).
 2. Parent it to the root `adhoc-sessions` node.
 3. Apply the provided fields and summary.
 

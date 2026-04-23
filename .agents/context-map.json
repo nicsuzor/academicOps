@@ -23,7 +23,7 @@
     },
     {
       "topic": "taxonomy",
-      "path": "aops-core/TAXONOMY.md",
+      "path": "aops-core/skills/remember/references/TAXONOMY.md",
       "description": "Canonical definitions for all framework concepts — goal, project, epic, task, action, workflow, skill, procedure and their relationships",
       "keywords": [
         "taxonomy",
