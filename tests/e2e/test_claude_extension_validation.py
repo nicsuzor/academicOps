@@ -164,7 +164,7 @@ class TestDistStructure:
 
     def test_dist_exists(self):
         _require_dist()
-        assert DIST.is_dir(), f"dist/aops-claude/ missing — run `make build` first"
+        assert DIST.is_dir(), "dist/aops-claude/ missing — run `make build` first"
 
     def test_plugin_json_present(self):
         _require_dist()
@@ -189,9 +189,7 @@ class TestDistStructure:
 
     def test_agents_directory_present(self):
         _require_dist()
-        assert (DIST / "agents").is_dir(), (
-            "agents/ directory missing from dist/aops-claude/."
-        )
+        assert (DIST / "agents").is_dir(), "agents/ directory missing from dist/aops-claude/."
 
     def test_claude_md_imports_resolve(self):
         """@import lines in CLAUDE.md must point to real files under the extension."""
@@ -278,9 +276,7 @@ class TestMcpJson:
             for name, cfg in servers.items()
             if not isinstance(cfg, dict) or "command" not in cfg
         ]
-        assert not missing, (
-            f"MCP server entries missing 'command' field: {missing}"
-        )
+        assert not missing, f"MCP server entries missing 'command' field: {missing}"
 
     def test_no_gemini_variable_leakage(self):
         """`${extensionPath}` must not appear; Claude Code uses `${CLAUDE_PLUGIN_ROOT}`."""
@@ -317,7 +313,9 @@ class TestHooksJson:
     def test_event_names_are_known_claude_events(self):
         """All top-level event keys must be valid Claude Code hook events."""
         hooks = self._load().get("hooks", {})
-        unknown = [ev for ev in hooks if ev not in CLAUDE_HOOK_EVENTS and not ev.endswith("-disabled")]
+        unknown = [
+            ev for ev in hooks if ev not in CLAUDE_HOOK_EVENTS and not ev.endswith("-disabled")
+        ]
         assert not unknown, (
             f"hooks.json contains unknown Claude Code event names: {unknown}. "
             f"Valid events: {sorted(CLAUDE_HOOK_EVENTS)}"
@@ -331,7 +329,7 @@ class TestHooksJson:
             if event.endswith("-disabled"):
                 continue
             for group in hook_groups if isinstance(hook_groups, list) else []:
-                for entry in (group.get("hooks", []) if isinstance(group, dict) else []):
+                for entry in group.get("hooks", []) if isinstance(group, dict) else []:
                     if "type" not in entry:
                         missing.append(f"{event}: {entry}")
         assert not missing, f"Hook entries missing 'type' field: {missing}"
@@ -378,11 +376,7 @@ class TestAgentSchema:
         if not tools_raw:
             return
         tools = [t.strip() for t in str(tools_raw).split(",") if t.strip()]
-        bad = [
-            t
-            for t in tools
-            if t not in CLAUDE_BUILTIN_TOOLS and not t.startswith("mcp__")
-        ]
+        bad = [t for t in tools if t not in CLAUDE_BUILTIN_TOOLS and not t.startswith("mcp__")]
         assert not bad, (
             f"{agent_file.name}: tool names not in Claude Code format: {bad}. "
             f"Each tool must be a PascalCase builtin or 'mcp__server__tool' format. "
@@ -421,9 +415,7 @@ class TestAgentSchema:
     def test_required_fields(self, agent_file: Path):
         fm = _parse_frontmatter(agent_file)
         for field in ("name", "description"):
-            assert fm.get(field), (
-                f"{agent_file.name}: missing required frontmatter field {field!r}"
-            )
+            assert fm.get(field), f"{agent_file.name}: missing required frontmatter field {field!r}"
 
 
 class TestRouterToolNames:
