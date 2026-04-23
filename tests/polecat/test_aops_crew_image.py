@@ -128,6 +128,44 @@ def test_playwright_chromium_runnable() -> None:
 
 
 @pytest.mark.integration
+def test_playwright_browsers_path_writable() -> None:
+    """``/ms-playwright`` must be writable by the container user.
+
+    The Playwright MCP server creates per-session cache subdirectories
+    (e.g. ``/ms-playwright/mcp-chrome-<hash>``) at launch. Pre-fix the
+    directory was root-owned ``a+rX``, so non-root users got EACCES
+    trying to mkdir a subdir — blocking all MCP browser tool calls
+    inside a crew container.
+    """
+    if not _docker_available():
+        pytest.skip("Docker not available or aops-crew image not built")
+    if not _image_built():
+        pytest.skip("aops-crew image not built locally")
+
+    script = (
+        "set -e; "
+        'd="${PLAYWRIGHT_BROWSERS_PATH:-/ms-playwright}/mcp-chrome-testwrite"; '
+        'mkdir "$d" && rmdir "$d" && echo WRITE_OK'
+    )
+
+    result = subprocess.run(
+        ["docker", "run", "--rm", "--user", "1001:1001", "aops-crew", "sh", "-c", script],
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+
+    assert result.returncode == 0 and "WRITE_OK" in result.stdout, (
+        "PLAYWRIGHT_BROWSERS_PATH is not writable by an arbitrary container UID "
+        f"(exit={result.returncode}).\n"
+        f"stdout={result.stdout!r}\n"
+        f"stderr={result.stderr!r}\n"
+        "Fix: ensure the Dockerfile chmods /ms-playwright writable "
+        "(`chmod -R a+rwX /ms-playwright`) after `playwright install`."
+    )
+
+
+@pytest.mark.integration
 def test_cc_can_link() -> None:
     """``cc`` must be able to link a trivial C program in the aops-crew image.
 
