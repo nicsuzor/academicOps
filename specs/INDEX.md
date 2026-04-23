@@ -28,6 +28,7 @@ How the system works today. Required reading for understanding the framework.
 | [[hook-router.md]]              | ✅     | Single dispatch entry point for all hooks                                                                                                       |
 | [[ultra-vires-enforcer.md]]     | 🔶     | Drift detection (agent defined, automated gate archived)                                                                                        |
 | [[agent-authority.md]]          | 📋     | Agent permissions + skill delegation — frontmatter schema, deny-by-default, authority non-transit                                               |
+| [[skill-delegation.md]]         | 📋     | Skill/Agent/direct-prompt invocation mechanics, context-passing contract, orchestrator spawn matrices                                           |
 | [[workflow-system-spec.md]]     | 📋     | Composable markdown-based workflow engine                                                                                                       |
 | [[plugin-architecture.md]]      | ✅     | Component boundaries (aops-core vs aops-tools)                                                                                                  |
 | [[verification-system.md]]      | 📋     | Verify-first enforcement (design decision, not yet implemented)                                                                                 |

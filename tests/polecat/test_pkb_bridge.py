@@ -27,8 +27,10 @@ from polecat.pkb_bridge import (  # noqa: E402
     complete_task,
     create_task,
     get_task,
+    release_task,
     update_task,
 )
+from polecat.validation import PRURLValidationError  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Friction-fix tests
@@ -344,3 +346,89 @@ class TestPkbTaskDeadlineFields:
     def test_days_until_due_invalid_date(self):
         task = self._make_task({"due": "not-a-date"})
         assert task.days_until_due is None
+
+
+# ---------------------------------------------------------------------------
+# release_task — A3/A8 integrity gate (task-0e4d20a8)
+# ---------------------------------------------------------------------------
+
+
+class TestReleaseTaskPRURLGate:
+    """release_task must reject fabricated / unresolvable pr_urls."""
+
+    def test_no_pr_url_bypasses_check(self, mock_client):
+        """release_task() without a pr_url must still work (e.g. blocked/cancelled)."""
+        mock_client.call_tool.return_value = {"success": True}
+        assert release_task("task-1", status="blocked", summary="waiting on X") is True
+        mock_client.call_tool.assert_called_once()
+
+    def test_malformed_pr_url_is_rejected_before_mcp_call(self, mock_client):
+        with pytest.raises(PRURLValidationError):
+            release_task(
+                "task-1",
+                status="merge_ready",
+                summary="done",
+                pr_url="not a url",
+            )
+        mock_client.call_tool.assert_not_called()
+
+    def test_fabricated_org_rejected_when_gh_fails(self, mock_client, monkeypatch):
+        """The cheryl 2026-04-18 incident: bogus org. gh exits non-zero → raise."""
+        monkeypatch.delenv("POLECAT_SKIP_PR_URL_CHECK", raising=False)
+        with (
+            patch("polecat.validation.shutil.which", return_value="/usr/bin/gh"),
+            patch("polecat.validation.subprocess.run") as mock_run,
+        ):
+            mock_run.return_value.returncode = 1
+            mock_run.return_value.stdout = ""
+            mock_run.return_value.stderr = "Could not resolve to a Repository"
+            with pytest.raises(PRURLValidationError):
+                release_task(
+                    "task-1",
+                    status="merge_ready",
+                    summary="done",
+                    pr_url="https://github.com/academic-ops/academicOps/commit/9841e951",
+                )
+        mock_client.call_tool.assert_not_called()
+
+    def test_valid_pr_url_passes_and_reaches_mcp(self, mock_client, monkeypatch):
+        monkeypatch.delenv("POLECAT_SKIP_PR_URL_CHECK", raising=False)
+        mock_client.call_tool.return_value = {"success": True}
+        with (
+            patch("polecat.validation.shutil.which", return_value="/usr/bin/gh"),
+            patch("polecat.validation.subprocess.run") as mock_run,
+        ):
+            mock_run.return_value.returncode = 0
+            mock_run.return_value.stdout = '{"state":"OPEN"}'
+            mock_run.return_value.stderr = ""
+            ok = release_task(
+                "task-1",
+                status="merge_ready",
+                summary="done",
+                pr_url="https://github.com/nicsuzor/academicOps/pull/649",
+                branch="polecat/task-1",
+            )
+        assert ok is True
+        call = mock_client.call_tool.call_args
+        assert call[0][0] == "release_task"
+        params = call[0][1]
+        assert params["pr_url"] == "https://github.com/nicsuzor/academicOps/pull/649"
+
+    def test_env_skip_bypasses_live_check_but_keeps_format_check(self, mock_client, monkeypatch):
+        monkeypatch.setenv("POLECAT_SKIP_PR_URL_CHECK", "1")
+        mock_client.call_tool.return_value = {"success": True}
+        # Well-formed, live check skipped → passes through.
+        assert release_task(
+            "task-1",
+            status="merge_ready",
+            summary="done",
+            pr_url="https://github.com/any/repo/pull/1",
+        )
+        # Malformed still rejected.
+        with pytest.raises(PRURLValidationError):
+            release_task(
+                "task-1",
+                status="merge_ready",
+                summary="done",
+                pr_url="garbage",
+            )

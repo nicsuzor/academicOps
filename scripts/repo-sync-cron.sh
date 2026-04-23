@@ -2,7 +2,7 @@
 # repo-sync-cron.sh - Periodic maintenance: transcripts, dashboard, repo sync, and sweep
 #
 # Four functions, composable via CLI:
-#   do_transcript - Generate recent session transcripts + update synthesis.json
+#   do_transcript - Generate recent session transcripts
 #   do_dashboard  - Update task graph (pkb graph)
 #   do_sync       - Sync all git repositories via polecat sync
 #   do_sweep      - Sweep merge_ready tasks for PR status updates
@@ -96,7 +96,7 @@ do_transcript() {
 }
 
 do_dashboard() {
-    # synthesis.json is written by transcript.py (do_transcript); this step handles the graph only.
+    # This step handles the task graph only.
     echo "==> Updating task graph..."
     if command -v pkb &>/dev/null; then
         flock -n /tmp/pkb-graph.lock pkb graph -f all || echo "Warning: pkb graph skipped (locked or failed)"

@@ -259,6 +259,12 @@ def _save_minimal_token_summary(
         "accomplishments": [],
         "friction_points": [],
         "proposed_changes": [],
+        # Metadata (aops-d9ba7159)
+        "machine": os.environ.get("AOPS_MACHINE"),
+        "provider": session_naming.get_provider_name(),
+        "crew": os.environ.get("POLECAT_CREW_NAME"),
+        "repo": project,
+        "task_id": os.environ.get("AOPS_TASK_ID"),
         "token_metrics": usage_stats.to_token_metrics(session_duration_minutes),
     }
 
@@ -734,34 +740,6 @@ def _infer_project(
     return project_parts[-1] if project_parts and project_parts[-1] else "unknown"
 
 
-def run_synthesis() -> None:
-    """Regenerate synthesis.json from today's session insights.
-
-    Called after batch transcript processing so synthesis.json stays
-    current whenever transcripts are generated (cron or manual run).
-    """
-    synth_script = FRAMEWORK_ROOT / "scripts" / "synthesize_dashboard.py"
-    if not synth_script.exists():
-        print("⚠️  synthesize_dashboard.py not found; skipping synthesis", file=sys.stderr)
-        return
-    try:
-        result = subprocess.run(
-            ["uv", "run", "python", str(synth_script)],
-            capture_output=True,
-            text=True,
-            timeout=30,
-            cwd=str(FRAMEWORK_ROOT),
-        )
-        if result.returncode != 0:
-            print(f"⚠️  synthesis.json update failed: {result.stderr.strip()}", file=sys.stderr)
-        else:
-            print("📊 synthesis.json updated")
-    except subprocess.TimeoutExpired:
-        print("⚠️  synthesis.json update timed out", file=sys.stderr)
-    except Exception as e:
-        print(f"⚠️  Failed to run synthesis: {e}", file=sys.stderr)
-
-
 def git_sync():
     """Commit and push changes in the sessions repository."""
     try:
@@ -937,6 +915,25 @@ Examples:
                     str(session_path)
                 )
 
+                # Augment summary with inferred metadata (aops-d9ba7159)
+                session_summary.repo = session_summary.repo or _infer_project(session_path, entries)
+                session_summary.machine = session_summary.machine or os.environ.get("AOPS_MACHINE")
+                session_summary.task_id = session_summary.task_id or os.environ.get("AOPS_TASK_ID")
+                # Crew and provider are already partially handled by parse_session_file,
+                # but let's be thorough.
+                if not session_summary.crew:
+                    for category_plural in ("polecats", "crew"):
+                        if category_plural in session_path.parts:
+                            idx = session_path.parts.index(category_plural)
+                            if len(session_path.parts) > idx + 1:
+                                session_summary.crew = session_path.parts[idx + 1]
+                                break
+                if not session_summary.provider:
+                    if ".gemini/" in str(session_path):
+                        session_summary.provider = "gemini"
+                    elif ".claude/" in str(session_path):
+                        session_summary.provider = "claude"
+
                 # Check for meaningful content
                 MIN_MEANINGFUL_ENTRIES = 2
                 meaningful_count = sum(
@@ -1055,9 +1052,6 @@ Examples:
         print(f"Skipped: {skipped}", file=sys.stderr)
         print(f"Errors: {errors}", file=sys.stderr)
 
-        if processed > 0 or skipped > 0:
-            run_synthesis()
-
         return 0
 
     # Single session mode (specific file provided)
@@ -1101,6 +1095,23 @@ Examples:
         sync_client_log(session_path, session_id)
 
         session_summary, entries, agent_entries = processor.parse_session_file(str(session_path))
+
+        # Augment summary with inferred metadata (aops-d9ba7159)
+        session_summary.repo = session_summary.repo or _infer_project(session_path, entries)
+        session_summary.machine = session_summary.machine or os.environ.get("AOPS_MACHINE")
+        session_summary.task_id = session_summary.task_id or os.environ.get("AOPS_TASK_ID")
+        if not session_summary.crew:
+            for category_plural in ("polecats", "crew"):
+                if category_plural in session_path.parts:
+                    idx = session_path.parts.index(category_plural)
+                    if len(session_path.parts) > idx + 1:
+                        session_summary.crew = session_path.parts[idx + 1]
+                        break
+        if not session_summary.provider:
+            if ".gemini/" in str(session_path):
+                session_summary.provider = "gemini"
+            elif ".claude/" in str(session_path):
+                session_summary.provider = "claude"
 
         # Generate output base name
         output_dir = None

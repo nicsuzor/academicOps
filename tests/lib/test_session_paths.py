@@ -78,9 +78,11 @@ class TestGetGateFilePath:
         path = get_gate_file_path(gate, session_id, date=date)
 
         # Unified naming: {YYYYMMDD}-{HHMM}-{session_id}-{shortform}-{slug}-{gate}.md
-        # shortform here (no crew): workspace-testmachine-claude (repo=cwd basename)
+        # shortform here (no crew): {repo} only — machine/provider moved to frontmatter
         assert "20240520-1000-550e8400-" in str(path)
-        assert str(path).endswith("-testmachine-claude-session-enforcer.md")
+        assert str(path).endswith("-session-enforcer.md")
+        assert "testmachine" not in str(path.name)
+        assert str(path.name).count("-claude-") == 0
         # Verify parent directory was created (via mkdir(parents=True, exist_ok=True))
         expected_parent = tmp_path / ".claude" / "projects" / "-home-user-project"
         assert expected_parent.exists()
@@ -104,7 +106,9 @@ class TestGetGateFilePath:
 
         short_hash = get_session_short_hash(session_id)
         assert f"20240520-1000-{short_hash}-" in str(path)
-        assert str(path).endswith("-testmachine-gemini-session-enforcer.md")
+        assert str(path).endswith("-session-enforcer.md")
+        assert "testmachine" not in str(path.name)
+        assert str(path.name).count("-gemini-") == 0
 
     def test_polecat_worker_uuid_as_gemini(self, tmp_path):
         """Test that UUID session IDs are handled as Gemini if indicators are present."""
@@ -120,7 +124,8 @@ class TestGetGateFilePath:
 
             assert "/.gemini/tmp/fakehash/logs" in str(path)
             assert "20240520-1000-550e8400-" in str(path)
-            assert str(path).endswith("-testmachine-gemini-session-enforcer.md")
+            assert str(path).endswith("-session-enforcer.md")
+            assert "testmachine" not in str(path.name)
             assert path.parent == gemini_logs_dir
 
     def test_gemini_missing_logs_dir_raises_error(self):

@@ -1947,15 +1947,109 @@ denyMessage = "File edits are restricted to the worktree: {worktree_str}"
         # If output is empty, branch is fully merged
         return result.returncode == 0 and not result.stdout.strip()
 
-    def nuke_worktree(self, task_id, force=False):
+    def _count_unpushed_commits(
+        self,
+        repo_path: Path,
+        branch_name: str,
+        worktree_path: Path | None = None,
+        base: str = "main",
+    ) -> tuple[int, str]:
+        """Count local commits on branch_name that are not on origin.
+
+        Returns (count, detail). ``count == 0`` means "safe to delete"; a
+        positive count means commits would be lost if the worktree/branch is
+        destroyed.
+
+        Comparison strategy (in order):
+        1. If ``refs/remotes/origin/<branch_name>`` exists: compare against it
+           (catches the "pushed earlier then added more commits" case).
+        2. Otherwise: compare against ``origin/<base>`` (branch never pushed).
+
+        If the worktree is still on disk we prefer to read commits from there
+        so that a detached local branch in the shared repo (whose ref may be
+        stale) does not produce false negatives.
+        """
+        # Prefer the worktree as the source of truth for HEAD of the branch,
+        # since polecat worktrees can commit without the shared repo's branch
+        # ref being updated.
+        query_cwd = worktree_path if (worktree_path and worktree_path.exists()) else repo_path
+
+        # Does origin/<branch> exist?
+        remote_ref = f"refs/remotes/origin/{branch_name}"
+        check_remote = subprocess.run(
+            ["git", "for-each-ref", "--format=%(refname)", remote_ref],
+            cwd=query_cwd,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        has_remote = bool(check_remote.returncode == 0 and check_remote.stdout.strip())
+
+        # Resolve the HEAD of the branch in our query repo.
+        head_rev = subprocess.run(
+            ["git", "rev-parse", "HEAD" if query_cwd == worktree_path else branch_name],
+            cwd=query_cwd,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if head_rev.returncode != 0:
+            # Can't resolve — nothing to lose.
+            return 0, "branch HEAD could not be resolved"
+
+        compare_ref = f"origin/{branch_name}" if has_remote else f"origin/{base}"
+        rev_list = subprocess.run(
+            ["git", "rev-list", "--count", f"{compare_ref}..{head_rev.stdout.strip()}"],
+            cwd=query_cwd,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if rev_list.returncode != 0:
+            # Base ref missing (e.g., no origin/main). Be conservative: if the
+            # branch has any commits at all, treat as unpushed.
+            any_commits = subprocess.run(
+                ["git", "rev-list", "--count", head_rev.stdout.strip()],
+                cwd=query_cwd,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            try:
+                n = int(any_commits.stdout.strip() or 0)
+            except ValueError:
+                return 0, "could not determine commit count"
+            if n > 0:
+                return n, f"{compare_ref} not found; {n} commit(s) on branch with no remote base"
+            return 0, ""
+
+        try:
+            count = int(rev_list.stdout.strip() or 0)
+        except ValueError:
+            return 0, "could not parse rev-list output"
+        if count == 0:
+            return 0, ""
+        if has_remote:
+            return count, f"{count} commit(s) ahead of origin/{branch_name}"
+        return count, f"{count} commit(s) on {branch_name} have never been pushed to origin"
+
+    def nuke_worktree(self, task_id, force=False, allow_unpushed=False):
         """Removes the worktree and deletes the branch.
 
         Args:
             task_id: The task ID whose worktree should be removed
-            force: If True, skip merge verification check
+            force: If True, skip merge verification + uncommitted-changes checks
+                (the "WIP is fine, destroy it" override).
+            allow_unpushed: If True, skip the unpushed-commits integrity gate.
+                Separate from ``force`` on purpose: unpushed commits are an
+                integrity problem (A3/A8) — destroying them irrecoverably loses
+                work. Callers must opt in explicitly rather than inheriting the
+                bypass from ``force``.
 
         Raises:
-            RuntimeError: If branch has unmerged commits and force=False
+            RuntimeError: If branch has unmerged commits and force=False, OR
+                the branch has commits that were never pushed to origin and
+                ``allow_unpushed`` is False.
             TaskIDValidationError: If task_id contains invalid characters
         """
         # Validate task ID before using in filesystem path and git branch name
@@ -2039,6 +2133,25 @@ denyMessage = "File edits are restricted to the worktree: {worktree_str}"
                 raise RuntimeError(
                     f"Worktree {worktree_path} has uncommitted changes. "
                     f"Use --force to delete anyway."
+                )
+
+        # A3/A8 integrity gate: refuse to destroy unpushed commits.
+        # Separate from force=/--force because this is about losing committed
+        # work, not about unmerged WIP. Bypass only via explicit
+        # ``allow_unpushed=True`` (CLI: ``--allow-unpushed``). See
+        # task-0e4d20a8 / cheryl 2026-04-18 for the incident that motivated
+        # this gate.
+        if not allow_unpushed and self._branch_exists(repo_path, branch_name):
+            count, detail = self._count_unpushed_commits(
+                repo_path, branch_name, worktree_path=worktree_path
+            )
+            if count > 0:
+                raise RuntimeError(
+                    f"Refusing to nuke worktree for task {task_id}: {detail}. "
+                    f"Push the branch ('git push -u origin {branch_name}') or "
+                    f"pass --allow-unpushed to discard the commits. "
+                    f"(This gate exists because an ephemeral container being "
+                    f"torn down with unpushed commits is unrecoverable.)"
                 )
 
         if worktree_path.exists():

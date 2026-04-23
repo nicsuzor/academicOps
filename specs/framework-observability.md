@@ -111,29 +111,13 @@ These observables create an audit trail that humans and agents can analyze.
                                     │
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                     DAILY AGGREGATION (synthesis.json)                  │
+│                         DASHBOARD CONSUMPTION                            │
 │                                                                         │
-│  scripts/synthesize_dashboard.py runs via cron after each session:     │
+│  Dashboard reads $AOPS_SESSIONS/summaries/*.json directly at render     │
+│  time — no intermediary synthesis step needed.                          │
 │                                                                         │
-│  Input:  $AOPS_SESSIONS/summaries/<date>-*.json (per-session insights) │
-│  Output: $AOPS_SESSIONS/synthesis.json                                 │
-│                                                                         │
-│  No LLM calls. Pure mechanical aggregation:                            │
-│  {                                                                      │
-│    "generated": "ISO timestamp",                                        │
-│    "date": "YYYYMMDD",                                                  │
-│    "sessions": { "total", "by_project", "recent" },                    │
-│    "narrative": ["[project] session summary", ...],                     │
-│    "accomplishments": { "count", "summary", "items" },                 │
-│    "alignment": { "status": "on_track|blocked|drifted", "note" },      │
-│    "waiting_on": [{ "task", "blocker" }],                              │
-│    "skill_insights": { "compliance_rate", "top_context_gaps", ... },   │
-│    "session_timeline": [{ "time", "session", "activity" }]             │
-│  }                                                                      │
-│                                                                         │
-│  Consumed by: dashboard (rendered at read time), briefing bundle.      │
-│  The /daily skill does NOT write to this file. Daily narrative          │
-│  (daily_story, daily_narrative) lives in the daily note frontmatter.   │
+│  Daily narrative (daily_story, daily_narrative) lives in the daily      │
+│  note frontmatter, not in session summary files.                        │
 └─────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼

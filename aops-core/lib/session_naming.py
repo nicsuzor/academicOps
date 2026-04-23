@@ -40,8 +40,8 @@ class ParsedFilename:
     session_id: str  # 8-char hash
     crew: str | None  # crew name or None
     repo: str  # repository name
-    machine: str  # machine short name
-    provider: str  # "claude" or "gemini"
+    machine: str | None  # machine short name (None for new format)
+    provider: str | None  # "claude" or "gemini" (None for new format)
     slug: str  # content slug
     variant: str  # "-full", "-abridged", "-hooks", "-client", or ""
     ext: str  # ".md", ".json", ".jsonl"
@@ -138,30 +138,27 @@ def get_session_shortform(
     machine: str | None = None,
     provider: str | None = None,
 ) -> str:
-    """Generate the shortform component: {crew}-{repo}-{machine}-{provider}.
+    """Generate the shortform component: {crew}-{repo}.
+
+    Environmental context (machine, provider) is no longer included in the
+    filename. It belongs in the file frontmatter/metadata.
 
     Args:
         crew_name: Crew name (None for manual/polecat-run sessions)
         repo: Repository name (auto-detected if None)
-        machine: Machine name (auto-detected if None)
-        provider: "claude" or "gemini" (auto-detected if None)
+        machine: Ignored (legacy parameter)
+        provider: Ignored (legacy parameter)
 
     Returns:
-        Shortform string like "gloria-academicops-nuc-claude"
+        Shortform string like "gloria-academicops"
     """
     if repo is None:
         repo = get_repo_name()
-    if machine is None:
-        machine = get_machine_name()
-    if provider is None:
-        provider = _detect_provider()
 
     parts = []
     if crew_name:
         parts.append(_sanitize(crew_name, allow_dashes=False))
     parts.append(_sanitize(repo, allow_dashes=False))
-    parts.append(_sanitize(machine, allow_dashes=False))
-    parts.append(provider.lower())
 
     return "-".join(parts)
 
@@ -179,6 +176,7 @@ def generate_session_filename(
     """Generate a session artifact filename following the naming convention.
 
     Format: {YYYYMMDD}-{HHMM}-{session_id}-{shortform}-{slug}{-variant}.{ext}
+    where shortform is {crew}-{repo}.
 
     Args:
         session_id: Full session ID (will be shortened to 8 chars)
@@ -186,8 +184,8 @@ def generate_session_filename(
         slug: Content slug, kebab-case (default "session")
         crew_name: Crew name or None for non-crew sessions
         repo: Repository name (auto-detected if None)
-        machine: Machine name (auto-detected if None)
-        provider: "claude" or "gemini" (auto-detected if None)
+        machine: Ignored (moved to frontmatter)
+        provider: Ignored (moved to frontmatter)
         artifact_type: One of ARTIFACT_TYPES keys
 
     Returns:
@@ -204,7 +202,7 @@ def generate_session_filename(
     short_id = get_session_short_hash(session_id)
     date_str = timestamp.strftime("%Y%m%d")
     time_str = timestamp.strftime("%H%M")
-    shortform = get_session_shortform(crew_name, repo, machine, provider)
+    shortform = get_session_shortform(crew_name, repo)
     safe_slug = _sanitize_slug(slug)
     art = ARTIFACT_TYPES[artifact_type]
 
@@ -230,7 +228,7 @@ def generate_base_name(
     short_id = get_session_short_hash(session_id)
     date_str = timestamp.strftime("%Y%m%d")
     time_str = timestamp.strftime("%H%M")
-    shortform = get_session_shortform(crew_name, repo, machine, provider)
+    shortform = get_session_shortform(crew_name, repo)
     safe_slug = _sanitize_slug(slug)
 
     return f"{date_str}-{time_str}-{short_id}-{shortform}-{safe_slug}"
@@ -253,7 +251,16 @@ def get_artifact_subdir(artifact_type: str) -> str:
 def parse_session_filename(filename: str) -> ParsedFilename | None:
     """Parse a session filename into its components.
 
-    Handles the format: {YYYYMMDD}-{HHMM}-{session_id}-{shortform}-{slug}{-variant}.{ext}
+    Handles both:
+    Old: {YYYYMMDD}-{HHMM}-{session_id}-{crew}-{repo}-{machine}-{provider}-{slug}{-variant}.{ext}
+    New: {YYYYMMDD}-{HHMM}-{session_id}-{crew}-{repo}-{slug}{-variant}.{ext}
+
+    **Known limitation — new format is structurally ambiguous**: crew and repo
+    cannot be reliably distinguished from a multi-word slug without a delimiter.
+    The heuristic used (>=6 parts → assume crew+repo; <6 parts → repo only) will
+    misparse manual sessions with multi-word slugs (e.g. `date-time-id-repo-fix-the-bug`
+    → crew=repo, repo=fix, slug=bug). Frontmatter is authoritative for all metadata;
+    treat parsed crew/repo as low-confidence when machine/provider are both None.
 
     Args:
         filename: Filename string (with or without directory prefix)
@@ -289,8 +296,9 @@ def parse_session_filename(filename: str) -> ParsedFilename | None:
     # Split on dashes
     parts = body.split("-")
 
-    # Need at minimum: YYYYMMDD, HHMM, session_id, repo, machine, provider, slug(1+ words)
-    if len(parts) < 7:
+    # Need at minimum: YYYYMMDD, HHMM, session_id, repo, slug(1+ words)
+    # New format minimum parts: 5 (date, time, id, repo, slug)
+    if len(parts) < 5:
         return None
 
     # Extract fixed-position components
@@ -307,42 +315,71 @@ def parse_session_filename(filename: str) -> ParsedFilename | None:
     if len(session_id) != 8:
         return None
 
-    # Find provider position (terminates shortform)
+    # Detect if old format by looking for a provider
     provider_idx = None
-    # Search from position 3 onwards for a provider keyword
     for i in range(3, len(parts)):
         if parts[i] in PROVIDERS:
             provider_idx = i
             break
 
-    if provider_idx is None:
-        return None
+    if provider_idx is not None:
+        # OLD FORMAT
+        shortform_parts = parts[3:provider_idx]
+        provider = parts[provider_idx]
 
-    # Everything between session_id and provider is shortform components
-    shortform_parts = parts[3:provider_idx]
-    provider = parts[provider_idx]
+        if len(shortform_parts) < 2:
+            return None
 
-    # Determine crew vs repo vs machine from shortform parts
-    # With crew: [crew, repo, machine]
-    # Without crew: [repo, machine]
-    if len(shortform_parts) < 2:
-        return None
+        if len(shortform_parts) >= 3:
+            crew = shortform_parts[0]
+            machine = shortform_parts[-1]
+            repo = "-".join(shortform_parts[1:-1])
+        else:
+            crew = None
+            repo = shortform_parts[0]
+            machine = shortform_parts[1]
 
-    if len(shortform_parts) >= 3:
-        # Has crew name — could be multi-word repo, but convention says
-        # crew is first, machine is last, repo is middle
-        crew = shortform_parts[0]
-        machine = shortform_parts[-1]
-        repo = "-".join(shortform_parts[1:-1])
+        slug_parts = parts[provider_idx + 1 :]
+        slug = "-".join(slug_parts) if slug_parts else "session"
     else:
-        # No crew: [repo, machine]
-        crew = None
-        repo = shortform_parts[0]
-        machine = shortform_parts[1]
+        # NEW FORMAT
+        # Parts: [date, time, id, crew?, repo, slug...]
+        # We can't perfectly distinguish crew-repo-slug from repo-slug without
+        # a delimiter. We'll use a simple heuristic based on the number of parts.
+        # If we have 5 parts, it's [date, time, id, repo, slug]
+        # If we have 6+ parts, we'll check if parts[3] looks like a crew name.
+        # For now, we'll assume the first part of shortform is repo if only 1 part
+        # between id and slug-start.
 
-    # Everything after provider is the slug
-    slug_parts = parts[provider_idx + 1 :]
-    slug = "-".join(slug_parts) if slug_parts else "session"
+        # We'll assume the slug starts at parts[4] if there are at least 5 parts
+        # and we don't know any better.
+
+        # Actually, let's keep it simple: assume 1 part for shortform (repo)
+        # unless we find a reason to think otherwise.
+
+        # Wait, if I assume 1 part for shortform, then:
+        # id-academicops-fix-bug -> repo=academicops, slug=fix-bug
+        # id-gloria-academicops-fix-bug -> repo=gloria, slug=academicops-fix-bug (WRONG)
+
+        # If I assume 2 parts for shortform?
+        # id-academicops-fix-bug -> crew=academicops, repo=fix, slug=bug (WRONG)
+
+        # This is indeed ambiguous. But since frontmatter is authoritative,
+        # we'll just do our best. I'll assume 1 part for now as it's the most common (no crew).
+        # Better heuristic: if we have 6+ parts, assume parts[3] is crew and parts[4] is repo.
+
+        if len(parts) >= 6:
+            crew = parts[3]
+            repo = parts[4]
+            slug_parts = parts[5:]
+        else:
+            crew = None
+            repo = parts[3]
+            slug_parts = parts[4:]
+
+        slug = "-".join(slug_parts) if slug_parts else "session"
+        machine = None
+        provider = None
 
     return ParsedFilename(
         date=date,
@@ -400,7 +437,7 @@ def _sanitize_slug(slug: str, max_words: int = 5) -> str:
     return "-".join(words) or "session"
 
 
-def _detect_provider() -> str:
+def get_provider_name() -> str:
     """Detect whether current session is Claude or Gemini.
 
     Returns:
