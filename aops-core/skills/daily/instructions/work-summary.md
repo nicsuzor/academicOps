@@ -12,7 +12,7 @@ Resolve the work date in this order:
 
 1. If the user explicitly names a date, use that.
 2. Otherwise, default to the most recent date with session activity in `$AOPS_SESSIONS/summaries/`.
-3. If the resolved work date differs from today's calendar date, confirm once with the user before writing.
+3. If the resolved 'work date' differs from today's calendar date, confirm once with the user (AskUserQuestion: "Summarise work for YYYY-MM-DD?") before writing.
 
 Every reference to "the daily note" below means the work-date note.
 
