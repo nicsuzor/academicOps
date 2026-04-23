@@ -149,14 +149,14 @@ def test_playwright_browsers_path_writable() -> None:
     )
 
     result = subprocess.run(
-        ["docker", "run", "--rm", "aops-crew", "sh", "-c", script],
+        ["docker", "run", "--rm", "--user", "1001:1001", "aops-crew", "sh", "-c", script],
         capture_output=True,
         text=True,
         timeout=60,
     )
 
     assert result.returncode == 0 and "WRITE_OK" in result.stdout, (
-        "PLAYWRIGHT_BROWSERS_PATH is not writable by the container user "
+        "PLAYWRIGHT_BROWSERS_PATH is not writable by an arbitrary container UID "
         f"(exit={result.returncode}).\n"
         f"stdout={result.stdout!r}\n"
         f"stderr={result.stderr!r}\n"
