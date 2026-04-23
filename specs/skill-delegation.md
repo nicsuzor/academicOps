@@ -304,10 +304,13 @@ adds:
      `S ∈ A.skills` MUST hold (error).
    - If `S ∈ A.skills`, then `A ∈ S.callable-by` OR `"*" ∈ S.callable-by`
      SHOULD hold (warn).
-7. **Nested-skill reachability.** For every `S′ ∈ S.spawns` where `S′`
-   is a skill: every agent `A` with `S ∈ A.skills` must also have
-   `S′ ∈ A.skills` (error). Spawning a skill the caller cannot itself
-   invoke is an authority-inflation attempt.
+7. **Nested reachability.** For every `X ∈ S.spawns`:
+   - If `X` is a skill `S′`: every agent `A` with `S ∈ A.skills` must
+     also have `S′ ∈ A.skills` (error). Spawning a skill the caller
+     cannot itself invoke is an authority-inflation attempt.
+   - If `X` is an agent `B`: every agent `A` with `S ∈ A.skills` must
+     also have `B ∈ A.subagents` (error). A skill cannot be used as a
+     side-channel to spawn an agent the caller is not authorised to use.
 8. **Agent-tool parity.** If an agent's body prose instructs it to "use
    the Skill tool" or "spawn via Agent", the corresponding tool
    (`Skill`, `Agent`) MUST appear in `tools:` (error).
@@ -315,6 +318,11 @@ adds:
    contains known agent personas (e.g. "act as Ruth", "as if you were
    Pauli") triggers a warn. Reviewers should either spawn the agent or
    remove the persona reference.
+   > **Implementation note (for `task-8ff8dac0`)**: Rule 9 detection
+   > MUST route to LLM classification, not regex or keyword matching
+   > (P#49). String-matching cannot distinguish "act as Ruth" (violation)
+   > from "James may invoke Ruth's QA role" (description). Keep at `warn`
+   > level; the Open Questions section records the path to `error`.
 
 ## Migration
 
@@ -325,7 +333,11 @@ Existing agents are compliant with most rules already. Specific migrations:
 - **pauli.md**: Already correct (`subagents: []`, `skills: [remember,
   planner]`). No change.
 - **rbg.md**: Already correct (`skills: []`, `subagents: []`). No change.
-- **marsha.md**: Already correct (`skills: [qa]`, `subagents: []`). No change.
+- **marsha.md**: `skills: [qa]` is correct. However, marsha's body prose
+  explicitly delegates compliance checks to `rbg` via `Agent` — meaning
+  `subagents: [rbg]` is required (currently declared as `[]`). This is a
+  genuine gap: the frontmatter must be corrected to match the body's
+  delegation. Fixed in this PR.
 - **jr.md**: `skills:` and `subagents:` lists to be audited under the
   sibling lint task; declarations must match any Skill/Agent calls the
   agent actually makes.
