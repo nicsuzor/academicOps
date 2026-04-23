@@ -26,6 +26,8 @@ Compose and maintain a daily note that helps the user orient, prioritise, and tr
 
 Location: `$ACA_DATA/daily/YYYYMMDD-daily.md`
 
+**Work date ≠ calendar date.** End-of-day summaries and reflections target the **work-date** note — the note for the day being described — not today's note. A reflection written at 01:30 on 2026-04-23 about 2026-04-22's work lands in `20260422-daily.md`. See [[instructions/reflect]] Step 0 and [[instructions/work-summary]] §"Work date vs. calendar date".
+
 ## Purpose
 
 The daily note answers three questions for a knowledge worker returning to their desk:
@@ -59,7 +61,15 @@ Every `/daily` invocation updates the note in place. The skill is designed to be
 
 The daily note has **five sections**, each serving a distinct purpose. The agent composes these sections using its judgment about what matters most in context (P#116). The structure below defines WHAT each section achieves, not a rigid template.
 
-### 1. Focus
+Sections appear in this order, top to bottom: **Carryover → Focus → What Needs Attention → Today's Story → Work Log**. The reasoning: a returning user's first question is "what was I in the middle of?" (Carryover), immediately followed by "what should I do next?" (Focus). Today's Story is empty in the morning and most useful at end of day, so it sits lower. Work Log is reference material and sits at the bottom, collapsed.
+
+### 1. Carryover + Abandoned
+
+Items carrying forward from yesterday (verified against live task state — never copy blindly from yesterday's note) and end-of-day abandoned todos. Each item is a checkbox (`- [ ] [task-id] Title`) so the user can tick it off as they pick up where they left off.
+
+**Only present when non-empty.** If there's nothing to carry over, omit the section entirely rather than showing empty placeholders. This is why Carryover sits at the top without dominating the note when it's empty — it simply disappears.
+
+### 2. Focus
 
 The first thing the user sees. Combines priority overview and curated task recommendations in one place.
 
@@ -67,7 +77,7 @@ The first thing the user sees. Combines priority overview and curated task recom
 
 - Priority distribution (P0/P1/P2/P3 counts of actionable tasks — consistent filtering in both numerator and denominator)
 - Deadline alerts (any task due within 48 hours, unmissable formatting)
-- ~10 curated recommendations across categories: urgent/overdue (SHOULD), strategic deep work (DEEP), variety/energy (ENJOY), quick wins (QUICK), unblocking others (UNBLOCK)
+- ~10 curated recommendations across categories: urgent/overdue (SHOULD), strategic deep work (DEEP), variety/energy (ENJOY), quick wins (QUICK), unblocking others (UNBLOCK). Each recommendation is rendered as a checkbox (`- [ ] **SHOULD**: [task-id] [[Title]] …`) so the user can tick it off through the day.
 - Suggested sequence with brief rationale
 
 **Quality guidance**: Weight recommendations by _significance to the person_, not just priority field values. An overdue email reply to a colleague is more important than a P0 framework task that has been P0 for months. A paper deadline matters more than a CI fix. The agent should understand the user's world — their research commitments, their students, their external obligations — and recommend accordingly.
@@ -76,16 +86,16 @@ The first thing the user sees. Combines priority overview and curated task recom
 
 > See [[instructions/focus-and-recommendations]] for task data loading and recommendation reasoning.
 
-### 2. What Needs Attention (FYI + Captures + Outstanding Workflows)
+### 3. What Needs Attention (FYI + Captures + Outstanding Workflows)
 
 Email triage, mobile captures, and outstanding workflow signals, presented as a briefing the user reads _in the note itself_ — not by opening individual emails or checking GitHub.
 
 **Contains**:
 
-- Email threads grouped by conversation, with enough content that the user doesn't need to open the email
+- Email threads grouped by conversation, with enough content that the user doesn't need to open the email. Each FYI item ends with a `- [ ] acknowledged` checkbox so the user can mark it read without deleting it.
 - Mobile captures triaged from `notes/mobile-captures/`
 - Each actionable item has a task created immediately (not batched to later)
-- **Outstanding workflows** — open PRs across tracked repos, bucketed by actionability (see below)
+- **Outstanding workflows** — open PRs across tracked repos, bucketed by actionability (see below). This is the canonical place for open PRs needing action; the Work Log no longer duplicates them.
 
 **Quality guidance**: FYI items involving real people (students, collaborators, funders) get full context — who said what, what's being asked, what the deadline is. Automated notifications, newsletters, and low-signal items get a single line or are omitted entirely. The agent triages by significance, not by recency.
 
@@ -95,11 +105,11 @@ Email triage, mobile captures, and outstanding workflow signals, presented as a 
 
 #### Outstanding Workflows subsection
 
-A snapshot of open PRs across tracked repos that need human decisions, surfaced directly in "What Needs Attention" so the user doesn't have to open GitHub. This is the decision-oriented complement to the Work Log's full PR tables — only PRs requiring action appear here.
+A snapshot of open PRs across tracked repos that need human decisions, surfaced directly in "What Needs Attention" so the user doesn't have to open GitHub. This is the **sole place** open PRs appear in the note — the Work Log no longer carries a parallel "Open PRs" table. One-click actionable PRs (Ready to merge) are rendered as checkboxes.
 
 **Bucketing** (in order of prominence):
 
-1. **Ready to merge** — mergeable + approved + CI passing. These are one-click actions. Visually prominent.
+1. **Ready to merge** — mergeable + approved + CI passing. These are one-click actions, rendered as `- [ ]` checkboxes with a direct URL. Visually prominent.
 2. **Needs review** — mergeable, awaiting human review. Brief context on what the PR does.
 3. **Needs fixes** — conflicting, CI failing, or changes requested. Name the specific blocker.
 4. **Stale** — open >7 days with no activity. Candidate for close or rebase.
@@ -113,9 +123,11 @@ A snapshot of open PRs across tracked repos that need human decisions, surfaced 
 
 > See [[instructions/workflow-monitor]] for the full procedure.
 
-### 3. Today's Story
+### 4. Today's Story
 
 A 2-4 sentence narrative synthesis of the day's work, followed by a structured **Session Flow** subsection. This is the _editorial_ section — the agent's judgment about what the day's work means, not a log of what happened.
+
+**Empty-morning rule**: If the work date has no sessions yet (typical morning run), omit this section entirely rather than emitting empty headings. See [[instructions/work-summary]] Step 5.3.
 
 **Quality guidance**: Lead with the most significant work, not the most recent. Research progress, paper milestones, and external commitments matter more than framework PRs. If 8 PRs were merged on internal tooling but no progress was made on the paper deadline, the story should note the tooling work briefly and highlight the gap. Mention specific PR numbers and task IDs for traceability, but embed them in narrative, not tables.
 
@@ -174,16 +186,19 @@ A 337-minute autonomous session with 0 prompts costs the human nothing — it's 
 
 > See [[instructions/work-summary]] for story synthesis guidance.
 
-### 4. Work Log (collapsed by default)
+### 5. Work Log (collapsed by default)
 
 A reference section for traceability — what sessions ran, what PRs merged, what tasks were completed. This section exists for the record, not for the user's morning read.
+
+**Rendering**: Keep the `## Work Log` H2 heading at the top (so tooling that greps for it still finds it), then wrap the body in `<details><summary>(collapsed — expand for merged PRs, sessions, and accomplishments)</summary> … </details>`. VS Code and Obsidian both render this collapsed by default in preview modes, so the long tables don't dominate visual weight.
 
 **Contains** (when data is available):
 
 - Merged PRs across tracked repos (table format)
-- Open PRs needing decisions (with recommended actions)
 - Session log (table of sessions with project, prompt count, and description)
 - Project accomplishments (checklist items linked to tasks)
+
+Open PRs are **not** duplicated here — they live in `## What Needs Attention / Outstanding Workflows` as the single source.
 
 **Quality guidance**: This section should be _scannable but not prominent_. It's reference material. If GitHub CLI is unavailable or no sessions ran, the section should be minimal ("No sessions today") rather than filled with empty tables and "n/a" markers.
 
@@ -193,22 +208,17 @@ Accomplishments should be linked to their corresponding tasks. Every `[x]` item 
 
 > See [[instructions/progress-sync]] for session loading, PR querying, and task matching.
 
-### 5. Carryover + Abandoned
-
-Items carrying forward from yesterday (verified against live task state — never copy blindly from yesterday's note) and end-of-day abandoned todos.
-
-**Only present when non-empty.** If there's nothing to carry over, omit the section entirely rather than showing empty placeholders.
-
 ## Section Ownership and Bidirectional Sync
 
 The daily note is a _shared document_ between the agent and the user. The ownership contract:
 
-| Content type                                                              | Rule                                                                                                                                     |
-| ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| **Machine-generated sections** (Work Log tables, PR lists, priority bars) | Fully replaced on each run.                                                                                                              |
-| **Mixed sections** (Focus recommendations, FYI items)                     | Agent regenerates its content but preserves anything the user has written. User content is identified by position (below agent content). |
-| **User sections** (My priorities, any section the user adds)              | Never touched by the agent.                                                                                                              |
-| **User annotations anywhere**                                             | If the user adds a note, comment, or annotation to any section, the agent preserves it.                                                  |
+| Content type                                                                                                                         | Rule                                                                                                                                                                                                                                                          |
+| ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Machine-generated sections** (Work Log tables, PR lists, priority bars)                                                            | Fully replaced on each run.                                                                                                                                                                                                                                   |
+| **Mixed sections** (Focus recommendations, FYI items)                                                                                | Agent regenerates its content but preserves anything the user has written. User content is identified by position (below agent content).                                                                                                                      |
+| **User sections** (My priorities, any section the user adds)                                                                         | Never touched by the agent.                                                                                                                                                                                                                                   |
+| **User ticks on agent checkboxes** (`- [ ]` → `- [x]` on a recommendation, ready-to-merge PR, FYI "acknowledged", or carryover item) | Preserved. When regenerating a mixed section, read the existing note first, match items by task ID / PR number / item identity, and carry the user's `[x]` state into the regenerated line. A tick is a user edit even when it sits on agent-emitted content. |
+| **User annotations anywhere**                                                                                                        | If the user adds a note, comment, or annotation to any section, the agent preserves it.                                                                                                                                                                       |
 
 **What happens when the user edits the note**: The agent should read the note before updating and notice user changes. If the user has crossed out a recommendation, added context to an FYI item, or written priorities, those are signals the agent should respect — not overwrite.
 

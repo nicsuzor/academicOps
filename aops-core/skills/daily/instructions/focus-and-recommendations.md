@@ -129,12 +129,13 @@ P3 ██░░░░░░░░ 15/85
 **Pending Decisions**: 4 (2 blocking other work) → `/decision-extract`
 
 🚨 **DEADLINE TODAY**: [ns-xyz] [[ARC FT26 Reviews]] - Due 23:59 AEDT (8 reviews)
-**SHOULD**: [ns-abc] [[OSB PAO 2025E Review]] - 3 days overdue
-**SHOULD**: [ns-def] [[ADMS Clever Reporting]] - 16 days overdue
-**DEEP**: [ns-ghi] [[Write TJA paper]] - Advances ARC Future Fellowship research goals
-**ENJOY**: [ns-jkl] [[Internet Histories article]] - [[Jeff Lazarus]] invitation on Santa Clara Principles
-**QUICK**: [ns-mno] [[ARC COI declaration]] - Simple form completion
-**UNBLOCK**: [ns-pqr] Framework CI - Address ongoing GitHub Actions failures
+
+- [ ] **SHOULD**: [ns-abc] [[OSB PAO 2025E Review]] — 3 days overdue
+- [ ] **SHOULD**: [ns-def] [[ADMS Clever Reporting]] — 16 days overdue
+- [ ] **DEEP**: [ns-ghi] [[Write TJA paper]] — Advances ARC Future Fellowship research goals
+- [ ] **ENJOY**: [ns-jkl] [[Internet Histories article]] — [[Jeff Lazarus]] invitation on Santa Clara Principles
+- [ ] **QUICK**: [ns-mno] [[ARC COI declaration]] — Simple form completion
+- [ ] **UNBLOCK**: [ns-pqr] Framework CI — Address ongoing GitHub Actions failures
 
 *Suggested sequence*: Tackle overdue items first (OSB PAO highest priority given 3-day delay, then ADMS Clever).
 
@@ -150,12 +151,14 @@ Select ~10 recommendations using judgment (approx 2 per category):
 **🚨 DEADLINE TODAY (CRITICAL - always check first)**:
 
 - Tasks with `due` date matching TODAY (within 24h)
-- Format: `🚨 **DEADLINE TODAY**: [id] [[Title]] - Due HH:MM TZ (detail)`
+- Format: `🚨 **DEADLINE TODAY**: [id] [[Title]] - Due HH:MM TZ (detail)` — this line stays non-checkbox so the siren formatting dominates visually; individual SHOULD/DEEP/etc. recommendations below are tickable checkboxes.
 - This category is NON-OPTIONAL - if ANY task has `due` within 24h, it MUST appear first
 - Even if task seems low priority, imminent deadline overrides priority ranking
 - `list_tasks(format="json")` now returns `due`, `effort`, `consequence`, and `focus_score` per task — use these fields when available
 - `task_summary` returns `deadlines: { overdue, due_today, due_this_week }` counts — use these for the Deadline Dashboard (see below)
 - When a task has a `consequence` field, include the consequence text in the recommendation (e.g. `🚨 **DEADLINE TODAY**: [id] [[Title]] - Due HH:MM TZ | Consequence: <consequence text>`)
+
+**Recommendation rendering**: All SHOULD, DEEP, ENJOY, QUICK, and UNBLOCK items are rendered as markdown checkboxes: `- [ ] **SHOULD**: [task-id] [[Title]] — reason`. This lets the user tick them off in their editor as they act on them during the day. Ticks the user has applied are preserved on regeneration (agent content regenerates above user edits, per the bidirectional contract in `SKILL.md`).
 
 **SHOULD (deadline/commitment pressure)**:
 

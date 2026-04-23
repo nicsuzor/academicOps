@@ -6,9 +6,21 @@ Invoked when the user says "reflect", "end of day", "how did today go", "weekly 
 
 ## End-of-Day Reflection
 
+### Step 0: Resolve the work date
+
+The target note is the daily note for the **work date** — the date whose work is being reflected on — **not** today's calendar date. A reflection written at 01:30 on 2026-04-23 about 2026-04-22's work must land in `20260422-daily.md`.
+
+Resolve the work date in this order:
+
+1. If the user explicitly names a date ("reflect on yesterday", "summarise Tuesday"), use that.
+2. Otherwise, default to the most recent date with session activity in `$AOPS_SESSIONS/summaries/`.
+3. If the resolved work date differs from today's calendar date, confirm once with the user (`AskUserQuestion`: "Reflect on YYYY-MM-DD?") before writing.
+
+Use the resolved work date to build the target path: `$ACA_DATA/daily/YYYYMMDD-daily.md` where `YYYYMMDD` is the work date, not today.
+
 ### Step 1: Load Context
 
-Find today's daily note at `$ACA_DATA/daily/YYYYMMDD-daily.md`. Read the `## Focus` section (including `### My priorities` if present) and the `## Today's Story` section.
+Open the work-date note resolved in Step 0. Read its `## Focus` section (including `### My priorities` if present) and its `## Today's Story` section.
 
 ### Step 2: Gather Today's Progress
 
@@ -82,7 +94,7 @@ Options: "Yes, keep them" | "Adjust" | "Need a reset"
 
 ### Step 6: Write Reflection
 
-Append the reflection summary to the daily note's `## Today's Story` section. Write as concise prose, not raw data:
+Append the reflection summary to the **work-date note's** `## Today's Story` section (the note resolved in Step 0 — not today's note if they differ). Write as concise prose, not raw data:
 
 ```markdown
 Good progress on OSB study — methods section done, benchmark suite run. 75% complete.
