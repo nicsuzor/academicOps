@@ -81,12 +81,6 @@ def test_gemini_hooks_parameter_replacement(tmp_path):
                 found_gemini_client = True
             if "SessionStart" in cmd:
                 found_event_arg = True
-        if "${extensionPath}" in cmd:
-            found_extension_path = True
-        if "--client gemini" in cmd:
-            found_gemini_client = True
-        if "SessionStart" in cmd:
-            found_event_arg = True
 
     assert found_extension_path, "Hooks must use ${extensionPath} in Gemini"
     assert found_gemini_client, "Hooks must use --client gemini in Gemini"
