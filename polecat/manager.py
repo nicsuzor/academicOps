@@ -1755,6 +1755,11 @@ decision = "allow"
 priority = 50
 
 [[rule]]
+toolName = "run_shell_command"
+decision = "allow"
+priority = 50
+
+[[rule]]
 toolName = "Write"
 decision = "deny"
 priority = 10
@@ -1765,6 +1770,12 @@ toolName = "Edit"
 decision = "deny"
 priority = 10
 denyMessage = "File edits are restricted to the worktree: {worktree_str}"
+
+[[rule]]
+toolName = "run_shell_command"
+decision = "deny"
+priority = 10
+denyMessage = "Shell commands are restricted in the sandbox"
 """
         policy_path = gemini_policies_dir / "sandbox.toml"
         policy_path.write_text(policy_content)

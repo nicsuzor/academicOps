@@ -11,6 +11,12 @@
     }
   },
   "tools": {
-    "exclude": ["ask_user"]
+    "exclude": ["ask_user"],
+    "approval_mode": "auto_edit",
+    "coreTools": {
+      "shell": {
+        "allow": true
+      }
+    }
   }
 }
