@@ -13,7 +13,6 @@ In every case the new worktree must fork from origin/main, not the stale
 remote branch.
 """
 
-import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -94,7 +93,9 @@ def manager(polecat_home: Path, aca_data: Path) -> PolecatManager:
     return PolecatManager(home_dir=polecat_home)
 
 
-def _push_stale_polecat_branch(bare_origin: Path, tmp_path: Path, task_id: str, commits: int) -> str:
+def _push_stale_polecat_branch(
+    bare_origin: Path, tmp_path: Path, task_id: str, commits: int
+) -> str:
     """Push a polecat/<task_id> branch that is diverged from main and looks stale.
 
     Then advances main by `commits` commits so the polecat branch is behind.
@@ -191,8 +192,7 @@ def test_squash_merged_branch_detected_via_gh_restarts_fresh(
     head = _git(["rev-parse", "HEAD"], cwd=worktree_path).stdout.strip()
     origin_main = _git(["rev-parse", "origin/main"], cwd=worktree_path).stdout.strip()
     assert head == origin_main, (
-        "Worktree must be forked from origin/main when gh reports the branch "
-        "has a merged PR"
+        "Worktree must be forked from origin/main when gh reports the branch has a merged PR"
     )
     assert head != stale_sha, "Worktree must not resume from the squash-merged branch tip"
 
@@ -245,6 +245,4 @@ def test_in_flight_branch_is_checked_out_not_recreated(
     ls_remote = _git(
         ["ls-remote", "--heads", str(bare_origin), branch_name], cwd=tmp_path, check=False
     )
-    assert ls_remote.stdout.strip() != "", (
-        "In-flight remote branch must be preserved"
-    )
+    assert ls_remote.stdout.strip() != "", "In-flight remote branch must be preserved"
