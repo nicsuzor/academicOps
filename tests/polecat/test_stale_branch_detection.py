@@ -39,6 +39,20 @@ def _git(args: list[str], cwd: Path, check: bool = True) -> subprocess.Completed
     return subprocess.run(["git"] + args, cwd=cwd, capture_output=True, text=True, check=check)
 
 
+@pytest.fixture(autouse=True)
+def _git_identity(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Ensure git has a committer identity in all subprocess calls.
+
+    Rebase replays commits, which requires creating new commits — and git
+    refuses to do that without author/committer identity. The CI runner has
+    none configured globally, so set it via environment variables instead.
+    """
+    monkeypatch.setenv("GIT_AUTHOR_NAME", "Test User")
+    monkeypatch.setenv("GIT_AUTHOR_EMAIL", "test@test.example")
+    monkeypatch.setenv("GIT_COMMITTER_NAME", "Test User")
+    monkeypatch.setenv("GIT_COMMITTER_EMAIL", "test@test.example")
+
+
 @pytest.fixture()
 def bare_origin(tmp_path: Path) -> Path:
     origin = tmp_path / "origin.git"
