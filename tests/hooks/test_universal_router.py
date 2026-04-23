@@ -208,6 +208,28 @@ class TestSubagentTypeExtraction:
         ctx = router_instance.normalize_input(raw)
         assert ctx.subagent_type == "enforcer"
 
+    def test_activate_skill_handover(self, router_instance):
+        """activate_skill with name='handover' extracts correctly."""
+        raw = {
+            "hook_event_name": "PreToolUse",
+            "session_id": "test-123",
+            "tool_name": "activate_skill",
+            "tool_input": {"name": "handover"},
+        }
+        ctx = router_instance.normalize_input(raw)
+        assert ctx.subagent_type == "handover"
+
+    def test_activate_skill_dump(self, router_instance):
+        """activate_skill with name='dump' extracts correctly."""
+        raw = {
+            "hook_event_name": "PreToolUse",
+            "session_id": "test-123",
+            "tool_name": "activate_skill",
+            "tool_input": {"name": "dump"},
+        }
+        ctx = router_instance.normalize_input(raw)
+        assert ctx.subagent_type == "dump"
+
     def test_skill_tool_uses_skill_param(self, router_instance):
         """Skill tool extracts from 'skill' param (not 'subagent_type')."""
         raw = {
