@@ -1,7 +1,7 @@
 ---
 title: context-map.json Schema
 type: spec
-status: draft
+status: active
 tier: 4
 depends_on: [prompt-hydration, taxonomy]
 tags: [framework, schema, context, discovery]
