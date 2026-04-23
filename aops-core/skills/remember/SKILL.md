@@ -19,7 +19,7 @@ version: 3.0.0
 
 # Remember Skill
 
-> **Taxonomy note**: This skill provides domain expertise (HOW) for knowledge capture and persistence. See [[TAXONOMY.md]] for the skill/workflow distinction.
+> **Taxonomy note**: This skill provides domain expertise (HOW) for knowledge capture and persistence. See [[references/TAXONOMY.md]] for the skill/workflow distinction.
 
 Persist knowledge via PKB. **PKB IS `$ACA_DATA`** — managed properly. The PKB MCP owns all writes, reads, indexing, deduplication, and linking. **Agents MUST NOT use `Write` or `Edit` on any path under `$ACA_DATA`** — that bypasses PKB's invariants and silently fails on environments where `$ACA_DATA` is a remote or differently-permissioned mount.
 

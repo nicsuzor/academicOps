@@ -20,7 +20,7 @@ version: 2.0.0
 ## Core Process
 
 1. **Understand the Target**: What are we decomposing -- a project, an epic (needs tasks), or a task (needs actions)? Clarify the primary objective and constraints.
-   - **Target structure**: `Project → Epic → Task → Action` (see [[TAXONOMY.md]])
+   - **Target structure**: `Project → Epic → Task → Action` (see [[../../remember/references/TAXONOMY.md]])
    - **Property Check**: Examine the parent's `scope`, `uncertainty`, and `criticality`.
    - **High Uncertainty**: Priority is to reduce uncertainty. The decomposition should lean heavily into evidence gathering, audits, or probes (Step 3).
    - **Low Uncertainty + High Scope**: Parent is well-understood but large. The decomposition should focus on creating independent, parallelizable execution tasks.

@@ -317,7 +317,7 @@ queued → in_progress → merge_ready → done
                 └→ blocked (dependency, failure)
 ```
 
-See [[aops-core/TAXONOMY.md#status-values-and-transitions]] for canonical status definitions. The supervisor uses the canonical set without extensions.
+See [[aops-core/skills/remember/references/TAXONOMY.md#status-values-and-transitions]] for canonical status definitions. The supervisor uses the canonical set without extensions.
 
 ## Appendix: Atomic Locking (Non-Task Batches)
 

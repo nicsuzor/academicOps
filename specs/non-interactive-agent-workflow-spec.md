@@ -84,7 +84,7 @@ Complete lifecycle for non-interactive agent operation: task selection through P
 
 ## Task State Machine
 
-Task statuses are canonical — see [[aops-core/TAXONOMY.md#status-values-and-transitions]] for definitions and the authoritative transition graph. The phase labels in this spec (Phase 1 Decomposition, Phase 2 Review, Phase 3 Approval, Phase 4 Execution, Phase 5 Merge, Phase 6 Capture) describe workflow stages within a single canonical status, not separate status values.
+Task statuses are canonical — see [[aops-core/skills/remember/references/TAXONOMY.md#status-values-and-transitions]] for definitions and the authoritative transition graph. The phase labels in this spec (Phase 1 Decomposition, Phase 2 Review, Phase 3 Approval, Phase 4 Execution, Phase 5 Merge, Phase 6 Capture) describe workflow stages within a single canonical status, not separate status values.
 
 ### Phase → Status Mapping
 
@@ -753,7 +753,7 @@ Every state transition logged to `data/aops-core/audit/transitions.jsonl`:
 
 ### Status Alignment
 
-All statuses referenced in this spec are canonical — see [[aops-core/TAXONOMY.md#status-values-and-transitions]]. The workflow uses: `inbox`, `queued`, `in_progress`, `merge_ready`, `review`, `done`, `blocked`, `paused`, `someday`, `cancelled`. Supervisor sub-phases (decomposing, consensus, debate) live in the task body as annotations, not as status values.
+All statuses referenced in this spec are canonical — see [[aops-core/skills/remember/references/TAXONOMY.md#status-values-and-transitions]]. The workflow uses: `inbox`, `queued`, `in_progress`, `merge_ready`, `review`, `done`, `blocked`, `paused`, `someday`, `cancelled`. Supervisor sub-phases (decomposing, consensus, debate) live in the task body as annotations, not as status values.
 
 ### New Fields
 
