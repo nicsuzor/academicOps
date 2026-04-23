@@ -584,7 +584,7 @@ def reflection_to_insights(
     if timeline_events:
         result["timeline_events"] = timeline_events
         # Pre-compute user prompt count for downstream consumers
-        # (daily skill engagement classification, synthesize_dashboard.py)
+        # (daily skill engagement classification)
         result["user_prompt_count"] = sum(
             1 for e in timeline_events if e.get("type") == "user_prompt"
         )

@@ -734,34 +734,6 @@ def _infer_project(
     return project_parts[-1] if project_parts and project_parts[-1] else "unknown"
 
 
-def run_synthesis() -> None:
-    """Regenerate synthesis.json from today's session insights.
-
-    Called after batch transcript processing so synthesis.json stays
-    current whenever transcripts are generated (cron or manual run).
-    """
-    synth_script = FRAMEWORK_ROOT / "scripts" / "synthesize_dashboard.py"
-    if not synth_script.exists():
-        print("⚠️  synthesize_dashboard.py not found; skipping synthesis", file=sys.stderr)
-        return
-    try:
-        result = subprocess.run(
-            ["uv", "run", "python", str(synth_script)],
-            capture_output=True,
-            text=True,
-            timeout=30,
-            cwd=str(FRAMEWORK_ROOT),
-        )
-        if result.returncode != 0:
-            print(f"⚠️  synthesis.json update failed: {result.stderr.strip()}", file=sys.stderr)
-        else:
-            print("📊 synthesis.json updated")
-    except subprocess.TimeoutExpired:
-        print("⚠️  synthesis.json update timed out", file=sys.stderr)
-    except Exception as e:
-        print(f"⚠️  Failed to run synthesis: {e}", file=sys.stderr)
-
-
 def git_sync():
     """Commit and push changes in the sessions repository."""
     try:
@@ -1054,9 +1026,6 @@ Examples:
         print(f"Processed: {processed}", file=sys.stderr)
         print(f"Skipped: {skipped}", file=sys.stderr)
         print(f"Errors: {errors}", file=sys.stderr)
-
-        if processed > 0 or skipped > 0:
-            run_synthesis()
 
         return 0
 
