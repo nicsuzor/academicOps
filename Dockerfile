@@ -51,10 +51,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # PLAYWRIGHT_BROWSERS_PATH=/ms-playwright (system-wide) before the install so
 # the binaries land in a location the unprivileged `worker` user can read at
 # runtime. The env var stays set for all subsequent stages and containers.
+#
+# The MCP playwright server creates per-session cache subdirs (mcp-chrome-*)
+# under this path at runtime, so it must be writable by any UID — polecat
+# crew containers run as the host UID, which may not match worker. Use the
+# same 777 pattern as /home/worker below.
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 RUN npx --yes playwright@1.59.1 install-deps chromium \
     && npx --yes playwright@1.59.1 install chromium \
-    && chmod -R a+rX /ms-playwright \
+    && chmod -R a+rwX /ms-playwright \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install uv system-wide (standard for aops framework per P#93)
