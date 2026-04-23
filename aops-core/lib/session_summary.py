@@ -34,6 +34,7 @@ class SessionSummary(TypedDict, total=False):
 
     # Metadata (aops-d9ba7159)
     machine: str
+    hostname: str
     provider: str
     crew: str
     repo: str
