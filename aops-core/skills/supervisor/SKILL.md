@@ -158,7 +158,7 @@ via a GitHub Environment approval gate.
    Qualifies PRs ≥15 min old with no in-progress run and no terminal
    `merge-prep-status`.
 4. `agent-merge-prep.yml` — the Claude merge-prep agent. Triages all review
-   feedback, fixes CI failures, resolves conflicts, posts a decision brief,
+   feedback, fixes CI failures, resolves conflicts, posts a triage summary,
    approves the PR, sets `merge-prep-status: success`, and triggers
    `summary-and-merge.yml`.
 
