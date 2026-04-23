@@ -14,5 +14,41 @@
         "RUST_LOG": "warn"
       }
     }
-  }
+  },
+  "tools": [
+    {
+      "name": "activate_skill",
+      "description": "Activates a specialized agent skill by name",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The name of the skill to activate",
+            "enum": [
+              "skill-creator",
+              "supervisor",
+              "strategic-review",
+              "sleep",
+              "research",
+              "remember",
+              "qa",
+              "project",
+              "planner",
+              "dump",
+              "handover",
+              "daily",
+              "aops",
+              "dogfood",
+              "end_session",
+              "hydrator"
+            ]
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    }
+  ]
 }
