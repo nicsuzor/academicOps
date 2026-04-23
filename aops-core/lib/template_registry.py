@@ -81,6 +81,22 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         description="Lightweight skills-routing hint (formerly hydration warning)",
         env_override="HYDRATION_WARN_TEMPLATE",
     ),
+    "orchestrator.dispositor_reminder": TemplateSpec(
+        name="orchestrator.dispositor_reminder",
+        category=TemplateCategory.CONTEXT_INJECTION,
+        filename="orchestrator-dispositor-reminder.md",
+        required_vars=(),
+        description="Reminder injected into orchestrator session on work-request prompts",
+        env_override="ORCHESTRATOR_REMINDER_TEMPLATE",
+    ),
+    "orchestrator.boundary_warn": TemplateSpec(
+        name="orchestrator.boundary_warn",
+        category=TemplateCategory.CONTEXT_INJECTION,
+        filename="orchestrator-boundary-warn.md",
+        required_vars=("file_path",),
+        optional_vars=("tool_name",),
+        description="Warning when orchestrator writes to project (non-framework) source",
+    ),
     # --- Enforcer gate ---
     "enforcer.context": TemplateSpec(
         name="enforcer.context",
