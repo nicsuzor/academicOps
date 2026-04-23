@@ -293,7 +293,7 @@ polecat sync                           # sync mirrors after merging
 
 ## Handover
 
-**Every agent that completes work as part of a chain MUST leave at least one PKB task that says what comes next** — unless the work is fully complete with no follow-ups.
+**Always leave a loose thread.** Every agent that completes work as part of a chain MUST leave at least one PKB task that says what comes next — unless the work is fully complete with no follow-ups. Use `mcp__pkb__append` to record information mid-workflow and `mcp__pkb__complete_task` to close a task with a final note.
 
 - If dispatch is blocked: file a refinement/blocking task.
 - If a phase is complete but the epic remains: ensure the next subtask is clear and in `ready` or `queued`.
