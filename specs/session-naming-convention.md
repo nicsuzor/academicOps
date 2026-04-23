@@ -46,28 +46,44 @@ This spec defines the canonical naming convention for all session artifacts stor
 The shortform encodes session provenance in a compact, readable string:
 
 ```
-{crew}-{repo}-{machine}-{provider}
+{crew}-{repo}
 ```
 
 ### Rules
 
-| Field      | Source                                             | Omission Rule                                                                              |
-| ---------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `crew`     | `$POLECAT_CREW_NAME`                               | Omitted for manual sessions and polecat-run sessions (no crew)                             |
-| `repo`     | Repository name from `$CLAUDE_PROJECT_DIR` or cwd  | Always present. Derived from the basename of the project directory, lowercased             |
-| `machine`  | `$AOPS_MACHINE` env var, fallback to `hostname -s` | Always present. Must be set explicitly — container hostname `aops-crew` is not useful      |
-| `provider` | `claude` or `gemini`                               | Always present. Detected via `_is_gemini_session()` or `$POLECAT_SESSION_TYPE` + `-g` flag |
+| Field  | Source                                            | Omission Rule                                                                  |
+| ------ | ------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `crew` | `$POLECAT_CREW_NAME`                              | Omitted for manual sessions and polecat-run sessions (no crew)                 |
+| `repo` | Repository name from `$CLAUDE_PROJECT_DIR` or cwd | Always present. Derived from the basename of the project directory, lowercased |
+
+Environmental context (`machine`, `provider`) is **no longer** included in the filename. It is instead moved to the YAML frontmatter/metadata of each file.
+
+## Metadata (Frontmatter)
+
+Every session artifact MUST include the following metadata in its header (YAML frontmatter for `.md`, top-level keys for `.json`, or first line/header for `.jsonl` if applicable).
+
+The following fields are mandatory:
+
+- **`session_id`**: Full session UUID
+- **`started_at`**: ISO-8601 timestamp of session start
+- **`crew`**: Crew name (or `null`)
+- **`repo`**: Repository name
+- **`machine`**: Machine name where session ran (e.g., `nuc`, `macbook-pro`)
+- **`provider`**: Model provider (e.g., `claude`, `gemini`)
+- **`slug`**: Full descriptive slug
+- **`variant`**: Artifact variant
+- **`task_id`**: Associated PKB task ID (if bound)
 
 ### Examples by Session Type
 
-| Session Type   | Shortform                       | Full Filename Example                                                         |
-| -------------- | ------------------------------- | ----------------------------------------------------------------------------- |
-| Manual Claude  | `academicops-nuc-claude`        | `20260411-1430-a1b2c3d4-academicops-nuc-claude-fix-hook-paths-full.md`        |
-| Manual Gemini  | `academicops-nuc-gemini`        | `20260411-1430-b2c3d4e5-academicops-nuc-gemini-review-pr-full.md`             |
-| Crew Claude    | `gloria-academicops-nuc-claude` | `20260411-1430-c3d4e5f6-gloria-academicops-nuc-claude-refactor-tests-full.md` |
-| Crew Gemini    | `gloria-academicops-nuc-gemini` | `20260411-1430-d4e5f6a7-gloria-academicops-nuc-gemini-update-docs-full.md`    |
-| Polecat Claude | `academicops-nuc-claude`        | `20260411-1430-e5f6a7b8-academicops-nuc-claude-fix-lint-full.md`              |
-| Polecat Gemini | `academicops-nuc-gemini`        | `20260411-1430-f6a7b8c9-academicops-nuc-gemini-add-tests-full.md`             |
+| Session Type   | Shortform            | Full Filename Example                                              |
+| -------------- | -------------------- | ------------------------------------------------------------------ |
+| Manual Claude  | `academicops`        | `20260411-1430-a1b2c3d4-academicops-fix-hook-paths-full.md`        |
+| Manual Gemini  | `academicops`        | `20260411-1430-b2c3d4e5-academicops-review-pr-full.md`             |
+| Crew Claude    | `gloria-academicops` | `20260411-1430-c3d4e5f6-gloria-academicops-refactor-tests-full.md` |
+| Crew Gemini    | `gloria-academicops` | `20260411-1430-d4e5f6a7-gloria-academicops-update-docs-full.md`    |
+| Polecat Claude | `academicops`        | `20260411-1430-e5f6a7b8-academicops-fix-lint-full.md`              |
+| Polecat Gemini | `academicops`        | `20260411-1430-f6a7b8c9-academicops-add-tests-full.md`             |
 
 Note: Polecat-run sessions have no crew name (they run as isolated workers, not in a named worktree).
 

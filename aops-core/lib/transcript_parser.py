@@ -8,12 +8,15 @@ parsing Claude Code and Gemini session files into structured objects.
 from __future__ import annotations
 
 import json
+import os
 import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import Enum, auto
 from pathlib import Path
 from typing import Any
+
+import lib.session_naming as session_naming
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
@@ -574,6 +577,12 @@ def reflection_to_insights(
         "accomplishments": reflection.get("accomplishments", []),
         "friction_points": reflection.get("friction_points", []),
         "proposed_changes": reflection.get("proposed_changes", []),
+        # Metadata (aops-d9ba7159)
+        "machine": os.environ.get("AOPS_MACHINE"),
+        "provider": session_naming.get_provider_name(),
+        "crew": os.environ.get("POLECAT_CREW_NAME"),
+        "repo": project,
+        "task_id": os.environ.get("AOPS_TASK_ID"),
         # Framework reflections as array (schema-compliant)
         "framework_reflections": [framework_reflection_entry],
         # Token usage metrics (optional)
@@ -986,6 +995,14 @@ class SessionSummary:
     edited_files: list[str] = field(default_factory=list)
     details: dict = field(default_factory=dict)
 
+    # Metadata (aops-d9ba7159)
+    machine: str | None = None
+    provider: str | None = None
+    crew: str | None = None
+    repo: str | None = None
+    task_id: str | None = None
+    slug: str | None = None
+
 
 @dataclass
 class TimingInfo:
@@ -1326,15 +1343,47 @@ class SessionProcessor:
             (session_summary, entries, agent_entries)
         """
         file_path = Path(file_path)
-        # Handle Antigravity brain directories
+
+        # 1. Parse filename for metadata (backward compatibility and context)
+        parsed = session_naming.parse_session_filename(str(file_path))
+
+        # 2. Parse the content
         if file_path.is_dir():
-            return self._parse_antigravity_brain(file_path)
-        if file_path.suffix.lower() == ".json":
-            return self._parse_gemini_json(file_path)
-        # Cowork audit.jsonl — same JSONL format but no agent/hook sidecar files
-        if file_path.name == "audit.jsonl":
-            return self._parse_jsonl_file(file_path, load_agents=False, load_hooks=False)
-        return self._parse_jsonl_file(file_path, load_agents=load_agents, load_hooks=load_hooks)
+            summary, entries, agents = self._parse_antigravity_brain(file_path)
+        elif file_path.suffix.lower() == ".json":
+            summary, entries, agents = self._parse_gemini_json(file_path)
+        elif file_path.name == "audit.jsonl":
+            summary, entries, agents = self._parse_jsonl_file(
+                file_path, load_agents=False, load_hooks=False
+            )
+        else:
+            summary, entries, agents = self._parse_jsonl_file(
+                file_path, load_agents=load_agents, load_hooks=load_hooks
+            )
+
+        # 3. Augment summary with metadata from filename and environment
+        if parsed:
+            summary.machine = summary.machine or parsed.machine
+            summary.provider = summary.provider or parsed.provider
+            summary.crew = summary.crew or parsed.crew
+            summary.repo = summary.repo or parsed.repo
+            summary.slug = summary.slug or parsed.slug
+
+        # Fallback to environment/inference if missing
+        summary.machine = summary.machine or os.environ.get("AOPS_MACHINE")
+        summary.provider = summary.provider or (
+            "gemini" if ".gemini/" in str(file_path) else "claude"
+        )
+        summary.crew = summary.crew or os.environ.get("POLECAT_CREW_NAME")
+        if not summary.repo:
+            # We can't use get_repo_name() safely here as it might be a different repo
+            # than the one we are running in.
+            pass
+        summary.task_id = summary.task_id or os.environ.get("AOPS_TASK_ID")
+        if not summary.slug and entries:
+            summary.slug = self.generate_session_slug(entries)
+
+        return summary, entries, agents
 
     def parse_jsonl(
         self,
@@ -2609,6 +2658,20 @@ class SessionProcessor:
             if session_duration_minutes is not None:
                 stats_yaml += f"  duration_minutes: {session_duration_minutes:.1f}\n"
 
+        metadata_yaml = ""
+        if session.machine:
+            metadata_yaml += f"machine: {session.machine}\n"
+        if session.provider:
+            metadata_yaml += f"provider: {session.provider}\n"
+        if session.crew:
+            metadata_yaml += f"crew: {session.crew}\n"
+        if session.repo:
+            metadata_yaml += f"repo: {session.repo}\n"
+        if session.task_id:
+            metadata_yaml += f"task_id: {session.task_id}\n"
+        if session.slug:
+            metadata_yaml += f"slug: {session.slug}\n"
+
         frontmatter = f"""---
 title: "{title} ({variant})"
 type: session
@@ -2619,7 +2682,7 @@ tags:
   - {variant}
 date: {date_str}
 session_id: {session_uuid}
-{source_yaml}{stats_yaml}{files_yaml}---
+{metadata_yaml}{source_yaml}{stats_yaml}{files_yaml}---
 
 """
 
