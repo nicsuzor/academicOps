@@ -1725,13 +1725,13 @@ def is_interactive() -> bool:
 
 
 def _require_pkb_url_or_exit() -> None:
-    """Emit a friendly one-liner and exit(2) if PKB_MCP_URL is unset.
+    """Emit a friendly one-liner and exit(4) if PKB_MCP_URL is unset.
 
     Runs before :func:`_bootstrap_or_exit` so the most common missing-env
     failure produces remediation guidance rather than a generic bootstrap
     banner (and certainly not the bare ``RuntimeError`` from
-    ``pkb_bridge._get_client``).  Exit code 2 distinguishes config failures
-    from other bootstrap errors (1) and from exit 3 (empty queue).
+    ``pkb_bridge._get_client``).  Exit code 4 distinguishes config failures
+    from bootstrap errors (1), locked tasks (2), and empty queues (3).
     """
     if os.environ.get("PKB_MCP_URL"):
         return
@@ -1741,7 +1741,7 @@ def _require_pkb_url_or_exit() -> None:
         "      export PKB_MCP_URL=http://localhost:8026/mcp",
         file=sys.stderr,
     )
-    sys.exit(2)
+    sys.exit(4)
 
 
 def _bootstrap_or_exit() -> None:

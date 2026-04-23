@@ -1,21 +1,14 @@
-import sys
-from pathlib import Path
-
 import pytest
 
-REPO_ROOT = Path(__file__).parent.parent.parent.resolve()
-sys.path.insert(0, str(REPO_ROOT / "polecat"))
-sys.path.insert(0, str(REPO_ROOT / "aops-core"))
-
-from polecat.bootstrap import BootstrapError, validate_bootstrap  # noqa: E402
-from polecat.cli import _require_pkb_url_or_exit  # noqa: E402
+from polecat.bootstrap import BootstrapError, validate_bootstrap
+from polecat.cli import _require_pkb_url_or_exit
 
 
-def test_require_pkb_url_exits_2_with_friendly_message(monkeypatch, capsys):
+def test_require_pkb_url_exits_4_with_friendly_message(monkeypatch, capsys):
     monkeypatch.delenv("PKB_MCP_URL", raising=False)
     with pytest.raises(SystemExit) as exc:
         _require_pkb_url_or_exit()
-    assert exc.value.code == 2
+    assert exc.value.code == 4
     err = capsys.readouterr().err
     assert "PKB_MCP_URL is not set" in err
     assert "export PKB_MCP_URL=" in err
