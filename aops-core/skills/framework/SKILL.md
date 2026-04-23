@@ -80,7 +80,7 @@ Agents are autonomous entities with knowledge who execute workflows. Agents don'
 
 ## No Shitty NLP (P#49)
 
-Legacy NLP (keyword matching, regex heuristics, fuzzy string matching) is forbidden for semantic decisions. We have smart LLMs — use them. This extends to acceptance criteria: evaluate semantically, not with pattern matching (see P#78).
+Legacy NLP (keyword matching, regex heuristics, fuzzy string matching) is forbidden for semantic decisions. We have smart LLMs — use them. This extends to acceptance criteria: evaluate semantically, not with pattern matching (see [[HEURISTICS.md#Deterministic Computation Stays in Code (P#78)|P#78]]).
 
 **Corollaries**:
 

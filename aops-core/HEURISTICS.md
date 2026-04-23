@@ -513,7 +513,7 @@ Before spawning an Explore subagent or any research-oriented subagent, the main 
 
 # Framework Architecture
 
-The heuristics that describe how the framework itself is built have been migrated to the dedicated [framework skill](skills/framework/SKILL.md).
+The heuristics that describe how the framework itself is built have been migrated to the dedicated [[skills/framework/SKILL.md|framework skill]].
 
 These include:
 
