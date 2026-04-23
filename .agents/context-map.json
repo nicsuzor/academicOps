@@ -1,8 +1,10 @@
 {
+  "version": "1.1.0",
   "spec_dirs": ["specs/"],
   "docs": [
     {
       "topic": "project_overview",
+      "type": "guide",
       "path": "README.md",
       "description": "academicOps framework overview, core loop, architecture, installation, and design principles",
       "keywords": [
@@ -17,12 +19,14 @@
     },
     {
       "topic": "framework_index",
+      "type": "index",
       "path": "aops-core/INDEX.md",
       "description": "Master index for aops-core pointing to all sub-indices (skills, workflows, rules, files, paths)",
       "keywords": ["index", "navigation", "routing", "framework structure"]
     },
     {
       "topic": "taxonomy",
+      "type": "reference",
       "path": "aops-core/TAXONOMY.md",
       "description": "Canonical definitions for all framework concepts — goal, project, epic, task, action, workflow, skill, procedure and their relationships",
       "keywords": [
@@ -46,6 +50,7 @@
     },
     {
       "topic": "axioms",
+      "type": "axiom",
       "path": "aops-core/AXIOMS.md",
       "description": "Inviolable principles and their logical derivations — fail-fast, DRY, verify-first, no workarounds",
       "keywords": [
@@ -61,42 +66,49 @@
     },
     {
       "topic": "heuristics",
+      "type": "heuristic",
       "path": "aops-core/HEURISTICS.md",
       "description": "Working hypotheses validated by evidence — task management, decomposition, CLI patterns",
       "keywords": ["heuristic", "guideline", "best practice", "evidence-based", "decomposition", "task sequencing"]
     },
     {
       "topic": "constraints",
+      "type": "heuristic",
       "path": "aops-core/CONSTRAINTS.md",
       "description": "Hard rules for framework internals — file length limits, naming conventions, enforced by pre-commit hooks",
       "keywords": ["constraint", "hard rule", "file length", "naming", "pre-commit", "enforcement"]
     },
     {
       "topic": "skills",
+      "type": "index",
       "path": "aops-core/SKILLS.md",
       "description": "Skills index for routing user requests — triggers, descriptions, and invocation patterns",
       "keywords": ["skill", "command", "routing", "trigger", "daily", "remember", "analyst", "audit", "slash command"]
     },
     {
       "topic": "tools",
+      "type": "reference",
       "path": "aops-core/TOOLS.md",
       "description": "MCP servers and standard tools available to agents — capabilities reference for routing decisions",
       "keywords": ["tools", "mcp", "capabilities", "pkb", "server", "available tools"]
     },
     {
       "topic": "scripts",
+      "type": "reference",
       "path": "aops-core/SCRIPTS.md",
       "description": "Utility scripts in scripts/ directory — developer tools, build, install, formatting",
       "keywords": ["scripts", "build", "install", "format", "utilities", "developer tools"]
     },
     {
       "topic": "enforcement_map",
+      "type": "reference",
       "path": "aops-core/enforcement-map.md",
       "description": "Maps rules to enforcement mechanisms — which rules are enforced by hooks, gates, prompts, or detection",
       "keywords": ["enforcement", "gate", "compliance", "rule", "mechanism", "blocking", "hook enforcement"]
     },
     {
       "topic": "gate_config",
+      "type": "reference",
       "path": "aops-core/hooks/gate_config.py",
       "description": "Gate configuration source of truth — tool categories, compliance subagent types, gate modes, env var injection",
       "keywords": [
@@ -112,114 +124,140 @@
     },
     {
       "topic": "gate_tests",
+      "type": "reference",
       "path": "tests/hooks/test_gate_verdicts.py",
       "description": "Gate verdict regression tests with JSON fixtures — covers all gate scenarios, block/warn/allow verdicts",
       "keywords": ["gate", "test", "verdict", "regression", "fixture", "block", "warn", "allow", "scenario"]
     },
     {
       "topic": "hook_tests_directory",
+      "type": "index",
       "path": "tests/hooks/",
       "description": "All hook tests — gate verdicts, gate config, router formatting, hydration, session env setup, autocommit",
       "keywords": ["hook", "test", "gate", "router", "hydration", "session", "autocommit", "config"]
     },
     {
       "topic": "specs_index",
+      "type": "index",
       "path": "specs/INDEX.md",
       "description": "All framework specifications grouped by tier and status — dependency chains, audit history",
       "keywords": ["spec", "specification", "index", "tier", "architecture", "dependency chain"]
     },
     {
       "topic": "prompt_hydration",
+      "type": "spec",
       "path": "specs/prompt-hydration.md",
       "description": "Prompt hydration specification — context injection, workflow selection, JIT loading, modular architecture",
       "keywords": ["hydration", "context", "prompt", "injection", "hydrator", "jit", "routing"]
     },
     {
+      "topic": "context_map_schema",
+      "type": "spec",
+      "path": "specs/context-map-schema.md",
+      "description": "Standardised schema for context-map.json — repository self-description for discovery",
+      "keywords": ["context map", "context-map", "schema", "discovery", "topic", "keyword", "type", "json"]
+    },
+    {
       "topic": "hydrator_quality",
+      "type": "spec",
       "path": "specs/hydrator-quality-escalation.md",
       "description": "Hydrator quality escalation process — in-session correction feedback loop, gap taxonomy, root cause categories",
       "keywords": ["hydrator", "quality", "escalation", "correction", "feedback", "gap", "jit", "context failure"]
     },
     {
       "topic": "core_loop_spec",
+      "type": "spec",
       "path": "specs/flow.md",
       "description": "v1.0 core loop specification — hydration, workflow execution, QA, and reflection flow",
       "keywords": ["core loop", "execution flow", "hydration", "qa", "reflection", "spec"]
     },
     {
       "topic": "enforcement_spec",
+      "type": "spec",
       "path": "specs/enforcement.md",
       "description": "5-layer enforcement architecture — how rules are enforced from prompts through hard gates",
       "keywords": ["enforcement", "architecture", "layers", "compliance", "gates", "verification"]
     },
     {
       "topic": "workflow_system",
+      "type": "spec",
       "path": "specs/workflow-system-spec.md",
       "description": "Workflow system specification — skills vs workflows, composability, constraints, markdown-based engine",
       "keywords": ["workflow", "spec", "composability", "constraint", "base workflow", "skill vs workflow"]
     },
     {
       "topic": "pr_pipeline",
+      "type": "spec",
       "path": "specs/pr-pipeline.md",
       "description": "PR lifecycle specification — bots prepare, human decides. Merge-prep, summary-and-merge, cron dispatcher",
       "keywords": ["pr", "pull request", "pipeline", "merge", "review", "ci", "github actions", "merge-prep"]
     },
     {
       "topic": "plugin_architecture",
+      "type": "spec",
       "path": "specs/plugin-architecture.md",
       "description": "Plugin architecture — component boundaries between aops-core and aops-tools, distribution model",
       "keywords": ["plugin", "architecture", "aops-core", "aops-tools", "distribution", "component boundaries"]
     },
     {
       "topic": "enforcer",
+      "type": "spec",
       "path": "specs/ultra-vires-enforcer.md",
       "description": "Ultra vires detection specification — authority boundaries, scope drift detection, compliance checking",
       "keywords": ["enforcer", "ultra vires", "authority", "compliance", "audit", "scope", "drift"]
     },
     {
       "topic": "polecat_system",
+      "type": "spec",
       "path": "specs/polecat-system.md",
       "description": "Polecat worktree system for parallel task execution — ephemeral workspaces via git worktrees",
       "keywords": ["polecat", "worktree", "parallel", "worker", "git", "isolation"]
     },
     {
       "topic": "task_management",
+      "type": "spec",
       "path": "specs/work-management.md",
       "description": "Task and work management specification — task CRUD, dependencies, strategic tracking via MCP",
       "keywords": ["task", "work", "management", "dependency", "status", "graph", "queue", "mcp"]
     },
     {
       "topic": "observability",
+      "type": "spec",
       "path": "specs/framework-observability.md",
       "description": "Framework observability specification — self-reflexive observation pipeline, metrics, feedback loops",
       "keywords": ["observability", "metrics", "logging", "feedback", "monitoring", "token usage", "self-reflexive"]
     },
     {
       "topic": "sleep_cycle",
+      "type": "spec",
       "path": "specs/sleep-cycle.md",
       "description": "Sleep cycle specification — scheduled consolidation turning write-optimised artifacts into read-optimised knowledge",
       "keywords": ["sleep", "consolidation", "memory", "episodic", "semantic", "cron", "scheduled"]
     },
     {
       "topic": "pkb_type_taxonomy",
+      "type": "spec",
       "path": "specs/pkb-type-taxonomy.md",
       "description": "PKB unified node classification — how task types, parenting rules, and graph hierarchy work",
       "keywords": ["pkb", "type", "node", "classification", "parenting", "graph hierarchy", "task type"]
     },
     {
       "topic": "vision",
+      "type": "guide",
       "path": "docs/VISION.md",
       "description": "Framework vision statement and long-term goals — where academicOps is heading",
       "keywords": ["vision", "goal", "philosophy", "design", "purpose", "future"]
     },
     {
       "topic": "testing",
+      "type": "guide",
       "path": "tests/README.md",
       "description": "Test suite overview — directory structure, how to run tests, what's tested",
       "keywords": ["test", "testing", "pattern", "hook test", "e2e", "integration", "pytest"]
     },
     {
       "topic": "context_map_workflow",
+      "type": "workflow",
       "path": "aops-core/skills/project/workflows/context-map-audit.md",
       "description": "How to create and audit .agents/context-map.json — the repo's self-description for agent discovery",
       "keywords": [
