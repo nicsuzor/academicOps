@@ -387,7 +387,6 @@ def get_modified_repos(tool_name: str, tool_input: dict[str, Any]) -> set[str]:
         r"(?:__|^|:)complete_task$",
         r"(?:__|^|:)delete_task$",
         r"(?:__|^|:)decompose_task$",
-        r"(?:__|^|:)complete_tasks$",
         r"(?:__|^|:)reorder_children$",
         r"(?:__|^|:)rebuild_index$",
     )

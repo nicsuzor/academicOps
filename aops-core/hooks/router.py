@@ -712,10 +712,8 @@ class HookRouter:
                 TASK_BINDING_TOOLS = {
                     "mcp__pkb__update_task",
                     "mcp__pkb__complete_task",
-                    "mcp__pkb__complete_tasks",
                     "update_task",
                     "complete_task",
-                    "complete_tasks",
                 }
                 if ctx.tool_name in TASK_BINDING_TOOLS:
                     tool_input = ctx.tool_input
