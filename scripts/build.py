@@ -501,7 +501,7 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
             tool_name = t.replace("__", "_")
             # Remap to Gemini tool name if mapping exists, otherwise keep as-is
             mapped = GEMINI_TOOL_NAME_MAP.get(tool_name, tool_name)
-            if mapped not in seen:
+            if mapped is not None and mapped not in seen:
                 seen.add(mapped)
                 filtered_tools.append(mapped)
 
@@ -803,6 +803,12 @@ def build_aops_core(
         imported = 0
         for m in _re.finditer(r"^@([^\s]+)", src_gemini_md.read_text(), flags=_re.MULTILINE):
             rel = m.group(1)
+            if Path(rel).is_absolute() or ".." in rel:
+                print(
+                    f"Warning: Skipping unsafe import path in GEMINI.md: {rel}",
+                    file=sys.stderr,
+                )
+                continue
             src_import = aops_root / rel
             if src_import.exists():
                 dst_import = dist_dir / rel
