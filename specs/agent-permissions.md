@@ -98,7 +98,7 @@ A scope may be granted without granting its paired `:write` variant. `git:read` 
 
 ### Agent ↔ filesystem
 
-If the agent holds any of `Read`, `Write`, `Edit`, `NotebookEdit` in `tools`, the **paths** it may reach are controlled by `file_access`. Paths are repo-relative glob patterns. Each entry declares a mode:
+If the agent holds any of `Read`, `Write`, `Edit`, `NotebookEdit`, `Glob`, `Grep` in `tools`, the **paths** it may reach are controlled by `file_access`. Paths are repo-relative glob patterns. Each entry declares a mode:
 
 ```yaml
 file_access:
@@ -125,7 +125,7 @@ Semantics:
 | `tools`            | No tool calls permitted                                         |
 | `mcp_servers`      | No MCP servers (only tools explicitly in `tools` are reachable) |
 | `bash_scopes`      | No bash — even if `Bash ∈ tools`, every call is denied          |
-| `file_access`      | No filesystem access — even if `Read`/`Write` ∈ `tools`         |
+| `file_access`      | No filesystem access — even if `Read`/`Write`/`Glob`/`Grep` ∈ `tools` |
 | `disallowed_tools` | No explicit denylist                                            |
 | `skills`           | No skill invocation (see `agent-authority.md`)                  |
 | `subagents`        | No sub-agent spawning (see `agent-authority.md`)                |
@@ -147,7 +147,7 @@ tools: <list<string>>         # Tool allowlist (canonical Claude Code names)
 
 ```yaml
 bash_scopes: <list<string>>   # REQUIRED if `Bash` ∈ tools. Empty list means no bash allowed (and `Bash` should be dropped from tools).
-file_access:                  # REQUIRED if any of Read/Write/Edit/NotebookEdit ∈ tools.
+file_access:                  # REQUIRED if any of Read/Write/Edit/NotebookEdit/Glob/Grep ∈ tools.
   read: <list<glob>>
   write: <list<glob>>
 ```
@@ -220,10 +220,10 @@ If an agent declares `git:write` but a hook in `policy_enforcer.py` blocks `git 
 In addition to the structural rules in `agent-authority.md` §Lint Rules:
 
 1. **Bash without scopes.** `Bash ∈ tools` with `bash_scopes` absent or empty is an **error**.
-2. **Filesystem tools without file_access.** Any of `Read`, `Write`, `Edit`, `NotebookEdit` in `tools` with `file_access` absent is an **error**.
+2. **Filesystem tools without file_access.** Any of `Read`, `Write`, `Edit`, `NotebookEdit`, `Glob`, `Grep` in `tools` with `file_access` absent is an **error**.
 3. **Write without read.** `file_access.write` declared without `file_access.read` is an **error** (you cannot coherently write where you cannot read).
 4. **Scope enumeration.** Every entry in `bash_scopes` MUST appear in `aops-core/policies/bash_scopes.toml`. Unknown scopes are **errors**.
-5. **Path globs.** `file_access.read` / `.write` entries MUST be repo-relative and MUST NOT start with `/` or `..`. Absolute or traversal paths are **errors**.
+5. **Path globs.** `file_access.read` / `.write` entries MUST be repo-relative and MUST NOT contain `..` or start with `/`. Absolute or traversal paths are **errors**.
 6. **Wildcard drift.** `bash_scopes: ["unrestricted"]` or `file_access.write: ["**/*"]` outside a declared orchestrator-class agent is a **warn**.
 7. **Naming.** camelCase field names (`mcpServers`, `disallowedTools`, etc.) are **warns**; lint accepts them and emits a migration hint.
 8. **Coverage.** An agent whose body text instructs a bash command family not listed in `bash_scopes` is a **warn** (prose drift detection).
@@ -256,4 +256,4 @@ The implementation work is decomposed under parent `task-d380d98f` and sibling p
 - **Scope registry location.** `aops-core/policies/bash_scopes.toml` vs. inline in `policy_enforcer.py`. Current proposal: the TOML file, for reviewability.
 - **Per-skill file_access.** Should skills declare their own `file_access` needs, intersected with the agent's grant? Current position: no — skills declare `allowed-tools` only; path access is the agent's responsibility.
 - **Transitional `mcpServers` alias.** How long to support camelCase before lint promotes warn → error. Proposal: one audit cycle after `task-b5fec0b5` lands.
-- **`file_access` symlink policy.** Current proposal: follow symlinks; the resolved target must match the grant. Alternative: deny symlinks outright. Revisit when a concrete case appears.
+- **`file_access` symlink policy.** Current proposal: **deny symlinks outright** — consistent with the deny-by-default posture and eliminates the class of attacks where a Bash-capable agent creates a symlink inside an allowed directory pointing to a sensitive path outside the worktree. Alternative: follow symlinks with resolved-path check (resolved target must fall within the grant and the worktree). Revisit if a concrete case requires symlink traversal.
