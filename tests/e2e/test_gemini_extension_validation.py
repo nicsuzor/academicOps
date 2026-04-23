@@ -40,6 +40,7 @@ when it prints `Extension validation failed.` Tests must grep stderr,
 
 from __future__ import annotations
 
+import os
 import re
 import shutil
 import subprocess
@@ -142,7 +143,10 @@ def _parse_frontmatter(md_path: Path) -> dict:
     text = md_path.read_text(encoding="utf-8")
     if not text.startswith("---"):
         return {}
-    _, fm, _ = text.split("---", 2)
+    parts = text.split("---", 2)
+    if len(parts) < 3:
+        return {}
+    _, fm, _ = parts
     return yaml.safe_load(fm) or {}
 
 
@@ -301,7 +305,11 @@ class TestRouterToolNames:
             "complete_tasks": "complete_task",
             "mcp__pkb__complete_tasks": "mcp__pkb__complete_task",
         }
-        offenders = {bad: good for bad, good in known_typos.items() if bad in text}
+        offenders = {
+            bad: good
+            for bad, good in known_typos.items()
+            if re.search(r"\b" + re.escape(bad) + r"\b", text)
+        }
         assert not offenders, (
             f"Router contains tool-name typos that leak into auto-saved.toml: {offenders}"
         )
@@ -398,7 +406,7 @@ class TestGeminiCliListExtensions:
         ext_root.parent.mkdir(parents=True, exist_ok=True)
         shutil.copytree(DIST, ext_root)
 
-        env = {"HOME": str(fake_home), "PATH": __import__("os").environ["PATH"]}
+        env = {**os.environ, "HOME": str(fake_home)}
         return subprocess.run(
             [shutil.which("gemini") or "gemini", "--list-extensions"],
             capture_output=True,
