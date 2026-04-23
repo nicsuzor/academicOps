@@ -80,6 +80,7 @@ Task system, knowledge base, and MCP tool interfaces.
 | Spec                           | Status | Purpose                                                                         |
 | ------------------------------ | ------ | ------------------------------------------------------------------------------- |
 | [[work-management.md]]         | ✅     | Task CRUD, dependencies, strategic tracking via MCP                             |
+| [[context-map-schema.md]]      | ✅     | **SSoT**: context-map.json schema for repo self-description and discovery       |
 | [[mcp-decomposition-tools.md]] | ✅     | Data access layer for task decomposition (dumb server, smart agent)             |
 | [[pkb-server-spec.md]]         | 📋     | Combined CLI + MCP server for knowledge base (mem/Rust)                         |
 | [[bd-markdown-integration.md]] | 📋     | Connect tasks to project markdown with auto-decomposition                       |

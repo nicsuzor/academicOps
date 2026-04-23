@@ -109,7 +109,7 @@ These expectations define the verifiable behaviour of the Effectual Planning Age
 
 ## Three Operational Modes
 
-The planner addresses three levels of challenge. See [[TAXONOMY.md]] for canonical definitions.
+The planner addresses three levels of challenge. See [[aops-core/skills/remember/references/TAXONOMY.md]] for canonical definitions.
 
 **Mode 1: Strategic Intake** (UP — adding to the graph)
 
@@ -125,7 +125,7 @@ The agent uses graph topology to rank work by learning potential: which tasks un
 
 ## Current Feature Set
 
-**Work hierarchy** (see [[TAXONOMY.md]])
+**Work hierarchy** (see [[aops-core/skills/remember/references/TAXONOMY.md]])
 
 ```
 PROJECT → EPIC → TASK → ACTION
@@ -135,7 +135,7 @@ Projects are bounded efforts (tree roots). Epics are PR-sized units of verifiabl
 
 **Node lifecycle**
 
-Status values follow the canonical set — see [[aops-core/TAXONOMY.md#status-values-and-transitions]]. Typical flow: `inbox` → `ready` → `queued` → `in_progress` → `merge_ready` → `done` (with `blocked`, `paused`, `someday`, `cancelled` as alternative terminal/pause states).
+Status values follow the canonical set — see [[aops-core/skills/remember/references/TAXONOMY.md#status-values-and-transitions]]. Typical flow: `inbox` → `ready` → `queued` → `in_progress` → `merge_ready` → `done` (with `blocked`, `paused`, `someday`, `cancelled` as alternative terminal/pause states).
 
 Nodes can divide (emit children), merge (consolidate), or promote subtasks to full nodes.
 

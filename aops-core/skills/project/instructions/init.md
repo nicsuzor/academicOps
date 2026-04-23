@@ -3,7 +3,33 @@
 Execute this procedure after Phase 1 discovery. You have the user's answers
 about project type, tooling, and preferences. Now build it.
 
+## Operating principles
+
+- **Idempotency first.** Before each step that creates external state (repo, PKB
+  node, polecat entry), check whether it already exists. If it does, HALT and
+  report — do not overwrite or create a duplicate. The user can decide whether
+  to resume, rename, or abort.
+- **No rollback on partial failure.** If a later step fails, do NOT tear down
+  earlier steps. Report exactly what succeeded, what failed, and the exact
+  command to resume from the failure point. A half-scaffolded repo is
+  recoverable; a half-deleted one is not.
+- **Collect a running log** of what you created as you go. You will print this
+  in Step 9 regardless of whether you reached the end or bailed out early.
+
 ## Step 1: Create the GitHub repository
+
+First, check for an existing repo (idempotency):
+
+```bash
+gh repo view <org>/<project-name> >/dev/null 2>&1 && echo "EXISTS"
+```
+
+If it exists, **HALT**. Tell the user the repo is already registered and ask
+whether they want to (a) pick a different name, (b) resume scaffolding inside
+the existing repo (skip to Step 2 after cloning), or (c) abort. Do not proceed
+without an explicit decision.
+
+If it does not exist, create it:
 
 ```bash
 gh repo create <org>/<project-name> --<visibility> --clone
@@ -13,6 +39,9 @@ git checkout -B main  # ensure default branch (creates or resets to main)
 
 If the user wants to initialise an existing local directory instead, skip repo
 creation and work in place.
+
+On failure (auth error, name collision, network): HALT. Nothing has been
+created locally yet — no rollback needed. Print the error and stop.
 
 ## Step 2: Base structure (all projects)
 
@@ -516,7 +545,19 @@ Create `.agents/context-map.json` by following the [[context-map-audit]] workflo
 
 ## Step 7: PKB integration
 
-Create a project node in the personal knowledge base:
+**Search for duplicates first.** Project nodes are long-lived; two nodes for
+the same project cause downstream confusion (which tasks hang off which?).
+
+```
+mcp__pkb__task_search(query="<project title or slug>", limit=10)
+```
+
+Inspect the results. If a `type=project` node with a matching title or slug
+already exists, **HALT** and ask the user: (a) link work to the existing node,
+(b) rename the new project to disambiguate, or (c) abort. Do not create a
+second node silently.
+
+If no duplicate exists, create the project node:
 
 ```
 mcp__pkb__create_task(
@@ -528,17 +569,47 @@ mcp__pkb__create_task(
 )
 ```
 
-## Step 8: Git, pre-commit, and registration
+Record the returned node ID in your running log — Step 9 will reference it.
+If creation fails, note the failure and continue to Step 8; the repo is still
+usable without a PKB node, and the user can retry later with the same command.
+
+## Step 8: Git, pre-commit, and polecat registration
+
+Initial commit and push:
 
 ```bash
 uv sync                           # install Python dependencies
-pre-commit install                 # activate hooks
+pre-commit install                # activate hooks
 git add -A
 git commit -m "feat: initial project scaffolding"
 git push -u origin main
 ```
 
-Register with polecat by adding to `~/.polecat/polecat.yaml`:
+If `uv sync` or `pre-commit install` fails (missing tool, locked file, network):
+continue anyway — they can be re-run by the user. Commit and push are the
+load-bearing steps; if either of those fails, HALT and report the exact command
+to retry. Do not delete the local repo.
+
+### Register with polecat (git-native propagation)
+
+Per decision `epic-fe52f422`, polecat registration is git-native: edit the
+sessions repo's `projects.yaml`, commit, and push. Other machines pick it up
+via `polecat sync` + `setup-machine.sh`.
+
+```bash
+# $AOPS_SESSIONS is the sessions repo (e.g. nicsuzor/sessions)
+cd "$AOPS_SESSIONS"
+git pull --rebase                 # avoid stale-write conflicts
+```
+
+Check for an existing entry before appending (idempotency):
+
+```bash
+grep -E "^\s*<slug>:" "$AOPS_SESSIONS/projects.yaml" && echo "EXISTS"
+```
+
+If the slug already appears, **HALT** and ask the user whether to reuse it,
+rename, or abort. Otherwise append:
 
 ```yaml
 <slug>:
@@ -546,31 +617,62 @@ Register with polecat by adding to `~/.polecat/polecat.yaml`:
   default_branch: main
 ```
 
-Remind the user this is machine-specific — repeat on other machines.
+Commit and push:
 
-## Step 9: Summary
+```bash
+git add projects.yaml
+git commit -m "chore(projects): register <slug>"
+git push
+```
 
-Print a clear summary of what was created:
+Then tell the user: on other machines, run `polecat sync` followed by
+`setup-machine.sh` to regenerate their local `polecat.yaml`.
+
+If the sessions repo push fails (auth, conflict): the local repo and PKB node
+are already in place — the user can retry this step manually. Do not unwind
+earlier work.
+
+## Step 9: Report
+
+Print a summary covering three things: what was created, what failed (if
+anything), and what was deliberately deferred to the user. Be explicit — the
+user should not need to guess which parts are done.
 
 ```
-Project '<name>' created successfully.
+Project '<name>' — scaffolding report
 
 Repository: https://github.com/<org>/<name>
 Local path: <path>
+PKB node:   <task-id or "not created">
 
 Created:
   <directory tree of what was actually scaffolded>
 
-Next steps:
-  1. Set up secrets for CI/CD:
-     gh secret set CLAUDE_CODE_OAUTH_TOKEN --repo <org>/<name>
+Failed (if any):
+  <step name>: <error, and the exact command to retry>
 
-  2. Install async QA agents (optional):
+Deferred to user (by design):
+
+  1. GitHub OAuth token for Claude Code workflows (per decision epic-2964b83a):
+     cd <path> && claude setup-github
+     (This provisions CLAUDE_CODE_OAUTH_TOKEN automatically. Do NOT set it by
+     hand with `gh secret set` — the built-in mechanism is the supported path.)
+
+  2. Async QA agents (optional):
      $AOPS/scripts/install-async-qa-agents.sh <path>
 
-  3. Add to polecat on other machines:
-     Edit ~/.polecat/polecat.yaml
+  3. Branch protection: not set — solo project default. Enable in GitHub
+     settings if the project grows a team.
 
-  4. Start working:
-     cd <path> && claude
+  4. CI/CD beyond claude.yml: not configured. Add workflows as needed.
+
+  5. Polecat on other machines:
+     polecat sync && $AOPS/scripts/setup-machine.sh
+
+Start working:
+  cd <path> && claude
 ```
+
+If any step HALTed for idempotency (existing repo, duplicate PKB node,
+existing polecat slug), the report should say so clearly at the top — the user
+resumed or aborted, and the summary should match reality.

@@ -21,7 +21,7 @@ permalink: skills-analyst-skill
 
 # Analyst
 
-> **Taxonomy note**: This skill provides domain expertise (HOW) for research data analysis using dbt and Streamlit. See [[TAXONOMY.md]] for the skill/workflow distinction.
+> **Taxonomy note**: This skill provides domain expertise (HOW) for research data analysis using dbt and Streamlit. See [[aops-core/skills/remember/references/TAXONOMY.md]] for the skill/workflow distinction.
 
 ## Overview
 

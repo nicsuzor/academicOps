@@ -207,7 +207,7 @@ queued -> in_progress -> merge_ready -> done
          blocked            review
 ```
 
-**Statuses**: canonical set per [[aops-core/TAXONOMY.md#status-values-and-transitions]] — `inbox`, `ready`, `queued`, `in_progress`, `merge_ready`, `review`, `done`, `blocked`, `paused`, `someday`, `cancelled`.
+**Statuses**: canonical set per [[aops-core/skills/remember/references/TAXONOMY.md#status-values-and-transitions]] — `inbox`, `ready`, `queued`, `in_progress`, `merge_ready`, `review`, `done`, `blocked`, `paused`, `someday`, `cancelled`.
 
 **Success criteria**:
 

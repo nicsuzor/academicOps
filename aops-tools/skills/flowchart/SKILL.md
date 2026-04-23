@@ -20,7 +20,7 @@ title: Mermaid Flowchart Design Skill
 
 # Mermaid Flowchart Design Skill
 
-> **Taxonomy note**: This skill provides domain expertise (HOW) for creating Mermaid flowcharts. See [[TAXONOMY.md]] for the skill/workflow distinction.
+> **Taxonomy note**: This skill provides domain expertise (HOW) for creating Mermaid flowcharts. See [[aops-core/skills/remember/references/TAXONOMY.md]] for the skill/workflow distinction.
 
 **Purpose**: Create Mermaid flowcharts that are clear, readable, and visually attractive.
 

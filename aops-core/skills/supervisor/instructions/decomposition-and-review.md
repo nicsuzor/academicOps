@@ -254,7 +254,7 @@ update_task(id=task_id, updates={"status": "review", "body": synthesis_markdown}
 
 After synthesizing Pauli + RBG verdicts (Phase 2) and BEFORE any DISPATCH
 action, the supervisor MUST check the parent task's status. Per
-[[../../../TAXONOMY.md]] (status transitions — see `TAXONOMY.md:172`),
+[[../../remember/references/TAXONOMY.md]] (status transitions — see `TAXONOMY.md:172`),
 agents pull only from `queued`. The transition from `review` → `queued` is
 the **human approval record** — no separate marker, no extra metadata.
 

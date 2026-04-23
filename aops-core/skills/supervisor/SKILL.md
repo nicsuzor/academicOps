@@ -141,38 +141,49 @@ intervention. See [[instructions/worker-dispatch]] "Critic Gate."
 
 ## PR Review Pipeline
 
-PRs arrive from workers (polecat branches, Jules PRs). The
-`pr-review-pipeline.yml` GitHub Action handles automated review. Human
-merges via GitHub UI or auto-merge for clean PRs.
+PRs arrive from workers (polecat branches, Jules PRs). The pipeline is
+specified in [[specs/pr-pipeline.md]]; bots prepare, the human decides once
+via a GitHub Environment approval gate.
 
-**PR review pipeline** (`pr-review-pipeline.yml`) has three jobs:
+**Phase 1 — CI + Axiom Review (on every push):**
 
-1. **rbg-and-marsha** — scope/compliance + acceptance checks. Runs first on
-   PR open/synchronize, giving bot reviewers (Gemini, Copilot) time to post.
-2. **claude-review** — bot comment triage. Runs after enforcer-and-qa (~3 min
-   delay). Triages bot reviewer comments as genuine bug / valid improvement /
-   false positive / scope creep, and pushes fixes for actionable items.
-3. **claude-lgtm-merge** — human-triggered merge agent. Fires on human LGTM
-   comment, PR approval, or workflow_dispatch. Addresses all outstanding review
-   comments, runs lint/tests, and posts final status.
+1. `pr-pipeline.yml` — sequential `lint` → `typecheck` → `pytest`. Lint uses
+   a PAT so autofix pushes trigger a clean pipeline restart.
+2. `agent-enforcer.yml` — axiom compliance review, fires on `workflow_run`
+   when CI completes. Can push fixes directly or request changes.
+
+**Phase 2 — Merge Prep (cron-driven, no human trigger):**
+
+3. `merge-prep-cron.yml` — dispatcher. Runs on `workflow_run` + 30-min cron.
+   Qualifies PRs ≥15 min old with no in-progress run and no terminal
+   `merge-prep-status`.
+4. `agent-merge-prep.yml` — the Claude merge-prep agent. Triages all review
+   feedback, fixes CI failures, resolves conflicts, posts a triage summary,
+   approves the PR, sets `merge-prep-status: success`, and triggers
+   `summary-and-merge.yml`.
+
+**Phase 3 — Human Decision (Environment gate):**
+
+5. `summary-and-merge.yml` Job 1 posts the decision brief comment. Job 2
+   requires the `production` GitHub Environment — the maintainer clicks
+   **Approve** in the Actions environment UI, and the PR squash-merges
+   automatically. Clicking **Reject** holds the PR open.
 
 **Pipeline limitations:**
 
 - PRs that modify workflow files (`.github/workflows/`) cannot get pipeline
   review due to OIDC validation (workflow content must match default branch).
   These PRs need manual review and admin merge.
-- Bot reviewers take 2–5 min to post. The pipeline ordering (enforcer first)
-  provides enough delay for most, but Copilot may occasionally post after
-  triage runs.
+- Bot reviewers take 2–5 min to post. The 15-minute age gate in the
+  merge-prep dispatcher preserves the bazaar window.
 
-**Merge flow:**
+**Merge flow (what the human sees):**
 
-- Auto-merge is enabled. Once the merge agent approves and CI passes, GitHub
-  merges automatically.
-- Human LGTM comment (e.g., "lgtm", "merge", "@claude merge") triggers the
-  merge agent.
+- Decision brief comment appears on the PR once merge-prep graduates it.
+- Approval happens in the GitHub Environments UI, not as a PR comment —
+  there is no "lgtm" / "merge" / "@claude merge" trigger.
 - Admin bypass: `gh pr merge <PR> --squash --admin --delete-branch` for PRs
-  that can't get pipeline approval (workflow PRs, urgent fixes).
+  that can't progress through the pipeline (workflow PRs, urgent fixes).
 
 **Task completion on merge**: When a PR merges, a GitHub Action parses the
 task ID from the branch name (`polecat/aops-XXXX`) and marks the task done.
@@ -225,11 +236,13 @@ External triggers that start the supervision loop.
   the task claimed but no worktree. Recovery: `polecat reset-stalled --hours 0
   --force` then re-dispatch. Pre-flight: `pkb show <task-id>` AND a PKB MCP
   `get_task` before dispatching a freshly-pulled task.
-- **`merge-prep-status: waiting for bazaar window and triage`** — gating
-  mechanism is not fully documented here. A PR may have all CI checks green
-  but still sit in this pending state indefinitely. Supervisor cannot clear
-  this; a human LGTM or explicit admin merge is required. **TODO**: document
-  bazaar-window rules and how supervisor should act when encountered.
+- **`merge-prep-status: pending`** — set by `pr-pipeline.yml`'s initialize
+  job and cleared only when the merge-prep agent sets `success` (graduation)
+  or `failure` (after 3 consecutive failures). A PR with green CI may still
+  sit "yellow" until the merge-prep agent runs. The supervisor cannot clear
+  this directly; normal resolution is to wait for the next cron tick or
+  dispatch `agent-merge-prep.yml` manually via `gh workflow run`. Admin
+  bypass remains available for urgent cases.
 
 ## Quick Reference
 
@@ -283,3 +296,20 @@ polecat sync                           # sync mirrors after merging
 | Reasonable adds/dels, targeted files | `gh pr merge <N> --squash --delete-branch`                  |
 | Code already in main (stale branch)  | `gh pr close <N> --comment "Stale branch"`                  |
 | Massive deletions (stale mirror)     | `gh pr close <N> --comment "Repo nuke"` then `polecat sync` |
+
+## Task Assignment Rules
+
+- **Default assignee**: Set to `polecat` or leave unassigned.
+- **Human assignment**: Never assign to `nic` unless the task reduces to a genuine binary human choice (e.g., "Do we use Pattern A or Pattern B?").
+- **Decision subtasks**: When a real choice IS needed, create a minimal choice subtask that blocks the epic, providing full context to decide. Never assign the parent epic back to `nic`.
+- **Underspecified tasks**: Even underspecified epics should not go to `nic`: file a research/decomposition task for an agent to do the legwork first.
+
+## Handover
+
+**Always leave a loose thread.** Every agent that completes work as part of a chain MUST leave at least one PKB task that says what comes next — unless the work is fully complete with no follow-ups. Use `mcp__pkb__append` to record information mid-workflow and `mcp__pkb__complete_task` to close a task with a final note.
+
+- If dispatch is blocked: file a refinement/blocking task.
+- If a phase is complete but the epic remains: ensure the next subtask is clear and in `ready` or `queued`.
+- Never assume the user knows the graph. Link to the next task explicitly.
+
+Example: `mcp__pkb__create_task(parent="epic-123", title="Phase 2: Implementation", body="Phase 1 (Research) complete. Next: implement the proposed changes in src/...")`

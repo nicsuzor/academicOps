@@ -15,7 +15,7 @@ def sample_docs():
     return [
         {
             "topic": "taxonomy",
-            "path": "aops-core/TAXONOMY.md",
+            "path": "aops-core/skills/remember/references/TAXONOMY.md",
             "description": "Canonical definitions for all framework concepts",
             "keywords": [
                 "taxonomy",
