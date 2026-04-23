@@ -12,7 +12,7 @@ mcpServers:
   - playwright
 skills:
   - qa
-subagents: []
+subagents: [rbg]
 ---
 
 # Marsha — The QA Reviewer

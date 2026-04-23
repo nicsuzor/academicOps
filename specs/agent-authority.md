@@ -209,6 +209,7 @@ Every agent file is audited against this spec. The compliance matrix lives at `s
 ## Relation to Other Specs
 
 - **`specs/ultra-vires-enforcer.md`** — The enforcer reads the declared authority from this spec's frontmatter and flags deviations in session narratives.
+- **`specs/skill-delegation.md`** — Refines invocation mechanics (Skill / Agent / direct prompt), nested delegation, context-passing contract, and orchestrator spawn matrices on top of this authority envelope.
 - **`specs/orchestrator-boundary.md`** — The CLI orchestrator's allow/deny tables are one specific instance of a declared authority envelope.
 - **`specs/enforcement.md`** — Frontmatter is an L3 (structural) control; the lint is L4 (detection); hooks remain L5 (hard block).
 - **`specs/plugin-architecture.md`** — Plugin agents (when they exist) conform to this same schema; plugin-scoped MCP names follow `mcp__plugin_<plugin>_<server>__<tool>`.

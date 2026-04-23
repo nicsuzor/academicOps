@@ -32,6 +32,7 @@ if str(AOPS_CORE_DIR) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE_DIR))
 
 try:
+    import lib.session_naming as session_naming
     from lib.gate_model import GateResult, GateVerdict
     from lib.gates.registry import GateRegistry
     from lib.hook_utils import is_subagent_session
@@ -351,7 +352,14 @@ class HookRouter:
         # 9. Precompute values
         short_hash = get_session_short_hash(session_id)
 
-        # 10. Build Context and POP processed fields from raw_input
+        # 10. Metadata (aops-d9ba7159)
+        machine = session_naming.get_machine_name()
+        repo = session_naming.get_repo_name()
+        crew = session_naming.resolve_crew_name()
+        provider = session_naming.get_provider_name()
+        task_id = os.environ.get("AOPS_TASK_ID")
+
+        # 11. Build Context and POP processed fields from raw_input
         # We pop now so the remainder in ctx.raw_input is "extra" data
         processed_fields = [
             "hook_event_name",
@@ -387,6 +395,12 @@ class HookRouter:
             slug=slug,
             is_subagent=is_subagent,
             subagent_type=subagent_type,
+            # Metadata (aops-d9ba7159)
+            machine=machine,
+            provider=provider,
+            crew=crew,
+            repo=repo,
+            task_id=task_id,
             # Precomputed values
             session_short_hash=short_hash,
             # Event Data

@@ -32,6 +32,14 @@ class SessionSummary(TypedDict, total=False):
     user_prompts: list[list[str]]
     tasks: list[dict[str, Any]]
 
+    # Metadata (aops-d9ba7159)
+    machine: str
+    provider: str
+    crew: str
+    repo: str
+    task_id: str
+    slug: str
+
 
 def get_session_summary_dir() -> Path:
     """Get directory for session summary files.

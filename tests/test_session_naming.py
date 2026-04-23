@@ -105,45 +105,45 @@ class TestGetSessionShortform:
         result = get_session_shortform(
             crew_name=None, repo="academicops", machine="nuc", provider="claude"
         )
-        assert result == "academicops-nuc-claude"
+        assert result == "academicops"
 
     def test_manual_gemini(self):
         result = get_session_shortform(
             crew_name=None, repo="writing", machine="mbp", provider="gemini"
         )
-        assert result == "writing-mbp-gemini"
+        assert result == "writing"
 
     def test_crew_claude(self):
         result = get_session_shortform(
             crew_name="gloria", repo="academicops", machine="nuc", provider="claude"
         )
-        assert result == "gloria-academicops-nuc-claude"
+        assert result == "gloria-academicops"
 
     def test_crew_gemini(self):
         result = get_session_shortform(
             crew_name="banjo", repo="buttermilk", machine="nuc", provider="gemini"
         )
-        assert result == "banjo-buttermilk-nuc-gemini"
+        assert result == "banjo-buttermilk"
 
     def test_sanitizes_components(self):
         result = get_session_shortform(
             crew_name="My Crew", repo="My.Repo", machine="DEV-01", provider="claude"
         )
         # Dashes are stripped from shortform components to keep the delimiter unambiguous
-        assert result == "mycrew-myrepo-dev01-claude"
+        assert result == "mycrew-myrepo"
 
     def test_dashed_repo_name_no_crew(self):
         """Repo names with dashes must not break parsing — dashes are collapsed."""
         result = get_session_shortform(
             crew_name=None, repo="my-project", machine="nuc", provider="claude"
         )
-        assert result == "myproject-nuc-claude"
+        assert result == "myproject"
 
     def test_dashed_repo_name_with_crew(self):
         result = get_session_shortform(
             crew_name="gloria", repo="my-project", machine="nuc", provider="claude"
         )
-        assert result == "gloria-myproject-nuc-claude"
+        assert result == "gloria-myproject"
 
 
 # --- generate_session_filename ---
@@ -160,7 +160,7 @@ class TestGenerateSessionFilename:
             provider="claude",
             artifact_type="transcript-full",
         )
-        assert result == "20260411-1430-a1b2c3d4-academicops-nuc-claude-fix-hook-paths-full.md"
+        assert result == "20260411-1430-a1b2c3d4-academicops-fix-hook-paths-full.md"
 
     def test_transcript_abridged(self):
         result = generate_session_filename(
@@ -172,7 +172,7 @@ class TestGenerateSessionFilename:
             provider="claude",
             artifact_type="transcript-abridged",
         )
-        assert result == "20260411-1430-a1b2c3d4-academicops-nuc-claude-fix-hook-paths-abridged.md"
+        assert result == "20260411-1430-a1b2c3d4-academicops-fix-hook-paths-abridged.md"
 
     def test_insights(self):
         result = generate_session_filename(
@@ -184,7 +184,7 @@ class TestGenerateSessionFilename:
             provider="claude",
             artifact_type="insights",
         )
-        assert result == "20260411-1430-a1b2c3d4-academicops-nuc-claude-fix-hook-paths.json"
+        assert result == "20260411-1430-a1b2c3d4-academicops-fix-hook-paths.json"
 
     def test_hooks(self):
         result = generate_session_filename(
@@ -196,7 +196,7 @@ class TestGenerateSessionFilename:
             provider="claude",
             artifact_type="hooks",
         )
-        assert result == "20260411-1430-a1b2c3d4-academicops-nuc-claude-fix-hook-paths-hooks.jsonl"
+        assert result == "20260411-1430-a1b2c3d4-academicops-fix-hook-paths-hooks.jsonl"
 
     def test_client(self):
         result = generate_session_filename(
@@ -208,7 +208,7 @@ class TestGenerateSessionFilename:
             provider="claude",
             artifact_type="client",
         )
-        assert result == "20260411-1430-a1b2c3d4-academicops-nuc-claude-fix-hook-paths-client.jsonl"
+        assert result == "20260411-1430-a1b2c3d4-academicops-fix-hook-paths-client.jsonl"
 
     def test_with_crew(self):
         result = generate_session_filename(
@@ -221,9 +221,7 @@ class TestGenerateSessionFilename:
             provider="claude",
             artifact_type="transcript-full",
         )
-        assert (
-            result == "20260411-1430-c3d4e5f6-gloria-academicops-nuc-claude-refactor-tests-full.md"
-        )
+        assert result == "20260411-1430-c3d4e5f6-gloria-academicops-refactor-tests-full.md"
 
     def test_invalid_artifact_type(self):
         with pytest.raises(ValueError, match="Unknown artifact_type"):
@@ -292,7 +290,7 @@ class TestGenerateBaseName:
             machine="nuc",
             provider="claude",
         )
-        assert result == "20260411-1430-a1b2c3d4-academicops-nuc-claude-fix-paths"
+        assert result == "20260411-1430-a1b2c3d4-academicops-fix-paths"
 
     def test_all_artifacts_share_base(self):
         kwargs = {
@@ -382,9 +380,33 @@ class TestParseSessionFilename:
         assert parse_session_filename("README.md") is None
         assert parse_session_filename("") is None
 
-    def test_old_format_returns_none(self):
-        # Old format without minutes and shortform — should not parse
-        assert parse_session_filename("20260411-14-academicops-a1b2c3d4-slug-full.md") is None
+    def test_v4_legacy_format_parses(self):
+        """v4.0.0 format with embedded machine/provider should still parse."""
+        filename = "20260411-1430-a1b2c3d4-gloria-academicops-nuc-claude-fix-hook-paths-full.md"
+        parsed = parse_session_filename(filename)
+        assert parsed is not None
+        assert parsed.session_id == "a1b2c3d4"
+        assert parsed.crew == "gloria"
+        assert parsed.repo == "academicops"
+        assert parsed.machine == "nuc"
+        assert parsed.provider == "claude"
+        assert parsed.slug == "fix-hook-paths"
+        assert parsed.variant == "-full"
+        assert parsed.ext == ".md"
+
+    def test_v4_legacy_format_no_crew_parses(self):
+        """v4.0.0 format with embedded machine/provider (no crew) should still parse."""
+        filename = "20260411-1430-a1b2c3d4-academicops-nuc-claude-fix-hook-paths-full.md"
+        parsed = parse_session_filename(filename)
+        assert parsed is not None
+        assert parsed.session_id == "a1b2c3d4"
+        assert parsed.crew is None
+        assert parsed.repo == "academicops"
+        assert parsed.machine == "nuc"
+        assert parsed.provider == "claude"
+        assert parsed.slug == "fix-hook-paths"
+        assert parsed.variant == "-full"
+        assert parsed.ext == ".md"
 
 
 # --- Round-trip tests ---
