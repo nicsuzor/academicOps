@@ -396,6 +396,23 @@ def validate_gemini_agent_schema(frontmatter: dict, filename: str) -> dict:
                 f"Agent '{filename}': temperature must be between 0.0 and 2.0, got {temp}"
             )
 
+    # Whitelist-and-drop: Gemini rejects unknown keys. Claude-only fields like
+    # skills, subagents, mcpServers, disallowedTools, permissionMode, maxTurns
+    # (camelCase), effort, background, isolation are silently stripped here.
+    GEMINI_ALLOWED_KEYS = {
+        "name",
+        "description",
+        "kind",
+        "tools",
+        "model",
+        "temperature",
+        "max_turns",
+        "timeout_mins",
+    }
+    for key in list(frontmatter.keys()):
+        if key not in GEMINI_ALLOWED_KEYS:
+            del frontmatter[key]
+
     return frontmatter
 
 
@@ -439,6 +456,7 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
         # Skills/Agents
         "Skill": "activate_skill",
         "Task": "activate_skill",
+        "Agent": "activate_skill",
         # Web operations
         "WebFetch": "web_fetch",
         "WebSearch": "google_web_search",
@@ -473,13 +491,19 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
         return content
 
     if platform == "gemini":
-        # Remap tool names for Gemini
-        filtered_tools = []
+        # Remap tool names for Gemini, preserving order and dropping duplicates
+        # (multiple Claude tools can map to a single Gemini tool, e.g. Skill/Task/Agent
+        # all collapse to activate_skill).
+        filtered_tools: list[str] = []
+        seen: set[str] = set()
         for t in original_tools:
             # Convert double underscores to single underscores for Gemini MCP tool names
             tool_name = t.replace("__", "_")
             # Remap to Gemini tool name if mapping exists, otherwise keep as-is
-            filtered_tools.append(GEMINI_TOOL_NAME_MAP.get(tool_name, tool_name))
+            mapped = GEMINI_TOOL_NAME_MAP.get(tool_name, tool_name)
+            if mapped not in seen:
+                seen.add(mapped)
+                filtered_tools.append(mapped)
 
         frontmatter["tools"] = filtered_tools
         # Remove 'color' field - not supported by Gemini CLI
@@ -521,6 +545,7 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
             "Bash": "Bash",
             "Skill": "Skill",
             "Task": "Task",
+            "Agent": "Agent",
             "WebFetch": "WebFetch",
             "WebSearch": "WebSearch",
             "TodoWrite": "TodoWrite",
@@ -760,6 +785,37 @@ def build_aops_core(
         hooks_json_src = hooks_src / "hooks.json"
         if hooks_json_src.exists():
             _generate_gemini_hooks_json(hooks_json_src, hooks_dst / "hooks.json")
+
+    # 2b. Copy Gemini context file (referenced by gemini-extension.json as
+    # contextFileName). It lives at the repo root, not inside aops-core/.
+    # GEMINI.md uses `@path` imports; resolve each referenced file once and
+    # ship it alongside so Gemini's ImportProcessor can satisfy the imports.
+    if platform == "gemini":
+        src_gemini_md = aops_root / "GEMINI.md"
+        if not src_gemini_md.exists():
+            print(f"Error: {src_gemini_md} not found.", file=sys.stderr)
+            sys.exit(1)
+        safe_copy(src_gemini_md, dist_dir / "GEMINI.md")
+        print(f"  ✓ Copied GEMINI.md -> {dist_dir / 'GEMINI.md'}")
+
+        import re as _re
+
+        imported = 0
+        for m in _re.finditer(r"^@([^\s]+)", src_gemini_md.read_text(), flags=_re.MULTILINE):
+            rel = m.group(1)
+            src_import = aops_root / rel
+            if src_import.exists():
+                dst_import = dist_dir / rel
+                dst_import.parent.mkdir(parents=True, exist_ok=True)
+                safe_copy(src_import, dst_import)
+                imported += 1
+            else:
+                print(
+                    f"Warning: GEMINI.md imports {rel} but {src_import} not found.",
+                    file=sys.stderr,
+                )
+        if imported:
+            print(f"  ✓ Resolved {imported} @-imports referenced by GEMINI.md")
 
     # 3. Extension Manifest / Plugin Info
     if platform == "gemini":
