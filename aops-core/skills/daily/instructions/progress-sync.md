@@ -86,9 +86,9 @@ Read each session JSON from `$AOPS_SESSIONS/summaries/YYYYMMDD*.json`. Extract:
 | Prompt mentions PR/deploy/CI/infra/config/tooling; or project is framework, tooling, or personal config (tagged in ACA_DATA) | **Infrastructure** |
 | Email, calendar, scheduling, admin                                                                                           | **Administrative** |
 
-Use the user's prompt `description` text as the primary signal. Project name is a fallback — check the project's tags or category in ACA_DATA rather than hardcoding names. When ambiguous, prefer research classification — the daily skill's job is to surface research work, not bury it.
+Use the user's prompt `description` text as the primary signal. Project name is a fallback — check the project's tags or category in ACA_DATA rather than hardcoding names.
 
-**Why this matters**: Session Flow and Today's Story must lead with research sessions. Infrastructure sessions with high output (many PRs, many tasks) are visually impressive but represent lower-significance work. An interactive research session with 4 prompts is the day's headline; 5 autonomous infrastructure sessions are a footnote.
+**Classification is descriptive only.** Do not reorder Session Flow or Today's Log entries by work type. Research sessions do not "lead"; infrastructure sessions are not "footnotes". Group by interaction pattern (Interactive / Dispatched / Autonomous) and within each group list chronologically. The user ranks their own day — see `SKILL.md` §"Purpose" on the no-prioritisation rule.
 
 **Incremental filtering**: After listing JSONs, read the current daily note's Session Log table. Extract session IDs already present. Filter the JSON list to exclude already-processed sessions. This prevents duplicate entries on repeated syncs.
 
@@ -182,7 +182,7 @@ Using **Edit tool** (not Write) to preserve existing content:
 
 ### Step 4.4.5: Generate Goals vs. Achieved Reflection
 
-If the daily note contains a goals section (e.g., "## Things I want to achieve today", "## Focus", "### My priorities"), generate a reflection comparing stated intentions against actual outcomes.
+If the daily note contains a goals section (e.g., "## Things I want to achieve today", "## Status", "### My priorities"), generate a reflection comparing stated intentions against actual outcomes.
 
 **For each stated goal/priority**:
 

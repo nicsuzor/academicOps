@@ -1,8 +1,8 @@
-# Daily Note: Work Summary
+# Daily Note: Today's Log
 
-## 5. Work Summary
+## 5. Today's Log
 
-After progress sync, generate a brief natural language summary of the day's work. This is the **key output** that the user sees both in the daily note and in the terminal. When running multiple times a day, emphasize recent momentum and context shifts.
+After progress sync, generate a factual account of the day's work for the `## Today's Log` section. This is the **key retrospective** the user sees in the daily note and in the terminal. It is a log, not an editorial — report what happened, not what mattered.
 
 ### Work date vs. calendar date
 
@@ -12,7 +12,7 @@ Resolve the work date in this order:
 
 1. If the user explicitly names a date, use that.
 2. Otherwise, default to the most recent date with session activity in `$AOPS_SESSIONS/summaries/`.
-3. If the resolved 'work date' differs from today's calendar date, confirm once with the user (AskUserQuestion: "Summarise work for YYYY-MM-DD?") before writing.
+3. If the resolved work date differs from today's calendar date, confirm once with the user (AskUserQuestion: "Summarise work for YYYY-MM-DD?") before writing.
 
 Every reference to "the daily note" below means the work-date note.
 
@@ -20,62 +20,54 @@ Every reference to "the daily note" below means the work-date note.
 
 Collect from the sections already populated:
 
-- **Today's Path** (from Step 4.1): recent threads and abandoned work
-- **Merged PRs** (from Step 4.2.5): titles and count
-- **Session accomplishments** (from Step 4.2): what was done in each session
+- **Sessions** (from Step 4.2): projects touched, prompt counts, summaries
+- **Merged PRs** (from Step 4.2.5): titles and URLs
 - **Completed tasks** (from Step 4.1.5): tasks closed today
-- **Focus goals** (from `### My priorities`): what the user intended to do
+- **Abandoned / unfinished threads** (from Step 4.1): work started but not completed
 
-### Step 5.2: Identify Intra-day Shifts
+### Step 5.2: Identify Intra-day Changes
 
-Read the existing `## Today's Story` section. Compare it with the newly gathered inputs.
-Identify what has changed since the last `/daily` run:
+Read the existing `## Today's Log` section. Compare it with the newly gathered inputs. On repeat runs, report what has changed since the last `/daily` run:
 
 - New projects touched
-- Significant progress on a specific task
-- Pivots or sidetracks (e.g., "Shifted focus to a bug fix after session X")
+- New merged PRs since last update
+- Threads that progressed or stalled
 
-### Step 5.3: Generate Today's Story
+### Step 5.3: Write the Log
 
-Write a 2-4 sentence natural language summary to the work-date note's `## Today's Story` section. This replaces (not appends to) the existing Today's Story content.
+Write a 2-4 sentence factual summary to the work-date note's `## Today's Log` section. This replaces (not appends to) the existing content.
 
-**Empty-story suppression**: If no sessions have occurred on the 'work date' yet (e.g. the morning run before any work has happened), omit the ## Today's Story and ### Session Flow sections entirely rather than emitting empty headings or placeholder prose. If there is no content to write, skip the rest of this step and Step 5.3.1, and proceed to Step 5.4.
-
-**Current Momentum**: If this is a repeat run, ensure the first sentence summarizes the work done **since the last update**.
-
-**Dropped Threads**: If the path reconstruction identified "Abandoned Work", add a single bullet point under the story:
-
-- **⚠ Dropped Threads**: "[Task Title]" (started in session [id] but unfinished).
+**Empty-log suppression**: If no sessions have occurred on the work date yet (e.g. the morning run before any work has happened), omit the `## Today's Log` and `### Session Flow` sections entirely. If there is no content to write, skip the rest of this step and Step 5.3.1, and proceed to Step 5.4.
 
 **Style guide**:
 
-- Write in past tense, first person plural or third person ("Merged 3 PRs..." / "The day focused on...")
-- Lead with the most impactful work, not chronological order
-- Mention specific PR numbers and task IDs for traceability
-- If goals were set in Focus, note alignment or drift briefly
-- **Punchy Verbs**: Avoid robotic preambles like "Successfully completed" or "Attempted to". Lead directly with the verb: "Decomposed OSB...", "Refactored UI...", "Fixed bug in...".
-- **Weight by human engagement, not output volume.** Use session prompt counts (from Step 4.2) to determine where the human's attention actually went. An autonomous agent running for 4 hours is "dispatched work that produced X" — one sentence. A 5-minute interactive debugging session with 3 prompts is the real story. The reader wants to know what they thought about today, not what their agents did.
+- **Factual, not editorial.** Report what happened. Do not rank what mattered. Do not call something "the real story" or "the main work of the day". Do not lead with a "most impactful" item — lead with what happened first, or group by project.
+- **No work-type hierarchy.** Do not promote research over infrastructure (or vice versa). Do not write "Infrastructure day — no research progress" as a judgment. If the user wants a verdict on their day, they'll write one in `### My priorities`.
+- **Mention specific PR numbers and task IDs** for traceability.
 - **Use concrete details from user prompts, not abstract labels.** "Debugged PKB search for [[specific research question]]" tells a story. "[[Topic area]] PKB lookup" is a label. The `description` field from `user_prompt` timeline events contains the ground truth — use it.
-- **Work type hierarchy — research leads.** This framework serves academic users. Research, writing, and analysis are the primary work; infrastructure and tooling exist to support them. When composing the story:
-  1. Classify each session's work type: **research** (analysis, writing, methodology, data, literature), **academic** (teaching, supervision, review, service), **infrastructure** (framework, tooling, DevOps, PRs). Use the user's prompt text and project context as signals.
-  2. Research and academic sessions lead the narrative, regardless of how many PRs merged or tasks were filed.
-  3. Infrastructure work gets a brief sentence or parenthetical, not the lead. "3 PRs merged on framework tooling" is sufficient — don't enumerate them unless the user was interactively involved.
-  4. If research sessions exist but produced no GitHub artifacts, that's normal — research produces understanding, not commits. Write about what was explored, decided, or advanced.
-  5. If NO research work happened and the day was all infrastructure, note that honestly: "Infrastructure day — no research progress."
+- **Punchy verbs, past tense.** "Merged 3 PRs...", "Debugged X...", "Filed task Y..." — not "Successfully completed" or "Attempted to".
+- **Group by project or by chronology, not by judgment.** Either "Worked on OSB benchmarking this morning, then mem dashboard this afternoon" (chronological) or "OSB benchmarking: ..., mem dashboard: ..., framework: ..." (by-project). Pick one and stick to it. Do not reorder to make research "lead".
 
-### Step 5.3.1: Update daily note frontmatter with narrative
+**Current Momentum**: If this is a repeat run, ensure the first sentence summarizes the work done since the last update.
 
-After writing Today's Story to the work-date note, update that same note's frontmatter fields. This is the sole write point for the daily narrative — the cron synthesis script does not generate it. Read and write the work-date note, never "today's note" if they differ.
+**Unfinished threads**: If the path reconstruction identified abandoned or interrupted work, add a bullet under the log:
 
-1. Adapt Today's Story from prose (Step 5.3) into 3-5 bullet points:
-   - Second person ("you started...", "you got pulled into...")
+- **Threads left open**: "[Task Title]" (started in session [id] but unfinished).
+
+Do not soften or harden this — report plainly.
+
+### Step 5.3.1: Update daily note frontmatter
+
+After writing Today's Log, update the same note's frontmatter fields. This is the sole write point for the daily narrative.
+
+1. Adapt Today's Log from prose into 3-5 bullets:
+   - Second person ("you merged...", "you debugged...")
    - Each bullet under 80 characters
-   - Cover: what started, what got sidetracked, what remains undone
-   - Weight by human engagement (prompt count from Step 4.2), not agent output volume. Lead with what the human interacted with, not what autonomous agents produced.
-   - **Lead bullets with research/academic work.** Infrastructure gets last bullet position. If research sessions had high engagement (2+ prompts), they are always bullet #1.
+   - Cover: what happened, what's still open
+   - **Order by chronology or project**, not by significance. Do not promote any category of work above another.
 2. Read the work-date note file
 3. Update the YAML frontmatter fields:
-   - `daily_narrative`: the 2-4 sentence prose summary (excluding "Dropped Threads" bullet)
+   - `daily_narrative`: the 2-4 sentence prose summary (excluding "Threads left open" bullet)
    - `daily_story`: the bullet array from step 1
    - `narrative_generated`: ISO 8601 timestamp
 4. Write the file back
@@ -85,14 +77,14 @@ After writing Today's Story to the work-date note, update that same note's front
 After updating the daily note, output a concise briefing to the terminal:
 
 ```
-## Daily Summary (vN)
+## Daily Note (vN)
 
-[Today's Story text from 5.3]
+[Today's Log text from 5.3]
 
-**Momentum**: [Summary of work since last run]
-**Dropped**: [Titles of unfinished threads]
+**Since last update**: [Summary of changes since last run]
+**Threads open**: [Titles of unfinished threads]
 
-**Total Progress**: N PRs merged, N tasks completed.
+**Totals**: N PRs merged, N tasks completed.
 
 Daily note updated at [path].
 Use `/pull` to resume work.

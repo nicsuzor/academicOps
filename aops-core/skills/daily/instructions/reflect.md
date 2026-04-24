@@ -20,7 +20,7 @@ Use the resolved work date to build the target path: `$ACA_DATA/daily/YYYYMMDD-d
 
 ### Step 1: Load Context
 
-Open the work-date note resolved in Step 0. Read its `## Focus` section (including `### My priorities` if present) and its `## Today's Story` section.
+Open the work-date note resolved in Step 0. Read its `## Status` section (including `### My priorities` if present) and its `## Today's Log` section.
 
 ### Step 2: Gather Today's Progress
 
@@ -36,7 +36,7 @@ Also check the daily note's work log for merged PRs and session summaries.
 
 ### Step 3: Compare Against Priorities
 
-Compare completed work against the `### My priorities` subsection in today's Focus section:
+Compare completed work against the `### My priorities` subsection in today's Status section:
 
 - Which stated priorities got attention?
 - Which were neglected?
@@ -94,7 +94,7 @@ Options: "Yes, keep them" | "Adjust" | "Need a reset"
 
 ### Step 6: Write Reflection
 
-Append the reflection summary to the **work-date note's** `## Today's Story` section (the note resolved in Step 0 — not today's note if they differ). Write as concise prose, not raw data:
+Append the reflection summary to the **work-date note's** `## Today's Log` section (the note resolved in Step 0 — not today's note if they differ). Write as concise prose, not raw data:
 
 ```markdown
 Good progress on OSB study — methods section done, benchmark suite run. 75% complete.

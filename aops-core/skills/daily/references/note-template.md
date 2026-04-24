@@ -6,7 +6,7 @@ description: Daily note structure template (SSoT)
 
 # Daily Note Structure (SSoT)
 
-This template defines the sections and their purpose. The agent composes each section using judgment about what matters most in context — the template is a structural guide, not a form to fill in.
+This template defines the sections and their purpose. The daily note is a **report**, not a plan — the agent populates factual sections using information available, and the user ranks and prioritises.
 
 ````markdown
 ---
@@ -23,42 +23,46 @@ narrative_generated: null
 ## Carryover
 
 - [ ] [example-carryover-task] **[[Committee Task]]** — deadline tomorrow
-- [ ] [academic-example1] Reply to [[External Contact]] — meeting slots this week
+- [ ] [academic-example1] Reply to [[External Contact]] — response pending
 
-## Focus
+## Status
 
 ```
 P0 ░░░░░░░░░░ 3/85
-P1 █░░░░░░░░░ 12/85 → [ns-abc] [[Project A]] (-3d), [ns-def] [[Project B]] (-16d)
+P1 █░░░░░░░░░ 12/85
 P2 ██████████ 55/85
 P3 ██░░░░░░░░ 15/85
 ```
 
-🚨 **DEADLINE TODAY**: [ns-xyz] [[Review Task]] - Due 23:59 AEDT (8 items)
+Pending decisions: 4 (ready + review assigned to you)
 
-- [ ] **SHOULD**: [ns-abc] [[Overdue Committee Task]] — 3 days overdue. [[Internal Committee]] needs your vote.
-- [ ] **DEEP**: [ns-ghi] [[Research Writing Task]] — Advances research programme goals
-- [ ] **ENJOY**: [ns-jkl] [[Invited Article]] — [[External Collaborator]] invitation on [[Topic Area]]
-- [ ] **QUICK**: [ns-mno] [[Administrative Form]] — Simple form completion
-- [ ] **UNBLOCK**: [ns-pqr] [[Methodology Task]] — Blocks Phase 2 report chain (7.5 weight downstream)
+**Deadlines (≤ 7 days)**:
 
-_Suggested sequence_: Committee vote is critical — deadline today. Then tackle overdue external reply. Deep work on research writing if afternoon opens up.
+- [ns-xyz] [[Review Task]] — due 2026-04-24 (today)
+- [ns-abc] [[Committee Vote]] — due 2026-04-27 (3d)
+- [ns-def] [[Manuscript Review]] — due 2026-04-29 (5d)
+
+**Calendar (today)**:
+
+- 09:00 — [[Meeting Title]] — KG-Z9-607
+- 12:00 — ~~[[Canceled Event]]~~ (canceled)
+- 17:00 — [[Evening Event]]
 
 ### My priorities
 
-(User writes here. Never overwritten by the agent.)
+(User-owned. The agent never writes here.)
 
 ## What Needs Attention
 
 ### [[Prospective Student]] — PhD Supervision Enquiry
 
-[[Prospective Student]] ([[External University]]) is inquiring about PhD supervision. Research on [[Research Topic Area]] — fits within the research programme. CV attached.
+[[Prospective Student]] ([[External University]]) inquired about PhD supervision. Research topic: [[Topic Area]]. CV attached.
 
 - [ ] acknowledged
 
 ### [[External Contact]] — [[Partner Organisation]] Project
 
-[[External Contact]] ([[Partner Organisation]]) coordinating meeting with [[Project Lead]] to discuss [[Meeting Topic]]. Connected via [[Existing Connection]] and [[Research Centre]]. **Needs reply with time slot.**
+[[External Contact]] coordinating a meeting with [[Project Lead]] to discuss [[Meeting Topic]]. Asks for a time slot.
 
 - **→ Task**: [academic-example1] Reply to [[External Contact]]
 - [ ] acknowledged
@@ -73,11 +77,11 @@ Invited to join [[Journal Name]] editorial board. Application via online form.
 
 **Ready to merge:**
 
-- [ ] [#489](url) [[academicOps]] — Release 0.3.19 (+12/-3, 2 files) — _merge now_
+- [ ] [#489](url) [[academicOps]] — Release 0.3.19
 
 **Needs review:**
 
-- [#501](url) [[buttermilk]] — Add extraction pipeline — awaiting review (2d)
+- [#501](url) [[buttermilk]] — Add extraction pipeline (open 2d)
 
 **Needs fixes:**
 
@@ -85,11 +89,9 @@ Invited to join [[Journal Name]] editorial board. Application via online form.
 
 * 3 draft/autonomous PRs across 2 repos
 
-_8 open PRs total — 1 ready to merge, 4 need attention_
+## Today's Log
 
-## Today's Story
-
-(Omit this section entirely when the work date has no sessions yet. Populated end-of-day.)
+(Omit this section entirely when the work date has no sessions yet.)
 
 ## Work Log
 
@@ -109,18 +111,20 @@ No sessions today.
 
 ## Design Notes
 
-**Five sections, in order: Carryover → Focus → What Needs Attention → Today's Story → Work Log.** A returning user's first question is "what was I in the middle of?" (Carryover), so it leads. Focus follows — today's recommendations, informed by the carryover above. What Needs Attention surfaces email/FYI and actionable PRs. Today's Story and Work Log sit lower — both are empty in the morning and most useful end-of-day.
+**Five sections, in order: Carryover → Status → What Needs Attention → Today's Log → Work Log.** Carryover leads because a returning user's first question is "what was I in the middle of?" Status is a factual snapshot; What Needs Attention surfaces inbox/PRs. Today's Log and Work Log sit lower — both are empty in the morning and most useful end-of-day.
 
-**Editor-friendly surfaces.** The note is designed to be kept open in a text editor (VS Code, Obsidian) throughout the day. Actionable items are rendered as markdown checkboxes (`- [ ]`) so the user can tick them off as they act: carryover items, Focus recommendations, Ready-to-merge PRs, and FYI "acknowledged" markers. User ticks are preserved across agent regenerations (see Section Ownership in SKILL.md).
+**Status is reportive, not prescriptive.** Priority bars, deadline list, calendar, and decision counts — no SHOULD/DEEP/ENJOY/QUICK/UNBLOCK categories, no suggested sequences, no "start here because..." rationales. The `### My priorities` subsection is a user-owned space; the agent creates the empty heading and never writes to it.
 
-**Work Log is collapsed by default.** Wrap the Work Log block in `<details><summary>Work Log</summary> … </details>`. VS Code and Obsidian both render this collapsed in preview; in raw-edit mode it's still readable. It exists for traceability, not the morning read.
+**Editor-friendly surfaces.** The note is designed to be kept open in a text editor throughout the day. Carryover items, inbox "acknowledged" markers, and Ready-to-merge PRs are rendered as checkboxes (`- [ ]`) so the user can tick them off. User ticks are preserved across regenerations.
 
-**No empty placeholders.** If a section has no content, omit it or use a brief natural-language statement. Never leave empty tables, "n/a" metrics, or `<!-- user notes -->` HTML comments visible. Today's Story in particular is omitted entirely in the morning before any sessions have run — no empty heading.
+**Work Log is collapsed by default.** Wrap the Work Log block in `<details><summary>…</summary> … </details>`.
+
+**No empty placeholders.** If a section has no content, omit it or use a brief natural-language statement ("No sessions today"). Today's Log is omitted entirely in the morning before any sessions have run — no empty heading.
 
 **Carryover only when non-empty.** No section at all if nothing to carry over.
 
-**Proportional detail.** FYI items involving real people (students, collaborators, funders) get full context. Routine notifications get a line. Internal framework PRs don't get the same visual treatment as research milestones.
+**Proportional detail, not editorial ranking.** Inbox items involving real people get full context; routine notifications get a line. That's proportional reporting. Do not add "this is the most important thing today" framing — if the user wants to rank, they'll do it in `### My priorities`.
 
-**No duplication.** Open PRs live in `## What Needs Attention / Outstanding Workflows` only — Work Log does not carry a parallel Open PRs table. Merged PRs live in Work Log only.
+**No duplication.** Open PRs live in `## What Needs Attention / Outstanding Workflows` only. Merged PRs live in Work Log only.
 
-**Actions linked to tasks.** Every actionable FYI item has a `→ Task` link with a task ID.
+**Actions linked to tasks.** Every actionable inbox item has a `→ Task` link with a task ID.
