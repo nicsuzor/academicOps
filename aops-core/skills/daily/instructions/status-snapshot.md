@@ -28,7 +28,7 @@ P3 ██░░░░░░░░ 15/85
 
 ### 3.3: Deadline List
 
-Pull tasks with `due` ≤ 7 days via `list_tasks(format="json")` and sort by due date ascending. List each on its own line:
+Pull tasks with `due` ≤ 7 days via `mcp__pkb__list_tasks(format=json)` and sort by due date ascending. List each on its own line:
 
 ```
 - [task-id] [[Title]] — due YYYY-MM-DD (Nd away / overdue Nd)

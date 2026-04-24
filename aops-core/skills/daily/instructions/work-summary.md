@@ -46,7 +46,7 @@ Write a 2-4 sentence factual summary to the work-date note's `## Today's Log` se
 - **Mention specific PR numbers and task IDs** for traceability.
 - **Use concrete details from user prompts, not abstract labels.** "Debugged PKB search for [[specific research question]]" tells a story. "[[Topic area]] PKB lookup" is a label. The `description` field from `user_prompt` timeline events contains the ground truth — use it.
 - **Punchy verbs, past tense.** "Merged 3 PRs...", "Debugged X...", "Filed task Y..." — not "Successfully completed" or "Attempted to".
-- **Group by project or by chronology, not by judgment.** Either "Worked on OSB benchmarking this morning, then mem dashboard this afternoon" (chronological) or "OSB benchmarking: ..., mem dashboard: ..., framework: ..." (by-project). Pick one and stick to it. Do not reorder to make research "lead".
+- **Group by chronology.** List sessions in the order they happened. Do not reorder to make research lead.
 
 **Current Momentum**: If this is a repeat run, ensure the first sentence summarizes the work done since the last update.
 
