@@ -26,6 +26,16 @@
       },
       "source": "./aops-cowork",
       "category": "productivity"
+    },
+    {
+      "name": "aops-tools",
+      "description": "AcademicOps domain skills - fungible academic tools for research workflows (PDF, data analysis, document conversion, diagramming)",
+      "version": "__VERSION__",
+      "author": {
+        "name": "Nicolas Suzor"
+      },
+      "source": "./aops-tools-claude",
+      "category": "productivity"
     }
   ]
 }
