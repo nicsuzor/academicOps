@@ -24,6 +24,8 @@ Your job is not to "do what you can and escalate the rest" — your job is to le
 
 **Reviewer objections you have already seen before are your responsibility.** If a reviewer re-raises the same point after you dismissed or "addressed" it, that is evidence your prior fix was inadequate. Do not dismiss it again with the same justification. Either resolve it differently (fix the underlying gap, or trim scope so the objection no longer applies), or halt with a clear explanation of why it's now genuinely unresolvable.
 
+**Ground truth is GitHub, not your working tree.** Every claim in your triage summary — "Conflicts: none", "CI: passing", "approval standing" — must be verified against server state (`gh pr view --json ...`, `gh pr checks ...`) _after_ your last write to the branch, not against your local assessment. A false "success" declaration is worse than an honest halt: it enables auto-merge on a PR GitHub will refuse to merge, and it hides the real blocker from the human. If the server and your worktree disagree, the server wins and you investigate why.
+
 ## 1. Conflict Resolution
 
 Check for and resolve merge conflicts first. **Do not rebase** (force-push is prohibited).
@@ -33,7 +35,41 @@ git fetch origin main
 git merge origin/main --no-edit
 ```
 
-If conflicts are too complex to resolve safely, stop and post a comment explaining why.
+### 1a. Verify against the server, not your working tree
+
+A clean local merge is **not** proof the PR is mergeable. GitHub computes mergeability server-side against the base branch, and that computation can diverge from your working tree (see §1b). After any merge attempt — including a no-op "Already up to date" — re-check the authoritative source:
+
+```bash
+gh pr view {pr} --repo {repo} --json mergeable,mergeStateStatus
+```
+
+Only `mergeable: MERGEABLE` counts. `CONFLICTING` or `UNKNOWN` means you have not succeeded, regardless of what `git status` says locally. Never write "Conflicts: none" in a triage summary unless this check returned `MERGEABLE` **after** your last operation on the branch.
+
+### 1b. Squash-merge ghost conflicts
+
+If a PR was stacked on another PR's branch and that upstream PR squash-merged into the base, your branch now carries the upstream PR's original (un-squashed) commits alongside its own. GitHub's mergeability computation treats those commits as additions over the squashed base and reports `CONFLICTING` even though the content is compatible. `git merge origin/main` produces "Already up to date" or a trivial merge because from the local working tree's perspective nothing is wrong — but the server-side state does not change.
+
+**Diagnostic signature** (all true):
+
+- `gh pr view --json mergeable` returns `CONFLICTING`
+- `git merge origin/main --no-edit` reports "Already up to date" or produces a clean merge with no edits
+- `git log --oneline origin/main..HEAD` shows commits whose subjects match commits already squashed into `main` (check `git log --oneline --grep='<subject>' origin/main`)
+
+**You cannot fix this.** The only remediation is rebase + force-push, which you are explicitly forbidden to perform. Do **not**:
+
+- Declare "Conflicts: none" based on your working tree.
+- Approve or set `merge-prep-status: success`.
+- Enable auto-merge.
+
+**Do**: halt per §"If blocked and cannot proceed" with a comment that (a) names the squash-merge ghost explicitly, (b) identifies the upstream PR whose squash caused it, and (c) instructs the author to rebase the branch onto current `main` and force-push with `--force-with-lease`. Example comment body:
+
+> Blocked: squash-merge ghost conflict. This branch was stacked on #NNN, which squash-merged into main. GitHub reports `mergeable: CONFLICTING` against the squashed base even though the content is compatible; `git merge origin/main` resolves nothing because there is nothing to merge locally.
+>
+> Fix (author only — merge-prep is forbidden from rebase + force-push): `git fetch origin && git reset --hard origin/main && git cherry-pick <your-commit-shas>` then `git push --force-with-lease`. Then re-dispatch merge-prep.
+
+### 1c. Real conflicts
+
+If `git merge origin/main` produces actual conflict markers in files, attempt a safe textual resolution only when the intent on both sides is unambiguous. When in doubt, halt with a comment explaining which files conflict and why the resolution requires author judgement — do not guess.
 
 ## 2. Check CI Status
 
@@ -124,6 +160,16 @@ Include a table:
 
 ## 8. Approve the PR
 
+**Precondition**: before approving, re-verify server-side state. Approval on a PR GitHub reports as `CONFLICTING` is a false signal that enables downstream auto-merge to fail silently.
+
+```bash
+# Hard gate — do not approve if any of these are false
+gh pr view {pr} --repo {repo} --json mergeable,mergeStateStatus,statusCheckRollup
+# Require: mergeable == "MERGEABLE", no CI checks in FAILURE, no CHANGES_REQUESTED standing
+```
+
+If the gate fails, jump to §"If blocked and cannot proceed" — do not approve.
+
 ```bash
 gh pr review {pr} --repo {repo} --approve \
   --body "# Merge Prep
@@ -137,11 +183,14 @@ Merge Prep complete. All review feedback triaged and addressed."
 
 **CRITICAL**: `merge-prep-status` is a commit status — it is pinned to a specific SHA. If ANY commit is pushed after this step, the status does NOT carry over to the new HEAD and the PR will be blocked.
 
+Before setting the status, re-run the §8 gate one more time — `mergeable == MERGEABLE`, no failing CI, no standing `CHANGES_REQUESTED`. The gate must be green on the fresh HEAD SHA you are about to write against. Do not set success based on a read you made earlier in the run.
+
 You MUST:
 
 1. Confirm your push from step 6 has landed and no further pushes are pending
 2. Get the HEAD SHA **fresh** (do not reuse a cached value)
-3. Set the status as the **absolute last write operation**
+3. Re-verify server-side mergeability on that SHA
+4. Set the status as the **absolute last write operation**
 
 ```bash
 # Verify push landed — HEAD should match what we pushed
