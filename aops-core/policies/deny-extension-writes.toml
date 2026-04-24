@@ -48,3 +48,11 @@ argsPattern = ".*\\.gemini/settings\\.json"
 decision = "deny"
 priority = 100
 denyMessage = "Modifying Gemini settings.json is prohibited."
+
+# Protect shell access to extension files
+[[rule]]
+toolName = "run_shell_command"
+commandRegex = ".*\\.gemini/extensions/.*"
+decision = "deny"
+priority = 100
+denyMessage = "Modification of Gemini extensions via shell is prohibited."
