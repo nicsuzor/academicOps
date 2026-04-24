@@ -2,7 +2,7 @@
 name: daily
 type: skill
 category: instruction
-description: Daily note lifecycle - briefing, task recommendations, progress sync, and work summary. SSoT for daily note structure.
+description: Daily note lifecycle - briefing and progress sync. Reports the state of the day; does not prioritise or recommend. SSoT for daily note structure.
 triggers:
   - "daily list"
   - "daily note"
@@ -16,13 +16,13 @@ domain:
   - operations
 allowed-tools: Read,Bash,Grep,Write,Edit,AskUserQuestion,Skill,mcp__pkb__delete,~~email
 owner: pauli
-version: 3.0.0
+version: 4.0.0
 permalink: skills-daily
 ---
 
 # Daily Note Skill
 
-Compose and maintain a daily note that helps the user orient, prioritise, and track their day.
+Compose and maintain a daily note that **reports** the state of the day to the user. The note is a factual briefing — what's in the inbox, what's on the calendar, what's due, what's open, what ran. It does **not** curate, rank, recommend, or suggest sequences.
 
 Location: `$ACA_DATA/daily/YYYYMMDD-daily.md`
 
@@ -30,23 +30,24 @@ Location: `$ACA_DATA/daily/YYYYMMDD-daily.md`
 
 ## Purpose
 
-The daily note answers three questions for a knowledge worker returning to their desk:
+The daily note answers two questions for a knowledge worker returning to their desk:
 
-1. **What needs my attention?** — Deadlines, emails requiring action, decisions blocking other work
-2. **What should I work on?** — Curated recommendations balancing urgency, deep work, variety, and momentum
-3. **What happened today?** — A narrative synthesis of the day's work, oriented around significance not completeness
+1. **What's the state of my world?** — Deadlines, inbox, open threads, calendar
+2. **What happened?** — A factual log of sessions, merged PRs, and completed tasks
 
-The note is a _planning_ document, not an execution trigger. After the note is updated, output "Daily planning complete. Use `/pull` to start work." and HALT. User stating a priority ≠ authorization to execute it.
+Prioritisation is the user's job. The agent's job is to surface facts accurately so the user can decide. The skill has no authority to weight tasks by significance, recommend what to work on, or suggest sequences — it has not been in the room for the human conversations that determine real priority, and guessing is worse than silence.
 
-## Quality Criteria (P#115)
+The note is a _reporting_ document, not an execution trigger. After the note is updated, output "Daily note updated. Use `/pull` to start work." and HALT.
 
-A good daily note is evaluated qualitatively, not by structural compliance:
+## Quality Criteria
 
-- **Orientation in 30 seconds**: Can the user glance at the note and know what matters? The visual hierarchy should match the priority hierarchy. Deadlines and high-stakes items should be unmissable. Routine maintenance should not compete for attention.
-- **Emotional calibration**: Surfaces urgency without triggering anxiety. Frames dropped threads as "pick up where you left off," not "you failed." Balances pressure with variety.
-- **Proportional detail**: Major research milestones, external deadlines, and items involving other people get more space and context than internal tooling tasks. A paper deadline and a CI fix are not presented with equal weight.
-- **Actions linked to tasks**: Every actionable item references its task ID. Every task mentioned in FYI has a corresponding task created or updated in the PKB. Information captured but not persisted is information lost.
-- **Nothing lost**: Email items that need responses have tasks. Carryover from yesterday is verified against live task state (no phantom overdue). User annotations are preserved.
+A good daily note is evaluated qualitatively:
+
+- **Scannable in 30 seconds**: The user can glance at the note and see deadlines, new inbox items, and what's open. No hunting.
+- **Factual, not editorial**: The note reports what exists. It does not tell the user what matters, what to lead with, or what to deprioritise.
+- **Actions linked to tasks**: Every actionable item references its task ID. Every email item that needs a response has a corresponding task created or updated in the PKB. Information captured but not persisted is information lost.
+- **Nothing lost**: Email items that need responses have tasks. Carryover is verified against live task state (no phantom overdue). User annotations are preserved.
+- **No invented ranking**: Do not categorise tasks as SHOULD/DEEP/ENJOY/QUICK/UNBLOCK. Do not write "suggested sequence" rationales. Do not weight research over infrastructure (or vice versa). List facts; let the user choose.
 
 ## Invocation
 
@@ -59,225 +60,196 @@ Every `/daily` invocation updates the note in place. The skill is designed to be
 
 ## Note Structure
 
-The daily note has **five sections**, each serving a distinct purpose. The agent composes these sections using its judgment about what matters most in context (P#116). The structure below defines WHAT each section achieves, not a rigid template.
+The daily note has **five sections**, each serving a distinct purpose.
 
-Sections appear in this order, top to bottom: **Carryover → Focus → What Needs Attention → Today's Story → Work Log**. The reasoning: a returning user's first question is "what was I in the middle of?" (Carryover), immediately followed by "what should I do next?" (Focus). Today's Story is empty in the morning and most useful at end of day, so it sits lower. Work Log is reference material and sits at the bottom, collapsed.
+Sections appear in this order: **Carryover → Status → What Needs Attention → Today's Log → Work Log**.
 
-### 1. Carryover + Abandoned
+### 1. Carryover
 
-Items carrying forward from yesterday (verified against live task state — never copy blindly from yesterday's note) and end-of-day abandoned todos. Each item is a checkbox (`- [ ] [task-id] Title`) so the user can tick it off as they pick up where they left off.
+Items carrying forward from yesterday (verified against live task state — never copy blindly from yesterday's note) and end-of-day abandoned todos. Each item is a checkbox (`- [ ] [task-id] Title`) so the user can tick it off.
 
-**Only present when non-empty.** If there's nothing to carry over, omit the section entirely rather than showing empty placeholders. This is why Carryover sits at the top without dominating the note when it's empty — it simply disappears.
+**Only present when non-empty.** If there's nothing to carry over, omit the section entirely.
 
-### 2. Focus
+### 2. Status
 
-The first thing the user sees. Combines priority overview and curated task recommendations in one place.
-
-**Contains**:
-
-- Priority distribution (P0/P1/P2/P3 counts of actionable tasks — consistent filtering in both numerator and denominator)
-- Deadline alerts (any task due within 48 hours, unmissable formatting)
-- ~10 curated recommendations across categories: urgent/overdue (SHOULD), strategic deep work (DEEP), variety/energy (ENJOY), quick wins (QUICK), unblocking others (UNBLOCK). Each recommendation is rendered as a checkbox (`- [ ] **SHOULD**: [task-id] [[Title]] …`) so the user can tick it off through the day.
-- Suggested sequence with brief rationale
-
-**Quality guidance**: Weight recommendations by _significance to the person_, not just priority field values. An overdue email reply to a colleague is more important than a P0 framework task that has been P0 for months. A paper deadline matters more than a CI fix. The agent should understand the user's world — their research commitments, their students, their external obligations — and recommend accordingly.
-
-**User priorities subsection**: After presenting recommendations, ask the user what sounds right for today. Record their response in a `### My priorities` subsection. This subsection is never overwritten on subsequent runs.
-
-> See [[instructions/focus-and-recommendations]] for task data loading and recommendation reasoning.
-
-### 3. What Needs Attention (FYI + Captures + Outstanding Workflows)
-
-Email triage, mobile captures, and outstanding workflow signals, presented as a briefing the user reads _in the note itself_ — not by opening individual emails or checking GitHub.
+A factual snapshot of the task graph and today's calendar. No recommendations.
 
 **Contains**:
 
-- Email threads grouped by conversation, with enough content that the user doesn't need to open the email. Each FYI item ends with a `- [ ] acknowledged` checkbox so the user can mark it read without deleting it.
-- Mobile captures triaged from `notes/mobile-captures/`
+- **Priority distribution**: P0/P1/P2/P3 counts of ready tasks (from `task_summary`). Presented as a compact bar chart — counts only, no narrative.
+- **Deadline list**: Any task with `due` ≤ 7 days. List each as `[task-id] [[Title]] — due YYYY-MM-DD (Nd away / overdue Nd)`. Do not categorise or rank; sort by due date ascending.
+- **Calendar**: Today's events from the calendar source, in time order. No commentary.
+- **Pending decisions**: Count of `ready` + `review` tasks assigned to the user (one line).
+
+**No recommendations**: Do not emit SHOULD/DEEP/ENJOY/QUICK/UNBLOCK categories. Do not suggest a sequence. Do not add rationales like "start with X because Y".
+
+**`### My priorities` subsection**: A user-owned space. The agent creates the empty heading on first run and never writes to it afterwards. Do not ask the user what their priorities are — they will write them in if and when they want to.
+
+> See [[instructions/status-snapshot]] for task data loading.
+
+### 3. What Needs Attention (Inbox + Captures + Outstanding Workflows)
+
+Email triage, mobile captures, and outstanding workflow signals, presented so the user doesn't have to open individual emails or check GitHub.
+
+**Contains**:
+
+- **Inbox items** grouped by conversation, with enough content that the user doesn't need to open the email. Each item ends with a `- [ ] acknowledged` checkbox so the user can mark it read. Include who wrote, what they said, what (if anything) is being asked, and any stated deadline — _factually_. Do not add editorial framing like "time-sensitive" or "ball in your court" unless it's a direct quote from the sender.
+- **Mobile captures** triaged from `notes/mobile-captures/`
 - Each actionable item has a task created immediately (not batched to later)
-- **Outstanding workflows** — open PRs across tracked repos, bucketed by actionability (see below). This is the canonical place for open PRs needing action; the Work Log no longer duplicates them.
+- **Outstanding workflows** — open PRs across tracked repos, bucketed by state (see below)
 
-**Quality guidance**: FYI items involving real people (students, collaborators, funders) get full context — who said what, what's being asked, what the deadline is. Automated notifications, newsletters, and low-signal items get a single line or are omitted entirely. The agent triages by significance, not by recency.
+**Proportional detail is fine; editorial ranking is not.** Full email content for threads involving real people; one-line summary for automated notifications. That's proportional reporting. Adding "this is the most important thing today" is editorial — don't.
 
-**Bidirectional contract**: If the user adds notes or annotations below any FYI item, those are preserved on subsequent runs. The agent regenerates its content above user annotations but never deletes below them.
+**Bidirectional contract**: If the user adds notes or annotations below any item, those are preserved on subsequent runs. The agent regenerates its content above user annotations but never deletes below them.
 
 > See [[instructions/briefing-and-triage]] for email triage, sent-mail cross-referencing, and task creation.
 
 #### Outstanding Workflows subsection
 
-A snapshot of open PRs across tracked repos that need human decisions, surfaced directly in "What Needs Attention" so the user doesn't have to open GitHub. This is the **sole place** open PRs appear in the note — the Work Log no longer carries a parallel "Open PRs" table. One-click actionable PRs (Ready to merge) are rendered as checkboxes.
+A snapshot of open PRs across tracked repos. This is the **sole place** open PRs appear in the note — the Work Log does not duplicate them.
 
-**Bucketing** (in order of prominence):
+**Bucketing** (factual state, not priority):
 
-1. **Ready to merge** — mergeable + approved + CI passing. These are one-click actions, rendered as `- [ ]` checkboxes with a direct URL. Visually prominent.
-2. **Needs review** — mergeable, awaiting human review. Brief context on what the PR does.
+1. **Ready to merge** — mergeable + approved + CI passing. Rendered as `- [ ]` checkboxes with direct URL.
+2. **Needs review** — mergeable, awaiting human review.
 3. **Needs fixes** — conflicting, CI failing, or changes requested. Name the specific blocker.
-4. **Stale** — open >7 days with no activity. Candidate for close or rebase.
-5. **Draft / autonomous** — draft PRs or polecat-worker PRs. Collapsed or single-line. These are background work and should not compete for attention.
+4. **Stale** — open >7 days with no activity.
+5. **Draft / autonomous** — draft PRs or polecat-worker PRs. Collapse into a count line.
 
-**Formatting**: Proportional — ready-to-merge PRs get a bold line with direct URL. Draft/autonomous PRs collapse into a count ("+ N draft/autonomous PRs"). Include direct PR URLs for one-click action on all non-collapsed items.
+Include direct PR URLs. Do not rank buckets or say "tackle X first".
 
 **Graceful degradation**: If `gh` CLI is unavailable or authentication fails, note the gap in natural language ("GitHub CLI unavailable — skipped workflow monitoring") and continue. Never error or produce empty table structures.
 
-**Repo list**: Use the project registry from `$POLECAT_HOME/polecat.yaml` (same source as Step 4.2.5). This is configurable — repos are added/removed by editing polecat.yaml, not by changing skill code.
+**Repo list**: Use the project registry from `$POLECAT_HOME/polecat.yaml`. Configurable — repos are added/removed by editing polecat.yaml.
 
 > See [[instructions/workflow-monitor]] for the full procedure.
 
-### 4. Today's Story
+### 4. Today's Log
 
-A 2-4 sentence narrative synthesis of the day's work, followed by a structured **Session Flow** subsection. This is the _editorial_ section — the agent's judgment about what the day's work means, not a log of what happened.
+A factual account of the day's work, reconstructed from session summaries. This section is the agent's log of what happened, not its judgment of what the day meant.
 
-**Empty-morning rule**: If the work date has no sessions yet (typical morning run), omit this section entirely rather than emitting empty headings. See [[instructions/work-summary]] Step 5.3.
+**Empty-morning rule**: If the work date has no sessions yet (typical morning run), omit this section entirely.
 
-**Quality guidance**: Lead with the most significant work, not the most recent. Research progress, paper milestones, and external commitments matter more than framework PRs. If 8 PRs were merged on internal tooling but no progress was made on the paper deadline, the story should note the tooling work briefly and highlight the gap. Mention specific PR numbers and task IDs for traceability, but embed them in narrative, not tables.
-
-**Distinguish human work from agent output.** In a conductor workflow, impressive autonomous output (an agent producing 6 tasks over 4 hours) is not the same as the human doing deep work. The story should reflect what the human actually engaged with — use prompt count as the primary signal. An autonomous session that produced a lot is worth a sentence ("dispatched X, which produced Y"); an interactive session where the human debugged something for 5 minutes with 3 prompts is where the narrative focus should be. The reader wants to know: what did _I_ spend my attention on today?
-
-If this is a repeat run during the day, emphasise what changed since the last update. Note dropped threads (work started but not finished) with gentle framing.
+**No editorial ranking**: Do not "lead with the most significant work". Do not say research beats infrastructure (or vice versa). Do not frame something as "the real story". Log sessions in the order they happened, grouped by interaction pattern (below). The reader decides what mattered.
 
 #### Session Flow subsection (`### Session Flow`)
 
-Reconstructs the day's attention flow from session summary JSONs in `$AOPS_SESSIONS/summaries/`. This answers: what did I actually spend my attention on, where did I get pulled away, and what's still hanging?
+Reconstructs the day's sessions from `$AOPS_SESSIONS/summaries/`. Grouped by user-prompt count as a factual classification of how the human interacted — not as a ranking.
 
 **Structure**:
 
 ```markdown
 ### Session Flow
 
-**Where your attention went** (interactive sessions, 2+ user prompts):
+**Interactive sessions** (2+ user prompts):
 
-1. **[Topic]** ([time], [N prompts], [duration]): [What the user was doing — use their actual prompt text, not agent-generated summaries. What was the outcome.]
-2. ...
+1. **[Topic]** ([time], [N prompts], [duration]): [What the user was doing — use their actual prompt text. What was the outcome.]
 
-**Dispatched work** (1-prompt sessions — fire and forget):
+**Dispatched** (1 user prompt):
 
-- **[Topic]** ([time]): [What was dispatched and what came back. Note if the agent ran autonomously for a long time.]
+- **[Topic]** ([time]): [What was dispatched. What came back.]
 
-**Autonomous background runs** (0-prompt sessions):
+**Autonomous** (0 user prompts):
 
-- **[Session ID]** ([duration]): [What the agent produced. Flag this as zero human attention cost.]
+- **[Session ID]** ([duration]): [What the agent produced.]
 
-**Threads left hanging**:
+**Threads left open**:
 
-- [Topic not completed, with context on why]
-
-**The day in a line**: [One-sentence editorial summary]
+- [Topic not completed — factual only, no "gentle framing"]
 ```
 
-**The primary signal for attention cost is user prompt count**, not session duration or output complexity. Extract `timeline_events` where `type == "user_prompt"` for each session. See [[instructions/progress-sync]] Step 4.2 for the engagement classification table.
+**Classification is factual, not editorial**. The groupings exist so the reader can see at a glance which sessions they actively drove vs which ran in the background. Do not promote or demote sessions within a group.
 
-A 337-minute autonomous session with 0 prompts costs the human nothing — it's fire-and-forget. A 5-minute session with 4 prompts is where they were actively thinking. Lead with where the human's attention actually went, not where the most output was produced.
+**Use the user's actual prompts as ground truth**: The `description` field in user prompt timeline events is the source of truth for what the human was doing. Prefer it over agent-generated `summary` fields.
 
-**Use the user's actual prompts as ground truth**: The `description` field in user prompt timeline events tells you what the human was trying to do. Agent-generated `summary` fields are abstractions of abstractions. When writing Session Flow entries, reference the prompt content (e.g., "debugged PKB search for [[specific topic]]" not "PKB lookup").
+**Data source**: Read session summary JSONs for the current day. Filter out auto-commit sessions (`commit-changed` in filename, or filename starts with `sessions-`) and polecat workers (project field matches a short hex hash, e.g. `^[a-f0-9]{7,8}$`). Use `timeline_events` where `type == "user_prompt"` for prompt count and content, `summary` for agent outcomes, `token_metrics.efficiency.session_duration_minutes` for duration, and `project` for context.
 
-**Categories of attention** (derived from prompt count):
-
-- **Deep engagement** (4+ prompts): Sustained human involvement — debugging, discussing, iterating. These are the real attention cost centers.
-- **Interactive** (2–3 prompts): Back-and-forth with the agent. Moderate attention.
-- **Dispatched** (1 prompt): Human kicked it off and moved on. Conductor work. Low attention cost.
-- **Autonomous** (0 prompts): Agent ran without human involvement. Zero attention cost regardless of duration or output volume.
-- **Frustration cost**: Sessions that should have been quick but weren't (broken deploys, failed builds, repeated attempts). The attention cost is disproportionate to the clock time. Identify these by multiple short sessions on the same topic, or sessions where prompt content shows escalating frustration.
-
-**Work type ordering**: Within each attention category, list research/academic sessions before infrastructure sessions. If the day's only deep-engagement session was a research analysis, it should be the first item under "Where your attention went" — not buried after dispatched infrastructure work. Research work that produced no GitHub artifacts but high human engagement is the headline, not the footnote. See [[instructions/progress-sync]] for work type classification.
-
-**What counts as a distraction vs. conductor work**: A quick check on an unrelated project is conductor work if it's a deliberate scan (1 prompt, moved on). It's a distraction if it pulls the user into reactive engagement (2+ prompts on something unplanned), or if a "quick check" turns into a 2-hour tangent. Judge by prompt count and what happened after — did the user return to their main thread, or did they drift?
-
-**Data source**: Read session summary JSONs for the current day. Filter out auto-commit sessions (`commit-changed` in filename, or filename starts with `sessions-`) and polecat workers (project field matches a short hex hash, e.g. `^[a-f0-9]{7,8}$`). Use `timeline_events` where `type == "user_prompt"` for prompt count and content (the primary attention signal), `summary` for agent outcomes, `token_metrics.efficiency.session_duration_minutes` for duration context, and `project` for context-switch detection.
-
-> See [[instructions/work-summary]] for story synthesis guidance.
+> See [[instructions/work-summary]] for log synthesis guidance.
 
 ### 5. Work Log (collapsed by default)
 
-A reference section for traceability — what sessions ran, what PRs merged, what tasks were completed. This section exists for the record, not for the user's morning read.
+A reference section for traceability — what sessions ran, what PRs merged, what tasks were completed.
 
-**Rendering**: Keep the `## Work Log` H2 heading at the top (so tooling that greps for it still finds it), then wrap the body in `<details><summary>(collapsed — expand for merged PRs, sessions, and accomplishments)</summary> … </details>`. VS Code and Obsidian both render this collapsed by default in preview modes, so the long tables don't dominate visual weight.
+**Rendering**: Keep the `## Work Log` H2 heading at the top, then wrap the body in `<details><summary>(collapsed — expand for merged PRs, sessions, and accomplishments)</summary> … </details>`.
 
 **Contains** (when data is available):
 
-- Merged PRs across tracked repos (table format)
-- Session log (table of sessions with project, prompt count, and description)
-- Project accomplishments (checklist items linked to tasks)
+- Merged PRs across tracked repos (table)
+- Session log (table with project, prompt count, description)
+- Completed tasks (checklist with task IDs)
 
-Open PRs are **not** duplicated here — they live in `## What Needs Attention / Outstanding Workflows` as the single source.
+Open PRs are **not** duplicated here — they live in `## What Needs Attention / Outstanding Workflows`.
 
-**Quality guidance**: This section should be _scannable but not prominent_. It's reference material. If GitHub CLI is unavailable or no sessions ran, the section should be minimal ("No sessions today") rather than filled with empty tables and "n/a" markers.
-
-**Session log entries must be meaningful the next morning.** For sessions with user prompts, use the first user prompt's `description` (truncated) as the session description, not the agent-generated `summary`. For 0-prompt (autonomous) sessions, base the description on what the agent produced — e.g., `autonomous: summarized AXIOMS.md for daily skill update`. "Pulled task-7275a7b8" is useless — what was the task about? "Reviewed swarm-supervisor skill update" — what was the update? Include enough context that someone reading the log tomorrow can reconstruct what happened without opening the session JSON. Include the prompt count (e.g., "2p" or "0p") so the reader can distinguish interactive work from autonomous runs at a glance.
-
-Accomplishments should be linked to their corresponding tasks. Every `[x]` item should reference a task ID where possible.
+**Session log entries must be meaningful the next morning.** For sessions with user prompts, use the first user prompt's `description` (truncated). For 0-prompt (autonomous) sessions, base the description on what the agent produced. Include the prompt count (e.g., "2p" or "0p").
 
 > See [[instructions/progress-sync]] for session loading, PR querying, and task matching.
 
 ## Section Ownership and Bidirectional Sync
 
-The daily note is a _shared document_ between the agent and the user. The ownership contract:
+The daily note is a shared document between the agent and the user:
 
-| Content type                                                                                                                         | Rule                                                                                                                                                                                                                                                          |
-| ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Machine-generated sections** (Work Log tables, PR lists, priority bars)                                                            | Fully replaced on each run.                                                                                                                                                                                                                                   |
-| **Mixed sections** (Focus recommendations, FYI items)                                                                                | Agent regenerates its content but preserves anything the user has written. User content is identified by position (below agent content).                                                                                                                      |
-| **User sections** (My priorities, any section the user adds)                                                                         | Never touched by the agent.                                                                                                                                                                                                                                   |
-| **User ticks on agent checkboxes** (`- [ ]` → `- [x]` on a recommendation, ready-to-merge PR, FYI "acknowledged", or carryover item) | Preserved. When regenerating a mixed section, read the existing note first, match items by task ID / PR number / item identity, and carry the user's `[x]` state into the regenerated line. A tick is a user edit even when it sits on agent-emitted content. |
-| **User annotations anywhere**                                                                                                        | If the user adds a note, comment, or annotation to any section, the agent preserves it.                                                                                                                                                                       |
+| Content type                                                                 | Rule                                                                                                                                                                        |
+| ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Machine-generated sections** (Status dashboard, Work Log tables, PR lists) | Fully replaced on each run.                                                                                                                                                 |
+| **Mixed sections** (inbox items)                                             | Agent regenerates its content but preserves anything the user has written below it.                                                                                         |
+| **User sections** (`### My priorities`, any section the user adds)           | Never touched by the agent.                                                                                                                                                 |
+| **User ticks on agent checkboxes**                                           | Preserved. When regenerating, read the existing note first, match items by task ID / PR number / item identity, and carry the user's `[x]` state into the regenerated line. |
+| **User annotations anywhere**                                                | If the user adds a note, comment, or annotation to any section, the agent preserves it.                                                                                     |
 
-**What happens when the user edits the note**: The agent should read the note before updating and notice user changes. If the user has crossed out a recommendation, added context to an FYI item, or written priorities, those are signals the agent should respect — not overwrite.
-
-**Template markers**: Do not leave visible template artifacts (`<!-- user notes -->`, placeholder text like "(End of day carryover)", empty tables). If a section has no content, either omit it or write a brief natural-language empty state ("No sessions today"). The note should read as a composed document, not a filled-in form.
+**Template markers**: Do not leave visible template artifacts (`<!-- user notes -->`, placeholder text, empty tables). If a section has no content, either omit it or write a brief natural-language empty state ("No sessions today").
 
 ## Formatting Rules
 
 1. **No horizontal lines**: Never use `---` as section dividers (only in frontmatter)
 2. **Wikilink all names**: Person names, project names, and task titles use `[[wikilink]]` syntax
 3. **Task IDs**: Always include task IDs when referencing tasks (e.g., `[ns-abc] Task title`)
-4. **Proportional formatting**: Important items get more visual weight (bold, callout formatting). Routine items get less. Not everything deserves the same treatment.
+4. **No editorial adjectives**: Avoid words like "critical", "time-sensitive", "ball in your court", "unmissable", "the real story". State facts. The user will draw their own conclusions.
 
 ## Pipeline
 
-The skill gathers information from multiple sources and composes the note. Independent steps should be run concurrently — agent teams should fan out to parallel subagents for each independent group; single-agent environments (Gemini CLI, etc.) should issue all independent tool calls simultaneously rather than waiting for each to complete before starting the next.
+The skill gathers information from multiple sources and composes the note. Independent steps run concurrently.
 
 1. **Create or open** the note (verify carryover tasks against live PKB state)
 
-**Steps 2–3 — run in parallel** (independent; no shared dependencies):
+**Steps 2–3 — run in parallel** (independent):
 
-2. **Invoke `/email`** to triage inbox (creates tasks with full context; returns FYI items for the daily note)
+2. **Invoke `/email`** to triage inbox (creates tasks with full context; returns inbox items for the note)
 3. **Sweep mobile captures** — scan `$ACA_DATA/notes/mobile-captures/`, route each unprocessed capture to `/q` (task) or `/remember` (knowledge), delete the original, summarise in the note. See [[instructions/mobile-capture-triage]].
 
-4. **Compose Focus** (load task data, reason about recommendations, engage user on priorities)
-5. **Sync progress** (session JSONs, merged PRs, task completions → Work Log + Today's Story)
-   **Steps 4–6 — run in parallel** (independent; each reads from different data sources and neither writes output the other depends on):
+**Steps 4–6 — run in parallel** (independent; each reads from different data sources):
 
-6. **Compose Focus** (load task data, reason about recommendations, engage user on priorities) — begin after launching parallel agents in background
-7. **Sync progress** (session JSONs, merged PRs, task completions → Work Log + Today's Story) — data-gathering sub-steps within this step also run in parallel; see [[instructions/progress-sync]]
-8. **Monitor workflows** — surface outstanding PRs in "What Needs Attention". See [[instructions/workflow-monitor]] for per-repo concurrent fetching.
+4. **Build Status** — load task summary, deadline list, calendar. See [[instructions/status-snapshot]].
+5. **Sync progress** — session JSONs, merged PRs, task completions → Work Log + Today's Log. See [[instructions/progress-sync]].
+6. **Monitor workflows** — surface outstanding PRs in "What Needs Attention". See [[instructions/workflow-monitor]].
 
-9. Task completion: **Sweep review/merge_ready tasks** (after Steps 4-6 complete — see below)
-10. **Output** terminal briefing and halt
+7. **Task completion sweep** — close tasks whose completion is evidenced by merged PRs or sent emails (see below).
+8. **Output** terminal briefing and halt.
 
-### Task Completion Sweep (Step 7)
+### Task Completion Sweep
 
-This sweep closes the loop on tasks whose completion can be inferred from external signals — merged PRs and sent emails. It covers both `status="review"` (tasks awaiting human review) and `status="merge_ready"` (tasks with filed PRs awaiting merge). The sweep does **not** redefine lifecycle states — it catches tasks where the underlying work is already done but the task status was never updated (status drift).
+This sweep closes the loop on tasks whose completion can be inferred from external signals — merged PRs and sent emails. It covers `status="review"` and `status="merge_ready"`. The sweep does **not** redefine lifecycle states — it catches tasks where the underlying work is already done but the task status was never updated (status drift).
 
 **Procedure:**
 
-1. Call `list_tasks(status="review")` and `list_tasks(status="merge_ready")` to get all candidate tasks.
+1. Call `list_tasks(status="review")` and `list_tasks(status="merge_ready")` to get candidate tasks.
 2. Group tasks by repository, then check for merge evidence repo-by-repo:
-   - First inspect each task's `evidence`, `notes`, `description`, and frontmatter for a linked PR number, PR URL (`pr_url`), task ID, task title, and any linked branch name
-   - For each repo represented by those tasks, fetch merged PRs once with `gh pr list --state merged --json number,title,url,mergedAt,body,headRefName`
-   - Match tasks locally against the fetched PR set: PR number already linked on the task, `pr_url` in frontmatter, task ID in PR body, `headRefName` matching the task's linked branch, or PR title matching the task title (using whole-word boundaries)
-   - Only if a specific candidate PR number is already known and the batch result lacks needed detail, use `gh pr view <number> --json state,url,mergedAt,headRefName` as a targeted confirmation step
-3. **Auto-complete clear cases**: If a merged PR is found matching the task, call `mcp__pkb__complete_task` with a completion note explaining the sweep reconciled an out-of-date task state, including the PR URL and merge timestamp as evidence. No human confirmation needed — the merge is sufficient evidence. This applies to both `review` and `merge_ready` tasks.
-4. **Sent-email evidence**: For tasks where the completion signal is a sent email rather than a PR (e.g., reply-required tasks created by `/email`), cross-reference against recent sent items. If a sent reply matches the task's correspondent + subject (using whole-word boundaries) within 48 hours of task creation, call `mcp__pkb__complete_task` with the sent email as evidence. Only auto-close when the match is unambiguous — same correspondent, subject match, sent after task creation.
-5. **Ambiguous cases → "Needs your call"**: When evidence exists but is ambiguous (partial subject match, sent email to a different recipient in the same thread, PR closed but not merged), surface the task in the daily note under a "Needs your call" heading within "What Needs Attention". Include the PR/email link and a one-click closure suggestion. **Never auto-close ambiguous cases.**
-6. **Flag stale tasks**: If a task has been in `review` or `merge_ready` status for more than 14 days with no merge or email evidence found, flag it for user triage. Do not auto-close or auto-abandon stale tasks — surface them explicitly in the Focus section with a brief summary (task ID, title, age, what was expected to close it).
+   - Inspect each task's `evidence`, `notes`, `description`, and frontmatter for a linked PR number, PR URL (`pr_url`), task ID, task title, and any linked branch name
+   - For each repo, fetch merged PRs once with `gh pr list --state merged --json number,title,url,mergedAt,body,headRefName`
+   - Match tasks locally against the fetched PR set: PR number already linked on the task, `pr_url` in frontmatter, task ID in PR body, `headRefName` matching the task's linked branch, or PR title matching the task title (whole-word boundaries)
+   - Only if a specific candidate PR number is already known and the batch result lacks needed detail, use `gh pr view <number> --json state,url,mergedAt,headRefName`
+3. **Auto-complete clear cases**: If a merged PR is found matching the task, call `mcp__pkb__complete_task` with a completion note including the PR URL and merge timestamp as evidence. No human confirmation needed — the merge is sufficient evidence.
+4. **Sent-email evidence**: For tasks where the completion signal is a sent email, cross-reference against recent sent items. If a sent reply matches the task's correspondent + subject (whole-word boundaries) within 48 hours of task creation, call `mcp__pkb__complete_task` with the sent email as evidence. Only auto-close when the match is unambiguous.
+5. **Ambiguous cases**: When evidence exists but is ambiguous (partial subject match, PR closed but not merged), surface the task in the note under "Needs your call" within "What Needs Attention". Include the PR/email link. **Never auto-close ambiguous cases.**
+6. **Stale tasks**: If a task has been in `review` or `merge_ready` for more than 14 days with no evidence found, surface it under "Stale review/merge_ready" in Status. Do not auto-close.
 7. **Report summary**: Include a brief sweep summary in the Work Log section:
    - `N tasks auto-closed from merged PRs`
    - `N tasks auto-closed from sent emails`
-   - `N flagged for user decision`
-   - `N flagged as stale (>14d in review/merge_ready)` — list task IDs inline
+   - `N flagged as ambiguous`
+   - `N flagged as stale (>14d)` — list task IDs inline
 
-**What counts as evidence**: A merged PR linked to the task by any of: `pr_url` in frontmatter, PR number already linked on task, task ID in PR body, `headRefName` matching task's linked branch, PR title matching task title (whole-word boundaries). A sent email matching correspondent + subject (whole-word boundaries) within 48 hours of task creation. A closed-but-not-merged PR is **not** evidence of completion — flag it separately under "Needs your call".
+**What counts as evidence**: A merged PR linked by `pr_url`, PR number already on task, task ID in PR body, `headRefName` matching branch, or PR title matching task title (whole-word boundaries). A sent email matching correspondent + subject (whole-word boundaries) within 48 hours of task creation. A closed-but-not-merged PR is **not** evidence.
 
-> Detailed procedures for each step are in the `instructions/` subdirectory. These procedures describe best practices and edge cases — they are guidance for the agent, not scripts to execute mechanically (P#116).
+> Detailed procedures for each step are in the `instructions/` subdirectory.
 
 ## Error Handling
 
@@ -285,9 +257,8 @@ When a data source is unavailable, skip gracefully and continue. Note the gap in
 
 ## Relationship to Other Skills
 
-- **Briefing bundle** (`/bundle`): The daily note surfaces information; the bundle adds editorial judgment for decision-making (coversheets, email drafts, annotation targets). See [[specs/daily-briefing-bundle.md]].
+- **`/pull`**: Starts execution. The daily note reports; `/pull` acts.
 - **Sleep cycle** (when implemented): Consolidates raw episodes into retrievable stores. The daily note should prefer reading consolidated state over re-processing raw sources.
-- **`/pull`**: Starts execution. The daily note plans; `/pull` acts.
 
 ## Daily Note Template (SSoT)
 

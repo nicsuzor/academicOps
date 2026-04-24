@@ -31,7 +31,7 @@ Classify each open PR into one of the following buckets, in order of prominence:
 | **Ready to merge**     | `mergeable == "MERGEABLE"` AND `reviewDecision == "APPROVED"` AND CI passing (all checks in `statusCheckRollup` succeed) | Bold, direct URL, one-click action |
 | **Needs review**       | `mergeable == "MERGEABLE"` AND `reviewDecision` is empty/pending AND not draft                                           | Brief context line with URL        |
 | **Needs fixes**        | `mergeable == "CONFLICTING"` OR CI failing OR `reviewDecision == "CHANGES_REQUESTED"`                                    | Name the specific blocker          |
-| **Stale**              | `createdAt` >7 days ago AND `updatedAt` >7 days ago AND not draft                                                        | Flag with age and recommendation   |
+| **Stale**              | `createdAt` >7 days ago AND `updatedAt` >7 days ago AND not draft                                                        | Flag with age only                 |
 | **Draft / autonomous** | `isDraft == true` OR author is a bot/polecat-worker                                                                      | Collapsed into count               |
 
 **CI status derivation**: Extract from `statusCheckRollup`. Classify as passing (all succeed), failing (any failure — name the failing checks), pending (any in progress, none failing), or no checks (empty rollup).
@@ -71,8 +71,8 @@ _X open PRs total — Y ready to merge, Z need attention_
 **Formatting rules:**
 
 - **Ready to merge** PRs render as `- [ ]` checkboxes with direct URLs. One-click decisions the user can tick off in their editor as they merge them. User ticks are preserved on regeneration (bidirectional contract — see `SKILL.md`).
-- **Draft / autonomous** PRs: If there are >2, collapse into a single count line. If there are ≤2, list them individually but keep them visually secondary. They are background work and should not compete for attention.
-- **Stale** PRs include age and a suggested action (close, rebase, or review).
+- **Draft / autonomous** PRs: Collapse into a single count line.
+- **Stale** PRs include age only. Do not recommend close/rebase/review — the user decides.
 - Include size (`+additions/-deletions, N files`) for ready-to-merge PRs to help gauge merge confidence.
 - Omit empty buckets entirely. If nothing is ready to merge, don't show the heading.
 
