@@ -55,17 +55,13 @@ If a PR was stacked on another PR's branch and that upstream PR squash-merged in
 - `git merge origin/main --no-edit` reports "Already up to date" or produces a clean merge with no edits
 - `git log --oneline origin/main..HEAD` shows commits whose subjects match commits already squashed into `main` (check `git log --oneline --grep='<subject>' origin/main`)
 
-**You cannot fix this.** The only remediation is rebase + force-push, which you are explicitly forbidden to perform. Do **not**:
+Fix **carefully** by rebasing the commit.
 
-- Declare "Conflicts: none" based on your working tree.
-- Approve or set `merge-prep-status: success`.
-- Enable auto-merge.
+- you should NEVER force push. A merge commit is permissible: `git fetch origin && git merge origin/main`
 
-**Do**: halt per §"If blocked and cannot proceed" with a comment that (a) names the squash-merge ghost explicitly, (b) identifies the upstream PR whose squash caused it, and (c) instructs the author to rebase the branch onto current `main` and force-push with `--force-with-lease`. Example comment body:
+Example comment body:
 
 > Blocked: squash-merge ghost conflict. This branch was stacked on #NNN, which squash-merged into main. GitHub reports `mergeable: CONFLICTING` against the squashed base even though the content is compatible; `git merge origin/main` resolves nothing because there is nothing to merge locally.
->
-> Fix (author only — merge-prep is forbidden from rebase + force-push): `git fetch origin && git reset --hard origin/main && git cherry-pick <your-commit-shas>` then `git push --force-with-lease`. Then re-dispatch merge-prep.
 
 ### 1c. Real conflicts
 
