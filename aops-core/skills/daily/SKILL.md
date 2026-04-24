@@ -44,10 +44,10 @@ The note is a _reporting_ document, not an execution trigger. After the note is 
 A good daily note is evaluated qualitatively:
 
 - **Scannable in 30 seconds**: The user can glance at the note and see deadlines, new inbox items, and what's open. No hunting.
-- **Factual, not editorial**: The note reports what exists. It does not tell the user what matters, what to lead with, or what to deprioritise.
+- **Factual on state; editorial on history.** Reporting _what exists right now_ — deadlines, inbox, open threads, calendar — is factual: list the items, don't rank them. Reporting _what happened_ — the shape of past work — is editorial: the agent is a smart synthesist who names patterns, connects threads across days, surfaces silences, and writes with proportional detail. The target is insight per sentence, not coverage per session. A row-for-row transcript of what ran is a failure mode; so is a verdict on what the user should do next.
 - **Actions linked to tasks**: Every actionable item references its task ID. Every email item that needs a response has a corresponding task created or updated in the PKB. Information captured but not persisted is information lost.
 - **Nothing lost**: Email items that need responses have tasks. Carryover is verified against live task state (no phantom overdue). User annotations are preserved.
-- **No invented ranking**: Do not categorise tasks as SHOULD/DEEP/ENJOY/QUICK/UNBLOCK. Do not write "suggested sequence" rationales. Do not weight research over infrastructure (or vice versa). List facts; let the user choose.
+- **No ranking of what's next**: Do not categorise upcoming work as SHOULD/DEEP/ENJOY/QUICK/UNBLOCK. Do not suggest sequences or say "start with X because Y". This applies to _forward_ prioritisation; narration of past work is governed by the editorial criterion above.
 
 ## Invocation
 
@@ -126,61 +126,32 @@ Include direct PR URLs. Do not rank buckets or say "tackle X first".
 
 ### 4. Today's Log
 
-A factual account of the day's work, reconstructed from session summaries. This section is the agent's log of what happened, not its judgment of what the day meant.
+An editorial synthesis of the day's work. Not a transcript, not an audit log, not a table of sessions — the 100x summary a skilled chief of staff would write for someone who was in the chair but wants the shape of the day in one read.
 
 **Empty-morning rule**: If the work date has no sessions yet (typical morning run), omit this section entirely.
 
-**No editorial ranking**: Do not "lead with the most significant work". Do not say research beats infrastructure (or vice versa). Do not frame something as "the real story". Log sessions in the order they happened, grouped by interaction pattern (below). The reader decides what mattered.
+**What this section IS**: A brief narrative that captures the shape of the day. Which threads moved. Which stalled. Which dropped. What the autonomous runs produced. Patterns across sessions or across days. Real work disproportionately named; noise folded into clauses or omitted entirely.
 
-#### Session Flow subsection (`### Session Flow`)
+**What this section IS NOT**:
 
-Reconstructs the day's sessions from `$AOPS_SESSIONS/summaries/`. Grouped by user-prompt count as a factual classification of how the human interacted — not as a ranking.
+- A prioritisation of what to do next — that belongs in §Status and the user's own `### My priorities`.
+- A row-for-row rendering of session summaries — the collapsed Work Log carries only provenance (merged PRs, completed tasks), and even there we do not duplicate this narrative.
+- A verdict on the day ("research day", "infrastructure day") framed as praise or criticism — you can describe what happened in those terms factually; you cannot weight one category over another.
 
-**Structure**:
-
-```markdown
-### Session Flow
-
-**Interactive sessions** (2+ user prompts):
-
-1. **[Topic]** ([time], [N prompts], [duration]): [What the user was doing — use their actual prompt text. What was the outcome.]
-
-**Dispatched** (1 user prompt):
-
-- **[Topic]** ([time]): [What was dispatched. What came back.]
-
-**Autonomous** (0 user prompts):
-
-- **[Session ID]** ([duration]): [What the agent produced.]
-
-**Threads left open**:
-
-- [Topic not completed — factual only, no "gentle framing"]
-```
-
-**Classification is factual, not editorial**. The groupings exist so the reader can see at a glance which sessions they actively drove vs which ran in the background. Do not promote or demote sessions within a group.
-
-**Use the user's actual prompts as ground truth**: The `description` field in user prompt timeline events is the source of truth for what the human was doing. Prefer it over agent-generated `summary` fields.
-
-**Data source**: Read session summary JSONs for the current day. Filter out auto-commit sessions (`commit-changed` in filename, or filename starts with `sessions-`) and polecat workers (project field matches a short hex hash, e.g. `^[a-f0-9]{7,8}$`). Use `timeline_events` where `type == "user_prompt"` for prompt count and content, `summary` for agent outcomes, `token_metrics.efficiency.session_duration_minutes` for duration, and `project` for context.
-
-> See [[instructions/work-summary]] for log synthesis guidance.
+**The agent is trusted to choose what to surface and how.** No prescribed sub-structure (no required "Interactive / Dispatched / Autonomous" blocks, no enforced chronology). Pick the form that fits this day — by thread, by project, by significance of outcome, chronologically — and commit. See [[instructions/work-summary]] for the full editorial brief.
 
 ### 5. Work Log (collapsed by default)
 
-A reference section for traceability — what sessions ran, what PRs merged, what tasks were completed.
+Provenance only. A reference section for traceability — **merged PRs and completed tasks**. No Session Log table: session narration lives in Today's Log as editorial synthesis, not here as a row dump.
 
-**Rendering**: Keep the `## Work Log` H2 heading at the top, then wrap the body in `<details><summary>(collapsed — expand for merged PRs, sessions, and accomplishments)</summary> … </details>`.
+**Rendering**: Keep the `## Work Log` H2 heading at the top, then wrap the body in `<details><summary>(collapsed — expand for merged PRs and completed tasks)</summary> … </details>`.
 
 **Contains** (when data is available):
 
 - Merged PRs across tracked repos (table)
-- Session log (table with project, prompt count, description)
 - Completed tasks (checklist with task IDs)
 
-Open PRs are **not** duplicated here — they live in `## What Needs Attention / Outstanding Workflows`.
-
-**Session log entries must be meaningful the next morning.** For sessions with user prompts, use the first user prompt's `description` (truncated). For 0-prompt (autonomous) sessions, base the description on what the agent produced. Include the prompt count (e.g., "2p" or "0p").
+Open PRs are **not** duplicated here — they live in `## What Needs Attention / Outstanding Workflows`. Session summaries are **not** duplicated here — they live in `## Today's Log`.
 
 > See [[instructions/progress-sync]] for session loading, PR querying, and task matching.
 

@@ -6,7 +6,7 @@ description: Daily note structure template (SSoT)
 
 # Daily Note Structure (SSoT)
 
-This template defines the sections and their purpose. The daily note is a **report**, not a plan — the agent populates factual sections using information available, and the user ranks and prioritises.
+This template defines the sections and their purpose. The daily note is a hybrid: Carryover, Status, and What Needs Attention are **factual reports** (the agent lists, the user ranks); Today's Log is an **editorial synthesis** (the agent is a smart editor of past work). The user always owns forward prioritisation.
 
 ````markdown
 ---
@@ -91,20 +91,20 @@ Invited to join [[Journal Name]] editorial board. Application via online form.
 
 ## Today's Log
 
-(Omit this section entirely when the work date has no sessions yet.)
+(Omit this section entirely when the work date has no sessions yet. When populated, this is an editorial synthesis — narrative prose, not a table of sessions. See [[instructions/work-summary]] Step 5.3.)
 
 ## Work Log
 
 <details>
-<summary>(collapsed — expand for merged PRs, sessions, and accomplishments)</summary>
+<summary>(collapsed — expand for merged PRs and completed tasks)</summary>
 
 ### Merged PRs
 
 No PRs merged today.
 
-### Sessions
+### Completed Tasks
 
-No sessions today.
+No tasks completed today.
 
 </details>
 ````
@@ -123,8 +123,10 @@ No sessions today.
 
 **Carryover only when non-empty.** No section at all if nothing to carry over.
 
-**Proportional detail, not editorial ranking.** Inbox items involving real people get full context; routine notifications get a line. That's proportional reporting. Do not add "this is the most important thing today" framing — if the user wants to rank, they'll do it in `### My priorities`.
+**Proportional detail.** Inbox items involving real people get full context; routine notifications get a line. Today's Log treats a five-hour autonomous run that closed a framework bug as a paragraph and nine single-prompt dispatches as a clause. Do not inject forward urgency ("this is the most important thing to do today") — forward prioritisation belongs to `### My priorities` and the user.
 
-**No duplication.** Open PRs live in `## What Needs Attention / Outstanding Workflows` only. Merged PRs live in Work Log only.
+**Editorial synthesis on history; no ranking of what's next.** Today's Log is narrative prose — a smart editor's account of what happened, with named patterns, proportional detail, and honest silences. Status and the inbox are factual — they list what exists without weighting it. These are compatible: editorial judgment about past work is welcome; editorial judgment about future work is the user's.
+
+**No duplication.** Open PRs live in `## What Needs Attention / Outstanding Workflows` only. Merged PRs live in Work Log only. Session narration lives in Today's Log only — the Work Log does not carry a session table.
 
 **Actions linked to tasks.** Every actionable inbox item has a `→ Task` link with a task ID.
