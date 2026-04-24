@@ -77,14 +77,14 @@ The supervisor maintains structured state in the epic task body. This is the
 
 ### Work Item Statuses
 
-The supervisor uses canonical PKB task statuses — see [[aops-core/TAXONOMY.md#status-values-and-transitions]].
+The supervisor uses canonical PKB task statuses — see [[../../../remember/references/TAXONOMY.md#status-values-and-transitions]].
 
 | Status        | Meaning in the supervisor loop                                                                                                                                      |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ready`       | Decomposed, awaiting human approval (NOT dispatchable). Also the halt state when a plan-review gate fires — parent not yet queued; supervisor resumes on promotion. |
 | `queued`      | Human-approved, dispatchable. Includes tasks waiting for a feature branch lock during coordinated dispatch (detected via the `feature_branch` field on siblings).   |
 | `in_progress` | Dispatched to a worker, or worker executing — covers both the "sent, waiting for PR" and "actively working" phases                                                  |
-| `merge_ready` | PR filed / CI passing / awaiting merge — do not re-dispatch; trigger merge agent or add LGTM                                                                        |
+| `merge_ready` | PR filed / CI passing / awaiting merge — do not re-dispatch; merge-prep agent handles graduation and the human approves via the `production` Environment gate       |
 | `review`      | Requires human judgment — PR changes requested, review gate fired, or decision required before work can proceed. Supervisor does NOT dispatch.                      |
 | `done`        | Merged and verified                                                                                                                                                 |
 | `blocked`     | Waiting on a dependency — will be unblocked automatically when the dependency transitions to `done`                                                                 |

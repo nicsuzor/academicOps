@@ -103,6 +103,19 @@ def get_machine_name() -> str:
     return _sanitize(socket.gethostname().split(".")[0])
 
 
+def get_hostname() -> str:
+    """Get raw OS hostname for session metadata.
+
+    Unlike get_machine_name(), this returns the unsanitized hostname
+    from socket.gethostname() without falling back to $AOPS_MACHINE.
+    Used to stamp session summaries with "where was this running?".
+
+    Returns:
+        Hostname string (e.g. "nics-macbook.local", "camus-server")
+    """
+    return socket.gethostname()
+
+
 def get_repo_name(project_dir: str | None = None) -> str:
     """Get repository name from project directory.
 

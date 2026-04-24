@@ -68,7 +68,7 @@ When a task is released, the following fields are written to its YAML frontmatte
 
 If `release_task` is called without a bound task ID (or for a task that doesn't exist), it must:
 
-1. Create a minimal task file in the `adhoc-sessions/` directory (requires `TAXONOMY.md` update).
+1. Create a minimal task file in the `adhoc-sessions/` directory (requires `aops-core/skills/remember/references/TAXONOMY.md` update).
 2. Parent it to the root `adhoc-sessions` node.
 3. Apply the provided fields and summary.
 
@@ -85,10 +85,29 @@ The `session_id` is the primary join key for all session artifacts and tasks.
 
 ## 6. Dashboard Integration
 
-The "Recent Sessions" panel in the **Overwhelm Dashboard** becomes the primary human surface for post-break review.
+The "Recent Sessions" panel in the **Overwhelm Dashboard** becomes the primary human surface for post-break review. Sessions are the dashboard's Source of Truth for "what happened" — the dashboard reads session data directly, with no synthesis intermediary.
 
-- **Data Source**: Aggregates tasks where `session_id` matches, showing the `release_summary`, PR links, and follow-up chains.
-- **Goal**: Allow a human to see "what happened" across multiple sessions without reading individual transcripts or reflection blocks.
+### Data Surface
+
+The dashboard assembles each session row from two sources, both keyed by `session_id`:
+
+| Source                                       | Contents                                                                                                   |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| PKB task frontmatter (keyed by `session_id`) | `release_summary`, `pr_url`, `issue_url`, `follow_up_tasks`, `branch`, task title and status               |
+| `$AOPS_SESSIONS/summaries/*.json`            | Insights JSON produced by the session summary pipeline — outcome, accomplishments, friction, token metrics |
+
+No intermediary aggregation file is written. The dashboard reads `$AOPS_SESSIONS/summaries/*.json` directly at render time and joins it against PKB task frontmatter on `session_id`.
+
+### Aggregation Rule
+
+The "Recent Sessions" panel unions two sets of sessions:
+
+1. **Bound sessions**: PKB tasks grouped by `session_id`. Primary human-readable signal is `release_summary`; insights JSON from `summaries/` enriches the row when present.
+2. **Unbound sessions**: Sessions present in `$AOPS_SESSIONS/summaries/` that have no PKB task referencing their `session_id` (e.g. exploratory sessions, sessions that ended without a `release_task` call). These are surfaced from the insights JSON alone.
+
+### Deprecated: `synthesis.json`
+
+An earlier design routed session data through a `synthesis.json` file in the brain. That file was inaccessible to the dashboard (which reads sessions, not the brain) and has been removed. The direct-read model in this section replaces it — do not reintroduce a synthesis intermediary.
 
 ## 7. Giving Effect
 

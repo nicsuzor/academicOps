@@ -261,6 +261,7 @@ def _save_minimal_token_summary(
         "proposed_changes": [],
         # Metadata (aops-d9ba7159)
         "machine": os.environ.get("AOPS_MACHINE"),
+        "hostname": session_naming.get_hostname(),
         "provider": session_naming.get_provider_name(),
         "crew": os.environ.get("POLECAT_CREW_NAME"),
         "repo": project,
@@ -918,6 +919,7 @@ Examples:
                 # Augment summary with inferred metadata (aops-d9ba7159)
                 session_summary.repo = session_summary.repo or _infer_project(session_path, entries)
                 session_summary.machine = session_summary.machine or os.environ.get("AOPS_MACHINE")
+                session_summary.hostname = session_summary.hostname or session_naming.get_hostname()
                 session_summary.task_id = session_summary.task_id or os.environ.get("AOPS_TASK_ID")
                 # Crew and provider are already partially handled by parse_session_file,
                 # but let's be thorough.
@@ -1099,6 +1101,7 @@ Examples:
         # Augment summary with inferred metadata (aops-d9ba7159)
         session_summary.repo = session_summary.repo or _infer_project(session_path, entries)
         session_summary.machine = session_summary.machine or os.environ.get("AOPS_MACHINE")
+        session_summary.hostname = session_summary.hostname or session_naming.get_hostname()
         session_summary.task_id = session_summary.task_id or os.environ.get("AOPS_TASK_ID")
         if not session_summary.crew:
             for category_plural in ("polecats", "crew"):

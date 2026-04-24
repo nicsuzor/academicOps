@@ -441,6 +441,47 @@ class PolecatManager:
             pass
         return None
 
+    def _branch_has_merged_pr(self, repo_path: Path, branch_name: str) -> str | None:
+        """Return PR URL if branch has a merged PR on GitHub, else None.
+
+        Catches squash-merged and rebase-merged branches where the branch tip
+        is NOT an ancestor of default_branch — so the ``merge-base --is-ancestor``
+        check returns false even though the branch's work has landed.
+
+        gh unavailable or network failure returns None (best-effort — callers
+        should combine with other staleness signals).
+        """
+        import json as _json
+
+        try:
+            result = subprocess.run(
+                [
+                    "gh",
+                    "pr",
+                    "list",
+                    "--head",
+                    branch_name,
+                    "--state",
+                    "merged",
+                    "--limit",
+                    "1",
+                    "--json",
+                    "number,url",
+                ],
+                cwd=repo_path,
+                capture_output=True,
+                text=True,
+                timeout=15,
+                check=False,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                prs = _json.loads(result.stdout)
+                if prs:
+                    return prs[0].get("url") or f"#{prs[0].get('number')}"
+        except (FileNotFoundError, subprocess.TimeoutExpired, ValueError):
+            pass
+        return None
+
     def _classify_crew_branch(
         self, repo_path: Path, branch_name: str, default_branch: str = "main"
     ) -> tuple[str, dict]:
@@ -1425,7 +1466,19 @@ class PolecatManager:
                 ["git", "remote", "set-url", "origin", origin_url], cwd=worktree_path, check=True
             )
 
-        # Check if the branch exists on remote, if so check it out, else create fresh from default
+        # Check if the branch exists on remote. Three outcomes:
+        #   1. Does not exist → create fresh from default branch
+        #   2. Exists and is stale (merged / squash-merged / abandoned) → delete remote + fresh
+        #   3. Exists and is legitimately in-flight → fetch + checkout tracking
+        #
+        # "Stale" covers several failure modes that all produce the same bug —
+        # polecat resumes from a branch whose work has already landed, or which
+        # has diverged so far from main that rebasing is a rathole:
+        #   a. Merge-commit merged: branch tip is an ancestor of origin/main
+        #   b. Squash/rebase merged: branch tip is NOT an ancestor, but GitHub
+        #      reports a merged PR on the branch — the canonical re-dispatch case
+        #   c. Abandoned: not merged, far behind main, no open PR — rebasing is
+        #      not worth the turns, start fresh
         branch_exists_result = subprocess.run(
             ["git", "ls-remote", "--heads", "origin", branch_name],
             cwd=worktree_path,
@@ -1433,45 +1486,16 @@ class PolecatManager:
             text=True,
         )
 
-        branch_exists = False
-        if branch_exists_result.stdout.strip():
-            # Exists remotely — check if it is already merged into the default branch.
-            # If so, we want to start fresh from the current tip of the default branch.
-            remote_sha = branch_exists_result.stdout.split()[0]
-            is_merged_result = subprocess.run(
-                ["git", "merge-base", "--is-ancestor", remote_sha, f"origin/{default_branch}"],
-                cwd=worktree_path,
-                capture_output=True,
-            )
-            if is_merged_result.returncode == 0:
-                print(
-                    f"  Branch {branch_name} (at {remote_sha[:8]}) is already merged into {default_branch}."
-                )
-                print(f"  Deleting stale remote branch and starting fresh from {default_branch}...")
-                subprocess.run(
-                    ["git", "push", "origin", "--delete", branch_name],
-                    cwd=worktree_path,
-                    capture_output=True,
-                    check=True,
-                )
-                branch_exists = False
-            else:
-                branch_exists = True
+        create_fresh = not branch_exists_result.stdout.strip()
 
-        if branch_exists:
-            # Exists remotely and not merged — fetch then checkout and track
+        if not create_fresh:
+            # Fetch both refs so is-ancestor and rev-list have accurate data.
             subprocess.run(
                 ["git", "fetch", "origin", branch_name],
                 cwd=worktree_path,
                 capture_output=True,
                 check=True,
             )
-
-            # --- FIX: Avoid reusing stale merged branches ---
-            # If the branch is already merged into origin/{default_branch}, it's stale.
-            # Start fresh from the default branch instead.
-
-            # Fetch default branch to ensure origin/{default_branch} is up to date
             subprocess.run(
                 ["git", "fetch", "origin", default_branch],
                 cwd=worktree_path,
@@ -1479,8 +1503,10 @@ class PolecatManager:
                 check=True,
             )
 
-            # Check if origin/{branch_name} is merged into origin/{default_branch}
-            is_merged = (
+            stale_reason: str | None = None
+
+            # (a) Merge-commit merged — branch is an ancestor of default.
+            is_ancestor = (
                 subprocess.run(
                     [
                         "git",
@@ -1493,33 +1519,18 @@ class PolecatManager:
                 ).returncode
                 == 0
             )
+            if is_ancestor:
+                stale_reason = f"already merged into {default_branch}"
 
-            if is_merged:
-                print(
-                    f"  🗑 Branch {branch_name} is already merged into {default_branch}. "
-                    f"Starting fresh from {default_branch}."
-                )
-                # Try to delete the remote branch to avoid later push collisions
-                delete_result = subprocess.run(
-                    ["git", "push", "origin", "--delete", branch_name],
-                    cwd=worktree_path,
-                    capture_output=True,
-                )
-                if delete_result.returncode == 0:
-                    print(f"  ✅ Deleted stale remote branch {branch_name}")
-                else:
-                    stderr = delete_result.stderr.decode(errors="replace").strip()
-                    print(f"  ⚠ Could not delete remote branch {branch_name}: {stderr}")
+            # (b) Squash/rebase merged — gh reports a merged PR on this branch.
+            if stale_reason is None:
+                merged_pr_url = self._branch_has_merged_pr(worktree_path, branch_name)
+                if merged_pr_url:
+                    stale_reason = f"merged PR exists ({merged_pr_url})"
 
-                # Create fresh from default branch
-                subprocess.run(["git", "checkout", default_branch], cwd=worktree_path, check=True)
-                subprocess.run(
-                    ["git", "checkout", "-b", branch_name], cwd=worktree_path, check=True
-                )
-            else:
-                # SAFEGUARD: Hard-fail if target branch is too far behind origin/main
-                # and not merged. This prevents agents from burning turns on massive rebase/merge noise.
-                _rev_list_result = subprocess.run(
+            # (c) Far behind with no open PR — likely abandoned.
+            if stale_reason is None:
+                rev_list = subprocess.run(
                     [
                         "git",
                         "rev-list",
@@ -1531,24 +1542,54 @@ class PolecatManager:
                     text=True,
                     check=True,
                 )
-                commits_behind = int(_rev_list_result.stdout.strip())
-
+                commits_behind = int(rev_list.stdout.strip())
                 if commits_behind > 100:
-                    raise RuntimeError(
-                        f"Target branch {branch_name} is {commits_behind} commits behind {default_branch}. "
-                        "This looks like a stale unmerged branch from a previous run. "
-                        "Please delete the remote branch or merge manually before re-dispatching."
+                    open_pr_url = self._crew_branch_open_pr(worktree_path, branch_name)
+                    if open_pr_url:
+                        # Open PR exists — don't destroy the work. Fail loudly so
+                        # whoever revived the task can decide how to handle it.
+                        raise RuntimeError(
+                            f"Target branch {branch_name} is {commits_behind} commits "
+                            f"behind {default_branch} and has an open PR ({open_pr_url}). "
+                            "Refusing to discard in-flight work — rebase or close the PR "
+                            "before re-dispatching."
+                        )
+                    stale_reason = (
+                        f"{commits_behind} commits behind {default_branch} with no open PR"
                     )
 
-                subprocess.run(
-                    ["git", "checkout", "-b", branch_name, f"origin/{branch_name}"],
+            if stale_reason is not None:
+                print(f"  🗑 Branch {branch_name} is stale: {stale_reason}.")
+                print(f"  Deleting remote branch and starting fresh from {default_branch}...")
+                delete_result = subprocess.run(
+                    ["git", "push", "origin", "--delete", branch_name],
                     cwd=worktree_path,
-                    check=True,
+                    capture_output=True,
+                    text=True,
                 )
-        else:
-            # Create fresh from default branch. Note: clone usually checks out default branch.
+                if delete_result.returncode != 0:
+                    # Already-deleted is fine; a real push failure is not.
+                    stderr = delete_result.stderr.strip()
+                    if "remote ref does not exist" not in stderr:
+                        print(f"  ⚠ Could not delete remote branch {branch_name}: {stderr}")
+                else:
+                    print(f"  ✅ Deleted stale remote branch {branch_name}")
+                create_fresh = True
+
+        if create_fresh:
+            # Create fresh from default branch. Clone usually already has it checked out.
             subprocess.run(["git", "checkout", default_branch], cwd=worktree_path, check=False)
-            subprocess.run(["git", "checkout", "-b", branch_name], cwd=worktree_path, check=True)
+            subprocess.run(
+                ["git", "checkout", "-B", branch_name, f"origin/{default_branch}"],
+                cwd=worktree_path,
+                check=True,
+            )
+        else:
+            subprocess.run(
+                ["git", "checkout", "-b", branch_name, f"origin/{branch_name}"],
+                cwd=worktree_path,
+                check=True,
+            )
 
         # Configure git credentials for HTTPS push
         configure_git_credentials(worktree_path)

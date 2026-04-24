@@ -19,7 +19,7 @@ permalink: skills-pdf
 
 # PDF Generation Skill
 
-> **Taxonomy note**: This skill provides domain expertise (HOW) for markdown to PDF conversion with academic typography. See [[TAXONOMY.md]] for the skill/workflow distinction.
+> **Taxonomy note**: This skill provides domain expertise (HOW) for markdown to PDF conversion with academic typography. See [[aops-core/skills/remember/references/TAXONOMY.md]] for the skill/workflow distinction.
 
 ## Overview
 

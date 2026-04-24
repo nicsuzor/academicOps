@@ -2,6 +2,19 @@
 
 This project contains the **academicOps** framework itself. You are currently working on the framework's source code.
 
+## Path Discovery (CRITICAL)
+
+To discover project locations, read `.agents/context-map.json` in the relevant repo. If the map is missing or any path it references does not exist, STOP and report.
+
+## Fail-Fast / Halt Rule (ENFORCED)
+
+If you cannot do what was asked, **STOP and report** — do NOT search broadly, do NOT invent workarounds.
+
+- **Missing Paths**: If a documented path does not exist, STOP and report.
+- **No Broad Grep**: Never grep `$HOME` or `/` to find source repos or documents. Use `context-map.json` for discovery.
+- **Tool Failures**: If a tool doesn't work as documented, report the failure — do not invent alternatives.
+- **Ambiguity**: If instructions conflict or are ambiguous, ask for clarification.
+
 ## Key Components
 
 - **.agents/**: Instructions for working on the framework
@@ -36,5 +49,9 @@ The framework uses named agents with distinct personalities and areas of experti
 - **Dismiss stale reviews** when you have addressed the reviewer's concerns or the human has overridden them.
 - **Always include a clear dismissal message** explaining why: what was fixed, or which human decision overrides the concern.
 - **Never dismiss a review you haven't addressed.**
+
+## Agent Rules
+
+- **Always leave a loose thread.** Before completing work that is part of a chain, file the next task in the PKB so the chain isn't dropped. A summary message in chat is not sufficient; it disappears when the user multitasks. Use `create_task` with a clear parent, title, and body.
 
 See [[README.md]] for framework usage documentation.

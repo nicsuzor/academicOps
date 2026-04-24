@@ -688,6 +688,7 @@ def generate_fallback_insights(
         **metadata,
         **operational_metrics,
         "machine": os.environ.get("AOPS_MACHINE"),
+        "hostname": session_naming.get_hostname(),
         "provider": session_naming.get_provider_name(),
         "crew": os.environ.get("POLECAT_CREW_NAME"),
         "repo": metadata.get("project"),

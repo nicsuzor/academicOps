@@ -74,7 +74,7 @@ Quick task capture with minimal overhead. Speed is the priority — no enrichmen
 
 **When**: User says "/q X", "queue task", "new task:", "save for later"
 
-**Allowed tools**: `mcp__pkb__create_task`, `mcp__pkb__task_search`, `mcp__pkb__update_task`, `mcp__pkb__get_task`
+**Allowed tools**: `mcp__pkb__create_task`, `mcp__pkb__task_search`, `mcp__pkb__update_task`, `mcp__pkb__get_task`, `mcp__pkb__get_task_children`
 
 **Workflow**:
 
@@ -87,7 +87,22 @@ Quick task capture with minimal overhead. Speed is the priority — no enrichmen
    - `effort`: duration (0.5d, 1d, 1w)
    - `consequence`: prose description of what happens if not done
 6. Create task with body template (Problem, Solution, Files, AC). Pass `due`, `effort`, and `consequence` as explicit PKB parameters to `mcp__pkb__create_task` (not only in body prose) — the PKB uses `due` as a structured field for deadline-aware prioritization.
-7. Report and HALT — no execution.
+7. **Report with context tree**: Fetch siblings via `mcp__pkb__get_task_children(parent_id)` and print a compact ASCII tree showing parent + siblings + the new task, marking the new task with `← NEW`. Then HALT — no execution.
+
+   Format:
+   ```
+   <parent-id> (<parent title>)
+   ├── <sibling-id> (<sibling title>)
+   ├── <sibling-id> (<sibling title>)
+   └── <new-id> (<new title>)   ← NEW
+   ```
+
+   Use `└──` for the last child, `├──` for others. If the new task has no siblings, render as parent → new task only:
+   ```
+   <parent-id> (<parent title>)
+   └── <new-id> (<new title>)   ← NEW
+   ```
+   Show only immediate family (parent + its children); do not recurse into ancestors or grandchildren.
 
 **Key rule**: Commission don't code. Route to swarm for execution.
 
@@ -321,6 +336,17 @@ User prompt
 7. **Decomposition requires AC** — never create subtasks without clear acceptance criteria; keep steps in parent body instead
 8. **No parallel tracking** — never put `- [ ]` checklists in task bodies when items are tracked as subtasks; after decomposition, replace the body checklist with a reference to children
 
+## Task Assignment Rules
+
+- **Default assignee**: Set to `polecat` or leave unassigned.
+- **Human assignment**: Never assign to `nic` unless the task reduces to a genuine binary human choice (e.g., "Do we use Pattern A or Pattern B?").
+- **Decision subtasks**: When a real choice IS needed, create a minimal choice subtask that blocks the epic, providing full context to decide. Never assign the parent epic back to `nic`.
+- **Underspecified tasks**: Even underspecified epics should not go to `nic`: file a research/decomposition task for an agent to do the legwork first.
+
+## Handover
+
+**Always leave a loose thread.** Every decomposition or planning session must result in actionable next steps in the PKB. If planning is blocked, file the task that unblocks it. Before exiting, ensure the user knows exactly what the next agent should do.
+
 ## Work Hierarchy
 
 ```
@@ -331,4 +357,4 @@ Projects: bounded efforts (tree roots). Epics: PR-sized verifiable work. Tasks: 
 
 ## Status Values
 
-Canonical — see [[aops-core/TAXONOMY.md#status-values-and-transitions]]. Typical flow: `inbox` → `ready` → `queued` → `in_progress` → `merge_ready` → `done` (with `blocked`, `paused`, `someday`, `cancelled` as alternatives).
+Canonical — see [[../remember/references/TAXONOMY.md#status-values-and-transitions]]. Typical flow: `inbox` → `ready` → `queued` → `in_progress` → `merge_ready` → `done` (with `blocked`, `paused`, `someday`, `cancelled` as alternatives).
