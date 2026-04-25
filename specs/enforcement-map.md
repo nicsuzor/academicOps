@@ -118,59 +118,61 @@ Generalisation is judgment-heavy. Mechanism above advisory would need a counterf
 
 ### A4 — Cite Sources
 
-| Mechanism                                       | Tier     | Fires at    | Status |
-| ----------------------------------------------- | -------- | ----------- | ------ |
-| AXIOMS.md instruction                           | inject   | always-on   | active |
-| `rbg` review                                    | advisory | review-time | active |
-| `/learn` RCA schema (forces source attribution) | block    | invocation  | active |
+| Mechanism                                               | Tier     | Fires at    | Status |
+| ------------------------------------------------------- | -------- | ----------- | ------ |
+| AXIOMS.md instruction                                   | inject   | always-on   | active |
+| auto-mode `Cite Sources — Academic Integrity` (A4) rule | warn     | PreToolUse  | active |
+| `rbg` review                                            | advisory | review-time | active |
+| `/learn` RCA schema (forces source attribution)         | block    | invocation  | active |
 
 ### A5 — Single Source of Truth
 
-| Mechanism                               | Tier     | Fires at    | Status                                                             |
-| --------------------------------------- | -------- | ----------- | ------------------------------------------------------------------ |
-| AXIOMS.md / aops-skill SSOT convention  | inject   | always-on   | active                                                             |
-| auto-mode `Backup File Prevention` rule | warn     | PreToolUse  | active — needs rewrite as prose-with-reasoning per `task-06db60dc` |
-| `find_duplicates` PKB tool              | advisory | on-demand   | active                                                             |
-| `rbg` duplicate-detection review        | advisory | review-time | active                                                             |
+| Mechanism                                                              | Tier     | Fires at    | Status |
+| ---------------------------------------------------------------------- | -------- | ----------- | ------ |
+| AXIOMS.md / aops-skill SSOT convention                                 | inject   | always-on   | active |
+| auto-mode `Single Source of Truth — No Backup File Patterns` (A5) rule | warn     | PreToolUse  | active |
+| `find_duplicates` PKB tool                                             | advisory | on-demand   | active |
+| `rbg` duplicate-detection review                                       | advisory | review-time | active |
 
 ### A6 — Stay Within Scope
 
-| Mechanism                                         | Tier                                  | Fires at             | Status                                                                                          |
-| ------------------------------------------------- | ------------------------------------- | -------------------- | ----------------------------------------------------------------------------------------------- |
-| AXIOMS.md / aops-skill Decision Framework         | inject                                | always-on            | active                                                                                          |
-| TodoWrite scope reminder                          | inject                                | TodoWrite            | active                                                                                          |
-| auto-mode `Scope Discipline` rule                 | warn                                  | PreToolUse           | active — classifier reads transcript & judges drift; rule needs prose rewrite (`task-06db60dc`) |
-| auto-mode `Explicit Approval for Costly Ops` rule | warn                                  | PreToolUse           | active — needs concrete threshold (`task-06db60dc`)                                             |
-| `orchestrator_boundary` gate                      | warn                                  | PostToolUse          | active (hard-block in Phase 3)                                                                  |
-| enforcer gate (ultra-vires Type B)                | warn (default) / block (configurable) | PreToolUse threshold | active — configurable via `ENFORCER_GATE_MODE`                                                  |
-| `rbg` review                                      | advisory                              | review-time          | active                                                                                          |
-| pr-reviewer GHA                                   | warn                                  | PR push              | active                                                                                          |
+| Mechanism                                                                          | Tier                                  | Fires at             | Status                                                                                               |
+| ---------------------------------------------------------------------------------- | ------------------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------- |
+| AXIOMS.md / aops-skill Decision Framework                                          | inject                                | always-on            | active                                                                                               |
+| TodoWrite scope reminder                                                           | inject                                | TodoWrite            | active                                                                                               |
+| auto-mode `Stay Within Scope — Scope Discipline` (A6) rule                         | warn                                  | PreToolUse           | active                                                                                               |
+| auto-mode `Stay Within Scope — Plan First for Multi-File Changes` (A6) rule        | warn                                  | PreToolUse           | active                                                                                               |
+| auto-mode `Stay Within Scope — Costly Operations Require Prior Approval` (A6) rule | warn                                  | PreToolUse           | active — threshold: >50 model API calls, >50 non-session-created file writes, or >$1 estimated spend |
+| `orchestrator_boundary` gate                                                       | warn                                  | PostToolUse          | active (hard-block in Phase 3)                                                                       |
+| enforcer gate (ultra-vires Type B)                                                 | warn (default) / block (configurable) | PreToolUse threshold | active — configurable via `ENFORCER_GATE_MODE`                                                       |
+| `rbg` review                                                                       | advisory                              | review-time          | active                                                                                               |
+| pr-reviewer GHA                                                                    | warn                                  | PR push              | active                                                                                               |
 
 ### A7 — Respect Delegated Authority
 
-| Mechanism                                        | Tier     | Fires at    | Status                                                                              |
-| ------------------------------------------------ | -------- | ----------- | ----------------------------------------------------------------------------------- |
-| AXIOMS.md / task `acceptance_criteria` field     | inject   | always-on   | active                                                                              |
-| auto-mode `Delegated Authority Only` rule        | warn     | PreToolUse  | active — classifier is judgment-capable; rule needs prose rewrite (`task-06db60dc`) |
-| auto-mode `Acceptance Criteria Own Success` rule | warn     | PreToolUse  | active — same; rule needs prose rewrite (`task-06db60dc`)                           |
-| `marsha` criterion-substitution check            | advisory | review-time | active — warn-only (`#621`)                                                         |
-| `rbg` review                                     | advisory | review-time | active                                                                              |
-| pr-reviewer GHA                                  | warn     | PR push     | active                                                                              |
-| QA gate                                          | block    | Stop        | planned                                                                             |
+| Mechanism                                                                              | Tier     | Fires at    | Status                      |
+| -------------------------------------------------------------------------------------- | -------- | ----------- | --------------------------- |
+| AXIOMS.md / task `acceptance_criteria` field                                           | inject   | always-on   | active                      |
+| auto-mode `Respect Delegated Authority — Classification Belongs to the User` (A7) rule | warn     | PreToolUse  | active                      |
+| auto-mode `Respect Delegated Authority — Acceptance Criteria Own Success` (A7) rule    | warn     | PreToolUse  | active                      |
+| `marsha` criterion-substitution check                                                  | advisory | review-time | active — warn-only (`#621`) |
+| `rbg` review                                                                           | advisory | review-time | active                      |
+| pr-reviewer GHA                                                                        | warn     | PR push     | active                      |
+| QA gate                                                                                | block    | Stop        | planned                     |
 
 ### A8 — Halt on Failure
 
-| Mechanism                                                        | Tier      | Fires at      | Status                                                                                         |
-| ---------------------------------------------------------------- | --------- | ------------- | ---------------------------------------------------------------------------------------------- |
-| AXIOMS.md / CORE.md Fail-Fast / Halt Rule                        | inject    | always-on     | active                                                                                         |
-| auto-mode `No Validation Bypass` rule                            | block     | PreToolUse    | active — needs narrowing of `--force` to validation contexts (`task-06db60dc`)                 |
-| auto-mode `Fail-Fast on Tool Failure` rule                       | warn      | PreToolUse    | active — classifier reads tool-result + transcript; rule needs prose rewrite (`task-06db60dc`) |
-| auto-mode `No Infrastructure Workarounds` rule                   | warn      | PreToolUse    | active — same; rule needs prose rewrite (`task-06db60dc`)                                      |
-| `policy_enforcer.py` (destructive git, `--force`, `--no-verify`) | hard-deny | PreToolUse    | active                                                                                         |
-| `fail_fast_watchdog`                                             | warn      | PostToolUse   | active                                                                                         |
-| commit gate                                                      | warn      | commit-time   | active                                                                                         |
-| branch protection (required checks)                              | block     | merge attempt | active                                                                                         |
-| `rbg` review                                                     | advisory  | review-time   | active                                                                                         |
+| Mechanism                                                             | Tier      | Fires at      | Status                                                                                                              |
+| --------------------------------------------------------------------- | --------- | ------------- | ------------------------------------------------------------------------------------------------------------------- |
+| AXIOMS.md / CORE.md Fail-Fast / Halt Rule                             | inject    | always-on     | active                                                                                                              |
+| auto-mode `Halt on Failure — No Validation Bypass` (A8) rule          | block     | PreToolUse    | active — `--force` carve-out for benign cleanup; bypass cue is adjacency to a hook/test/check failure in transcript |
+| auto-mode `Halt on Failure — No Silent Workaround` (A8) rule          | warn      | PreToolUse    | active                                                                                                              |
+| auto-mode `Halt on Failure — No Infrastructure Workarounds` (A8) rule | warn      | PreToolUse    | active                                                                                                              |
+| `policy_enforcer.py` (destructive git, `--force`, `--no-verify`)      | hard-deny | PreToolUse    | active                                                                                                              |
+| `fail_fast_watchdog`                                                  | warn      | PostToolUse   | active                                                                                                              |
+| commit gate                                                           | warn      | commit-time   | active                                                                                                              |
+| branch protection (required checks)                                   | block     | merge attempt | active                                                                                                              |
+| `rbg` review                                                          | advisory  | review-time   | active                                                                                                              |
 
 ### A9 — Data Boundaries
 
@@ -187,12 +189,12 @@ A9 is unusual: aops contributes no novel auto-mode rule because CC defaults alre
 
 ### A10 — Evidentiary Immutability
 
-| Mechanism                                        | Tier      | Fires at    | Status                                                                                                    |
-| ------------------------------------------------ | --------- | ----------- | --------------------------------------------------------------------------------------------------------- |
-| AXIOMS.md / CORE.md "Research Data is Immutable" | inject    | always-on   | active                                                                                                    |
-| auto-mode `Research Data Immutable` (P#42)       | block     | PreToolUse  | active — `records/` glob needs concretising (`**/records/**`, `$ACA_DATA/records/**`) per `task-06db60dc` |
-| `policy_enforcer.py` path protection             | hard-deny | PreToolUse  | active                                                                                                    |
-| `rbg` review                                     | advisory  | review-time | active                                                                                                    |
+| Mechanism                                        | Tier      | Fires at    | Status                                                                                                                                                       |
+| ------------------------------------------------ | --------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| AXIOMS.md / CORE.md "Research Data is Immutable" | inject    | always-on   | active                                                                                                                                                       |
+| auto-mode `Evidentiary Immutability` (A10) rule  | block     | PreToolUse  | active — globs concretised to `**/records/**`, `$ACA_DATA/records/**`, `~/brain/records/**`, `~/writing/data/records/**`; covers read-then-reformat-in-place |
+| `policy_enforcer.py` path protection             | hard-deny | PreToolUse  | active                                                                                                                                                       |
+| `rbg` review                                     | advisory  | review-time | active                                                                                                                                                       |
 
 ### Operational rules (derived from axioms)
 
@@ -260,7 +262,7 @@ Rows that flag what the framework does NOT yet catch, or catches incompletely:
 - **QA gate operational coverage** — gate body present (`lib/gates/definitions.py:71`) but `enforcement.md` §3 still labels it planned; "planned requirements" not codified.
 - **Hydration gate body** — env var wired, gate definition not yet present.
 - **Commit gate body** — env var wired, gate definition not yet present.
-- **Auto-mode rules vs. A1–A10** — current rules cite pre-rework P# IDs; rewrite blocked on `task-06db60dc` / `task-0af27bfc` (axiom IDs in `aops-core/AXIOMS.md` are A1–A10 but `automode-rules.json` still references P# IDs).
+- ~~**Auto-mode rules vs. A1–A10**~~ — closed by `task-06db60dc`. Rules in `aops-core/.claude-plugin/plugin.json` (`autoMode` key) and the polecat default `polecat/defaults/claude-settings.json` now cite A1–A10 axiom IDs and are written as prose-with-reasoning.
 - **Settings.json deny rules** — repo's `.claude/settings.json` declares only allow rules; deny enforcement comes from user/global settings (out-of-tree, unverifiable from this repo).
 - **`/aops` pattern detection** — Steps 4–5 of the evidence loop are unbuilt; failure evidence accumulates in GH issues but no mechanism reads patterns and proposes pyramid adjustments. Principal known gap.
 - **Automatic map-row updates** — Step 7 of the evidence loop is partial; row updates here are still manual in the closing PR.
