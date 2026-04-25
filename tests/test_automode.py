@@ -29,10 +29,13 @@ class TestGetAopsRules:
         assert len(rules["soft_deny"]) == 11
 
     def test_rules_contain_axiom_references(self):
-        """Each soft_deny rule should reference its axiom number."""
+        """Each soft_deny rule should reference an A1-A10 axiom."""
+        import re
+
+        axiom_ref = re.compile(r"\(A(?:[1-9]|10)\)")
         rules = _get_aops_rules()
         for rule in rules["soft_deny"]:
-            assert "P#" in rule, f"Rule missing axiom reference: {rule[:60]}..."
+            assert axiom_ref.search(rule), f"Rule missing axiom reference: {rule[:60]}..."
 
     def test_fallback_to_config_file(self, tmp_path, monkeypatch):
         """If plugin.json has no autoMode, falls back to config file."""
@@ -106,7 +109,7 @@ class TestIsInstalled:
     def test_detects_installed(self, tmp_path, monkeypatch):
         import lib.automode as mod
 
-        settings = {"autoMode": {"soft_deny": ["Research Data Immutable (P#42): ..."]}}
+        settings = {"autoMode": {"soft_deny": ["Evidentiary Immutability (A10): ..."]}}
         settings_path = tmp_path / ".claude" / "settings.json"
         settings_path.parent.mkdir(parents=True)
         settings_path.write_text(json.dumps(settings))
@@ -153,7 +156,11 @@ class TestInstall:
         monkeypatch.setattr(
             mod,
             "_get_aops_rules",
-            lambda: {"environment": ["e"], "allow": ["a"], "soft_deny": ["P#42 test"]},
+            lambda: {
+                "environment": ["e"],
+                "allow": ["a"],
+                "soft_deny": ["Evidentiary Immutability (A10): test"],
+            },
         )
         monkeypatch.setattr(
             mod,
