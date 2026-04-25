@@ -25,8 +25,8 @@ class TestGetAopsRules:
     def test_plugin_json_has_expected_rule_counts(self):
         rules = _get_aops_rules()
         assert len(rules["environment"]) == 4
-        assert len(rules["allow"]) == 3
-        assert len(rules["soft_deny"]) == 11
+        assert len(rules["allow"]) == 1
+        assert len(rules["soft_deny"]) == 15
 
     def test_rules_contain_axiom_references(self):
         """Each soft_deny rule should reference an A1-A10 axiom."""
