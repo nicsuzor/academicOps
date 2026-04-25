@@ -2,10 +2,10 @@
 title: Enforcement Map
 type: state
 category: state
-description: Live registry of how each framework rule is enforced — which mechanism, at what severity, and where the next escalation or demotion should land if evidence supports it.
+description: Live registry of framework enforcement mechanisms and their severity tiers.
 tier: core
 depends_on: [enforcement]
-tags: [framework, enforcement, rules, pyramid, state]
+tags: [framework, enforcement, rules, state]
 ---
 
 # Enforcement Map
@@ -252,34 +252,3 @@ These are framework conventions with their own enforcement infrastructure. They 
 | Mechanism                   | Tier  | Fires at                          | Status                                                                                                                       |
 | --------------------------- | ----- | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | Supervisor plan-review gate | block | post-decomposition / pre-dispatch | active — `parent.status != "queued"` halts; `ready → queued` transition by user is the approval record (no warn-only bypass) |
-
-## Known gaps
-
-Rows that flag what the framework does NOT yet catch, or catches incompletely:
-
-- **Subagent hydration inherit** — parent's hydration skip cascades to children; no subagent-independent hydration.
-- **Reactive helpfulness** (ultra-vires Type A) — PostToolUse on tool error is `planned` (`specs/ultra-vires-enforcer.md` Phase 2); enforcer countdown only catches drift after the fact.
-- **QA gate operational coverage** — gate body present (`lib/gates/definitions.py:71`) but `enforcement.md` §3 still labels it planned; "planned requirements" not codified.
-- **Hydration gate body** — env var wired, gate definition not yet present.
-- **Commit gate body** — env var wired, gate definition not yet present.
-- ~~**Auto-mode rules vs. A1–A10**~~ — closed by `task-06db60dc`. Rules in `aops-core/.claude-plugin/plugin.json` (`autoMode` key) and the polecat default `polecat/defaults/claude-settings.json` now cite A1–A10 axiom IDs and are written as prose-with-reasoning.
-- **Settings.json deny rules** — repo's `.claude/settings.json` declares only allow rules; deny enforcement comes from user/global settings (out-of-tree, unverifiable from this repo).
-- **`/aops` pattern detection** — Steps 4–5 of the evidence loop are unbuilt; failure evidence accumulates in GH issues but no mechanism reads patterns and proposes pyramid adjustments. Principal known gap.
-- **Automatic map-row updates** — Step 7 of the evidence loop is partial; row updates here are still manual in the closing PR.
-
-## How to update this map
-
-1. **Observe** the failure or insufficiency (QA / marsha fail, /retro, /sleep, user report, post-merge regression).
-2. **File evidence** via `/learn` if no GH issue tracks the pattern. The skill enforces RCA schema and anonymisation. Labels: `framework`, `enforcement`, plus criticality.
-3. **Locate the rule** in the registry. If multiple mechanisms exist, pick the row whose tier the evidence implicates.
-4. **Propose a tier change** — escalate (move up) or demote (move down) per the rules above. If no mechanism currently catches the failure, the rule has a _gap row_ — add a new row at the lightest tier that plausibly catches it. Apply the least-invasion principle.
-5. **Update the row** in the same PR that ships the change. Statuses: `active`, `warn-only`, `planned`, `aspirational`. If a tier change is in flight, note it in the row's status field.
-
-## Related
-
-- `specs/enforcement.md` — design statement (pipeline, pyramid, evidence loop)
-- `specs/enforcement-mechanisms.md` — per-mechanism reference catalogue
-- `specs/ultra-vires-enforcer.md` — enforcer agent and gate internal design
-- `aops-core/AXIOMS.md` — A1–A10 source
-- `aops-core/.claude-plugin/plugin.json` (`autoMode` key) — live auto-mode rules
-- `task-06db60dc` — auto-mode rewrite against A1–A10 (blocked on axiom rework landing)
