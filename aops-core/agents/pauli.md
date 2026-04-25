@@ -6,11 +6,24 @@ model: inherit
 tools:
   - Read
   - Skill
-# Note: tools: restricts local subagent invocation only.
-# GHA workflow grants Bash+Read via claude_args for PR review tasks.
-disallowedTools:
-  - Write
+  - mcp__plugin_aops-core_pkb__search
+  - mcp__plugin_aops-core_pkb__get_document
+  - mcp__plugin_aops-core_pkb__pkb_context
+  - mcp__plugin_aops-core_pkb__create
+  - mcp__plugin_aops-core_pkb__append
+  - mcp__plugin_aops-core_pkb__graph_stats
+  - mcp__plugin_aops-core_pkb__create_task
+  - mcp__plugin_aops-core_pkb__get_task
+  - mcp__plugin_aops-core_pkb__update_task
+  - mcp__plugin_aops-core_pkb__list_tasks
+  - mcp__plugin_aops-core_pkb__task_search
+  - mcp__plugin_aops-core_pkb__complete_task
+  - mcp__plugin_aops-core_pkb__create_memory
+  - mcp__plugin_aops-core_pkb__retrieve_memory
+  - mcp__plugin_aops-core_pkb__list_memories
+  - mcp__plugin_aops-core_pkb__get_network_metrics
 mcpServers:
+  - plugin_aops-core_pkb
   - pkb
 skills:
   - remember

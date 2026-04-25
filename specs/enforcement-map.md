@@ -2,105 +2,282 @@
 title: Enforcement Map
 type: state
 category: state
-description: Current-state registry of framework failure modes and which mechanisms catch them. Keyed by failure mode, not by mechanism. Evidence is GitHub issues.
+description: Live registry of how each framework rule is enforced — which mechanism, at what severity, and where the next escalation or demotion should land if evidence supports it.
 tier: core
 depends_on: [enforcement]
-tags: [framework, enforcement, failure-modes, state]
+tags: [framework, enforcement, rules, pyramid, state]
 ---
 
 # Enforcement Map
 
-This is the **current-state** companion to `specs/enforcement.md`. Where that document is the design statement (the pyramid, the pipeline, the principles), this one is the live registry: **"for this failure mode, this is the mechanism that catches it today, and here is the evidence base."**
+This is the **current-state** companion to `specs/enforcement.md`. The design doc is the principle (the pipeline, the pyramid, the evidence loop). This map is the live record: **for each rule the framework enforces, which mechanisms catch it today, at what severity, and where the next move should land.**
 
-The design doc evolves slowly; this map evolves as the framework learns. When the §5 evidence loop in `specs/enforcement.md` completes a cycle — a pattern surfaces, a fix ships — a row in this map changes.
+When the §5 evidence loop completes a cycle — a pattern surfaces, a fix ships — a row in this map changes.
 
-## Conventions
+## Pipeline view (when mechanisms fire)
 
-- **One row per failure mode.** Not per mechanism. Mechanisms appear in multiple rows.
-- **Evidence is GitHub issues.** Columns cite issue numbers from the framework repo.
-- **Intervention point is expressed as `L<n> / <tier>`** — pipeline layer and pyramid tier from `specs/enforcement.md`.
-- **Status** tracks the specific intervention for this failure mode, not the mechanism globally. A mechanism can be `active` overall but `planned` against a particular failure mode.
+The temporal pipeline lives in `specs/enforcement.md` §3 — _Capture → Context injection → Decomposition → Workflow composition → Soft gates → Hard blocks → Observability → Agent review → Handover → Review pipeline → Merge gates → Follow-up_. Mechanisms below cite their lifecycle event (`PreToolUse`, `Stop`, `review-time`, `PR push`, `merge attempt`, `always-on`) rather than re-declaring the layer.
 
-## Failure-mode registry
+## Severity pyramid
 
-| Failure mode                                                                                                                                                                            | Evidence (GH issues)                                                         | Intervention point                              | Mechanism                                                                                                               | Mode                                     | Status                                                                           |
-| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------- |
-| **Criterion substitution** — reviewer re-defines the acceptance criterion to make a failing change pass                                                                                 | #621                                                                         | L7 / middle; L9 / middle                        | rbg subagent + pr-reviewer GHA                                                                                          | warn → block                             | warn-only                                                                        |
-| **Planner capture embeds action items as body prose** — task created without decomposing into subtasks                                                                                  | #582                                                                         | L0 / base; L2 / middle                          | `/q` + `/planner` decomposition checks                                                                                  | warn                                     | warn-only                                                                        |
-| **Plan mode bypasses Gap Principle** — agent drafts a plan without applying P#71 gap-first reasoning                                                                                    | #559                                                                         | L1 / base; L2 / middle                          | lightweight hydrator + planner template                                                                                 | inject + warn                            | warn-only                                                                        |
-| **Agent exceeds session scope** (ultra-vires Type B — deliberate scope expansion at TodoWrite)                                                                                          | (see `specs/ultra-vires-enforcer.md`)                                        | L4 / middle; L7 / middle                        | enforcer gate + rbg invocation                                                                                          | warn (default) / block (configurable)    | warn-only                                                                        |
-| **Reactive helpfulness** (ultra-vires Type A — agent investigates after an error without authorization)                                                                                 | (see `specs/ultra-vires-enforcer.md`)                                        | L4 / middle                                     | enforcer gate (PostToolUse on tool error)                                                                               | warn                                     | planned                                                                          |
-| **Orchestrator executes feature work directly** — CLI session edits project source instead of dispatching to polecat                                                                    | `specs/orchestrator-boundary.md`                                             | L2 / middle; L4 / middle                        | hydrator dispositor reminder (UserPromptSubmit) + `orchestrator_boundary` gate (PostToolUse)                            | inject + warn                            | active (warn-only — hard-block is Phase 3)                                       |
-| **Unverified completion claim** — agent marks task done without `actual_state` evidence                                                                                                 | P#17, P#103 — no single issue yet, pattern observed repeatedly in QA reviews | L2 / middle; L7 / middle; L8 / middle           | proof-of-compliance fields (`completion_evidence`, `release_task.summary`) + qa / marsha review + /dump release summary | inject (schema) + warn                   | active (partial — only `release_task.summary` and `completion_evidence` enforce) |
-| **Hydration skipped in subagent** — parent-skipped hydration cascades to children                                                                                                       | (pattern — verify in session logs)                                           | L1 / base                                       | lightweight hydrator                                                                                                    | inject                                   | active — known gap: subagent inherit-from-parent means parent skip propagates    |
-| **Enforcer threshold exceeded without compliance check**                                                                                                                                | (pattern tracked by gate state)                                              | L4 / middle                                     | enforcer gate countdown                                                                                                 | warn / block                             | active                                                                           |
-| **Destructive git bypass** — e.g. `git reset --hard`, `git push --force`, `stash drop`                                                                                                  | Historical pattern; policy_enforcer.py coverage                              | L5 / tip                                        | policy_enforcer.py PreToolUse                                                                                           | block                                    | active                                                                           |
-| **Credential leak path** — env files or secrets written to shared locations                                                                                                             | (prevention-only; no runtime verification)                                   | L5 / tip                                        | credential isolation at SessionStart                                                                                    | block                                    | active — known gap: no runtime re-verification                                   |
-| **Oversized or prohibited `.md` writes** — e.g. writes to `*-GUIDE.md`, oversized root-level docs                                                                                       | Historical pattern                                                           | L5 / tip                                        | policy_enforcer.py PreToolUse                                                                                           | block                                    | active                                                                           |
-| **QA not performed before completion claim** — epic closed without QA task graduating                                                                                                   | (pattern — QA gate is planned)                                               | L4 / middle                                     | QA gate                                                                                                                 | warn → block                             | planned                                                                          |
-| **Handover without framework reflection** — session Stop with bound task but no reflection block                                                                                        | Pattern observed in /dump audits                                             | L8 / middle; L8 / tip when handover gate blocks | handover gate + /dump skill                                                                                             | warn / block                             | active                                                                           |
-| **Commit without task reference** — commit in a task context with no PKB backlink                                                                                                       | Pattern                                                                      | L8 / middle                                     | commit gate                                                                                                             | warn                                     | active                                                                           |
-| **PR merged past branch-protection state** — e.g. admin-override without review                                                                                                         | Historical; branch-protection enforced                                       | L10 / tip                                       | branch protection                                                                                                       | block                                    | active                                                                           |
-| **Review-loop oscillation** — PR comment cycle exceeds threshold without progress                                                                                                       | Pattern                                                                      | L10 / tip                                       | loop detector                                                                                                           | warn → block                             | active — verify threshold                                                        |
-| **Downstream task blocked after upstream done** — `depends_on` not surfaced post-merge                                                                                                  | Pattern                                                                      | L11 / base                                      | task-completion unblocked surfacing                                                                                     | inject                                   | active (partial)                                                                 |
-| **Framework pattern not learned** — same failure repeats across sessions without `/learn` filing                                                                                        | (meta — this row exists because the loop itself can fail)                    | Evidence loop / Step 2                          | `/learn` skill                                                                                                          | warn                                     | active                                                                           |
-| **Pattern not detected across issues** — Steps 4–5 of evidence loop unimplemented                                                                                                       | (meta — principal known gap, see `specs/enforcement.md` §5)                  | Evidence loop / Step 4                          | `/aops` pattern detection                                                                                               | —                                        | aspirational                                                                     |
-| **Skill ↔ agent symmetry mismatch** — agent lists skill in `skills:` but skill's `callable-by` is absent, or vice versa (Rule 6)                                                        | `specs/skill-delegation.md` §Lint Additions                                  | L3 / middle                                     | lint rule 6 (sibling task `task-8ff8dac0`)                                                                              | warn → error (after callable-by rollout) | planned                                                                          |
-| **Nested reachability violation** — skill `S` spawns `S′` or agent `B` but caller agent lacks the required allowlist entry (Rule 7)                                                     | `specs/skill-delegation.md` §Lint Additions                                  | L3 / middle                                     | lint rule 7 (sibling task `task-8ff8dac0`)                                                                              | error                                    | planned                                                                          |
-| **Agent-tool parity gap** — agent body instructs use of Skill/Agent tool but tool absent from `tools:` (Rule 8)                                                                         | `specs/skill-delegation.md` §Lint Additions                                  | L3 / middle                                     | lint rule 8 (sibling task `task-8ff8dac0`)                                                                              | error                                    | planned                                                                          |
-| **Direct-prompt persona inlining** — agent prose contains known-agent persona bypassing authority envelope (Rule 9)                                                                     | `specs/skill-delegation.md` §Lint Additions                                  | L3 / middle                                     | lint rule 9 — LLM classification (sibling task `task-8ff8dac0`); P#49 forbids regex/keyword matching                    | warn                                     | planned                                                                          |
-| **Agent Bash grant without scope bounds** — `tools` includes `Bash` but `bash_scopes` is absent; grants unrestricted shell access via configuration omission                            | `specs/agent-permissions.md` §Bash scopes                                    | L3 / middle                                     | permissions-lint: bash-without-scopes                                                                                   | error                                    | planned                                                                          |
-| **Agent filesystem tool without path bounds** — `tools` includes `Read`/`Write`/`Edit`/`Glob`/`Grep`/`NotebookEdit` but `file_access` is absent; grants unconstrained filesystem access | `specs/agent-permissions.md` §Filesystem paths                               | L3 / middle                                     | permissions-lint: filesystem-tools-without-file_access                                                                  | error                                    | planned                                                                          |
-| **Broad search instead of halt** — agent greps `$HOME` or `/` to find missing paths instead of stopping; or invents workarounds when context-map.json is absent                         | #641                                                                         | L1 / base                                       | CORE.md context injection (Path Discovery + Fail-Fast / Halt Rule)                                                      | inject                                   | active                                                                           |
+Why a pyramid: **as severity rises, frequency falls.** The base tier covers everything cheaply, by default; the tip is reserved for unambiguous high-stakes cases. The principle is least invasion — prefer the lightest tier that catches the failure. The cost of a heavier tier is friction and false positives; the cost of a lighter tier is escapes. Tier choice is governed by §5 evidence, not by intuition.
 
-## How to add a row
+```
+                  ╱╲
+                 ╱  ╲           Hard-deny  — rejected outright; no in-call release
+                ╱────╲                       (policy_enforcer.py, settings.json deny,
+               ╱      ╲                       credential isolation, auto-mode `block`,
+              ╱        ╲                      loop detector at ceiling)
+             ╱  Block   ╲       Block       — pauses until condition met
+            ╱────────────╲                    (QA gate, handover gate in block mode,
+           ╱              ╲                   branch protection, linter workflows,
+          ╱     Warn       ╲                  proof-of-compliance schema)
+         ╱──────────────────╲
+        ╱                    ╲   Warn        — warning surfaced; agent proceeds
+       ╱      Advisory        ╲                (enforcer gate default, handover gate
+      ╱────────────────────────╲                default, pr-reviewer GHA, agent-enforcer GHA)
+     ╱                          ╲
+    ╱          Inject             ╲   Advisory  — verdict for a caller; non-blocking
+   ╱────────────────────────────────╲              (rbg, marsha, james, pauli,
+                                                     enforcer subagent)
 
-1. Observe the failure in the field (QA / marsha fail, /retro, /sleep, user report, post-merge regression).
-2. If no existing GH issue tracks the pattern, file one via `/learn`. The `/learn` skill enforces the root-cause-analysis schema and anonymisation. Labels should include the layer (e.g. `framework`, `enforcement`) and criticality.
-3. Decide the intervention point by walking the pipeline layers in order: is this a capture / context / decomposition / execution / review / handover / merge / follow-up problem? Then pick the pyramid tier using the least-invasion principle (`specs/enforcement.md` §10 principle 5).
-4. Add the row here with a link to the GH issue(s). Set status based on whether the mechanism currently covers the failure mode (`active`), is configurable but off (`warn-only`), or does not yet exist (`planned` / `aspirational`).
-5. When a PR ships that changes the intervention, update the row in the same PR.
+                                       Inject     — surfaces info into context;
+                                                     non-blocking
+                                                     (lightweight hydrator,
+                                                      AXIOMS.md/CORE.md instruction,
+                                                      /learn, skills routing table)
+```
 
-## Known-gap flags
+| Tier      | Action                                 | Released when                                |
+| --------- | -------------------------------------- | -------------------------------------------- |
+| Inject    | surfaces information into context      | n/a — non-blocking                           |
+| Advisory  | returns a verdict consumed by a caller | caller integrates the verdict                |
+| Warn      | surfaces a warning at gate evaluation  | n/a — agent proceeds                         |
+| Block     | pauses progress                        | gate condition met (verdict, schema, checks) |
+| Hard-deny | rejects the call outright              | not released for this call                   |
 
-These rows call out framework gaps rather than mechanisms currently catching the failure:
+**Escalation rule.** Move a (rule, mechanism) pair UP a tier when evidence — GH issues, /retro findings, /trend-review patterns, QA fails — shows the current tier is repeatedly bypassed.
 
-- **Criterion substitution** — rbg and pr-reviewer both flag, but the block is warn-only; no gate prevents merge.
-- **Reactive helpfulness** — PostToolUse detection planned (`specs/ultra-vires-enforcer.md` Phase 2); currently only the periodic enforcer-gate countdown catches drift after the fact.
-- **QA gate** — never closes; epics can complete without a verified QA task.
-- **Subagent hydration inherit** — parent's skip cascades; no subagent-independent hydration.
-- **`/aops` pattern detection + recommendation** — Steps 4–5 of the evidence loop are aspirational. Failure evidence accumulates in GH issues, but no mechanism reads the pattern and proposes a pyramid adjustment.
+**Demotion rule.** Move DOWN when evidence shows the current tier produces false positives without commensurate protection.
 
-## Axiom → mechanism map
+**Never guess.** The pyramid is moved by §5 evidence, not by authorial intuition.
 
-Where the failure-mode registry above is keyed by **failure mode**, this table is keyed by **axiom**. Source: `aops-core/AXIOMS.md` (A1–A10, judicial-voice set). For each axiom it shows where it is surfaced in the session lifecycle, whether it has a rule in the Claude Code auto mode classifier, and the other mechanisms that catch violations.
+### Gate mode environment variables
 
-**"Auto mode"** = the Claude Code native per-action classifier configured in `aops-core/.claude-plugin/plugin.json` (`autoMode` key) and mirrored in `aops-core/config/automode-rules.json`. Merge strategy (`aops-core/lib/automode.py`): CC defaults for `allow` and `soft_deny` are preserved and aops rules appended — so CC defaults (Memory Poisoning, Self-Modification, Git Push to Default Branch, Blind Apply, Code from External, Sandbox Network Callback, Local Operations) remain in force on top of what this table shows.
+The mode of a configurable gate is set by env var, defaults below:
 
-**Caveats.** Auto mode rules currently still cite the pre-rework P# axiom IDs — rewrite against A1–A10 is blocked on `task-06db60dc` / `task-0af27bfc`. The P# → A# mapping below is the correspondence to use meanwhile. Per-action classifiers cannot capture session-level or judgment-heavy violations; those axioms stay at instruction + reviewer tiers only.
+| Variable              | Default | Values                 | Controls                          |
+| --------------------- | ------- | ---------------------- | --------------------------------- |
+| `ENFORCER_GATE_MODE`  | `block` | `warn`, `block`        | periodic compliance audit         |
+| `HYDRATION_GATE_MODE` | `off`   | `off`, `warn`, `block` | hydration before substantive work |
+| `QA_GATE_MODE`        | `block` | `warn`, `block`        | QA verification before exit       |
+| `COMMIT_GATE_MODE`    | `warn`  | `warn`, `block`        | commit policy                     |
+| `HANDOVER_GATE_MODE`  | `warn`  | `warn`, `block`        | framework reflection before exit  |
 
-| Axiom                                        | Surfaced at                                                                                | In auto mode?                                                                                                                                                      | Other enforcement points                                                                                                                                                                                                             |
-| -------------------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **A1 — No Other Truths (Closure)**           | Always-on via AXIOMS.md; CORE.md HALT Protocol                                             | **No** — semantic / judgment-only                                                                                                                                  | `rbg` review (post-hoc derivation check); HALT Protocol instruction; permissions-lint rules 6–9 (`specs/skill-delegation.md`)                                                                                                        |
-| **A2 — No Bills of Attainder (Categorical)** | Always-on via AXIOMS.md; aops-skill Phase 2 "design with critic review"                    | **No** — requires generalisation judgment                                                                                                                          | `rbg` critic review before implementation; aops-skill categorical-imperative gate                                                                                                                                                    |
-| **A3 — Honest Epistemics**                   | Always-on via AXIOMS.md; CORE.md "Inference is not evidence"; /dump release-summary schema | **No** — session-level claim inspection                                                                                                                            | `marsha` independent verification (runtime black-box); `rbg` review; /qa skill; `release_task.summary` + `completion_evidence` proof-of-compliance fields (partial — see _Unverified completion claim_ row above)                    |
-| **A4 — Cite Sources**                        | Always-on via AXIOMS.md                                                                    | **No** — attribution is semantic                                                                                                                                   | `rbg` review; `marsha` verification; /learn root-cause schema (forces source attribution)                                                                                                                                            |
-| **A5 — Single Source of Truth**              | Always-on via AXIOMS.md; aops-skill "Single Source of Truth" convention                    | **Partial** — `Backup File Prevention` (current P#24) narrow subset only                                                                                           | `rbg` duplicate-detection review; aops-skill Anti-Bloat principle; planner dedup on task creation; `find_duplicates` PKB tool                                                                                                        |
-| **A6 — Stay Within Scope**                   | Always-on via AXIOMS.md; aops-skill Decision Framework; TodoWrite scope reminder           | **Yes** — `Scope Discipline` (P#5), `Explicit Approval for Costly Ops` (P#50); both flagged in `task-06db60dc` as session-level and slated for removal             | `enforcer` gate ultra-vires Type B (L4, warn-only); `orchestrator_boundary` gate PostToolUse (warn-only, hard-block Phase 3); TodoWrite scope check; `rbg`; pr-reviewer GHA                                                          |
-| **A7 — Respect Delegated Authority**         | Always-on via AXIOMS.md; task `acceptance_criteria` field; release schema                  | **Yes** — `Delegated Authority Only` (P#99), `Acceptance Criteria Own Success` (P#31); both flagged as judgment calls in `task-06db60dc`                           | `marsha` criterion-substitution check (#621, warn-only); `rbg` review; pr-reviewer GHA; QA gate (planned); user sign-off instruction                                                                                                 |
-| **A8 — Halt on Failure**                     | Always-on via AXIOMS.md; CORE.md Fail-Fast / Halt Rule; UserPromptSubmit hydration         | **Yes** — `No Validation Bypass` (P#25), `Fail-Fast on Tool Failure` (P#9), `No Infrastructure Workarounds` (P#30)                                                 | `policy_enforcer.py` PreToolUse (destructive git, `--force`, `--no-verify`, destructive bypass — **block**); `fail_fast_watchdog` PostToolUse; commit gate; branch protection                                                        |
-| **A9 — Data Boundaries**                     | SessionStart (credential isolation); Always-on via AXIOMS.md                               | **No** — relies on CC defaults (Memory Poisoning, Self-Modification, Git Push to Default Branch, Sandbox Network Callback)                                         | `policy_enforcer.py` PreToolUse (env file writes, oversized `.md` writes, protected paths — **block**); credential isolation at SessionStart — **block**; branch protection; commit gate; CC-default Git Push to Default Branch rule |
-| **A10 — Evidentiary Immutability**           | Always-on via AXIOMS.md; CORE.md "Research Data is Immutable" section                      | **Yes** — `Research Data Immutable` (current P#42); `task-06db60dc` notes the `records/` glob patterns need concretising (`**/records/**`, `$ACA_DATA/records/**`) | `policy_enforcer.py` path protection (glob-based — **block**); `rbg` review                                                                                                                                                          |
+A gate's effective tier (`warn` ↔ `block`) is its mode value at runtime, not a static spec entry.
 
-### Lifecycle key
+### Note on auto-mode rows
 
-Auto mode and `policy_enforcer.py` fire at **PreToolUse** (per-action, real-time). `fail_fast_watchdog`, `task_binding`, `custodiet`/`enforcer` countdown fire at **PostToolUse** or on a gate countdown (drift catches the per-action classifier missed). `rbg` and `marsha` are invoked by callers at review time or on-demand. Handover / commit / branch-protection mechanisms fire at Stop / merge. CORE.md and AXIOMS.md content is always in context and therefore continuously "surfaced" — counted here as the instruction tier of the pyramid.
+The CC auto-mode classifier is a Sonnet 4.6 agent that reads the proposed tool call, the conversation transcript, and the rules expressed as prose, then judges whether to allow / prompt / block. It is not a regex matcher and it is not bound to a single tool call's local arguments — explicit user intent in prior turns and stated boundaries in conversation are part of its input. Treat it as **rbg-class judgment running at the per-action gate**.
+
+Earlier rows in this map flagged auto-mode rules for removal on the grounds they were "session-level patterns, not per-action" or "judgment calls". That framing was wrong: the classifier has the transcript and is judgment-capable. The work tracked under `task-06db60dc` is **rule-rewriting** (P#-ID-style → prose-with-reasoning), not removal. Demotion to "removed" should require evidence the classifier cannot do the job — not a presumption that it cannot.
+
+## Rule registry
+
+One row per **(rule, mechanism)** pair. A rule with multiple mechanisms gets multiple rows. Each row records the current severity tier, where it fires, and current status — so escalation or demotion is tracked per row.
+
+Rules are drawn from `aops-core/AXIOMS.md` (A1–A10) plus operational conventions in their own subsections.
+
+### A1 — No Other Truths (Closure)
+
+| Mechanism                         | Tier     | Fires at    | Status |
+| --------------------------------- | -------- | ----------- | ------ |
+| AXIOMS.md / CORE.md HALT Protocol | inject   | always-on   | active |
+| `rbg` review                      | advisory | review-time | active |
+
+Closure is structurally semantic — no per-action classifier can detect "rule not derivable from axioms." Escalation path would require a session-level audit subagent; not currently scoped.
+
+### A2 — No Bills of Attainder (Categorical Imperative)
+
+| Mechanism                        | Tier     | Fires at           | Status |
+| -------------------------------- | -------- | ------------------ | ------ |
+| AXIOMS.md instruction            | inject   | always-on          | active |
+| `rbg` critic review              | advisory | review-time        | active |
+| aops-skill Phase 2 design review | advisory | pre-implementation | active |
+
+Generalisation is judgment-heavy. Mechanism above advisory would need a counterfactual reasoner.
+
+### A3 — Honest Epistemics
+
+| Mechanism                                                                  | Tier     | Fires at            | Status                                                         |
+| -------------------------------------------------------------------------- | -------- | ------------------- | -------------------------------------------------------------- |
+| AXIOMS.md / CORE.md "Inference is not evidence"                            | inject   | always-on           | active                                                         |
+| Proof-of-compliance schema (`completion_evidence`, `release_task.summary`) | block    | `release_task` call | active (partial — schema enforces, content checked downstream) |
+| `marsha` independent verification                                          | advisory | review-time         | active                                                         |
+| `rbg` review                                                               | advisory | review-time         | active                                                         |
+
+### A4 — Cite Sources
+
+| Mechanism                                       | Tier     | Fires at    | Status |
+| ----------------------------------------------- | -------- | ----------- | ------ |
+| AXIOMS.md instruction                           | inject   | always-on   | active |
+| `rbg` review                                    | advisory | review-time | active |
+| `/learn` RCA schema (forces source attribution) | block    | invocation  | active |
+
+### A5 — Single Source of Truth
+
+| Mechanism                               | Tier     | Fires at    | Status                                                             |
+| --------------------------------------- | -------- | ----------- | ------------------------------------------------------------------ |
+| AXIOMS.md / aops-skill SSOT convention  | inject   | always-on   | active                                                             |
+| auto-mode `Backup File Prevention` rule | warn     | PreToolUse  | active — needs rewrite as prose-with-reasoning per `task-06db60dc` |
+| `find_duplicates` PKB tool              | advisory | on-demand   | active                                                             |
+| `rbg` duplicate-detection review        | advisory | review-time | active                                                             |
+
+### A6 — Stay Within Scope
+
+| Mechanism                                         | Tier                                  | Fires at             | Status                                                                                          |
+| ------------------------------------------------- | ------------------------------------- | -------------------- | ----------------------------------------------------------------------------------------------- |
+| AXIOMS.md / aops-skill Decision Framework         | inject                                | always-on            | active                                                                                          |
+| TodoWrite scope reminder                          | inject                                | TodoWrite            | active                                                                                          |
+| auto-mode `Scope Discipline` rule                 | warn                                  | PreToolUse           | active — classifier reads transcript & judges drift; rule needs prose rewrite (`task-06db60dc`) |
+| auto-mode `Explicit Approval for Costly Ops` rule | warn                                  | PreToolUse           | active — needs concrete threshold (`task-06db60dc`)                                             |
+| `orchestrator_boundary` gate                      | warn                                  | PostToolUse          | active (hard-block in Phase 3)                                                                  |
+| enforcer gate (ultra-vires Type B)                | warn (default) / block (configurable) | PreToolUse threshold | active — configurable via `ENFORCER_GATE_MODE`                                                  |
+| `rbg` review                                      | advisory                              | review-time          | active                                                                                          |
+| pr-reviewer GHA                                   | warn                                  | PR push              | active                                                                                          |
+
+### A7 — Respect Delegated Authority
+
+| Mechanism                                        | Tier     | Fires at    | Status                                                                              |
+| ------------------------------------------------ | -------- | ----------- | ----------------------------------------------------------------------------------- |
+| AXIOMS.md / task `acceptance_criteria` field     | inject   | always-on   | active                                                                              |
+| auto-mode `Delegated Authority Only` rule        | warn     | PreToolUse  | active — classifier is judgment-capable; rule needs prose rewrite (`task-06db60dc`) |
+| auto-mode `Acceptance Criteria Own Success` rule | warn     | PreToolUse  | active — same; rule needs prose rewrite (`task-06db60dc`)                           |
+| `marsha` criterion-substitution check            | advisory | review-time | active — warn-only (`#621`)                                                         |
+| `rbg` review                                     | advisory | review-time | active                                                                              |
+| pr-reviewer GHA                                  | warn     | PR push     | active                                                                              |
+| QA gate                                          | block    | Stop        | planned                                                                             |
+
+### A8 — Halt on Failure
+
+| Mechanism                                                        | Tier      | Fires at      | Status                                                                                         |
+| ---------------------------------------------------------------- | --------- | ------------- | ---------------------------------------------------------------------------------------------- |
+| AXIOMS.md / CORE.md Fail-Fast / Halt Rule                        | inject    | always-on     | active                                                                                         |
+| auto-mode `No Validation Bypass` rule                            | block     | PreToolUse    | active — needs narrowing of `--force` to validation contexts (`task-06db60dc`)                 |
+| auto-mode `Fail-Fast on Tool Failure` rule                       | warn      | PreToolUse    | active — classifier reads tool-result + transcript; rule needs prose rewrite (`task-06db60dc`) |
+| auto-mode `No Infrastructure Workarounds` rule                   | warn      | PreToolUse    | active — same; rule needs prose rewrite (`task-06db60dc`)                                      |
+| `policy_enforcer.py` (destructive git, `--force`, `--no-verify`) | hard-deny | PreToolUse    | active                                                                                         |
+| `fail_fast_watchdog`                                             | warn      | PostToolUse   | active                                                                                         |
+| commit gate                                                      | warn      | commit-time   | active                                                                                         |
+| branch protection (required checks)                              | block     | merge attempt | active                                                                                         |
+| `rbg` review                                                     | advisory  | review-time   | active                                                                                         |
+
+### A9 — Data Boundaries
+
+| Mechanism                                                                                                              | Tier      | Fires at      | Status                                             |
+| ---------------------------------------------------------------------------------------------------------------------- | --------- | ------------- | -------------------------------------------------- |
+| AXIOMS.md instruction                                                                                                  | inject    | always-on     | active                                             |
+| credential isolation (agent-env-map)                                                                                   | hard-deny | SessionStart  | active — known gap: no runtime re-verification     |
+| CC-default auto-mode rules (Memory Poisoning, Self-Modification, Git Push to Default Branch, Sandbox Network Callback) | block     | PreToolUse    | active — preserved through `lib/automode.py` merge |
+| `policy_enforcer.py` (env file writes, oversized `.md`, plugin payloads)                                               | hard-deny | PreToolUse    | active                                             |
+| commit gate                                                                                                            | warn      | commit-time   | active                                             |
+| branch protection                                                                                                      | block     | merge attempt | active                                             |
+
+A9 is unusual: aops contributes no novel auto-mode rule because CC defaults already cover the protected surfaces. Coverage rests on the merge strategy preserving CC's defaults.
+
+### A10 — Evidentiary Immutability
+
+| Mechanism                                        | Tier      | Fires at    | Status                                                                                                    |
+| ------------------------------------------------ | --------- | ----------- | --------------------------------------------------------------------------------------------------------- |
+| AXIOMS.md / CORE.md "Research Data is Immutable" | inject    | always-on   | active                                                                                                    |
+| auto-mode `Research Data Immutable` (P#42)       | block     | PreToolUse  | active — `records/` glob needs concretising (`**/records/**`, `$ACA_DATA/records/**`) per `task-06db60dc` |
+| `policy_enforcer.py` path protection             | hard-deny | PreToolUse  | active                                                                                                    |
+| `rbg` review                                     | advisory  | review-time | active                                                                                                    |
+
+### Operational rules (derived from axioms)
+
+These are framework conventions with their own enforcement infrastructure. They derive from one or more axioms — derivation noted per row.
+
+**Hydration before substantive work** _(derives from A1, A8 — agent must know rules before acting; missing context is a failure)_
+
+| Mechanism            | Tier   | Fires at          | Status                                           |
+| -------------------- | ------ | ----------------- | ------------------------------------------------ |
+| lightweight hydrator | inject | UserPromptSubmit  | active — known gap: subagent inherit-from-parent |
+| skills routing table | inject | UserPromptSubmit  | active                                           |
+| gate status strip    | inject | UserPromptSubmit  | active — verify rendering path                   |
+| hydration gate       | warn   | session lifecycle | warn (default off via `HYDRATION_GATE_MODE`)     |
+
+**Session ends with handover** _(derives from A3 — completion claims need evidence)_
+
+| Mechanism                   | Tier                                              | Fires at     | Status |
+| --------------------------- | ------------------------------------------------- | ------------ | ------ |
+| /dump skill                 | inject                                            | invocation   | active |
+| Framework Reflection schema | inject                                            | end of /dump | active |
+| handover gate               | warn (default) / block (per `HANDOVER_GATE_MODE`) | Stop         | active |
+
+**Periodic compliance audit** _(derives from A6, A8 — drift catcher for session-level patterns auto-mode misses)_
+
+| Mechanism                                     | Tier                   | Fires at             | Status                                                                                 |
+| --------------------------------------------- | ---------------------- | -------------------- | -------------------------------------------------------------------------------------- |
+| enforcer gate countdown                       | warn (default) / block | PreToolUse threshold | active — configurable via `ENFORCER_GATE_MODE`                                         |
+| enforcer subagent                             | advisory               | gate threshold       | active                                                                                 |
+| compliance block flag (`compliance_block.py`) | hard-deny              | session lifecycle    | active in `block` mode — block record at `$ACA_DATA/enforcer/blocks/`, cleared by user |
+
+**PR review pipeline** _(derives from A3, A7)_
+
+| Mechanism                                  | Tier                   | Fires at             | Status          |
+| ------------------------------------------ | ---------------------- | -------------------- | --------------- |
+| pr-reviewer GHA                            | warn                   | PR push              | active          |
+| agent-enforcer GHA                         | warn → required-check  | PR push              | active          |
+| linter workflows (ruff, typecheck, pytest) | block (required check) | PR push              | active          |
+| branch protection                          | block                  | merge attempt        | active — verify |
+| loop detector (merge-prep self-loop)       | hard-deny at ceiling   | every merge-prep run | active          |
+| project-owner / admin approval             | block                  | merge attempt        | active — verify |
+
+**Skill / agent declaration linting** _(derives from A1 — closure on derivable rules)_
+
+| Mechanism                                              | Tier         | Fires at | Status  |
+| ------------------------------------------------------ | ------------ | -------- | ------- |
+| lint rule 6 (skill ↔ agent symmetry)                   | warn → error | PR push  | planned |
+| lint rule 7 (nested reachability)                      | error        | PR push  | planned |
+| lint rule 8 (agent–tool parity)                        | error        | PR push  | planned |
+| lint rule 9 (persona inlining; LLM classification)     | warn         | PR push  | planned |
+| permissions-lint: bash-without-scopes                  | error        | PR push  | planned |
+| permissions-lint: filesystem-tools-without-file_access | error        | PR push  | planned |
+
+**Supervisor plan-review gate** _(derives from A7 — user owns acceptance)_
+
+| Mechanism                   | Tier  | Fires at                          | Status                                                                                                                       |
+| --------------------------- | ----- | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Supervisor plan-review gate | block | post-decomposition / pre-dispatch | active — `parent.status != "queued"` halts; `ready → queued` transition by user is the approval record (no warn-only bypass) |
+
+## Known gaps
+
+Rows that flag what the framework does NOT yet catch, or catches incompletely:
+
+- **Subagent hydration inherit** — parent's hydration skip cascades to children; no subagent-independent hydration.
+- **Reactive helpfulness** (ultra-vires Type A) — PostToolUse on tool error is `planned` (`specs/ultra-vires-enforcer.md` Phase 2); enforcer countdown only catches drift after the fact.
+- **QA gate operational coverage** — gate body present (`lib/gates/definitions.py:71`) but `enforcement.md` §3 still labels it planned; "planned requirements" not codified.
+- **Hydration gate body** — env var wired, gate definition not yet present.
+- **Commit gate body** — env var wired, gate definition not yet present.
+- **Auto-mode rules vs. A1–A10** — current rules cite pre-rework P# IDs; rewrite blocked on `task-06db60dc` / `task-0af27bfc` (axiom IDs in `aops-core/AXIOMS.md` are A1–A10 but `automode-rules.json` still references P# IDs).
+- **Settings.json deny rules** — repo's `.claude/settings.json` declares only allow rules; deny enforcement comes from user/global settings (out-of-tree, unverifiable from this repo).
+- **`/aops` pattern detection** — Steps 4–5 of the evidence loop are unbuilt; failure evidence accumulates in GH issues but no mechanism reads patterns and proposes pyramid adjustments. Principal known gap.
+- **Automatic map-row updates** — Step 7 of the evidence loop is partial; row updates here are still manual in the closing PR.
+
+## How to update this map
+
+1. **Observe** the failure or insufficiency (QA / marsha fail, /retro, /sleep, user report, post-merge regression).
+2. **File evidence** via `/learn` if no GH issue tracks the pattern. The skill enforces RCA schema and anonymisation. Labels: `framework`, `enforcement`, plus criticality.
+3. **Locate the rule** in the registry. If multiple mechanisms exist, pick the row whose tier the evidence implicates.
+4. **Propose a tier change** — escalate (move up) or demote (move down) per the rules above. If no mechanism currently catches the failure, the rule has a _gap row_ — add a new row at the lightest tier that plausibly catches it. Apply the least-invasion principle.
+5. **Update the row** in the same PR that ships the change. Statuses: `active`, `warn-only`, `planned`, `aspirational`. If a tier change is in flight, note it in the row's status field.
 
 ## Related
 
 - `specs/enforcement.md` — design statement (pipeline, pyramid, evidence loop)
 - `specs/enforcement-mechanisms.md` — per-mechanism reference catalogue
 - `specs/ultra-vires-enforcer.md` — enforcer agent and gate internal design
-- `aops-core/AXIOMS.md` — source of the A1–A10 axiom set
+- `aops-core/AXIOMS.md` — A1–A10 source
 - `aops-core/.claude-plugin/plugin.json` (`autoMode` key) — live auto-mode rules
-- `task-06db60dc` — rewrite of auto-mode rules against A1–A10 (blocked on axiom rework landing)
+- `task-06db60dc` — auto-mode rewrite against A1–A10 (blocked on axiom rework landing)
