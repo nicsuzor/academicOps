@@ -116,13 +116,26 @@ The five primary node types in the PKB:
 
 | Type        | Description                                                                                                                          |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| **goal**    | A multi-month/year desired outcome — the root of the hierarchy                                                                       |
+| **goal**    | A multi-month/year desired outcome — the root of the hierarchy. Also stored as `type: target` (alias, same schema).                  |
 | **project** | A discrete thing we work on — a noun with defined scope and boundaries                                                               |
 | **epic**    | A bundle of related work that together achieves an aim — a verb                                                                      |
 | **task**    | A discrete deliverable, completable in a single focused session                                                                      |
 | **learn**   | Observational tracking — a spike, discovery, or noted finding. Not directly actionable; resolves by decomposing into follow-up tasks |
 
 The `classification` field carries additional semantic subtypes (bug, feature, spike, chore, etc.) without multiplying top-level types.
+
+### `target` nodes
+
+`target` is an alias for `goal`. Both represent user-declared strategic priorities with the same schema and computed properties. The distinction is stylistic — "goal" emphasises aspiration, "target" emphasises a concrete proof of achievement. Treat them identically in tooling and documentation.
+
+**Key fields on goal/target nodes:**
+
+| Field         | Description                                                                                                                                                                                 |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `consequence` | Prose description of what happens if this goal is not achieved. Present on tasks too — used by the daily skill to surface stakes without editorial framing.                                 |
+| `goals: []`   | List of goal/target IDs that a task or project contributes to. This is how work items link to goals — **not** via parent hierarchy. A task can contribute to multiple goals simultaneously. |
+
+**Why `goals: []` instead of parent edges?** Goals are cross-cutting: the same task may serve multiple strategic priorities. Parent edges encode containment; `goals: []` encodes contribution. The planner enforces this distinction — goals are never used as direct parents in the task tree.
 
 ---
 
