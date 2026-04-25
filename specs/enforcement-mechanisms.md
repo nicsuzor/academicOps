@@ -165,6 +165,17 @@ Entries below use the fixed schema declared in `specs/enforcement.md` §6 and ar
 
 ### L4 Soft gates
 
+#### CC auto-mode classifier
+
+- **Pipeline layer**: L4 Soft gates (pre-execution, per tool call)
+- **Pyramid tier**: middle (soft_deny → permission prompt) and tip (block / hard-deny rules)
+- **Trigger**: every tool call, before execution, when CC is running in auto mode
+- **Purpose**: Sonnet 4.6 pre-execution gate. Reads the proposed tool call alongside the conversation transcript and the prose `autoMode.environment` / `allow` / `soft_deny` / `block` rules, then judges whether to allow, surface a permission prompt (warn), or block. Treat it as **rbg-class judgment running at the per-action gate** — transcript-aware, prose-reasoning, fast.
+- **Location**: rules in `aops-core/.claude-plugin/plugin.json` (`autoMode` key); merge logic in `aops-core/lib/automode.py`; CC-default rules merged in at install time via `scripts/setup-automode.sh`.
+- **Scope**: Claude Code only (polecat, crew, interactive — not Gemini, not GHA).
+- **Status**: active. Rule wording carries P#-ID-style framing inherited from before the classifier was understood as judgment-capable; rewrite as prose-with-reasoning is `task-06db60dc`.
+- **Design notes**: rule design implications — see `specs/ultra-vires-enforcer.md` §"Relationship to Claude Code auto mode". Rules state principle and reasoning so the classifier can apply them with judgment; do not write them as rule-ID lookups. Explicit user intent in conversation can override default rules; stated boundaries become block signals. The classifier's verdict surfaces to the user (permission UI), not to the agent's working context — for verdicts the framework needs to read and act on, use the enforcer subagent instead.
+
 #### Hydration gate
 
 - **Pipeline layer**: L4 Soft gates
