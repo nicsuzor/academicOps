@@ -251,20 +251,32 @@ Moving the logic into the unified gate architecture gave lifecycle management, i
 
 ## Relationship to Claude Code auto mode (2026-03)
 
-Claude Code's [auto mode classifier](https://www.anthropic.com/engineering/claude-code-auto-mode) provides per-action semantic enforcement via `autoMode.soft_deny` rules. Complementary, not replacement:
+Claude Code's [auto mode classifier](https://www.anthropic.com/engineering/claude-code-auto-mode) is a Sonnet 4.6 agent that reads the proposed tool call **alongside the conversation transcript and the rules expressed as prose**, then decides whether to allow, surface a permission prompt, or block. It is not a regex matcher and it is not limited to a single tool call's local arguments — explicit user intent in prior turns can override default rules, and stated boundaries in the conversation ("don't push", "wait until I review") become block signals the classifier observes.
 
-| Aspect    | CC auto mode                       | Enforcer                           |
-| --------- | ---------------------------------- | ---------------------------------- |
-| Scope     | Single tool call                   | Full session narrative             |
-| Frequency | Every action                       | Every ~50 write operations         |
-| Checks    | Rule match against tool + user msg | Drift, scope creep, plan deviation |
-| Platform  | Claude Code only                   | Claude Code + Gemini               |
+In framework terms: the classifier is **rbg-class judgment running at the per-action gate** — fast, transcript-aware, prose-reasoning. Treat it as a peer reviewer, not a pattern matcher.
 
-**Current position**: enforcer stays — it catches session-level patterns that per-action classification cannot detect (scope creep across multiple actions, plan deviation, verification gaps that only show up in a sequence).
+| Aspect       | CC auto mode classifier                                               | Enforcer subagent                                          |
+| ------------ | --------------------------------------------------------------------- | ---------------------------------------------------------- |
+| Trigger      | Every tool call (pre-execution)                                       | Threshold (~50 writes) or explicit invocation              |
+| Context      | Proposed action + conversation transcript + prose rules               | Full session transcript + axioms / heuristics              |
+| Verdict      | Allow / permission-prompt / block — surfaced to user before execution | OK / WARN / BLOCK injected back into the agent's context   |
+| Latency cost | Negligible (already in the path)                                      | Subagent spawn — non-trivial, hence threshold-gated        |
+| Platform     | Claude Code only                                                      | Claude Code + Gemini                                       |
+| Memory       | Stateless across calls — re-reads transcript each time                | Writes `last_compliance_ts`, runs trend across the session |
 
-**Future direction**: once auto mode is proven in production, revise enforcer substance — let auto mode handle per-action enforcement and focus the enforcer on session-level patterns where full-narrative review adds unique value.
+**Why both still exist.** They overlap in capability — both can judge prose, both see the transcript. They differ in **where they sit in the loop**:
 
-See `aops-core/config/automode-rules.json` for the rule set and `scripts/setup-automode.sh` for installation.
+- The classifier is a **gate at the action**: cheap, surfaces to the user before the action runs, and is bound to CC's permission UI. Good fit for actions where pre-execution intervention beats post-hoc warning.
+- The enforcer is a **review at the threshold**: deliberately invoked, writes a verdict back into the agent's working context, and runs across CC and Gemini. Good fit for the "is this whole session still on track?" review where catching drift in the agent's next move matters more than blocking the current tool call.
+
+**Practical implications for rule design.**
+
+1. Write `autoMode.soft_deny` (and `allow`) rules as **prose stating the principle and the reasoning**, not as rule-ID lookups or keyword patterns. The classifier reads them as natural language and applies judgment; a rule that just names "P#5" is wasted ink.
+2. Do not exclude rules from auto mode on the grounds that they are "session-level" or "judgment-heavy". The classifier has the transcript and is judgment-capable. Exclude only when the rule is genuinely better caught downstream (e.g. integration tests catch what a pre-execution gate cannot observe).
+3. State limits and exceptions in prose so the classifier can apply them. ("Allow `--force` when validating; block `--force` when bypassing tests" — written as prose, the classifier handles the disjunction. Written as a keyword match, it cannot.)
+4. Enforcer remains valuable for verdicts the framework itself needs to **read and act on** (writing to the session-state file, feeding `/learn`, surfacing in the icon strip). The classifier's verdict goes to the user, not to the agent's tool stack.
+
+See `aops-core/config/automode-rules.json` for the rule set and `scripts/setup-automode.sh` for installation. The current rule set still carries P#-ID-style framing inherited from before this reframe; rewriting against the new framing is `task-06db60dc`.
 
 ## References
 
