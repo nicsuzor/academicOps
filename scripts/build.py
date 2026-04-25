@@ -1618,6 +1618,8 @@ def generate_marketplace(aops_root: Path, dist_root: Path, version: str):
     for plugin in data.get("plugins", []):
         if plugin.get("name") == "aops-core":
             plugin["version"] = version
+        elif plugin.get("name") == "aops-tools":
+            plugin["version"] = version
         elif plugin.get("name") == "aops-cowork":
             plugin["version"] = cowork_version
 
@@ -1713,12 +1715,29 @@ def package_artifacts(
         tar.add(dist_root / "aops-gemini", arcname=".", filter=_source_filter)
     print(f"  ✓ Packaged {gemini_archive.name}")
 
+    # 1a. aops-tools.tar.gz (Gemini)
+    tools_gemini_archive = dist_root / "aops-tools.tar.gz"
+    if (dist_root / "aops-tools-gemini").exists():
+        with tarfile.open(tools_gemini_archive, "w:gz") as tar:
+            tar.add(dist_root / "aops-tools-gemini", arcname=".", filter=_source_filter)
+        print(f"  ✓ Packaged {tools_gemini_archive.name}")
+
     # 2. aops-claude-v{version}.tar.gz
     claude_archive = dist_root / f"aops-claude-v{version}.tar.gz"
     with tarfile.open(claude_archive, "w:gz") as tar:
         tar.add(dist_root / "aops-claude", arcname="aops-claude", filter=_source_filter)
     print(f"  ✓ Packaged {claude_archive.name}")
     safe_symlink(claude_archive, dist_root / "aops-claude-latest.tar.gz")
+
+    # 2a. aops-tools-claude-v{version}.tar.gz
+    if (dist_root / "aops-tools-claude").exists():
+        tools_claude_archive = dist_root / f"aops-tools-claude-v{version}.tar.gz"
+        with tarfile.open(tools_claude_archive, "w:gz") as tar:
+            tar.add(
+                dist_root / "aops-tools-claude", arcname="aops-tools-claude", filter=_source_filter
+            )
+        print(f"  ✓ Packaged {tools_claude_archive.name}")
+        safe_symlink(tools_claude_archive, dist_root / "aops-tools-claude-latest.tar.gz")
 
     # 3. aops-cowork-v{version}.tar.gz
     cowork_dir = dist_root / "aops-cowork"
