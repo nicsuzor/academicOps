@@ -157,6 +157,10 @@ DO NOT replace a single verification call with a fan-out (`for x in everything: 
 
 DO NOT begin a third or fourth Edit/Write tool call across multiple files in this session without a prior approved plan visible in the transcript — an `EnterPlanMode` block or the user's explicit "go ahead" on a stated plan. Single-file fixes, doc updates, and surgical bug fixes do not trigger.
 
+### R6.7 PKB operations are authorized
+
+Non-destructive operations on the personal knowledge base via the framework's MCP tools — searches, lookups, document/memory/task creation, status updates, completions on items the agent or session created — are framework infrastructure and are always allowed.
+
 ---
 
 ## A7 — Respect Delegated Authority

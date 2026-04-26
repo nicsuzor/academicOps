@@ -189,6 +189,13 @@ The tree hierarchy is a **spanning tree** of the underlying dependency graph. It
 
 **Propagation**: Completion of a node should trigger readiness re-evaluation of all nodes that depend on it. The system surfaces dependency chains so that cascading unblocks are visible.
 
+### Actionable vs. Ready
+
+Framework reporting distinguishes between the **broad view** of all open work and the **narrow view** of what can be started right now:
+
+- **Actionable**: Any task that is not in a terminal state (`done`, `cancelled`, `someday`). This encompasses the entire working set: `inbox`, `ready`, `queued`, `in_progress`, `merge_ready`, `review`, `blocked`, and `paused`. Most high-level dashboards (like the `/daily` note) report actionable counts.
+- **Ready**: A subset of actionable work. Strictly limited to leaf tasks that are fully decomposed and have zero unmet dependencies. Tasks in `in_progress` or `review` are actionable but are **not** ready (as they are already claimed or awaiting feedback). Execution-oriented views (like `pkb tasks ready`) focus on this narrow subset.
+
 ---
 
 ## The Orchestration Layer

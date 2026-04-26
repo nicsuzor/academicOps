@@ -240,6 +240,16 @@ def get_goals_dir() -> Path:
     return get_data_root() / "goals"
 
 
+def get_daily_dir() -> Path:
+    """Get daily notes directory ($ACA_DATA/daily or $ACA_DATA/brain/daily)."""
+    root = get_data_root()
+    # Check for brain/ subdirectory which is common in some setups
+    brain_daily = root / "brain" / "daily"
+    if brain_daily.exists():
+        return brain_daily
+    return root / "daily"
+
+
 # Validation utilities
 
 
