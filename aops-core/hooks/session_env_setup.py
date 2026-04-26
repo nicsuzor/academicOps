@@ -210,6 +210,42 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
         except Exception as e:
             print(f"WARNING: Failed to read CORE.md: {e}", file=sys.stderr)
 
+    # 9. Ensure daily note exists for today to avoid stale landing (P2)
+    try:
+        from datetime import datetime
+
+        from lib.paths import get_daily_dir
+
+        # Use simple date format to match SKILL.md naming convention
+        today_compact = datetime.now().strftime("%Y%m%d")
+        today_iso = datetime.now().strftime("%Y-%m-%d")
+        daily_dir = get_daily_dir()
+        daily_note_path = daily_dir / f"{today_compact}-daily.md"
+
+        if not daily_note_path.exists():
+            daily_dir.mkdir(parents=True, exist_ok=True)
+            # Minimal valid daily note template per SSoT
+            content = f"""---
+title: "Daily Summary - {today_iso}"
+type: daily
+date: {today_iso}
+---
+
+# Daily Summary - {today_iso}
+
+Today's note has not been populated yet. Run `/daily` to update.
+"""
+            daily_note_path.write_text(content)
+            messages.append(
+                f"Daily note: Created {today_compact}-daily.md (Run /daily to populate)"
+            )
+        else:
+            messages.append(f"Daily note: {today_compact}-daily.md")
+
+    except Exception as e:
+        # Graceful degradation for daily note bootstrap
+        messages.append(f"Daily note: bootstrap failed ({e})")
+
     # Persist all environment variables
     set_persistent_env(persist)
 
