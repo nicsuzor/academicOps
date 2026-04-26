@@ -104,7 +104,7 @@ Pipeline (Capture → Soft gates → Hard blocks → Review → Handover → Mer
 | Pipeline     | linter / branch prot                 | block      | merge          | active                                                                                                     |
 | Pipeline     | loop detector                        | hard-deny  | merge-prep     | active                                                                                                     |
 | Pipeline     | admin approval                       | block      | merge          | active                                                                                                     |
-| Linting      | rules 6-9 (skill/agent)              | warn/error | PR push        | planned                                                                                                    |
+| Linting      | rules 6-9 (skill/agent)              | error      | Pre-commit/PR  | active — linter: aops-core/lib/lint_axiom_refs.py                                                          |
 | Linting      | permissions-lint                     | error      | PR push        | planned                                                                                                    |
 | Supervisor   | plan-review gate                     | block      | post-decomp    | active                                                                                                     |
 | H91 Deadline | HEURISTICS.md                        | inject     | always-on      | active                                                                                                     |
