@@ -389,12 +389,20 @@ def main():
             if str(aops_core_dir) not in sys.path:
                 sys.path.insert(0, str(aops_core_dir))
             from lib.automode import install as install_automode
+            from lib.automode import update_polecat_defaults
 
             ok, msg = install_automode()
             if ok:
                 print(f"✓ {msg}")
             else:
                 print(f"Warning: autoMode install skipped: {msg}")
+
+            # Also update polecat defaults
+            ok_pc, msg_pc = update_polecat_defaults()
+            if ok_pc:
+                print(f"✓ {msg_pc}")
+            else:
+                print(f"Warning: polecat defaults update skipped: {msg_pc}")
         except Exception as e:
             print(f"Warning: autoMode install failed: {e}")
     else:

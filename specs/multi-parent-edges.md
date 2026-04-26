@@ -178,11 +178,11 @@ Where:
 - `Slack = due - now - e'` where `e'` is the estimated execution time (sum of descendant task scope × uncertainty). Least Slack Time, not Earliest Deadline First — LST uses execution estimates to prevent starvation of large critical tasks (brief 3 §4.2). `e'` MUST be pre-computed and cached per target during graph update (not recomputed per BFS visit) to avoid O(N²) traversal cost.
 
 - `f(Slack)` — piecewise-exponential (brief 3 §4.4):
-  - `Slack > safe_horizon` → `ε` (negligible; don't clutter focus weeks out)
-  - `0 < Slack ≤ safe_horizon` → `e^(k × (safe_horizon - Slack))`
+  - `Slack > safe_horizon` → `ε` (negligible; 0.001 multiplier)
+  - `0 < Slack ≤ safe_horizon` → `e^(k × (safe_horizon - Slack))` where `k = ln(10) / safe_horizon` (escalates by 1 order of magnitude over the horizon)
   - `Slack ≤ 0` → `1.0` (unlock full `S_lex`)
 
-`safe_horizon` and `k` are runtime parameters, default to `safe_horizon = 7 days`, `k` tuned so warning phase covers ≈1 order of magnitude.
+**Status Independence**: Imminent deadlines (`Slack ≤ safe_horizon`) MUST surface regardless of status. The focus algorithm must include `in_progress` and `blocked` tasks in its initial candidate set before applying status-based filters.
 
 ### 3.2 Integration
 

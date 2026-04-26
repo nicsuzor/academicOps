@@ -1,7 +1,7 @@
 """
 Auto mode classifier rule management.
 
-Reads aops autoMode rules from plugin.json (or fallback automode-rules.json),
+Reads aops autoMode rules from plugin.json,
 fetches CC defaults via `claude auto-mode defaults`, merges them, and installs
 into ~/.claude/settings.json.
 
@@ -28,7 +28,7 @@ AOPS_CORE_DIR = Path(__file__).parent.parent
 
 
 def _get_aops_rules() -> dict | None:
-    """Load aops autoMode rules from plugin.json or fallback config."""
+    """Load aops autoMode rules from plugin.json."""
     # Primary: plugin.json autoMode field
     plugin_json = AOPS_CORE_DIR / ".claude-plugin" / "plugin.json"
     if plugin_json.exists():
@@ -36,15 +36,6 @@ def _get_aops_rules() -> dict | None:
             manifest = json.loads(plugin_json.read_text())
             if "autoMode" in manifest:
                 return manifest["autoMode"]
-        except (json.JSONDecodeError, OSError):
-            pass
-
-    # Fallback: standalone automode-rules.json
-    rules_json = AOPS_CORE_DIR / "config" / "automode-rules.json"
-    if rules_json.exists():
-        try:
-            rules = json.loads(rules_json.read_text())
-            return {k: v for k, v in rules.items() if k in ("environment", "allow", "soft_deny")}
         except (json.JSONDecodeError, OSError):
             pass
 
@@ -151,8 +142,42 @@ def install(dry_run: bool = False) -> tuple[bool, str]:
         return False, f"Failed to write {settings_path}: {e}"
 
 
+def update_polecat_defaults() -> tuple[bool, str]:
+    """Update polecat/defaults/claude-settings.json with rules from plugin.json.
+
+    This preserves non-rule keys (like 'model') in the target file.
+    """
+    aops_rules = _get_aops_rules()
+    if not aops_rules:
+        return False, "No aops autoMode rules found"
+
+    cc_defaults = _get_cc_defaults()
+    if cc_defaults is None:
+        return False, "Could not fetch CC auto-mode defaults"
+
+    merged = _merge_rules(cc_defaults, aops_rules)
+
+    # AOPS_CORE_DIR is aops-core/
+    polecat_settings_path = AOPS_CORE_DIR.parent / "polecat" / "defaults" / "claude-settings.json"
+    if not polecat_settings_path.exists():
+        return False, f"Polecat settings not found at {polecat_settings_path}"
+
+    try:
+        settings = json.loads(polecat_settings_path.read_text())
+        settings["autoMode"] = merged
+        polecat_settings_path.write_text(json.dumps(settings, indent=2) + "\n")
+        return True, f"Updated polecat defaults at {polecat_settings_path}"
+    except (json.JSONDecodeError, OSError) as e:
+        return False, f"Failed to update polecat defaults: {e}"
+
+
 def main():
     """CLI entry point for setup-automode."""
+    if "--update-polecat" in sys.argv:
+        ok, msg = update_polecat_defaults()
+        print(msg)
+        sys.exit(0 if ok else 1)
+
     dry_run = "--install" not in sys.argv
     ok, msg = install(dry_run=dry_run)
     print(msg)

@@ -7,6 +7,7 @@ Tests environment variable setup logic for SessionStart hook:
 """
 
 import sys
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
 
@@ -137,6 +138,95 @@ class TestSessionEnvSetup:
 
         content = temp_env_file.read_text()
         assert content == ""
+
+    def test_creates_daily_note_in_aca_data_daily(self, monkeypatch, tmp_path):
+        """Verify today's daily note is created if missing in ACA_DATA/daily."""
+        aca_data = tmp_path / "data"
+        aca_data.mkdir()
+        monkeypatch.setenv("ACA_DATA", str(aca_data))
+
+        ctx = HookContext(
+            session_id="test-session-daily",
+            session_short_hash="daily123",
+            hook_event="SessionStart",
+            raw_input={},
+        )
+        state = SessionState.create(ctx.session_id)
+
+        with patch(
+            "hooks.session_env_setup.get_session_status_dir",
+            return_value=str(tmp_path),
+        ):
+            result = run_session_env_setup(ctx, state)
+
+        # Verify daily note was created in ACA_DATA/daily
+        today_compact = datetime.now().strftime("%Y%m%d")
+        daily_note = aca_data / "daily" / f"{today_compact}-daily.md"
+
+        assert daily_note.exists()
+        assert f"Daily Summary - {datetime.now().strftime('%Y-%m-%d')}" in daily_note.read_text()
+        assert "Daily note: Created" in result.system_message
+
+    def test_creates_daily_note_in_brain_daily(self, monkeypatch, tmp_path):
+        """Verify today's daily note is created in brain/daily if it exists."""
+        aca_data = tmp_path / "data"
+        brain_daily = aca_data / "brain" / "daily"
+        brain_daily.mkdir(parents=True)
+        monkeypatch.setenv("ACA_DATA", str(aca_data))
+
+        ctx = HookContext(
+            session_id="test-session-brain",
+            session_short_hash="brain123",
+            hook_event="SessionStart",
+            raw_input={},
+        )
+        state = SessionState.create(ctx.session_id)
+
+        with patch(
+            "hooks.session_env_setup.get_session_status_dir",
+            return_value=str(tmp_path),
+        ):
+            result = run_session_env_setup(ctx, state)
+
+        # Verify daily note was created in ACA_DATA/brain/daily
+        today_compact = datetime.now().strftime("%Y%m%d")
+        daily_note = brain_daily / f"{today_compact}-daily.md"
+
+        assert daily_note.exists()
+        assert "Daily note: Created" in result.system_message
+        assert not (aca_data / "daily").exists(), (
+            "Should not create ACA_DATA/daily if brain/daily exists"
+        )
+
+    def test_reports_existing_daily_note(self, monkeypatch, tmp_path):
+        """Verify it reports existing daily note without re-creating."""
+        aca_data = tmp_path / "data"
+        daily_dir = aca_data / "daily"
+        daily_dir.mkdir(parents=True)
+        today_compact = datetime.now().strftime("%Y%m%d")
+        daily_note = daily_dir / f"{today_compact}-daily.md"
+        original_content = "Existing daily note"
+        daily_note.write_text(original_content)
+
+        monkeypatch.setenv("ACA_DATA", str(aca_data))
+
+        ctx = HookContext(
+            session_id="test-session-existing",
+            session_short_hash="ext12345",
+            hook_event="SessionStart",
+            raw_input={},
+        )
+        state = SessionState.create(ctx.session_id)
+
+        with patch(
+            "hooks.session_env_setup.get_session_status_dir",
+            return_value=str(tmp_path),
+        ):
+            result = run_session_env_setup(ctx, state)
+
+        assert daily_note.read_text() == original_content
+        assert f"Daily note: {today_compact}-daily.md" in result.system_message
+        assert "Created" not in result.system_message
 
 
 if __name__ == "__main__":

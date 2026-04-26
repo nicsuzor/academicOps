@@ -21,7 +21,7 @@
       "Key internal services: PKB MCP server (pkb-search), Outlook MCP (omcp), Zotero MCP (zot), Oversight Board MCP (osb)."
     ],
     "allow": [
-      "PKB Read/Create/Update Operations: Non-destructive operations on the personal knowledge base via the framework's MCP tools — searches, lookups, document/memory/task creation, status updates, completions on items the agent or session created — are framework infrastructure and are always allowed."
+      "R6.7 PKB Read/Create/Update Operations (A6): Non-destructive operations on the personal knowledge base via the framework's MCP tools — searches, lookups, document/memory/task creation, status updates, completions on items the agent or session created — are framework infrastructure and are always allowed."
     ],
     "soft_deny": [
       "R10.1 No editing research inputs (A10): DO NOT edit, reformat, re-encode, normalise, or 'clean up' research data — datasets, captured records, ground-truth labels, transcripts, logs cited as evidence, or files under `**/records/**`, `$ACA_DATA/records/**`, `~/brain/records/**`, `~/writing/data/records/**`, or any path the user has named as ground truth this session. Read-then-write of unchanged content still violates: mtime change and silent encoding shifts are themselves the violation.",

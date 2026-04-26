@@ -81,3 +81,6 @@ jobs:
       - name: Ruff format check (final)
         if: steps.format-initial.outcome == 'failure'
         run: uv run ruff format --check
+
+      - name: Axiom reference lint
+        run: uv run python aops-core/lib/lint_axiom_refs.py

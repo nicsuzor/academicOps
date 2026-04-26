@@ -20,7 +20,9 @@ Currently, "Framework Reflection" blocks are used to capture what happened in a 
 
 ## 1. Terminal Output (The Handover Block)
 
-Agents must emit a terse terminal summary at the end of a session. This replaces the `## Framework Reflection` prose block.
+Agents must emit a terminal summary at the end of a session. This replaces the `## Framework Reflection` prose block.
+
+### Full-form (Standard)
 
 **Format**: 5–10 lines of markdown.
 **Fields**:
@@ -47,13 +49,19 @@ Agents must emit a terse terminal summary at the end of a session. This replaces
 - **Summary**: Implemented YAML schema extension and terminal output spec for session handover
 ```
 
-## 2. `release_task` Requirements
+### Short-form (Interactive only)
 
-The `release_task` tool (and its underlying implementation in `mem` and `aops`) is updated to handle new structured fields.
+**Format**: 1–2 lines of prose.
+**When to use**: governed by the canonical branch decision in [[end_session]] §1. The conditions live in the skill, not here — this section specifies only the output format.
+**Example**:
 
-### New YAML Fields
+> Next: verify config change with user.
 
-When a task is released, the following fields are written to its YAML frontmatter:
+## 2. Structured Data Requirements
+
+### Full-form: `release_task`
+
+The `release_task` tool (and its underlying implementation in `mem` and `aops`) is updated to handle new structured fields. When a task is released, the following fields are written to its YAML frontmatter:
 
 | Field             | Type          | Description                                                            |
 | ----------------- | ------------- | ---------------------------------------------------------------------- |
@@ -63,6 +71,10 @@ When a task is released, the following fields are written to its YAML frontmatte
 | `release_summary` | string        | One-sentence machine-readable summary (max 500 chars).                 |
 
 **Quality Guideline**: The `release_summary` must be **result-oriented** (e.g., _"Implemented YAML schema extension for task handover"_) rather than **activity-oriented** (e.g., _"I worked on the schema"_). It is the primary signal for the human dashboard.
+
+### Short-form: `update_task`
+
+In the short-form branch, the agent uses `update_task` to write the latest delta (what was done, what's left) to the **task body**. Frontmatter is not mutated by this branch, with one exception: the agent must ensure the task's `session_id` field equals `$AOPS_SESSION_ID` so the dashboard's "Bound sessions" aggregation (§6) can group the task with the rest of the session. State is captured without the overhead of a full release.
 
 ### Ad-hoc Task Creation
 
