@@ -141,7 +141,8 @@ GATE_CONFIGS = [
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,
-                    system_message_key="handover.bound",
+                    # no message to avoid spamming on every write tool use
+                    system_message_key=None,
                 ),
             ),
             # Handover skill completes -> Open
