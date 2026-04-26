@@ -191,7 +191,10 @@ class TestBuildDockerCmd:
 
     def test_sets_git_identity(self):
         """Git author/committer identity is set for commits inside container."""
-        cmd = self._build()
+        with patch.dict(os.environ):
+            os.environ.pop("GIT_AUTHOR_NAME", None)
+            os.environ.pop("GIT_AUTHOR_EMAIL", None)
+            cmd = self._build()
         env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
         assert "GIT_AUTHOR_NAME=aops-bot" in env_args
         assert "GIT_AUTHOR_EMAIL=aops-bot@users.noreply.github.com" in env_args

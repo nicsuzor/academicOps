@@ -5,6 +5,7 @@ import re
 import shutil
 import subprocess
 import sys
+import urllib.error
 from pathlib import Path
 from typing import Any
 
@@ -1357,12 +1358,38 @@ class PolecatManager:
                 continue
 
             # Claim via MCP update_task (atomic at server level)
-            update_task(fresh.id, status="in_progress", assignee=caller)
+            try:
+                success = update_task(fresh.id, status="in_progress", assignee=caller)
+                if not success:
+                    # Server returned an error (already logged to stderr in call_tool)
+                    continue
+            except (TimeoutError, urllib.error.URLError) as e:
+                # Timeout/Network error: we don't know if it succeeded on server.
+                # Verify state before bailing.
+                print(f"⚠️  PKB claim timeout for {fresh.id}: {e}", file=sys.stderr)
+                print("   Verifying if claim succeeded despite timeout...", file=sys.stderr)
+                try:
+                    verified = get_task(fresh.id)
+                    if (
+                        verified
+                        and verified.status == "in_progress"
+                        and verified.assignee == caller
+                    ):
+                        print("   ✅ Verified: claim succeeded. Proceeding.", file=sys.stderr)
+                        return verified
+                except Exception as ve:
+                    print(f"   ❌ Verification failed: {ve}", file=sys.stderr)
+
+                print(f"   Task {fresh.id} may be stranded in_progress.", file=sys.stderr)
+                print(
+                    f"   Recovery: polecat reset-stalled --hours 0 --project {fresh.project or 'aops'}",
+                    file=sys.stderr,
+                )
+                raise
+
             fresh.status = "in_progress"
             fresh.assignee = caller
             return fresh
-
-        return None
 
         return None
 
