@@ -11,8 +11,6 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 JR_MD = REPO_ROOT / "aops-core" / "agents" / "jr.md"
 
 # Tools required by the skills jr drives (from planner/remember/sleep/aops allowlists).
-# Adding here only the tools newly required; the original 16 were already present before
-# task-00e3a625 and are implicitly covered by this list being a strict superset.
 REQUIRED_TOOLS = [
     "mcp__plugin_aops-core_pkb__get_task_children",
     "mcp__plugin_aops-core_pkb__decompose_task",
