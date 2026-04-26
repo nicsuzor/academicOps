@@ -2,6 +2,7 @@
 
 Prevents accidental removal of tools that planner/remember/sleep/aops skills depend on.
 """
+
 from pathlib import Path
 
 import yaml
