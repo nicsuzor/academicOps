@@ -27,10 +27,22 @@ tools:
   - mcp__playwright__browser_resize
   - mcp__playwright__browser_tabs
   - mcp__playwright__browser_close
+  - mcp__plugin_aops-core_pkb__get_task
+  - mcp__plugin_aops-core_pkb__list_tasks
+  - mcp__plugin_aops-core_pkb__task_search
+  - mcp__plugin_aops-core_pkb__search
+  - mcp__plugin_aops-core_pkb__create_task
+  - mcp__plugin_aops-core_pkb__update_task
+  - mcp__plugin_aops-core_pkb__append
+  - mcp__plugin_aops-core_pkb__get_task_children
+  - mcp__plugin_aops-core_pkb__pkb_orphans
+  - mcp__plugin_aops-core_pkb__get_network_metrics
 mcpServers:
   - plugin_aops-core_pkb
   - pkb
   - playwright
+  - plugin_aops-core_pkb
+  - pkb
 skills:
   - qa
 subagents: [rbg]
@@ -59,6 +71,8 @@ Your caller will give you context — what was requested, what was done, and wha
 **Data correctness requires tracing.** For computed output, trace the pipeline end-to-end. Cross-verify against the actual data source. "Output appears" is not "correct output appears".
 
 **Check data freshness, not just existence.** Verify data updates as expected over time.
+
+**Prefer MCP for PKB interaction.** Use MCP tools (e.g., `get_task`, `list_tasks`) rather than the `pkb` CLI via Bash. The CLI lags the server-side MCP store; stale reads make your verification unreliable. Always use MCP to read live graph state and to file your findings as child tasks.
 
 **Explicitly test fallback chains.** Disable fallbacks and verify the primary source works independently.
 
