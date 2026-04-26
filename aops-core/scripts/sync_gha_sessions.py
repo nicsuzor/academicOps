@@ -104,6 +104,7 @@ def main():
     if gitignore.exists():
         content = gitignore.read_text()
         import re
+
         if not re.search(r"\bgithub/\b", content):
             with open(gitignore, "a") as f:
                 f.write("\n# GHA session artifacts\ngithub/\n")
