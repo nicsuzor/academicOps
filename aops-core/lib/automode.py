@@ -1,7 +1,7 @@
 """
 Auto mode classifier rule management.
 
-Reads aops autoMode rules from plugin.json (or fallback automode-rules.json),
+Reads aops autoMode rules from plugin.json,
 fetches CC defaults via `claude auto-mode defaults`, merges them, and installs
 into ~/.claude/settings.json.
 
