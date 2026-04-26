@@ -3,7 +3,7 @@ name: dump
 alias: end_session
 type: skill
 category: instruction
-description: Complete end-of-session handover: commit, push, file a PR, call release_task with structured session fields, emit a terse 5-10 line handover block, halt.
+description: Complete session handover. Interactive sessions can use the short-form branch (task delta + follow-up); full sessions use the standard path (commit + push + PR + release_task + halt).
 triggers:
   - "emergency handoff"
   - "save work"
@@ -24,19 +24,33 @@ permalink: skills/dump
 
 # /dump: session close and handover
 
-Close a work session cleanly: commit, push, file a PR, record the structured session fields on the task, emit a terse handover block for the terminal, halt.
+Close a work session cleanly. This skill supports two paths:
 
-This skill is used as the normal end-of-session path. It is also used for special-case handovers (emergency, cross-machine / cross-environment / cross-project transfer, interrupted session needing full context capture).
+1. **Short-form** (Interactive only): For when you've done a small amount of work and the user is still steering.
+2. **Full-form** (Standard): For the normal end-of-session path, or for special-case handovers (emergency, cross-machine, interrupted).
 
 ## Contract
 
 Per [[session-handover-contract]]:
 
-- Terminal output is a terse 5–10 line markdown block in a strict parseable format.
-- Structured session data lives in the task's YAML frontmatter, written by `release_task`.
+- **Full-form** terminal output is a terse 5–10 line markdown block in a strict parseable format.
+- **Short-form** output is a simple next-step statement.
+- Structured session data lives in the task's YAML frontmatter, written by `release_task` (Full) or `update_task` (Short).
 - `$AOPS_SESSION_ID` is the join key that groups session artifacts.
 
 ## Execution
+
+1. **Branch decision**.
+   - **Short-form** (Interactive only): If you have a clear next-step follow-up (e.g., more work remains on the task, or you are blocked on external input) and the user is still steering the conversation, use the **Short-form** branch.
+   - **Full-form** (Default): If the task is complete, or you are truly ending the session (e.g., end-of-day, long-running task complete), use the **Full-form** branch.
+
+### Short-form Branch (Interactive)
+
+1. **Update the task**. Write the latest delta (what was just done, what is left) to the task body using `update_task`.
+2. **Present follow-up**. Output a one or two-line summary: "Next: [X]" or "Blocked on: [Y]".
+3. **Finish**. Do NOT emit the handover block or halt. The gate is satisfied for this turn.
+
+### Full-form Branch (Standard)
 
 1. **Commit, push, file PR**. If file changes exist, commit them, push the branch, and run `gh pr create --fill`. If no file changes, skip. Never end a session with uncommitted work.
 
