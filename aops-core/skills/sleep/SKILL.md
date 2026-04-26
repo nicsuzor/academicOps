@@ -100,6 +100,7 @@ This is the baseline. Phase 11 re-runs graph_stats to measure what changed.
 Extract insights from session transcripts that agents may not have saved during the session.
 
 **Input**: Session transcripts in `$AOPS_SESSIONS/` (Markdown files), including synced GHA sessions in `$AOPS_SESSIONS/github/`.
+**Output**: Updates to canonical topic notes (preferred); new canonical notes where the topic lacks one; rarely, a linked narrow note for genuinely topic-less observations.
 
 ### Process
 
