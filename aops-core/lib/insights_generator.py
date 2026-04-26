@@ -511,6 +511,7 @@ def get_insights_file_path(
     index: int | None = None,
     project: str = "",
     hour: str | None = None,
+    shortform: str | None = None,
 ) -> Path:
     """Get path to unified session JSON file in summaries/.
 
@@ -523,6 +524,7 @@ def get_insights_file_path(
                If None or 0 with single reflection, uses base filename.
         project: Project name to include in filename for traceability
         hour: Optional 2-digit hour (24-hour format).
+        shortform: Optional explicit shortform override for the filename.
 
     Returns:
         Path to session file: summaries/YYYYMMDD-HHMM-{shortform}-{slug}.json
@@ -552,6 +554,7 @@ def get_insights_file_path(
         timestamp=dt,
         slug=slug or "session",
         repo=project or None,  # None triggers auto-detection; empty string causes double-dash
+        shortform=shortform,
     )
 
     if index is not None and index > 0:
