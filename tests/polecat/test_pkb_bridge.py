@@ -27,6 +27,8 @@ from polecat.pkb_bridge import (  # noqa: E402
     complete_task,
     create_task,
     get_task,
+    get_task_children,
+    list_tasks,
     release_task,
     update_task,
 )
@@ -432,3 +434,61 @@ class TestReleaseTaskPRURLGate:
                 summary="done",
                 pr_url="garbage",
             )
+
+
+# ---------------------------------------------------------------------------
+# list_tasks project filter recall failure visibility (task-7c171a70)
+# ---------------------------------------------------------------------------
+
+
+def test_get_task_children(mock_client):
+    mock_client.call_tool.return_value = "## Children of `proj-1` (Title)\n- `task-1` [active] T1"
+
+    res = get_task_children("proj-1", recursive=True)
+
+    assert "task-1" in res
+    mock_client.call_tool.assert_called_once_with(
+        "get_task_children", {"id": "proj-1", "recursive": True}
+    )
+
+
+def test_list_tasks_project_filter_with_recall_failure_warning(mock_client, capsys):
+    # Mock list_tasks to return only 1 task (recall failure)
+    mock_client.call_tool.side_effect = [
+        # Call 1: list_tasks
+        "| # | ID | Pri | Status | Title |\n| 1 | task-1 | 2 | active | T1 |",
+        # Call 2: get_task_children (triggered by recall failure detection)
+        "## Children of `proj-1` (Title)\n- `task-1` [active] T1\n- `task-2` [active] T2",
+        # Call 3: get_task(task-1)
+        {"frontmatter": {"id": "task-1", "project": "proj-1"}},
+    ]
+
+    tasks = list_tasks(project="proj-1", limit=10)
+
+    assert len(tasks) == 1
+    assert tasks[0].id == "task-1"
+
+    captured = capsys.readouterr()
+    assert (
+        "Warning: list_tasks(project='proj-1') returned 1 tasks, but project subtree has 3 nodes."
+        in captured.err
+    )
+
+
+def test_list_tasks_project_filter_accurate_exclusion(mock_client):
+    # Mock list_tasks to return 2 tasks, one in project, one not
+    # (assuming server filter was too broad or missing)
+    mock_client.call_tool.side_effect = [
+        # Call 1: list_tasks
+        "| # | ID | Pri | Status | Title |\n| 1 | task-1 | 2 | active | T1 |\n| 2 | task-other | 2 | active | Other |",
+        # Call 2: get_task_children
+        "## Children of `proj-1` (Title)\n- `task-1` [active] T1",
+        # Call 3: get_task(task-1)
+        {"frontmatter": {"id": "task-1", "project": "proj-1"}},
+    ]
+
+    tasks = list_tasks(project="proj-1", limit=10)
+
+    # Should only return task-1 because task-other is not in the subtree
+    assert len(tasks) == 1
+    assert tasks[0].id == "task-1"
