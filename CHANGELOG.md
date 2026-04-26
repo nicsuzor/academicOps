@@ -1,5 +1,73 @@
 # Changelog
 
+## [0.3.21](https://github.com/nicsuzor/academicOps/compare/v0.3.20...v0.3.21) (2026-04-26)
+
+
+### Features
+
+* **automode:** rewrite classifier rules against A1–A10 axioms as prose-with-reasoning ([#729](https://github.com/nicsuzor/academicOps/issues/729)) ([7afc572](https://github.com/nicsuzor/academicOps/commit/7afc57267ee9101dab4f19c2fff56848d73b8108))
+* **daily:** editor-friendly note + work-date targeting fix ([#674](https://github.com/nicsuzor/academicOps/issues/674)) ([bb8dec6](https://github.com/nicsuzor/academicOps/commit/bb8dec6f8170666811b92bc22456d00a5ac9dc91))
+* **daily:** ensure today's daily note exists at session start ([#741](https://github.com/nicsuzor/academicOps/issues/741)) ([bb8202c](https://github.com/nicsuzor/academicOps/commit/bb8202c9733d8df3325ebbb129fab431fc161472))
+* **daily:** strip prioritisation — report, don't rank ([#716](https://github.com/nicsuzor/academicOps/issues/716)) ([636efae](https://github.com/nicsuzor/academicOps/commit/636efae41692c4f786e4bb39c9c8da12b4f633ec))
+* **daily:** Today's Log as editorial synthesis; retire Session Log table ([#719](https://github.com/nicsuzor/academicOps/issues/719)) ([88f2edf](https://github.com/nicsuzor/academicOps/commit/88f2edf5960c54f33032050c0b88d01b3aa7d20f))
+* **enforcement:** orchestrator boundary Level 2 + Level 4 detection ([#682](https://github.com/nicsuzor/academicOps/issues/682)) ([bd115e7](https://github.com/nicsuzor/academicOps/commit/bd115e77dee15075d4350acad1c13d8f4e9dfab4))
+* **gemini:** add handover and dump to activate_skill enum ([#710](https://github.com/nicsuzor/academicOps/issues/710)) ([b341ae9](https://github.com/nicsuzor/academicOps/commit/b341ae908690c28b4c92682dd243e61d04865da4))
+* **lint:** add linter for autoMode axiom/rule references ([#748](https://github.com/nicsuzor/academicOps/issues/748)) ([8824e10](https://github.com/nicsuzor/academicOps/commit/8824e10dd4661ad5d5b2de177e428450cf368713))
+* **marsha:** expand browser MCP toolset for runtime UX verification ([#706](https://github.com/nicsuzor/academicOps/issues/706)) ([a64aca0](https://github.com/nicsuzor/academicOps/commit/a64aca09e914ebfdeaabd09ce5ed6d659b1843d2))
+* **planner:** show ASCII context tree after capture mode task creation ([#705](https://github.com/nicsuzor/academicOps/issues/705)) ([fe23eec](https://github.com/nicsuzor/academicOps/commit/fe23eec1145de0200f5d5b3615407cbd560e7485))
+* **polecat:** push-or-fail integrity gates for A3/A8 ([#687](https://github.com/nicsuzor/academicOps/issues/687)) ([581994c](https://github.com/nicsuzor/academicOps/commit/581994c19712602dab61962cd8f1503fe72ca4e2))
+* **project:** add idempotency, partial failure, secrets & polecat decisions to init.md ([#701](https://github.com/nicsuzor/academicOps/issues/701)) ([537cd2e](https://github.com/nicsuzor/academicOps/commit/537cd2ebcdbe1136ba94492af930969ef8a30016))
+* **rules:** RULES.md as SSOT for fine-grained operational rules ([#732](https://github.com/nicsuzor/academicOps/issues/732)) ([2e21aaf](https://github.com/nicsuzor/academicOps/commit/2e21aafb311329fee03f63059f7dcbae9a6de0e7))
+* **session-summary:** add hostname field to session metadata ([#708](https://github.com/nicsuzor/academicOps/issues/708)) ([d6ff84a](https://github.com/nicsuzor/academicOps/commit/d6ff84a2d48dfa121213a863f93c6e8289341147))
+* ship aops-tools as a standalone plugin/extension ([#725](https://github.com/nicsuzor/academicOps/issues/725)) ([4dd27d0](https://github.com/nicsuzor/academicOps/commit/4dd27d04eac01b988bf07136021594009c7ffb3e))
+* **spec:** scope /aops enforcement evidence loop (Steps 4-5) ([#749](https://github.com/nicsuzor/academicOps/issues/749)) ([7f17b83](https://github.com/nicsuzor/academicOps/commit/7f17b83cbe75bd8f9edb9cb3ed42ce6de36af697))
+* **transcript:** support /dump handover blocks and full prompts in timeline_events ([#751](https://github.com/nicsuzor/academicOps/issues/751)) ([e03e258](https://github.com/nicsuzor/academicOps/commit/e03e2583787e6a5203445c0ac2dec8b899533dee))
+
+
+### Bug Fixes
+
+* **build:** remove MCP server config from antigravity dist ([cf3969e](https://github.com/nicsuzor/academicOps/commit/cf3969e12c9ebd30d9c420ca5bc336044d8f4bd5))
+* **build:** remove MCP server config from antigravity dist ([#660](https://github.com/nicsuzor/academicOps/issues/660)) ([e66e5a7](https://github.com/nicsuzor/academicOps/commit/e66e5a73ef44abdcf5fc70ed88cb007c8550a7b9))
+* **crew:** make /ms-playwright writable for Playwright MCP session cache ([#694](https://github.com/nicsuzor/academicOps/issues/694)) ([70a643b](https://github.com/nicsuzor/academicOps/commit/70a643bc9240c653e8bc3d3c1cf1c7b5970106d8))
+* **docker:** pre-commit venv shebang, Stop hook timeout, pkb empty-release guard ([#672](https://github.com/nicsuzor/academicOps/issues/672)) ([2b2c680](https://github.com/nicsuzor/academicOps/commit/2b2c680231948a6d48c46853b77bde46695f1f0a))
+* **enforcement:** register H91 Deadline heuristic in enforcement-map.md ([d7d49fc](https://github.com/nicsuzor/academicOps/commit/d7d49fcf6621b3b35f1e7e3407c2f36b8a3c8dc9))
+* **enforcer:** give the GHA enforcer Edit/Write tools so it can push fixes ([#752](https://github.com/nicsuzor/academicOps/issues/752)) ([7f7f982](https://github.com/nicsuzor/academicOps/commit/7f7f982eb484ac61f89c53dac0e7bb0030abe0aa))
+* **hooks:** categorize release_task as infrastructure to prevent handover gate re-trip ([#747](https://github.com/nicsuzor/academicOps/issues/747)) ([a6f3ebe](https://github.com/nicsuzor/academicOps/commit/a6f3ebef66a7d195d2d995ee0deb283f0073d6cb))
+* **merge-prep:** verify server-side mergeability; diagnose squash-merge ghosts ([#722](https://github.com/nicsuzor/academicOps/issues/722)) ([c3005c9](https://github.com/nicsuzor/academicOps/commit/c3005c9eba4c294813d7b1547515e906a02c4e64))
+* persist JSONL path so transcript.py finds Claude polecat sessions ([#671](https://github.com/nicsuzor/academicOps/issues/671)) ([51bda50](https://github.com/nicsuzor/academicOps/commit/51bda50f53587afd89701eac4bc0e906a95d10b4))
+* **polecat:** branch fresh when re-dispatching squash-merged or stale-behind tasks ([#703](https://github.com/nicsuzor/academicOps/issues/703)) ([fb2de37](https://github.com/nicsuzor/academicOps/commit/fb2de37ed7fa46d79b2532186357af9cedb06513))
+* **polecat:** friendly PKB_MCP_URL check at top of `polecat run` ([#698](https://github.com/nicsuzor/academicOps/issues/698)) ([568990a](https://github.com/nicsuzor/academicOps/commit/568990ae3a98eaa410d520f4f6845013e26afead))
+* **polecat:** install build-essential so cc can link in aops-crew image ([#683](https://github.com/nicsuzor/academicOps/issues/683)) ([bc8ce6a](https://github.com/nicsuzor/academicOps/commit/bc8ce6abd79e2f835d5ef1df5c3646f22aa26040))
+* **polecat:** pc sync reports success but doesn't close stale-mirror warning ([#736](https://github.com/nicsuzor/academicOps/issues/736)) ([2795263](https://github.com/nicsuzor/academicOps/commit/279526366b419b231feede69cd19a2f95c416080))
+* **polecat:** pre-authorize shell for autonomous workers ([#702](https://github.com/nicsuzor/academicOps/issues/702)) ([25f52b0](https://github.com/nicsuzor/academicOps/commit/25f52b07aee092bb76482363012d3ac676b63972))
+* **polecat:** pre-trust /workspace for Claude and Gemini in container ([#673](https://github.com/nicsuzor/academicOps/issues/673)) ([478783d](https://github.com/nicsuzor/academicOps/commit/478783d1d339502abb654af7e62e359dd9d698f4))
+* **polecat:** robust task claiming and retry on PKB timeouts ([3dd71d0](https://github.com/nicsuzor/academicOps/commit/3dd71d03c318b0e17c1dfdf7e1fb85fdbcb28776))
+
+
+### Code Refactoring
+
+* move TAXONOMY.md into /remember skill ([#700](https://github.com/nicsuzor/academicOps/issues/700)) ([910b2cd](https://github.com/nicsuzor/academicOps/commit/910b2cdaafe3d8ab82c0908d714ca09ecb83f46a))
+
+
+### Documentation
+
+* clean up stale intentions.yaml references ([#665](https://github.com/nicsuzor/academicOps/issues/665)) ([a03f08e](https://github.com/nicsuzor/academicOps/commit/a03f08ec7fb10b49f568d2e2ba739398ea33f590))
+* define deadline escalation and status independence for focus scoring ([d443796](https://github.com/nicsuzor/academicOps/commit/d4437960dafd9aa990dd1c7e56f687ed4981e8c9))
+* document target/goal alias, consequence, goals[] linking; fix stale daily-skill note ([#726](https://github.com/nicsuzor/academicOps/issues/726)) ([4a5faec](https://github.com/nicsuzor/academicOps/commit/4a5faec0e2869d086081a5c6ed0b876ad30921a5))
+* **enforcement-map:** restore PR [#728](https://github.com/nicsuzor/academicOps/issues/728) trim; preserve PR [#729](https://github.com/nicsuzor/academicOps/issues/729) rule-name updates ([#730](https://github.com/nicsuzor/academicOps/issues/730)) ([fa69edb](https://github.com/nicsuzor/academicOps/commit/fa69edb25e238483b8fa43f078133fb88a5cc341))
+* **specs:** trim enforcement-map.md and collapse rule tables ([#728](https://github.com/nicsuzor/academicOps/issues/728)) ([126ae05](https://github.com/nicsuzor/academicOps/commit/126ae0580a0f98bca2f0da7a4b4da7efef4941bc))
+
+
+### Tests
+
+* release-certification suites for Claude Code and Gemini extensions ([#688](https://github.com/nicsuzor/academicOps/issues/688)) ([d8a8be4](https://github.com/nicsuzor/academicOps/commit/d8a8be4702772564ef485b71e1d9c6135543d804))
+
+
+### Miscellaneous
+
+* delete synthesize_dashboard.py ([#685](https://github.com/nicsuzor/academicOps/issues/685)) ([18bfe44](https://github.com/nicsuzor/academicOps/commit/18bfe4474ccd4e13b78fbdd0e292d4c70e84270e))
+* saving uncommitted agent work ([843e9d2](https://github.com/nicsuzor/academicOps/commit/843e9d2c68013ffef14609fb79f81f09f154d0b3))
+
 ## [0.3.20](https://github.com/nicsuzor/academicOps/compare/v0.3.19...v0.3.20) (2026-04-21)
 
 ### Features
