@@ -140,9 +140,12 @@ def main():
 
             # Parse attempt from name: claude-session-{workflow}-{run_id}-{attempt}
             parts = name.split("-")
-            attempt = parts[-1]
-            if not attempt.isdigit():
-                attempt = "1"
+            run_id_str = str(run_id)
+            attempt = "1"
+            if run_id_str in parts:
+                idx = parts.index(run_id_str)
+                if idx + 1 < len(parts) and parts[idx + 1].isdigit():
+                    attempt = parts[idx + 1]
 
             state_key = f"{repo}/{run_id}/{attempt}"
             if state_key in state and state[state_key]["id"] == art_id:
@@ -195,9 +198,10 @@ def main():
             # shortform = gha-{workflow}-{repo}-claude
             # name = claude-session-{workflow}-{run_id}-{attempt}
             # Workflow is everything between 'claude-session-' and 'run_id'
-            workflow = "-".join(parts[2:-2])
+            workflow = "-".join(parts[2:parts.index(str(run_id))]) if str(run_id) in parts else "-".join(parts[2:-2])
             shortform = f"gha-{workflow}-{repo_slug}-claude"
 
+            artifact_success = True
             for jf in jsonl_files:
                 print(f"  📝 Transcribing {jf.name} (shortform: {shortform})...")
                 transcript_cmd = [
@@ -209,10 +213,13 @@ def main():
                     "--no-sync",  # We don't want to sync each individual file
                 ]
                 # Inherit environment so lib imports work in subprocess
-                subprocess.run(transcript_cmd, check=False)
+                if subprocess.run(transcript_cmd, check=False).returncode != 0:
+                    print(f"  ❌ Error transcribing {jf.name}")
+                    artifact_success = False
 
-            state[state_key] = {"id": art_id, "name": name, "synced_at": datetime.now().isoformat()}
-            new_count += 1
+            if artifact_success:
+                state[state_key] = {"id": art_id, "name": name, "synced_at": datetime.now().isoformat()}
+                new_count += 1
 
         print(f"✅ {repo}: fetched {new_count} new sessions, skipped {skipped_count} cached")
         total_new += new_count
