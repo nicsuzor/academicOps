@@ -16,10 +16,31 @@ from lib import session_naming
 
 
 def _parse_date_arg(date: str | None) -> datetime | None:
-    """Parse a date/ISO-8601 string into a datetime, or None to let callers default to now."""
+    """Parse a date/ISO-8601 string into a datetime, or None to let callers default to now.
+
+    If a date-only string (YYYY-MM-DD) is provided, it defaults the time to the
+    current hour/minute to avoid the 00:00 collision in filenames.
+    """
     if date is None:
         return None
-    dt = datetime.fromisoformat(date)
+    try:
+        dt = datetime.fromisoformat(date)
+        # If it's just a date (no time component), fromisoformat might return
+        # a datetime at 00:00:00. We check if time is exactly 00:00:00 and if so,
+        # merge with current time to avoid the filename collision.
+        if dt.hour == 0 and dt.minute == 0 and dt.second == 0 and len(date) <= 10:
+            now = datetime.now().astimezone()
+            dt = dt.replace(
+                hour=now.hour,
+                minute=now.minute,
+                second=now.second,
+                microsecond=now.microsecond,
+                tzinfo=now.tzinfo,
+            )
+    except ValueError:
+        # Fallback for non-ISO formats or other parsing issues
+        return None
+
     # Only attach local timezone for naive datetimes; preserve explicit tz as-is
     return dt if dt.tzinfo is not None else dt.astimezone()
 

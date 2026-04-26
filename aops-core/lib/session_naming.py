@@ -28,7 +28,7 @@ ARTIFACT_TYPES = {
 PROVIDERS = {"claude", "gemini"}
 
 # Known variants (used for parsing)
-VARIANTS = {"-full", "-abridged", "-hooks", "-client"}
+VARIANTS = {"-full", "-abridged", "-hooks", "-client", "-enforcer"}
 
 
 @dataclass
