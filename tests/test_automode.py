@@ -37,37 +37,6 @@ class TestGetAopsRules:
         for rule in rules["soft_deny"]:
             assert axiom_ref.search(rule), f"Rule missing axiom reference: {rule[:60]}..."
 
-    def test_fallback_to_config_file(self, tmp_path, monkeypatch):
-        """If plugin.json has no autoMode, falls back to config file."""
-        import lib.automode as mod
-
-        # Point to a plugin.json without autoMode
-        fake_plugin_dir = tmp_path / ".claude-plugin"
-        fake_plugin_dir.mkdir()
-        (fake_plugin_dir / "plugin.json").write_text('{"name": "test"}')
-
-        # Point to a valid config file
-        fake_config_dir = tmp_path / "config"
-        fake_config_dir.mkdir()
-        (fake_config_dir / "automode-rules.json").write_text(
-            json.dumps(
-                {
-                    "_comment": ["test"],
-                    "environment": ["test env"],
-                    "allow": ["test allow"],
-                    "soft_deny": ["test deny"],
-                }
-            )
-        )
-
-        monkeypatch.setattr(mod, "AOPS_CORE_DIR", tmp_path)
-        rules = _get_aops_rules()
-        assert rules == {
-            "environment": ["test env"],
-            "allow": ["test allow"],
-            "soft_deny": ["test deny"],
-        }
-
 
 class TestMergeRules:
     """Test merge strategy: environment replaced, allow/soft_deny appended."""
@@ -210,6 +179,50 @@ class TestInstall:
         ok, msg = install()
         assert not ok
         assert "CC auto-mode defaults" in msg
+
+
+class TestUpdatePolecatDefaults:
+    """Test updating polecat/defaults/claude-settings.json."""
+
+    def test_update_polecat_defaults(self, tmp_path, monkeypatch):
+        import lib.automode as mod
+
+        # Mock AOPS_CORE_DIR to point to a tmp directory
+        # AOPS_CORE_DIR in automode.py is aops-core/
+        # so AOPS_CORE_DIR.parent / "polecat" / "defaults" / "claude-settings.json"
+        # will be tmp_path / "polecat" / "defaults" / "claude-settings.json"
+
+        aops_core_mock = tmp_path / "aops-core"
+        aops_core_mock.mkdir()
+        monkeypatch.setattr(mod, "AOPS_CORE_DIR", aops_core_mock)
+
+        polecat_defaults_dir = tmp_path / "polecat" / "defaults"
+        polecat_defaults_dir.mkdir(parents=True)
+        polecat_settings_path = polecat_defaults_dir / "claude-settings.json"
+        polecat_settings_path.write_text(json.dumps({"model": "test-model", "autoMode": {}}))
+
+        monkeypatch.setattr(
+            mod,
+            "_get_aops_rules",
+            lambda: {"environment": ["e"], "allow": ["a"], "soft_deny": ["d"]},
+        )
+        monkeypatch.setattr(
+            mod,
+            "_get_cc_defaults",
+            lambda: {"environment": [], "allow": ["cc a"], "soft_deny": []},
+        )
+
+        from lib.automode import update_polecat_defaults
+
+        ok, msg = update_polecat_defaults()
+        assert ok
+        assert "Updated polecat defaults" in msg
+
+        written = json.loads(polecat_settings_path.read_text())
+        assert written["model"] == "test-model"
+        assert written["autoMode"]["environment"] == ["e"]
+        assert "cc a" in written["autoMode"]["allow"]
+        assert "a" in written["autoMode"]["allow"]
 
 
 class TestPolekatDefaultsContainAopsRules:
