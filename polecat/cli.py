@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import urllib.error
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
@@ -2280,7 +2281,11 @@ def start(ctx, project, caller):
     manager = PolecatManager(home_dir=ctx.obj.get("home"))
 
     print(f"Looking for ready tasks{' in project ' + project if project else ''}...")
-    task = manager.claim_next_task(caller, project)
+    try:
+        task = manager.claim_next_task(caller, project)
+    except Exception as e:
+        print(f"No ready tasks found (task backend unavailable: {e}).")
+        sys.exit(3)  # Exit 3 = queue empty. Swarm treats non-zero as "stop worker".
 
     if not task:
         print("No ready tasks found.")
@@ -2294,6 +2299,12 @@ def start(ctx, project, caller):
         print(f"\nTo start working:\ncd {worktree_path}")
     except Exception as e:
         print(f"\nError setting up worktree: {e}")
+        if task:
+            print(f"Reverting task {task.id} to active...", file=sys.stderr)
+            try:
+                manager.update_task(task.id, status="active", assignee=None)
+            except Exception as re:
+                print(f"Failed to revert task {task.id}: {re}", file=sys.stderr)
         sys.exit(1)
 
 
@@ -4027,6 +4038,7 @@ def run(
 
     # Step 1: Get/claim task (or fetch GitHub issue)
     is_issue = False
+    was_claimed = False
     if issue:
         # GitHub issue path — fetch metadata, create lightweight task object
         print(f"Fetching GitHub issue: {issue}...")
@@ -4069,13 +4081,40 @@ def run(
             sys.exit(2)  # Exit 2 = locked; distinct from exit 1 (error) / exit 3 (empty queue)
 
         if status_str == "active":
-            manager.update_task(task_id, status="in_progress", assignee=caller)
+            try:
+                manager.update_task(task_id, status="in_progress", assignee=caller)
+                was_claimed = True
+            except (TimeoutError, urllib.error.URLError) as e:
+                # Handle timeout during direct claim
+                print(f"⚠️  PKB claim timeout for {task_id}: {e}", file=sys.stderr)
+                print("   Verifying if claim succeeded despite timeout...", file=sys.stderr)
+                try:
+                    verified = manager.get_task(task_id)
+                    if (
+                        verified
+                        and verified.status == "in_progress"
+                        and verified.assignee == caller
+                    ):
+                        print("   ✅ Verified: claim succeeded. Proceeding.", file=sys.stderr)
+                        task = verified
+                        was_claimed = True
+                    else:
+                        raise
+                except Exception:
+                    print(f"   Task {task_id} may be stranded in_progress.", file=sys.stderr)
+                    print(
+                        f"   Recovery: polecat reset-stalled --hours 0 --project {task.project or 'aops'}",
+                        file=sys.stderr,
+                    )
+                    raise
             task.status = "in_progress"
             task.assignee = caller
     else:
         print(f"Looking for ready tasks{' in project ' + project if project else ''}...")
         try:
             task = manager.claim_next_task(caller, project)
+            if task:
+                was_claimed = True
         except Exception as e:
             print(f"No ready tasks found (task backend unavailable: {e}).")
             sys.exit(3)  # Exit 3 = queue empty. Swarm treats non-zero as "stop worker".
@@ -4098,6 +4137,12 @@ def run(
         print(f"📁 Worktree: {worktree_path}")
     except Exception as e:
         print(f"Error setting up worktree: {e}", file=sys.stderr)
+        if was_claimed and task and not is_issue:
+            print(f"Reverting task {task.id} to active...", file=sys.stderr)
+            try:
+                manager.update_task(task.id, status="active", assignee=None)
+            except Exception as re:
+                print(f"Failed to revert task {task.id}: {re}", file=sys.stderr)
         sys.exit(1)
 
     # Step 3: Build prompt from task context (self-contained, no /pull needed)

@@ -8,8 +8,11 @@ from __future__ import annotations
 
 import json
 import os
+import random
 import re
 import sys
+import time
+import urllib.error
 import urllib.request
 from datetime import date, datetime
 from typing import Any
@@ -99,15 +102,35 @@ class PkbClient:
         if self._session_id:
             headers["Mcp-Session-Id"] = self._session_id
 
-        req = urllib.request.Request(self._url, data=data, headers=headers)
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            # Capture session ID from response headers
-            sid = resp.headers.get("Mcp-Session-Id")
-            if sid:
-                self._session_id = sid
-            raw = resp.read().decode()
+        max_attempts = 4
+        for attempt in range(max_attempts):
+            try:
+                req = urllib.request.Request(self._url, data=data, headers=headers)
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    # Capture session ID from response headers
+                    sid = resp.headers.get("Mcp-Session-Id")
+                    if sid:
+                        self._session_id = sid
+                    raw = resp.read().decode()
+                return _parse_sse_json(raw)
+            except (TimeoutError, urllib.error.URLError) as e:
+                # Catch TimeoutError (3.11+) or URLError that wraps a timeout
+                is_timeout = isinstance(e, TimeoutError) or (
+                    isinstance(e, urllib.error.URLError) and "timed out" in str(e).lower()
+                )
+                if not is_timeout or attempt == max_attempts - 1:
+                    raise
 
-        return _parse_sse_json(raw)
+                # Exponential backoff: 1s, 2s, 4s (+ jitter)
+                delay = (2**attempt) + random.uniform(0, 1)
+                print(
+                    f"PKB PKB timeout (attempt {attempt + 1}/{max_attempts}): "
+                    f"retrying in {delay:.1f}s...",
+                    file=sys.stderr,
+                )
+                time.sleep(delay)
+
+        return None
 
     def _initialize(self) -> None:
         self._post(
