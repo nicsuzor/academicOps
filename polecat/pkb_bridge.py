@@ -16,6 +16,8 @@ import urllib.request
 from datetime import UTC, date, datetime
 from typing import Any
 
+_SLOW_THRESHOLD_MS = float(os.environ.get("PKB_SLOW_THRESHOLD_MS", 500))
+
 
 class PkbTask:
     """Duck-types the task attributes needed by polecat commands."""
@@ -189,15 +191,14 @@ class PkbClient:
 
             # Record via standard observability
             metrics._emit(
-                "pkb_tool_latency", tool=name, duration_ms=f"{duration_ms:.2f}", success=success
+                "pkb_tool_latency", tool=name, duration_ms=round(duration_ms, 2), success=success
             )
 
             # Slow-call threshold logging (default 500ms)
-            threshold = float(os.environ.get("PKB_SLOW_THRESHOLD_MS", 500))
-            if duration_ms > threshold:
+            if duration_ms > _SLOW_THRESHOLD_MS:
                 print(
                     f"[PKB_SLOW_CALL] tool={name} duration={duration_ms:.2f}ms "
-                    f"threshold={threshold}ms args={json.dumps(arguments)}",
+                    f"threshold={_SLOW_THRESHOLD_MS}ms args={json.dumps(arguments)}",
                     file=sys.stderr,
                 )
 
@@ -226,11 +227,11 @@ class PkbClient:
             results[name] = {
                 "count": count,
                 "p50": round(statistics.median(sorted_lats), 2),
-                "p95": round(sorted_lats[int(count * 0.95)], 2)
-                if count >= 20
+                "p95": round(statistics.quantiles(sorted_lats, n=100)[94], 2)
+                if count >= 2
                 else round(sorted_lats[-1], 2),
-                "p99": round(sorted_lats[int(count * 0.99)], 2)
-                if count >= 100
+                "p99": round(statistics.quantiles(sorted_lats, n=100)[98], 2)
+                if count >= 2
                 else round(sorted_lats[-1], 2),
                 "max": round(sorted_lats[-1], 2),
                 "avg": round(statistics.mean(latencies), 2),

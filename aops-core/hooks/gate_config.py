@@ -412,6 +412,7 @@ _PKB_OPERATIONS: dict[str, str] = {
     "search": "infrastructure",
     "pkb_context": "infrastructure",
     "pkb_orphans": "infrastructure",
+    "pkb_perf_stats": "infrastructure",
     "get_document": "infrastructure",
     "list_documents": "infrastructure",
     "get_network_metrics": "infrastructure",
