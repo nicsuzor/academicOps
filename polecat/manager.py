@@ -5,6 +5,7 @@ import re
 import shutil
 import subprocess
 import sys
+import urllib.error
 from pathlib import Path
 from typing import Any
 
@@ -992,7 +993,7 @@ class PolecatManager:
             project: Project slug
 
         Returns:
-            True if origin fetch succeeded, False if offline or failed.
+            True if mirror is fresh after sync, False if sync failed or remains stale.
         """
         mirror_path = self.repos_dir / f"{project}.git"
 
@@ -1014,13 +1015,28 @@ class PolecatManager:
                     capture_output=True,
                 )
 
+                # Get default refspecs from git config to ensure we fetch everything
+                # even when some branches are excluded.
+                config_result = subprocess.run(
+                    ["git", "config", "--get-all", "remote.origin.fetch"],
+                    cwd=mirror_path,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                default_refspecs = config_result.stdout.splitlines()
+                if not default_refspecs:
+                    default_refspecs = ["+refs/heads/*:refs/heads/*"]
+
                 exclude_refspecs = self._worktree_exclude_refspecs(mirror_path)
                 if exclude_refspecs:
                     branches = [r.removeprefix("^refs/heads/") for r in exclude_refspecs]
-                    print(f"  Skipping worktree branches during fetch: {', '.join(branches)}")
+                    print(f"  Skipping worktree branches during bulk fetch: {', '.join(branches)}")
 
+                # Bulk fetch all branches except those checked out.
+                # Must include default_refspecs otherwise git skips them when exclude_refspecs is present.
                 origin_result = subprocess.run(
-                    ["git", "fetch", "origin", *exclude_refspecs],
+                    ["git", "fetch", "origin", *default_refspecs, *exclude_refspecs],
                     cwd=mirror_path,
                     capture_output=True,
                     text=True,
@@ -1033,32 +1049,84 @@ class PolecatManager:
                     )
                     return False
 
-                # Branches checked out in worktrees are excluded from the
-                # normal origin fetch above. Update them by fetching into a
-                # temporary ref namespace (bypasses git's "branch is checked
-                # out" guard) and then fast-forwarding the real branch ref.
+                # Branches checked out in worktrees were excluded from the
+                # normal origin fetch above. Update them by fetching by SHA
+                # (bypasses git's "branch is checked out" guard) and then
+                # updating the branch ref.
+
+                # Single ls-remote call for all branches: avoids per-branch network
+                # round-trips and eliminates prefix-match false positives
+                # (ls-remote for "feat" would otherwise also match "feat-fix").
+                ls_result = subprocess.run(
+                    ["git", "ls-remote", "origin", "refs/heads/*"],
+                    cwd=mirror_path,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                remote_refs: dict[str, str] = {}
+                if ls_result.returncode == 0:
+                    for line in ls_result.stdout.splitlines():
+                        parts = line.split()
+                        if len(parts) == 2:
+                            remote_refs[parts[1]] = parts[0]
+
                 for excl_refspec in exclude_refspecs:
                     branch = excl_refspec.removeprefix("^refs/heads/")
-                    tmp_ref = f"refs/fetch-tmp/{branch}"
+                    remote_sha = remote_refs.get(f"refs/heads/{branch}")
+                    if not remote_sha:
+                        continue
+
+                    # Instrumentation: check SHA before update
+                    local_sha_result = subprocess.run(
+                        ["git", "rev-parse", f"refs/heads/{branch}"],
+                        cwd=mirror_path,
+                        capture_output=True,
+                        text=True,
+                        check=False,
+                    )
+                    local_sha = local_sha_result.stdout.strip()
+
+                    if local_sha == remote_sha:
+                        continue
+
+                    print(
+                        f"  🔄 Branch {branch} is checked out and stale: {local_sha[:8]} -> {remote_sha[:8]}"
+                    )
+
+                    # Fetch by SHA (doesn't trigger checked-out guard)
                     fetch_result = subprocess.run(
-                        ["git", "fetch", "origin", f"refs/heads/{branch}:{tmp_ref}"],
+                        ["git", "fetch", "origin", remote_sha],
                         cwd=mirror_path,
                         capture_output=True,
                         check=False,
                     )
                     if fetch_result.returncode == 0:
-                        subprocess.run(
-                            ["git", "update-ref", f"refs/heads/{branch}", tmp_ref],
+                        # update-ref is allowed on checked-out branches in bare repos
+                        update_result = subprocess.run(
+                            ["git", "update-ref", f"refs/heads/{branch}", remote_sha],
                             cwd=mirror_path,
                             check=False,
                             capture_output=True,
                         )
-                        subprocess.run(
-                            ["git", "update-ref", "-d", tmp_ref],
-                            cwd=mirror_path,
-                            check=False,
-                            capture_output=True,
+                        if update_result.returncode == 0:
+                            print(f"  ✅ Updated checked-out branch {branch} to {remote_sha[:8]}")
+                        else:
+                            print(
+                                f"  ⚠ Failed to update checked-out branch {branch}: {update_result.stderr.decode().strip()}",
+                                file=sys.stderr,
+                            )
+                    else:
+                        print(
+                            f"  ⚠ Failed to fetch SHA {remote_sha[:8]} for branch {branch}",
+                            file=sys.stderr,
                         )
+
+                # Final verification: is the mirror now fresh?
+                is_fresh, message = self.check_mirror_freshness(project)
+                if not is_fresh:
+                    print(f"  ⚠ Mirror remains stale after sync: {message}", file=sys.stderr)
+                    return False
 
                 return True
         except subprocess.CalledProcessError as e:
@@ -1290,12 +1358,38 @@ class PolecatManager:
                 continue
 
             # Claim via MCP update_task (atomic at server level)
-            update_task(fresh.id, status="in_progress", assignee=caller)
+            try:
+                success = update_task(fresh.id, status="in_progress", assignee=caller)
+                if not success:
+                    # Server returned an error (already logged to stderr in call_tool)
+                    continue
+            except (TimeoutError, urllib.error.URLError) as e:
+                # Timeout/Network error: we don't know if it succeeded on server.
+                # Verify state before bailing.
+                print(f"⚠️  PKB claim timeout for {fresh.id}: {e}", file=sys.stderr)
+                print("   Verifying if claim succeeded despite timeout...", file=sys.stderr)
+                try:
+                    verified = get_task(fresh.id)
+                    if (
+                        verified
+                        and verified.status == "in_progress"
+                        and verified.assignee == caller
+                    ):
+                        print("   ✅ Verified: claim succeeded. Proceeding.", file=sys.stderr)
+                        return verified
+                except Exception as ve:
+                    print(f"   ❌ Verification failed: {ve}", file=sys.stderr)
+
+                print(f"   Task {fresh.id} may be stranded in_progress.", file=sys.stderr)
+                print(
+                    f"   Recovery: polecat reset-stalled --hours 0 --project {fresh.project or 'aops'}",
+                    file=sys.stderr,
+                )
+                raise
+
             fresh.status = "in_progress"
             fresh.assignee = caller
             return fresh
-
-        return None
 
         return None
 

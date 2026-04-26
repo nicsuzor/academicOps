@@ -80,7 +80,7 @@ Quick task capture with minimal overhead. Speed is the priority — no enrichmen
 
 1. Search for duplicates and similar tasks (quick, 5 results max).
 2. **Scope check**: If similar tasks exist with high `scope`, consider if the new task should be a subtask of an existing epic rather than a new top-level task.
-3. Resolve parent per hierarchy rules.
+3. Resolve parent per hierarchy rules. **Domain check**: If the new task's content or tags suggest a different domain (e.g., teaching) than the selected parent (e.g., framework/aops), warn the user and ask for confirmation: "This looks like [domain] work, but the selected parent [parent-id] is in [parent-domain] — confirm parent?"
 4. Route assignee: `polecat` (default), `null` (judgment-required), `nic` (only if explicit).
 5. **Extract structured metadata** if mentioned in description or conversation:
    - `due`: ISO date (YYYY-MM-DD)
@@ -221,26 +221,26 @@ Incremental PKM and task graph maintenance. Small, regular attention beats massi
 
 **Activities**:
 
-| Activity       | What                                                                               |
-| -------------- | ---------------------------------------------------------------------------------- |
-| **Lint**       | Validate frontmatter YAML (use PKB linter)                                         |
-| **Weed**       | Fix broken wikilinks, remove dead references                                       |
-| **Prune**      | Archive stale sessions (>30 days)                                                  |
-| **Compost**    | Merge fragments into richer notes                                                  |
-| **Cultivate**  | Enrich sparse notes, add context                                                   |
-| **Link**       | Connect orphans, add missing wikilinks                                             |
-| **Map**        | Create/update MoCs for navigation                                                  |
-| **DRY**        | Remove restated content, replace with links                                        |
-| **Synthesize** | Strip deliberation artifacts from implemented specs                                |
-| **Reparent**   | Fix orphaned tasks (missing-parent AND wrong-type-parent), enforce hierarchy rules |
-| **Hierarchy**  | Validate task→epic→project structure, goal-linkage via `goals: []` metadata        |
-| **Stale**      | Flag tasks with stale status or inconsistencies                                    |
-| **Dedup**      | Find and merge duplicate tasks                                                     |
-| **Triage**     | Detect under-specified tasks                                                       |
-| **Densify**    | Add dependency edges between related tasks                                         |
-| **Scan**       | Report graph density without changes                                               |
+| Activity       | What                                                                                                                               |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| **Lint**       | Validate frontmatter YAML (use PKB linter)                                                                                         |
+| **Weed**       | Fix broken wikilinks, remove dead references                                                                                       |
+| **Prune**      | Archive stale sessions (>30 days)                                                                                                  |
+| **Compost**    | Merge fragments into richer notes                                                                                                  |
+| **Cultivate**  | Enrich sparse notes, add context                                                                                                   |
+| **Link**       | Connect orphans, add missing wikilinks                                                                                             |
+| **Map**        | Create/update MoCs for navigation                                                                                                  |
+| **DRY**        | Remove restated content, replace with links                                                                                        |
+| **Synthesize** | Strip deliberation artifacts from implemented specs                                                                                |
+| **Reparent**   | Fix orphaned tasks (missing-parent AND wrong-type-parent), enforce hierarchy rules                                                 |
+| **Hierarchy**  | Validate task→epic→project structure, goal-linkage via goals: [] metadata, and domain consistency (no places-vs-projects mixing) |
+| **Stale**      | Flag a task with status: stale or inconsistencies                                                                                  |
+| **Dedup**      | Find and merge duplicate tasks                                                                                                     |
+| **Triage**     | Detect under-specified tasks                                                                                                       |
+| **Densify**    | Add dependency edges between related tasks                                                                                         |
+| **Scan**       | Report graph density without changes                                                                                               |
 
-### Data Quality Procedures (Dedup, Stale, Misclassification)
+### Data Quality Procedures (Dedup, Stale, Misclassification, Domain)
 
 These are the interactive counterpart to sleep Phase 4. In maintain mode, the human is in the loop — no batch limits, can ask questions, always has email tools available.
 
@@ -269,6 +269,12 @@ These are the interactive counterpart to sleep Phase 4. In maintain mode, the hu
 2. For each: check if actionable or purely informational
 3. Informational → `batch_reclassify(ids=[<id>], new_type="memory")` or `batch_archive`
 4. Actionable but poorly formed → flag for triage
+
+**Places-vs-projects check procedure**:
+
+1. `pkb_context` on major project hubs to identify domain-specific tags/keywords.
+2. Scan high-scope containers for children whose tags/content strongly deviate from the parent's domain.
+3. Identified mixing (e.g., teaching tasks under framework epics) → propose reparenting to the correct project/epic.
 
 **Session pattern**: 15–30 minutes max. Work in small batches (3–5 notes). Commit frequently.
 

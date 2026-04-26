@@ -8,10 +8,12 @@ from __future__ import annotations
 
 import json
 import os
+import random
 import re
 import statistics
 import sys
 import time
+import urllib.error
 import urllib.request
 from datetime import UTC, date, datetime
 from typing import Any
@@ -24,11 +26,12 @@ class PkbTask:
 
     def __init__(self, data: dict[str, Any]):
         fm = data.get("frontmatter", {})
-        self.id: str = fm.get("id", "")
-        self.title: str = fm.get("title", "")
+        self.id: str = fm.get("id") or data.get("id", "")
+        self.title: str = fm.get("title") or data.get("title", "")
         self.body: str = data.get("body", "")
-        self.project: str | None = fm.get("project")
-        self.type: str = fm.get("type", "task")
+        # project can be in frontmatter or computed at top level
+        self.project: str | None = fm.get("project") or data.get("project")
+        self.type: str = fm.get("type") or data.get("type", "task")
         self.status: str | None = fm.get("status")  # plain string, not enum
         self.parent: str | None = fm.get("parent")
         self.priority: int | None = fm.get("priority")
@@ -103,15 +106,35 @@ class PkbClient:
         if self._session_id:
             headers["Mcp-Session-Id"] = self._session_id
 
-        req = urllib.request.Request(self._url, data=data, headers=headers)
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            # Capture session ID from response headers
-            sid = resp.headers.get("Mcp-Session-Id")
-            if sid:
-                self._session_id = sid
-            raw = resp.read().decode()
+        max_attempts = 4
+        for attempt in range(max_attempts):
+            try:
+                req = urllib.request.Request(self._url, data=data, headers=headers)
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    # Capture session ID from response headers
+                    sid = resp.headers.get("Mcp-Session-Id")
+                    if sid:
+                        self._session_id = sid
+                    raw = resp.read().decode()
+                return _parse_sse_json(raw)
+            except (TimeoutError, urllib.error.URLError) as e:
+                # Catch TimeoutError (3.11+) or URLError that wraps a timeout
+                is_timeout = isinstance(e, TimeoutError) or (
+                    isinstance(e, urllib.error.URLError) and "timed out" in str(e).lower()
+                )
+                if not is_timeout or attempt == max_attempts - 1:
+                    raise
 
-        return _parse_sse_json(raw)
+                # Exponential backoff: 1s, 2s, 4s (+ jitter)
+                delay = (2**attempt) + random.uniform(0, 1)
+                print(
+                    f"PKB PKB timeout (attempt {attempt + 1}/{max_attempts}): "
+                    f"retrying in {delay:.1f}s...",
+                    file=sys.stderr,
+                )
+                time.sleep(delay)
+
+        return None
 
     def _initialize(self) -> None:
         self._post(
@@ -444,6 +467,14 @@ def save_task(task: PkbTask) -> bool:
     return update_task(task.id, **updates)
 
 
+def get_task_children(task_id: str, recursive: bool = False) -> str | None:
+    """Retrieve children of a task as a markdown string."""
+    data = _get_client().call_tool("get_task_children", {"id": task_id, "recursive": recursive})
+    if data is None or not isinstance(data, str):
+        return None
+    return data
+
+
 def list_tasks(
     status: str | None = None,
     project: str | None = None,
@@ -458,21 +489,65 @@ def list_tasks(
     if status:
         args["status"] = status
     if project:
-        # list_tasks doesn't have a project filter — we filter client-side
-        pass
+        # Optimization: pass project to server. Note: the server filter currently
+        # only matches literal frontmatter fields and fails to find nested tasks
+        # (recall failure). We still filter client-side to ensure correctness,
+        # and we surface a warning if the server returned fewer results than
+        # exist in the project subtree.
+        args["project"] = project
 
     text = _get_client().call_tool("list_tasks", args)
     if not text or not isinstance(text, str):
         return []
 
     ids = _parse_task_ids_from_markdown(text)
+
+    # For accurate project filtering, we fetch the set of IDs in the project's subtree.
+    # This bypasses the recall failure in the server-side project filter.
+    project_task_ids = None
+    project_node_id = None  # tracked separately so it is excluded from recall-failure count
+    if project:
+        subtree_md = get_task_children(project, recursive=True)
+        if subtree_md:
+            project_task_ids = {
+                line.split("`")[1]
+                for line in subtree_md.splitlines()
+                if (" `- `" in line or line.strip().startswith("- `"))
+                and "`" in line
+                and len(line.split("`")) >= 2
+            }
+            # Resolve slug → real ID from header ("## Children of `id` (Title)").
+            # Add to the filter set so the project node itself is not excluded if
+            # the server ever returns it; track separately for count purposes.
+            first_line = subtree_md.splitlines()[0]
+            if "`" in first_line:
+                project_node_id = first_line.split("`")[1]
+                project_task_ids.add(project_node_id)
+
     tasks = []
     for tid in ids:
+        if project_task_ids is not None and tid not in project_task_ids:
+            continue
         t = get_task(tid)
         if t is not None:
-            if project and t.project != project:
-                continue
             tasks.append(t)
+
+    # Recall failure detection: skip when a status filter is applied because
+    # len(tasks) will naturally be less than the full subtree count.
+    if project and not status and project_task_ids:
+        # Exclude the project node itself — it is not a task.
+        child_count = len(project_task_ids) - (
+            1 if project_node_id and project_node_id in project_task_ids else 0
+        )
+        if child_count > len(tasks):
+            print(
+                f"Warning: list_tasks(project='{project}') returned {len(tasks)} tasks, "
+                f"but project subtree has {child_count} nodes. The project filter "
+                "may have missed nested tasks (recall failure). Use "
+                "get_task_children for complete subtree access.",
+                file=sys.stderr,
+            )
+
     return tasks
 
 

@@ -17,7 +17,7 @@ Use `summary["ready"]` as the denominator for priority bars.
 
 ### 3.2: Priority Distribution
 
-Report counts only. Do not annotate with "→ recommended tasks" pointers.
+Report counts only. Do not annotate with "→ recommended tasks" pointers. Use the count from `summary["ready"]` as the total of **ready tasks**.
 
 ```
 P0 ░░░░░░░░░░ 3/85
