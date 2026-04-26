@@ -104,6 +104,7 @@ def test_gemini_extension_manifest_parameters():
     # Verify environment variables
     assert "env" in pkb_config
     assert pkb_config["env"].get("ACA_DATA") == "${ACA_DATA}"
+    assert pkb_config["env"].get("PKB_MCP_URL") == "${PKB_MCP_URL}"
 
 
 def test_rbg_accessibility_in_compliance_config():

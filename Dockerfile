@@ -123,6 +123,7 @@ RUN TMPDIR=$(mktemp -d) \
 
 # Install Gemini extension from GitHub repo
 RUN mkdir -p /home/worker/.gemini \
+    && echo '{"/home/worker/.gemini/extensions/aops-core": "TRUST_FOLDER", "/home/worker/.gemini/extensions/aops-tools": "TRUST_FOLDER", "/home/worker/.config": "TRUST_FOLDER"}' > /home/worker/.gemini/trustedFolders.json \
     && GEMINI_API_KEY=dummy-for-install gemini extensions install ${AOPS_REPO_URL} --consent --pre-release
 
 # Set permissive extension enablement so hooks fire for any workspace path.
