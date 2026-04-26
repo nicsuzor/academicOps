@@ -15,22 +15,37 @@ tools:
   - Bash
   - Skill
   - Agent
-  - mcp__plugin_aops-core_pkb__search
-  - mcp__plugin_aops-core_pkb__get_document
-  - mcp__plugin_aops-core_pkb__pkb_context
-  - mcp__plugin_aops-core_pkb__create
   - mcp__plugin_aops-core_pkb__append
-  - mcp__plugin_aops-core_pkb__graph_stats
-  - mcp__plugin_aops-core_pkb__create_task
-  - mcp__plugin_aops-core_pkb__get_task
-  - mcp__plugin_aops-core_pkb__update_task
-  - mcp__plugin_aops-core_pkb__list_tasks
-  - mcp__plugin_aops-core_pkb__task_search
+  - mcp__plugin_aops-core_pkb__batch_archive
+  - mcp__plugin_aops-core_pkb__batch_merge
+  - mcp__plugin_aops-core_pkb__batch_reclassify
+  - mcp__plugin_aops-core_pkb__batch_update
+  - mcp__plugin_aops-core_pkb__bulk_reparent
   - mcp__plugin_aops-core_pkb__complete_task
+  - mcp__plugin_aops-core_pkb__create
   - mcp__plugin_aops-core_pkb__create_memory
-  - mcp__plugin_aops-core_pkb__retrieve_memory
-  - mcp__plugin_aops-core_pkb__list_memories
+  - mcp__plugin_aops-core_pkb__create_task
+  - mcp__plugin_aops-core_pkb__decompose_task
+  - mcp__plugin_aops-core_pkb__delete_memory
+  - mcp__plugin_aops-core_pkb__find_duplicates
+  - mcp__plugin_aops-core_pkb__get_dependency_tree
+  - mcp__plugin_aops-core_pkb__get_document
   - mcp__plugin_aops-core_pkb__get_network_metrics
+  - mcp__plugin_aops-core_pkb__get_task
+  - mcp__plugin_aops-core_pkb__get_task_children
+  - mcp__plugin_aops-core_pkb__graph_stats
+  - mcp__plugin_aops-core_pkb__list_documents
+  - mcp__plugin_aops-core_pkb__list_memories
+  - mcp__plugin_aops-core_pkb__list_tasks
+  - mcp__plugin_aops-core_pkb__merge_node
+  - mcp__plugin_aops-core_pkb__pkb_context
+  - mcp__plugin_aops-core_pkb__pkb_orphans
+  - mcp__plugin_aops-core_pkb__pkb_trace
+  - mcp__plugin_aops-core_pkb__retrieve_memory
+  - mcp__plugin_aops-core_pkb__search
+  - mcp__plugin_aops-core_pkb__search_by_tag
+  - mcp__plugin_aops-core_pkb__task_search
+  - mcp__plugin_aops-core_pkb__update_task
 mcpServers:
   - plugin_aops-core_pkb
 skills:
