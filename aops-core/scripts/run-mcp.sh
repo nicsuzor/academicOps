@@ -24,4 +24,5 @@ if [[ -z "$UV_CACHE_DIR" ]] || ! mkdir -p "$UV_CACHE_DIR" 2>/dev/null; then
     export UV_CACHE_DIR="${TMPDIR:-/tmp}/uv-cache-$(id -u)"
 fi
 
-exec uvx fastmcp run "$PKB_MCP_URL"
+# Launch the PKB Performance Proxy which wraps the remote server and adds latency tracking.
+exec "$SCRIPT_DIR/pkb_perf_proxy.py"

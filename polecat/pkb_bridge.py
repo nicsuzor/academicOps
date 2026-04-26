@@ -9,9 +9,11 @@ from __future__ import annotations
 import json
 import os
 import re
+import statistics
 import sys
+import time
 import urllib.request
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 
 
@@ -127,45 +129,113 @@ class PkbClient:
 
     def call_tool(self, name: str, arguments: dict) -> Any:
         """Call an MCP tool and return the parsed JSON content."""
-        resp = self._post(
-            {
-                "jsonrpc": "2.0",
-                "id": self._next_id(),
-                "method": "tools/call",
-                "params": {"name": name, "arguments": arguments},
-            }
-        )
-        if resp is None:
-            return None
-        # Top-level JSON-RPC error (e.g. -32602 "Missing required parameter"). The
-        # MCP server returns these instead of a result object, so any code path
-        # that reads resp["result"] without checking this will see {} and silently
-        # return None, corrupting the caller. Surface the message to stderr so
-        # future failures aren't silent — match the isError branch's semantics
-        # (log + return None).
-        if "error" in resp:
-            err = resp["error"] or {}
-            code = err.get("code", "?")
-            msg = err.get("message", str(err))
-            print(f"PKB MCP error {code} ({name}): {msg}", file=sys.stderr)
-            return None
-        result = resp.get("result", {})
-        if result.get("isError"):
-            content = result.get("content")
-            err_text = "unknown error"
-            if content:
-                err_text = content[0].get("text", "unknown error")
-            print(f"PKB error ({name}): {err_text}", file=sys.stderr)
-            return None
-        content = result.get("content", [])
-        if not content:
-            return None
-        text = content[0].get("text", "")
+        from polecat.observability import metrics
+
+        start_time = time.perf_counter()
+        success = False
         try:
-            return json.loads(text)
-        except json.JSONDecodeError:
-            # Some tools return plain text (e.g. list_tasks returns markdown)
-            return text
+            resp = self._post(
+                {
+                    "jsonrpc": "2.0",
+                    "id": self._next_id(),
+                    "method": "tools/call",
+                    "params": {"name": name, "arguments": arguments},
+                }
+            )
+            if resp is None:
+                return None
+
+            # Top-level JSON-RPC error
+            if "error" in resp:
+                err = resp["error"] or {}
+                code = err.get("code", "?")
+                msg = err.get("message", str(err))
+                print(f"PKB MCP error {code} ({name}): {msg}", file=sys.stderr)
+                return None
+
+            result = resp.get("result", {})
+            if result.get("isError"):
+                content = result.get("content")
+                err_text = "unknown error"
+                if content:
+                    err_text = content[0].get("text", "unknown error")
+                print(f"PKB error ({name}): {err_text}", file=sys.stderr)
+                return None
+
+            success = True
+            content = result.get("content", [])
+            if not content:
+                return None
+
+            text = content[0].get("text", "")
+            try:
+                return json.loads(text)
+            except json.JSONDecodeError:
+                # Some tools return plain text (e.g. list_tasks returns markdown)
+                return text
+        finally:
+            duration_ms = (time.perf_counter() - start_time) * 1000
+
+            # Log structured performance data
+            perf_entry = {
+                "timestamp": datetime.now(UTC).isoformat(),
+                "tool": name,
+                "duration_ms": round(duration_ms, 2),
+                "success": success,
+                "args": arguments,
+            }
+            # Emit JSON line for easy parsing
+            print(f"[PKB_PERF] {json.dumps(perf_entry)}", file=sys.stderr)
+
+            # Record via standard observability
+            metrics._emit(
+                "pkb_tool_latency", tool=name, duration_ms=f"{duration_ms:.2f}", success=success
+            )
+
+            # Slow-call threshold logging (default 500ms)
+            threshold = float(os.environ.get("PKB_SLOW_THRESHOLD_MS", 500))
+            if duration_ms > threshold:
+                print(
+                    f"[PKB_SLOW_CALL] tool={name} duration={duration_ms:.2f}ms "
+                    f"threshold={threshold}ms args={json.dumps(arguments)}",
+                    file=sys.stderr,
+                )
+
+            # Update in-memory history for p50/p95/p99
+            if not hasattr(self, "_latencies"):
+                self._latencies: dict[str, list[float]] = {}
+            if name not in self._latencies:
+                self._latencies[name] = []
+
+            history = self._latencies[name]
+            history.append(duration_ms)
+            if len(history) > 1000:
+                history.pop(0)
+
+    def get_perf_stats(self) -> dict[str, dict[str, float]]:
+        """Calculate p50/p95/p99 latency stats per tool."""
+        if not hasattr(self, "_latencies"):
+            return {}
+
+        results = {}
+        for name, latencies in self._latencies.items():
+            if not latencies:
+                continue
+            sorted_lats = sorted(latencies)
+            count = len(sorted_lats)
+            results[name] = {
+                "count": count,
+                "p50": round(statistics.median(sorted_lats), 2),
+                "p95": round(sorted_lats[int(count * 0.95)], 2)
+                if count >= 20
+                else round(sorted_lats[-1], 2),
+                "p99": round(sorted_lats[int(count * 0.99)], 2)
+                if count >= 100
+                else round(sorted_lats[-1], 2),
+                "max": round(sorted_lats[-1], 2),
+                "avg": round(statistics.mean(latencies), 2),
+            }
+        return results
 
     def close(self) -> None:
         pass  # HTTP is stateless per-request; nothing to tear down

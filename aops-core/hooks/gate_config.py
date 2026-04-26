@@ -93,6 +93,7 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "mcp__pkb__delete_memory",
         "mcp__pkb__decompose_task",
         "mcp__pkb__delete",
+        "mcp__pkb__pkb_perf_stats",
         # --- PKB all ops: mcp__plugin_aops-core_pkb__* (Claude Code full plugin) ---
         "mcp__plugin_aops-core_pkb__list_tasks",
         "mcp__plugin_aops-core_pkb__search",
@@ -134,6 +135,7 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "search",
         "get_task_children",
         "pkb_orphans",
+        "pkb_perf_stats",
         "create_memory",
         "decompose_task",
         "append",
