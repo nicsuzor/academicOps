@@ -28,6 +28,8 @@ tools:
   - mcp__playwright__browser_tabs
   - mcp__playwright__browser_close
 mcpServers:
+  - plugin_aops-core_pkb
+  - pkb
   - playwright
 skills:
   - qa

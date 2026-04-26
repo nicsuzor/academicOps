@@ -5,7 +5,7 @@
 #   - Read local .agents/CORE.md for project-specific context
 #   - Push fixes for axiom violations directly to the PR branch
 #   - Comment on issues requiring human judgment
-# Prompt: aops-core/agents/enforcer.md (canonical source — same prompt as local subagent)
+# Prompt: aops-core/agents/rbg.md (canonical source — same prompt as local subagent)
 #
 # This is a reusable workflow. Install on other repos with:
 #   uses: nicsuzor/academicOps/.github/workflows/agent-enforcer.yml@main
@@ -131,7 +131,7 @@ jobs:
         with:
           repository: nicsuzor/academicOps
           path: .aops
-          sparse-checkout: aops-core/agents/enforcer.md
+          sparse-checkout: aops-core/agents/rbg.md
           token: ${{ secrets.AOPS_BOT_GH_TOKEN }}
 
       # Loop detection: skip if last commit was from enforcer
@@ -151,7 +151,7 @@ jobs:
         if: (github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]') && steps.loop-check.outputs.skip != 'true'
         id: prompt
         run: |
-          PROMPT=$(cat .aops/aops-core/agents/enforcer.md)
+          PROMPT=$(cat .aops/aops-core/agents/rbg.md)
           {
             echo "prompt<<AGENT_EOF"
             echo "$PROMPT"

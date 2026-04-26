@@ -1596,8 +1596,7 @@ def generate_marketplace(aops_root: Path, dist_root: Path, version: str):
     """Generate marketplace.json for both local dev and dist repo consumption.
 
     Reads the template from templates/marketplace.json and produces two outputs:
-    1. .claude-plugin/marketplace.json — for local dev (paths: ./dist/aops-claude)
-    2. dist/marketplace.json — for the dist repo (paths: ./aops-claude)
+    1. dist/marketplace.json — for the dist repo (paths: ./aops-claude)
     """
     template_path = aops_root / "templates" / "marketplace.json"
     if not template_path.exists():
@@ -1631,20 +1630,6 @@ def generate_marketplace(aops_root: Path, dist_root: Path, version: str):
         json.dump(data, f, indent=2)
         f.write("\n")
     print(f"  ✓ Generated {dist_marketplace} (for dist repo)")
-
-    # 2. Local dev version (sources point to ./dist/aops-claude, ./dist/aops-cowork)
-    local_data = json.loads(json.dumps(data))  # deep copy
-    for plugin in local_data.get("plugins", []):
-        source = plugin.get("source", "")
-        if source.startswith("./"):
-            plugin["source"] = f"./dist/{source[2:]}"
-    local_marketplace_dir = aops_root / ".claude-plugin"
-    local_marketplace_dir.mkdir(parents=True, exist_ok=True)
-    local_marketplace = local_marketplace_dir / "marketplace.json"
-    with open(local_marketplace, "w") as f:
-        json.dump(local_data, f, indent=2)
-        f.write("\n")
-    print(f"  ✓ Generated {local_marketplace} (for local dev)")
 
 
 def package_artifacts(
