@@ -198,7 +198,11 @@ def main():
             # shortform = gha-{workflow}-{repo}-claude
             # name = claude-session-{workflow}-{run_id}-{attempt}
             # Workflow is everything between 'claude-session-' and 'run_id'
-            workflow = "-".join(parts[2:parts.index(str(run_id))]) if str(run_id) in parts else "-".join(parts[2:-2])
+            workflow = (
+                "-".join(parts[2 : parts.index(str(run_id))])
+                if str(run_id) in parts
+                else "-".join(parts[2:-2])
+            )
             shortform = f"gha-{workflow}-{repo_slug}-claude"
 
             artifact_success = True
@@ -218,7 +222,11 @@ def main():
                     artifact_success = False
 
             if artifact_success:
-                state[state_key] = {"id": art_id, "name": name, "synced_at": datetime.now().isoformat()}
+                state[state_key] = {
+                    "id": art_id,
+                    "name": name,
+                    "synced_at": datetime.now().isoformat(),
+                }
                 new_count += 1
 
         print(f"✅ {repo}: fetched {new_count} new sessions, skipped {skipped_count} cached")
