@@ -5,12 +5,13 @@
   "contextFileName": "GEMINI.md",
   "mcpServers": {
     "pkb": {
-      "command": "pkb",
+      "command": "bash",
       "args": [
-        "mcp"
+        "${extensionPath}/scripts/run-mcp.sh"
       ],
       "env": {
         "ACA_DATA": "${ACA_DATA}",
+        "PKB_MCP_URL": "${PKB_MCP_URL}",
         "RUST_LOG": "warn"
       }
     }
