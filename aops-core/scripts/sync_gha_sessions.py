@@ -103,7 +103,8 @@ def main():
     gitignore = get_sessions_repo() / ".gitignore"
     if gitignore.exists():
         content = gitignore.read_text()
-        if "github/" not in content:
+        import re
+        if not re.search(r"\bgithub/\b", content):
             with open(gitignore, "a") as f:
                 f.write("\n# GHA session artifacts\ngithub/\n")
                 print(f"➕ Added github/ to {gitignore}")
