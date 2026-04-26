@@ -40,7 +40,8 @@ def load_state() -> dict:
     if state_file.exists():
         try:
             return json.loads(state_file.read_text())
-        except Exception:
+        except Exception as e:
+            print(f"Warning: could not load sync state from {state_file}: {e}", file=sys.stderr)
             return {}
     return {}
 
