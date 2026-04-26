@@ -130,9 +130,9 @@ The `classification` field carries additional semantic subtypes (bug, feature, s
 
 **Key fields on goal/target nodes:**
 
-| Field         | Description                                                                                                                                                                                 |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `consequence` | Prose description of what happens if the task or goal is not achieved. Present on tasks too — used by the daily skill to surface stakes without editorial framing.                          |
+| Field         | Description                                                                                                                                                                                     |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `consequence` | Prose description of what happens if the task or goal is not achieved. Present on tasks too — used by the daily skill to surface stakes without editorial framing.                              |
 | `goals: []`   | List of goal/target IDs that a task or project contributes to. This is how tasks and projects link to goals — not via parent hierarchy. A task can contribute to multiple goals simultaneously. |
 
 **Why `goals: []` instead of parent edges?** Goals are cross-cutting: the same task may serve multiple strategic priorities. Parent edges encode containment; `goals: []` encodes contribution. The planner enforces this distinction — goals are never used as direct parents in the task tree.

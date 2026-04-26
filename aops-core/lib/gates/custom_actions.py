@@ -146,4 +146,12 @@ def execute_custom_action(
             context_injection=instruction,
         )
 
+    if name == "set_handover_invoked":
+        session_state.state["handover_skill_invoked"] = True
+        return None
+
+    if name == "reset_handover_invoked":
+        session_state.state["handover_skill_invoked"] = False
+        return None
+
     return None
