@@ -1050,10 +1050,31 @@ class PolecatManager:
 
                 # Branches checked out in worktrees were excluded from the
                 # normal origin fetch above. Update them by fetching by SHA
-                # (bypasses git's \"branch is checked out\" guard) and then
+                # (bypasses git's "branch is checked out" guard) and then
                 # updating the branch ref.
+
+                # Single ls-remote call for all branches: avoids per-branch network
+                # round-trips and eliminates prefix-match false positives
+                # (ls-remote for "feat" would otherwise also match "feat-fix").
+                ls_result = subprocess.run(
+                    ["git", "ls-remote", "origin", "refs/heads/*"],
+                    cwd=mirror_path,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                remote_refs: dict[str, str] = {}
+                if ls_result.returncode == 0:
+                    for line in ls_result.stdout.splitlines():
+                        parts = line.split()
+                        if len(parts) == 2:
+                            remote_refs[parts[1]] = parts[0]
+
                 for excl_refspec in exclude_refspecs:
                     branch = excl_refspec.removeprefix("^refs/heads/")
+                    remote_sha = remote_refs.get(f"refs/heads/{branch}")
+                    if not remote_sha:
+                        continue
 
                     # Instrumentation: check SHA before update
                     local_sha_result = subprocess.run(
@@ -1064,19 +1085,6 @@ class PolecatManager:
                         check=False,
                     )
                     local_sha = local_sha_result.stdout.strip()
-
-                    # Get remote SHA via ls-remote
-                    ls_result = subprocess.run(
-                        ["git", "ls-remote", "origin", f"refs/heads/{branch}"],
-                        cwd=mirror_path,
-                        capture_output=True,
-                        text=True,
-                        check=False,
-                    )
-                    if ls_result.returncode != 0 or not ls_result.stdout.strip():
-                        continue
-
-                    remote_sha = ls_result.stdout.split()[0]
 
                     if local_sha == remote_sha:
                         continue
