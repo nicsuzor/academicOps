@@ -99,13 +99,14 @@ This is the baseline. Phase 11 re-runs graph_stats to measure what changed.
 
 Extract insights from session transcripts that agents may not have saved during the session.
 
-**Input**: Session transcripts in `$AOPS_SESSIONS/` (Markdown files)
+**Input**: Session transcripts in `$AOPS_SESSIONS/` (Markdown files), including synced GHA sessions in `$AOPS_SESSIONS/github/`.
 **Output**: Updates to canonical topic notes (preferred); new canonical notes where the topic lacks one; rarely, a linked narrow note for genuinely topic-less observations.
 
 ### Process
 
-1. Find transcripts not yet mined: check for `mined: YYYY-MM-DD` in frontmatter.
-2. For each unmined transcript (up to 15 per cycle):
+1. **Sync GHA sessions**: Run `aops-core/scripts/sync_gha_sessions.py` to fetch new transcripts from GitHub Actions artifacts into `$AOPS_SESSIONS/github/`.
+2. Find transcripts not yet mined: check for `mined: YYYY-MM-DD` in frontmatter across all session directories.
+3. For each unmined transcript (up to 15 per cycle):
    a. Read the transcript carefully, noting decisions, patterns, facts, and problems. Look for things that are worth remembering but didn't make it into tasks or notes during the session. This is the agent's judgment call — not every detail needs to be saved, but important insights should be.
    b. Identify extractable insights: decisions made, patterns observed, facts learned, problems solved
    c. For each insight, identify the **first-class topic** it is about — not the symptom, the subject. "cargo build failed for mem MCP server" is about `mem` the tool, and the lesson lives in its `Installation` section.

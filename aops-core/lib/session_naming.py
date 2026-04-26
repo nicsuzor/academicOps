@@ -185,11 +185,12 @@ def generate_session_filename(
     machine: str | None = None,
     provider: str | None = None,
     artifact_type: str = "transcript-full",
+    shortform: str | None = None,
 ) -> str:
     """Generate a session artifact filename following the naming convention.
 
     Format: {YYYYMMDD}-{HHMM}-{session_id}-{shortform}-{slug}{-variant}.{ext}
-    where shortform is {crew}-{repo}.
+    where shortform is {crew}-{repo} (or provided override).
 
     Args:
         session_id: Full session ID (will be shortened to 8 chars)
@@ -200,6 +201,7 @@ def generate_session_filename(
         machine: Ignored (moved to frontmatter)
         provider: Ignored (moved to frontmatter)
         artifact_type: One of ARTIFACT_TYPES keys
+        shortform: Optional explicit shortform override
 
     Returns:
         Filename string (no directory prefix)
@@ -215,7 +217,8 @@ def generate_session_filename(
     short_id = get_session_short_hash(session_id)
     date_str = timestamp.strftime("%Y%m%d")
     time_str = timestamp.strftime("%H%M")
-    shortform = get_session_shortform(crew_name, repo)
+    if shortform is None:
+        shortform = get_session_shortform(crew_name, repo)
     safe_slug = _sanitize_slug(slug)
     art = ARTIFACT_TYPES[artifact_type]
 
@@ -230,6 +233,7 @@ def generate_base_name(
     repo: str | None = None,
     machine: str | None = None,
     provider: str | None = None,
+    shortform: str | None = None,
 ) -> str:
     """Generate the base name shared across all artifacts for a session.
 
@@ -241,7 +245,8 @@ def generate_base_name(
     short_id = get_session_short_hash(session_id)
     date_str = timestamp.strftime("%Y%m%d")
     time_str = timestamp.strftime("%H%M")
-    shortform = get_session_shortform(crew_name, repo)
+    if shortform is None:
+        shortform = get_session_shortform(crew_name, repo)
     safe_slug = _sanitize_slug(slug)
 
     return f"{date_str}-{time_str}-{short_id}-{shortform}-{safe_slug}"

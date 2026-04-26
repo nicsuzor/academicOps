@@ -237,6 +237,7 @@ def _save_minimal_token_summary(
     usage_stats: "UsageStats",
     session_duration_minutes: float | None,
     timeline_events: list[dict] | None = None,
+    shortform: str | None = None,
 ) -> None:
     """Save minimal summary with just token_metrics when no reflection exists.
 
@@ -283,7 +284,9 @@ def _save_minimal_token_summary(
         date_for_insights = (
             timestamp if timestamp else f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
         )
-        insights_path = get_insights_file_path(date_for_insights, session_id, slug, None, project)
+        insights_path = get_insights_file_path(
+            date_for_insights, session_id, slug, None, project, shortform=shortform
+        )
         write_insights_file(insights_path, insights, session_id=session_id)
         print(f"📊 Token metrics saved (no reflection): {insights_path}")
     except Exception as e:
@@ -301,6 +304,7 @@ def _process_reflection(
     usage_stats: "UsageStats | None" = None,
     session_duration_minutes: float | None = None,
     timeline_events: list[dict] | None = None,
+    shortform: str | None = None,
 ) -> tuple[str | None, list[dict] | None]:
     """Extract reflections from entries and save to insights JSON files.
 
@@ -333,6 +337,7 @@ def _process_reflection(
                 usage_stats,
                 session_duration_minutes,
                 timeline_events,
+                shortform=shortform,
             )
         return None, None
 
@@ -372,7 +377,7 @@ def _process_reflection(
                 timestamp if timestamp else f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
             )
             insights_path = get_insights_file_path(
-                date_for_insights, session_id, slug, idx, project
+                date_for_insights, session_id, slug, idx, project, shortform=shortform
             )
             write_insights_file(insights_path, insights, session_id=session_id)
             print(f"💡 Reflection {i + 1}/{len(reflections)} saved to: {insights_path}")
@@ -515,6 +520,7 @@ def _generate_transcript_filename(
     entries: list,
     slug: str | None = None,
     processor: "SessionProcessor | None" = None,
+    shortform: str | None = None,
 ) -> tuple[str, str, str, str, str]:
     """Generate consistent transcript filename using session_naming."""
     # 1. Detect crew_name from path if applicable
@@ -567,6 +573,7 @@ def _generate_transcript_filename(
         crew_name=crew_name,
         repo=repo,
         provider=provider,
+        shortform=shortform,
     )
 
     # Return components for compatibility with transcript.py callers
@@ -809,6 +816,10 @@ Examples:
     parser.add_argument(
         "--slug",
         help="Brief slug describing session work (auto-generated if not provided)",
+    )
+    parser.add_argument(
+        "--shortform",
+        help="Explicit shortform to use in the filename (overrides crew/repo detection)",
     )
     parser.add_argument(
         "--recent",
@@ -1256,6 +1267,7 @@ Examples:
             entries,
             slug=args.slug,
             processor=processor,
+            shortform=args.shortform,
         )
 
         base_name = str(output_dir / filename)
@@ -1311,6 +1323,7 @@ Examples:
             usage_stats,
             session_duration_minutes,
             timeline_events,
+            shortform=args.shortform,
         )
 
         # Generate full version
