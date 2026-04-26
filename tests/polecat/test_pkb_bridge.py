@@ -470,7 +470,7 @@ def test_list_tasks_project_filter_with_recall_failure_warning(mock_client, caps
 
     captured = capsys.readouterr()
     assert (
-        "Warning: list_tasks(project='proj-1') returned 1 tasks, but project subtree has 3 nodes."
+        "Warning: list_tasks(project='proj-1') returned 1 tasks, but project subtree has 2 nodes."
         in captured.err
     )
 

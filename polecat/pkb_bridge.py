@@ -412,6 +412,7 @@ def list_tasks(
     # For accurate project filtering, we fetch the set of IDs in the project's subtree.
     # This bypasses the recall failure in the server-side project filter.
     project_task_ids = None
+    project_node_id = None  # tracked separately so it is excluded from recall-failure count
     if project:
         subtree_md = get_task_children(project, recursive=True)
         if subtree_md:
@@ -422,14 +423,13 @@ def list_tasks(
                 and "`" in line
                 and len(line.split("`")) >= 2
             }
-            # The project ID itself might be in the list, but ensure it's there
-            # if we are resolving a slug (get_task_children 'id' can be a slug).
-            # We try to get the real project ID from the markdown header.
-            # Header format: ## Children of `id` (Title)
+            # Resolve slug → real ID from header ("## Children of `id` (Title)").
+            # Add to the filter set so the project node itself is not excluded if
+            # the server ever returns it; track separately for count purposes.
             first_line = subtree_md.splitlines()[0]
             if "`" in first_line:
-                real_project_id = first_line.split("`")[1]
-                project_task_ids.add(real_project_id)
+                project_node_id = first_line.split("`")[1]
+                project_task_ids.add(project_node_id)
 
     tasks = []
     for tid in ids:
@@ -439,14 +439,17 @@ def list_tasks(
         if t is not None:
             tasks.append(t)
 
-    # Recall failure detection
-    if project and len(tasks) < limit:
-        # If we have project_task_ids, use it for the count
-        subtree_count = len(project_task_ids) if project_task_ids else 0
-        if subtree_count > len(tasks):
+    # Recall failure detection: skip when a status filter is applied because
+    # len(tasks) will naturally be less than the full subtree count.
+    if project and not status and project_task_ids:
+        # Exclude the project node itself — it is not a task.
+        child_count = len(project_task_ids) - (
+            1 if project_node_id and project_node_id in project_task_ids else 0
+        )
+        if child_count > len(tasks):
             print(
                 f"Warning: list_tasks(project='{project}') returned {len(tasks)} tasks, "
-                f"but project subtree has {subtree_count} nodes. The project filter "
+                f"but project subtree has {child_count} nodes. The project filter "
                 "may have missed nested tasks (recall failure). Use "
                 "get_task_children for complete subtree access.",
                 file=sys.stderr,
