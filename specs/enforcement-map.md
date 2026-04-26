@@ -107,6 +107,8 @@ Pipeline (Capture → Soft gates → Hard blocks → Review → Handover → Mer
 | Linting      | rules 6-9 (skill/agent)              | warn/error | PR push        | planned                                                                                                    |
 | Linting      | permissions-lint                     | error      | PR push        | planned                                                                                                    |
 | Supervisor   | plan-review gate                     | block      | post-decomp    | active                                                                                                     |
+| H91 Deadline | HEURISTICS.md                        | inject     | always-on      | active                                                                                                     |
+| H91 Deadline | `rbg` review                         | advisory   | review-time    | active                                                                                                     |
 
 ## Known Gaps
 
