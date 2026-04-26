@@ -98,12 +98,13 @@ def test_gemini_extension_manifest_parameters():
     assert "pkb" in manifest["mcpServers"]
 
     pkb_config = manifest["mcpServers"]["pkb"]
-    assert pkb_config["command"] == "pkb"
-    assert "mcp" in pkb_config["args"]
+    assert pkb_config["command"] == "bash"
+    assert any("run-mcp.sh" in arg for arg in pkb_config["args"])
 
     # Verify environment variables
     assert "env" in pkb_config
     assert pkb_config["env"].get("ACA_DATA") == "${ACA_DATA}"
+    assert pkb_config["env"].get("PKB_MCP_URL") == "${PKB_MCP_URL}"
 
 
 def test_rbg_accessibility_in_compliance_config():
