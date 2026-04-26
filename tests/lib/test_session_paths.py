@@ -2,7 +2,12 @@ import os
 from unittest.mock import patch
 
 import pytest
-from lib.session_paths import _is_gemini_session, get_gate_file_path, get_session_short_hash
+from lib.session_paths import (
+    _is_gemini_session,
+    _parse_date_arg,
+    get_gate_file_path,
+    get_session_short_hash,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -20,6 +25,61 @@ def _clear_env_vars(monkeypatch):
         monkeypatch.delenv(var, raising=False)
     # Pin machine name so tests don't depend on host hostname
     monkeypatch.setenv("AOPS_MACHINE", "testmachine")
+
+
+class TestParseDateArg:
+    """Tests for _parse_date_arg — regression coverage for 00:00 filename collision."""
+
+    def test_none_returns_none(self):
+        """None input signals 'use caller default', returns None."""
+        assert _parse_date_arg(None) is None
+
+    def test_date_only_string_does_not_produce_midnight(self):
+        """A YYYY-MM-DD string must NOT produce a 00:00 timestamp (the collision bug)."""
+        result = _parse_date_arg("2026-04-26")
+        assert result is not None
+        # Pre-fix: fromisoformat("2026-04-26") returned midnight (00:00).
+        # Post-fix: time is merged from now(), so it must differ from midnight.
+        assert not (result.hour == 0 and result.minute == 0 and result.second == 0), (
+            "date-only string produced 00:00 timestamp — filename collision bug is present"
+        )
+
+    def test_date_only_string_preserves_date(self):
+        """The calendar date in a date-only string must be preserved."""
+        result = _parse_date_arg("2026-04-26")
+        assert result is not None
+        assert result.year == 2026
+        assert result.month == 4
+        assert result.day == 26
+
+    def test_full_iso_string_with_explicit_time_is_not_modified(self):
+        """An ISO-8601 string with explicit time must be returned as-is (no clock merge)."""
+        result = _parse_date_arg("2026-01-15T14:30:00+10:00")
+        assert result is not None
+        assert result.hour == 14
+        assert result.minute == 30
+
+    def test_explicit_midnight_iso_string_is_preserved(self):
+        """Explicit midnight in a full ISO-8601 string must NOT be replaced by current time."""
+        result = _parse_date_arg("2026-01-01T00:00:00+00:00")
+        assert result is not None
+        assert result.hour == 0
+        assert result.minute == 0
+        assert result.second == 0
+
+    def test_invalid_string_returns_none(self):
+        """Invalid date strings return None (caller defaults to now)."""
+        assert _parse_date_arg("not-a-date") is None
+
+    def test_result_is_timezone_aware(self):
+        """All returned datetimes must be timezone-aware."""
+        result = _parse_date_arg("2026-04-26")
+        assert result is not None
+        assert result.tzinfo is not None
+
+        result2 = _parse_date_arg("2026-01-15T14:30:00+10:00")
+        assert result2 is not None
+        assert result2.tzinfo is not None
 
 
 class TestIsGeminiSession:
