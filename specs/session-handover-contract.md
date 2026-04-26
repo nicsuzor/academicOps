@@ -52,7 +52,7 @@ Agents must emit a terminal summary at the end of a session. This replaces the `
 ### Short-form (Interactive only)
 
 **Format**: 1–2 lines of prose.
-**Usage**: For minor edits in interactive sessions where the user is still steering.
+**When to use**: governed by the canonical branch decision in [[end_session]] §1. The conditions live in the skill, not here — this section specifies only the output format.
 **Example**:
 
 > Next: verify config change with user.
@@ -74,7 +74,7 @@ The `release_task` tool (and its underlying implementation in `mem` and `aops`) 
 
 ### Short-form: `update_task`
 
-In the short-form branch, the agent uses `update_task` to write the latest delta (what was done, what's left) to the task body. This ensures state is captured without the overhead of a full release.
+In the short-form branch, the agent uses `update_task` to write the latest delta (what was done, what's left) to the **task body**. Frontmatter is not mutated by this branch, with one exception: the agent must ensure the task's `session_id` field equals `$AOPS_SESSION_ID` so the dashboard's "Bound sessions" aggregation (§6) can group the task with the rest of the session. State is captured without the overhead of a full release.
 
 ### Ad-hoc Task Creation
 
