@@ -175,39 +175,18 @@ Merge Prep complete. All review feedback triaged and addressed."
 
 (If self-approval or Actions-cannot-approve errors occur, log the warning and continue — do not fail.)
 
-## 9. Set merge-prep-status: success
+## 9. Stop — the workflow handles graduation
 
-**CRITICAL**: `merge-prep-status` is a commit status — it is pinned to a specific SHA. If ANY commit is pushed after this step, the status does NOT carry over to the new HEAD and the PR will be blocked.
+After §8, **exit cleanly**. Do not set commit statuses, do not dispatch other workflows, do not push further commits.
 
-Before setting the status, re-run the §8 gate one more time — `mergeable == MERGEABLE`, no failing CI, no standing `CHANGES_REQUESTED`. The gate must be green on the fresh HEAD SHA you are about to write against. Do not set success based on a read you made earlier in the run.
+The `agent-merge-prep.yml` workflow's `Handle success` step runs after you exit. It uses the bot PAT (`AOPS_BOT_GH_TOKEN`) to:
 
-You MUST:
+1. Set `merge-prep-status: success` on the fresh HEAD SHA
+2. Enable auto-merge (`gh pr merge --auto --squash --delete-branch`)
 
-1. Confirm your push from step 6 has landed and no further pushes are pending
-2. Get the HEAD SHA **fresh** (do not reuse a cached value)
-3. Re-verify server-side mergeability on that SHA
-4. Set the status as the **absolute last write operation**
+You cannot do (1) yourself — the token your action runs under lacks `statuses: write`, so any `gh api .../statuses/$SHA` call returns 403. The workflow has the right token; let it do the work.
 
-```bash
-# Verify push landed — HEAD should match what we pushed
-HEAD_SHA=$(gh pr view {pr} --repo {repo} --json headRefOid --jq '.headRefOid')
-echo "Setting merge-prep-status on $HEAD_SHA"
-gh api repos/{repo}/statuses/$HEAD_SHA \
-  -f state="success" \
-  -f context="merge-prep-status" \
-  -f description="Merge prep complete — ready for summary" \
-  -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-```
-
-Do NOT push any more commits after this step.
-
-## 10. Trigger summary-and-merge
-
-```bash
-gh api repos/{repo}/dispatches \
-  -f event_type="summary-and-merge" \
-  -f 'client_payload[pr_number]'="{pr}"
-```
+The PR will not merge until a human maintainer approves it (branch protection requires `required_approving_review_count`). Your job is to leave the PR all-green with auto-merge armed; the human is the merge gate.
 
 ## If blocked and cannot proceed
 
