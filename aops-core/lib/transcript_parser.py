@@ -304,6 +304,64 @@ def parse_framework_reflection(text: str) -> dict[str, Any] | None:
     return result if result else None
 
 
+def parse_session_handover(text: str) -> dict[str, Any] | None:
+    """Parse Session Handover section from markdown text.
+
+    Extracts structured fields from the new /dump handover format:
+    - Session ID, Primary Task, PR, Branch, Issue, Follow-ups, Summary
+
+    Args:
+        text: Markdown text that may contain a Session Handover section
+
+    Returns:
+        Dict mapped to reflection schema, or None if no handover found
+    """
+    _SECTION_END = r"(?=\n#{1,4}\s|\n---|\Z)"
+    pattern = rf"### Session Handover[^\S\n]*\n(.*?){_SECTION_END}"
+    match = re.search(pattern, text, re.DOTALL | re.IGNORECASE)
+    if not match:
+        return None
+
+    handover_text = match.group(1)
+    raw_fields = {}
+
+    # Extract fields with regex
+    field_map = {
+        "session_id": r"- \*\*Session ID\*\*: (.*)",
+        "task_id": r"- \*\*Primary Task\*\*: ([^\s(]+)",
+        "pr_url": r"- \*\*PR\*\*: (.*)",
+        "branch": r"- \*\*Branch\*\*: (.*)",
+        "issue_url": r"- \*\*Issue\*\*: (.*)",
+        "next_step": r"- \*\*Follow-ups\*\*: (.*)",
+        "summary": r"- \*\*Summary\*\*: (.*)",
+    }
+
+    for key, reg in field_map.items():
+        f_match = re.search(reg, handover_text, re.IGNORECASE)
+        if f_match:
+            val = f_match.group(1).strip()
+            if val.lower() != "none" and val != "$AOPS_SESSION_ID":
+                raw_fields[key] = val
+
+    if not raw_fields:
+        return None
+
+    # Map to reflection schema used by reflection_to_insights()
+    reflection = {
+        "outcome": "success",  # Default for /dump handover
+        "summary": raw_fields.get("summary", ""),
+        "accomplishments": [raw_fields.get("summary")] if raw_fields.get("summary") else [],
+        "prompts": raw_fields.get("summary"),
+        "next_step": raw_fields.get("next_step"),
+        "session_id": raw_fields.get("session_id"),
+        "task_id": raw_fields.get("task_id"),
+        "pr_url": raw_fields.get("pr_url"),
+        "branch": raw_fields.get("branch"),
+        "handover": True,  # Marker for handover-originated insights
+    }
+    return reflection
+
+
 def _infer_outcome(text: str) -> str:
     """Infer outcome from content keywords in unstructured reflection text."""
     lower = text.lower()
@@ -429,6 +487,9 @@ def extract_reflection_from_entries(
             continue
 
         reflection = parse_framework_reflection(text)
+        if not reflection:
+            reflection = parse_session_handover(text)
+
         if reflection:
             reflections.append(reflection)
 
@@ -453,6 +514,9 @@ def extract_reflection_from_entries(
                 continue
 
             reflection = parse_framework_reflection(text)
+            if not reflection:
+                reflection = parse_session_handover(text)
+
             if reflection:
                 reflections.append(reflection)
 
@@ -583,7 +647,7 @@ def reflection_to_insights(
         "provider": session_naming.get_provider_name(),
         "crew": os.environ.get("POLECAT_CREW_NAME"),
         "repo": project,
-        "task_id": os.environ.get("AOPS_TASK_ID"),
+        "task_id": reflection.get("task_id") or os.environ.get("AOPS_TASK_ID"),
         # Framework reflections as array (schema-compliant)
         "framework_reflections": [framework_reflection_entry],
         # Token usage metrics (optional)
@@ -632,13 +696,13 @@ def extract_timeline_events(turns: list[Any], session_id: str) -> list[dict[str,
 
         ts = start_time.isoformat() if start_time else None
 
-        # User prompts (first line, truncated to ~120 chars)
+        # User prompts (no truncation, JSON-escaped by json.dumps downstream)
         if user_msg and not getattr(turn, "is_meta", False):
             events.append(
                 {
                     "timestamp": ts,
                     "type": "user_prompt",
-                    "description": user_msg[:120],
+                    "description": user_msg,
                 }
             )
 
@@ -667,6 +731,16 @@ def extract_timeline_events(turns: list[Any], session_id: str) -> list[dict[str,
                         "timestamp": ts,
                         "type": "task_complete",
                         "task_id": inp.get("id", ""),
+                    }
+                )
+            elif "pkb__release_task" in tool:
+                events.append(
+                    {
+                        "timestamp": ts,
+                        "type": "task_release",
+                        "task_id": inp.get("id", ""),
+                        "status": inp.get("status", ""),
+                        "summary": inp.get("release_summary", inp.get("summary", "")),
                     }
                 )
             elif "pkb__update_task" in tool:

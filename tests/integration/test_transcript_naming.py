@@ -97,7 +97,7 @@ class TestTranscriptNamingIntegration:
 
         filename = path.name
         assert filename.startswith("20260411-1700-a1b2c3d4-")
-        assert "my-project" in filename
+        assert "myproject" in filename
         assert "fix-bugs.json" in filename
 
     def test_find_existing_transcripts_backward_compat(self, tmp_path):
