@@ -5,7 +5,7 @@ status: draft
 owner: aops
 parent_epic: task-18da4781
 feeds_pilot: task-0779b81b
-last_updated: 2026-04-20 (prototype extension)
+last_updated: 2026-04-27 (prototype nodes + inherits_from ratification)
 ---
 
 # Multi-parent edges and target-node severity propagation
