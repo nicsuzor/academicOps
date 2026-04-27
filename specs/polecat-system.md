@@ -162,17 +162,23 @@ On failure, the task status is set to `review` for manual intervention.
 
 The `run` command automates the polecat setup cycle:
 
-1. **Claims** the next ready task (or a specific task with `-t`)
-2. **Creates** the worktree
-3. **Runs** `claude -p "/pull <task-id>"` in the worktree
-4. **Reports** exit status (agents should call `polecat finish` themselves when ready)
+1. **Claims** the next ready task (or a specific task with `-t`, or fetches a GitHub issue with `--issue`).
+2. **Creates** the worktree.
+3. **Builds a self-contained prompt** from the task body, metadata, and resolved soft-dependencies via `polecat.prompt_template.build_polecat_prompt`. The agent receives the full task context directly — no separate `/pull` invocation.
+4. **Runs the agent** (`claude` by default; `--gemini` selects the Gemini CLI) inside a Docker container against the worktree. Headless by default (`-p <prompt> --max-turns <budget>`); `-i` drops to interactive.
+5. **On success (exit code 0)**: auto-finishes by default — pushes the branch, marks the task `merge_ready`, and nukes the worktree. Disable with `--no-auto-finish` if the agent should leave the worktree in place.
+6. **On failure**: leaves the worktree intact and prints recovery instructions. OOM (exit 137) is detected and surfaced with platform-specific remediation.
 
 ```bash
-polecat run -p aops              # Run next ready task from aops
-polecat run -t task-123          # Run specific task
+polecat run -p aops                  # Claim next ready task from aops
+polecat run -t task-123              # Run a specific task
+polecat run --issue owner/repo#42    # Run a GitHub issue
+polecat run -p aops --no-auto-finish # Skip auto-finish on success
 ```
 
-Note: Agents are responsible for calling `polecat finish` at the end of their workflow to mark work as ready for merge. This ensures agents explicitly signal completion rather than having it triggered automatically.
+Turn budget is derived from the task's `effort` field (XS=40, S=70, M=100, L=150).
+
+> **v2 in progress** — the dispatch path is being refactored from a single 5343-line `cli.py` into an Executor + Provisioner protocol that supports remote docker hosts, jeeves, and jules workers. See [[plans/aops-core-james-agent-aops-core-aops-un-golden-rivest.md]] for the migration plan. Steps land as independent PRs; this section will be updated as new workers and provisioners come online.
 
 ## Workflow
 
@@ -196,79 +202,6 @@ active → in_progress → merge_ready → done
 - **merge_ready**: Work is complete, branch pushed, ready for automated merge
 - **review**: Merge failed, requires human intervention
 - **done**: Merged to main, branch cleaned up
-
-## Crew Merge Workflow
-
-Unlike task-bound polecats, **crews** are persistent named worktrees for interactive work.
-They don't have `merge_ready` status transitions - merging is manual.
-
-### When to Merge
-
-Merge a crew branch when:
-
-- Interactive work session is complete
-- Changes are ready for integration into main
-- Crew is no longer needed for ongoing collaboration
-
-### Merge Steps
-
-For each project in the crew (e.g., `$POLECAT_HOME/crew/cheryl/aops`):
-
-0. **Create tracking task** (before starting):
-   ```
-   mcp__pkb__create_task(
-     title="Merge crew/<name> into <project>",
-     type="task",
-     project="<project>",
-     body="Merging crew work. Document conflicts and resolution here."
-   )
-   ```
-
-1. **Check status**:
-   ```bash
-   cd $POLECAT_HOME/crew/<name>/<project>
-   git status
-   git log main..HEAD --oneline  # See commits to merge
-   ```
-
-2. **Commit uncommitted changes** (if dirty):
-   ```bash
-   git add <files>
-   git commit -m "feat: describe the changes"
-   ```
-
-3. **Merge to main** (from main repo):
-   ```bash
-   cd ~/src/<project-repo>
-   git merge crew/<name>
-   ```
-
-4. **Resolve conflicts** if any, then commit
-
-4b. **Document conflicts** (if any occurred):
-Update the tracking task body with:
-
-- Which files had conflicts
-- How conflicts were resolved (e.g., "combined both feature sets")
-- Why certain changes were kept/discarded
-
-5. **Push**:
-   ```bash
-   git push origin main
-   ```
-
-6. **Cleanup** (optional - only after ALL projects merged):
-   ```bash
-   polecat nuke-crew <name> --force
-   ```
-
-7. **Complete tracking task**:
-   Mark the task as done. The task body now serves as audit trail for daily summary.
-
-### Multi-Project Crews
-
-Crews can span multiple projects (e.g., cheryl had aops, buttermilk, mediamarkets).
-Repeat steps 1-5 for each project before nuking the crew.
 
 ## Repository Mapping
 
