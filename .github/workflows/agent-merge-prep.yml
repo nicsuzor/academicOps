@@ -26,6 +26,31 @@ on:
         description: 'Skip self-loop detection (for explicit re-invocation)'
         type: boolean
         default: false
+      bot_identity:
+        description: 'Identity of the bot for failure counting and dismissal'
+        type: string
+        default: 'github-actions[bot]'
+  workflow_call:
+    inputs:
+      pr_number:
+        description: 'PR number to prepare'
+        type: string
+        required: true
+      force:
+        description: 'Skip self-loop detection (for explicit re-invocation)'
+        type: boolean
+        default: false
+      bot_identity:
+        description: 'Identity of the bot for failure counting and dismissal'
+        type: string
+        default: 'github-actions[bot]'
+    secrets:
+      AOPS_BOT_GH_TOKEN:
+        description: 'PAT for GitHub API operations (statuses, auto-merge)'
+        required: true
+      CLAUDE_CODE_OAUTH_TOKEN:
+        description: 'OAuth token for Claude agent'
+        required: true
 
 # Global concurrency: serialise merge-prep across all PRs to prevent API rate limits
 concurrency:
@@ -52,6 +77,7 @@ jobs:
       PR_NUMBER: ${{ inputs.pr_number }}
       GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
       MAX_MERGE_PREP_RUNS: 5
+      BOT_IDENTITY: ${{ inputs.bot_identity || 'github-actions[bot]' }}
     steps:
       - name: Get PR details
         id: pr-info
@@ -72,16 +98,16 @@ jobs:
       - name: Dismiss prior merge-prep approval
         run: |
           REPO="${{ github.repository }}"
-          # Find any existing approval from github-actions[bot]
+          # Find any existing approval from BOT_IDENTITY
           REVIEW_ID=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" \
-            --jq '.[] | select(.state == "APPROVED" and .user.login == "github-actions[bot]") | .id' \
+            --jq ".[] | select(.state == \"APPROVED\" and .user.login == \"$BOT_IDENTITY\") | .id" \
             | tail -1)
           if [ -n "$REVIEW_ID" ]; then
-            echo "Dismissing prior merge-prep approval (review $REVIEW_ID)"
+            echo "Dismissing prior merge-prep approval from $BOT_IDENTITY (review $REVIEW_ID)"
             gh api -X PUT "repos/$REPO/pulls/$PR_NUMBER/reviews/$REVIEW_ID/dismissals" \
               -f message="Dismissed: new merge-prep run starting"
           else
-            echo "No prior merge-prep approval to dismiss"
+            echo "No prior merge-prep approval from $BOT_IDENTITY to dismiss"
           fi
 
       # Step 2: Self-loop detection
@@ -305,19 +331,19 @@ jobs:
           REPO="${{ github.repository }}"
           HEAD_SHA=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json headRefOid --jq '.headRefOid')
 
-          # Count prior failures by counting "Merge Prep: Failed" comments from this bot.
+          # Count prior failures by counting "Merge Prep: Failed" comments from BOT_IDENTITY.
           # We cannot use `gh run list --conclusion failure` because continue-on-error
           # on the Claude step makes the workflow conclude as "success" even when the
           # agent fails — so the run-level conclusion is never "failure".
           FAIL_COUNT=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
-            --jq '[.[] | select(.user.login == "github-actions[bot]" and (.body | test("## Merge Prep: Failed")))] | length')
+            --jq "[.[] | select(.user.login == \"$BOT_IDENTITY\" and (.body | test(\"## Merge Prep: Failed\")))] | length")
 
           if [ "$FAIL_COUNT" -ge 2 ]; then
             # This is the 3rd+ failure — halt permanently
 
             # Dismiss any merge-prep approval
             REVIEW_ID=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" \
-              --jq '.[] | select(.state == "APPROVED" and .user.login == "github-actions[bot]") | .id' \
+              --jq ".[] | select(.state == \"APPROVED\" and .user.login == \"$BOT_IDENTITY\") | .id" \
               | tail -1)
             if [ -n "$REVIEW_ID" ]; then
               gh api -X PUT "repos/$REPO/pulls/$PR_NUMBER/reviews/$REVIEW_ID/dismissals" \

@@ -1,0 +1,28 @@
+name: "Merge Prep Dispatcher (Shim)"
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_run:
+    workflows:
+      - "PR Review Pipeline"
+    types: [completed]
+    branches-ignore:
+      - main
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Override: process specific PR'
+        type: string
+        required: false
+
+jobs:
+  dispatch:
+    # Replace 'main' with '@pipeline-v1' for stability
+    uses: nicsuzor/academicOps/.github/workflows/merge-prep-cron.yml@pipeline-v1
+    with:
+      pr_number: ${{ inputs.pr_number }}
+      workflow_ref: 'agent-merge-prep.yml' # Filename of the agent shim in consumer repo
+      bot_identity: 'github-actions[bot]'
+    secrets:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

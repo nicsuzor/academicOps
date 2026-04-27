@@ -354,6 +354,55 @@ rules:
 
 **Two Approvals Requirement:** The ruleset requires 2 approvals. Approval #1 is provided by the Merge-Prep Agent after its successful run (`github-actions[bot]`). Approval #2 must come from a human maintainer. Branch protection does not distinguish bot vs. human approvals at the count level, but the bot approval alone never satisfies the human-judgement gate in practice — the maintainer's approval is what permits the merge to fire.
 
+## Reusable workflow surface
+
+The PR pipeline workflows are designed to be reusable in other repositories (cross-repo shims). Consumers should pin to a versioned ref (e.g., `@pipeline-v1`) to ensure stability.
+
+### `@pipeline-v1` Convention
+
+The `pipeline-v1` tag represents the stable surface for the reusable workflows. Consumers should use this tag in their `uses:` declarations:
+
+```yaml
+uses: nicsuzor/academicOps/.github/workflows/agent-merge-prep.yml@pipeline-v1
+```
+
+### Secrets Contract
+
+The following secrets must be explicitly provided by the caller if the corresponding workflow is used:
+
+- `AOPS_BOT_GH_TOKEN`: PAT with `contents: write`, `pull-requests: write`, `statuses: write`, and `actions: read/write` permissions. Required for `agent-merge-prep.yml` and `pr-pipeline.yml` (for lint autofix).
+- `CLAUDE_CODE_OAUTH_TOKEN`: OAuth token for the Claude agent. Required for `agent-merge-prep.yml`.
+- `GITHUB_TOKEN`: Standard repository token. Required for `merge-prep-cron.yml`.
+
+### Workflow Inputs
+
+#### `agent-merge-prep.yml`
+
+| Input          | Type    | Default               | Description                                         |
+| -------------- | ------- | --------------------- | --------------------------------------------------- |
+| `pr_number`    | string  | **Required**          | PR number to prepare                                |
+| `force`        | boolean | `false`               | Skip self-loop detection                            |
+| `bot_identity` | string  | `github-actions[bot]` | Identity of the bot for failure counting/dismissals |
+
+#### `merge-prep-cron.yml`
+
+| Input          | Type   | Default                | Description                                   |
+| -------------- | ------ | ---------------------- | --------------------------------------------- |
+| `pr_number`    | string | `''`                   | Override: process specific PR immediately     |
+| `workflow_ref` | string | `agent-merge-prep.yml` | Filename/ID of the agent workflow to dispatch |
+| `bot_identity` | string | `github-actions[bot]`  | Identity of the bot for state checks          |
+
+## CHANGELOG
+
+### [2026-04-27] - pipeline-v1
+
+- **Initial reusable surface**: Refactored `agent-merge-prep.yml` and `merge-prep-cron.yml` with `workflow_call` support.
+- **Defensive Primitives**:
+  - Added `bot_identity` input for venue-neutral bot identity.
+  - Added `workflow_ref` input for configurable agent dispatch.
+  - Explicit `secrets:` contract in `workflow_call` blocks.
+- **Cross-repo shims**: Added working fixtures at `examples/cross-repo-shim/`.
+
 ## Acceptance Criteria
 
 - [ ] A PR triggers Lint, Type Check, Pytest, and Agent Review concurrently on every push
