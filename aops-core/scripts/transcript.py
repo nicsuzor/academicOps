@@ -228,6 +228,81 @@ def format_markdown(file_path: Path) -> bool:
         return False
 
 
+# Reflection-derived fields. If a re-run produces an empty value for one of
+# these but the existing insights file had a non-empty value (typically authored
+# by a Framework Reflection in the markdown transcript), we preserve the
+# existing value rather than clobbering it. This is what makes regeneration
+# safe to call repeatedly as the source jsonl grows.
+_REFLECTION_FIELDS = (
+    "summary",
+    "outcome",
+    "accomplishments",
+    "friction_points",
+    "proposed_changes",
+    "framework_reflections",
+    "next_step",
+    "root_cause",
+)
+
+
+def _is_empty_value(v) -> bool:
+    """True if v is None, '', [], or {}."""
+    if v is None:
+        return True
+    if isinstance(v, str | list | dict | tuple) and len(v) == 0:
+        return True
+    return False
+
+
+def _preserve_reflection_fields(new: dict, existing: dict) -> dict:
+    """For each reflection-derived field, prefer existing if new is empty.
+
+    Mutates and returns ``new``.
+    """
+    for field in _REFLECTION_FIELDS:
+        if field in existing and not _is_empty_value(existing.get(field)):
+            if _is_empty_value(new.get(field)):
+                new[field] = existing[field]
+    return new
+
+
+def _should_overwrite_existing(new: dict, existing: dict) -> bool:
+    """Decide whether to overwrite an existing insights file.
+
+    Heuristic: overwrite when the new run has *more* signal than what's on
+    disk — typically because the source jsonl has grown since the previous
+    run. We compare timeline_events length (the most reliable indicator)
+    and a few coarse signals.
+    """
+    new_events = new.get("timeline_events") or []
+    old_events = existing.get("timeline_events") or []
+    if len(new_events) > len(old_events):
+        return True
+
+    # If the new run picked up token_metrics that weren't there before, refresh.
+    if new.get("token_metrics") and not existing.get("token_metrics"):
+        return True
+
+    # If a fresher reflection emerged (existing was minimal, new has one), refresh.
+    new_refl = new.get("framework_reflections") or []
+    old_refl = existing.get("framework_reflections") or []
+    if len(new_refl) > len(old_refl):
+        return True
+
+    return False
+
+
+def _load_existing_insights(path: Path) -> dict | None:
+    """Load existing insights JSON, or None on any error."""
+    try:
+        import json as _json
+
+        return _json.loads(path.read_text(encoding="utf-8"))
+    except Exception as e:  # noqa: BLE001
+        print(f"⚠️  Could not read existing insights {path}: {e}", file=sys.stderr)
+        return None
+
+
 def _save_minimal_token_summary(
     session_id: str,
     date_str: str,
@@ -275,10 +350,32 @@ def _save_minimal_token_summary(
         insights["timeline_events"] = timeline_events
 
     try:
-        # Check for existing insights
-        existing = find_existing_insights(date_str, session_id)
-        if existing:
-            print(f"⏭️  Insights already exist for session {session_id}: {existing.name}")
+        # Check for existing insights. If the source jsonl has grown since the
+        # previous run, we want to refresh rather than skip — but we preserve
+        # any reflection-derived fields the existing file has (e.g. authored
+        # by a later Framework Reflection or a previous reflection-bearing run).
+        existing_path = find_existing_insights(date_str, session_id)
+        if existing_path:
+            existing = _load_existing_insights(existing_path)
+            if existing is None:
+                # Couldn't read — be conservative, don't clobber
+                print(
+                    f"⏭️  Insights already exist for session {session_id} (unreadable, "
+                    f"skipping): {existing_path.name}"
+                )
+                return
+            if not _should_overwrite_existing(insights, existing):
+                print(f"⏭️  Insights already exist for session {session_id}: {existing_path.name}")
+                return
+            insights = _preserve_reflection_fields(insights, existing)
+            # Reuse the existing file path so we overwrite in place rather
+            # than creating a duplicate with a different slug.
+            write_insights_file(existing_path, insights, session_id=session_id)
+            print(
+                f"🔄 Refreshed insights (jsonl grew, "
+                f"{len(existing.get('timeline_events') or [])} → "
+                f"{len(insights.get('timeline_events') or [])} events): {existing_path}"
+            )
             return
 
         date_for_insights = (
@@ -367,10 +464,32 @@ def _process_reflection(
             # Use index for multi-reflection sessions (index > 0 gets suffix)
             idx = i if len(reflections) > 1 else None
 
-            # Check for existing insights (avoid duplicates with different slugs)
-            existing = find_existing_insights(date_str, session_id, index=idx)
-            if existing:
-                print(f"⏭️  Insights already exist for session {session_id}: {existing.name}")
+            # Check for existing insights (avoid duplicates with different slugs).
+            # If the source jsonl has grown since the previous run, refresh
+            # rather than skip — but preserve reflection-derived fields that
+            # the existing file may have (so we don't destroy a hand-edited
+            # or previously-extracted reflection).
+            existing_path = find_existing_insights(date_str, session_id, index=idx)
+            if existing_path:
+                existing = _load_existing_insights(existing_path)
+                if existing is None:
+                    print(
+                        f"⏭️  Insights already exist for session {session_id} (unreadable, "
+                        f"skipping): {existing_path.name}"
+                    )
+                    continue
+                if not _should_overwrite_existing(insights, existing):
+                    print(
+                        f"⏭️  Insights already exist for session {session_id}: {existing_path.name}"
+                    )
+                    continue
+                insights = _preserve_reflection_fields(insights, existing)
+                write_insights_file(existing_path, insights, session_id=session_id)
+                print(
+                    f"🔄 Reflection {i + 1}/{len(reflections)} refreshed (jsonl grew, "
+                    f"{len(existing.get('timeline_events') or [])} → "
+                    f"{len(insights.get('timeline_events') or [])} events): {existing_path}"
+                )
                 continue
 
             date_for_insights = (
