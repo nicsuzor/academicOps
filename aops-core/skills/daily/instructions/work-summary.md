@@ -11,10 +11,11 @@ The target note for every write in this section is the daily note for the **work
 Resolve the work date in this order:
 
 1. If the user explicitly names a date, use that.
-2. Otherwise, default to the most recent date with session activity in `$AOPS_SESSIONS/summaries/`.
-3. If the resolved work date differs from today's calendar date, confirm once with the user (AskUserQuestion: "Summarise work for YYYY-MM-DD?") before writing.
+2. Otherwise, default to **today's calendar date** (`date +%Y-%m-%d`). Today's note is for today's work; the empty-morning rule handles the case where no work has happened yet.
+3. Only resolve to a _different_ date when (a) you are explicitly running a backfill / reflect pass, or (b) the user has said so. Never silently default to "the most recent date with session activity" — that flips the target whenever today's morning is quiet, and produces day-of-week errors and yesterday-content-in-today's-note.
+4. If the resolved work date differs from today's calendar date, confirm once with the user (AskUserQuestion: "Summarise work for YYYY-MM-DD?") before writing.
 
-Every reference to "the daily note" below means the work-date note.
+Every reference to "the daily note" below means the work-date note. The day-of-week label in the note title and any "today / tomorrow / Nd" phrases are anchored to the **note's calendar date**, not to today's calendar date — derive them from the date in the filename via `date -d "YYYY-MM-DD" +%A`.
 
 ### Step 5.1: Gather Inputs
 
