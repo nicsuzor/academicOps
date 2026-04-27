@@ -1108,8 +1108,10 @@ def build_aops_cowork(
             f.write("\n")
         print("  ✓ Generated .mcp.json")
 
-    # 3a. MCP launch scripts — .mcp.json references scripts/run-mcp.sh
-    mcp_scripts = ["run-mcp.sh", "ensure-path.sh"]
+    # 3a. MCP launch scripts — .mcp.json references scripts/run-mcp.sh, which
+    # in turn invokes pkb_perf_proxy.py (the proxy reads PKB_MCP_URL from env
+    # and falls back to local `pkb mcp` stdio when unset).
+    mcp_scripts = ["run-mcp.sh", "ensure-path.sh", "pkb_perf_proxy.py"]
     scripts_src = src_dir / "scripts"
     scripts_dst = dist_dir / "scripts"
     if scripts_src.exists():
