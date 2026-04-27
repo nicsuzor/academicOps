@@ -19,6 +19,7 @@ permissions:
 
 jobs:
   release-please:
+    timeout-minutes: 45
     runs-on: ubuntu-latest
     steps:
       - uses: googleapis/release-please-action@v4

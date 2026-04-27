@@ -54,6 +54,7 @@ concurrency:
 
 jobs:
   dispatch:
+    timeout-minutes: 45
     name: Dispatch build to nicsuzor/aops
     runs-on: ubuntu-latest
     steps:

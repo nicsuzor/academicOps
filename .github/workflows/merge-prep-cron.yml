@@ -33,6 +33,7 @@ concurrency:
 
 jobs:
   dispatch:
+    timeout-minutes: 45
     name: Find and dispatch qualifying PRs
     runs-on: ubuntu-latest
     permissions:
