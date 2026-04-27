@@ -266,30 +266,31 @@ def _preserve_reflection_fields(new: dict, existing: dict) -> dict:
     return new
 
 
-def _should_overwrite_existing(new: dict, existing: dict) -> bool:
+def _should_overwrite_existing(new: dict, existing: dict) -> str | None:
     """Decide whether to overwrite an existing insights file.
 
-    Heuristic: overwrite when the new run has *more* signal than what's on
-    disk — typically because the source jsonl has grown since the previous
-    run. We compare timeline_events length (the most reliable indicator)
-    and a few coarse signals.
+    Returns the trigger reason string if overwrite should happen, or None to
+    skip. Heuristic: overwrite when the new run has *more* signal than what's
+    on disk — typically because the source jsonl has grown since the previous
+    run. We compare timeline_events length (the most reliable indicator) and a
+    few coarse signals.
     """
     new_events = new.get("timeline_events") or []
     old_events = existing.get("timeline_events") or []
     if len(new_events) > len(old_events):
-        return True
+        return "jsonl grew"
 
     # If the new run picked up token_metrics that weren't there before, refresh.
     if new.get("token_metrics") and not existing.get("token_metrics"):
-        return True
+        return "token_metrics appeared"
 
     # If a fresher reflection emerged (existing was minimal, new has one), refresh.
     new_refl = new.get("framework_reflections") or []
     old_refl = existing.get("framework_reflections") or []
     if len(new_refl) > len(old_refl):
-        return True
+        return "framework_reflections grew"
 
-    return False
+    return None
 
 
 def _load_existing_insights(path: Path) -> dict | None:
@@ -364,7 +365,8 @@ def _save_minimal_token_summary(
                     f"skipping): {existing_path.name}"
                 )
                 return
-            if not _should_overwrite_existing(insights, existing):
+            reason = _should_overwrite_existing(insights, existing)
+            if not reason:
                 print(f"⏭️  Insights already exist for session {session_id}: {existing_path.name}")
                 return
             insights = _preserve_reflection_fields(insights, existing)
@@ -372,7 +374,7 @@ def _save_minimal_token_summary(
             # than creating a duplicate with a different slug.
             write_insights_file(existing_path, insights, session_id=session_id)
             print(
-                f"🔄 Refreshed insights (jsonl grew, "
+                f"🔄 Refreshed insights ({reason}, "
                 f"{len(existing.get('timeline_events') or [])} → "
                 f"{len(insights.get('timeline_events') or [])} events): {existing_path}"
             )
@@ -478,7 +480,13 @@ def _process_reflection(
                         f"skipping): {existing_path.name}"
                     )
                     continue
-                if not _should_overwrite_existing(insights, existing):
+                # Use the full timeline for the heuristic even when i > 0 doesn't
+                # save timeline_events, so secondary reflections can also refresh.
+                check_insights = (
+                    {**insights, "timeline_events": timeline_events} if i > 0 else insights
+                )
+                reason = _should_overwrite_existing(check_insights, existing)
+                if not reason:
                     print(
                         f"⏭️  Insights already exist for session {session_id}: {existing_path.name}"
                     )
@@ -486,9 +494,9 @@ def _process_reflection(
                 insights = _preserve_reflection_fields(insights, existing)
                 write_insights_file(existing_path, insights, session_id=session_id)
                 print(
-                    f"🔄 Reflection {i + 1}/{len(reflections)} refreshed (jsonl grew, "
+                    f"🔄 Reflection {i + 1}/{len(reflections)} refreshed ({reason}, "
                     f"{len(existing.get('timeline_events') or [])} → "
-                    f"{len(insights.get('timeline_events') or [])} events): {existing_path}"
+                    f"{len(timeline_events or [])} events): {existing_path}"
                 )
                 continue
 
