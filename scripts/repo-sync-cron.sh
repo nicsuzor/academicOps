@@ -1,19 +1,21 @@
 #!/usr/bin/env bash
 # repo-sync-cron.sh - Periodic maintenance: transcripts, dashboard, repo sync, and sweep
 #
-# Four functions, composable via CLI:
+# Five functions, composable via CLI:
+#   do_gha_sync   - Sync claude-session artifacts from configured GHA repos
 #   do_transcript - Generate recent session transcripts
 #   do_dashboard  - Update task graph (pkb graph)
 #   do_sync       - Sync all git repositories via polecat sync
 #   do_sweep      - Sweep merge_ready tasks for PR status updates
 #
 # Usage:
-#   ./scripts/repo-sync-cron.sh              # Full: transcript + dashboard + sync + sweep
+#   ./scripts/repo-sync-cron.sh              # Full: gha_sync + transcript + dashboard + sync + sweep
+#   ./scripts/repo-sync-cron.sh gha_sync     # Just GHA artifact sync
 #   ./scripts/repo-sync-cron.sh transcript   # Just transcript
 #   ./scripts/repo-sync-cron.sh dashboard    # Just dashboard
 #   ./scripts/repo-sync-cron.sh sync         # Just sync
 #   ./scripts/repo-sync-cron.sh sweep        # Just sweep
-#   ./scripts/repo-sync-cron.sh transcript dashboard sync sweep # Specific combination
+#   ./scripts/repo-sync-cron.sh gha_sync transcript dashboard sync sweep # Specific combination
 #
 # Crontab suggested setup:
 #   */5 * * * * /path/to/repo/scripts/repo-sync-cron.sh >> /tmp/repo-sync-cron.log 2>&1
@@ -86,6 +88,30 @@ TS="$(date '+%Y-%m-%d %H:%M:%S')"
 # Functions
 # ============================================================================
 
+do_gha_sync() {
+    # Pull claude-session artifacts from configured GHA repos into
+    # $AOPS_SESSIONS/github/. The script invokes transcript.py --no-sync
+    # on each downloaded artifact, so transcripts/summaries land before
+    # do_transcript runs and the final commit-and-push picks them up.
+    echo "==> Syncing GHA claude-session artifacts..."
+    if [[ ! -f "${AOPS}/aops-core/scripts/sync_gha_sessions.py" ]]; then
+        echo "Warning: sync_gha_sessions.py not found, skipping" >&2
+        return 0
+    fi
+    if ! command -v gh &>/dev/null; then
+        echo "skipping gha sync (gh CLI not installed)"
+        return 0
+    fi
+    if ! gh auth status &>/dev/null; then
+        echo "skipping gha sync (gh not authed)"
+        return 0
+    fi
+    timeout 300 uv run python "${AOPS}/aops-core/scripts/sync_gha_sessions.py" \
+        --repos "${AOPS_GHA_REPOS:-nicsuzor/academicOps}" \
+        --limit 100 \
+        || echo "Warning: gha sync failed or timed out" >&2
+}
+
 do_transcript() {
     echo "==> Generating recent transcripts..."
     if [[ -f "${AOPS}/aops-core/scripts/transcript.py" ]]; then
@@ -124,23 +150,25 @@ do_sweep() {
 # ============================================================================
 
 if [[ $# -eq 0 ]]; then
-    # Full run: transcript + dashboard + sync + sweep
+    # Full run: gha_sync + transcript + dashboard + sync + sweep
     echo "${TS} repo-sync-cron starting (full)"
+    do_gha_sync
     do_transcript
     do_dashboard
     do_sync
     do_sweep
 else
-    # Named functions: ./repo-sync-cron.sh transcript dashboard sync sweep
+    # Named functions: ./repo-sync-cron.sh gha_sync transcript dashboard sync sweep
     echo "${TS} repo-sync-cron starting ($*)"
     for func in "$@"; do
         case "$func" in
+            gha_sync)   do_gha_sync ;;
             transcript) do_transcript ;;
             dashboard)  do_dashboard ;;
             sync)       do_sync ;;
             sweep)      do_sweep ;;
-            --quick)    do_transcript; do_sync ;;
-            *)          echo "Unknown function: $func (valid: transcript, dashboard, sync, sweep, --quick)" >&2; exit 1 ;;
+            --quick)    do_gha_sync; do_transcript; do_sync ;;
+            *)          echo "Unknown function: $func (valid: gha_sync, transcript, dashboard, sync, sweep, --quick)" >&2; exit 1 ;;
         esac
     done
 fi
