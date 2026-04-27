@@ -162,17 +162,23 @@ On failure, the task status is set to `review` for manual intervention.
 
 The `run` command automates the polecat setup cycle:
 
-1. **Claims** the next ready task (or a specific task with `-t`)
-2. **Creates** the worktree
-3. **Runs** `claude -p "/pull <task-id>"` in the worktree
-4. **Reports** exit status (agents should call `polecat finish` themselves when ready)
+1. **Claims** the next ready task (or a specific task with `-t`, or fetches a GitHub issue with `--issue`).
+2. **Creates** the worktree.
+3. **Builds a self-contained prompt** from the task body, metadata, and resolved soft-dependencies via `polecat.prompt_template.build_polecat_prompt`. The agent receives the full task context directly — no separate `/pull` invocation.
+4. **Runs the agent** (`claude` by default; `--gemini` selects the Gemini CLI) inside a Docker container against the worktree. Headless by default (`-p <prompt> --max-turns <budget>`); `-i` drops to interactive.
+5. **On success (exit code 0)**: auto-finishes by default — pushes the branch, marks the task `merge_ready`, and nukes the worktree. Disable with `--no-auto-finish` if the agent should leave the worktree in place.
+6. **On failure**: leaves the worktree intact and prints recovery instructions. OOM (exit 137) is detected and surfaced with platform-specific remediation.
 
 ```bash
-polecat run -p aops              # Run next ready task from aops
-polecat run -t task-123          # Run specific task
+polecat run -p aops                  # Claim next ready task from aops
+polecat run -t task-123              # Run a specific task
+polecat run --issue owner/repo#42    # Run a GitHub issue
+polecat run -p aops --no-auto-finish # Skip auto-finish on success
 ```
 
-Note: Agents are responsible for calling `polecat finish` at the end of their workflow to mark work as ready for merge. This ensures agents explicitly signal completion rather than having it triggered automatically.
+Turn budget is derived from the task's `effort` field (XS=40, S=70, M=100, L=150).
+
+> **v2 in progress** — the dispatch path is being refactored from a single 5343-line `cli.py` into an Executor + Provisioner protocol that supports remote docker hosts, jeeves, and jules workers. See [[plans/aops-core-james-agent-aops-core-aops-un-golden-rivest.md]] for the migration plan. Steps land as independent PRs; this section will be updated as new workers and provisioners come online.
 
 ## Workflow
 
