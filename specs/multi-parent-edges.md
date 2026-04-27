@@ -5,7 +5,7 @@ status: draft
 owner: aops
 parent_epic: task-18da4781
 feeds_pilot: task-0779b81b
-last_updated: 2026-04-20 (prototype extension)
+last_updated: 2026-04-27 (prototype nodes + inherits_from ratification)
 ---
 
 # Multi-parent edges and target-node severity propagation
@@ -61,6 +61,8 @@ Mandatory free-text field. Serves two functions:
 1. **Cognitive speedbump**: forces the user to articulate _what failure means_ — suppresses reflexive severity inflation.
 2. **Post-mortem evidence**: during calibration review, the recorded prose is compared against what actually happened.
 
+For `goal_type: aspirational` targets, `consequence` is reused as **opportunity cost** prose (e.g., "miss publication window; finding becomes stale"), representing the loss of potential rather than literal loss of state.
+
 No character cap in MVP; `/maintain` reviews it.
 
 ### 1.5 Deferred (earn-their-keep)
@@ -80,13 +82,13 @@ type: prototype
 edge_template:
   severity: 3
   goal_type: committed
-  weight: Expected
+  weight: Certain
   consequence: "<prose applicable to any instance>"
 ```
 
 Semantics:
 
-- A prototype has no `due` of its own. It is not a target; it is a class definition.
+- A prototype has no `due` of its own. It is not a target; it is a class definition (e.g. `task-b9d6ff7e` for OSB obligations).
 - Tasks linking via `contributes_to: [{to: <prototype-id>, inherits_from: <prototype-id>}]` have their edge materialised at creation time by copying `edge_template` fields into the edge YAML.
 - **Inheritance is one-time copy at edge creation.** Editing the prototype does not retroactively rewrite existing edges — past edges represent past beliefs. Re-stamping is an explicit opt-in operation.
 - `inherits_from:` on an edge is a provenance breadcrumb, not a live reference. The urgency-propagation BFS reads only the materialised edge values — it does not need to know about prototypes.
@@ -113,19 +115,7 @@ contributes_to:
     inherits_from: <prototype-id>  # provenance breadcrumb; not a live reference
 ```
 
-Resolution order at edge creation (agent-side, or future server-side `link()` MCP verb):
-
-1. If `inherits_from:` is set, copy absent fields from the referenced prototype's `edge_template` into the edge.
-2. Instance-level fields (anything the caller set explicitly on the edge) win over prototype defaults.
-3. Once materialised, the edge is self-contained — the BFS reads only the edge YAML.
-
-### 2.5 Belief semantics
-
-Every edge is a **belief**, not a fact: "I currently think task T contributes to O with weight W, as of this edit, because `why`." This framing is load-bearing for §4 calibration: drift, audit, fallibility, prototype inheritance, and the side-log all derive from treating edges as dated estimates rather than ground truth.
-
-Implementation corollary: history does **not** live on the edge itself. Edges stay as lightweight YAML list items on the source task; belief-drift history (Brier pairs, re-weight events, decay checkpoints) lives in a side-log in `mem` keyed on `(source, target, type)`, written only when the calibration ritual fires. The side-log is deferred until §4 justifies it.
-
-Reified edges-as-nodes rejected: breaks Obsidian's markdown grain, noisies the graph view, pays calibration cost before the ritual earns its keep.
+Resolution order at edge creation (agent-side, or future server-side `link()` MCP verb) is detailed in §2.5.
 
 ### 2.2 Weight scale — Renooij-Witteman
 
@@ -156,6 +146,21 @@ The edge schema includes a `why` field (justification) following intelligence tr
 - `anomaly_flag` — requires stated-vs-revealed divergence detector.
 - `last_interacted` / `current_weight` (decayed runtime value) — requires decay engine.
 - Background AHP transitivity audit — agent-invoked in `/maintain` for now.
+
+### 2.5 `inherits_from:` edge field
+
+A new optional field on edges (alongside `to:`, `weight:`, `why:`) that points at a **prototype node** (§1.6). It serves as a provenance breadcrumb to indicate which template was used to materialise the edge.
+
+- **Resolution order**: instance fields (explicitly set) > prototype `edge_template` fields > global defaults.
+- **One-time copy**: Inheritance is a copy-at-creation operation, NOT a live reference. Editing a prototype after the fact does NOT retroactively rewrite existing edges. Past edges represent past beliefs at the time of creation. Re-stamping is an explicit opt-in operation.
+
+### 2.6 Belief semantics
+
+Every edge is a **belief**, not a fact: "I currently think task T contributes to O with weight W, as of this edit, because `why`." This framing is load-bearing for §4 calibration: drift, audit, fallibility, prototype inheritance, and the side-log all derive from treating edges as dated estimates rather than ground truth.
+
+Implementation corollary: history does **not** live on the edge itself. Edges stay as lightweight YAML list items on the source task; belief-drift history (Brier scores, decay checkpoints) lives in a side-log in `mem` (§4.1).
+
+Reified edges-as-nodes rejected: breaks Obsidian's markdown grain, noisies the graph view, pays calibration cost before the ritual earns its keep.
 
 ## 3. Urgency propagation formula
 
@@ -219,6 +224,15 @@ Full Brier-scoring infrastructure is **not MVP**. What we build later (once the 
 - **Post-mortem**: if a SEV4 target resolved with large remaining slack OR deadline passed without the stated consequence, auto-file a task for calibration review.
 
 These are the levers for keeping the graph honest against epistemic entropy. Deferring until the pilot + at least one real SEV4 cycle prove we need them (see VISION: "Components earn their keep").
+
+### 4.1 Side-log for belief history
+
+While edges themselves live as lightweight YAML list items on the source task (preserving the property-graph form and markdown grain), their longitudinal history is stored separately.
+
+- **Location**: A **side-log** in `mem`, decoupled from the node's frontmatter.
+- **Keying**: Keyed by the triple `(source, target, type)`.
+- **Write Policy**: The side-log is written **only when the calibration ritual fires** (or on explicit re-weighting), not on every edge update. This avoids unnecessary file noise and prevents paying the "calibration tax" before the ritual is actually justified.
+- **Contents**: Brier scores, calibration drift, and historical belief anchors.
 
 ## 5. Pilot alignment — [[task-0779b81b]]
 
