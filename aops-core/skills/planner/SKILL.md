@@ -221,24 +221,24 @@ Incremental PKM and task graph maintenance. Small, regular attention beats massi
 
 **Activities**:
 
-| Activity       | What                                                                                                                               |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| **Lint**       | Validate frontmatter YAML (use PKB linter)                                                                                         |
-| **Weed**       | Fix broken wikilinks, remove dead references                                                                                       |
-| **Prune**      | Archive stale sessions (>30 days)                                                                                                  |
-| **Compost**    | Merge fragments into richer notes                                                                                                  |
-| **Cultivate**  | Enrich sparse notes, add context                                                                                                   |
-| **Link**       | Connect orphans, add missing wikilinks                                                                                             |
-| **Map**        | Create/update MoCs for navigation                                                                                                  |
-| **DRY**        | Remove restated content, replace with links                                                                                        |
-| **Synthesize** | Strip deliberation artifacts from implemented specs                                                                                |
-| **Reparent**   | Fix orphaned tasks (missing-parent AND wrong-type-parent), enforce hierarchy rules                                                 |
+| Activity       | What                                                                                                                             |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| **Lint**       | Validate frontmatter YAML (use PKB linter)                                                                                       |
+| **Weed**       | Fix broken wikilinks, remove dead references                                                                                     |
+| **Prune**      | Archive stale sessions (>30 days)                                                                                                |
+| **Compost**    | Merge fragments into richer notes                                                                                                |
+| **Cultivate**  | Enrich sparse notes, add context                                                                                                 |
+| **Link**       | Connect orphans, add missing wikilinks                                                                                           |
+| **Map**        | Create/update MoCs for navigation                                                                                                |
+| **DRY**        | Remove restated content, replace with links                                                                                      |
+| **Synthesize** | Strip deliberation artifacts from implemented specs                                                                              |
+| **Reparent**   | Fix orphaned tasks (missing-parent AND wrong-type-parent), enforce hierarchy rules                                               |
 | **Hierarchy**  | Validate task→epic→project structure, goal-linkage via goals: [] metadata, and domain consistency (no places-vs-projects mixing) |
-| **Stale**      | Flag a task with status: stale or inconsistencies                                                                                  |
-| **Dedup**      | Find and merge duplicate tasks                                                                                                     |
-| **Triage**     | Detect under-specified tasks                                                                                                       |
-| **Densify**    | Add dependency edges between related tasks                                                                                         |
-| **Scan**       | Report graph density without changes                                                                                               |
+| **Stale**      | Flag a task with status: stale or inconsistencies                                                                                |
+| **Dedup**      | Find and merge duplicate tasks                                                                                                   |
+| **Triage**     | Detect under-specified tasks                                                                                                     |
+| **Densify**    | Add dependency edges between related tasks                                                                                       |
+| **Scan**       | Report graph density without changes                                                                                             |
 
 ### Data Quality Procedures (Dedup, Stale, Misclassification, Domain)
 
