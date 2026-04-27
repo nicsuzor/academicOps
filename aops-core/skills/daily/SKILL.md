@@ -26,7 +26,11 @@ Compose and maintain a daily note that **reports** the state of the day to the u
 
 Location: `$ACA_DATA/daily/YYYYMMDD-daily.md`
 
+**Always anchor on today's calendar date first.** Before writing anything, run `date +%Y%m%d` to determine the default note filename and `date +%A` for today's day-of-week label. Use those values for _today's_ note filename and title only. For any past note, derive the day-of-week label and relative-day phrases from that note's filename date — never from today's calendar date. See [[instructions/work-summary]] §"Work date vs. calendar date".
+
 **Work date ≠ calendar date.** End-of-day summaries and reflections target the **work-date** note — the note for the day being described — not today's note. A reflection written at 01:30 on 2026-04-23 about 2026-04-22's work lands in `20260422-daily.md`. See [[instructions/reflect]] Step 0 and [[instructions/work-summary]] §"Work date vs. calendar date".
+
+**A day's narrative lands in that day's note, full stop.** The most common failure mode is writing yesterday's PR-merge wave into today's note while mislabelling the day-of-week — for the full rule and worked example, see [[instructions/work-summary]] §"Work date vs. calendar date".
 
 ## Purpose
 
