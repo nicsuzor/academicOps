@@ -1,0 +1,39 @@
+name: "Agent: Merge Prep (Shim)"
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to prepare'
+        type: string
+        required: true
+      force:
+        description: 'Skip self-loop detection'
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      pr_number:
+        description: 'PR number to prepare'
+        type: string
+        required: true
+      force:
+        description: 'Skip self-loop detection'
+        type: boolean
+        default: false
+      bot_identity:
+        description: 'Identity of the bot'
+        type: string
+        default: 'github-actions[bot]'
+
+jobs:
+  merge-prep:
+    # Replace 'main' with '@pipeline-v1' for stability
+    uses: nicsuzor/academicOps/.github/workflows/agent-merge-prep.yml@pipeline-v1
+    with:
+      pr_number: ${{ inputs.pr_number }}
+      force: ${{ inputs.force }}
+      bot_identity: ${{ inputs.bot_identity || 'github-actions[bot]' }}
+    secrets:
+      AOPS_BOT_GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}

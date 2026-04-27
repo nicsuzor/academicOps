@@ -15,6 +15,11 @@ name: PR Review Pipeline
 on:
   pull_request:
     types: [opened, synchronize, ready_for_review, reopened]
+  workflow_call:
+    secrets:
+      AOPS_BOT_GH_TOKEN:
+        description: 'PAT for GitHub API operations'
+        required: false
 
 permissions:
   contents: write

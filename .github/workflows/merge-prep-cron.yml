@@ -26,6 +26,36 @@ on:
         description: 'Override: process specific PR immediately (skip qualification)'
         type: string
         required: false
+  workflow_call:
+    inputs:
+      pr_number:
+        description: 'Override: process specific PR immediately (skip qualification)'
+        type: string
+        required: false
+      workflow_ref:
+        description: 'Filename or ID of the agent workflow to dispatch'
+        type: string
+        default: 'agent-merge-prep.yml'
+      bot_identity:
+        description: 'Identity of the bot for state checks'
+        type: string
+        default: 'github-actions[bot]'
+      trigger_workflow_name:
+        description: 'Name of the workflow that triggered this dispatch'
+        type: string
+        required: false
+      trigger_sha:
+        description: 'SHA of the commit that triggered this dispatch'
+        type: string
+        required: false
+      trigger_repo:
+        description: 'Full name of the repository (owner/repo)'
+        type: string
+        required: false
+    secrets:
+      GITHUB_TOKEN:
+        description: 'Token for GitHub API operations'
+        required: true
 
 concurrency:
   group: merge-prep-dispatcher
@@ -44,6 +74,8 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       BAZAAR_WINDOW_SECONDS: 900  # 15 min — bazaar window for external reviews (Gemini, Copilot) to arrive
+      WORKFLOW_REF: ${{ inputs.workflow_ref || 'agent-merge-prep.yml' }}
+      BOT_IDENTITY: ${{ inputs.bot_identity || 'github-actions[bot]' }}
     steps:
       # ── Manual override: process a specific PR immediately ──
       - name: Manual override
@@ -55,11 +87,12 @@ jobs:
           HEAD_REF=$(gh pr view "$PR_NUM" --repo "${{ github.repository }}" --json headRefName --jq '.headRefName')
 
           # Dispatch merge-prep
-          gh workflow run agent-merge-prep.yml \
+          gh workflow run "$WORKFLOW_REF" \
             --repo "${{ github.repository }}" \
             --ref "refs/heads/$HEAD_REF" \
             -f pr_number="$PR_NUM" \
-            -f force=true
+            -f force=true \
+            -f bot_identity="$BOT_IDENTITY"
 
           echo "Dispatched merge-prep for PR #$PR_NUM"
 
@@ -85,7 +118,7 @@ jobs:
           REPO="${{ github.repository }}"
 
           # Check if any merge-prep runs are currently active
-          ACTIVE=$(gh run list --workflow=agent-merge-prep.yml --repo "$REPO" \
+          ACTIVE=$(gh run list --workflow="$WORKFLOW_REF" --repo "$REPO" \
             --json status --jq '[.[] | select(.status == "in_progress" or .status == "queued")] | length')
 
           echo "Active merge-prep runs: $ACTIVE"
@@ -200,10 +233,11 @@ jobs:
           while IFS='|' read -r PR_NUM HEAD_REF; do
             echo "Dispatching merge-prep for PR #$PR_NUM (branch: $HEAD_REF)"
 
-            gh workflow run agent-merge-prep.yml \
+            gh workflow run "$WORKFLOW_REF" \
               --repo "$REPO" \
               --ref "refs/heads/$HEAD_REF" \
-              -f pr_number="$PR_NUM"
+              -f pr_number="$PR_NUM" \
+              -f bot_identity="$BOT_IDENTITY"
 
             echo "  Dispatched successfully"
           done < /tmp/qualifying_prs.txt
