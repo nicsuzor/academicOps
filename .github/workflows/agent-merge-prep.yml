@@ -34,6 +34,7 @@ concurrency:
 
 jobs:
   fix:
+    timeout-minutes: 45
     name: Merge Prep
     runs-on: ubuntu-latest
     # Per-PR concurrency prevents duplicate runs on the same PR across cron ticks

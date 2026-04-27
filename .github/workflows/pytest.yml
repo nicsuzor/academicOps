@@ -12,6 +12,7 @@ concurrency:
 
 jobs:
   pytest:
+    timeout-minutes: 45
     name: Pytest
     runs-on: ubuntu-latest
 
