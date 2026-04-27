@@ -6,16 +6,28 @@ After progress sync, generate an **editorial synthesis** of the day's work for t
 
 ### Work date vs. calendar date
 
-The target note for every write in this section is the daily note for the **work date** — the date whose work is being summarised — **not** today's calendar date. A summary written at 01:30 on 2026-04-23 about 2026-04-22's work must land in `20260422-daily.md`.
+**Iron rule: a day's narrative lands in that day's note, full stop.** Sessions, PRs, and tasks from 2026-04-26 are written to `20260426-daily.md` — regardless of whether `/daily` is running on the 26th, the 27th, or three weeks later. There is no scenario in which yesterday's narrative gets written into today's note "because today is when the run happened". That mistake is the most common failure mode of this skill and produces wrong day-of-week labels, phantom carryover, and a Today's Log that is one day stale.
 
-Resolve the work date in this order:
+Per-event work-date assignment:
 
-1. If the user explicitly names a date, use that.
-2. Otherwise, default to **today's calendar date** (`date +%Y-%m-%d`). Today's note is for today's work; the empty-morning rule handles the case where no work has happened yet.
-3. Only resolve to a _different_ date when (a) you are explicitly running a backfill / reflect pass, or (b) the user has said so. Never silently default to "the most recent date with session activity" — that flips the target whenever today's morning is quiet, and produces day-of-week errors and yesterday-content-in-today's-note.
-4. If the resolved work date differs from today's calendar date, confirm once with the user (AskUserQuestion: "Summarise work for YYYY-MM-DD?") before writing.
+- **Each session, PR, completed task** has its own work date — the calendar date the event occurred on (sessions: their start date; PRs: their `mergedAt` date; tasks: their close date). The narrative for that event is written into the note named for that date.
+- A single `/daily` run may therefore write to _multiple_ daily notes — one per work date represented in the inputs. That is normal. Today's note gets today's events; yesterday's note gets any yesterday events you discovered (PRs that merged after yesterday's note was last regenerated, sessions you hadn't yet summarised, etc.).
+- Re-running `/daily` later in the day on the same calendar date overwrites only that date's note. It must not touch earlier dates' Today's Log unless new events for those dates surfaced.
 
-Every reference to "the daily note" below means the work-date note. The day-of-week label in the note title and any "today / tomorrow / Nd" phrases are anchored to the **note's calendar date**, not to today's calendar date — derive them from the date in the filename via `date -d "YYYY-MM-DD" +%A`.
+Resolution order when the run is ambiguous about which date(s) to update:
+
+1. If the user explicitly names a date, use that as the _only_ target.
+2. Otherwise, the targets are: **today's calendar date** (always — even if empty) **plus** any earlier date with un-summarised event evidence in the inputs.
+3. Never silently treat "the most recent date with session activity" as today. If yesterday had heavy activity and today has none, that is yesterday's narrative going into yesterday's note, _and_ today's note still gets the empty-morning treatment for its own (empty) Today's Log.
+4. Day-of-week labels, "today / tomorrow / Nd" phrases, and the title come from the **target note's filename date** — derive via `date -d "YYYY-MM-DD" +%A`. Never from today's calendar date when the target is a different date.
+
+Worked example:
+
+- It is Tue 2026-04-28 09:00. `/daily` runs. Inputs: 12 PRs that merged Mon afternoon (after Mon's note was last regenerated), no Tuesday sessions yet.
+- **Wrong**: write a Tuesday Today's Log titled "Monday was a heavy infrastructure day…" into `20260428-daily.md`.
+- **Right**: append the 12 PRs and a brief Mon narrative to `20260427-daily.md` (Monday's note). Leave `20260428-daily.md` with no Today's Log per the empty-morning rule. Status / Carryover / Inbox in the Tuesday note still update against today's live state.
+
+Every reference to "the daily note" below means the **target note for the event being written** — which is the work-date note, not today's calendar-date note.
 
 ### Step 5.1: Gather Inputs
 

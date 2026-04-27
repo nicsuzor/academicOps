@@ -26,11 +26,11 @@ Compose and maintain a daily note that **reports** the state of the day to the u
 
 Location: `$ACA_DATA/daily/YYYYMMDD-daily.md`
 
-**Always anchor on today's calendar date first.** Before writing anything, run `date +%Y-%m-%d` and `date +%A` and use those values for the note filename, the title's day-of-week label, and every relative-day phrase ("tomorrow", "2d", "next Mon"). Do not derive the day-of-week from session-activity dates, last-modified timestamps, or yesterday's note — those will mislead you whenever the morning has no activity. The note for `YYYYMMDD-daily.md` is for that calendar date, full stop.
+**Always anchor on today's calendar date first.** Before writing anything, run `date +%Y%m%d` to determine the default note filename and `date +%A` for today's day-of-week label. Use those values for _today's_ note filename and title only. For any past note, derive the day-of-week label and relative-day phrases from that note's filename date — never from today's calendar date. See [[instructions/work-summary]] §"Work date vs. calendar date".
 
 **Work date ≠ calendar date.** End-of-day summaries and reflections target the **work-date** note — the note for the day being described — not today's note. A reflection written at 01:30 on 2026-04-23 about 2026-04-22's work lands in `20260422-daily.md`. See [[instructions/reflect]] Step 0 and [[instructions/work-summary]] §"Work date vs. calendar date".
 
-**Do not backfill yesterday's narrative into today's note.** When `/daily` runs in the morning and today has no session activity yet, the work date for any narrative you generate is _yesterday_ (or earlier) — and that narrative must land in _yesterday's_ note, not today's. Today's note gets the empty-morning treatment: omit `## Today's Log` entirely, leave Work Log with "No PRs merged yet today". The most common failure mode of this skill is writing yesterday's PR-merge wave into today's note while mislabelling the day-of-week — guard against it explicitly.
+**A day's narrative lands in that day's note, full stop.** The most common failure mode is writing yesterday's PR-merge wave into today's note while mislabelling the day-of-week — for the full rule and worked example, see [[instructions/work-summary]] §"Work date vs. calendar date".
 
 ## Purpose
 
