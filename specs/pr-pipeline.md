@@ -386,11 +386,14 @@ The following secrets must be explicitly provided by the caller if the correspon
 
 #### `merge-prep-cron.yml`
 
-| Input          | Type   | Default                | Description                                   |
-| -------------- | ------ | ---------------------- | --------------------------------------------- |
-| `pr_number`    | string | `''`                   | Override: process specific PR immediately     |
-| `workflow_ref` | string | `agent-merge-prep.yml` | Filename/ID of the agent workflow to dispatch |
-| `bot_identity` | string | `github-actions[bot]`  | Identity of the bot for state checks          |
+| Input                   | Type   | Default                | Description                                              |
+| ----------------------- | ------ | ---------------------- | -------------------------------------------------------- |
+| `pr_number`             | string | `''`                   | Override: process specific PR immediately                |
+| `workflow_ref`          | string | `agent-merge-prep.yml` | Filename/ID of the agent workflow to dispatch            |
+| `bot_identity`          | string | `github-actions[bot]`  | Identity of the bot for state checks                     |
+| `trigger_workflow_name` | string | `''`                   | Name of the workflow that triggered this dispatch        |
+| `trigger_sha`           | string | `''`                   | SHA of the commit that triggered this dispatch           |
+| `trigger_repo`          | string | `''`                   | Full name of the repository (owner/repo) of the trigger  |
 
 ## CHANGELOG
 
@@ -400,6 +403,7 @@ The following secrets must be explicitly provided by the caller if the correspon
 - **Defensive Primitives**:
   - Added `bot_identity` input for venue-neutral bot identity.
   - Added `workflow_ref` input for configurable agent dispatch.
+  - Added `trigger_workflow_name`, `trigger_sha`, `trigger_repo` inputs to `merge-prep-cron.yml` for caller-supplied trigger context.
   - Explicit `secrets:` contract in `workflow_call` blocks.
 - **Cross-repo shims**: Added working fixtures at `examples/cross-repo-shim/`.
 
