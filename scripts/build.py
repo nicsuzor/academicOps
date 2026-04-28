@@ -835,7 +835,7 @@ def build_aops_core(
 
     # 3. Extension Manifest / Plugin Info
     if platform == "gemini":
-        src_extension_json = aops_root / "gemini-extension.json"
+        src_extension_json = aops_root / "templates" / "aops-core.gemini-extension.json"
         dist_extension_json = dist_dir / "gemini-extension.json"
 
         if src_extension_json.exists():
@@ -855,7 +855,7 @@ def build_aops_core(
             sys.exit(1)
 
     if platform == "claude":
-        src_plugin_json = src_dir / ".claude-plugin" / "plugin.json"
+        src_plugin_json = aops_root / "templates" / "aops-core.plugin.json"
         dist_plugin_dir = dist_dir / ".claude-plugin"
         dist_plugin_json = dist_plugin_dir / "plugin.json"
         if src_plugin_json.exists():
@@ -996,7 +996,7 @@ def build_aops_tools(
 
     # Gemini: generate extension manifest with version injection
     if platform == "gemini":
-        src_extension_json = src_dir / "gemini-extension.json"
+        src_extension_json = aops_root / "templates" / f"{plugin_name}.gemini-extension.json"
         dist_extension_json = dist_dir / "gemini-extension.json"
         if src_extension_json.exists():
             try:
@@ -1013,7 +1013,7 @@ def build_aops_tools(
 
     # Claude: copy plugin.json with version injection
     if platform == "claude":
-        src_plugin_json = src_dir / ".claude-plugin" / "plugin.json"
+        src_plugin_json = aops_root / "templates" / f"{plugin_name}.plugin.json"
         dist_plugin_dir = dist_dir / ".claude-plugin"
         dist_plugin_json = dist_plugin_dir / "plugin.json"
         if src_plugin_json.exists():
@@ -1108,7 +1108,7 @@ def build_aops_cowork(
             safe_copy(src_item, dist_dir / src_item.name)
 
     # 2. Plugin manifest — same format as Claude Code but with hooks stripped
-    src_plugin_json = src_dir / ".claude-plugin" / "plugin.json"
+    src_plugin_json = aops_root / "templates" / "aops-core.plugin.json"
     dist_plugin_dir = dist_dir / ".claude-plugin"
     dist_plugin_dir.mkdir(parents=True, exist_ok=True)
     if src_plugin_json.exists():

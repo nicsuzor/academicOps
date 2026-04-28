@@ -25,20 +25,10 @@
           "path": "pyproject.toml",
           "jsonpath": "$.project.version"
         },
-        "gemini-extension.json",
-        "aops-core/.claude-plugin/plugin.json",
-        "aops-tools/gemini-extension.json",
-        "aops-tools/.claude-plugin/plugin.json",
-        {
-          "type": "json",
-          "path": ".claude-plugin/marketplace.json",
-          "jsonpath": "$.plugins[?(@.name == 'aops-core')].version"
-        },
-        {
-          "type": "json",
-          "path": ".claude-plugin/marketplace.json",
-          "jsonpath": "$.plugins[?(@.name == 'aops-tools')].version"
-        }
+        "templates/aops-core.gemini-extension.json",
+        "templates/aops-core.plugin.json",
+        "templates/aops-tools.gemini-extension.json",
+        "templates/aops-tools.plugin.json"
       ]
     }
   }

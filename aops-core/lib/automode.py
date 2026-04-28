@@ -30,7 +30,7 @@ AOPS_CORE_DIR = Path(__file__).parent.parent
 def _get_aops_rules() -> dict | None:
     """Load aops autoMode rules from plugin.json."""
     # Primary: plugin.json autoMode field
-    plugin_json = AOPS_CORE_DIR / ".claude-plugin" / "plugin.json"
+    plugin_json = AOPS_CORE_DIR.parent / "templates" / "aops-core.plugin.json"
     if plugin_json.exists():
         try:
             manifest = json.loads(plugin_json.read_text())

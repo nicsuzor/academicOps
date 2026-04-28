@@ -89,7 +89,7 @@ def test_gemini_hooks_parameter_replacement(tmp_path):
 
 def test_gemini_extension_manifest_parameters():
     """Verify gemini-extension.json contains required MCP parameters."""
-    manifest_path = REPO_ROOT / "gemini-extension.json"
+    manifest_path = REPO_ROOT / "templates" / "aops-core.gemini-extension.json"
     assert manifest_path.exists()
 
     manifest = json.loads(manifest_path.read_text())
