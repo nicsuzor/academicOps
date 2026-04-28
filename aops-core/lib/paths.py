@@ -11,6 +11,7 @@ Required environment variables:
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import shutil
@@ -146,6 +147,53 @@ def get_workflows_dir() -> Path:
 def get_indices_dir() -> Path:
     """Get indices directory (plugin_root/indices)."""
     return get_plugin_root() / "indices"
+
+
+def get_claude_rpm_manifest() -> dict[str, str]:
+    """Read the Claude Code RPM manifest to resolve plugin names to IDs.
+
+    Returns:
+        dict: Mapping of plugin names to their current installed IDs.
+    """
+    manifest_path = Path.home() / ".claude" / "rpm" / "manifest.json"
+    if not manifest_path.exists():
+        return {}
+    try:
+        data = json.loads(manifest_path.read_text())
+        return data.get("plugins", {})
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def resolve_plugin_path(plugin_name: str) -> Path | None:
+    """Resolve a plugin's installation path by name.
+
+    1. Checks if we are in a dev environment (relative to this plugin)
+    2. Reads rpm/manifest.json to find installed plugin ID
+
+    Args:
+        plugin_name: Name of the plugin (e.g., 'aops-tools')
+
+    Returns:
+        Path: Absolute path to the plugin root, or None if not found.
+    """
+    # 1. Check for dev sibling (common in dev workspaces)
+    # this file is at <root>/lib/paths.py, so get_plugin_root().parent is the workspace root
+    dev_path = get_plugin_root().parent / plugin_name
+    if dev_path.exists():
+        return dev_path
+
+    # 2. Resolve via Claude RPM manifest
+    manifest = get_claude_rpm_manifest()
+    # Handle both short name 'aops-tools' and full name 'aops-tools@academicOps'
+    plugin_id = manifest.get(plugin_name) or manifest.get(f"{plugin_name}@academicOps")
+
+    if plugin_id:
+        install_path = Path.home() / ".claude" / "rpm" / "plugins" / plugin_id
+        if install_path.exists():
+            return install_path
+
+    return None
 
 
 def get_heuristics_file() -> Path:

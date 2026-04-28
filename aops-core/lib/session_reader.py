@@ -24,7 +24,13 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-from lib.paths import get_sessions_repo, get_summaries_dir, get_transcripts_dir
+from lib.paths import (
+    get_plugin_root,
+    get_sessions_repo,
+    get_summaries_dir,
+    get_transcripts_dir,
+    resolve_plugin_path,
+)
 from lib.transcript_parser import (
     SessionInfo,
     SessionProcessor,
@@ -814,14 +820,17 @@ def load_skill_scope(skill_name: str) -> str | None:
         Brief description of what the skill authorizes, or None if not found.
     """
 
-    aops_root = Path(__file__).parent.parent.parent
+    plugin_root = get_plugin_root()
+    tools_root = resolve_plugin_path("aops-tools")
 
     # Search locations for skill/command definitions
     search_paths = [
-        aops_root / "aops-core" / "commands" / f"{skill_name}.md",
-        aops_root / "aops-core" / f"skills/{skill_name}/SKILL.md",
-        aops_root / "aops-tools" / f"skills/{skill_name}/SKILL.md",
+        plugin_root / "commands" / f"{skill_name}.md",
+        plugin_root / "skills" / f"{skill_name}" / "SKILL.md",
     ]
+
+    if tools_root:
+        search_paths.append(tools_root / "skills" / f"{skill_name}" / "SKILL.md")
 
     for path in search_paths:
         if path.exists():
