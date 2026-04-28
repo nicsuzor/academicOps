@@ -17,7 +17,10 @@ regression (EAI_AGAIN) that triggered this work.
 import json
 import os
 import re
+import shutil
+import signal
 import subprocess
+import sys
 import time
 import uuid
 from pathlib import Path
@@ -31,6 +34,7 @@ from tests.conftest import (
     build_gemini_agent_cmd,
     get_repo_root,
 )
+from tests.polecat.conftest import _DEFAULT_AOPS_SCRATCH_PARENT
 
 # PKB task whose body is the test prompt for `pc run -t`.
 # Created in PKB under aops project — DO NOT COMPLETE or ARCHIVE this task.
@@ -754,4 +758,209 @@ class TestAllInvocationPaths:
         assert len(tool_calls) >= 1, (
             f"Expected at least one tool call, got none. "
             f"Session file: {session.get('session_file')}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# PKB write-back regression tests (run-claude × run-gemini)
+# ---------------------------------------------------------------------------
+
+TERMINAL_STATUSES: frozenset[str] = frozenset({"done", "merge_ready", "blocked", "cancelled"})
+_TASK_ID_RE = re.compile(r"(task-[0-9a-f]+|epic-[0-9a-f]+|aops-[0-9a-f]+)")
+
+_PKB_WORKER_INSTRUCTION = (
+    "This is a spike validation task. "
+    "Confirm you have PKB MCP tool access, then call release_task with "
+    "status=done and a one-sentence summary confirming PKB MCP worked. "
+    "Then stop. Do nothing else."
+)
+
+
+def _pkb_available() -> bool:
+    if not os.environ.get("PKB_MCP_URL"):
+        return False
+    try:
+        from polecat.pkb_bridge import _get_client  # type: ignore
+
+        _get_client()
+        return True
+    except Exception:
+        return False
+
+
+def _extract_task_id(resp: object) -> str | None:
+    if isinstance(resp, dict):
+        fm = resp.get("frontmatter") or {}
+        return fm.get("id")
+    if isinstance(resp, str):
+        m = _TASK_ID_RE.search(resp)
+        if m:
+            return m.group(1)
+    return None
+
+
+def _poll_task(task_id: str):
+    from polecat.pkb_bridge import get_task as _get_task  # type: ignore
+
+    return _get_task(task_id)
+
+
+def _require_e2e_project() -> str:
+    project = os.environ.get("POLECAT_E2E_PROJECT")
+    if not project:
+        pytest.fail(
+            "POLECAT_E2E_PROJECT must be set explicitly — no silent default. "
+            "Set it to the project slug (e.g. POLECAT_E2E_PROJECT=aops)."
+        )
+    return project
+
+
+def _resolve_scratch_parent(project: str) -> str:
+    parent_override = os.environ.get("POLECAT_E2E_PARENT")
+    if parent_override:
+        return parent_override
+    if project == "aops":
+        return _DEFAULT_AOPS_SCRATCH_PARENT
+    pytest.fail(
+        f"No default scratch parent for project={project!r}. "
+        "Set POLECAT_E2E_PARENT to an existing epic ID under that project."
+    )
+
+
+@pytest.mark.slow
+@pytest.mark.integration
+@pytest.mark.xdist_group("pkb-persistence")
+class TestPkbPersistence:
+    """Regression tests: PKB MCP write-back works for run-claude and run-gemini.
+
+    Parameterized over (run-claude, run-gemini) — the two backends where a
+    polecat worker must call release_task to persist its result. crew-* paths
+    have no PKB task to close and are out of scope.
+
+    Catches regressions where the agent's PKB MCP server is misconfigured and
+    release_task silently fails — e.g., the 2026-04-28 incident (PR #784) where
+    gemini-extension.json was missing PKB_MCP_URL in the pkb MCP server env
+    block, leaving every Gemini polecat with zero PKB tools.
+
+    Gated: POLECAT_E2E=1, Docker + aops-crew image, PKB MCP reachable.
+    """
+
+    @pytest.fixture(
+        scope="class",
+        params=["run-claude", "run-gemini"],
+    )
+    def pkb_run(self, request, tmp_path_factory):
+        """Create a fresh PKB spike task, run polecat against it, yield result info."""
+        _, backend = request.param.split("-")
+
+        if not _docker_available():
+            pytest.skip("Docker not available or aops-crew image not built")
+        if backend == "gemini" and not _gemini_cli_available():
+            pytest.skip("Gemini CLI not found in PATH")
+        if not _pkb_available():
+            pytest.skip("PKB MCP server unreachable")
+        if os.environ.get("POLECAT_E2E") != "1":
+            pytest.skip("E2E test — opt in with POLECAT_E2E=1")
+
+        project = _require_e2e_project()
+        from polecat.pkb_bridge import _get_client  # type: ignore
+
+        client = _get_client()
+        scratch_parent_id = _resolve_scratch_parent(project)
+
+        task_id: str | None = None
+        proc: subprocess.Popen | None = None
+        try:
+            create_result = client.call_tool(
+                "create_task",
+                {
+                    "title": f"e2e: PKB persistence {backend} (PR #784 regression)",
+                    "body": _PKB_WORKER_INSTRUCTION,
+                    "parent": scratch_parent_id,
+                    "tags": ["test", "e2e", "pkb-persistence"],
+                    "project": project,
+                    "status": "ready",
+                    "type": "spike",
+                },
+            )
+            assert create_result is not None, "PKB create_task returned None"
+            task_id = _extract_task_id(create_result)
+            if not task_id:
+                pytest.fail(
+                    f"Could not extract task id from create_task response: {create_result!r}"
+                )
+
+            repo = get_repo_root()
+            polecat_bin = shutil.which("polecat") or shutil.which("pc")
+            if polecat_bin is None:
+                cmd = [
+                    sys.executable,
+                    str(repo / "polecat" / "cli.py"),
+                    "run",
+                    "-t",
+                    task_id,
+                    "-p",
+                    project,
+                ]
+            else:
+                cmd = [polecat_bin, "run", "-t", task_id, "-p", project]
+            if backend == "gemini":
+                cmd.append("-g")
+
+            proc = subprocess.Popen(
+                cmd,
+                cwd=str(repo),
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            deadline = time.monotonic() + 600.0
+            last_status: str | None = None
+            while time.monotonic() < deadline:
+                if proc.poll() is not None:
+                    last_status = getattr(_poll_task(task_id), "status", None)
+                    break
+                task = _poll_task(task_id)
+                last_status = task.status if task else None
+                if last_status in TERMINAL_STATUSES:
+                    break
+                time.sleep(5.0)
+
+            final_task = _poll_task(task_id)
+            yield {
+                "param": request.param,
+                "backend": backend,
+                "task_id": task_id,
+                "last_status": last_status,
+                "task_body": (final_task.body if final_task else None),
+            }
+        finally:
+            if proc is not None and proc.poll() is None:
+                try:
+                    os.killpg(proc.pid, signal.SIGKILL)
+                except (ProcessLookupError, PermissionError, AttributeError):
+                    proc.kill()
+                try:
+                    proc.wait(timeout=30)
+                except subprocess.TimeoutExpired:
+                    pass
+            if task_id:
+                try:
+                    client.call_tool("delete", {"id": task_id})
+                except Exception as e:  # pragma: no cover — cleanup-only
+                    print(f"cleanup: failed to delete task {task_id}: {e}", file=sys.stderr)
+
+    def test_pkb_persistence(self, pkb_run):
+        """Agent must call release_task — confirms PKB MCP write-back works end-to-end."""
+        last_status = pkb_run["last_status"]
+        task_id = pkb_run["task_id"]
+        backend = pkb_run["backend"]
+        assert last_status in TERMINAL_STATUSES, (
+            f"[{pkb_run['param']}] Task {task_id} never reached terminal status "
+            f"(last={last_status!r}). {backend} agent could not call release_task — "
+            "likely missing PKB MCP access. Regression: PR #784 (2026-04-28)."
+        )
+        assert pkb_run["task_body"] and pkb_run["task_body"].strip(), (
+            f"[{pkb_run['param']}] Task {task_id} reached terminal status but body is empty. "
+            "Agent may have called release_task without a summary, or the PKB update "
+            "was silently lost."
         )
