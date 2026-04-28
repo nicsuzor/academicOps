@@ -96,8 +96,14 @@ def test_cowork_ingested_discovery(tmp_path, monkeypatch):
 
     monkeypatch.setattr(lib.paths, "get_sessions_repo", lambda: sessions_repo)
 
-    sessions = find_sessions(include_cowork=False)
-
+    # include_cowork=True: ingested session must be discovered
+    sessions = find_sessions(include_cowork=True, claude_projects_dir=tmp_path / "no-claude")
     found = [s for s in sessions if s.session_id == session_id]
     assert len(found) == 1
     assert found[0].project == session_id
+
+    # include_cowork=False: ingested session must NOT be discovered
+    sessions_no_cowork = find_sessions(
+        include_cowork=False, claude_projects_dir=tmp_path / "no-claude"
+    )
+    assert not any(s.session_id == session_id for s in sessions_no_cowork)

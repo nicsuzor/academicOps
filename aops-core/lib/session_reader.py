@@ -1037,8 +1037,10 @@ def find_sessions(
     if claude_projects_dir is None:
         claude_projects_dir = Path.home() / ".claude" / "projects"
 
-    # Search in ~/.claude/projects/ and framework-persisted locations
-    claude_dirs = [claude_projects_dir, get_sessions_repo() / "cowork-logs"]
+    # Search in ~/.claude/projects/ and (if include_cowork) framework-persisted Cowork logs
+    claude_dirs = [claude_projects_dir]
+    if include_cowork:
+        claude_dirs.append(get_sessions_repo() / "cowork-logs")
 
     for project_base in claude_dirs:
         if not project_base.exists():

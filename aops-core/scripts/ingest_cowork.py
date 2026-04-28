@@ -22,63 +22,29 @@ sys.path.insert(0, str(AOPS_CORE_ROOT))
 # Import framework libs
 try:
     from lib.paths import get_sessions_repo
+    from lib.transcript_parser import normalize_cowork_event
 except ImportError:
     # Fallback for local development
     sys.path.append(str(AOPS_CORE_ROOT))
     from lib.paths import get_sessions_repo
+    from lib.transcript_parser import normalize_cowork_event
 
 
 def normalize_cowork_entry(data: dict) -> dict:
-    """Normalize a Cowork audit entry to Claude Code schema.
-
-    This matches the logic in SessionProcessor but returns a dict for writing to JSONL.
-    """
-    entry_type = data.get("type", "unknown")
+    """Normalize a Cowork audit entry to Claude Code schema for writing to JSONL."""
     timestamp = data.get("_audit_timestamp") or data.get("timestamp")
-
-    # Base entry
-    normalized = {
+    normalized: dict = {
         "uuid": data.get("uuid", data.get("id", "")),
         "timestamp": timestamp,
     }
-
-    if entry_type == "message":
-        role = data.get("role")
-        normalized["type"] = role if role in ("user", "assistant") else "unknown"
-        normalized["message"] = {
-            "role": role,
-            "content": [{"type": "text", "text": data.get("content", "")}],
-        }
-    elif entry_type == "tool_call":
-        normalized["type"] = "assistant"
-        normalized["message"] = {
-            "role": "assistant",
-            "content": [
-                {
-                    "type": "tool_use",
-                    "id": data.get("id"),
-                    "name": data.get("name"),
-                    "input": data.get("args", {}),
-                }
-            ],
-        }
-    elif entry_type == "tool_result":
-        normalized["type"] = "user"
-        normalized["message"] = {
-            "role": "user",
-            "content": [
-                {
-                    "type": "tool_result",
-                    "tool_use_id": data.get("tool_use_id"),
-                    "content": data.get("output", ""),
-                    "is_error": data.get("is_error", False),
-                }
-            ],
-        }
-    else:
+    cowork = normalize_cowork_event(data)
+    if cowork is not None:
+        entry_type, message = cowork
         normalized["type"] = entry_type
+        normalized["message"] = message
+    else:
+        normalized["type"] = data.get("type", "unknown")
         normalized["content"] = data
-
     return normalized
 
 
