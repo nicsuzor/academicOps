@@ -5,8 +5,7 @@
 # minimal PATH and do NOT propagate the user's shell env. We resolve PKB_MCP_URL
 # ourselves rather than relying on the launcher's `${VAR}` template substitution
 # (Cowork's userConfig path is broken and the env path is unreliable across
-# launchers — see specs/observability.md and the now-obsolete
-# scripts/patch-cowork-mcp.sh).
+# launchers — specs moved to brain PKB: aops/specs/framework-observability.md).
 #
 # Resolution order:
 #   1. inherited PKB_MCP_URL (works in dev shell launches)

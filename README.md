@@ -148,6 +148,26 @@ command claude plugin marketplace add nicsuzor/aops
   command gemini extensions install git@github.com:nicsuzor/aops.git --consent --auto-update --pre-release
 ```
 
+## Configuration
+
+The framework is designed to work with minimal configuration. Default values are resolved in order:
+
+1. Environment variables (set in your shell or `.env.local`)
+2. `~/.env.local` file
+3. Framework defaults (e.g., local `pkb` binary for MCP)
+
+| Variable              | Purpose                            | Default                |
+| --------------------- | ---------------------------------- | ---------------------- |
+| `ACA_DATA`            | Your personal knowledge base root  | Required (no default)  |
+| `PKB_MCP_URL`         | Endpoint for the PKB MCP server    | (local stdio fallback) |
+| `HYDRATION_GATE_MODE` | Friction level for context loading | `warn`                 |
+
+To override the default MCP server (e.g., if running a remote server), add to `~/.env.local`:
+
+```bash
+export PKB_MCP_URL="http://localhost:3001/mcp"
+```
+
 ## Development setup
 
 ```bash
