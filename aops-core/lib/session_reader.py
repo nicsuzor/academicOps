@@ -1033,12 +1033,20 @@ def find_sessions(
     """
     sessions = []
 
-    # 1. Find Claude Code sessions
+    # 1. Find Claude Code sessions (and ingested Cowork sessions)
     if claude_projects_dir is None:
         claude_projects_dir = Path.home() / ".claude" / "projects"
 
-    if claude_projects_dir.exists():
-        for project_dir in claude_projects_dir.iterdir():
+    # Search in ~/.claude/projects/ and (if include_cowork) framework-persisted Cowork logs
+    claude_dirs = [claude_projects_dir]
+    if include_cowork:
+        claude_dirs.append(get_sessions_repo() / "cowork-logs")
+
+    for project_base in claude_dirs:
+        if not project_base.exists():
+            continue
+
+        for project_dir in project_base.iterdir():
             if not project_dir.is_dir():
                 continue
 
@@ -1061,6 +1069,8 @@ def find_sessions(
 
                 # Determine session_id
                 session_id = session_file.stem
+                if session_id == "session" and "cowork-logs" in str(session_file):
+                    session_id = project_dir.name[:8]
 
                 # Get modification time
                 mtime = datetime.fromtimestamp(session_file.stat().st_mtime, tz=UTC)

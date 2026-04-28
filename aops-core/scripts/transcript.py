@@ -526,12 +526,16 @@ def _is_test_session(p: Path) -> bool:
     """
     s = str(p).lower()
 
+    name = p.name.lower()
+    parts = [part.lower() for part in p.parts]
+
     # Whitelist Gemini tmp directory
     if ".gemini/tmp" in s:
         return False
 
-    name = p.name.lower()
-    parts = [part.lower() for part in p.parts]
+    # Whitelist Cowork audit logs (they contain 'local' in the path)
+    if "local-agent-mode-sessions" in s and name == "audit.jsonl":
+        return False
 
     # Exclude /tmp paths
     if s.startswith("/tmp") or "/tmp/" in s:
@@ -623,6 +627,10 @@ def _get_session_id(session_path: Path) -> str:
     if session_path.is_dir():
         # Antigravity brain directory
         return session_path.name[:8]
+
+    # Cowork ingested: cowork-logs/<session_id>/session.jsonl
+    if session_path.name == "session.jsonl" and "cowork-logs" in str(session_path):
+        return session_path.parent.name[:8]
 
     # Cowork: audit.jsonl inside local_<uuid>/ — extract ID from parent dir
     if session_path.name == "audit.jsonl":
@@ -789,6 +797,22 @@ def _infer_project(
     Returns:
         Project name string
     """
+    # Handle Cowork ingested sessions
+    if session_path.name == "session.jsonl" and "cowork-logs" in str(session_path):
+        metadata_json = session_path.parent / "metadata.json"
+        if metadata_json.exists():
+            try:
+                import json as _json
+
+                meta = _json.loads(metadata_json.read_text())
+                title = meta.get("title", "")
+                if title:
+                    words = title.lower().split()[:3]
+                    return "cowork-" + "-".join(w for w in words if w.isalnum())
+            except (OSError, ValueError):
+                pass
+        return "cowork"
+
     # Handle Cowork audit.jsonl — infer project from metadata JSON
     if session_path.name == "audit.jsonl":
         conv_dir = session_path.parent  # local_<uuid>/

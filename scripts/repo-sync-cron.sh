@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
 # repo-sync-cron.sh - Periodic maintenance: transcripts, dashboard, repo sync, and sweep
 #
-# Five functions, composable via CLI:
-#   do_gha_sync   - Sync claude-session artifacts from configured GHA repos
-#   do_transcript - Generate recent session transcripts
-#   do_dashboard  - Update task graph (pkb graph)
-#   do_sync       - Sync all git repositories via polecat sync
-#   do_sweep      - Sweep merge_ready tasks for PR status updates
+# Six functions, composable via CLI:
+#   do_cowork_ingest - Normalize and sync Cowork audit logs into sessions repo
+#   do_gha_sync      - Sync claude-session artifacts from configured GHA repos
+#   do_transcript    - Generate recent session transcripts
+#   do_dashboard     - Update task graph (pkb graph)
+#   do_sync          - Sync all git repositories via polecat sync
+#   do_sweep         - Sweep merge_ready tasks for PR status updates
 #
 # Usage:
-#   ./scripts/repo-sync-cron.sh              # Full: gha_sync + transcript + dashboard + sync + sweep
+#   ./scripts/repo-sync-cron.sh              # Full: cowork_ingest + gha_sync + transcript + dashboard + sync + sweep
+#   ./scripts/repo-sync-cron.sh cowork_ingest # Just Cowork audit log ingestion
 #   ./scripts/repo-sync-cron.sh gha_sync     # Just GHA artifact sync
 #   ./scripts/repo-sync-cron.sh transcript   # Just transcript
 #   ./scripts/repo-sync-cron.sh dashboard    # Just dashboard
@@ -88,6 +90,13 @@ TS="$(date '+%Y-%m-%d %H:%M:%S')"
 # Functions
 # ============================================================================
 
+do_cowork_ingest() {
+    echo "==> Ingesting Cowork audit logs..."
+    if [[ -f "${AOPS}/aops-core/scripts/ingest_cowork.py" ]]; then
+        uv run python "${AOPS}/aops-core/scripts/ingest_cowork.py" || echo "Warning: Cowork ingestion failed" >&2
+    fi
+}
+
 do_gha_sync() {
     # Pull claude-session artifacts from configured GHA repos into
     # $AOPS_SESSIONS/github/. The script invokes transcript.py --no-sync
@@ -150,8 +159,9 @@ do_sweep() {
 # ============================================================================
 
 if [[ $# -eq 0 ]]; then
-    # Full run: gha_sync + transcript + dashboard + sync + sweep
+    # Full run: cowork_ingest + gha_sync + transcript + dashboard + sync + sweep
     echo "${TS} repo-sync-cron starting (full)"
+    do_cowork_ingest
     do_gha_sync
     do_transcript
     do_dashboard
@@ -162,13 +172,14 @@ else
     echo "${TS} repo-sync-cron starting ($*)"
     for func in "$@"; do
         case "$func" in
+            cowork_ingest) do_cowork_ingest ;;
             gha_sync)   do_gha_sync ;;
             transcript) do_transcript ;;
             dashboard)  do_dashboard ;;
             sync)       do_sync ;;
             sweep)      do_sweep ;;
-            --quick)    do_gha_sync; do_transcript; do_sync ;;
-            *)          echo "Unknown function: $func (valid: gha_sync, transcript, dashboard, sync, sweep, --quick)" >&2; exit 1 ;;
+            --quick)    do_cowork_ingest; do_gha_sync; do_transcript; do_sync ;;
+            *)          echo "Unknown function: $func (valid: cowork_ingest, gha_sync, transcript, dashboard, sync, sweep, --quick)" >&2; exit 1 ;;
         esac
     done
 fi
