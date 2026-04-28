@@ -207,7 +207,7 @@ def test_gemini_polecat_persists_non_pr_result(tmp_path: Path) -> None:
         assert task.body and task.body.strip(), (
             f"Task {task_id} reached terminal status {task.status!r} but body is empty. "
             "The Gemini worker may have called release_task without a summary, or "
-            "the PKB update was silently lost. Transcript: {transcript_path}"
+            f"the PKB update was silently lost. Transcript: {transcript_path}"
         )
 
     finally:
