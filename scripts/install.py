@@ -223,7 +223,7 @@ def main():
     policies_dir = gemini_dir / "policies"
     policies_dir.mkdir(exist_ok=True)
 
-    src_gemini_md = aops_root / "GEMINI.md"
+    src_gemini_md = aops_root / "dist" / "aops-gemini" / "GEMINI.md"
     if src_gemini_md.exists():
         shutil.copy2(src_gemini_md, gemini_dir / "GEMINI.md")
         print("✓ Copied GEMINI.md to ~/.gemini/GEMINI.md")
