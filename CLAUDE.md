@@ -1,1 +1,2 @@
-<!-- SSoT: .agents/CORE.md -->\n@.agents/CORE.md
+<!-- SSoT: .agents/CORE.md -->
+@.agents/CORE.md
