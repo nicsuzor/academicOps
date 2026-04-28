@@ -853,10 +853,18 @@ def build_aops_core(
                 dist_plugin_dir.mkdir(parents=True, exist_ok=True)
                 manifest = json.loads(src_plugin_json.read_text())
                 manifest["version"] = version
+
+                # Hygiene: strip marketplace-only and deprecated fields
+                # Leaked 'source' and 'category' cause issues in local cache
+                manifest.pop("source", None)
+                manifest.pop("category", None)
+                # 'userConfig' is no longer used (env resolution moved to run-mcp.sh)
+                manifest.pop("userConfig", None)
+
                 with open(dist_plugin_json, "w") as f:
                     json.dump(manifest, f, indent=2)
                     f.write("\n")
-                print(f"  ✓ Updated and copied plugin.json -> {dist_plugin_json}")
+                print(f"  ✓ Updated and hygienically copied plugin.json -> {dist_plugin_json}")
             except Exception as e:
                 print(f"Error processing plugin.json: {e}", file=sys.stderr)
         else:
@@ -1003,10 +1011,18 @@ def build_aops_tools(
                 dist_plugin_dir.mkdir(parents=True, exist_ok=True)
                 manifest = json.loads(src_plugin_json.read_text())
                 manifest["version"] = version
+
+                # Hygiene: strip marketplace-only and deprecated fields
+                # Leaked 'source' and 'category' cause issues in local cache
+                manifest.pop("source", None)
+                manifest.pop("category", None)
+                # 'userConfig' is no longer used (env resolution moved to run-mcp.sh)
+                manifest.pop("userConfig", None)
+
                 with open(dist_plugin_json, "w") as f:
                     json.dump(manifest, f, indent=2)
                     f.write("\n")
-                print(f"  ✓ Updated and copied plugin.json -> {dist_plugin_json}")
+                print(f"  ✓ Updated and hygienically copied plugin.json -> {dist_plugin_json}")
             except Exception as e:
                 print(f"Error processing plugin.json: {e}", file=sys.stderr)
         else:
@@ -1092,11 +1108,16 @@ def build_aops_cowork(
         manifest["description"] = (
             "academicOps for Cowork - skills, agents, and tools for research workflow automation"
         )
+        # Hygiene: strip marketplace-only and deprecated fields
+        manifest.pop("source", None)
+        manifest.pop("category", None)
+        manifest.pop("userConfig", None)
+
         # Cowork cannot execute hooks, so we don't reference them
         with open(dist_plugin_dir / "plugin.json", "w") as f:
             json.dump(manifest, f, indent=2)
             f.write("\n")
-        print(f"  ✓ Generated plugin.json (v{version})")
+        print(f"  ✓ Generated hygienic plugin.json (v{version})")
 
     # 3. MCP config — Cowork uses the same format as Claude Code
     template_path = src_dir / "mcp.json.template"
