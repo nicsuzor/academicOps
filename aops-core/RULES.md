@@ -131,7 +131,7 @@ DO NOT cite a stale copy of a principle, fact, or definition. Cite the canonical
 
 ### R5.6 No new orphan markdown
 
-DO NOT create new `.md` files. Worker findings, capability docs, summaries, comparisons, and explainers belong in their canonical location: the task body, the parent epic, the PKB (via the `remember` skill), or a file explicitly named in an approved plan or user directive. EXCEPT test fixtures and evidentiary data, which are not duplicative content. Tier: `warn` (mechanically enforced by the `check-no-new-orphan-md` pre-commit hook on `git add` of new `.md` files outside the canonical-location allowlist; legitimate additions surface to the user under R8.1 in-session authorisation).
+DO NOT create new orphan `.md` files. Worker findings, capability docs, summaries, comparisons, and explainers belong in: the task body, the parent epic, the PKB (via the `remember` skill), or a file explicitly named in an approved plan or user directive. EXCEPT files within the canonical-location allowlist: `aops-core/<UPPERCASE>.md` framework top-level files; `aops-core/{skills,agents,workflows,commands,hooks,policies,.claude-plugin}/**`; `specs/**`; `tests/**`; `templates/**`; `.agents/**`; `.github/**`; root `README.md`/`CHANGELOG.md`/`GEMINI.md`/`INSTALL.md`. Tier: `warn` (mechanically enforced by the `check-no-new-orphan-md` pre-commit hook; legitimate allowlist additions surface to the user under R8.1 in-session authorisation).
 
 ---
 

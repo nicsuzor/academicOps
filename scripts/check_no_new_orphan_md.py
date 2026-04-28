@@ -84,15 +84,18 @@ def is_allowed(path: str) -> bool:
 
 def added_md_files(staged_only: bool = True) -> list[str]:
     """Return paths added (status=A) in the index. Renames (R) are excluded."""
-    args = ["git", "diff", "--cached", "--name-status", "--diff-filter=A"]
+    args = ["git", "diff", "-z", "--cached", "--name-status", "--diff-filter=A"]
     if not staged_only:
-        args = ["git", "diff", "--name-status", "--diff-filter=A", "HEAD"]
+        args = ["git", "diff", "-z", "--name-status", "--diff-filter=A", "HEAD"]
     out = subprocess.run(args, capture_output=True, text=True, check=True).stdout
     paths: list[str] = []
-    for line in out.splitlines():
-        parts = line.split("\t")
-        if len(parts) >= 2 and parts[0] == "A" and parts[1].endswith(".md"):
-            paths.append(parts[1])
+    # -z output: status\0path\0status\0path\0... (NUL-delimited, no quoting)
+    parts = out.split("\0")
+    for i in range(0, len(parts) - 1, 2):
+        status = parts[i]
+        path = parts[i + 1]
+        if status == "A" and path.endswith(".md"):
+            paths.append(path)
     return paths
 
 
