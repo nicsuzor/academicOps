@@ -938,6 +938,53 @@ class UsageStats:
         return metrics
 
 
+def normalize_cowork_event(data: dict) -> tuple[str, dict] | None:
+    """Map a raw Cowork audit event to (entry_type, message_dict).
+
+    Returns None for non-Cowork event types (caller keeps original type/message).
+    Used by both Entry.from_dict (direct audit.jsonl parsing) and ingest_cowork.py.
+    """
+    entry_type = data.get("type")
+    if entry_type == "message":
+        role = data.get("role")
+        normed_type = role if role in ("user", "assistant") else "unknown"
+        content_val = data.get("content", "")
+        message: dict = {
+            "role": role,
+            "content": [
+                {"type": "text", "text": content_val if isinstance(content_val, str) else ""}
+            ],
+        }
+        return normed_type, message
+    if entry_type == "tool_call":
+        message = {
+            "role": "assistant",
+            "content": [
+                {
+                    "type": "tool_use",
+                    "id": data.get("id"),
+                    "name": data.get("name"),
+                    "input": data.get("args", {}),
+                }
+            ],
+        }
+        return "assistant", message
+    if entry_type == "tool_result":
+        message = {
+            "role": "user",
+            "content": [
+                {
+                    "type": "tool_result",
+                    "tool_use_id": data.get("tool_use_id"),
+                    "content": data.get("output", ""),
+                    "is_error": data.get("is_error", False),
+                }
+            ],
+        }
+        return "user", message
+    return None
+
+
 @dataclass
 class Entry:
     """Represents a single JSONL entry from any source."""
@@ -978,8 +1025,17 @@ class Entry:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Entry:
         """Create Entry from JSONL dict."""
-        # Extract tokens from message.usage if present
+        entry_type = data.get("type", "unknown")
         message = data.get("message", {})
+        content = data.get("content", {})
+
+        # Cowork audit normalization (raw audit.jsonl — no message field yet)
+        if not message:
+            cowork = normalize_cowork_event(data)
+            if cowork is not None:
+                entry_type, message = cowork
+
+        # Extract tokens from message.usage if present
         usage = message.get("usage", {})
         input_tokens = usage.get("input_tokens")
         output_tokens = usage.get("output_tokens")
@@ -988,11 +1044,11 @@ class Entry:
         model = message.get("model")
 
         entry = cls(
-            type=data.get("type", "unknown"),
-            uuid=data.get("uuid", ""),
+            type=entry_type,
+            uuid=data.get("uuid", data.get("id", "")),
             parent_uuid=data.get("parentUuid", ""),
-            message=data.get("message", {}),
-            content=data.get("content", {}),
+            message=message,
+            content=content if isinstance(content, dict) else {},
             is_sidechain=data.get("isSidechain", False),
             is_meta=data.get("isMeta", False),
             tool_use_result=data.get("toolUseResult", {}),
