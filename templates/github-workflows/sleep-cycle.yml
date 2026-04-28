@@ -82,9 +82,22 @@ jobs:
               ${{ github.workspace }}/_aops/aops-core/skills/remember/SKILL.md
               ${{ github.workspace }}/_aops/aops-core/skills/remember/procedures/consolidate.md
 
-            Work through ALL phases in order (0, 1, 1b, 2, 2b, 3, 4, 5, 5b, 5c, 6).
+            Work through ALL phases in order (0 through 11):
+              Phase 0:  Graph Health (baseline)
+              Phase 1:  Session Backfill
+              Phase 2:  Transcript Mining
+              Phase 3:  Episode Replay
+              Phase 4:  Knowledge Consolidation
+              Phase 5:  Index Refresh
+              Phase 6:  Data Quality Reconciliation
+              Phase 7:  Staleness Sweep
+              Phase 8:  Refile Processing
+              Phase 9:  Graph Maintenance
+              Phase 10: Consolidation Self-Check
+              Phase 11: Brain Sync
+
             Use your judgment about what needs attention. Skip phases where there's
-            nothing to do — but always run Phase 0 (baseline) and Phase 6 (sync).
+            nothing to do — but always run Phase 0 (baseline) and Phase 11 (sync).
 
             ## Values Alignment
 
@@ -105,16 +118,16 @@ jobs:
               reference mcp__pkb__* tools. Changes sync to PKB consumers via git push.
             - Email/calendar MCP tools are NOT available on GitHub Actions.
               Degrade gracefully per the skill instructions (flag instead of verify).
-            - Transcript mining (Phase 1b): requires $AOPS_SESSIONS. Skip if not available.
+            - Transcript mining (Phase 2): requires $AOPS_SESSIONS. Skip if not available.
             - **Output**: Mechanical work (dedup, index refresh, graph maintenance)
               commits directly to main. Knowledge work (new notes, synthesis, MOCs)
               commits to a branch `sleep/consolidation-$(date +%Y-%m-%d-%H%M)` and
               creates a PR. The PR is reviewed by /qa before merging.
             - Write a summary of what you did to $GITHUB_STEP_SUMMARY. Include:
               - Phase completion status
-              - Knowledge notes created/updated (Phase 2b)
-              - Self-check findings (Phase 5c)
-              - Graph health delta (Phase 0 vs Phase 6)
+              - Knowledge notes created/updated (Phase 4)
+              - Self-check findings (Phase 10)
+              - Graph health delta (Phase 0 vs Phase 11)
               - PR URL if consolidation PR was created
 
             ## Repo Topology (CRITICAL)
