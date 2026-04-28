@@ -1025,8 +1025,8 @@ def build_aops_cowork(
     """Build the aops-cowork plugin for Claude Cowork.
 
     Cowork runs in a VM with a read-only plugin cache and cannot execute hooks
-    or Python scripts. This build produces a stripped-down Claude-format plugin
-    containing only the components Cowork can use:
+    or Python scripts. This build produces a runtime-appropriate Claude-format plugin
+    containing the components Cowork can use:
     - skills/ (markdown procedural knowledge)
     - commands/ (slash command definitions)
     - agents/ (agent definitions)
@@ -1260,7 +1260,7 @@ def main():
     build_aops_tools(aops_root, dist_root, "gemini", version)
     build_aops_tools(aops_root, dist_root, "claude", version)
 
-    # Build Cowork plugin (stripped-down Claude-format for Cowork desktop)
+    # Build Cowork plugin (runtime-appropriate Claude-format for Cowork desktop)
     build_aops_cowork(aops_root, dist_root, aca_data_path, version)
 
     # Install PKB binary if provided

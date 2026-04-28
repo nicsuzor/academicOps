@@ -19,7 +19,7 @@
     },
     {
       "name": "aops-cowork",
-      "description": "academicOps for Cowork - stripped-down plugin with skills, agents, and tools (no hooks/scripts)",
+      "description": "academicOps for Cowork - skills, agents, and tools for research workflow automation",
       "version": "__COWORK_VERSION__",
       "author": {
         "name": "Nicolas Suzor"
