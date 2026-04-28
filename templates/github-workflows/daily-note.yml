@@ -1,0 +1,87 @@
+# Daily Note: Morning Briefing and Progress Sync
+# Runs in the brain ($ACA_DATA) repo on a schedule.
+# Launches a Claude agent to update the daily note.
+#
+# Install: copy this file to $ACA_DATA/.github/workflows/daily-note.yml
+#
+# CUSTOMIZE: Set these repository variables in your brain repo's Settings → Variables:
+#   AOPS_REPO — your academicOps repository (e.g., "yourname/academicOps")
+
+name: Daily Note
+
+on:
+  schedule:
+    - cron: '0 6 * * *' # Every day at 6:00 AM UTC
+  workflow_dispatch:
+    inputs:
+      date:
+        description: 'Optional date (YYYYMMDD) to update (defaults to today)'
+        required: false
+        type: string
+
+jobs:
+  daily-note:
+    name: Update Daily Note
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+
+    steps:
+      - name: Checkout brain repo
+        uses: actions/checkout@v4
+
+      - name: Checkout academicOps
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.AOPS_REPO }}
+          path: _aops
+          token: ${{ secrets.AOPS_DIST_PAT }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Install academicOps dependencies
+        working-directory: _aops
+        run: uv sync --frozen
+
+      - name: Run daily note agent
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            You are the Daily Note agent. Your job is to update or create the
+            daily note for today (or the date provided).
+
+            ## Instructions
+            Read the daily skill for instructions:
+              ${{ github.workspace }}/_aops/aops-core/skills/daily/SKILL.md
+
+            Invoke the skill directly:
+              /daily ${{ inputs.date || '' }}
+
+            ## Environment
+            - Brain repo (data): ${{ github.workspace }}
+            - academicOps (code): ${{ github.workspace }}/_aops
+            - Date: ${{ inputs.date || 'today' }}
+
+            ## CI-Specific Rules
+            - **No PKB MCP server** — you are working directly with markdown files.
+              Use Grep/Glob to search, Write/Edit to create/modify files. Do NOT
+              reference mcp__pkb__* tools. Changes sync to PKB consumers via git push.
+            - Email/calendar MCP tools are NOT available on GitHub Actions.
+              Degrade gracefully per the skill instructions (skip those sections).
+            - Commit directly to main (daily notes are routinely updated by agents).
+
+            ## Output
+            Write a summary of what you did to $GITHUB_STEP_SUMMARY.
