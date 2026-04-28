@@ -5,8 +5,7 @@
 # minimal PATH and do NOT propagate the user's shell env. We resolve PKB_MCP_URL
 # ourselves rather than relying on the launcher's `${VAR}` template substitution
 # (Cowork's userConfig path is broken and the env path is unreliable across
-# launchers — see specs/observability.md and the now-obsolete
-# scripts/patch-cowork-mcp.sh).
+# launchers — specs moved to brain PKB: aops/specs/framework-observability.md).
 #
 # Resolution order:
 #   1. inherited PKB_MCP_URL (works in dev shell launches)
@@ -14,6 +13,11 @@
 #   3. unset → pkb_perf_proxy.py falls back to local 'pkb mcp' stdio transport
 #
 # This eliminates the post-install patch step. Survives plugin reinstall.
+#
+# Canonical transport policy:
+#   - HTTP/SSE is preferred for Cowork, Desktop Code, and other environments
+#     with limited shell access (set PKB_MCP_URL in ~/.env.local).
+#   - Stdio is the default fallback for local dev environments with full shell.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/ensure-path.sh"

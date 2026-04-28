@@ -229,13 +229,45 @@ External triggers that start the supervision loop.
   and open a PR. Do NOT halt on stderr keywords — wait for a terminal signal:
   `polecat finish`, PR URL, or process exit with non-zero status. "PR's up" /
   "Task updated" in the stream IS the success signal.
-- **MCP / CLI / disk three-way divergence.** After a `git pull`, the local
-  filesystem has the task file, the local `pkb show` CLI usually finds it, but
-  the remote PKB MCP (tailscale host) can lag by minutes. Polecat's bootstrap
-  validation hits the MCP and will exit if the task isn't there yet, leaving
-  the task claimed but no worktree. Recovery: `polecat reset-stalled --hours 0
-  --force` then re-dispatch. Pre-flight: `pkb show <task-id>` AND a PKB MCP
-  `get_task` before dispatching a freshly-pulled task.
+- **MCP task-visibility lag has three distinct causes — none of them are
+  vector reindex.** PKB MCP `get_task` reads from the remote host's task
+  index. Reindex affects ONLY the full-text vector search (`pkb search`,
+  `pkb_context` semantic queries) and is irrelevant to CRUD calls
+  (`get_task`, `update_task`, `list_tasks`). When dispatch fails with
+  `Task not found`, work through these three failure modes in order:
+
+  **1. Local push not landed.** Your machine hasn't pushed the new/modified
+  task file to origin yet.
+  - Check: `cd $ACA_DATA && git status && git log origin/main..HEAD`
+  - Fix: push (or wait for autosync)
+
+  **2. Remote pull cron stalled.** The host running the MCP hasn't pulled
+  your push yet, often because of an unresolved sync conflict on the
+  remote.
+  - Check: ask the user; if you have SSH, check the remote's git status
+  - Fix: requires manual resolution on the remote host (escalate to user)
+
+  **3. MCP server's in-memory task index is stale.** The PKB MCP server is
+  a long-running daemon with an in-memory index that does NOT auto-refresh
+  when files change on disk. The file is on the MCP host, the local `pkb`
+  CLI on the same host can read it, but the running MCP server doesn't
+  know about it. This presents identically to (1) and (2) — same `Task
+  not found` error — but the host is fully in sync.
+  - Diagnostic: ask the user to confirm all hosts (their machine, the MCP
+    host, any other clones) are at the same commit. If yes, this is the
+    cause.
+  - Fix: restart the PKB MCP container/process on the host. There is no
+    known signal to trigger an in-process refresh. This is also the
+    likely cause of sporadic "freshly-created task invisible to MCP for
+    minutes" reports when all hosts are in sync.
+
+  **Triage sequence**: check local push (1) first since it's cheapest.
+  Then ask the user about remote sync (2). If the user confirms hosts are
+  in sync, escalate (3) — only the user can restart the MCP container.
+
+  Pre-flight: `pkb show <task-id>` confirms the task exists locally. If
+  you also need to confirm the remote MCP sees it, attempt a `get_task`
+  probe before firing the worker.
 - **`merge-prep-status: pending`** — set by `pr-pipeline.yml`'s initialize
   job and cleared only when the merge-prep agent sets `success` (graduation)
   or `failure` (after 3 consecutive failures). A PR with green CI may still

@@ -1,7 +1,7 @@
 # AcademicOps Makefile
 # Unified build and installation entry point
 
-.PHONY: help dev build-dev install-dev uninstall-dev install-remote install-claude install-gemini install-cowork patch-cowork patch-aops-core install-cli install-crontab install-hooks nextver release prerelease clean build build-docker shell
+.PHONY: help dev build-dev install-dev uninstall-dev install-remote install-claude install-gemini install-cowork install-cli install-crontab install-hooks nextver release prerelease clean build build-docker shell
 
 # --- Configuration ---
 
@@ -42,8 +42,6 @@ help:
 	@echo "  make build-dev      - Build extension locally (dist/)"
 	@echo "  make install-dev    - Install current dist/ into Claude and Gemini"
 	@echo "  make install-cowork - Install Cowork plugin from local dist/aops-cowork build"
-	@echo "  make patch-cowork   - Patch installed Cowork plugin with local PKB_MCP_URL"
-	@echo "  make patch-aops-core - Patch installed aops-core plugin with local PKB_MCP_URL"
 	@echo "  make uninstall-dev  - Restore release marketplace after local testing"
 	@echo "  make install-hooks  - Install pre-commit hooks"
 	@echo ""
@@ -102,7 +100,6 @@ cache = pathlib.Path.home() / '.claude/plugins/cache/academicOps/aops-core'; \
 	-command claude plugin marketplace add $(AOPS_ROOT)
 	@echo "Installing local build into Claude Code..."
 	@command claude plugin install $(CLAUDE_PLUGIN_NAME) || echo "  ⚠️ Claude install failed"
-	@$(MAKE) patch-aops-core || echo "  ⚠️ patch-aops-core failed (set PKB_MCP_URL in ~/.env.local)"
 	@echo "Installing local build into Gemini CLI..."
 	@command gemini extensions install $(DIST_DIR)/aops-gemini --consent || echo "  ⚠️ Gemini install failed"
 	@$(MAKE) report-versions
@@ -118,14 +115,6 @@ install-cowork:
 	@command claude plugin marketplace add $(AOPS_ROOT) && \
 	command claude plugin install $(COWORK_PLUGIN_NAME) && \
 	echo "✓ Cowork plugin installed"
-	@$(MAKE) patch-cowork
-
-patch-cowork:
-	@./scripts/patch-cowork-mcp.sh
-
-# Patch installed aops-core plugin with PKB_MCP_URL from environment
-patch-aops-core:
-	@./scripts/patch-aops-core-mcp.sh
 
 # Restore the release marketplace after local dev testing
 uninstall-dev:
@@ -163,7 +152,6 @@ install-claude:
 	command claude plugin marketplace update academicOps && \
 	command claude plugin install $(CLAUDE_PLUGIN_NAME) && \
 	echo "✓ Claude Code plugin installed"
-	@$(MAKE) patch-aops-core || echo "  ⚠️ patch-aops-core failed (set PKB_MCP_URL in ~/.env.local)"
 
 install-gemini:
 	@echo "Installing aops extension for Gemini CLI..."

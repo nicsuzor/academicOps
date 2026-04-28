@@ -11,7 +11,7 @@
       ],
       "env": {
         "ACA_DATA": "${ACA_DATA}",
-        "RUST_LOG": "warn"
+        "PKB_MCP_URL": "${PKB_MCP_URL}"
       }
     }
   },

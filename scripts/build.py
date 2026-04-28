@@ -795,14 +795,24 @@ def build_aops_core(
         if not src_gemini_md.exists():
             print(f"Error: {src_gemini_md} not found.", file=sys.stderr)
             sys.exit(1)
-        safe_copy(src_gemini_md, dist_dir / "GEMINI.md")
-        print(f"  ✓ Copied GEMINI.md -> {dist_dir / 'GEMINI.md'}")
 
         import re as _re
 
+        # Read and clean GEMINI.md: stop packaging project-local CORE.md
+        # Use regex to strip @.agents/CORE.md from the distributed version
+        original_content = src_gemini_md.read_text()
+        cleaned_content = _re.sub(
+            r"^@\.agents/CORE\.md\s*$", "", original_content, flags=_re.MULTILINE
+        )
+        (dist_dir / "GEMINI.md").write_text(cleaned_content)
+        print(f"  ✓ Copied and cleaned GEMINI.md -> {dist_dir / 'GEMINI.md'}")
+
         imported = 0
-        for m in _re.finditer(r"^@([^\s]+)", src_gemini_md.read_text(), flags=_re.MULTILINE):
+        for m in _re.finditer(r"^@([^\s]+)", original_content, flags=_re.MULTILINE):
             rel = m.group(1)
+            if rel == ".agents/CORE.md":
+                # Skip project-local context in plugin distribution
+                continue
             if Path(rel).is_absolute() or ".." in rel:
                 print(
                     f"Warning: Skipping unsafe import path in GEMINI.md: {rel}",
@@ -853,10 +863,18 @@ def build_aops_core(
                 dist_plugin_dir.mkdir(parents=True, exist_ok=True)
                 manifest = json.loads(src_plugin_json.read_text())
                 manifest["version"] = version
+
+                # Hygiene: strip marketplace-only and deprecated fields
+                # Leaked 'source' and 'category' cause issues in local cache
+                manifest.pop("source", None)
+                manifest.pop("category", None)
+                # 'userConfig' is no longer used (env resolution moved to run-mcp.sh)
+                manifest.pop("userConfig", None)
+
                 with open(dist_plugin_json, "w") as f:
                     json.dump(manifest, f, indent=2)
                     f.write("\n")
-                print(f"  ✓ Updated and copied plugin.json -> {dist_plugin_json}")
+                print(f"  ✓ Updated and hygienically copied plugin.json -> {dist_plugin_json}")
             except Exception as e:
                 print(f"Error processing plugin.json: {e}", file=sys.stderr)
         else:
@@ -1003,10 +1021,18 @@ def build_aops_tools(
                 dist_plugin_dir.mkdir(parents=True, exist_ok=True)
                 manifest = json.loads(src_plugin_json.read_text())
                 manifest["version"] = version
+
+                # Hygiene: strip marketplace-only and deprecated fields
+                # Leaked 'source' and 'category' cause issues in local cache
+                manifest.pop("source", None)
+                manifest.pop("category", None)
+                # 'userConfig' is no longer used (env resolution moved to run-mcp.sh)
+                manifest.pop("userConfig", None)
+
                 with open(dist_plugin_json, "w") as f:
                     json.dump(manifest, f, indent=2)
                     f.write("\n")
-                print(f"  ✓ Updated and copied plugin.json -> {dist_plugin_json}")
+                print(f"  ✓ Updated and hygienically copied plugin.json -> {dist_plugin_json}")
             except Exception as e:
                 print(f"Error processing plugin.json: {e}", file=sys.stderr)
         else:
@@ -1092,11 +1118,16 @@ def build_aops_cowork(
         manifest["description"] = (
             "academicOps for Cowork - skills, agents, and tools for research workflow automation"
         )
+        # Hygiene: strip marketplace-only and deprecated fields
+        manifest.pop("source", None)
+        manifest.pop("category", None)
+        manifest.pop("userConfig", None)
+
         # Cowork cannot execute hooks, so we don't reference them
         with open(dist_plugin_dir / "plugin.json", "w") as f:
             json.dump(manifest, f, indent=2)
             f.write("\n")
-        print(f"  ✓ Generated plugin.json (v{version})")
+        print(f"  ✓ Generated hygienic plugin.json (v{version})")
 
     # 3. MCP config — Cowork uses the same format as Claude Code
     template_path = src_dir / "mcp.json.template"
