@@ -171,7 +171,7 @@ class TestSourceManifestMcpConfig:
     every PR without any build step.
     """
 
-    _SOURCE = REPO_ROOT / "gemini-extension.json"
+    _SOURCE = REPO_ROOT / "templates" / "aops-core.gemini-extension.json"
 
     @pytest.fixture(autouse=True)
     def _require_source(self):

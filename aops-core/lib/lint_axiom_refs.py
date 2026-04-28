@@ -134,7 +134,7 @@ def main() -> int:
             )
 
     # 3. Check manifests
-    # aops-core/.claude-plugin/plugin.json is STRICT
+    # templates/aops-core.plugin.json is STRICT
     plugin_json = root / "templates" / "aops-core.plugin.json"
     all_errors.extend(lint_manifest(plugin_json, axioms, rules, strict=True))
 
