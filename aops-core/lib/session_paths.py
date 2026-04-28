@@ -8,6 +8,7 @@ where HH is the 24-hour local time when the session was created.
 """
 
 import os
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -75,8 +76,12 @@ def _polecat_claude_state_dir(project_folder: str, subsystem: str) -> Path:
         try:
             candidate.mkdir(parents=True, exist_ok=True)
             return candidate
-        except (PermissionError, OSError):
-            pass
+        except (PermissionError, OSError) as e:
+            print(
+                f"WARNING: polecat state dir {candidate} inaccessible ({e}); "
+                f"falling back to /tmp — data will NOT be extracted to host",
+                file=sys.stderr,
+            )
     fallback = Path("/tmp") / f"aops-{subsystem}-{os.getuid()}" / project_folder
     fallback.mkdir(parents=True, exist_ok=True)
     return fallback
