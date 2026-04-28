@@ -1,6 +1,5 @@
 import importlib.util
 import json
-import sys
 from pathlib import Path
 
 from lib.session_reader import find_sessions
