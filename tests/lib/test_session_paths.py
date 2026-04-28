@@ -1,12 +1,16 @@
 import os
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 from lib.session_paths import (
     _is_gemini_session,
+    _is_polecat_sandbox,
     _parse_date_arg,
     get_gate_file_path,
+    get_hook_log_path,
     get_session_short_hash,
+    get_session_status_dir,
 )
 
 
@@ -20,6 +24,7 @@ def _clear_env_vars(monkeypatch):
         "AOPS_GATE_FILE_ENFORCER",
         "GEMINI_SESSION_ID",
         "POLECAT_CREW_NAME",
+        "POLECAT_SESSION_TYPE",
     )
     for var in ENV_VARS_TO_CLEAR:
         monkeypatch.delenv(var, raising=False)
@@ -196,3 +201,66 @@ class TestGetGateFilePath:
                     ValueError, match="Gemini session detected but no logs directory configured"
                 ):
                     get_gate_file_path("enforcer", "some-id")
+
+
+class TestPolebcatSandboxRouting:
+    """P#82 reproduction tests for polecat-aware path routing.
+
+    The old code had no _is_polecat_sandbox() check and always routed to
+    Path.home(). These tests fail on the old code and pass on the new code.
+    """
+
+    def test_polecat_sandbox_detection(self, monkeypatch):
+        """_is_polecat_sandbox returns True iff POLECAT_SESSION_TYPE is set."""
+        monkeypatch.delenv("POLECAT_SESSION_TYPE", raising=False)
+        assert not _is_polecat_sandbox()
+        monkeypatch.setenv("POLECAT_SESSION_TYPE", "polecat")
+        assert _is_polecat_sandbox()
+
+    @patch("lib.session_paths._polecat_claude_state_dir")
+    @patch("lib.session_paths.get_claude_project_folder")
+    def test_hook_log_routes_to_polecat_not_home(
+        self, mock_project_folder, mock_polecat_dir, monkeypatch, tmp_path
+    ):
+        """POLECAT_SESSION_TYPE set → hook log routes via _polecat_claude_state_dir, not Path.home()."""
+        monkeypatch.setenv("POLECAT_SESSION_TYPE", "polecat")
+        mock_project_folder.return_value = "-home-worker-project"
+        mock_polecat_dir.return_value = tmp_path
+
+        path = get_hook_log_path("session-123", date="2024-05-20T10:00:00+00:00")
+
+        mock_polecat_dir.assert_called_once_with("-home-worker-project", "hooks")
+        assert str(path).startswith(str(tmp_path))
+        assert not str(path).startswith(str(Path.home()))
+
+    @patch("lib.session_paths._polecat_claude_state_dir")
+    @patch("lib.session_paths.get_claude_project_folder")
+    def test_session_status_routes_to_polecat_not_home(
+        self, mock_project_folder, mock_polecat_dir, monkeypatch, tmp_path
+    ):
+        """POLECAT_SESSION_TYPE set → session status routes via _polecat_claude_state_dir, not Path.home()."""
+        monkeypatch.setenv("POLECAT_SESSION_TYPE", "polecat")
+        mock_project_folder.return_value = "-home-worker-project"
+        mock_polecat_dir.return_value = tmp_path
+
+        result = get_session_status_dir()
+
+        mock_polecat_dir.assert_called_once_with("-home-worker-project", "state")
+        assert result == tmp_path
+        assert not str(result).startswith(str(Path.home()))
+
+    @patch("lib.session_paths._polecat_claude_state_dir")
+    @patch("lib.session_paths.get_claude_project_folder")
+    def test_gate_file_routes_to_polecat_not_home(
+        self, mock_project_folder, mock_polecat_dir, monkeypatch, tmp_path
+    ):
+        """POLECAT_SESSION_TYPE set → gate file routes via _polecat_claude_state_dir, not Path.home()."""
+        monkeypatch.setenv("POLECAT_SESSION_TYPE", "polecat")
+        mock_project_folder.return_value = "-home-worker-project"
+        mock_polecat_dir.return_value = tmp_path
+
+        path = get_gate_file_path("enforcer", "session-123", date="2024-05-20T10:00:00+00:00")
+
+        mock_polecat_dir.assert_called_once_with("-home-worker-project", "gates")
+        assert str(path).startswith(str(tmp_path))
+        assert not str(path).startswith(str(Path.home()))

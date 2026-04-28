@@ -89,23 +89,43 @@ def _check_fixture_task():
         return False
 
 
+def _resolve_fixture_task_id() -> str:
+    """Resolve the fixture task's canonical ID via PKB MCP.
+
+    ``TEST_FIXTURE_TASK_ID`` is the alias (filename stem). Polecat creates
+    worktrees and branches under the task's ``id`` frontmatter field, which
+    differs from the alias (e.g. ``e2e-test-85fabbbf``). Use this for any
+    path/branch derivation that needs to match polecat's view of the task.
+    """
+    try:
+        from polecat.pkb_bridge import get_task
+
+        task = get_task(TEST_FIXTURE_TASK_ID)
+        if task and task.id:
+            return task.id
+    except Exception:
+        pass
+    return TEST_FIXTURE_TASK_ID
+
+
 def _cleanup_run_worktree():
     """Delete the remote branch and local worktree created by pc run for the fixture task.
 
     pc run creates polecat/<task-id> on origin and a local clone under ~/.aops/worktrees/.
     Without cleanup, subsequent runs fail with "stale unmerged branch" from polecat's guard.
     """
-    branch = f"polecat/{TEST_FIXTURE_TASK_ID}"
-    subprocess.run(
-        ["git", "push", "origin", "--delete", branch],
-        capture_output=True,
-        check=False,
-    )
-    worktree = Path.home() / ".aops" / "worktrees" / TEST_FIXTURE_TASK_ID
-    if worktree.exists():
-        import shutil
+    resolved_id = _resolve_fixture_task_id()
+    for tid in {TEST_FIXTURE_TASK_ID, resolved_id}:
+        subprocess.run(
+            ["git", "push", "origin", "--delete", f"polecat/{tid}"],
+            capture_output=True,
+            check=False,
+        )
+        worktree = Path.home() / ".aops" / "worktrees" / tid
+        if worktree.exists():
+            import shutil
 
-        shutil.rmtree(worktree, ignore_errors=True)
+            shutil.rmtree(worktree, ignore_errors=True)
 
 
 def _reset_fixture_task():
@@ -114,11 +134,13 @@ def _reset_fixture_task():
     Uses the PKB MCP HTTP API to update the remote server, then also
     resets the local file to keep them in sync.
     """
-    # Reset via PKB MCP API (the source of truth for `pc run`)
+    # Reset via PKB MCP API (the source of truth for `pc run`).
+    # `project="aops"` is required because polecat run dispatch refuses to
+    # set up a worktree without an explicit project (silent fallbacks disabled).
     try:
         from polecat.pkb_bridge import update_task
 
-        update_task(TEST_FIXTURE_TASK_ID, status="queued", assignee="polecat")
+        update_task(TEST_FIXTURE_TASK_ID, status="queued", assignee="polecat", project="aops")
     except Exception:
         pass  # Best-effort; local reset below is the fallback
 
@@ -169,9 +191,22 @@ class TestAllInvocationPaths:
         tmp_path = tmp_path_factory.mktemp(f"invocation-{param}")
 
         if path_type == "crew":
-            return self._run_crew(tmp_path, backend)
+            result = self._run_crew(tmp_path, backend)
         else:
-            return self._run_polecat(tmp_path, backend)
+            result = self._run_polecat(tmp_path, backend)
+
+        # Skip Gemini paths when Google's API has rate-limited us. The CLI
+        # exits cleanly with QUOTA_EXHAUSTED on stderr; without this guard
+        # all downstream assertions fail with no signal that the cause was
+        # external quota, not a code regression.
+        if backend == "gemini":
+            stderr = result.get("stderr", "")
+            combined = result.get("combined", "")
+            for needle in ("QUOTA_EXHAUSTED", "TerminalQuotaError", "exhausted your capacity"):
+                if needle in stderr or needle in combined:
+                    pytest.skip(f"Gemini API quota exhausted ({needle}) — retry after reset")
+
+        return result
 
     @staticmethod
     def _is_hook_file(f: Path) -> bool:
@@ -450,7 +485,10 @@ class TestAllInvocationPaths:
 
         # --no-auto-finish leaves the worktree in place; capture the sentinel
         # before _cleanup_run_worktree() deletes the worktree directory.
-        worktree = Path.home() / ".aops" / "worktrees" / TEST_FIXTURE_TASK_ID
+        # Polecat names the worktree by the task's resolved id (frontmatter),
+        # not by the alias used to look it up.
+        resolved_task_id = _resolve_fixture_task_id()
+        worktree = Path.home() / ".aops" / "worktrees" / resolved_task_id
         sentinel_file = worktree / sentinel_name
         sentinel_on_host = sentinel_file.exists()
         sentinel_content = sentinel_file.read_text().strip() if sentinel_on_host else ""
