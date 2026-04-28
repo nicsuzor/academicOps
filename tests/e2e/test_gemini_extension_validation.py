@@ -155,6 +155,86 @@ def _parse_frontmatter(md_path: Path) -> dict:
 # ---------------------------------------------------------------------------
 
 
+class TestSourceManifestMcpConfig:
+    """Source-level pin: gemini-extension.json MCP config is wired for PKB access.
+
+    Validates the source ``gemini-extension.json`` (repo root, not the built dist)
+    before any build step. This catches the 2026-04-28 regression where the pkb
+    MCP server env block had ``RUST_LOG: warn`` instead of
+    ``PKB_MCP_URL: ${PKB_MCP_URL}`` — causing every Gemini polecat to launch
+    ``run-mcp.sh`` without a URL, fall back to a broken local stdio path, and
+    have zero PKB tools. The silent result: spike polecat output was lost and
+    required manual supervisor transcription. Fixed in PR #784.
+
+    Why source *and* dist: the dist is built from the source. A corrupted source
+    means every subsequent dist build ships the regression. These tests run on
+    every PR without any build step.
+    """
+
+    _SOURCE = REPO_ROOT / "gemini-extension.json"
+
+    @pytest.fixture(autouse=True)
+    def _require_source(self):
+        if not self._SOURCE.is_file():
+            pytest.skip(f"Source gemini-extension.json not found at {self._SOURCE}")
+
+    def _manifest(self) -> dict:
+        import json
+
+        return json.loads(self._SOURCE.read_text())
+
+    def test_pkb_mcp_server_registered(self):
+        """'pkb' must be registered as an MCP server in the source manifest."""
+        m = self._manifest()
+        assert "pkb" in m.get("mcpServers", {}), (
+            "gemini-extension.json: 'pkb' MCP server not registered. "
+            "Gemini polecats need this server to call release_task and persist results. "
+            "Regression ledger: PR #784 (2026-04-28)."
+        )
+
+    def test_pkb_mcp_url_in_env(self):
+        """PKB_MCP_URL must appear in the pkb MCP server env block.
+
+        Regression: 2026-04-28 — the env block had ``RUST_LOG: warn`` instead.
+        Without PKB_MCP_URL, run-mcp.sh cannot connect to the remote PKB server
+        and falls back to a broken local stdio path. The Gemini session then has
+        zero PKB tools — no release_task, no get_task, nothing. Fixed in PR #784.
+        """
+        m = self._manifest()
+        env = m.get("mcpServers", {}).get("pkb", {}).get("env", {})
+        assert "PKB_MCP_URL" in env, (
+            "gemini-extension.json: PKB_MCP_URL missing from pkb MCP server env. "
+            "Without this, run-mcp.sh has no URL and PKB MCP falls back to broken stdio. "
+            "Regression ledger: PR #784 (2026-04-28)."
+        )
+
+    def test_pkb_mcp_url_is_template(self):
+        """PKB_MCP_URL value must expand from the host env, not be hardcoded."""
+        m = self._manifest()
+        env = m.get("mcpServers", {}).get("pkb", {}).get("env", {})
+        val = env.get("PKB_MCP_URL", "")
+        assert "${PKB_MCP_URL}" in val, (
+            f"gemini-extension.json: PKB_MCP_URL value should be '${{PKB_MCP_URL}}' "
+            f"(Gemini extension template substitution), got {val!r}. "
+            "The extension must propagate the host env var into the MCP subprocess."
+        )
+
+    def test_no_rust_log_in_pkb_env(self):
+        """RUST_LOG must not be in the pkb MCP server env (regression guard).
+
+        The 2026-04-28 regression had ``RUST_LOG: warn`` in the env block where
+        ``PKB_MCP_URL`` should have been. This test pins the absence of that
+        specific misconfig. See PR #784.
+        """
+        m = self._manifest()
+        env = m.get("mcpServers", {}).get("pkb", {}).get("env", {})
+        assert "RUST_LOG" not in env, (
+            "gemini-extension.json: RUST_LOG found in pkb MCP server env. "
+            "This was the root cause of the 2026-04-28 regression (PR #784). "
+            "Remove it — RUST_LOG does not belong in the MCP server env block."
+        )
+
+
 class TestDistStructure:
     """The built extension has everything `gemini-extension.json` promises."""
 
