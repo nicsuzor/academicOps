@@ -978,8 +978,47 @@ class Entry:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Entry:
         """Create Entry from JSONL dict."""
-        # Extract tokens from message.usage if present
+        # Detect Cowork message types (type='message' with role='user'/'assistant')
+        entry_type = data.get("type", "unknown")
         message = data.get("message", {})
+        content = data.get("content", {})
+
+        # Cowork audit normalization
+        if entry_type == "message":
+            role = data.get("role")
+            if role in ("user", "assistant"):
+                entry_type = role
+            # If content is a top-level string (Cowork), wrap it in a message-like dict
+            if isinstance(data.get("content"), str) and not message:
+                message = {"role": role, "content": [{"type": "text", "text": data.get("content")}]}
+        elif entry_type == "tool_call":
+            entry_type = "assistant"
+            message = {
+                "role": "assistant",
+                "content": [
+                    {
+                        "type": "tool_use",
+                        "id": data.get("id"),
+                        "name": data.get("name"),
+                        "input": data.get("args", {}),
+                    }
+                ],
+            }
+        elif entry_type == "tool_result":
+            entry_type = "user"
+            message = {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": data.get("tool_use_id"),
+                        "content": data.get("output", ""),
+                        "is_error": data.get("is_error", False),
+                    }
+                ],
+            }
+
+        # Extract tokens from message.usage if present
         usage = message.get("usage", {})
         input_tokens = usage.get("input_tokens")
         output_tokens = usage.get("output_tokens")
@@ -988,11 +1027,11 @@ class Entry:
         model = message.get("model")
 
         entry = cls(
-            type=data.get("type", "unknown"),
+            type=entry_type,
             uuid=data.get("uuid", ""),
             parent_uuid=data.get("parentUuid", ""),
-            message=data.get("message", {}),
-            content=data.get("content", {}),
+            message=message,
+            content=content or message.get("content", {}),
             is_sidechain=data.get("isSidechain", False),
             is_meta=data.get("isMeta", False),
             tool_use_result=data.get("toolUseResult", {}),
