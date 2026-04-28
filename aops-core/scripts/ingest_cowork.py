@@ -3,7 +3,7 @@
 Ingest Cowork audit logs into the aOps transcript pipeline.
 
 Finds Cowork audit.jsonl files on the Mac, normalizes them to the
-Claude Code session schema, and saves them to $AOPS_SESSIONS/transcripts/cowork/.
+Claude Code session schema, and saves them to $AOPS_SESSIONS/cowork-logs/.
 """
 
 import json

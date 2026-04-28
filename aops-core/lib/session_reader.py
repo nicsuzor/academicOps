@@ -1024,11 +1024,11 @@ def find_sessions(
     """
     sessions = []
 
-    # 1. Find Claude Code sessions
+    # 1. Find Claude Code sessions (and ingested Cowork sessions)
     if claude_projects_dir is None:
         claude_projects_dir = Path.home() / ".claude" / "projects"
 
-    # 1. Search in ~/.claude/projects/ and framework-persisted locations
+    # Search in ~/.claude/projects/ and framework-persisted locations
     claude_dirs = [claude_projects_dir, get_sessions_repo() / "cowork-logs"]
 
     for project_base in claude_dirs:

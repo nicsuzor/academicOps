@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
 # repo-sync-cron.sh - Periodic maintenance: transcripts, dashboard, repo sync, and sweep
 #
-# Five functions, composable via CLI:
-#   do_gha_sync   - Sync claude-session artifacts from configured GHA repos
-#   do_transcript - Generate recent session transcripts
-#   do_dashboard  - Update task graph (pkb graph)
-#   do_sync       - Sync all git repositories via polecat sync
-#   do_sweep      - Sweep merge_ready tasks for PR status updates
+# Six functions, composable via CLI:
+#   do_cowork_ingest - Normalize and sync Cowork audit logs into sessions repo
+#   do_gha_sync      - Sync claude-session artifacts from configured GHA repos
+#   do_transcript    - Generate recent session transcripts
+#   do_dashboard     - Update task graph (pkb graph)
+#   do_sync          - Sync all git repositories via polecat sync
+#   do_sweep         - Sweep merge_ready tasks for PR status updates
 #
 # Usage:
-#   ./scripts/repo-sync-cron.sh              # Full: gha_sync + transcript + dashboard + sync + sweep
+#   ./scripts/repo-sync-cron.sh              # Full: cowork_ingest + gha_sync + transcript + dashboard + sync + sweep
+#   ./scripts/repo-sync-cron.sh cowork_ingest # Just Cowork audit log ingestion
 #   ./scripts/repo-sync-cron.sh gha_sync     # Just GHA artifact sync
 #   ./scripts/repo-sync-cron.sh transcript   # Just transcript
 #   ./scripts/repo-sync-cron.sh dashboard    # Just dashboard
