@@ -8,7 +8,6 @@ where HH is the 24-hour local time when the session was created.
 """
 
 import os
-import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -43,6 +42,44 @@ def _parse_date_arg(date: str | None) -> datetime | None:
 
     # Only attach local timezone for naive datetimes; preserve explicit tz as-is
     return dt if dt.tzinfo is not None else dt.astimezone()
+
+
+def _is_polecat_sandbox() -> bool:
+    """True if running inside a polecat or crew container."""
+    return bool(os.environ.get("POLECAT_SESSION_TYPE"))
+
+
+def _polecat_claude_state_dir(project_folder: str, subsystem: str) -> Path:
+    """Return a writable directory for Claude hook/state/gate files inside a polecat container.
+
+    Polecat sets ``HOME=/home/worker`` in the image and ``chmod 777`` on
+    ``/home/worker`` so the host-UID worker can write there. After the run,
+    polecat extracts ``/home/worker/.claude/projects/`` to the host session
+    directory, so writes inside this path land back on the host.
+
+    When ``HOME`` is misconfigured or ``/home/worker`` is unavailable, falls
+    back to ``/tmp/aops-<subsystem>-<uid>/<project>/`` — still writable in the
+    sandbox, but not extracted to the host.
+
+    Args:
+        project_folder: Sanitized Claude project folder name.
+        subsystem: ``hooks``, ``state``, or ``gates`` — used only in the /tmp
+            fallback path so the three subsystems don't collide.
+
+    Returns:
+        Writable directory (created if needed). Never raises.
+    """
+    container_home = Path("/home/worker")
+    if container_home.is_dir() and os.access(container_home, os.W_OK):
+        candidate = container_home / ".claude" / "projects" / project_folder
+        try:
+            candidate.mkdir(parents=True, exist_ok=True)
+            return candidate
+        except (PermissionError, OSError):
+            pass
+    fallback = Path("/tmp") / f"aops-{subsystem}-{os.getuid()}" / project_folder
+    fallback.mkdir(parents=True, exist_ok=True)
+    return fallback
 
 
 def get_claude_project_folder() -> str:
@@ -215,18 +252,11 @@ def get_hook_log_path(
     else:
         # Claude: ~/.claude/projects/<project>/YYYYMMDD-HH-<shorthash>-hooks.jsonl
         project_folder = get_claude_project_folder()
+        if _is_polecat_sandbox():
+            return _polecat_claude_state_dir(project_folder, "hooks") / filename
         claude_projects_dir = Path.home() / ".claude" / "projects" / project_folder
-        try:
-            claude_projects_dir.mkdir(parents=True, exist_ok=True)
-            return claude_projects_dir / filename
-        except (PermissionError, OSError) as e:
-            print(
-                f"WARNING: hook log dir {claude_projects_dir} inaccessible ({e}); falling back to /tmp/aops-hooks",
-                file=sys.stderr,
-            )
-            fallback_dir = Path("/tmp") / f"aops-hooks-{os.getuid()}" / project_folder
-            fallback_dir.mkdir(parents=True, exist_ok=True)
-            return fallback_dir / filename
+        claude_projects_dir.mkdir(parents=True, exist_ok=True)
+        return claude_projects_dir / filename
 
 
 def get_session_status_dir(
@@ -272,18 +302,11 @@ def get_session_status_dir(
     # 3. Claude Code session (or unknown) - derive path from cwd
     # Same logic as session_env_setup.sh: ~/.claude/projects/-<cwd-with-dashes>/
     project_folder = get_claude_project_folder()
+    if _is_polecat_sandbox():
+        return _polecat_claude_state_dir(project_folder, "state")
     status_dir = Path.home() / ".claude" / "projects" / project_folder
-    try:
-        status_dir.mkdir(parents=True, exist_ok=True)
-        return status_dir
-    except (PermissionError, OSError) as e:
-        print(
-            f"WARNING: session status dir {status_dir} inaccessible ({e}); falling back to /tmp/aops-state",
-            file=sys.stderr,
-        )
-        fallback_dir = Path("/tmp") / f"aops-state-{os.getuid()}" / project_folder
-        fallback_dir.mkdir(parents=True, exist_ok=True)
-        return fallback_dir
+    status_dir.mkdir(parents=True, exist_ok=True)
+    return status_dir
 
 
 def get_session_file_path(
@@ -435,18 +458,11 @@ def get_gate_file_path(
         return logs_dir / filename
     else:
         project_folder = get_claude_project_folder()
+        if _is_polecat_sandbox():
+            return _polecat_claude_state_dir(project_folder, "gates") / filename
         claude_projects_dir = Path.home() / ".claude" / "projects" / project_folder
-        try:
-            claude_projects_dir.mkdir(parents=True, exist_ok=True)
-            return claude_projects_dir / filename
-        except (PermissionError, OSError) as e:
-            print(
-                f"WARNING: gate file dir {claude_projects_dir} inaccessible ({e}); falling back to /tmp/aops-gates",
-                file=sys.stderr,
-            )
-            fallback_dir = Path("/tmp") / f"aops-gates-{os.getuid()}" / project_folder
-            fallback_dir.mkdir(parents=True, exist_ok=True)
-            return fallback_dir / filename
+        claude_projects_dir.mkdir(parents=True, exist_ok=True)
+        return claude_projects_dir / filename
 
 
 def get_all_gate_file_paths(
