@@ -1,7 +1,21 @@
+import importlib.util
 import json
+import sys
+from pathlib import Path
 
 from lib.session_reader import find_sessions
 from lib.transcript_parser import SessionProcessor
+
+_REPO_ROOT = Path(__file__).parent.parent.parent
+
+
+def _import_transcript():
+    spec = importlib.util.spec_from_file_location(
+        "transcript", _REPO_ROOT / "aops-core" / "scripts" / "transcript.py"
+    )
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
 
 
 def test_cowork_audit_parsing(tmp_path):
@@ -53,6 +67,20 @@ def test_cowork_audit_parsing(tmp_path):
     # Assistant sequence should include text and tool use
     assert len(turns[0].assistant_sequence) == 2
     assert any("Bash" in str(s) for s in turns[0].assistant_sequence)
+
+
+def test_is_test_session_cowork_not_filtered():
+    """Regression: Cowork audit.jsonl must not be filtered as a test session.
+
+    Before the fix, paths containing 'local' were filtered out by _is_test_session,
+    causing Cowork sessions (under local-agent-mode-sessions/) to be skipped.
+    """
+    transcript = _import_transcript()
+    cowork_path = Path(
+        "/Users/nic/Library/Application Support/Claude/"
+        "local-agent-mode-sessions/user-uuid/org-uuid/local_abc123xyz/audit.jsonl"
+    )
+    assert not transcript._is_test_session(cowork_path)
 
 
 def test_cowork_ingested_discovery(tmp_path, monkeypatch):
