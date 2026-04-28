@@ -74,6 +74,16 @@ repos:
         pass_filenames: false
         files: 'AXIOMS\.md$|RULES\.md$|plugin\.json$|claude-settings\.json$'
 
+      # R5.6 — block new orphan markdown files (worker findings, capability
+      # docs, summaries, comparisons, explainers belong in task body / parent
+      # epic / PKB / a file named in an approved plan, not loose .md files).
+      - id: check-no-new-orphan-md
+        name: check no new orphan markdown
+        entry: uv run python scripts/check_no_new_orphan_md.py
+        language: system
+        pass_filenames: false
+        files: '\.md$'
+
   # Type checking and full framework health checks run in CI only
   # (see .github/workflows/framework-health.yml)
   #

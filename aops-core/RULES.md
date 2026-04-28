@@ -129,6 +129,10 @@ DO NOT keep parallel copies "in sync" by editing both. When duplicates are found
 
 DO NOT cite a stale copy of a principle, fact, or definition. Cite the canonical location.
 
+### R5.6 No new orphan markdown
+
+DO NOT create new `.md` files. Worker findings, capability docs, summaries, comparisons, and explainers belong in their canonical location: the task body, the parent epic, the PKB (via the `remember` skill), or a file explicitly named in an approved plan or user directive. EXCEPT test fixtures and evidentiary data, which are not duplicative content. Tier: `warn` (mechanically enforced by the `check-no-new-orphan-md` pre-commit hook on `git add` of new `.md` files outside the canonical-location allowlist; legitimate additions surface to the user under R8.1 in-session authorisation).
+
 ---
 
 ## A6 — Stay Within Scope
