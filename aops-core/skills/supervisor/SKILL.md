@@ -229,13 +229,33 @@ External triggers that start the supervision loop.
   and open a PR. Do NOT halt on stderr keywords — wait for a terminal signal:
   `polecat finish`, PR URL, or process exit with non-zero status. "PR's up" /
   "Task updated" in the stream IS the success signal.
-- **MCP / CLI / disk three-way divergence.** After a `git pull`, the local
-  filesystem has the task file, the local `pkb show` CLI usually finds it, but
-  the remote PKB MCP (tailscale host) can lag by minutes. Polecat's bootstrap
-  validation hits the MCP and will exit if the task isn't there yet, leaving
-  the task claimed but no worktree. Recovery: `polecat reset-stalled --hours 0
-  --force` then re-dispatch. Pre-flight: `pkb show <task-id>` AND a PKB MCP
-  `get_task` before dispatching a freshly-pulled task.
+- **MCP task-visibility lag is a git-sync problem, not a reindex problem.**
+  PKB MCP `get_task` reads from the remote host's filesystem. A task is
+  visible to MCP iff its file is on disk in the remote `$ACA_DATA` (and
+  occasionally `$ACA_SESSIONS`) clone. When a freshly-created or freshly-
+  modified task returns `Task not found`, the cause is almost always a
+  **stalled git push from your machine, an unresolved sync conflict on the
+  remote, or the remote's pull cron not having fired yet** — not the vector
+  reindex. (Reindex affects ONLY the full-text vector search — `pkb search`,
+  `pkb_context` semantic queries. CRUD operations like `get_task`,
+  `update_task`, `list_tasks` read directly from disk and are unaffected by
+  reindex state.)
+
+  **When dispatch fails with `Task not found`**:
+  1. **Check your local push state** — `cd $ACA_DATA && git status` and
+     `git log origin/main..HEAD`. If you're ahead of origin or have uncommitted
+     changes touching the task file, that's the cause. Push.
+  2. **Check the remote's sync state** — if you suspect a sync conflict on
+     the host running the MCP, ask the user (or check the remote's git status
+     via SSH if you have it). Sync conflicts on the remote silently halt the
+     pull cron until manually resolved.
+  3. **Then retry dispatch** — no `polecat reset-stalled` needed unless the
+     bootstrap actually claimed the task before failing (check `polecat list`
+     and `worktrees/`).
+
+  Pre-flight: `pkb show <task-id>` confirms the task exists locally. If you
+  also need to confirm the remote MCP can see it, attempt a get_task probe
+  before firing the worker.
 - **`merge-prep-status: pending`** — set by `pr-pipeline.yml`'s initialize
   job and cleared only when the merge-prep agent sets `success` (graduation)
   or `failure` (after 3 consecutive failures). A PR with green CI may still

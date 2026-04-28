@@ -29,7 +29,13 @@ Before dispatching ANY task to a worker, the supervisor must validate:
    - Local CLI index (`pkb show task-<id>`)
    - Remote PKB MCP (`get_task` via MCP)
 
-   After a fresh `git pull`, the MCP can lag by minutes. If MCP returns "Task not found" while disk and CLI see it, **do not dispatch**. Polecat will claim the task, its bootstrap will fail the MCP lookup, and the worker will exit leaving the task stuck in `in_progress` with no worktree. Wait for MCP to catch up, then re-check.
+   If MCP returns `Task not found` while local disk and `pkb show` see it, the cause is a **git sync gap between your machine and the host running the MCP**, not vector reindex. Reindex affects only the full-text vector search (`pkb search`, semantic queries); CRUD calls like `get_task` read directly from disk on the MCP host.
+
+   The fix is to push your changes and confirm the remote has pulled them, NOT to wait for "MCP to catch up":
+
+   - Check `cd $ACA_DATA && git status && git log origin/main..HEAD`. If you're ahead of origin, or have uncommitted changes touching the task file, push.
+   - If the remote's pull cron has stalled on a sync conflict, that requires manual resolution on the remote host. If you suspect this, escalate to the user.
+   - Polecat will otherwise claim the task, fail the MCP lookup, and exit leaving the task stuck in `in_progress` with no worktree.
 
 2. **Target currency**: Are the files/modules the task will touch still current? Check for:
    - Deprecated code (superseded by another implementation, possibly in a different repo)
