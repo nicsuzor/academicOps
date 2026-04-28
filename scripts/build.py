@@ -795,14 +795,24 @@ def build_aops_core(
         if not src_gemini_md.exists():
             print(f"Error: {src_gemini_md} not found.", file=sys.stderr)
             sys.exit(1)
-        safe_copy(src_gemini_md, dist_dir / "GEMINI.md")
-        print(f"  ✓ Copied GEMINI.md -> {dist_dir / 'GEMINI.md'}")
 
         import re as _re
 
+        # Read and clean GEMINI.md: stop packaging project-local CORE.md
+        # Use regex to strip @.agents/CORE.md from the distributed version
+        original_content = src_gemini_md.read_text()
+        cleaned_content = _re.sub(
+            r"^@\.agents/CORE\.md\s*$", "", original_content, flags=_re.MULTILINE
+        )
+        (dist_dir / "GEMINI.md").write_text(cleaned_content)
+        print(f"  ✓ Copied and cleaned GEMINI.md -> {dist_dir / 'GEMINI.md'}")
+
         imported = 0
-        for m in _re.finditer(r"^@([^\s]+)", src_gemini_md.read_text(), flags=_re.MULTILINE):
+        for m in _re.finditer(r"^@([^\s]+)", original_content, flags=_re.MULTILINE):
             rel = m.group(1)
+            if rel == ".agents/CORE.md":
+                # Skip project-local context in plugin distribution
+                continue
             if Path(rel).is_absolute() or ".." in rel:
                 print(
                     f"Warning: Skipping unsafe import path in GEMINI.md: {rel}",
