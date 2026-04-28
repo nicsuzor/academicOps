@@ -29,13 +29,13 @@ Before dispatching ANY task to a worker, the supervisor must validate:
    - Local CLI index (`pkb show task-<id>`)
    - Remote PKB MCP (`get_task` via MCP)
 
-   If MCP returns `Task not found` while local disk and `pkb show` see it, the cause is a **git sync gap between your machine and the host running the MCP**, not vector reindex. Reindex affects only the full-text vector search (`pkb search`, semantic queries); CRUD calls like `get_task` read directly from disk on the MCP host.
+   If MCP returns `Task not found` while local disk and `pkb show` see it, work through three failure modes (NONE of them are vector reindex — reindex affects only `pkb search` / semantic queries, never CRUD):
 
-   The fix is to push your changes and confirm the remote has pulled them, NOT to wait for "MCP to catch up":
+   1. **Local push not landed.** Check `cd $ACA_DATA && git status && git log origin/main..HEAD`. If you're ahead of origin or have uncommitted changes touching the task file, push.
+   2. **Remote pull cron stalled.** If the remote (the MCP host) has an unresolved sync conflict its pull cron silently halts. Requires manual resolution on the remote host — escalate to the user.
+   3. **MCP server's in-memory index is stale.** The PKB MCP server is a long-running daemon with an in-memory index that does NOT auto-refresh on file changes. The file is on disk on the MCP host, the local `pkb` CLI on the same host can read it, but the MCP server doesn't know about it. Diagnostic: ask the user to confirm all hosts are at the same commit. If yes, this is the cause. Fix: user restarts the MCP container/process; no in-process refresh signal exists.
 
-   - Check `cd $ACA_DATA && git status && git log origin/main..HEAD`. If you're ahead of origin, or have uncommitted changes touching the task file, push.
-   - If the remote's pull cron has stalled on a sync conflict, that requires manual resolution on the remote host. If you suspect this, escalate to the user.
-   - Polecat will otherwise claim the task, fail the MCP lookup, and exit leaving the task stuck in `in_progress` with no worktree.
+   Triage cheapest first: check (1) yourself, ask the user about (2), and only escalate (3) after the user confirms hosts are in sync. Polecat will otherwise claim the task, fail the MCP lookup, and exit leaving the task stuck in `in_progress` with no worktree.
 
 2. **Target currency**: Are the files/modules the task will touch still current? Check for:
    - Deprecated code (superseded by another implementation, possibly in a different repo)
