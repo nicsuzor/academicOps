@@ -22,7 +22,7 @@ def write_plugin_version(plugin_dir: Path, commit_sha: str) -> Path:
     Returns:
         Path to the created version file.
     """
-    version_file = plugin_dir / ".claude-plugin" / ".aops-version"
+    version_file = plugin_dir / ".aops-version"
     version_file.parent.mkdir(parents=True, exist_ok=True)
 
     version_data = {

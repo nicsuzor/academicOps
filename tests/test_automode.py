@@ -230,7 +230,7 @@ class TestPolekatDefaultsContainAopsRules:
 
     @pytest.fixture()
     def plugin_rules(self):
-        plugin_path = Path(__file__).parent.parent / "aops-core" / ".claude-plugin" / "plugin.json"
+        plugin_path = Path(__file__).parent.parent / "templates" / "aops-core.plugin.json"
         manifest = json.loads(plugin_path.read_text())
         return manifest["autoMode"]
 

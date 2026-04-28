@@ -17,7 +17,7 @@ This file is the **authoritative, fine-grained rule corpus** that agents apply a
 - **`RULES.md`** (this file) — R<axiom>.<n>, declarative prohibitions/obligations. SSOT for _what not to do_. Each rule cites the axiom that grounds it.
 - **`HEURISTICS.md`** — operational hypotheses (when X, prefer Y). Not rules; not always applicable.
 - **`CONSTRAINTS.md`** — mechanical limits enforced by hooks (file length, naming).
-- **`.claude-plugin/plugin.json`** `autoMode` — copies from this file into the live classifier. RULES.md is canonical; plugin.json is a mirror.
+- **`templates/aops-core.plugin.json`** `autoMode` — copies from this file into the live classifier. `RULES.md` is canonical; `templates/aops-core.plugin.json` is the source manifest used to generate the build artifact.
 
 **Form:** Each rule is stated as a clear prohibition (`DO NOT …`) or obligation (`HALT and …`). Carve-outs are one line, prefixed `EXCEPT`. Reasoning lives in the axiom, not the rule — keep rules terse so the classifier can quote them whole.
 
@@ -285,4 +285,4 @@ DO NOT treat an artifact you were asked to **produce** as immutable, and DO NOT 
 2. RULES.md — consulted whenever the classifier or the agent itself needs a specific prohibition.
 3. enforcement-map.md — for the reviewer/auditor view of which mechanism enforces which rule and at what tier.
 
-When this file is updated, mirror the change into `aops-core/.claude-plugin/plugin.json` `autoMode` (and the polecat default settings). RULES.md is canonical; plugin.json is a build artifact.
+When this file is updated, mirror the change into `templates/aops-core.plugin.json` `autoMode` (and the polecat default settings). `RULES.md` is canonical; the `plugin.json` manifest used by clients is a build artifact.

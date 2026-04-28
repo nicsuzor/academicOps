@@ -18,7 +18,7 @@ class TestPluginStructure:
 
     def test_plugin_json_exists(self) -> None:
         """Plugin manifest must exist."""
-        manifest = PLUGIN_ROOT / ".claude-plugin" / "plugin.json"
+        manifest = PLUGIN_ROOT.parent / "templates" / "aops-core.plugin.json"
         assert manifest.exists(), f"Missing plugin manifest: {manifest}"
 
     def test_required_directories_exist(self) -> None:
