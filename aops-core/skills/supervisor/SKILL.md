@@ -257,12 +257,9 @@ External triggers that start the supervision loop.
     host, any other clones) are at the same commit. If yes, this is the
     cause.
   - Fix: restart the PKB MCP container/process on the host. There is no
-    known signal to trigger an in-process refresh.
-  - Source: 2026-04-28 dogfood run on cowork-first-class epic. After the
-    user confirmed all hosts in sync but `Task not found` persisted,
-    restarting the docker container immediately fixed it. Same root cause
-    is likely behind sporadic "freshly-created task invisible to MCP for
-    minutes" reports.
+    known signal to trigger an in-process refresh. This is also the
+    likely cause of sporadic "freshly-created task invisible to MCP for
+    minutes" reports when all hosts are in sync.
 
   **Triage sequence**: check local push (1) first since it's cheapest.
   Then ask the user about remote sync (2). If the user confirms hosts are
