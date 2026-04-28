@@ -14,6 +14,11 @@
 #   3. unset → pkb_perf_proxy.py falls back to local 'pkb mcp' stdio transport
 #
 # This eliminates the post-install patch step. Survives plugin reinstall.
+#
+# Canonical transport policy:
+#   - HTTP/SSE is preferred for Cowork, Desktop Code, and other environments
+#     with limited shell access (set PKB_MCP_URL in ~/.env.local).
+#   - Stdio is the default fallback for local dev environments with full shell.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/ensure-path.sh"
