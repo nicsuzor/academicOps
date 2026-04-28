@@ -149,28 +149,28 @@ def test_gemini_polecat_persists_non_pr_result(tmp_path: Path) -> None:
     if not task_id:
         pytest.fail(f"Could not extract task id from PKB create_task response: {create_result!r}")
 
-    transcript_path = (
-        Path(os.environ.get("POLECAT_HOME", Path.home() / ".aops"))
-        / "polecats"
-        / f"{task_id}.jsonl"
-    )
-
-    polecat_bin = shutil.which("polecat") or shutil.which("pc")
-    if polecat_bin is None:
-        cli_path = REPO_ROOT / "polecat" / "cli.py"
-        cmd = [sys.executable, str(cli_path), "run", "-t", task_id, "-p", project, "-g"]
-    else:
-        cmd = [polecat_bin, "run", "-t", task_id, "-p", project, "-g"]
-
-    proc = subprocess.Popen(
-        cmd,
-        cwd=str(REPO_ROOT),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-    )
-
+    proc: subprocess.Popen[bytes] | None = None
     try:
+        transcript_path = (
+            Path(os.environ.get("POLECAT_HOME", Path.home() / ".aops"))
+            / "polecats"
+            / f"{task_id}.jsonl"
+        )
+
+        polecat_bin = shutil.which("polecat") or shutil.which("pc")
+        if polecat_bin is None:
+            cli_path = REPO_ROOT / "polecat" / "cli.py"
+            cmd = [sys.executable, str(cli_path), "run", "-t", task_id, "-p", project, "-g"]
+        else:
+            cmd = [polecat_bin, "run", "-t", task_id, "-p", project, "-g"]
+
+        proc = subprocess.Popen(
+            cmd,
+            cwd=str(REPO_ROOT),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
         # Allow up to 10 min for the worker to call release_task.
         deadline = time.monotonic() + 600.0
         last_status: str | None = None
@@ -187,7 +187,7 @@ def test_gemini_polecat_persists_non_pr_result(tmp_path: Path) -> None:
             time.sleep(5.0)
 
         if last_status not in TERMINAL_STATUSES:
-            proc.kill()
+            proc.terminate()
             pytest.fail(
                 f"Task {task_id} never reached a terminal status within 10 min "
                 f"(last status: {last_status!r}). "
@@ -211,7 +211,7 @@ def test_gemini_polecat_persists_non_pr_result(tmp_path: Path) -> None:
         )
 
     finally:
-        if proc.poll() is None:
+        if proc is not None and proc.poll() is None:
             proc.kill()
             try:
                 proc.wait(timeout=30)
