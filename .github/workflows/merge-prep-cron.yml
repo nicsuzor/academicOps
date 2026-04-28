@@ -74,12 +74,34 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       BAZAAR_WINDOW_SECONDS: 900  # 15 min — bazaar window for external reviews (Gemini, Copilot) to arrive
-      WORKFLOW_REF: ${{ inputs.workflow_ref || 'agent-merge-prep.yml' }}
-      BOT_IDENTITY: ${{ inputs.bot_identity || 'github-actions[bot]' }}
+      # Defaults are plain literals; do NOT reference `inputs.x` at job-level
+      # env. For workflow_run / schedule / push triggers the `inputs` context
+      # does not exist, and referencing it here makes the entire workflow
+      # file fail validation (zero jobs spawned, opaque "workflow file
+      # issue" error — broke the dispatcher 2026-04-27 → 2026-04-28). Runtime
+      # overrides for workflow_call / workflow_dispatch happen in the Init
+      # step below where the `inputs` context is available.
+      WORKFLOW_REF: 'agent-merge-prep.yml'
+      BOT_IDENTITY: 'github-actions[bot]'
     steps:
+      # ── Init: apply workflow_call / workflow_dispatch overrides ──
+      # Only writes overrides when triggered by an event that has an `inputs`
+      # context. Other triggers fall through to the literal defaults above.
+      - name: Apply input overrides (workflow_call / workflow_dispatch only)
+        if: github.event_name == 'workflow_call' || github.event_name == 'workflow_dispatch'
+        run: |
+          if [ -n "${{ inputs.workflow_ref }}" ]; then
+            echo "WORKFLOW_REF=${{ inputs.workflow_ref }}" >> "$GITHUB_ENV"
+            echo "Override: WORKFLOW_REF=${{ inputs.workflow_ref }}"
+          fi
+          if [ -n "${{ inputs.bot_identity }}" ]; then
+            echo "BOT_IDENTITY=${{ inputs.bot_identity }}" >> "$GITHUB_ENV"
+            echo "Override: BOT_IDENTITY=${{ inputs.bot_identity }}"
+          fi
+
       # ── Manual override: process a specific PR immediately ──
       - name: Manual override
-        if: inputs.pr_number != ''
+        if: (github.event_name == 'workflow_call' || github.event_name == 'workflow_dispatch') && inputs.pr_number != ''
         run: |
           PR_NUM="${{ inputs.pr_number }}"
           echo "Manual override: processing PR #$PR_NUM immediately"
