@@ -1278,6 +1278,18 @@ def main():
     # Generate marketplace.json for local dev and dist repo
     generate_marketplace(aops_root, dist_root, version)
 
+    # Generate consolidated CORE instructions for all platforms
+    try:
+        print("\nGenerating consolidated CORE instructions...")
+        subprocess.run(
+            [sys.executable, str(aops_root / "scripts" / "core-build.py")],
+            check=True,
+            cwd=aops_root,
+        )
+    except subprocess.CalledProcessError as e:
+        print(f"Error generating CORE instructions: {e}", file=sys.stderr)
+        sys.exit(1)
+
     package_artifacts(aops_root, dist_root, version, target_platform=args.target_platform)
 
     # Create git tags for release (only for generic builds, not platform-specific)

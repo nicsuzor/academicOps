@@ -1,6 +1,16 @@
+<!-- @platforms: claude-code, gemini, cowork, antigravity -->
+
 # academicOps Project Context
 
 This project contains the **academicOps** framework itself. You are currently working on the framework's source code.
+
+<!-- @platforms: tools-gemini, tools-claude -->
+
+# aops-tools: Academic Domain Skills
+
+This package provides **fungible** academic domain skills for the academicOps framework. These skills are optional and designed to be replaced when better external tools become available.
+
+<!-- @platforms: all -->
 
 ## Path Discovery (CRITICAL)
 
@@ -33,9 +43,19 @@ The framework uses named agents with distinct personalities and areas of experti
 - **Marsha (The QA Reviewer)**: Independently verifies work against original user intent.
 - **Jr (The Assistant)**: General-purpose framework interaction — loads framework + project context from PKB, coordinates work, maintains institutional memory (`aops-state` PKB document).
 
+<!-- @platforms: cowork -->
+
+### Context loading
+
+This runtime does not run hooks. Invoke the `aops:context` skill at session start to load CORE state, the active daily, and the current task.
+
+<!-- @platforms: all -->
+
 ## Cross-Repository Safety
 
 **NEVER modify files outside the current git repository without explicit user authorization.** If a bug is found in an upstream dependency, report it and file a task — do not edit the dependency directly. This applies to all skills, all agent types, and all platforms.
+
+<!-- @platforms: claude-code, gemini -->
 
 ## Development Procedures
 
@@ -43,6 +63,8 @@ The framework uses named agents with distinct personalities and areas of experti
 - **Testing**: Run tests using `uv run pytest tests/` or `uv run pytest aops-core/`.
 - **Building**: Use `uv run python scripts/build.py` to build the distribution.
 - **Installing**: Use `./setup.sh` or `uv run python scripts/install.py` to install locally.
+
+<!-- @platforms: all -->
 
 ## PR Review Management
 
@@ -53,5 +75,28 @@ The framework uses named agents with distinct personalities and areas of experti
 ## Agent Rules
 
 - **Always leave a loose thread.** Before completing work that is part of a chain, file the next task in the PKB so the chain isn't dropped. A summary message in chat is not sufficient; it disappears when the user multitasks. Use `create_task` with a clear parent, title, and body.
+
+<!-- @platforms: tools-gemini, tools-claude -->
+
+## What's here
+
+- `analyst` — Research data analysis (dbt, Streamlit, statistics)
+- `pdf` — PDF generation with academic typography
+- `convert-to-md` — Batch document conversion (DOCX, PDF, XLSX → markdown)
+- `excalidraw` — Hand-drawn diagram creation
+- `flowchart` — Mermaid flowchart generation
+- `extract` — General extraction and ingestion routing
+
+## Design principle
+
+These skills exist only because no better external solution exists yet. They are explicitly designed to be retired when the external landscape improves. Install `aops-core` for the non-fungible epistemic infrastructure.
+
+## Installation
+
+```bash
+command claude plugin install aops-tools@aops
+```
+
+<!-- @platforms: all -->
 
 See [[README.md]] for framework usage documentation.
