@@ -328,11 +328,12 @@ gemini --sandbox 2>gemini-debug.log
 
 ### 3. Enable Verbose PKB Server Logging
 
-The PKB MCP server respects `RUST_LOG` env var. Change from `warn` to `debug` in the extension config:
+The PKB MCP server respects `RUST_LOG` env var. Add `RUST_LOG: "debug"` to the extension config env block:
 
 ```json
 "env": {
   "ACA_DATA": "${ACA_DATA}",
+  "PKB_MCP_URL": "${PKB_MCP_URL}",
   "RUST_LOG": "debug"
 }
 ```
