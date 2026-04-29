@@ -52,10 +52,13 @@ on:
         description: 'Full name of the repository (owner/repo)'
         type: string
         required: false
-    secrets:
-      GITHUB_TOKEN:
-        description: 'Token for GitHub API operations'
-        required: true
+    # No `secrets:` block. `GITHUB_TOKEN` is reserved — declaring it here
+    # makes GitHub silently reject the workflow at registration: the
+    # configured `name:` (Merge Prep Dispatcher) gets replaced by the file
+    # path, schedule never fires, workflow_run never fires, every push
+    # creates a 0-duration phantom failure run with `event=push`. Cross-repo
+    # callers should use `secrets: inherit` (see examples/cross-repo-shim/).
+    # Same-repo events get GITHUB_TOKEN auto-injected.
 
 concurrency:
   group: merge-prep-dispatcher

@@ -24,5 +24,4 @@ jobs:
       pr_number: ${{ inputs.pr_number }}
       workflow_ref: 'agent-merge-prep.yml' # Filename of the agent shim in consumer repo
       bot_identity: 'github-actions[bot]'
-    secrets:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    secrets: inherit  # passes GITHUB_TOKEN and any org/repo secrets the called workflow needs
