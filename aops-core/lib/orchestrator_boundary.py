@@ -20,6 +20,7 @@ See `specs/orchestrator-boundary.md` for the full boundary definition.
 from __future__ import annotations
 
 import os
+from collections.abc import Mapping
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -62,7 +63,7 @@ FRAMEWORK_PATH_PREFIXES: tuple[str, ...] = (
 _POLECAT_WORKER_SESSION_TYPES: frozenset[str] = frozenset({"polecat", "crew"})
 
 
-def is_brain_cwd(cwd: str | None, env: dict[str, str] | None = None) -> bool:
+def is_brain_cwd(cwd: str | None, env: Mapping[str, str] | None = None) -> bool:
     """Return True when cwd is inside the brain repo (`$ACA_DATA`).
 
     The orchestrator/dispositor boundary is brain-specific: the orchestrator
@@ -80,8 +81,8 @@ def is_brain_cwd(cwd: str | None, env: dict[str, str] | None = None) -> bool:
     if not aca_data:
         return False
     try:
-        cwd_resolved = Path(cwd).resolve()
-        aca_resolved = Path(aca_data).resolve()
+        cwd_resolved = Path(cwd).expanduser().resolve()
+        aca_resolved = Path(aca_data).expanduser().resolve()
     except (OSError, ValueError):
         return False
     try:
@@ -91,7 +92,7 @@ def is_brain_cwd(cwd: str | None, env: dict[str, str] | None = None) -> bool:
     return True
 
 
-def is_orchestrator_session(env: dict[str, str] | None = None, cwd: str | None = None) -> bool:
+def is_orchestrator_session(env: Mapping[str, str] | None = None, cwd: str | None = None) -> bool:
     """Return True when the current session is the orchestrator CLI.
 
     Two conditions must hold:
@@ -217,7 +218,7 @@ def classify_prompt(prompt: str) -> str:
 
 
 def should_inject_dispositor_reminder(
-    prompt: str, env: dict[str, str] | None = None, cwd: str | None = None
+    prompt: str, env: Mapping[str, str] | None = None, cwd: str | None = None
 ) -> bool:
     """Return True when the hydrator should inject the dispositor reminder.
 
