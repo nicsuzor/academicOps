@@ -725,11 +725,10 @@ def _format_oom_message(env: dict, daemon_mem_bytes: int | None = None) -> str:
     return "\n".join(lines)
 
 
-def _resolve_memory_limit(cli_flag: str | None, config: dict | None = None) -> str | None:
+def _resolve_memory_limit(cli_flag: str | None) -> str | None:
     """Resolve container memory limit from CLI flag or env var.
 
     Priority: CLI flag > POLECAT_DOCKER_MEMORY env var > None.
-    `config` is accepted for backwards-call-shape compatibility but ignored.
     """
     if cli_flag:
         return cli_flag
