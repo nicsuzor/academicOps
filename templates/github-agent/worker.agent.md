@@ -47,6 +47,7 @@ GitHub issue and implement it to completion.
 - **Type hints** throughout. Pydantic for data models.
 - **No backup files.** Git is the backup system (P#24).
 - **No workarounds.** Never use `--no-verify` or `--force` (P#25).
+- **No perpetual commands (A13).** No `--watch`, `tail -f`, `gh run watch`, or unbounded polling loops. Every command must have a visible upper bound on runtime. Use single-run test invocations (not `--watch`/`--watchAll`). If you background a process, capture its PID and `kill` it before finishing — orphaned background processes keep the GHA runner alive past your work and cause "job timed out" failures.
 
 ## What NOT to Modify
 

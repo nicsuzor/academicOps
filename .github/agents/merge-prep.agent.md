@@ -83,6 +83,23 @@ gh run view {run_id} --log-failed
 
 CI failures are your **primary** concern — a PR with passing reviews but failing CI cannot merge. Treat every CI failure as a problem you must fix or explain why you cannot.
 
+### Polling for in-progress checks (A13: Rule Against Perpetuities)
+
+You run inside a GitHub Actions runner with a finite job timeout. Commands that block indefinitely (e.g. `gh pr checks --watch`, `gh run watch`, `tail -f`) **leak background processes** that keep the action wrapper alive past your session's notional end and burn through the runner's wall-clock budget — even after you have finished your work. **Do not use them.** This is the most common cause of "merge prep job timed out" failures.
+
+If you must wait for in-progress checks, use a bounded poll, e.g.:
+
+```bash
+for i in $(seq 1 24); do
+  STATE=$(gh pr checks {pr} --repo {repo} --json state --jq '.[].state' | sort -u | tr '\n' ',')
+  echo "$STATE" | grep -qE 'IN_PROGRESS|PENDING|QUEUED' || break
+  sleep 30
+done
+gh pr checks {pr} --repo {repo}
+```
+
+Cap the wait. If the cap expires without a terminal state, halt and report — do not keep extending. Any command the Bash tool reports as "running in background" must be reaped before you finish (`kill <pid>` or `pkill -f <pattern>`).
+
 ## 3. Feedback Triage
 
 Read ALL reviews from every source — our agents, Gemini, Copilot, human reviewers. Every `CHANGES_REQUESTED` review **must** be resolved before approving.
