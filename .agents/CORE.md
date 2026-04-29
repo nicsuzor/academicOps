@@ -33,6 +33,34 @@ The framework uses named agents with distinct personalities and areas of experti
 - **Marsha (The QA Reviewer)**: Independently verifies work against original user intent.
 - **Jr (The Assistant)**: General-purpose framework interaction — loads framework + project context from PKB, coordinates work, maintains institutional memory (`aops-state` PKB document).
 
+## Tool Capabilities in Dispatched Sessions
+
+Claude Code sessions dispatched from Cowork/Dispatch (or started locally on this machine) have access to significantly more tools than agents typically assume. When dispatched, sessions inherit the full local environment:
+
+**Plugins and Skills:**
+
+- **aops-core plugin**: All skills (`/planner`, `/supervisor`, `/qa`, `/review-pr`, `/daily`, `/pull`, `/remember`, `/aops`, `/project`, `/sleep`, etc.) and named subagents (james, pauli, rbg, marsha, enforcer, etc.)
+- **aops-cowork plugin**: `convert-to-md`, `analyst`, `extract`, `excalidraw`, `flowchart`, and others
+- **Standard skills**: `docx`, `xlsx`, `pdf`, `pptx`, `canvas-design`, `mcp-builder`, `skill-creator`
+
+**MCP Servers:**
+
+- **PKB** (`mcp__plugin_aops-core_pkb__*`): Full task/document/graph/memory CRUD (~50 tools)
+- **Outlook** (`mcp__outlook__*`): Messages, calendar, attachments, search
+- **Discord** (`mcp__plugin_discord_discord__*`): Fetch/reply/edit/react
+- **Computer-use** (`mcp__computer-use__*`): Full desktop automation (screenshot, click, type, scroll) — 30-min approval timeout for Dispatch-spawned sessions
+- **Chrome tools**: `mcp__claude-in-chrome__*` for lightweight browser control; `mcp__Claude_Preview__*` for dev server preview/screenshot/interaction
+- **context7**: Library documentation lookup via `mcp__context7__*`
+- **Scheduled tasks**: Cron-style task scheduling
+
+**Browser Testing for UI Work:**
+
+- Agents working on UI (dashboard, web apps, frontend changes) should use **Claude_Preview** or **Control_Chrome** MCP tools to verify changes visually
+- Playwright can be installed via npm for headless testing but requires explicit setup
+- **Do NOT assume you lack browser access** — always check ToolSearch first before declaring a limitation
+
+**Key Principle:** Always verify what tools are available via ToolSearch before assuming you can't do something. The tool set is richer than default Claude Code.
+
 ## Cross-Repository Safety
 
 **NEVER modify files outside the current git repository without explicit user authorization.** If a bug is found in an upstream dependency, report it and file a task — do not edit the dependency directly. This applies to all skills, all agent types, and all platforms.
