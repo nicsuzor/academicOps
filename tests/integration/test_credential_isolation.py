@@ -423,7 +423,13 @@ class TestCredentialBridgeHook:
         )
 
     def test_hook_does_not_map_when_bot_token_absent(self, temp_env_file):
-        """When AOPS_BOT_GH_TOKEN is not set, hook should not write GH_TOKEN."""
+        """When AOPS_BOT_GH_TOKEN is not set anywhere (hook env nor shell),
+        sourcing the env file must NOT export GH_TOKEN/GITHUB_TOKEN.
+
+        The hook now uses deferred shell expansion (so the env file does
+        contain a conditional line referencing GH_TOKEN), but the conditional
+        must skip when the source variable is absent at source-time.
+        """
         ctx = HookContext(
             session_id="test-cred-no-bot",
             session_short_hash="nobot123",
@@ -444,9 +450,28 @@ class TestCredentialBridgeHook:
         ):
             run_session_env_setup(ctx, state)
 
-        content = temp_env_file.read_text()
-        assert "GH_TOKEN" not in content, (
-            f"Hook should NOT write GH_TOKEN when AOPS_BOT_GH_TOKEN is absent.\nGot: {content}"
+        # Source the env file in a clean bash subshell with AOPS_BOT_GH_TOKEN
+        # explicitly unset, then check GH_TOKEN/GITHUB_TOKEN are still unset.
+        result = subprocess.run(
+            [
+                "/bin/bash",
+                "-c",
+                f"unset AOPS_BOT_GH_TOKEN GH_TOKEN GITHUB_TOKEN; "
+                f"source {temp_env_file}; "
+                f"echo GH_SET=${{GH_TOKEN+yes}} GITHUB_SET=${{GITHUB_TOKEN+yes}}",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=True,
+        )
+        assert "GH_SET=yes" not in result.stdout, (
+            f"GH_TOKEN must NOT be exported when AOPS_BOT_GH_TOKEN is absent.\n"
+            f"Output: {result.stdout!r}"
+        )
+        assert "GITHUB_SET=yes" not in result.stdout, (
+            f"GITHUB_TOKEN must NOT be exported when AOPS_BOT_GH_TOKEN is absent.\n"
+            f"Output: {result.stdout!r}"
         )
 
     def test_hook_overrides_existing_personal_token(self, temp_env_file, credential_markers):
@@ -572,3 +597,170 @@ class TestSubprocessCredentialIsolation:
         assert result.stdout.strip() == "0", (
             f"GIT_TERMINAL_PROMPT should be '0', got: {result.stdout.strip()!r}"
         )
+
+
+# ---------------------------------------------------------------------------
+# Deferred-shell exports: handles the macOS-Claude-Desktop case where
+# AOPS_BOT_GH_TOKEN is set in the user's shell snapshot (~/.zshenv) but NOT
+# in the launchd env that the Python hook sees. The persist dict path silently
+# skipped GH_TOKEN/GITHUB_TOKEN; the shell-lines path defers resolution so
+# the shell snapshot's value is picked up at source-time.
+# ---------------------------------------------------------------------------
+
+
+class TestDeferredShellLines:
+    def test_shell_lines_defer_env_to_env(self):
+        """Env-to-env mappings produce shell-conditional exports."""
+        from lib.agent_env import get_env_mapping_shell_lines
+
+        lines = get_env_mapping_shell_lines()
+        gh_line = next((line for line in lines if "GH_TOKEN=" in line), None)
+        assert gh_line is not None, "GH_TOKEN export must be present"
+        assert "${AOPS_BOT_GH_TOKEN+x}" in gh_line, (
+            "Must use ${SOURCE+x} for is-set check (defer to shell)"
+        )
+        assert '"${AOPS_BOT_GH_TOKEN}"' in gh_line, (
+            "Must reference ${SOURCE} for value (defer to shell)"
+        )
+
+    def test_shell_lines_emit_literals_directly(self):
+        """Literals are written as direct exports, not deferred references."""
+        from lib.agent_env import get_env_mapping_shell_lines
+
+        lines = get_env_mapping_shell_lines()
+        ssh_line = next((line for line in lines if "SSH_AUTH_SOCK" in line), None)
+        assert ssh_line is not None
+        # Literal empty value: `export SSH_AUTH_SOCK=''`
+        assert ssh_line.strip() == "export SSH_AUTH_SOCK=''"
+
+    def test_shell_lines_resolve_via_bash(self, credential_markers):
+        """Bash-evaluating the shell lines must populate GH_TOKEN/GITHUB_TOKEN.
+
+        Reproduces the macOS-Claude-Desktop scenario: Python hook sees no
+        AOPS_BOT_GH_TOKEN, but the shell snapshot does. The deferred lines
+        must pick up the shell value when sourced.
+        """
+        from lib.agent_env import get_env_mapping_shell_lines
+
+        bot = credential_markers["bot"]
+        lines = get_env_mapping_shell_lines()
+        script = "\n".join(lines)
+
+        # Simulate the shell-snapshot setting AOPS_BOT_GH_TOKEN, then sourcing
+        # the deferred-export lines, then printing GH_TOKEN/GITHUB_TOKEN.
+        full = f'export AOPS_BOT_GH_TOKEN={bot}\n{script}\nprintf \'%s\\n%s\\n\' "$GH_TOKEN" "$GITHUB_TOKEN"\n'
+        result = subprocess.run(
+            ["/bin/bash", "-c", full], capture_output=True, text=True, timeout=10, check=True
+        )
+        gh, github = result.stdout.strip().split("\n")
+        assert gh == bot, "GH_TOKEN must resolve to bot value via deferred shell expansion"
+        assert github == bot, "GITHUB_TOKEN must resolve too"
+
+    def test_shell_lines_skip_when_source_unset(self):
+        """When SOURCE is unset, shell lines must not export an empty TARGET.
+
+        Avoids the regression where GH_TOKEN gets set to empty string,
+        causing gh CLI to fall through to keyring auth.
+        """
+        from lib.agent_env import get_env_mapping_shell_lines
+
+        lines = get_env_mapping_shell_lines()
+        script = "\n".join(lines)
+
+        # No AOPS_BOT_GH_TOKEN in env: GH_TOKEN should remain unset.
+        full = (
+            f'unset AOPS_BOT_GH_TOKEN\n{script}\nprintf "GH_TOKEN_SET=%s\\n" "${{GH_TOKEN+yes}}"\n'
+        )
+        result = subprocess.run(
+            ["/bin/bash", "-c", full], capture_output=True, text=True, timeout=10, check=True
+        )
+        assert "GH_TOKEN_SET=" in result.stdout
+        assert "GH_TOKEN_SET=yes" not in result.stdout, (
+            "GH_TOKEN must NOT be exported when AOPS_BOT_GH_TOKEN is unset"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Credential helper override: plugs the host-specific helper precedence bug
+# (~/.gitconfig: credential.https://github.com.helper = !gh auth git-credential).
+# ---------------------------------------------------------------------------
+
+
+class TestCredentialHelperOverride:
+    def test_session_env_setup_writes_helper_override(self, tmp_path, monkeypatch):
+        """SessionStart must write GIT_CONFIG_KEY_2/3 reset+install for github.com helper."""
+        env_file = tmp_path / "env.sh"
+        env_file.touch()
+        monkeypatch.setenv("CLAUDE_ENV_FILE", str(env_file))
+        monkeypatch.setenv("AOPS_BOT_GH_TOKEN", "ghp_dummy_for_test")
+
+        ctx = HookContext(
+            session_id=str(uuid.uuid4()),
+            trace_id=str(uuid.uuid4()),
+            hook_event="SessionStart",
+            transcript_path="/tmp/test-transcript.jsonl",
+            cwd=str(tmp_path),
+            raw_input={"source": "startup"},
+        )
+        state = SessionState.create(session_id=ctx.session_id)
+        run_session_env_setup(ctx, state)
+
+        contents = env_file.read_text()
+        assert "GIT_CONFIG_COUNT=4" in contents, (
+            "GIT_CONFIG_COUNT must be 4 to enable both insteadOf and helper override"
+        )
+        # Reset entry then install entry — list-typed helper requires reset first
+        helper_keys = [
+            line
+            for line in contents.splitlines()
+            if "GIT_CONFIG_KEY_2" in line or "GIT_CONFIG_KEY_3" in line
+        ]
+        assert len(helper_keys) == 2
+        assert all("credential.https://github.com.helper" in line for line in helper_keys)
+        # Reset value must be empty
+        assert "GIT_CONFIG_VALUE_2=''" in contents
+        # Install value must contain the bot-PAT printf
+        assert 'printf "username=x-access-token' in contents
+
+    def test_helper_override_resolves_via_git(self, tmp_path, credential_markers):
+        """The helper override must produce the bot identity when git asks for credentials."""
+        bot = credential_markers["bot"]
+
+        # Build the same env layout session_env_setup writes.
+        env = os.environ.copy()
+        env["GH_TOKEN"] = bot
+        env["GITHUB_TOKEN"] = bot
+        env["AOPS_BOT_GH_TOKEN"] = bot
+        env["GIT_CONFIG_COUNT"] = "4"
+        env["GIT_CONFIG_KEY_0"] = "url.https://github.com/.insteadOf"
+        env["GIT_CONFIG_VALUE_0"] = "git@github.com:"
+        env["GIT_CONFIG_KEY_1"] = "url.https://github.com/.insteadOf"
+        env["GIT_CONFIG_VALUE_1"] = "ssh://git@github.com/"
+        env["GIT_CONFIG_KEY_2"] = "credential.https://github.com.helper"
+        env["GIT_CONFIG_VALUE_2"] = ""
+        env["GIT_CONFIG_KEY_3"] = "credential.https://github.com.helper"
+        env["GIT_CONFIG_VALUE_3"] = (
+            '!f() { test "$1" = get && '
+            'printf "username=x-access-token\\npassword=%s\\n" '
+            '"${GH_TOKEN:-${GITHUB_TOKEN:-${AOPS_BOT_GH_TOKEN}}}"; }; f'
+        )
+
+        # Force git to ignore user-config (HOME=tmp_path) so we test ONLY the
+        # GIT_CONFIG_KEY_* env layer — same layer the hook adds.
+        env["HOME"] = str(tmp_path)
+        env["XDG_CONFIG_HOME"] = str(tmp_path / "xdg")
+
+        result = subprocess.run(
+            ["git", "credential", "fill"],
+            env=env,
+            input="protocol=https\nhost=github.com\n\n",
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=True,
+        )
+        out = result.stdout
+        assert "username=x-access-token" in out, (
+            f"Helper override must produce x-access-token username; got:\n{out}"
+        )
+        assert f"password={bot}" in out, "Helper override must produce bot PAT as password"
