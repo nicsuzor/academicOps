@@ -623,15 +623,15 @@ class TestDeferredShellLines:
             "Must reference ${SOURCE} for value (defer to shell)"
         )
 
-    def test_shell_lines_emit_literals_directly(self):
-        """Literals are written as direct exports, not deferred references."""
+    def test_shell_lines_excludes_literals(self):
+        """Literals are excluded from shell_lines — they're written by set_persistent_env."""
         from lib.agent_env import get_env_mapping_shell_lines
 
         lines = get_env_mapping_shell_lines()
-        ssh_line = next((line for line in lines if "SSH_AUTH_SOCK" in line), None)
-        assert ssh_line is not None
-        # Literal empty value: `export SSH_AUTH_SOCK=''`
-        assert ssh_line.strip() == "export SSH_AUTH_SOCK=''"
+        # SSH_AUTH_SOCK is a literal entry; it must NOT appear in deferred lines.
+        assert not any("SSH_AUTH_SOCK" in line for line in lines), (
+            "Literal entries must be excluded from shell_lines to avoid redundant writes"
+        )
 
     def test_shell_lines_resolve_via_bash(self, credential_markers):
         """Bash-evaluating the shell lines must populate GH_TOKEN/GITHUB_TOKEN.
