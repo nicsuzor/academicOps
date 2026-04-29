@@ -156,11 +156,25 @@ The framework is designed to work with minimal configuration. Default values are
 2. `~/.env.local` file
 3. Framework defaults (e.g., local `pkb` binary for MCP)
 
-| Variable              | Purpose                            | Default                |
-| --------------------- | ---------------------------------- | ---------------------- |
-| `ACA_DATA`            | Your personal knowledge base root  | Required (no default)  |
-| `PKB_MCP_URL`         | Endpoint for the PKB MCP server    | (local stdio fallback) |
-| `HYDRATION_GATE_MODE` | Friction level for context loading | `warn`                 |
+| Variable              | Purpose                                        | Default                  |
+| --------------------- | ---------------------------------------------- | ------------------------ |
+| `ACA_DATA`            | Your personal knowledge base root              | Required (no default)    |
+| `AOPS_SESSIONS`       | Sessions repo (holds `projects.yaml` registry) | `$POLECAT_HOME/sessions` |
+| `AOPS_SRC_DIR`        | Default search root for project repos          | `~/src`                  |
+| `PKB_MCP_URL`         | Endpoint for the PKB MCP server                | (local stdio fallback)   |
+| `HYDRATION_GATE_MODE` | Friction level for context loading             | `warn`                   |
+
+The project registry is the checked-in `$AOPS_SESSIONS/projects.yaml`. Path
+resolution is convention-based (`$AOPS_SRC_DIR/<repo>`); for off-convention
+repos, add a `paths:` entry to `$POLECAT_HOME/local.yaml` (the only
+machine-local config file polecat reads):
+
+```yaml
+# $POLECAT_HOME/local.yaml
+paths:
+  brain: ${ACA_DATA}
+  myproject: /opt/work/myproject
+```
 
 To override the default MCP server (e.g., if running a remote server), add to `~/.env.local`:
 

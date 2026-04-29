@@ -49,105 +49,145 @@ def get_polecat_home() -> Path:
     return Path.home() / ".polecat"
 
 
-def get_config_path(home_dir: Path | None = None) -> Path:
-    """Get the polecat config file path.
-
-    Args:
-        home_dir: Optional home directory override
-
-    Returns:
-        Path to polecat.yaml config file
-    """
-    if home_dir is None:
-        home_dir = get_polecat_home()
-    return home_dir / "polecat.yaml"
+def get_config_path() -> Path:
+    """Get the project registry path: $AOPS_SESSIONS/projects.yaml."""
+    sessions = os.environ.get("AOPS_SESSIONS")
+    if sessions:
+        sessions_path = Path(sessions).expanduser()
+    else:
+        sessions_path = get_polecat_home() / "sessions"
+    return sessions_path / "projects.yaml"
 
 
-# Config file location (private, not in public repo)
-# This is the default, but load_config() should use get_config_path() for flexibility
-POLECAT_CONFIG = get_config_path()
+def get_local_overlay_path() -> Path:
+    """Get the machine-local overlay path: $POLECAT_HOME/local.yaml."""
+    return get_polecat_home() / "local.yaml"
 
 
 def load_config(config_path: Path | None = None) -> dict:
-    """Load full polecat config from file.
-
-    Args:
-        config_path: Optional path to config file. Defaults to get_config_path().
-
-    Returns:
-        Dict with projects and crew_names
-    """
+    """Load the project registry from $AOPS_SESSIONS/projects.yaml."""
     if config_path is None:
         config_path = get_config_path()
 
     if not config_path.exists():
         raise FileNotFoundError(
-            f"Polecat config not found: {config_path}\n"
-            f"Create it with your project definitions. See polecat docs for format."
+            f"Project registry not found: {config_path}\n"
+            f"Set $AOPS_SESSIONS to your sessions repo and ensure projects.yaml exists."
         )
 
     with open(config_path) as f:
-        return yaml.safe_load(f)
+        return yaml.safe_load(f) or {}
 
 
-def load_projects(config_path: Path | None = None) -> dict:
-    """Load project registry from config file.
+def load_local_overlay(overlay_path: Path | None = None) -> dict:
+    """Load the per-machine overlay (paths only). Empty if file missing."""
+    if overlay_path is None:
+        overlay_path = get_local_overlay_path()
+    if not overlay_path.exists():
+        return {}
+    with open(overlay_path) as f:
+        return yaml.safe_load(f) or {}
 
-    Args:
-        config_path: Optional path to config file.
 
-    Returns:
-        Dict mapping project slug to config (path, default_branch)
+def _expand_env(value: str) -> str:
+    """Expand ${VAR} and ~ in a string value."""
+    return os.path.expandvars(os.path.expanduser(value))
+
+
+def resolve_project_path(
+    slug: str,
+    repo: str | None = None,
+    overlay_path: Path | None = None,
+    overlay: dict | None = None,
+) -> Path | None:
+    """Resolve a project slug to an on-disk path.
+
+    Order:
+    1. $POLECAT_HOME/local.yaml `paths.<slug>` (with ${VAR} interpolation)
+    2. $AOPS_SRC_DIR/<repo> if it has .git
+    3. Legacy fallbacks: ~/src/<repo>, ~/<repo>, /opt/$USER/<repo>
+
+    Pass `overlay` to skip re-reading local.yaml when batch-resolving.
+    Returns None if no candidate has a .git directory.
     """
-    config = load_config(config_path)
+    repo_name = repo or slug
+
+    if overlay is None:
+        overlay = load_local_overlay(overlay_path)
+    overlay_paths = overlay.get("paths", {}) or {}
+    if slug in overlay_paths:
+        candidate = Path(_expand_env(str(overlay_paths[slug])))
+        return candidate if candidate.exists() else None
+
+    src_dir = os.environ.get("AOPS_SRC_DIR")
+    search_dirs = []
+    if src_dir:
+        search_dirs.append(Path(_expand_env(src_dir)))
+    search_dirs.extend(
+        [
+            Path.home() / "src",
+            Path.home(),
+            Path("/opt") / os.environ.get("USER", "user"),
+        ]
+    )
+
+    for base in search_dirs:
+        candidate = base / repo_name
+        if candidate.exists() and (candidate / ".git").exists():
+            return candidate
+    return None
+
+
+def load_projects(
+    config_path: Path | None = None,
+    overlay_path: Path | None = None,
+    config: dict | None = None,
+) -> dict:
+    """Load project registry. Returns dict slug -> {path: Path|None, default_branch, repo, ...}.
+
+    Pass `config` to skip re-reading projects.yaml when callers already loaded it.
+
+    NOTE: `path` may be None when the repo isn't found via overlay or convention.
+    Callers must check `if entry["path"] is None` before using it.
+    """
+    if config is None:
+        config = load_config(config_path)
+    overlay = load_local_overlay(overlay_path)
 
     projects = {}
-    for slug, proj in config.get("projects", {}).items():
-        path = proj.get("path", "")
-        # Expand ~ in paths
-        if path.startswith("~"):
-            path = Path(path).expanduser()
-        else:
-            path = Path(path)
-        projects[slug] = {
-            "path": path,
+    for slug, proj in (config.get("projects") or {}).items():
+        proj = proj or {}
+        repo = proj.get("repo", slug)
+        entry = {
+            "path": resolve_project_path(slug, repo, overlay=overlay),
             "default_branch": proj.get("default_branch", "main"),
+            "repo": repo,
         }
+        for key in ("auto_commit", "merge_strategy"):
+            if key in proj:
+                entry[key] = proj[key]
+        projects[slug] = entry
     return projects
 
 
 def load_project_aliases(config_path: Path | None = None) -> dict[str, str]:
     """Load shorthand aliases that map to project slugs.
 
-    Aliases are defined in polecat.yaml under project_aliases, e.g.:
+    Aliases are defined in $AOPS_SESSIONS/projects.yaml under project_aliases, e.g.:
         project_aliases:
             bm: buttermilk
 
     Built-in aliases: project slugs always resolve to themselves.
-
-    Args:
-        config_path: Optional path to config file.
-
-    Returns:
-        Dict mapping alias -> project slug
     """
     config = load_config(config_path)
     aliases = dict(config.get("project_aliases", {}))
-    # Every project slug is also a valid alias for itself
     for slug in config.get("projects", {}):
         aliases.setdefault(slug, slug)
     return aliases
 
 
 def load_crew_names(config_path: Path | None = None) -> list[str]:
-    """Load crew names from config file.
-
-    Args:
-        config_path: Optional path to config file.
-
-    Returns:
-        List of crew names for random selection
-    """
+    """Load crew names from the project registry."""
     config = load_config(config_path)
     return config.get("crew_names", ["crew"])
 
@@ -209,15 +249,15 @@ class PolecatManager:
         else:
             self.home_dir = get_polecat_home()
 
-        # Config file location
-        self.config_path = self.home_dir / "polecat.yaml"
+        # Project registry path ($AOPS_SESSIONS/projects.yaml)
+        self.config_path = get_config_path()
 
         # Ensure home directory exists
         self.home_dir.mkdir(parents=True, exist_ok=True)
 
         # Location for active polecat worktrees. A dedicated subdirectory so
         # stale-cleanup loops have a bounded namespace to iterate — the home
-        # dir also holds sessions/, polecat.yaml, and other non-worktree state
+        # dir also holds sessions/, local.yaml, and other non-worktree state
         # that must never be treated as deletion candidates.
         self.polecats_dir = self.home_dir / "worktrees"
         self.polecats_dir.mkdir(parents=True, exist_ok=True)
@@ -232,9 +272,24 @@ class PolecatManager:
         self.crew_dir = self.home_dir / "crew"
         self.crew_dir.mkdir(exist_ok=True)
 
-        # Load project registry from config file
+        # Load project registry from $AOPS_SESSIONS/projects.yaml
+        self.overlay_path = self.home_dir / "local.yaml"
         self.config = load_config(self.config_path)
-        self.projects = load_projects(self.config_path)
+        self.projects = load_projects(
+            self.config_path, overlay_path=self.overlay_path, config=self.config
+        )
+
+        # Unresolved projects are warned (not raised) so partial-checkout
+        # workflows like `polecat sync` and the daily skill can gracefully skip
+        # repos that aren't present locally. Consumers that actually need a
+        # missing path (e.g. get_repo_path) raise on demand.
+        unresolved = [slug for slug, p in self.projects.items() if p["path"] is None]
+        if unresolved:
+            print(
+                f"polecat: {len(unresolved)} project(s) not found locally: "
+                f"{sorted(unresolved)}. Add to {self.overlay_path} under `paths:` to override.",
+                file=sys.stderr,
+            )
 
         # Load crew names for random selection
         self.crew_names = load_crew_names(self.config_path)
@@ -346,7 +401,7 @@ class PolecatManager:
         """Register an ad-hoc project from an arbitrary repo path.
 
         Creates a temporary project entry so crew can work on repos
-        not in polecat.yaml. The slug is derived from the directory name.
+        not in projects.yaml. The slug is derived from the directory name.
 
         Args:
             repo_path: Absolute path to a git repository
@@ -902,7 +957,7 @@ class PolecatManager:
 
         raise ValueError(
             f"Task {task.id} references unknown project {project!r} — "
-            f"not in polecat.yaml and no bare mirror at {mirror_path}. "
+            f"not in projects.yaml and no bare mirror at {mirror_path}. "
             f"Known projects: {sorted(self.projects.keys())}"
         )
 

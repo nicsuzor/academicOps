@@ -5,15 +5,39 @@ import sys
 import pytest
 
 
+def _write_registry(sessions_dir, projects):
+    import yaml
+
+    sessions_dir.mkdir(parents=True, exist_ok=True)
+    (sessions_dir / "projects.yaml").write_text(yaml.dump({"projects": projects}))
+
+
+def _write_overlay(home, paths):
+    import yaml
+
+    (home / "local.yaml").write_text(yaml.dump({"paths": paths}))
+
+
 @pytest.fixture
 def temp_polecat_home(tmp_path):
     home = tmp_path / "polecat_home"
     home.mkdir()
-    import yaml
-
-    config = {"projects": {"aops": {"path": "/tmp/dummy"}}}
-    (home / "polecat.yaml").write_text(yaml.dump(config))
+    sessions = tmp_path / "sessions"
+    # Default: a dummy repo so PolecatManager bootstraps cleanly.
+    dummy = tmp_path / "dummy_repo"
+    dummy.mkdir()
+    subprocess.run(["git", "init"], cwd=dummy, check=True, capture_output=True)
+    _write_registry(sessions, {"aops": {"default_branch": "main"}})
+    _write_overlay(home, {"aops": str(dummy)})
     return home
+
+
+def _env(temp_polecat_home):
+    env = os.environ.copy()
+    env["POLECAT_HOME"] = str(temp_polecat_home)
+    env["AOPS_SESSIONS"] = str(temp_polecat_home.parent / "sessions")
+    env["PYTHONPATH"] = os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
+    return env
 
 
 @pytest.mark.integration
@@ -21,9 +45,7 @@ def test_crew_fails_without_args(temp_polecat_home):
     """
     E2E test: running 'polecat crew' without args should fail.
     """
-    env = os.environ.copy()
-    env["POLECAT_HOME"] = str(temp_polecat_home)
-    env["PYTHONPATH"] = os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
+    env = _env(temp_polecat_home)
 
     result = subprocess.run(
         [
@@ -50,11 +72,9 @@ def test_crew_succeeds_with_args(temp_polecat_home, tmp_path):
     """
     E2E test: 'polecat crew aops' should succeed (or at least attempt to setup).
     """
-    env = os.environ.copy()
-    env["POLECAT_HOME"] = str(temp_polecat_home)
-    env["PYTHONPATH"] = os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
+    env = _env(temp_polecat_home)
 
-    # Setup a real dummy repo for 'aops'
+    # Setup a real dummy repo for 'aops' and point overlay at it.
     repo = tmp_path / "aops_repo"
     repo.mkdir()
     subprocess.run(["git", "init"], cwd=repo, check=True)
@@ -62,11 +82,7 @@ def test_crew_succeeds_with_args(temp_polecat_home, tmp_path):
     subprocess.run(["git", "-C", str(repo), "config", "user.name", "Test"], check=True)
     subprocess.run(["git", "commit", "--allow-empty", "-m", "init"], cwd=repo, check=True)
 
-    # Update config to point to real dummy repo
-    import yaml
-
-    config = {"projects": {"aops": {"path": str(repo)}}}
-    (temp_polecat_home / "polecat.yaml").write_text(yaml.dump(config))
+    _write_overlay(temp_polecat_home, {"aops": str(repo)})
 
     result = subprocess.run(
         [
@@ -95,9 +111,7 @@ def test_crew_succeeds_with_resume(temp_polecat_home, tmp_path):
     """
     E2E test: 'polecat crew --resume <name>' should succeed even without target.
     """
-    env = os.environ.copy()
-    env["POLECAT_HOME"] = str(temp_polecat_home)
-    env["PYTHONPATH"] = os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
+    env = _env(temp_polecat_home)
 
     # Create an "active" crew directory
     crew_name = "test-crew"

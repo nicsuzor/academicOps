@@ -122,7 +122,7 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
     # Persist AOPS_SESSIONS and POLECAT_HOME so subagents (worktree agents,
     # macOS app sessions) write transcripts/summaries to the correct git-synced
     # directory instead of falling back to ~/.polecat/sessions/.
-    for var in ("AOPS_SESSIONS", "POLECAT_HOME"):
+    for var in ("AOPS_SESSIONS", "POLECAT_HOME", "AOPS_SRC_DIR"):
         val = os.environ.get(var)
         if val:
             persist[var] = val
