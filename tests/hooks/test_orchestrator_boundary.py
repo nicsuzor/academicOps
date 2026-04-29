@@ -181,6 +181,7 @@ class TestIsProjectSourceWrite:
 
 class TestIsOrchestratorSession:
     def test_no_env_is_orchestrator(self):
+        # Legacy call (no cwd) — falls back to env-only check
         assert is_orchestrator_session({}) is True
 
     def test_polecat_worker_not_orchestrator(self):
@@ -191,6 +192,26 @@ class TestIsOrchestratorSession:
         # Conservative: unknown values fall back to orchestrator
         assert is_orchestrator_session({"POLECAT_SESSION_TYPE": "something-else"}) is True
 
+    def test_cwd_inside_brain_is_orchestrator(self, tmp_path):
+        env = {"ACA_DATA": str(tmp_path)}
+        assert is_orchestrator_session(env, cwd=str(tmp_path)) is True
+        sub = tmp_path / "projects"
+        sub.mkdir()
+        assert is_orchestrator_session(env, cwd=str(sub)) is True
+
+    def test_cwd_outside_brain_is_not_orchestrator(self, tmp_path):
+        brain = tmp_path / "brain"
+        brain.mkdir()
+        other = tmp_path / "academicOps"
+        other.mkdir()
+        env = {"ACA_DATA": str(brain)}
+        # In academicOps the agent IS the worker — not the orchestrator.
+        assert is_orchestrator_session(env, cwd=str(other)) is False
+
+    def test_aca_data_unset_with_cwd_not_orchestrator(self, tmp_path):
+        # Without ACA_DATA we cannot identify the brain repo — fail closed.
+        assert is_orchestrator_session({}, cwd=str(tmp_path)) is False
+
 
 # ===========================================================================
 # Unit: should_inject_dispositor_reminder
@@ -199,6 +220,7 @@ class TestIsOrchestratorSession:
 
 class TestShouldInjectDispositorReminder:
     def test_work_request_in_orchestrator(self):
+        # Legacy: no cwd passed — env-only check, defaults to orchestrator.
         assert should_inject_dispositor_reminder("implement login feature", {}) is True
 
     def test_slash_command_skipped(self):
@@ -218,6 +240,25 @@ class TestShouldInjectDispositorReminder:
     def test_empty_skipped(self):
         assert should_inject_dispositor_reminder("", {}) is False
 
+    def test_work_request_in_brain_cwd_injects(self, tmp_path):
+        env = {"ACA_DATA": str(tmp_path)}
+        assert (
+            should_inject_dispositor_reminder("implement login feature", env, cwd=str(tmp_path))
+            is True
+        )
+
+    def test_work_request_outside_brain_skipped(self, tmp_path):
+        brain = tmp_path / "brain"
+        brain.mkdir()
+        other = tmp_path / "academicOps"
+        other.mkdir()
+        env = {"ACA_DATA": str(brain)}
+        # In academicOps/, the agent is the worker — no reminder.
+        assert (
+            should_inject_dispositor_reminder("implement login feature", env, cwd=str(other))
+            is False
+        )
+
 
 # ===========================================================================
 # Integration: hydrator injects dispositor reminder
@@ -225,7 +266,7 @@ class TestShouldInjectDispositorReminder:
 
 
 class TestHydratorInjection:
-    def _make_ctx(self, prompt: str) -> HookContext:
+    def _make_ctx(self, prompt: str, cwd: str | None = None) -> HookContext:
         return HookContext(
             session_id="test-orch-boundary",
             hook_event="UserPromptSubmit",
@@ -233,7 +274,37 @@ class TestHydratorInjection:
             tool_input={},
             is_subagent=False,
             raw_input={"prompt": prompt},
+            cwd=cwd,
         )
+
+    def test_work_request_outside_brain_no_injection(self, monkeypatch, tmp_path):
+        # Regression: agents working in academicOps/mem/explorations should
+        # NOT see dispositor reminders — they ARE the worker for that repo.
+        brain = tmp_path / "brain"
+        brain.mkdir()
+        other = tmp_path / "academicOps"
+        other.mkdir()
+        monkeypatch.setenv("ACA_DATA", str(brain))
+        monkeypatch.setattr("hooks.router.get_session_data", lambda: {})
+        router = HookRouter()
+        merged = CanonicalHookOutput()
+
+        ctx = self._make_ctx("implement login with JWT tokens", cwd=str(other))
+        router._inject_dispositor_reminder(ctx, merged)
+
+        assert merged.context_injection is None
+
+    def test_work_request_inside_brain_injects(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("ACA_DATA", str(tmp_path))
+        monkeypatch.setattr("hooks.router.get_session_data", lambda: {})
+        router = HookRouter()
+        merged = CanonicalHookOutput()
+
+        ctx = self._make_ctx("implement login with JWT tokens", cwd=str(tmp_path))
+        router._inject_dispositor_reminder(ctx, merged)
+
+        assert merged.context_injection is not None
+        assert "Orchestrator Boundary" in merged.context_injection
 
     def test_work_request_injects_reminder(self, monkeypatch):
         monkeypatch.setattr("hooks.router.get_session_data", lambda: {})
@@ -304,6 +375,9 @@ class TestOrchestratorBoundaryGate:
         )
 
     def test_project_source_write_fires_warn(self, monkeypatch):
+        # Gate fires only when cwd is inside the brain repo (orchestrator
+        # session). Set ACA_DATA to match cwd to simulate a brain session.
+        monkeypatch.setenv("ACA_DATA", "/workspace")
         monkeypatch.setattr("hooks.router.get_session_data", lambda: {})
         router = HookRouter()
         state = SessionState.create("test-orch-boundary-gate")
@@ -315,6 +389,24 @@ class TestOrchestratorBoundaryGate:
         assert result.verdict == GateVerdict.WARN, f"Expected WARN, got {result.verdict}"
         assert result.context_injection is not None
         assert "src/app.py" in result.context_injection
+
+    def test_project_source_write_outside_brain_does_not_fire(self, monkeypatch, tmp_path):
+        # Regression: agents working in a project source repo (academicOps,
+        # mem, explorations) ARE the worker — orchestrator gate must not fire.
+        brain = tmp_path / "brain"
+        brain.mkdir()
+        other = tmp_path / "academicOps"
+        other.mkdir()
+        monkeypatch.setenv("ACA_DATA", str(brain))
+        monkeypatch.setattr("hooks.router.get_session_data", lambda: {})
+        router = HookRouter()
+        state = SessionState.create("test-orch-boundary-gate-outside")
+        ctx = self._make_ctx(tool_name="Edit", file_path="src/app.py", cwd=str(other))
+
+        result = router._dispatch_gates(ctx, state)
+
+        if result is not None and result.system_message:
+            assert "Orchestrator boundary" not in result.system_message
 
     def test_framework_write_does_not_fire(self, monkeypatch):
         monkeypatch.setattr("hooks.router.get_session_data", lambda: {})

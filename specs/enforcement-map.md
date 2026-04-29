@@ -6,17 +6,17 @@ or retired (P#65).
 
 ## Pre-commit hooks
 
-| Hook ID | Script | Rule(s) | Tier | Behaviour |
-| --- | --- | --- | --- | --- |
-| `check-no-new-orphan-md` | `scripts/check_no_new_orphan_md.py` | R5.6 | `warn` | Exits 1 on new `.md` files outside canonical-location allowlist |
-| `check-framework-integrity` | `scripts/check_framework_integrity.py` | (wikilink index integrity) | `warn` | Exits 1 on broken wikilinks or missing SKILLS/WORKFLOWS index entries |
-| `lint-axiom-refs` | `aops-core/lib/lint_axiom_refs.py` | R1.1, R1.3 | `block` | Exits 1 when `plugin.json` cites a non-existent or mis-parented Axiom/Rule |
+| Hook ID                     | Script                                 | Rule(s)                    | Tier    | Behaviour                                                                  |
+| --------------------------- | -------------------------------------- | -------------------------- | ------- | -------------------------------------------------------------------------- |
+| `check-no-new-orphan-md`    | `scripts/check_no_new_orphan_md.py`    | R5.6                       | `warn`  | Exits 1 on new `.md` files outside canonical-location allowlist            |
+| `check-framework-integrity` | `scripts/check_framework_integrity.py` | (wikilink index integrity) | `warn`  | Exits 1 on broken wikilinks or missing SKILLS/WORKFLOWS index entries      |
+| `lint-axiom-refs`           | `aops-core/lib/lint_axiom_refs.py`     | R1.1, R1.3                 | `block` | Exits 1 when `plugin.json` cites a non-existent or mis-parented Axiom/Rule |
 
 ## CI-only checks (whole-repo, too slow for pre-commit)
 
-| Check | Script | Rule(s) | Tier | Behaviour |
-| --- | --- | --- | --- | --- |
-| `check-orphan-files` | `scripts/check_orphan_files.py` | (wikilink orphans) | `warn` | Exits 0; reports files with no incoming wikilinks |
+| Check                    | Script                              | Rule(s)                | Tier   | Behaviour                                          |
+| ------------------------ | ----------------------------------- | ---------------------- | ------ | -------------------------------------------------- |
+| `check-orphan-files`     | `scripts/check_orphan_files.py`     | (wikilink orphans)     | `warn` | Exits 0; reports files with no incoming wikilinks  |
 | `check-skill-line-count` | `scripts/check_skill_line_count.py` | (SKILL.md ≤ 500 lines) | `warn` | Reports oversized SKILL.md files; does not fail CI |
 
 ## Notes
