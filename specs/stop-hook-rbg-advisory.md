@@ -51,7 +51,7 @@ Logging: **automatic via `unified_logger`** — every Stop event, the
 captured in the per-session JSONL hook log (`get_hook_log_path(...)`). Querying
 verdicts means grepping JSONL, no new store. This satisfies the "verdicts
 captured queryably" acceptance criterion using the existing observation pipe
-documented in `specs/framework-observability.md`.
+documented by the per-session JSONL hook log pattern used across all gates.
 
 ## Gate semantics
 
