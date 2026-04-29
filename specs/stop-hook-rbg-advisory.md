@@ -59,12 +59,12 @@ documented by the per-session JSONL hook log pattern used across all gates.
 GateConfig(
     name="rbg_advisory",
     description="Advisory inference-vs-fact check on agent stops.",
-    initial_status=OPEN,
+    initial_status=GateStatus.OPEN,
     triggers=[
         # New user prompt resets per-turn flag.
         GateTrigger(
             condition=GateCondition(hook_event="UserPromptSubmit"),
-            transition=GateTransition(target_status=OPEN),
+            transition=GateTransition(target_status=GateStatus.OPEN),
         ),
         # RBG (or any compliance agent) returning satisfies the advisory.
         GateTrigger(
@@ -73,7 +73,7 @@ GateConfig(
                 subagent_type_pattern="^(aops[-_]core[:_])?(rbg|enforcer|qa|marsha|pauli)$",
             ),
             transition=GateTransition(
-                target_status=CLOSED,
+                target_status=GateStatus.CLOSED,
                 system_message_key="rbg_advisory.verified",
             ),
         ),
@@ -82,7 +82,7 @@ GateConfig(
         # On Stop while OPEN: instruct main agent to invoke RBG.
         GatePolicy(
             condition=GateCondition(
-                current_status=OPEN,
+                current_status=GateStatus.OPEN,
                 hook_event="Stop",
                 # Don't fire when the running agent itself is a compliance agent.
                 subagent_type_pattern_exclude="^(aops[-_]core[:_])?(rbg|enforcer|qa|marsha|pauli)$",
@@ -111,7 +111,7 @@ Stored as `aops-core/hooks/templates/rbg-advisory-instruction.md`:
 
 ```
 Read the previous assistant message in this conversation. Apply ONE check from
-CORE.md: "inference is not evidence."
+.agents/CORE.md: "inference is not evidence."
 
 For each factual claim in the response, classify:
 - VERIFIED — supported by tool output, file content, or test result earlier in
@@ -143,20 +143,26 @@ Mirrors `QA_GATE_MODE`, `ENFORCER_GATE_MODE` conventions in
 
 ## Implementation deliverables (for task-0295c0ff)
 
-1. `aops-core/lib/gates/definitions.py` — append `rbg_advisory` GateConfig
+1. `aops-core/lib/gate_types.py` — add `subagent_type_pattern_exclude: str | None =
+   None` to `GateCondition`; wire exclusion logic in `engine.py` (skips policy when
+   the context subagent_type matches the exclude pattern).
+2. `aops-core/lib/gates/definitions.py` — append `rbg_advisory` GateConfig
    (above).
-2. `aops-core/hooks/gate_config.py` — add `RBG_ADVISORY_GATE_MODE = _gate_mode("RBG_ADVISORY_GATE_MODE")`.
-3. Templates in `aops-core/hooks/templates/`:
+3. `aops-core/hooks/gate_config.py` — add `RBG_ADVISORY_GATE_MODE = _gate_mode("RBG_ADVISORY_GATE_MODE")`.
+4. Templates in `aops-core/hooks/templates/`:
    - `rbg-advisory-instruction.md`
    - `rbg-advisory-policy-context.md`
    - `rbg-advisory-policy-message.md`
    - `rbg-advisory-verified.md`
-4. Tests in `tests/hooks/`:
+5. Tests in `tests/hooks/`:
    - Verdict fixture: regular agent Stop with gate OPEN → policy_context
      injected.
    - Verdict fixture: rbg Stop → no advisory (subagent_type_pattern_exclude).
    - Verdict fixture: `RBG_ADVISORY_GATE_MODE=off` → no advisory.
    - Loop test: Agent(rbg) PreToolUse → SubagentStop → Stop → no second advisory.
+6. `specs/enforcement-map.md` — add `rbg_advisory` gate row under a new
+   "Runtime gates (Stop-hook)" section (P#65: map updated when enforcement
+   measure is implemented).
 
 ## Out of scope
 
