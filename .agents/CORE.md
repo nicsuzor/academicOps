@@ -49,14 +49,18 @@ Claude Code sessions dispatched from Cowork/Dispatch (or started locally on this
 - **Outlook** (`mcp__outlook__*`): Messages, calendar, attachments, search
 - **Discord** (`mcp__plugin_discord_discord__*`): Fetch/reply/edit/react
 - **Computer-use** (`mcp__computer-use__*`): Full desktop automation (screenshot, click, type, scroll) — 30-min approval timeout for Dispatch-spawned sessions
+- **Playwright** (`mcp__playwright__*`): Full headless browser automation — navigate, click, type, screenshots, JS evaluation, DOM inspection, console logs, network monitoring
 - **Chrome tools**: `mcp__claude-in-chrome__*` for lightweight browser control; `mcp__Claude_Preview__*` for dev server preview/screenshot/interaction
 - **context7**: Library documentation lookup via `mcp__context7__*`
 - **Scheduled tasks**: Cron-style task scheduling
 
 **Browser Testing for UI Work:**
 
-- Agents working on UI (dashboard, web apps, frontend changes) should use **Claude_Preview** or **Control_Chrome** MCP tools to verify changes visually
-- Playwright can be installed via npm for headless testing but requires explicit setup
+- **Playwright MCP** (`mcp__playwright__*`): Full headless browser automation — navigate, click, type, take screenshots, evaluate JS, inspect DOM, check console, monitor network requests. Primary choice for UI QA in code sessions.
+  - Ideal workflow: start dev server, navigate to it, screenshot each view, click to test interactions
+  - Use Playwright for comprehensive UI testing and QA verification
+- **Claude_Preview** (`mcp__Claude_Preview__*`): Dev server preview with screenshot/interaction — quick visual verification
+- **Computer-use**: Full desktop automation with visual feedback — for cross-app workflows
 - **Do NOT assume you lack browser access** — always check ToolSearch first before declaring a limitation
 
 **Key Principle:** Always verify what tools are available via ToolSearch before assuming you can't do something. The tool set is richer than default Claude Code.
