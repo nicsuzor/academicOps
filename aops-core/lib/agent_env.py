@@ -177,7 +177,5 @@ def get_env_mapping_shell_lines(
         # Defer SOURCE resolution to shell time. ${SOURCE+x} is set
         # iff SOURCE is defined (even if empty), which mirrors the
         # `is not None` check in apply_env_mappings.
-        lines.append(
-            f'[ -n "${{{entry.value}+x}}" ] && export {entry.target}="${{{entry.value}}}"'
-        )
+        lines.append(f'[ -n "${{{entry.value}+x}}" ] && export {entry.target}="${{{entry.value}}}"')
     return lines
