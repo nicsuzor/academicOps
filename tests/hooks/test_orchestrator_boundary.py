@@ -405,8 +405,11 @@ class TestOrchestratorBoundaryGate:
 
         result = router._dispatch_gates(ctx, state)
 
-        if result is not None and result.system_message:
-            assert "Orchestrator boundary" not in result.system_message
+        # Gate injects into context_injection (not system_message) — check the right field.
+        if result is not None:
+            assert result.context_injection is None or "Orchestrator Boundary" not in (
+                result.context_injection or ""
+            )
 
     def test_framework_write_does_not_fire(self, monkeypatch):
         monkeypatch.setattr("hooks.router.get_session_data", lambda: {})
