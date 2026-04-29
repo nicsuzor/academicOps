@@ -593,8 +593,10 @@ to retry. Do not delete the local repo.
 ### Register with polecat (git-native propagation)
 
 Per decision `epic-fe52f422`, polecat registration is git-native: edit the
-sessions repo's `projects.yaml`, commit, and push. Other machines pick it up
-via `polecat sync` + `setup-machine.sh`.
+sessions repo's `projects.yaml`, commit, and push. The registry is portable —
+no machine-local data lives in it. Path resolution happens at read-time via
+convention (`$AOPS_SRC_DIR/<repo>`) with overrides in
+`$POLECAT_HOME/local.yaml`.
 
 ```bash
 # $AOPS_SESSIONS is the sessions repo (e.g. nicsuzor/sessions)
@@ -609,11 +611,11 @@ grep -E "^\s*<slug>:" "$AOPS_SESSIONS/projects.yaml" && echo "EXISTS"
 ```
 
 If the slug already appears, **HALT** and ask the user whether to reuse it,
-rename, or abort. Otherwise append:
+rename, or abort. Otherwise append (note: no `path:` — that's machine-local):
 
 ```yaml
 <slug>:
-  path: <absolute-path-to-repo>
+  repo: <repo-name>               # optional, defaults to slug
   default_branch: main
 ```
 
@@ -625,8 +627,10 @@ git commit -m "chore(projects): register <slug>"
 git push
 ```
 
-Then tell the user: on other machines, run `polecat sync` followed by
-`setup-machine.sh` to regenerate their local `polecat.yaml`.
+Then tell the user: on other machines, run `git pull` in `$AOPS_SESSIONS` and
+then `setup-machine.sh`. If the repo lives at the conventional location
+(`$AOPS_SRC_DIR/<repo>`) nothing further is required; otherwise add a `paths:`
+entry to `$POLECAT_HOME/local.yaml`.
 
 If the sessions repo push fails (auth, conflict): the local repo and PKB node
 are already in place — the user can retry this step manually. Do not unwind

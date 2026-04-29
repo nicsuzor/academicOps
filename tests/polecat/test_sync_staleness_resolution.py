@@ -3,13 +3,13 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
-import yaml
-
 REPO_ROOT = Path(__file__).parents[2].resolve()
 sys.path.insert(0, str(REPO_ROOT / "polecat"))
 sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 
-from manager import PolecatManager
+from manager import PolecatManager  # noqa: E402
+
+from tests.polecat.conftest import write_polecat_test_config  # noqa: E402
 
 
 def setup_git_repo(path: Path):
@@ -35,19 +35,17 @@ def test_sync_resolves_staleness_with_checked_out_branch(tmp_path):
 
     # 2. Setup polecat manager and mirror
     home_dir = tmp_path / "polecat_home"
-    home_dir.mkdir(exist_ok=True)
-    projects = {"testproj": {"path": str(work_path), "default_branch": "main"}}
-    config = {
-        "projects": projects,
-        "crew_names": ["worker"],
-        "git_identity": {},
-    }
-    (home_dir / "polecat.yaml").write_text(yaml.dump(config))
+    sessions_dir = write_polecat_test_config(
+        tmp_path,
+        home_dir=home_dir,
+        project_paths={"testproj": work_path},
+        crew_names=["worker"],
+    )
 
     aca_data = tmp_path / "aca_data"
     aca_data.mkdir(exist_ok=True)
 
-    with patch.dict("os.environ", {"ACA_DATA": str(aca_data)}):
+    with patch.dict("os.environ", {"ACA_DATA": str(aca_data), "AOPS_SESSIONS": str(sessions_dir)}):
         manager = PolecatManager(home_dir=home_dir)
         manager.ensure_repo_mirror("testproj")
 
@@ -102,19 +100,17 @@ def test_sync_updates_other_branches_when_one_is_checked_out(tmp_path):
 
     # 2. Setup polecat manager and mirror
     home_dir = tmp_path / "polecat_home"
-    home_dir.mkdir(exist_ok=True)
-    projects = {"testproj": {"path": str(work_path), "default_branch": "main"}}
-    config = {
-        "projects": projects,
-        "crew_names": ["worker"],
-        "git_identity": {},
-    }
-    (home_dir / "polecat.yaml").write_text(yaml.dump(config))
+    sessions_dir = write_polecat_test_config(
+        tmp_path,
+        home_dir=home_dir,
+        project_paths={"testproj": work_path},
+        crew_names=["worker"],
+    )
 
     aca_data = tmp_path / "aca_data"
     aca_data.mkdir(exist_ok=True)
 
-    with patch.dict("os.environ", {"ACA_DATA": str(aca_data)}):
+    with patch.dict("os.environ", {"ACA_DATA": str(aca_data), "AOPS_SESSIONS": str(sessions_dir)}):
         manager = PolecatManager(home_dir=home_dir)
         manager.ensure_repo_mirror("testproj")
         mirror_path = manager.repos_dir / "testproj.git"
@@ -154,19 +150,17 @@ def test_sync_fails_loudly_when_remains_stale(tmp_path, capsys):
 
     # 2. Setup polecat manager and mirror
     home_dir = tmp_path / "polecat_home"
-    home_dir.mkdir(exist_ok=True)
-    projects = {"testproj": {"path": str(work_path), "default_branch": "main"}}
-    config = {
-        "projects": projects,
-        "crew_names": ["worker"],
-        "git_identity": {},
-    }
-    (home_dir / "polecat.yaml").write_text(yaml.dump(config))
+    sessions_dir = write_polecat_test_config(
+        tmp_path,
+        home_dir=home_dir,
+        project_paths={"testproj": work_path},
+        crew_names=["worker"],
+    )
 
     aca_data = tmp_path / "aca_data"
     aca_data.mkdir(exist_ok=True)
 
-    with patch.dict("os.environ", {"ACA_DATA": str(aca_data)}):
+    with patch.dict("os.environ", {"ACA_DATA": str(aca_data), "AOPS_SESSIONS": str(sessions_dir)}):
         manager = PolecatManager(home_dir=home_dir)
         manager.ensure_repo_mirror("testproj")
 

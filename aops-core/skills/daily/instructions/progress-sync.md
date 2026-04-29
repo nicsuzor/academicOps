@@ -92,9 +92,9 @@ Use the user's prompt `description` text as the primary signal. Project name is 
 
 ### Step 4.2.5: Query Merged PRs
 
-Fetch today's merged PRs from **all tracked repositories** defined in `$POLECAT_HOME/polecat.yaml`.
+Fetch today's merged PRs from **all tracked repositories** defined in `$AOPS_SESSIONS/projects.yaml`.
 
-**Repository discovery**: Read `$POLECAT_HOME/polecat.yaml` to get the project registry. For each project, use the `path` field to `cd` into the repo and run the query. Skip repos that don't exist locally.
+**Repository discovery**: Read `$AOPS_SESSIONS/projects.yaml` to get the project registry. For each project, resolve the on-disk path via convention (`$AOPS_SRC_DIR/<repo>`) or `$POLECAT_HOME/local.yaml` `paths.<slug>`, then `cd` in and run the query. Skip repos that don't resolve locally.
 
 **Per-repo query**:
 

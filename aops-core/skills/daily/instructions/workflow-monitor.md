@@ -6,9 +6,9 @@ Surface outstanding workflow signals in "What Needs Attention". This step runs a
 
 ### Step 6.1: Discover Tracked Repos
 
-Read `$POLECAT_HOME/polecat.yaml` to get the project registry. For each project, use the `path` field to locate the repo. Skip repos that don't exist locally.
+Read `$AOPS_SESSIONS/projects.yaml` to get the project registry. For each project, resolve the on-disk path via convention (`$AOPS_SRC_DIR/<repo>`) or `$POLECAT_HOME/local.yaml` `paths.<slug>`. Skip repos that don't resolve locally.
 
-This is the same repo discovery used by Step 4.2.5 (merged PR query). The repo list is configurable — repos are added/removed by editing `polecat.yaml`, not by changing skill code.
+This is the same repo discovery used by Step 4.2.5 (merged PR query). The repo list is configurable — repos are added/removed by editing `projects.yaml` in the sessions repo, not by changing skill code.
 
 ### Step 6.2: Fetch Open PRs Across Repos
 

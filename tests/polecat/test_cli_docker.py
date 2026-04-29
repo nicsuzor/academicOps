@@ -992,34 +992,19 @@ class TestParseMemoryString:
 
 
 class TestResolveMemoryLimit:
-    """Tests for _resolve_memory_limit priority: CLI > env > config > None."""
+    """Tests for _resolve_memory_limit priority: CLI > env > None."""
 
     def test_cli_flag_wins(self, monkeypatch):
         monkeypatch.setenv("POLECAT_DOCKER_MEMORY", "2g")
-        config = {"docker": {"memory": "1g"}}
-        assert _resolve_memory_limit("4g", config) == "4g"
+        assert _resolve_memory_limit("4g") == "4g"
 
     def test_env_var_when_no_cli(self, monkeypatch):
         monkeypatch.setenv("POLECAT_DOCKER_MEMORY", "2g")
-        config = {"docker": {"memory": "1g"}}
-        assert _resolve_memory_limit(None, config) == "2g"
-
-    def test_config_when_no_cli_or_env(self, monkeypatch):
-        monkeypatch.delenv("POLECAT_DOCKER_MEMORY", raising=False)
-        config = {"docker": {"memory": "1g"}}
-        assert _resolve_memory_limit(None, config) == "1g"
+        assert _resolve_memory_limit(None) == "2g"
 
     def test_none_when_nothing_set(self, monkeypatch):
         monkeypatch.delenv("POLECAT_DOCKER_MEMORY", raising=False)
-        assert _resolve_memory_limit(None, None) is None
-
-    def test_none_when_config_empty(self, monkeypatch):
-        monkeypatch.delenv("POLECAT_DOCKER_MEMORY", raising=False)
-        assert _resolve_memory_limit(None, {}) is None
-
-    def test_none_when_config_docker_has_no_memory(self, monkeypatch):
-        monkeypatch.delenv("POLECAT_DOCKER_MEMORY", raising=False)
-        assert _resolve_memory_limit(None, {"docker": {}}) is None
+        assert _resolve_memory_limit(None) is None
 
 
 class TestBuildDockerCmdMemory:

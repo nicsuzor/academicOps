@@ -15,10 +15,12 @@ import subprocess
 import pytest
 
 
-def _polecat_env(polecat_home):
+def _polecat_env(polecat_home, sessions_dir=None):
     """Build an env dict for running polecat CLI."""
     env = os.environ.copy()
     env["POLECAT_HOME"] = str(polecat_home)
+    if sessions_dir is not None:
+        env["AOPS_SESSIONS"] = str(sessions_dir)
     env["PYTHONPATH"] = os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"
     return env
 
@@ -61,13 +63,19 @@ def _init_test_repo(tmp_path):
 
 @pytest.fixture
 def temp_polecat_home(tmp_path):
-    """Create a polecat home directory."""
-    home = tmp_path / "polecat_home"
-    home.mkdir()
+    """Create a polecat home directory and an empty sessions registry.
+
+    Returns the polecat home; the sessions registry sits at
+    `tmp_path / "sessions" / "projects.yaml"`. Tests that need to drive the
+    CLI must pass `sessions_dir=tmp_path / "sessions"` to `_polecat_env`.
+    """
     import yaml
 
-    config = {"projects": {}}
-    (home / "polecat.yaml").write_text(yaml.dump(config))
+    home = tmp_path / "polecat_home"
+    home.mkdir()
+    sessions = tmp_path / "sessions"
+    sessions.mkdir()
+    (sessions / "projects.yaml").write_text(yaml.dump({"projects": {}}))
     return home
 
 
@@ -81,7 +89,7 @@ class TestPolecatRunCLI:
 
     def test_run_empty_queue_exits_3(self, temp_polecat_home):
         """pc run with no tasks in queue exits with code 3."""
-        env = _polecat_env(temp_polecat_home)
+        env = _polecat_env(temp_polecat_home, sessions_dir=temp_polecat_home.parent / "sessions")
 
         result = subprocess.run(
             [
@@ -113,7 +121,7 @@ class TestPolecatRunCLI:
 
     def test_run_invalid_task_id_exits_1(self, temp_polecat_home):
         """pc run with invalid task ID format exits with code 1."""
-        env = _polecat_env(temp_polecat_home)
+        env = _polecat_env(temp_polecat_home, sessions_dir=temp_polecat_home.parent / "sessions")
 
         result = subprocess.run(
             [
@@ -142,7 +150,7 @@ class TestPolecatRunCLI:
 
     def test_run_issue_and_task_id_mutually_exclusive(self, temp_polecat_home):
         """pc run rejects --issue and --task-id together."""
-        env = _polecat_env(temp_polecat_home)
+        env = _polecat_env(temp_polecat_home, sessions_dir=temp_polecat_home.parent / "sessions")
 
         result = subprocess.run(
             [

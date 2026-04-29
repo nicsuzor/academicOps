@@ -726,18 +726,14 @@ def _format_oom_message(env: dict, daemon_mem_bytes: int | None = None) -> str:
 
 
 def _resolve_memory_limit(cli_flag: str | None, config: dict | None = None) -> str | None:
-    """Resolve container memory limit from CLI flag, env var, or config.
+    """Resolve container memory limit from CLI flag or env var.
 
-    Priority: CLI flag > POLECAT_DOCKER_MEMORY env var > polecat.yaml docker.memory > None
+    Priority: CLI flag > POLECAT_DOCKER_MEMORY env var > None.
+    `config` is accepted for backwards-call-shape compatibility but ignored.
     """
     if cli_flag:
         return cli_flag
-    env_val = os.environ.get("POLECAT_DOCKER_MEMORY")
-    if env_val:
-        return env_val
-    if config and config.get("docker", {}).get("memory"):
-        return config["docker"]["memory"]
-    return None
+    return os.environ.get("POLECAT_DOCKER_MEMORY")
 
 
 def _warn_low_docker_memory(
@@ -808,7 +804,7 @@ def _init_container_memory(
 
     Returns (memory_limit, daemon_mem_bytes) for use in OOM reporting.
     """
-    memory_limit = _resolve_memory_limit(memory, manager.config)
+    memory_limit = _resolve_memory_limit(memory)
     daemon_mem = _get_docker_daemon_memory()
     _warn_low_docker_memory(memory_limit, env, daemon_mem)
     return memory_limit, daemon_mem
@@ -2216,7 +2212,7 @@ def _sync_working_repo(
 def sync(ctx, check, quiet, mirrors_only):
     """Sync all git repos: working repos and bare mirrors.
 
-    Fetches, pulls, and pushes working repos defined in polecat.yaml.
+    Fetches, pulls, and pushes working repos defined in $AOPS_SESSIONS/projects.yaml.
     Also updates bare mirrors used by polecat workers.
 
     Working repos are only pulled/pushed if clean.
@@ -2235,14 +2231,11 @@ def sync(ctx, check, quiet, mirrors_only):
             print("Syncing working repos...")
 
         needs_attention = []
-        for project_name, project_cfg in manager.config.get("projects", {}).items():
-            repo_path_str = project_cfg.get("path", "")
-            if not repo_path_str:
-                continue
-            repo_path = Path(os.path.expanduser(repo_path_str))
-            if not repo_path.is_dir():
+        for project_name, project_cfg in manager.projects.items():
+            repo_path = project_cfg["path"]
+            if repo_path is None or not repo_path.is_dir():
                 if not quiet:
-                    print(f"  {project_name}: path not found ({repo_path})")
+                    print(f"  {project_name}: path not found")
                 continue
 
             auto_commit = bool(project_cfg.get("auto_commit", False)) and not check
@@ -3014,7 +3007,7 @@ def nuke(ctx, target, force, allow_unpushed):
                     # A malformed task raises ValueError from get_repo_path.
                     # Two distinct cases:
                     #   1. task.project is None/empty — structural data problem.
-                    #   2. task.project names a project removed from polecat.yaml
+                    #   2. task.project names a project removed from projects.yaml
                     #      — the project is no longer resolvable, so this
                     #      worktree will be silently skipped on every sweep and
                     #      never automatically cleaned up.

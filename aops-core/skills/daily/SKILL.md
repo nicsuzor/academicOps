@@ -124,7 +124,7 @@ Include direct PR URLs. Do not rank buckets or say "tackle X first".
 
 **Graceful degradation**: If `gh` CLI is unavailable or authentication fails, note the gap in natural language ("GitHub CLI unavailable — skipped workflow monitoring") and continue. Never error or produce empty table structures.
 
-**Repo list**: Use the project registry from `$POLECAT_HOME/polecat.yaml`. Configurable — repos are added/removed by editing polecat.yaml.
+**Repo list**: Use the project registry from `$AOPS_SESSIONS/projects.yaml`. Configurable — repos are added/removed by editing the sessions-repo registry.
 
 > See [[instructions/workflow-monitor]] for the full procedure.
 
