@@ -94,9 +94,14 @@ Skills are Claude Code / Gemini CLI extensions that know how to do specific thin
 Hooks make every session framework-aware without manual setup:
 
 - **SessionStart**: loads principles, pulls latest state
-- **Autocommit**: keeps PKB synced during work
+- **UserPromptSubmit hints**: inject context-map pointers and the dispositor reminder (brain repo only — see [specs/enforcement-map.md](specs/enforcement-map.md))
+- **PreToolUse gates**: hydration, enforcer (periodic compliance), custodiet (workflow discipline), policy enforcer (destructive-command block)
+- **PostToolUse**: orchestrator-boundary detection (brain only), warn-tier checks, autocommit
+- **Stop gates**: QA + handover discipline before session ends
 - **Transcript capture**: records sessions for reflection
 - **Cross-device sync**: git-based, runs on cron
+
+Each runtime mechanism, its hook event, scope, and tier is tracked in [specs/enforcement-map.md](specs/enforcement-map.md). Mechanisms move down the enforcement pyramid (block → warn → hint → instruction) when evidence shows they were over-broad, and up when evidence shows lower tiers failing (Design Principle #6).
 
 ### 4. Async quality assurance (GitHub)
 
