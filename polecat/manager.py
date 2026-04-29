@@ -95,7 +95,10 @@ def _expand_env(value: str) -> str:
 
 
 def resolve_project_path(
-    slug: str, repo: str | None = None, overlay_path: Path | None = None
+    slug: str,
+    repo: str | None = None,
+    overlay_path: Path | None = None,
+    overlay: dict | None = None,
 ) -> Path | None:
     """Resolve a project slug to an on-disk path.
 
@@ -108,7 +111,8 @@ def resolve_project_path(
     """
     repo_name = repo or slug
 
-    overlay = load_local_overlay(overlay_path)
+    if overlay is None:
+        overlay = load_local_overlay(overlay_path)
     overlay_paths = overlay.get("paths", {}) or {}
     if slug in overlay_paths:
         candidate = Path(_expand_env(str(overlay_paths[slug])))
@@ -140,12 +144,14 @@ def load_projects(config_path: Path | None = None, overlay_path: Path | None = N
     Callers must check `if entry["path"] is None` before using it.
     """
     config = load_config(config_path)
+    overlay = load_local_overlay(overlay_path)
 
     projects = {}
     for slug, proj in config.get("projects", {}).items():
+        proj = proj or {}
         repo = proj.get("repo", slug)
         entry = {
-            "path": resolve_project_path(slug, repo, overlay_path=overlay_path),
+            "path": resolve_project_path(slug, repo, overlay=overlay),
             "default_branch": proj.get("default_branch", "main"),
             "repo": repo,
         }

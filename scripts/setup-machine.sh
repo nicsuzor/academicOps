@@ -230,7 +230,7 @@ else
     fi
 
     # Walk the registry; fail loud with the local.yaml block needed for any unresolved slug.
-    uv run python - <<'PYEOF'
+    AOPS="$AOPS" AOPS_SESSIONS="$AOPS_SESSIONS" uv run python - <<'PYEOF'
 import os
 import sys
 from pathlib import Path
