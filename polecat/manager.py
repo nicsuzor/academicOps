@@ -95,7 +95,10 @@ def _expand_env(value: str) -> str:
 
 
 def resolve_project_path(
-    slug: str, repo: str | None = None, overlay_path: Path | None = None
+    slug: str,
+    repo: str | None = None,
+    overlay_path: Path | None = None,
+    overlay: dict | None = None,
 ) -> Path | None:
     """Resolve a project slug to an on-disk path.
 
@@ -104,11 +107,13 @@ def resolve_project_path(
     2. $AOPS_SRC_DIR/<repo> if it has .git
     3. Legacy fallbacks: ~/src/<repo>, ~/<repo>, /opt/$USER/<repo>
 
+    Pass `overlay` to skip re-reading local.yaml when batch-resolving.
     Returns None if no candidate has a .git directory.
     """
     repo_name = repo or slug
 
-    overlay = load_local_overlay(overlay_path)
+    if overlay is None:
+        overlay = load_local_overlay(overlay_path)
     overlay_paths = overlay.get("paths", {}) or {}
     if slug in overlay_paths:
         candidate = Path(_expand_env(str(overlay_paths[slug])))
@@ -133,19 +138,28 @@ def resolve_project_path(
     return None
 
 
-def load_projects(config_path: Path | None = None, overlay_path: Path | None = None) -> dict:
+def load_projects(
+    config_path: Path | None = None,
+    overlay_path: Path | None = None,
+    config: dict | None = None,
+) -> dict:
     """Load project registry. Returns dict slug -> {path: Path|None, default_branch, repo, ...}.
+
+    Pass `config` to skip re-reading projects.yaml when callers already loaded it.
 
     NOTE: `path` may be None when the repo isn't found via overlay or convention.
     Callers must check `if entry["path"] is None` before using it.
     """
-    config = load_config(config_path)
+    if config is None:
+        config = load_config(config_path)
+    overlay = load_local_overlay(overlay_path)
 
     projects = {}
-    for slug, proj in config.get("projects", {}).items():
+    for slug, proj in (config.get("projects") or {}).items():
+        proj = proj or {}
         repo = proj.get("repo", slug)
         entry = {
-            "path": resolve_project_path(slug, repo, overlay_path=overlay_path),
+            "path": resolve_project_path(slug, repo, overlay=overlay),
             "default_branch": proj.get("default_branch", "main"),
             "repo": repo,
         }
@@ -261,17 +275,20 @@ class PolecatManager:
         # Load project registry from $AOPS_SESSIONS/projects.yaml
         self.overlay_path = self.home_dir / "local.yaml"
         self.config = load_config(self.config_path)
-        self.projects = load_projects(self.config_path, overlay_path=self.overlay_path)
+        self.projects = load_projects(
+            self.config_path, overlay_path=self.overlay_path, config=self.config
+        )
 
+        # Unresolved projects are warned (not raised) so partial-checkout
+        # workflows like `polecat sync` and the daily skill can gracefully skip
+        # repos that aren't present locally. Consumers that actually need a
+        # missing path (e.g. get_repo_path) raise on demand.
         unresolved = [slug for slug, p in self.projects.items() if p["path"] is None]
         if unresolved:
-            overlay_block = "paths:\n" + "".join(
-                f"  {slug}: /absolute/path/to/{self.projects[slug]['repo']}\n"
-                for slug in unresolved
-            )
-            raise FileNotFoundError(
-                f"Could not resolve paths for projects: {unresolved}. "
-                f"Add to {self.overlay_path}:\n{overlay_block}"
+            print(
+                f"polecat: {len(unresolved)} project(s) not found locally: "
+                f"{sorted(unresolved)}. Add to {self.overlay_path} under `paths:` to override.",
+                file=sys.stderr,
             )
 
         # Load crew names for random selection
