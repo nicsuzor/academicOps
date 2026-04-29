@@ -163,6 +163,7 @@ Summary format:
 - **Depth over breadth.** One well-analysed finding beats seven surface nits.
 - **Conservative fixes.** If a fix might change intended behaviour, comment instead.
 - **No manual lint/style fixes.** Automated tooling handles that; focus on substance.
+- **A13 (Rule Against Perpetuities).** Never run `--watch`, `tail -f`, `gh run watch`, or unbounded loops. Every command needs a visible upper bound on runtime. Use single-run test invocations (not `--watch`/`--watchAll`). If you background a process, capture its PID and `kill` it before you finish.
 
 ## 6. Framework Axioms
 

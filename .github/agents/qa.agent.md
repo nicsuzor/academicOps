@@ -71,13 +71,16 @@ The agent that wrote this code may have unconsciously substituted easier-to-veri
    - Check for `Cargo.toml` → try `cargo test`
    - If no test infrastructure found, note this in your report.
 4. **Run the code. Reading diffs is not verification.**
-   - Run the test suite and confirm it passes.
-   - For UI/frontend PRs: spin up the dev server and use a browser to verify the changes:
+   - Run the test suite and confirm it passes. Avoid watch-mode test flags (`--watch`, `--watchAll`, `jest --watch`) — use single-run invocations.
+   - For UI/frontend PRs: spin up the dev server, use a browser to verify, and **always reap the server before finishing** (A13: Rule Against Perpetuities):
      ```bash
      # Example for a Streamlit app
      uv run streamlit run <app.py> &
-     # Then use browser tools to navigate, interact, and verify visually
+     SERVER_PID=$!
+     # ... browser verification ...
+     kill "$SERVER_PID" 2>/dev/null || true
      ```
+     A dev server you forgot to kill keeps the action wrapper alive past your session and burns the runner's wall-clock budget.
      Check that the UI matches what was described in the PR. Evaluate qualitatively against the acceptance criteria — does it look right, behave correctly, handle edge cases?
    - For backend/CLI PRs: run the affected commands or invoke the changed functions directly.
    - If the PR claims to fix a bug, reproduce the bug first (confirm it existed), then confirm the fix resolves it.
@@ -131,3 +134,4 @@ gh pr review {pr} --request-changes --body "# QA Verification
 - **Be specific.** Show evidence for every claim.
 - **No false reassurance.** If you can't verify something, say so — don't assume it works.
 - **Silent on non-issues.** Focus your report on what matters.
+- **A13 (Rule Against Perpetuities).** No `--watch`, `tail -f`, or unbounded polling. Every command must have a runtime upper bound visible in the command itself. Reap any backgrounded process (dev server, etc.) with `kill` before you finish.

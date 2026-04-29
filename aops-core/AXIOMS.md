@@ -199,3 +199,22 @@ Potentially expensive or high-blast-radius operations require explicit prior app
 - Where approval was given, did the agent stay within the approved scope, or did it expand?
 - Did the agent self-authorise on the basis that "the cost looked low" rather than that the cost was self-evidently bounded?
 - Where scope expanded mid-execution, did the agent re-confirm, or proceed?
+
+## A13: Rule Against Perpetuities (no commands that may never terminate)
+
+Every shell command, subprocess, or background task you spawn MUST have a bounded, observable terminating condition visible in the command itself. You MUST NOT initiate operations whose runtime has no defined upper bound.
+
+- **Prohibited shapes**: `--watch`, `--follow`/`-f`, `tail -f`, `gh run watch`, `while true; do …; done`, dev servers spawned with `&` and never reaped, polling loops with no iteration cap, any flag that "blocks until X happens" without a timeout.
+- **Bounded substitutes**: explicit timeouts (`timeout 60s …`), iteration caps (`for i in $(seq 1 12); do … && break; sleep 5; done`), polling with a maximum wait expressed in the command itself.
+- **Reap what you start.** If a long-running process is genuinely required (a dev server for browser testing, say), capture its PID and `kill` it before you finish your turn. A backgrounded process the agent forgot about keeps the hosting harness alive past the session's notional end — the runner's job timeout, not the agent, is what eventually kills it. Costly, silent, and indistinguishable from a real failure in the logs.
+- **Bash-tool auto-backgrounding is not reaping.** When the harness times a command out and reports "Command running in background", that process is still alive. The agent owns its termination.
+
+The standard is _not_ "I expect this to finish quickly" — it is that the upper bound on runtime is **stated in the command itself** and falls within the session's authorised budget (see A12).
+
+**On review, ask:**
+
+- For each command issued, was the upper bound on runtime visible in the command itself?
+- Did the agent leave any process running at session end that it had started?
+- Where the agent polled, was the polling capped, or open-ended?
+- Did "the harness will time out eventually" stand in for an explicit bound?
+- Where the Bash tool reported a command running in background, did the agent reap it before finishing?
