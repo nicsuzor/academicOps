@@ -15,25 +15,12 @@ from pathlib import Path
 from typing import Any
 
 import lib.session_naming as session_naming
-from lib.paths import get_plugin_root, get_summaries_dir
+from lib.paths import get_summaries_dir
 from lib.session_reader import extract_gate_context, find_sessions
 
 
 class InsightsValidationError(Exception):
     pass
-
-
-def load_prompt_template() -> str:
-    """Load shared prompt template (sourced from the session-insights spec in brain PKB).
-
-    Returns:
-        Prompt template string with {session_id}, {date}, {project} placeholders
-
-    Raises:
-        FileNotFoundError: If template file doesn't exist
-    """
-    template_path = get_plugin_root().parent / "specs" / "session-insights-prompt.md"
-    return template_path.read_text()
 
 
 def substitute_prompt_variables(template: str, metadata: dict[str, str]) -> str:
