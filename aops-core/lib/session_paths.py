@@ -233,6 +233,7 @@ def get_hook_log_path(
         timestamp=_parse_date_arg(date),
         artifact_type="hooks",
         crew_name=session_naming.resolve_crew_name(),
+        task_id=os.environ.get("AOPS_TASK_ID"),
     )
 
     # Unify hook logging: Always prefer centralized AOPS_SESSIONS if reachable
@@ -336,6 +337,7 @@ def get_session_file_path(
         timestamp=_parse_date_arg(date),
         artifact_type="insights",
         crew_name=session_naming.resolve_crew_name(),
+        task_id=os.environ.get("AOPS_TASK_ID"),
     )
     return get_session_status_dir(session_id, transcript_path) / filename
 
@@ -441,6 +443,7 @@ def get_gate_file_path(
         session_id,
         timestamp=_parse_date_arg(date),
         crew_name=session_naming.resolve_crew_name(),
+        task_id=os.environ.get("AOPS_TASK_ID"),
     )
     filename = f"{base}-{gate}.md"
 

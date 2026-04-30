@@ -105,7 +105,7 @@ Report to user:
 | `bug`        | Component-level bugs     | `bug: task_view.py KeyError on missing field` |
 | `learning`   | Agent behavior patterns  | `learning: agents ignoring explicit scope`    |
 | `experiment` | Systemic investigations  | `experiment: hook context injection timing`   |
-| `devlog`     | Development observations | `devlog: session-insights workflow`           |
+| `devlog`     | Development observations | `devlog: transcript pipeline workflow`        |
 | `decision`   | Architectural choices    | `decision: tasks for episodic storage`        |
 
 **Default**: `learning` if unclear.

@@ -674,6 +674,11 @@ def extract_timeline_events(turns: list[Any], session_id: str) -> list[dict[str,
     Scans assistant_sequence for task operations, user prompts,
     and skill invocations. Returns list of event dicts ready for JSON serialization.
 
+    Emission is idempotent: events are deduped by a content-aware key so that
+    upstream replays or repeated invocations cannot produce duplicate
+    `user_prompt` / task-op events. The parser already drops Cowork
+    `isReplay` entries and dedupes by UUID, so this is defence-in-depth.
+
     Args:
         turns: List of ConversationTurn objects from group_entries_into_turns
         session_id: 8-char session ID for context
@@ -682,6 +687,31 @@ def extract_timeline_events(turns: list[Any], session_id: str) -> list[dict[str,
         List of event dicts with timestamp, type, and description fields
     """
     events: list[dict[str, Any]] = []
+    seen_keys: set[tuple] = set()
+
+    def _emit(event: dict[str, Any]) -> None:
+        # Dedupe key: timestamp + type + the most-identifying content field
+        # for that event type. A duplicate prompt with a slightly different
+        # timestamp would still be caught by parser-level UUID dedupe; here
+        # we guard against exact replays from any other path.
+        evt_type = event.get("type")
+        if evt_type == "user_prompt":
+            key = (event.get("timestamp"), evt_type, event.get("description"))
+        elif evt_type in ("task_create", "task_complete", "task_release", "task_update"):
+            key = (
+                event.get("timestamp"),
+                evt_type,
+                event.get("task_id"),
+                event.get("task_title"),
+                event.get("new_status"),
+                event.get("status"),
+            )
+        else:
+            key = (event.get("timestamp"), evt_type, event.get("description"))
+        if key in seen_keys:
+            return
+        seen_keys.add(key)
+        events.append(event)
 
     for turn in turns:
         # Handle both ConversationTurn dataclass and plain dict turns
@@ -698,7 +728,7 @@ def extract_timeline_events(turns: list[Any], session_id: str) -> list[dict[str,
 
         # User prompts (no truncation, JSON-escaped by json.dumps downstream)
         if user_msg and not getattr(turn, "is_meta", False):
-            events.append(
+            _emit(
                 {
                     "timestamp": ts,
                     "type": "user_prompt",
@@ -716,7 +746,7 @@ def extract_timeline_events(turns: list[Any], session_id: str) -> list[dict[str,
                 continue
 
             if "pkb__create_task" in tool:
-                events.append(
+                _emit(
                     {
                         "timestamp": ts,
                         "type": "task_create",
@@ -726,7 +756,7 @@ def extract_timeline_events(turns: list[Any], session_id: str) -> list[dict[str,
                     }
                 )
             elif "pkb__complete_task" in tool:
-                events.append(
+                _emit(
                     {
                         "timestamp": ts,
                         "type": "task_complete",
@@ -734,7 +764,7 @@ def extract_timeline_events(turns: list[Any], session_id: str) -> list[dict[str,
                     }
                 )
             elif "pkb__release_task" in tool:
-                events.append(
+                _emit(
                     {
                         "timestamp": ts,
                         "type": "task_release",
@@ -746,7 +776,7 @@ def extract_timeline_events(turns: list[Any], session_id: str) -> list[dict[str,
             elif "pkb__update_task" in tool:
                 status = inp.get("status")
                 if status:  # only record status changes
-                    events.append(
+                    _emit(
                         {
                             "timestamp": ts,
                             "type": "task_update",
@@ -1672,6 +1702,14 @@ class SessionProcessor:
         session_summary = None
         session_uuid = file_path.stem
 
+        # Track UUIDs of conversation entries we've already emitted so we can
+        # skip Cowork-style replays. Cowork audit logs include both the
+        # original user/assistant entry and a later "replay" copy with the
+        # same UUID and a slightly later `_audit_timestamp` (the replay marks
+        # itself with `isReplay: true`). Both arms must be deduped or every
+        # downstream consumer (turns, timeline_events) sees the prompt twice.
+        seen_uuids: set[str] = set()
+
         with open(file_path, encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
@@ -1684,7 +1722,21 @@ class SessionProcessor:
                     if file_path.name.endswith("-hooks.jsonl"):
                         data = self._map_hook_jsonl_to_entry_data(data)
 
+                    # Drop replay entries outright — same UUID, same content,
+                    # later timestamp; a pure duplicate of the original.
+                    if data.get("isReplay") is True:
+                        continue
+
                     entry = Entry.from_dict(data)
+
+                    # Dedupe user/assistant entries by UUID (first occurrence
+                    # wins). System events, hook entries, etc. are not
+                    # deduped — they can legitimately repeat.
+                    if entry.type in ("user", "assistant") and entry.uuid:
+                        if entry.uuid in seen_uuids:
+                            continue
+                        seen_uuids.add(entry.uuid)
+
                     entries.append(entry)
 
                     # Extract summary if available
