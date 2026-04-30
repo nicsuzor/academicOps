@@ -12,7 +12,7 @@ Single source of truth for what priority numbers mean across the framework. Task
 
 | Label | Integer | Meaning                                                                 |
 | ----- | ------- | ----------------------------------------------------------------------- |
-| P0    | 0       | **Critical / overdue / blocking** — drop everything, deadline imminent. |
+| P0    | 0       | **Critical / overdue / blocking** — active crisis; address immediately. |
 | P1    | 1       | **Active intent** — committed work in flight this week.                 |
 | P2    | 2       | **Active work** — currently scheduled, working on it now or soon.       |
 | P3    | 3       | **Planned** — queued and ready. **Default for new tasks.**              |
@@ -33,7 +33,7 @@ When inferring priority from external signals (e.g., email capture), use:
 - Deadline < 48h, explicit urgent markers → **P0**
 - Deadline < 1 week, grant/paper deadlines → **P1**
 - General correspondence with follow-up needed → **P2**
-- No deadline, administrative, captured for later → **P3** or **P4**
+- No deadline, administrative, captured for later → **P3** (default) or **P4** (low relevance / long-term backlog with no near-term action)
 
 ## References
 
