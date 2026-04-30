@@ -3934,7 +3934,7 @@ session_id: {session_uuid}
         """Format time offset from conversation start."""
         return self._format_duration(seconds)
 
-    def _aggregate_turn_tokens(self, turn_entries: list[Entry]) -> dict[str, int | None]:
+    def _aggregate_turn_tokens(self, turn_entries: list[Entry]) -> dict[str, int | str | None]:
         """Sum all token types from entries in a turn.
 
         Returns dict with input, output, cache_create, cache_read token counts.
