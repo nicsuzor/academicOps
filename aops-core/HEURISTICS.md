@@ -26,7 +26,7 @@ Framework instructions should be no more detailed than required. Brevity reduces
 
 ## Imminent Deadline Surfacing (H91)
 
-**Imminent deadlines MUST surface regardless of task status.** A `blocked` or `in_progress` task with a deadline in the current "safe horizon" (default: 7 days) is more important than a `ready` task with no deadline. The `focus_score` calculation must escalate exponentially as the deadline approaches to ensure high-priority surfacing.
+**Imminent deadlines MUST surface regardless of task status.** A `blocked` or `in_progress` task with a deadline in the current "safe horizon" (default: 7 days) is more important than a `ready` task with no deadline. The `focus_score` calculation must escalate exponentially as the deadline approaches to ensure high-priority surfacing. Priority labels (P0–P4) are defined canonically in [[PRIORITY.md]].
 
 - **Check**: Does `pkb focus` show tasks due this week that are `blocked`?
 - **Check**: Does the `focus_score` increase daily for tasks with a `due` date?
@@ -518,6 +518,14 @@ Before spawning an Explore subagent or any research-oriented subagent, the main 
 - When the answer is evident from context, act directly — exploration is not a prerequisite for action
 
 **Derivation**: Extends P#58 (Indices Before Exploration) from search strategy to subagent dispatch. P#58 says prefer indices over filesystem searches; P#119 says prefer direct action over subagent research when context is sufficient. Addresses systematic over-exploration documented in #356.
+
+<a id="P123"></a>
+
+## Age Is Not a Staleness Signal (P#123)
+
+Age is not a staleness signal. Never cancel based on age alone. Only cancel when work becomes irrelevant. Garden passes surface candidates for human review — they do not recommend cancellation.
+
+**Derivation**: Age correlates weakly with relevance. A task untouched for 180 days may be a stalled priority, a deferred dependency, or genuinely dead — distinguishing requires reading the work, not counting days. Auto-cancellation by age destroys signal; surfacing for review preserves it.
 
 ---
 

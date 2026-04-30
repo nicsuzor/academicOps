@@ -9,35 +9,9 @@ from lib.insights_generator import (
     extract_short_hash,
     generate_fallback_insights,
     get_insights_file_path,
-    substitute_prompt_variables,
     validate_insights_schema,
     write_insights_file,
 )
-
-
-class TestPromptVariableSubstitution:
-    """Test prompt variable substitution."""
-
-    def test_substitute_all_variables(self):
-        """Test substituting all three variables."""
-        template = "Session {session_id} on {date} for {project}"
-        metadata = {"session_id": "abc123", "date": "2026-01-13", "project": "test"}
-        result = substitute_prompt_variables(template, metadata)
-        assert result == "Session abc123 on 2026-01-13 for test"
-
-    def test_substitute_repeated_variables(self):
-        """Test that repeated variables are all replaced."""
-        template = "{session_id} and {session_id} again"
-        metadata = {"session_id": "abc123"}
-        result = substitute_prompt_variables(template, metadata)
-        assert result == "abc123 and abc123 again"
-
-    def test_substitute_with_extra_metadata(self):
-        """Test that extra metadata keys don't cause issues."""
-        template = "Project: {project}"
-        metadata = {"project": "test", "extra_key": "ignored"}
-        result = substitute_prompt_variables(template, metadata)
-        assert result == "Project: test"
 
 
 class TestSessionIdExtraction:

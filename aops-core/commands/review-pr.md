@@ -90,7 +90,7 @@ Create **one session-level PKB task** to track batch progress, and append a one-
 mcp__pkb__create_task(
     title="PR review batch: $REPO_REF ($(date +%Y-%m-%d))",
     parent="<relevant epic or maintenance parent>",
-    priority=2,
+    priority=3,
     tags=["review-pr", "batch"],
     body="""## Queue
 - [ ] #201 — <title>  → <tier>

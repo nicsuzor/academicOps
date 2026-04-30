@@ -17,7 +17,7 @@ Design acceptance criteria and QA plans that evaluate fitness-for-purpose, not j
 
 ## Why This Mode Exists
 
-Acceptance criteria are usually written as binary checklists: "Legend is visible", "Labels show titles not IDs", "Node size correlates with downstream_weight." These can be verified mechanically without understanding the user. They pass when the feature is technically present but experientially poor.
+Acceptance criteria are usually written as binary checklists: "Legend is visible", "Labels show titles not IDs", "Node size correlates with urgency." These can be verified mechanically without understanding the user. They pass when the feature is technically present but experientially poor.
 
 The qualitative-assessment reference describes how to evaluate features against user stories using persona immersion, scenarios, and narrative judgment. But that guidance only reaches the agent doing evaluation — the agent writing the criteria in the first place never sees it. The result: good evaluation methodology applied to mediocre criteria.
 
@@ -55,13 +55,13 @@ A user story for QA planning purposes needs:
 
 **Transform binary checks into qualitative dimensions.** Every criterion should require interpretive judgment, not just observation:
 
-| Binary check (avoid)                          | Qualitative dimension (use)                                                                                    |
-| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| "Legend is visible without interaction"       | "Can a first-time viewer decode the graph's visual language without instructions?"                             |
-| "Node size correlates with downstream_weight" | "Does the visual hierarchy match the importance hierarchy? Can you spot the highest-impact work at a glance?"  |
-| "Labels show titles not IDs"                  | "Can you understand what each node represents without hovering or clicking?"                                   |
-| "Stale sessions have archive prompt"          | "Does the interface help you let go of stale work without anxiety about losing context?"                       |
-| "Section order matches spec"                  | "Does the page answer your three questions (what's running, what's dropped, what needs me) before you scroll?" |
+| Binary check (avoid)                    | Qualitative dimension (use)                                                                                    |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| "Legend is visible without interaction" | "Can a first-time viewer decode the graph's visual language without instructions?"                             |
+| "Node size correlates with urgency"     | "Does the visual hierarchy match the importance hierarchy? Can you spot the highest-impact work at a glance?"  |
+| "Labels show titles not IDs"            | "Can you understand what each node represents without hovering or clicking?"                                   |
+| "Stale sessions have archive prompt"    | "Does the interface help you let go of stale work without anxiety about losing context?"                       |
+| "Section order matches spec"            | "Does the page answer your three questions (what's running, what's dropped, what needs me) before you scroll?" |
 
 Binary checks are useful for regression testing after the feature ships. They are insufficient for evaluating whether the feature serves the user.
 

@@ -127,8 +127,8 @@ Patterns to flag:
 
 - Tailscale magic-DNS hostnames: `*.ts.net` (any subdomain).
 - RFC1918 addresses: `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16` (literal IPs only — not in code that _parses_ CIDR ranges).
-- mDNS / link-local: `*.local` hostnames (excluding `localhost`, `*.local.test`, and `<TLD>.local` patterns inside test fixtures).
-- Internal-looking hostnames: `nicwin`, `*.internal`, `*.lan`, `*.home.arpa`.
+- mDNS / link-local: `*.local` hostnames (excluding `localhost` and `*.local.test`).
+- Internal-looking hostnames: `*.nicwin`, `*.internal`, `*.lan`, `*.home.arpa`.
 - IPv6 ULAs: `fc00::/7`, `fd00::/8`.
 
 Verdict ladder:
@@ -139,8 +139,7 @@ Verdict ladder:
 
 Carve-outs:
 
-- The patterns are allowed in `.agents/CAPABILITIES.md` and similar checked-in environment-orientation docs _if_ the repo is private. If the repo is public, treat any of these patterns as `BLOCK` regardless of file.
-- Code that defines RFC1918 ranges as constants for the purpose of _detecting_ them (e.g. this rule's own implementation) is allowed.
+- The patterns are allowed in `.agents/CAPABILITIES.md` and similar checked-in environment-orientation docs as `WARN` (not `BLOCK`) — these files document the local environment rather than encoding values in production usage. The caller may choose to parameterise or redact.
 
 Output: list each match with file, line, and pattern. State `sensitive-data: BLOCK|WARN|PASS` and the specific identifiers found.
 
@@ -160,3 +159,32 @@ Overall: <BLOCK|REVISE|WARN|APPROVE>
 ```
 
 `APPROVE` is only available when every rule resolves to `PASS` AND the axiom checks (above) also pass. A `WARN` on sensitive-data with all other rules `PASS` produces overall `WARN` (not `APPROVE`).
+
+## A2 Check (Two Parts)
+
+For every A2 verdict, ask BOTH questions:
+
+(a) Is the test code mechanically generic? (No hardcoded values, parameterised assertions, etc.)
+(b) Does the test cover all current members of the abstract class the rule applies to?
+
+If only ONE current class member is covered, that is an A2 violation regardless of code-level genericity. Verdict: REQUEST_CHANGES with "parameterise across class members [list them]" — or accept only if the PR carries a clearly-marked TODO + filed follow-up task ID.
+
+This rule closes the gap documented in #794: a test wired to a single instance of an abstract class (e.g. pinned to gemini, ignoring claude) ships a false PASS even when the test code reads as generic. Code-level genericity is necessary but NOT sufficient — class-coverage is the second test that must pass.
+
+## Structured Exemption Schema
+
+Replace any "Judgment calls (no action required)" section with the structured form:
+
+- `Why this serves the principle's intent:` <one sentence — required>
+
+If no rationale is given, treat as a flagged violation, not a soft pass.
+
+FORBIDDEN exemption grounds:
+
+- "pre-existing"
+- "out of scope for this PR"
+- "we'll get to it later"
+
+For mechanical violations RBG has authority to fix, RBG MUST attempt the fix before the exemption category is available.
+
+This rule closes the gap documented in #811: thin "judgment call" exemptions with scope-based excuses ("pre-existing", "out of scope") shipped false PASS verdicts because the exemption section had no schema. Free-form rationale is not rationale — the schema demands a one-sentence statement of how the exempted action serves the principle's intent.

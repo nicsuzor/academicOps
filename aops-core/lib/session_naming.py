@@ -176,6 +176,22 @@ def get_session_shortform(
     return "-".join(parts)
 
 
+def _format_task_prefix(task_id: str | None) -> str:
+    """Derive a grep-friendly ``task-XXXXXXXX-`` prefix from a task ID.
+
+    Uses the same logic as :func:`derive_polecat_session_id` to extract an 8-char
+    hex shortform from a full task ID like ``task-c36a6b0c-some-slug``. Falls
+    back to SHA-256[:8] for non-hex IDs.
+
+    Returns an empty string when ``task_id`` is None/empty so the prefix is a
+    no-op for non-task sessions.
+    """
+    if not task_id:
+        return ""
+    short = derive_polecat_session_id(task_id)
+    return f"task-{short}-"
+
+
 def generate_session_filename(
     session_id: str,
     timestamp: datetime | None = None,
@@ -186,6 +202,7 @@ def generate_session_filename(
     provider: str | None = None,
     artifact_type: str = "transcript-full",
     shortform: str | None = None,
+    task_id: str | None = None,
 ) -> str:
     """Generate a session artifact filename following the naming convention.
 
@@ -221,8 +238,9 @@ def generate_session_filename(
         shortform = get_session_shortform(crew_name, repo)
     safe_slug = _sanitize_slug(slug)
     art = ARTIFACT_TYPES[artifact_type]
+    task_prefix = _format_task_prefix(task_id)
 
-    return f"{date_str}-{time_str}-{short_id}-{shortform}-{safe_slug}{art['variant']}{art['ext']}"
+    return f"{date_str}-{time_str}-{short_id}-{shortform}-{task_prefix}{safe_slug}{art['variant']}{art['ext']}"
 
 
 def generate_base_name(
@@ -234,6 +252,7 @@ def generate_base_name(
     machine: str | None = None,
     provider: str | None = None,
     shortform: str | None = None,
+    task_id: str | None = None,
 ) -> str:
     """Generate the base name shared across all artifacts for a session.
 
@@ -248,8 +267,9 @@ def generate_base_name(
     if shortform is None:
         shortform = get_session_shortform(crew_name, repo)
     safe_slug = _sanitize_slug(slug)
+    task_prefix = _format_task_prefix(task_id)
 
-    return f"{date_str}-{time_str}-{short_id}-{shortform}-{safe_slug}"
+    return f"{date_str}-{time_str}-{short_id}-{shortform}-{task_prefix}{safe_slug}"
 
 
 def get_artifact_subdir(artifact_type: str) -> str:
