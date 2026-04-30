@@ -328,7 +328,7 @@ When a strategy is selected, the agent should execute these specific actions:
 
 **Nest loose tasks**: For `flat_tasks` (tasks with no parent), read the task title and body, search for related epics/projects via `search`, and `bulk_reparent` to the best match. If no match exists, check if 3+ loose tasks share a theme — if so, create an epic to contain them.
 
-**Connect disconnected epics**: For each disconnected epic, read its title and children to infer which project it belongs to. Search for matching projects and reparent. If no project matches, flag for human review.
+**Connect disconnected epics**: For each disconnected epic, prefer the epic's `frontmatter.project` slug and resolve the matching project directly. If `project` is missing, read the title and children, search for matching projects via `search`, and reparent. Do not infer project membership from task ID prefixes or by walking unrelated parent chains. If no project matches, flag for human review.
 
 ### Known Metric Limitations
 

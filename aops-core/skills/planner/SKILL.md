@@ -338,7 +338,7 @@ These are the interactive counterpart to sleep Phase 4. In maintain mode, the hu
 
 **Staleness verification procedure**:
 
-1. `list_tasks(status="queued", stale_days=90)` — get candidates
+1. `list_tasks(status="queued", stale_days=90)` — get candidates. Pass `project=<slug>` to scope to one project; do not infer project membership from task ID prefixes or by walking parent chains.
 2. For each: read task, search email/calendar for completion evidence
    - `messages_search` for sent mail matching task subject/keywords
    - `calendar_list_events` for past meetings matching task context
@@ -348,7 +348,7 @@ These are the interactive counterpart to sleep Phase 4. In maintain mode, the hu
 
 **Misclassification procedure**:
 
-1. `list_tasks(title_contains="Email:")` — find email subjects captured as tasks
+1. `list_tasks(title_contains="Email:")` — find email subjects captured as tasks. Add `project=<slug>` when scoping to one project.
 2. For each: check if actionable or purely informational
 3. Informational → `batch_reclassify(ids=[<id>], new_type="memory")` or `batch_archive`
 4. Actionable but poorly formed → flag for triage
