@@ -506,6 +506,14 @@ def _process_reflection(
             )
             write_insights_file(insights_path, insights, session_id=session_id)
             print(f"💡 Reflection {i + 1}/{len(reflections)} saved to: {insights_path}")
+            # Surface /dump quality warnings (missing Output / Tasks worked /
+            # bare-id references / feature-suggestion smell). See
+            # aops-core/skills/end_session/transcript-metadata-schema.md.
+            for warning in insights.get("quality_warnings") or []:
+                print(
+                    f"⚠️  Reflection {i + 1} quality warning: {warning}",
+                    file=sys.stderr,
+                )
         except InsightsValidationError as e:
             print(f"⚠️  Reflection {i + 1} validation failed: {e}", file=sys.stderr)
         except Exception as e:
