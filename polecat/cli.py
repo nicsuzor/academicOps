@@ -2426,7 +2426,11 @@ def finish(ctx, no_push, do_nuke, force, force_done, project):
 
     # CLI --project/-p overrides task.project
     if project:
-        task.project = project
+        try:
+            task.project = manager.resolve_project_alias(project)
+        except ValueError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
 
     # --- SAFEGUARD 0: Completion Protection ---
     # If the task is already DONE, or in review/merge phase, do NOT override it.
@@ -4128,9 +4132,15 @@ def run(
             print("No ready tasks found.")
             sys.exit(3)
 
-    # CLI --project/-p overrides task.project (e.g. task has no project set)
+    # CLI --project/-p overrides task.project (e.g. task has no project set).
+    # Resolve aliases / repo names to the canonical slug so downstream lookups
+    # (mirror path, default_branch) hit the registry.
     if project:
-        task.project = project
+        try:
+            task.project = manager.resolve_project_alias(project)
+        except ValueError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
 
     if is_issue:
         print(f"🎯 Issue: {task.title} ({getattr(task, 'issue_url', '') or task.id})")
