@@ -133,9 +133,11 @@ Quick task capture with minimal overhead. Speed is the priority — no enrichmen
 **Arguments**:
 
 - `/q <description>` — Create with auto-routing
-- `/q P0 <description>` — High-priority
+- `/q P0 <description>` — High-priority (see canonical labels)
 - `/q nic: <description>` — Assign to user
 - `/q` (no args) — Prompt for details
+
+**Priority labels are canonical.** When assigning priority, use only the labels P0–P4 as defined in [TAXONOMY.md → Priority Labels](../remember/references/TAXONOMY.md#priority-labels-p0p4). Do not invent new bands (no "P5", no "high/medium/low" in place of labels), and do not re-skin the meanings. Default for new tasks is **P2** unless an explicit signal (deadline, severity, user override) justifies a different label per the canonical definition.
 
 ### plan
 
@@ -309,13 +311,13 @@ These are the interactive counterpart to sleep Phase 4. In maintain mode, the hu
 
 **Densify strategies** (rotate across sessions when densifying):
 
-| Strategy               | Targets                                          |
-| ---------------------- | ------------------------------------------------ |
-| `criticality-focus`    | High-criticality tasks with zero/few edges       |
-| `high-priority-sparse` | P0/P1 ready tasks with zero edges                |
-| `project-cluster`      | Ready tasks within one project                   |
-| `neighbourhood-expand` | Neighbours of high-weight/high-criticality tasks |
-| `cross-project-bridge` | Tasks sharing tags across projects               |
+| Strategy               | Targets                                                                                                            |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `criticality-focus`    | High-criticality tasks with zero/few edges                                                                         |
+| `high-priority-sparse` | P0/P1 ready tasks with zero edges (see [Priority Labels](../remember/references/TAXONOMY.md#priority-labels-p0p4)) |
+| `project-cluster`      | Ready tasks within one project                                                                                     |
+| `neighbourhood-expand` | Neighbours of high-weight/high-criticality tasks                                                                   |
+| `cross-project-bridge` | Tasks sharing tags across projects                                                                                 |
 
 **Densify workflow**: Select candidates (5 min) → Enrich each (15 min) → Present proposals → Apply approved → Verify `urgency` and graph health improved
 

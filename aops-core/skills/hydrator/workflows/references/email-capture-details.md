@@ -47,10 +47,17 @@ Query the PKB for relevant context (projects, goals, relationships). Match actio
 ### Infer Priority and Metadata
 
 1. **Infer Priority**:
-   - **P0 (Urgent)**: Deadlines < 48h, OSB votes, explicit urgent markers.
-   - **P1 (High)**: Deadlines < 1 week, grant/paper deadlines.
-   - **P2 (Normal)**: General correspondence, FYI with follow-up.
-   - **P3 (Low)**: No deadline, administrative.
+
+   The canonical P0–P4 definitions live in [TAXONOMY.md → Priority Labels](../../../remember/references/TAXONOMY.md#priority-labels-p0p4). Use those labels — do not invent new bands. The mapping below is the **email-specific deadline heuristic** for inferring which canonical label applies to a freshly-captured email task.
+
+   | Email signal                                         | Canonical label |
+   | ---------------------------------------------------- | --------------- |
+   | Deadline < 48h, OSB votes, explicit urgent markers   | **P0**          |
+   | Deadline < 1 week, grant/paper deadlines             | **P1**          |
+   | General correspondence, FYI with follow-up (default) | **P2**          |
+   | No deadline, administrative                          | **P3**          |
+
+   Email capture does not produce P4 — backlog routing is a planner/maintain decision, not an inbox decision.
 
 2. **Extract Structured Metadata**:
    - **due**: Extract deadline from email body. Format: ISO date (YYYY-MM-DD).

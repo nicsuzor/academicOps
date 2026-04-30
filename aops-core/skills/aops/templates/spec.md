@@ -41,7 +41,7 @@ tags:
 
 **Date**: YYYY-MM-DD
 **Status**: [draft | approved | implemented | requirement]
-**Priority**: [P0-P4]
+**Priority**: [P0 | P1 | P2 | P3 | P4] <!-- Canonical labels — see [TAXONOMY.md → Priority Labels](../../remember/references/TAXONOMY.md#priority-labels-p0p4) -->
 
 ## Problem Statement
 
