@@ -245,7 +245,7 @@ For each candidate (up to 20 per cycle):
    - Git commits referencing the task
 3. Decision:
    - Evidence of completion found → `complete_task` with note explaining evidence
-   - Deadline >90d past + zero evidence of any activity → `complete_task` with "auto-closed: no activity, deadline long past"
+   - Deadline >90d past + zero evidence of any activity → flag in cycle summary for human review (per [P#123](../../HEURISTICS.md#P123), age alone does not establish irrelevance)
    - Genuinely ambiguous (some activity but unclear completion) → flag in cycle summary
 
 **Environment guard**: Email/calendar tools require local MCP servers (not available on GitHub Actions). When running on CI, skip evidence-based verification entirely — only flag candidates. Staleness verification only runs effectively during manual `/sleep` invocations on the Mac.
@@ -273,6 +273,8 @@ Detect orphans, stale docs, and under-specified tasks. The agent uses these as *
 - **PKB orphan detection**: `mcp__pkb__pkb_orphans()`
 - **Git log**: Recent commits, task changes since last cycle
 - **Own judgment**: The agent reads flagged tasks and decides whether they genuinely need attention.
+
+**Per [HEURISTICS P#123](../../HEURISTICS.md#P123) — age is not staleness.** Surface candidates for human review; do not auto-cancel based on age. Cancellation requires evidence the work has become irrelevant, not just that it is old.
 
 ## Phase 8: Refile Processing
 
