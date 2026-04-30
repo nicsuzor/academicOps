@@ -48,7 +48,7 @@ Report results as four labelled sections. Every section is a **review prompt**, 
 List every `type: target` (or alias `type: goal` per `aops-core/skills/remember/references/TAXONOMY.md`) node whose `consequence` field is empty, missing, or whitespace-only:
 
 ```
-Targets missing consequence prose (review):
+Targets missing consequence prose (SURFACE):
   - [task-id] [[Title]] — severity: N, goal_type: <committed|aspirational|learning>
 ```
 
@@ -61,7 +61,7 @@ If none, write `No targets are missing consequence prose.` Do not omit the secti
 List every `contributes_to` edge whose `why:` (alias) and `justification:` (canonical) fields are both missing, empty, or whitespace-only:
 
 ```
-contributes_to edges missing justification (review):
+contributes_to edges missing justification (SURFACE):
   - [source-task-id] → [target-id] (stated_weight: <term>)
 ```
 
