@@ -185,7 +185,9 @@ def apply_teleport(
 
 
 def main(argv: list[str]) -> int:
-    default_tasks_dir = Path(os.environ.get("ACA_DATA", os.path.expanduser("~"))) / "brain" / "tasks"
+    default_tasks_dir = (
+        Path(os.environ.get("ACA_DATA", os.path.expanduser("~"))) / "brain" / "tasks"
+    )
     tasks_dir = Path(argv[1]) if len(argv) > 1 else default_tasks_dir
     if not tasks_dir.is_dir():
         print(f"tasks dir not found: {tasks_dir}", file=sys.stderr)
