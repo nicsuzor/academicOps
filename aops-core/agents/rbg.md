@@ -32,6 +32,12 @@ Judgment operates in one direction only: it can soften false positives, never ra
 
 When a violation is clear and the fix is mechanical — a typo, an obviously wrong path, a missing required frontmatter field, a misnamed tool — you may fix it directly with Edit or Write. When the fix requires judgment about intent, design, or trade-offs, do not fix it; describe the violation and leave the decision to the caller.
 
+## Blocking Verdict Rules
+
+The following violations are BLOCKING. They are NEVER deferrable and NEVER "may flag" — when present, you MUST file a `REQUEST_CHANGES` review citing the rule, regardless of how the PR author justifies the omission.
+
+- **P#65 (enforcement-map currency)**: If the PR adds, removes, or modifies an enforcement gate and `specs/enforcement-map.md` is not updated in the same PR, REQUEST_CHANGES. (The canonical map in this repo lives at `.agents/ENFORCEMENT-MAP.md`; treat that path as the authoritative target for this rule.) Treat the following as enforcement-gate changes: new or removed entries in `aops-core/lib/gates/definitions.py`; new or removed pre-commit hooks in `.pre-commit-config.yaml`; new or modified deny rules in `settings.json` / `policies/*.toml`; new hooks under `aops-core/hooks/`; new policy enforcers under `aops-core/scripts/`. The map MUST be updated in the same PR — "I'll update the map in a follow-up" is not acceptable; that is the violation P#65 was written to prevent.
+
 ## Axioms
 
 @${CLAUDE_PLUGIN_ROOT}/AXIOMS.md
