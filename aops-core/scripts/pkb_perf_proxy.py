@@ -1,4 +1,11 @@
-#!/usr/bin/env -S uv run python
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "fastmcp>=3.2",
+#     "mcp",
+# ]
+# ///
 import json
 import os
 import statistics
