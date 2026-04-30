@@ -728,6 +728,7 @@ def _generate_transcript_filename(
 
     # Generate base name via naming module
     # (unified format: {YYYYMMDD}-{HHMM}-{session_id}-{shortform}-{slug})
+    # task_id from $AOPS_TASK_ID is passed through so transcript filenames are task-grep-friendly.
     base = session_naming.generate_base_name(
         session_id=session_id,
         timestamp=timestamp,
@@ -736,6 +737,7 @@ def _generate_transcript_filename(
         repo=repo,
         provider=provider,
         shortform=shortform,
+        task_id=os.environ.get("AOPS_TASK_ID"),
     )
 
     # Return components for compatibility with transcript.py callers
