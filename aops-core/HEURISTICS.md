@@ -519,6 +519,12 @@ Before spawning an Explore subagent or any research-oriented subagent, the main 
 
 **Derivation**: Extends P#58 (Indices Before Exploration) from search strategy to subagent dispatch. P#58 says prefer indices over filesystem searches; P#119 says prefer direct action over subagent research when context is sufficient. Addresses systematic over-exploration documented in #356.
 
+<a id="P123"></a>
+
+## Dispatch Specialist-Owned Tasks (P#123)
+
+When operating as supervisor (top-level interactive session) and a claimed task has an `assignee` matching a specialist sub-agent namespace (`aops-core:<name>`, `aops-cowork:<name>`, or the bare name `polecat`), the main agent MUST dispatch via the Agent tool with `subagent_type` set to the bare name — NOT execute inline with Read/Grep/Bash. See `/pull` Step 1.7 for the short-circuit. Inline execution by the supervisor erases the specialist's audit trail and bypasses the agent's specialised prompt.
+
 ---
 
 # Framework Architecture
