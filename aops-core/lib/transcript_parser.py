@@ -1050,7 +1050,12 @@ class Entry:
     output_tokens: int | None = None
     cache_creation_input_tokens: int | None = None
     cache_read_input_tokens: int | None = None
+    thoughts_tokens: int | None = None  # Gemini "thoughts" token count
     model: str | None = None
+
+    # Thoughts/thinking blocks. For Gemini: list of {subject, description, timestamp}.
+    # For Claude: populated from `thinking` content blocks during turn grouping.
+    thoughts: list[dict[str, Any]] = field(default_factory=list)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Entry:
@@ -1196,6 +1201,9 @@ class ConversationTurn:
     output_tokens: int | None = None
     cache_create_tokens: int | None = None
     cache_read_tokens: int | None = None
+    thoughts_tokens: int | None = None
+    # Model used for the assistant entries in this turn (last-wins).
+    model: str | None = None
 
 
 class SessionState(Enum):
@@ -1666,6 +1674,19 @@ class SessionProcessor:
                         }
                     )
 
+            # Extract Gemini-specific metadata: thoughts, tokens, model.
+            # Schema: tokens = {input, output, cached, thoughts, tool, total}
+            #         thoughts = [{subject, description, timestamp}, ...]
+            #         model = "gemini-..."
+            gemini_thoughts = msg.get("thoughts") or []
+            gemini_tokens = msg.get("tokens") or {}
+            gemini_model = msg.get("model")
+
+            tokens_input = gemini_tokens.get("input")
+            tokens_output = gemini_tokens.get("output")
+            tokens_cached = gemini_tokens.get("cached")
+            tokens_thoughts = gemini_tokens.get("thoughts")
+
             # Create main entry
             entry = Entry(
                 type=entry_type,
@@ -1673,6 +1694,12 @@ class SessionProcessor:
                 timestamp=timestamp,
                 message={"content": content_blocks if content_blocks else content_text},
                 content={"content": content_blocks if content_blocks else content_text},  # Fallback
+                input_tokens=tokens_input if entry_type == "assistant" else None,
+                output_tokens=tokens_output if entry_type == "assistant" else None,
+                cache_read_input_tokens=tokens_cached if entry_type == "assistant" else None,
+                thoughts_tokens=tokens_thoughts if entry_type == "assistant" else None,
+                model=gemini_model if entry_type == "assistant" else None,
+                thoughts=list(gemini_thoughts) if entry_type == "assistant" else [],
             )
             entries.append(entry)
 
@@ -2132,6 +2159,27 @@ class SessionProcessor:
                 if not isinstance(content, list):
                     content = [content]
 
+                # Surface Gemini-style thoughts attached to the Entry. The
+                # gemini parser extracts {subject, description, timestamp}
+                # tuples onto entry.thoughts; emit each as a `thoughts`
+                # sequence item before the main text/tool_use blocks so they
+                # render above the model output in markdown.
+                for thought in entry.thoughts or []:
+                    if not isinstance(thought, dict):
+                        continue
+                    subject = (thought.get("subject") or "").strip()
+                    description = (thought.get("description") or "").strip()
+                    if not subject and not description:
+                        continue
+                    current_turn["assistant_sequence"].append(
+                        {
+                            "type": "thoughts",
+                            "subject": subject,
+                            "description": description,
+                            "subagent_id": entry.subagent_id,
+                        }
+                    )
+
                 for block in content:
                     if isinstance(block, dict):
                         if block.get("type") == "text":
@@ -2141,6 +2189,18 @@ class SessionProcessor:
                                     {
                                         "type": "text",
                                         "content": text_content,
+                                        "subagent_id": entry.subagent_id,
+                                    }
+                                )
+                        elif block.get("type") == "thinking":
+                            # Claude extended-thinking block:
+                            # {"type": "thinking", "thinking": "...", "signature": "..."}
+                            thinking_text = (block.get("thinking") or "").strip()
+                            if thinking_text:
+                                current_turn["assistant_sequence"].append(
+                                    {
+                                        "type": "thinking",
+                                        "content": thinking_text,
                                         "subagent_id": entry.subagent_id,
                                     }
                                 )
@@ -2232,6 +2292,13 @@ class SessionProcessor:
                     turn["cache_create_tokens"] = token_stats["cache_create"]
                 if token_stats["cache_read"] is not None:
                     turn["cache_read_tokens"] = token_stats["cache_read"]
+                if token_stats.get("thoughts") is not None:
+                    turn["thoughts_tokens"] = token_stats["thoughts"]
+
+                # Last assistant model wins for the per-turn model badge.
+                for te in turn_entries:
+                    if te.type == "assistant" and te.model:
+                        turn["model"] = te.model
 
                 if is_user_turn and not first_user_turn_found:
                     first_user_turn_found = True
@@ -2274,6 +2341,8 @@ class SessionProcessor:
                         output_tokens=turn.get("output_tokens"),
                         cache_create_tokens=turn.get("cache_create_tokens"),
                         cache_read_tokens=turn.get("cache_read_tokens"),
+                        thoughts_tokens=turn.get("thoughts_tokens"),
+                        model=turn.get("model"),
                     )
                 )
 
@@ -2546,6 +2615,18 @@ class SessionProcessor:
 
             # Build per-turn meta line (shown below the heading, not crammed into it)
             meta_parts = []
+            # Pull token fields up-front so they're available for both the
+            # timing meta line and the per-turn agent header badge below.
+            if isinstance(turn, ConversationTurn):
+                input_tokens = turn.input_tokens
+                output_tokens = turn.output_tokens
+                cache_read = turn.cache_read_tokens
+                cache_create = turn.cache_create_tokens
+            else:
+                input_tokens = turn.get("input_tokens")
+                output_tokens = turn.get("output_tokens")
+                cache_read = turn.get("cache_read_tokens")
+                cache_create = turn.get("cache_create_tokens")
             if timing_info:
                 if timing_info.is_first and timing_info.start_time_local:
                     ts = timing_info.start_time_local
@@ -2555,16 +2636,6 @@ class SessionProcessor:
                 if timing_info.duration:
                     meta_parts.append(f"took {timing_info.duration}")
 
-                if isinstance(turn, ConversationTurn):
-                    input_tokens = turn.input_tokens
-                    output_tokens = turn.output_tokens
-                    cache_read = turn.cache_read_tokens
-                    cache_create = turn.cache_create_tokens
-                else:
-                    input_tokens = turn.get("input_tokens")
-                    output_tokens = turn.get("output_tokens")
-                    cache_read = turn.get("cache_read_tokens")
-                    cache_create = turn.get("cache_create_tokens")
                 if input_tokens is not None and output_tokens is not None:
                     meta_parts.append(f"{input_tokens:,} in / {output_tokens:,} out")
                     if cache_read:
@@ -2687,10 +2758,70 @@ class SessionProcessor:
                 in_actions_section = False
                 agent_header_emitted = False
 
+                # Build per-turn token+model badge appended to the agent header.
+                # Example: " — gemini-3-flash-preview [in=17,481 cached=0 think=440 out=94]"
+                turn_model = turn.model if isinstance(turn, ConversationTurn) else turn.get("model")
+                turn_thoughts_tok = (
+                    turn.thoughts_tokens
+                    if isinstance(turn, ConversationTurn)
+                    else turn.get("thoughts_tokens")
+                )
+                badge_parts: list[str] = []
+                if input_tokens is not None or output_tokens is not None:
+                    if input_tokens is not None:
+                        badge_parts.append(f"in={input_tokens:,}")
+                    if cache_read:
+                        badge_parts.append(f"cached={cache_read:,}")
+                    if turn_thoughts_tok:
+                        badge_parts.append(f"think={turn_thoughts_tok:,}")
+                    if output_tokens is not None:
+                        badge_parts.append(f"out={output_tokens:,}")
+                badge = f" [{' '.join(badge_parts)}]" if badge_parts else ""
+                model_badge = f" — {turn_model}" if turn_model else ""
+
+                def _emit_agent_header(
+                    subagent_id: str | None,
+                    *,
+                    _turn_number: int = turn_number,
+                    _model_badge: str = model_badge,
+                    _badge: str = badge,
+                ) -> str:
+                    """Emit the `## Agent (...)` header with model + token badge."""
+                    if subagent_id:
+                        return f"## Agent ({subagent_id}){_model_badge}{_badge}\n\n"
+                    return f"## Agent (Turn {_turn_number}){_model_badge}{_badge}\n\n"
+
                 for item in assistant_sequence:
                     item_type = item.get("type")
                     content = item.get("content", "")
                     subagent_id = item.get("subagent_id")
+
+                    if item_type == "thinking":
+                        # Claude extended-thinking block. Render as blockquote
+                        # ABOVE the rest of the assistant output.
+                        if not agent_header_emitted:
+                            markdown += _emit_agent_header(subagent_id)
+                            agent_header_emitted = True
+                        thinking_text = (content or "").strip()
+                        if thinking_text:
+                            markdown += "> **Thinking**\n>\n"
+                            markdown += _quote_block(thinking_text) + "\n\n"
+                        continue
+
+                    if item_type == "thoughts":
+                        # Gemini thoughts: {subject, description}.
+                        if not agent_header_emitted:
+                            markdown += _emit_agent_header(subagent_id)
+                            agent_header_emitted = True
+                        subject = (item.get("subject") or "").strip()
+                        description = (item.get("description") or "").strip()
+                        if subject and description:
+                            markdown += f"> **{subject}**: {description}\n\n"
+                        elif subject:
+                            markdown += f"> **{subject}**\n\n"
+                        elif description:
+                            markdown += f"> {description}\n\n"
+                        continue
 
                     if item_type == "text":
                         if in_actions_section:
@@ -2698,10 +2829,7 @@ class SessionProcessor:
                             markdown += "\n"
 
                         if not agent_header_emitted:
-                            if subagent_id:
-                                markdown += f"## Agent ({subagent_id})\n\n"
-                            else:
-                                markdown += f"## Agent (Turn {turn_number})\n\n"
+                            markdown += _emit_agent_header(subagent_id)
                             agent_header_emitted = True
 
                         notifications = _extract_task_notifications(content)
@@ -3308,13 +3436,14 @@ session_id: {session_uuid}
     def _aggregate_turn_tokens(self, turn_entries: list[Entry]) -> dict[str, int | None]:
         """Sum all token types from entries in a turn.
 
-        Returns dict with input, output, cache_create, cache_read token counts.
-        Values are None if no tokens found for that type.
+        Returns dict with input, output, cache_create, cache_read, thoughts
+        token counts. Values are None if no tokens found for that type.
         """
         total_input = 0
         total_output = 0
         total_cache_create = 0
         total_cache_read = 0
+        total_thoughts = 0
         has_tokens = False
 
         for entry in turn_entries:
@@ -3328,6 +3457,9 @@ session_id: {session_uuid}
                 total_cache_create += entry.cache_creation_input_tokens
             if entry.cache_read_input_tokens is not None:
                 total_cache_read += entry.cache_read_input_tokens
+            if entry.thoughts_tokens is not None:
+                total_thoughts += entry.thoughts_tokens
+                has_tokens = True
 
         if has_tokens:
             return {
@@ -3335,8 +3467,15 @@ session_id: {session_uuid}
                 "output": total_output,
                 "cache_create": total_cache_create if total_cache_create > 0 else None,
                 "cache_read": total_cache_read if total_cache_read > 0 else None,
+                "thoughts": total_thoughts if total_thoughts > 0 else None,
             }
-        return {"input": None, "output": None, "cache_create": None, "cache_read": None}
+        return {
+            "input": None,
+            "output": None,
+            "cache_create": None,
+            "cache_read": None,
+            "thoughts": None,
+        }
 
     def _aggregate_session_usage(
         self,
