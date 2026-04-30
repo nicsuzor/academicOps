@@ -112,10 +112,31 @@ def sync_client_log(session_path: Path, session_id: str, date: datetime | None =
             )
             return
 
-        # Stable per-session name based on the source filename stem, which is
-        # already unique per live session (UUID for Claude, date-time-hash for
-        # crew, session-* for Gemini). All other context lives in the payload.
-        target_name = f"{session_path.stem}-client{session_path.suffix}"
+        # Stable per-session name via the unified v4 naming convention.
+        # session_id is already unique per live session; slug defaults to
+        # "session" so the filename stays stable across syncs. Legacy
+        # timestamped duplicates are swept below.
+        crew_name = None
+        for category_plural in ("polecats", "crew"):
+            if category_plural in session_path.parts:
+                idx = session_path.parts.index(category_plural)
+                if len(session_path.parts) > idx + 1:
+                    crew_name = session_path.parts[idx + 1]
+                    break
+        repo = _infer_project(session_path)
+        try:
+            timestamp = datetime.fromtimestamp(session_path.stat().st_mtime).astimezone()
+        except OSError:
+            timestamp = datetime.now().astimezone()
+        target_name = session_naming.generate_session_filename(
+            session_id=session_id,
+            timestamp=timestamp,
+            slug="session",
+            crew_name=crew_name,
+            repo=repo,
+            artifact_type="client",
+            task_id=os.environ.get("AOPS_TASK_ID"),
+        )
         target_path = client_logs_dir / target_name
 
         if target_path.exists():
@@ -907,8 +928,12 @@ def git_sync():
 
         print(f"Syncing changes in {sessions_root}...")
 
+        add_paths = ["transcripts/", "summaries/"]
+        for optional in ("hooks", "client-logs", "status"):
+            if (sessions_root / optional).exists():
+                add_paths.append(f"{optional}/")
         subprocess.run(
-            ["git", "add", "transcripts/", "summaries/"],
+            ["git", "add", *add_paths],
             cwd=str(sessions_root),
             check=True,
         )

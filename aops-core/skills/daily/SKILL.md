@@ -84,6 +84,13 @@ A factual snapshot of the task graph and today's calendar. No recommendations.
 - **Deadline list**: Any task with `due` ≤ 7 days. List each as `[task-id] [[Title]] — due YYYY-MM-DD (Nd away / overdue Nd)`. Do not categorise or rank; sort by due date ascending.
 - **Calendar**: Today's events from the calendar source, in time order. No commentary.
 - **Pending decisions**: Count of `ready` + `review` tasks assigned to the user (one line).
+- **SEV4 concurrency cap warning**: Count active (non-`done`) `type: target` nodes with `severity: 4` AND `goal_type: committed`. If the count is **> 2**, include a single warning line:
+
+  ```
+  ⚠ SEV4 cap: N active committed SEV4 targets (recommended ≤ 2). Review: [task-id] [[Title]], …
+  ```
+
+  This is SURFACE-only per `projects/aops/specs/pkb/multi-parent-edges.md` §1.5 and §6 Q4 — it never blocks tool use. If the count is ≤ 2, omit the line entirely (no "all good" noise). Only `goal_type: committed` SEV4 targets count toward the cap; `aspirational` and `learning` SEV4 targets are excluded (§1.3).
 
 **No recommendations**: Do not emit SHOULD/DEEP/ENJOY/QUICK/UNBLOCK categories. Do not suggest a sequence. Do not add rationales like "start with X because Y".
 
