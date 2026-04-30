@@ -527,6 +527,14 @@ def _process_reflection(
             )
             write_insights_file(insights_path, insights, session_id=session_id)
             print(f"💡 Reflection {i + 1}/{len(reflections)} saved to: {insights_path}")
+            # Surface /dump quality warnings (missing Output / Tasks worked /
+            # bare-id references / feature-suggestion smell). See
+            # aops-core/skills/end_session/transcript-metadata-schema.md.
+            for warning in insights.get("quality_warnings") or []:
+                print(
+                    f"⚠️  Reflection {i + 1} quality warning: {warning}",
+                    file=sys.stderr,
+                )
         except InsightsValidationError as e:
             print(f"⚠️  Reflection {i + 1} validation failed: {e}", file=sys.stderr)
         except Exception as e:
@@ -720,6 +728,7 @@ def _generate_transcript_filename(
 
     # Generate base name via naming module
     # (unified format: {YYYYMMDD}-{HHMM}-{session_id}-{shortform}-{slug})
+    # task_id from $AOPS_TASK_ID is passed through so transcript filenames are task-grep-friendly.
     base = session_naming.generate_base_name(
         session_id=session_id,
         timestamp=timestamp,
@@ -728,6 +737,7 @@ def _generate_transcript_filename(
         repo=repo,
         provider=provider,
         shortform=shortform,
+        task_id=os.environ.get("AOPS_TASK_ID"),
     )
 
     # Return components for compatibility with transcript.py callers

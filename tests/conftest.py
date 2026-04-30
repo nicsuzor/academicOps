@@ -455,7 +455,6 @@ Provides:
 from pathlib import Path
 
 import pytest
-from lib.paths import get_plugin_root as get_aops_root
 
 
 def extract_response_text(result: dict[str, Any]) -> str:
@@ -550,6 +549,83 @@ def _claude_cli_available() -> bool:
     return shutil.which("claude") is not None
 
 
+def _ensure_dist_built(repo_root: Path) -> Path:
+    """Ensure dist/aops-claude exists. Build if missing.
+
+    Returns the path to dist/aops-claude.
+    """
+    dist_plugin = repo_root / "dist" / "aops-claude"
+    if (dist_plugin / ".claude-plugin" / "plugin.json").exists():
+        return dist_plugin
+
+    log.info("dist/aops-claude not built — running `make build-dev`")
+    subprocess.run(
+        ["make", "build-dev"],
+        cwd=repo_root,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    if not (dist_plugin / ".claude-plugin" / "plugin.json").exists():
+        raise RuntimeError(f"dist/aops-claude not produced by `make build-dev`: {dist_plugin}")
+    return dist_plugin
+
+
+def _build_isolated_claude_config(plugin_dirs: list[Path]) -> Path:
+    """Create an isolated CLAUDE_CONFIG_DIR with the given plugins pre-installed.
+
+    Replaces the now-removed `--plugin-dir` flag. Each test run gets a fresh
+    config dir so plugins are loaded without polluting the developer's
+    `~/.claude/`. Pre-populates `plugins/installed_plugins.json` so Claude
+    Code's plugin loader picks up the plugin at startup.
+
+    Args:
+        plugin_dirs: Absolute paths to built plugin directories
+            (each must contain `.claude-plugin/plugin.json`).
+
+    Returns:
+        Path to the freshly-created CLAUDE_CONFIG_DIR. Caller is responsible
+        for cleanup if desired (each call is created under tempfile.mkdtemp).
+    """
+    import tempfile
+    from datetime import datetime
+
+    config_dir = Path(tempfile.mkdtemp(prefix="claude-cfg-"))
+    plugins_dir = config_dir / "plugins"
+    plugins_dir.mkdir(parents=True, exist_ok=True)
+
+    installed: dict[str, list[dict[str, Any]]] = {}
+    now = datetime.now(UTC).isoformat()
+    for plugin_dir in plugin_dirs:
+        manifest_path = plugin_dir / ".claude-plugin" / "plugin.json"
+        if not manifest_path.exists():
+            raise FileNotFoundError(
+                f"Plugin manifest not found: {manifest_path}. Run `make build-dev`."
+            )
+        manifest = json.loads(manifest_path.read_text())
+        name = manifest["name"]
+        version = manifest.get("version", "0.0.0")
+        # Use the dist directory directly as installPath. This avoids copying
+        # while still letting Claude resolve hooks / agents / mcpServers under
+        # the plugin tree. Plugins are referenced by `<name>@<marketplace>`
+        # but a marketplace-less entry also works (academicOps not required
+        # for resolution since installPath is absolute).
+        installed[f"{name}@academicOps"] = [
+            {
+                "scope": "user",
+                "installPath": str(plugin_dir),
+                "version": version,
+                "installedAt": now,
+                "lastUpdated": now,
+            }
+        ]
+
+    (plugins_dir / "installed_plugins.json").write_text(
+        json.dumps({"version": 2, "plugins": installed}, indent=2)
+    )
+    return config_dir
+
+
 def _gemini_cli_available() -> bool:
     """Check if gemini CLI command is available in PATH."""
     import shutil
@@ -559,7 +635,7 @@ def _gemini_cli_available() -> bool:
 
 def run_claude_headless(
     prompt: str,
-    model: str | None = "haiku",
+    model: str | None = "claude-haiku-4-5",
     timeout_seconds: int = 300,
     permission_mode: str | None = None,
     cwd: Path | None = None,
@@ -591,11 +667,21 @@ def run_claude_headless(
             "error": "claude CLI not found in PATH - these tests require Claude Code CLI installed",
         }
 
-    # Get built plugin directory for testing against correct artifact
+    # Get built plugin directory for testing against correct artifact.
+    # Build dist/ if missing so the test harness is self-contained.
     repo_root = get_repo_root()
-    plugin_dir_core = str(repo_root / "dist" / "aops-claude")
+    plugin_dir_core = _ensure_dist_built(repo_root)
 
-    # Build command with --debug flag and --no-session-persistence for test isolation
+    # The Claude Code CLI no longer supports `--plugin-dir` or
+    # `--no-session-persistence`. To load the plugin without polluting the
+    # developer's ~/.claude, redirect the config via CLAUDE_CONFIG_DIR to a
+    # tmp dir with `installed_plugins.json` pre-seeded. For session isolation
+    # (replacing --no-session-persistence), pass a fresh --session-id UUID.
+    import uuid as _uuid
+
+    isolated_config_dir = _build_isolated_claude_config([plugin_dir_core])
+    session_id = str(_uuid.uuid4())
+
     cmd = [
         "claude",
         "-p",
@@ -604,9 +690,8 @@ def run_claude_headless(
         "json",
         "--debug",
         "hooks",
-        "--no-session-persistence",
-        "--plugin-dir",
-        plugin_dir_core,
+        "--session-id",
+        session_id,
     ]
 
     if model:
@@ -626,7 +711,8 @@ def run_claude_headless(
     # Build environment - inherit current environment
     env = os.environ.copy()
     env["DEBUG_HOOKS"] = "1"
-    env["CLAUDE_PLUGIN_ROOT"] = plugin_dir_core
+    env["CLAUDE_PLUGIN_ROOT"] = str(plugin_dir_core)
+    env["CLAUDE_CONFIG_DIR"] = str(isolated_config_dir)
     env["PWD"] = str(working_dir)
 
     # FAIL FAST: Required environment variables must be set
@@ -666,7 +752,28 @@ def run_claude_headless(
             env=env,  # Pass environment with AOPS set
         )
 
-        # Check for command failure
+        # Parse JSON output first — Claude CLI may return non-zero exit while
+        # still emitting a structured result envelope (e.g. when a hook denies
+        # a tool call: subtype="success", is_error=true). Treat a parseable
+        # envelope with subtype "success" as a successful invocation regardless
+        # of exit code; the test asserts on the result content.
+        try:
+            parsed_output = json.loads(result.stdout)
+            envelope_ok = (
+                isinstance(parsed_output, dict)
+                and parsed_output.get("type") == "result"
+                and parsed_output.get("subtype") == "success"
+            )
+            if envelope_ok or result.returncode == 0:
+                return {
+                    "success": True,
+                    "output": result.stdout,
+                    "result": parsed_output,
+                    "stderr": result.stderr,
+                }
+        except json.JSONDecodeError:
+            pass
+
         if result.returncode != 0:
             return {
                 "success": False,
@@ -674,22 +781,12 @@ def run_claude_headless(
                 "result": {},
                 "error": f"Command failed with exit code {result.returncode}: {result.stderr}",
             }
-        # Parse JSON output
-        try:
-            parsed_output = json.loads(result.stdout)
-            return {
-                "success": True,
-                "output": result.stdout,
-                "result": parsed_output,
-                "stderr": result.stderr,
-            }
-        except json.JSONDecodeError as e:
-            return {
-                "success": False,
-                "output": result.stdout,
-                "result": {},
-                "error": f"JSON parse error: {e!s}",
-            }
+        return {
+            "success": False,
+            "output": result.stdout,
+            "result": {},
+            "error": "Claude CLI exited 0 but stdout was not parseable JSON",
+        }
 
     except subprocess.TimeoutExpired:
         return {
@@ -1390,10 +1487,14 @@ def claude_headless_tracked(tmp_path):
 
         session_id = str(uuid.uuid4())
 
-        # Get aops-core plugin directory for agent availability
-        aops_root = get_aops_root()
-        plugin_dir_core = aops_root / ".." / "aops-core"
-        plugin_dir_tools = aops_root / ".." / "aops-tools"
+        # Get built plugin directory for testing against correct artifact.
+        # The Claude CLI no longer accepts --plugin-dir or
+        # --no-session-persistence; load plugins via an isolated
+        # CLAUDE_CONFIG_DIR with installed_plugins.json pre-seeded, and use
+        # a fresh --session-id UUID for isolation.
+        repo_root = get_repo_root()
+        plugin_dir_core = _ensure_dist_built(repo_root)
+        isolated_config_dir = _build_isolated_claude_config([plugin_dir_core])
 
         cmd = [
             "claude",
@@ -1407,14 +1508,11 @@ def claude_headless_tracked(tmp_path):
             model,
             "--permission-mode",
             permission_mode,
-            "--plugin-dir",
-            plugin_dir_core,
-            "--plugin-dir",
-            plugin_dir_tools,
-            "--no-session-persistence",
         ]
 
         env = os.environ.copy()
+        env["CLAUDE_CONFIG_DIR"] = str(isolated_config_dir)
+        env["CLAUDE_PLUGIN_ROOT"] = str(plugin_dir_core)
 
         try:
             # Use a safe temporary directory to avoid Seatbelt permission errors
