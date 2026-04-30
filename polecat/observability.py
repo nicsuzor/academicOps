@@ -108,7 +108,7 @@ class PolecatMetrics:
         """Record the depth of a queue.
 
         Args:
-            queue_name: Name of the queue (e.g., "merge_ready", "active", "review")
+            queue_name: Name of the queue (e.g., "merge_ready", "ready", "review")
             count: Number of items in the queue
             project: Optional project filter used
         """

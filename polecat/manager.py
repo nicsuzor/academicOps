@@ -158,10 +158,17 @@ def load_projects(
     for slug, proj in (config.get("projects") or {}).items():
         proj = proj or {}
         repo = proj.get("repo", slug)
+        # Per-project aliases: optional list of shorthand names accepted in
+        # place of the canonical slug (e.g. ['academicOps', 'acaops']).
+        aliases_raw = proj.get("aliases") or []
+        if not isinstance(aliases_raw, list):
+            aliases_raw = [aliases_raw]
+        aliases = [str(a) for a in aliases_raw]
         entry = {
             "path": resolve_project_path(slug, repo, overlay=overlay),
             "default_branch": proj.get("default_branch", "main"),
             "repo": repo,
+            "aliases": aliases,
         }
         for key in ("auto_commit", "merge_strategy"):
             if key in proj:
@@ -173,16 +180,49 @@ def load_projects(
 def load_project_aliases(config_path: Path | None = None) -> dict[str, str]:
     """Load shorthand aliases that map to project slugs.
 
-    Aliases are defined in $AOPS_SESSIONS/projects.yaml under project_aliases, e.g.:
-        project_aliases:
-            bm: buttermilk
+    Aliases come from three sources, merged in priority order (first wins):
+        1. Top-level ``project_aliases:`` block in projects.yaml::
 
-    Built-in aliases: project slugs always resolve to themselves.
+               project_aliases:
+                   bm: buttermilk
+
+        2. Per-project ``aliases:`` list under each project entry::
+
+               projects:
+                 aops:
+                   aliases: [academicOps, acaops]
+
+        3. Each project's ``repo:`` field (so the GitHub repo name resolves
+           to its project slug).
+
+    Built-in: every project slug resolves to itself.
     """
     config = load_config(config_path)
-    aliases = dict(config.get("project_aliases", {}))
-    for slug in config.get("projects", {}):
+    aliases: dict[str, str] = {}
+
+    # 1. Top-level project_aliases (highest priority)
+    for alias, slug in (config.get("project_aliases") or {}).items():
+        aliases[str(alias)] = str(slug)
+
+    projects_block = config.get("projects") or {}
+
+    # 2. Per-project aliases lists
+    for slug, proj in projects_block.items():
+        proj = proj or {}
+        for alias in proj.get("aliases") or []:
+            aliases.setdefault(str(alias), slug)
+
+    # 3. Repo name (only if not already mapped)
+    for slug, proj in projects_block.items():
+        proj = proj or {}
+        repo = proj.get("repo")
+        if repo:
+            aliases.setdefault(str(repo), slug)
+
+    # Canonical slugs always resolve to themselves
+    for slug in projects_block:
         aliases.setdefault(slug, slug)
+
     return aliases
 
 
@@ -377,25 +417,56 @@ class PolecatManager:
     def resolve_project_alias(self, alias: str) -> str:
         """Resolve a project alias to its canonical slug.
 
+        Tries in order:
+            1. canonical project slug
+            2. ``project_aliases`` map (top-level + per-project + repo names)
+            3. fall back to the project whose ``repo`` field matches
+
         Args:
-            alias: Shorthand alias (e.g., 'bm') or full slug (e.g., 'buttermilk')
+            alias: Shorthand alias (e.g., 'bm'), repo name (e.g., 'academicOps'),
+                or canonical slug (e.g., 'aops').
 
         Returns:
             Canonical project slug
 
         Raises:
-            ValueError: If alias is not recognized
+            ValueError: If the value is not recognized.
         """
-        if alias in self.project_aliases:
-            return self.project_aliases[alias]
-        # Check if it's already a valid project slug
+        # 1. Already a canonical slug
         if alias in self.projects:
             return alias
-        raise ValueError(
-            f"Unknown project alias: '{alias}'. "
-            f"Known aliases: {list(self.project_aliases.keys())}, "
-            f"Known projects: {list(self.projects.keys())}"
-        )
+        # 2. Top-level / per-project alias map (also includes repo names)
+        if alias in self.project_aliases:
+            return self.project_aliases[alias]
+        # 3. Repo-field fallback (defence in depth — load_project_aliases
+        #    already folds repo names in, but cover hand-built managers).
+        for slug, proj in self.projects.items():
+            if proj.get("repo") == alias:
+                return slug
+        raise ValueError(self._format_unknown_project_error(alias))
+
+    def _format_unknown_project_error(self, value: str) -> str:
+        """Build an error message listing canonical projects and their aliases."""
+        # Group aliases by canonical slug for a readable display.
+        aliases_for: dict[str, list[str]] = {slug: [] for slug in self.projects}
+        for alias, slug in self.project_aliases.items():
+            if alias == slug:
+                continue  # self-reference, not informative
+            aliases_for.setdefault(slug, []).append(alias)
+        # Also surface the repo: field as an alias if not already listed.
+        for slug, proj in self.projects.items():
+            repo = proj.get("repo")
+            if repo and repo != slug and repo not in aliases_for[slug]:
+                aliases_for[slug].append(repo)
+
+        parts = []
+        for slug in sorted(self.projects):
+            extras = sorted(set(aliases_for.get(slug, [])))
+            if extras:
+                parts.append(f"{slug} (aliases: {', '.join(extras)})")
+            else:
+                parts.append(slug)
+        return f"unknown project {value!r}. Known: {', '.join(parts)}"
 
     def register_adhoc_project(self, repo_path: Path) -> str:
         """Register an ad-hoc project from an arbitrary repo path.
@@ -945,21 +1016,30 @@ class PolecatManager:
                 f"Set task.project explicitly; silent fallbacks are disabled."
             )
 
-        project = task.project
+        # Accept canonical slugs, aliases, and repo names. Canonicalise so
+        # downstream mirror/path lookups always use the project key.
+        try:
+            project = self.resolve_project_alias(task.project)
+        except ValueError as e:
+            mirror_path = self.repos_dir / f"{task.project}.git"
+            if mirror_path.exists():
+                # Bare mirror present even though slug isn't in projects.yaml —
+                # honour it (matches prior behaviour).
+                return mirror_path
+            raise ValueError(
+                f"Task {task.id} references {e} (also no bare mirror at {mirror_path})"
+            ) from None
+
+        # Persist canonical slug back on the task so subsequent steps
+        # (sync_mirror, default_branch lookup) use the registry key.
+        task.project = project
 
         # Check for bare mirror first
         mirror_path = self.repos_dir / f"{project}.git"
         if mirror_path.exists():
             return mirror_path
 
-        if project in self.projects:
-            return self.projects[project]["path"]
-
-        raise ValueError(
-            f"Task {task.id} references unknown project {project!r} — "
-            f"not in projects.yaml and no bare mirror at {mirror_path}. "
-            f"Known projects: {sorted(self.projects.keys())}"
-        )
+        return self.projects[project]["path"]
 
     def _get_remote_url(self, repo_path: Path) -> str:
         """Gets the origin remote URL from a git repository."""
@@ -1367,9 +1447,27 @@ class PolecatManager:
                             )
                             continue
 
+                        # Capture prior status for rollback if downstream setup
+                        # (e.g. worktree creation) fails. Stored on the returned
+                        # object so the caller can restore the canonical value
+                        # rather than guessing.
+                        prior_status = fresh_task.status
+                        prior_status_value = (
+                            prior_status.value
+                            if hasattr(prior_status, "value")
+                            else str(prior_status)
+                        )
                         fresh_task.status = self.task_status.IN_PROGRESS
                         fresh_task.assignee = caller
                         self.storage.save_task(fresh_task)
+                        # Annotate for rollback. Use a leading underscore so it
+                        # isn't mistaken for a persisted field.
+                        try:
+                            fresh_task._prior_status = prior_status_value
+                        except AttributeError:
+                            # Some task models forbid arbitrary attrs; rollback
+                            # will fall back to the canonical default.
+                            pass
                         return fresh_task
 
                     finally:
@@ -1397,10 +1495,15 @@ class PolecatManager:
         if not tasks:
             return None
 
+        # Canonical statuses agents may pull from. `ready` is the standard
+        # decomposed-and-unblocked state; `queued` is the human-promoted gate.
+        # See aops-core/skills/remember/references/TAXONOMY.md.
+        _CLAIMABLE_STATUSES = ("ready", "queued")
+
         for task in tasks:
             # Re-fetch to get fresh status (avoid race)
             fresh = get_task(task.id)
-            if fresh is None or fresh.status != "active":
+            if fresh is None or fresh.status not in _CLAIMABLE_STATUSES:
                 continue
             if fresh.assignee and fresh.assignee != caller:
                 continue
@@ -1411,6 +1514,12 @@ class PolecatManager:
                     file=sys.stderr,
                 )
                 continue
+
+            # Capture prior canonical status before claiming so a downstream
+            # failure (e.g. worktree setup) can restore it. Annotated on the
+            # returned object via a leading-underscore attribute to avoid
+            # being mistaken for a persisted field.
+            prior_status = fresh.status
 
             # Claim via MCP update_task (atomic at server level)
             try:
@@ -1431,6 +1540,10 @@ class PolecatManager:
                         and verified.assignee == caller
                     ):
                         print("   ✅ Verified: claim succeeded. Proceeding.", file=sys.stderr)
+                        try:
+                            verified._prior_status = prior_status
+                        except AttributeError:
+                            pass
                         return verified
                 except Exception as ve:
                     print(f"   ❌ Verification failed: {ve}", file=sys.stderr)
@@ -1444,6 +1557,10 @@ class PolecatManager:
 
             fresh.status = "in_progress"
             fresh.assignee = caller
+            try:
+                fresh._prior_status = prior_status
+            except AttributeError:
+                pass
             return fresh
 
         return None

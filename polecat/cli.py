@@ -58,6 +58,33 @@ _EFFORT_TO_MAX_TURNS: dict[str, int] = {
 _DEFAULT_MAX_TURNS = 100
 
 
+# Canonical PKB status used as a rollback fallback when the task object does
+# not carry a captured prior status. `queued` is the human-promoted dispatch
+# gate per aops-core/skills/remember/references/TAXONOMY.md; restoring there
+# keeps the task eligible for a future polecat run without re-triage.
+# NEVER use the historical legacy "active" — PKB rejects it as Invalid status.
+_ROLLBACK_FALLBACK_STATUS = "queued"
+
+
+def _rollback_status_for(task) -> str:
+    """Return the canonical PKB status to restore on worktree-setup failure.
+
+    Prefers the prior status captured by ``PolecatManager.claim_next_task``
+    (annotated as ``_prior_status``). Falls back to ``queued`` when absent.
+    Coerces enum-valued statuses to their string ``.value``.
+    """
+    prior = getattr(task, "_prior_status", None)
+    if prior is None:
+        return _ROLLBACK_FALLBACK_STATUS
+    if hasattr(prior, "value"):
+        prior = prior.value
+    prior_str = str(prior)
+    # Defensive: never write the non-canonical legacy "active" back to PKB.
+    if prior_str in ("", "active", "in_progress"):
+        return _ROLLBACK_FALLBACK_STATUS
+    return prior_str
+
+
 def _compute_max_turns(task) -> str:
     """Return the --max-turns value for a headless Claude run.
 
@@ -254,6 +281,17 @@ def _make_worker_env(interactive: bool = False, work_dir: Path | None = None) ->
         # Enable 24-bit color (TrueColor) for interactive sessions
         env["COLORTERM"] = "truecolor"
         env["FORCE_COLOR"] = "3"  # 3 = 24-bit color for Node.js chalk and others
+    else:
+        # Non-interactive workers: suppress color codes that confuse log parsers
+        # and downstream tooling that doesn't consume ANSI escapes.
+        env["FORCE_COLOR"] = "0"
+        env["NO_COLOR"] = "1"
+
+    # Standard non-interactive signals so CLIs default to scriptable behaviour
+    # (no prompts, no pagers, no progress spinners). Set unconditionally — even
+    # interactive polecat shells should not pop confirmation prompts at workers.
+    env["CI"] = "true"
+    env["NONINTERACTIVE"] = "1"
 
     # Ensure uv is in PATH for hooks and agent tools
     current_path = env.get("PATH", "")
@@ -1012,6 +1050,9 @@ def _build_docker_cmd(
                 "CLAUDE_CODE_OAUTH_TOKEN",
                 "COLORTERM",
                 "FORCE_COLOR",
+                "NO_COLOR",
+                "CI",
+                "NONINTERACTIVE",
                 "ENFORCER_TOOL_CALL_THRESHOLD",
             )
         ):
@@ -1220,6 +1261,22 @@ def _run_docker_container(
 
         try:
             return subprocess.run(cmd, cwd=cwd, env=env, capture_output=capture_output, text=text)
+        except KeyboardInterrupt:
+            # SIGINT/SIGTERM reached us while docker run was blocking. Ask
+            # docker to gracefully stop the container so the agent has time
+            # to flush its session transcript before the host process exits
+            # (task-11de7b21). Then re-raise so callers' `finally` blocks
+            # (cleanup, extraction) execute.
+            try:
+                subprocess.run(
+                    ["docker", "stop", "--time", "10", container_name],
+                    capture_output=True,
+                    check=False,
+                    timeout=15,
+                )
+            except Exception:  # pragma: no cover — best-effort cleanup
+                pass
+            raise
         finally:
             if _watchdog_cancel is not None:
                 _watchdog_cancel.set()
@@ -1341,10 +1398,31 @@ def _run_docker_container(
             )
             watchdog_thread.start()
 
+        run_result = None
         try:
-            run_result = subprocess.run(
-                start_cmd, cwd=cwd, env=env, capture_output=capture_output, text=text
-            )
+            try:
+                run_result = subprocess.run(
+                    start_cmd, cwd=cwd, env=env, capture_output=capture_output, text=text
+                )
+            except KeyboardInterrupt:
+                # SIGTERM/SIGINT reached us while docker start -a was blocking.
+                # Ask docker to gracefully stop the container so the agent has
+                # time to flush its session transcript before we extract it
+                # (task-11de7b21).
+                try:
+                    subprocess.run(
+                        ["docker", "stop", "--time", "10", container_id],
+                        capture_output=True,
+                        check=False,
+                        timeout=15,
+                    )
+                except Exception:  # pragma: no cover — best-effort cleanup
+                    pass
+                # Don't re-raise yet: let the extraction below run so the
+                # transcript still lands on the host. Re-raise after.
+                _interrupted = True
+            else:
+                _interrupted = False
         finally:
             if watchdog_cancel is not None:
                 watchdog_cancel.set()
@@ -1353,6 +1431,8 @@ def _run_docker_container(
 
         # Extract files from container before cleanup (belt-and-suspenders
         # for session persistence — bind mounts silently fail on WSL2).
+        # Runs even after SIGTERM-induced interrupt so the graceful-shutdown
+        # path still produces a transcript on the host.
         if extract_paths:
             for container_path, host_path in extract_paths:
                 host_path.mkdir(parents=True, exist_ok=True)
@@ -1368,6 +1448,9 @@ def _run_docker_container(
                         file=sys.stderr,
                     )
 
+        if _interrupted:
+            raise KeyboardInterrupt
+        assert run_result is not None  # set in try block; None path raises above
         return run_result
     finally:
         # Always clean up the container (replaces --rm)
@@ -2292,9 +2375,13 @@ def start(ctx, project, caller):
     except Exception as e:
         print(f"\nError setting up worktree: {e}")
         if task:
-            print(f"Reverting task {task.id} to active...", file=sys.stderr)
+            rollback_status = _rollback_status_for(task)
+            print(
+                f"Reverting task {task.id} to {rollback_status}...",
+                file=sys.stderr,
+            )
             try:
-                manager.update_task(task.id, status="active", assignee=None)
+                manager.update_task(task.id, status=rollback_status, assignee=None)
             except Exception as re:
                 print(f"Failed to revert task {task.id}: {re}", file=sys.stderr)
         sys.exit(1)
@@ -2345,7 +2432,10 @@ def checkout(ctx, task_id, caller):
             manager.storage.save_task(task)
             print(f"Claimed: {task.title}", file=sys.stderr)
     except ImportError:
-        if task.status in ("queued", "active"):
+        # PKB canonical statuses agents may claim from. See
+        # aops-core/skills/remember/references/TAXONOMY.md. NEVER include
+        # "active" — that is a non-canonical legacy term PKB rejects.
+        if task.status in ("ready", "queued"):
             from polecat.pkb_bridge import update_task as pkb_update_task
 
             pkb_update_task(task_id, status="in_progress", assignee=caller)
@@ -2412,7 +2502,11 @@ def finish(ctx, no_push, do_nuke, force, force_done, project):
 
     # CLI --project/-p overrides task.project
     if project:
-        task.project = project
+        try:
+            task.project = manager.resolve_project_alias(project)
+        except ValueError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
 
     # --- SAFEGUARD 0: Completion Protection ---
     # If the task is already DONE, or in review/merge phase, do NOT override it.
@@ -4017,7 +4111,34 @@ def run(
         polecat run --issue 42 -p writing  # Run issue #42 from writing project repo
         polecat run -p aops --no-auto-finish  # Skip auto-finish on success
     """
+    import signal as _signal
     import subprocess
+
+    # Install a SIGTERM handler so transcript-extraction `finally` blocks fire
+    # on container stop (task-11de7b21). Python's default SIGTERM action
+    # terminates the process immediately, skipping `finally` blocks — the
+    # session transcript would be lost on the remote-daemon path (where
+    # extraction happens via `docker cp` in the finally) and partially lost
+    # on the local-daemon path (cleanup of staging dirs / tmp files skipped).
+    #
+    # We convert SIGTERM into KeyboardInterrupt, which the existing
+    # ``except KeyboardInterrupt`` handler below already absorbs and which
+    # lets ``subprocess.run``'s context-manager teardown fire (killing the
+    # docker subprocess) before the `finally` runs extraction.
+    def _polecat_sigterm_handler(signum, frame):
+        print(
+            "\n⚠️  Received SIGTERM — extracting transcript and exiting...",
+            file=sys.stderr,
+        )
+        raise KeyboardInterrupt
+
+    try:
+        _signal.signal(_signal.SIGTERM, _polecat_sigterm_handler)
+    except (ValueError, OSError):
+        # signal.signal() only works on the main thread; in unusual
+        # invocation contexts (e.g. embedded in a worker) we silently
+        # skip the handler rather than crash.
+        pass
 
     _require_pkb_url_or_exit()
     _bootstrap_or_exit()
@@ -4072,7 +4193,13 @@ def run(
             )
             sys.exit(2)  # Exit 2 = locked; distinct from exit 1 (error) / exit 3 (empty queue)
 
-        if status_str == "active":
+        # Canonical PKB statuses agents may claim from. See
+        # aops-core/skills/remember/references/TAXONOMY.md. NEVER add the
+        # legacy "active" — PKB rejects it as Invalid status.
+        if status_str in ("ready", "queued"):
+            # Capture prior status so a downstream failure can restore
+            # exactly what we found, rather than guessing a default.
+            prior_status = status_str
             try:
                 manager.update_task(task_id, status="in_progress", assignee=caller)
                 was_claimed = True
@@ -4101,6 +4228,12 @@ def run(
                     raise
             task.status = "in_progress"
             task.assignee = caller
+            # Annotate prior status for rollback (mirrors what
+            # PolecatManager.claim_next_task does for the queue path).
+            try:
+                task._prior_status = prior_status
+            except AttributeError:
+                pass
     else:
         print(f"Looking for ready tasks{' in project ' + project if project else ''}...")
         try:
@@ -4114,9 +4247,15 @@ def run(
             print("No ready tasks found.")
             sys.exit(3)
 
-    # CLI --project/-p overrides task.project (e.g. task has no project set)
+    # CLI --project/-p overrides task.project (e.g. task has no project set).
+    # Resolve aliases / repo names to the canonical slug so downstream lookups
+    # (mirror path, default_branch) hit the registry.
     if project:
-        task.project = project
+        try:
+            task.project = manager.resolve_project_alias(project)
+        except ValueError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
 
     if is_issue:
         print(f"🎯 Issue: {task.title} ({getattr(task, 'issue_url', '') or task.id})")
@@ -4130,9 +4269,13 @@ def run(
     except Exception as e:
         print(f"Error setting up worktree: {e}", file=sys.stderr)
         if was_claimed and task and not is_issue:
-            print(f"Reverting task {task.id} to active...", file=sys.stderr)
+            rollback_status = _rollback_status_for(task)
+            print(
+                f"Reverting task {task.id} to {rollback_status}...",
+                file=sys.stderr,
+            )
             try:
-                manager.update_task(task.id, status="active", assignee=None)
+                manager.update_task(task.id, status=rollback_status, assignee=None)
             except Exception as re:
                 print(f"Failed to revert task {task.id}: {re}", file=sys.stderr)
         sys.exit(1)
@@ -4992,19 +5135,22 @@ def watch(ctx, interval, stall_threshold, project):
                 # Reset to avoid spamming alerts
                 last_activity = now
 
-            # Status line (leaf-ready is the primary queue metric)
+            # Status line (leaf-ready is the primary queue metric).
+            # Metric label uses the canonical PKB status `in_progress` (per
+            # aops-core/skills/remember/references/TAXONOMY.md) rather than
+            # the legacy "active" label.
             ready_count = len(leaf_ready)
-            active_count = len(in_progress)
+            in_progress_count = len(in_progress)
             merge_ready_count = len(merge_ready_tasks)
             review_count = len(review_tasks)
             timestamp = now.strftime("%H:%M:%S")
             print(
-                f"[{timestamp}] ready={ready_count} active={active_count} merge_ready={merge_ready_count} review={review_count}"
+                f"[{timestamp}] ready={ready_count} in_progress={in_progress_count} merge_ready={merge_ready_count} review={review_count}"
             )
 
             # Record periodic metrics for dashboard
             metrics.record_queue_depth("ready", count=ready_count, project=project)
-            metrics.record_queue_depth("active", count=active_count, project=project)
+            metrics.record_queue_depth("in_progress", count=in_progress_count, project=project)
             metrics.record_queue_depth("merge_ready", count=merge_ready_count, project=project)
             metrics.record_queue_depth("review", count=review_count, project=project)
 
