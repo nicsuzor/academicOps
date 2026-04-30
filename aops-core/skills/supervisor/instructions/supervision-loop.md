@@ -44,24 +44,7 @@ registered polecat host list. If the supervisor is NOT running on a polecat
 host, it MUST use the SSH+tmux remote dispatch path — silent local
 `polecat run` is forbidden.
 
-```bash
-# Resolve current short hostname
-HOST=$(hostname -s)
-
-# Polecat host list (env-overridable; default: nicwin only).
-# Once WORKERS.md (#616) lands, this list moves there.
-POLECAT_HOSTS="${POLECAT_HOSTS:-nicwin}"
-
-case " $POLECAT_HOSTS " in
-  *" $HOST "*) ;;  # ok — local dispatch allowed
-  *)
-    echo "supervisor: host '$HOST' is NOT a polecat host ($POLECAT_HOSTS)."
-    echo "supervisor: REFUSING local dispatch — use SSH+tmux remote dispatch."
-    echo "supervisor: see worker-dispatch.md 'Remote Dispatch via SSH + tmux'."
-    # halt; do not call polecat run locally
-    ;;
-esac
-```
+See [[worker-dispatch#gate-1-host-check-issue-598]] for the canonical check snippet and exit conditions.
 
 The supervisor records the host-check result in the task body's Activity
 Log alongside the dispatch decision. A mismatch is not a failure — it is
