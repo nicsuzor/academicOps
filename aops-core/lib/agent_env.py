@@ -144,3 +144,38 @@ def get_env_mapping_persist_dict(
         Dict of {TARGET: value} to persist.
     """
     return apply_env_mappings(env={}, config_path=config_path, source_env=source_env)
+
+
+def get_env_mapping_shell_lines(
+    config_path: Path | str | None = None,
+) -> list[str]:
+    """Return shell `export` lines for agent-env-map.conf entries.
+
+    Unlike `get_env_mapping_persist_dict()`, these lines defer SOURCE
+    resolution to shell-evaluation time. This matters when the SOURCE
+    var is set by the user's shell profile (e.g., AOPS_BOT_GH_TOKEN
+    from ~/.zshenv) and is therefore visible to the post-snapshot
+    shell but NOT to the Python hook that writes CLAUDE_ENV_FILE
+    (which inherits the launchd env, not the shell env).
+
+    Literals (TARGET:=VALUE) are excluded — they are already written verbatim
+    by `get_env_mapping_persist_dict()` / `set_persistent_env()` at hook time,
+    so there is no need to defer them.
+
+    Output format (env-to-env mappings only):
+      - Mapping (TARGET=SOURCE):  [ -n "${SOURCE+x}" ] && export TARGET="${SOURCE}"
+        (Conditional: only set TARGET if SOURCE exists, even if empty.)
+
+    Returns:
+        List of shell-syntax lines suitable for CLAUDE_ENV_FILE.
+    """
+    lines: list[str] = []
+    for entry in load_env_entries(config_path):
+        if entry.is_literal:
+            # Already handled by get_env_mapping_persist_dict(); skip.
+            continue
+        # Defer SOURCE resolution to shell time. ${SOURCE+x} is set
+        # iff SOURCE is defined (even if empty), which mirrors the
+        # `is not None` check in apply_env_mappings.
+        lines.append(f'[ -n "${{{entry.value}+x}}" ] && export {entry.target}="${{{entry.value}}}"')
+    return lines

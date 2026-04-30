@@ -19,13 +19,14 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
-import yaml
 
 REPO_ROOT = Path(__file__).parents[2].resolve()
 sys.path.insert(0, str(REPO_ROOT / "polecat"))
 sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 
 from manager import PolecatManager  # noqa: E402
+
+from tests.polecat.conftest import write_polecat_test_config  # noqa: E402
 
 
 @dataclass
@@ -81,7 +82,7 @@ def aca_data(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 @pytest.fixture()
-def polecat_home(tmp_path: Path, bare_origin: Path) -> Path:
+def polecat_home(tmp_path: Path, bare_origin: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     home = tmp_path / "polecat_home"
     home.mkdir()
     repos_dir = home / ".repos"
@@ -90,15 +91,12 @@ def polecat_home(tmp_path: Path, bare_origin: Path) -> Path:
     mirror = repos_dir / "test.git"
     _git(["clone", "--mirror", str(bare_origin), str(mirror)], cwd=tmp_path)
 
-    config = {
-        "projects": {
-            "test": {
-                "path": str(mirror),
-                "default_branch": "main",
-            }
-        },
-    }
-    (home / "polecat.yaml").write_text(yaml.dump(config))
+    sessions_dir = write_polecat_test_config(
+        tmp_path,
+        home_dir=home,
+        project_paths={"test": mirror},
+    )
+    monkeypatch.setenv("AOPS_SESSIONS", str(sessions_dir))
     return home
 
 

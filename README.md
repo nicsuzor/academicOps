@@ -94,9 +94,14 @@ Skills are Claude Code / Gemini CLI extensions that know how to do specific thin
 Hooks make every session framework-aware without manual setup:
 
 - **SessionStart**: loads principles, pulls latest state
-- **Autocommit**: keeps PKB synced during work
+- **UserPromptSubmit hints**: inject context-map pointers and the dispositor reminder (brain repo only — see [specs/enforcement-map.md](specs/enforcement-map.md))
+- **PreToolUse gates**: hydration, enforcer (periodic compliance), custodiet (workflow discipline), policy enforcer (destructive-command block)
+- **PostToolUse**: orchestrator-boundary detection (brain only), warn-tier checks, autocommit
+- **Stop gates**: QA + handover discipline before session ends
 - **Transcript capture**: records sessions for reflection
 - **Cross-device sync**: git-based, runs on cron
+
+Each runtime mechanism, its hook event, scope, and tier is tracked in [specs/enforcement-map.md](specs/enforcement-map.md). Mechanisms move down the enforcement pyramid (block → warn → hint → instruction) when evidence shows they were over-broad, and up when evidence shows lower tiers failing (Design Principle #6).
 
 ### 4. Async quality assurance (GitHub)
 
@@ -156,11 +161,25 @@ The framework is designed to work with minimal configuration. Default values are
 2. `~/.env.local` file
 3. Framework defaults (e.g., local `pkb` binary for MCP)
 
-| Variable              | Purpose                            | Default                |
-| --------------------- | ---------------------------------- | ---------------------- |
-| `ACA_DATA`            | Your personal knowledge base root  | Required (no default)  |
-| `PKB_MCP_URL`         | Endpoint for the PKB MCP server    | (local stdio fallback) |
-| `HYDRATION_GATE_MODE` | Friction level for context loading | `warn`                 |
+| Variable              | Purpose                                        | Default                  |
+| --------------------- | ---------------------------------------------- | ------------------------ |
+| `ACA_DATA`            | Your personal knowledge base root              | Required (no default)    |
+| `AOPS_SESSIONS`       | Sessions repo (holds `projects.yaml` registry) | `$POLECAT_HOME/sessions` |
+| `AOPS_SRC_DIR`        | Default search root for project repos          | `~/src`                  |
+| `PKB_MCP_URL`         | Endpoint for the PKB MCP server                | (local stdio fallback)   |
+| `HYDRATION_GATE_MODE` | Friction level for context loading             | `warn`                   |
+
+The project registry is the checked-in `$AOPS_SESSIONS/projects.yaml`. Path
+resolution is convention-based (`$AOPS_SRC_DIR/<repo>`); for off-convention
+repos, add a `paths:` entry to `$POLECAT_HOME/local.yaml` (the only
+machine-local config file polecat reads):
+
+```yaml
+# $POLECAT_HOME/local.yaml
+paths:
+  brain: ${ACA_DATA}
+  myproject: /opt/work/myproject
+```
 
 To override the default MCP server (e.g., if running a remote server), add to `~/.env.local`:
 

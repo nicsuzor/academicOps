@@ -42,6 +42,24 @@ def set_persistent_env(env_dict: dict[str, str]):
             print(f"WARNING: Failed to write to CLAUDE_ENV_FILE: {e}", file=sys.stderr)
 
 
+def append_shell_lines(lines: list[str]):
+    """Append raw shell lines to CLAUDE_ENV_FILE.
+
+    Unlike set_persistent_env, lines are written verbatim — no shell
+    quoting. Use this for shell-syntax constructs (conditional exports,
+    variable references) that must be evaluated at shell-source time.
+    """
+    if not lines:
+        return
+    if env_path := os.environ.get("CLAUDE_ENV_FILE"):
+        try:
+            with open(env_path, "a") as f:
+                for line in lines:
+                    f.write(line + "\n")
+        except Exception as e:
+            print(f"WARNING: Failed to append shell lines to CLAUDE_ENV_FILE: {e}", file=sys.stderr)
+
+
 def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult | None:
     """Session start initialization - fail-fast checks and user messages.
 
@@ -122,7 +140,7 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
     # Persist AOPS_SESSIONS and POLECAT_HOME so subagents (worktree agents,
     # macOS app sessions) write transcripts/summaries to the correct git-synced
     # directory instead of falling back to ~/.polecat/sessions/.
-    for var in ("AOPS_SESSIONS", "POLECAT_HOME"):
+    for var in ("AOPS_SESSIONS", "POLECAT_HOME", "AOPS_SRC_DIR"):
         val = os.environ.get(var)
         if val:
             persist[var] = val
@@ -161,23 +179,48 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
         if not os.environ.get(var):
             persist[var] = val
 
-    # 6. Apply agent-env-map.conf credential isolation mappings (issue #581)
-    # (was step 5 before gate mode persistence was added)
-    from lib.agent_env import get_env_mapping_persist_dict
+    # 6. Apply agent-env-map.conf credential isolation mappings (issue #581).
+    # We split this into two pieces:
+    # - Literals (TARGET:=VALUE) and resolved env-to-env mappings go into the
+    #   `persist` dict for normal `export TARGET=value` writes.
+    # - Env-to-env mappings (TARGET=SOURCE) are ALSO written as deferred shell
+    #   exports via append_shell_lines (see step 6c). This handles the case
+    #   where SOURCE is set by the user's shell profile (e.g., ~/.zshenv) and
+    #   thus visible to the shell-snapshot-sourced bash, but NOT to the
+    #   Python hook (which inherits the launchd env on macOS Claude Desktop).
+    #   Without this, `GH_TOKEN=AOPS_BOT_GH_TOKEN` silently skipped because the
+    #   hook saw AOPS_BOT_GH_TOKEN as unset, even though the shell saw it.
+    from lib.agent_env import (
+        get_env_mapping_persist_dict,
+        get_env_mapping_shell_lines,
+    )
 
     persist.update(get_env_mapping_persist_dict())
 
-    # 6b. Force SSH→HTTPS rewrite for GitHub URLs (defense-in-depth).
-    # On macOS, SSH_AUTH_SOCK="" is insufficient — Keychain-stored keys
-    # bypass ssh-agent entirely. GIT_SSH_COMMAND=false (from agent-env-map)
-    # blocks SSH auth, but git would still *attempt* SSH and fail rather
-    # than falling through to HTTPS. The insteadOf rewrite ensures git
-    # never tries SSH at all, using GH_TOKEN via HTTPS credential helper.
-    persist["GIT_CONFIG_COUNT"] = "2"
+    # 6b. Force SSH→HTTPS rewrite for GitHub URLs AND override the credential
+    # helper for github.com so the user's `~/.gitconfig` host-specific helper
+    # (`!gh auth git-credential`) doesn't shadow the bot-PAT helper.
+    #
+    # On macOS, SSH_AUTH_SOCK="" is insufficient — Keychain-stored keys bypass
+    # ssh-agent entirely. GIT_SSH_COMMAND=false blocks SSH auth, but git would
+    # still attempt SSH; the insteadOf rewrite ensures it goes straight to
+    # HTTPS. Then the credential.https://github.com.helper override resets any
+    # inherited helper (the empty value) and installs a single bot-PAT helper.
+    # Git treats `helper` as list-typed, so an empty value clears the prior
+    # list before the next entry is appended.
+    persist["GIT_CONFIG_COUNT"] = "4"
     persist["GIT_CONFIG_KEY_0"] = "url.https://github.com/.insteadOf"
     persist["GIT_CONFIG_VALUE_0"] = "git@github.com:"
     persist["GIT_CONFIG_KEY_1"] = "url.https://github.com/.insteadOf"
     persist["GIT_CONFIG_VALUE_1"] = "ssh://git@github.com/"
+    persist["GIT_CONFIG_KEY_2"] = "credential.https://github.com.helper"
+    persist["GIT_CONFIG_VALUE_2"] = ""
+    persist["GIT_CONFIG_KEY_3"] = "credential.https://github.com.helper"
+    persist["GIT_CONFIG_VALUE_3"] = (
+        '!f() { test "$1" = get && '
+        'printf "username=x-access-token\\npassword=%s\\n" '
+        '"${GH_TOKEN:-${GITHUB_TOKEN:-${AOPS_BOT_GH_TOKEN}}}"; }; f'
+    )
 
     # 7. Ensure required CLIs (uv, gh, etc.) are accessible in PATH.
     # Centralised in lib/path_bootstrap — shared logic with ensure-path.sh.
@@ -246,11 +289,26 @@ Today's note has not been populated yet. Run `/daily` to update.
         # Graceful degradation for daily note bootstrap
         messages.append(f"Daily note: bootstrap failed ({e})")
 
-    # Persist all environment variables
+    # Persist all resolved environment variables (literals and any env-to-env
+    # mappings that resolved at hook time).
     set_persistent_env(persist)
+
+    # 6c. Write deferred-shell exports for env-to-env mappings so SOURCE vars
+    # set by the user's shell snapshot (e.g., AOPS_BOT_GH_TOKEN from ~/.zshenv)
+    # propagate to TARGET. These lines append AFTER set_persistent_env's writes,
+    # so they overwrite/refine the resolved values when the shell evaluates.
+    shell_lines = get_env_mapping_shell_lines()
+    if shell_lines:
+        append_shell_lines(
+            ["# agent-env-map.conf: deferred-shell exports (issue #581)", *shell_lines]
+        )
 
     return GateResult(
         verdict=GateVerdict.ALLOW,
         system_message="\n".join(messages),
-        metadata={"source": "session_env_setup", "persisted_vars": persist},
+        metadata={
+            "source": "session_env_setup",
+            "persisted_vars": persist,
+            "deferred_shell_lines": shell_lines,
+        },
     )

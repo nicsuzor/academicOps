@@ -15,12 +15,13 @@ import sys
 from pathlib import Path
 
 import pytest
-import yaml
 
 REPO_ROOT = Path(__file__).parents[2].resolve()
 sys.path.insert(0, str(REPO_ROOT / "polecat"))
 
 from manager import PolecatManager  # noqa: E402
+
+from tests.polecat.conftest import write_polecat_test_config  # noqa: E402
 
 
 def _git(args, cwd, check=True):
@@ -62,22 +63,15 @@ def aca_data(tmp_path, monkeypatch):
 
 
 @pytest.fixture()
-def polecat_home(tmp_path, local_clone):
+def polecat_home(tmp_path, local_clone, monkeypatch):
     home = tmp_path / "polecat_home"
-    home.mkdir()
-    (home / "polecat.yaml").write_text(
-        yaml.dump(
-            {
-                "projects": {
-                    "test": {
-                        "path": str(local_clone),
-                        "default_branch": "main",
-                    }
-                },
-                "crew_names": ["cheryl"],
-            }
-        )
+    sessions_dir = write_polecat_test_config(
+        tmp_path,
+        home_dir=home,
+        project_paths={"test": local_clone},
+        crew_names=["cheryl"],
     )
+    monkeypatch.setenv("AOPS_SESSIONS", str(sessions_dir))
     return home
 
 

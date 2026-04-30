@@ -475,7 +475,7 @@ class HookRouter:
             from lib.template_registry import TemplateRegistry
 
             prompt = ctx.raw_input.get("prompt", "")
-            if not should_inject_dispositor_reminder(prompt):
+            if not should_inject_dispositor_reminder(prompt, cwd=ctx.cwd):
                 return
 
             hint = TemplateRegistry.instance().render("orchestrator.dispositor_reminder", {})

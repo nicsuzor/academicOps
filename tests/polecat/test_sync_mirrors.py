@@ -14,13 +14,13 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
-import yaml
-
 REPO_ROOT = Path(__file__).parents[2].resolve()
 sys.path.insert(0, str(REPO_ROOT / "polecat"))
 sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 
 from manager import PolecatManager  # noqa: E402
+
+from tests.polecat.conftest import write_polecat_test_config  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
@@ -28,23 +28,35 @@ from manager import PolecatManager  # noqa: E402
 
 
 def _make_manager(tmp_path: Path, projects: dict | None = None):
-    """Create a PolecatManager backed by tmp dirs and an optional project map."""
+    """Create a PolecatManager backed by tmp dirs and an optional project map.
+
+    `projects` shape: {slug: {"path": <abspath>, "default_branch": "main"}}.
+    The path field is lifted into the local.yaml overlay; everything else
+    (default_branch, etc.) lands in the portable registry.
+    """
     if projects is None:
-        projects = {"myproject": {"path": str(tmp_path / "repo"), "default_branch": "main"}}
+        repo = tmp_path / "repo"
+        projects = {"myproject": {"path": str(repo), "default_branch": "main"}}
 
     home_dir = tmp_path / "polecat_home"
-    home_dir.mkdir(exist_ok=True)
-    config = {
-        "projects": projects,
-        "crew_names": ["worker"],
-        "git_identity": {},
+    project_paths = {slug: Path(info["path"]) for slug, info in projects.items()}
+    for path in project_paths.values():
+        path.mkdir(parents=True, exist_ok=True)
+    project_extras = {
+        slug: {k: v for k, v in info.items() if k != "path"} for slug, info in projects.items()
     }
-    (home_dir / "polecat.yaml").write_text(yaml.dump(config))
+    sessions_dir = write_polecat_test_config(
+        tmp_path,
+        home_dir=home_dir,
+        project_paths=project_paths,
+        crew_names=["worker"],
+        project_extras=project_extras,
+    )
 
     aca_data = tmp_path / "aca_data"
     aca_data.mkdir(exist_ok=True)
 
-    with patch.dict("os.environ", {"ACA_DATA": str(aca_data)}):
+    with patch.dict("os.environ", {"ACA_DATA": str(aca_data), "AOPS_SESSIONS": str(sessions_dir)}):
         return PolecatManager(home_dir=home_dir)
 
 

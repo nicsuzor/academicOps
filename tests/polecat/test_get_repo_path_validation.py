@@ -12,7 +12,7 @@ User preference (CORE.md): fail fast. Silent defaults are wrong.
 These tests lock in the new contract:
 - ``get_repo_path`` raises ``ValueError`` when ``task.project`` is falsy.
 - ``get_repo_path`` raises ``ValueError`` when ``task.project`` is unknown
-  (not configured in ``polecat.yaml`` and no bare mirror on disk).
+  (not configured in ``projects.yaml`` and no bare mirror on disk).
 - ``get_repo_path`` still returns the configured path for known projects.
 - ``_do_setup_worktree`` / ``setup_worktree`` refuse to operate without a
   project — no clone attempt happens.
@@ -24,13 +24,14 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
-import yaml
 
 REPO_ROOT = Path(__file__).parents[2].resolve()
 sys.path.insert(0, str(REPO_ROOT / "polecat"))
 sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 
 from manager import PolecatManager  # noqa: E402
+
+from tests.polecat.conftest import write_polecat_test_config  # noqa: E402
 
 
 @dataclass
@@ -87,19 +88,15 @@ def aca_data(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 @pytest.fixture()
-def polecat_home(tmp_path: Path, local_clone: Path) -> Path:
+def polecat_home(tmp_path: Path, local_clone: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     home = tmp_path / "polecat_home"
-    home.mkdir()
-    config = {
-        "projects": {
-            "test": {
-                "path": str(local_clone),
-                "default_branch": "main",
-            }
-        },
-        "crew_names": ["test-worker"],
-    }
-    (home / "polecat.yaml").write_text(yaml.dump(config))
+    sessions_dir = write_polecat_test_config(
+        tmp_path,
+        home_dir=home,
+        project_paths={"test": local_clone},
+        crew_names=["test-worker"],
+    )
+    monkeypatch.setenv("AOPS_SESSIONS", str(sessions_dir))
     return home
 
 
@@ -150,7 +147,7 @@ class TestPolecatManagerDirectoryLayout:
         """polecats_dir must be $POLECAT_HOME/worktrees/, not $POLECAT_HOME itself.
 
         Regression: previously polecats_dir == home_dir, so stale-cleanup
-        loops iterated the whole home directory (sessions/, polecat.yaml, etc.)
+        loops iterated the whole home directory (sessions/, local.yaml, etc.)
         as if they were worktree candidates.
         """
         manager = PolecatManager(home_dir=polecat_home)

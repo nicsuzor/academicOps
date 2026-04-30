@@ -52,7 +52,7 @@ from lib.transcript_parser import (  # noqa: E402
 
 
 def _load_transcript_config() -> dict:
-    """Load transcript config from polecat.yaml.
+    """Load transcript config from $AOPS_SESSIONS/projects.yaml.
 
     Returns the 'transcripts' section, or empty dict if not found.
     Example config:
@@ -60,19 +60,17 @@ def _load_transcript_config() -> dict:
           exclude_projects:
             - sessions
     """
-    polecat_yaml = Path(os.environ.get("POLECAT_HOME", Path.home() / ".polecat")) / "polecat.yaml"
-    if not polecat_yaml.exists():
+    registry = get_sessions_repo() / "projects.yaml"
+    if not registry.exists():
         return {}
     try:
         import yaml
 
-        with open(polecat_yaml) as f:
+        with open(registry) as f:
             config = yaml.safe_load(f) or {}
         return config.get("transcripts", {}) or {}
     except (OSError, yaml.YAMLError) as e:
-        print(
-            f"Warning: Could not load transcript config from {polecat_yaml}: {e}", file=sys.stderr
-        )
+        print(f"Warning: Could not load transcript config from {registry}: {e}", file=sys.stderr)
         return {}
 
 
