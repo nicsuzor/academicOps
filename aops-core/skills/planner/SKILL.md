@@ -124,7 +124,7 @@ Strategic planning under genuine uncertainty. Knowledge-building that produces p
 **Sub-modes**:
 
 - **Strategic Intake** (UP): New ideas, constraints, connections, surprises → place at the right level, link, surface assumptions. Use `uncertainty` to distinguish between "need more information" (high uncertainty, needs a spike/probe) and "know what to do" (low uncertainty, needs execution). Use the [[strategic-intake]] workflow.
-- **Prioritisation** (ACROSS): Use graph topology and computed properties to rank tasks. Surface high-criticality, low-uncertainty tasks as ready priorities. `priority_score ≈ downstream_weight × criticality`.
+- **Prioritisation** (ACROSS): Use graph topology and computed properties to rank tasks. Surface high-`urgency`, low-uncertainty tasks as ready priorities. Ranking uses `urgency` (composes severity, edge weights, slack time, and decay) — successor of the older `downstream_weight × criticality` heuristic.
 
 **Philosophy**:
 
@@ -292,7 +292,7 @@ These are the interactive counterpart to sleep Phase 4. In maintain mode, the hu
 | `neighbourhood-expand` | Neighbours of high-weight/high-criticality tasks |
 | `cross-project-bridge` | Tasks sharing tags across projects               |
 
-**Densify workflow**: Select candidates (5 min) → Enrich each (15 min) → Present proposals → Apply approved → Verify `downstream_weight` and graph health improved
+**Densify workflow**: Select candidates (5 min) → Enrich each (15 min) → Present proposals → Apply approved → Verify `urgency` and graph health improved
 
 **Densify rules**:
 
