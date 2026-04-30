@@ -139,6 +139,27 @@ class TestComplianceSubagentTypes:
         assert "aops-core:rbg" in COMPLIANCE_SUBAGENT_TYPES
 
 
+class TestEnforcerTemplateDispatch:
+    """Regression guard: enforcer templates must dispatch aops-core:rbg.
+
+    Bug: templates previously dispatched aops-core:enforcer, which does not
+    exist in aops-core. When aops-cowork was also loaded, Claude resolved the
+    name to aops-cowork:enforcer, producing a hydration loop.
+    """
+
+    TEMPLATES_DIR = Path(__file__).parent.parent.parent / "aops-core" / "hooks" / "templates"
+
+    def test_enforcer_instruction_dispatches_rbg(self):
+        content = (self.TEMPLATES_DIR / "enforcer-instruction.md").read_text()
+        assert "aops-core:rbg" in content
+        assert "aops-core:enforcer" not in content
+
+    def test_enforcer_policy_context_dispatches_rbg(self):
+        content = (self.TEMPLATES_DIR / "enforcer-policy-context.md").read_text()
+        assert "aops-core:rbg" in content
+        assert "aops-core:enforcer" not in content
+
+
 class TestToolSearchSelectBypass:
     """ToolSearch with select: prefix must bypass gate policies.
 
