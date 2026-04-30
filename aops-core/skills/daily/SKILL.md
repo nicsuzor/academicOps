@@ -184,16 +184,16 @@ The daily note is a shared document between the agent and the user:
 
 The skill gathers information from multiple sources and composes the note. Independent steps run concurrently.
 
-0. **Read existing note for the work date FIRST** — before regenerating any agenda section (Carryover, Status deadline list, What Needs Attention), parse the on-disk note (if it exists) and extract user completion signals:
+0. **Read existing note for the work date FIRST** — before regenerating any agenda section (Carryover, Status deadline list, What Needs Attention), parse the on-disk note (if it exists), extract user completion signals, and cache the content for subsequent steps to avoid redundant I/O:
 
-   - **Ticked checkboxes** (`- [x]`) anywhere in the note. Capture the item identifier on that line: task ID (`[task-xxx]` or `[ns-xxx]`), PR number (`#NNN`), or — when no structured ID exists — the inline subject keyword (e.g. an email subject, PR title fragment).
+   - **Ticked checkboxes** (`- [x]`) anywhere in the note. Capture the item identifier on that line: task ID (`[task-xxx]` or `[ns-xxx]`), PR number (`#NNN`), or — when no structured ID exists — the inline subject keyword (e.g. an email subject, PR title fragment). Use whole-word matching for keywords to avoid false positives.
    - **Inline completion annotations** the user has typed beside an item: `done`, `~~done~~`, `(done)`, `[done]`, `✓`, `resolved`, `replied`, or strikethrough (`~~…~~`) wrapping the line.
    - Build a `completed_identifiers` set from those signals before any regeneration begins.
 
    **Apply the set during regeneration:** for every candidate Carryover, deadline, inbox, capture, or workflow item, check whether its identifier (task ID, PR number, or normalised subject keyword) is in `completed_identifiers`. If it is:
 
-   - **Exclude it** from the regenerated section, OR
-   - Render it once with strikethrough (`~~…~~`) and the existing `[x]` preserved — never strip the tick, never re-elevate as still-pending, never re-promote to "overdue".
+   - **Exclude it** from sections that list only active items (Carryover, What Needs Attention, deadline lists), OR
+   - Render it once with strikethrough (`~~…~~`) and the existing `[x]` preserved in sections that serve as a historical record — never strip the tick, never re-elevate as still-pending, never re-promote to "overdue".
 
    This is how the "Section Ownership and Bidirectional Sync" rule (§ above) is honoured in practice: a tick is a user edit, even on agent-emitted content. Re-elevating ticked items as still-pending is a correctness bug, not a styling choice.
 
