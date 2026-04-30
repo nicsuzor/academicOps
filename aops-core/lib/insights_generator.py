@@ -1,7 +1,10 @@
 """Session insights generation library.
 
 Provides unified functions for generating session insights via LLM (Claude/Gemini).
-Used by both automatic generation (Stop hook) and manual generation (skill).
+Used by automatic generation (Stop hook in `aops-core/hooks/router.py`) and the
+periodic cron run from `scripts/repo-sync-cron.sh`, both of which invoke
+`aops-core/scripts/transcript.py`. There is no standalone session-insights skill;
+this library IS the implementation.
 """
 
 from __future__ import annotations
@@ -24,7 +27,7 @@ class InsightsValidationError(Exception):
 
 
 def load_prompt_template() -> str:
-    """Load shared prompt template (sourced from the session-insights spec in brain PKB).
+    """Load shared prompt template (the session-insights JSON-contract spec lives in the brain PKB).
 
     Returns:
         Prompt template string with {session_id}, {date}, {project} placeholders
