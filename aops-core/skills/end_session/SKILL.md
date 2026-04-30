@@ -71,7 +71,7 @@ Use **Full-form** in **every other case**, including: task complete, end-of-day 
    1. Resolve the **current epic** from the bound task. Walk up the parent chain via `mcp__pkb__get_task`:
       - If the bound task's `frontmatter.type == "epic"`, it IS the current epic.
       - Otherwise, traverse `parent` until you reach a node with `type == "epic"`, OR until the next parent is `type == "project"` (in which case the last task before the project is the current epic), OR until there is no parent.
-      - If no epic ancestor and no project ancestor exist, skip this step entirely.
+      - If no epic ancestor and no project ancestor exist and `frontmatter.project` is absent or empty, skip this step entirely.
    2. Resolve the **project node**. Continue walking up from the epic until you reach a node with `type == "project"`. The bound task's `frontmatter.project` slug should match that project's `permalink` or aliases — use it as a fallback (`mcp__pkb__get_document(id=<slug>)`) if the parent chain breaks before reaching a project.
    3. Append a one-line breadcrumb to the project file's **Active Epics** section:
 
@@ -86,7 +86,7 @@ Use **Full-form** in **every other case**, including: task complete, end-of-day 
       The `append` tool prepends a UTC timestamp and creates the section if missing. Existing entries are preserved — never rewrite the section.
    4. If the bound task IS the epic, drop the trailing `(task [[...]] ...)` clause.
 
-   Skip silently when: no bound task, no project ancestor, or the project field doesn't resolve to a `type: project` document. Do not block the session close on a missing breadcrumb target.
+   Skip silently when: no bound task, no project can be resolved (via ancestor or slug), or the project field doesn't resolve to a `type: project` document. Do not block the session close on a missing breadcrumb target.
 
 3. **Call `release_task` once, with the full session payload.**
 
