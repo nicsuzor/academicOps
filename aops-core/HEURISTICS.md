@@ -103,7 +103,9 @@ When prioritization agents provide guidance, write output to daily note. Do NOT 
 
 ## Enforcement Changes Require enforcement-map.md Update (P#65)
 
-When adding enforcement measures, update enforcement-map.md to document the new rule.
+When a PR adds, removes, or modifies an enforcement gate, the enforcement map (`.agents/ENFORCEMENT-MAP.md`; referred to as `specs/enforcement-map.md` in cross-repo specs) MUST be updated in the **same PR** that introduces the gate. The map MUST be current at merge time of the PR that adds the enforcement — it is NOT permissible to defer the map update to a later implementation task or follow-up PR.
+
+This is design-time AND implementation-time discipline collapsed into one: a PR that wires a new gate without updating the map is incomplete, regardless of whether the gate "works." Reviewers (rbg / enforcer) MUST `REQUEST_CHANGES` on any such PR.
 
 ## Just-In-Time Information (P#66)
 
