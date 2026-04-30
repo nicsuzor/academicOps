@@ -123,6 +123,11 @@ jobs:
               commits directly to main. Knowledge work (new notes, synthesis, MOCs)
               commits to a branch `sleep/consolidation-$(date +%Y-%m-%d-%H%M)` and
               creates a PR. The PR is reviewed by /qa before merging.
+            - **Brain auto-merge** (#712, #448): this workflow runs on the brain repo,
+              so after Phase 10 self-check passes, enable auto-merge on the
+              consolidation PR with `gh pr merge --auto --squash <pr>`. The branch
+              acts as recovery/audit trail. Skip auto-merge if Phase 10 logged any
+              failures.
             - Write a summary of what you did to $GITHUB_STEP_SUMMARY. Include:
               - Phase completion status
               - Knowledge notes created/updated (Phase 4)
