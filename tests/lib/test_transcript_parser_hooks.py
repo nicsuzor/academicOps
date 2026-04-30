@@ -126,7 +126,7 @@ class TestMarkdownRendering:
             f"system_message missing from markdown:\n{md}"
         )
         # Context injection char count line should appear
-        assert "Injected context" in md or "Injected context" in md
+        assert "Injected context" in md
         # 'allow' verdict on legacy entry should NOT appear (default verdict suppressed)
         # but additional context should
         assert "Legacy CC context" in md
