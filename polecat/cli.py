@@ -3903,7 +3903,7 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
         else:
             result = subprocess.run(final_cmd, cwd=work_dir, env=env)
     except FileNotFoundError as exc:
-        # Surface the binary the kernel actually couldn't find \u2014 not cli_tool.
+        # Surface the binary the kernel actually couldn't find — not cli_tool.
         # When the agent is wrapped in docker, final_cmd[0] is "docker", so
         # printing cli_tool ("claude"/"gemini") is misleading. (task-1929bf59)
         missing = exc.filename or (final_cmd[0] if final_cmd else cli_tool)
