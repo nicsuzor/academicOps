@@ -8,6 +8,13 @@ description: Working hypotheses validated by evidence. Advisory — inform but d
 
 # Heuristics
 
+> **Adding a heuristic?** Run `python scripts/next_p_number.py` to claim
+> the next free P#. The allocator scans this file _and_ open PRs via
+> `gh`, so parallel branches don't pick the same number. A pre-commit
+> lint (`scripts/next_p_number.py --check`) blocks commits that collide
+> with an open PR. If `gh` is unavailable the allocator degrades to
+> "main only" with a stderr warning.
+
 ## Project Independence (P#7)
 
 Projects must work independently without cross-dependencies.

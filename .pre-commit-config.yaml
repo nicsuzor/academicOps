@@ -84,6 +84,16 @@ repos:
         pass_filenames: false
         files: '\.md$'
 
+      # P# collision lint — fail when staged HEURISTICS.md changes propose a
+      # P# that's already taken on main or claimed by another open PR. Run
+      # `python scripts/next_p_number.py` to get a fresh allocation.
+      - id: check-p-number-collision
+        name: P# collision lint (HEURISTICS.md)
+        entry: uv run python scripts/next_p_number.py --check
+        language: system
+        pass_filenames: false
+        files: '^aops-core/HEURISTICS\.md$'
+
   # Type checking and full framework health checks run in CI only
   # (see .github/workflows/framework-health.yml)
   #
