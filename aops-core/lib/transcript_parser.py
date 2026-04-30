@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import subprocess
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import Enum, auto
@@ -19,6 +20,110 @@ from typing import Any
 import lib.session_naming as session_naming
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+
+# Worktree basename patterns:
+#   - pure hex run of 6+ chars (e.g. "79257c", "008c345f")
+#   - <one or more lowercase-word segments>-<6+ hex> (e.g.
+#     "gallant-albattani-79257c", "modest-jemison-1202c6", "aops-008c345f")
+_HEX_ONLY_RE = re.compile(r"^[0-9a-f]{6,}$")
+_HEX_SUFFIX_RE = re.compile(r"^[a-z]+(?:-[a-z]+)*-[0-9a-f]{6,}$")
+
+# Path segments that are NEVER themselves a project — used when walking up
+# from a worktree basename to find the parent repo.
+_GENERIC_CONTAINERS = {
+    "src",
+    "code",
+    "projects",
+    "repos",
+    "work",
+    "dev",
+    "home",
+    "opt",
+    "users",
+    "tmp",
+    "var",
+    "mnt",
+    "media",
+    ".aops",
+    ".polecat",
+    ".claude",
+    ".git",
+    "polecat",
+    "polecats",
+    "crew",
+    "worktrees",
+    "trees",
+    "sessions",
+    "checkouts",
+}
+
+
+def _is_worktree_basename(name: str) -> bool:
+    """True if `name` looks like a worktree directory's basename.
+
+    Matches Claude Code's `<adjective>-<noun>-<hex>` pattern, polecat's
+    `<project>-<8hex>` pattern, and bare hex strings.
+    """
+    if not name:
+        return False
+    return bool(_HEX_ONLY_RE.match(name) or _HEX_SUFFIX_RE.match(name))
+
+
+def _resolve_worktree_via_git(path_str: str) -> str | None:
+    """Best-effort resolve a worktree path to its main repo basename.
+
+    Uses `git -C <path> rev-parse --git-common-dir` which (for a worktree)
+    points at `<main-repo>/.git` — the parent of which is the main repo.
+    Returns None if the path isn't a git checkout, git isn't available, or
+    anything else goes wrong. Pure best-effort; CI without filesystem
+    access falls back to path-walking.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "-C", path_str, "rev-parse", "--git-common-dir"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False,
+        )
+    except (FileNotFoundError, subprocess.SubprocessError, OSError):
+        return None
+    if result.returncode != 0:
+        return None
+    common_dir = result.stdout.strip()
+    if not common_dir:
+        return None
+    # `--git-common-dir` may return a relative path; resolve relative to the
+    # working directory we asked about.
+    common_path = Path(common_dir)
+    if not common_path.is_absolute():
+        common_path = (Path(path_str) / common_path).resolve()
+    # The main repo is the parent of the .git directory.
+    if common_path.name == ".git":
+        main_repo = common_path.parent
+    else:
+        main_repo = common_path
+    name = main_repo.name
+    if not name or _is_worktree_basename(name) or name.lower() in _GENERIC_CONTAINERS:
+        return None
+    return name
+
+
+def _walk_up_for_project(parts: tuple[str, ...]) -> str | None:
+    """Walk up `parts` (path components) and return the first ancestor that
+    is neither generic (`worktrees`, `.claude`, `src`, ...) nor a
+    worktree-style basename. Returns None if no such ancestor exists.
+    """
+    # Skip the last part (the worktree itself) — start from its parent.
+    for segment in reversed(parts[:-1]):
+        if not segment or segment == "/":
+            continue
+        if segment.lower() in _GENERIC_CONTAINERS:
+            continue
+        if _is_worktree_basename(segment):
+            continue
+        return segment
+    return None
 
 
 def normalize_gemini_project(dir_name: str) -> str:
@@ -118,6 +223,10 @@ def infer_project_from_working_dir(working_dir: str | None) -> str | None:
     - /home/user/projects/client-work -> client-work
     - /opt/user/code -> code
     - /home/user/.polecat/polecat/aops-008c345f -> aops (polecat worktree)
+    - /Users/x/.aops/brain/gallant-albattani-79257c -> brain
+      (Claude Code worktree: walk up past the hex-suffixed basename)
+    - /home/x/src/academicOps/.claude/worktrees/modest-jemison-1202c6 ->
+      academicOps (Claude Code worktree under .claude/worktrees/)
 
     Args:
         working_dir: Full path to working directory
@@ -151,9 +260,22 @@ def infer_project_from_working_dir(working_dir: str | None) -> str | None:
     # Get the last non-empty part
     project = parts[-1]
 
+    # Worktree basename detection: hex-only or `<word(s)>-<hex>` suffix.
+    # In a worktree the basename is a meaningless slug; the real project is
+    # the parent repository. Try git first (authoritative), fall back to
+    # walking up the path looking for a non-generic ancestor.
+    if _is_worktree_basename(project):
+        git_resolved = _resolve_worktree_via_git(working_dir)
+        if git_resolved:
+            return git_resolved
+        walked = _walk_up_for_project(parts)
+        if walked:
+            return walked
+        # No usable ancestor — refuse to return the meaningless hex slug.
+        return None
+
     # Skip generic names and try parent
-    generic_names = {"src", "code", "projects", "repos", "work", "dev", "home", "opt"}
-    if project.lower() in generic_names and len(parts) > 2:
+    if project.lower() in _GENERIC_CONTAINERS and len(parts) > 2:
         project = parts[-2]
 
     return project if project else None
