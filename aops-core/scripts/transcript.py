@@ -927,8 +927,12 @@ def git_sync():
 
         print(f"Syncing changes in {sessions_root}...")
 
+        add_paths = ["transcripts/", "summaries/"]
+        for optional in ("hooks", "client-logs", "status"):
+            if (sessions_root / optional).exists():
+                add_paths.append(f"{optional}/")
         subprocess.run(
-            ["git", "add", "transcripts/", "summaries/"],
+            ["git", "add", *add_paths],
             cwd=str(sessions_root),
             check=True,
         )
