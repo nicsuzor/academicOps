@@ -154,7 +154,7 @@ def test_prompt_shows_pr_lock_warning_when_pr_url_set():
 
 
 def test_finish_section_reminds_re_reading_task_body_for_mandatory_gates():
-    """Regression for #583: Step 3 must include a pre-push re-read step.
+    """Regression for #583: Step 0 of FINISH_LOCAL_TASK must be a labelled pre-push gate-recheck step.
 
     A polecat worker shipped a PR after satisfying gates 1+2 (plan review,
     TDD) but skipping the task body's gate 3 (James re-review on the
