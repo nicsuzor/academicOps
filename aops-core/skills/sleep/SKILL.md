@@ -76,6 +76,7 @@ Agent(
     # Filesystem / shell
     'Bash',                # transcript listing, git status
     'Glob',                # transcript discovery
+    'Grep',                # transcript content search
     'Edit',                # transcript frontmatter only — see scope below
     'Read',
     'Skill',
