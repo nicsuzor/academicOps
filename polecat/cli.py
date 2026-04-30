@@ -231,30 +231,6 @@ def _generate_pr_body(task, transcript_path: str | None = None) -> str:
     return "\n".join(parts)
 
 
-def _get_pr_status(pr_ref: str, repo_path: Path | None = None) -> dict | None:
-    """Get PR status using gh CLI."""
-    try:
-        cmd = [
-            "gh",
-            "pr",
-            "view",
-            pr_ref,
-            "--json",
-            "state,mergedAt,reviews,updatedAt,url,number,title",
-        ]
-        result = subprocess.run(cmd, cwd=repo_path, capture_output=True, text=True, timeout=15)
-        if result.returncode == 0:
-            return json.loads(result.stdout)
-    except (
-        subprocess.CalledProcessError,
-        subprocess.TimeoutExpired,
-        json.JSONDecodeError,
-        FileNotFoundError,
-    ):
-        pass
-    return None
-
-
 def _node_version_key(p: Path) -> tuple[int, ...]:
     """Sort key for NVM node version directories using semver comparison.
 
