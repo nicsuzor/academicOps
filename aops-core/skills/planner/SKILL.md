@@ -105,10 +105,10 @@ Quick task capture with minimal overhead. Speed is the priority — no enrichmen
 
    **Link types**:
 
-   - **Decision/triage on the primary task** (e.g. "decide whether to supersede X"): create as a **subtask** of the primary task, or link via `soft_depends_on` when the decision unblocks the primary work.
+   - **Decision/triage on the primary task** (e.g. "decide whether to supersede X"): create as a **subtask** of the primary task, or link via `soft_depends_on` when the decision informs the primary work.
    - **Cross-epic / cross-project follow-up** (e.g. "also update Z in project A"): create as a **separate top-level task** under the appropriate parent, linked back to the primary via `soft_depends_on` (soft unlocker) or `depends_on` (hard prerequisite).
 
-   Apply the same Decision Surfacing Heuristic before creating follow-ups: DECIDE-class items get resolved in-line in the body with brief reasoning; only DEFER and SURFACE items become their own tasks.
+   Apply the Decision Surfacing Heuristic before creating follow-ups: DECIDE-class items (answerable now from existing framework knowledge) get resolved in-line in the body with brief reasoning. All other items — whether the action is deferred pending data (DEFER-class) or requires user input (SURFACE-class) — become their own tasks so they are addressable graph nodes rather than invisible prose.
 
    The output of capture should therefore frequently be **two or more tasks** (primary + follow-ups), each correctly linked.
 
