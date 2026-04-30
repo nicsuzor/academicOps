@@ -111,7 +111,8 @@ def neighbors(task: dict, known_ids: set[str]) -> Iterable[tuple[str, float]]:
             continue
         resolved = ct.get("resolved_to") or ct.get("target")
         if resolved in known_ids:
-            yield resolved, float(ct.get("weight", 1.0))
+            weight_val = ct.get("weight")
+            yield resolved, float(weight_val if weight_val is not None else 1.0)
 
 
 def compute_downstream_weights(tasks: dict[str, dict]) -> dict[str, float]:
@@ -167,14 +168,16 @@ def apply_teleport(
     d: float = TELEPORT_DAMPING,
 ) -> dict[str, float]:
     """Option 2: uniform teleport. final = computed + (1-d) * mean_active_weight."""
-    active = [w for tid, w in weights.items() if tasks[tid].get("status") not in COMPLETED_STATUSES]
+    # Align with base_weight: status=None is treated as completed (returns 0.0 there)
+    inactive_statuses = COMPLETED_STATUSES | {None}
+    active = [w for tid, w in weights.items() if tasks[tid].get("status") not in inactive_statuses]
     if not active:
         return weights
     mean_w = sum(active) / len(active)
     floor = (1.0 - d) * mean_w
     out: dict[str, float] = {}
     for tid, w in weights.items():
-        if tasks[tid].get("status") in COMPLETED_STATUSES:
+        if tasks[tid].get("status") in inactive_statuses:
             out[tid] = w
         else:
             out[tid] = w + floor
@@ -182,7 +185,8 @@ def apply_teleport(
 
 
 def main(argv: list[str]) -> int:
-    tasks_dir = Path(argv[1] if len(argv) > 1 else os.path.expanduser("~/brain/tasks"))
+    default_tasks_dir = Path(os.environ.get("ACA_DATA", os.path.expanduser("~"))) / "brain" / "tasks"
+    tasks_dir = Path(argv[1]) if len(argv) > 1 else default_tasks_dir
     if not tasks_dir.is_dir():
         print(f"tasks dir not found: {tasks_dir}", file=sys.stderr)
         return 1
@@ -233,10 +237,6 @@ def main(argv: list[str]) -> int:
 
     out = "\n".join(lines)
     print(out)
-
-    out_path = Path(__file__).parent / "prototype_output.txt"
-    out_path.write_text(out + "\n", encoding="utf-8")
-    print(f"\nwrote {out_path}")
     return 0
 
 
