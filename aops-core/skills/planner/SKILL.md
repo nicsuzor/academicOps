@@ -288,7 +288,7 @@ These are the interactive counterpart to sleep Phase 4. In maintain mode, the hu
 | ---------------------- | --------------------------------------------------------------------------- |
 | `criticality-focus`    | High-criticality tasks with zero/few edges                                  |
 | `high-priority-sparse` | P0/P1 ready tasks with zero edges                                           |
-| `project-cluster`      | Ready tasks within one project (`list_tasks(status="ready", project=<id>)`) |
+| `project-cluster`      | Tasks with status: ready within one project (`list_tasks(status="ready", project="<project-id>")`) |
 | `neighbourhood-expand` | Neighbours of high-weight/high-criticality tasks                            |
 | `cross-project-bridge` | Tasks sharing tags across projects                                          |
 
