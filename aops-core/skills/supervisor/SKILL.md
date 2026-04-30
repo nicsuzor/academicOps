@@ -271,10 +271,13 @@ External triggers that start the supervision loop.
 - **`merge-prep-status: pending`** — set by `pr-pipeline.yml`'s initialize
   job and cleared only when the merge-prep agent sets `success` (graduation)
   or `failure` (after 3 consecutive failures). A PR with green CI may still
-  sit "yellow" until the merge-prep agent runs. The supervisor cannot clear
-  this directly; normal resolution is to wait for the next cron tick or
-  dispatch `agent-merge-prep.yml` manually via `gh workflow run`. Admin
-  bypass remains available for urgent cases.
+  sit "yellow" until the merge-prep agent runs. This is **not stuck** —
+  it's pending the next cron tick (up to 30 min away) or a manual trigger.
+  When all expected bot reviewers have posted and CI is green, the supervisor
+  can resolve it at will: see
+  [[instructions/supervision-loop#manual-merge-prep-trigger]] for the exact
+  `gh workflow run` command and the when-to-use rules. Admin bypass remains
+  available for urgent cases.
 
 ## Quick Reference
 

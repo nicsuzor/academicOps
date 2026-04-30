@@ -177,7 +177,9 @@ mechanisms deliver state changes without burning tokens:
    session.
 
    ```bash
-   # Monitor PR state for all in-progress polecat branches
+   # Monitor PR state for all in-progress polecat branches.
+   # Repo-specific bot set — adjust EXPECTED_BOTS for your repo.
+   EXPECTED_BOTS="gemini-code-assist[bot],Copilot,claude[bot]"
    while true; do
      for branch in $(git for-each-ref --format='%(refname:strip=3)' 'refs/remotes/origin/polecat/*'); do
        task_id=$(echo "$branch" | sed 's|polecat/||')
@@ -187,11 +189,34 @@ mechanisms deliver state changes without burning tokens:
          pr_state=$(echo "$pr_json" | jq -r '.[0].state')
          checks=$(echo "$pr_json" | jq -r '.[0].statusCheckRollup // [] | map(.conclusion // .status) | join(",")')
          reviews=$(echo "$pr_json" | jq -r '.[0].reviews // [] | map(.state) | join(",")')
-         state_key="${pr_state}|${checks}|${reviews}"
+
+         # Ready-to-advance detection: every expected bot has posted, all checks
+         # green/skipped, no CHANGES_REQUESTED.
+         bot_logins=$(echo "$pr_json" | jq -r '.[0].reviews // [] | map(.author.login) | unique | join(",")')
+         all_bots_posted=true
+         for bot in ${EXPECTED_BOTS//,/ }; do
+           echo ",$bot_logins," | grep -Fq ",${bot}," || all_bots_posted=false
+         done
+         if echo ",${checks}," | grep -qE ',(FAILURE|TIMED_OUT|CANCELLED|ACTION_REQUIRED|IN_PROGRESS|QUEUED|PENDING),'; then
+           has_failing=yes
+         else
+           has_failing=no
+         fi
+         if echo ",${reviews}," | grep -q ',CHANGES_REQUESTED,'; then
+           has_changes_requested=yes
+         else
+           has_changes_requested=no
+         fi
+         ready_to_advance=no
+         if [ "$all_bots_posted" = "true" ] && [ "$has_failing" = "no" ] && [ "$has_changes_requested" = "no" ]; then
+           ready_to_advance=yes
+         fi
+
+         state_key="${pr_state}|${checks}|${reviews}|ready=${ready_to_advance}"
          state_file="/tmp/pr-state-${task_id}"
          prev=$(cat "$state_file" 2>/dev/null || echo "")
          if [ "$state_key" != "$prev" ]; then
-           echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] ${task_id} PR#${pr_num}: state=${pr_state} checks=${checks} reviews=${reviews}"
+           echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] ${task_id} PR#${pr_num}: state=${pr_state} checks=${checks} reviews=${reviews} ready_to_advance=${ready_to_advance}"
            echo "$state_key" > "$state_file"
          fi
        fi
@@ -203,14 +228,23 @@ mechanisms deliver state changes without burning tokens:
    Use the Monitor tool to stream this — each printed line becomes a
    notification that wakes the supervisor. State transitions to watch for:
 
-   | Transition                        | Supervisor action                    |
-   | --------------------------------- | ------------------------------------ |
-   | no-pr → opened                    | Record PR in work items              |
-   | opened → checks-passing           | Wait for review                      |
-   | checks-failing                    | REACT: read logs, re-dispatch or fix |
-   | review: CHANGES_REQUESTED         | REACT: read comments                 |
-   | review: APPROVED + checks-passing | INTEGRATE: merge                     |
-   | merged                            | Update status → done                 |
+   | Transition                        | Supervisor action                                             |
+   | --------------------------------- | ------------------------------------------------------------- |
+   | no-pr → opened                    | Record PR in work items                                       |
+   | opened → checks-passing           | Wait for review                                               |
+   | checks-failing                    | REACT: read logs, re-dispatch or fix                          |
+   | review: CHANGES_REQUESTED         | REACT: read comments                                          |
+   | ready-to-advance                  | Trigger merge-prep manually (see § Manual merge-prep trigger) |
+   | review: APPROVED + checks-passing | INTEGRATE: merge                                              |
+   | merged                            | Update status → done                                          |
+
+   **Ready-to-advance** = all expected bot reviewers have posted, all CI green,
+   no `CHANGES_REQUESTED`, no merge-prep run currently in progress. The persistent
+   Monitor script should emit an event when a PR enters this state so the
+   supervisor gets a direct prompt to fire the manual trigger below instead of
+   waiting on the next cron tick (which can be up to 30 min away). Detect by
+   checking which bot logins have submitted a review against the repo's expected
+   bot set — for `aops` that is `gemini-code-assist[bot]`, Copilot, and `claude[bot]`.
 
 3. **ScheduleWakeup as safety net only.** Set a long interval (1800s+) as
    a catch-all in case a notification is missed or a worker stalls without
@@ -219,6 +253,51 @@ mechanisms deliver state changes without burning tokens:
    ```
    ScheduleWakeup(delaySeconds=1800, reason="safety-net check for stalled workers")
    ```
+
+#### Manual merge-prep trigger
+
+The merge-prep dispatcher (`merge-prep-cron.yml`) qualifies PRs only after the
+15-minute `BAZAAR_WINDOW_SECONDS` has elapsed since the last commit, so PRs can
+sit idle for 15–30 min waiting for the next cron tick — even when every bot
+reviewer has already posted. The supervisor can short-circuit this wait by
+firing `agent-merge-prep.yml` directly. The agent still triages everything;
+the bazaar wait was insurance, not a requirement.
+
+**Command** (preferred — direct dispatch, no qualification step):
+
+```bash
+HEAD_REF=$(gh pr view <PR> --repo <owner>/<repo> --json headRefName --jq '.headRefName')
+gh workflow run agent-merge-prep.yml \
+  --repo <owner>/<repo> \
+  --ref "refs/heads/$HEAD_REF" \
+  -f pr_number=<PR> \
+  -f force=true
+```
+
+The cron dispatcher's `workflow_dispatch` override (`gh workflow run merge-prep-cron.yml -f pr_number=<PR>`)
+also works and dispatches with `force=true` internally — use it if you'd rather
+go through the dispatcher path.
+
+**When to trigger manually**:
+
+- All expected bot reviewers have posted reviews (`gemini-code-assist[bot]`, Copilot, `claude[bot]`
+  for the `aops` repo — the set is repo-specific), OR
+- 5+ minutes have passed with all CI green and no `CHANGES_REQUESTED`.
+
+**When NOT to trigger manually**:
+
+- Before at least one external review has arrived — you'd skip the bazaar for
+  nothing and lose the signal it was meant to catch.
+- While any bot is still actively running
+  (`gh run list --workflow=<bot> --branch=<head_ref> --status=in_progress`).
+- On a coordinated-branch batch that isn't complete — only fire merge-prep on
+  the final "ready for review" flip, not on intermediate subtask pushes.
+- When a merge-prep run is already in_progress for the PR
+  (`gh run list --workflow=agent-merge-prep.yml --status=in_progress`).
+
+**Late `CHANGES_REQUESTED` is safe**: if a reviewer posts after merge-prep sets
+`success`, the cron's re-qualify path picks it up on the next tick. The manual
+trigger doesn't close that loop.
 
 #### Anti-Pattern: Polling
 
