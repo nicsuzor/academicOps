@@ -14,10 +14,10 @@ or retired (P#65).
 
 ## CI-only checks (whole-repo, too slow for pre-commit)
 
-| Check                    | Script                              | Rule(s)                | Tier    | Behaviour                                                                     |
-| ------------------------ | ----------------------------------- | ---------------------- | ------- | ----------------------------------------------------------------------------- |
-| `check-orphan-files`     | `scripts/check_orphan_files.py`     | (wikilink orphans)     | `warn`  | Exits 0; reports files with no incoming wikilinks                             |
-| `check-skill-line-count` | `scripts/check_skill_line_count.py` | (SKILL.md ≤ 500 lines) | `block` | Exits 1 when any SKILL.md exceeds 500 lines; fails the pre-commit hook and CI |
+| Check                    | Script                              | Rule(s)                | Tier   | Behaviour                                                    |
+| ------------------------ | ----------------------------------- | ---------------------- | ------ | ------------------------------------------------------------ |
+| `check-orphan-files`     | `scripts/check_orphan_files.py`     | (wikilink orphans)     | `warn` | Exits 0; reports files with no incoming wikilinks            |
+| `check-skill-line-count` | `scripts/check_skill_line_count.py` | (SKILL.md ≤ 500 lines) | `warn` | Exits 1 when any SKILL.md exceeds 500 lines; lists offenders |
 
 ## Notes
 
@@ -28,3 +28,7 @@ or retired (P#65).
   (`--no-verify`).
 - Hooks with tier `block` represent hard constraints; `--no-verify` is itself
   prohibited by R8.1 for this tier.
+- The "CI-only checks" section above is aspirational: `.pre-commit-config.yaml`
+  comments these scripts as "Moved to CI" but no GitHub Actions workflow
+  currently invokes `check-skill-line-count`, `check-orphan-files`, or
+  `audit_framework_health`. Wiring these into CI is tracked separately.
