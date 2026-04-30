@@ -28,7 +28,7 @@ if str(REPO_ROOT / "aops-core") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 
 import click
-from lib.agent_env import apply_env_mappings
+from lib.agent_env import apply_env_mappings, get_container_env_forwards
 from manager import PolecatManager
 from observability import metrics
 from validation import TaskIDValidationError, validate_task_id_or_raise
@@ -911,16 +911,9 @@ def _build_docker_cmd(
     tz = os.environ.get("TZ") or _detect_system_timezone()
     cmd.extend(["-e", f"TZ={tz}"])
 
-    # Git identity — required for git commit inside the container.
-    # Default to aops-bot if not provided in the environment.
-    git_name = env.get("GIT_AUTHOR_NAME") or os.environ.get("GIT_AUTHOR_NAME", "aops-bot")
-    git_email = env.get("GIT_AUTHOR_EMAIL") or os.environ.get(
-        "GIT_AUTHOR_EMAIL", "aops-bot@users.noreply.github.com"
-    )
-    cmd.extend(["-e", f"GIT_AUTHOR_NAME={git_name}"])
-    cmd.extend(["-e", f"GIT_AUTHOR_EMAIL={git_email}"])
-    cmd.extend(["-e", f"GIT_COMMITTER_NAME={git_name}"])
-    cmd.extend(["-e", f"GIT_COMMITTER_EMAIL={git_email}"])
+    # Git identity, credentials, terminal capability, and other env forwards
+    # are conf-driven via lib.agent_env.get_container_env_forwards (see step
+    # below). agent-env-map.conf is the single source of truth.
 
     # Workspace directory.
     # Local daemon: bind-mount host worktree → /workspace (rw, agent must commit).
@@ -1027,65 +1020,29 @@ def _build_docker_cmd(
             pass
         cmd.extend(["-v", f"{docker_sock.mount_source}:/var/run/docker.sock"])
 
-    # PKB connects over HTTP — pass the URL, no data volume needed.
-    pkb_url = env.get("PKB_MCP_URL") or os.environ.get("PKB_MCP_URL")
-    if pkb_url:
-        cmd.extend(["-e", f"PKB_MCP_URL={pkb_url}"])
-
     # Add host networking for MCPs running on localhost
     cmd.extend(["--add-host", "host.docker.internal:host-gateway"])
 
-    # Forward specific environment variables to the container
+    # Conf-driven env forwarding (agent-env-map.conf is the SSoT).
+    # Covers: git identity literals, PKB_MCP_URL/PKB_MCP_TOKEN, GH/GITHUB
+    # bot tokens, Anthropic & Gemini auth, terminal capability, runtime
+    # config, GIT_ASKPASS=true, SSH_AUTH_SOCK="" / GIT_SSH_COMMAND=false /
+    # GIT_TERMINAL_PROMPT=0 isolation literals.
+    # Empty source values are skipped (closes the empty-credential 401 leak).
+    conf_forwards = get_container_env_forwards(env)
+    for key, val in conf_forwards.items():
+        cmd.extend(["-e", f"{key}={val}"])
+
+    # Pattern-arm forwarding — POLECAT_*, AOPS_*, *_GATE_MODE.
+    # These are dynamic prefixes/suffixes not expressible in conf entries.
+    # Same empty-skip rule as the conf-driven path. Skip keys already
+    # forwarded by the conf to avoid double-`-e` (e.g. HYDRATION_GATE_MODE
+    # is both a conf literal and matches the *_GATE_MODE pattern).
     for key, val in env.items():
-        if (
-            key.startswith("POLECAT_")
-            or key.startswith("AOPS_")
-            or key.endswith("_GATE_MODE")
-            or key
-            in (
-                "AOPS_BOT_GH_TOKEN",
-                "GH_TOKEN",
-                "GITHUB_TOKEN",
-                "ANTHROPIC_API_KEY",
-                "CLAUDE_CODE_OAUTH_TOKEN",
-                "COLORTERM",
-                "FORCE_COLOR",
-                "NO_COLOR",
-                "CI",
-                "NONINTERACTIVE",
-                "ENFORCER_TOOL_CALL_THRESHOLD",
-            )
-        ):
+        if not val or key in conf_forwards:
+            continue
+        if key.startswith("POLECAT_") or key.startswith("AOPS_") or key.endswith("_GATE_MODE"):
             cmd.extend(["-e", f"{key}={val}"])
-
-    # Gemini: forward Gemini-specific env vars and set GEMINI_CLI_HOME
-    # to the container home (entrypoint copies staged .gemini/ to $HOME/.gemini/).
-    if cli_tool == "gemini":
-        cmd.extend(["-e", f"GEMINI_CLI_HOME={container_home}"])
-        for gkey in ("GEMINI_API_KEY", "GEMINI_SESSION_ID"):
-            gval = env.get(gkey)
-            if gval:
-                cmd.extend(["-e", f"{gkey}={gval}"])
-
-    # GitHub authentication — forward tokens to the container.
-    # The container entrypoint handles git and gh CLI authentication.
-    gh_token = env.get("GH_TOKEN") or os.environ.get("AOPS_BOT_GH_TOKEN")
-    if gh_token:
-        cmd.extend(
-            [
-                "-e",
-                "GIT_ASKPASS=true",
-                "-e",
-                f"GH_TOKEN={gh_token}",
-                "-e",
-                f"AOPS_BOT_GH_TOKEN={gh_token}",
-            ]
-        )
-
-    # SSH isolation — no SSH auth inside container
-    cmd.extend(["-e", "SSH_AUTH_SOCK="])
-    cmd.extend(["-e", "GIT_SSH_COMMAND=false"])
-    cmd.extend(["-e", "GIT_TERMINAL_PROMPT=0"])
 
     # Session storage: transcripts persist beyond container lifetime.
     # Local daemon → bind-mount session_dir for live host visibility.
