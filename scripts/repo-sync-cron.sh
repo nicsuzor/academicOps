@@ -1,23 +1,21 @@
 #!/usr/bin/env bash
-# repo-sync-cron.sh - Periodic maintenance: transcripts, dashboard, repo sync, and sweep
+# repo-sync-cron.sh - Periodic maintenance: transcripts, dashboard, repo sync
 #
-# Six functions, composable via CLI:
+# Five functions, composable via CLI:
 #   do_cowork_ingest - Normalize and sync Cowork audit logs into sessions repo
 #   do_gha_sync      - Sync claude-session artifacts from configured GHA repos
 #   do_transcript    - Generate recent session transcripts
 #   do_dashboard     - Update task graph (pkb graph)
 #   do_sync          - Sync all git repositories via polecat sync
-#   do_sweep         - Sweep merge_ready tasks for PR status updates
 #
 # Usage:
-#   ./scripts/repo-sync-cron.sh              # Full: cowork_ingest + gha_sync + transcript + dashboard + sync + sweep
+#   ./scripts/repo-sync-cron.sh              # Full: cowork_ingest + gha_sync + transcript + dashboard + sync
 #   ./scripts/repo-sync-cron.sh cowork_ingest # Just Cowork audit log ingestion
 #   ./scripts/repo-sync-cron.sh gha_sync     # Just GHA artifact sync
 #   ./scripts/repo-sync-cron.sh transcript   # Just transcript
 #   ./scripts/repo-sync-cron.sh dashboard    # Just dashboard
 #   ./scripts/repo-sync-cron.sh sync         # Just sync
-#   ./scripts/repo-sync-cron.sh sweep        # Just sweep
-#   ./scripts/repo-sync-cron.sh gha_sync transcript dashboard sync sweep # Specific combination
+#   ./scripts/repo-sync-cron.sh gha_sync transcript dashboard sync # Specific combination
 #
 # Crontab suggested setup:
 #   */5 * * * * /path/to/repo/scripts/repo-sync-cron.sh >> /tmp/repo-sync-cron.log 2>&1
@@ -148,27 +146,20 @@ do_sync() {
     git -C "${AOPS}" fetch --prune --quiet 2>&1 || echo "Warning: git fetch --prune failed"
 }
 
-do_sweep() {
-    # Sweep merge_ready tasks for PR status updates
-    echo "==> Sweeping task PR statuses..."
-    uv run --project "${AOPS}" "${AOPS}/polecat/cli.py" sweep 2>&1 || echo "Warning: polecat sweep failed"
-}
-
 # ============================================================================
 # Dispatch
 # ============================================================================
 
 if [[ $# -eq 0 ]]; then
-    # Full run: cowork_ingest + gha_sync + transcript + dashboard + sync + sweep
+    # Full run: cowork_ingest + gha_sync + transcript + dashboard + sync
     echo "${TS} repo-sync-cron starting (full)"
     do_cowork_ingest
     do_gha_sync
     do_transcript
     do_dashboard
     do_sync
-    do_sweep
 else
-    # Named functions: ./repo-sync-cron.sh gha_sync transcript dashboard sync sweep
+    # Named functions: ./repo-sync-cron.sh gha_sync transcript dashboard sync
     echo "${TS} repo-sync-cron starting ($*)"
     for func in "$@"; do
         case "$func" in
@@ -177,9 +168,8 @@ else
             transcript) do_transcript ;;
             dashboard)  do_dashboard ;;
             sync)       do_sync ;;
-            sweep)      do_sweep ;;
             --quick)    do_cowork_ingest; do_gha_sync; do_transcript; do_sync ;;
-            *)          echo "Unknown function: $func (valid: cowork_ingest, gha_sync, transcript, dashboard, sync, sweep, --quick)" >&2; exit 1 ;;
+            *)          echo "Unknown function: $func (valid: cowork_ingest, gha_sync, transcript, dashboard, sync, --quick)" >&2; exit 1 ;;
         esac
     done
 fi
