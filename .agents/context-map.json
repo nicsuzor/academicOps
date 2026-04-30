@@ -81,7 +81,7 @@
     {
       "topic": "enforcement_map",
       "type": "reference",
-      "path": "aops-core/ENFORCEMENT-MAP.md",
+      "path": ".agents/ENFORCEMENT-MAP.md",
       "description": "Maps rules to enforcement mechanisms — which rules are enforced by hooks, gates, prompts, or detection",
       "keywords": ["enforcement", "gate", "compliance", "rule", "mechanism", "blocking", "hook enforcement"]
     },

@@ -21,7 +21,7 @@ This file is the **authoritative, fine-grained rule corpus** that agents apply a
 
 **Form:** Each rule is stated as a clear prohibition (`DO NOT …`) or obligation (`HALT and …`). Carve-outs are one line, prefixed `EXCEPT`. Reasoning lives in the axiom, not the rule — keep rules terse so the classifier can quote them whole.
 
-**Severity tiers** (cf. `aops-core/ENFORCEMENT-MAP.md`):
+**Severity tiers**:
 
 - `block` — the rule names a hard prohibition; classifier blocks
 - `warn` — the rule names a likely-bad pattern; classifier warns and continues
