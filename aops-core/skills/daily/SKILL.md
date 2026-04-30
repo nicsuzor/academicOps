@@ -80,17 +80,12 @@ A factual snapshot of the task graph and today's calendar. No recommendations.
 
 **Contains**:
 
+- **SEV4 cap warning** (when triggered): If more than 2 active tasks have `severity == 4`, surface a single-line concurrency-cap warning at the top of the section. See [[instructions/status-snapshot]] §3.3b.
 - **Priority distribution**: P0–P4 counts of ready tasks (from `task_summary`). Presented as a compact bar chart — counts only, no narrative. See [[../../PRIORITY.md]] for P0–P4 definitions.
 - **Deadline list**: Any task with `due` ≤ 7 days. List each as `[task-id] [[Title]] — due YYYY-MM-DD (Nd away / overdue Nd)`. Do not categorise or rank; sort by due date ascending.
+- **High-urgency surface**: Top 5 active tasks (queued/ready/in_progress) ranked by composite `urgency` (severity × edge weight × slack × decay). Factual surfacing of what the graph computes — not a recommendation. Omitted when the PKB does not yet emit `urgency`. See [[instructions/status-snapshot]] §3.3a.
 - **Calendar**: Today's events from the calendar source, in time order. No commentary.
 - **Pending decisions**: Count of `ready` + `review` tasks assigned to the user (one line).
-- **SEV4 concurrency cap warning**: Count active (non-`done`) `type: target` nodes with `severity: 4` AND `goal_type: committed`. If the count is **> 2**, include a single warning line:
-
-  ```
-  ⚠ SEV4 cap: N active committed SEV4 targets (recommended ≤ 2). Review: [task-id] [[Title]], …
-  ```
-
-  This is SURFACE-only per `projects/aops/specs/pkb/multi-parent-edges.md` §1.5 and §6 Q4 — it never blocks tool use. If the count is ≤ 2, omit the line entirely (no "all good" noise). Only `goal_type: committed` SEV4 targets count toward the cap; `aspirational` and `learning` SEV4 targets are excluded (§1.3).
 
 **No recommendations**: Do not emit SHOULD/DEEP/ENJOY/QUICK/UNBLOCK categories. Do not suggest a sequence. Do not add rationales like "start with X because Y".
 
