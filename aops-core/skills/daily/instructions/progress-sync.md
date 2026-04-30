@@ -6,7 +6,11 @@ Update daily note from session JSON files and narrative path reconstruction.
 
 ### Step 4.0: Task Completion Sweep
 
-Before syncing progress, sweep tasks in `merge_ready` and `review` status to synchronize with external signals (merged PRs, sent emails). This ensures the task graph accurately reflects completed, blocked, or stale work. The supervisor handles in-flight `merge_ready` PR-state transitions directly via `gh pr view` + `release_task`; the daily sweep below catches drift on tasks the supervisor isn't actively watching (mirrors SKILL.md Step 7, kept self-contained so it works without the full skill context):
+Before syncing progress, run a sweep of tasks in `merge_ready` and `review` status to synchronize with external signals (merged PRs, sent emails). This ensures the task graph accurately reflects completed, blocked, or stale work.
+
+> **Note**: The `polecat sweep` shell command was removed (see task-9fa50763) because the supervisor agent loop already handles PR-state transitions in-band via `gh pr view` + Monitor. Run the agent-side sweep below directly.
+
+**Agent-side sweep** (mirrors SKILL.md Step 7, kept self-contained so it works without the full skill context):
 
 1. Call `list_tasks(status="merge_ready")` and `list_tasks(status="review")` to get all candidate tasks.
 2. For tasks with a `pr_url` in frontmatter: query the PR state via `gh pr view <number> --json state,mergedAt,url`. If `state == "MERGED"`, call `complete_task` with the merge timestamp + URL as evidence.

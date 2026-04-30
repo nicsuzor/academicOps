@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# repo-sync-cron.sh - Periodic maintenance: transcripts, dashboard, repo sync
+# repo-sync-cron.sh - Periodic maintenance: transcripts, dashboard, repo sync.
 #
 # Five functions, composable via CLI:
 #   do_cowork_ingest - Normalize and sync Cowork audit logs into sessions repo
@@ -7,6 +7,9 @@
 #   do_transcript    - Generate recent session transcripts
 #   do_dashboard     - Update task graph (pkb graph)
 #   do_sync          - Sync all git repositories via polecat sync
+#
+# Note: PR-state sweeping is now handled by the supervisor agent loop
+# (event-driven monitoring), not by `polecat sweep` (removed; see task-9fa50763).
 #
 # Usage:
 #   ./scripts/repo-sync-cron.sh              # Full: cowork_ingest + gha_sync + transcript + dashboard + sync

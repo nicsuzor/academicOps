@@ -72,7 +72,7 @@ Use **Full-form** in **every other case**, including: task complete, end-of-day 
       - If the bound task's `frontmatter.type == "epic"`, it IS the current epic.
       - Otherwise, traverse `parent` until you reach a node with `type == "epic"`, OR until the next parent is `type == "project"` (in which case the last task before the project is the current epic), OR until there is no parent.
       - If no epic ancestor and no project ancestor exist and `frontmatter.project` is absent or empty, skip this step entirely.
-   2. Resolve the **project node**. Continue walking up from the epic until you reach a node with `type == "project"`. The bound task's `frontmatter.project` slug should match that project's `permalink` or aliases — use it as a fallback (`mcp__pkb__get_document(id=<slug>)`) if the parent chain breaks before reaching a project.
+   2. Resolve the **project node**. Prefer the bound task's `frontmatter.project` slug — resolve it directly via `mcp__pkb__get_document(id=<slug>)`. Only walk up from the epic to find a `type == "project"` ancestor as a fallback when the slug is missing or unresolvable. Do not infer project membership from task ID prefixes.
    3. Append a one-line breadcrumb to the project file's **Active Epics** section:
 
       ```

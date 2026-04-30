@@ -30,6 +30,7 @@ description: Generate user-facing briefing for tasks requiring approval or decis
 mcp__plugin_aops-core_tasks__search_tasks(query="[query]")           # Search tasks
 mcp__plugin_aops-core_tasks__get_blocked_tasks()                      # Tasks with unmet dependencies
 mcp__plugin_aops-core_tasks__list_tasks(status="queued")              # Filter by status
+mcp__plugin_aops-core_tasks__list_tasks(project="<slug>")             # Filter by project (preferred over walking parent chains or ID-prefix heuristics)
 mcp__plugin_aops-core_tasks__complete_task(id="[ID]")                 # Complete task
 mcp__plugin_aops-core_tasks__update_task(id="[ID]", updates={"status": "someday"})   # Defer for later
 mcp__plugin_aops-core_tasks__update_task(id="[ID]", updates={"body": "..."})       # Add notes to task

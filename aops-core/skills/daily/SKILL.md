@@ -80,7 +80,7 @@ A factual snapshot of the task graph and today's calendar. No recommendations.
 
 **Contains**:
 
-- **Priority distribution**: P0/P1/P2/P3 counts of ready tasks (from `task_summary`). Presented as a compact bar chart — counts only, no narrative.
+- **Priority distribution**: P0–P4 counts of ready tasks (from `task_summary`). Presented as a compact bar chart — counts only, no narrative. See [[../../PRIORITY.md]] for P0–P4 definitions.
 - **Deadline list**: Any task with `due` ≤ 7 days. List each as `[task-id] [[Title]] — due YYYY-MM-DD (Nd away / overdue Nd)`. Do not categorise or rank; sort by due date ascending.
 - **Calendar**: Today's events from the calendar source, in time order. No commentary.
 - **Pending decisions**: Count of `ready` + `review` tasks assigned to the user (one line).
