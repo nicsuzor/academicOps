@@ -1273,6 +1273,12 @@ class Entry:
     cache_read_input_tokens: int | None = None
     model: str | None = None
 
+    # Reasoning / thinking fields
+    # Gemini: list of {"subject": str, "description": str, "timestamp": str}
+    # Claude: list of {"type": "thinking"|"redacted_thinking", "thinking"|"data": str}
+    thoughts: list[dict] | None = None
+    thoughts_tokens: int | None = None
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Entry:
         """Create Entry from JSONL dict."""
@@ -1417,6 +1423,8 @@ class ConversationTurn:
     output_tokens: int | None = None
     cache_create_tokens: int | None = None
     cache_read_tokens: int | None = None
+    thoughts_tokens: int | None = None
+    model: str | None = None
 
 
 class SessionState(Enum):
@@ -1887,6 +1895,11 @@ class SessionProcessor:
                         }
                     )
 
+            # Extract Gemini-specific reasoning + token + model metadata
+            gemini_thoughts = msg.get("thoughts") if isinstance(msg.get("thoughts"), list) else None
+            gemini_tokens = msg.get("tokens") or {}
+            gemini_model = msg.get("model")
+
             # Create main entry
             entry = Entry(
                 type=entry_type,
@@ -1894,6 +1907,12 @@ class SessionProcessor:
                 timestamp=timestamp,
                 message={"content": content_blocks if content_blocks else content_text},
                 content={"content": content_blocks if content_blocks else content_text},  # Fallback
+                model=gemini_model,
+                input_tokens=gemini_tokens.get("input") if gemini_tokens else None,
+                output_tokens=gemini_tokens.get("output") if gemini_tokens else None,
+                cache_read_input_tokens=gemini_tokens.get("cached") if gemini_tokens else None,
+                thoughts=gemini_thoughts if gemini_thoughts else None,
+                thoughts_tokens=gemini_tokens.get("thoughts") if gemini_tokens else None,
             )
             entries.append(entry)
 
@@ -2355,8 +2374,38 @@ class SessionProcessor:
                 if not isinstance(content, list):
                     content = [content]
 
+                # Emit Gemini-style thoughts (carried on Entry) before any text/tool
+                # blocks so the reasoning shows up adjacent to its turn.
+                if entry.thoughts:
+                    current_turn["assistant_sequence"].append(
+                        {
+                            "type": "thinking",
+                            "source": "gemini",
+                            "thoughts": entry.thoughts,
+                            "model": entry.model,
+                            "subagent_id": entry.subagent_id,
+                        }
+                    )
+
                 for block in content:
                     if isinstance(block, dict):
+                        # Claude extended-thinking blocks
+                        if block.get("type") in ("thinking", "redacted_thinking"):
+                            think_text = block.get("thinking") or block.get("text") or ""
+                            if block.get("type") == "redacted_thinking":
+                                think_text = think_text or "[redacted]"
+                            if think_text:
+                                current_turn["assistant_sequence"].append(
+                                    {
+                                        "type": "thinking",
+                                        "source": "claude",
+                                        "redacted": block.get("type") == "redacted_thinking",
+                                        "thoughts": [{"subject": "", "description": think_text}],
+                                        "model": entry.model,
+                                        "subagent_id": entry.subagent_id,
+                                    }
+                                )
+                            continue
                         if block.get("type") == "text":
                             text_content = block.get("text", "").strip()
                             if text_content:
@@ -2455,6 +2504,10 @@ class SessionProcessor:
                     turn["cache_create_tokens"] = token_stats["cache_create"]
                 if token_stats["cache_read"] is not None:
                     turn["cache_read_tokens"] = token_stats["cache_read"]
+                if token_stats.get("thoughts") is not None:
+                    turn["thoughts_tokens"] = token_stats["thoughts"]
+                if token_stats.get("model"):
+                    turn["model"] = token_stats["model"]
 
                 if is_user_turn and not first_user_turn_found:
                     first_user_turn_found = True
@@ -2497,6 +2550,8 @@ class SessionProcessor:
                         output_tokens=turn.get("output_tokens"),
                         cache_create_tokens=turn.get("cache_create_tokens"),
                         cache_read_tokens=turn.get("cache_read_tokens"),
+                        thoughts_tokens=turn.get("thoughts_tokens"),
+                        model=turn.get("model"),
                     )
                 )
 
@@ -3037,17 +3092,25 @@ class SessionProcessor:
                     output_tokens = turn.output_tokens
                     cache_read = turn.cache_read_tokens
                     cache_create = turn.cache_create_tokens
+                    thoughts_tokens = turn.thoughts_tokens
+                    turn_model = turn.model
                 else:
                     input_tokens = turn.get("input_tokens")
                     output_tokens = turn.get("output_tokens")
                     cache_read = turn.get("cache_read_tokens")
                     cache_create = turn.get("cache_create_tokens")
+                    thoughts_tokens = turn.get("thoughts_tokens")
+                    turn_model = turn.get("model")
+                if turn_model:
+                    meta_parts.append(f"model={turn_model}")
                 if input_tokens is not None and output_tokens is not None:
                     meta_parts.append(f"{input_tokens:,} in / {output_tokens:,} out")
                     if cache_read:
                         meta_parts.append(f"{cache_read:,} cache↓")
                     if cache_create:
                         meta_parts.append(f"{cache_create:,} cache↑")
+                    if thoughts_tokens:
+                        meta_parts.append(f"{thoughts_tokens:,} think")
 
             tool_count = sum(1 for item in assistant_sequence if item.get("type") == "tool")
             if tool_count:
@@ -3196,6 +3259,54 @@ class SessionProcessor:
                     item_type = item.get("type")
                     content = item.get("content", "")
                     subagent_id = item.get("subagent_id")
+
+                    if item_type == "thinking":
+                        if in_actions_section:
+                            in_actions_section = False
+                            markdown += "\n"
+
+                        if not agent_header_emitted:
+                            if subagent_id:
+                                markdown += f"## Agent ({subagent_id})\n\n"
+                            else:
+                                markdown += f"## Agent (Turn {turn_number})\n\n"
+                            agent_header_emitted = True
+
+                        thoughts = item.get("thoughts") or []
+                        if thoughts:
+                            label = (
+                                "Model thoughts"
+                                if item.get("source") == "gemini"
+                                else "Extended thinking"
+                            )
+                            if full_mode:
+                                markdown += f"<details><summary>💭 {label}</summary>\n\n"
+                                for t in thoughts:
+                                    subj = (t.get("subject") or "").strip()
+                                    desc = (t.get("description") or "").strip()
+                                    if subj and desc:
+                                        markdown += f"> **{subj}** — {desc}\n>\n"
+                                    elif desc:
+                                        # Quote each line for safety
+                                        for line in desc.splitlines() or [desc]:
+                                            markdown += f"> {line}\n"
+                                        markdown += ">\n"
+                                    elif subj:
+                                        markdown += f"> **{subj}**\n>\n"
+                                markdown += "\n</details>\n\n"
+                            else:
+                                # Abridged: subjects only (compact)
+                                subjects = [
+                                    (t.get("subject") or "").strip()
+                                    for t in thoughts
+                                    if (t.get("subject") or "").strip()
+                                ]
+                                if subjects:
+                                    joined = "; ".join(subjects)
+                                    markdown += f"_💭 {label}: {joined}_\n\n"
+                                else:
+                                    markdown += f"_💭 {label}: {len(thoughts)} block(s)_\n\n"
+                        continue
 
                     if item_type == "text":
                         if in_actions_section:
@@ -3833,7 +3944,9 @@ session_id: {session_uuid}
         total_output = 0
         total_cache_create = 0
         total_cache_read = 0
+        total_thoughts = 0
         has_tokens = False
+        model = None
 
         for entry in turn_entries:
             if entry.input_tokens is not None:
@@ -3846,6 +3959,11 @@ session_id: {session_uuid}
                 total_cache_create += entry.cache_creation_input_tokens
             if entry.cache_read_input_tokens is not None:
                 total_cache_read += entry.cache_read_input_tokens
+            if entry.thoughts_tokens is not None:
+                total_thoughts += entry.thoughts_tokens
+            # Capture the assistant model name for the turn (last assistant entry wins)
+            if entry.model and entry.type == "assistant":
+                model = entry.model
 
         if has_tokens:
             return {
@@ -3853,8 +3971,17 @@ session_id: {session_uuid}
                 "output": total_output,
                 "cache_create": total_cache_create if total_cache_create > 0 else None,
                 "cache_read": total_cache_read if total_cache_read > 0 else None,
+                "thoughts": total_thoughts if total_thoughts > 0 else None,
+                "model": model,
             }
-        return {"input": None, "output": None, "cache_create": None, "cache_read": None}
+        return {
+            "input": None,
+            "output": None,
+            "cache_create": None,
+            "cache_read": None,
+            "thoughts": None,
+            "model": model,
+        }
 
     def _aggregate_session_usage(
         self,

@@ -319,3 +319,181 @@ class TestSummaryRegenerationOnGrownJsonl:
         assert refreshed.get("summary") == "Hand-authored session summary"
         assert refreshed.get("accomplishments") == ["Did the thing", "Did another thing"]
         assert refreshed.get("outcome") == "success"
+
+
+class TestThoughtsAndContext:
+    """Tests for Gemini thoughts rendering, Claude thinking blocks, per-turn
+    metadata, and Session Context section (tasks df03f1d9 + 8b3e3cfd)."""
+
+    @pytest.fixture
+    def processor(self):
+        from lib.transcript_parser import SessionProcessor
+
+        return SessionProcessor()
+
+    def _write_gemini_session(self, tmp_path: Path) -> Path:
+        data = {
+            "sessionId": "abcd1234",
+            "projectHash": "xxx",
+            "startTime": "2026-04-16T00:10:00Z",
+            "lastUpdated": "2026-04-16T00:20:00Z",
+            "kind": "chat",
+            "messages": [
+                {
+                    "id": "u1",
+                    "type": "user",
+                    "timestamp": "2026-04-16T00:10:00Z",
+                    "content": "Investigate signal handling.",
+                },
+                {
+                    "id": "g1",
+                    "type": "gemini",
+                    "timestamp": "2026-04-16T00:10:30Z",
+                    "content": "I will investigate.",
+                    "model": "gemini-3-flash-preview",
+                    "thoughts": [
+                        {
+                            "subject": "Analyzing Test Coverage",
+                            "description": "I've reviewed the existing test...",
+                            "timestamp": "2026-04-16T00:10:25Z",
+                        }
+                    ],
+                    "tokens": {
+                        "input": 26142,
+                        "output": 41,
+                        "cached": 21950,
+                        "thoughts": 399,
+                        "tool": 0,
+                        "total": 26582,
+                    },
+                },
+            ],
+        }
+        path = tmp_path / "session-2026-04-16T00-10-abcd1234.json"
+        path.write_text(json.dumps(data), encoding="utf-8")
+        return path
+
+    def test_gemini_thoughts_rendered_in_full(self, processor, tmp_path):
+        path = self._write_gemini_session(tmp_path)
+        summary, entries, agents = processor.parse_session_file(str(path))
+        md = processor.format_session_as_markdown(
+            summary, entries, agents, include_tool_results=True, variant="full"
+        )
+        assert "💭 Model thoughts" in md
+        assert "Analyzing Test Coverage" in md
+        assert "<details>" in md
+
+    def test_gemini_thoughts_compact_in_abridged(self, processor, tmp_path):
+        path = self._write_gemini_session(tmp_path)
+        summary, entries, agents = processor.parse_session_file(str(path))
+        md = processor.format_session_as_markdown(
+            summary, entries, agents, include_tool_results=False, variant="abridged"
+        )
+        # Abridged: subject only, no <details>
+        assert "Analyzing Test Coverage" in md
+        assert "<details>" not in md
+
+    def test_per_turn_meta_shows_model_and_thoughts_tokens(self, processor, tmp_path):
+        path = self._write_gemini_session(tmp_path)
+        summary, entries, agents = processor.parse_session_file(str(path))
+        md = processor.format_session_as_markdown(
+            summary, entries, agents, include_tool_results=True, variant="full"
+        )
+        assert "model=gemini-3-flash-preview" in md
+        # input/output tokens
+        assert "26,142 in / 41 out" in md
+        # thoughts tokens
+        assert "399 think" in md
+        # cache_read
+        assert "21,950 cache" in md
+
+    def test_claude_thinking_block_rendered(self, processor):
+        from lib.transcript_parser import Entry, SessionSummary
+
+        entries = [
+            Entry(
+                type="user",
+                uuid="u1",
+                timestamp=datetime(2026, 4, 16, 0, 10, tzinfo=UTC),
+                message={"content": "Hello"},
+            ),
+            Entry(
+                type="assistant",
+                uuid="a1",
+                timestamp=datetime(2026, 4, 16, 0, 10, 1, tzinfo=UTC),
+                message={
+                    "content": [
+                        {"type": "thinking", "thinking": "Let me think about this carefully."},
+                        {"type": "text", "text": "Here is my answer."},
+                    ],
+                    "model": "claude-opus-4-7",
+                },
+                model="claude-opus-4-7",
+            ),
+        ]
+        summary = SessionSummary(uuid="test")
+        md = processor.format_session_as_markdown(
+            summary, entries, {}, include_tool_results=True, variant="full"
+        )
+        assert "Extended thinking" in md
+        assert "Let me think about this carefully" in md
+
+    def test_session_context_section_lists_files_in_abridged(self, processor):
+        from lib.transcript_parser import Entry, SessionSummary
+
+        entries = [
+            Entry(
+                type="user",
+                uuid="u1",
+                timestamp=datetime(2026, 4, 16, 0, 10, tzinfo=UTC),
+                message={"content": "Read the config file."},
+            ),
+            Entry(
+                type="assistant",
+                uuid="a1",
+                timestamp=datetime(2026, 4, 16, 0, 10, 1, tzinfo=UTC),
+                message={
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "id": "t1",
+                            "name": "Read",
+                            "input": {"file_path": "/etc/foo.conf"},
+                        }
+                    ],
+                    "model": "claude-opus-4-7",
+                },
+            ),
+            Entry(
+                type="user",
+                uuid="u2",
+                timestamp=datetime(2026, 4, 16, 0, 10, 2, tzinfo=UTC),
+                message={
+                    "content": [
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": "t1",
+                            "content": "key=value\n",
+                        }
+                    ]
+                },
+            ),
+        ]
+        summary = SessionSummary(uuid="test")
+        md_abridged = processor.format_session_as_markdown(
+            summary, entries, {}, include_tool_results=False, variant="abridged"
+        )
+        md_full = processor.format_session_as_markdown(
+            summary, entries, {}, include_tool_results=True, variant="full"
+        )
+        # Both variants list the file
+        assert "## Session Context" in md_abridged
+        assert "/etc/foo.conf" in md_abridged
+        assert "/etc/foo.conf" in md_full
+        # Full embeds the body inside <details>
+        assert "<details>" in md_full
+        # Abridged should NOT contain a details block for read content
+        # (it lists filename only)
+        assert "key=value" not in md_abridged
+        # Full mode contains the read result
+        assert "key=value" in md_full
