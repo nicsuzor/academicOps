@@ -33,7 +33,7 @@ Before doing anything, check whether this task has already been worked on:
    - If PR is open and looks correct: `update_task(id="{task_id}", assignee="nic", body="[prior work] PR already filed (see Existing PR in task metadata)")`
    - If PR is merged: task may have been completed — check and update status accordingly.
 2. If task body mentions a filed PR or prior completion, HALT and triage the same way.
-3. If task status is anything other than `in_progress` or `active`, HALT and triage.
+3. If task status is anything other than `in_progress`, `ready`, or `queued`, HALT and triage.
 
 Only proceed to Step 1 if you confirm no prior work exists.
 

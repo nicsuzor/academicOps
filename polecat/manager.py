@@ -1447,9 +1447,27 @@ class PolecatManager:
                             )
                             continue
 
+                        # Capture prior status for rollback if downstream setup
+                        # (e.g. worktree creation) fails. Stored on the returned
+                        # object so the caller can restore the canonical value
+                        # rather than guessing.
+                        prior_status = fresh_task.status
+                        prior_status_value = (
+                            prior_status.value
+                            if hasattr(prior_status, "value")
+                            else str(prior_status)
+                        )
                         fresh_task.status = self.task_status.IN_PROGRESS
                         fresh_task.assignee = caller
                         self.storage.save_task(fresh_task)
+                        # Annotate for rollback. Use a leading underscore so it
+                        # isn't mistaken for a persisted field.
+                        try:
+                            fresh_task._prior_status = prior_status_value
+                        except AttributeError:
+                            # Some task models forbid arbitrary attrs; rollback
+                            # will fall back to the canonical default.
+                            pass
                         return fresh_task
 
                     finally:
@@ -1477,10 +1495,15 @@ class PolecatManager:
         if not tasks:
             return None
 
+        # Canonical statuses agents may pull from. `ready` is the standard
+        # decomposed-and-unblocked state; `queued` is the human-promoted gate.
+        # See aops-core/skills/remember/references/TAXONOMY.md.
+        _CLAIMABLE_STATUSES = ("ready", "queued")
+
         for task in tasks:
             # Re-fetch to get fresh status (avoid race)
             fresh = get_task(task.id)
-            if fresh is None or fresh.status != "active":
+            if fresh is None or fresh.status not in _CLAIMABLE_STATUSES:
                 continue
             if fresh.assignee and fresh.assignee != caller:
                 continue
@@ -1491,6 +1514,12 @@ class PolecatManager:
                     file=sys.stderr,
                 )
                 continue
+
+            # Capture prior canonical status before claiming so a downstream
+            # failure (e.g. worktree setup) can restore it. Annotated on the
+            # returned object via a leading-underscore attribute to avoid
+            # being mistaken for a persisted field.
+            prior_status = fresh.status
 
             # Claim via MCP update_task (atomic at server level)
             try:
@@ -1511,6 +1540,10 @@ class PolecatManager:
                         and verified.assignee == caller
                     ):
                         print("   ✅ Verified: claim succeeded. Proceeding.", file=sys.stderr)
+                        try:
+                            verified._prior_status = prior_status
+                        except AttributeError:
+                            pass
                         return verified
                 except Exception as ve:
                     print(f"   ❌ Verification failed: {ve}", file=sys.stderr)
@@ -1524,6 +1557,10 @@ class PolecatManager:
 
             fresh.status = "in_progress"
             fresh.assignee = caller
+            try:
+                fresh._prior_status = prior_status
+            except AttributeError:
+                pass
             return fresh
 
         return None
