@@ -194,7 +194,7 @@ def _generate_pr_body(task, transcript_path: Path | None = None) -> str:
         body,
     )
     body = re.sub(
-        r"\n*<details>\n<summary>Polecat run transcript</summary>[\s\S]*?</details>\s*",
+        rf"\n*<details>\n{re.escape(TRANSCRIPT_PR_DETAILS_SUMMARY)}[\s\S]*?</details>\s*",
         "",
         body,
     )
