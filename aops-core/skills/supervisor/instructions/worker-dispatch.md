@@ -194,6 +194,99 @@ the code change — it doesn't un-flash a device or un-deploy a service.
 
 ---
 
+## Halt-on-Infeasibility Gate
+
+Worker type, project, and repo are explicit user parameters with trust,
+cost, audit, and identity semantics. They are **hard requirements**.
+Adaptation in dispatch applies to _how_ a requested worker is invoked
+(local CLI vs SSH+tmux vs workflow_dispatch runner) — **never** to _which_
+worker is invoked. Silent substitution of worker type is forbidden.
+
+### When the gate fires
+
+Before dispatch, the supervisor must verify it can satisfy every explicit
+dispatch parameter on the request. The gate fires whenever **any** of the
+following cannot be satisfied in the current environment:
+
+- **Worker type**: the requested worker family (Claude polecat, Gemini polecat,
+  Jules, etc.) cannot be invoked through any transport this environment
+  supports.
+- **Project**: the requested project context cannot be loaded (`$ACA_DATA`
+  missing, project alias unresolved).
+- **Repo**: the target repository is not reachable (no clone, no auth, no
+  SSH path to a host that has it).
+- **Transport**: every transport that _could_ invoke the requested worker
+  has failed environment discovery (e.g. `polecat` not on PATH AND no
+  SSH+tmux host reachable AND no `workflow_dispatch` runner available).
+
+A failure on a single transport is **not** infeasibility — try the others
+first. Infeasibility means _no_ path can deliver the requested worker.
+
+### Protocol
+
+1. **Halt.** Do not dispatch. Do not substitute. Do not "adapt" to a different
+   worker type.
+
+2. **Produce a dispatch infeasibility report** in the epic task body, under a
+   `## Dispatch Infeasibility Report` heading:
+
+   ```markdown
+   ## Dispatch Infeasibility Report
+
+   **Timestamp**: [ISO timestamp]
+   **Environment**: [host / container identifier]
+
+   ### Requested
+
+   - Worker type: [e.g. gemini polecat]
+   - Project: [project alias]
+   - Repo: [owner/repo]
+
+   ### Missing / Failed Discovery
+
+   - [Specific check that failed, e.g. `polecat` not on PATH]
+   - [Each transport tried and why it failed: local / SSH+tmux / runner]
+
+   ### Substitutes Available (DO NOT auto-pick)
+
+   | Substitute                   | Cost delta | Trust delta | Audit delta | Notes |
+   | ---------------------------- | ---------- | ----------- | ----------- | ----- |
+   | claude polecat               | ...        | ...         | ...         | ...   |
+   | claude general-purpose Agent | ...        | ...         | ...         | ...   |
+
+   ### Decision Required
+
+   Substitute with one of the above, fix the environment, or abort?
+   ```
+
+3. **Interactive session** — surface the report to the user and wait for an
+   explicit affirmative response before dispatching anything. A bare "ok"
+   or "go ahead" is sufficient; silence or ambiguity is not. Record the
+   user's choice in the task body before dispatch:
+
+   ```
+   [timestamp] DISPATCH SUBSTITUTION APPROVED by user: gemini polecat → claude polecat
+   ```
+
+4. **Autonomous session** (cron, headless, no interactive user) — do **not**
+   substitute. Set the epic's status to `needs_decision`, leave the report
+   in the epic body, and exit. The next interactive supervisor invocation
+   picks it up.
+
+5. **Never** invoke a substitute worker without an explicit approval line in
+   the task body. The presence of an infeasibility report without an approval
+   line means dispatch is still blocked.
+
+### What the gate is not
+
+- Not a critic gate (that handles blast radius, not parameter feasibility).
+- Not a pre-dispatch validation (that handles task currency, not transport).
+- Not a fallback selector — fallback among **transports** for the _same_
+  worker is fine and expected; fallback to a _different worker type_ is
+  prohibited without user approval.
+
+---
+
 ## Worker Selection
 
 **Step 1: Assess Task Requirements**

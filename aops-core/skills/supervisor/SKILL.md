@@ -37,10 +37,21 @@ what's happening.
 
 ### Environment Discovery, Not Assumptions
 
-Every invocation discovers what's available. The supervisor adapts dispatch
-strategy to what exists right now — not what existed last time. A session
-that starts on a Mac with local polecat and moves to a crew container with
-only Docker and gh is normal, not exceptional.
+Every invocation discovers what's available so it can enable the _requested_
+dispatch. Adaptation applies to **how** the requested worker is invoked
+(local CLI, SSH+tmux, workflow_dispatch runner) — never to **which** worker
+is invoked. A session that starts on a Mac with local polecat and moves to a
+crew container with only Docker and gh is normal: re-route the same worker
+through whatever transport the new environment supports.
+
+Worker type, project, and repo are explicit user parameters with trust,
+cost, audit, and identity semantics — they are **hard requirements, not
+preferences**. If the environment cannot satisfy the requested worker type,
+**halt** and produce a dispatch infeasibility report (see
+[[instructions/worker-dispatch#halt-on-infeasibility-gate]]). Never
+silently substitute. Substitution only after explicit user approval; in
+autonomous sessions, write the report to the epic body and set the epic to
+`needs_decision`.
 
 ### Checkpoint Before Action
 
