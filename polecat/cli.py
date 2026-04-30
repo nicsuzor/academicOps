@@ -3354,7 +3354,6 @@ def list_polecats(ctx):
 # shell command invited divergence between sweep rules and agent rules.
 
 
-
 def _clone_has_changes(repo_path: Path, branch_name: str) -> bool:
     """Check if a crew branch has pushed work not yet merged to the default branch.
 
