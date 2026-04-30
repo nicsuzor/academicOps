@@ -86,7 +86,8 @@ Quick task capture with minimal overhead. Speed is the priority — no enrichmen
    - `due`: ISO date (YYYY-MM-DD)
    - `effort`: duration (0.5d, 1d, 1w)
    - `consequence`: prose description of what happens if not done
-6. Create task with body template (Problem, Solution, Files, AC). Pass `due`, `effort`, and `consequence` as explicit PKB parameters to `mcp__pkb__create_task` (not only in body prose) — the PKB uses `due` as a structured field for deadline-aware prioritization.
+   - `priority`: **default to P3**. Only set higher if the user explicitly signals urgency (P0/P1) or active importance (P2). See [[#priority-assignment-rules]]. Do NOT infer priority from task content.
+6. Create task with body template (Problem, Solution, Files, AC). Pass `due`, `effort`, `consequence`, and `priority` as explicit PKB parameters to `mcp__pkb__create_task` (not only in body prose) — the PKB uses `due` as a structured field for deadline-aware prioritization. **Priority defaults to P3** unless user explicitly elevated.
 7. **Report with context tree**: Fetch siblings via `mcp__pkb__get_task_children(parent_id)` and print a compact ASCII tree showing parent + siblings + the new task, marking the new task with `← NEW`. Then HALT — no execution.
 
    Format:
@@ -160,7 +161,8 @@ Break validated epics into structured task trees.
 7. Identify dependencies — hard (`depends_on`) vs soft (`soft_depends_on` = unlockers).
 8. Estimate effort — duration (0.5d, 1d, 1w); tasks over 0.5d need further decomposition.
 9. Extract `due` and `consequence` for subtasks if mentioned or implied by the parent task.
-10. Create in PKB via `decompose_task(parent_id, subtasks)`.
+10. **Set subtask priority to P3 by default.** Do not propagate the parent's priority to children, and do not infer priority from subtask content. Only elevate a subtask above P3 if the user explicitly signals urgency for that specific subtask. See [[#priority-assignment-rules]].
+11. Create in PKB via `decompose_task(parent_id, subtasks)`.
 
 **Critical rules**:
 
@@ -378,6 +380,28 @@ User prompt
 - **Human assignment**: Never assign to `nic` unless the task reduces to a genuine binary human choice (e.g., "Do we use Pattern A or Pattern B?").
 - **Decision subtasks**: When a real choice IS needed, create a minimal choice subtask that blocks the epic, providing full context to decide. Never assign the parent epic back to `nic`.
 - **Underspecified tasks**: Even underspecified epics should not go to `nic`: file a research/decomposition task for an agent to do the legwork first.
+
+## Priority Assignment Rules
+
+**Do not assign priority based on your assessment of importance. Use P3 as default. Only elevate when the user explicitly indicates urgency.**
+
+Priority reflects _user intent_, not agent estimation. The planner has no privileged view of what's urgent — only the user does. Auto-assigning P0/P1/P2 trains the user to ignore priority signals because they're noisy.
+
+| Priority | When to assign                                                                                                                                  |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| **P0**   | User explicitly marks as critical/blocking (e.g., "this is blocking everything", "drop everything", "P0").                                      |
+| **P1**   | User explicitly marks as urgent (e.g., "urgent", "ASAP", "needs to ship today/this week", "P1").                                                |
+| **P2**   | User indicates active importance — the work is on their current focus list (e.g., "important", "this matters", "P2", deadline within ~2 weeks). |
+| **P3**   | **Default for all new tasks.** Use this whenever the user has not explicitly signaled urgency.                                                  |
+
+**Rules**:
+
+- Default to **P3** in `capture` and `decompose` modes unless the user explicitly states priority/urgency.
+- Only assign **P0–P1** when the user explicitly marks something as critical or urgent.
+- **P2** is acceptable when the user indicates active importance (deadline language, "important", explicit P2).
+- Never infer priority from task content (e.g., "this looks like a security thing, must be P1") — that's agent estimation, not user intent.
+- A `due` date alone is metadata, not a priority signal — record `due` and leave priority at P3 unless the user separately signals urgency.
+- When in doubt, **P3**. The user can elevate later in the dashboard or via explicit instruction.
 
 ## Handover
 
