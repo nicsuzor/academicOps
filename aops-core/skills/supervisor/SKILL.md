@@ -113,8 +113,14 @@ polecat run -t <task-id> -p <project> -g
 aops task <task-id> | jules new --repo <owner>/<repo>
 ```
 
-> **`polecat` not on PATH?** In non-interactive shells (Bash tool, cron, CI), the `polecat`/`pc` alias
-> may not be loaded. Use the canonical form: `uv run --project $AOPS $AOPS/polecat/cli.py <args>`
+> **`polecat` not on PATH?** In non-interactive shells (Bash tool, cron, CI,
+> headless agent contexts), the `polecat`/`pc` zsh alias is not loaded — the
+> shell-interactivity boundary matters: an interactive zsh session sees the
+> alias, a Bash-tool subshell does not. Use the canonical expanded form:
+> `uv run --project $AOPS $AOPS/polecat/cli.py <args>`. All dispatch
+> examples below and in [[instructions/supervision-loop]] /
+> [[instructions/worker-dispatch]] use bare `polecat`; substitute the
+> `uv run` form when running outside an interactive shell.
 
 **Polecat exit codes** (relevant for scripted supervisors):
 
