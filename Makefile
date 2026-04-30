@@ -41,13 +41,13 @@ help:
 	@echo "  make dev            - Full local dev setup (sync, build, install-dev)"
 	@echo "  make build-dev      - Build extension locally (dist/)"
 	@echo "  make install-dev    - Install current dist/ into Claude and Gemini"
-	@echo "  make install-cowork - Install Cowork plugin from local dist/aops-cowork build"
 	@echo "  make uninstall-dev  - Restore release marketplace after local testing"
 	@echo "  make install-hooks  - Install pre-commit hooks"
 	@echo ""
 	@echo "User Installation (Install from remote releases):"
 	@echo "  make install        - Install all components from GitHub releases"
 	@echo "  make install-claude - Install Claude plugin from dist repo"
+	@echo "  make install-cowork - Install Cowork plugin from local dist (Cowork can't use github marketplaces)"
 	@echo "  make install-gemini - Install Gemini extension from main repo"
 	@echo "  make install-crontab - Setup background sync"
 	@echo ""
@@ -107,15 +107,6 @@ cache = pathlib.Path.home() / '.claude/plugins/cache/academicOps/aops-core'; \
 	@echo "  ⚠️  Marketplace 'academicOps' now points to $(AOPS_ROOT)"
 	@echo "  Run 'make uninstall-dev' to restore the release marketplace."
 
-# Install Cowork plugin from local dist build
-install-cowork:
-	@echo "Installing aops plugin for Claude Cowork..."
-	@echo "  Source: $(DIST_DIR)/aops-cowork (local build)"
-	-command claude plugin uninstall $(COWORK_PLUGIN_NAME)
-	@command claude plugin marketplace add $(AOPS_ROOT) && \
-	command claude plugin install $(COWORK_PLUGIN_NAME) && \
-	echo "✓ Cowork plugin installed"
-
 # Restore the release marketplace after local dev testing
 uninstall-dev:
 	@echo "Restoring release marketplace ($(DIST_REPO))..."
@@ -133,15 +124,23 @@ install-hooks:
 # --- User Installation (Remote) ---
 
 # Standard user install from official releases
-install: ensure-docker install-claude install-gemini install-crontab
+# Order matters: install-cowork registers the marketplace as a local directory
+# (Cowork bug workaround). install-claude must run AFTER so the final marketplace
+# registration is the github source — that's what aops-core auto-update tracks.
+install: ensure-docker install-cowork install-claude install-gemini install-crontab
 	@$(MAKE) report-versions
 
 ensure-docker:
-	@if ! docker image inspect $(SANDBOX_IMAGE) >/dev/null 2>&1; then \
-		echo "Docker image '$(SANDBOX_IMAGE)' not found — building..."; \
-		$(MAKE) build-sandbox; \
-	else \
+	@if ! command -v docker >/dev/null 2>&1; then \
+		echo "⚠️  Docker not installed — skipping sandbox image build."; \
+		echo "   Crew/sandbox features will be unavailable until Docker is installed."; \
+	elif ! docker info >/dev/null 2>&1; then \
+		echo "⚠️  Docker installed but daemon not running — skipping sandbox image build."; \
+	elif docker image inspect $(SANDBOX_IMAGE) >/dev/null 2>&1; then \
 		echo "✓ Docker image '$(SANDBOX_IMAGE)' already exists"; \
+	else \
+		echo "Docker image '$(SANDBOX_IMAGE)' not found — building..."; \
+		$(MAKE) build-sandbox || echo "⚠️  Docker image build failed — continuing without sandbox image."; \
 	fi
 
 install-claude:
@@ -152,6 +151,19 @@ install-claude:
 	command claude plugin marketplace update academicOps && \
 	command claude plugin install $(CLAUDE_PLUGIN_NAME) && \
 	echo "✓ Claude Code plugin installed"
+
+# Cowork installs from the local dist build because Cowork's RemotePluginManager
+# nukes plugins from `source: "github"` marketplaces on every restart
+# (claude-code issues #38429, #39274, #40600). A local-directory marketplace
+# survives the sync.
+install-cowork: build-dev
+	@echo "Installing aops plugin for Claude Cowork (local source — Cowork bug workaround)..."
+	@echo "  Source: $(DIST_DIR)/aops-cowork (local build)"
+	-command claude plugin uninstall $(COWORK_PLUGIN_NAME)
+	@command claude plugin marketplace add $(AOPS_ROOT) && \
+	command claude plugin install $(COWORK_PLUGIN_NAME) && \
+	echo "✓ Cowork plugin installed"
+	@echo "  ⚠️  Marketplace 'academicOps' now points to $(AOPS_ROOT)"
 
 install-gemini:
 	@echo "Installing aops extension for Gemini CLI..."
