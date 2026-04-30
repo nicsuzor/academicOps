@@ -21,13 +21,13 @@ import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
 from click.testing import CliRunner
 
 REPO_ROOT = Path(__file__).parent.parent.parent.resolve()
 sys.path.insert(0, str(REPO_ROOT / "polecat"))
 
 from cli import main
+
 from polecat.pkb_bridge import PkbTask
 
 
