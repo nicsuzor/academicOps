@@ -2,7 +2,9 @@
 """Tests for ``polecat run --force``.
 
 The ``--force`` flag bypasses the status-check guard on ``polecat run -t``,
-allowing the command to claim and run a task in any non-terminal status.
+allowing the command to claim and run a task regardless of its current
+status — including terminal (``done``, ``cancelled``) and locked
+(``merge_ready``, ``review``, PR-locked) statuses.
 Without ``--force``, the existing gating behaviour for terminal/locked
 statuses (``done``, ``cancelled``, ``merge_ready``, ``review``, or any
 PR-locked task) is preserved.
