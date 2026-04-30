@@ -108,7 +108,7 @@ class TestDockerEndState:
         env = {
             "ANTHROPIC_API_KEY": "sk-test-integration-123",
             "CLAUDE_CODE_OAUTH_TOKEN": "oauth-integration-token",
-            "GEMINI_API_KEY": "gemini-should-not-appear",
+            "GEMINI_API_KEY": "gemini-conf-driven",
             "GOOGLE_API_KEY": "google-should-not-appear",
             "POLECAT_SESSION_TYPE": "crew",
             "POLECAT_CREW_NAME": "integration-test",
@@ -120,9 +120,9 @@ class TestDockerEndState:
             "ENFORCER_TOOL_CALL_THRESHOLD": "50",
             "AOPS_SESSIONS": "/tmp/test-sessions",
             "AOPS_CUSTOM_VAR": "custom-value",
-            "GIT_AUTHOR_NAME": "integration-bot",
-            "GIT_AUTHOR_EMAIL": "integration@test.example",
-            "GH_TOKEN": "ghp_integration_test_token",
+            # AOPS_BOT_GH_TOKEN is the SSoT for GH auth — conf maps it to
+            # GH_TOKEN, GITHUB_TOKEN, AOPS_BOT_GH_TOKEN inside container.
+            "AOPS_BOT_GH_TOKEN": "ghp_integration_test_token",
             "PKB_MCP_URL": "http://host:8026/mcp",
         }
 
@@ -227,10 +227,24 @@ class TestDockerEndState:
         """CLAUDE_CODE_OAUTH_TOKEN is available inside the container."""
         assert env_results["CLAUDE_CODE_OAUTH_TOKEN"] == "oauth-integration-token"
 
-    def test_gemini_keys_blocked_from_container(self, env_results):
-        """GEMINI_API_KEY and GOOGLE_API_KEY must NOT reach the container."""
-        assert env_results.get("GEMINI_API_KEY", "") == ""
+    def test_unlisted_keys_blocked_from_container(self, env_results):
+        """Vars outside agent-env-map.conf must NOT reach the container.
+
+        GOOGLE_API_KEY is a sentinel for "not in the conf allow-list" — it
+        must be blocked. GEMINI_API_KEY *is* in the conf (forwarded for any
+        cli_tool — harmless on Claude path) and is covered by
+        `test_gemini_api_key_reaches_container` below.
+        """
         assert env_results.get("GOOGLE_API_KEY", "") == ""
+
+    def test_gemini_api_key_reaches_container(self, env_results):
+        """GEMINI_API_KEY is conf-driven now — forwarded for any cli_tool.
+
+        Pre-refactor it was cli_tool-conditional in cli.py. Post-refactor the
+        agent-env-map.conf entry forwards it unconditionally; claude ignores
+        it harmlessly. See task-ebc758fd.
+        """
+        assert env_results["GEMINI_API_KEY"] == "gemini-conf-driven"
 
     def test_polecat_prefixed_env_reaches_container(self, env_results):
         """POLECAT_* env vars are forwarded."""
@@ -265,14 +279,21 @@ class TestDockerEndState:
     # --- Group 2: Git identity and credentials ---
 
     def test_git_identity_configured_in_container(self, env_results):
-        """Git author/committer identity is set inside the container."""
-        assert env_results["GIT_AUTHOR_NAME"] == "integration-bot"
-        assert env_results["GIT_AUTHOR_EMAIL"] == "integration@test.example"
-        assert env_results["GIT_COMMITTER_NAME"] == "integration-bot"
-        assert env_results["GIT_COMMITTER_EMAIL"] == "integration@test.example"
-        # Also verify git config was applied by the entrypoint
-        assert env_results["GIT_CONFIG_NAME"] == "integration-bot"
-        assert env_results["GIT_CONFIG_EMAIL"] == "integration@test.example"
+        """Git author/committer identity is set inside the container from the
+        agent-env-map.conf SSoT — bot identity is fixed, not host-overridable.
+
+        Even though the test fixture exports GIT_AUTHOR_NAME=integration-bot,
+        the conf literal `GIT_AUTHOR_NAME:=polecat` overrides it. This is
+        the credential-isolation contract: a host user can't make a polecat
+        container commit under their identity.
+        """
+        assert env_results["GIT_AUTHOR_NAME"] == "polecat"
+        assert env_results["GIT_AUTHOR_EMAIL"] == "aops-polecat@users.noreply.github.com"
+        assert env_results["GIT_COMMITTER_NAME"] == "aops-polecat"
+        assert env_results["GIT_COMMITTER_EMAIL"] == "aops-polecat@users.noreply.github.com"
+        # Verify entrypoint applied conf identity to git config too.
+        assert env_results["GIT_CONFIG_NAME"] == "polecat"
+        assert env_results["GIT_CONFIG_EMAIL"] == "aops-polecat@users.noreply.github.com"
 
     def test_ssh_isolation_enforced_in_container(self, env_results):
         """SSH is fully blocked inside the container."""

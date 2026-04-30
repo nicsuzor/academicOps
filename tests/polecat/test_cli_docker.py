@@ -124,13 +124,17 @@ class TestBuildDockerCmd:
         env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
         assert "CLAUDE_CODE_OAUTH_TOKEN=oauth-test-token" in env_args
 
-    def test_does_not_forward_gemini_keys(self):
-        """Gemini keys not needed in Claude Docker container — Gemini uses its own sandbox."""
+    def test_does_not_forward_unlisted_keys(self):
+        """Vars outside the conf allow-list (e.g. GOOGLE_API_KEY) are not forwarded.
+
+        GEMINI_API_KEY is in agent-env-map.conf (forwarded for any cli_tool —
+        harmless in claude containers). GOOGLE_API_KEY is not, so it must not
+        leak into the container.
+        """
         env = {"GEMINI_API_KEY": "gemini-test-key", "GOOGLE_API_KEY": "google-test-key"}
         cmd = self._build(env=env)
         env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
-        assert not any("GEMINI_API_KEY" in a for a in env_args)
-        assert not any("GOOGLE_API_KEY" in a for a in env_args)
+        assert not any(a.startswith("GOOGLE_API_KEY=") for a in env_args)
 
     def test_forwards_polecat_prefixed_env(self):
         env = {"POLECAT_SESSION_TYPE": "crew", "POLECAT_CREW_NAME": "test"}
@@ -190,27 +194,40 @@ class TestBuildDockerCmd:
         assert tz_args[0] == "TZ=UTC"
 
     def test_sets_git_identity(self):
-        """Git author/committer identity is set for commits inside container."""
+        """Git author/committer identity is set from agent-env-map.conf literals.
+
+        The conf is the single source of truth — bot identity is fixed at
+        polecat/aops-polecat regardless of host env. Container-level isolation
+        ensures consistent commit attribution.
+        """
         with patch.dict(os.environ):
             os.environ.pop("GIT_AUTHOR_NAME", None)
             os.environ.pop("GIT_AUTHOR_EMAIL", None)
             cmd = self._build()
         env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
-        assert "GIT_AUTHOR_NAME=aops-bot" in env_args
-        assert "GIT_AUTHOR_EMAIL=aops-bot@users.noreply.github.com" in env_args
-        assert "GIT_COMMITTER_NAME=aops-bot" in env_args
-        assert "GIT_COMMITTER_EMAIL=aops-bot@users.noreply.github.com" in env_args
+        assert "GIT_AUTHOR_NAME=polecat" in env_args
+        assert "GIT_AUTHOR_EMAIL=aops-polecat@users.noreply.github.com" in env_args
+        assert "GIT_COMMITTER_NAME=aops-polecat" in env_args
+        assert "GIT_COMMITTER_EMAIL=aops-polecat@users.noreply.github.com" in env_args
 
-    def test_git_identity_from_env(self):
-        """Git identity can be overridden via environment variables."""
+    def test_git_identity_not_overridable_via_host_env(self):
+        """Conf literals win over host env — host can't override bot identity.
+
+        Replaces test_git_identity_from_env (which encoded a footgun: the
+        previous code's env-fallback meant a user with GIT_AUTHOR_NAME exported
+        could attribute polecat-container commits to themselves). The conf
+        ``:=`` literal is the SSoT.
+        """
         with patch.dict(
             os.environ,
             {"GIT_AUTHOR_NAME": "custom-bot", "GIT_AUTHOR_EMAIL": "custom@example.com"},
         ):
             cmd = self._build()
         env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
-        assert "GIT_AUTHOR_NAME=custom-bot" in env_args
-        assert "GIT_AUTHOR_EMAIL=custom@example.com" in env_args
+        assert "GIT_AUTHOR_NAME=polecat" in env_args
+        assert "GIT_AUTHOR_NAME=custom-bot" not in env_args
+        assert "GIT_AUTHOR_EMAIL=aops-polecat@users.noreply.github.com" in env_args
+        assert "GIT_AUTHOR_EMAIL=custom@example.com" not in env_args
 
     def test_ssh_isolation(self):
         """SSH fully blocked: agent cleared, command disabled, prompt off."""
@@ -220,13 +237,27 @@ class TestBuildDockerCmd:
         assert "GIT_SSH_COMMAND=false" in env_args
         assert "GIT_TERMINAL_PROMPT=0" in env_args
 
-    def test_git_credential_helper_with_gh_token(self):
-        """GH_TOKEN and AOPS_BOT_GH_TOKEN are forwarded when available."""
-        env = {"GH_TOKEN": "ghp_test123"}
+    def test_aops_bot_token_fans_out_to_gh_and_github(self):
+        """AOPS_BOT_GH_TOKEN is the SSoT for git auth — fans out to GH_TOKEN,
+        GITHUB_TOKEN, and AOPS_BOT_GH_TOKEN inside the container per the conf.
+        GIT_ASKPASS=true is always-on (defence-in-depth, regardless of token).
+        """
+        env = {"AOPS_BOT_GH_TOKEN": "ghp_test123"}
         cmd = self._build(env=env)
         env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
         assert "GH_TOKEN=ghp_test123" in env_args
+        assert "GITHUB_TOKEN=ghp_test123" in env_args
         assert "AOPS_BOT_GH_TOKEN=ghp_test123" in env_args
+        assert "GIT_ASKPASS=true" in env_args
+
+    def test_git_askpass_always_on_even_without_token(self):
+        """GIT_ASKPASS=true is forwarded unconditionally — no GH token required.
+
+        Defence-in-depth: even if no token is present, the container must not
+        be able to interactively prompt for git credentials.
+        """
+        cmd = self._build(env={})
+        env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
         assert "GIT_ASKPASS=true" in env_args
 
     def test_passes_pkb_url_when_set(self):
@@ -276,6 +307,124 @@ class TestBuildDockerCmd:
         assert any("docker.sock" in v for v in vol_args)
         assert "--privileged" not in cmd
         assert "--user" in cmd
+
+    # --- Empty-credential leak regression (task-ebc758fd) ---
+    # Mirrors the spirit of test_shell_lines_skip_when_source_unset_or_empty
+    # in test_credential_isolation.py: empty-string env vars must not be
+    # forwarded into the container as `-e KEY=`.
+
+    @pytest.mark.parametrize(
+        "var",
+        [
+            "ANTHROPIC_API_KEY",
+            "CLAUDE_CODE_OAUTH_TOKEN",
+            "AOPS_BOT_GH_TOKEN",
+            "GEMINI_API_KEY",
+            "GEMINI_SESSION_ID",
+            "POLECAT_FOO",
+            "AOPS_BAR",
+            "CUSTODIET_GATE_MODE",
+        ],
+    )
+    def test_empty_env_var_not_forwarded(self, var):
+        """Empty-string env vars must not leak into the container.
+
+        The host shell exporting `ANTHROPIC_API_KEY=""` (or any other
+        forwarded var) used to forward `-e ANTHROPIC_API_KEY=` and cause
+        headless claude to send an empty x-api-key header → 401.
+        """
+        env = {var: ""}
+        cmd = self._build(env=env)
+        env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
+        # No -e VAR=anything (empty or otherwise) for this var when source is empty.
+        assert not any(a.startswith(f"{var}=") for a in env_args), (
+            f"Empty {var} leaked into container: {[a for a in env_args if a.startswith(f'{var}=')]}"
+        )
+
+    @pytest.mark.parametrize(
+        "var",
+        [
+            "ANTHROPIC_API_KEY",
+            "CLAUDE_CODE_OAUTH_TOKEN",
+            "AOPS_BOT_GH_TOKEN",
+            "GEMINI_API_KEY",
+            "GEMINI_SESSION_ID",
+            "POLECAT_FOO",
+            "AOPS_BAR",
+        ],
+    )
+    def test_unset_env_var_not_forwarded(self, var):
+        """Inverse boundary: unset (not in env at all) must also not forward."""
+        cmd = self._build(env={})  # var not present
+        env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
+        assert not any(a.startswith(f"{var}=") for a in env_args)
+
+    def test_ssh_isolation_emits_empty_literal(self):
+        """SSH_AUTH_SOCK="" literal forwards to container even when host has SSH_AUTH_SOCK set.
+
+        The conf entry `SSH_AUTH_SOCK:=` (literal empty) is the deliberate
+        isolation idiom: the container must NOT inherit a host SSH agent.
+        """
+        env = {"SSH_AUTH_SOCK": "/tmp/host-ssh-agent.sock"}
+        cmd = self._build(env=env)
+        env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
+        assert "SSH_AUTH_SOCK=" in env_args
+        assert "SSH_AUTH_SOCK=/tmp/host-ssh-agent.sock" not in env_args
+
+    def test_hydration_gate_mode_emitted_exactly_once(self):
+        """HYDRATION_GATE_MODE appears exactly once — pattern arm and conf
+        literal don't double up. Catches future regressions in ordering.
+        """
+        env = {"HYDRATION_GATE_MODE": "off"}
+        cmd = self._build(env=env)
+        env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
+        hydra = [a for a in env_args if a.startswith("HYDRATION_GATE_MODE=")]
+        assert hydra == ["HYDRATION_GATE_MODE=off"], f"Expected exactly one entry, got {hydra}"
+
+    @pytest.mark.parametrize("cli_tool", ["claude", "gemini"])
+    def test_gemini_api_key_forwarded_for_any_cli_tool(self, cli_tool):
+        """GEMINI_API_KEY is conf-driven now — forwarded for any cli_tool.
+
+        Harmless on the claude path (claude ignores it). The previous
+        cli_tool-conditional forwarding was a structural-drift artifact.
+        """
+        env = {"GEMINI_API_KEY": "sk-g-test"}
+        cmd = self._build(cli_tool=cli_tool, env=env)
+        env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
+        gemini = [a for a in env_args if a.startswith("GEMINI_API_KEY=")]
+        assert gemini == ["GEMINI_API_KEY=sk-g-test"], (
+            f"Expected exactly one GEMINI_API_KEY entry for {cli_tool}, got {gemini}"
+        )
+
+    @pytest.mark.parametrize("cli_tool", ["claude", "gemini"])
+    def test_gemini_cli_home_literal_emitted_for_any_cli_tool(self, cli_tool):
+        """GEMINI_CLI_HOME is a conf literal — forwarded unconditionally.
+
+        It's harmless on the claude path; gemini reads it to find ~/.gemini/.
+        """
+        cmd = self._build(cli_tool=cli_tool, env={})
+        env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
+        assert "GEMINI_CLI_HOME=/home/worker" in env_args
+
+    def test_all_conf_literals_appear_in_cmd(self):
+        """Property test: every `:=` literal in agent-env-map.conf must appear
+        as `-e TARGET=VALUE` in the cmd, regardless of source_env state.
+
+        Future-proofs against anyone re-introducing a token-existence guard
+        around any literal — the empty-string SSH_AUTH_SOCK isolation idiom
+        is the most important case but the rule generalises.
+        """
+        from lib.agent_env import load_env_entries
+
+        cmd = self._build(env={})
+        env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
+        for entry in load_env_entries():
+            if entry.is_literal:
+                expected = f"{entry.target}={entry.value}"
+                assert expected in env_args, (
+                    f"Literal `{entry.target}:={entry.value}` from agent-env-map.conf "
+                    f"must be forwarded; got env_args={env_args}"
+                )
 
 
 class TestClaudeStagedConfig:

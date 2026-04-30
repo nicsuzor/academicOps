@@ -133,6 +133,23 @@ class TestAgentEnvConfig:
 
         assert "GH_TOKEN" not in env
 
+    def test_apply_skips_empty_source(self):
+        """apply_env_mappings should skip mappings where SOURCE is empty.
+
+        Empty-string sources are treated identically to unset — closes the
+        credential-leak class where a host shell exporting AOPS_BOT_GH_TOKEN=""
+        would otherwise propagate empty GH_TOKEN to the container, causing gh
+        CLI to fall through to keyring auth (or worse, headless claude to
+        send an empty x-api-key header). See task-ebc758fd.
+        """
+        env = {"PATH": "/usr/bin"}
+        source = {"AOPS_BOT_GH_TOKEN": ""}  # set but empty
+
+        apply_env_mappings(env, source_env=source)
+
+        assert "GH_TOKEN" not in env
+        assert "GITHUB_TOKEN" not in env
+
     def test_apply_overwrites_personal_token(self, credential_markers):
         """apply_env_mappings should overwrite existing GH_TOKEN with bot value."""
         bot = credential_markers["bot"]
@@ -610,14 +627,23 @@ class TestSubprocessCredentialIsolation:
 
 class TestDeferredShellLines:
     def test_shell_lines_defer_env_to_env(self):
-        """Env-to-env mappings produce shell-conditional exports."""
+        """Env-to-env mappings produce shell-conditional exports.
+
+        The condition uses ``${SOURCE:+x}`` (colon-plus) which evaluates to
+        ``x`` only if SOURCE is set AND non-empty. This is load-bearing —
+        ``${SOURCE+x}`` (without colon) would propagate empty strings and
+        re-introduce the credential-leak class closed in task-ebc758fd.
+        """
         from lib.agent_env import get_env_mapping_shell_lines
 
         lines = get_env_mapping_shell_lines()
         gh_line = next((line for line in lines if "GH_TOKEN=" in line), None)
         assert gh_line is not None, "GH_TOKEN export must be present"
-        assert "${AOPS_BOT_GH_TOKEN+x}" in gh_line, (
-            "Must use ${SOURCE+x} for is-set check (defer to shell)"
+        assert "${AOPS_BOT_GH_TOKEN:+x}" in gh_line, (
+            "Must use ${SOURCE:+x} (with colon) for set-AND-non-empty check"
+        )
+        assert "${AOPS_BOT_GH_TOKEN+x}" not in gh_line.replace("${AOPS_BOT_GH_TOKEN:+x}", ""), (
+            "Plain ${SOURCE+x} (no colon) would forward empty strings — see task-ebc758fd"
         )
         assert '"${AOPS_BOT_GH_TOKEN}"' in gh_line, (
             "Must reference ${SOURCE} for value (defer to shell)"
@@ -656,28 +682,46 @@ class TestDeferredShellLines:
         assert gh == bot, "GH_TOKEN must resolve to bot value via deferred shell expansion"
         assert github == bot, "GITHUB_TOKEN must resolve too"
 
-    def test_shell_lines_skip_when_source_unset(self):
-        """When SOURCE is unset, shell lines must not export an empty TARGET.
+    def test_shell_lines_skip_when_source_unset_or_empty(self):
+        """When SOURCE is unset OR empty, shell lines must not export TARGET.
 
         Avoids the regression where GH_TOKEN gets set to empty string,
-        causing gh CLI to fall through to keyring auth.
+        causing gh CLI to fall through to keyring auth (or, on the polecat
+        path, headless claude sending an empty x-api-key → 401).
+        Both "unset" and "set-but-empty" must skip — see task-ebc758fd.
         """
         from lib.agent_env import get_env_mapping_shell_lines
 
         lines = get_env_mapping_shell_lines()
         script = "\n".join(lines)
 
-        # No AOPS_BOT_GH_TOKEN in env: GH_TOKEN should remain unset.
-        full = (
-            f'unset AOPS_BOT_GH_TOKEN\n{script}\nprintf "GH_TOKEN_SET=%s\\n" "${{GH_TOKEN+yes}}"\n'
+        # Both AOPS_BOT_GH_TOKEN AND GH_TOKEN/GITHUB_TOKEN unset upfront so the
+        # test is hermetic — runner shells often export GH_TOKEN themselves.
+        prologue = "unset AOPS_BOT_GH_TOKEN GH_TOKEN GITHUB_TOKEN"
+        epilogue = (
+            'printf "GH_TOKEN_SET=%s\\n" "${GH_TOKEN+yes}"; '
+            'printf "GITHUB_TOKEN_SET=%s\\n" "${GITHUB_TOKEN+yes}"'
         )
+
+        # Case 1: AOPS_BOT_GH_TOKEN truly unset.
+        full = f"{prologue}\n{script}\n{epilogue}\n"
         result = subprocess.run(
             ["/bin/bash", "-c", full], capture_output=True, text=True, timeout=10, check=True
         )
-        assert "GH_TOKEN_SET=" in result.stdout
         assert "GH_TOKEN_SET=yes" not in result.stdout, (
             "GH_TOKEN must NOT be exported when AOPS_BOT_GH_TOKEN is unset"
         )
+        assert "GITHUB_TOKEN_SET=yes" not in result.stdout
+
+        # Case 2: AOPS_BOT_GH_TOKEN set but empty.
+        full_empty = f"{prologue}\nexport AOPS_BOT_GH_TOKEN=\n{script}\n{epilogue}\n"
+        result = subprocess.run(
+            ["/bin/bash", "-c", full_empty], capture_output=True, text=True, timeout=10, check=True
+        )
+        assert "GH_TOKEN_SET=yes" not in result.stdout, (
+            "GH_TOKEN must NOT be exported when AOPS_BOT_GH_TOKEN is empty"
+        )
+        assert "GITHUB_TOKEN_SET=yes" not in result.stdout
 
 
 # ---------------------------------------------------------------------------
@@ -764,3 +808,100 @@ class TestCredentialHelperOverride:
             f"Helper override must produce x-access-token username; got:\n{out}"
         )
         assert f"password={bot}" in out, "Helper override must produce bot PAT as password"
+
+
+# ---------------------------------------------------------------------------
+# Container env-forwarding helper (task-ebc758fd):
+# polecat/cli.py:_build_docker_cmd consumes get_container_env_forwards to
+# decide what crosses from host into the polecat container with -e flags.
+# These tests pin the helper's contract independent of cli.py.
+# ---------------------------------------------------------------------------
+
+
+class TestGetContainerEnvForwards:
+    """Tests for get_container_env_forwards: the conf-driven container -e set."""
+
+    def test_literal_passthrough_including_empty(self, tmp_path):
+        """`:=` literal entries are forwarded verbatim, including empty literals
+        (the SSH_AUTH_SOCK="" isolation idiom).
+        """
+        from lib.agent_env import get_container_env_forwards
+
+        config = tmp_path / "literals.conf"
+        config.write_text(
+            "GIT_TERMINAL_PROMPT:=0\nSSH_AUTH_SOCK:=\nGEMINI_CLI_HOME:=/home/worker\n"
+        )
+
+        forwards = get_container_env_forwards(source_env={}, config_path=config)
+
+        assert forwards == {
+            "GIT_TERMINAL_PROMPT": "0",
+            "SSH_AUTH_SOCK": "",
+            "GEMINI_CLI_HOME": "/home/worker",
+        }
+
+    def test_mapping_skipped_when_source_unset(self, tmp_path):
+        """`TARGET=SOURCE` mapping is skipped when SOURCE is not in source_env."""
+        from lib.agent_env import get_container_env_forwards
+
+        config = tmp_path / "mapping.conf"
+        config.write_text("ANTHROPIC_API_KEY=ANTHROPIC_API_KEY\n")
+
+        forwards = get_container_env_forwards(source_env={}, config_path=config)
+
+        assert "ANTHROPIC_API_KEY" not in forwards
+
+    def test_mapping_skipped_when_source_empty(self, tmp_path):
+        """`TARGET=SOURCE` mapping is skipped when SOURCE is set but empty.
+
+        This is the regression closer for task-ebc758fd: a host shell with
+        `ANTHROPIC_API_KEY=""` exported must not propagate the empty key.
+        """
+        from lib.agent_env import get_container_env_forwards
+
+        config = tmp_path / "mapping.conf"
+        config.write_text("ANTHROPIC_API_KEY=ANTHROPIC_API_KEY\n")
+
+        forwards = get_container_env_forwards(
+            source_env={"ANTHROPIC_API_KEY": ""}, config_path=config
+        )
+
+        assert "ANTHROPIC_API_KEY" not in forwards
+
+    def test_mapping_passthrough_when_source_set(self, tmp_path, credential_markers):
+        """Happy path: TARGET=SOURCE mapping forwards when source is set and non-empty."""
+        from lib.agent_env import get_container_env_forwards
+
+        config = tmp_path / "mapping.conf"
+        config.write_text("GH_TOKEN=AOPS_BOT_GH_TOKEN\n")
+
+        forwards = get_container_env_forwards(
+            source_env={"AOPS_BOT_GH_TOKEN": credential_markers["bot"]},
+            config_path=config,
+        )
+
+        assert forwards["GH_TOKEN"] == credential_markers["bot"]
+
+    def test_default_config_includes_anthropic_and_gemini_auth(self):
+        """The bundled agent-env-map.conf must declare Claude/Gemini auth vars,
+        so `polecat run` doesn't have to hardcode them.
+        """
+        from lib.agent_env import get_container_env_forwards
+
+        # Source env has all auth tokens set with sentinel values.
+        source = {
+            "ANTHROPIC_API_KEY": "sk-anthropic-sentinel",
+            "CLAUDE_CODE_OAUTH_TOKEN": "claude-oauth-sentinel",
+            "GEMINI_API_KEY": "sk-gemini-sentinel",
+            "GEMINI_SESSION_ID": "session-sentinel",
+        }
+        forwards = get_container_env_forwards(source_env=source)
+
+        assert forwards["ANTHROPIC_API_KEY"] == "sk-anthropic-sentinel"
+        assert forwards["CLAUDE_CODE_OAUTH_TOKEN"] == "claude-oauth-sentinel"
+        assert forwards["GEMINI_API_KEY"] == "sk-gemini-sentinel"
+        assert forwards["GEMINI_SESSION_ID"] == "session-sentinel"
+        # SSH isolation idiom must survive any refactor.
+        assert forwards["SSH_AUTH_SOCK"] == ""
+        # Defence-in-depth literal.
+        assert forwards["GIT_ASKPASS"] == "true"

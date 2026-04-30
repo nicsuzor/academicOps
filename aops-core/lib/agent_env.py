@@ -95,6 +95,29 @@ def load_env_mappings(
     return [(e.target, e.value) for e in load_env_entries(config_path) if not e.is_literal]
 
 
+def _resolve_entry(
+    entry: EnvEntry,
+    source_env: dict[str, str],
+) -> tuple[str, str] | None:
+    """Resolve one config entry against a source env.
+
+    For literal entries: returns (target, value) verbatim — empty literal
+    preserved (this is the deliberate `:=` isolation idiom for vars like
+    ``SSH_AUTH_SOCK:=``).
+
+    For mapping entries (TARGET=SOURCE): returns (target, source_env[SOURCE])
+    only if the source value is set AND non-empty. Empty-string sources are
+    treated identically to unset, closing the credential-leak class flagged
+    in ``test_shell_lines_skip_when_source_unset``.
+    """
+    if entry.is_literal:
+        return (entry.target, entry.value)
+    value = source_env.get(entry.value)
+    if value:
+        return (entry.target, value)
+    return None
+
+
 def apply_env_mappings(
     env: dict[str, str],
     config_path: Path | str | None = None,
@@ -102,8 +125,10 @@ def apply_env_mappings(
 ) -> dict[str, str]:
     """Apply agent-env-map.conf entries to a subprocess environment dict.
 
-    For TARGET=SOURCE lines: if SOURCE exists in source_env, set env[TARGET].
-    For TARGET:=VALUE lines: set env[TARGET] to VALUE (empty string clears it).
+    For TARGET=SOURCE lines: if SOURCE is set and non-empty in source_env,
+        set env[TARGET]. Empty-string sources are skipped (treated as unset).
+    For TARGET:=VALUE lines: set env[TARGET] to VALUE (empty literal allowed —
+        this is the SSH_AUTH_SOCK="" isolation idiom).
 
     Args:
         env: The subprocess environment dict to modify (mutated in place).
@@ -117,14 +142,45 @@ def apply_env_mappings(
         source_env = dict(os.environ)
 
     for entry in load_env_entries(config_path):
-        if entry.is_literal:
-            env[entry.target] = entry.value
-        else:
-            value = source_env.get(entry.value)
-            if value is not None:
-                env[entry.target] = value
+        resolved = _resolve_entry(entry, source_env)
+        if resolved is not None:
+            env[resolved[0]] = resolved[1]
 
     return env
+
+
+def get_container_env_forwards(
+    source_env: dict[str, str] | None = None,
+    config_path: Path | str | None = None,
+) -> dict[str, str]:
+    """Return TARGET → VALUE pairs to forward into a polecat/crew container.
+
+    The conf-driven counterpart to ``apply_env_mappings``: rather than mutating
+    a subprocess env, this returns the dict the caller will emit as
+    ``-e KEY=VALUE`` flags on a ``docker run`` command.
+
+    Empty-string source values are skipped for TARGET=SOURCE rules — preventing
+    the empty-credential leak (e.g. ``ANTHROPIC_API_KEY=""`` from the host
+    shell) that headless Claude/Gemini would otherwise treat as a deliberate
+    empty key and 401 on. Literals (``TARGET:=VALUE``) are emitted verbatim,
+    preserving the ``SSH_AUTH_SOCK:=`` isolation idiom.
+
+    Args:
+        source_env: Environment to read SOURCE values from. Defaults to os.environ.
+        config_path: Path to config file. Defaults to aops-core/agent-env-map.conf.
+
+    Returns:
+        Dict of {TARGET: VALUE} pairs to forward into the container.
+    """
+    if source_env is None:
+        source_env = dict(os.environ)
+
+    result: dict[str, str] = {}
+    for entry in load_env_entries(config_path):
+        resolved = _resolve_entry(entry, source_env)
+        if resolved is not None:
+            result[resolved[0]] = resolved[1]
+    return result
 
 
 def get_env_mapping_persist_dict(
@@ -163,8 +219,9 @@ def get_env_mapping_shell_lines(
     so there is no need to defer them.
 
     Output format (env-to-env mappings only):
-      - Mapping (TARGET=SOURCE):  [ -n "${SOURCE+x}" ] && export TARGET="${SOURCE}"
-        (Conditional: only set TARGET if SOURCE exists, even if empty.)
+      - Mapping (TARGET=SOURCE):  [ -n "${SOURCE:+x}" ] && export TARGET="${SOURCE}"
+        (Conditional: only set TARGET if SOURCE is set AND non-empty —
+        empty-string sources are skipped to avoid leaking empty credentials.)
 
     Returns:
         List of shell-syntax lines suitable for CLAUDE_ENV_FILE.
@@ -174,8 +231,12 @@ def get_env_mapping_shell_lines(
         if entry.is_literal:
             # Already handled by get_env_mapping_persist_dict(); skip.
             continue
-        # Defer SOURCE resolution to shell time. ${SOURCE+x} is set
-        # iff SOURCE is defined (even if empty), which mirrors the
-        # `is not None` check in apply_env_mappings.
-        lines.append(f'[ -n "${{{entry.value}+x}}" ] && export {entry.target}="${{{entry.value}}}"')
+        # Defer SOURCE resolution to shell time. ${SOURCE:+x} is "x" iff
+        # SOURCE is defined AND non-empty. The colon is load-bearing — it
+        # mirrors the truthiness check in apply_env_mappings and closes the
+        # empty-credential regression class documented at
+        # test_shell_lines_skip_when_source_unset_or_empty.
+        lines.append(
+            f'[ -n "${{{entry.value}:+x}}" ] && export {entry.target}="${{{entry.value}}}"'
+        )
     return lines
