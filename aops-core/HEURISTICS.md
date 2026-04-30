@@ -523,7 +523,7 @@ Before spawning an Explore subagent or any research-oriented subagent, the main 
 
 ## Age Is Not a Staleness Signal (P#123)
 
-Never cancel work based on age alone. Only cancel when work has become irrelevant. Garden / consolidation passes surface candidates for human review — they do not unilaterally execute cancellation.
+Age is not a staleness signal. Never cancel based on age alone. Only cancel when work becomes irrelevant. Garden passes surface candidates for human review — they do not recommend cancellation.
 
 **Derivation**: Age correlates weakly with relevance. A task untouched for 180 days may be a stalled priority, a deferred dependency, or genuinely dead — distinguishing requires reading the work, not counting days. Auto-cancellation by age destroys signal; surfacing for review preserves it.
 
