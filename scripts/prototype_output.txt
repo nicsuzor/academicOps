@@ -1,0 +1,18 @@
+task_id                prio status         computed     +floor  +teleport      +both
+------------------------------------------------------------------------------------
+# Substrate candidates
+aops-aaa98cf7             3 queued             0.00       5.00       0.00       5.00
+task-357d72e2             1 done               0.00      15.00       0.00      15.00
+task-491ce1f9             0 done               0.00      25.00       0.00      25.00
+
+# Top 10 by computed downstream_weight (for sanity)
+aops-2aceeea2             3 ready              0.30       0.30       0.30       0.30
+aops-c8294697             1 done               0.30       0.30       0.30       0.30
+academic-17f24f11         1 done               0.00       0.00       0.00       0.00
+academic-2d6ca598         1 done               0.00       0.00       0.00       0.00
+academic-74f9a841         1 done               0.00       0.00       0.00       0.00
+academic-9c2da1b7         3 ready              0.00       0.00       0.00       0.00
+academic-aae7dcbf         3 ready              0.00       0.00       0.00       0.00
+academic-adms-b5cc93bd    1 done               0.00       0.00       0.00       0.00
+academic-b83436e3         1 done               0.00       0.00       0.00       0.00
+academic-e30d5c6d         3 ready              0.00       0.00       0.00       0.00
