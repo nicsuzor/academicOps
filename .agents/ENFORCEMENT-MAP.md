@@ -38,9 +38,10 @@ PR #805 and issue #806.
 
 | Hook ID                     | Script                                 | Rule(s)                    | Tier    | Behaviour                                                                  |
 | --------------------------- | -------------------------------------- | -------------------------- | ------- | -------------------------------------------------------------------------- |
-| `check-no-new-orphan-md`    | `scripts/check_no_new_orphan_md.py`    | R5.6                       | `warn`  | Exits 1 on new `.md` files outside canonical-location allowlist            |
-| `check-framework-integrity` | `scripts/check_framework_integrity.py` | (wikilink index integrity) | `warn`  | Exits 1 on broken wikilinks or missing SKILLS/WORKFLOWS index entries      |
-| `lint-axiom-refs`           | `aops-core/lib/lint_axiom_refs.py`     | R1.1, R1.3                 | `block` | Exits 1 when `plugin.json` cites a non-existent or mis-parented Axiom/Rule |
+| `check-no-new-orphan-md`      | `scripts/check_no_new_orphan_md.py`    | R5.6                       | `warn`  | Exits 1 on new `.md` files outside canonical-location allowlist                                                                              |
+| `check-framework-integrity`   | `scripts/check_framework_integrity.py` | (wikilink index integrity) | `warn`  | Exits 1 on broken wikilinks or missing SKILLS/WORKFLOWS index entries                                                                        |
+| `lint-axiom-refs`             | `aops-core/lib/lint_axiom_refs.py`     | R1.1, R1.3                 | `block` | Exits 1 when `plugin.json` cites a non-existent or mis-parented Axiom/Rule                                                                   |
+| `check-p-number-collision`    | `scripts/next_p_number.py --check`     | P#65                       | `warn`  | Exits 1 when staged `aops-core/HEURISTICS.md` diff proposes a P# already taken on main or claimed by another open PR; scoped to HEURISTICS.md |
 
 ## Whole-repo audits (advisory; not wired to commit/CI)
 
