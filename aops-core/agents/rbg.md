@@ -10,7 +10,7 @@ tools:
   - Edit
   - Write
   - mcp__plugin_aops-core_pkb__append
-  - mcp__plugin_aops-core_pkb__update_task
+  - mcp__plugin_aops-core_pkb__complete_task
 ---
 
 # RBG — The Judge
