@@ -87,7 +87,18 @@ Quick task capture with minimal overhead. Speed is the priority — no enrichmen
    - `effort`: duration (0.5d, 1d, 1w)
    - `consequence`: prose description of what happens if not done
 6. Create task with body template (Problem, Solution, Files, AC). Pass `due`, `effort`, and `consequence` as explicit PKB parameters to `mcp__pkb__create_task` (not only in body prose) — the PKB uses `due` as a structured field for deadline-aware prioritization.
-7. **Report with context tree**: Fetch siblings via `mcp__pkb__get_task_children(parent_id)` and print a compact ASCII tree showing parent + siblings + the new task, marking the new task with `← NEW`. Then HALT — no execution.
+7. **Externalise follow-up action items as separate linked tasks** (not body prose). If the user's prompt or your analysis surfaces follow-up work that is **not part of the primary task's scope** — e.g. supersession decisions ("consider closing X if approved"), prerequisite investigations ("check whether Y is still relevant first"), cross-project updates ("update Z in project A to reflect this"), or triage decisions — create them as separate linked tasks. They must be addressable graph nodes, not invisible prose buried in the body.
+
+   **Link types**:
+
+   - **Decision/triage on the primary task** (e.g. "decide whether to supersede X"): create as a **subtask** of the primary task, or link via `soft_depends_on` when the decision unblocks the primary work.
+   - **Cross-epic / cross-project follow-up** (e.g. "also update Z in project A"): create as a **separate top-level task** under the appropriate parent, linked back to the primary via `soft_depends_on` (soft unlocker) or `depends_on` (hard prerequisite).
+
+   Apply the same Decision Surfacing Heuristic before creating follow-ups: DECIDE-class items get resolved in-line in the body with brief reasoning; only DEFER and SURFACE items become their own tasks.
+
+   The output of capture should therefore frequently be **two or more tasks** (primary + follow-ups), each correctly linked.
+
+8. **Report with context tree**: Fetch siblings via `mcp__pkb__get_task_children(parent_id)` and print a compact ASCII tree showing parent + siblings + the new task(s), marking new tasks with `← NEW`. Then HALT — no execution.
 
    Format:
    ```
@@ -172,6 +183,7 @@ Break validated epics into structured task trees.
 - Tasks must be self-contained for handoff (P#120) — include context, decisions, constraints, data findings.
 - **Map unknowns**: Before planning execution, classify unknowns as researchable, internal, or probeable (Step 3). Build appropriate evidence-gathering or spike tasks. High uncertainty on the parent signals a need for more probeable tasks.
 - **Cross-cutting impact & prerequisites**: Every decomposition must check what other projects depend on what's changing AND what must be true before the change is useful (Step 4). Create tasks in affected projects, not just under this epic.
+- **Externalise follow-up action items**: Any follow-up work surfaced during decomposition that is outside the epic's scope — supersession decisions, prerequisite investigations, cross-project updates, triage calls — must be created as separate linked tasks, not embedded as prose in subtask bodies. Decision/triage on a subtask → child subtask or `soft_depends_on`. Cross-epic work → separate task under the right parent, linked via `soft_depends_on` (unlocker) or `depends_on` (hard prerequisite). Action items must be addressable graph nodes.
 
 **Workflow files**: `aops-core/skills/planner/workflows/decompose.md`
 
@@ -341,6 +353,7 @@ User prompt
 6. **Small, frequent attention** — 15–30 min maintain sessions, ~10 tasks per densify pass
 7. **Decomposition requires AC** — never create subtasks without clear acceptance criteria; keep steps in parent body instead
 8. **No parallel tracking** — never put `- [ ]` checklists in task bodies when items are tracked as subtasks; after decomposition, replace the body checklist with a reference to children
+9. **Action items are graph nodes, not prose** — follow-up work outside the primary task's scope (supersession decisions, prerequisite investigations, cross-project updates, triage calls) must be created as separate linked tasks. Decision/triage → subtask or `soft_depends_on`; cross-epic → separate task with `soft_depends_on` (unlocker) or `depends_on` (hard prerequisite). Never bury action items in body prose where they are invisible to the graph.
 
 ## Decision Surfacing Heuristic
 
