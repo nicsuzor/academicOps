@@ -6,6 +6,7 @@ The server URL is read from the ``PKB_MCP_URL`` environment variable.
 
 from __future__ import annotations
 
+import http.client
 import json
 import os
 import random
@@ -119,12 +120,14 @@ class PkbClient:
                         self._session_id = sid
                     raw = resp.read().decode()
                 return _parse_sse_json(raw)
-            except (TimeoutError, urllib.error.URLError) as e:
-                # Catch TimeoutError (3.11+) or URLError that wraps a timeout
-                is_timeout = isinstance(e, TimeoutError) or (
+            except (TimeoutError, http.client.IncompleteRead, urllib.error.URLError) as e:
+                # Catch TimeoutError (covers socket.timeout on 3.10+), IncompleteRead
+                # (chunked-read truncation seen under concurrent dispatch —
+                # aops-aaa98cf7), or URLError that wraps a timeout.
+                is_retryable = isinstance(e, TimeoutError | http.client.IncompleteRead) or (
                     isinstance(e, urllib.error.URLError) and "timed out" in str(e).lower()
                 )
-                if not is_timeout or attempt == max_attempts - 1:
+                if not is_retryable or attempt == max_attempts - 1:
                     raise
 
                 # Exponential backoff: 1s, 2s, 4s (+ jitter)
@@ -352,6 +355,12 @@ def create_task(
 
     params = dict(kwargs)
     params["title"] = final_title
+
+    # Default new tasks to priority 3 (planned). The active band (P2) is reserved
+    # for tasks that have been explicitly promoted; new captures should land in
+    # planned and be promoted deliberately rather than inflating the active band.
+    if "priority" not in params or params["priority"] is None:
+        params["priority"] = 3
 
     # Reject checklist items in body — they diverge from the subtask graph
     body = params.get("body", "")

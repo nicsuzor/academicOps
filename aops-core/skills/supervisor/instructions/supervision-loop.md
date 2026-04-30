@@ -43,6 +43,22 @@ ls $AOPS 2>/dev/null; ls $ACA_DATA 2>/dev/null
 docker ps 2>/dev/null; polecat list 2>/dev/null
 ```
 
+### Mandatory Host Check (issue #598)
+
+**Before any DISPATCH phase action**, compare the current host against the
+registered polecat host list. If the supervisor is NOT running on a polecat
+host, it MUST use the SSH+tmux remote dispatch path — silent local
+`polecat run` is forbidden.
+
+See [[worker-dispatch#gate-1-host-check-issue-598]] for the canonical check snippet and exit conditions.
+
+The supervisor records the host-check result in the task body's Activity
+Log alongside the dispatch decision. A mismatch is not a failure — it is
+the signal to switch to remote dispatch. The failure mode this prevents
+is the macOS-laptop supervisor that reads "use SSH+tmux when on a different
+host" but dispatches locally anyway, then loses tasks to
+`ConnectionRefusedError` because the laptop can't reach PKB (issue #598).
+
 Build a capability profile from discovery:
 
 | Capability         | Check                 | Dispatch via            |

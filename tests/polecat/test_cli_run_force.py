@@ -120,9 +120,8 @@ def test_run_force_bypasses_done_status_and_claims(mock_manager):
 
     # We short-circuit at setup_worktree (Exception), so exit code is 1
     # and rollback runs — that's expected and proves we got past the gate.
-    # The warning line goes to stderr; CliRunner mixes streams in result.output.
-    assert "[force] Bypassing status check" in result.output
-    assert "from status 'done'" in result.output
+    assert "--force: bypassing status check" in result.output
+    assert "(status: done)" in result.output
     # Task was claimed (transition to in_progress).
     claim_calls = [
         c
@@ -138,8 +137,8 @@ def test_run_force_bypasses_merge_ready_status_and_claims(mock_manager):
     task = _make_task(status="merge_ready", task_id="task-mr")
     result = _invoke_run(["run", "-t", "task-mr", "--force"], mock_manager, task)
 
-    assert "[force] Bypassing status check" in result.output
-    assert "from status 'merge_ready'" in result.output
+    assert "--force: bypassing status check" in result.output
+    assert "(status: merge_ready)" in result.output
     claim_calls = [
         c
         for c in mock_manager.update_task.call_args_list
@@ -157,7 +156,7 @@ def test_run_force_bypasses_pr_lock_and_claims(mock_manager):
     )
     result = _invoke_run(["run", "-t", "task-prforce", "--force"], mock_manager, task)
 
-    assert "[force] Bypassing status check" in result.output
+    assert "--force: bypassing status check" in result.output
     # The "locked … refusing to re-dispatch" message must NOT appear under --force.
     assert "refusing to re-dispatch" not in result.output
     claim_calls = [
@@ -173,8 +172,8 @@ def test_run_force_bypasses_cancelled_status(mock_manager):
     task = _make_task(status="cancelled", task_id="task-cancel")
     result = _invoke_run(["run", "-t", "task-cancel", "--force"], mock_manager, task)
 
-    assert "[force] Bypassing status check" in result.output
-    assert "from status 'cancelled'" in result.output
+    assert "--force: bypassing status check" in result.output
+    assert "(status: cancelled)" in result.output
     claim_calls = [
         c
         for c in mock_manager.update_task.call_args_list

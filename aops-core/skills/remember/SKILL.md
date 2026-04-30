@@ -258,7 +258,12 @@ When extracting facts or observations from episodic content, use Obsidian callou
 
 - One fact per observation block
 - Always include source — never assert facts without provenance
-- Confidence levels: `established` (multiple independent sources), `provisional` (single source or limited evidence), `speculative` (inference, needs verification)
+- **`confidence`** (numeric 0.0–1.0): the PKB schema value used by search ranking. Higher values rank above lower in retrieval. Human-readable status descriptors that map onto numeric ranges:
+  - `established` (≥ 0.8): multiple independent sources, reviewed
+  - `provisional` (0.4–0.79): single source or limited evidence
+  - `speculative` (< 0.4): inference, needs verification
+
+  Use the numeric value in frontmatter; describe the level in prose if helpful.
 - Observations in episodic notes (daily, meeting) are raw material; observations in knowledge notes are synthesized claims
 - Humans may also write observations informally as plain prose — the callout format is a recommendation, not a requirement
 - **Contradictions**: When a new observation contradicts an existing one, record BOTH with their sources. Never silently overwrite. Flag for human resolution. This prevents catastrophic forgetting — schema-inconsistent information must be integrated gradually, not by replacement.
@@ -269,7 +274,16 @@ All synthesized knowledge must be traceable to its sources. This is critical —
 
 ### Frontmatter Fields
 
-For synthesized knowledge notes, include:
+For `type: knowledge` notes, the following frontmatter fields are REQUIRED:
+
+- `synthesized:` (ISO date) — when this synthesis was performed
+- `last_reviewed:` (ISO date) — most recent review/refresh
+- `sources:` (list of strings) — must be a YAML list, even with one element. Episodic notes and primary sources cited here.
+- `confidence:` (numeric 0.0–1.0)
+
+Memory and episodic notes (daily, meeting, etc.) do NOT require these — they're observations, not synthesis.
+
+Example:
 
 ```yaml
 sources:
@@ -277,16 +291,16 @@ sources:
   - "[[meeting-notes/regulatory-review-20260328]]"
   - "Session transcript 2026-04-01T14:30"
 synthesized: 2026-04-03
-confidence: provisional
+confidence: 0.6
 maturity: seedling
 last_reviewed: 2026-04-03
 ```
 
-**Maturity levels** (optional, tracks evidence strength):
+**Maturity levels** (optional, tracks evidence strength — independent of the numeric `confidence` value):
 
-- `seedling` — single source, provisional confidence. May not survive review.
+- `seedling` — single source, low confidence (typically `provisional` range, ~0.4–0.6). May not survive review.
 - `budding` — corroborated by 2+ independent sources. Worth linking to.
-- `evergreen` — reviewed, stable, established confidence. Core knowledge.
+- `evergreen` — reviewed, stable, high confidence (typically `established` range, ≥ 0.8). Core knowledge.
 
 ### Inline Attribution
 
@@ -299,7 +313,7 @@ When a specific claim comes from a specific source, cite it inline:
 
 - **Never synthesize without attribution** — if you can't cite where a claim came from, don't assert it
 - **Distinguish observation from editorial** — agents extract and synthesize but leave editorializing to the user
-- **Preserve uncertainty** — use confidence levels. Don't upgrade `provisional` to `established` without additional evidence
+- **Preserve uncertainty** — use the numeric `confidence` value (0.0–1.0). Don't upgrade a note from the `provisional` range (0.4–0.79) into the `established` range (≥ 0.8) without additional evidence
 - **Source chain**: When synthesizing from other synthesized notes, include the full chain (the intermediate synthesis AND its original sources)
 
 ## Maps of Content (MOCs)
