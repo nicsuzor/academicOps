@@ -75,11 +75,13 @@ Every node carries three core computed properties that drive both label assignme
 
 **How computed**: Normalized composite of:
 
-- `downstream_weight`: count of nodes that depend (transitively) on this one completing
+- `downstream_weight` (internal input): count of nodes that depend (transitively) on this one completing — fed into `criticality`, not surfaced as a user-facing scalar
 - `pagerank`: structural influence in the dependency graph
 - `stakeholder_exposure`: explicit priority/stakeholder signals
 
 **What it tells you**: Which nodes to work on first when time is scarce. High criticality = unblocks many downstream nodes. Low criticality = isolated or terminal work.
+
+> **Note**: For user-facing prioritisation and ranking, use `urgency` (composes severity, edge weights, slack time, and decay). `criticality` and its inputs (including `downstream_weight`) are internal graph properties — do not sort or display them as the headline ranking signal.
 
 ### depth and leaf
 

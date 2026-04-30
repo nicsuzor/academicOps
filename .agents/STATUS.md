@@ -209,7 +209,7 @@ Agent worker system with sandbox isolation, GitHub integration, and observabilit
 
 ### Session Insights -- WORKING
 
-Scripts for extracting insights from session transcripts in `aops-core/skills/session-insights/scripts/`.
+Insights are extracted from session transcripts via `aops-core/scripts/transcript.py` plus `aops-core/lib/insights_generator.py`, launched by the Stop hook in `aops-core/hooks/router.py` and the periodic cron in `scripts/repo-sync-cron.sh`.
 
 ### Overwhelm Dashboard -- WORKING
 

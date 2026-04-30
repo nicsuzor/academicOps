@@ -47,7 +47,9 @@ version: 2.0.0
 
 10. **Extract Structured Metadata**: Extract `due` and `consequence` for subtasks if mentioned or implied by the parent task.
 
-11. **Create in PKB** — Use `mcp__pkb__decompose_task(parent_id, subtasks)` for batch creation under the epic. Include dependencies, effort, due, consequence, and deliverable descriptions as explicit fields.
+11. **Set Priority — default P3**: Subtasks default to **P3**. Do NOT propagate the parent's priority to children, and do NOT infer priority from subtask content (e.g., "this looks important, mark it P1"). Only elevate a subtask above P3 if the user explicitly signals urgency for that specific subtask. See [[../SKILL.md#priority-assignment-rules]] for the full rule.
+
+12. **Create in PKB** — Use `mcp__pkb__decompose_task(parent_id, subtasks)` for batch creation under the epic. Include dependencies, effort, due, consequence, priority, and deliverable descriptions as explicit fields.
 
 ## Hierarchy and Depth
 

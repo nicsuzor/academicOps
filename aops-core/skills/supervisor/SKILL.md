@@ -37,10 +37,21 @@ what's happening.
 
 ### Environment Discovery, Not Assumptions
 
-Every invocation discovers what's available. The supervisor adapts dispatch
-strategy to what exists right now — not what existed last time. A session
-that starts on a Mac with local polecat and moves to a crew container with
-only Docker and gh is normal, not exceptional.
+Every invocation discovers what's available so it can enable the _requested_
+dispatch. Adaptation applies to **how** the requested worker is invoked
+(local CLI, SSH+tmux, workflow_dispatch runner) — never to **which** worker
+is invoked. A session that starts on a Mac with local polecat and moves to a
+crew container with only Docker and gh is normal: re-route the same worker
+through whatever transport the new environment supports.
+
+Worker type, project, and repo are explicit user parameters with trust,
+cost, audit, and identity semantics — they are **hard requirements, not
+preferences**. If the environment cannot satisfy the requested worker type,
+**halt** and produce a dispatch infeasibility report (see
+[[instructions/worker-dispatch#halt-on-infeasibility-gate]]). Never
+silently substitute. Substitution only after explicit user approval; in
+autonomous sessions, write the report to the epic body and set the epic to
+`needs_decision`.
 
 ### Checkpoint Before Action
 
@@ -102,6 +113,15 @@ exact check.
 
 Individual task dispatch only. No batch spawning.
 
+**Mandatory pre-dispatch gates** (see [[instructions/worker-dispatch#mandatory-pre-dispatch-gates]]):
+
+1. **Host check** — `hostname` must match a registered polecat host. On
+   mismatch the supervisor halts and uses the SSH+tmux path. No silent
+   local fallback. (Issue #598.)
+2. **PKB readiness probe** — `polecat ping-pkb` must succeed on the
+   intended worker host. A failure means `PkbClient._initialize()` will
+   crash inside the worker; supervisor refuses to dispatch. (Issue #600.)
+
 ```bash
 # Claude worker
 polecat run -t <task-id> -p <project>
@@ -113,8 +133,14 @@ polecat run -t <task-id> -p <project> -g
 aops task <task-id> | jules new --repo <owner>/<repo>
 ```
 
-> **`polecat` not on PATH?** In non-interactive shells (Bash tool, cron, CI), the `polecat`/`pc` alias
-> may not be loaded. Use the canonical form: `uv run --project $AOPS $AOPS/polecat/cli.py <args>`
+> **`polecat` not on PATH?** In non-interactive shells (Bash tool, cron, CI,
+> headless agent contexts), the `polecat`/`pc` zsh alias is not loaded — the
+> shell-interactivity boundary matters: an interactive zsh session sees the
+> alias, a Bash-tool subshell does not. Use the canonical expanded form:
+> `uv run --project $AOPS $AOPS/polecat/cli.py <args>`. All dispatch
+> examples below and in [[instructions/supervision-loop]] /
+> [[instructions/worker-dispatch]] use bare `polecat`; substitute the
+> `uv run` form when running outside an interactive shell.
 
 **Polecat exit codes** (relevant for scripted supervisors):
 
@@ -271,10 +297,13 @@ External triggers that start the supervision loop.
 - **`merge-prep-status: pending`** — set by `pr-pipeline.yml`'s initialize
   job and cleared only when the merge-prep agent sets `success` (graduation)
   or `failure` (after 3 consecutive failures). A PR with green CI may still
-  sit "yellow" until the merge-prep agent runs. The supervisor cannot clear
-  this directly; normal resolution is to wait for the next cron tick or
-  dispatch `agent-merge-prep.yml` manually via `gh workflow run`. Admin
-  bypass remains available for urgent cases.
+  sit "yellow" until the merge-prep agent runs. This is **not stuck** —
+  it's pending the next cron tick (up to 30 min away) or a manual trigger.
+  When all expected bot reviewers have posted and CI is green, the supervisor
+  can resolve it at will: see
+  [[instructions/supervision-loop#manual-merge-prep-trigger]] for the exact
+  `gh workflow run` command and the when-to-use rules. Admin bypass remains
+  available for urgent cases.
 
 ## Quick Reference
 

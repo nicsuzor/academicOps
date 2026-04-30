@@ -619,7 +619,6 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         "FRAMEWORK-PATHS.md",
         # Deleted/archived skills (references may exist in archived docs)
         "skills/tasks/",
-        "skills/session-insights/",
         "skills/qa-eval/",
         "skills/extractor/",
         "skills/dashboard/",
@@ -734,7 +733,6 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         ".agents/CORE.md",
         "STYLE.md",
         # Path references within specs (relative to aops-core)
-        "skills/session-insights/SKILL.md",
         "skills/hypervisor/SKILL.md",
         "skills/decision-extract/SKILL.md",
         "skills/decision-apply/SKILL.md",

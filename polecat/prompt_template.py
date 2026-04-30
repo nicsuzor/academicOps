@@ -89,6 +89,20 @@ After triaging, HALT. Do not continue to execution.
 FINISH_LOCAL_TASK = """\
 After successful execution:
 
+0. **Pre-push gate check — re-read the task body NOW.** Before any \
+`git push` or `gh pr create`, scan the task body for task-specific \
+mandatory gates. Look for: "MUST", "mandatory", "required", \
+"before PR", "before push", "re-review", "verdict", any explicit \
+review/QA/handover instruction, or numbered "process gates" / \
+"checkpoints". For each such gate, satisfy it (typically by \
+dispatching the named review agent on the implementation) and \
+record the verdict in this session BEFORE proceeding to step 2. \
+Completion momentum will tempt you to skip this — do not. Generic \
+"Finish" steps NEVER override task-body mandatory gates. \
+(Background: GitHub issue #583 — a worker shipped a PR after \
+satisfying gates 1+2 but skipping gate 3 at the moment of highest \
+finishing momentum.)
+
 1. **Commit** all changes with a descriptive message.
 
 2. **If code or files were changed**, push your branch and file a PR \
