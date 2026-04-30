@@ -271,7 +271,7 @@ Per §2.3, missing justifications are surfaced here, not blocked at write time. 
 
 **Check 3 — SEV4 targets with weak consequence prose (advisory heuristic)**
 
-For every active `type: target` node with `severity: 4`, scan the `consequence` prose (case-insensitive substring match) for any of the following severe-state keywords. If **none** match, flag the target for user review.
+For every `type: target` node with `status: active` and `severity: 4`, scan the `consequence` prose (case-insensitive whole-word match, e.g., via `\b` regex boundaries) for any of the following severe-state keywords. If **none** match, flag the target for user review.
 
 **Severe-state keyword list** (canonical, edit here):
 
@@ -294,7 +294,7 @@ SEV4 targets with weak consequence prose (ADVISORY — heuristic):
 
 This is a heuristic. The keyword list is documented inline above and revisable. False positives are expected — present them as advisory, not as errors. The user (or planner mode) decides whether to rewrite the prose or accept it.
 
-**Implementation note**: All three checks read graph state via `list_tasks` / `pkb_context` / direct YAML inspection of frontmatter. None call `update_task` or any write tool — they print and return. Surface them as a single block at the end of a `/maintain` session (or on demand when the user asks for graph hygiene).
+**Implementation note**: All three checks read graph state via `list_tasks` / `pkb_context` / direct YAML inspection of frontmatter. None call `update_task` or any write tool — they print and return. Run on demand when the user explicitly requests `Anti-inflation` (like any other named activity in the table above) or asks for graph hygiene.
 
 ### Data Quality Procedures (Dedup, Stale, Misclassification, Domain)
 
