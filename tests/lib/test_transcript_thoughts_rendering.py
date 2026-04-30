@@ -164,7 +164,10 @@ def test_gemini_thoughts_render_as_blockquotes(tmp_path, variant):
         # Full mode: <details> block with blockquote entries in "subject — description" format.
         assert "💭 Model thoughts" in md
         assert "> **Analyzing Specifications** — Sketching out the contract elements." in md
-        assert "> **Defining Contract Elements** — Focusing on the agent's output at session end." in md
+        assert (
+            "> **Defining Contract Elements** — Focusing on the agent's output at session end."
+            in md
+        )
     else:
         # Abridged mode: compact italic summary listing subjects only.
         assert "_💭 Model thoughts: Analyzing Specifications; Defining Contract Elements_" in md
