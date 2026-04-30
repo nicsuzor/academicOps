@@ -206,6 +206,10 @@ What this phase adds on top is: _which_ episodic material to mine (candidacy + f
 
 3. **Create MOCs only when warranted**: When a topic area has accumulated 5+ canonical notes and would benefit from navigation, create or update a MOC per [[remember]]'s Maps of Content guidance. Skip this step by default — MOCs are earned, not scheduled.
 
+### Garden Pass Discipline (P#123)
+
+Per [[../../HEURISTICS.md#P123|P#123 — Age Is Not A Staleness Signal]]: when this phase encounters old episodic sources, do NOT recommend cancellation based on age alone. Only relevance — not age — justifies cancellation. Garden passes here surface candidates for human review; they do not recommend cancellation.
+
 ### Pacing
 
 Pauli paces the work. Defaults are guide-rails, not hard limits — deviate when the material warrants (e.g., a topic with many scattered peers that should be collapsed in one pass justifies more work than usual).
