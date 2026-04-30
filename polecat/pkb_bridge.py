@@ -353,6 +353,12 @@ def create_task(
     params = dict(kwargs)
     params["title"] = final_title
 
+    # Default new tasks to priority 3 (planned). The active band (P2) is reserved
+    # for tasks that have been explicitly promoted; new captures should land in
+    # planned and be promoted deliberately rather than inflating the active band.
+    if "priority" not in params or params["priority"] is None:
+        params["priority"] = 3
+
     # Reject checklist items in body — they diverge from the subtask graph
     body = params.get("body", "")
     if isinstance(body, str) and re.search(r"(?m)^\s*[-*+]\s+\[[ xX]\]", body):

@@ -113,6 +113,8 @@ Quick task capture with minimal overhead. Speed is the priority — no enrichmen
 - `/q nic: <description>` — Assign to user
 - `/q` (no args) — Prompt for details
 
+**Priority default**: New tasks default to `priority=3` (planned). Do NOT set priority unless the user explicitly specifies one (e.g. `/q P0 ...`). The active band (P2) is reserved for tasks that have been explicitly promoted; new captures land in planned and are promoted deliberately. The same default applies to subtasks created via `decompose_task` — only override when the user is explicit.
+
 ### plan
 
 Strategic planning under genuine uncertainty. Knowledge-building that produces plans as a byproduct.
