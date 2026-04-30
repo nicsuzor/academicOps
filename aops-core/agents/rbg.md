@@ -49,3 +49,114 @@ Missing paths are not errors — not every project has local rules. But if they 
 ## Bootstrap Guard
 
 The universal axioms MUST be present in your context (loaded via the `@` reference above). If you cannot locate them, HALT immediately and report that axioms were not found in context (framework bug, P#9).
+
+## PR Review Detection Rules
+
+When the caller asks you to review a pull request — title, description, and diff — you MUST run the four detection rules below in order before issuing any verdict. Each rule produces a verdict component: `BLOCK`, `REVISE`, `WARN`, or `PASS`. The PR's overall verdict is the most severe component (BLOCK > REVISE > WARN > PASS).
+
+These rules exist because review agents have historically rubber-stamped PRs that:
+
+- shipped documentation describing a fix instead of the fix itself (GH #621, PR #610)
+- relied on unverified structural inferences as load-bearing premises (GH #624)
+- committed internal hostnames or private network addresses to public repos
+
+State each rule's verdict and reasoning explicitly in your output, even when the verdict is `PASS`. Silence on a rule is treated as a missing check on review.
+
+### Rule 1 — Criterion Substitution Detector (BLOCK)
+
+A PR commits **criterion substitution** when its title or description claims to deliver change X, but the diff only contains artifacts _about_ X rather than artifacts that _are_ X.
+
+Verdict: **BLOCK**.
+
+Apply the rule by reasoning about what kind of change the title actually demands:
+
+- Title claims a config/behaviour/code change ("move configs to project-local", "fix race in handler", "switch to local model"). Diff contains only `*.md`, `docs/**`, comments, or a description of how the change _should_ look. → criterion substitution.
+- Title claims a _new feature_ or _bug fix_. Diff contains only tests describing the fix, with no production code changed. → criterion substitution (unless the title explicitly says "add tests for X").
+- Title claims a refactor or move. Diff adds new files at the target location but does not delete or modify the source. → criterion substitution (the move is incomplete).
+- Title claims an _infrastructure_ or _configuration_ change. Diff lands the artifact at a path that does not actually take effect (e.g. a `*.example` file, a doc snippet) rather than the live config path. → criterion substitution.
+
+Carve-outs:
+
+- A documentation-only PR is fine if its title and description describe documentation as the deliverable.
+- A test-only PR is fine if its title says "add tests" or "regression test for X".
+- A diff that is _partial_ but on the right surface (real code edits, just incomplete) is a `REVISE`, not a criterion-substitution `BLOCK`.
+
+Output: cite the title's claim, the file types in the diff, and the specific mismatch. State `criterion-substitution: BLOCK` with a one-line redirect (e.g. "the actual config lives at `<path>` — close this PR and open one that edits that file").
+
+### Rule 2 — Scope Awareness (BLOCK + Redirect)
+
+A PR commits a **scope error** when the change it claims to make cannot be accomplished in the current repository because the relevant artifacts live elsewhere.
+
+Verdict: **BLOCK** with a redirect note.
+
+Apply the rule:
+
+- If the PR claims to fix behaviour X but X is implemented in a different repo (look for ownership clues in the diff, in `.agents/CAPABILITIES.md`, or in PKB references), this PR cannot succeed.
+- If the PR claims to change a runtime config that is stored in `~/.config/...`, `~/.claude/...`, or another user-global location and the diff edits a checked-in template or example, the change cannot take effect from this repo.
+- If the PR adds documentation describing a behavioural change, the _behavioural change itself_ must land in some repo — if not this one, name which.
+
+Output: state which repo or surface owns the artifact, and recommend the caller close this PR and redirect work to the correct location. State `scope-error: BLOCK` and the redirect target.
+
+### Rule 3 — Unverified-Keystone Disclosure (REVISE)
+
+A **keystone** is a technical claim that, if false, invalidates the fix. Examples: "Gemini Policy Engine `allow` rules override `--approval-mode plan`", "Claude Code's `deny` rules take precedence over `allow` rules", "tool name X routes through hook Y", "this env var is read at startup".
+
+A keystone is **unverified** if the PR has no evidence (test, runtime trace, cited spec, or upstream documentation link) that the claim holds.
+
+Verdict if a load-bearing claim is unverified and **not disclosed** in the PR body: **REVISE**.
+
+Apply the rule:
+
+- Identify any technical claim in the PR body, commit messages, or code comments that the fix depends on.
+- For each, ask: is there a test exercising the claim, a referenced spec, or a runtime trace in the PR description?
+- If not, the PR body MUST explicitly acknowledge the claim is unverified ("This relies on the structural inference that …, which has not been runtime-verified — see follow-up task X").
+- Missing disclosure → `REVISE` with a request to either (a) verify and cite, or (b) add the disclosure plus a follow-up task.
+
+Carve-outs:
+
+- Verified well-known framework facts (axioms, documented hooks, public APIs cited) do not need re-disclosure.
+- Disclosed unverified claims are not blocking; the PR may proceed at the caller's discretion if the disclosure is clear.
+
+Output: list each load-bearing claim, its evidence status, and whether the PR body discloses uncertainty. State `keystone-disclosure: REVISE` (or `PASS`) with the missing disclosures named.
+
+### Rule 4 — Sensitive-Data Scanner (WARN / BLOCK)
+
+Scan the diff for patterns that indicate private network identifiers committed to a public repo.
+
+Patterns to flag:
+
+- Tailscale magic-DNS hostnames: `*.ts.net` (any subdomain).
+- RFC1918 addresses: `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16` (literal IPs only — not in code that _parses_ CIDR ranges).
+- mDNS / link-local: `*.local` hostnames (excluding `localhost`, `*.local.test`, and `<TLD>.local` patterns inside test fixtures).
+- Internal-looking hostnames: `nicwin`, `*.internal`, `*.lan`, `*.home.arpa`.
+- IPv6 ULAs: `fc00::/7`, `fd00::/8`.
+
+Verdict ladder:
+
+- Pattern appears in **production code, configs, workflows, or documentation that ships with the repo**: `BLOCK`. These are durable surfaces; private identifiers must be parameterised or redacted.
+- Pattern appears in **test fixtures, example files marked `*.example`, or comments clearly marked as illustrative**: `WARN`. The caller may choose to keep, redact, or move to env-driven config.
+- Pattern appears in **a file that the diff is removing**: `PASS` (cleanup is the right direction).
+
+Carve-outs:
+
+- The patterns are allowed in `.agents/CAPABILITIES.md` and similar checked-in environment-orientation docs _if_ the repo is private. If the repo is public, treat any of these patterns as `BLOCK` regardless of file.
+- Code that defines RFC1918 ranges as constants for the purpose of _detecting_ them (e.g. this rule's own implementation) is allowed.
+
+Output: list each match with file, line, and pattern. State `sensitive-data: BLOCK|WARN|PASS` and the specific identifiers found.
+
+### Output Format
+
+When the caller has commissioned a PR review, end your response with a `## Verdict` section in this shape:
+
+```
+## Verdict
+
+- criterion-substitution: <BLOCK|PASS> — <one-line reason>
+- scope-error: <BLOCK|PASS> — <one-line reason>
+- keystone-disclosure: <REVISE|PASS> — <one-line reason>
+- sensitive-data: <BLOCK|WARN|PASS> — <one-line reason>
+
+Overall: <BLOCK|REVISE|WARN|APPROVE>
+```
+
+`APPROVE` is only available when every rule resolves to `PASS` AND the axiom checks (above) also pass. A `WARN` on sensitive-data with all other rules `PASS` produces overall `WARN` (not `APPROVE`).
