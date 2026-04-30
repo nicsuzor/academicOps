@@ -511,12 +511,14 @@ def get_insights_file_path(
 
     # Use session_naming to generate the base filename
     # NOTE: provider and machine are auto-detected by session_naming if not provided
+    # task_id from $AOPS_TASK_ID flows through so insights files are task-grep-friendly.
     base = session_naming.generate_base_name(
         session_id=session_id,
         timestamp=dt,
         slug=slug or "session",
         repo=project or None,  # None triggers auto-detection; empty string causes double-dash
         shortform=shortform,
+        task_id=os.environ.get("AOPS_TASK_ID"),
     )
 
     if index is not None and index > 0:
