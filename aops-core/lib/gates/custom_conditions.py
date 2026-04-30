@@ -28,7 +28,7 @@ def check_custom_condition(
 
     if name == "is_orchestrator_project_write":
         # Fires PostToolUse on Edit/Write to non-framework project source in an
-        # orchestrator (non-polecat) session. See specs/orchestrator-boundary.md.
+        # orchestrator (non-polecat) session. See the orchestrator-boundary spec (brain PKB).
         from lib.orchestrator_boundary import (
             is_orchestrator_session,
             is_project_source_write,

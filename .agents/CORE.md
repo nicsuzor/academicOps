@@ -20,7 +20,7 @@ If you cannot do what was asked, **STOP and report** — do NOT search broadly, 
 - **.agents/**: Instructions for working on the framework
 - **aops-core/**: Framework core (hooks, enforcement, skills)
 - **aops-tools/**: Additional tools and utilities
-- **specs/**: Framework specifications and architecture
+- **brain PKB (project: aops)**: Framework specifications and architecture (specs do not live in-tree)
 - **tests/**: All tests (at repo root, NOT in aops-core/). Subdirs: `hooks/`, `integration/`, `lib/`, `e2e/`
 
 ## Core Agents

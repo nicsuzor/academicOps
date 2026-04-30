@@ -465,7 +465,7 @@ When an agent observes unexpected behavior — a tool firing unexpectedly, a fil
 
 ## Orchestrator Is a Dispositor (P#122)
 
-The general CLI agent (main Claude Code session) is a **dispositor** — it understands intent, creates tasks, and delegates execution to polecat workers. It does not execute feature work itself. See [[specs/orchestrator-boundary.md]] for the full boundary definition.
+The general CLI agent (main Claude Code session) is a **dispositor** — it understands intent, creates tasks, and delegates execution to polecat workers. It does not execute feature work itself. The full boundary definition lives in the brain PKB (project: aops, topic: orchestrator-boundary).
 
 **Orchestrator may do** (read-only / planning / dispatch):
 
@@ -474,7 +474,7 @@ The general CLI agent (main Claude Code session) is a **dispositor** — it unde
 - Decompose epics into subtasks
 - Run `/pull`, `/daily`, `/planner`, `/dump`, `/q` and other meta-skills
 - Dispatch tasks via the `polecat` CLI
-- Edit framework files (`specs/`, `aops-core/`, `.agents/`, `docs/`, `tests/`) — framework maintenance is orchestrator scope
+- Edit framework files (`aops-core/`, `.agents/`, `docs/`, `tests/`) — framework maintenance is orchestrator scope
 
 **Orchestrator must not do** (worker scope — queue instead):
 

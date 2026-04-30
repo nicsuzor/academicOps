@@ -6,7 +6,7 @@ Covers:
 2. is_project_source_write path classification
 3. orchestrator_boundary gate PostToolUse warn verdict (Level 4 detection)
 
-See `specs/orchestrator-boundary.md` and `aops-core/HEURISTICS.md#P122`.
+See the orchestrator-boundary spec (brain PKB) and `aops-core/HEURISTICS.md#P122`.
 """
 
 import importlib
@@ -109,15 +109,15 @@ class TestIsFrameworkPath:
         "file_path,expected",
         [
             ("aops-core/hooks/router.py", True),
-            ("specs/enforcement.md", True),
             (".agents/context-map.json", True),
             ("docs/VISION.md", True),
             ("tests/hooks/test_x.py", True),
             ("scripts/install.sh", True),
-            # Non-framework
+            # Non-framework (specs/ is no longer framework — specs live in brain PKB)
             ("src/app.py", False),
             ("README.md", False),
             ("paper/draft.md", False),
+            ("specs/enforcement.md", False),
             # Leading dot-slash
             ("./aops-core/foo.py", True),
             ("./src/app.py", False),
@@ -159,7 +159,6 @@ class TestIsProjectSourceWrite:
 
     def test_write_to_framework_suppressed(self):
         assert is_project_source_write("Write", {"file_path": "aops-core/new_file.py"}) is False
-        assert is_project_source_write("Edit", {"file_path": "specs/x.md"}) is False
         assert is_project_source_write("Edit", {"file_path": ".agents/context-map.json"}) is False
 
     def test_non_write_tool(self):
@@ -330,11 +329,11 @@ class TestOrchestratorBoundaryGate:
                 or "Orchestrator boundary" not in (result.system_message or "")
             )
 
-    def test_specs_write_does_not_fire(self, monkeypatch):
+    def test_aops_core_write_does_not_fire(self, monkeypatch):
         monkeypatch.setattr("hooks.router.get_session_data", lambda: {})
         router = HookRouter()
         state = SessionState.create("test-orch-boundary-gate")
-        ctx = self._make_ctx(tool_name="Edit", file_path="specs/enforcement.md")
+        ctx = self._make_ctx(tool_name="Edit", file_path="aops-core/new.py")
 
         result = router._dispatch_gates(ctx, state)
 

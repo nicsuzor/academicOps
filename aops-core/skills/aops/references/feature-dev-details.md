@@ -284,22 +284,20 @@ Feature development follows eight phases:
 
 **Actions**:
 
-1. **Find or create spec**: Check `$AOPS/specs/` for existing spec
+1. **Find or create spec**: Check the brain PKB (project: aops) for existing spec
    - If exists: will update it
    - If not: create from user story (Phase 1) + implementation decisions
 2. **Merge implementation content**: Design decisions, key functions, UX patterns
 3. **Strip temporal content**: Remove "what was built" narrative, dates, deliberation
 4. **Verify spec is timeless**: Reads as "how it works" not "how it was built"
 5. **Complete experiment task**: `mcp__plugin_aops-core_tasks__complete_task(id="[task-id]")` with body noting "Synthesized to spec: [spec-name]"
-6. **Update spec index**: Ensure `specs/specs.md` lists the spec with correct status
-7. **Commit spec update**
+6. **Commit spec update in the brain PKB**
 
 **TodoWrite items** (mandatory):
 
 ```
 - [ ] Update spec with implementation details
 - [ ] Complete experiment task
-- [ ] Verify specs/specs.md index updated
 ```
 
 **Output**: Updated timeless spec; experiment issue closed with link to spec.

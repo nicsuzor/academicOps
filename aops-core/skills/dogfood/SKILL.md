@@ -26,7 +26,7 @@ permalink: skills-dogfood
 
 Test whether a set of instructions produces good outcomes when executed by a contextless agent. The dogfooder does NOT do the work — they write instructions, delegate execution, observe what happens, and improve the instructions.
 
-This skill is the **outer loop** that wraps any task category. The inner loop (execute/reflect/codify per step) is documented in `specs/future/dogfood.md` and applies within each phase below.
+This skill is the **outer loop** that wraps any task category. The inner loop (execute/reflect/codify per step) is documented in the brain PKB (project: aops, topic: dogfood) and applies within each phase below.
 
 ## When to Use
 
@@ -73,7 +73,7 @@ This phase exists because of a specific, observed failure: a dogfooding supervis
 
 2. **Identify the data.** Where does the input come from? What format is it in? What's the expected output? A contextless agent can't ask you — the instructions must answer these questions. **Verify by reading sample files** — don't describe data you haven't inspected.
 
-3. **Write the instructions.** Work directly in the target skill file if the instructions are mature enough to belong there. Only use `specs/drafts/` for scaffolding that doesn't yet fit anywhere — and **delete it when the session ends**. The document must be self-contained:
+3. **Write the instructions.** Work directly in the target skill file if the instructions are mature enough to belong there. Only use a scratch task body in the brain PKB for scaffolding that doesn't yet fit anywhere — and **clean it up when the session ends**. The document must be self-contained:
    - What to do and why
    - Where to find the data (exact paths, not variables the agent won't have)
    - How to sample if the data is large
@@ -161,7 +161,7 @@ This is the hardest phase. Commission a separate reviewer agent — ideally a di
 
 **Goal**: Produce reusable skill components from what you learned.
 
-1. **Promote instructions to a skill or command.** If the instructions work well enough for delegation, they belong in `aops-core/skills/` or `aops-core/commands/`, not in `specs/drafts/`.
+1. **Promote instructions to a skill or command.** If the instructions work well enough for delegation, they belong in `aops-core/skills/` or `aops-core/commands/`, not in scratch task bodies.
 
 2. **Generalize.** Review the instructions for over-specificity to this one execution. Would they work for:
    - A different time period?
@@ -214,7 +214,7 @@ These were observed during dogfooding runs and should be watched for:
 | Subagent found real findings but misframed aggregate conclusion                         | Iteration 2's session-level analysis was correct (RBG accuracy, false positives, etc.) but the aggregate conclusion ("zero enforcement") was wrong because it examined the wrong enforcement channel  | When aggregating, verify that the aggregate conclusion follows from the individual findings. A correct finding + wrong causal chain = wrong conclusion.            |
 | Full batch dispatched on first iteration                                                | Agent dispatched N=10 tasks on iteration 1; user had to intervene. Two failures from 2 tasks is as informative as 2 from 10 at a fraction of the cost.                                                | **First iteration scope**: cap at N=2. Verify pipeline health before scaling.                                                                                      |
 | Killed productive agent on scope correction                                             | Scope narrowing arrived mid-run; agent used `TaskStop` + restart instead of `SendMessage`. Discarded real findings, paid full cold-start cost on replacement.                                         | Use `SendMessage` to redirect a running agent. Only `TaskStop` for active harm (wrong files, dangerous expansion).                                                 |
-| Created draft spec file instead of editing skill                                        | Agent wrote `specs/drafts/dogfood-instructions.md` as working artifact rather than editing the skill directly. File persisted after session, cluttering the repo.                                     | Work directly in the skill file. Use `specs/drafts/` only for scaffolding; delete it when the session ends.                                                        |
+| Created draft spec file instead of editing skill                                        | Agent wrote a draft spec file as a working artifact rather than editing the skill directly. File persisted after session, cluttering the repo.                                                        | Work directly in the skill file. Use a scratch task body in the brain PKB for scaffolding; clean it up when the session ends.                                      |
 | **Concluded task without filing follow-up**                                             | Agent finished work but didn't leave a loose thread in the PKB                                                                                                                                        | **Always leave a loose thread.** Before exiting, file a task for what comes next.                                                                                  |
 
 ## Handover
@@ -223,7 +223,7 @@ These were observed during dogfooding runs and should be watched for:
 
 ## Related
 
-- `specs/future/dogfood.md` — the inner-loop spec (per-step reflection)
+- brain PKB (project: aops, topic: dogfood) — the inner-loop spec (per-step reflection)
 - `.agents/skills/framework/workflows/10-reflective-execution.md` — the workflow version
 - `aops-core/commands/retro.md` — single-transcript review (a task this skill might dogfood)
 - `aops-core/commands/trend-review.md` — multi-session trend analysis (a task this skill might dogfood)

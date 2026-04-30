@@ -8,7 +8,7 @@ from hooks.gate_config import (
 )
 
 # Orchestrator-boundary gate mode. Defaults to "warn". Set to "off" to disable.
-# Hard-block ("deny") is Phase 3 per specs/orchestrator-boundary.md and is not
+# Hard-block ("deny") is Phase 3 per the orchestrator-boundary spec (brain PKB) and is not
 # yet activated — verify polecat efficiency first.
 ORCHESTRATOR_BOUNDARY_GATE_MODE = os.environ.get("ORCHESTRATOR_BOUNDARY_GATE_MODE", "warn")
 
@@ -205,7 +205,7 @@ GATE_CONFIGS = [
         ],
     ),
     # --- Orchestrator Boundary ---
-    # Level 4 detection for specs/orchestrator-boundary.md. Warns (does not
+    # Level 4 detection for the orchestrator-boundary spec (brain PKB). Warns (does not
     # block) when the orchestrator session writes to project source outside
     # the framework allowlist. Polecat worker sessions are exempt (they set
     # POLECAT_SESSION_TYPE in the env). Hard-block mode is Phase 3 and not
@@ -214,7 +214,7 @@ GATE_CONFIGS = [
         name="orchestrator_boundary",
         description=(
             "Warns when the orchestrator session writes to project (non-framework) "
-            "source files. See specs/orchestrator-boundary.md."
+            "source files. See the orchestrator-boundary spec in the brain PKB."
         ),
         initial_status=GateStatus.OPEN,
         policies=[

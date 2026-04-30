@@ -29,7 +29,7 @@ def main() -> int:
         print(f"ERROR: {len(metrics.oversized_skills)} skills exceed 500 lines:")
         for s in metrics.oversized_skills:
             print(f"  - {s['skill']}: {s['lines']} lines")
-        print("\nMove rationale/reference content to specs/ or references/")
+        print("\nMove rationale/reference content to references/ (or the brain PKB for specs)")
         return 1
 
     print("OK: All SKILL.md files are under 500 lines")

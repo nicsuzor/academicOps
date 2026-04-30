@@ -3,7 +3,7 @@
 Simple storage for session summaries extracted by LLM (Claude skill or Gemini cron).
 Uses session ID (not project hash) as key to avoid collisions across terminals.
 
-See specs/unified-session-summary.md for architecture details.
+See the unified-session-summary spec (brain PKB) for architecture details.
 """
 
 from __future__ import annotations

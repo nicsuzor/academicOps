@@ -10,7 +10,7 @@ polecat run -t <task-id>                              # dispatch
 
 **Orchestrator scope (fine to do inline):**
 
-- Framework maintenance: `aops-core/`, `specs/`, `.agents/`, `docs/`, `tests/`
+- Framework maintenance: `aops-core/`, `.agents/`, `docs/`, `tests/`
 - Planning / task decomposition / PKB queries
 - Skills the user explicitly invoked (`/` commands)
 
@@ -24,4 +24,4 @@ polecat run -t <task-id>                              # dispatch
 this one line", "do it here"), proceed. You cannot classify "too small to
 queue" unilaterally — that judgment belongs to the user.
 
-See [[specs/orchestrator-boundary.md]] and [[aops-core/HEURISTICS.md#P122]].
+See [[aops-core/HEURISTICS.md#P122]].

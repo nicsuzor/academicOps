@@ -395,7 +395,7 @@ When `$SPEC_DIRS` (collected in Step 2) is non-empty, append the following line 
 Scan the following spec directories for authoritative specs covering the domain of this PR: {spec_dirs}. If a relevant spec exists, verify the PR's implementation matches the spec's intent. Flag divergence explicitly.
 ```
 
-(`{spec_dirs}` is rendered as the comma-separated list from `$SPEC_DIRS`, e.g. `specs/` or `docs/specs/, packages/core/specs/`.)
+(`{spec_dirs}` is rendered as the comma-separated list from `$SPEC_DIRS`, e.g. `docs/specs/, packages/core/specs/`. The aops framework keeps specs in the brain PKB rather than in-tree, so its `$SPEC_DIRS` is empty.)
 
 #### Marsha — QA/Runtime Verification (complex PRs or testable changes)
 

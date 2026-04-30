@@ -1,7 +1,7 @@
 """Single session file management for v1.0 core loop.
 
 Provides atomic CRUD operations for unified session state file.
-State enables cross-hook coordination per specs/flow.md.
+State enables cross-hook coordination per the flow spec (brain PKB).
 
 Session file: ~/writing/sessions/status/YYYYMMDD-sessionID.json
 

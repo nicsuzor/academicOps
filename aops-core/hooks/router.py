@@ -468,7 +468,7 @@ class HookRouter:
 
         Only fires in orchestrator sessions (not polecat workers, not subagents)
         and only when the classifier flags the prompt as a work-request. See
-        `lib/orchestrator_boundary.py` and `specs/orchestrator-boundary.md`.
+        `lib/orchestrator_boundary.py` and the orchestrator-boundary spec (brain PKB).
         """
         try:
             from lib.orchestrator_boundary import should_inject_dispositor_reminder

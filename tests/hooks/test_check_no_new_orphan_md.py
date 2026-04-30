@@ -52,9 +52,7 @@ def mod():
         "aops-core/hooks/templates/enforcer-context.md",
         "aops-core/policies/some-policy.md",
         "aops-core/.claude-plugin/some.md",
-        # specs / tests / templates
-        "specs/flow.md",
-        "specs/sub/dir/deep.md",
+        # tests / templates
         "tests/fixtures/sample.md",
         "tests/hooks/fixture.md",
         "templates/github-agent/worker.agent.md",
@@ -93,6 +91,9 @@ def test_allowed_paths(mod, path):
         # arbitrary new top-level dir
         "notes/findings.md",
         "scratch/idea.md",
+        # specs/ is no longer a canonical location — specs live in the brain PKB
+        "specs/new-design.md",
+        "specs/sub/dir/deep.md",
     ],
 )
 def test_blocked_paths(mod, path):
@@ -147,10 +148,10 @@ def test_passes_when_only_modifying_existing(git_repo):
 
 
 def test_passes_for_canonical_add(git_repo):
-    target = git_repo / "specs" / "new-spec.md"
+    target = git_repo / "tests" / "fixtures" / "new-fixture.md"
     target.parent.mkdir(parents=True)
-    target.write_text("# spec\n")
-    subprocess.run(["git", "add", "specs/new-spec.md"], cwd=git_repo, check=True)
+    target.write_text("# fixture\n")
+    subprocess.run(["git", "add", "tests/fixtures/new-fixture.md"], cwd=git_repo, check=True)
     r = _run_script(git_repo)
     assert r.returncode == 0, r.stderr
 
@@ -181,18 +182,18 @@ def test_blocks_repo_root_explainer(git_repo):
 
 def test_rename_does_not_trigger(git_repo):
     """Pure renames are status=R, not A — must not fire."""
-    src = git_repo / "specs"
-    src.mkdir()
-    (src / "old-spec.md").write_text("# old\n")
-    subprocess.run(["git", "add", "specs/old-spec.md"], cwd=git_repo, check=True)
+    src = git_repo / "tests" / "fixtures"
+    src.mkdir(parents=True)
+    (src / "old.md").write_text("# old\n")
+    subprocess.run(["git", "add", "tests/fixtures/old.md"], cwd=git_repo, check=True)
     subprocess.run(
-        ["git", "commit", "-q", "-m", "spec", "--no-verify"],
+        ["git", "commit", "-q", "-m", "fixture", "--no-verify"],
         cwd=git_repo,
         check=True,
     )
     # Now rename. Use git mv so the index sees a rename.
     subprocess.run(
-        ["git", "mv", "specs/old-spec.md", "specs/new-spec.md"],
+        ["git", "mv", "tests/fixtures/old.md", "tests/fixtures/new.md"],
         cwd=git_repo,
         check=True,
     )
@@ -210,11 +211,11 @@ def test_no_md_changes_passes(git_repo):
 
 def test_mixed_add_with_one_blocked(git_repo):
     """If multiple .md files are staged, all blocked ones must surface."""
-    (git_repo / "specs").mkdir()
-    (git_repo / "specs" / "ok.md").write_text("# ok\n")
+    (git_repo / "tests" / "fixtures").mkdir(parents=True)
+    (git_repo / "tests" / "fixtures" / "ok.md").write_text("# ok\n")
     (git_repo / "BAD.md").write_text("# bad\n")
-    subprocess.run(["git", "add", "specs/ok.md", "BAD.md"], cwd=git_repo, check=True)
+    subprocess.run(["git", "add", "tests/fixtures/ok.md", "BAD.md"], cwd=git_repo, check=True)
     r = _run_script(git_repo)
     assert r.returncode == 1
     assert "BAD.md" in r.stderr
-    assert "specs/ok.md" not in r.stderr
+    assert "tests/fixtures/ok.md" not in r.stderr

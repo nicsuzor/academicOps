@@ -19,7 +19,7 @@ version: 1.0.0
 
 ### 1. Inventory documentation files
 
-Scan for reference docs, index files, specs, and design docs. Exclude source code, test files (unless they document patterns), generated files, and archives. Typical locations: `README.md`, `docs/`, `specs/`, `aops-core/`, `.agents/`.
+Scan for reference docs, index files, specs, and design docs. Exclude source code, test files (unless they document patterns), generated files, and archives. Typical locations: `README.md`, `docs/`, `aops-core/`, `.agents/`. (Some downstream projects also keep specs in `specs/` or `docs/specs/`; the aops framework itself stores specs in the brain PKB.)
 
 ### 2. Load and validate existing map
 
@@ -34,7 +34,7 @@ For each unmapped doc: "Would an agent benefit from discovering this via keyword
 ```json
 {
   "version": "1.1.0",
-  "spec_dirs": ["specs/"],
+  "spec_dirs": [],
   "includes": [".agents/subproject/context-map.json"],
   "docs": [
     {
@@ -48,7 +48,8 @@ For each unmapped doc: "Would an agent benefit from discovering this via keyword
 }
 ```
 
-For a secondary repo whose specs live under `docs/specs/`, use:
+`spec_dirs` is empty for the aops framework (specs live in the brain PKB).
+For a secondary repo whose specs live in-tree under `docs/specs/`, use:
 
 ```json
 {
@@ -63,7 +64,7 @@ Summarise entries added, removed, updated — in the commit message or response.
 
 ## Schema
 
-Full field definitions and design rationale are in **[[specs/context-map-schema.md]]** (SSoT). Key fields: `version`, `spec_dirs`, `includes`, `docs[]` (each entry has `topic`, `type`, `path`, `description`, `keywords`).
+Full field definitions and design rationale live in the brain PKB (project: aops, topic: context-map-schema) — SSoT. Key fields: `version`, `spec_dirs`, `includes`, `docs[]` (each entry has `topic`, `type`, `path`, `description`, `keywords`).
 
 ### Audit checklist
 

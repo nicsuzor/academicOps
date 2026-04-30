@@ -32,8 +32,8 @@ academicOps/
 |   +-- GLOSSARY.md   # Framework terminology for hydrator context
 |   +-- WORKFLOWS.md  # Workflow decision tree and routing
 +-- scripts/          # Build, sync, visualization, and maintenance scripts
-+-- specs/            # Design specifications (42 files, 40 tracked in INDEX.md)
 +-- tests/            # Test suite (~100 test files across unit/integration/e2e/demo/polecat)
+                       # Specs live in the brain PKB (project: aops), not in-tree
 +-- config/           # Configuration files
 +-- overwhelm-dashboard/  # Streamlit dashboard for cognitive load management
 ```
@@ -53,7 +53,7 @@ academicOps/
 
 The Personal Knowledge Base server is the backbone data layer for the framework. It is a Rust binary (`pkb`) installed via `cargo binstall` from the `mem` repository, providing both a CLI (`aops`) and an MCP server (`pkb-search`) over stdio transport.
 
-**Spec**: `specs/pkb-server-spec.md`
+**Spec**: brain PKB (project: aops, topic: pkb-server-spec)
 
 **18 MCP tools across 6 groups**:
 
@@ -181,7 +181,7 @@ The canonical index is `aops-core/SKILLS.md` with 25 entries (8 commands + 17 sk
 
 ### Specs System -- WORKING
 
-42 spec files organized into 6 tiers plus archived. Full audit completed 2026-03-07 (see `specs/AUDIT-specs-2026-03-07.md`). Index at `specs/INDEX.md` now tracks 40 specs with status indicators and dependency chains.
+All framework specs migrated to the brain PKB on 2026-04-28 (see commit `a311b67`). The in-tree `specs/` directory has been retired; new specs go to the brain PKB. Historical audit (2026-03-07) of the 42 in-tree specs preserved in the brain PKB under topic `audit-specs-2026-03-07`.
 
 **Key finding from audit**: 78% of specs were untracked before the audit. Several specs describe aspirational architecture not yet implemented (predicate-registry, verification-system advocate agent, worker-hypervisor). Spec dependency chains run 4-5 deep in places.
 
@@ -278,7 +278,7 @@ Gemini CLI extension installed at `~/.gemini/extensions/aops-core/`. Missing 7 o
 - Gate hardening sprint: 150 verdict tests, 31 replay tests, Agent tool fix, import convention fix, gate status strip -- 2026-02-28 / 2026-03-01
 - PR pipeline post-mortem and fixes (cascade limit, LGTM check-status, strategic gatekeeper) -- 2026-02-23
 - Stale task sweep iterations 1-4 -- 2026-02-23
-- **Specs audit and INDEX.md rewrite** (2026-03-07) -- Full inventory of 42 specs; INDEX.md rebuilt with 6 tiers, status tracking, dependency chains, and maintenance guide. Audit documented in `specs/AUDIT-specs-2026-03-07.md`.
+- **Specs audit and INDEX.md rewrite** (2026-03-07) -- Full inventory of 42 specs with tiers, status tracking, dependency chains, and maintenance guide. Audit documented in the brain PKB (topic: audit-specs-2026-03-07). The `specs/` directory has since been retired; specs now live exclusively in the brain PKB (migrated 2026-04-28, commit `a311b67`).
 - **Fail-fast on missing framework files** (PR #813) -- Context loaders raise FileNotFoundError instead of returning sentinel or empty string. Ensures deployment issues are surfaced immediately.
 - **Stitch design assets cleanup** -- Removed 8.9MB unused stitch design assets and dead aliases.
 - **Review agent consolidation** (PR #705) -- deleted qa.agent.md and strategic-review.agent.md (both unused); enforcer-reviewer now reads AXIOMS.md dynamically.
