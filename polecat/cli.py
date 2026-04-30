@@ -254,6 +254,17 @@ def _make_worker_env(interactive: bool = False, work_dir: Path | None = None) ->
         # Enable 24-bit color (TrueColor) for interactive sessions
         env["COLORTERM"] = "truecolor"
         env["FORCE_COLOR"] = "3"  # 3 = 24-bit color for Node.js chalk and others
+    else:
+        # Non-interactive workers: suppress color codes that confuse log parsers
+        # and downstream tooling that doesn't consume ANSI escapes.
+        env["FORCE_COLOR"] = "0"
+        env["NO_COLOR"] = "1"
+
+    # Standard non-interactive signals so CLIs default to scriptable behaviour
+    # (no prompts, no pagers, no progress spinners). Set unconditionally — even
+    # interactive polecat shells should not pop confirmation prompts at workers.
+    env["CI"] = "true"
+    env["NONINTERACTIVE"] = "1"
 
     # Ensure uv is in PATH for hooks and agent tools
     current_path = env.get("PATH", "")
@@ -1012,6 +1023,9 @@ def _build_docker_cmd(
                 "CLAUDE_CODE_OAUTH_TOKEN",
                 "COLORTERM",
                 "FORCE_COLOR",
+                "NO_COLOR",
+                "CI",
+                "NONINTERACTIVE",
                 "ENFORCER_TOOL_CALL_THRESHOLD",
             )
         ):
