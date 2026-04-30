@@ -390,6 +390,23 @@ def _find_real_transcript(run_session_dir: Path | None) -> Path | None:
     return max(jsonls, key=lambda p: p.stat().st_mtime)
 
 
+def _resolve_transcript_dir(home_dir: Path | None) -> Path:
+    """Resolve the polecat transcripts directory.
+
+    Prefers ``lib.paths.get_polecat_transcripts_dir`` when available; falls
+    back to ``<home_dir|~/.polecat>/transcripts`` for older installations.
+    Shared by lifecycle-event writer and reader so they always agree on the
+    same path.
+    """
+    try:
+        from lib.paths import get_polecat_transcripts_dir
+
+        return get_polecat_transcripts_dir()
+    except ImportError:
+        base = home_dir or Path.home() / ".polecat"
+        return Path(base) / "transcripts"
+
+
 def _read_latest_real_transcript_path(task_id: str, home_dir: Path | None) -> str | None:
     """Read the polecat transcript stub for ``task_id`` and return the most
     recent ``real_transcript_path`` value, or ``None`` if not yet recorded.
@@ -398,21 +415,13 @@ def _read_latest_real_transcript_path(task_id: str, home_dir: Path | None) -> st
     in PR body and task body for post-mortem (task-91c5058f).
     """
     try:
-        try:
-            from lib.paths import get_polecat_transcripts_dir
-
-            transcript_dir = get_polecat_transcripts_dir()
-        except ImportError:
-            base = home_dir or Path.home() / ".polecat"
-            transcript_dir = Path(base) / "transcripts"
-        stub = transcript_dir / f"{task_id}.jsonl"
+        stub = _resolve_transcript_dir(home_dir) / f"{task_id}.jsonl"
         if not stub.is_file():
             return None
         latest = None
-        with open(stub) as f:
+        with open(stub, encoding="utf-8") as f:
             for line in f:
-                line = line.strip()
-                if not line:
+                if not line or line.isspace():
                     continue
                 try:
                     entry = json.loads(line)
@@ -439,13 +448,7 @@ def _write_lifecycle_event(
     agent_started → completed/failed). See task-a3bbf74c for context.
     """
     try:
-        try:
-            from lib.paths import get_polecat_transcripts_dir
-
-            transcript_dir = get_polecat_transcripts_dir()
-        except ImportError:
-            base = home_dir or Path.home() / ".polecat"
-            transcript_dir = Path(base) / "transcripts"
+        transcript_dir = _resolve_transcript_dir(home_dir)
         transcript_dir.mkdir(parents=True, exist_ok=True)
         entry = {
             "timestamp": datetime.now().astimezone().isoformat(),
@@ -454,7 +457,7 @@ def _write_lifecycle_event(
             "session_type": "polecat",
             **fields,
         }
-        with open(transcript_dir / f"{task_id}.jsonl", "a") as f:
+        with open(transcript_dir / f"{task_id}.jsonl", "a", encoding="utf-8") as f:
             f.write(json.dumps(entry) + "\n")
     except Exception:
         # Observability MUST NEVER crash the run.
