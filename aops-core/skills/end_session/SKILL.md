@@ -62,7 +62,33 @@ Use **Full-form** in **every other case**, including: task complete, end-of-day 
 
 1. **Commit, push, file PR**. If file changes exist, commit them, push the branch, and run `gh pr create --fill`. If no file changes, skip. Never end a session with uncommitted work.
 
-2. **Call `release_task` once, with the full session payload.**
+2. **Update the project breadcrumb** (project → active epic → task linkage).
+
+   The hierarchy stops being useful when you start from the project file and can't see what's actually being worked on. Leave a timestamped breadcrumb so a future reader landing on the project can find active epics with one hop.
+
+   Procedure:
+
+   1. Resolve the **current epic** from the bound task. Walk up the parent chain via `mcp__pkb__get_task`:
+      - If the bound task's `frontmatter.type == "epic"`, it IS the current epic.
+      - Otherwise, traverse `parent` until you reach a node with `type == "epic"`, OR until the next parent is `type == "project"` (in which case the last task before the project is the current epic), OR until there is no parent.
+      - If no epic ancestor and no project ancestor exist, skip this step entirely.
+   2. Resolve the **project node**. Continue walking up from the epic until you reach a node with `type == "project"`. The bound task's `frontmatter.project` slug should match that project's `permalink` or aliases — use it as a fallback (`mcp__pkb__get_document(id=<slug>)`) if the parent chain breaks before reaching a project.
+   3. Append a one-line breadcrumb to the project file's **Active Epics** section:
+
+      ```
+      mcp__pkb__append(
+        id="<project-id-or-permalink>",
+        section="Active Epics",
+        content="- [[<epic-id>]] — <epic title> (task [[<bound-task-id>]], PR <url-or-'none'>)"
+      )
+      ```
+
+      The `append` tool prepends a UTC timestamp and creates the section if missing. Existing entries are preserved — never rewrite the section.
+   4. If the bound task IS the epic, drop the trailing `(task [[...]] ...)` clause.
+
+   Skip silently when: no bound task, no project ancestor, or the project field doesn't resolve to a `type: project` document. Do not block the session close on a missing breadcrumb target.
+
+3. **Call `release_task` once, with the full session payload.**
 
    ```
    mcp__pkb__release_task(
@@ -99,7 +125,7 @@ Use **Full-form** in **every other case**, including: task complete, end-of-day 
    - **Fallback**: if `release_task` is unavailable, `update_task(id=..., status="merge_ready")` keeps the supervisor unblocked, but the dashboard loses this session.
    - **Polecat note**: calling `release_task` with a terminal status is what lets the polecat supervisor detect termination via PKB polling. Skipping this leaves Gemini workers running until external timeout (#521).
 
-3. **Emit the handover block**. Exactly this shape, 5–10 lines:
+4. **Emit the handover block**. Exactly this shape, 5–10 lines:
 
    ```markdown
    ### Session Handover
@@ -117,7 +143,7 @@ Use **Full-form** in **every other case**, including: task complete, end-of-day 
 
    Follow-up task IDs must each carry a short parenthetical title for the same reason `release_summary` must — a stack-of-handovers reader can't resolve `task-0f7d3877` without it.
 
-4. **Halt.** Nothing follows the handover block.
+5. **Halt.** Nothing follows the handover block.
 
 ## What this skill does NOT do
 
