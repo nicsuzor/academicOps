@@ -195,7 +195,7 @@ mechanisms deliver state changes without burning tokens:
          bot_logins=$(echo "$pr_json" | jq -r '.[0].reviews // [] | map(.author.login) | unique | join(",")')
          all_bots_posted=true
          for bot in ${EXPECTED_BOTS//,/ }; do
-           echo ",$bot_logins," | grep -q ",${bot}," || all_bots_posted=false
+           echo ",$bot_logins," | grep -Fq ",${bot}," || all_bots_posted=false
          done
          if echo ",${checks}," | grep -qE ',(FAILURE|TIMED_OUT|CANCELLED|ACTION_REQUIRED|IN_PROGRESS|QUEUED|PENDING),'; then
            has_failing=yes
@@ -244,7 +244,7 @@ mechanisms deliver state changes without burning tokens:
    supervisor gets a direct prompt to fire the manual trigger below instead of
    waiting on the next cron tick (which can be up to 30 min away). Detect by
    checking which bot logins have submitted a review against the repo's expected
-   bot set — for `aops` that is Gemini, Copilot, and `claude[bot]`.
+   bot set — for `aops` that is `gemini-code-assist[bot]`, Copilot, and `claude[bot]`.
 
 3. **ScheduleWakeup as safety net only.** Set a long interval (1800s+) as
    a catch-all in case a notification is missed or a worker stalls without
@@ -280,7 +280,7 @@ go through the dispatcher path.
 
 **When to trigger manually**:
 
-- All expected bot reviewers have posted reviews (Gemini, Copilot, `claude[bot]`
+- All expected bot reviewers have posted reviews (`gemini-code-assist[bot]`, Copilot, `claude[bot]`
   for the `aops` repo — the set is repo-specific), OR
 - 5+ minutes have passed with all CI green and no `CHANGES_REQUESTED`.
 
