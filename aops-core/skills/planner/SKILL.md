@@ -221,24 +221,80 @@ Incremental PKM and task graph maintenance. Small, regular attention beats massi
 
 **Activities**:
 
-| Activity       | What                                                                                                                             |
-| -------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| **Lint**       | Validate frontmatter YAML (use PKB linter)                                                                                       |
-| **Weed**       | Fix broken wikilinks, remove dead references                                                                                     |
-| **Prune**      | Archive stale sessions (>30 days)                                                                                                |
-| **Compost**    | Merge fragments into richer notes                                                                                                |
-| **Cultivate**  | Enrich sparse notes, add context                                                                                                 |
-| **Link**       | Connect orphans, add missing wikilinks                                                                                           |
-| **Map**        | Create/update MoCs for navigation                                                                                                |
-| **DRY**        | Remove restated content, replace with links                                                                                      |
-| **Synthesize** | Strip deliberation artifacts from implemented specs                                                                              |
-| **Reparent**   | Fix orphaned tasks (missing-parent AND wrong-type-parent), enforce hierarchy rules                                               |
-| **Hierarchy**  | Validate task→epic→project structure, goal-linkage via goals: [] metadata, and domain consistency (no places-vs-projects mixing) |
-| **Stale**      | Flag a task with status: stale or inconsistencies                                                                                |
-| **Dedup**      | Find and merge duplicate tasks                                                                                                   |
-| **Triage**     | Detect under-specified tasks                                                                                                     |
-| **Densify**    | Add dependency edges between related tasks                                                                                       |
-| **Scan**       | Report graph density without changes                                                                                             |
+| Activity           | What                                                                                                                             |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| **Lint**           | Validate frontmatter YAML (use PKB linter)                                                                                       |
+| **Weed**           | Fix broken wikilinks, remove dead references                                                                                     |
+| **Prune**          | Archive stale sessions (>30 days)                                                                                                |
+| **Compost**        | Merge fragments into richer notes                                                                                                |
+| **Cultivate**      | Enrich sparse notes, add context                                                                                                 |
+| **Link**           | Connect orphans, add missing wikilinks                                                                                           |
+| **Map**            | Create/update MoCs for navigation                                                                                                |
+| **DRY**            | Remove restated content, replace with links                                                                                      |
+| **Synthesize**     | Strip deliberation artifacts from implemented specs                                                                              |
+| **Reparent**       | Fix orphaned tasks (missing-parent AND wrong-type-parent), enforce hierarchy rules                                               |
+| **Hierarchy**      | Validate task→epic→project structure, goal-linkage via goals: [] metadata, and domain consistency (no places-vs-projects mixing) |
+| **Stale**          | Flag a task with status: stale or inconsistencies                                                                                |
+| **Dedup**          | Find and merge duplicate tasks                                                                                                   |
+| **Triage**         | Detect under-specified tasks                                                                                                     |
+| **Densify**        | Add dependency edges between related tasks                                                                                       |
+| **Scan**           | Report graph density without changes                                                                                             |
+| **Anti-inflation** | Surface target/prototype graph hygiene issues (consequence prose, edge `why:`, SEV4 weak-prose flag)                             |
+
+### Anti-Inflation Surface (Target/Prototype Graph Hygiene)
+
+> Spec: `projects/aops/specs/pkb/multi-parent-edges.md` §1.5, §2.3, §2.4, §6 Q4. SURFACE-only — never block tool use.
+
+The multi-parent-edges spec defers enforcement of consequence-prose presence, edge-justification presence, and SEV4 concurrency to review skills. `/maintain` is one of those review skills. When run, surface the following — informational lists, not gates.
+
+**Check 1 — Targets missing `consequence` prose**
+
+Find every `type: target` node whose `consequence` field is empty, missing, or whitespace-only. List as:
+
+```
+Targets missing consequence prose (SURFACE):
+  - [task-id] [[Title]] — severity: N, goal_type: <committed|aspirational|learning>
+```
+
+`consequence` is mandatory per §1.4 (cognitive speedbump + post-mortem evidence). For `aspirational` targets, `consequence` is reused as opportunity-cost prose — the same surface check applies.
+
+**Check 2 — `contributes_to` edges missing `why:` / `justification:`**
+
+Find every `contributes_to` edge whose `why:` (alias) and `justification:` (canonical) field are both missing, empty, or whitespace-only. List as:
+
+```
+contributes_to edges missing justification (SURFACE):
+  - [source-task-id] → [target-id] (stated_weight: <term>)
+```
+
+Per §2.3, missing justifications are surfaced here, not blocked at write time. ICD 203 tradecraft: an edge without a one-sentence justification is a belief without a reason.
+
+**Check 3 — SEV4 targets with weak consequence prose (advisory heuristic)**
+
+For every active `type: target` node with `severity: 4`, scan the `consequence` prose (case-insensitive substring match) for any of the following severe-state keywords. If **none** match, flag the target for user review.
+
+**Severe-state keyword list** (canonical, edit here):
+
+```
+job, fired, sacked, terminated, redundancy,
+legal, lawsuit, sued, prosecution, breach,
+health, hospital, hospitalised, hospitalized, illness, injury,
+bankruptcy, insolvent, financial ruin,
+eviction, evicted, homeless,
+divorce, separation,
+death, fatal, life-threatening
+```
+
+Render as:
+
+```
+SEV4 targets with weak consequence prose (ADVISORY — heuristic):
+  - [task-id] [[Title]] — consequence: "<first 80 chars>…"
+```
+
+This is a heuristic. The keyword list is documented inline above and revisable. False positives are expected — present them as advisory, not as errors. The user (or planner mode) decides whether to rewrite the prose or accept it.
+
+**Implementation note**: All three checks read graph state via `list_tasks` / `pkb_context` / direct YAML inspection of frontmatter. None call `update_task` or any write tool — they print and return. Surface them as a single block at the end of a `/maintain` session (or on demand when the user asks for graph hygiene).
 
 ### Data Quality Procedures (Dedup, Stale, Misclassification, Domain)
 
