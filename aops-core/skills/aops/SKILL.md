@@ -347,7 +347,7 @@ Every task MUST follow this lifecycle. No shortcuts.
      mcp__plugin_aops-core_pkb__update_task(id="<id>", status="in_progress")
 
    IF creating new tracked work:
-     mcp__plugin_aops-core_pkb__create_task(title="[description]", type="task", project="aops", priority=2)
+     mcp__plugin_aops-core_pkb__create_task(title="[description]", type="task", project="aops", priority=3)
      mcp__plugin_aops-core_pkb__update_task(id="<id>", status="in_progress")
 
    IF quick ad-hoc work (< 15 min, no dependencies):
