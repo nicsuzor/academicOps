@@ -28,6 +28,7 @@ Framework PRs are higher stakes than code PRs. They shape how all future work ge
 - P#99 (Delegated Authority Only): Does the new skill/agent/workflow stay within its granted authority?
 - P#31 (Acceptance Criteria Own Success): Does the PR define how to know if the change worked?
 - Does the change weaken any existing enforcement? If axioms or gates are touched, is the intent to relax or strengthen?
+- **PR Review Detection Rules** (see `aops-core/agents/rbg.md` → "PR Review Detection Rules"): run all four rules — criterion-substitution, scope-awareness, unverified-keystone disclosure, sensitive-data scan — and report a per-rule verdict plus the overall verdict in the required `## Verdict` block.
 
 **Pauli must check:**
 

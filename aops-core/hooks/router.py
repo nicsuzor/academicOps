@@ -244,10 +244,13 @@ class HookRouter:
         """Create a normalized HookContext from raw input.
 
         Args:
-            raw_input: Raw hook input payload from stdin.
-            gemini_event: Gemini-specific event name (CLI arg).
-            client_type: "claude" or "gemini" from the --client flag.
-                         Surfaces in JSONL logs to distinguish polecat sessions.
+            raw_input: The raw stdin payload from the hook caller.
+            gemini_event: Event name when invoked by Gemini CLI (which passes
+                the event as a positional arg rather than in stdin).
+            client_type: Hook caller identity ("claude" or "gemini"), normally
+                taken from the ``--client`` flag. Stored on the resulting
+                HookContext so JSONL log entries can distinguish callers
+                instead of showing ``model=unknown``.
         """
 
         # 1. Determine Event Name

@@ -26,6 +26,7 @@ A PR containing code changes — new features, bug fixes, refactors, test additi
 - P#9 (Fail-Fast): Does new code handle errors explicitly or silently degrade?
 - P#26 (Verify First): Are there assertions, not just assumptions, about preconditions?
 - P#30 (Nothing Is Someone Else's): Does the PR own its test failures?
+- **PR Review Detection Rules** (see `aops-core/agents/rbg.md` → "PR Review Detection Rules"): run all four rules — criterion-substitution, scope-awareness, unverified-keystone disclosure, sensitive-data scan — and report a per-rule verdict plus the overall verdict in the required `## Verdict` block.
 
 **Pauli (when commissioned) must check:**
 
