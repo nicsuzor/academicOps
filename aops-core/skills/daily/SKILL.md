@@ -83,7 +83,7 @@ A factual snapshot of the task graph and today's calendar. No recommendations.
 - **SEV4 cap warning** (when triggered): If more than 2 active tasks have `severity == 4`, surface a single-line concurrency-cap warning at the top of the section. Severity-inflation guard against the "don't lose my job" lexicographic-override class. See [[instructions/status-snapshot]] §3.3b.
 - **Priority distribution**: P0/P1/P2/P3 counts of ready tasks (from `task_summary`). Presented as a compact bar chart — counts only, no narrative.
 - **Deadline list**: Any task with `due` ≤ 7 days. List each as `[task-id] [[Title]] — due YYYY-MM-DD (Nd away / overdue Nd)`. Do not categorise or rank; sort by due date ascending.
-- **High-urgency surface**: Top 5 active tasks (queued/ready/in_progress) ranked by composite `urgency` (severity × edge weight × slack × decay). Factual surfacing of what the graph computes — not a recommendation. Omitted when the PKB does not yet emit `urgency`.
+- **High-urgency surface**: Top 5 active tasks (queued/ready/in_progress) ranked by composite `urgency` (severity × edge weight × slack × decay). Factual surfacing of what the graph computes — not a recommendation. Omitted when the PKB does not yet emit `urgency`. See [[instructions/status-snapshot]] §3.3a.
 - **Calendar**: Today's events from the calendar source, in time order. No commentary.
 - **Pending decisions**: Count of `ready` + `review` tasks assigned to the user (one line).
 
