@@ -42,9 +42,7 @@ requires human approval on the Jules web UI before a PR appears.
 | MCP tool surface (PKB, etc.)       |  full  | partial[^1] |          partial          |
 | Headless / non-interactive         |   ✓    |      ✓      |             ✓             |
 
-[^1]: Gemini workers have known stderr noise during boot (corrupted-credentials
-    warnings, sandbox policy parse errors, missing-MCP-tool errors like
-    `release_task` not wired). Cosmetic in many cases; do not halt on stderr keywords.
+[^1]: Gemini workers have known boot-time stderr noise — see [[SKILL.md]] "Known Limitations" for the full list. Do not halt on stderr keywords.
 
 `⚠` = works but has caveats (see Known Limitations in SKILL.md).
 
