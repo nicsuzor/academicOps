@@ -23,7 +23,7 @@ def manager():
 def test_claim_next_task_pkb_timeout_verify_success(manager, capsys):
     from polecat.pkb_bridge import PkbTask
 
-    mock_task = PkbTask({"frontmatter": {"id": "task-1", "status": "active"}, "body": ""})
+    mock_task = PkbTask({"frontmatter": {"id": "task-1", "status": "ready"}, "body": ""})
     mock_verified = PkbTask(
         {"frontmatter": {"id": "task-1", "status": "in_progress", "assignee": "bot"}, "body": ""}
     )
@@ -45,7 +45,7 @@ def test_claim_next_task_pkb_timeout_verify_success(manager, capsys):
 def test_claim_next_task_pkb_timeout_verify_fail(manager, capsys):
     from polecat.pkb_bridge import PkbTask
 
-    mock_task = PkbTask({"frontmatter": {"id": "task-1", "status": "active"}, "body": ""})
+    mock_task = PkbTask({"frontmatter": {"id": "task-1", "status": "ready"}, "body": ""})
 
     with patch("polecat.pkb_bridge.get_ready_tasks", return_value=[mock_task]):
         with patch("polecat.pkb_bridge.get_task", return_value=mock_task):

@@ -15,7 +15,11 @@ ENV ACA_DATA=/data \
 
 # ── Root-only: system packages and global tooling ──────────────────────
 
-# Install system dependencies (including Node.js for Claude/Gemini CLIs, GitHub CLI, Docker CLI)
+# Install system dependencies (including Node.js for Claude/Gemini CLIs, GitHub CLI, Docker CLI).
+# openssh-client (~5MB) lets workers ssh into other hosts (services-new, dev3, etc.) for
+# ops debugging — inspecting docker/cron state, collecting evidence. No keys or known_hosts
+# are baked into the image: keys are mounted at runtime (or forwarded via SSH agent), and
+# host fingerprints are accepted via TOFU on first connection. Do NOT add bare keys here.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     git \
@@ -24,6 +28,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     cron \
     procps \
     ca-certificates \
+    openssh-client \
     && curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash - \
     && apt-get install -y nodejs \
     && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | gpg --dearmor -o /usr/share/keyrings/githubcli-archive-keyring.gpg \

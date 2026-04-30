@@ -6,14 +6,14 @@
 # protected even inside a worktree sandbox session.
 # Ref: https://cloud.google.com/gemini/docs/codeassist/policy-engine
 [[rule]]
-toolName = "Write"
+toolName = "write_file"
 argsPattern = ".*\\.gemini/extensions/.*"
 decision = "deny"
 priority = 100
 denyMessage = "Modifying extension files is prohibited to ensure framework integrity."
 
 [[rule]]
-toolName = "Edit"
+toolName = "replace"
 argsPattern = ".*\\.gemini/extensions/.*"
 decision = "deny"
 priority = 100
@@ -21,14 +21,14 @@ denyMessage = "Modifying extension files is prohibited to ensure framework integ
 
 # Protect other configuration files
 [[rule]]
-toolName = "Write"
+toolName = "write_file"
 argsPattern = ".*\\.claude/.*\\.json"
 decision = "deny"
 priority = 100
 denyMessage = "Modifying Claude configuration files is prohibited."
 
 [[rule]]
-toolName = "Edit"
+toolName = "replace"
 argsPattern = ".*\\.claude/.*\\.json"
 decision = "deny"
 priority = 100
@@ -36,14 +36,14 @@ denyMessage = "Modifying Claude configuration files is prohibited."
 
 # Protect Gemini configuration
 [[rule]]
-toolName = "Write"
+toolName = "write_file"
 argsPattern = ".*\\.gemini/settings\\.json"
 decision = "deny"
 priority = 100
 denyMessage = "Modifying Gemini settings.json is prohibited."
 
 [[rule]]
-toolName = "Edit"
+toolName = "replace"
 argsPattern = ".*\\.gemini/settings\\.json"
 decision = "deny"
 priority = 100

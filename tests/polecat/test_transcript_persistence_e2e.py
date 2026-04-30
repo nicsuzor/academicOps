@@ -393,3 +393,78 @@ def test_real_transcript_persists_on_max_turns(shared_sessions_dir: Path) -> Non
         )
     finally:
         _cleanup(proc, client, task_id)
+
+
+# ---------------------------------------------------------------------------
+# Case 3: graceful shutdown (SIGTERM)
+# ---------------------------------------------------------------------------
+
+# Instruction for SIGTERM: keep the agent occupied with a real (multi-turn)
+# task so it accumulates transcript bytes before we interrupt. Must NOT call
+# release_task — we want polecat still running when we signal.
+_SIGTERM_INSTRUCTION = (
+    "Search for the string 'transcript' in every Python file under tests/ "
+    "and report how many matches you find per file. Take your time — examine "
+    "each file carefully. Do NOT call release_task under any circumstances."
+)
+
+
+@_apply_gates
+def test_real_transcript_persists_on_graceful_shutdown(shared_sessions_dir: Path) -> None:
+    """A polecat run interrupted by SIGTERM still leaves a real transcript on the host.
+
+    Verifies the SIGTERM path: polecat signal handler → ``docker stop`` →
+    container shutdown → ``docker cp`` (or bind-mount flush) → host. Without
+    a SIGTERM handler in ``pc run``, Python's default action terminates the
+    process before extraction `finally` blocks fire and the transcript is
+    lost. See task-11de7b21.
+    """
+    project = _require_project()
+    task_id, client = _create_test_task(
+        title="e2e: transcript-persistence sigterm (task-11de7b21)",
+        body=_SIGTERM_INSTRUCTION,
+        project=project,
+        tags=["test", "e2e", "transcript-persistence", "sigterm"],
+    )
+
+    proc: subprocess.Popen | None = None
+    try:
+        cmd = _polecat_cmd(task_id, project)
+        # NOTE: do NOT pass start_new_session=True — we want SIGTERM to hit
+        # only the polecat process so its handler runs, rather than blasting
+        # the whole process group (which would kill docker children before
+        # polecat could `docker stop` them gracefully).
+        proc = subprocess.Popen(
+            cmd,
+            cwd=str(REPO_ROOT),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+
+        # Give the agent enough time to start a session and write turns.
+        # 45s is empirically enough for Claude to hydrate, read the prompt,
+        # and emit several tool calls.
+        time.sleep(45)
+
+        if proc.poll() is None:
+            # Send SIGTERM and allow polecat time to docker-stop the
+            # container, extract, and exit. The container itself gets up to
+            # 10s in `docker stop --time 10` plus extraction overhead, so
+            # 90s is generous but bounded.
+            proc.send_signal(signal.SIGTERM)
+            try:
+                proc.wait(timeout=90)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait(timeout=10)
+                pytest.fail(
+                    f"polecat did not exit within 90s of SIGTERM for {task_id} "
+                    "— SIGTERM handler may be missing or extraction blocked."
+                )
+        # If proc already exited (unlikely with this prompt), still verify
+        # transcript landed.
+
+        _assert_real_transcript(task_id, project, min_bytes=10_000)
+    finally:
+        _cleanup(proc, client, task_id)
