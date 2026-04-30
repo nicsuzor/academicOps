@@ -115,20 +115,20 @@ The branch acts as recovery/audit trail, not a blocking gate — brain consolida
 
 The agent works through these in order, using judgment about what needs attention:
 
-| Phase | Name                        | What it does                                            |
-| ----- | --------------------------- | ------------------------------------------------------- |
-| 0     | Graph Health                | Run `graph_stats` — baseline measurement for this cycle |
-| 1     | Session Backfill            | Run `/session-insights batch` for pending transcripts   |
-| 2     | Transcript Mining           | Extract unsaved insights from session transcripts       |
-| 3     | Episode Replay              | Scan recent activity, identify promotion candidates     |
-| 4     | Knowledge Consolidation     | Transform episodic content into semantic knowledge      |
-| 5     | Index Refresh               | Update mechanical framework indices (`SKILLS.md`, etc.) |
-| 6     | Data Quality Reconciliation | Dedup, staleness verification, misclassification        |
-| 7     | Staleness Sweep             | Detect orphans, stale docs, under-specified tasks       |
-| 8     | Refile Processing           | Re-parent user-flagged tasks via /planner, remove flag  |
-| 9     | Graph Maintenance           | Densify, reparent, or connect — pick ONE strategy       |
-| 10    | Consolidation Self-Check    | Lightweight sanity check of this cycle's own output     |
-| 11    | Brain Sync                  | Commit and push `$ACA_DATA`; re-run `graph_stats`       |
+| Phase | Name                        | What it does                                                                                         |
+| ----- | --------------------------- | ---------------------------------------------------------------------------------------------------- |
+| 0     | Graph Health                | Run `graph_stats` — baseline measurement for this cycle                                              |
+| 1     | Session Backfill            | Run `aops-core/scripts/transcript.py` for pending transcripts (Stop hook + cron usually handle this) |
+| 2     | Transcript Mining           | Extract unsaved insights from session transcripts                                                    |
+| 3     | Episode Replay              | Scan recent activity, identify promotion candidates                                                  |
+| 4     | Knowledge Consolidation     | Transform episodic content into semantic knowledge                                                   |
+| 5     | Index Refresh               | Update mechanical framework indices (`SKILLS.md`, etc.)                                              |
+| 6     | Data Quality Reconciliation | Dedup, staleness verification, misclassification                                                     |
+| 7     | Staleness Sweep             | Detect orphans, stale docs, under-specified tasks                                                    |
+| 8     | Refile Processing           | Re-parent user-flagged tasks via /planner, remove flag                                               |
+| 9     | Graph Maintenance           | Densify, reparent, or connect — pick ONE strategy                                                    |
+| 10    | Consolidation Self-Check    | Lightweight sanity check of this cycle's own output                                                  |
+| 11    | Brain Sync                  | Commit and push `$ACA_DATA`; re-run `graph_stats`                                                    |
 
 ## Phase 0: Graph Health Baseline
 
