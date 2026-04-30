@@ -42,6 +42,14 @@ PR #805 and issue #806.
 | `check-framework-integrity` | `scripts/check_framework_integrity.py` | (wikilink index integrity) | `warn`  | Exits 1 on broken wikilinks or missing SKILLS/WORKFLOWS index entries      |
 | `lint-axiom-refs`           | `aops-core/lib/lint_axiom_refs.py`     | R1.1, R1.3                 | `block` | Exits 1 when `plugin.json` cites a non-existent or mis-parented Axiom/Rule |
 
+## CORE.md directives (always-on)
+
+Static guidance embedded in `.agents/CORE.md` and loaded into every agent session context for this repo. Unlike hooks, these are not event-triggered — they are part of the agent's context window whenever it works in academicOps.
+
+| Directive    | Source                                                    | Rule(s)                              | Scope           | Tier   | Behaviour                                                                                                                                                                              |
+| ------------ | --------------------------------------------------------- | ------------------------------------ | --------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pkb-first`  | `.agents/CORE.md` — "Where to find documentation" section | (procedural: PKB-first discovery)    | academicOps repo | `hint` | Instructs agents to read `brain/projects/aops/specs/INDEX` before reading source code. Provides links to spec MOC, project hub, and vision. Explicitly warns that reading source first means skipping this step. Added in PR #876 (task aops-e17e4e64). |
+
 ## Whole-repo audits (advisory; not wired to commit/CI)
 
 | Check                    | Script                              | Rule(s)                | Tier       | Behaviour                                                    |
