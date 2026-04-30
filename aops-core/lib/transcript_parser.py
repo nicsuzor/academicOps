@@ -2474,7 +2474,7 @@ class SessionProcessor:
                 if hook_system_message:
                     msg_preview = (
                         hook_system_message[:300] + "..."
-                        if len(hook_system_message) > 300
+                        if not full_mode and len(hook_system_message) > 300
                         else hook_system_message
                     )
                     markdown += f"  - ℹ️ Hook message: {msg_preview}\n"
