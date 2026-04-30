@@ -469,12 +469,12 @@ User prompt
 
 Priority reflects _user intent_, not agent estimation. The planner has no privileged view of what's urgent — only the user does. Auto-assigning P0/P1/P2 trains the user to ignore priority signals because they're noisy.
 
-| Priority | When to assign                                                                                                                                  |
-| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| **P0**   | User explicitly marks as critical/blocking (e.g., "this is blocking everything", "drop everything", "P0").                                      |
-| **P1**   | User explicitly marks as urgent (e.g., "urgent", "ASAP", "needs to ship today/this week", "P1").                                                |
-| **P2**   | User indicates active importance — the work is on their current focus list (e.g., "important", "this matters", "P2").                           |
-| **P3**   | **Default for all new tasks.** Use this whenever the user has not explicitly signaled urgency.                                                  |
+| Priority | When to assign                                                                                                        |
+| -------- | --------------------------------------------------------------------------------------------------------------------- |
+| **P0**   | User explicitly marks as critical/blocking (e.g., "this is blocking everything", "drop everything", "P0").            |
+| **P1**   | User explicitly marks as urgent (e.g., "urgent", "ASAP", "needs to ship today/this week", "P1").                      |
+| **P2**   | User indicates active importance — the work is on their current focus list (e.g., "important", "this matters", "P2"). |
+| **P3**   | **Default for all new tasks.** Use this whenever the user has not explicitly signaled urgency.                        |
 
 **Rules**:
 
@@ -484,6 +484,8 @@ Priority reflects _user intent_, not agent estimation. The planner has no privil
 - Never infer priority from task content (e.g., "this looks like a security thing, must be P1") — that's agent estimation, not user intent.
 - A `due` date alone is metadata, not a priority signal — record `due` and leave priority at P3 unless the user separately signals urgency.
 - When in doubt, **P3**. The user can elevate later in the dashboard or via explicit instruction.
+
+**Example**: User says "add a task to look into X" → P3. User says "this is urgent, X needs fixing" → P1.
 
 ## Handover
 
