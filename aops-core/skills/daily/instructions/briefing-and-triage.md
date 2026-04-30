@@ -33,11 +33,14 @@ for task_id in yesterday_task_ids:
     if result["task"]["status"] in ["done", "cancelled"]:
         # Task completed - EXCLUDE from carryover
         continue
-    # Task still active - include in carryover
+    if task_id in completed_identifiers:
+        # User ticked this done in the existing note (Step 0) - EXCLUDE from carryover
+        continue
+    # Task still active and not user-completed - include in carryover
     carryover_tasks.append(result["task"])
 ```
 
-**Why this matters**: Tasks archived between daily notes appear as "phantom overdue" items if copied blindly from yesterday's note. Always verify against the live task system.
+**Why this matters**: Tasks archived between daily notes appear as "phantom overdue" items if copied blindly from yesterday's note. Always verify against the live task system, and intersect with the `completed_identifiers` set from Step 0 to honour user tick-marks in the existing note.
 
 ### 1.2: Load Recent Activity
 

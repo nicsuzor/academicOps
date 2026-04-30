@@ -134,6 +134,18 @@ jobs:
               Use Grep/Glob to search, Write/Edit to create/modify files. Do NOT
               reference mcp__pkb__* tools. Changes sync to PKB consumers via git push.
             - Time budget: 25 minutes. Exit cleanly when time is up.
+            - **Sub-agent dispatch**: if you delegate any per-transcript work to
+              an `aops-core:pauli` sub-agent, pass the explicit `tools` list per
+              the sleep skill's "Sub-Agent Dispatch" section. On CI: `Bash,
+              Glob, Grep, Read, Write, Edit, Skill` (omit mcp__plugin_aops-core_pkb__*
+              — not available). `Edit` is restricted to transcript frontmatter
+              under `_sessions/` only. Without an explicit `tools` arg pauli sees
+              only `Read` and `Skill` and cannot mine transcripts.
+            - **Halt surfacing**: parse sub-agent returns for `HALT:`, `HALTED`,
+              `tool gap`, `tool not available`, or `cannot proceed: missing
+              tool`. Surface the count and missing tool names at the TOP of
+              `$GITHUB_STEP_SUMMARY`. Closes silent-failure mode tracked in
+              task-1460d6cf.
 
             ## CRITICAL Rules
 

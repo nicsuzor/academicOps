@@ -7,14 +7,20 @@ Polecat produces two artifacts per run:
    recording only ``{timestamp, task_id, agent, session_type, exit_code,
    success, stdout, stderr}``). This is what polecat advertises in its
    "Transcript saved: …" exit message.
-2. The **real Claude Code session transcript** at
-   ``$AOPS_SESSIONS/polecats/<task-id>/<project>/-workspace/<uuid>.jsonl``
-   (~hundreds of KB, containing per-turn tool calls, reads, edits — the only
-   artifact useful for post-mortem). This path is never surfaced by polecat.
+2. The **real session transcript** — shape depends on the CLI tool:
+
+   * Claude:  ``$AOPS_SESSIONS/polecats/<task-id>/<project>/-workspace/<uuid>.jsonl``
+     (~hundreds of KB, per-turn tool calls).
+   * Gemini:  ``$AOPS_SESSIONS/polecats/<task-id>/<project>/<hash>/chats/session-*.json``
+     (Gemini CLI's own session-log format, written under
+     ``$GEMINI_CLI_HOME/.gemini/tmp/<workdir-hash>/chats/`` inside the
+     container then ``docker cp``'d to the host).
+
+   Neither path is surfaced by polecat; the stub points to (Claude only) the
+   host transcript via ``real_transcript_path``.
 
 These tests assert that (2) lands on the host across the failure modes we
-care about operationally: success and max-turns exhaustion. See follow-ups
-for graceful shutdown, container-SIGKILL, and Gemini paths.
+care about operationally — for both Claude and Gemini dispatch paths.
 
 Gated identically to ``test_polecat_termination_e2e.py`` — will not run in
 the default suite:
@@ -25,8 +31,11 @@ the default suite:
 * ``POLECAT_E2E_PROJECT`` — project slug required, no silent default.
 * Docker + ``aops-crew`` image must be present.
 * ``PKB_MCP_URL`` must be set and reachable.
+* For the Gemini parameter only: ``GEMINI_API_KEY`` must be set so the
+  in-container Gemini CLI can authenticate (host ``~/.gemini/oauth_creds.json``
+  rarely round-trips into the container on WSL2 / Docker Desktop).
 
-Task:  task-5ddb64df.
+Tasks: task-5ddb64df (Claude), task-743da695 (Gemini variant).
 """
 
 from __future__ import annotations
@@ -126,6 +135,39 @@ def _assert_real_transcript(task_id: str, project: str, min_bytes: int) -> Path:
     return path
 
 
+def _assert_gemini_transcript(task_id: str, project: str, min_bytes: int) -> Path:
+    """Assert a Gemini ``session-*.json`` file landed on the host.
+
+    Gemini CLI writes session logs to
+    ``$GEMINI_CLI_HOME/.gemini/tmp/<sha256-of-workdir>/chats/session-*.json``
+    inside the container, and polecat ``docker cp``s the contents of
+    ``/home/worker/.gemini/tmp`` to ``run_session_dir`` on the host. The
+    final layout is therefore::
+
+        $AOPS_SESSIONS/polecats/<task_id>/<project>/<hash>/chats/session-*.json
+
+    On re-runs there may be multiple session files; take the newest by mtime.
+    """
+    run_dir = _sessions_base() / "polecats" / task_id / project
+    assert run_dir.is_dir(), f"Missing run dir: {run_dir}"
+    sessions = list(run_dir.rglob("session-*.json"))
+    assert sessions, (
+        f"No Gemini session-*.json found under {run_dir}. "
+        f"Existing tree: {[str(p) for p in run_dir.rglob('*') if p.is_file()][:20]}"
+    )
+    path = max(sessions, key=lambda p: p.stat().st_mtime)
+    size = path.stat().st_size
+    assert size >= min_bytes, (
+        f"Gemini transcript {path} is {size}B, expected ≥{min_bytes}B (probably truncated)"
+    )
+    # Smoke-parse: Gemini session files are a single JSON object/array, not
+    # JSONL. Parse the whole file rather than line-by-line.
+    with path.open() as f:
+        payload = json.load(f)
+    assert payload, f"Gemini transcript {path} parsed but is empty"
+    return path
+
+
 def _assert_stub(task_id: str, expect_real_path: bool = True) -> Path:
     """Assert the summary stub landed and optionally references the real transcript."""
     stub = _polecat_home() / "polecats" / f"{task_id}.jsonl"
@@ -194,12 +236,26 @@ def _create_test_task(title: str, body: str, project: str, tags: list[str]) -> t
     return task_id, client
 
 
-def _polecat_cmd(task_id: str, project: str) -> list[str]:
+def _polecat_cmd(task_id: str, project: str, cli_tool: str = "claude") -> list[str]:
+    """Build a ``polecat run`` invocation for the requested CLI tool.
+
+    ``cli_tool`` selects the dispatch flag: ``"claude"`` runs the default
+    Claude path; ``"gemini"`` adds ``-g`` so polecat dispatches via the
+    Gemini CLI inside the container.
+    """
+    if cli_tool not in ("claude", "gemini"):
+        raise ValueError(f"unsupported cli_tool: {cli_tool!r}")
+
     polecat_bin = shutil.which("polecat") or shutil.which("pc")
     if polecat_bin is None:
-        cli_path = REPO_ROOT / "polecat" / "cli.py"
-        return [sys.executable, str(cli_path), "run", "-t", task_id, "-p", project]
-    return [polecat_bin, "run", "-t", task_id, "-p", project]
+        base = [sys.executable, str(REPO_ROOT / "polecat" / "cli.py")]
+    else:
+        base = [polecat_bin]
+
+    cmd = [*base, "run", "-t", task_id, "-p", project]
+    if cli_tool == "gemini":
+        cmd.append("-g")
+    return cmd
 
 
 def _cleanup(proc: subprocess.Popen | None, client: object | None, task_id: str | None) -> None:
@@ -249,6 +305,25 @@ def _apply_gates(fn):
     return fn
 
 
+# Parametrisation across CLI tools. Per the "no per-mode duplicate tests"
+# memory rule we hoist the dispatch tool to a parameter rather than copying
+# each test. Gemini is gated separately on GEMINI_API_KEY because the host
+# ~/.gemini/oauth_creds.json doesn't reliably round-trip into the container
+# on WSL2 / Docker Desktop, so an API key is the only auth we can rely on
+# in CI-equivalent environments.
+_CLI_TOOL_PARAMS = [
+    pytest.param("claude", id="claude"),
+    pytest.param(
+        "gemini",
+        marks=pytest.mark.skipif(
+            not os.environ.get("GEMINI_API_KEY"),
+            reason="GEMINI_API_KEY not set — Gemini variant requires API-key auth",
+        ),
+        id="gemini",
+    ),
+]
+
+
 @pytest.fixture
 def shared_sessions_dir(monkeypatch: pytest.MonkeyPatch) -> Path:
     """Override conftest's AOPS_SESSIONS redirect with a Docker-visible location.
@@ -285,19 +360,25 @@ _TRIVIAL_INSTRUCTION = (
 
 
 @_apply_gates
-def test_real_transcript_persists_on_success(shared_sessions_dir: Path) -> None:
-    """A normal successful polecat run leaves a fat transcript on the host."""
+@pytest.mark.parametrize("cli_tool", _CLI_TOOL_PARAMS)
+def test_real_transcript_persists_on_success(shared_sessions_dir: Path, cli_tool: str) -> None:
+    """A normal successful polecat run leaves a fat transcript on the host.
+
+    Runs once per supported CLI tool (Claude, Gemini). The Gemini parameter
+    is skipped at collection time when ``GEMINI_API_KEY`` is unset — see
+    ``_CLI_TOOL_PARAMS``.
+    """
     project = _require_project()
     task_id, client = _create_test_task(
-        title="e2e: transcript-persistence success (task-5ddb64df)",
+        title=f"e2e: transcript-persistence success {cli_tool} (task-743da695)",
         body=_TRIVIAL_INSTRUCTION,
         project=project,
-        tags=["test", "e2e", "transcript-persistence"],
+        tags=["test", "e2e", "transcript-persistence", cli_tool],
     )
 
     proc: subprocess.Popen | None = None
     try:
-        cmd = _polecat_cmd(task_id, project)
+        cmd = _polecat_cmd(task_id, project, cli_tool=cli_tool)
         proc = subprocess.Popen(
             cmd,
             cwd=str(REPO_ROOT),
@@ -322,8 +403,15 @@ def test_real_transcript_persists_on_success(shared_sessions_dir: Path) -> None:
             proc.kill()
             pytest.fail(f"polecat subprocess did not exit 60s after PKB terminal for {task_id}")
 
-        _assert_real_transcript(task_id, project, min_bytes=10_000)
-        _assert_stub(task_id)
+        if cli_tool == "gemini":
+            # Gemini writes a single-JSON session file (not JSONL) and the
+            # stub doesn't yet record real_transcript_path for the gemini
+            # path — the docker-cp landing point is what we verify here.
+            _assert_gemini_transcript(task_id, project, min_bytes=1_000)
+            _assert_stub(task_id, expect_real_path=False)
+        else:
+            _assert_real_transcript(task_id, project, min_bytes=10_000)
+            _assert_stub(task_id)
     finally:
         _cleanup(proc, client, task_id)
 
@@ -410,7 +498,10 @@ _SIGTERM_INSTRUCTION = (
 
 
 @_apply_gates
-def test_real_transcript_persists_on_graceful_shutdown(shared_sessions_dir: Path) -> None:
+@pytest.mark.parametrize("cli_tool", _CLI_TOOL_PARAMS)
+def test_real_transcript_persists_on_graceful_shutdown(
+    shared_sessions_dir: Path, cli_tool: str
+) -> None:
     """A polecat run interrupted by SIGTERM still leaves a real transcript on the host.
 
     Verifies the SIGTERM path: polecat signal handler → ``docker stop`` →
@@ -418,18 +509,24 @@ def test_real_transcript_persists_on_graceful_shutdown(shared_sessions_dir: Path
     a SIGTERM handler in ``pc run``, Python's default action terminates the
     process before extraction `finally` blocks fire and the transcript is
     lost. See task-11de7b21.
+
+    Runs once per supported CLI tool. The polecat-side SIGTERM handler is
+    CLI-tool-agnostic — it converts SIGTERM to KeyboardInterrupt and the
+    same ``finally`` blocks fire for both extract paths
+    (``/home/worker/.claude/projects`` and ``/home/worker/.gemini/tmp``),
+    so the assertion shape is symmetric.
     """
     project = _require_project()
     task_id, client = _create_test_task(
-        title="e2e: transcript-persistence sigterm (task-11de7b21)",
+        title=f"e2e: transcript-persistence sigterm {cli_tool} (task-743da695)",
         body=_SIGTERM_INSTRUCTION,
         project=project,
-        tags=["test", "e2e", "transcript-persistence", "sigterm"],
+        tags=["test", "e2e", "transcript-persistence", "sigterm", cli_tool],
     )
 
     proc: subprocess.Popen | None = None
     try:
-        cmd = _polecat_cmd(task_id, project)
+        cmd = _polecat_cmd(task_id, project, cli_tool=cli_tool)
         # NOTE: do NOT pass start_new_session=True — we want SIGTERM to hit
         # only the polecat process so its handler runs, rather than blasting
         # the whole process group (which would kill docker children before
@@ -465,6 +562,13 @@ def test_real_transcript_persists_on_graceful_shutdown(shared_sessions_dir: Path
         # If proc already exited (unlikely with this prompt), still verify
         # transcript landed.
 
-        _assert_real_transcript(task_id, project, min_bytes=10_000)
+        if cli_tool == "gemini":
+            # Gemini's first session-*.json write happens after a few
+            # turns; 45s of search-and-grep against tests/ is normally
+            # enough. Min bytes is lower than Claude's because Gemini's
+            # session log is denser per turn.
+            _assert_gemini_transcript(task_id, project, min_bytes=1_000)
+        else:
+            _assert_real_transcript(task_id, project, min_bytes=10_000)
     finally:
         _cleanup(proc, client, task_id)

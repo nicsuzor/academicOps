@@ -72,9 +72,9 @@ def temp_polecat_home(tmp_path):
     import yaml
 
     home = tmp_path / "polecat_home"
-    home.mkdir()
+    home.mkdir(exist_ok=True)
     sessions = tmp_path / "sessions"
-    sessions.mkdir()
+    sessions.mkdir(exist_ok=True)
     (sessions / "projects.yaml").write_text(yaml.dump({"projects": {}}))
     return home
 
