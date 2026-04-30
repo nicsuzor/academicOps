@@ -48,7 +48,9 @@ def finish_cmd(ctx, no_push, do_nuke, force, force_done, project):
     # cycle that would result from a top-level ``from polecat.cli import ...``
     # (cli.py imports finalize at module load to register the command).
     from polecat.cli import (
+        TRANSCRIPT_TASK_BODY_HEADER,
         _check_gh_installed,
+        _format_transcript_task_body_section,
         _generate_pr_body,
         _read_latest_real_transcript_path,
     )
@@ -455,9 +457,8 @@ def finish_cmd(ctx, no_push, do_nuke, force, force_done, project):
     #   2. Pass it to _generate_pr_body so reviewers see it on the PR.
     transcript_path = _read_latest_real_transcript_path(task_id, manager.home_dir)
     if transcript_path:
-        marker = "## 📝 Polecat run transcript"
-        if marker not in (task.body or ""):
-            task.body = (task.body or "") + (f"\n\n{marker}\n\n`{transcript_path}`\n")
+        if TRANSCRIPT_TASK_BODY_HEADER not in (task.body or ""):
+            task.body = (task.body or "") + _format_transcript_task_body_section(transcript_path)
             try:
                 if manager.storage is not None:
                     manager.storage.save_task(task)
