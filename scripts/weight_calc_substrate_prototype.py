@@ -167,8 +167,7 @@ def apply_teleport(
     d: float = TELEPORT_DAMPING,
 ) -> dict[str, float]:
     """Option 2: uniform teleport. final = computed + (1-d) * mean_active_weight."""
-    active = [w for tid, w in weights.items()
-              if tasks[tid].get("status") not in COMPLETED_STATUSES]
+    active = [w for tid, w in weights.items() if tasks[tid].get("status") not in COMPLETED_STATUSES]
     if not active:
         return weights
     mean_w = sum(active) / len(active)
@@ -193,9 +192,7 @@ def main(argv: list[str]) -> int:
         print(f"no tasks loaded from {tasks_dir}", file=sys.stderr)
         return 1
 
-    active_count = sum(
-        1 for t in tasks.values() if t.get("status") not in COMPLETED_STATUSES
-    )
+    active_count = sum(1 for t in tasks.values() if t.get("status") not in COMPLETED_STATUSES)
     print(f"Loaded {len(tasks)} tasks from {tasks_dir} ({active_count} active)")
     print(f"Substrate candidates: {sorted(SUBSTRATE_TASK_IDS)}")
     print()
