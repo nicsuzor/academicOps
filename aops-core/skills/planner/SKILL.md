@@ -342,6 +342,36 @@ User prompt
 7. **Decomposition requires AC** — never create subtasks without clear acceptance criteria; keep steps in parent body instead
 8. **No parallel tracking** — never put `- [ ]` checklists in task bodies when items are tracked as subtasks; after decomposition, replace the body checklist with a reference to children
 
+## Decision Surfacing Heuristic
+
+**The user's time is the scarcest resource in decomposition.** Surfacing pseudo-decisions trains the user to rubber-stamp and erodes the signal of genuine asks. Before presenting any decision to the user, classify it:
+
+| Category    | Criterion                                                                                                                                               | Action                                                                                              |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| **DECIDE**  | One option is clearly correct given the framework principles, prior decisions, or domain context. The alternatives are bad, not just worse.             | Make the call. Note your reasoning briefly in the task body. Do not surface.                        |
+| **DEFER**   | The decision can't be made well yet because it depends on data the system doesn't have (first-cycle observations, runtime evidence, downstream choice). | Mark explicitly as "deferred until X" in the task body. Re-evaluate when X arrives. Do not surface. |
+| **SURFACE** | Genuine taste, scope, naming, values, or trade-off where the user's preference is the deciding input.                                                   | Present options + recommendation + reasoning. Ask.                                                  |
+
+**Test before surfacing**: write the decision as a question. If the question can be answered by re-reading VISION.md, the axioms, or this skill's other sections, it's a DECIDE. If the question can only be answered by running the thing first, it's a DEFER. Only what's left is a SURFACE.
+
+**Worked example** (real, 2026-04-30, issue-sweep epic decomposition):
+
+| Decision                                                             | Classification | Why                                                                                                                                                  |
+| -------------------------------------------------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Use count-based or label-based stopping condition?                   | **DECIDE**     | Count-based has clear failure modes (feature-requests legitimately stay open; closing-rate ≠ being deliberate). Alternative was bad, not just worse. |
+| Process by criticality+age, by-newest, or label-driven?              | **DECIDE**     | Best practice is obvious: critical-first ordering + label-driven exclusion. The other options ignore documented framework patterns.                  |
+| Manual / `/loop` / cron drivability?                                 | **DEFER**      | Drivability needs first-run observations to choose. Note "decide after 3–5 manual cycles" in task body.                                              |
+| Path of new SSoT file (`/issue-sweep` command vs skill instruction)? | **SURFACE**    | Genuine taste: top-level command surface, naming convention, where new things should land in the framework. User's call.                             |
+
+**Anti-patterns**:
+
+- Bundling DECIDE-class items with SURFACE-class items into one "design conversation" — trains the user to rubber-stamp.
+- Asking "do you prefer X or Y" when X is documented best practice and Y is a known failure mode.
+- Asking for input on something that requires runtime evidence before it's answerable — defer instead, or scope a spike.
+- Hiding behind "I want to be careful": if every choice is surfaced, the user is doing the planner's job. The planner adds value by absorbing decisions the framework already answers.
+
+**When in doubt about whether to surface**: name the decision in one sentence and check it against this heuristic. If still unsure between DECIDE and SURFACE, prefer DECIDE — record your reasoning in the task body so the user can override on review. Surfacing should be the deliberate exception, not the default.
+
 ## Task Assignment Rules
 
 - **Default assignee**: Set to `polecat` or leave unassigned.
