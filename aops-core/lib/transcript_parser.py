@@ -301,7 +301,31 @@ def parse_framework_reflection(text: str) -> dict[str, Any] | None:
     if not result:
         result = _parse_unstructured_reflection(reflection_text) or {}
 
-    return result if result else None
+    if not result:
+        return None
+
+    # task-5a54f813: enrich the reflection with the supplementary blocks the
+    # /dump quality bar requires. These may live inside the reflection body
+    # or in the surrounding assistant message; we look in `text` (full
+    # message) so blocks placed adjacent to the reflection still get
+    # captured. See aops-core/skills/end_session/transcript-metadata-schema.md.
+    outputs = parse_output_section(text)
+    tasks_worked = parse_tasks_worked_section(text)
+    references = parse_identifier_precis_pairs(reflection_text)
+    quality_warnings = assess_reflection_quality(reflection_text, outputs, tasks_worked, references)
+
+    if outputs is not None:
+        result["outputs"] = outputs.get("outputs", [])
+        result["output_explicit_none"] = outputs.get("explicit_none", False)
+        result["output_none_reason"] = outputs.get("none_reason")
+    if tasks_worked is not None:
+        result["tasks_worked"] = tasks_worked
+    if references:
+        result["references"] = references
+    if quality_warnings:
+        result["quality_warnings"] = quality_warnings
+
+    return result
 
 
 def parse_session_handover(text: str) -> dict[str, Any] | None:
@@ -360,6 +384,190 @@ def parse_session_handover(text: str) -> dict[str, Any] | None:
         "handover": True,  # Marker for handover-originated insights
     }
     return reflection
+
+
+_SECTION_END_RE = r"(?=\n#{1,4}\s|\n---|\Z)"
+
+# Identifier shapes recognised by parse_identifier_precis_pairs.
+_IDENTIFIER_PATTERNS = [
+    (r"\btask-[0-9a-f]{6,}", "task"),
+    (r"\bPR\s*#\d+", "pr"),
+    (r"\bissue\s*#\d+", "issue"),
+    (r"\b[\w.-]+/[\w.-]+#\d+", "pr_or_issue"),
+    (r"\bcommit\s+[0-9a-f]{7,}", "commit"),
+]
+
+
+def parse_output_section(text: str) -> dict[str, Any] | None:
+    """Parse a `## Output` (or `## Outputs`) section.
+
+    Distinguishes "no artefact declared" (returns None — caller emits a
+    missing-field warning) from "explicit none" (Output: none — <reason>,
+    explicit_none=True). Extracts every URL into structured outputs.
+    """
+    pattern = rf"#{{2,4}}\s*Outputs?[^\S\n]*\n(.*?){_SECTION_END_RE}"
+    match = re.search(pattern, text, re.DOTALL | re.IGNORECASE)
+    if not match:
+        bare = re.search(r"(?:^|\n)Outputs?:\s*none\b[^\n]*", text, re.IGNORECASE)
+        if bare:
+            reason_match = re.search(r"none\s*[—\-:]\s*(.+)", bare.group(0), re.IGNORECASE)
+            return {
+                "outputs": [],
+                "explicit_none": True,
+                "none_reason": reason_match.group(1).strip() if reason_match else None,
+            }
+        return None
+
+    body = match.group(1).strip()
+    none_match = re.match(r"(?:Output:\s*)?none\b\s*[—\-:]?\s*(.*)", body, re.IGNORECASE)
+    if none_match and not re.search(r"https?://", body):
+        return {
+            "outputs": [],
+            "explicit_none": True,
+            "none_reason": none_match.group(1).strip() or None,
+        }
+
+    outputs: list[dict[str, Any]] = []
+    for url_match in re.finditer(r"https?://[^\s>)\]]+", body):
+        url = url_match.group(0).rstrip(".,;)")
+        outputs.append({"kind": _classify_output_url(url), "url": url})
+
+    return {"outputs": outputs, "explicit_none": False, "none_reason": None}
+
+
+def _classify_output_url(url: str) -> str:
+    if "/pull/" in url:
+        return "pr"
+    if "/issues/" in url:
+        return "issue"
+    if "/commit/" in url:
+        return "commit"
+    if "github.com" in url:
+        return "github"
+    return "doc"
+
+
+def parse_tasks_worked_section(text: str) -> list[dict[str, Any]] | None:
+    """Parse `## Tasks worked` block into [{id, precis, action, action_raw}]."""
+    pattern = rf"#{{2,4}}\s*Tasks worked[^\S\n]*\n(.*?){_SECTION_END_RE}"
+    match = re.search(pattern, text, re.DOTALL | re.IGNORECASE)
+    if not match:
+        return None
+
+    body = match.group(1)
+    items: list[dict[str, Any]] = []
+    bullet_re = re.compile(
+        r"^[\s]*[-*]\s*"
+        r"(?P<id>[\w./#-]+)"
+        r"(?:\s*\((?P<precis>[^)]+)\))?"
+        r"(?:\s*[—\-:]\s*(?P<action>.+))?$",
+        re.MULTILINE,
+    )
+    for m in bullet_re.finditer(body):
+        ident = m.group("id").strip()
+        precis = (m.group("precis") or "").strip() or None
+        action_raw = (m.group("action") or "").strip() or None
+        items.append(
+            {
+                "id": ident,
+                "precis": precis,
+                "action": _normalize_action(action_raw) if action_raw else None,
+                "action_raw": action_raw,
+            }
+        )
+    return items
+
+
+# Priority order: most-specific verbs first so "updated, added schema" maps
+# to "updated" rather than "created".
+_ACTION_KEYWORD_GROUPS = [
+    ("completed", ["completed", "complete", "done", "merged", "shipped"]),
+    ("cancelled", ["cancelled", "canceled", "closed", "rejected"]),
+    ("updated", ["updated", "update", "modified", "edited"]),
+    ("created", ["created", "create", "added", "new"]),
+    ("referenced", ["referenced", "noted"]),
+]
+
+
+def _normalize_action(action_text: str) -> str:
+    lower = action_text.lower()
+    for canonical, keywords in _ACTION_KEYWORD_GROUPS:
+        for keyword in keywords:
+            if re.search(rf"\b{keyword}\b", lower):
+                return canonical
+    return "referenced"
+
+
+def parse_identifier_precis_pairs(text: str) -> list[dict[str, Any]]:
+    """Extract every identifier (+optional precis) reference from text."""
+    found: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    for pattern, kind in _IDENTIFIER_PATTERNS:
+        full_re = re.compile(rf"({pattern})\s*(?:\(([^)]+)\))?", re.IGNORECASE)
+        for m in full_re.finditer(text):
+            ident = m.group(1).strip()
+            precis = (m.group(2) or "").strip() or None
+            key = (kind, ident.lower())
+            if key in seen:
+                continue
+            seen.add(key)
+            found.append({"type": kind, "id": ident, "precis": precis})
+    return found
+
+
+def assess_reflection_quality(
+    reflection_text: str,
+    outputs: dict[str, Any] | None,
+    tasks_worked: list[dict[str, Any]] | None,
+    references: list[dict[str, Any]],
+) -> list[str]:
+    """Return non-fatal quality warnings for a parsed reflection.
+
+    See aops-core/skills/end_session/transcript-metadata-schema.md for the warning codes.
+    """
+    warnings: list[str] = []
+
+    if outputs is None:
+        warnings.append(
+            "missing-output-section: no `## Output` block found "
+            "(use `Output: none — <reason>` if no artefact was produced)"
+        )
+    elif not outputs.get("explicit_none") and not outputs.get("outputs"):
+        warnings.append(
+            "empty-output-section: `## Output` block contained no URLs and "
+            "did not declare `none — <reason>`"
+        )
+
+    if tasks_worked is None:
+        warnings.append(
+            "missing-tasks-worked: no `## Tasks worked` block found "
+            "(required source-of-truth list of session task activity)"
+        )
+    elif not tasks_worked:
+        warnings.append("empty-tasks-worked: `## Tasks worked` block was empty")
+
+    for ref in references:
+        if not ref.get("precis"):
+            warnings.append(
+                f"bare-identifier: {ref['id']} appears without a parenthetical "
+                "precis — every reference needs <60-char description"
+            )
+
+    suggestion_signals = [
+        r"\bnew\s+(tool|command|skill|agent|feature)\b",
+        r"\bwe should (build|add|create)\b",
+        r"\b(propose|suggest)(ing)? (a|an)? new\b",
+    ]
+    for pat in suggestion_signals:
+        if re.search(pat, reflection_text, re.IGNORECASE):
+            warnings.append(
+                "feature-suggestion: reflection appears to propose a new "
+                "tool/feature; framework reflections must report concrete "
+                "friction and bug reports, not feature work"
+            )
+            break
+
+    return warnings
 
 
 def _infer_outcome(text: str) -> str:
@@ -653,6 +861,19 @@ def reflection_to_insights(
         # Token usage metrics (optional)
         "token_metrics": token_metrics,
     }
+
+    # task-5a54f813 quality-bar fields. See
+    # aops-core/skills/end_session/transcript-metadata-schema.md.
+    if "outputs" in reflection:
+        result["outputs"] = reflection.get("outputs", [])
+        result["output_explicit_none"] = reflection.get("output_explicit_none", False)
+        result["output_none_reason"] = reflection.get("output_none_reason")
+    if "tasks_worked" in reflection:
+        result["tasks_worked"] = reflection.get("tasks_worked", [])
+    if "references" in reflection:
+        result["references"] = reflection.get("references", [])
+    if reflection.get("quality_warnings"):
+        result["quality_warnings"] = reflection["quality_warnings"]
 
     # Timeline events for path reconstruction (optional)
     if timeline_events:
