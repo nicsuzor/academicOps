@@ -184,7 +184,22 @@ The daily note is a shared document between the agent and the user:
 
 The skill gathers information from multiple sources and composes the note. Independent steps run concurrently.
 
-1. **Create or open** the note (verify carryover tasks against live PKB state)
+0. **Read existing note for the work date FIRST** — before regenerating any agenda section (Carryover, Status deadline list, What Needs Attention), parse the on-disk note (if it exists) and extract user completion signals:
+
+   - **Ticked checkboxes** (`- [x]`) anywhere in the note. Capture the item identifier on that line: task ID (`[task-xxx]` or `[ns-xxx]`), PR number (`#NNN`), or — when no structured ID exists — the inline subject keyword (e.g. an email subject, PR title fragment).
+   - **Inline completion annotations** the user has typed beside an item: `done`, `~~done~~`, `(done)`, `[done]`, `✓`, `resolved`, `replied`, or strikethrough (`~~…~~`) wrapping the line.
+   - Build a `completed_identifiers` set from those signals before any regeneration begins.
+
+   **Apply the set during regeneration:** for every candidate Carryover, deadline, inbox, capture, or workflow item, check whether its identifier (task ID, PR number, or normalised subject keyword) is in `completed_identifiers`. If it is:
+
+   - **Exclude it** from the regenerated section, OR
+   - Render it once with strikethrough (`~~…~~`) and the existing `[x]` preserved — never strip the tick, never re-elevate as still-pending, never re-promote to "overdue".
+
+   This is how the "Section Ownership and Bidirectional Sync" rule (§ above) is honoured in practice: a tick is a user edit, even on agent-emitted content. Re-elevating ticked items as still-pending is a correctness bug, not a styling choice.
+
+   **Failure case to guard against** (GH #690): two OSB-vote tasks ticked done in yesterday's Carryover were re-elevated as overdue because regeneration read PKB+email but ignored the existing note. The fix is exactly this step: read the note, parse ticks, suppress.
+
+1. **Create or open** the note (verify carryover tasks against live PKB state, intersected with the `completed_identifiers` set from step 0)
 
 **Steps 2–3 — run in parallel** (independent):
 
