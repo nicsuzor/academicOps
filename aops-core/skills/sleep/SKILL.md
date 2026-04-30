@@ -64,6 +64,53 @@ gh workflow run sleep-cycle -R nicsuzor/brain
 gh workflow run sleep-cycle -R nicsuzor/brain -f focus="staleness only"
 ```
 
+## Pacing & Mode
+
+The skill runs in two modes with different output cadences. **Detect the mode at the start of every cycle** and pick the matching output strategy. This is the fix for #712 — under `/loop` short intervals the per-cycle PR-and-QA gate is too heavy and Phases 2/4 get skipped, defeating the purpose of the cycle.
+
+### Mode detection
+
+Pick the first signal that matches:
+
+1. **Explicit flag**: `SLEEP_MODE=short-loop` or `SLEEP_MODE=full-session` in the environment overrides everything.
+2. **Loop interval**: if `LOOP_INTERVAL_MINUTES` (or `CLAUDE_LOOP_INTERVAL_MINUTES`) is set and `<= 30`, mode is `short-loop`.
+3. **Loop context**: if the invocation prompt or transcript shows the skill was launched by `/loop` (e.g., recurring `/sleep` invocations within the same session) and prior cycles in this session exist, treat as `short-loop`.
+4. **Default**: `full-session` (manual `/sleep` and GHA cron).
+
+Log the detected mode and the signal that determined it in the cycle summary.
+
+### Short-loop mode (interval <= 30m, in-session)
+
+- **Always run Phases 2 and 4.** They are the highest-value work; never skip them because the output gate feels heavy. If the gate is the obstacle, change the gate (below), not the work.
+- **Persistent branch per day**: use `sleep/consolidation-YYYY-MM-DD` (no `-HHMM` suffix). Reuse it across every cycle in the day. Create on first cycle, fast-forward / rebase from main on later cycles.
+- **Accumulate commits**: each cycle adds commits to the same branch — one commit per phase that produced output is fine.
+- **No PR per cycle.** Open the PR on the _first_ cycle of the day if it doesn't exist; subsequent cycles push to the same branch and the PR updates automatically.
+- **QA runs once per day** (or on demand), not per cycle. The PR description should note "short-loop accumulation; QA on close" so reviewers know not to expect a per-cycle gate.
+- **Time budget per cycle**: keep Phase 4 to ~5 minutes and Phase 2 to ~5 minutes when interval is 20m or less. Quality over coverage — better one well-sourced note than five superficial ones.
+
+### Full-session mode (manual `/sleep`, GHA cron)
+
+Existing behaviour, unchanged:
+
+- Branch: `sleep/consolidation-YYYY-MM-DD-HHMM` (timestamped, fresh per invocation).
+- One PR per cycle.
+- `/qa` review per PR before merge.
+- Time budgets per phase as documented in each phase below.
+
+### Brain repo auto-merge
+
+On the **brain repo only** (`$ACA_DATA`, currently `nicsuzor/brain`), and ONLY after Phase 10 self-check passes, enable auto-merge on the consolidation PR:
+
+```bash
+gh pr merge --auto --squash -R nicsuzor/brain <pr-number>
+```
+
+The branch acts as recovery/audit trail, not a blocking gate — brain consolidation is low-blast-radius (knowledge notes, not code) and the per-cycle review backlog is the bigger risk. Per #448 graduated-trust rules:
+
+- Auto-merge is enabled ONLY on the brain repo. Never on `academicOps` or any other repo.
+- Auto-merge requires Phase 10 self-check to have **passed** (no failures logged). On any Phase 10 failure, do NOT enable auto-merge — leave the PR open for human review.
+- This applies in both modes. In short-loop mode this means the daily branch auto-merges once it's green; in full-session mode each per-cycle PR auto-merges once green.
+
 ## Phases
 
 The agent works through these in order, using judgment about what needs attention:
@@ -363,9 +410,11 @@ This closes the loop: consolidation → QA review → quality findings → proce
 
 When running via `/loop` or `/active-loop`, the sleep cycle follows the active-loop protocol:
 
-1. Read the DRAFT PR body for prior cycle learnings
-2. Use the "Next" field from the last cycle to inform this cycle's Phase 9 strategy
-3. After Phase 11, update the PR body with the cycle log entry
+1. Detect mode per "Pacing & Mode" — `/loop` invocations with interval <= 30m are `short-loop`.
+2. Read the DRAFT PR body for prior cycle learnings.
+3. Use the "Next" field from the last cycle to inform this cycle's Phase 9 strategy.
+4. After Phase 11, update the PR body with the cycle log entry.
+5. In short-loop mode, push to the persistent daily branch and let the existing PR auto-update — do NOT open a new PR per cycle. Phases 2 and 4 must run every cycle (#712).
 
 ## Design Principles
 
@@ -383,10 +432,12 @@ Knowledge creation (Phases 2, 4) produces output of uncertain quality. This outp
 ### Process
 
 1. Mechanical work (Phases 0, 1, 3, 5, 6, 7, 8, 9, 10, 11) commits directly to main — deterministic and verifiable.
-2. Knowledge work (Phases 2, 4) commits to a branch: `sleep/consolidation-YYYY-MM-DD-HHMM`
-3. At the end of the cycle, create a PR from the branch against main.
-4. The `/qa` skill reviews the PR for fitness-for-purpose (triggered by PR creation or manual invocation).
-5. Merge only after QA passes. During supervised phase, human reviews the QA decision.
+2. Knowledge work (Phases 2, 4) commits to a branch — naming and PR cadence depend on the mode (see "Pacing & Mode" above):
+   - **Full-session**: fresh branch `sleep/consolidation-YYYY-MM-DD-HHMM` per cycle, one PR per cycle.
+   - **Short-loop**: persistent daily branch `sleep/consolidation-YYYY-MM-DD`, one PR per day that accumulates commits from every cycle.
+3. Create the PR against main on first use of the branch; subsequent short-loop cycles push to the existing PR.
+4. The `/qa` skill reviews the PR for fitness-for-purpose. In short-loop mode, QA runs once per day (or on demand) on the accumulated branch, not per cycle.
+5. Merge only after QA passes. On the brain repo, enable `gh pr merge --auto --squash` after Phase 10 passes (see "Brain repo auto-merge" above). During supervised phase on other repos, human reviews the QA decision.
 
 ### Graduation Path
 
