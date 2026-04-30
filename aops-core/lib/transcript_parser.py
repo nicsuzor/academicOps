@@ -2323,6 +2323,8 @@ class SessionProcessor:
                     "tool_input": entry.tool_input,
                     "agent_id": entry.agent_id,
                     "hook_context_injection": entry.hook_context_injection,
+                    "hook_verdict": entry.hook_verdict,
+                    "hook_system_message": entry.hook_system_message,
                     "start_time": entry.timestamp,
                     "end_time": entry.timestamp,
                 }
@@ -2926,10 +2928,24 @@ class SessionProcessor:
                 tool_name = turn.get("tool_name")
                 agent_id = turn.get("agent_id")
                 hook_context_injection = turn.get("hook_context_injection")
+                hook_verdict = turn.get("hook_verdict")
+                hook_system_message = turn.get("hook_system_message")
+                # "allow" is the default verdict — only surface non-default ones
+                noteworthy_verdict = (
+                    hook_verdict if hook_verdict and hook_verdict != "allow" else None
+                )
 
                 is_error = exit_code is not None and exit_code != 0
-                has_content = content or skills_matched or files_loaded or hook_context_injection
-                if not full_mode and not has_content and not is_error:
+                is_blocking_verdict = hook_verdict in ("deny", "ask")
+                has_content = (
+                    content
+                    or skills_matched
+                    or files_loaded
+                    or hook_context_injection
+                    or noteworthy_verdict
+                    or hook_system_message
+                )
+                if not full_mode and not has_content and not is_error and not is_blocking_verdict:
                     continue
 
                 if exit_code is None:
@@ -2953,8 +2969,19 @@ class SessionProcessor:
                     and not skills_matched
                     and not files_loaded
                     and not hook_context_injection
+                    and not noteworthy_verdict
+                    and not hook_system_message
                 ):
                     markdown += "  - (no output)\n"
+                if noteworthy_verdict:
+                    markdown += f"  - Verdict: `{noteworthy_verdict}`\n"
+                if hook_system_message:
+                    msg_preview = (
+                        hook_system_message[:200] + "..."
+                        if len(hook_system_message) > 200
+                        else hook_system_message
+                    )
+                    markdown += f"  - System message: {msg_preview}\n"
                 if skills_matched:
                     skills_str = ", ".join(f"`{s}`" for s in skills_matched)
                     markdown += f"  - Skills matched: {skills_str}\n"
@@ -3085,10 +3112,28 @@ class SessionProcessor:
                         tool_name = hook.get("tool_name")
                         agent_id = hook.get("agent_id")
 
-                        has_useful_content = content or skills_matched or files_loaded or tool_input
+                        hook_verdict = hook.get("hook_verdict")
+                        hook_system_message = hook.get("hook_system_message")
+                        noteworthy_verdict = (
+                            hook_verdict if hook_verdict and hook_verdict != "allow" else None
+                        )
+                        has_useful_content = (
+                            content
+                            or skills_matched
+                            or files_loaded
+                            or tool_input
+                            or noteworthy_verdict
+                            or hook_system_message
+                        )
                         is_error = exit_code is not None and exit_code != 0
+                        is_blocking_verdict = hook_verdict in ("deny", "ask")
 
-                        if not full_mode and not has_useful_content and not is_error:
+                        if (
+                            not full_mode
+                            and not has_useful_content
+                            and not is_error
+                            and not is_blocking_verdict
+                        ):
                             continue
 
                         checkmark = (
@@ -3104,6 +3149,16 @@ class SessionProcessor:
                         hook_label = f"{event_name}{hook_detail}"
 
                         markdown += f"### Hook: {hook_label}{checkmark}\n\n"
+
+                        if noteworthy_verdict:
+                            markdown += f"**Verdict**: `{noteworthy_verdict}`\n\n"
+                        if hook_system_message:
+                            msg_display = (
+                                hook_system_message
+                                if full_mode or len(hook_system_message) <= 300
+                                else hook_system_message[:300] + "..."
+                            )
+                            markdown += f"**System message**: {msg_display}\n\n"
 
                         if tool_input and tool_name:
                             tool_summary = _summarize_tool_input(tool_name, tool_input)
