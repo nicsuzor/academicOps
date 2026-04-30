@@ -283,6 +283,6 @@ DO NOT treat an artifact you were asked to **produce** as immutable, and DO NOT 
 
 1. AXIOMS.md — read once per session as context.
 2. RULES.md — consulted whenever the classifier or the agent itself needs a specific prohibition.
-3. enforcement-map.md — for the reviewer/auditor view of which mechanism enforces which rule and at what tier.
+3. `.agents/ENFORCEMENT-MAP.md` — for the reviewer/auditor view of which mechanism enforces which rule and at what tier.
 
 When this file is updated, mirror the change into `templates/aops-core.plugin.json` `autoMode` (and the polecat default settings). `RULES.md` is canonical; the `plugin.json` manifest used by clients is a build artifact.
