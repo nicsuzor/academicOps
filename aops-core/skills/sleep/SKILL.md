@@ -271,7 +271,7 @@ When a strategy is selected, the agent should execute these specific actions:
 
 **Split oversized containers**: If an epic has >20 direct children, split it. Read the children, group by theme, create sub-epics, and `bulk_reparent` children into the new sub-epics. An epic with 40 tasks about "infrastructure" might split into "CI/CD", "monitoring", and "deployment" sub-epics.
 
-**Find misparented tasks**: Use `pkb_orphans` to find wrong-type-parent orphans (e.g., a task parented directly to a project instead of an epic). For each, find an appropriate epic under the same project and reparent. If no suitable epic exists, create one.
+**Find misparented tasks**: Use `pkb_orphans` to find wrong-type-parent orphans (e.g., a task parented directly to a project instead of an epic). For each, find an appropriate epic under the same project (use `list_tasks(type="epic", project=<project-id>)` to enumerate candidates rather than walking the parent chain) and reparent. If no suitable epic exists, create one.
 
 **Nest loose tasks**: For `flat_tasks` (tasks with no parent), read the task title and body, search for related epics/projects via `search`, and `bulk_reparent` to the best match. If no match exists, check if 3+ loose tasks share a theme — if so, create an epic to contain them.
 

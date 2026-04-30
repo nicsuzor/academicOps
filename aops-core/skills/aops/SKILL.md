@@ -58,7 +58,7 @@ When updating the PKB state document:
 - `mcp__plugin_aops-core_pkb__get_document` — load specific documents
 - `mcp__plugin_aops-core_pkb__pkb_context` — get graph overview
 - `mcp__plugin_aops-core_pkb__create` / `mcp__plugin_aops-core_pkb__append` — persist new knowledge
-- `mcp__plugin_aops-core_pkb__list_tasks` / `mcp__plugin_aops-core_pkb__task_search` — find active work
+- `mcp__plugin_aops-core_pkb__list_tasks` / `mcp__plugin_aops-core_pkb__task_search` — find active work. Pass `project=<project-id>` to scope to a single project; never infer project membership from ID prefixes or by walking parent chains.
 
 ---
 

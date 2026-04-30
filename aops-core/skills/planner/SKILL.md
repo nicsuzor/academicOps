@@ -171,7 +171,7 @@ Break validated epics into structured task trees.
 - Every epic must include at least one QA/review task (verification).
 - Tasks must be self-contained for handoff (P#120) — include context, decisions, constraints, data findings.
 - **Map unknowns**: Before planning execution, classify unknowns as researchable, internal, or probeable (Step 3). Build appropriate evidence-gathering or spike tasks. High uncertainty on the parent signals a need for more probeable tasks.
-- **Cross-cutting impact & prerequisites**: Every decomposition must check what other projects depend on what's changing AND what must be true before the change is useful (Step 4). Create tasks in affected projects, not just under this epic.
+- **Cross-cutting impact & prerequisites**: Every decomposition must check what other projects depend on what's changing AND what must be true before the change is useful (Step 4). Create tasks in affected projects, not just under this epic. Use `list_tasks(project=<project-id>)` to scope per-project queries — do not infer project membership from ID prefixes or by walking parent chains.
 
 **Workflow files**: `aops-core/skills/planner/workflows/decompose.md`
 
@@ -284,13 +284,13 @@ These are the interactive counterpart to sleep Phase 4. In maintain mode, the hu
 
 **Densify strategies** (rotate across sessions when densifying):
 
-| Strategy               | Targets                                          |
-| ---------------------- | ------------------------------------------------ |
-| `criticality-focus`    | High-criticality tasks with zero/few edges       |
-| `high-priority-sparse` | P0/P1 ready tasks with zero edges                |
-| `project-cluster`      | Ready tasks within one project                   |
-| `neighbourhood-expand` | Neighbours of high-weight/high-criticality tasks |
-| `cross-project-bridge` | Tasks sharing tags across projects               |
+| Strategy               | Targets                                                                     |
+| ---------------------- | --------------------------------------------------------------------------- |
+| `criticality-focus`    | High-criticality tasks with zero/few edges                                  |
+| `high-priority-sparse` | P0/P1 ready tasks with zero edges                                           |
+| `project-cluster`      | Ready tasks within one project (`list_tasks(status="ready", project=<id>)`) |
+| `neighbourhood-expand` | Neighbours of high-weight/high-criticality tasks                            |
+| `cross-project-bridge` | Tasks sharing tags across projects                                          |
 
 **Densify workflow**: Select candidates (5 min) → Enrich each (15 min) → Present proposals → Apply approved → Verify `downstream_weight` and graph health improved
 
