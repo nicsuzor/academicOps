@@ -13,7 +13,6 @@ Canonical locations (allowed adds):
 - aops-core/hooks/**/*.md            hook templates
 - aops-core/policies/**/*.md         policy files
 - aops-core/.claude-plugin/**/*.md   plugin metadata
-- specs/**/*.md                      specifications
 - tests/**/*.md                      test fixtures + evidentiary data
 - templates/**/*.md                  scaffold templates
 - .agents/**/*.md                    project-local rules + status
@@ -41,7 +40,6 @@ ALLOWED_PATTERNS = [
     "aops-core/hooks/**/*.md",
     "aops-core/policies/**/*.md",
     "aops-core/.claude-plugin/**/*.md",
-    "specs/**/*.md",
     "tests/**/*.md",
     "templates/**/*.md",
     ".agents/**/*.md",
@@ -121,11 +119,11 @@ def main(argv: list[str]) -> int:
         "or a file explicitly named in an approved plan.\n"
         "\n"
         "Canonical locations for new .md files:\n"
-        "  - aops-core/skills/**/*.md     specs/**/*.md\n"
-        "  - aops-core/agents/**/*.md     tests/**/*.md\n"
-        "  - aops-core/workflows/**/*.md  templates/**/*.md\n"
-        "  - aops-core/commands/**/*.md   .agents/**/*.md\n"
-        "  - aops-core/hooks/**/*.md      .github/**/*.md\n"
+        "  - aops-core/skills/**/*.md     tests/**/*.md\n"
+        "  - aops-core/agents/**/*.md     templates/**/*.md\n"
+        "  - aops-core/workflows/**/*.md  .agents/**/*.md\n"
+        "  - aops-core/commands/**/*.md   .github/**/*.md\n"
+        "  - aops-core/hooks/**/*.md\n"
         "  - aops-core/<UPPERCASE>.md     README.md / CHANGELOG.md (root)\n"
         "\n"
         "If this addition is legitimate, surface it to the user; once\n"

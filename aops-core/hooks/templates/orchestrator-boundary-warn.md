@@ -20,7 +20,7 @@ accountability gaps (no PKB task record for the work).
   polecat run -t <task-id>
   ```
 
-Framework paths exempt from this warning: `specs/`, `aops-core/`, `.agents/`,
+Framework paths exempt from this warning: `aops-core/`, `.agents/`,
 `docs/`, `tests/`, `scripts/`, `templates/`, `polecat/`, `aops-tools/`.
 
-See [[specs/orchestrator-boundary.md]] and [[aops-core/HEURISTICS.md#P122]].
+See [[aops-core/HEURISTICS.md#P122]].

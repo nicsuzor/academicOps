@@ -1,7 +1,7 @@
 """Tests for lib/session_context.py - Session Context Extraction.
 
 Tests conversation-centric context extraction for dashboard display.
-Per specs/overwhelm-dashboard.md Session Context Model.
+Per the overwhelm-dashboard spec (brain PKB) Session Context Model.
 """
 
 from __future__ import annotations

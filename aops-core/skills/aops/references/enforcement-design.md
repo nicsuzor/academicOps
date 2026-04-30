@@ -8,7 +8,7 @@ tags: [framework, enforcement, design]
 
 # Enforcement Design
 
-**Purpose**: Practical guide for choosing HOW to enforce a behavior. For architectural philosophy, see [[enforcement|specs/enforcement.md]]. Universal axioms live in `aops-core/AXIOMS.md` and are loaded only by the `rbg` agent.
+**Purpose**: Practical guide for choosing HOW to enforce a behavior. For architectural philosophy, see the brain PKB (project: aops, topic: enforcement). Universal axioms live in `aops-core/AXIOMS.md` and are loaded only by the `rbg` agent.
 
 ## Mechanism Ladder
 
@@ -93,7 +93,7 @@ parsing failures and break the enforcement pipeline.
 - Why not lower level: [explanation]
 - Why not narrower scope: [explanation]
 
-**Spec Location**: [specs/enforcement.md | task body | N/A]
+**Spec Location**: [brain PKB (project: aops) | task body | N/A]
 
 **Escalation**: [auto | critic | enforcer | human]
 ```

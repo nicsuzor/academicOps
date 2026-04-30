@@ -465,7 +465,7 @@ When an agent observes unexpected behavior — a tool firing unexpectedly, a fil
 
 ## Orchestrator Is a Dispositor (P#122)
 
-The general CLI agent (main Claude Code session) is a **dispositor** when it runs in the **brain repo** (`$ACA_DATA`) — it understands intent, creates tasks, and delegates execution to polecat workers. It does not execute feature work itself. See [[specs/orchestrator-boundary.md]] for the full boundary definition.
+The general CLI agent (main Claude Code session) is a **dispositor** when it runs in the **brain repo** (`$ACA_DATA`) — it understands intent, creates tasks, and delegates execution to polecat workers. It does not execute feature work itself. The full boundary definition lives in the brain PKB (project: aops, topic: orchestrator-boundary).
 
 **Scope**: this boundary applies only when `cwd` is inside `$ACA_DATA`. When the agent is launched directly inside a project source repo (academicOps, mem, explorations, etc.), it IS the worker for that repo — the orchestrator reminder and the `orchestrator_boundary` gate are suppressed, and the agent should execute directly.
 
@@ -476,7 +476,7 @@ The general CLI agent (main Claude Code session) is a **dispositor** when it run
 - Decompose epics into subtasks
 - Run `/pull`, `/daily`, `/planner`, `/dump`, `/q` and other meta-skills
 - Dispatch tasks via the `polecat` CLI
-- Edit framework files (`specs/`, `aops-core/`, `.agents/`, `docs/`, `tests/`) — framework maintenance is orchestrator scope
+- Edit framework files (`aops-core/`, `aops-tools/`, `.agents/`, `docs/`, `tests/`, `scripts/`, `templates/`, `polecat/`) — framework maintenance is orchestrator scope. Authoritative allowlist: `FRAMEWORK_PATH_PREFIXES` in `aops-core/lib/orchestrator_boundary.py`.
 
 **Orchestrator must not do** (worker scope — queue instead):
 

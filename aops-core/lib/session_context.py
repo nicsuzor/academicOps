@@ -8,7 +8,7 @@ overwhelm dashboard's session display. Answers the questions:
 - "What's the next step?" → Planned action when resuming
 
 References:
-- specs/overwhelm-dashboard.md (Session Context Model section)
+- overwhelm-dashboard spec (brain PKB) — Session Context Model section
 - Task: aops-e9304452 (Session Context Extraction)
 """
 

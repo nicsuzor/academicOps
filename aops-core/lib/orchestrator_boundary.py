@@ -14,7 +14,8 @@ This module provides two related capabilities:
    helpers used by the Level 4 PostToolUse detection hook to warn when the
    orchestrator writes to project source.
 
-See `specs/orchestrator-boundary.md` for the full boundary definition.
+The full boundary definition lives in the brain PKB (project: aops, topic:
+orchestrator-boundary).
 """
 
 from __future__ import annotations
@@ -48,7 +49,6 @@ WRITE_TOOL_NAMES: frozenset[str] = frozenset(
 FRAMEWORK_PATH_PREFIXES: tuple[str, ...] = (
     "aops-core/",
     "aops-tools/",
-    "specs/",
     ".agents/",
     "docs/",
     "tests/",
@@ -149,7 +149,7 @@ def is_framework_path(
 ) -> bool:
     """Return True if file_path falls under a framework allowlist prefix.
 
-    Framework paths (specs/, aops-core/, .agents/, docs/, tests/, etc.) are
+    Framework paths (aops-core/, .agents/, docs/, tests/, etc.) are
     orchestrator scope. All other source writes should be delegated to a
     polecat worker.
 

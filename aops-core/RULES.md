@@ -21,7 +21,7 @@ This file is the **authoritative, fine-grained rule corpus** that agents apply a
 
 **Form:** Each rule is stated as a clear prohibition (`DO NOT …`) or obligation (`HALT and …`). Carve-outs are one line, prefixed `EXCEPT`. Reasoning lives in the axiom, not the rule — keep rules terse so the classifier can quote them whole.
 
-**Severity tiers** (cf. `specs/enforcement-map.md`):
+**Severity tiers**:
 
 - `block` — the rule names a hard prohibition; classifier blocks
 - `warn` — the rule names a likely-bad pattern; classifier warns and continues
@@ -131,7 +131,7 @@ DO NOT cite a stale copy of a principle, fact, or definition. Cite the canonical
 
 ### R5.6 No new orphan markdown
 
-DO NOT create new orphan `.md` files. Worker findings, capability docs, summaries, comparisons, and explainers belong in: the task body, the parent epic, the PKB (via the `remember` skill), or a file explicitly named in an approved plan or user directive. EXCEPT files within the canonical-location allowlist: `aops-core/<UPPERCASE>.md` framework top-level files; `aops-core/{skills,agents,workflows,commands,hooks,policies,.claude-plugin}/**`; `specs/**`; `tests/**`; `templates/**`; `.agents/**`; `.github/**`; root `README.md`/`CHANGELOG.md`/`GEMINI.md`/`INSTALL.md`. Tier: `warn` (mechanically enforced by the `check-no-new-orphan-md` pre-commit hook; legitimate allowlist additions surface to the user under R8.1 in-session authorisation).
+DO NOT create new orphan `.md` files. Worker findings, capability docs, summaries, comparisons, and explainers belong in: the task body, the parent epic, the PKB (via the `remember` skill), or a file explicitly named in an approved plan or user directive. EXCEPT files within the canonical-location allowlist: `aops-core/<UPPERCASE>.md` framework top-level files; `aops-core/{skills,agents,workflows,commands,hooks,policies,.claude-plugin}/**`; `tests/**`; `templates/**`; `.agents/**`; `.github/**`; root `README.md`/`CHANGELOG.md`/`GEMINI.md`/`INSTALL.md`. Tier: `warn` (mechanically enforced by the `check-no-new-orphan-md` pre-commit hook; legitimate allowlist additions surface to the user under R8.1 in-session authorisation).
 
 ---
 
@@ -283,6 +283,6 @@ DO NOT treat an artifact you were asked to **produce** as immutable, and DO NOT 
 
 1. AXIOMS.md — read once per session as context.
 2. RULES.md — consulted whenever the classifier or the agent itself needs a specific prohibition.
-3. enforcement-map.md — for the reviewer/auditor view of which mechanism enforces which rule and at what tier.
+3. `.agents/ENFORCEMENT-MAP.md` — for the reviewer/auditor view of which mechanism enforces which rule and at what tier.
 
 When this file is updated, mirror the change into `templates/aops-core.plugin.json` `autoMode` (and the polecat default settings). `RULES.md` is canonical; the `plugin.json` manifest used by clients is a build artifact.

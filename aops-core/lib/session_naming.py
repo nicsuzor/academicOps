@@ -1,6 +1,6 @@
 """Session naming module - single source of truth for session artifact filenames.
 
-Implements the naming convention from specs/session-naming-convention.md:
+Implements the naming convention from the session-naming-convention spec (brain PKB):
     {YYYYMMDD}-{HHMM}-{session_id}-{shortform}-{slug}{-variant}.{ext}
 
 All session artifact filename generation MUST go through this module.

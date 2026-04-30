@@ -24,7 +24,7 @@ class InsightsValidationError(Exception):
 
 
 def load_prompt_template() -> str:
-    """Load shared prompt template from specs/.
+    """Load shared prompt template (sourced from the session-insights spec in brain PKB).
 
     Returns:
         Prompt template string with {session_id}, {date}, {project} placeholders

@@ -1,6 +1,6 @@
 {
   "version": "1.1.0",
-  "spec_dirs": ["specs/"],
+  "spec_dirs": [],
   "docs": [
     {
       "topic": "project_overview",
@@ -16,13 +16,6 @@
         "architecture",
         "design principles"
       ]
-    },
-    {
-      "topic": "framework_index",
-      "type": "index",
-      "path": "aops-core/INDEX.md",
-      "description": "Master index for aops-core pointing to all sub-indices (skills, workflows, rules, files, paths)",
-      "keywords": ["index", "navigation", "routing", "framework structure"]
     },
     {
       "topic": "taxonomy",
@@ -79,20 +72,6 @@
       "keywords": ["constraint", "hard rule", "file length", "naming", "pre-commit", "enforcement"]
     },
     {
-      "topic": "skills",
-      "type": "index",
-      "path": "aops-core/SKILLS.md",
-      "description": "Skills index for routing user requests — triggers, descriptions, and invocation patterns",
-      "keywords": ["skill", "command", "routing", "trigger", "daily", "remember", "analyst", "audit", "slash command"]
-    },
-    {
-      "topic": "tools",
-      "type": "reference",
-      "path": "aops-core/TOOLS.md",
-      "description": "MCP servers and standard tools available to agents — capabilities reference for routing decisions",
-      "keywords": ["tools", "mcp", "capabilities", "pkb", "server", "available tools"]
-    },
-    {
       "topic": "scripts",
       "type": "reference",
       "path": "aops-core/SCRIPTS.md",
@@ -102,7 +81,7 @@
     {
       "topic": "enforcement_map",
       "type": "reference",
-      "path": "aops-core/enforcement-map.md",
+      "path": ".agents/ENFORCEMENT-MAP.md",
       "description": "Maps rules to enforcement mechanisms — which rules are enforced by hooks, gates, prompts, or detection",
       "keywords": ["enforcement", "gate", "compliance", "rule", "mechanism", "blocking", "hook enforcement"]
     },
@@ -135,118 +114,6 @@
       "path": "tests/hooks/",
       "description": "All hook tests — gate verdicts, gate config, router formatting, hydration, session env setup, autocommit",
       "keywords": ["hook", "test", "gate", "router", "hydration", "session", "autocommit", "config"]
-    },
-    {
-      "topic": "specs_index",
-      "type": "index",
-      "path": "specs/INDEX.md",
-      "description": "All framework specifications grouped by tier and status — dependency chains, audit history",
-      "keywords": ["spec", "specification", "index", "tier", "architecture", "dependency chain"]
-    },
-    {
-      "topic": "prompt_hydration",
-      "type": "spec",
-      "path": "specs/prompt-hydration.md",
-      "description": "Prompt hydration specification — context injection, workflow selection, JIT loading, modular architecture",
-      "keywords": ["hydration", "context", "prompt", "injection", "hydrator", "jit", "routing"]
-    },
-    {
-      "topic": "context_map_schema",
-      "type": "spec",
-      "path": "specs/context-map-schema.md",
-      "description": "Standardised schema for context-map.json — repository self-description for discovery",
-      "keywords": ["context map", "context-map", "schema", "discovery", "topic", "keyword", "type", "json"]
-    },
-    {
-      "topic": "hydrator_quality",
-      "type": "spec",
-      "path": "specs/hydrator-quality-escalation.md",
-      "description": "Hydrator quality escalation process — in-session correction feedback loop, gap taxonomy, root cause categories",
-      "keywords": ["hydrator", "quality", "escalation", "correction", "feedback", "gap", "jit", "context failure"]
-    },
-    {
-      "topic": "core_loop_spec",
-      "type": "spec",
-      "path": "specs/flow.md",
-      "description": "v1.0 core loop specification — hydration, workflow execution, QA, and reflection flow",
-      "keywords": ["core loop", "execution flow", "hydration", "qa", "reflection", "spec"]
-    },
-    {
-      "topic": "enforcement_spec",
-      "type": "spec",
-      "path": "specs/enforcement.md",
-      "description": "5-layer enforcement architecture — how rules are enforced from prompts through hard gates",
-      "keywords": ["enforcement", "architecture", "layers", "compliance", "gates", "verification"]
-    },
-    {
-      "topic": "workflow_system",
-      "type": "spec",
-      "path": "specs/workflow-system-spec.md",
-      "description": "Workflow system specification — skills vs workflows, composability, constraints, markdown-based engine",
-      "keywords": ["workflow", "spec", "composability", "constraint", "base workflow", "skill vs workflow"]
-    },
-    {
-      "topic": "pr_pipeline",
-      "type": "spec",
-      "path": "specs/pr-pipeline.md",
-      "description": "PR lifecycle specification — bots prepare, human decides. Merge-prep, summary-and-merge, cron dispatcher",
-      "keywords": ["pr", "pull request", "pipeline", "merge", "review", "ci", "github actions", "merge-prep"]
-    },
-    {
-      "topic": "plugin_architecture",
-      "type": "spec",
-      "path": "specs/plugin-architecture.md",
-      "description": "Plugin architecture — component boundaries between aops-core and aops-tools, distribution model",
-      "keywords": ["plugin", "architecture", "aops-core", "aops-tools", "distribution", "component boundaries"]
-    },
-    {
-      "topic": "enforcer",
-      "type": "spec",
-      "path": "specs/ultra-vires-enforcer.md",
-      "description": "Ultra vires detection specification — authority boundaries, scope drift detection, compliance checking",
-      "keywords": ["enforcer", "ultra vires", "authority", "compliance", "audit", "scope", "drift"]
-    },
-    {
-      "topic": "polecat_system",
-      "type": "spec",
-      "path": "specs/polecat-system.md",
-      "description": "Polecat worktree system for parallel task execution — ephemeral workspaces via git worktrees",
-      "keywords": ["polecat", "worktree", "parallel", "worker", "git", "isolation"]
-    },
-    {
-      "topic": "task_management",
-      "type": "spec",
-      "path": "specs/work-management.md",
-      "description": "Task and work management specification — task CRUD, dependencies, strategic tracking via MCP",
-      "keywords": ["task", "work", "management", "dependency", "status", "graph", "queue", "mcp"]
-    },
-    {
-      "topic": "observability",
-      "type": "spec",
-      "path": "specs/framework-observability.md",
-      "description": "Framework observability specification — self-reflexive observation pipeline, metrics, feedback loops",
-      "keywords": ["observability", "metrics", "logging", "feedback", "monitoring", "token usage", "self-reflexive"]
-    },
-    {
-      "topic": "sleep_cycle",
-      "type": "spec",
-      "path": "specs/sleep-cycle.md",
-      "description": "Sleep cycle specification — scheduled consolidation turning write-optimised artifacts into read-optimised knowledge",
-      "keywords": ["sleep", "consolidation", "memory", "episodic", "semantic", "cron", "scheduled"]
-    },
-    {
-      "topic": "pkb_type_taxonomy",
-      "type": "spec",
-      "path": "specs/pkb-type-taxonomy.md",
-      "description": "PKB unified node classification — how task types, parenting rules, and graph hierarchy work",
-      "keywords": ["pkb", "type", "node", "classification", "parenting", "graph hierarchy", "task type"]
-    },
-    {
-      "topic": "vision",
-      "type": "guide",
-      "path": "docs/VISION.md",
-      "description": "Framework vision statement and long-term goals — where academicOps is heading",
-      "keywords": ["vision", "goal", "philosophy", "design", "purpose", "future"]
     },
     {
       "topic": "testing",

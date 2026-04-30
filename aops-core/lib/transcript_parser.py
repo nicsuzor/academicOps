@@ -619,7 +619,7 @@ def reflection_to_insights(
         token_metrics = usage_stats.to_token_metrics(session_duration_minutes)
 
     # Build framework_reflections array with single reflection entry
-    # This matches the schema in specs/session-insights-prompt.md
+    # This matches the schema in the session-insights-prompt spec (brain PKB)
     framework_reflection_entry = {
         "prompts": reflection.get("prompts"),
         "guidance_received": reflection.get("guidance_received"),

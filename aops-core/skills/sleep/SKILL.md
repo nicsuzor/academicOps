@@ -23,7 +23,7 @@ tags:
 
 # Sleep Cycle: Periodic Consolidation
 
-> **Taxonomy note**: This skill orchestrates periodic offline consolidation — transforming write-optimised storage (tasks, session logs) into read-optimised knowledge that agents actually use. See `specs/sleep-cycle.md` for full design rationale.
+> **Taxonomy note**: This skill orchestrates periodic offline consolidation — transforming write-optimised storage (tasks, session logs) into read-optimised knowledge that agents actually use. Full design rationale lives in the brain PKB (project: aops, topic: sleep-cycle).
 
 ## Why This Works (Cognitive Science)
 

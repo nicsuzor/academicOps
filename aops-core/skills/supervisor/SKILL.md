@@ -141,9 +141,9 @@ intervention. See [[instructions/worker-dispatch]] "Critic Gate."
 
 ## PR Review Pipeline
 
-PRs arrive from workers (polecat branches, Jules PRs). The pipeline is
-specified in [[specs/pr-pipeline.md]]; bots prepare, the human decides once
-via a GitHub Environment approval gate.
+PRs arrive from workers (polecat branches, Jules PRs). The pipeline design
+lives in the brain PKB (project: aops, topic: pr-pipeline); bots prepare, the
+human decides once via a GitHub Environment approval gate.
 
 **Phase 1 — CI + Axiom Review (on every push):**
 
