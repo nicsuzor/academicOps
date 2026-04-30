@@ -728,8 +728,7 @@ def _generate_transcript_filename(
 
     # Generate base name via naming module
     # (unified format: {YYYYMMDD}-{HHMM}-{session_id}-{shortform}-{slug})
-    # task_id from $AOPS_TASK_ID is passed through so transcript filenames are
-    # grep-friendly for task-c36a6b0c (ensure task ID short hash appears consistently).
+    # task_id from $AOPS_TASK_ID is passed through so transcript filenames are task-grep-friendly.
     base = session_naming.generate_base_name(
         session_id=session_id,
         timestamp=timestamp,

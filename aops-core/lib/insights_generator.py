@@ -511,8 +511,7 @@ def get_insights_file_path(
 
     # Use session_naming to generate the base filename
     # NOTE: provider and machine are auto-detected by session_naming if not provided
-    # task_id from $AOPS_TASK_ID flows through so insights files are grep-friendly
-    # for task-c36a6b0c (ensure task ID short hash appears consistently).
+    # task_id from $AOPS_TASK_ID flows through so insights files are task-grep-friendly.
     base = session_naming.generate_base_name(
         session_id=session_id,
         timestamp=dt,

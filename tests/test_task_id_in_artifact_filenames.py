@@ -1,6 +1,6 @@
 """End-to-end test: $AOPS_TASK_ID flows into every session-bound artifact filename.
 
-Task-c36a6b0c — Acceptance criteria:
+Acceptance criteria:
   Given a task ID, a single grep across $AOPS_SESSIONS returns ALL artefacts
   for that task (transcripts, hook logs, client logs, session JSON, status
   files). Polecat sessions include task ID in all filenames, not just the
@@ -25,8 +25,8 @@ import pytest
 # 8-char hex shortform is the grep target. The full task ID has the form
 # ``task-<8-hex>-<slug>``; we expect every artefact filename to contain
 # ``task-<8-hex>``.
-TASK_ID = "task-c36a6b0c-task-id-alignment"
-TASK_SHORT = "c36a6b0c"
+TASK_ID = "task-deadbeef-test-fixture"
+TASK_SHORT = "deadbeef"
 SESSION_ID = "550e8400-e29b-41d4-a716-446655440000"
 
 
