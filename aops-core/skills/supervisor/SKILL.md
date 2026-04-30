@@ -79,6 +79,65 @@ choices, citation accuracy, and anything published under the user's name
 require human decision points, surfaced clearly in the task file as pending
 decisions.
 
+### Engineering Integrity (A8) Is Non-Negotiable
+
+Failing tests, broken tools, and incompatible environments are bugs the
+supervisor's plan must fix — never categories the supervisor's plan triages
+around. The supervisor MUST NOT propose, in any artifact (triage tables,
+subtask bodies, user-facing summaries), any of: test relaxation,
+`pytest.skip`, `xfail`, host-conditional gating, "drift candidate"
+classifications, fix-vs-skip menus, or "test may need adjustment" framings.
+The only menu the supervisor may present is between specific _fix
+strategies_, all of which produce green tests on every supported host.
+
+"Environmental drift" is not a reason to relax a test. If the environment
+changed, the code that interacts with that environment is what gets fixed.
+
+Casual user phrasing such as "we may need to adjust some tests" does NOT
+authorise this. A8 is universal; users do not (and per A7 cannot) grant
+exemption to it through ambient phrasing. If the user explicitly directs an
+`xfail` or skip, halt and confirm in the chat — do not infer the directive
+from prose.
+
+**Prohibited phrase patterns** (these MUST NOT appear in any supervisor
+output — triage tables, subtask bodies, plan-review summaries):
+
+- `drift candidate`, `drift gate`, `drift framing` (in the relax-the-test sense)
+- `skip on <host>`, `host-conditional`, `skip-on-env`, `xfail on <env>`
+- `relax the assertion`, `softening the test`, `loosen the check`
+- `pytest.skip`, `xfail`, `marker for env-specific`
+- `fix-or-skip menu`, `fix vs skip`
+- `we can either fix it or work around it`
+- `may need test adjustment`, `test may be too strict`, `the assertion is too tight`
+- `compat allowlist`, `fallback path` (when offered as a peer to the fix)
+
+**Permitted halt template** (use this exact shape when surfacing failures):
+
+```
+A8 halt: <test name / failure>. Investigation produced <finding>. Two options:
+  1. Fix <code path> at <file:line> by <change>. (chosen)
+  2. <alternative implementation, also fixing the failure>
+Test stays as written. Filing as <subtask id>.
+```
+
+Both options must be **fixes that make the failing test pass**. A "skip"
+option, an "xfail" option, or a "loosen the assertion" option is NEVER
+option 2.
+
+**Worked decomposition example** — failing test
+`test_workspace_writes_visible_on_host`:
+
+- Investigation subtask: instrument bind-mount path to capture host-side
+  stat output and confirm whether `_is_remote_daemon()` returns the
+  expected value on this host.
+- Code-fix subtask (parameterised on investigation output): e.g. "if
+  `_is_remote_daemon()` returns False on WSL2, switch to `docker cp`
+  staging." The fix lands in the production code path.
+- The test itself is **untouched**.
+
+The wrong shape — and the one A8 prohibits — would have been a "drift
+candidate" triage column with "skip on WSL2" as a peer option to the fix.
+
 ## Phases
 
 The supervisor is NOT a pipeline — it's a loop that enters at whatever phase

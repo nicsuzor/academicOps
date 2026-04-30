@@ -147,7 +147,7 @@ def _claude_session_with_thinking(tmp_path: Path) -> Path:
 
 @pytest.mark.parametrize("variant", ["full", "abridged"])
 def test_gemini_thoughts_render_as_blockquotes(tmp_path, variant):
-    """Each Gemini thought should render as a `> **subject**: description` blockquote."""
+    """Gemini thoughts render as a collapsible section (full) or compact summary (abridged)."""
     path = _gemini_session_with_thoughts(tmp_path)
     processor = SessionProcessor()
     summary, entries, agents = processor.parse_session_file(path)
@@ -160,29 +160,31 @@ def test_gemini_thoughts_render_as_blockquotes(tmp_path, variant):
         variant=variant,
     )
 
-    assert "> **Analyzing Specifications**: Sketching out the contract elements." in md
-    assert "> **Defining Contract Elements**: Focusing on the agent's output at session end." in md
+    if variant == "full":
+        # Full mode: <details> block with blockquote entries in "subject — description" format.
+        assert "💭 Model thoughts" in md
+        assert "> **Analyzing Specifications** — Sketching out the contract elements." in md
+        assert "> **Defining Contract Elements** — Focusing on the agent's output at session end." in md
+    else:
+        # Abridged mode: compact italic summary listing subjects only.
+        assert "_💭 Model thoughts: Analyzing Specifications; Defining Contract Elements_" in md
     # The actual response text still appears.
     assert "Here is my plan to design the contract." in md
 
 
 def test_gemini_token_block_and_model_in_agent_header(tmp_path):
-    """The agent header line should include model name and `[in= cached= think= out=]`."""
+    """Model name and token counts should appear in the per-turn timing meta line."""
     path = _gemini_session_with_thoughts(tmp_path)
     processor = SessionProcessor()
     summary, entries, agents = processor.parse_session_file(path)
     md = processor.format_session_as_markdown(summary, entries, agents, variant="full")
 
-    # Find the Agent header line
-    agent_lines = [line for line in md.splitlines() if line.startswith("## Agent")]
-    assert agent_lines, "no agent header was emitted"
-    header = agent_lines[0]
-
-    assert "gemini-3-flash-preview" in header
-    assert "in=17,481" in header
-    assert "cached=1,024" in header
-    assert "think=440" in header
-    assert "out=94" in header
+    # Model and tokens appear in the timing meta line below the turn heading,
+    # formatted as "model=<name> · N in / N out · N cache↓ · N think".
+    assert "gemini-3-flash-preview" in md
+    assert "17,481 in / 94 out" in md
+    assert "1,024 cache↓" in md
+    assert "440 think" in md
 
 
 def test_gemini_entry_extraction(tmp_path):
@@ -208,16 +210,17 @@ def test_gemini_entry_extraction(tmp_path):
 
 
 def test_claude_thinking_renders_as_blockquote(tmp_path):
-    """Claude ``thinking`` blocks should render as a blockquote ABOVE the answer."""
+    """Claude ``thinking`` blocks should render in a collapsible section ABOVE the answer."""
     path = _claude_session_with_thinking(tmp_path)
     processor = SessionProcessor()
     summary, entries, agents = processor.parse_session_file(path)
 
     md = processor.format_session_as_markdown(summary, entries, agents, variant="full")
 
-    assert "> **Thinking**" in md
+    # Full mode renders thinking in a <details> block labelled "Extended thinking".
+    assert "💭 Extended thinking" in md
     assert "Let me reason carefully about this problem." in md
-    # Order: thinking blockquote must appear BEFORE the answer text.
+    # Order: thinking section must appear BEFORE the answer text.
     thinking_idx = md.find("Let me reason carefully")
     answer_idx = md.find("Here is my answer.")
     assert thinking_idx != -1 and answer_idx != -1
@@ -225,20 +228,16 @@ def test_claude_thinking_renders_as_blockquote(tmp_path):
 
 
 def test_claude_model_and_tokens_in_agent_header(tmp_path):
-    """Claude transcripts also surface model + token block in the agent header."""
+    """Claude transcripts also surface model + token counts in the per-turn timing meta line."""
     path = _claude_session_with_thinking(tmp_path)
     processor = SessionProcessor()
     summary, entries, agents = processor.parse_session_file(path)
     md = processor.format_session_as_markdown(summary, entries, agents, variant="full")
 
-    agent_lines = [line for line in md.splitlines() if line.startswith("## Agent")]
-    assert agent_lines, "no agent header was emitted"
-    header = agent_lines[0]
-
-    assert "claude-opus-4-7" in header
-    assert "in=1,500" in header
-    assert "cached=800" in header
-    assert "out=250" in header
+    # Model and tokens appear in the timing meta line, not the heading itself.
+    assert "claude-opus-4-7" in md
+    assert "1,500 in / 250 out" in md
+    assert "800 cache↓" in md
 
 
 # ---------------------------------------------------------------------------
@@ -289,8 +288,8 @@ def test_claude_session_without_thinking_renders_cleanly(tmp_path):
     md = processor.format_session_as_markdown(summary, entries, agents, variant="full")
 
     assert "Hi there" in md
-    # No thinking blockquote.
-    assert "> **Thinking**" not in md
+    # No thinking section.
+    assert "💭 Extended thinking" not in md
     # Model still shows up in header.
     assert "claude-opus-4-7" in md
 
@@ -312,7 +311,7 @@ def test_real_gemini_session_thoughts_surface():
     summary, entries, agents = processor.parse_session_file(_REAL_GEMINI)
     md = processor.format_session_as_markdown(summary, entries, agents, variant="full")
 
-    # At least one thought blockquote must surface.
-    assert "> **" in md
-    # Token-block badge present somewhere in the doc.
-    assert "in=" in md and "out=" in md
+    # At least one thought section must surface.
+    assert "💭 Model thoughts" in md
+    # Token counts present somewhere in the doc.
+    assert " in / " in md and " out" in md
