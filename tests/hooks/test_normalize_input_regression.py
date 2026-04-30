@@ -57,3 +57,47 @@ class TestGeminiEventMapping:
         with patch("hooks.router.persist_session_data"):
             ctx = router.normalize_input(raw, gemini_event="UnknownEvent")
         assert ctx.hook_event == "UnknownEvent"
+
+
+class TestClientTypePropagation:
+    """client_type from --client flag should land on HookContext and JSONL.
+
+    Regression: previously hook JSONL showed model=unknown for all sessions
+    because client_type wasn't carried through normalize_input.
+    """
+
+    def test_client_type_claude_set_on_context(self, router):
+        raw = {"session_id": "test-session"}
+        with patch("hooks.router.persist_session_data"):
+            ctx = router.normalize_input(raw, client_type="claude")
+        assert ctx.client_type == "claude"
+
+    def test_client_type_gemini_set_on_context(self, router):
+        raw = {"session_id": "test-session"}
+        with patch("hooks.router.persist_session_data"):
+            ctx = router.normalize_input(raw, gemini_event="BeforeTool", client_type="gemini")
+        assert ctx.client_type == "gemini"
+        assert ctx.hook_event == "PreToolUse"
+
+    def test_client_type_defaults_to_none(self, router):
+        raw = {"session_id": "test-session"}
+        with patch("hooks.router.persist_session_data"):
+            ctx = router.normalize_input(raw)
+        assert ctx.client_type is None
+
+    def test_client_type_serialized_in_log_entry(self, router):
+        """HookLogEntry inherits HookContext fields — client_type must round-trip."""
+        from hooks.internal_models import HookLogEntry
+
+        raw = {"session_id": "test-session"}
+        with patch("hooks.router.persist_session_data"):
+            ctx = router.normalize_input(raw, client_type="gemini")
+        entry = HookLogEntry(
+            logged_at="2026-04-30T00:00:00+00:00",
+            exit_code=0,
+            output=None,
+            **ctx.model_dump(exclude={"session_id"}),
+            session_id=ctx.session_id,
+        )
+        dumped = entry.model_dump()
+        assert dumped["client_type"] == "gemini"

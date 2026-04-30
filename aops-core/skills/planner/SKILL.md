@@ -138,7 +138,7 @@ Quick task capture with minimal overhead. Speed is the priority — no enrichmen
 - `/q nic: <description>` — Assign to user
 - `/q` (no args) — Prompt for details
 
-**Priority defaults**: Default new tasks to **P3** unless the user explicitly indicates urgency. See [[../../PRIORITY.md]] for canonical P0–P4 definitions.
+**Priority defaults**: Default new tasks to **P3** (planned) unless the user explicitly specifies otherwise (e.g. `/q P0 ...`). Always pass `priority=3` explicitly when calling server tools directly — the Python bridge enforces this default for Python-side callers, but direct MCP calls hit the server default of P2. The active band (P2) is reserved for tasks that have been deliberately promoted; new captures land in P3 and are promoted explicitly. The same applies to subtasks from `decompose_task`. See [[../../PRIORITY.md]] for canonical P0–P4 definitions.
 
 ### plan
 
@@ -199,7 +199,7 @@ Break validated epics into structured task trees.
 - Every epic must include at least one QA/review task (verification).
 - Tasks must be self-contained for handoff (P#120) — include context, decisions, constraints, data findings.
 - **Map unknowns**: Before planning execution, classify unknowns as researchable, internal, or probeable (Step 3). Build appropriate evidence-gathering or spike tasks. High uncertainty on the parent signals a need for more probeable tasks.
-- **Cross-cutting impact & prerequisites**: Every decomposition must check what other projects depend on what's changing AND what must be true before the change is useful (Step 4). Create tasks in affected projects, not just under this epic.
+- **Cross-cutting impact & prerequisites**: Every decomposition must check what other projects depend on what's changing AND what must be true before the change is useful (Step 4). Create tasks in affected projects, not just under this epic. Use `list_tasks(project=<project-id>)` to scope per-project queries — do not infer project membership from ID prefixes or by walking parent chains.
 - **Externalise follow-up action items**: Any follow-up work surfaced during decomposition that is outside the epic's scope — supersession decisions, prerequisite investigations, cross-project updates, triage calls — must be created as separate linked tasks, not embedded as prose in subtask bodies. Decision/triage on a subtask → child subtask or `soft_depends_on`. Cross-epic work → separate task under the right parent, linked via `soft_depends_on` (unlocker) or `depends_on` (hard prerequisite). Action items must be addressable graph nodes.
 
 **Workflow files**: `aops-core/skills/planner/workflows/decompose.md`
@@ -369,13 +369,13 @@ These are the interactive counterpart to sleep Phase 4. In maintain mode, the hu
 
 **Densify strategies** (rotate across sessions when densifying):
 
-| Strategy               | Targets                                          |
-| ---------------------- | ------------------------------------------------ |
-| `criticality-focus`    | High-criticality tasks with zero/few edges       |
-| `high-priority-sparse` | P0/P1 ready tasks with zero edges                |
-| `project-cluster`      | Ready tasks within one project                   |
-| `neighbourhood-expand` | Neighbours of high-weight/high-criticality tasks |
-| `cross-project-bridge` | Tasks sharing tags across projects               |
+| Strategy               | Targets                                                                     |
+| ---------------------- | --------------------------------------------------------------------------- |
+| `criticality-focus`    | High-criticality tasks with zero/few edges                                  |
+| `high-priority-sparse` | P0/P1 ready tasks with zero edges                                           |
+| `project-cluster`      | Tasks with status: ready within one project (`list_tasks(status="ready", project="<project-id>")`) |
+| `neighbourhood-expand` | Neighbours of high-weight/high-criticality tasks                            |
+| `cross-project-bridge` | Tasks sharing tags across projects                                          |
 
 **Densify workflow**: Select candidates (5 min) → Enrich each (15 min) → Present proposals → Apply approved → Verify `urgency` and graph health improved
 

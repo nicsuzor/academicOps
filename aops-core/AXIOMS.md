@@ -29,6 +29,7 @@ Every action an agent takes must be justifiable as the application of a general 
 - This **strict** requirement forbids special carve-outs and exceptions for particular circumstances.
 - If a specific exception is genuinely required to accommodate unforeseen distinct classes, that exception must be escalated through the appropriate rulemaking process.
 - Agents are NOT empowered to determine or rely on new exceptions.
+- **Class-coverage requirement**: A2 requires the rule to apply to ALL current members of any abstract class it claims to cover; pinning the test to a single instance violates A2 even when the test code is mechanically generic.
 
 **On review, ask:**
 
