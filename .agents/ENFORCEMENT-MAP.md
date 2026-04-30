@@ -12,12 +12,12 @@ or retired (P#65).
 | `check-framework-integrity` | `scripts/check_framework_integrity.py` | (wikilink index integrity) | `warn`  | Exits 1 on broken wikilinks or missing SKILLS/WORKFLOWS index entries      |
 | `lint-axiom-refs`           | `aops-core/lib/lint_axiom_refs.py`     | R1.1, R1.3                 | `block` | Exits 1 when `plugin.json` cites a non-existent or mis-parented Axiom/Rule |
 
-## CI-only checks (whole-repo, too slow for pre-commit)
+## Whole-repo audits (advisory; not wired to commit/CI)
 
-| Check                    | Script                              | Rule(s)                | Tier   | Behaviour                                                    |
-| ------------------------ | ----------------------------------- | ---------------------- | ------ | ------------------------------------------------------------ |
-| `check-orphan-files`     | `scripts/check_orphan_files.py`     | (wikilink orphans)     | `warn` | Exits 0; reports files with no incoming wikilinks            |
-| `check-skill-line-count` | `scripts/check_skill_line_count.py` | (SKILL.md ≤ 500 lines) | `warn` | Exits 1 when any SKILL.md exceeds 500 lines; lists offenders |
+| Check                    | Script                              | Rule(s)                | Tier       | Behaviour                                                    |
+| ------------------------ | ----------------------------------- | ---------------------- | ---------- | ------------------------------------------------------------ |
+| `check-orphan-files`     | `scripts/check_orphan_files.py`     | (wikilink orphans)     | `advisory` | Exits 0; reports files with no incoming wikilinks            |
+| `check-skill-line-count` | `scripts/check_skill_line_count.py` | (SKILL.md ≤ 500 lines) | `advisory` | Exits 1 when any SKILL.md exceeds 500 lines; lists offenders |
 
 ## Notes
 
@@ -28,7 +28,13 @@ or retired (P#65).
   (`--no-verify`).
 - Hooks with tier `block` represent hard constraints; `--no-verify` is itself
   prohibited by R8.1 for this tier.
-- The "CI-only checks" section above is aspirational: `.pre-commit-config.yaml`
-  comments these scripts as "Moved to CI" but no GitHub Actions workflow
-  currently invokes `check-skill-line-count`, `check-orphan-files`, or
-  `audit_framework_health`. Wiring these into CI is tracked separately.
+- Hooks with tier `advisory` are not invoked by pre-commit or CI. The scripts
+  exist for ad-hoc audits but do not gate any workflow.
+- `check-skill-line-count` was deliberately removed from CI: the 500-line cap
+  was too aggressive for legitimate skill content. The script is retained for
+  manual audits, but the cap is not enforced. If we later want a length
+  signal, set a higher threshold or convert to a soft warning rather than
+  re-wiring the existing exit-1 behaviour.
+- `check-orphan-files` wiring is undecided — the orphan question is real but
+  the current threshold/scope hasn't been validated. Leaving advisory until
+  triaged.
