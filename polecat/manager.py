@@ -161,7 +161,7 @@ def load_projects(
         # Per-project aliases: optional list of shorthand names accepted in
         # place of the canonical slug (e.g. ['academicOps', 'acaops']).
         aliases_raw = proj.get("aliases") or []
-        if isinstance(aliases_raw, str):
+        if not isinstance(aliases_raw, list):
             aliases_raw = [aliases_raw]
         aliases = [str(a) for a in aliases_raw]
         entry = {

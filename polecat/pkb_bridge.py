@@ -46,6 +46,8 @@ class PkbTask:
         self.consequence: str | None = data.get(
             "consequence"
         )  # Free text describing what happens if missed
+        # Side-channel annotation set by claim paths for rollback on failure.
+        self._prior_status: str | None = None
         # Parse modified timestamp
         mod_raw = fm.get("modified")
         self.modified: datetime | None = None

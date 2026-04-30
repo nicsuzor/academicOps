@@ -1450,6 +1450,7 @@ def _run_docker_container(
 
         if _interrupted:
             raise KeyboardInterrupt
+        assert run_result is not None  # set in try block; None path raises above
         return run_result
     finally:
         # Always clean up the container (replaces --rm)
