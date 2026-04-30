@@ -2050,6 +2050,8 @@ class SessionProcessor:
                     "tool_input": entry.tool_input,
                     "agent_id": entry.agent_id,
                     "hook_context_injection": entry.hook_context_injection,
+                    "hook_verdict": entry.hook_verdict,
+                    "hook_system_message": entry.hook_system_message,
                     "start_time": entry.timestamp,
                     "end_time": entry.timestamp,
                 }
@@ -2424,9 +2426,19 @@ class SessionProcessor:
                 tool_name = turn.get("tool_name")
                 agent_id = turn.get("agent_id")
                 hook_context_injection = turn.get("hook_context_injection")
+                hook_verdict = turn.get("hook_verdict")
+                hook_system_message = turn.get("hook_system_message")
 
                 is_error = exit_code is not None and exit_code != 0
-                has_content = content or skills_matched or files_loaded or hook_context_injection
+                is_blocking_verdict = hook_verdict in ("deny", "block", "request-changes")
+                has_content = (
+                    content
+                    or skills_matched
+                    or files_loaded
+                    or hook_context_injection
+                    or hook_system_message
+                    or is_blocking_verdict
+                )
                 if not full_mode and not has_content and not is_error:
                     continue
 
@@ -2451,8 +2463,21 @@ class SessionProcessor:
                     and not skills_matched
                     and not files_loaded
                     and not hook_context_injection
+                    and not hook_system_message
+                    and not is_blocking_verdict
                 ):
                     markdown += "  - (no output)\n"
+                if is_blocking_verdict:
+                    markdown += f"  - 🛑 Hook denied: verdict={hook_verdict}\n"
+                elif hook_verdict and hook_verdict not in ("allow", None):
+                    markdown += f"  - Hook verdict: {hook_verdict}\n"
+                if hook_system_message:
+                    msg_preview = (
+                        hook_system_message[:300] + "..."
+                        if len(hook_system_message) > 300
+                        else hook_system_message
+                    )
+                    markdown += f"  - ℹ️ Hook message: {msg_preview}\n"
                 if skills_matched:
                     skills_str = ", ".join(f"`{s}`" for s in skills_matched)
                     markdown += f"  - Skills matched: {skills_str}\n"
@@ -2582,8 +2607,18 @@ class SessionProcessor:
                         tool_input = hook.get("tool_input")
                         tool_name = hook.get("tool_name")
                         agent_id = hook.get("agent_id")
+                        hook_verdict = hook.get("hook_verdict")
+                        hook_system_message = hook.get("hook_system_message")
 
-                        has_useful_content = content or skills_matched or files_loaded or tool_input
+                        is_blocking_verdict = hook_verdict in ("deny", "block", "request-changes")
+                        has_useful_content = (
+                            content
+                            or skills_matched
+                            or files_loaded
+                            or tool_input
+                            or hook_system_message
+                            or is_blocking_verdict
+                        )
                         is_error = exit_code is not None and exit_code != 0
 
                         if not full_mode and not has_useful_content and not is_error:
@@ -2602,6 +2637,18 @@ class SessionProcessor:
                         hook_label = f"{event_name}{hook_detail}"
 
                         markdown += f"### Hook: {hook_label}{checkmark}\n\n"
+
+                        if is_blocking_verdict:
+                            markdown += f"🛑 Hook denied: verdict={hook_verdict}\n\n"
+                        elif hook_verdict and hook_verdict not in ("allow", None):
+                            markdown += f"Hook verdict: {hook_verdict}\n\n"
+                        if hook_system_message:
+                            msg_preview = (
+                                hook_system_message[:300] + "..."
+                                if not full_mode and len(hook_system_message) > 300
+                                else hook_system_message
+                            )
+                            markdown += f"ℹ️ Hook message: {msg_preview}\n\n"
 
                         if tool_input and tool_name:
                             tool_summary = _summarize_tool_input(tool_name, tool_input)
