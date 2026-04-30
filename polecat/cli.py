@@ -4094,9 +4094,28 @@ class _IssueTask:
     help="Skip automatic 'polecat finish' on successful completion",
 )
 @click.option("--memory", default=None, help="Container memory limit (e.g. 4g, 2048m)")
+@click.option(
+    "--force",
+    is_flag=True,
+    help=(
+        "Bypass the task status check and claim the task regardless of its "
+        "current status (including done, cancelled, merge_ready, review, or "
+        "PR-locked). Still claims the task to in_progress before running."
+    ),
+)
 @click.pass_context
 def run(
-    ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no_auto_finish, memory
+    ctx,
+    project,
+    caller,
+    task_id,
+    issue,
+    no_finish,
+    gemini,
+    interactive,
+    no_auto_finish,
+    memory,
+    force,
 ):
     """Run a polecat cycle: claim → setup → work → finish.
 
@@ -4195,26 +4214,36 @@ def run(
         _DONE_STATUSES = ("done", "cancelled")
         _LOCKED_STATUSES = ("merge_ready", "review")
 
-        if status_str in _DONE_STATUSES:
-            print(f"✅ Task {task_id} is already '{status_str}'.")
-            sys.exit(0)
-
-        # Refuse to re-dispatch tasks locked by an open PR (not yet merged).
-        pr_ref = task.pr_url or (f"#{task.pr}" if task.pr else None)
-        if status_str in _LOCKED_STATUSES or pr_ref:
+        if force:
+            # --force: bypass all status-check gates. Still capture the prior
+            # status and claim to in_progress so downstream rollback works.
             print(
-                f"🔒 Task {task_id} is locked "
-                f"(status: {status_str}"
-                + (f", PR: {pr_ref}" if pr_ref else "")
-                + "). A PR already exists for this task — refusing to re-dispatch.",
+                f"[force] Bypassing status check; claiming task {task_id} "
+                f"from status {status_str!r}.",
                 file=sys.stderr,
             )
-            sys.exit(2)  # Exit 2 = locked; distinct from exit 1 (error) / exit 3 (empty queue)
+        else:
+            if status_str in _DONE_STATUSES:
+                print(f"✅ Task {task_id} is already '{status_str}'.")
+                sys.exit(0)
+
+            # Refuse to re-dispatch tasks locked by an open PR (not yet merged).
+            pr_ref = task.pr_url or (f"#{task.pr}" if task.pr else None)
+            if status_str in _LOCKED_STATUSES or pr_ref:
+                print(
+                    f"🔒 Task {task_id} is locked "
+                    f"(status: {status_str}"
+                    + (f", PR: {pr_ref}" if pr_ref else "")
+                    + "). A PR already exists for this task — refusing to re-dispatch.",
+                    file=sys.stderr,
+                )
+                sys.exit(2)  # Exit 2 = locked; distinct from exit 1 (error) / exit 3 (empty queue)
 
         # Canonical PKB statuses agents may claim from. See
         # aops-core/skills/remember/references/TAXONOMY.md. NEVER add the
-        # legacy "active" — PKB rejects it as Invalid status.
-        if status_str in ("ready", "queued"):
+        # legacy "active" — PKB rejects it as Invalid status. With --force we
+        # also claim from any non-terminal status the user has bypassed.
+        if force or status_str in ("ready", "queued"):
             # Capture prior status so a downstream failure can restore
             # exactly what we found, rather than guessing a default.
             prior_status = status_str
