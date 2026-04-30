@@ -223,6 +223,8 @@ Detect orphans, stale docs, and under-specified tasks. The agent uses these as *
 - **Git log**: Recent commits, task changes since last cycle
 - **Own judgment**: The agent reads flagged tasks and decides whether they genuinely need attention.
 
+**Per [HEURISTICS P#123](../../HEURISTICS.md#P123) — age is not staleness.** Surface candidates for human review; do not auto-cancel based on age. Cancellation requires evidence the work has become irrelevant, not just that it is old.
+
 ## Phase 8: Refile Processing
 
 Process tasks the user has explicitly flagged for refiling via the dashboard's REFILE button. These are user-initiated reparent requests and take priority over automated graph maintenance.
