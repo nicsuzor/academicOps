@@ -34,6 +34,28 @@ Pull tasks with `due` ≤ 7 days via `mcp__pkb__list_tasks(format=json)` and sor
 - [task-id] [[Title]] — due YYYY-MM-DD (Nd away / overdue Nd)
 ```
 
+### 3.3a: High-Urgency Surface
+
+After the deadline list, emit a short factual block of the top 5 tasks ranked by composite `urgency` (severity × edge weight × slack × decay) — restricted to `status` in {`queued`, `ready`, `in_progress`}. Use `mcp__pkb__list_tasks(status=["queued","ready","in_progress"], limit=100, format="json")` and read each task's `urgency` field; sort descending. Load this once and reuse the result for the §3.3b SEV4 count. List one per line:
+
+```
+High-urgency:
+- [task-id] [[Title]] — urgency 0.83 (SEV3, due 2026-05-02)
+- [task-id] [[Title]] — urgency 0.61 (SEV2)
+```
+
+This is **factual surfacing**, not ranking-as-recommendation — it reports what the graph computes, the user still decides what to work on. If `urgency` is absent or zero across all tasks (mem-side emission not yet landed), omit this block entirely rather than falling back to an alternative ordering. Do **not** call urgency a "priority" or attach editorial framing.
+
+### 3.3b: SEV4 Concurrency-Cap Warning
+
+Count tasks with `severity == 4` and `status` in {`queued`, `ready`, `in_progress`} (i.e. not done/cancelled/archived). The "don't lose my job" target-node concurrency cap is **2 active SEV4 nodes**. If the count exceeds 2, emit a single-line warning at the top of the Status section:
+
+```
+⚠ SEV4 concurrency cap exceeded: N active (cap = 2). Review or downgrade before adding more.
+```
+
+If the count is ≤ 2, emit nothing. Do not editorialise about which to downgrade; that is the user's choice. If `severity` is absent on all tasks (mem-side emission not yet landed), omit the check entirely.
+
 Do **not**:
 
 - Wrap with "🚨 DEADLINE TODAY" siren framing
