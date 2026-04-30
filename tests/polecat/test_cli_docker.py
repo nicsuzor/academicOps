@@ -32,6 +32,7 @@ from cli import (
     _parse_memory_string,
     _pass_pkb_url_sandbox,
     _replicate_gemini_auth,
+    _resolve_docker_binary,
     _resolve_memory_limit,
 )
 
@@ -581,6 +582,137 @@ class TestFindDockerSock:
         result = _find_docker_sock({})
         assert result is not None
         assert "docker.sock" in str(result.mount_source)
+
+
+class TestResolveDockerBinary:
+    """Tests for _resolve_docker_binary fallback chain.
+
+    Regression suite for task-1929bf59 (and prior task-dff66ab3): ``pc run``
+    must locate ``docker`` even when the worker subprocess env's PATH does not
+    contain it. The fallback chain is env PATH → os.environ PATH → common
+    install locations on macOS/Linux.
+    """
+
+    def test_uses_env_path_first(self, tmp_path):
+        """When env PATH contains docker, it wins over os.environ and fallbacks."""
+        env_bin = tmp_path / "env_bin"
+        env_bin.mkdir()
+        docker_in_env = env_bin / "docker"
+        docker_in_env.write_text("#!/bin/sh\n")
+        docker_in_env.chmod(0o755)
+
+        with patch.dict(os.environ, {"PATH": "/nonexistent/path"}, clear=False):
+            result = _resolve_docker_binary({"PATH": str(env_bin)})
+        assert result == str(docker_in_env)
+
+    def test_falls_back_to_os_environ_path(self, tmp_path):
+        """When env's PATH lacks docker but os.environ has it, use os.environ."""
+        os_bin = tmp_path / "os_bin"
+        os_bin.mkdir()
+        docker_in_os = os_bin / "docker"
+        docker_in_os.write_text("#!/bin/sh\n")
+        docker_in_os.chmod(0o755)
+
+        empty_dir = tmp_path / "empty"
+        empty_dir.mkdir()
+
+        with (
+            patch.dict(os.environ, {"PATH": str(os_bin)}, clear=True),
+            patch("cli._DOCKER_BINARY_FALLBACK_PATHS", ()),
+        ):
+            result = _resolve_docker_binary({"PATH": str(empty_dir)})
+        assert result == str(docker_in_os)
+
+    def test_falls_back_to_install_locations(self, tmp_path):
+        """When neither env nor os.environ have docker, probe install locations.
+
+        This is the regression that produced ``'claude' command not found`` on
+        the user's MacBook (task-1929bf59): docker was at ``/usr/local/bin/docker``
+        but the subprocess env PATH didn't include it.
+        """
+        empty_dir = tmp_path / "empty"
+        empty_dir.mkdir()
+
+        fallback_docker = tmp_path / "fallback_bin" / "docker"
+        fallback_docker.parent.mkdir()
+        fallback_docker.write_text("#!/bin/sh\n")
+        fallback_docker.chmod(0o755)
+
+        with (
+            patch.dict(os.environ, {"PATH": str(empty_dir)}, clear=True),
+            patch("cli._DOCKER_BINARY_FALLBACK_PATHS", (str(fallback_docker),)),
+        ):
+            result = _resolve_docker_binary({"PATH": str(empty_dir)})
+        assert result == str(fallback_docker)
+
+    def test_returns_literal_docker_when_unresolvable(self, tmp_path):
+        """When no path works, return ``"docker"`` so the caller fails with a clear error."""
+        empty_dir = tmp_path / "empty"
+        empty_dir.mkdir()
+        with (
+            patch.dict(os.environ, {"PATH": str(empty_dir)}, clear=True),
+            patch("cli._DOCKER_BINARY_FALLBACK_PATHS", ()),
+        ):
+            result = _resolve_docker_binary({"PATH": str(empty_dir)})
+        assert result == "docker"
+
+    def test_no_env_uses_os_environ(self, tmp_path):
+        """When env=None, look up docker via os.environ PATH."""
+        os_bin = tmp_path / "os_bin"
+        os_bin.mkdir()
+        docker_in_os = os_bin / "docker"
+        docker_in_os.write_text("#!/bin/sh\n")
+        docker_in_os.chmod(0o755)
+
+        with patch.dict(os.environ, {"PATH": str(os_bin)}, clear=True):
+            result = _resolve_docker_binary(None)
+        assert result == str(docker_in_os)
+
+    def test_skips_non_executable_fallback(self, tmp_path):
+        """A fallback path that exists but is not executable is skipped."""
+        empty_dir = tmp_path / "empty"
+        empty_dir.mkdir()
+        non_exec = tmp_path / "not-exec" / "docker"
+        non_exec.parent.mkdir()
+        non_exec.write_text("#!/bin/sh\n")
+        non_exec.chmod(0o644)  # Not executable
+
+        with (
+            patch.dict(os.environ, {"PATH": str(empty_dir)}, clear=True),
+            patch("cli._DOCKER_BINARY_FALLBACK_PATHS", (str(non_exec),)),
+        ):
+            result = _resolve_docker_binary({"PATH": str(empty_dir)})
+        assert result == "docker"
+
+
+class TestBuildDockerCmdResolvesBinary:
+    """_build_docker_cmd must produce a docker command with an absolute binary
+    path so the eventual ``subprocess.run(..., env=env)`` cannot trip over a
+    sanitised env's PATH (regression of task-dff66ab3 / task-1929bf59)."""
+
+    @pytest.fixture(autouse=True)
+    def _patch_remote_daemon(self):
+        with patch("cli._is_remote_daemon", return_value=False):
+            yield
+
+    def test_first_arg_is_resolved_path_when_resolver_finds_docker(self, tmp_path):
+        bin_dir = tmp_path / "bin"
+        bin_dir.mkdir()
+        docker_bin = bin_dir / "docker"
+        docker_bin.write_text("#!/bin/sh\n")
+        docker_bin.chmod(0o755)
+
+        with patch("cli._resolve_docker_binary", return_value=str(docker_bin)):
+            docker_cmd = _build_docker_cmd(
+                cli_tool="claude",
+                work_dir=Path("/tmp/worktree"),
+                env={},
+                agent_cmd=["claude", "--dangerously-skip-permissions"],
+                is_interactive=False,
+            )
+        assert docker_cmd.cmd[0] == str(docker_bin)
+        # Sanity check: the rest of the command is unchanged.
+        assert docker_cmd.cmd[1:3] == ["run", "--rm"]
 
 
 class TestMakeWorkerEnv:

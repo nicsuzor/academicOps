@@ -29,7 +29,7 @@ version: 2.0.0
 
 3. **Map Unknowns**: Before planning execution, identify what you _don't_ know. Classify each as: **researchable** (others may have solved it → evidence-gathering task), **internal** (we have unanalysed data → audit/survey task), or **probeable** (unknown-unknown → time-boxed spike). High parent `uncertainty` means most subtasks should start here.
 
-4. **Cross-cutting Impact & Prerequisites** — Ask two questions: (a) "What other projects consume or depend on what's changing?" Search PKB for affected tasks/epics; create sibling tasks in THOSE projects with `depends_on` pointing back here. (b) "What must be true for this change to work?" For each unmet prerequisite, create a prep task that implementation `depends_on`. Both often live in different projects.
+4. **Cross-cutting Impact & Prerequisites** — Ask two questions: (a) "What other projects consume or depend on what's changing?" Search PKB for affected tasks/epics — scope per-project queries with `list_tasks(project=<project-id>)` rather than inferring membership from ID prefixes or walking parent chains. Create sibling tasks in THOSE projects with `depends_on` pointing back here. (b) "What must be true for this change to work?" For each unmet prerequisite, create a prep task that implementation `depends_on`. Both often live in different projects.
 
 5. **Derive a composite Workflow**:
    - Identify which workflow or combination of workflows are relevant for the particular task.
@@ -47,7 +47,9 @@ version: 2.0.0
 
 10. **Extract Structured Metadata**: Extract `due` and `consequence` for subtasks if mentioned or implied by the parent task.
 
-11. **Create in PKB** — Use `mcp__pkb__decompose_task(parent_id, subtasks)` for batch creation under the epic. Include dependencies, effort, due, consequence, and deliverable descriptions as explicit fields.
+11. **Set Priority — default P3**: Subtasks default to **P3**. Do NOT propagate the parent's priority to children, and do NOT infer priority from subtask content (e.g., "this looks important, mark it P1"). Only elevate a subtask above P3 if the user explicitly signals urgency for that specific subtask. See [[../SKILL.md#priority-assignment-rules]] for the full rule.
+
+12. **Create in PKB** — Use `mcp__pkb__decompose_task(parent_id, subtasks)` for batch creation under the epic. Include dependencies, effort, due, consequence, priority, and deliverable descriptions as explicit fields.
 
 ## Hierarchy and Depth
 

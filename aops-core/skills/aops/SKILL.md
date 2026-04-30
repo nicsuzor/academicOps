@@ -58,7 +58,7 @@ When updating the PKB state document:
 - `mcp__plugin_aops-core_pkb__get_document` — load specific documents
 - `mcp__plugin_aops-core_pkb__pkb_context` — get graph overview
 - `mcp__plugin_aops-core_pkb__create` / `mcp__plugin_aops-core_pkb__append` — persist new knowledge
-- `mcp__plugin_aops-core_pkb__list_tasks` / `mcp__plugin_aops-core_pkb__task_search` — find active work
+- `mcp__plugin_aops-core_pkb__list_tasks` / `mcp__plugin_aops-core_pkb__task_search` — find tasks with status: active. Use `project=<project-id>` with `list_tasks` to scope to a single project; never infer project membership from ID prefixes or by walking parent chains.
 
 ---
 
@@ -347,7 +347,7 @@ Every task MUST follow this lifecycle. No shortcuts.
      mcp__plugin_aops-core_pkb__update_task(id="<id>", status="in_progress")
 
    IF creating new tracked work:
-     mcp__plugin_aops-core_pkb__create_task(title="[description]", type="task", project="aops", priority=2)
+     mcp__plugin_aops-core_pkb__create_task(title="[description]", type="task", project="aops", priority=3)
      mcp__plugin_aops-core_pkb__update_task(id="<id>", status="in_progress")
 
    IF quick ad-hoc work (< 15 min, no dependencies):
