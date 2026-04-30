@@ -10,7 +10,7 @@ polecat run -t <task-id>                              # dispatch
 
 **Orchestrator scope (fine to do inline):**
 
-- Framework maintenance: `aops-core/`, `.agents/`, `docs/`, `tests/`
+- Framework maintenance: `aops-core/`, `aops-tools/`, `.agents/`, `docs/`, `tests/`, `scripts/`, `templates/`, `polecat/` (authoritative allowlist: `FRAMEWORK_PATH_PREFIXES` in `aops-core/lib/orchestrator_boundary.py`)
 - Planning / task decomposition / PKB queries
 - Skills the user explicitly invoked (`/` commands)
 

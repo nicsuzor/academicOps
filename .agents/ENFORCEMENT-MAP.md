@@ -14,10 +14,10 @@ or retired (P#65).
 
 ## CI-only checks (whole-repo, too slow for pre-commit)
 
-| Check                    | Script                              | Rule(s)                | Tier   | Behaviour                                          |
-| ------------------------ | ----------------------------------- | ---------------------- | ------ | -------------------------------------------------- |
-| `check-orphan-files`     | `scripts/check_orphan_files.py`     | (wikilink orphans)     | `warn` | Exits 0; reports files with no incoming wikilinks  |
-| `check-skill-line-count` | `scripts/check_skill_line_count.py` | (SKILL.md ≤ 500 lines) | `warn` | Reports oversized SKILL.md files; does not fail CI |
+| Check                    | Script                              | Rule(s)                | Tier    | Behaviour                                                                     |
+| ------------------------ | ----------------------------------- | ---------------------- | ------- | ----------------------------------------------------------------------------- |
+| `check-orphan-files`     | `scripts/check_orphan_files.py`     | (wikilink orphans)     | `warn`  | Exits 0; reports files with no incoming wikilinks                             |
+| `check-skill-line-count` | `scripts/check_skill_line_count.py` | (SKILL.md ≤ 500 lines) | `block` | Exits 1 when any SKILL.md exceeds 500 lines; fails the pre-commit hook and CI |
 
 ## Notes
 

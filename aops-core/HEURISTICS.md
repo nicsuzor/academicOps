@@ -474,7 +474,7 @@ The general CLI agent (main Claude Code session) is a **dispositor** — it unde
 - Decompose epics into subtasks
 - Run `/pull`, `/daily`, `/planner`, `/dump`, `/q` and other meta-skills
 - Dispatch tasks via the `polecat` CLI
-- Edit framework files (`aops-core/`, `.agents/`, `docs/`, `tests/`) — framework maintenance is orchestrator scope
+- Edit framework files (`aops-core/`, `aops-tools/`, `.agents/`, `docs/`, `tests/`, `scripts/`, `templates/`, `polecat/`) — framework maintenance is orchestrator scope. Authoritative allowlist: `FRAMEWORK_PATH_PREFIXES` in `aops-core/lib/orchestrator_boundary.py`.
 
 **Orchestrator must not do** (worker scope — queue instead):
 
