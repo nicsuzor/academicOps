@@ -519,6 +519,12 @@ Before spawning an Explore subagent or any research-oriented subagent, the main 
 
 **Derivation**: Extends P#58 (Indices Before Exploration) from search strategy to subagent dispatch. P#58 says prefer indices over filesystem searches; P#119 says prefer direct action over subagent research when context is sufficient. Addresses systematic over-exploration documented in #356.
 
+<a id="P123"></a>
+
+## Age Is Not A Staleness Signal (P#123)
+
+Age is not a staleness signal. Never cancel based on age alone. Only cancel when work becomes irrelevant. Garden passes surface candidates for human review — they do not recommend cancellation.
+
 ---
 
 # Framework Architecture
