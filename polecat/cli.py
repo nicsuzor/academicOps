@@ -3522,7 +3522,11 @@ class _IssueTask:
 @click.option(
     "--force",
     is_flag=True,
-    help="Run task regardless of status (bypass done/locked checks). Still claims the task.",
+    help=(
+        "Bypass the task status check and claim the task regardless of its "
+        "current status (including done, cancelled, merge_ready, review, or "
+        "PR-locked). Still claims the task to in_progress before running."
+    ),
 )
 @click.pass_context
 def run(
