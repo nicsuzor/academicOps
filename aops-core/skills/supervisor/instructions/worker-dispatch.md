@@ -3,6 +3,12 @@
 Supervisor dispatches individual tasks to workers. This phase transforms
 approved decomposition into execution — one task at a time.
 
+> **`polecat` not on PATH?** Dispatch examples below use bare `polecat`. In
+> non-interactive shells (Bash tool, cron, CI, headless agent), the
+> `polecat`/`pc` zsh alias is not loaded. Substitute the canonical form:
+> `uv run --project $AOPS $AOPS/polecat/cli.py <args>`. See
+> [[../SKILL.md#dispatch]] for the global note.
+
 ---
 
 ## Worker Types and Capabilities

@@ -4,6 +4,12 @@ Active, interruptible supervision of an epic. The supervisor loops
 through orient → act → checkpoint on every invocation. It might dispatch one
 invocation, monitor the next, react to a failure on the third.
 
+> **`polecat` not on PATH?** Dispatch examples below use bare `polecat`. In
+> non-interactive shells (Bash tool, cron, CI, headless agent), the
+> `polecat`/`pc` zsh alias is not loaded. Substitute the canonical form:
+> `uv run --project $AOPS $AOPS/polecat/cli.py <args>`. See
+> [[../SKILL.md#dispatch]] for the global note.
+
 ## The Loop
 
 Every invocation:
