@@ -13,6 +13,6 @@ description: |
 Run the compliance check with this command:
 
 - Gemini: `aops_core_enforcer(message='{temp_path}')`
-- Claude: `Agent(subagent_type='aops-core:enforcer', prompt='{temp_path}')`
+- Claude: `Agent(subagent_type='aops-core:rbg', prompt='{temp_path}')`
 
 Pass the file path directly to the agent — it will read the file and perform the compliance check.

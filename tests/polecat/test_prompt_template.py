@@ -151,3 +151,25 @@ def test_prompt_shows_pr_lock_warning_when_pr_url_set():
     task_meta = {"pr_url": "https://github.com/owner/repo/pull/825"}
     prompt = build_polecat_prompt(task_id="task-1", task_title="Title", task_meta=task_meta)
     assert "**Existing PR**: https://github.com/owner/repo/pull/825" in prompt
+
+
+def test_finish_section_reminds_re_reading_task_body_for_mandatory_gates():
+    """Regression for #583: Step 0 of FINISH_LOCAL_TASK must be a labelled pre-push gate-recheck step.
+
+    A polecat worker shipped a PR after satisfying gates 1+2 (plan review,
+    TDD) but skipping the task body's gate 3 (James re-review on the
+    implementation), because the generic "Finish" template structurally
+    pulls toward push+PR once code is committed. The mitigation in the
+    template is a labelled pre-push gate-recheck step that the worker
+    cannot honestly skip without noticing.
+    """
+    prompt = build_polecat_prompt(task_id="task-1", task_title="Title")
+    # The labelled pre-push step must exist.
+    assert "Pre-push gate check" in prompt
+    # It must explicitly tell the worker to re-read the task body.
+    assert "re-read the task body" in prompt.lower()
+    # It must reference task-specific / mandatory gates so the worker
+    # parses for the right markers (MUST / mandatory / re-review etc.).
+    assert "mandatory" in prompt.lower()
+    # It must reference #583 so the rationale is auditable.
+    assert "#583" in prompt
