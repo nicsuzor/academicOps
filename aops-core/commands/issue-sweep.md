@@ -33,6 +33,8 @@ permalink: commands/issue-sweep
 - No improvised disposition. If an issue does not fit a rubric row cleanly, surface it under "Needs human triage" — do not invent a sixth bucket mid-cycle.
 - No cursor stored in task body. The label `triaged-*` IS the cursor; the next cycle's `gh` query excludes already-stamped issues.
 
+**See also**: [[../skills/supervisor/SKILL.md]] · [[../skills/qa/SKILL.md]] · [[../AXIOMS.md]] · [[../HEURISTICS.md]]
+
 ## Concepts
 
 ### Disposition set
@@ -112,7 +114,7 @@ Cap at **20 issues per cycle**. Smaller is fine — quality at small N beats slo
 
 ```bash
 gh issue list --repo nicsuzor/academicOps --state open --limit 100 \
-  --search '-label:triaged-stale -label:triaged-comment -label:triaged-single -label:triaged-epic -label:triaged-defer' \
+  --search 'sort:created-asc -label:triaged-stale -label:triaged-comment -label:triaged-single -label:triaged-epic -label:triaged-defer' \
   --json number,title,labels,createdAt,updatedAt,comments,body \
   > /tmp/issue-sweep-batch.json
 ```
@@ -176,7 +178,7 @@ Order of execution (low-blast-radius first, so failures don't strand higher-impa
 2. **`close-as-stale`**: close with comment.
 3. **`defer`**: add `triaged-defer` label and post the `revisit-by-YYYY-MM-DD` comment.
 4. **`single-task`**: file polecat task via `mcp__pkb__create_task`. Set body to include the issue body, AC, and `Closes #N` instruction for the eventual PR. Stamp the issue with `triaged-single`.
-5. **`fix-epic`** (only those confirmed by the user): create epic via `mcp__pkb__create_task` parented under the appropriate component epic (NOT under `epic-a0523a25` — per its Coherence rule, per-issue fixes are not children of the loop epic). Decompose. Invoke `/supervisor` on the new epic. Stamp each bundled issue with `triaged-epic` and a comment linking the epic ID.
+5. **`fix-epic`** (only those confirmed by the user): create epic via `mcp__pkb__create_task` parented under the appropriate component epic (NOT under `epic-a0523a25` — per its Coherence rule, per-issue fixes are not children of the loop epic). Decompose into subtasks. Per P#109, create a `verify-parent` task that depends on all subtasks — this task confirms the epic's bundled issues are fully resolved after implementation completes. Invoke `/supervisor` on the new epic. Stamp each bundled issue with `triaged-epic` and a comment linking the epic ID.
 
 For each disposition, stamp the corresponding `triaged-*` label so the next cycle's filter excludes it.
 
@@ -193,7 +195,7 @@ Process:
 Append:
 
 ```
-mcp__pkb__append(id="epic-a0523a25", section="Cycle Log", content="<populated entry, including: cursor=label-based; batch size; issues processed; per-disposition lists; friction filed; open count after cycle; triaged-* totals; stopping condition met yes/no with one-line evidence>")
+mcp__pkb__append(id="epic-a0523a25", content="<populated entry, including: cursor=label-based; batch size; issues processed; per-disposition lists; friction filed; open count after cycle; triaged-* totals; stopping condition met yes/no with one-line evidence>")
 ```
 
 ### 7. Hand off to /qa
