@@ -138,6 +138,8 @@ Quick task capture with minimal overhead. Speed is the priority — no enrichmen
 - `/q nic: <description>` — Assign to user
 - `/q` (no args) — Prompt for details
 
+**Priority defaults**: Default new tasks to **P3** unless the user explicitly indicates urgency. See [[../../PRIORITY.md]] for canonical P0–P4 definitions.
+
 ### plan
 
 Strategic planning under genuine uncertainty. Knowledge-building that produces plans as a byproduct.
