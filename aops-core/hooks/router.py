@@ -236,9 +236,19 @@ class HookRouter:
         return value
 
     def normalize_input(
-        self, raw_input: dict[str, Any], gemini_event: str | None = None
+        self,
+        raw_input: dict[str, Any],
+        gemini_event: str | None = None,
+        client_type: str | None = None,
     ) -> HookContext:
-        """Create a normalized HookContext from raw input."""
+        """Create a normalized HookContext from raw input.
+
+        Args:
+            raw_input: Raw hook input payload from stdin.
+            gemini_event: Gemini-specific event name (CLI arg).
+            client_type: "claude" or "gemini" from the --client flag.
+                         Surfaces in JSONL logs to distinguish polecat sessions.
+        """
 
         # 1. Determine Event Name
         if gemini_event:
@@ -393,6 +403,7 @@ class HookRouter:
             hook_event=hook_event,
             agent_id=agent_id,
             slug=slug,
+            client_type=client_type,
             is_subagent=is_subagent,
             subagent_type=subagent_type,
             # Metadata (aops-d9ba7159)
@@ -1135,8 +1146,7 @@ def main():
         raise OSError("No --client flag provided on hook invocation.")
 
     # Pipeline
-    ctx = router.normalize_input(raw_input, gemini_event)
-    ctx.client_type = client_type
+    ctx = router.normalize_input(raw_input, gemini_event, client_type=client_type)
     result = router.execute_hooks(ctx)
 
     # Output (JSON conversion happens only here)
