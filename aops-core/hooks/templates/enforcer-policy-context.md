@@ -12,4 +12,4 @@ description: |
 **Periodic compliance check required ({ops_since_open} ops since last check).** Invoke the **enforcer** agent with the file path argument: `{temp_path}`
 
 - Gemini: `aops_core_enforcer(message='{temp_path}')`
-- Claude: `Agent(subagent_type='aops-core:enforcer', prompt='{temp_path}')`
+- Claude: `Agent(subagent_type='aops-core:rbg', prompt='{temp_path}')`

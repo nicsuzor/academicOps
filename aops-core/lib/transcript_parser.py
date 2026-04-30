@@ -895,6 +895,11 @@ def extract_timeline_events(turns: list[Any], session_id: str) -> list[dict[str,
     Scans assistant_sequence for task operations, user prompts,
     and skill invocations. Returns list of event dicts ready for JSON serialization.
 
+    Emission is idempotent: events are deduped by a content-aware key so that
+    upstream replays or repeated invocations cannot produce duplicate
+    `user_prompt` / task-op events. The parser already drops Cowork
+    `isReplay` entries and dedupes by UUID, so this is defence-in-depth.
+
     Args:
         turns: List of ConversationTurn objects from group_entries_into_turns
         session_id: 8-char session ID for context
@@ -903,6 +908,31 @@ def extract_timeline_events(turns: list[Any], session_id: str) -> list[dict[str,
         List of event dicts with timestamp, type, and description fields
     """
     events: list[dict[str, Any]] = []
+    seen_keys: set[tuple] = set()
+
+    def _emit(event: dict[str, Any]) -> None:
+        # Dedupe key: timestamp + type + the most-identifying content field
+        # for that event type. A duplicate prompt with a slightly different
+        # timestamp would still be caught by parser-level UUID dedupe; here
+        # we guard against exact replays from any other path.
+        evt_type = event.get("type")
+        if evt_type == "user_prompt":
+            key = (event.get("timestamp"), evt_type, event.get("description"))
+        elif evt_type in ("task_create", "task_complete", "task_release", "task_update"):
+            key = (
+                event.get("timestamp"),
+                evt_type,
+                event.get("task_id"),
+                event.get("task_title"),
+                event.get("new_status"),
+                event.get("status"),
+            )
+        else:
+            key = (event.get("timestamp"), evt_type, event.get("description"))
+        if key in seen_keys:
+            return
+        seen_keys.add(key)
+        events.append(event)
 
     for turn in turns:
         # Handle both ConversationTurn dataclass and plain dict turns
@@ -919,7 +949,7 @@ def extract_timeline_events(turns: list[Any], session_id: str) -> list[dict[str,
 
         # User prompts (no truncation, JSON-escaped by json.dumps downstream)
         if user_msg and not getattr(turn, "is_meta", False):
-            events.append(
+            _emit(
                 {
                     "timestamp": ts,
                     "type": "user_prompt",
@@ -937,7 +967,7 @@ def extract_timeline_events(turns: list[Any], session_id: str) -> list[dict[str,
                 continue
 
             if "pkb__create_task" in tool:
-                events.append(
+                _emit(
                     {
                         "timestamp": ts,
                         "type": "task_create",
@@ -947,7 +977,7 @@ def extract_timeline_events(turns: list[Any], session_id: str) -> list[dict[str,
                     }
                 )
             elif "pkb__complete_task" in tool:
-                events.append(
+                _emit(
                     {
                         "timestamp": ts,
                         "type": "task_complete",
@@ -955,7 +985,7 @@ def extract_timeline_events(turns: list[Any], session_id: str) -> list[dict[str,
                     }
                 )
             elif "pkb__release_task" in tool:
-                events.append(
+                _emit(
                     {
                         "timestamp": ts,
                         "type": "task_release",
@@ -967,7 +997,7 @@ def extract_timeline_events(turns: list[Any], session_id: str) -> list[dict[str,
             elif "pkb__update_task" in tool:
                 status = inp.get("status")
                 if status:  # only record status changes
-                    events.append(
+                    _emit(
                         {
                             "timestamp": ts,
                             "type": "task_update",
@@ -1893,6 +1923,14 @@ class SessionProcessor:
         session_summary = None
         session_uuid = file_path.stem
 
+        # Track UUIDs of conversation entries we've already emitted so we can
+        # skip Cowork-style replays. Cowork audit logs include both the
+        # original user/assistant entry and a later "replay" copy with the
+        # same UUID and a slightly later `_audit_timestamp` (the replay marks
+        # itself with `isReplay: true`). Both arms must be deduped or every
+        # downstream consumer (turns, timeline_events) sees the prompt twice.
+        seen_uuids: set[str] = set()
+
         with open(file_path, encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
@@ -1905,7 +1943,21 @@ class SessionProcessor:
                     if file_path.name.endswith("-hooks.jsonl"):
                         data = self._map_hook_jsonl_to_entry_data(data)
 
+                    # Drop replay entries outright — same UUID, same content,
+                    # later timestamp; a pure duplicate of the original.
+                    if data.get("isReplay") is True:
+                        continue
+
                     entry = Entry.from_dict(data)
+
+                    # Dedupe user/assistant entries by UUID (first occurrence
+                    # wins). System events, hook entries, etc. are not
+                    # deduped — they can legitimately repeat.
+                    if entry.type in ("user", "assistant") and entry.uuid:
+                        if entry.uuid in seen_uuids:
+                            continue
+                        seen_uuids.add(entry.uuid)
+
                     entries.append(entry)
 
                     # Extract summary if available
@@ -2605,6 +2657,235 @@ class SessionProcessor:
 
         return "**Context Summary**\n\n" + "\n".join(summary_parts) + "\n\n"
 
+    def _extract_session_context(
+        self,
+        turns: list[ConversationTurn | dict],
+        max_turns: int = 10,
+    ) -> dict[str, list[dict[str, str]]]:
+        """Collect injected/read context that landed early in the session.
+
+        Three categories:
+          - ``system_reminders``: ``system-reminder`` style additionalContext
+            blocks (hook ``additional_context`` without an explicit
+            ``contextInjection`` payload).
+          - ``hook_injections``: gate-style ``contextInjection`` payloads from
+            CanonicalHookOutput, plus any files the hook recorded as loaded
+            (CLAUDE.md, MEMORY.md, hydration files, etc.).
+          - ``early_reads``: files the agent read with the ``Read`` tool in
+            the first ``max_turns`` conversation turns.
+
+        Each item is a ``{"label": ..., "content": ...}`` (or
+        ``{"path": ..., "content": ...}``) dict ready for rendering.
+        Sessions with no qualifying entries return empty lists for every
+        category — the caller is expected to omit the section in that case.
+        """
+        system_reminders: list[dict[str, str]] = []
+        hook_injections: list[dict[str, str]] = []
+        early_reads: list[dict[str, str]] = []
+
+        # Track de-duplication for files (a hook may record `filesLoaded` and
+        # the same path may appear again as a Read in the early turns).
+        seen_read_paths: set[str] = set()
+
+        def _record_hook(hook: dict) -> None:
+            event_name = hook.get("hook_event_name") or "Hook"
+            tool_name = hook.get("tool_name")
+            agent_id = hook.get("agent_id")
+            label_suffix = ""
+            if tool_name:
+                label_suffix = f": {tool_name}"
+            elif agent_id:
+                label_suffix = f": agent-{agent_id}"
+            label = f"{event_name}{label_suffix}"
+
+            files_loaded = hook.get("files_loaded") or []
+            injection = hook.get("hook_context_injection")
+            additional = (hook.get("content") or "").strip()
+
+            if injection:
+                hook_injections.append(
+                    {
+                        "label": label,
+                        "content": injection,
+                        "files_loaded": ", ".join(files_loaded) if files_loaded else "",
+                    }
+                )
+            elif files_loaded:
+                # Hook reported files loaded but no inline context payload —
+                # still useful to surface (e.g. CLAUDE.md echo, MEMORY.md).
+                hook_injections.append(
+                    {
+                        "label": label,
+                        "content": "",
+                        "files_loaded": ", ".join(files_loaded),
+                    }
+                )
+
+            if additional:
+                system_reminders.append({"label": label, "content": additional})
+
+        user_turn_count = 0
+        for turn in turns:
+            # Standalone hook_context turn dict (system_reminder before any
+            # user message) — always part of bootstrap context.
+            if isinstance(turn, dict) and turn.get("type") == "hook_context":
+                _record_hook(turn)
+                continue
+
+            # Skip non-conversation dicts (e.g. summary entries).
+            if isinstance(turn, dict):
+                continue
+
+            # ConversationTurn — count it and stop once we've covered the
+            # first ``max_turns`` substantive turns.
+            user_turn_count += 1
+            if user_turn_count > max_turns:
+                break
+
+            # Inline hooks attached to this user turn (PreToolUse / Stop /
+            # UserPromptSubmit context injections).
+            for hook in turn.inline_hooks or []:
+                _record_hook(hook)
+
+            # Read tool calls — surface filenames + (in full mode) the body
+            # of each early read.
+            for item in turn.assistant_sequence or []:
+                if item.get("type") != "tool":
+                    continue
+                if item.get("tool_name") != "Read":
+                    continue
+                tool_input = item.get("tool_input") or {}
+                file_path = tool_input.get("file_path", "")
+                if not file_path or file_path in seen_read_paths:
+                    continue
+                seen_read_paths.add(file_path)
+                # ``result`` is only populated when include_tool_results=True
+                # (full variant); in abridged the body is irrelevant.
+                early_reads.append(
+                    {
+                        "path": file_path,
+                        "content": item.get("result") or "",
+                    }
+                )
+
+        return {
+            "system_reminders": system_reminders,
+            "hook_injections": hook_injections,
+            "early_reads": early_reads,
+        }
+
+    @staticmethod
+    def _render_session_context(
+        ctx: dict[str, list[dict[str, str]]],
+        variant: str,
+    ) -> str:
+        """Render the Session Context section.
+
+        Returns "" when there is nothing to surface.
+
+        ``abridged``: bullet list per category (filenames + one-line label).
+        ``full``: each item rendered with its body, large bodies wrapped in
+        ``<details>`` blocks.
+        """
+        system_reminders = ctx.get("system_reminders", [])
+        hook_injections = ctx.get("hook_injections", [])
+        early_reads = ctx.get("early_reads", [])
+
+        if not system_reminders and not hook_injections and not early_reads:
+            return ""
+
+        full_mode = variant == "full"
+        out: list[str] = ["## Session Context\n"]
+
+        def _is_binary(text: str) -> bool:
+            # Heuristic: real binary Reads come back with a NUL byte or as
+            # base64; treat those as opaque so we list the filename only.
+            if not text:
+                return False
+            if "\x00" in text[:2048]:
+                return True
+            return False
+
+        def _wrap_body(label: str, body: str) -> str:
+            body = body.rstrip()
+            if not body:
+                return f"### {label}\n\n_(empty)_\n\n"
+            if len(body) > 500:
+                # Long bodies go inside <details> so the section stays
+                # navigable.
+                return (
+                    f"### {label}\n\n"
+                    f"<details>\n<summary>{len(body):,} chars</summary>\n\n"
+                    f"```\n{body}\n```\n\n"
+                    f"</details>\n\n"
+                )
+            return f"### {label}\n\n```\n{body}\n```\n\n"
+
+        if hook_injections:
+            out.append("**Hook context injections** (software-injected):\n")
+            if full_mode:
+                out.append("")
+                for item in hook_injections:
+                    label = item["label"]
+                    files_loaded = item.get("files_loaded", "")
+                    body_parts = []
+                    if files_loaded:
+                        body_parts.append(f"_Files loaded:_ {files_loaded}")
+                    if item["content"]:
+                        body_parts.append(item["content"])
+                    body = "\n\n".join(body_parts)
+                    out.append(_wrap_body(label, body))
+            else:
+                for item in hook_injections:
+                    files_loaded = item.get("files_loaded", "")
+                    char_count = len(item["content"])
+                    detail_bits = []
+                    if files_loaded:
+                        # Show basenames only for readability.
+                        bases = ", ".join(
+                            f"`{p.split('/')[-1]}`" for p in files_loaded.split(", ") if p
+                        )
+                        detail_bits.append(f"loaded {bases}")
+                    if char_count:
+                        detail_bits.append(f"{char_count:,} chars injected")
+                    suffix = f" — {'; '.join(detail_bits)}" if detail_bits else ""
+                    out.append(f"- {item['label']}{suffix}")
+                out.append("")
+
+        if system_reminders:
+            out.append("**System reminders** (software-injected):\n")
+            if full_mode:
+                out.append("")
+                for item in system_reminders:
+                    out.append(_wrap_body(item["label"], item["content"]))
+            else:
+                for item in system_reminders:
+                    char_count = len(item["content"])
+                    out.append(f"- {item['label']} — {char_count:,} chars")
+                out.append("")
+
+        if early_reads:
+            out.append("**Early file reads** (agent-read):\n")
+            if full_mode:
+                out.append("")
+                for item in early_reads:
+                    path = item["path"]
+                    content = item["content"]
+                    if _is_binary(content):
+                        out.append(f"### {path}\n\n_(binary content omitted)_\n\n")
+                    else:
+                        out.append(_wrap_body(path, content))
+            else:
+                for item in early_reads:
+                    path = item["path"]
+                    basename = path.split("/")[-1]
+                    out.append(f"- `{basename}` — `{path}`")
+                out.append("")
+
+        # Always end with a blank line so the next section starts cleanly.
+        rendered = "\n".join(out).rstrip() + "\n\n"
+        return rendered
+
     def format_session_as_markdown(
         self,
         session: SessionSummary,
@@ -3058,8 +3339,21 @@ session_id: {session_uuid}
         if context_summary:
             session_context += context_summary
 
+        # Surface injected/read context (hook injections, system reminders,
+        # early Read tool calls) near the top so a reviewer can see what
+        # bootstrap material the agent had visible.
+        ctx = self._extract_session_context(turns)
+        injected_context_section = self._render_session_context(ctx, variant)
+
         reflection_section = reflection_header if reflection_header else ""
-        return frontmatter + header + session_context + reflection_section + markdown
+        return (
+            frontmatter
+            + header
+            + session_context
+            + injected_context_section
+            + reflection_section
+            + markdown
+        )
 
     def _group_sidechain_entries(
         self, sidechain_entries: list[Entry]
