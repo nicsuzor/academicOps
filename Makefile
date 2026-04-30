@@ -81,9 +81,9 @@ build-dev:
 # Install local build artifacts into clients
 # NOTE: This overrides the release marketplace with a local directory source.
 # Run `make uninstall-dev` to restore the release marketplace when done testing.
-install-dev:
+install-dev: build-dev
 	@echo "Installing from local build artifacts..."
-	@echo "  Claude source: $(AOPS_ROOT) (local)"
+	@echo "  Claude source: $(DIST_DIR) (local marketplace)"
 	@echo "  Gemini source: $(DIST_DIR)/aops-gemini (local build)"
 	@echo "Uninstalling existing local plugins/extensions..."
 	-command gemini extensions uninstall $(GEMINI_EXT_NAME)
@@ -97,14 +97,14 @@ cache = pathlib.Path.home() / '.claude/plugins/cache/academicOps/aops-core'; \
 [shutil.rmtree(v) or print(f'  removed {v.name}') for v in cache.iterdir() if v.is_dir() and str(v) != active] if cache.exists() else None \
 "
 	@echo "Configuring local Claude marketplace (overrides release source)..."
-	-command claude plugin marketplace add $(AOPS_ROOT)
+	-command claude plugin marketplace add $(DIST_DIR)
 	@echo "Installing local build into Claude Code..."
 	@command claude plugin install $(CLAUDE_PLUGIN_NAME) || echo "  ⚠️ Claude install failed"
 	@echo "Installing local build into Gemini CLI..."
 	@command gemini extensions install $(DIST_DIR)/aops-gemini --consent || echo "  ⚠️ Gemini install failed"
 	@$(MAKE) report-versions
 	@echo "✓ Local installation complete"
-	@echo "  ⚠️  Marketplace 'academicOps' now points to $(AOPS_ROOT)"
+	@echo "  ⚠️  Marketplace 'academicOps' now points to $(DIST_DIR)"
 	@echo "  Run 'make uninstall-dev' to restore the release marketplace."
 
 # Restore the release marketplace after local dev testing
@@ -158,12 +158,12 @@ install-claude:
 # survives the sync.
 install-cowork: build-dev
 	@echo "Installing aops plugin for Claude Cowork (local source — Cowork bug workaround)..."
-	@echo "  Source: $(DIST_DIR)/aops-cowork (local build)"
+	@echo "  Source: $(DIST_DIR) (local build marketplace)"
 	-command claude plugin uninstall $(COWORK_PLUGIN_NAME)
-	@command claude plugin marketplace add $(AOPS_ROOT) && \
+	@command claude plugin marketplace add $(DIST_DIR) && \
 	command claude plugin install $(COWORK_PLUGIN_NAME) && \
 	echo "✓ Cowork plugin installed"
-	@echo "  ⚠️  Marketplace 'academicOps' now points to $(AOPS_ROOT)"
+	@echo "  ⚠️  Marketplace 'academicOps' now points to $(DIST_DIR)"
 
 install-gemini:
 	@echo "Installing aops extension for Gemini CLI..."
