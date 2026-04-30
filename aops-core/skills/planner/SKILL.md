@@ -78,16 +78,40 @@ Quick task capture with minimal overhead. Speed is the priority — no enrichmen
 
 **Workflow**:
 
+0. **Consult CORE.md Component Topology FIRST** (before any parent or project resolution). Read the project repo's `.agents/CORE.md` "Key Components" / Component Topology table to map the task's subject matter to the correct project short form. The `project` field drives polecat repo cloning — getting it wrong sends agents to the wrong repo. Examples:
+
+   | Task subject                                           | Correct `project` | Wrong default |
+   | ------------------------------------------------------ | ----------------- | ------------- |
+   | PKB MCP server code, knowledge graph internals, brain/ | `mem`             | `aops`        |
+   | aops-core skills, hooks, gates, plugin packaging       | `aops`            | —             |
+   | Polecat sandbox, container forwarding, agent-env-map   | `aops`            | —             |
+   | Daily notes, $ACA_DATA layout, PKB content (not code)  | `mem`             | `aops`        |
+
+   **Worked example**: A `/q` request to "fix the PKB MCP `find_duplicates` tool returning empty clusters" routes to `project=mem` (the PKB MCP server lives in `nicsuzor/mem`), NOT `project=aops`. Routing to `aops` causes polecat to clone the wrong repo and the dispatched agent will fail to find the source files.
+
+   If CORE.md is missing, the table doesn't disambiguate, or the subject straddles repos, STOP and ask the user — do not default to `aops`.
+
 1. Search for duplicates and similar tasks (quick, 5 results max).
 2. **Scope check**: If similar tasks exist with high `scope`, consider if the new task should be a subtask of an existing epic rather than a new top-level task.
-3. Resolve parent per hierarchy rules. **Domain check**: If the new task's content or tags suggest a different domain (e.g., teaching) than the selected parent (e.g., framework/aops), warn the user and ask for confirmation: "This looks like [domain] work, but the selected parent [parent-id] is in [parent-domain] — confirm parent?"
+3. Resolve parent per hierarchy rules, scoped to the project chosen in Step 0. **Domain check**: If the new task's content or tags suggest a different domain (e.g., teaching) than the selected parent (e.g., framework/aops), warn the user and ask for confirmation: "This looks like [domain] work, but the selected parent [parent-id] is in [parent-domain] — confirm parent?"
 4. Route assignee: `polecat` (default), `null` (judgment-required), `nic` (only if explicit).
 5. **Extract structured metadata** if mentioned in description or conversation:
    - `due`: ISO date (YYYY-MM-DD)
    - `effort`: duration (0.5d, 1d, 1w)
    - `consequence`: prose description of what happens if not done
 6. Create task with body template (Problem, Solution, Files, AC). Pass `due`, `effort`, and `consequence` as explicit PKB parameters to `mcp__pkb__create_task` (not only in body prose) — the PKB uses `due` as a structured field for deadline-aware prioritization.
-7. **Report with context tree**: Fetch siblings via `mcp__pkb__get_task_children(parent_id)` and print a compact ASCII tree showing parent + siblings + the new task, marking the new task with `← NEW`. Then HALT — no execution.
+7. **Externalise follow-up action items as separate linked tasks** (not body prose). If the user's prompt or your analysis surfaces follow-up work that is **not part of the primary task's scope** — e.g. supersession decisions ("consider closing X if approved"), prerequisite investigations ("check whether Y is still relevant first"), cross-project updates ("update Z in project A to reflect this"), or triage decisions — create them as separate linked tasks. They must be addressable graph nodes, not invisible prose buried in the body.
+
+   **Link types**:
+
+   - **Decision/triage on the primary task** (e.g. "decide whether to supersede X"): create as a **subtask** of the primary task, or link via `soft_depends_on` when the decision unblocks the primary work.
+   - **Cross-epic / cross-project follow-up** (e.g. "also update Z in project A"): create as a **separate top-level task** under the appropriate parent, linked back to the primary via `soft_depends_on` (soft unlocker) or `depends_on` (hard prerequisite).
+
+   Apply the same Decision Surfacing Heuristic before creating follow-ups: DECIDE-class items get resolved in-line in the body with brief reasoning; only DEFER and SURFACE items become their own tasks.
+
+   The output of capture should therefore frequently be **two or more tasks** (primary + follow-ups), each correctly linked.
+
+8. **Report with context tree**: Fetch siblings via `mcp__pkb__get_task_children(parent_id)` and print a compact ASCII tree showing parent + siblings + the new task(s), marking new tasks with `← NEW`. Then HALT — no execution.
 
    Format:
    ```
@@ -124,7 +148,7 @@ Strategic planning under genuine uncertainty. Knowledge-building that produces p
 **Sub-modes**:
 
 - **Strategic Intake** (UP): New ideas, constraints, connections, surprises → place at the right level, link, surface assumptions. Use `uncertainty` to distinguish between "need more information" (high uncertainty, needs a spike/probe) and "know what to do" (low uncertainty, needs execution). Use the [[strategic-intake]] workflow.
-- **Prioritisation** (ACROSS): Use graph topology and computed properties to rank tasks. Surface high-criticality, low-uncertainty tasks as ready priorities. `priority_score ≈ downstream_weight × criticality`.
+- **Prioritisation** (ACROSS): Use graph topology and computed properties to rank tasks. Surface high-`urgency`, low-uncertainty tasks as ready priorities. Ranking uses `urgency` (composes severity, edge weights, slack time, and decay) — successor of the older `downstream_weight × criticality` heuristic.
 
 **Philosophy**:
 
@@ -172,6 +196,7 @@ Break validated epics into structured task trees.
 - Tasks must be self-contained for handoff (P#120) — include context, decisions, constraints, data findings.
 - **Map unknowns**: Before planning execution, classify unknowns as researchable, internal, or probeable (Step 3). Build appropriate evidence-gathering or spike tasks. High uncertainty on the parent signals a need for more probeable tasks.
 - **Cross-cutting impact & prerequisites**: Every decomposition must check what other projects depend on what's changing AND what must be true before the change is useful (Step 4). Create tasks in affected projects, not just under this epic.
+- **Externalise follow-up action items**: Any follow-up work surfaced during decomposition that is outside the epic's scope — supersession decisions, prerequisite investigations, cross-project updates, triage calls — must be created as separate linked tasks, not embedded as prose in subtask bodies. Decision/triage on a subtask → child subtask or `soft_depends_on`. Cross-epic work → separate task under the right parent, linked via `soft_depends_on` (unlocker) or `depends_on` (hard prerequisite). Action items must be addressable graph nodes.
 
 **Workflow files**: `aops-core/skills/planner/workflows/decompose.md`
 
@@ -221,24 +246,80 @@ Incremental PKM and task graph maintenance. Small, regular attention beats massi
 
 **Activities**:
 
-| Activity       | What                                                                                                                             |
-| -------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| **Lint**       | Validate frontmatter YAML (use PKB linter)                                                                                       |
-| **Weed**       | Fix broken wikilinks, remove dead references                                                                                     |
-| **Prune**      | Archive stale sessions (>30 days)                                                                                                |
-| **Compost**    | Merge fragments into richer notes                                                                                                |
-| **Cultivate**  | Enrich sparse notes, add context                                                                                                 |
-| **Link**       | Connect orphans, add missing wikilinks                                                                                           |
-| **Map**        | Create/update MoCs for navigation                                                                                                |
-| **DRY**        | Remove restated content, replace with links                                                                                      |
-| **Synthesize** | Strip deliberation artifacts from implemented specs                                                                              |
-| **Reparent**   | Fix orphaned tasks (missing-parent AND wrong-type-parent), enforce hierarchy rules                                               |
-| **Hierarchy**  | Validate task→epic→project structure, goal-linkage via goals: [] metadata, and domain consistency (no places-vs-projects mixing) |
-| **Stale**      | Flag a task with status: stale or inconsistencies                                                                                |
-| **Dedup**      | Find and merge duplicate tasks                                                                                                   |
-| **Triage**     | Detect under-specified tasks                                                                                                     |
-| **Densify**    | Add dependency edges between related tasks                                                                                       |
-| **Scan**       | Report graph density without changes                                                                                             |
+| Activity           | What                                                                                                                             |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| **Lint**           | Validate frontmatter YAML (use PKB linter)                                                                                       |
+| **Weed**           | Fix broken wikilinks, remove dead references                                                                                     |
+| **Prune**          | Archive stale sessions (>30 days)                                                                                                |
+| **Compost**        | Merge fragments into richer notes                                                                                                |
+| **Cultivate**      | Enrich sparse notes, add context                                                                                                 |
+| **Link**           | Connect orphans, add missing wikilinks                                                                                           |
+| **Map**            | Create/update MoCs for navigation                                                                                                |
+| **DRY**            | Remove restated content, replace with links                                                                                      |
+| **Synthesize**     | Strip deliberation artifacts from implemented specs                                                                              |
+| **Reparent**       | Fix orphaned tasks (missing-parent AND wrong-type-parent), enforce hierarchy rules                                               |
+| **Hierarchy**      | Validate task→epic→project structure, goal-linkage via goals: [] metadata, and domain consistency (no places-vs-projects mixing) |
+| **Stale**          | Flag a task with status: stale or inconsistencies                                                                                |
+| **Dedup**          | Find and merge duplicate tasks                                                                                                   |
+| **Triage**         | Detect under-specified tasks                                                                                                     |
+| **Densify**        | Add dependency edges between related tasks                                                                                       |
+| **Scan**           | Report graph density without changes                                                                                             |
+| **Anti-inflation** | Surface target/prototype graph hygiene issues (consequence prose, edge `why:`, SEV4 weak-prose flag)                             |
+
+### Anti-Inflation Surface (Target/Prototype Graph Hygiene)
+
+> Spec: `projects/aops/specs/pkb/multi-parent-edges.md` §1.5, §2.3, §2.4, §6 Q4. SURFACE-only — never block tool use.
+
+The multi-parent-edges spec defers enforcement of consequence-prose presence, edge-justification presence, and SEV4 concurrency to review skills. `/maintain` is one of those review skills. When run, surface the following — informational lists, not gates.
+
+**Check 1 — Targets missing `consequence` prose**
+
+Find every `type: target` node whose `consequence` field is empty, missing, or whitespace-only. List as:
+
+```
+Targets missing consequence prose (SURFACE):
+  - [task-id] [[Title]] — severity: N, goal_type: <committed|aspirational|learning>
+```
+
+`consequence` is mandatory per §1.4 (cognitive speedbump + post-mortem evidence). For `aspirational` targets, `consequence` is reused as opportunity-cost prose — the same surface check applies.
+
+**Check 2 — `contributes_to` edges missing `why:` / `justification:`**
+
+Find every `contributes_to` edge whose `why:` (alias) and `justification:` (canonical) field are both missing, empty, or whitespace-only. List as:
+
+```
+contributes_to edges missing justification (SURFACE):
+  - [source-task-id] → [target-id] (stated_weight: <term>)
+```
+
+Per §2.3, missing justifications are surfaced here, not blocked at write time. ICD 203 tradecraft: an edge without a one-sentence justification is a belief without a reason.
+
+**Check 3 — SEV4 targets with weak consequence prose (advisory heuristic)**
+
+For every `type: target` node with `status: active` and `severity: 4`, scan the `consequence` prose (case-insensitive whole-word match, e.g., via `\b` regex boundaries) for any of the following severe-state keywords. If **none** match, flag the target for user review.
+
+**Severe-state keyword list** (canonical, edit here):
+
+```
+job, fired, sacked, terminated, redundancy,
+legal, lawsuit, sued, prosecution, breach,
+health, hospital, hospitalised, hospitalized, illness, injury,
+bankruptcy, insolvent, financial ruin,
+eviction, evicted, homeless,
+divorce, separation,
+death, fatal, life-threatening
+```
+
+Render as:
+
+```
+SEV4 targets with weak consequence prose (ADVISORY — heuristic):
+  - [task-id] [[Title]] — consequence: "<first 80 chars>…"
+```
+
+This is a heuristic. The keyword list is documented inline above and revisable. False positives are expected — present them as advisory, not as errors. The user (or planner mode) decides whether to rewrite the prose or accept it.
+
+**Implementation note**: All three checks read graph state via `list_tasks` / `pkb_context` / direct YAML inspection of frontmatter. None call `update_task` or any write tool — they print and return. Run on demand when the user explicitly requests `Anti-inflation` (like any other named activity in the table above) or asks for graph hygiene.
 
 ### Data Quality Procedures (Dedup, Stale, Misclassification, Domain)
 
@@ -292,7 +373,7 @@ These are the interactive counterpart to sleep Phase 4. In maintain mode, the hu
 | `neighbourhood-expand` | Neighbours of high-weight/high-criticality tasks |
 | `cross-project-bridge` | Tasks sharing tags across projects               |
 
-**Densify workflow**: Select candidates (5 min) → Enrich each (15 min) → Present proposals → Apply approved → Verify `downstream_weight` and graph health improved
+**Densify workflow**: Select candidates (5 min) → Enrich each (15 min) → Present proposals → Apply approved → Verify `urgency` and graph health improved
 
 **Densify rules**:
 
@@ -341,6 +422,7 @@ User prompt
 6. **Small, frequent attention** — 15–30 min maintain sessions, ~10 tasks per densify pass
 7. **Decomposition requires AC** — never create subtasks without clear acceptance criteria; keep steps in parent body instead
 8. **No parallel tracking** — never put `- [ ]` checklists in task bodies when items are tracked as subtasks; after decomposition, replace the body checklist with a reference to children
+9. **Action items are graph nodes, not prose** — follow-up work outside the primary task's scope (supersession decisions, prerequisite investigations, cross-project updates, triage calls) must be created as separate linked tasks. Decision/triage → subtask or `soft_depends_on`; cross-epic → separate task with `soft_depends_on` (unlocker) or `depends_on` (hard prerequisite). Never bury action items in body prose where they are invisible to the graph.
 
 ## Decision Surfacing Heuristic
 

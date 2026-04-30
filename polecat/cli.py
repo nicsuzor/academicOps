@@ -570,6 +570,52 @@ class DockerSock(NamedTuple):
     host_path: Path
 
 
+# macOS/Linux locations where the docker binary may live outside the user's
+# interactive PATH. Probed in order as a last-resort fallback when neither the
+# subprocess env nor os.environ surface "docker" — for example, a `pc` launched
+# from a context (launchd, cron, headless ssh) whose PATH never sourced the
+# user's shell rc files. See task-1929bf59 / task-dff66ab3.
+_DOCKER_BINARY_FALLBACK_PATHS: tuple[str, ...] = (
+    "/usr/local/bin/docker",
+    "/opt/homebrew/bin/docker",
+    "/Applications/Docker.app/Contents/Resources/bin/docker",
+    "/usr/bin/docker",
+)
+
+
+def _resolve_docker_binary(env: dict | None = None) -> str:
+    """Return an absolute path to the ``docker`` binary, or ``"docker"`` as a
+    last resort.
+
+    Lookup order (first hit wins):
+      1. ``env["PATH"]`` (when ``env`` is provided) — matches what
+         ``subprocess.run(..., env=env)`` will use for executable resolution
+         on POSIX (``os.get_exec_path(env)``).
+      2. ``os.environ["PATH"]`` — the parent process's PATH; covers cases
+         where the worker env was sanitised but the parent shell still has
+         docker on PATH.
+      3. ``_DOCKER_BINARY_FALLBACK_PATHS`` — common install locations on
+         macOS/Linux. Closes the regression where ``pc run`` failed with
+         ``'claude' command not found`` (actually ``docker``) on hosts where
+         docker is at ``/usr/local/bin/docker`` but the subprocess env's
+         PATH didn't contain it.
+
+    Returns the literal ``"docker"`` if no resolution works — the caller will
+    fail with a clear FileNotFoundError naming the missing binary.
+    """
+    if env is not None:
+        resolved = shutil.which("docker", path=env.get("PATH"))
+        if resolved:
+            return resolved
+    resolved = shutil.which("docker")
+    if resolved:
+        return resolved
+    for candidate in _DOCKER_BINARY_FALLBACK_PATHS:
+        if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+            return candidate
+    return "docker"
+
+
 @functools.lru_cache(maxsize=1)
 def _docker_daemon_host() -> str:
     """Return the docker daemon endpoint URL (cached for the process lifetime).
@@ -881,7 +927,11 @@ def _build_docker_cmd(
     # built from the repo root Dockerfile via `make build-docker`.
     image = os.environ.get("POLECAT_DOCKER_IMAGE", "aops-crew")
 
-    cmd = ["docker", "run", "--rm"]
+    # Resolve docker to an absolute path up front so the eventual
+    # ``subprocess.run(..., env=env)`` cannot fail with FileNotFoundError when
+    # the worker env's PATH happens not to contain it (regression of
+    # task-dff66ab3 — see _resolve_docker_binary docstring).
+    cmd = [_resolve_docker_binary(env), "run", "--rm"]
     _staging_dir: Path | None = None  # set below if auth files are staged
 
     # TTY allocation — flags must be separate elements so _run_docker_container
@@ -3128,6 +3178,75 @@ def nuke(ctx, target, force, allow_unpushed):
                         print(f"Warning: Failed to nuke crew {crew_name}: {e}", file=sys.stderr)
 
 
+@main.command("ping-pkb")
+@click.pass_context
+def ping_pkb(ctx):
+    """Probe PKB MCP reachability + initialize handshake.
+
+    Exits 0 on success; 4 if PKB_MCP_URL is unset; 5 if the server is
+    unreachable, refuses the connection, or the initialize handshake fails.
+
+    The supervisor's pre-dispatch readiness gate calls this BEFORE firing a
+    polecat run — locally and (over SSH) on the target host. A successful
+    ping means the same configuration that polecat will use can complete
+    PkbClient._initialize() without raising ConnectionRefusedError. See
+    issues #598 and #600.
+    """
+    url = os.environ.get("PKB_MCP_URL")
+    if not url:
+        print(
+            "polecat ping-pkb: PKB_MCP_URL is not set.\n"
+            "  Export it to point at the PKB MCP HTTP endpoint, e.g.:\n"
+            "      export PKB_MCP_URL=http://localhost:8026/mcp",
+            file=sys.stderr,
+        )
+        sys.exit(4)
+
+    from polecat.pkb_bridge import PkbClient
+
+    print(f"polecat ping-pkb: probing {url}...")
+    try:
+        client = PkbClient(url)
+    except (TimeoutError, urllib.error.URLError, ConnectionRefusedError) as e:
+        print(
+            f"polecat ping-pkb: FAILED to reach PKB MCP at {url}: {e}\n"
+            "  This is the same failure mode that crashes `polecat run`'s\n"
+            "  PkbClient._initialize() (see issues #598, #600). Fix PKB_MCP_URL\n"
+            "  or expose the PKB service to this host (e.g. over Tailscale)\n"
+            "  before dispatching a worker here.",
+            file=sys.stderr,
+        )
+        sys.exit(5)
+    except Exception as e:
+        print(
+            f"polecat ping-pkb: FAILED with unexpected error: {type(e).__name__}: {e}",
+            file=sys.stderr,
+        )
+        sys.exit(5)
+
+    # Issue a low-cost tools/call to confirm the session is usable, not just
+    # that the TCP socket accepted bytes. ``list_tasks`` with limit=1 keeps
+    # the round-trip cheap and exercises the same code path workers use.
+    try:
+        result = client.call_tool("list_tasks", {"limit": 1})
+    except Exception as e:
+        print(
+            f"polecat ping-pkb: handshake succeeded but tools/call failed: {e}",
+            file=sys.stderr,
+        )
+        sys.exit(5)
+
+    if result is None:
+        print(
+            "polecat ping-pkb: handshake succeeded but list_tasks returned no\n"
+            "  result (server may have rejected the request — check logs).",
+            file=sys.stderr,
+        )
+        sys.exit(5)
+
+    print(f"polecat ping-pkb: OK — {url} reachable, MCP handshake succeeded.")
+
+
 @main.command("list")
 @click.pass_context
 def list_polecats(ctx):
@@ -3852,8 +3971,19 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
             )
         else:
             result = subprocess.run(final_cmd, cwd=work_dir, env=env)
-    except FileNotFoundError:
-        print(f"Error: '{cli_tool}' command not found.", file=sys.stderr)
+    except FileNotFoundError as exc:
+        # Surface the binary the kernel actually couldn't find — not cli_tool.
+        # When the agent is wrapped in docker, final_cmd[0] is "docker", so
+        # printing cli_tool ("claude"/"gemini") is misleading. (task-1929bf59)
+        missing = exc.filename or (final_cmd[0] if final_cmd else cli_tool)
+        print(f"Error: '{missing}' command not found.", file=sys.stderr)
+        if missing == "docker" or str(missing).endswith("/docker"):
+            print(
+                "  polecat wraps the agent in a Docker container; the docker CLI must be on PATH.\n"
+                "  Verify with: which docker\n"
+                "  On macOS, ensure Docker Desktop or Colima is installed and running.",
+                file=sys.stderr,
+            )
         sys.exit(1)
     except KeyboardInterrupt:
         print("\n\n\u26a0\ufe0f  Session interrupted")
@@ -4483,8 +4613,19 @@ def run(
             if analyze_func:
                 analyze_func(task, result.stdout, result.stderr)
 
-    except FileNotFoundError:
-        print(f"Error: '{cli_tool}' command not found.", file=sys.stderr)
+    except FileNotFoundError as exc:
+        # Surface the binary the kernel actually couldn't find — not cli_tool.
+        # When the agent is wrapped in docker, final_cmd[0] is "docker", so
+        # printing cli_tool ("claude"/"gemini") is misleading. (task-1929bf59)
+        missing = exc.filename or (final_cmd[0] if final_cmd else cli_tool)
+        print(f"Error: '{missing}' command not found.", file=sys.stderr)
+        if missing == "docker" or str(missing).endswith("/docker"):
+            print(
+                "  polecat wraps the agent in a Docker container; the docker CLI must be on PATH.\n"
+                "  Verify with: which docker\n"
+                "  On macOS, ensure Docker Desktop or Colima is installed and running.",
+                file=sys.stderr,
+            )
         sys.exit(1)
     except KeyboardInterrupt:
         print("\n\n⚠️  Agent interrupted by user")
