@@ -20,6 +20,67 @@ Load worker registry before dispatch. Each worker has:
 
 ---
 
+## Mandatory Pre-Dispatch Gates
+
+Two gates MUST pass before any `polecat run` invocation. They are
+deterministic checks, not prose conditionals — the supervisor evaluates each
+explicitly and records the verdict in the task body's Activity Log.
+
+### Gate 1: Host Check (issue #598)
+
+Compare `hostname -s` against the polecat host registry. If the supervisor
+is NOT running on a polecat host, it MUST switch to SSH+tmux remote dispatch
+(see "Remote Dispatch via SSH + tmux" below). No silent local fallback.
+
+```bash
+HOST=$(hostname -s)
+POLECAT_HOSTS="${POLECAT_HOSTS:-nicwin}"   # WORKERS.md once #616 lands
+
+case " $POLECAT_HOSTS " in
+  *" $HOST "*) echo "host-check: $HOST is a polecat host — local dispatch OK" ;;
+  *)
+    echo "host-check: $HOST NOT in [$POLECAT_HOSTS] — must use SSH+tmux"
+    # supervisor halts local dispatch and switches to the remote path
+    ;;
+esac
+```
+
+The 2026-04 dogfood incident behind issue #598: the supervisor read
+"use SSH+tmux when on a different host" as advice, dispatched
+`polecat run` locally on macOS anyway, and lost 3 of 4 tasks to
+`ConnectionRefusedError` because the local host could not reach PKB.
+
+### Gate 2: PKB Readiness Probe (issue #600)
+
+Run `polecat ping-pkb` on the host that will execute `polecat run`. The
+probe exercises the same `PkbClient._initialize()` path the worker hits at
+boot. If it fails, the worker will crash with `ConnectionRefusedError` and
+the task will be lost. Refuse to dispatch.
+
+```bash
+# Local dispatch — probe locally
+polecat ping-pkb || { echo "PKB unreachable; refusing dispatch"; exit 5; }
+
+# Remote dispatch — probe ON the target host
+ssh "$TARGET_HOST" "zsh -i -c 'polecat ping-pkb'" \
+  || { echo "PKB unreachable from $TARGET_HOST; refusing dispatch"; exit 5; }
+```
+
+`polecat ping-pkb` exit codes:
+
+| Code | Meaning                                                        |
+| ---- | -------------------------------------------------------------- |
+| 0    | PKB reachable, MCP handshake + low-cost call succeeded         |
+| 4    | `PKB_MCP_URL` is unset — fix the env on the target host        |
+| 5    | Reachable check failed — fix the URL or expose PKB to the host |
+
+Record the gate result before firing the worker:
+
+```
+[ISO timestamp] host=nicwin: ping-pkb OK → dispatching task-abc
+[ISO timestamp] host=nicwin: ping-pkb FAILED (exit 5) → halting; filing reachability subtask
+```
+
 ## Pre-Dispatch Validation (MANDATORY)
 
 Before dispatching ANY task to a worker, the supervisor must validate:
@@ -381,20 +442,30 @@ VPN drop, etc.).
 
 ### Environment Discovery
 
-Before dispatching, verify the remote machine is ready:
+Before dispatching, verify the remote machine is ready. **All four checks
+must pass** — including the PKB readiness probe ON the target host.
 
 ```bash
-# SSH connectivity
+# 1. SSH connectivity
 ssh -o ConnectTimeout=10 TARGET_HOST "echo connected"
 
-# Polecat availability (alias loaded in interactive zsh)
+# 2. Polecat availability (alias loaded in interactive zsh)
 ssh TARGET_HOST "zsh -i -c 'polecat --help'" 2>&1
 
-# tmux availability
+# 3. tmux availability
 ssh TARGET_HOST "which tmux"
+
+# 4. PKB reachability FROM the target host (issue #600 gate)
+ssh TARGET_HOST "zsh -i -c 'polecat ping-pkb'"
 ```
 
 If any check fails, report the failure and stop. Do not improvise alternatives.
+
+The fourth check is the critical one for the 2026-04 incident behind
+issue #600 — SSH + tmux + polecat all worked, but `PkbClient._initialize()` crashed
+with `ConnectionRefusedError` because the PKB MCP/HTTP endpoint was not
+reachable from `nicwin`'s WSL2 namespace. Probing first turns a worker
+crash into a supervisor halt with a clear remediation path.
 
 **Reachability pre-check for incident tasks**: If a task requires the worker
 to SSH into a _third_ machine (e.g., `services-new` from `TARGET_HOST`), verify
@@ -467,9 +538,27 @@ confirm the append landed (MCP append tools can silently fail):
 ### Example
 
 ```bash
-# Typical dispatch to a remote host (e.g., via SSH+tmux)
-ssh TARGET_HOST "tmux new-session -d -s 'polecat-task-abc12345' 'zsh -i -c \"polecat run -t task-abc12345 -p brain\"'"
-ssh TARGET_HOST "tmux has-session -t 'polecat-task-abc12345' && echo \"Session 'polecat-task-abc12345' is running\""
+# 0. Host check (run locally first — issue #598)
+HOST=$(hostname -s); POLECAT_HOSTS="${POLECAT_HOSTS:-nicwin}"
+TARGET_HOST="${POLECAT_HOSTS%% *}"   # first host in the list
+case " $POLECAT_HOSTS " in *" $HOST "*) TARGET_HOST="$HOST" ;; esac
+
+# 1. Verify SSH + polecat + tmux + PKB reachability ON nicwin
+ssh -o ConnectTimeout=10 "$TARGET_HOST" "echo connected" || exit 1
+ssh "$TARGET_HOST" "zsh -i -c 'polecat --help >/dev/null'" || exit 1
+ssh "$TARGET_HOST" "which tmux >/dev/null" || exit 1
+ssh "$TARGET_HOST" "zsh -i -c 'polecat ping-pkb'" || {
+  echo "PKB unreachable from $TARGET_HOST — file a reachability subtask"
+  exit 5
+}
+
+# 2. Dispatch via tmux so the worker survives network interruptions
+ssh "$TARGET_HOST" "tmux new-session -d -s 'polecat-task-abc12345' \
+  'zsh -i -c \"polecat run -t task-abc12345 -p brain\"'"
+
+# 3. Verify the session is running
+ssh "$TARGET_HOST" "tmux has-session -t 'polecat-task-abc12345' \
+  && echo 'Session polecat-task-abc12345 is running'"
 ```
 
 ---

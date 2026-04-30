@@ -3128,6 +3128,75 @@ def nuke(ctx, target, force, allow_unpushed):
                         print(f"Warning: Failed to nuke crew {crew_name}: {e}", file=sys.stderr)
 
 
+@main.command("ping-pkb")
+@click.pass_context
+def ping_pkb(ctx):
+    """Probe PKB MCP reachability + initialize handshake.
+
+    Exits 0 on success; 4 if PKB_MCP_URL is unset; 5 if the server is
+    unreachable, refuses the connection, or the initialize handshake fails.
+
+    The supervisor's pre-dispatch readiness gate calls this BEFORE firing a
+    polecat run — locally and (over SSH) on the target host. A successful
+    ping means the same configuration that polecat will use can complete
+    PkbClient._initialize() without raising ConnectionRefusedError. See
+    issues #598 and #600.
+    """
+    url = os.environ.get("PKB_MCP_URL")
+    if not url:
+        print(
+            "polecat ping-pkb: PKB_MCP_URL is not set.\n"
+            "  Export it to point at the PKB MCP HTTP endpoint, e.g.:\n"
+            "      export PKB_MCP_URL=http://localhost:8026/mcp",
+            file=sys.stderr,
+        )
+        sys.exit(4)
+
+    from polecat.pkb_bridge import PkbClient
+
+    print(f"polecat ping-pkb: probing {url}...")
+    try:
+        client = PkbClient(url)
+    except (TimeoutError, urllib.error.URLError, ConnectionRefusedError) as e:
+        print(
+            f"polecat ping-pkb: FAILED to reach PKB MCP at {url}: {e}\n"
+            "  This is the same failure mode that crashes `polecat run`'s\n"
+            "  PkbClient._initialize() (see issues #598, #600). Fix PKB_MCP_URL\n"
+            "  or expose the PKB service to this host (e.g. over Tailscale)\n"
+            "  before dispatching a worker here.",
+            file=sys.stderr,
+        )
+        sys.exit(5)
+    except Exception as e:
+        print(
+            f"polecat ping-pkb: FAILED with unexpected error: {type(e).__name__}: {e}",
+            file=sys.stderr,
+        )
+        sys.exit(5)
+
+    # Issue a low-cost tools/call to confirm the session is usable, not just
+    # that the TCP socket accepted bytes. ``list_tasks`` with limit=1 keeps
+    # the round-trip cheap and exercises the same code path workers use.
+    try:
+        result = client.call_tool("list_tasks", {"limit": 1})
+    except Exception as e:
+        print(
+            f"polecat ping-pkb: handshake succeeded but tools/call failed: {e}",
+            file=sys.stderr,
+        )
+        sys.exit(5)
+
+    if result is None:
+        print(
+            "polecat ping-pkb: handshake succeeded but list_tasks returned no\n"
+            "  result (server may have rejected the request — check logs).",
+            file=sys.stderr,
+        )
+        sys.exit(5)
+
+    print(f"polecat ping-pkb: OK — {url} reachable, MCP handshake succeeded.")
+
+
 @main.command("list")
 @click.pass_context
 def list_polecats(ctx):

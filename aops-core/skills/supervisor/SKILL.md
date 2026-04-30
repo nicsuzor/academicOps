@@ -102,6 +102,15 @@ exact check.
 
 Individual task dispatch only. No batch spawning.
 
+**Mandatory pre-dispatch gates** (see [[instructions/worker-dispatch#mandatory-pre-dispatch-gates]]):
+
+1. **Host check** — `hostname` must match a registered polecat host. On
+   mismatch the supervisor halts and uses the SSH+tmux path. No silent
+   local fallback. (Issue #598.)
+2. **PKB readiness probe** — `polecat ping-pkb` must succeed on the
+   intended worker host. A failure means `PkbClient._initialize()` will
+   crash inside the worker; supervisor refuses to dispatch. (Issue #600.)
+
 ```bash
 # Claude worker
 polecat run -t <task-id> -p <project>
