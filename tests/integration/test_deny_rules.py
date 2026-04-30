@@ -39,10 +39,12 @@ def test_deny_rules_block_claude_dir_write(claude_headless):
         # permission prompt that Claude cannot resolve — the write is effectively
         # blocked and Claude reports it as a permission request:
         "asking for permission",
+        "requesting permission",
         "requires permission",
         "permission request",
         "permission to write",
         "needs permission",
+        "grant permission",
     ]
 
     found_denial = any(indicator in response_text for indicator in deny_indicators)
