@@ -8,13 +8,9 @@ Update daily note from session JSON files and narrative path reconstruction.
 
 Before syncing progress, run a sweep of tasks in `merge_ready` and `review` status to synchronize with external signals (merged PRs, sent emails). This ensures the task graph accurately reflects completed, blocked, or stale work.
 
-```bash
-polecat sweep
-```
+> **Note**: The `polecat sweep` shell command was removed (see task-9fa50763) because the supervisor agent loop already handles PR-state transitions in-band via `gh pr view` + Monitor. Run the agent-side sweep below directly.
 
-**Outcome**: Tasks for merged PRs move to `done`, tasks with requested changes move back to `review`, and stale PRs are flagged.
-
-**Extended sweep** (when `polecat sweep` is unavailable or as a supplement — mirrors SKILL.md Step 7, kept self-contained so it works without the full skill context):
+**Agent-side sweep** (approximates SKILL.md Step 7 — intentionally simplified for daily-skill context; uses per-PR queries rather than a batch fetch and omits the stale-flag step):
 
 1. Call `list_tasks(status="merge_ready")` and `list_tasks(status="review")` to get all candidate tasks.
 2. For tasks with a `pr_url` in frontmatter: query the PR state via `gh pr view <number> --json state,mergedAt,url`. If `state == "MERGED"`, call `complete_task` with the merge timestamp + URL as evidence.
