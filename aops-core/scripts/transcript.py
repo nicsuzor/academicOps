@@ -135,6 +135,7 @@ def sync_client_log(session_path: Path, session_id: str, date: datetime | None =
             crew_name=crew_name,
             repo=repo,
             artifact_type="client",
+            task_id=os.environ.get("AOPS_TASK_ID"),
         )
         target_path = client_logs_dir / target_name
 
