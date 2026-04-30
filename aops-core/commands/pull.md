@@ -72,6 +72,33 @@ The following completed tasks provide informational context for this task:
 - Missing/incomplete soft deps do NOT block task execution
 - Context injection helps but agent can proceed without it
 
+### Step 1.7: Specialist Agent Dispatch (Pre-EXECUTE Short-Circuit)
+
+If the claimed task — or its parent epic — has an `assignee` that names a specialist sub-agent, the main agent MUST dispatch via the Agent tool. Do NOT fall through to Step 2 / Step 3A and execute inline.
+
+**Specialist namespaces** (match against `assignee`):
+
+- `aops-core:<name>` → dispatch with `subagent_type="<name>"` (strip the `aops-core:` prefix)
+- `aops-cowork:<name>` → dispatch with `subagent_type="<name>"` (strip the `aops-cowork:` prefix)
+- `polecat` (bare name) → dispatch with `subagent_type="polecat"`
+
+Known specialist names include `marsha`, `rbg`, `pauli`, `james`, `jr`, `qa`, `enforcer`, `polecat`. Any value matching the namespace patterns above is treated as a specialist regardless of whether the bare name is recognised — the namespace itself is the trigger.
+
+**Dispatch:**
+
+```
+Agent(
+  subagent_type="<bare-agent-name>",
+  prompt="<self-contained brief: task ID, title, body, acceptance criteria, file paths in scope>"
+)
+```
+
+The brief must be self-contained — the dispatched agent will not have this session's context. Include the task ID, title, full body, acceptance criteria, and any file paths in scope.
+
+After dispatch, **HALT** the main agent. Do NOT continue to Step 2. The specialist owns execution and completion.
+
+If `assignee` is `null`, `nic`, missing, or anything not matching the namespaces above, continue to Step 2 normally.
+
 ### Step 2: Assess Task Path - EXECUTE or TRIAGE
 
 After claiming, determine whether to execute immediately or triage first.
