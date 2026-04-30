@@ -78,7 +78,23 @@ Use **Full-form** in **every other case**, including: task complete, end-of-day 
    ```
 
    - **No task bound?** `release_task` auto-creates a minimal ad-hoc task under the `adhoc-sessions` root ([[T4]]). Until T4 lands, fall back to `create_task` first, then `release_task` on the new id.
-   - **`release_summary` quality**: result-oriented ("Implemented YAML schema extension for session handover"), not activity-oriented ("I worked on the schema"). This is the primary signal for the Recent Sessions dashboard.
+   - **`release_summary` quality**: this field is the primary signal for the Recent Sessions dashboard, where it appears in a long stack of unrelated handovers from other sessions. **Write it for that audience — a future reader who has none of this session's context.**
+
+     Three requirements:
+
+     1. **Result-oriented**, not activity-oriented. "Implemented YAML schema extension for session handover", not "I worked on the schema".
+     2. **Self-contained**. Every artifact you reference must carry enough description that the reader can identify it without opening the session. Name things: which workflow, which incident, which agent, which file, which issue#. References by role alone ("the enforcer", "the orchestrator", "the flag", "the failure") are useless out of context — name what specifically.
+     3. **Concrete IDs with description**. Issue and PR references must be `org/repo#NNN` AND a phrase saying what the issue/PR is about, so the line is parseable without clicking through.
+
+     Bad (real example, do not write summaries like this):
+     > Root cause analysis completed. Identified the failure as instruction-weighting + detection-failure (enforcer had discretionary language and chose not to block; orchestrator should have treated the flag as actionable). GitHub issue filed.
+
+     Why it's bad: which failure? which enforcer? which orchestrator? which flag? which issue? In a stack of 30 handovers, this conveys nothing.
+
+     Good:
+     > Root-caused why agent-merge-prep silently approved 3 PRs on 2026-04-25 without enforcer veto. Cause: enforcer prompt said "consider blocking" (discretionary) and the orchestrator treated WARN as ALLOW. Filed nicsuzor/academicOps#612 (harden enforcer language + orchestrator WARN handling).
+
+     Length budget: ≤ 500 chars. Tight is fine. Cryptic is not.
    - **Follow-ups**: every concrete future action must be a real PKB task before you list it here. Do not put bullet prose into `release_summary` or session notes — the dashboard and `/recap` only see structured fields.
    - **Fallback**: if `release_task` is unavailable, `update_task(id=..., status="merge_ready")` keeps the supervisor unblocked, but the dashboard loses this session.
    - **Polecat note**: calling `release_task` with a terminal status is what lets the polecat supervisor detect termination via PKB polling. Skipping this leaves Gemini workers running until external timeout (#521).
@@ -93,11 +109,13 @@ Use **Full-form** in **every other case**, including: task complete, end-of-day 
    - **PR**: <url>
    - **Branch**: `<branch>`
    - **Issue**: <url or "none">
-   - **Follow-ups**: `<task-id>`, `<task-id>` (or "none")
-   - **Summary**: <release_summary value>
+   - **Follow-ups**: `<task-id> (<short title>)`, `<task-id> (<short title>)` (or "none")
+   - **Summary**: <release_summary value — must satisfy the self-contained quality bar above>
    ```
 
    Omit `PR` and `Issue` lines if not set. Omit `Follow-ups` if empty. Do not add any prose before or after the block.
+
+   Follow-up task IDs must each carry a short parenthetical title for the same reason `release_summary` must — a stack-of-handovers reader can't resolve `task-0f7d3877` without it.
 
 4. **Halt.** Nothing follows the handover block.
 

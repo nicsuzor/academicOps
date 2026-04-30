@@ -34,7 +34,7 @@ def check_custom_condition(
             is_project_source_write,
         )
 
-        if not is_orchestrator_session():
+        if not is_orchestrator_session(cwd=ctx.cwd):
             return False
         tool_input = ctx.tool_input if isinstance(ctx.tool_input, dict) else None
         return is_project_source_write(ctx.tool_name, tool_input, ctx.cwd)

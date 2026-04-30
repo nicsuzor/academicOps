@@ -20,6 +20,7 @@ See `specs/orchestrator-boundary.md` for the full boundary definition.
 from __future__ import annotations
 
 import os
+from collections.abc import Mapping
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -62,18 +63,58 @@ FRAMEWORK_PATH_PREFIXES: tuple[str, ...] = (
 _POLECAT_WORKER_SESSION_TYPES: frozenset[str] = frozenset({"polecat", "crew"})
 
 
-def is_orchestrator_session(env: dict[str, str] | None = None) -> bool:
+def is_brain_cwd(cwd: str | None, env: Mapping[str, str] | None = None) -> bool:
+    """Return True when cwd is inside the brain repo (`$ACA_DATA`).
+
+    The orchestrator/dispositor boundary is brain-specific: the orchestrator
+    lives in the brain repo and dispatches work to polecat workers in other
+    repos. When cwd is a project source repo (academicOps, mem, explorations,
+    etc.) the agent IS the worker, so the boundary must not apply.
+
+    Returns False when ACA_DATA is unset or cwd is None — fail closed so the
+    reminder is not injected outside a known brain context.
+    """
+    if not cwd:
+        return False
+    e = env if env is not None else os.environ
+    aca_data = e.get("ACA_DATA", "").strip()
+    if not aca_data:
+        return False
+    try:
+        cwd_resolved = Path(cwd).expanduser().resolve()
+        aca_resolved = Path(aca_data).expanduser().resolve()
+    except (OSError, ValueError):
+        return False
+    try:
+        cwd_resolved.relative_to(aca_resolved)
+    except ValueError:
+        return False
+    return True
+
+
+def is_orchestrator_session(env: Mapping[str, str] | None = None, cwd: str | None = None) -> bool:
     """Return True when the current session is the orchestrator CLI.
 
-    A session is orchestrator iff POLECAT_SESSION_TYPE is unset (or not a
-    known worker session type). Defaulting to True means the boundary applies
-    by default — any deployment that wants to opt out must set the env var.
+    Two conditions must hold:
+
+    1. POLECAT_SESSION_TYPE is unset (or not a known worker session type) —
+       i.e., we are not running inside a polecat worker.
+    2. cwd is inside the brain repo (`$ACA_DATA`) — i.e., the agent is
+       operating in the orchestrator's home and dispatching to other repos.
+       When cwd is a project source repo (academicOps, mem, explorations),
+       the agent IS the worker for that repo and the boundary does not apply.
+
+    `cwd` is optional for backwards compatibility but should always be passed
+    in production code paths. When omitted, the cwd check is skipped and the
+    function falls back to the env-only check (legacy behavior).
     """
     e = env if env is not None else os.environ
     session_type = e.get("POLECAT_SESSION_TYPE", "").strip()
-    if not session_type:
-        return True
-    return session_type not in _POLECAT_WORKER_SESSION_TYPES
+    if session_type and session_type in _POLECAT_WORKER_SESSION_TYPES:
+        return False
+    if cwd is not None and not is_brain_cwd(cwd, e):
+        return False
+    return True
 
 
 def _normalize_relative(path_str: str, cwd: str | None) -> str | None:
@@ -176,14 +217,16 @@ def classify_prompt(prompt: str) -> str:
     return "work-request"
 
 
-def should_inject_dispositor_reminder(prompt: str, env: dict[str, str] | None = None) -> bool:
+def should_inject_dispositor_reminder(
+    prompt: str, env: Mapping[str, str] | None = None, cwd: str | None = None
+) -> bool:
     """Return True when the hydrator should inject the dispositor reminder.
 
-    Only injects in the orchestrator session and only for prompts that could
-    plausibly be work requests. Slash commands and short questions are
-    skipped — the former is explicit user intent, the latter is unlikely to
-    describe feature work.
+    Only injects in the orchestrator session (brain repo, not a polecat
+    worker) and only for prompts that could plausibly be work requests.
+    Slash commands and short questions are skipped — the former is explicit
+    user intent, the latter is unlikely to describe feature work.
     """
-    if not is_orchestrator_session(env):
+    if not is_orchestrator_session(env, cwd):
         return False
     return classify_prompt(prompt) == "work-request"
