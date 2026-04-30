@@ -4155,10 +4155,10 @@ def run(
         # Normalize status to a plain string for uniform handling
         status_str = task.status.value if hasattr(task.status, "value") else str(task.status or "")
 
-        _DONE_STATUSES = ("done", "cancelled")
-        _LOCKED_STATUSES = ("merge_ready", "review")
-
         if not force:
+            _DONE_STATUSES = ("done", "cancelled")
+            _LOCKED_STATUSES = ("merge_ready", "review")
+
             if status_str in _DONE_STATUSES:
                 print(f"✅ Task {task_id} is already '{status_str}'.")
                 sys.exit(0)
