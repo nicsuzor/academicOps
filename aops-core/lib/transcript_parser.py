@@ -962,10 +962,35 @@ def reflection_to_insights(
         "next_step": reflection.get("next_step"),
     }
 
+    task_id = reflection.get("task_id") or os.environ.get("AOPS_TASK_ID")
+    if not task_id and timeline_events:
+        for event in timeline_events:
+            if event.get("type") in (
+                "task_create",
+                "task_update",
+                "task_complete",
+                "task_release",
+            ) and event.get("task_id"):
+                task_id = event["task_id"]
+                break
+
+    # Determine stable project if we only have a UUID fragment
+    stable_project = project
+    if (
+        not stable_project
+        or re.match(r"^[0-9a-f]{8,}$", stable_project)
+        or re.match(r"^[0-9a-f\-]{36}$", stable_project)
+    ):
+        if timeline_events:
+            for event in timeline_events:
+                if event.get("type") == "task_create" and event.get("project"):
+                    stable_project = event["project"]
+                    break
+
     result = {
         "session_id": session_id,
         "date": date_iso,
-        "project": project,
+        "project": stable_project,
         "summary": summary,
         "outcome": outcome,
         "accomplishments": reflection.get("accomplishments", []),
@@ -976,8 +1001,8 @@ def reflection_to_insights(
         "hostname": session_naming.get_hostname(),
         "provider": session_naming.get_provider_name(),
         "crew": os.environ.get("POLECAT_CREW_NAME"),
-        "repo": project,
-        "task_id": reflection.get("task_id") or os.environ.get("AOPS_TASK_ID"),
+        "repo": stable_project,
+        "task_id": task_id,
         # Framework reflections as array (schema-compliant)
         "framework_reflections": [framework_reflection_entry],
         # Token usage metrics (optional)
@@ -1005,6 +1030,11 @@ def reflection_to_insights(
         result["user_prompt_count"] = sum(
             1 for e in timeline_events if e.get("type") == "user_prompt"
         )
+        # Elevate PR URL to root if found
+        for event in timeline_events:
+            if event.get("type") == "pr_create" and event.get("pr_url"):
+                result["pr_url"] = event["pr_url"]
+                break
     else:
         result["user_prompt_count"] = None
 
@@ -1049,6 +1079,10 @@ def extract_timeline_events(turns: list[Any], session_id: str) -> list[dict[str,
                 event.get("new_status"),
                 event.get("status"),
             )
+        elif evt_type == "tool_call":
+            key = (event.get("timestamp"), evt_type, event.get("tool"))
+        elif evt_type == "pr_create":
+            key = (event.get("timestamp"), evt_type, event.get("pr_url"))
         else:
             key = (event.get("timestamp"), evt_type, event.get("description"))
         if key in seen_keys:
@@ -1084,9 +1118,35 @@ def extract_timeline_events(turns: list[Any], session_id: str) -> list[dict[str,
             if not isinstance(item, dict) or item.get("type") != "tool":
                 continue
             tool = item.get("tool_name", "")
+
+            _emit(
+                {
+                    "timestamp": ts,
+                    "type": "tool_call",
+                    "tool": tool,
+                    "is_error": item.get("is_error", False),
+                }
+            )
+
             inp = item.get("tool_input", {})
             if not isinstance(inp, dict):
                 continue
+
+            if tool in ("run_shell_command", "Bash"):
+                cmd = inp.get("command", "")
+                if "gh pr create" in cmd:
+                    result_text = item.get("result", "")
+                    match = re.search(
+                        r"(https://github\.com/[^\s/]+/[^\s/]+/pull/\d+)", result_text
+                    )
+                    if match:
+                        _emit(
+                            {
+                                "timestamp": ts,
+                                "type": "pr_create",
+                                "pr_url": match.group(1),
+                            }
+                        )
 
             if "pkb__create_task" in tool:
                 _emit(
@@ -1294,6 +1354,7 @@ class UsageStats:
                 "cache_create_tokens": self.cache_creation_input_tokens,
             },
             "by_model": self.by_model,
+            "by_tool": self.by_tool,
             "by_agent": self.by_agent,
             "efficiency": {
                 "cache_hit_rate": round(cache_hit_rate, 3),
