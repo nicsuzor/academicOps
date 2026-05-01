@@ -1080,7 +1080,7 @@ def extract_timeline_events(turns: list[Any], session_id: str) -> list[dict[str,
                 event.get("status"),
             )
         elif evt_type == "tool_call":
-            key = (event.get("timestamp"), evt_type, event.get("tool"))
+            key = (event.get("timestamp"), evt_type, event.get("tool"), event.get("is_error"))
         elif evt_type == "pr_create":
             key = (event.get("timestamp"), evt_type, event.get("pr_url"))
         else:
