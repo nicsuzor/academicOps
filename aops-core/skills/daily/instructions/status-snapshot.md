@@ -17,7 +17,7 @@ Use `summary["ready"]` as the denominator for priority bars.
 
 ### 3.2: Priority Distribution
 
-Report counts only. Do not annotate with "→ recommended tasks" pointers. Use the count from `summary["ready"]` as the total of **ready tasks**.
+Report counts only. Do not annotate with "→ recommended tasks" pointers. Use the count from `summary["ready"]` as the total of **ready tasks**. Labels P0–P3 follow the canonical definitions — see [Priority Labels in TAXONOMY.md](../../remember/references/TAXONOMY.md#priority-labels-p0p4).
 
 ```
 P0 ░░░░░░░░░░ 3/85

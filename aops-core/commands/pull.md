@@ -28,7 +28,7 @@ permalink: commands/pull
 Per [[../skills/remember/references/TAXONOMY.md]] §Status Values: agents pull only from `queued` (the human-gated dispatch queue). Tasks in `ready` are decomposed-but-unapproved and MUST NOT be claimed here — the user promotes `ready` → `queued` manually.
 
 1. **List queued tasks**: Call `mcp__pkb__list_tasks(status="queued", limit=10, format="json")` to find dispatchable tasks. The PKB ranks results by composite `urgency` (severity × edge weight × slack × decay). Use `urgency` as the primary ranking signal — it already incorporates lexicographic severity (SEV4 dominates), priority, downstream weight, and deadline slack.
-2. **Select task**: Pick the highest-`urgency` task in the returned list. If `urgency` is missing or zero across all tasks (mem-side urgency emission not yet active), fall back to lowest `effective_priority` then highest `focus_score`. Do NOT rank by `downstream_weight` alone — it is superseded by `urgency` as the unified signal.
+2. **Select task**: Pick the highest-`urgency` task in the returned list. If `urgency` is missing or zero across all tasks (mem-side urgency emission not yet active), fall back to lowest `effective_priority` then highest `focus_score`. Do NOT rank by `downstream_weight` alone — it is superseded by `urgency` as the unified signal. See [Priority Labels in TAXONOMY.md](../skills/remember/references/TAXONOMY.md#priority-labels-p0p4) for canonical label definitions (P0 = highest).
 3. **Claim task**: Call `mcp__pkb__update_task(id="<task-id>", status="in_progress", assignee="polecat")` to claim it.
 
 **If a specific task ID is provided** (`/pull <task-id>`):

@@ -134,11 +134,11 @@ Quick task capture with minimal overhead. Speed is the priority — no enrichmen
 **Arguments**:
 
 - `/q <description>` — Create with auto-routing
-- `/q P0 <description>` — High-priority
+- `/q P0 <description>` — High-priority (see canonical labels)
 - `/q nic: <description>` — Assign to user
 - `/q` (no args) — Prompt for details
 
-**Priority defaults**: Default new tasks to **P3** (planned) unless the user explicitly specifies otherwise (e.g. `/q P0 ...`). Always pass `priority=3` explicitly when calling server tools directly — the Python bridge enforces this default for Python-side callers, but direct MCP calls hit the server default of P2. The active band (P2) is reserved for tasks that have been deliberately promoted; new captures land in P3 and are promoted explicitly. The same applies to subtasks from `decompose_task`. See [[../../PRIORITY.md]] for canonical P0–P4 definitions.
+**Priority defaults**: Default new tasks to **P3** (planned) unless the user explicitly specifies otherwise (e.g. `/q P0 ...`). Always pass `priority=3` explicitly when calling server tools directly — the Python bridge enforces this default for Python-side callers, but direct MCP calls hit the server default of P2. The active band (P2) is reserved for tasks that have been deliberately promoted; new captures land in P3 and are promoted explicitly. The same applies to subtasks from `decompose_task`. See [Priority Labels in TAXONOMY.md](../remember/references/TAXONOMY.md#priority-labels-p0p4) for canonical P0–P4 definitions.
 
 ### plan
 
@@ -369,13 +369,13 @@ These are the interactive counterpart to sleep Phase 4. In maintain mode, the hu
 
 **Densify strategies** (rotate across sessions when densifying):
 
-| Strategy               | Targets                                                                     |
-| ---------------------- | --------------------------------------------------------------------------- |
-| `criticality-focus`    | High-criticality tasks with zero/few edges                                  |
-| `high-priority-sparse` | P0/P1 ready tasks with zero edges                                           |
-| `project-cluster`      | Tasks with status: ready within one project (`list_tasks(status="ready", project="<project-id>")`) |
-| `neighbourhood-expand` | Neighbours of high-weight/high-criticality tasks                            |
-| `cross-project-bridge` | Tasks sharing tags across projects                                          |
+| Strategy               | Targets                                                                                                            |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `criticality-focus`    | High-criticality tasks with zero/few edges                                                                         |
+| `high-priority-sparse` | P0/P1 ready tasks with zero edges (see [Priority Labels](../remember/references/TAXONOMY.md#priority-labels-p0p4)) |
+| `project-cluster`      | Tasks with status: ready within one project (`list_tasks(status="ready", project="<project-id>")`)                 |
+| `neighbourhood-expand` | Neighbours of high-weight/high-criticality tasks                                                                   |
+| `cross-project-bridge` | Tasks sharing tags across projects                                                                                 |
 
 **Densify workflow**: Select candidates (5 min) → Enrich each (15 min) → Present proposals → Apply approved → Verify `urgency` and graph health improved
 
