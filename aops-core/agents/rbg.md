@@ -9,8 +9,8 @@ tools:
   - Glob
   - Edit
   - Write
-skills: []
-subagents: []
+  - mcp__plugin_aops-core_pkb__append
+  - mcp__plugin_aops-core_pkb__complete_task
 ---
 
 # RBG — The Judge

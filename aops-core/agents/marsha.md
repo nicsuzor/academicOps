@@ -37,15 +37,6 @@ tools:
   - mcp__plugin_aops-core_pkb__get_task_children
   - mcp__plugin_aops-core_pkb__pkb_orphans
   - mcp__plugin_aops-core_pkb__get_network_metrics
-mcpServers:
-  - plugin_aops-core_pkb
-  - pkb
-  - playwright
-  - plugin_aops-core_pkb
-  - pkb
-skills:
-  - qa
-subagents: [rbg]
 ---
 
 # Marsha — The QA Reviewer
