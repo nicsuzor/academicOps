@@ -22,18 +22,6 @@ tools:
   - mcp__plugin_aops-core_pkb__retrieve_memory
   - mcp__plugin_aops-core_pkb__list_memories
   - mcp__plugin_aops-core_pkb__get_network_metrics
-mcpServers:
-  - plugin_aops-core_pkb
-  - pkb
-skills:
-  - remember
-  - planner
-subagents: []
-permissionMode: bypassPermissions
-maxTurns: false
-effort: high
-background: false
-isolation: false
 ---
 
 # Pauli — The Architect of Thought and Memory

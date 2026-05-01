@@ -77,12 +77,12 @@ Each entry: description, impact (what cannot be diagnosed), severity, tracking s
 - **Severity:** MED.
 - **Tracked:** `task-78590a68` (inventory, ready).
 
-### G8 — Stale `session-insights` skill references mislead readers
+### G8 — Stale `session-insights` skill references mislead readers (RESOLVED)
 
-- **Description:** Specs and code reference a non-existent `aops-core/skills/session-insights/SKILL.md`. The actual pipeline is `transcript.py` + `lib/insights_generator.py`.
-- **Impact:** Onboarding agents reading specs commission a skill that does not exist; the wrong file is grep'd when debugging insights generation.
+- **Description:** Specs and code formerly referenced a non-existent session-insights skill under `aops-core/skills/`. The actual pipeline is `aops-core/scripts/transcript.py` + `aops-core/lib/insights_generator.py`, triggered by the Stop hook in `aops-core/hooks/router.py` and the periodic backfill in `scripts/repo-sync-cron.sh`.
+- **Impact:** Onboarding agents reading specs commissioned a skill that did not exist; the wrong file was grep'd when debugging insights generation.
 - **Severity:** LOW (docs only).
-- **Tracked:** `task-c5fa4dd6`.
+- **Tracked:** `task-c5fa4dd6` (resolved — stale references cleaned up).
 
 ### G9 — Common ID alignment across sessions, tasks, PRs
 

@@ -102,6 +102,18 @@ jobs:
               Use Grep/Glob to search, Read to inspect files. Do NOT reference
               mcp__pkb__* tools.
             - Time budget: 25 minutes. Exit cleanly when time is up.
+            - **Sub-agent dispatch**: if you delegate the qualitative review to
+              an `aops-core:pauli` sub-agent, you MUST pass the explicit `tools`
+              list per the sleep skill's "Sub-Agent Dispatch" section. On CI the
+              toolset is: `Bash, Glob, Grep, Read, Skill` (review is read-only,
+              so omit Write/Edit and the PKB MCP tools). Without an explicit
+              `tools` arg pauli sees only `Read` and `Skill` and cannot discover
+              files to review.
+            - **Halt surfacing**: parse sub-agent returns for `HALT:`, `HALTED`,
+              `tool gap`, `tool not available`, or `cannot proceed: missing
+              tool`. If any halt occurs, surface it at the TOP of the resulting
+              GitHub issue (not buried in body), with the missing tool named.
+              Closes silent-failure mode tracked in task-1460d6cf.
 
             ## Critical Rules
 

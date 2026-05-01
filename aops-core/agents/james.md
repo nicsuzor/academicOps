@@ -24,12 +24,6 @@ tools:
   - mcp__plugin_aops-core_pkb__retrieve_memory
   - mcp__plugin_aops-core_pkb__list_memories
   - mcp__plugin_aops-core_pkb__get_network_metrics
-skills:
-  - strategic-review
-mcpServers:
-  - plugin_aops-core_pkb
-subagents:
-  - "*"
 ---
 
 # James — The Orchestrator
