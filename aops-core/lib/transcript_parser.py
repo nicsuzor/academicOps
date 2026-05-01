@@ -3164,17 +3164,8 @@ class SessionProcessor:
                         else hook_system_message
                     )
                     markdown += f"  - ℹ️ Hook message: {msg_preview}\n"
-                ):
-                    markdown += "  - (no output)\n"
                 if noteworthy_verdict:
                     markdown += f"  - Verdict: `{noteworthy_verdict}`\n"
-                if hook_system_message:
-                    msg_preview = (
-                        hook_system_message[:200] + "..."
-                        if len(hook_system_message) > 200
-                        else hook_system_message
-                    )
-                    markdown += f"  - System message: {msg_preview}\n"
                 if skills_matched:
                     skills_str = ", ".join(f"`{s}`" for s in skills_matched)
                     markdown += f"  - Skills matched: {skills_str}\n"
@@ -3330,7 +3321,6 @@ class SessionProcessor:
                             or noteworthy_verdict
                         )
                         is_error = exit_code is not None and exit_code != 0
-                        is_blocking_verdict = hook_verdict in ("deny", "ask")
 
                         if (
                             not full_mode
