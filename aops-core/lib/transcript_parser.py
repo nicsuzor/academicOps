@@ -3107,13 +3107,14 @@ class SessionProcessor:
                 hook_context_injection = turn.get("hook_context_injection")
                 hook_verdict = turn.get("hook_verdict")
                 hook_system_message = turn.get("hook_system_message")
+
+                is_error = exit_code is not None and exit_code != 0
+                is_blocking_verdict = hook_verdict in ("deny", "block", "request-changes")
                 # "allow" is the default verdict — only surface non-default ones
                 noteworthy_verdict = (
                     hook_verdict if hook_verdict and hook_verdict != "allow" else None
                 )
 
-                is_error = exit_code is not None and exit_code != 0
-                is_blocking_verdict = hook_verdict in ("deny", "ask")
                 has_content = (
                     content
                     or skills_matched
@@ -3121,8 +3122,9 @@ class SessionProcessor:
                     or hook_context_injection
                     or noteworthy_verdict
                     or hook_system_message
+                    or is_blocking_verdict
                 )
-                if not full_mode and not has_content and not is_error and not is_blocking_verdict:
+                if not full_mode and not has_content and not is_error:
                     continue
 
                 if exit_code is None:
@@ -3146,8 +3148,22 @@ class SessionProcessor:
                     and not skills_matched
                     and not files_loaded
                     and not hook_context_injection
-                    and not noteworthy_verdict
                     and not hook_system_message
+                    and not is_blocking_verdict
+                    and not noteworthy_verdict
+                ):
+                    markdown += "  - (no output)\n"
+                if is_blocking_verdict:
+                    markdown += f"  - 🛑 Hook denied: verdict={hook_verdict}\n"
+                elif hook_verdict and hook_verdict not in ("allow", None):
+                    markdown += f"  - Hook verdict: {hook_verdict}\n"
+                if hook_system_message:
+                    msg_preview = (
+                        hook_system_message[:300] + "..."
+                        if not full_mode and len(hook_system_message) > 300
+                        else hook_system_message
+                    )
+                    markdown += f"  - ℹ️ Hook message: {msg_preview}\n"
                 ):
                     markdown += "  - (no output)\n"
                 if noteworthy_verdict:
@@ -3296,9 +3312,11 @@ class SessionProcessor:
                         tool_input = hook.get("tool_input")
                         tool_name = hook.get("tool_name")
                         agent_id = hook.get("agent_id")
-
                         hook_verdict = hook.get("hook_verdict")
                         hook_system_message = hook.get("hook_system_message")
+
+                        is_blocking_verdict = hook_verdict in ("deny", "block", "request-changes")
+
                         noteworthy_verdict = (
                             hook_verdict if hook_verdict and hook_verdict != "allow" else None
                         )
@@ -3307,8 +3325,9 @@ class SessionProcessor:
                             or skills_matched
                             or files_loaded
                             or tool_input
-                            or noteworthy_verdict
                             or hook_system_message
+                            or is_blocking_verdict
+                            or noteworthy_verdict
                         )
                         is_error = exit_code is not None and exit_code != 0
                         is_blocking_verdict = hook_verdict in ("deny", "ask")
@@ -3335,15 +3354,19 @@ class SessionProcessor:
 
                         markdown += f"### Hook: {hook_label}{checkmark}\n\n"
 
+                        if is_blocking_verdict:
+                            markdown += f"🛑 Hook denied: verdict={hook_verdict}\n\n"
+                        elif hook_verdict and hook_verdict not in ("allow", None):
+                            markdown += f"Hook verdict: {hook_verdict}\n\n"
+                        if hook_system_message:
+                            msg_preview = (
+                                hook_system_message[:300] + "..."
+                                if not full_mode and len(hook_system_message) > 300
+                                else hook_system_message
+                            )
+                            markdown += f"ℹ️ Hook message: {msg_preview}\n\n"
                         if noteworthy_verdict:
                             markdown += f"**Verdict**: `{noteworthy_verdict}`\n\n"
-                        if hook_system_message:
-                            msg_display = (
-                                hook_system_message
-                                if full_mode or len(hook_system_message) <= 300
-                                else hook_system_message[:300] + "..."
-                            )
-                            markdown += f"**System message**: {msg_display}\n\n"
 
                         if tool_input and tool_name:
                             tool_summary = _summarize_tool_input(tool_name, tool_input)
