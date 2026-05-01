@@ -2235,6 +2235,50 @@ def _auto_resolve_rebase(repo_path: Path, name: str, ahead_count: int) -> tuple[
     return True, f"{name}: auto-resolved {len(set(all_conflict_files))} conflict(s)"
 
 
+_OVERSIZE_BYTES = 95 * 1024 * 1024  # GitHub rejects >100 MB; leave headroom.
+
+
+def _unstage_oversized(repo_path: Path, name: str) -> None:
+    """Drop files over GitHub's push limit from the index.
+
+    GitHub hard-rejects pushes containing any file >100 MB. The auto-commit
+    path stages new files indiscriminately via `git add .`; this scrubs the
+    index of anything over the threshold so the push doesn't fail and one
+    rogue file doesn't block every other change in the same sync.
+    Oversized files are left on disk and warned about — the operator can
+    decide whether to gitignore them, split them, or store them elsewhere.
+    """
+    staged = subprocess.run(
+        ["git", "diff", "--cached", "--name-only", "-z"],
+        cwd=repo_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    ).stdout
+    oversized: list[str] = []
+    for rel in (p for p in staged.split("\0") if p):
+        try:
+            if (repo_path / rel).stat().st_size > _OVERSIZE_BYTES:
+                oversized.append(rel)
+        except OSError:
+            continue  # deleted file or symlink target gone — ignore
+    if not oversized:
+        return
+    subprocess.run(
+        ["git", "restore", "--staged", "--", *oversized],
+        cwd=repo_path,
+        capture_output=True,
+        check=False,
+    )
+    sizes = ", ".join(
+        f"{f} ({(repo_path / f).stat().st_size / 1024 / 1024:.0f} MB)" for f in oversized
+    )
+    print(
+        f"⚠ {name}: skipped {len(oversized)} oversized file(s) (>95 MB): {sizes}",
+        file=sys.stderr,
+    )
+
+
 def _sync_working_repo(
     repo_path: Path,
     *,
@@ -2299,6 +2343,7 @@ def _sync_working_repo(
         if auto_commit:
             # Stage all files (including new untracked) and commit
             subprocess.run(["git", "add", "."], cwd=repo_path, capture_output=True, check=False)
+            _unstage_oversized(repo_path, name)
             has_staged = (
                 subprocess.run(
                     ["git", "diff", "--cached", "--quiet"],
