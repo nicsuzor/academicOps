@@ -12,6 +12,7 @@ Usage:
 
 import argparse
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -358,8 +359,6 @@ def _save_minimal_token_summary(
                 break
 
     # Determine stable project if we only have a UUID fragment
-    import re
-
     stable_project = project
     if (
         not stable_project
