@@ -101,17 +101,18 @@ The supervisor maintains structured state in the epic task body. This is the
 
 The supervisor uses canonical PKB task statuses — see [[../../../remember/references/TAXONOMY.md#status-values-and-transitions]].
 
-| Status        | Meaning in the supervisor loop                                                                                                                                      |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ready`       | Decomposed, awaiting human approval (NOT dispatchable). Also the halt state when a plan-review gate fires — parent not yet queued; supervisor resumes on promotion. |
-| `queued`      | Human-approved, dispatchable. Includes tasks waiting for a feature branch lock during coordinated dispatch (detected via the `feature_branch` field on siblings).   |
-| `in_progress` | Dispatched to a worker, or worker executing — covers both the "sent, waiting for PR" and "actively working" phases                                                  |
-| `merge_ready` | PR filed / CI passing / awaiting merge — do not re-dispatch; merge-prep agent handles graduation and the human approves via the `production` Environment gate       |
-| `review`      | Requires human judgment — PR changes requested, review gate fired, or decision required before work can proceed. Supervisor does NOT dispatch.                      |
-| `done`        | Merged and verified                                                                                                                                                 |
-| `blocked`     | Waiting on a dependency — will be unblocked automatically when the dependency transitions to `done`                                                                 |
-| `paused`      | Intentionally stopped; supervisor does not dispatch until human resumes                                                                                             |
-| `cancelled`   | Abandoned; supervisor ignores                                                                                                                                       |
+| Status                  | Meaning in the supervisor loop                                                                                                                                                                                                                             |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ready`                 | Decomposed, awaiting human approval (NOT dispatchable). Also the halt state when a plan-review gate fires — parent not yet queued; supervisor resumes on promotion.                                                                                        |
+| `queued`                | Human-approved, dispatchable. Includes tasks waiting for a feature branch lock during coordinated dispatch (detected via the `feature_branch` field on siblings).                                                                                          |
+| `in_progress`           | Dispatched to a worker, or worker executing — covers both the "sent, waiting for PR" and "actively working" phases                                                                                                                                         |
+| `merge_ready`           | (Legacy.) PR filed — supervisor records and moves on. Per task-212f1c82 the supervisor's halt state is `ready_for_user_review`; the GHA mechanical merge-prep adds the `ready-for-review` label asynchronously and the user-side reviewer cron takes over. |
+| `ready_for_user_review` | Work item has an open PR; handed off to the async pipeline. Supervisor's terminal state for the item.                                                                                                                                                      |
+| `review`                | Requires human judgment — PR changes requested, review gate fired, or decision required before work can proceed. Supervisor does NOT dispatch.                                                                                                             |
+| `done`                  | Merged and verified                                                                                                                                                                                                                                        |
+| `blocked`               | Waiting on a dependency — will be unblocked automatically when the dependency transitions to `done`                                                                                                                                                        |
+| `paused`                | Intentionally stopped; supervisor does not dispatch until human resumes                                                                                                                                                                                    |
+| `cancelled`             | Abandoned; supervisor ignores                                                                                                                                                                                                                              |
 
 **Coordinated dispatch (feature branch lock)**: When a task is `queued` but another
 task holds the feature branch lock, leave it `queued` and skip dispatch. The branch
@@ -150,9 +151,8 @@ not fact-checking. Verification is execution — automate it.
 - Check PKB task status (not just what the work items table says — query live)
 - Check child task status (a parent may be done if all children are done)
 - If `in_progress`: check for PRs (`gh pr list --search "head:polecat/{id}"`)
-- If `merge_ready`: check review/CI status
+- If a PR is open: that work item is done from the supervisor's perspective — mark it `ready_for_user_review` and stop tracking. Do NOT re-check CI / review state / merge status.
 - Check git log for recent changes to task files
-- Has anything been merged since last checkpoint?
 
 Update the work items table to match verified reality. Then decide what to do next.
 
@@ -178,173 +178,69 @@ discovers something is bigger than expected.
 
 ### MONITOR
 
-#### Event-Driven Monitoring (Default)
+The supervisor's monitoring scope per task-212f1c82 is narrow: **wait for
+each in_progress work item to open a PR, then halt**. CI status, reviewer
+state, label transitions after `ready-for-review`, and merge are all
+out-of-scope — owned by the GHA pipeline, the user-side reviewer cron, and
+the daily-sweep CTA respectively.
 
-The supervisor uses **event-driven monitoring** — not polling. Three
-mechanisms deliver state changes without burning tokens:
+Only two mechanisms are needed:
 
 1. **Background polecat completion notifications.** Dispatch workers with
    `run_in_background: true` on the Bash tool call. The Bash tool emits an
-   automatic notification when the background process exits. No polling
-   needed — the supervisor is interrupted when work finishes.
+   automatic notification when the background process exits.
 
    ```bash
-   # Dispatch in background — supervisor gets notified on exit
    polecat run -t task-abc123 -p aops   # run_in_background: true
    ```
 
-2. **Persistent Monitor for PR state transitions.** A single Monitor
-   watches all in-progress task branches and emits one event per state
-   change. Start it once during DISPATCH, and it runs for the rest of the
-   session.
+2. **One-shot PR check on worker exit.** When a worker finishes, do a single
+   `gh pr list --search "head:polecat/<id>"` to confirm a PR was opened.
+   That's it.
 
-   ```bash
-   # Monitor PR state for all in-progress polecat branches.
-   # Repo-specific bot set — adjust EXPECTED_BOTS for your repo.
-   EXPECTED_BOTS="gemini-code-assist[bot],Copilot,claude[bot]"
-   while true; do
-     for branch in $(git for-each-ref --format='%(refname:strip=3)' 'refs/remotes/origin/polecat/*'); do
-       task_id=$(echo "$branch" | sed 's|polecat/||')
-       pr_json=$(gh pr list --head "$branch" --json number,state,statusCheckRollup,reviews --limit 1 2>/dev/null)
-       if [ "$pr_json" != "[]" ] && [ -n "$pr_json" ]; then
-         pr_num=$(echo "$pr_json" | jq -r '.[0].number')
-         pr_state=$(echo "$pr_json" | jq -r '.[0].state')
-         checks=$(echo "$pr_json" | jq -r '.[0].statusCheckRollup // [] | map(.conclusion // .status) | join(",")')
-         reviews=$(echo "$pr_json" | jq -r '.[0].reviews // [] | map(.state) | join(",")')
+   | Outcome                 | Supervisor action                                                |
+   | ----------------------- | ---------------------------------------------------------------- |
+   | PR opened               | Record PR in work items; mark item ready_for_user_review         |
+   | No PR + worker exit 0   | REACT: re-dispatch or escalate (worker may have hit a stop-cond) |
+   | No PR + worker exit !=0 | REACT: read transcript, re-dispatch or file blocker              |
 
-         # Ready-to-advance detection: every expected bot has posted, all checks
-         # green/skipped, no CHANGES_REQUESTED.
-         bot_logins=$(echo "$pr_json" | jq -r '.[0].reviews // [] | map(.author.login) | unique | join(",")')
-         all_bots_posted=true
-         for bot in ${EXPECTED_BOTS//,/ }; do
-           echo ",$bot_logins," | grep -Fq ",${bot}," || all_bots_posted=false
-         done
-         if echo ",${checks}," | grep -qE ',(FAILURE|TIMED_OUT|CANCELLED|ACTION_REQUIRED|IN_PROGRESS|QUEUED|PENDING),'; then
-           has_failing=yes
-         else
-           has_failing=no
-         fi
-         if echo ",${reviews}," | grep -q ',CHANGES_REQUESTED,'; then
-           has_changes_requested=yes
-         else
-           has_changes_requested=no
-         fi
-         ready_to_advance=no
-         if [ "$all_bots_posted" = "true" ] && [ "$has_failing" = "no" ] && [ "$has_changes_requested" = "no" ]; then
-           ready_to_advance=yes
-         fi
+When all work items are in either state above (PR open or escalated), see
+§ Halt at ready_for_user_review below.
 
-         state_key="${pr_state}|${checks}|${reviews}|ready=${ready_to_advance}"
-         state_file="/tmp/pr-state-${task_id}"
-         prev=$(cat "$state_file" 2>/dev/null || echo "")
-         if [ "$state_key" != "$prev" ]; then
-           echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] ${task_id} PR#${pr_num}: state=${pr_state} checks=${checks} reviews=${reviews} ready_to_advance=${ready_to_advance}"
-           echo "$state_key" > "$state_file"
-         fi
-       fi
-     done
-     sleep 60
-   done
-   ```
+#### Removed responsibilities (per task-212f1c82)
 
-   Use the Monitor tool to stream this — each printed line becomes a
-   notification that wakes the supervisor. State transitions to watch for:
+The supervisor MUST NOT do any of the following any more. They have moved
+to the GHA pipeline (mechanical) or the user-side reviewer cron (judgment):
 
-   | Transition                        | Supervisor action                                             |
-   | --------------------------------- | ------------------------------------------------------------- |
-   | no-pr → opened                    | Record PR in work items                                       |
-   | opened → checks-passing           | Wait for review                                               |
-   | checks-failing                    | REACT: read logs, re-dispatch or fix                          |
-   | review: CHANGES_REQUESTED         | REACT: read comments                                          |
-   | ready-to-advance                  | Trigger merge-prep manually (see § Manual merge-prep trigger) |
-   | review: APPROVED + checks-passing | INTEGRATE: merge                                              |
-   | merged                            | Update status → done                                          |
+- Persistent PR-state Monitor watching CI / reviewer state across all branches.
+- `gh run watch`, `gh pr view --json statusCheckRollup,reviews` polling loops.
+- "Ready-to-advance" detection across the bot reviewer set.
+- Manual `gh workflow run agent-merge-prep.yml` triggers.
+- Reading `merge-prep-status` commit status.
+- Reacting to `CHANGES_REQUESTED` reviews from the bazaar bots.
+- `gh pr merge` of any kind.
+- `polecat sync` after merging.
 
-   **Ready-to-advance** = all expected bot reviewers have posted, all CI green,
-   no `CHANGES_REQUESTED`, no merge-prep run currently in progress. The persistent
-   Monitor script should emit an event when a PR enters this state so the
-   supervisor gets a direct prompt to fire the manual trigger below instead of
-   waiting on the next cron tick (which can be up to 30 min away). Detect by
-   checking which bot logins have submitted a review against the repo's expected
-   bot set — for `aops` that is `gemini-code-assist[bot]`, Copilot, and `claude[bot]`.
+If a transcript shows the supervisor doing any of these against a PR that
+has already been opened, that's a bug — the supervisor was supposed to
+have halted.
 
-3. **ScheduleWakeup as safety net only.** Set a long interval (1800s+) as
-   a catch-all in case a notification is missed or a worker stalls without
-   producing a signal. This is NOT the primary monitoring mechanism.
+#### Halt at ready_for_user_review
 
-   ```
-   ScheduleWakeup(delaySeconds=1800, reason="safety-net check for stalled workers")
-   ```
+Once every work item is in a terminal supervisor state (PR open OR
+escalated/blocked with a clear reason), the supervisor:
 
-#### Manual merge-prep trigger
+1. Updates the epic's work-items table; marks each open-PR item with
+   state `ready_for_user_review`.
+2. Emits the final-summary report (template in [[../SKILL.md#final-summary-template-one-report-per-epic]]).
+3. Sets epic status appropriately and exits. No `ScheduleWakeup`, no
+   re-orient, no follow-up tick on this epic.
 
-The merge-prep dispatcher (`merge-prep-cron.yml`) qualifies PRs only after the
-15-minute `BAZAAR_WINDOW_SECONDS` has elapsed since the last commit, so PRs can
-sit idle for 15–30 min waiting for the next cron tick — even when every bot
-reviewer has already posted. The supervisor can short-circuit this wait by
-firing `agent-merge-prep.yml` directly. The agent still triages everything;
-the bazaar wait was insurance, not a requirement.
-
-**Command** (preferred — direct dispatch, no qualification step):
-
-```bash
-HEAD_REF=$(gh pr view <PR> --repo <owner>/<repo> --json headRefName --jq '.headRefName')
-gh workflow run agent-merge-prep.yml \
-  --repo <owner>/<repo> \
-  --ref "refs/heads/$HEAD_REF" \
-  -f pr_number=<PR> \
-  -f force=true
-```
-
-The cron dispatcher's `workflow_dispatch` override (`gh workflow run merge-prep-cron.yml -f pr_number=<PR>`)
-also works and dispatches with `force=true` internally — use it if you'd rather
-go through the dispatcher path.
-
-**When to trigger manually**:
-
-- All expected bot reviewers have posted reviews (`gemini-code-assist[bot]`, Copilot, `claude[bot]`
-  for the `aops` repo — the set is repo-specific), OR
-- 5+ minutes have passed with all CI green and no `CHANGES_REQUESTED`.
-
-**When NOT to trigger manually**:
-
-- Before at least one external review has arrived — you'd skip the bazaar for
-  nothing and lose the signal it was meant to catch.
-- While any bot is still actively running
-  (`gh run list --workflow=<bot> --branch=<head_ref> --status=in_progress`).
-- On a coordinated-branch batch that isn't complete — only fire merge-prep on
-  the final "ready for review" flip, not on intermediate subtask pushes.
-- When a merge-prep run is already in_progress for the PR
-  (`gh run list --workflow=agent-merge-prep.yml --status=in_progress`).
-
-**Late `CHANGES_REQUESTED` is safe**: if a reviewer posts after merge-prep sets
-`success`, the cron's re-qualify path picks it up on the next tick. The manual
-trigger doesn't close that loop.
-
-#### Anti-Pattern: Polling
-
-**Do not** poll `polecat list`, `gh pr list`, or read background output
-files on a short interval (every 4–5 minutes). This burns tokens and
-context window — especially when supervising 3–4 concurrent workers over
-30+ minutes.
-
-| Anti-pattern                              | Replacement                                 |
-| ----------------------------------------- | ------------------------------------------- |
-| `ScheduleWakeup(300s)` + `polecat list`   | `run_in_background` completion notification |
-| `ScheduleWakeup(300s)` + `gh pr list`     | Persistent Monitor script (above)           |
-| Repeated reads of background output files | Wait for background task notification       |
-
-#### Fallback: One-Shot Check Per Invocation
-
-If event-driven monitoring is not possible (e.g., resumed session,
-different machine, no long-running Monitor), fall back to a single check
-per invocation. For each `in_progress` / `merge_ready` item:
-
-- Check PKB for status changes
-- Check GitHub for PRs (`gh pr list`, `gh pr view`)
-- Update the work items table
-
-No active polling loops. Check once per invocation.
+The user-side reviewer cron at `dotfiles/cron/user-side-pr-review.sh`
+will pick the PRs up via the GHA-applied `ready-for-review` label,
+dispatch the rebuilt RBG judge agent (`aops-core/agents/rbg.md`), and
+on PASS apply `approve-ready`. The next `/daily` surfaces them in one
+CTA list. The supervisor is not part of that loop.
 
 #### Reading Worker Completion Signals
 
@@ -496,22 +392,26 @@ parallel dispatch report shape) lists deferred verification:
 | Dependency discovered             | Add depends_on, mark dependent as blocked        |
 | Academic integrity concern        | Set task status to `review`, do not dispatch     |
 
-### INTEGRATE
+### HALT (ready_for_user_review)
 
-1. Verify PR is clean (CI green, approved, no conflicts)
-2. Merge: `gh pr merge <N> --squash --delete-branch`
-3. Sync mirrors if available: `polecat sync`
-4. Update work item: status → done
-5. Check if this unblocks other work items → move to ready
+Replaces the old INTEGRATE + COMPLETE phases. The supervisor never merges
+PRs and never waits for downstream review.
 
-### COMPLETE
+1. Confirm every work item has either an open PR or a documented
+   escalation/blocker. If anything is still `in_progress` with no PR, see
+   the MONITOR table above.
+2. Update each open-PR work item to state `ready_for_user_review`.
+3. Run knowledge capture ([[knowledge-capture]]) for in-flight learning,
+   not as a completion gate.
+4. File follow-up tasks for out-of-scope discoveries.
+5. Emit the final-summary report (one per epic; see
+   [[../SKILL.md#final-summary-template-one-report-per-epic]]).
+6. Final checkpoint, exit.
 
-All work items done:
-
-1. Update parent task status
-2. Run knowledge capture ([[knowledge-capture]])
-3. File follow-up tasks for out-of-scope discoveries
-4. Final checkpoint with summary
+PR merge happens later, async, gated by the user-side review cron and the
+human's daily-sweep CTA. Task-completion-on-merge automation is owned by
+the merged-PR action that parses the branch name; the supervisor is not
+involved.
 
 ## Holding Work for Human Judgment
 

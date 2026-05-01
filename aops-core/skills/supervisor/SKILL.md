@@ -144,19 +144,23 @@ The supervisor is NOT a pipeline — it's a loop that enters at whatever phase
 the epic needs on each invocation.
 
 ```
-ORIENT → DECOMPOSE → (plan-review gate) → WAITING → DISPATCH → MONITOR → REACT → INTEGRATE → COMPLETE
+ORIENT → DECOMPOSE → (plan-review gate) → WAITING → DISPATCH → MONITOR → REACT → HALT (ready_for_user_review)
 ```
 
-| Phase     | What happens                                                          | Instructions                                                                                     | Exit condition                                                                           |
-| --------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
-| Orient    | Read epic, verify child statuses, decide what to do next              | [[instructions/supervision-loop]]                                                                | Next phase selected                                                                      |
-| Decompose | Break work into PR-sized subtasks; run Phase 2 review                 | [[instructions/decomposition-and-review]]                                                        | Synthesis complete; plan-review gate evaluated                                           |
-| Review    | Plan-review halt — decomposition synthesized, awaiting human approval | [[instructions/decomposition-and-review#plan-review-gate-phase-25]]                              | **Parent task promoted to `queued` by human** (status transition IS the approval record) |
-| Dispatch  | Send tasks to workers (local or remote via SSH+tmux)                  | [[instructions/worker-dispatch]], [[instructions/worker-dispatch#remote-dispatch-via-ssh--tmux]] | Worker fired; task status → `in_progress`                                                |
-| Monitor   | Event-driven: background notifications + PR Monitor                   | [[instructions/supervision-loop]]                                                                | State change event observed                                                              |
-| React     | Handle failures, conflicts, scope changes                             | [[instructions/supervision-loop]]                                                                | Issue resolved or re-dispatched                                                          |
-| Integrate | Verify, merge, sync                                                   | [[instructions/supervision-loop]]                                                                | PR merged; task → done                                                                   |
-| Complete  | Update epic, capture knowledge, file follow-ups                       | [[instructions/knowledge-capture]]                                                               | Epic done; knowledge captured                                                            |
+| Phase     | What happens                                                                         | Instructions                                                                                     | Exit condition                                                                           |
+| --------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| Orient    | Read epic, verify child statuses, decide what to do next                             | [[instructions/supervision-loop]]                                                                | Next phase selected                                                                      |
+| Decompose | Break work into PR-sized subtasks; run Phase 2 review                                | [[instructions/decomposition-and-review]]                                                        | Synthesis complete; plan-review gate evaluated                                           |
+| Review    | Plan-review halt — decomposition synthesized, awaiting human approval                | [[instructions/decomposition-and-review#plan-review-gate-phase-25]]                              | **Parent task promoted to `queued` by human** (status transition IS the approval record) |
+| Dispatch  | Send tasks to workers (local or remote via SSH+tmux)                                 | [[instructions/worker-dispatch]], [[instructions/worker-dispatch#remote-dispatch-via-ssh--tmux]] | Worker fired; task status → `in_progress`                                                |
+| Monitor   | Wait for the worker-completion signal that a PR has been opened                      | [[instructions/supervision-loop]]                                                                | PR opened for the work item (label not required at this point)                           |
+| React     | Handle dispatch failures, decomposition surprises, missing PRs                       | [[instructions/supervision-loop]]                                                                | Issue resolved or re-dispatched                                                          |
+| Halt      | All work items have an open PR; emit final summary; status → `ready_for_user_review` | [[instructions/supervision-loop]]                                                                | Final summary emitted; supervisor exits                                                  |
+
+There is no `Integrate` phase and no `Complete`-merge phase any more. The
+supervisor never merges, never waits for CI, never reads `merge-prep-status`,
+never re-runs reviewers. Async ownership transfers at `ready-for-review`
+(GHA-set label) → user-side reviewer cron → daily-sweep CTA.
 
 **`Review` is a real halt state** when it means "decomposed, awaiting human
 promotion to `queued`" — not a transient phase. After Phase 2 synthesis, if
@@ -204,7 +208,7 @@ aops task <task-id> | jules new --repo <owner>/<repo>
 **Polecat exit codes** (relevant for scripted supervisors):
 
 - Exit 0 + "✅ already done" → task was `done`; graceful noop, move on
-- Exit 2 + "🔒 Task is locked" → task is `merge_ready` with an open PR; check and merge, do not retry dispatch
+- Exit 2 + "🔒 Task is locked" → task already has an open PR / is past hand-off; record the PR in the work-items table and do not retry dispatch (the supervisor halts at `ready_for_user_review` regardless of merge state)
 
 The supervisor decides WHICH task to dispatch next based on priority,
 dependencies, and capacity — then dispatches one at a time.
@@ -224,55 +228,67 @@ intervention. See [[instructions/worker-dispatch]] "Critic Gate."
 > See [[instructions/worker-dispatch]] for pre-dispatch validation, worker
 > selection, and dispatch protocol.
 
-## PR Review Pipeline
+## Handoff Contract (task-212f1c82)
 
-PRs arrive from workers (polecat branches, Jules PRs). The pipeline design
-lives in the brain PKB (project: aops, topic: pr-pipeline); bots prepare, the
-human decides once via a GitHub Environment approval gate.
+The supervisor's job ends when each work item is **opened as a PR with the
+`ready-for-review` label set by the GHA mechanical merge-prep**. That is the
+new completion signal — replacing the old `merge_ready` / "drive PR to
+mergeable" / poll-CI loop.
 
-**Phase 1 — CI + Axiom Review (on every push):**
+| Layer                             | Owns                                                                                          | Surface                                   |
+| --------------------------------- | --------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| **Supervisor (synchronous, you)** | Decompose → dispatch → halt at `ready_for_user_review` once each PR has `ready-for-review`    | One report per epic                       |
+| **GHA pipeline (async, no PKB)**  | Mechanical merge-prep: rebase, CI, lint, conflict detection, then `ready-for-review` label    | PR labels + status checks                 |
+| **User-side reviewer (async)**    | Strategic alignment + QA via judge-role agent. Cron at `dotfiles/cron/user-side-pr-review.sh` | PR review comment + label `approve-ready` |
+| **Daily sweep**                   | Surfaces `approve-ready` PRs as one CTA list per epic                                         | Daily note                                |
 
-1. `pr-pipeline.yml` — sequential `lint` → `typecheck` → `pytest`. Lint uses
-   a PAT so autofix pushes trigger a clean pipeline restart.
-2. `agent-enforcer.yml` — axiom compliance review, fires on `workflow_run`
-   when CI completes. Can push fixes directly or request changes.
+**The supervisor does NOT poll GitHub Actions, does NOT wait for CI, does
+NOT chase reviewers.** Once every work item has opened a PR and the
+mechanical merge-prep has labelled it `ready-for-review` (or the supervisor
+has confirmed the PR is open and is now under merge-prep's care), the
+supervisor produces its final summary and halts.
 
-**Phase 2 — Merge Prep (cron-driven, no human trigger):**
+### Halt state: `ready_for_user_review`
 
-3. `merge-prep-cron.yml` — dispatcher. Runs on `workflow_run` + 30-min cron.
-   Qualifies PRs ≥15 min old with no in-progress run and no terminal
-   `merge-prep-status`.
-4. `agent-merge-prep.yml` — the Claude merge-prep agent. Triages all review
-   feedback, fixes CI failures, resolves conflicts, posts a triage summary,
-   approves the PR, sets `merge-prep-status: success`, and triggers
-   `summary-and-merge.yml`.
+Set the epic to status `ready_for_user_review` (work-item-table state) once
+every child task either:
 
-**Phase 3 — Human Decision (Environment gate):**
+- has an open PR, OR
+- has been escalated/blocked with a clear reason recorded in the task body.
 
-5. `summary-and-merge.yml` Job 1 posts the decision brief comment. Job 2
-   requires the `production` GitHub Environment — the maintainer clicks
-   **Approve** in the Actions environment UI, and the PR squash-merges
-   automatically. Clicking **Reject** holds the PR open.
+There is no further polling responsibility. The user-side reviewer cron
+picks PRs up via the `ready-for-review` label, the rebuilt RBG judge agent
+emits its Verdict, and on PASS the cron labels the PR `approve-ready`. The
+daily-sweep CTA aggregates `approve-ready` PRs for the human.
 
-**Pipeline limitations:**
+### Final-summary template (one report per epic)
 
-- PRs that modify workflow files (`.github/workflows/`) cannot get pipeline
-  review due to OIDC validation (workflow content must match default branch).
-  These PRs need manual review and admin merge.
-- Bot reviewers take 2–5 min to post. The 15-minute age gate in the
-  merge-prep dispatcher preserves the bazaar window.
+Emit exactly one summary at halt:
 
-**Merge flow (what the human sees):**
+```
+Epic <epic-id> — N PRs in `ready_for_user_review`
 
-- Decision brief comment appears on the PR once merge-prep graduates it.
-- Approval happens in the GitHub Environments UI, not as a PR comment —
-  there is no "lgtm" / "merge" / "@claude merge" trigger.
-- Admin bypass: `gh pr merge <PR> --squash --admin --delete-branch` for PRs
-  that can't progress through the pipeline (workflow PRs, urgent fixes).
+| # | Task ID  | Title              | PR                            | State            |
+| - | -------- | ------------------ | ----------------------------- | ---------------- |
+| 1 | task-aaa | <one-line title>   | https://github.com/.../pull/1 | ready-for-review |
+| 2 | task-bbb | <one-line title>   | https://github.com/.../pull/2 | open (no label)  |
+| 3 | task-ccc | <one-line title>   | —                             | blocked: <why>   |
 
-**Task completion on merge**: When a PR merges, a GitHub Action parses the
-task ID from the branch name (`polecat/aops-XXXX`) and marks the task done.
-This closes the loop without supervisor involvement.
+Next surface: user-side reviewer cron will judge each `ready-for-review`
+PR and label `approve-ready` on PASS. Approve-ready PRs appear in the
+next `/daily` CTA list. No further supervisor action.
+```
+
+The supervisor MUST NOT include "polling will continue", "I'll check back
+in N minutes", or any GHA-status loop. The transcript should not contain
+`gh run watch`, repeated `gh pr view` calls on the same PR, or
+`ScheduleWakeup`-driven re-orientation against the same merged-or-not
+question.
+
+**Task completion on merge** is handled by the existing
+branch-name → `pkb` automation, NOT by the supervisor. The supervisor halts
+at `ready_for_user_review`; merging happens later, asynchronously, after
+the user has reviewed the daily-sweep CTA.
 
 **Jules PR workflow**: Jules sessions show "Completed" when coding is done,
 but require human approval on the Jules web UI before branches are pushed
@@ -354,15 +370,12 @@ External triggers that start the supervision loop.
   you also need to confirm the remote MCP sees it, attempt a `get_task`
   probe before firing the worker.
 - **`merge-prep-status: pending`** — set by `pr-pipeline.yml`'s initialize
-  job and cleared only when the merge-prep agent sets `success` (graduation)
-  or `failure` (after 3 consecutive failures). A PR with green CI may still
-  sit "yellow" until the merge-prep agent runs. This is **not stuck** —
-  it's pending the next cron tick (up to 30 min away) or a manual trigger.
-  When all expected bot reviewers have posted and CI is green, the supervisor
-  can resolve it at will: see
-  [[instructions/supervision-loop#manual-merge-prep-trigger]] for the exact
-  `gh workflow run` command and the when-to-use rules. Admin bypass remains
-  available for urgent cases.
+  job and cleared by the GHA mechanical merge-prep when the PR is ready.
+  Per task-212f1c82 the supervisor does **not** read this status, does
+  **not** trigger merge-prep manually, and does **not** wait on it. Once
+  the work-item PR is open, the supervisor halts at
+  `ready_for_user_review`; merge-prep, the `ready-for-review` label, and
+  the user-side reviewer cron run asynchronously.
 
 ## Quick Reference
 
@@ -374,48 +387,33 @@ polecat run -t <task-id> -p <project> -g    # gemini
 aops task <task-id> | jules new --repo <owner>/<repo>  # jules
 ```
 
-### Monitoring (Event-Driven — Default)
+### Monitoring (until PR opens — then HALT)
 
-Use event-driven monitoring to avoid burning tokens on polling loops.
-See [[instructions/supervision-loop#event-driven-monitoring-default]] for
-full details and the ready-to-paste Monitor script.
+The supervisor's only monitoring obligation is "did the worker open a PR?"
+Once each work item has a PR, the supervisor halts at
+`ready_for_user_review` (see [[instructions/supervision-loop#halt-at-ready-for-user-review]]).
+The mechanical merge-prep workflow labels the PR `ready-for-review` when
+ready; the user-side reviewer cron picks it up. The supervisor does NOT
+poll for that label, does NOT poll CI, does NOT chase reviewers.
 
 ```bash
-# 1. Dispatch workers in background — get notified on exit
+# Dispatch workers in background — get notified on exit
 polecat run -t <task-id> -p <project>  # Bash run_in_background: true
-
-# 2. Start persistent PR-state Monitor (one for all branches)
-# See supervision-loop.md for the full script — use Monitor tool to stream it
-
-# 3. Safety-net wakeup (1800s+ only — NOT primary monitoring)
-# ScheduleWakeup(delaySeconds=1800, reason="safety-net stall check")
 ```
 
-| Mechanism                      | What it watches        | How it notifies             |
-| ------------------------------ | ---------------------- | --------------------------- |
-| `run_in_background` completion | Worker exit            | Automatic Bash notification |
-| Persistent Monitor script      | PR state transitions   | Monitor tool line events    |
-| ScheduleWakeup (1800s+ safety) | Stalled/missed signals | Timer-based fallback        |
+| Mechanism                                                          | What it watches | How it notifies             |
+| ------------------------------------------------------------------ | --------------- | --------------------------- |
+| `run_in_background` completion                                     | Worker exit     | Automatic Bash notification |
+| `gh pr list --search head:polecat/<id>` (one-shot, on worker exit) | PR opened?      | Direct check                |
 
-**Anti-pattern**: `polecat list` / `gh pr list` every 4–5 min via
-ScheduleWakeup — wastes tokens and context. Use only as one-shot fallback
-when event-driven monitoring is unavailable.
+**Anti-patterns** (per task-212f1c82 — these used to be tolerated and are
+now explicitly prohibited):
 
-```bash
-# Fallback commands (one-shot, NOT for polling loops)
-polecat list                           # active polecats
-gh pr list --state open --limit 20     # open PRs
-polecat reset-stalled --hours 4        # reset hung tasks
-polecat sync                           # sync mirrors after merging
-```
-
-### PR triage
-
-| Signal                               | Action                                                      |
-| ------------------------------------ | ----------------------------------------------------------- |
-| Reasonable adds/dels, targeted files | `gh pr merge <N> --squash --delete-branch`                  |
-| Code already in main (stale branch)  | `gh pr close <N> --comment "Stale branch"`                  |
-| Massive deletions (stale mirror)     | `gh pr close <N> --comment "Repo nuke"` then `polecat sync` |
+- Persistent PR-state Monitor scripts that watch CI / review state.
+- `gh run watch`, repeated `gh pr view`, ScheduleWakeup loops on the same PR.
+- Manual `agent-merge-prep.yml` triggers from the supervisor.
+- Reading `merge-prep-status` commit status.
+- Calling `gh pr merge` from the supervisor.
 
 ## Task Assignment Rules
 
