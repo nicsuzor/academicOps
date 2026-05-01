@@ -3163,7 +3163,7 @@ class SessionProcessor:
                     skills_str = ", ".join(f"`{s}`" for s in skills_matched)
                     markdown += f"  - Skills matched: {skills_str}\n"
                 if files_loaded:
-                    files_str = ", ".join(f"`{f.split('/')[-1]}`" for f in files_loaded)
+                    files_str = ", ".join(f"`{fp.split('/')[-1]}`" for fp in files_loaded)
                     markdown += f"  - Loaded: {files_str}\n"
                 if content:
                     if full_mode:
@@ -3354,7 +3354,7 @@ class SessionProcessor:
                             skills_str = ", ".join(f"`{s}`" for s in skills_matched)
                             markdown += f"Skills matched: {skills_str}\n\n"
                         if files_loaded:
-                            files_str = ", ".join(f"`{f.split('/')[-1]}`" for f in files_loaded)
+                            files_str = ", ".join(f"`{fp.split('/')[-1]}`" for fp in files_loaded)
                             markdown += f"Loaded {files_str} (content injected)\n\n"
                         if content:
                             if not full_mode and len(content) > 200:
