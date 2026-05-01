@@ -27,8 +27,8 @@ permalink: commands/pull
 
 Per [[../skills/remember/references/TAXONOMY.md]] §Status Values: agents pull only from `queued` (the human-gated dispatch queue). Tasks in `ready` are decomposed-but-unapproved and MUST NOT be claimed here — the user promotes `ready` → `queued` manually.
 
-1. **List queued tasks**: Call `mcp__pkb__list_tasks(status="queued", limit=10)` to find dispatchable tasks sorted by priority + downstream weight.
-2. **Select task**: Review the list and select the highest priority task (lowest priority number — see [Priority Labels in TAXONOMY.md](../skills/remember/references/TAXONOMY.md#priority-labels-p0p4) for canonical definitions; P0 is highest).
+1. **List queued tasks**: Call `mcp__pkb__list_tasks(status="queued", limit=10, format="json")` to find dispatchable tasks. The PKB ranks results by composite `urgency` (severity × edge weight × slack × decay). Use `urgency` as the primary ranking signal — it already incorporates lexicographic severity (SEV4 dominates), priority, downstream weight, and deadline slack.
+2. **Select task**: Pick the highest-`urgency` task in the returned list. If `urgency` is missing or zero across all tasks (mem-side urgency emission not yet active), fall back to lowest `effective_priority` then highest `focus_score`. Do NOT rank by `downstream_weight` alone — it is superseded by `urgency` as the unified signal. See [Priority Labels in TAXONOMY.md](../skills/remember/references/TAXONOMY.md#priority-labels-p0p4) for canonical label definitions (P0 = highest).
 3. **Claim task**: Call `mcp__pkb__update_task(id="<task-id>", status="in_progress", assignee="polecat")` to claim it.
 
 **If a specific task ID is provided** (`/pull <task-id>`):
@@ -71,6 +71,33 @@ The following completed tasks provide informational context for this task:
 - Reading them is recommended but not mandatory
 - Missing/incomplete soft deps do NOT block task execution
 - Context injection helps but agent can proceed without it
+
+### Step 1.7: Specialist Agent Dispatch (Pre-EXECUTE Short-Circuit)
+
+If the claimed task — or its parent epic — has an `assignee` that names a specialist sub-agent, the main agent MUST dispatch via the Agent tool. Do NOT fall through to Step 2 / Step 3A and execute inline.
+
+**Specialist namespaces** (match against `assignee`):
+
+- `aops-core:<name>` → dispatch with `subagent_type="<name>"` (strip the `aops-core:` prefix)
+- `aops-cowork:<name>` → dispatch with `subagent_type="<name>"` (strip the `aops-cowork:` prefix)
+- `polecat` (bare name) → dispatch with `subagent_type="polecat"`
+
+Known specialist names include `marsha`, `rbg`, `pauli`, `james`, `jr`, `qa`, `enforcer`, `polecat`. Any value matching the namespace patterns above is treated as a specialist regardless of whether the bare name is recognised — the namespace itself is the trigger.
+
+**Dispatch:**
+
+```
+Agent(
+  subagent_type="<bare-agent-name>",
+  prompt="<self-contained brief: task ID, title, body, acceptance criteria, file paths in scope>"
+)
+```
+
+The brief must be self-contained — the dispatched agent will not have this session's context. Include the task ID, title, full body, acceptance criteria, and any file paths in scope.
+
+After dispatch, **HALT** the main agent. Do NOT continue to Step 2. The specialist owns execution and completion.
+
+If `assignee` is `null`, `nic`, missing, or anything not matching the namespaces above, continue to Step 2 normally.
 
 ### Step 2: Assess Task Path - EXECUTE or TRIAGE
 

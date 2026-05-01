@@ -53,6 +53,52 @@ These principles govern all consolidation work — manual `/sleep` invocations a
 
 The sleep cycle is an **agent session**, not a script. A Claude agent is launched (via GitHub Actions cron or manually) with a consolidation prompt. The agent works through phases using judgment, calling tools as signals — not deterministic code that makes the decisions.
 
+### Sub-Agent Dispatch (Phases 2, 4, and Quality Review)
+
+The parent sleep orchestrator may delegate Phase 2 (Transcript Mining), Phase 4 (Knowledge Consolidation), and the PKB Quality Review to parallel `aops-core:pauli` sub-agents. Pauli's default profile only exposes a narrow Read/Skill/PKB-MCP toolset because pauli is also used in non-sleep contexts where Bash/Edit are inappropriate. **Sleep dispatch is the exception**: the consolidation phases need filesystem and shell access to discover transcripts, mark them as mined, and inspect git state.
+
+When dispatching, ALWAYS pass the explicit `tools` argument so the sub-agent inherits the knowledge-work toolset rather than the lean default. Example invocation:
+
+```
+Agent(
+  subagent_type='aops-core:pauli',
+  prompt='Execute Phase 2 (Transcript Mining) per aops-core/skills/sleep/SKILL.md. Process up to 15 unmined transcripts under $AOPS_SESSIONS. Report HALT explicitly if any required tool is missing.',
+  tools=[
+    # PKB MCP — read
+    'mcp__plugin_aops-core_pkb__search',
+    'mcp__plugin_aops-core_pkb__task_search',
+    'mcp__plugin_aops-core_pkb__get_document',
+    'mcp__plugin_aops-core_pkb__pkb_context',
+    # PKB MCP — write
+    'mcp__plugin_aops-core_pkb__append',
+    'mcp__plugin_aops-core_pkb__create',
+    'mcp__plugin_aops-core_pkb__create_memory',
+    # Filesystem / shell
+    'Bash',                # transcript listing, git status
+    'Glob',                # transcript discovery
+    'Grep',                # transcript content search
+    'Edit',                # transcript frontmatter only — see scope below
+    'Read',
+    'Skill',
+  ],
+)
+```
+
+**Edit scope**: `Edit` is granted ONLY to mark transcripts as `mined: YYYY-MM-DD` in their frontmatter. Transcripts live OUTSIDE `$ACA_DATA` (typically `/Users/suzor/.aops/sessions/transcripts/*.md` or `$AOPS_SESSIONS/**/*.md`), which is the explicit exception carved out by the [[remember]] skill's hard rules. Sub-agents must NOT use `Edit` to modify anything inside `$ACA_DATA` — knowledge writes go through PKB MCP tools.
+
+**CI environment**: when running on GitHub Actions, the PKB MCP server is unavailable (see "CI-Specific Rules" in the workflow prompts). In that environment the sub-agents work directly against markdown files via `Bash`/`Glob`/`Edit`/`Write` and the dispatch can omit the `mcp__plugin_aops-core_pkb__*` entries. The parent must surface this clearly in the dispatched prompt so the sub-agent knows which channel is live.
+
+**Do NOT add these tools to pauli's default profile** (`aops-core/agents/pauli.md`). The toolset is dispatch-context-specific; pauli is also invoked by James, Marsha, and during interactive `/planner` work where Bash/Edit are inappropriate.
+
+### Halt Surfacing (Anti-Silent-Failure)
+
+Sub-agents are instructed to emit a literal `HALT:` line and the missing tool name when a required tool is unavailable, rather than fabricating output. The parent orchestrator MUST:
+
+1. Parse each sub-agent return for any of the markers `HALT:`, `HALTED`, `tool gap`, `tool not available`, or `cannot proceed: missing tool`.
+2. Maintain a halt counter across all dispatched sub-agents in the cycle.
+3. Surface the count in the final cycle report (and in `$GITHUB_STEP_SUMMARY` on CI), with the affected phase names and missing tools listed. Example summary line: `Sub-agent halts: 2 (Phase 2 — missing Bash; Phase 4 — missing mcp__plugin_aops-core_pkb__append)`.
+4. If the halt count is non-zero, the cycle exit code/PR description must call this out at the TOP — not buried inside per-phase output. This closes the silent-failure mode where halts were only visible inside individual sub-agent returns.
+
 ```bash
 # Trigger via GitHub Actions (runs in $ACA_DATA repo)
 gh workflow run sleep-cycle -R nicsuzor/brain
@@ -206,6 +252,10 @@ What this phase adds on top is: _which_ episodic material to mine (candidacy + f
 
 3. **Create MOCs only when warranted**: When a topic area has accumulated 5+ canonical notes and would benefit from navigation, create or update a MOC per [[remember]]'s Maps of Content guidance. Skip this step by default — MOCs are earned, not scheduled.
 
+### Garden Pass Discipline (P#123)
+
+Per [[../../HEURISTICS.md#P123|P#123 — Age Is Not A Staleness Signal]]: when this phase encounters old episodic sources, do NOT recommend cancellation based on age alone. Only relevance — not age — justifies cancellation. Garden passes here surface candidates for human review; they do not recommend cancellation.
+
 ### Pacing
 
 Pauli paces the work. Defaults are guide-rails, not hard limits — deviate when the material warrants (e.g., a topic with many scattered peers that should be collapsed in one pass justifies more work than usual).
@@ -241,7 +291,7 @@ For each candidate (up to 20 per cycle):
    - Git commits referencing the task
 3. Decision:
    - Evidence of completion found → `complete_task` with note explaining evidence
-   - Deadline >90d past + zero evidence of any activity → `complete_task` with "auto-closed: no activity, deadline long past"
+   - Deadline >90d past + zero evidence of any activity → flag in cycle summary for human review (per [P#123](../../HEURISTICS.md#P123), age alone does not establish irrelevance)
    - Genuinely ambiguous (some activity but unclear completion) → flag in cycle summary
 
 **Environment guard**: Email/calendar tools require local MCP servers (not available on GitHub Actions). When running on CI, skip evidence-based verification entirely — only flag candidates. Staleness verification only runs effectively during manual `/sleep` invocations on the Mac.
@@ -269,6 +319,8 @@ Detect orphans, stale docs, and under-specified tasks. The agent uses these as *
 - **PKB orphan detection**: `mcp__pkb__pkb_orphans()`
 - **Git log**: Recent commits, task changes since last cycle
 - **Own judgment**: The agent reads flagged tasks and decides whether they genuinely need attention.
+
+**Per [HEURISTICS P#123](../../HEURISTICS.md#P123) — age is not staleness.** Surface candidates for human review; do not auto-cancel based on age. Cancellation requires evidence the work has become irrelevant, not just that it is old.
 
 ## Phase 8: Refile Processing
 
@@ -318,11 +370,11 @@ When a strategy is selected, the agent should execute these specific actions:
 
 **Split oversized containers**: If an epic has >20 direct children, split it. Read the children, group by theme, create sub-epics, and `bulk_reparent` children into the new sub-epics. An epic with 40 tasks about "infrastructure" might split into "CI/CD", "monitoring", and "deployment" sub-epics.
 
-**Find misparented tasks**: Use `pkb_orphans` to find wrong-type-parent orphans (e.g., a task parented directly to a project instead of an epic). For each, find an appropriate epic under the same project and reparent. If no suitable epic exists, create one.
+**Find misparented tasks**: Use `pkb_orphans` to find wrong-type-parent orphans (e.g., a task parented directly to a project instead of an epic). For each, find an appropriate epic under the same project (use `list_tasks(type="epic", project="<project-id>")` to enumerate candidates rather than walking the parent chain) and reparent. If no suitable epic exists, create one.
 
 **Nest loose tasks**: For `flat_tasks` (tasks with no parent), read the task title and body, search for related epics/projects via `search`, and `bulk_reparent` to the best match. If no match exists, check if 3+ loose tasks share a theme — if so, create an epic to contain them.
 
-**Connect disconnected epics**: For each disconnected epic, read its title and children to infer which project it belongs to. Search for matching projects and reparent. If no project matches, flag for human review.
+**Connect disconnected epics**: For each disconnected epic, prefer the epic's `frontmatter.project` slug and resolve the matching project directly. If `project` is missing, read the title and children, search for matching projects via `search`, and reparent. Do not infer project membership from task ID prefixes or by walking unrelated parent chains. If no project matches, flag for human review.
 
 ### Known Metric Limitations
 

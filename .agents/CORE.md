@@ -2,6 +2,21 @@
 
 This project contains the **academicOps** framework itself. You are currently working on the framework's source code.
 
+### Where to find documentation
+
+**Always check the PKB first** for design intent, feature specs, methodology, or architecture decisions. The canonical home is `brain/projects/aops/specs/`. Source code tells you what the system does _now_; specs tell you why and what it should do.
+
+Specifically for this project:
+
+- Specs: [[INDEX|brain/projects/aops/specs/INDEX]] (MOC) — read this first when scoping any change
+- Project hub: [[aops|brain/projects/aops/aops]]
+- Vision: [[vision|brain/projects/aops/vision]] (where applicable)
+- Canonical taxonomy: `~/src/academicOps/aops-core/skills/remember/references/TAXONOMY.md`
+
+If you need to make a framework change, the spec is the contract. If the spec doesn't exist for the area you're touching, write or update one _first_ — don't ship undocumented framework changes.
+
+If reading source code is your first move, you've skipped this step. Stop and check the PKB.
+
 ## Path Discovery (CRITICAL)
 
 To discover project locations, read `.agents/context-map.json` in the relevant repo. If the map is missing or any path it references does not exist, STOP and report.

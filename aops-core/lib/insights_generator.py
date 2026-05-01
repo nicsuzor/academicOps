@@ -18,53 +18,12 @@ from pathlib import Path
 from typing import Any
 
 import lib.session_naming as session_naming
-from lib.paths import get_plugin_root, get_summaries_dir
+from lib.paths import get_summaries_dir
 from lib.session_reader import extract_gate_context, find_sessions
 
 
 class InsightsValidationError(Exception):
     pass
-
-
-def load_prompt_template() -> str:
-    """Load shared prompt template (the session-insights JSON-contract spec lives in the brain PKB).
-
-    Returns:
-        Prompt template string with {session_id}, {date}, {project} placeholders
-
-    Raises:
-        FileNotFoundError: If template file doesn't exist
-    """
-    template_path = get_plugin_root().parent / "specs" / "session-insights-prompt.md"
-    return template_path.read_text()
-
-
-def substitute_prompt_variables(template: str, metadata: dict[str, str]) -> str:
-    """Replace {session_id}, {date}, {project} placeholders in template.
-
-    Args:
-        template: Prompt template with {var} placeholders
-        metadata: Dict with 'session_id', 'date', 'project' keys
-
-    Returns:
-        Template with placeholders replaced
-    """
-    for key, value in metadata.items():
-        template = template.replace(f"{{{key}}}", value)
-    return template
-
-
-def extract_project_name() -> str:
-    """Extract project name from current working directory.
-
-    Returns:
-        Project name (last component of cwd) or 'unknown'
-    """
-    try:
-        cwd = Path.cwd()
-        return cwd.name
-    except Exception:
-        return "unknown"
 
 
 def extract_short_hash(session_id: str) -> str:
@@ -552,12 +511,14 @@ def get_insights_file_path(
 
     # Use session_naming to generate the base filename
     # NOTE: provider and machine are auto-detected by session_naming if not provided
+    # task_id from $AOPS_TASK_ID flows through so insights files are task-grep-friendly.
     base = session_naming.generate_base_name(
         session_id=session_id,
         timestamp=dt,
         slug=slug or "session",
         repo=project or None,  # None triggers auto-detection; empty string causes double-dash
         shortform=shortform,
+        task_id=os.environ.get("AOPS_TASK_ID"),
     )
 
     if index is not None and index > 0:
