@@ -139,13 +139,13 @@ output — triage tables, subtask bodies, plan-review summaries):
 **Permitted halt template** (use this exact shape when surfacing failures):
 
 ```
-A8 halt: <verification name / failure>. Investigation produced <finding>. Two options:
-  1. Fix <code path or artefact location> at <file:line> by <change>. (chosen)
+A8 halt: <test name / failure>. Investigation produced <finding>. Two options:
+  1. Fix <code path> at <file:line> by <change>. (chosen)
   2. <alternative implementation, also fixing the failure>
-The verification stays as written. Filing as <subtask id>.
+Test stays as written. Filing as <subtask id>.
 ```
 
-Both options must be **fixes that make the failing verification pass**. A
+Both options must be **fixes that make the failing test pass**. A
 "skip" option, an "xfail" option, or a "loosen the assertion" option is
 NEVER option 2.
 
