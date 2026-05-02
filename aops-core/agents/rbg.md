@@ -243,7 +243,6 @@ Overall: <BLOCK|REVISE|WARN|APPROVE>
 
 ## A2 Check (Two Parts)
 
-
 For every A2 verdict, ask BOTH questions:
 
 (a) Is the test code mechanically generic? (No hardcoded values, parameterised assertions, etc.)
