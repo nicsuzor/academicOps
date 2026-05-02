@@ -253,11 +253,11 @@ The supervisor's job ends when each work item has reached its review
 surface. The shape of the review surface is set by the deliverable
 subworkflow:
 
-- For **code deliverables**, the review surface is an open PR with the
-  mechanical merge-prep applying a `ready-for-review` label. See
+- For **code deliverables**, the review surface is an open PR; the
+  existing GHA pipeline (CI, axiom enforcer, agent merge-prep, summary +
+  Environment approval gate) takes it from there. See
   [[instructions/code-deliverable#handoff-contract-task-212f1c82]] for the
-  full contract (GHA pipeline, user-side reviewer cron, daily-sweep CTA,
-  final-summary template).
+  full contract and final-summary template.
 - For other deliverable types, the subworkflow defines the equivalent
   surface (e.g. a tracked-changes draft submitted for collaborator
   review).

@@ -87,10 +87,9 @@ paths) require independent critic review before dispatch. See
 ## Monitor: Wait for the PR, Then Halt
 
 The supervisor's only monitoring obligation is "did the worker open a PR?"
-Once each work item has a PR, the supervisor halts at `ready_for_user_review`.
-The mechanical merge-prep workflow labels the PR `ready-for-review` when
-ready; the user-side reviewer cron picks it up. The supervisor does NOT
-poll for that label, does NOT poll CI, does NOT chase reviewers.
+Once each work item has a PR, the supervisor halts at `ready_for_user_review`
+and the existing GHA pipeline takes over. The supervisor does NOT poll CI,
+does NOT chase reviewers, does NOT track merge-prep status.
 
 ```bash
 # Dispatch workers in background — get notified on exit
@@ -110,8 +109,8 @@ polecat run -t <task-id> -p <project>  # Bash run_in_background: true
 
 ### Removed Responsibilities (per task-212f1c82)
 
-The supervisor MUST NOT do any of the following. They have moved to the GHA
-pipeline (mechanical) or the user-side reviewer cron (judgment):
+The supervisor MUST NOT do any of the following. They are owned by the
+existing GHA pipeline:
 
 - Persistent PR-state Monitor watching CI / reviewer state across all branches.
 - `gh run watch`, `gh pr view --json statusCheckRollup,reviews` polling loops.
@@ -138,23 +137,19 @@ halted.
 
 ## Handoff Contract (task-212f1c82)
 
-The supervisor's job ends when each work item is **opened as a PR with the
-`ready-for-review` label set by the GHA mechanical merge-prep**. That is
-the completion signal — replacing the old `merge_ready` / "drive PR to
+The supervisor's job ends when each work item is **opened as a PR**. That
+is the completion signal — replacing the old `merge_ready` / "drive PR to
 mergeable" / poll-CI loop.
 
-| Layer                             | Owns                                                                                          | Surface                                   |
-| --------------------------------- | --------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| **Supervisor (synchronous, you)** | Decompose → dispatch → halt at `ready_for_user_review` once each PR has `ready-for-review`    | One report per epic                       |
-| **GHA pipeline (async, no PKB)**  | Mechanical merge-prep: rebase, CI, lint, conflict detection, then `ready-for-review` label    | PR labels + status checks                 |
-| **User-side reviewer (async)**    | Strategic alignment + QA via judge-role agent. Cron at `dotfiles/cron/user-side-pr-review.sh` | PR review comment + label `approve-ready` |
-| **Daily sweep**                   | Surfaces `approve-ready` PRs as one CTA list per epic                                         | Daily note                                |
+| Layer                             | Owns                                                                        | Surface                   |
+| --------------------------------- | --------------------------------------------------------------------------- | ------------------------- |
+| **Supervisor (synchronous, you)** | Decompose → dispatch → halt at `ready_for_user_review` once each PR is open | One report per epic       |
+| **GHA pipeline (async)**          | The existing PR pipeline: CI, lint, axiom enforcer, agent merge-prep        | PR labels + status checks |
 
 The supervisor does NOT poll GitHub Actions, does NOT wait for CI, does NOT
-chase reviewers. Once every work item has opened a PR (and the mechanical
-merge-prep has labelled it `ready-for-review`, or the supervisor has
-confirmed the PR is open and is now under merge-prep's care), the supervisor
-produces its final summary and halts.
+chase reviewers. Once every work item has opened a PR, the supervisor
+produces its final summary and halts. The existing GHA pipeline takes over
+from there — it has not changed.
 
 ### Halt state: `ready_for_user_review`
 
@@ -163,10 +158,12 @@ Set the epic to status `ready_for_user_review` once every child task either:
 - has an open PR, OR
 - has been escalated/blocked with a clear reason recorded in the task body.
 
-There is no further polling responsibility. The user-side reviewer cron
-picks PRs up via the `ready-for-review` label, the rebuilt RBG judge agent
-emits its Verdict, and on PASS the cron labels the PR `approve-ready`. The
-daily-sweep CTA aggregates `approve-ready` PRs for the human.
+There is no further polling responsibility. The existing GHA pipeline
+(pr-pipeline.yml, agent-enforcer.yml, agent-merge-prep.yml,
+summary-and-merge.yml) handles CI, axiom enforcement, merge prep, and the
+GitHub Environment approval gate. Review agents (rbg, pauli, marsha) may be
+invoked on the PR by callers separately — each as its own modular surface.
+The supervisor itself plays no further role.
 
 ### Final-summary template (one report per epic)
 
@@ -181,9 +178,9 @@ Epic <epic-id> — N PRs in `ready_for_user_review`
 | 2 | task-bbb | <one-line title>   | https://github.com/.../pull/2 | open (no label)  |
 | 3 | task-ccc | <one-line title>   | —                             | blocked: <why>   |
 
-Next surface: user-side reviewer cron will judge each `ready-for-review`
-PR and label `approve-ready` on PASS. Approve-ready PRs appear in the
-next `/daily` CTA list. No further supervisor action.
+Next surface: the existing GHA pipeline (pr-pipeline.yml → agent-enforcer.yml
+→ agent-merge-prep.yml → summary-and-merge.yml). No further supervisor
+action.
 ```
 
 The supervisor MUST NOT include "polling will continue", "I'll check back
@@ -382,5 +379,5 @@ the coding-specific items.)
   Per task-212f1c82 the supervisor does **not** read this status, does
   **not** trigger merge-prep manually, and does **not** wait on it. Once
   the work-item PR is open, the supervisor halts at
-  `ready_for_user_review`; merge-prep, the `ready-for-review` label, and
-  the user-side reviewer cron run asynchronously.
+  `ready_for_user_review` and the existing GHA pipeline runs
+  asynchronously.

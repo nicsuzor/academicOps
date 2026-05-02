@@ -28,16 +28,11 @@ Classify each open PR into one of the following buckets, in order of prominence:
 
 | Bucket                 | Criteria                                                                                                                 | Prominence                         |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------- |
-| **Approve-ready**      | Has the `approve-ready` label (set by the user-side reviewer cron after the rebuilt RBG judge agent returned PASS)       | Top of section, grouped by epic    |
 | **Ready to merge**     | `mergeable == "MERGEABLE"` AND `reviewDecision == "APPROVED"` AND CI passing (all checks in `statusCheckRollup` succeed) | Bold, direct URL, one-click action |
 | **Needs review**       | `mergeable == "MERGEABLE"` AND `reviewDecision` is empty/pending AND not draft                                           | Brief context line with URL        |
 | **Needs fixes**        | `mergeable == "CONFLICTING"` OR CI failing OR `reviewDecision == "CHANGES_REQUESTED"`                                    | Name the specific blocker          |
 | **Stale**              | `createdAt` >7 days ago AND `updatedAt` >7 days ago AND not draft                                                        | Flag with age only                 |
 | **Draft / autonomous** | `isDraft == true` OR author is a bot/polecat-worker                                                                      | Collapsed into count               |
-
-**Approve-ready takes precedence.** A PR that carries `approve-ready` goes
-into the Approve-ready bucket regardless of other state. This is the
-single CTA list the supervisor's final summary points the user toward.
 
 **CI status derivation**: Extract from `statusCheckRollup`. Classify as passing (all succeed), failing (any failure — name the failing checks), pending (any in progress, none failing), or no checks (empty rollup).
 
@@ -45,18 +40,10 @@ single CTA list the supervisor's final summary points the user toward.
 
 ### Step 6.4: Compose "Outstanding Workflows" Subsection
 
-Write the subsection into "What Needs Attention" in the daily note. The
-Approve-ready bucket renders first (it's the primary CTA per
-task-212f1c82). Format proportionally:
+Write the subsection into "What Needs Attention" in the daily note. Format proportionally:
 
 ```markdown
 ### Outstanding Workflows
-
-**Approve-ready** (judge agent PASS — your call to merge):
-
-- [ ] [#321](url) [[repo]] — PR title — _epic-abcd1234: one-line rationale_
-- [ ] [#322](url) [[repo]] — PR title — _epic-abcd1234: one-line rationale_
-- [ ] [#330](url) [[repo]] — PR title — _epic-efef5678: one-line rationale_
 
 **Ready to merge:**
 
@@ -81,25 +68,6 @@ task-212f1c82). Format proportionally:
 _X open PRs total — Y ready to merge, Z need attention_
 ```
 
-#### Approve-ready heartbeat distinction (mandatory)
-
-The user-side reviewer cron writes a heartbeat file at
-`dotfiles/cron/state/user-side-pr-review.last-run` on every run, regardless
-of whether it found PRs to judge. The daily-sweep MUST read this file and
-distinguish two empty-state cases with two different lines:
-
-| Heartbeat state                                                         | Line to render                                                                                                                                       |
-| ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| File exists, `epoch` value within last 24 hours, no `approve-ready` PRs | `_No approve-ready PRs (reviewer cron last ran <ISO timestamp>)._`                                                                                   |
-| File missing, OR `epoch` older than 24 hours                            | `_Approve-ready bucket unavailable: reviewer cron has not run in >24h (last <ISO timestamp or "never">). See dotfiles/cron/user-side-pr-review.sh._` |
-| File exists, fresh, `approve-ready` PRs found                           | Render the bucket as shown above (no separate status line).                                                                                          |
-
-Read the heartbeat file as `key=value` lines (`epoch=<seconds>`,
-`timestamp=<ISO>`); fall back to "never" when missing. Compare `epoch`
-against the daily-note generation time minus 86400 seconds. Treat any
-parse failure as "missing" — the silent-failure mode (issue #890) MUST
-remain visible.
-
 **Formatting rules:**
 
 - **Ready to merge** PRs render as `- [ ]` checkboxes with direct URLs. One-click decisions the user can tick off in their editor as they merge them. User ticks are preserved on regeneration (bidirectional contract — see `SKILL.md`).
@@ -108,7 +76,7 @@ remain visible.
 - Include size (`+additions/-deletions, N files`) for ready-to-merge PRs to help gauge merge confidence.
 - Omit empty buckets entirely. If nothing is ready to merge, don't show the heading.
 
-**Empty state**: If no open PRs across all repos: "No outstanding PRs." (single line, no subsection heading). When there are no `approve-ready` PRs but other buckets are populated, still render one of the two heartbeat-aware status lines from the table above so the cron's liveness is visible at a glance.
+**Empty state**: If no open PRs across all repos: "No outstanding PRs." (single line, no subsection heading).
 
 ### Step 6.5: "Needs Your Call" — Ambiguous Completions
 
