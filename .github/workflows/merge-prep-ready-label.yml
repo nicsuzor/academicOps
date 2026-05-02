@@ -1,0 +1,77 @@
+# Merge-Prep: ready-for-review label
+#
+# Mechanical-only labeller. When the existing `agent-merge-prep.yml` finishes
+# successfully (via the `merge-prep-status` commit status going to `success`),
+# this workflow finds the corresponding PR and applies the `ready-for-review`
+# label. The label is the handoff surface that the user-side reviewer cron
+# (dotfiles/cron/user-side-pr-review.sh) polls — the LLM judge agent runs
+# user-side, NOT in CI.
+#
+# This workflow is intentionally tiny and contains NO LLM calls. It is the
+# mechanical "merge-prep passed" → "ready for human-side judge" handoff per
+# the handoff architecture (task-212f1c82).
+#
+# It also fires on `pull_request` label events so a human (or another
+# workflow) can drop the label and re-trigger by re-applying it; that branch
+# is a no-op when the label is already present.
+
+name: "Merge-Prep: label ready-for-review"
+
+on:
+  status: {}
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+  pull-requests: write
+  statuses: read
+
+jobs:
+  apply-ready-label:
+    # Only act on the merge-prep-status success transition. The pull_request
+    # trigger is here so the workflow appears under the PR's checks list and
+    # can be re-run via the UI; it short-circuits below.
+    if: >-
+      (github.event_name == 'status' &&
+       github.event.context == 'merge-prep-status' &&
+       github.event.state == 'success') ||
+      github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve PR for commit (status event)
+        if: github.event_name == 'status'
+        id: resolve
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.event.sha }}
+        run: |
+          set -euo pipefail
+          PR_NUM=$(gh api "repos/$REPO/commits/$SHA/pulls" \
+            --jq '[.[] | select(.state == "open")] | .[0].number // empty')
+          if [ -z "$PR_NUM" ]; then
+            echo "No open PR for commit $SHA — nothing to label"
+            echo "pr=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "pr=$PR_NUM" >> "$GITHUB_OUTPUT"
+
+      - name: Apply ready-for-review (status path)
+        if: github.event_name == 'status' && steps.resolve.outputs.pr != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR: ${{ steps.resolve.outputs.pr }}
+        run: |
+          set -euo pipefail
+          # Idempotent: gh exits 0 if the label is already attached.
+          gh pr edit "$PR" --repo "$REPO" --add-label "ready-for-review"
+          echo "Labelled PR #$PR as ready-for-review"
+
+      - name: Re-run trigger (pull_request labeled)
+        if: github.event_name == 'pull_request' && github.event.label.name == 'ready-for-review'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "ready-for-review label already present on PR #${{ github.event.number }} — no-op"

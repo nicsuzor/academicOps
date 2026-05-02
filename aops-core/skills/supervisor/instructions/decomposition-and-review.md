@@ -2,14 +2,20 @@
 
 ## Phase 1: Decompose
 
-The supervisor decomposes large tasks into PR-sized subtasks.
+The supervisor decomposes large tasks into review-sized subtasks. The
+"review-sized" criterion is deliverable-agnostic; for code deliverables,
+"reviewable by human in ≤ 15 minutes" maps to a PR-sized change (see
+[[code-deliverable]]). For other deliverable types (e.g. a methodology
+section), the same criteria apply against the relevant artefact (file
+count → section/figure count, "testable in isolation" → "verifiable in
+isolation").
 
-**PR-Sized Definition** (all must be true):
+**Review-Sized Definition** (all must be true):
 
 - Estimated effort ≤ 0.5d (4 hours)
-- Touches ≤ 10 files
+- Touches ≤ 10 files / artefacts
 - Single logical unit (one "why")
-- Testable in isolation
+- Verifiable in isolation
 - Reviewable by human in ≤ 15 minutes
 
 **Decomposition Protocol**:
@@ -25,7 +31,7 @@ The supervisor decomposes large tasks into PR-sized subtasks.
    d. Is the task typed correctly for its scale? (See P#107: multi-session → epic)
 3. Identify natural boundaries (files, features, dependencies)
 4. Create subtasks using decompose_task():
-   - Each subtask passes PR-sized criteria
+   - Each subtask passes review-sized criteria
    - Dependencies explicit in depends_on
    - 3-7 subtasks ideal
    - **Prefer Depth over Breadth**: If decomposition produces >5 subtasks, group them under intermediate epics to maintain a deep, manageable hierarchy.
@@ -189,7 +195,7 @@ Check for:
 2. Untested assumptions about dependencies
 3. Missing edge cases or error handling
 4. Scope drift from original request
-5. PR-sizing violations (>4h, >10 files, multiple "whys")
+5. Review-sizing violations (>4h, >10 files/artefacts, multiple "whys")
 6. Decision tasks without information prerequisites (every decision needs a prep task)
 7. Execution tasks unblocked when they depend on an unmade decision
 8. Academic outputs missing methodology layer (justification, validation, audit)

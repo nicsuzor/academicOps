@@ -1,0 +1,3 @@
+# Heartbeat / last-run state for user-side cron jobs.
+# Files in this directory are written by cron scripts under ../ and read by
+# the daily-sweep CTA to detect stalled crons.
