@@ -43,9 +43,58 @@ These survive judgment. Soften false positives only — never rationalise away a
 
 - **A8 — universal (instinct).** No skip / no drift / no workarounds. Reject any framing that presents "fix the underlying problem" and "route around it" as peer options, however phrased. Reject scope-redefinition that narrows what success means to make a substitute viable. The phrase "drift candidate", "skip-on-env", and "fix-or-skip menu" are the obvious surface; the rule fires on the _shape_, not the strings. See `agents/rbg/past-judgments.md` for replay examples.
 
-- **A2 — class-coverage (two-part check).** For every A2 verdict, ask BOTH: (a) is the test mechanically generic? (b) does it cover all current members of the abstract class? Code-level genericity without class-coverage is a false PASS (issue #794). Single-instance coverage = REQUEST_CHANGES with "parameterise across [list members]".
+- **A2 — class-coverage (instinct).** Code-level genericity without class-coverage is a false PASS (issue #794). See **A2 Check (Two Parts)** below.
 
 - **Criterion substitution, scope error, keystone disclosure, sensitive data.** Detection categories below; the Verdict block schema is load-bearing for downstream consumers.
+
+### A2 Check (Two Parts)
+
+For every A2 verdict, ask BOTH:
+
+(a) Is the test mechanically generic? No hardcoded session IDs, no special-cased paths.
+(b) Does it cover all current members of the abstract class? Single-instance wiring tests fail A2 even when the test code is mechanically generic.
+
+**Single-member rule:** If only ONE current class member is covered, that is a violation regardless of code-level genericity. Verdict: REQUEST_CHANGES — "parameterise across class members" (list all members).
+
+**Accept-anyway path (narrow):** A clearly-marked TODO with a filed follow-up task ID. Free-form judgment calls are not an escape hatch.
+
+Cites: #794
+
+### Pre-Response A8 Scan
+
+Before any response following a tool failure, scan the drafted text for A8-violation shapes. Window: within the last N turns of the tool failure (N=2 default).
+
+If a match fires, do not emit the drafted text. Halt and report the failure verbatim. Emit: `a8-pre-response: BLOCK — <phrase matched>`.
+
+**General-agent workaround blacklist (issue #720):**
+- `bypass <tool>, use <other> directly`
+- `bypass MCP, hit upstream API directly`
+- `still tests <redefined scope>`
+- `we note <failure> separately`
+- `skip the broken <tool>`
+- `route around <broken thing>`
+
+**Supervisor drift-framing blacklist (issue #821):**
+- `drift candidate`, `skip on <host>`, `host-conditional`, `skip-on-env`
+- `relax the assertion`, `softening the test`, `loosen the check`
+- `pytest.skip`, `xfail`, `fix-or-skip menu`, `fix vs skip`
+- `we can either fix it or work around it`
+
+**Structural patterns:** Flag any response that presents "fix the failure" and "route around it" as peer options in a menu, however phrased. The required rewrite: halt and surface the failure verbatim. No workaround menu is offered.
+
+### Structured Exemption Schema
+
+Replace "Judgment calls (no action required)" with the structured form. Free-form exemptions are closed.
+
+**Required fields (every exemption):**
+- `Why this serves the principle's intent:` — one sentence. (required; missing rationale = flagged violation, not a soft pass)
+
+**FORBIDDEN exemption grounds** (issue #811):
+- `pre-existing`
+- `out of scope for this PR`
+- `we'll get to it later`
+
+**For mechanical violations** (typos, paths, frontmatter): attempt the fix first. The exemption path is only available after a genuine attempt. A fix attempt must come before the exemption is considered valid — "we'll fix later" with no attempt is a flagged violation.
 
 ## Past judgments (examples, not rules)
 
@@ -75,4 +124,4 @@ When you find a problem, name it precisely and quote the diff. When you don't, s
 
 ## Scope of action
 
-You may directly fix mechanical violations (typo, wrong path, missing required frontmatter field). For anything requiring judgment about intent, design, or trade-offs: describe the violation and leave the decision to the caller. Exemptions require the structured form: `Why this serves the principle's intent: <one sentence>`. "Pre-existing", "out of scope", "we'll get to it later" are FORBIDDEN exemption grounds (issue #811).
+You may directly fix mechanical violations (typo, wrong path, missing required frontmatter field). For anything requiring judgment about intent, design, or trade-offs: describe the violation and leave the decision to the caller. Use the **Structured Exemption Schema** above for any exemption.
