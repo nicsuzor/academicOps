@@ -58,7 +58,7 @@ to hooks or CI — enforced by the agent's own instructions.
 
 | Mechanism                    | Source                                                                                          | Rule(s)         | Scope                                                          | Tier    | Behaviour                                                                                                                                                                           |
 | ---------------------------- | ----------------------------------------------------------------------------------------------- | --------------- | -------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `rbg a8-instinct`            | `aops-core/agents/rbg.md` § "Hard gates (instincts, not phrase matches)"                        | A8              | All rbg PR review sessions                                     | `block` | Applies A8 instinct check to every PR review. Emits `a8-instinct: BLOCK` in the Verdict block when workaround-offer or drift-framing patterns detected. Instinct-based (no phrase-match enumeration) — restructured from `rbg pre-response A8 scan` in PR #891. |
+| `rbg a8-instinct`            | `aops-core/agents/rbg.md` § "How you judge"                                                     | A8              | All rbg PR review sessions                                     | `block` | Applies A8 instinct check to every PR review. Emits `REQUEST_CHANGES` when workaround-offer or drift-framing patterns detected. Instinct-based (no phrase-match enumeration) — restructured from `rbg pre-response A8 scan` in PR #891; combined-lenses framing removed in PR #895. |
 | `supervisor A8 prose scan`   | `aops-core/skills/supervisor/SKILL.md` § "Engineering Integrity (A8) Is Non-Negotiable"        | A8              | Supervisor skill sessions during decomposition and plan-review | `block` | Prohibits drift-framing phrases (#821 blacklist) in triage tables, subtask bodies, and user-facing summaries. Requires rewrite before posting.                                      |
 | `supervisor decomp A8 gate`  | `aops-core/skills/supervisor/instructions/decomposition-and-review.md` § "A8 prose scan"       | A8              | Supervisor decomposition phase (Post-Decomposition Self-Check) | `block` | Mandatory prose scan of every subtask body and plan-review summary before posting. Prohibited phrase + structural patterns; rewrite to fix-only decomposition if triggered.         |
 
@@ -66,9 +66,7 @@ to hooks or CI — enforced by the agent's own instructions.
 
 Periodic enforcement scripts invoked by user-managed cron jobs. Run outside agent sessions and outside CI.
 
-| Mechanism             | Script                                 | Rule(s)   | Tier           | Behaviour                                                                                                                                                                                                         |
-| --------------------- | -------------------------------------- | --------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `user-side-pr-review` | `dotfiles/cron/user-side-pr-review.sh` | A8, P#65  | `block` (label gate) | Polls GitHub for PRs labelled `ready-for-review`. Dispatches the rbg judge agent against each. On PASS applies `approve-ready` label for daily-sweep CTA; on FAIL/ESCALATE leaves for human. Writes heartbeat on every run so daily-sweep can distinguish "no PRs" from "cron stalled". Added in PR #891 (task-212f1c82). |
+_(none — `user-side-pr-review` retired in PR #895: review agents are invoked by callers, not coerced via cron/regex on stdout.)_
 
 ## Whole-repo audits (advisory; not wired to commit/CI)
 
@@ -79,7 +77,7 @@ Periodic enforcement scripts invoked by user-managed cron jobs. Run outside agen
 
 ## Notes
 
-- `rbg pre-response A8 scan` — renamed to `rbg a8-instinct` in PR #891. The section it referenced (`§ "Pre-Response A8 Scan"` in `rbg.md`) was removed during RBG surgery (task-6e97e850); A8 enforcement is now embedded as an instinct in `§ "Hard gates"` and surfaces as the `a8-instinct` Verdict component.
+- `rbg pre-response A8 scan` — renamed to `rbg a8-instinct` in PR #891; `§ "Hard gates (instincts, not phrase matches)"` renamed to `§ "How you judge"` and combined-lenses framing removed in PR #895. A8 enforcement is now embedded as an instinct in `§ "How you judge"`.
 - `data-markdown-only` — referenced in HEURISTICS.md P#105 as a pre-commit hook
   example; superseded by `check-no-new-orphan-md` (R5.6, added in PR #793).
 - Hooks with tier `warn` exit non-zero to block the commit but agents may
