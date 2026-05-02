@@ -106,6 +106,12 @@ run_judge() {
   # Default: spawn the rbg judge agent via polecat. The agent is owned by
   # aops-core/agents/rbg.md (parallel sibling task-6e97e850); we MUST NOT
   # inline judge behaviour here.
+  #
+  # NOTE (task-1e657d9f): polecat interactive oneshot dispatch is not yet
+  # certified. Until that task resolves, `polecat run --agent rbg` returns a
+  # 401 auth error; the caller's error-capture branch will log "judge dispatch
+  # failed" and leave the PR unlabelled. Override AOPS_RBG_CMD to use a
+  # different dispatch path in the interim.
   local polecat_bin
   polecat_bin="$(command -v polecat || true)"
   if [ -z "$polecat_bin" ]; then
