@@ -3,7 +3,7 @@ id: supervisor-c41c35d6
 name: supervisor
 description: >
   Epic-level task supervisor — owns an epic from decomposition through
-  integration. Survives interruption. All state lives in the task file.
+  the review surface. Survives interruption. All state lives in the task file.
 triggers:
   - "supervise"
   - "supervisor"
@@ -19,11 +19,32 @@ domain:
 
 # Supervisor — Epic-Level Task Orchestration
 
-Own an epic from start to finish. Decompose, dispatch individual tasks via
-`polecat run`, monitor progress, react to failures, ensure integration. The
-supervisor stays responsible for the work — it doesn't walk away after dispatch.
+Own an epic from start to finish. Decompose work into review-sized items,
+dispatch them to workers, monitor progress, react to failures, and hand off
+to the appropriate review surface. The supervisor stays responsible for the
+work — it doesn't walk away after dispatch.
 
 > See [[instructions/supervision-loop]] for the core orient→act→checkpoint loop.
+
+## Deliverable types — see subworkflows
+
+The supervisor loop is **deliverable-agnostic**. The same orient → decompose
+→ review → dispatch → monitor → react → halt cycle applies whether the
+deliverable is a code change, a methodology section, an analysis report, or
+a literature review. What changes per deliverable type is the dispatch
+shape, the review surface, and the completion signal — not the loop.
+
+| Deliverable type   | Subworkflow                                                                  | Status  |
+| ------------------ | ---------------------------------------------------------------------------- | ------- |
+| Code change        | [[instructions/code-deliverable]]                                            | active  |
+| Research / writing | (a research-deliverable subworkflow would live alongside, not in scope here) | not yet |
+
+When this skill says "deliverable", "artefact", or "review surface", the
+concrete meaning is set by the active subworkflow. The code-deliverable
+subworkflow specialises "review surface" to a GitHub PR with mechanical
+merge-prep adding a `ready-for-review` label; a research subworkflow could
+specialise it to a tracked-changes document, a notebook commit on a
+shared branch, or a section draft surfaced for collaborator review.
 
 ## Design Principles
 
@@ -40,17 +61,18 @@ what's happening.
 Every invocation discovers what's available so it can enable the _requested_
 dispatch. Adaptation applies to **how** the requested worker is invoked
 (local CLI, SSH+tmux, workflow_dispatch runner) — never to **which** worker
-is invoked. A session that starts on a Mac with local polecat and moves to a
-crew container with only Docker and gh is normal: re-route the same worker
-through whatever transport the new environment supports.
+is invoked. A session that starts on one machine and moves to another with
+a different tool surface is normal: re-route the same worker through whatever
+transport the new environment supports.
 
-Worker type, project, and repo are explicit user parameters with trust,
-cost, audit, and identity semantics — they are **hard requirements, not
-preferences**. If the environment cannot satisfy the requested worker type,
-**halt** and produce a dispatch infeasibility report (see
-[[instructions/worker-dispatch#halt-on-infeasibility-gate]]). Never
-silently substitute. Substitution only after explicit user approval; in
-autonomous sessions, write the report to the epic body and set the epic to
+Worker type, project, and repo (or their deliverable-specific equivalents)
+are explicit user parameters with trust, cost, audit, and identity
+semantics — they are **hard requirements, not preferences**. If the
+environment cannot satisfy the requested worker type, **halt** and produce
+a dispatch infeasibility report (see
+[[instructions/worker-dispatch#halt-on-infeasibility-gate]]). Never silently
+substitute. Substitution only after explicit user approval; in autonomous
+sessions, write the report to the epic body and set the epic to
 `needs_decision`.
 
 ### Checkpoint Before Action
@@ -69,8 +91,9 @@ event is usually enough.
 ### Idempotent Operations
 
 Every supervisor action is safe to repeat. Dispatching a task that's already
-in_progress → skip. Checking a PR that's already merged → record and move on.
-The worst case of a conflict is wasted work, not corruption.
+`in_progress` → skip. Checking a deliverable that's already at the review
+surface → record and move on. The worst case of a conflict is wasted work,
+not corruption.
 
 ### Academic Integrity Is Non-Negotiable
 
@@ -90,8 +113,10 @@ classifications, fix-vs-skip menus, or "test may need adjustment" framings.
 The only menu the supervisor may present is between specific _fix
 strategies_, all of which produce green tests on every supported host.
 
-"Environmental drift" is not a reason to relax a test. If the environment
-changed, the code that interacts with that environment is what gets fixed.
+A8 generalises beyond code: for any deliverable type, a failing
+verification (test, claim-evidence audit, citation check, methodology
+review) is a bug to fix, never a category to route around. "Environmental
+drift" is not a reason to relax a check.
 
 Casual user phrasing such as "we may need to adjust some tests" does NOT
 authorise this. A8 is universal; users do not (and per A7 cannot) grant
@@ -114,15 +139,15 @@ output — triage tables, subtask bodies, plan-review summaries):
 **Permitted halt template** (use this exact shape when surfacing failures):
 
 ```
-A8 halt: <test name / failure>. Investigation produced <finding>. Two options:
-  1. Fix <code path> at <file:line> by <change>. (chosen)
+A8 halt: <verification name / failure>. Investigation produced <finding>. Two options:
+  1. Fix <code path or artefact location> at <file:line> by <change>. (chosen)
   2. <alternative implementation, also fixing the failure>
-Test stays as written. Filing as <subtask id>.
+The verification stays as written. Filing as <subtask id>.
 ```
 
-Both options must be **fixes that make the failing test pass**. A "skip"
-option, an "xfail" option, or a "loosen the assertion" option is NEVER
-option 2.
+Both options must be **fixes that make the failing verification pass**. A
+"skip" option, an "xfail" option, or a "loosen the assertion" option is
+NEVER option 2.
 
 **Worked decomposition example** — failing test
 `test_workspace_writes_visible_on_host`:
@@ -138,25 +163,53 @@ option 2.
 The wrong shape — and the one A8 prohibits — would have been a "drift
 candidate" triage column with "skip on WSL2" as a peer option to the fix.
 
+### Critic Gate (high-risk dispatch)
+
+Tasks tagged `high-risk` or meeting blast-radius criteria (irreversible
+operations, external system modifications, actions that close recovery
+paths) require independent critic review before dispatch. The supervisor
+prepares a dispatch review context with rollback plan, invokes Pauli for
+safety assessment, and refuses dispatch if rollback requires physical
+intervention. See [[instructions/worker-dispatch]] "Critic Gate."
+
+The Critic Gate is universal: it applies to any deliverable whose
+production has irreversible or wide-blast-radius side effects, not just
+coding work. A research deliverable that issues a public statement, or
+analysis that overwrites canonical data, would also pass through it.
+
+### Halt-on-substitute
+
+The supervisor never silently substitutes a different worker, deliverable
+type, or scope when the requested one is unavailable. It halts, records
+the infeasibility in the task body, and waits for explicit human direction
+(or, in autonomous sessions, sets the epic to `needs_decision`). This
+applies whether the substitution is "use Gemini instead of Claude," "ship
+a partial draft instead of the full section," or "write a stub instead of
+the requested fix."
+
 ## Phases
 
 The supervisor is NOT a pipeline — it's a loop that enters at whatever phase
 the epic needs on each invocation.
 
 ```
-ORIENT → DECOMPOSE → (plan-review gate) → WAITING → DISPATCH → MONITOR → REACT → INTEGRATE → COMPLETE
+ORIENT → DECOMPOSE → (plan-review gate) → WAITING → DISPATCH → MONITOR → REACT → HALT (ready_for_user_review)
 ```
 
-| Phase     | What happens                                                          | Instructions                                                                                     | Exit condition                                                                           |
-| --------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
-| Orient    | Read epic, verify child statuses, decide what to do next              | [[instructions/supervision-loop]]                                                                | Next phase selected                                                                      |
-| Decompose | Break work into PR-sized subtasks; run Phase 2 review                 | [[instructions/decomposition-and-review]]                                                        | Synthesis complete; plan-review gate evaluated                                           |
-| Review    | Plan-review halt — decomposition synthesized, awaiting human approval | [[instructions/decomposition-and-review#plan-review-gate-phase-25]]                              | **Parent task promoted to `queued` by human** (status transition IS the approval record) |
-| Dispatch  | Send tasks to workers (local or remote via SSH+tmux)                  | [[instructions/worker-dispatch]], [[instructions/worker-dispatch#remote-dispatch-via-ssh--tmux]] | Worker fired; task status → `in_progress`                                                |
-| Monitor   | Event-driven: background notifications + PR Monitor                   | [[instructions/supervision-loop]]                                                                | State change event observed                                                              |
-| React     | Handle failures, conflicts, scope changes                             | [[instructions/supervision-loop]]                                                                | Issue resolved or re-dispatched                                                          |
-| Integrate | Verify, merge, sync                                                   | [[instructions/supervision-loop]]                                                                | PR merged; task → done                                                                   |
-| Complete  | Update epic, capture knowledge, file follow-ups                       | [[instructions/knowledge-capture]]                                                               | Epic done; knowledge captured                                                            |
+| Phase     | What happens                                                                                         | Instructions                                                         | Exit condition                                                                           |
+| --------- | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Orient    | Read epic, verify child statuses, decide what to do next                                             | [[instructions/supervision-loop]]                                    | Next phase selected                                                                      |
+| Decompose | Break work into review-sized subtasks; run Phase 2 review                                            | [[instructions/decomposition-and-review]]                            | Synthesis complete; plan-review gate evaluated                                           |
+| Review    | Plan-review halt — decomposition synthesized, awaiting human approval                                | [[instructions/decomposition-and-review#plan-review-gate-phase-25]]  | **Parent task promoted to `queued` by human** (status transition IS the approval record) |
+| Dispatch  | Send tasks to workers via the per-deliverable subworkflow                                            | [[instructions/worker-dispatch]], [[instructions/code-deliverable]]  | Worker fired; task status → `in_progress`                                                |
+| Monitor   | Wait for the worker-completion signal that the deliverable has reached its review surface            | [[instructions/supervision-loop]], [[instructions/code-deliverable]] | Deliverable surfaced for review                                                          |
+| React     | Handle dispatch failures, decomposition surprises, missing deliverables                              | [[instructions/supervision-loop]]                                    | Issue resolved or re-dispatched                                                          |
+| Halt      | All work items have reached the review surface; emit final summary; status → `ready_for_user_review` | [[instructions/supervision-loop]], [[instructions/code-deliverable]] | Final summary emitted; supervisor exits                                                  |
+
+There is no `Integrate` phase and no `Complete`-after-merge phase any more.
+The supervisor never finalises the deliverable itself — it hands off at the
+review surface. Async ownership transfers to whatever review pipeline the
+deliverable subworkflow defines.
 
 **`Review` is a real halt state** when it means "decomposed, awaiting human
 promotion to `queued`" — not a transient phase. After Phase 2 synthesis, if
@@ -172,115 +225,53 @@ exact check.
 
 Individual task dispatch only. No batch spawning.
 
-**Mandatory pre-dispatch gates** (see [[instructions/worker-dispatch#mandatory-pre-dispatch-gates]]):
+The concrete dispatch shape is defined by the active deliverable
+subworkflow. For coding work, see
+[[instructions/code-deliverable#dispatch-commands]] (`polecat run` shapes,
+exit codes, coordinated branch dispatch). The universal contract is:
 
-1. **Host check** — `hostname` must match a registered polecat host. On
-   mismatch the supervisor halts and uses the SSH+tmux path. No silent
-   local fallback. (Issue #598.)
-2. **PKB readiness probe** — `polecat ping-pkb` must succeed on the
-   intended worker host. A failure means `PkbClient._initialize()` will
-   crash inside the worker; supervisor refuses to dispatch. (Issue #600.)
-
-```bash
-# Claude worker
-polecat run -t <task-id> -p <project>
-
-# Gemini worker
-polecat run -t <task-id> -p <project> -g
-
-# Jules (async, Google infrastructure)
-aops task <task-id> | jules new --repo <owner>/<repo>
-```
-
-> **`polecat` not on PATH?** In non-interactive shells (Bash tool, cron, CI,
-> headless agent contexts), the `polecat`/`pc` zsh alias is not loaded — the
-> shell-interactivity boundary matters: an interactive zsh session sees the
-> alias, a Bash-tool subshell does not. Use the canonical expanded form:
-> `uv run --project $AOPS $AOPS/polecat/cli.py <args>`. All dispatch
-> examples below and in [[instructions/supervision-loop]] /
-> [[instructions/worker-dispatch]] use bare `polecat`; substitute the
-> `uv run` form when running outside an interactive shell.
-
-**Polecat exit codes** (relevant for scripted supervisors):
-
-- Exit 0 + "✅ already done" → task was `done`; graceful noop, move on
-- Exit 2 + "🔒 Task is locked" → task is `merge_ready` with an open PR; check and merge, do not retry dispatch
-
-The supervisor decides WHICH task to dispatch next based on priority,
-dependencies, and capacity — then dispatches one at a time.
-
-For tightly coupled subtasks, the supervisor can use **coordinated branch
-dispatch** — a shared feature branch with a draft PR, polecats pushing
-sequentially. See [[instructions/worker-dispatch]] "Coordinated Branch
-Dispatch" for the protocol. Individual dispatch remains the default.
-
-**Critic-gated dispatch**: Tasks tagged `high-risk` or meeting blast-radius
-criteria (irreversible operations, external system modifications, actions
-that close recovery paths) require independent critic review before dispatch.
-The supervisor prepares a dispatch review context with rollback plan, invokes
-Pauli for safety assessment, and refuses dispatch if rollback requires physical
-intervention. See [[instructions/worker-dispatch]] "Critic Gate."
+- Pre-dispatch gates must pass (see
+  [[instructions/worker-dispatch#mandatory-pre-dispatch-gates]] and
+  [[instructions/code-deliverable#mandatory-pre-dispatch-gates]] for the
+  code case).
+- Worker type, project, and repo (or deliverable-specific equivalents) are
+  hard requirements — no silent substitution.
+- The supervisor decides WHICH task to dispatch next based on priority,
+  dependencies, and capacity — then dispatches one at a time.
+- For tightly coupled subtasks, **coordinated branch / shared-artefact
+  dispatch** may be used. The code case's protocol is documented in
+  [[instructions/worker-dispatch]] "Coordinated Branch Dispatch"; this
+  skill points to it rather than duplicating it.
 
 > See [[instructions/worker-dispatch]] for pre-dispatch validation, worker
-> selection, and dispatch protocol.
+> selection, and dispatch protocol. See
+> [[instructions/code-deliverable]] for the code-PR specialisation.
 
-## PR Review Pipeline
+## Handoff
 
-PRs arrive from workers (polecat branches, Jules PRs). The pipeline design
-lives in the brain PKB (project: aops, topic: pr-pipeline); bots prepare, the
-human decides once via a GitHub Environment approval gate.
+The supervisor's job ends when each work item has reached its review
+surface. The shape of the review surface is set by the deliverable
+subworkflow:
 
-**Phase 1 — CI + Axiom Review (on every push):**
+- For **code deliverables**, the review surface is an open PR with the
+  mechanical merge-prep applying a `ready-for-review` label. See
+  [[instructions/code-deliverable#handoff-contract-task-212f1c82]] for the
+  full contract (GHA pipeline, user-side reviewer cron, daily-sweep CTA,
+  final-summary template).
+- For other deliverable types, the subworkflow defines the equivalent
+  surface (e.g. a tracked-changes draft submitted for collaborator
+  review).
 
-1. `pr-pipeline.yml` — sequential `lint` → `typecheck` → `pytest`. Lint uses
-   a PAT so autofix pushes trigger a clean pipeline restart.
-2. `agent-enforcer.yml` — axiom compliance review, fires on `workflow_run`
-   when CI completes. Can push fixes directly or request changes.
+### Halt state: `ready_for_user_review`
 
-**Phase 2 — Merge Prep (cron-driven, no human trigger):**
+Set the epic to status `ready_for_user_review` once every child task either:
 
-3. `merge-prep-cron.yml` — dispatcher. Runs on `workflow_run` + 30-min cron.
-   Qualifies PRs ≥15 min old with no in-progress run and no terminal
-   `merge-prep-status`.
-4. `agent-merge-prep.yml` — the Claude merge-prep agent. Triages all review
-   feedback, fixes CI failures, resolves conflicts, posts a triage summary,
-   approves the PR, sets `merge-prep-status: success`, and triggers
-   `summary-and-merge.yml`.
+- has reached its review surface, OR
+- has been escalated/blocked with a clear reason recorded in the task body.
 
-**Phase 3 — Human Decision (Environment gate):**
-
-5. `summary-and-merge.yml` Job 1 posts the decision brief comment. Job 2
-   requires the `production` GitHub Environment — the maintainer clicks
-   **Approve** in the Actions environment UI, and the PR squash-merges
-   automatically. Clicking **Reject** holds the PR open.
-
-**Pipeline limitations:**
-
-- PRs that modify workflow files (`.github/workflows/`) cannot get pipeline
-  review due to OIDC validation (workflow content must match default branch).
-  These PRs need manual review and admin merge.
-- Bot reviewers take 2–5 min to post. The 15-minute age gate in the
-  merge-prep dispatcher preserves the bazaar window.
-
-**Merge flow (what the human sees):**
-
-- Decision brief comment appears on the PR once merge-prep graduates it.
-- Approval happens in the GitHub Environments UI, not as a PR comment —
-  there is no "lgtm" / "merge" / "@claude merge" trigger.
-- Admin bypass: `gh pr merge <PR> --squash --admin --delete-branch` for PRs
-  that can't progress through the pipeline (workflow PRs, urgent fixes).
-
-**Task completion on merge**: When a PR merges, a GitHub Action parses the
-task ID from the branch name (`polecat/aops-XXXX`) and marks the task done.
-This closes the loop without supervisor involvement.
-
-**Jules PR workflow**: Jules sessions show "Completed" when coding is done,
-but require human approval on the Jules web UI before branches are pushed
-and PRs are created. Check session status with `jules remote list --session`.
-
-**Fork PR handling**: When a bot account pushes to a fork rather than the base
-repo, CI workflows must use `head.sha` for checkout instead of `head.ref`.
-Autofix-push steps should be guarded with `head.repo.full_name == github.repository`.
+There is no further polling responsibility. The async review pipeline for
+the relevant deliverable type takes over (see the subworkflow for
+specifics). The supervisor produces its final summary and exits.
 
 ## Lifecycle Trigger Hooks
 
@@ -289,31 +280,19 @@ External triggers that start the supervision loop.
 > **Configuration**: See [[WORKERS.md]] for runner types, capabilities,
 > and sizing defaults — the supervisor reads these at dispatch time.
 
-| Hook          | Trigger       | What it does                            |
-| ------------- | ------------- | --------------------------------------- |
-| `queue-drain` | cron / manual | Checks queue, starts supervisor session |
-| `stale-check` | cron / manual | Resets tasks stuck beyond threshold     |
-| `pr-merge`    | GitHub Action | PR merged → mark task done              |
+| Hook          | Trigger       | What it does                                                            |
+| ------------- | ------------- | ----------------------------------------------------------------------- |
+| `queue-drain` | cron / manual | Checks queue, starts supervisor session                                 |
+| `stale-check` | cron / manual | Resets tasks stuck beyond threshold                                     |
+| `pr-merge`    | GitHub Action | (Code deliverable) PR merged → mark task done; not driven by supervisor |
 
-## Known Limitations (from dogfood runs)
+## Known Limitations (universal)
 
-- Auto-finish overrides manual task completion when a task was already fixed
-  by another worker. See `aops-fdc9d0e2`.
-- Gemini polecats are slow (15-20+ min before first commit). Don't poll.
-- Docker container name collisions when dispatching concurrent polecats.
-  Use task ID in container name for uniqueness.
-- dprint plugin 404s waste 10+ min per worker. Check dprint.json before dispatch.
-- PKB MCP unreachable from sandbox containers — workers can't update task status.
-- Pre-dispatch validation is critical: with hydration gate off, the supervisor's
-  pre-dispatch check is the last chance to catch tasks targeting deprecated code.
-- **Polecat stream noise ≠ failure.** Gemini workers routinely emit loud-looking
-  stderr during boot — corrupted-credentials warnings, sandbox policy TOML parse
-  errors, "Hook system message: Task bound" hook-loop spam, missing-MCP-tool
-  errors (e.g. `release_task` not wired into the worker's MCP surface). These
-  are transient/cosmetic in many cases and the worker can still complete, push,
-  and open a PR. Do NOT halt on stderr keywords — wait for a terminal signal:
-  `polecat finish`, PR URL, or process exit with non-zero status. "PR's up" /
-  "Task updated" in the stream IS the success signal.
+The list below covers limitations that affect the supervisor regardless of
+deliverable type. Coding-specific limitations (polecat noise, docker name
+collisions, dprint, merge-prep specifics) live in
+[[instructions/code-deliverable#code-deliverable-known-limitations]].
+
 - **MCP task-visibility lag has three distinct causes — none of them are
   vector reindex.** PKB MCP `get_task` reads from the remote host's task
   index. Reindex affects ONLY the full-text vector search (`pkb search`,
@@ -353,76 +332,19 @@ External triggers that start the supervision loop.
   Pre-flight: `pkb show <task-id>` confirms the task exists locally. If
   you also need to confirm the remote MCP sees it, attempt a `get_task`
   probe before firing the worker.
-- **`merge-prep-status: pending`** — set by `pr-pipeline.yml`'s initialize
-  job and cleared only when the merge-prep agent sets `success` (graduation)
-  or `failure` (after 3 consecutive failures). A PR with green CI may still
-  sit "yellow" until the merge-prep agent runs. This is **not stuck** —
-  it's pending the next cron tick (up to 30 min away) or a manual trigger.
-  When all expected bot reviewers have posted and CI is green, the supervisor
-  can resolve it at will: see
-  [[instructions/supervision-loop#manual-merge-prep-trigger]] for the exact
-  `gh workflow run` command and the when-to-use rules. Admin bypass remains
-  available for urgent cases.
-
-## Quick Reference
-
-### Dispatch commands
-
-```bash
-polecat run -t <task-id> -p <project>       # claude
-polecat run -t <task-id> -p <project> -g    # gemini
-aops task <task-id> | jules new --repo <owner>/<repo>  # jules
-```
-
-### Monitoring (Event-Driven — Default)
-
-Use event-driven monitoring to avoid burning tokens on polling loops.
-See [[instructions/supervision-loop#event-driven-monitoring-default]] for
-full details and the ready-to-paste Monitor script.
-
-```bash
-# 1. Dispatch workers in background — get notified on exit
-polecat run -t <task-id> -p <project>  # Bash run_in_background: true
-
-# 2. Start persistent PR-state Monitor (one for all branches)
-# See supervision-loop.md for the full script — use Monitor tool to stream it
-
-# 3. Safety-net wakeup (1800s+ only — NOT primary monitoring)
-# ScheduleWakeup(delaySeconds=1800, reason="safety-net stall check")
-```
-
-| Mechanism                      | What it watches        | How it notifies             |
-| ------------------------------ | ---------------------- | --------------------------- |
-| `run_in_background` completion | Worker exit            | Automatic Bash notification |
-| Persistent Monitor script      | PR state transitions   | Monitor tool line events    |
-| ScheduleWakeup (1800s+ safety) | Stalled/missed signals | Timer-based fallback        |
-
-**Anti-pattern**: `polecat list` / `gh pr list` every 4–5 min via
-ScheduleWakeup — wastes tokens and context. Use only as one-shot fallback
-when event-driven monitoring is unavailable.
-
-```bash
-# Fallback commands (one-shot, NOT for polling loops)
-polecat list                           # active polecats
-gh pr list --state open --limit 20     # open PRs
-polecat reset-stalled --hours 4        # reset hung tasks
-polecat sync                           # sync mirrors after merging
-```
-
-### PR triage
-
-| Signal                               | Action                                                      |
-| ------------------------------------ | ----------------------------------------------------------- |
-| Reasonable adds/dels, targeted files | `gh pr merge <N> --squash --delete-branch`                  |
-| Code already in main (stale branch)  | `gh pr close <N> --comment "Stale branch"`                  |
-| Massive deletions (stale mirror)     | `gh pr close <N> --comment "Repo nuke"` then `polecat sync` |
 
 ## Task Assignment Rules
 
-- **Default assignee**: Set to `polecat` or leave unassigned.
-- **Human assignment**: Never assign to `nic` unless the task reduces to a genuine binary human choice (e.g., "Do we use Pattern A or Pattern B?").
-- **Decision subtasks**: When a real choice IS needed, create a minimal choice subtask that blocks the epic, providing full context to decide. Never assign the parent epic back to `nic`.
-- **Underspecified tasks**: Even underspecified epics should not go to `nic`: file a research/decomposition task for an agent to do the legwork first.
+- **Default assignee**: Set to the appropriate worker (e.g. `polecat` for
+  code) or leave unassigned.
+- **Human assignment**: Never assign to `nic` unless the task reduces to a
+  genuine binary human choice (e.g., "Do we use Pattern A or Pattern B?").
+- **Decision subtasks**: When a real choice IS needed, create a minimal
+  choice subtask that blocks the epic, providing full context to decide.
+  Never assign the parent epic back to `nic`.
+- **Underspecified tasks**: Even underspecified epics should not go to
+  `nic`: file a research/decomposition task for an agent to do the
+  legwork first.
 
 ## Handover
 
