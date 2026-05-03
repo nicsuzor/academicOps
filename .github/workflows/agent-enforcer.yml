@@ -120,14 +120,14 @@ jobs:
 
       # Checkout the caller's repo (the PR under review)
       - uses: actions/checkout@v4
-        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]'
+        if: (github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]') && steps.workflow-run-pr.outputs.skip != 'true'
         with:
           fetch-depth: 0
           ref: ${{ steps.pr-info.outputs.ref }}
 
       # Checkout academicOps to read the canonical enforcer prompt
       - uses: actions/checkout@v4
-        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]'
+        if: (github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]') && steps.workflow-run-pr.outputs.skip != 'true'
         with:
           repository: nicsuzor/academicOps
           path: .aops
@@ -136,7 +136,7 @@ jobs:
 
       # Loop detection: skip if last commit was from enforcer
       - name: Check if last push was from an agent
-        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]'
+        if: (github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]') && steps.workflow-run-pr.outputs.skip != 'true'
         id: loop-check
         run: |
           LAST_MSG=$(git log -1 --format='%B')
@@ -148,7 +148,7 @@ jobs:
           fi
 
       - name: Read enforcer agent prompt
-        if: (github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]') && steps.loop-check.outputs.skip != 'true'
+        if: (github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]') && steps.workflow-run-pr.outputs.skip != 'true' && steps.loop-check.outputs.skip != 'true'
         id: prompt
         run: |
           PROMPT=$(cat .aops/aops-core/agents/rbg.md)
@@ -160,7 +160,7 @@ jobs:
 
       - name: Run Enforcer Review
         id: review
-        if: (github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]') && steps.loop-check.outputs.skip != 'true'
+        if: (github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]') && steps.workflow-run-pr.outputs.skip != 'true' && steps.loop-check.outputs.skip != 'true'
         continue-on-error: true
         uses: anthropics/claude-code-action@v1
         env:
