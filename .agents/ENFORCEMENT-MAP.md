@@ -56,19 +56,12 @@ Mechanisms embedded directly in agent prompt files. They fire when the
 agent composes or reviews output, before emitting to the user. Not wired
 to hooks or CI — enforced by the agent's own instructions.
 
-| Mechanism                   | Source                                                                                   | Rule(s) | Scope                                                          | Tier    | Behaviour                                                                                                                                                                          |
-| --------------------------- | ---------------------------------------------------------------------------------------- | ------- | -------------------------------------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `rbg pre-response A8 scan`  | `aops-core/agents/rbg.md` § "Pre-Response A8 Scan"                                       | A8      | rbg sessions assessing transcripts or drafted responses        | `block` | When rbg reviews a drafted response, scans for workaround-offer patterns (general-agent #720 blacklist + supervisor drift-framing #821 blacklist). Emits `a8-pre-response: BLOCK`. |
-| `supervisor A8 prose scan`  | `aops-core/skills/supervisor/SKILL.md` § "Engineering Integrity (A8) Is Non-Negotiable"  | A8      | Supervisor skill sessions during decomposition and plan-review | `block` | Prohibits drift-framing phrases (#821 blacklist) in triage tables, subtask bodies, and user-facing summaries. Requires rewrite before posting.                                     |
-| `supervisor decomp A8 gate` | `aops-core/skills/supervisor/instructions/decomposition-and-review.md` § "A8 prose scan" | A8      | Supervisor decomposition phase (Post-Decomposition Self-Check) | `block` | Mandatory prose scan of every subtask body and plan-review summary before posting. Prohibited phrase + structural patterns; rewrite to fix-only decomposition if triggered.        |
+| Mechanism                    | Source                                                                                          | Rule(s)         | Scope                                                          | Tier    | Behaviour                                                                                                                                                                           |
+| ---------------------------- | ----------------------------------------------------------------------------------------------- | --------------- | -------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `rbg a8-instinct`            | `aops-core/agents/rbg.md` § "How you judge"                                                     | A8              | All rbg PR review sessions                                     | `block` | Applies A8 instinct check to every PR review. Emits `REQUEST_CHANGES` when workaround-offer or drift-framing patterns detected. Instinct-based (no phrase-match enumeration) — restructured from `rbg pre-response A8 scan` in PR #891; combined-lenses framing removed in PR #895. |
+| `supervisor A8 prose scan`   | `aops-core/skills/supervisor/SKILL.md` § "Engineering Integrity (A8) Is Non-Negotiable"        | A8              | Supervisor skill sessions during decomposition and plan-review | `block` | Prohibits drift-framing phrases (#821 blacklist) in triage tables, subtask bodies, and user-facing summaries. Requires rewrite before posting.                                      |
+| `supervisor decomp A8 gate`  | `aops-core/skills/supervisor/instructions/decomposition-and-review.md` § "A8 prose scan"       | A8              | Supervisor decomposition phase (Post-Decomposition Self-Check) | `block` | Mandatory prose scan of every subtask body and plan-review summary before posting. Prohibited phrase + structural patterns; rewrite to fix-only decomposition if triggered.         |
 
-## User-side cron enforcement
-
-Periodic enforcement scripts invoked by user-managed cron jobs. Run outside agent sessions and outside CI.
-
-| Mechanism             | Script                                 | Rule(s)  | Tier                 | Behaviour                                                                                                                                                                                                                                                                                                                 |
-| --------------------- | -------------------------------------- | -------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `user-side-pr-review` | `dotfiles/cron/user-side-pr-review.sh` | A8, P#65 | `block` (label gate) | Polls GitHub for PRs labelled `ready-for-review`. Dispatches the rbg judge agent against each. On PASS applies `approve-ready` label for daily-sweep CTA; on FAIL/ESCALATE leaves for human. Writes heartbeat on every run so daily-sweep can distinguish "no PRs" from "cron stalled". Added in PR #891 (task-212f1c82). |
 
 ## Whole-repo audits (advisory; not wired to commit/CI)
 
@@ -76,23 +69,3 @@ Periodic enforcement scripts invoked by user-managed cron jobs. Run outside agen
 | ------------------------ | ----------------------------------- | ---------------------- | ---------- | ------------------------------------------------------------ |
 | `check-orphan-files`     | `scripts/check_orphan_files.py`     | (wikilink orphans)     | `advisory` | Exits 0; reports files with no incoming wikilinks            |
 | `check-skill-line-count` | `scripts/check_skill_line_count.py` | (SKILL.md ≤ 500 lines) | `advisory` | Exits 1 when any SKILL.md exceeds 500 lines; lists offenders |
-
-## Notes
-
-- `data-markdown-only` — referenced in HEURISTICS.md P#105 as a pre-commit hook
-  example; superseded by `check-no-new-orphan-md` (R5.6, added in PR #793).
-- Hooks with tier `warn` exit non-zero to block the commit but agents may
-  surface the add to the user and proceed under R8.1 in-session authorisation
-  (`--no-verify`).
-- Hooks with tier `block` represent hard constraints; `--no-verify` is itself
-  prohibited by R8.1 for this tier.
-- Hooks with tier `advisory` are not invoked by pre-commit or CI. The scripts
-  exist for ad-hoc audits but do not gate any workflow.
-- `check-skill-line-count` was deliberately removed from CI: the 500-line cap
-  was too aggressive for legitimate skill content. The script is retained for
-  manual audits, but the cap is not enforced. If we later want a length
-  signal, set a higher threshold or convert to a soft warning rather than
-  re-wiring the existing exit-1 behaviour.
-- `check-orphan-files` wiring is undecided — the orphan question is real but
-  the current threshold/scope hasn't been validated. Leaving advisory until
-  triaged.

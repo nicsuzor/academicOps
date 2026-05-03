@@ -139,13 +139,13 @@ output — triage tables, subtask bodies, plan-review summaries):
 **Permitted halt template** (use this exact shape when surfacing failures):
 
 ```
-A8 halt: <verification name / failure>. Investigation produced <finding>. Two options:
-  1. Fix <code path or artefact location> at <file:line> by <change>. (chosen)
+A8 halt: <test name / failure>. Investigation produced <finding>. Two options:
+  1. Fix <code path> at <file:line> by <change>. (chosen)
   2. <alternative implementation, also fixing the failure>
-The verification stays as written. Filing as <subtask id>.
+Test stays as written. Filing as <subtask id>.
 ```
 
-Both options must be **fixes that make the failing verification pass**. A
+Both options must be **fixes that make the failing test pass**. A
 "skip" option, an "xfail" option, or a "loosen the assertion" option is
 NEVER option 2.
 
@@ -253,11 +253,11 @@ The supervisor's job ends when each work item has reached its review
 surface. The shape of the review surface is set by the deliverable
 subworkflow:
 
-- For **code deliverables**, the review surface is an open PR with the
-  mechanical merge-prep applying a `ready-for-review` label. See
+- For **code deliverables**, the review surface is an open PR; the
+  existing GHA pipeline (CI, axiom enforcer, agent merge-prep, summary +
+  Environment approval gate) takes it from there. See
   [[instructions/code-deliverable#handoff-contract-task-212f1c82]] for the
-  full contract (GHA pipeline, user-side reviewer cron, daily-sweep CTA,
-  final-summary template).
+  full contract and final-summary template.
 - For other deliverable types, the subworkflow defines the equivalent
   surface (e.g. a tracked-changes draft submitted for collaborator
   review).
