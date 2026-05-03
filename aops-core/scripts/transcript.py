@@ -12,6 +12,8 @@ Usage:
 
 import argparse
 import os
+import re
+import shutil
 import subprocess
 import sys
 from datetime import datetime, timedelta
@@ -232,11 +234,36 @@ def _save_minimal_token_summary(
     else:
         date_iso = datetime.now().astimezone().replace(microsecond=0).isoformat()
 
+    task_id = os.environ.get("AOPS_TASK_ID")
+    if not task_id and timeline_events:
+        for event in timeline_events:
+            if event.get("type") in (
+                "task_create",
+                "task_update",
+                "task_complete",
+                "task_release",
+            ) and event.get("task_id"):
+                task_id = event["task_id"]
+                break
+
+    # Determine stable project if we only have a UUID fragment
+    stable_project = project
+    if (
+        not stable_project
+        or re.match(r"^[0-9a-f]{8,}$", stable_project)
+        or re.match(r"^[0-9a-f\-]{36}$", stable_project)
+    ):
+        if timeline_events:
+            for event in timeline_events:
+                if event.get("type") == "task_create" and event.get("project"):
+                    stable_project = event["project"]
+                    break
+
     # Build minimal insights with token_metrics
     insights = {
         "session_id": session_id,
         "date": date_iso,
-        "project": project,
+        "project": stable_project,
         "summary": None,  # No reflection = no summary
         "outcome": None,  # No reflection = unknown outcome
         "accomplishments": [],
@@ -247,14 +274,19 @@ def _save_minimal_token_summary(
         "hostname": session_naming.get_hostname(),
         "provider": session_naming.get_provider_name(),
         "crew": os.environ.get("POLECAT_CREW_NAME"),
-        "repo": project,
-        "task_id": os.environ.get("AOPS_TASK_ID"),
+        "repo": stable_project,
+        "task_id": task_id,
         "token_metrics": usage_stats.to_token_metrics(session_duration_minutes),
     }
 
     # Timeline events for path reconstruction
     if timeline_events:
         insights["timeline_events"] = timeline_events
+        # Elevate PR URL to root if found
+        for event in timeline_events:
+            if event.get("type") == "pr_create" and event.get("pr_url"):
+                insights["pr_url"] = event["pr_url"]
+                break
 
     try:
         # Check for existing insights. If the source jsonl has grown since the

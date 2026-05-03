@@ -125,7 +125,7 @@ Use **Full-form** in **every other case**, including: task complete, end-of-day 
    - **Fallback**: if `release_task` is unavailable, `update_task(id=..., status="merge_ready")` keeps the supervisor unblocked, but the dashboard loses this session.
    - **Polecat note**: calling `release_task` with a terminal status is what lets the polecat supervisor detect termination via PKB polling. Skipping this leaves Gemini workers running until external timeout (#521).
 
-3. **Emit the required reflection blocks** (`## Framework Reflection`, `## Output`, `## Tasks worked`).
+4. **Emit the required reflection blocks** (`## Framework Reflection`, `## Output`, `## Tasks worked`).
 
    Full-form sessions MUST include all three blocks before the handover block. `transcript.py` extracts each into structured metadata (`framework_reflections`, `outputs`, `tasks_worked`, `references`, `quality_warnings`); missing or empty blocks emit warnings into `quality_warnings` rather than being silently dropped. See [[transcript-metadata-schema]] for the wire format.
 
@@ -182,8 +182,7 @@ Use **Full-form** in **every other case**, including: task complete, end-of-day 
 
    Each entry: `- <id> (<precis>) — <action>`. Action verbs the extractor recognises: `created`, `updated`, `completed`, `cancelled`, `referenced`. Bare ids without a precis fail the quality bar.
 
-
-4. **Emit the handover block**. Exactly this shape, 5–10 lines:
+5. **Emit the handover block**. Exactly this shape, 5–10 lines:
 
    ```markdown
    ### Session Handover
@@ -201,7 +200,7 @@ Use **Full-form** in **every other case**, including: task complete, end-of-day 
 
    Follow-up task IDs must each carry a short parenthetical title for the same reason `release_summary` must — a stack-of-handovers reader can't resolve `task-0f7d3877` without it.
 
-5. **Halt.** Nothing follows the handover block.
+6. **Halt.** Nothing follows the handover block.
 
 ## What this skill does NOT do
 

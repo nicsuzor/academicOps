@@ -233,6 +233,20 @@ def _validate_token_metrics(token_metrics: dict[str, Any]) -> None:
                     f"Field 'token_metrics.by_model.{model_name}' must be a dict"
                 )
 
+    # Validate 'by_tool' sub-object (optional but must be dict if present)
+    if "by_tool" in token_metrics:
+        by_tool = token_metrics["by_tool"]
+        if not isinstance(by_tool, dict):
+            raise InsightsValidationError(
+                f"Field 'token_metrics.by_tool' must be a dict, got {type(by_tool).__name__}"
+            )
+        # Each tool entry should be a dict with numeric values
+        for tool_name, tool_data in by_tool.items():
+            if not isinstance(tool_data, dict):
+                raise InsightsValidationError(
+                    f"Field 'token_metrics.by_tool.{tool_name}' must be a dict"
+                )
+
     # Validate 'by_agent' sub-object (optional but must be dict if present)
     if "by_agent" in token_metrics:
         by_agent = token_metrics["by_agent"]
