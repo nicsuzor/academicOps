@@ -50,11 +50,11 @@ This phase exists because of a specific, observed failure: a dogfooding supervis
 2. **Verify data sources by sampling.** Do not ASSUME what a data file contains. READ one. If you're writing instructions that say "audit files contain X," open an audit file and confirm X is there. If it isn't, find where X actually lives.
 
 3. **Map the full data landscape.** For any framework component, there are typically multiple data sources at different levels of detail:
-   - **Pre-rendered markdown transcripts** (`~/.aops/sessions/transcripts/`) — abridged and full forms, ~10K+ files. This is the most accessible source for any session-level analysis.
-   - **Raw session logs** (JSONL/JSON in `~/.aops/sessions/client-logs/`)
-   - **Hook event logs** (JSONL in `~/.aops/sessions/hooks/`) — contains SubagentStart/SubagentStop events with verdicts
+   - **Pre-rendered markdown transcripts** (`~/.aops/sessions/transcripts/`) — abridged and full forms, ~10K+ files. **Synced across machines** — your primary source for session-level analysis.
+   - **Raw session logs** (`~/.claude/projects/<workspace>/<sid>.jsonl`) — local-only on the machine that ran the session.
+   - **Hook event logs** (`~/.claude/projects/<workspace>/<sid>-hooks.jsonl`) — co-located with session stream; contains SubagentStart/SubagentStop events with verdicts.
    - **Subagent transcripts** (referenced by `agent_transcript_path` in SubagentStop events)
-   - **Session metadata** (JSON in `~/.aops/sessions/polecats/`)
+   - **Polecat worker mirror** (`~/.aops/polecats/<task-id>/`) — worker-side session + hook artifacts for a task.
    - **Audit files** (input documents sent to review agents — INPUT, not output)
 
    The audit file for a component is its INPUT, not its OUTPUT. The output lives in the subagent transcript and the hook event log. The full session transcript (markdown or JSONL) contains the complete conversation including what happened before and after any component fired.
@@ -182,7 +182,7 @@ This is the hardest phase. Commission a separate reviewer agent — ideally a di
 
 2. **Friction is data, not failure.** A subagent that gets stuck reveals an instruction gap. That's the point.
 
-3. **Don't over-fit.** Instructions should work for the category, not just this specific instance. If you add "look in ~/.aops/sessions/hooks/" that's fine (it's where the data lives). If you add "look for session hash b9555bcd" that's over-fitting.
+3. **Don't over-fit.** Instructions should work for the category, not just this specific instance. If you add "look in `~/.claude/projects/*/<sid>-hooks.jsonl`" that's fine (it's where the data lives). If you add "look for session hash b9555bcd" that's over-fitting.
 
 4. **Quality review is not optional.** Without independent assessment, you can't distinguish "the agent did what I said" from "the agent produced something valuable." These are different.
 

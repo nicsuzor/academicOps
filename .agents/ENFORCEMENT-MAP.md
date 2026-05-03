@@ -66,9 +66,9 @@ to hooks or CI — enforced by the agent's own instructions.
 
 Periodic enforcement scripts invoked by user-managed cron jobs. Run outside agent sessions and outside CI.
 
-| Mechanism             | Script                                 | Rule(s)   | Tier           | Behaviour                                                                                                                                                                                                         |
-| --------------------- | -------------------------------------- | --------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `user-side-pr-review` | `dotfiles/cron/user-side-pr-review.sh` | A8, P#65  | `block` (label gate) | Polls GitHub for PRs labelled `ready-for-review`. Dispatches the rbg judge agent against each. On PASS applies `approve-ready` label for daily-sweep CTA; on FAIL/ESCALATE leaves for human. Writes heartbeat on every run so daily-sweep can distinguish "no PRs" from "cron stalled". Added in PR #891 (task-212f1c82). |
+| Mechanism             | Script                                 | Rule(s)  | Tier                 | Behaviour                                                                                                                                                                                                                                                                                                                 |
+| --------------------- | -------------------------------------- | -------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `user-side-pr-review` | `dotfiles/cron/user-side-pr-review.sh` | A8, P#65 | `block` (label gate) | Polls GitHub for PRs labelled `ready-for-review`. Dispatches the rbg judge agent against each. On PASS applies `approve-ready` label for daily-sweep CTA; on FAIL/ESCALATE leaves for human. Writes heartbeat on every run so daily-sweep can distinguish "no PRs" from "cron stalled". Added in PR #891 (task-212f1c82). |
 
 ## Whole-repo audits (advisory; not wired to commit/CI)
 

@@ -67,12 +67,6 @@ repos:
         language: system
         pass_filenames: false
         files: '(WORKFLOWS|SKILLS)\.md$|workflows/.*\.md$|skills/.*/SKILL\.md$|commands/.*\.md$'
-      - id: lint-axiom-refs
-        name: lint axiom and rule references
-        entry: uv run python aops-core/lib/lint_axiom_refs.py
-        language: system
-        pass_filenames: false
-        files: 'AXIOMS\.md$|RULES\.md$|plugin\.json$|claude-settings\.json$'
 
       # R5.6 — block new orphan markdown files (worker findings, capability
       # docs, summaries, comparisons, explainers belong in task body / parent

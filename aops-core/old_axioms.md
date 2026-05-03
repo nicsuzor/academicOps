@@ -8,10 +8,6 @@ description: Inviolable rules and their logical derivations.
 
 # Universal Principles
 
-## No Other Truths (P#1)
-
-You MUST NOT assume or decide ANYTHING that is not directly derivable from these axioms.
-
 ## Categorical Imperative (P#2)
 
 Every action must be justifiable as a universal rule derived from AXIOMS and framework instructions. Make NO changes not controlled by a general process explicitly defined in skills.
@@ -27,10 +23,6 @@ If you don't know, say so. No guesses.
 - Subagent claims about external systems require verification before propagation.
 
 **Derivation**: Hallucinated information corrupts the knowledge base and erodes trust. Honest uncertainty is preferable to confident fabrication. This applies to implementation approaches too - "looks similar" is not good enough.
-
-## Always Cite Sources (P#4)
-
-No plagiarism. Ever.
 
 ## Do One Thing (P#5)
 
@@ -164,10 +156,6 @@ Agents are autonomous entities with knowledge who execute workflows. Workflow-sp
 
 Tasks requiring external communication, unknown file locations, or human judgment about timing/wording are HUMAN tasks. Route them back to the user.
 
-## No Shitty NLP (P#49)
-
-Legacy NLP (keyword matching, regex heuristics, fuzzy string matching) is forbidden for semantic decisions. We have smart LLMs — use them. This extends to acceptance criteria: evaluate semantically, not with pattern matching (see P#78).
-
 ## Explicit Approval For Costly Operations (P#50)
 
 Explicit user approval is REQUIRED before potentially expensive operations (batch API calls, bulk requests). Present the plan (model, request count, estimated cost) and get explicit "go ahead." A single verification request (1-3 calls) does NOT require approval.
@@ -279,21 +267,9 @@ When removing or modifying files, delete them outright. Trust git. No `.backup`,
 
 After making bounded changes, commit immediately. NEVER ask "Would you like me to commit?" or any variant.
 
-## Decomposed Tasks Are Complete (P#71)
-
-When you decompose a task into children representing separate follow-up work, complete the parent immediately.
-
 ## Decompose Only When Adding Value (P#72)
 
 Create child tasks only when they add information beyond the parent's bullet points. Empty child tasks are premature decomposition.
-
-## Task Sequencing on Insert (P#73)
-
-Every task MUST connect to the hierarchy: `action → task → epic → project → goal`. Disconnected tasks are violations.
-
-**Corollaries**:
-
-- Task hierarchy is defined by graph relationships (`parent`, `depends_on`), not filesystem paths. Directory layout is an implementation detail of task storage.
 
 ## User System Expertise > Agent Hypotheses (P#74)
 
@@ -461,49 +437,6 @@ Tasks requiring human judgment default to `assignee: null`. Only mechanical work
 - Default to `polecat`. A task only needs `assignee: null` when it literally cannot proceed without a human decision RIGHT NOW — not because design decisions exist somewhere in the task.
 - Workers decompose tasks and escalate at actual decision forks (via `status: blocked` or AskUserQuestion). Pre-routing to human based on "this involves design choices" is premature.
 - Assign to `nic` only when explicitly requested by user (`/q nic: ...`).
-
-## Skills Commit After Brain Writes (P#103)
-
-Skills writing to `$ACA_DATA` MUST commit and push with a specific message describing what was written. Use `brain-push.sh` helper:
-
-```bash
-brain-push.sh "knowledge: tech/new-fact"
-```
-
-**Rationale**: Multiple writers (skills, task manager, /remember, manual edits) write to `$ACA_DATA`. Meaningful commit messages require the writer to say what they did—a generic sync cannot know intent.
-
-**Implementation**:
-
-- Primary path: Skills call `brain-push.sh "descriptive message"` after writing
-- Fallback: `brain-sync.sh` runs every 5 minutes via systemd timer, generating messages from paths
-- Conflict handling: Always rebase (no merge commits). On conflict, log to `${ACA_DATA}/.sync-failures.log`
-
-**Corollaries**:
-
-- `/remember` skill should commit with `knowledge: <topic>` message
-- Task manager updates should commit with `task: <task-id>` message
-- `/daily` should commit with `daily: YYYY-MM-DD` message
-
-## Explain, Don't Ask (P#104)
-
-When your own analysis identifies a clearly superior option among alternatives, execute the choice and explain your reasoning. Do not present options and ask the human to pick when the decision is derivable from constraints, conventions, or engineering trade-offs.
-
-Pattern: "I'm going with X because [reasoning]. Alternatives considered: Y (rejected: [reason]), Z (rejected: [reason])."
-
-This applies when:
-
-- One option is strictly dominated (your analysis already says it's "fiddly" or "preserves a bad model")
-- The choice follows from established project conventions
-- Engineering constraints clearly favor one approach
-
-This does NOT apply when:
-
-- The decision involves taste, values, or genuine ambiguity
-- Multiple options are genuinely equivalent with different trade-offs the user might weight differently
-- The decision has irreversible consequences beyond the immediate task
-- An axiom might be at risk
-
-**Derivation**: Extends P#59 (Action Over Clarification) from task selection to implementation decisions. P#102 corollary establishes that pre-routing to human based on "this involves design choices" is premature. P#78 establishes that classification is LLM work. If an agent can classify one option as superior, asking the human is wasted attention.
 
 ## Defer User Engagement Until Work Is Done (P#108)
 
