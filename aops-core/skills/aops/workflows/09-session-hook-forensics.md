@@ -18,7 +18,9 @@ description: Reconstruct session events from hooks logs to diagnose gate failure
 
 ```bash
 # 1. Find the hooks log for a session
-ls $AOPS_SESSIONS/hooks/*<session-short-hash>*
+# Hooks live next to their session stream — see PKB kb-d8f58167.
+ls ~/.claude/projects/*/*<session-short-hash>*-hooks.jsonl  # Claude
+ls ~/.gemini/tmp/*/logs/*<session-short-hash>*-hooks.jsonl  # Gemini
 
 # 2. Quick summary: how many ops, any denies?
 grep -c '"hook_event":"PostToolUse"' <hooks.jsonl>
@@ -39,10 +41,13 @@ for l in sys.stdin:
 ## Steps
 
 1. **Locate the Files**
-   - Hook JSONL: `$AOPS_SESSIONS/hooks/<YYYYMMDD>-<session-short-hash>-hooks.jsonl`
+   - Hook JSONL (Claude): `~/.claude/projects/<workspace>/<session-id>-hooks.jsonl`
+   - Hook JSONL (Gemini): `~/.gemini/tmp/<workspace>/logs/<unified>-hooks.jsonl`
+   - Polecat-worker hooks: `$POLECAT_HOME/polecats/<task-id>/<workspace>/<session-id>-hooks.jsonl`
    - Session state: `$AOPS_SESSION_STATE_DIR/<YYYYMMDD>-<HH>-<session-short-hash>.json`
-   - Transcript: `$POLECAT_HOME/sessions/transcripts/*<session-short-hash>*-full.md`
+   - Transcript: `$AOPS_SESSIONS/transcripts/*<session-short-hash>*-full.md`
    - See [[forensics-details]] for full path conventions and cross-reference guide.
+   - **Note**: hooks live next to their session stream (PKB kb-d8f58167). There is no longer a flat `$AOPS_SESSIONS/hooks/` directory.
 
 2. **Generate Transcript First**
    Always use `transcript.py` on the CC session JSONL for a readable conversation log. Transcripts include hook verdicts and system_messages (merged by `transcript_parser.py:_map_hook_jsonl_to_entry_data`). For exact raw values or when transcript rendering is truncated, use raw hook JSONL directly.

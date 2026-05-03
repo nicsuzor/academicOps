@@ -3,10 +3,17 @@ name: heuristics
 title: Heuristics
 type: instruction
 category: instruction
-description: Working hypotheses validated by evidence. Advisory — inform but don't block.
+description: Working hypotheses validated by evidence.
 ---
 
 # Heuristics
+
+## Don't abdicate your responsibility
+
+Use your discretion. Do not defer judgment calls to the user.
+
+- Auto-assigning judgment tasks to user creates unnecessary noise
+- Human attention is the scarcest resource. Tasks should be pulled (claimed) rather than pushed (assigned) unless explicitly requested.
 
 ## Project Independence (P#7)
 
@@ -64,64 +71,11 @@ Every file has exactly one category (spec, ref, docs, script, instruction, templ
 
 Agents must NOT remove or bypass lock files without explicit user authorization. When encountering locks, HALT and ask.
 
-## Indices Before Exploration (P#58)
-
-Prefer curated indices (PKB, zotero, bd) over broad filesystem searches for exploratory queries.
-
-**Corollaries**:
-
-- Grep is for needles, not fishing expeditions
-- Semantic search tools exist precisely to answer "find things related to X"
-- Broad pattern matching across directories is wasteful and may surface irrelevant or sensitive content
-- GLOSSARY.md provides framework terminology — don't search for what's already defined
-
-**Derivation**: This is the key heuristic preventing unnecessary exploration. When you don't know a term, check the glossary. When you need context, it should be pre-loaded. Filesystem exploration is a last resort, not a first instinct.
-
-## Action Over Clarification (P#59)
-
-When user signals "go" and multiple equivalent ready tasks exist, pick one and start. Don't ask for preference.
-
-## Local AGENTS.md Over Central Docs (P#60)
-
-Place agent instructions in the directory where agents will work, not in central docs.
-
-## Internal Records Before External APIs (P#61)
-
-When user asks "do we have a record" or "what do we know about X", search bd and memory FIRST before querying external APIs.
-
-## Tasks Inherit Session Context (P#62)
-
-When creating tasks during a session, apply relevant session context (e.g., `bot-assigned` tag during triage).
-
-## Task Output Includes IDs (P#63)
-
-When displaying tasks to users, always include the task ID. Format: `Title (id: task-id)`.
-
-## Planning Guidance Goes to Daily Note (P#64)
-
-When prioritization agents provide guidance, write output to daily note. Do NOT execute the recommended tasks.
-
 ## Enforcement Changes Require enforcement-map.md Update (P#65)
 
 When a PR adds, removes, or modifies an enforcement gate, the enforcement map (`.agents/ENFORCEMENT-MAP.md`; referred to as `specs/enforcement-map.md` in cross-repo specs) MUST be updated in the **same PR** that introduces the gate. The map MUST be current at merge time of the PR that adds the enforcement — it is NOT permissible to defer the map update to a later implementation task or follow-up PR.
 
 This is design-time AND implementation-time discipline collapsed into one: a PR that wires a new gate without updating the map is incomplete, regardless of whether the gate "works." Reviewers (rbg / enforcer) MUST `REQUEST_CHANGES` on any such PR.
-
-## Just-In-Time Information (P#66)
-
-Never present information not necessary to the task at hand.
-
-## Extract Implies Persist in PKM Context (P#67)
-
-When user asks to "extract information from X", route to remember/persist workflow, not simple-question.
-
-## Background Agent Visibility (P#68)
-
-When spawning background agents, explicitly tell the user: what agents are spawning, that tool output will scroll by, and when the main task is complete.
-
-## Large Data Handoff (P#69)
-
-When data exceeds ~10KB or requires visual inspection, provide the file path and suggested commands instead of displaying inline.
 
 ## No Commit Hesitation (P#70)
 
@@ -130,18 +84,6 @@ After making bounded changes, commit immediately. NEVER ask "Would you like me t
 ## Decomposed Tasks Are Complete (P#71)
 
 When you decompose a task into children representing separate follow-up work, complete the parent immediately.
-
-## Decompose Only When Adding Value (P#72)
-
-Create child tasks only when they add information beyond the parent's bullet points. Empty child tasks are premature decomposition.
-
-## Task Sequencing on Insert (P#73)
-
-Every task MUST connect to the hierarchy: `action → task → epic → project → goal`. Disconnected tasks are violations.
-
-**Corollaries**:
-
-- Task hierarchy is defined by graph relationships (`parent`, `depends_on`), not filesystem paths. Directory layout is an implementation detail of task storage.
 
 ## User System Expertise > Agent Hypotheses (P#74)
 
@@ -153,22 +95,6 @@ When user makes specific assertions about their own codebase, trust the assertio
 - When user provides failure data and asks for tests, WRITE TESTS FIRST
 
 **Derivation**: Users have ground-truth about their own system. Over-investigation violates P#5 (Do One Thing). Verification ≠ Investigation.
-
-## Tasks Have Single Objectives (P#75)
-
-Each task should have one primary objective. When work spans multiple concerns, create separate tasks with dependency relationships.
-
-## Commands Dispatch, Workflows Execute (P#76)
-
-Command files define invocation syntax and route to workflows. Step-by-step logic lives in `workflows/`.
-
-## CLI-MCP Interface Parity (P#77)
-
-CLI commands and MCP tools exposing the same functionality MUST have identical default behavior.
-
-## Deterministic Computation Stays in Code (P#78)
-
-LLMs are bad at counting and aggregation. Use Python/scripts for deterministic operations; LLMs for judgment, classification, and generation. MCP servers return raw data; agents do all classification/selection.
 
 ## Prefer Loud Failures Over Silent Skips (P#121)
 
@@ -194,30 +120,6 @@ When running tests under restrictive environments (like macOS Seatbelt), redirec
 
 **Derivation**: Ensures E2E and integration tests can perform necessary side effects (logging, state persistence) without violating Seatbelt policies.
 
-## Prefer fd Over ls for File Finding (P#79)
-
-Use `fd` for file finding operations instead of `ls | grep/tail` pipelines.
-
-## Fixes Preserve Spec Behavior (P#80)
-
-Bug fixes must not remove functionality required by acceptance criteria.
-
-## Spike Output Goes to Task Graph or GitHub (P#81)
-
-Spike/learn output belongs in the task graph (task body, parent epic) or GitHub issues, not random files.
-
-## Make Cross-Project Dependencies Explicit (P#83)
-
-When a task uses infrastructure from another project, create explicit linkage.
-
-## Error Recovery Returns to Reference (P#85)
-
-When implementation fails and a reference example exists, re-read the reference before inventing alternatives.
-
-## Background Agent Notifications Are Unreliable (P#86)
-
-Never block on TaskOutput waiting for notifications. Use polling or fire-and-forget patterns.
-
 ## Preserve Pre-Existing Content (P#87)
 
 Content you didn't write in this session is presumptively intentional. Append rather than replace. Never delete without explicit instruction.
@@ -225,22 +127,6 @@ Content you didn't write in this session is presumptively intentional. Append ra
 **Corollaries**:
 
 - Files must be self-contained. Never write forward-references to conversational output (e.g., "See detailed analysis below") — persist all substantive content in the file itself. Response text is ephemeral; files are state.
-
-## User Intent Discovery Before Implementation (P#88)
-
-Before implementing user-facing features, verify understanding of user intent, not just technical requirements.
-
-## LLM Orchestration Means LLM Execution (P#89)
-
-When user requests content "an LLM will orchestrate/execute", create content for the LLM to read directly — NOT code infrastructure that parses that content.
-
-## Match Planning Abstraction (P#90)
-
-When user is deconstructing/planning, match their level of abstraction. Don't fill in blanks until they signal readiness for specifics.
-
-## Verify Non-Duplication Before Create (P#91)
-
-Before creating ANY task, search existing tasks (`search_tasks`) for similar titles. This applies to single creates, not just batch operations.
 
 ## Run Python via uv (P#93)
 
@@ -250,113 +136,9 @@ Always use `uv run python` (or `uv run pytest`). Never use `python` or `pip` dir
 
 A batch task is not complete until all spawned workers have finished. "Fire-and-forget" means don't BLOCK waiting; it does NOT mean "declare complete after spawning."
 
-## Subagent Verdicts Are Binding (P#95)
-
-When a subagent (enforcer, qa) returns a HALT or REVISE verdict, the main agent MUST stop and address the issue.
-
-**Corollaries**:
-
-- When enforcer blocks work as out-of-scope, capture the blocked improvement as a new task before reverting. Useful work should be deferred, not lost.
-
-**Derivation**: P#9 (Fail-Fast Agents) requires stopping when tools fail. Subagents are tools. Their failure verdicts must be respected.
-
 ## QA Tests Are Black-Box (P#96)
 
 When executing QA/acceptance tests, treat the system as a black box. Never investigate implementation to figure out what you're testing.
-
-## CLI Testing Requires Extended Timeouts (P#98)
-
-When testing CLI tools via Bash, use `timeout: 180000` (3 minutes) minimum.
-
-## Centralized Git Versioning (P#120)
-
-Versioning logic MUST be centralized in a single source of truth.
-
-## Prefer Deep Functional Nesting Over Flat Projects (P#101)
-
-Structure tasks hierarchically under functional Epics rather than flat project lists.
-
-**The Star Pattern is a code smell.** When a project or epic has more than 5 direct children, it almost certainly needs intermediate grouping. A flat list is not a hierarchy; it's a lack of structure that leads to "wide and shallow" graphs that are unnavigable.
-
-**How to fix a flat project or epic:**
-
-1. Group related tasks by purpose (not by type or timing)
-2. Create intermediate epics that describe the milestone or workstream each group serves
-3. Re-parent the tasks under the appropriate epic
-4. Each epic should answer: "What outcome does this group of tasks achieve?"
-
-**Decision heuristic:** When creating a task, ask: "Is there already an epic this belongs to? Should there be?" If the task is one of several related implementation steps, the answer is almost always yes.
-
-**Corollaries**:
-
-- Infrastructure tasks (refactors, migrations, pipeline changes) MUST be parented under an epic that explains WHY the infrastructure work is needed.
-- Leaf tasks (single-session work items) should almost never be direct children of a project. They belong under epics.
-- **Complexity = Depth.** If a task's requirements or body contains more than 5 distinct steps, it MUST be converted to an epic and decomposed.
-
-## Depth is the Metric of Understanding (P#110)
-
-A flat task list indicates a failure to understand a problem's structure. Deeply nested hierarchies (minimum depth 3 for any multi-session work) demonstrate a clear mapping of goals to implementation.
-
-**Rules for Depth:**
-
-- **Prefer Depth over Breadth.** If you have 10 tasks, don't make them siblings. Group them into 2-3 epics with 3-5 tasks each.
-- **Target Depth:** Multi-session work should aim for a hierarchy of at least `Project -> Epic -> Task -> Action`.
-- **Decompose Early and Often.** If a subtask reveals its own internal complexity, don't just add more bullet points to its body—decompose it into its own children.
-- **Traceability.** Depth provides a trail of "Whys". Each level explains the purpose of the level below it. Shallow graphs lose this traceability.
-
-**Derivation**: Addresses the "wide and shallow" graph problem. Agents naturally prefer flat structures because they are easier to generate in a single turn. P#110 forces the agent to do the harder cognitive work of structural mapping.
-
-## Tasks Require Purpose Context (P#106)
-
-Every task MUST be justifiable in terms of its parent's goals. If you can't articulate why a task exists in the context of its parent, it is either misplaced, missing an intermediate epic, or an orphan.
-
-**The WHY test:** Before creating a task, state: "We need [task] so that [parent goal] because [reason]." If you can't complete this sentence, the task needs restructuring.
-
-**Derivation**: Extends P#73 (Task Sequencing on Insert) from structural connection to semantic connection. A task can be connected to the graph yet still be incoherent if its purpose relative to its parent is unclear.
-
-## Match Type to Scale (P#107)
-
-Before creating a task, check its actual scope against the type hierarchy:
-
-- Multiple sessions + multiple deliverables → **epic**
-- One session, one deliverable → **task**
-- Under 30 minutes → **action**
-
-The most common error is creating a `type: task` for work that is actually epic-scale. "Incorporate longitudinal findings into paper" is not a task — it contains data collection, analysis, writing, and revision. It's an epic.
-
-**Derivation**: Operationalises the type hierarchy in TASK_FORMAT_GUIDE.md. Agents systematically underestimate scope and create shallow structures. This heuristic forces a scale check before type assignment.
-
-## Judgment Tasks Default Unassigned (P#102)
-
-Tasks requiring human judgment default to `assignee: null`. Only mechanical work defaults to `assignee: polecat`.
-
-**Corollaries**:
-
-- Default to `polecat`. A task only needs `assignee: null` when it literally cannot proceed without a human decision RIGHT NOW — not because design decisions exist somewhere in the task.
-- Workers decompose tasks and escalate at actual decision forks (via `status: blocked` or AskUserQuestion). Pre-routing to human based on "this involves design choices" is premature.
-- Assign to `nic` only when explicitly requested by user (`/q nic: ...`).
-
-## Skills Commit After Brain Writes (P#103)
-
-Skills writing to `$ACA_DATA` MUST commit and push with a specific message describing what was written. Use `brain-push.sh` helper:
-
-```bash
-brain-push.sh "knowledge: tech/new-fact"
-```
-
-**Rationale**: Multiple writers (skills, task manager, /remember, manual edits) write to `$ACA_DATA`. Meaningful commit messages require the writer to say what they did—a generic sync cannot know intent.
-
-**Implementation**:
-
-- Primary path: Skills call `brain-push.sh "descriptive message"` after writing
-- Fallback: `brain-sync.sh` runs every 5 minutes via systemd timer, generating messages from paths
-- Conflict handling: Always rebase (no merge commits). On conflict, log to `${ACA_DATA}/.sync-failures.log`
-
-**Corollaries**:
-
-- `/remember` skill should commit with `knowledge: <topic>` message
-- Task manager updates should commit with `task: <task-id>` message
-- `/daily` should commit with `daily: YYYY-MM-DD` message
 
 ## Explain, Don't Ask (P#104)
 
@@ -388,43 +170,6 @@ When the agent needs to engage the user on definitions, clarifications, or open 
 **Why**: Context is precious. If the agent stops to ask "what did you mean by X?" before extracting decisions, creating tasks, and recording knowledge, the user's response will push the original work out of working memory. Handle everything you CAN handle first, then engage.
 
 **Derivation**: Extends P#59 (Action Over Clarification). P#59 says pick a task and start; P#108 says finish all extractable work before engaging on ambiguity.
-
-## Completion Loops Close Parent Goals (P#109)
-
-When decomposing work into subtasks, ALWAYS create a verify-parent task that depends on all subtasks. This task returns to the original problem and confirms it's fully solved or triggers another iteration.
-
-**Pattern**: After creating subtasks, create: `"Verify: [parent goal] fully resolved"` with `depends_on: [all-subtask-ids]` and `assignee: null`.
-
-**Why**: Subtasks completing does not mean the parent's goal was met. Without a completion loop, work is marked done prematurely and the original problem silently persists.
-
-**Relationship to P#71**: P#71 says complete the parent when decomposing. The verify task is not the parent — it's a NEW sibling task that checks the original goal after all implementation is done.
-
-**Derivation**: Addresses the systemic failure mode where agents complete subtasks but nobody checks the parent epic. This is the key mechanism for reliable multi-session task execution.
-
-## Standard Tooling Over Framework Gates (P#105)
-
-When proposing enforcement for repo-level rules (file structure, naming, content format), prefer standard git tooling (pre-commit hooks, CI checks) over framework-internal mechanisms (PreToolUse gates, custom hooks). Framework gates control agent behavior in real-time; repo structure rules belong in git.
-
-**Derivation**: Extends P#5 (Do One Thing) to enforcement design. The enforcement-map.md already shows the pattern: `data-markdown-only`, `check-orphan-files`, `check-skill-line-count` are all pre-commit hooks. New rules of the same kind should follow the same pattern, not escalate to a more complex enforcement layer.
-
-<a id="P115"></a>
-
-## Qualitative Evaluation Over Quantitative Heuristics (P#115)
-
-Quantitative indicators of quality will always fail because everything depends on context. There are a million ways to do something well; an output is not "wrong" because it takes a particular stylistic form or emphasises a different aspect than expected. We embrace probabilistic generation (the "bazaar" model), not constrain it.
-
-Replace mechanical quality checks (word counts, structural checklists, format enforcement) with LLM-driven qualitative evaluations applied **at the right moment** — after generation, not during it. The question is never "does this match a template?" but "does this serve the person it was made for?"
-
-**Corollaries**:
-
-- Instructions should define WHAT outcome is needed and WHY, not prescribe HOW to achieve it
-- When reviewing agent output, evaluate fitness-for-purpose in context, not compliance with procedural steps
-- Quantitative metrics (compliance rates, line counts, format scores) are useful only as signals that trigger qualitative review — never as verdicts
-- **You cannot automate a quality judgment you haven't exercised.** Before building automated quality gates for any new process, an agent must personally perform the qualitative review on real output, document what signals distinguished good from bad, and get user validation. This is P#22 (Dogfooding) applied to quality assurance — the review process itself must be dogfooded before codification.
-
-**Derivation**: Extends P#92 (Probabilistic Methods, Deterministic Processes). P#92 establishes that we embrace probabilistic methods; P#115 draws the consequence for quality assurance — probabilistic outputs require qualitative evaluation, not quantitative measurement. The /qa skill's Qualitative Assessment mode operationalises this principle.
-
-<a id="P116"></a>
 
 ## Delegate Agency to Capable Agents (P#116)
 
@@ -534,21 +279,3 @@ Age is not a staleness signal. Never cancel based on age alone. Only cancel when
 ## Dispatch Specialist-Owned Tasks (P#124)
 
 When operating as supervisor (top-level interactive session) and a claimed task has an `assignee` matching a specialist sub-agent namespace (`aops-core:<name>`, `aops-cowork:<name>`, or the bare name `polecat`), the main agent MUST dispatch via the Agent tool with `subagent_type` set to the bare name — NOT execute inline with Read/Grep/Bash. See `/pull` Step 1.7 for the short-circuit. Inline execution by the supervisor erases the specialist's audit trail and bypasses the agent's specialised prompt.
-
----
-
-# Framework Architecture
-
-The heuristics that describe how the framework itself is built have been migrated to the [[skills/aops/SKILL.md|aops skill]].
-
-These include:
-
-- Self-Documenting (P#10)
-- Always Dogfooding (P#22)
-- Skills Are Read-Only (P#23)
-- Trust Version Control (P#24)
-- Plan-First Development (P#41)
-- Just-In-Time Context (P#43)
-- Memory Model (P#46)
-- Agents Execute Workflows (P#47)
-- No Shitty NLP (P#49)
