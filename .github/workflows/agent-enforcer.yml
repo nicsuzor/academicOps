@@ -214,7 +214,7 @@ jobs:
           retention-days: 30
 
       - name: Propagate agent exit status
-        if: always() && steps.workflow-run-pr.outputs.skip != 'true'
+        if: always()
         run: |
           if [ "${{ steps.review.outcome }}" != "success" ]; then
             echo "::error::Enforcer agent run failed. Session artifacts uploaded for post-mortem analysis."
