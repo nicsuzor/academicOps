@@ -15,6 +15,21 @@ tools:
   - mcp__plugin_aops-core_pkb__pkb_context
   - mcp__plugin_aops-core_pkb__append
   - mcp__plugin_aops-core_pkb__complete_task
+file_access:
+  read:
+    - "**/*"
+  write:
+    - "**/*.md"
+    - "**/*.py"
+    - "**/*.yaml"
+    - "**/*.yml"
+    - "**/*.json"
+    - "!**/.env*"
+    - "!**/secrets/**"
+mcp_servers:
+  - aops-core_pkb
+subagents: []
+skills: []
 ---
 
 # RBG — The Judge
@@ -32,4 +47,3 @@ You are a rigorous logician. You carry the universal axioms as instinctive knowl
 ## Fix what you can
 
 Where the correction is clear, you MUST attempt the fix yourself.
-

@@ -1,0 +1,123 @@
+# Agent Compliance Lint
+#
+# Enforces structural/policy invariants on agent definitions in
+# aops-core/agents/ and .github/agents/. Lint tool at
+# aops-core/scripts/agent_compliance_lint.py is the SSoT for rules.
+#
+# Spec: PKB docs `agents-f552b6c1` and `skill-delegation`.
+#
+# Rollout posture: NON-BLOCKING soft gate. Fails only when
+# summary.errors > 0; warnings are surfaced but non-fatal.
+# See "Promotion path" below to tighten.
+
+name: agent-compliance-lint
+
+on:
+  pull_request:
+    paths:
+      - 'aops-core/agents/**'
+      - '.github/agents/**'
+      - 'aops-core/scripts/agent_compliance_lint.py'
+      - 'aops-core/policies/bash_scopes.toml'
+      - '.github/workflows/agent-compliance-lint.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'aops-core/agents/**'
+      - '.github/agents/**'
+      - 'aops-core/scripts/agent_compliance_lint.py'
+      - 'aops-core/policies/bash_scopes.toml'
+      - '.github/workflows/agent-compliance-lint.yml'
+  workflow_dispatch:
+
+# Minimum required: read the repo, and (future) post a sticky comment.
+permissions:
+  contents: read
+  pull-requests: write
+
+# Cancel superseded runs on the same PR / ref.
+concurrency:
+  group: agent-compliance-lint-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Agent Compliance Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # Match pr-pipeline.yml / lint.yml: actions/checkout@v4, default ref.
+      - uses: actions/checkout@v4
+
+      # Match other workflows: Python 3.11 (3.12 in .python-version is for
+      # local dev; CI is pinned to 3.11 across lint.yml and pytest.yml).
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      # `uv sync --frozen` matches lint.yml/pytest.yml; pyyaml comes in
+      # via the project's existing dependency tree.
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      # ─── Promotion path ─────────────────────────────────────────────
+      # To make this a HARD gate once errors hit zero:
+      #   (a) Add `--strict` below (warnings -> errors), OR
+      #   (b) Remove `continue-on-error` and let lint exit propagate.
+      # Promote only after main shows summary.errors == 0 stably.
+      - name: Run agent compliance lint (JSON)
+        id: lint
+        continue-on-error: true
+        run: |
+          python aops-core/scripts/agent_compliance_lint.py \
+            --format json \
+            > lint-output.json
+
+      # Human-readable rerun for the job log; never fails the step —
+      # the JSON run above is the SSoT for the failure decision.
+      - name: Print human-readable summary
+        if: always()
+        run: |
+          echo "::group::Agent compliance lint (text format)"
+          python aops-core/scripts/agent_compliance_lint.py --format text || true
+          echo "::endgroup::"
+          echo "::group::Summary (from JSON)"
+          python -c "import json; s=json.load(open('lint-output.json'))['summary']; print(f\"files_checked={s['files_checked']} errors={s['errors']} warnings={s['warnings']}\")" || true
+          echo "::endgroup::"
+
+      # Persist the structured output so reviewers can fetch it from the
+      # run page (the PR comment, if added later, links here rather than
+      # inlining the full violation list).
+      - name: Upload lint results artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-compliance-lint-results
+          path: lint-output.json
+          if-no-files-found: warn
+
+      # Soft-gate failure decision: fail iff `summary.errors > 0`.
+      # Warnings are intentionally non-fatal during initial rollout.
+      - name: Fail on errors
+        if: always()
+        run: |
+          python - <<'PY'
+          import json, sys
+          try:
+              data = json.load(open("lint-output.json"))
+          except Exception as e:
+              print(f"::error::Could not read lint-output.json: {e}")
+              sys.exit(2)
+          errs = data.get("summary", {}).get("errors", 0)
+          warns = data.get("summary", {}).get("warnings", 0)
+          print(f"errors={errs} warnings={warns}")
+          if errs > 0:
+              print(f"::error::agent-compliance-lint reported {errs} error(s)")
+              sys.exit(1)
+          PY

@@ -1,6 +1,7 @@
 ---
 name: merge-prep
 description: Diligent PR janitor — triages all review feedback, fixes issues, resolves conflicts, and signals readiness for merge
+runtime: github-actions
 ---
 
 # Name: Merge Prep

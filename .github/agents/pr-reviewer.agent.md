@@ -1,6 +1,7 @@
 ---
 name: pr-reviewer
 description: Portable PR reviewer — axiom-driven review with direct fixes, installable on any repo
+runtime: github-actions
 ---
 
 # PR Reviewer

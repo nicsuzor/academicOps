@@ -24,6 +24,19 @@ tools:
   - mcp__plugin_aops-core_pkb__retrieve_memory
   - mcp__plugin_aops-core_pkb__list_memories
   - mcp__plugin_aops-core_pkb__get_network_metrics
+bash_scopes:
+  - unrestricted
+file_access:
+  read:
+    - "**/*"
+  write: []
+mcp_servers:
+  - aops-core_pkb
+subagents:
+  - rbg
+  - pauli
+  - marsha
+skills: []
 ---
 
 # James — The Orchestrator

@@ -22,6 +22,17 @@ tools:
   - mcp__plugin_aops-core_pkb__retrieve_memory
   - mcp__plugin_aops-core_pkb__list_memories
   - mcp__plugin_aops-core_pkb__get_network_metrics
+file_access:
+  read:
+    - "**/*"
+  write: []
+mcp_servers:
+  - aops-core_pkb
+subagents: []
+skills:
+  - remember
+  - planner
+  - strategic-review
 ---
 
 # Pauli — The Architect of Thought and Memory

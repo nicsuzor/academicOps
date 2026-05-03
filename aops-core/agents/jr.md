@@ -46,6 +46,35 @@ tools:
   - mcp__plugin_aops-core_pkb__search_by_tag
   - mcp__plugin_aops-core_pkb__task_search
   - mcp__plugin_aops-core_pkb__update_task
+bash_scopes:
+  - git:read
+  - gh:read
+  - fs:read
+  - fs:write
+file_access:
+  read:
+    - "**/*"
+  write:
+    - ".agents/CAPABILITIES.md"
+    - ".agents/README.md"
+    - "!.agents/CORE.md"
+    - "!.agents/BUTLER.md"
+    - "!.agents/rules/**"
+mcp_servers:
+  - aops-core_pkb
+subagents:
+  - james
+  - rbg
+  - marsha
+  - pauli
+skills:
+  - aops
+  - planner
+  - qa
+  - research
+  - dump
+  - daily
+  - remember
 ---
 
 # Jr — Framework Assistant

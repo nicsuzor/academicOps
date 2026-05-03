@@ -7,6 +7,7 @@ tools:
   - Read
   - Bash
   - Skill
+  - Agent
   - mcp__playwright__browser_navigate
   - mcp__playwright__browser_navigate_back
   - mcp__playwright__browser_click
@@ -37,6 +38,25 @@ tools:
   - mcp__plugin_aops-core_pkb__get_task_children
   - mcp__plugin_aops-core_pkb__pkb_orphans
   - mcp__plugin_aops-core_pkb__get_network_metrics
+bash_scopes:
+  - pytest
+  - ruff
+  - fs:read
+  - net:http
+  - pkg:install
+  - git:read
+  - gh:read
+file_access:
+  read:
+    - "**/*"
+  write: []
+mcp_servers:
+  - playwright
+  - aops-core_pkb
+subagents:
+  - rbg
+skills:
+  - qa
 ---
 
 # Marsha — The QA Reviewer

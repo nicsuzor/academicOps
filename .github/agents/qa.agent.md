@@ -1,6 +1,7 @@
 ---
 name: qa
 description: Independent QA verification for pull requests — proves things work, doesn't just review on paper
+runtime: github-actions
 ---
 
 > **Curia**: QA (GitHub surface). Local skill: `.agents/skills/qa/SKILL.md`. See `.agents/curia/CURIA.md`.
