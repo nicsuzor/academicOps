@@ -107,19 +107,6 @@ Tests should NOT use `pytest.skip` to mask configuration errors, missing depende
 
 **Derivation**: Surfacing environment issues immediately allows for faster remediation and prevents tests from providing a false sense of security. See [[python-dev-testing]].
 
-## Test Isolation via Environment Redirection (P#118)
-
-When running tests under restrictive environments (like macOS Seatbelt), redirect all global/system write paths to temporary test-local directories via environment variables.
-
-**Required Redirections**:
-
-- `TMPDIR` → `tmp_path` (prevents PermissionError in `/tmp`)
-- `CLAUDE_CONFIG_DIR` → `tmp_path/.claude` (prevents PermissionError in `~/.claude/debug`)
-- `AOPS_SESSION_STATE_DIR` → `tmp_path/state` (prevents PermissionError in project-derived paths)
-- `UV_CACHE_DIR` → `tmp_path/uv_cache` (prevents PermissionError in shared uv cache)
-
-**Derivation**: Ensures E2E and integration tests can perform necessary side effects (logging, state persistence) without violating Seatbelt policies.
-
 ## Preserve Pre-Existing Content (P#87)
 
 Content you didn't write in this session is presumptively intentional. Append rather than replace. Never delete without explicit instruction.
