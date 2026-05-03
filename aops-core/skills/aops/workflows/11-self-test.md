@@ -1,3 +1,5 @@
+# Self-Test Workflow
+
 1. Hook Gates Verification
    Testing the four layers of session infrastructure:
 
