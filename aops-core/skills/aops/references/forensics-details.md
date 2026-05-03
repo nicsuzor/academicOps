@@ -12,7 +12,13 @@ This reference provides the specific knowledge needed to diagnose hook and gate 
 
 ## Hook JSONL Schema
 
-Hook events are logged to `$AOPS_SESSIONS/hooks/<YYYYMMDD>-<session-short-hash>-hooks.jsonl` by `unified_logger.py`. Each line is a JSON object.
+Hook events are logged by `unified_logger.py` next to the session stream they instrument (PKB kb-d8f58167):
+
+- Claude: `~/.claude/projects/<workspace>/<session-id>-hooks.jsonl`
+- Gemini: `~/.gemini/tmp/<workspace>/logs/<unified>-hooks.jsonl`
+- Polecat workers: `$POLECAT_HOME/polecats/<task-id>/<workspace>/<session-id>-hooks.jsonl`
+
+Each line is a JSON object. Hook logs are local-only — they are not synced to the sessions repo.
 
 ### Key Fields
 
@@ -54,14 +60,15 @@ This is the most important field for forensics. Written by `unified_logger.py:69
 
 ### Finding Files for a Session
 
-| Artifact              | Location                              | Pattern                                                   |
-| --------------------- | ------------------------------------- | --------------------------------------------------------- |
-| Hook JSONL            | `$AOPS_SESSIONS/hooks/`               | `<YYYYMMDD>-<session-short-hash>-hooks.jsonl`             |
-| Enforcer audit        | `$AOPS_SESSIONS/hooks/`               | `<YYYYMMDD>-<session-short-hash>-enforcer.md`             |
-| Session state         | `$AOPS_SESSION_STATE_DIR/`            | `<YYYYMMDD>-<HH>-<session-short-hash>.json`               |
-| Transcript (full)     | `$POLECAT_HOME/sessions/transcripts/` | `<YYYYMMDD>-<HH>-<worktree-name>-<session>-*-full.md`     |
-| Transcript (abridged) | `$POLECAT_HOME/sessions/transcripts/` | `<YYYYMMDD>-<HH>-<worktree-name>-<session>-*-abridged.md` |
-| CC session JSONL      | `~/.claude/projects/<project-dir>/`   | `<session-uuid>.jsonl`                                    |
+| Artifact              | Location                            | Pattern                                                   |
+| --------------------- | ----------------------------------- | --------------------------------------------------------- |
+| CC session JSONL      | `~/.claude/projects/<project-dir>/` | `<session-uuid>.jsonl`                                    |
+| Hook JSONL            | `~/.claude/projects/<project-dir>/` | `<session-id>-hooks.jsonl` (co-located with session)      |
+| Enforcer audit        | `~/.claude/projects/<project-dir>/` | `<session-id>-enforcer.md` (co-located with session)      |
+| Custodiet audit       | `~/.claude/projects/<project-dir>/` | `<session-id>-custodiet.md` (co-located with session)     |
+| Session state         | `$AOPS_SESSION_STATE_DIR/`          | `<YYYYMMDD>-<HH>-<session-short-hash>.json`               |
+| Transcript (full)     | `$AOPS_SESSIONS/transcripts/`       | `<YYYYMMDD>-<HH>-<worktree-name>-<session>-*-full.md`     |
+| Transcript (abridged) | `$AOPS_SESSIONS/transcripts/`       | `<YYYYMMDD>-<HH>-<worktree-name>-<session>-*-abridged.md` |
 
 ### Example Local Paths
 
@@ -171,7 +178,7 @@ for line in sys.stdin:
 Polecat worktree sessions have `cwd` containing `.claude/worktrees/`:
 
 ```bash
-for f in $AOPS_SESSIONS/hooks/*.jsonl; do
+for f in ~/.claude/projects/*/*-hooks.jsonl; do
     head -1 "$f" 2>/dev/null | python3 -c "
 import sys, json
 try:

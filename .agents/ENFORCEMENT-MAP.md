@@ -46,9 +46,9 @@ PR #805 and issue #806.
 
 Static guidance embedded in `.agents/CORE.md` and loaded into every agent session context for this repo. Unlike hooks, these are not event-triggered — they are part of the agent's context window whenever it works in academicOps.
 
-| Directive    | Source                                                    | Rule(s)                              | Scope            | Tier   | Behaviour                                                                                                                                                                              |
-| ------------ | --------------------------------------------------------- | ------------------------------------ | ---------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pkb-first`  | `.agents/CORE.md` — "Where to find documentation" section | (procedural: PKB-first discovery)    | academicOps repo | `hint` | Instructs agents to read `brain/projects/aops/specs/INDEX` before reading source code. Provides links to spec MOC, project hub, and vision. Explicitly warns that reading source first means skipping this step. Added in PR #876 (task aops-e17e4e64). |
+| Directive   | Source                                                    | Rule(s)                           | Scope            | Tier   | Behaviour                                                                                                                                                                                                                                               |
+| ----------- | --------------------------------------------------------- | --------------------------------- | ---------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pkb-first` | `.agents/CORE.md` — "Where to find documentation" section | (procedural: PKB-first discovery) | academicOps repo | `hint` | Instructs agents to read `brain/projects/aops/specs/INDEX` before reading source code. Provides links to spec MOC, project hub, and vision. Explicitly warns that reading source first means skipping this step. Added in PR #876 (task aops-e17e4e64). |
 
 ## Composition-time prompt-prose checks (in-agent, no hook)
 
@@ -62,11 +62,6 @@ to hooks or CI — enforced by the agent's own instructions.
 | `supervisor A8 prose scan`   | `aops-core/skills/supervisor/SKILL.md` § "Engineering Integrity (A8) Is Non-Negotiable"        | A8              | Supervisor skill sessions during decomposition and plan-review | `block` | Prohibits drift-framing phrases (#821 blacklist) in triage tables, subtask bodies, and user-facing summaries. Requires rewrite before posting.                                      |
 | `supervisor decomp A8 gate`  | `aops-core/skills/supervisor/instructions/decomposition-and-review.md` § "A8 prose scan"       | A8              | Supervisor decomposition phase (Post-Decomposition Self-Check) | `block` | Mandatory prose scan of every subtask body and plan-review summary before posting. Prohibited phrase + structural patterns; rewrite to fix-only decomposition if triggered.         |
 
-## User-side cron enforcement
-
-Periodic enforcement scripts invoked by user-managed cron jobs. Run outside agent sessions and outside CI.
-
-_(none — `user-side-pr-review` retired in PR #895: review agents are invoked by callers, not coerced via cron/regex on stdout.)_
 
 ## Whole-repo audits (advisory; not wired to commit/CI)
 
@@ -74,24 +69,3 @@ _(none — `user-side-pr-review` retired in PR #895: review agents are invoked b
 | ------------------------ | ----------------------------------- | ---------------------- | ---------- | ------------------------------------------------------------ |
 | `check-orphan-files`     | `scripts/check_orphan_files.py`     | (wikilink orphans)     | `advisory` | Exits 0; reports files with no incoming wikilinks            |
 | `check-skill-line-count` | `scripts/check_skill_line_count.py` | (SKILL.md ≤ 500 lines) | `advisory` | Exits 1 when any SKILL.md exceeds 500 lines; lists offenders |
-
-## Notes
-
-- `rbg pre-response A8 scan` — renamed to `rbg a8-instinct` in PR #891; `§ "Hard gates (instincts, not phrase matches)"` renamed to `§ "How you judge"` and combined-lenses framing removed in PR #895. A8 enforcement is now embedded as an instinct in `§ "How you judge"`.
-- `data-markdown-only` — referenced in HEURISTICS.md P#105 as a pre-commit hook
-  example; superseded by `check-no-new-orphan-md` (R5.6, added in PR #793).
-- Hooks with tier `warn` exit non-zero to block the commit but agents may
-  surface the add to the user and proceed under R8.1 in-session authorisation
-  (`--no-verify`).
-- Hooks with tier `block` represent hard constraints; `--no-verify` is itself
-  prohibited by R8.1 for this tier.
-- Hooks with tier `advisory` are not invoked by pre-commit or CI. The scripts
-  exist for ad-hoc audits but do not gate any workflow.
-- `check-skill-line-count` was deliberately removed from CI: the 500-line cap
-  was too aggressive for legitimate skill content. The script is retained for
-  manual audits, but the cap is not enforced. If we later want a length
-  signal, set a higher threshold or convert to a soft warning rather than
-  re-wiring the existing exit-1 behaviour.
-- `check-orphan-files` wiring is undecided — the orphan question is real but
-  the current threshold/scope hasn't been validated. Leaving advisory until
-  triaged.

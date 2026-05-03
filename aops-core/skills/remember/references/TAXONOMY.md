@@ -171,13 +171,13 @@ The tree hierarchy is a **spanning tree** of the underlying dependency graph. It
 
 The single canonical definition of priority. Other framework documents MUST link here rather than redefine these labels locally.
 
-| Label | Name          | Meaning                                                                                                                            |
-| ----- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| P0    | Critical      | Blocking work, deadline overdue, or active incident. Drop everything. The default for "urgent" — escalate immediately.             |
-| P1    | Active intent | Important to the user right now; should be in-flight this week. Has near-term consequence if it slips.                             |
-| P2    | Active work   | Routine in-flight work. Scheduled and in the active working window. Promoted deliberately from P3 by the user or planner.          |
-| P3    | Planned       | On the roadmap; not yet active. **Default for new tasks** — promoted to P2 when the user schedules them.                           |
-| P4    | Backlog       | Logged for the record. May never be done; survives only because deletion is more expensive than retention.                         |
+| Label | Name          | Meaning                                                                                                                   |
+| ----- | ------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| P0    | Critical      | Blocking work, deadline overdue, or active incident. Drop everything. The default for "urgent" — escalate immediately.    |
+| P1    | Active intent | Important to the user right now; should be in-flight this week. Has near-term consequence if it slips.                    |
+| P2    | Active work   | Routine in-flight work. Scheduled and in the active working window. Promoted deliberately from P3 by the user or planner. |
+| P3    | Planned       | On the roadmap; not yet active. **Default for new tasks** — promoted to P2 when the user schedules them.                  |
+| P4    | Backlog       | Logged for the record. May never be done; survives only because deletion is more expensive than retention.                |
 
 **Lower number = higher priority.** When sorting "highest priority first", sort ascending by label number (`P0` before `P1` before `P2`, etc.).
 

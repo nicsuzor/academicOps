@@ -12,6 +12,7 @@ Usage:
 
 import argparse
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -74,124 +75,12 @@ def _load_transcript_config() -> dict:
         return {}
 
 
-MAX_CLIENT_LOG_BYTES = 30 * 1024 * 1024
-
-
-def sync_client_log(session_path: Path, session_id: str, date: datetime | None = None) -> None:
-    """Sync raw client log to $AOPS_SESSIONS/client-logs/ under a stable name.
-
-    One file per sessionId: ``{session_id}-client.{ext}``. Overwrites in place
-    so long-running sessions don't fan out into hundreds of timestamped copies.
-    Prefer hardlink for efficiency, fallback to copy for cross-filesystem scenarios.
-    The ``date`` parameter is accepted for backwards compatibility and ignored.
-    """
-    if session_path.is_dir():
-        # Antigravity brain sessions are directories, skip for now
-        return
-
-    try:
-        sessions_root = get_sessions_repo()
-        client_logs_dir = sessions_root / "client-logs"
-        try:
-            client_logs_dir.mkdir(parents=True, exist_ok=True)
-        except (PermissionError, OSError) as e:
-            # AOPS_SESSIONS may point to an unreachable host path (crew
-            # containers without a volume mount). Skip sync quietly.
-            print(f"⚠️  client-logs dir unreachable ({e}); skipping sync", file=sys.stderr)
-            return
-
-        src_stat = session_path.stat()
-        # GitHub rejects blobs >100MB. Cap at 30MB so headroom survives growth
-        # between sync ticks and so even a dozen mega-sessions stay under the
-        # sessions-repo push budget.
-        if src_stat.st_size > MAX_CLIENT_LOG_BYTES:
-            print(
-                f"⚠️  client log {session_path.name} is {src_stat.st_size / 1_000_000:.0f}MB "
-                f"(> {MAX_CLIENT_LOG_BYTES // 1_000_000}MB cap); skipping sync",
-                file=sys.stderr,
-            )
-            return
-
-        # Stable per-session name via the unified v4 naming convention.
-        # session_id is already unique per live session; slug defaults to
-        # "session" so the filename stays stable across syncs. Legacy
-        # timestamped duplicates are swept below.
-        crew_name = None
-        for category_plural in ("polecats", "crew"):
-            if category_plural in session_path.parts:
-                idx = session_path.parts.index(category_plural)
-                if len(session_path.parts) > idx + 1:
-                    crew_name = session_path.parts[idx + 1]
-                    break
-        repo = _infer_project(session_path)
-        try:
-            timestamp = datetime.fromtimestamp(session_path.stat().st_mtime).astimezone()
-        except OSError:
-            timestamp = datetime.now().astimezone()
-        target_name = session_naming.generate_session_filename(
-            session_id=session_id,
-            timestamp=timestamp,
-            slug="session",
-            crew_name=crew_name,
-            repo=repo,
-            artifact_type="client",
-            task_id=os.environ.get("AOPS_TASK_ID"),
-        )
-        target_path = client_logs_dir / target_name
-
-        if target_path.exists():
-            tgt_stat = target_path.stat()
-            # Same inode (hardlink already in place) → nothing to do
-            if tgt_stat.st_ino == src_stat.st_ino:
-                _sweep_legacy_client_logs(client_logs_dir, session_id, target_name)
-                return
-            # Already current → nothing to do
-            if tgt_stat.st_mtime >= src_stat.st_mtime and tgt_stat.st_size == src_stat.st_size:
-                _sweep_legacy_client_logs(client_logs_dir, session_id, target_name)
-                return
-            target_path.unlink()
-
-        try:
-            # Prefer hardlink (fastest, same filesystem)
-            os.link(session_path, target_path)
-        except OSError:
-            # Fallback to copy (cross-filesystem, e.g. container to host)
-            shutil.copy2(session_path, target_path)
-
-        try:
-            target_path.chmod(0o644)
-        except OSError:
-            pass
-
-        _sweep_legacy_client_logs(client_logs_dir, session_id, target_name)
-
-        print(f"🔄 Synced client log: {target_name}")
-
-    except Exception as e:
-        print(f"⚠️  Failed to sync client log: {e}", file=sys.stderr)
-
-
-def _sweep_legacy_client_logs(client_logs_dir: Path, session_id: str, keep: str) -> None:
-    """Delete old timestamped duplicates for this session_id.
-
-    Handles two legacy schemes emitted by older plugin-cache versions:
-      - ``YYYYMMDD-HH-{shorthash}-client.*`` (hour bucket, shorthash = session_id[:8])
-      - ``YYYYMMDD-HHMM-{session_id}-...-client.*`` (minute bucket with slug)
-    """
-    shorthash = session_id[:8]
-    patterns = (
-        f"*-{shorthash}-client.*",
-        f"*-{shorthash}-*-client.*",
-        f"*-{session_id}-*-client.*",
-    )
-    for pattern in patterns:
-        for stale in client_logs_dir.glob(pattern):
-            if stale.name == keep:
-                continue
-            try:
-                stale.unlink()
-            except OSError:
-                pass
+# Note: the former `sync_client_log` / `_sweep_legacy_client_logs` mirror to
+# `$AOPS_SESSIONS/client-logs/` was removed on 2026-05-02. Per PKB kb-d8f58167,
+# raw client logs are local-only and live where the provider writes them
+# (`~/.claude/projects/<workspace>/<sid>.jsonl`, `~/.gemini/tmp/...`,
+# `$POLECAT_HOME/polecats/<task-id>/...`). The sessions repo only carries
+# distilled `transcripts/` and `summaries/`.
 
 
 def _is_excluded_project(project: str, config: dict | None = None) -> bool:
@@ -345,11 +234,36 @@ def _save_minimal_token_summary(
     else:
         date_iso = datetime.now().astimezone().replace(microsecond=0).isoformat()
 
+    task_id = os.environ.get("AOPS_TASK_ID")
+    if not task_id and timeline_events:
+        for event in timeline_events:
+            if event.get("type") in (
+                "task_create",
+                "task_update",
+                "task_complete",
+                "task_release",
+            ) and event.get("task_id"):
+                task_id = event["task_id"]
+                break
+
+    # Determine stable project if we only have a UUID fragment
+    stable_project = project
+    if (
+        not stable_project
+        or re.match(r"^[0-9a-f]{8,}$", stable_project)
+        or re.match(r"^[0-9a-f\-]{36}$", stable_project)
+    ):
+        if timeline_events:
+            for event in timeline_events:
+                if event.get("type") == "task_create" and event.get("project"):
+                    stable_project = event["project"]
+                    break
+
     # Build minimal insights with token_metrics
     insights = {
         "session_id": session_id,
         "date": date_iso,
-        "project": project,
+        "project": stable_project,
         "summary": None,  # No reflection = no summary
         "outcome": None,  # No reflection = unknown outcome
         "accomplishments": [],
@@ -360,14 +274,19 @@ def _save_minimal_token_summary(
         "hostname": session_naming.get_hostname(),
         "provider": session_naming.get_provider_name(),
         "crew": os.environ.get("POLECAT_CREW_NAME"),
-        "repo": project,
-        "task_id": os.environ.get("AOPS_TASK_ID"),
+        "repo": stable_project,
+        "task_id": task_id,
         "token_metrics": usage_stats.to_token_metrics(session_duration_minutes),
     }
 
     # Timeline events for path reconstruction
     if timeline_events:
         insights["timeline_events"] = timeline_events
+        # Elevate PR URL to root if found
+        for event in timeline_events:
+            if event.get("type") == "pr_create" and event.get("pr_url"):
+                insights["pr_url"] = event["pr_url"]
+                break
 
     try:
         # Check for existing insights. If the source jsonl has grown since the
@@ -938,12 +857,11 @@ def git_sync():
 
         print(f"Syncing changes in {sessions_root}...")
 
-        add_paths = ["transcripts/", "summaries/"]
-        for optional in ("hooks", "client-logs", "status"):
-            if (sessions_root / optional).exists():
-                add_paths.append(f"{optional}/")
+        # Policy: only transcripts/ and summaries/ are pushed. Raw substrate
+        # (client-logs/, hooks/, polecats/, github/) is local-only — see
+        # PKB kb-d8f58167 (Session Log Observability Map).
         subprocess.run(
-            ["git", "add", *add_paths],
+            ["git", "add", "transcripts/", "summaries/"],
             cwd=str(sessions_root),
             check=True,
         )
@@ -1084,10 +1002,6 @@ Examples:
             try:
                 session_path = s.path if hasattr(s, "path") else Path(str(s))
                 session_id = _get_session_id(session_path)
-
-                # Sync raw client log to $AOPS_SESSIONS/client-logs/
-                # Do this early so it happens even if skipped for other reasons
-                sync_client_log(session_path, session_id)
 
                 # Early mtime check: skip if transcript already exists and is current
                 existing_transcript = _find_existing_transcript(sessions_claude, session_id)
@@ -1286,10 +1200,7 @@ Examples:
     try:
         print(f"📝 Processing session: {session_path}")
 
-        # Extract session ID for early log sync
         session_id = _get_session_id(session_path)
-        # Sync raw client log to $AOPS_SESSIONS/client-logs/
-        sync_client_log(session_path, session_id)
 
         session_summary, entries, agent_entries = processor.parse_session_file(str(session_path))
 

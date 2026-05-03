@@ -236,19 +236,11 @@ def get_hook_log_path(
         task_id=os.environ.get("AOPS_TASK_ID"),
     )
 
-    # Unify hook logging: Always prefer centralized AOPS_SESSIONS if reachable
-    aops_sessions = os.environ.get("AOPS_SESSIONS")
-    if aops_sessions:
-        logs_dir = Path(aops_sessions).resolve() / "hooks"
-        try:
-            logs_dir.mkdir(parents=True, exist_ok=True)
-            return logs_dir / filename
-        except (PermissionError, OSError):
-            # AOPS_SESSIONS points to an unreachable host path (common in crew
-            # containers without a volume mount). Fall through to local path.
-            pass
-
-    # Determine log directory based on session type
+    # Hooks live next to their session stream — see PKB kb-d8f58167.
+    # No centralized $AOPS_SESSIONS/hooks/ aggregation: that broke the
+    # invariant that everything for a session is in one directory and
+    # made polecat/container handoff messier (the host couldn't tell
+    # which hook log belonged to which extracted session dir).
     if _is_gemini_session(session_id, transcript_path):
         # Gemini: write to logs/ directory in state dir
         logs_dir = get_gemini_logs_dir(transcript_path)
@@ -447,18 +439,9 @@ def get_gate_file_path(
     )
     filename = f"{base}-{gate}.md"
 
-    # Unify gate logging: Always prefer centralized AOPS_SESSIONS if reachable
-    aops_sessions = os.environ.get("AOPS_SESSIONS")
-    if aops_sessions:
-        logs_dir = Path(aops_sessions).resolve() / "hooks"
-        try:
-            logs_dir.mkdir(parents=True, exist_ok=True)
-            return logs_dir / filename
-        except (PermissionError, OSError):
-            # AOPS_SESSIONS points to an unreachable host path (common in crew
-            # containers without a volume mount). Fall through to local path.
-            pass
-
+    # Gate context files live next to their session stream — see PKB
+    # kb-d8f58167. No centralized $AOPS_SESSIONS/hooks/ aggregation;
+    # everything for one session stays in one directory.
     if _is_gemini_session(session_id, transcript_path):
         logs_dir = get_gemini_logs_dir(transcript_path)
         if logs_dir is None:

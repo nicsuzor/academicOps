@@ -99,17 +99,12 @@ def main():
     state = load_state()
     gha_sessions_dir = get_gha_sessions_dir()
 
-    # Register this script in AOPS_SESSIONS/.gitignore if not already there
-    # (Matches sibling task-1dc07d00 pattern)
-    gitignore = get_sessions_repo() / ".gitignore"
-    if gitignore.exists():
-        content = gitignore.read_text()
-        import re
-
-        if not re.search(r"\bgithub/\b", content):
-            with open(gitignore, "a") as f:
-                f.write("\n# GHA session artifacts\ngithub/\n")
-                print(f"➕ Added github/ to {gitignore}")
+    # Note: a previous version appended `github/` to `$AOPS_SESSIONS/.gitignore`
+    # on every run. That auto-registration is no longer needed: under the
+    # current policy (PKB kb-d8f58167) the sessions repo default-denies
+    # everything except `transcripts/` and `summaries/`, so `github/` is
+    # already ignored. The legacy block was also racy with cron and produced
+    # 800+ duplicate `github/` lines in the .gitignore.
 
     total_new = 0
     total_skipped = 0

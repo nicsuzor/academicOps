@@ -50,55 +50,11 @@ If the user's question is vague, ask for specifics:
 
 Map the review question to available data. For any framework component, there are typically MULTIPLE data sources at different levels of detail:
 
-| Data Source                                    | What It Contains                                                                                                                | Location                                    |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| **Markdown transcripts** (your primary source) | Full conversation pre-rendered in readable markdown. Both abridged (`*-abridged.md`) and full (`*-full.md`) forms. ~10K+ files. | `~/.aops/sessions/transcripts/`             |
-| **Raw session logs** (JSONL/JSON)              | Same content as markdown transcripts but in raw format. Use only if markdown isn't available.                                   | `~/.aops/sessions/client-logs/`             |
-| **Hook event logs** (JSONL)                    | Every hook event with full context: PreToolUse, PostToolUse, SubagentStart/Stop, verdicts                                       | `~/.aops/sessions/hooks/*-hooks.jsonl`      |
-| **Subagent transcripts**                       | Full output of subagents (e.g., RBG verdicts, Marsha QA) — referenced by `agent_transcript_path` in SubagentStop events         | Paths in hook JSONL SubagentStop events     |
-| **Audit files**                                | INPUT documents sent to review agents (e.g., enforcer context sent to RBG). These are INPUT, NOT output.                        | `~/.aops/sessions/hooks/*-enforcer.md` etc. |
-| **Session metadata**                           | Gate state, ops counts, blocked status                                                                                          | `~/.aops/sessions/polecats/*/`              |
-| **Session summaries**                          | High-level session overviews                                                                                                    | `~/.aops/sessions/summaries/`               |
-| **PKB tasks**                                  | Task lifecycle data                                                                                                             | Via `mcp__pkb__task_search`                 |
-
-**Critical distinction**: Audit files are INPUT to a review agent, not its output. To find what a review agent (e.g., RBG) actually concluded, look in:
-
-1. **Hook JSONL**: `SubagentStop` events with the agent type contain `last_assistant_message` (the verdict) and `agent_transcript_path` (the full transcript)
-2. **Session transcripts**: The full conversation shows what happened before and after the agent fired
-
-**Verify data exists** before proceeding:
-
-```bash
-ls -lt <data-path> | head -5
-ls <data-path> | wc -l
-```
-
-If the data source is empty or doesn't exist, report that and stop — don't fabricate analysis from missing data.
-
-**Understand the data's limitations upfront.** Before reading any files, determine:
-
-- Does this data source capture INPUT, OUTPUT, or both? (e.g., enforcer audit files are input to RBG, not RBG's verdict)
-- What ISN'T in this data? What would you need to answer the review question fully?
-- State these limitations in the report's executive summary, not buried in a confidence section at the end. If the data cannot answer the review question, that IS the primary finding.
-
-### 3. Build the Corpus Index
-
-Understand the shape of the data before sampling:
-
-```bash
-# Volume over time (files per day)
-ls <data-path> | sed 's/.*\///' | cut -c1-8 | sort | uniq -c | sort -rn
-
-# Size distribution (bigger files often = more interesting sessions)
-ls -lS <data-path> | head -20
-
-# Unique sessions (if naming includes session hashes)
-ls <data-path> | <extract-hash> | sort -u | wc -l
-```
-
-Record: total file count, date range, volume per day, size distribution. This goes in the report.
-
-**Format evolution warning**: Data formats change as the framework develops. Note the date of each file and don't penalize older files for format differences. Evaluate substance, not format.
+| Data Source                                    | What It Contains                                                                                                                | Location                                 |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| **Markdown transcripts** (your primary source) | Full conversation pre-rendered in readable markdown. Both abridged (`*-abridged.md`) and full (`*-full.md`) forms. ~10K+ files. | `~/.aops/sessions/transcripts/` (synced) |
+| **Session summaries**                          | High-level session overviews                                                                                                    | `~/.aops/sessions/summaries/`            |
+| **PKB tasks**                                  | Task lifecycle data                                                                                                             | Via `mcp__pkb__task_search`              |
 
 ### 4. Sample Strategically
 
