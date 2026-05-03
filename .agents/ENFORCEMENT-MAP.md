@@ -36,11 +36,10 @@ PR #805 and issue #806.
 
 ## Pre-commit hooks
 
-| Hook ID                     | Script                                 | Rule(s)                    | Tier    | Behaviour                                                                  |
-| --------------------------- | -------------------------------------- | -------------------------- | ------- | -------------------------------------------------------------------------- |
-| `check-no-new-orphan-md`    | `scripts/check_no_new_orphan_md.py`    | R5.6                       | `warn`  | Exits 1 on new `.md` files outside canonical-location allowlist            |
-| `check-framework-integrity` | `scripts/check_framework_integrity.py` | (wikilink index integrity) | `warn`  | Exits 1 on broken wikilinks or missing SKILLS/WORKFLOWS index entries      |
-| `lint-axiom-refs`           | `aops-core/lib/lint_axiom_refs.py`     | R1.1, R1.3                 | `block` | Exits 1 when `plugin.json` cites a non-existent or mis-parented Axiom/Rule |
+| Hook ID                     | Script                                 | Rule(s)                    | Tier   | Behaviour                                                             |
+| --------------------------- | -------------------------------------- | -------------------------- | ------ | --------------------------------------------------------------------- |
+| `check-no-new-orphan-md`    | `scripts/check_no_new_orphan_md.py`    | R5.6                       | `warn` | Exits 1 on new `.md` files outside canonical-location allowlist       |
+| `check-framework-integrity` | `scripts/check_framework_integrity.py` | (wikilink index integrity) | `warn` | Exits 1 on broken wikilinks or missing SKILLS/WORKFLOWS index entries |
 
 ## CORE.md directives (always-on)
 
@@ -56,12 +55,11 @@ Mechanisms embedded directly in agent prompt files. They fire when the
 agent composes or reviews output, before emitting to the user. Not wired
 to hooks or CI — enforced by the agent's own instructions.
 
-| Mechanism                    | Source                                                                                          | Rule(s)         | Scope                                                          | Tier    | Behaviour                                                                                                                                                                           |
-| ---------------------------- | ----------------------------------------------------------------------------------------------- | --------------- | -------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `rbg a8-instinct`            | `aops-core/agents/rbg.md` § "How you judge"                                                     | A8              | All rbg PR review sessions                                     | `block` | Applies A8 instinct check to every PR review. Emits `REQUEST_CHANGES` when workaround-offer or drift-framing patterns detected. Instinct-based (no phrase-match enumeration) — restructured from `rbg pre-response A8 scan` in PR #891; combined-lenses framing removed in PR #895. |
-| `supervisor A8 prose scan`   | `aops-core/skills/supervisor/SKILL.md` § "Engineering Integrity (A8) Is Non-Negotiable"        | A8              | Supervisor skill sessions during decomposition and plan-review | `block` | Prohibits drift-framing phrases (#821 blacklist) in triage tables, subtask bodies, and user-facing summaries. Requires rewrite before posting.                                      |
-| `supervisor decomp A8 gate`  | `aops-core/skills/supervisor/instructions/decomposition-and-review.md` § "A8 prose scan"       | A8              | Supervisor decomposition phase (Post-Decomposition Self-Check) | `block` | Mandatory prose scan of every subtask body and plan-review summary before posting. Prohibited phrase + structural patterns; rewrite to fix-only decomposition if triggered.         |
-
+| Mechanism                   | Source                                                                                   | Rule(s) | Scope                                                          | Tier    | Behaviour                                                                                                                                                                                                                                                                           |
+| --------------------------- | ---------------------------------------------------------------------------------------- | ------- | -------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `rbg a8-instinct`           | `aops-core/agents/rbg.md` § "How you judge"                                              | A8      | All rbg PR review sessions                                     | `block` | Applies A8 instinct check to every PR review. Emits `REQUEST_CHANGES` when workaround-offer or drift-framing patterns detected. Instinct-based (no phrase-match enumeration) — restructured from `rbg pre-response A8 scan` in PR #891; combined-lenses framing removed in PR #895. |
+| `supervisor A8 prose scan`  | `aops-core/skills/supervisor/SKILL.md` § "Engineering Integrity (A8) Is Non-Negotiable"  | A8      | Supervisor skill sessions during decomposition and plan-review | `block` | Prohibits drift-framing phrases (#821 blacklist) in triage tables, subtask bodies, and user-facing summaries. Requires rewrite before posting.                                                                                                                                      |
+| `supervisor decomp A8 gate` | `aops-core/skills/supervisor/instructions/decomposition-and-review.md` § "A8 prose scan" | A8      | Supervisor decomposition phase (Post-Decomposition Self-Check) | `block` | Mandatory prose scan of every subtask body and plan-review summary before posting. Prohibited phrase + structural patterns; rewrite to fix-only decomposition if triggered.                                                                                                         |
 
 ## Whole-repo audits (advisory; not wired to commit/CI)
 
