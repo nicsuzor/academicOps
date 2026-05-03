@@ -22,7 +22,12 @@ class TestSessionPaths(unittest.TestCase):
 
     @patch.dict(os.environ, {"AOPS_SESSION_STATE_DIR": ""}, clear=True)
     def test_get_session_status_dir_gemini_raises_without_state_dir(self):
-        """When Gemini detected but no state dir resolvable, raise ValueError (fail fast)."""
+        """Gemini detected via session_id prefix only (no env var, no transcript) → fail fast.
+
+        ``gemini-`` prefix alone is informational; without GEMINI_SESSION_ID we
+        can't trust the cwd hash because the hook may be running outside the
+        Gemini CLI process.
+        """
         import tempfile
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -37,6 +42,61 @@ class TestSessionPaths(unittest.TestCase):
                 # AOPS_SESSION_STATE_DIR means we can't determine the status dir
                 with self.assertRaises(ValueError, msg="Gemini session detected"):
                     session_paths.get_session_status_dir("gemini-test-session")
+
+    def test_get_session_status_dir_gemini_derives_from_cwd(self):
+        """SessionStart with GEMINI_SESSION_ID set but no transcript_path → derive from cwd.
+
+        Reproduces the production failure where Gemini's SessionStart hook fired
+        before AOPS_SESSION_STATE_DIR was computed and without a transcript_path,
+        causing every downstream call to raise. Now we hash $PWD/cwd the same
+        way Gemini CLI does and return ~/.gemini/tmp/<sha256(cwd)>/.
+        """
+        import hashlib
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir) / "project"
+            project_root.mkdir(parents=True, exist_ok=True)
+            project_hash = hashlib.sha256(str(project_root).encode()).hexdigest()
+            expected = Path(tmpdir) / ".gemini" / "tmp" / project_hash
+
+            with patch.dict(
+                os.environ,
+                {"GEMINI_SESSION_ID": "session-x", "PWD": str(project_root)},
+                clear=True,
+            ):
+                with patch.object(Path, "home", return_value=Path(tmpdir)):
+                    result = session_paths.get_session_status_dir(
+                        "07328230-44d4-414b-9fec-191a6eec0948"
+                    )
+                    self.assertEqual(result, expected)
+
+    def test_get_session_status_dir_gemini_prefers_pwd_over_getcwd(self):
+        """The ``uv --directory`` wrapper chdir's into the extension dir, so
+        ``os.getcwd()`` lies. PWD still reflects the user's project — use it.
+        """
+        import hashlib
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            user_project = Path(tmpdir) / "user_project"
+            user_project.mkdir(parents=True, exist_ok=True)
+            extension_dir = Path(tmpdir) / "extension_dir"
+            extension_dir.mkdir(parents=True, exist_ok=True)
+            user_hash = hashlib.sha256(str(user_project).encode()).hexdigest()
+
+            with patch.dict(
+                os.environ,
+                {"GEMINI_SESSION_ID": "session-y", "PWD": str(user_project)},
+                clear=True,
+            ):
+                with (
+                    patch.object(Path, "home", return_value=Path(tmpdir)),
+                    patch("os.getcwd", return_value=str(extension_dir)),
+                ):
+                    result = session_paths.get_session_status_dir("any-session-id")
+                    # Hash matches PWD, not the lying os.getcwd()
+                    self.assertEqual(result.name, user_hash)
 
     @patch.dict(os.environ, {"AOPS_SESSION_STATE_DIR": ""}, clear=True)
     def test_get_session_status_dir_claude_fallback(self):

@@ -7,6 +7,7 @@ Session files are stored in ~/writing/sessions/status/ as YYYYMMDD-HH-sessionID.
 where HH is the 24-hour local time when the session was created.
 """
 
+import hashlib
 import os
 import sys
 from datetime import datetime
@@ -168,6 +169,22 @@ def _is_gemini_session(session_id: str | None, transcript_path: str | None = Non
     return False
 
 
+def _gemini_project_hash(cwd: str | None = None) -> str:
+    """Compute Gemini CLI's project hash for the given cwd.
+
+    Gemini CLI stores per-project state under ``~/.gemini/tmp/<sha256(cwd)>/``.
+
+    The hook wrapper runs through ``uv --directory <HOOK_DIR>`` which chdirs the
+    Python process into the extension directory, so ``os.getcwd()`` returns the
+    extension dir, not the user's project. Bash exports ``PWD`` before exec, and
+    libc/uv don't refresh it on chdir, so ``$PWD`` still points at the user's
+    project — that's the value Gemini hashed.
+    """
+    if cwd is None:
+        cwd = os.environ.get("PWD") or os.getcwd()
+    return hashlib.sha256(cwd.encode()).hexdigest()
+
+
 def _get_gemini_status_dir(transcript_path: str | None = None) -> Path | None:
     """Get Gemini status directory from transcript_path or AOPS_SESSION_STATE_DIR.
 
@@ -176,8 +193,15 @@ def _get_gemini_status_dir(transcript_path: str | None = None) -> Path | None:
     or
     ~/.gemini/tmp/<hash>/logs/session-<uuid>.jsonl
 
+    Resolution order:
+    1. transcript_path (parent of chats/ or logs/)
+    2. AOPS_SESSION_STATE_DIR (when it points inside ~/.gemini/)
+    3. ~/.gemini/tmp/<sha256(cwd)>/ when GEMINI_SESSION_ID is set —
+       matches Gemini CLI's own per-project layout. Used at SessionStart
+       when transcript_path hasn't been emitted yet and AOPS_SESSION_STATE_DIR
+       is the var we are about to compute.
+
     Returns the ~/.gemini/tmp/<hash>/ directory or None if not detectable.
-    No fallback chains — returns None if neither signal is available.
     """
     # 1. Extract from transcript_path (parent of chats/ or logs/)
     if transcript_path:
@@ -189,6 +213,10 @@ def _get_gemini_status_dir(transcript_path: str | None = None) -> Path | None:
     state_dir = os.environ.get("AOPS_SESSION_STATE_DIR")
     if state_dir and "/.gemini/" in state_dir:
         return Path(state_dir)
+
+    # 3. Derive from cwd via sha256 — matches Gemini CLI's project layout.
+    if os.environ.get("GEMINI_SESSION_ID"):
+        return Path.home() / ".gemini" / "tmp" / _gemini_project_hash()
 
     return None
 
