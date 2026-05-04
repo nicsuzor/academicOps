@@ -147,12 +147,14 @@ class TestHookOutputRoundTrip:
             session, entries, agent_entries=None, variant="full"
         )
 
-        assert "🛑 Hook denied" in markdown, (
-            f"Blocking verdict marker missing from markdown:\n{markdown}"
-        )
+        # Tool-related hooks (PreToolUse/PostToolUse) render as compact
+        # one-line annotations. The blocking-verdict marker, the system
+        # message, and the context-injection size all need to be visible.
+        assert "🛑" in markdown, f"Blocking verdict marker missing from markdown:\n{markdown}"
         assert "deny" in markdown
-        assert "ℹ️ Hook message" in markdown, (
-            f"System message marker missing from markdown:\n{markdown}"
+        assert "Deny: rm -rf is destructive." in markdown, (
+            f"System message missing from markdown:\n{markdown}"
         )
-        assert "Deny: rm -rf is destructive." in markdown
-        assert "Injected context" in markdown
+        # Context injection is surfaced via session-context section ("Hook
+        # context injections") plus a +ctx Nc tag in the compact line.
+        assert "+ctx" in markdown or "Hook context injections" in markdown
