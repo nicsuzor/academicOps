@@ -3,24 +3,16 @@
 1. Hook Gates Verification
    Testing the four layers of session infrastructure:
 
-- SessionStart: Verify that principles are loaded and the latest state is pulled successfully.
-- PreToolUse: Validate the hydration gate, periodic compliance enforcer, and policy enforcer. (Diagnosing our current tool lock-out will serve as the
-  first real-world test of this!)
-- PostToolUse: Check the warn-tier detection and ensure autocommit fires correctly.
-- Stop Gates: Verify QA and handover discipline before a session ends.
-- Automated Validation: Run uv run pytest tests/hooks/ to ensure gate logic aligns with the expected block/warn/allow fixtures.
-
-  2. MCP & PKB Integration
-- Connectivity & Schema: Use MCP tools (like mcp_pkb_get_stats and mcp_pkb_get_task) to verify the Rust server is responsive.
-- Graph Maintenance: Test semantic search and verify that task metadata (like goals: []) and state transitions are properly indexed.
-
-  3. Core Skills & Subagent Dispatch
+- SessionStart: Verify that principles are loaded and the session env file is correctly written.
+- MCP & PKB Integration: Test semantic search and verify that task metadata (like goals: []) and state transitions are properly indexed and that the remote Rust server is accessible and responsive.
+- PreToolUse: Validate the blocking gates: write operation should be prohibited by hydration gate.
+- PKB write: verify that you can create a task for this self-test session and that claiming it is sufficient to open the previously blocked gates.
+- RBG enforcer: ensure you can invoke the RBG periodic compliance enforcer with the instructions given
 - Skills: Invoke core framework skills like /plan, /aops, and /remember to verify they load and execute.
 - Subagents: Dispatch subagents (e.g., jr or marsha) to ensure inter-agent coordination and context passing work without dropping threads.
+- Polecats: verify that you can dispatch remote polecat workers (both gemini and claude) over SSH on the correct host.
+- Stop Gates: Verify stop is prevented before handover
+- Handover: verify that /dump (handover) command provides useful instructions and that you are able to execute them all.
+- Open stop gates (Important!): verify that you are not prevented from stopping after invoking the handover as directed.
 
-  4. Framework Health Audit
-- Diagnostic Scripts: Run uv run python scripts/audit_framework_health.py and uv run python scripts/check_framework_integrity.py to check for orphan
-  files, broken context map references, and constraint violations.
-
-  5. Full Test Suite Execution
-- Action: Run uv run pytest tests/ to catch any remaining regressions across the entire framework, including utilities and routing logic.
+IMPORTANT: All of the information required to undertake these tasks should be provided in your context at startup, within hooks, and in the files you are referred to. If you find you do not have sufficient information to know how to complete a task, HALT, and report the FAILURE to provide adequate instruction. Do NOT go looking or guessing for information that should be provided in advance.
