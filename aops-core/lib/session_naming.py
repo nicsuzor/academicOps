@@ -48,6 +48,12 @@ class ParsedFilename:
     variant: str  # "-full", "-abridged", "-hooks", "-client", or ""
     ext: str  # ".md", ".json", ".jsonl"
 
+    def base_name(self) -> str:
+        """Reconstruct canonical base name (without variant/extension)."""
+        shortform_parts = [p for p in (self.crew, self.repo, self.machine, self.provider) if p]
+        shortform = "-".join(shortform_parts)
+        return f"{self.date}-{self.time}-{self.session_id}-{shortform}-{self.slug}"
+
 
 def get_session_short_hash(session_id: str) -> str:
     """Get 8-character identifier from session ID.

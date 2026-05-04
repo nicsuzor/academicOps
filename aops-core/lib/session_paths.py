@@ -251,13 +251,14 @@ def _find_existing_state_file(session_id: str, status_dir: Path) -> Path | None:
     if not status_dir.is_dir():
         return None
     short = session_naming.get_session_short_hash(session_id)
-    today = datetime.now().strftime("%Y%m%d")
-    yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y%m%d")
+    today = datetime.now().astimezone().strftime("%Y%m%d")
+    yesterday = (datetime.now().astimezone() - timedelta(days=1)).strftime("%Y%m%d")
     candidates: list[Path] = []
     for date_compact in (today, yesterday):
         # Unified format (insights variant has no -variant suffix, ext .json)
         candidates.extend(status_dir.glob(f"{date_compact}-????-{short}-*.json"))
         # Legacy formats kept readable so old state files still anchor.
+        candidates.extend(status_dir.glob(f"{date_compact}-??-*-{short}-*.json"))
         candidates.extend(status_dir.glob(f"{date_compact}-??-{short}.json"))
         candidates.extend(status_dir.glob(f"{date_compact}-{short}.json"))
     # Drop temp/swap files
@@ -289,13 +290,7 @@ def _canonical_artifact_path(
     if existing is not None:
         parsed = session_naming.parse_session_filename(existing.name)
         if parsed is not None:
-            # Reconstruct the shared base from the parsed components, then
-            # append this artefact's variant + extension.
-            shortform_parts = [
-                p for p in (parsed.crew, parsed.repo, parsed.machine, parsed.provider) if p
-            ]
-            shortform = "-".join(shortform_parts)
-            base = f"{parsed.date}-{parsed.time}-{parsed.session_id}-{shortform}-{parsed.slug}"
+            base = parsed.base_name()
             return status_dir / f"{base}{art['variant']}{art['ext']}"
 
     filename = session_naming.generate_session_filename(
@@ -518,12 +513,7 @@ def get_gate_file_path(
     if existing is not None:
         parsed = session_naming.parse_session_filename(existing.name)
         if parsed is not None:
-            shortform_parts = [
-                p for p in (parsed.crew, parsed.repo, parsed.machine, parsed.provider) if p
-            ]
-            shortform = "-".join(shortform_parts)
-            base = f"{parsed.date}-{parsed.time}-{parsed.session_id}-{shortform}-{parsed.slug}"
-            return status_dir / f"{base}-{gate}.md"
+            return status_dir / f"{parsed.base_name()}-{gate}.md"
 
     # SessionStart fallback: build a fresh base before the state file exists.
     base = session_naming.generate_base_name(
