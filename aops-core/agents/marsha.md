@@ -7,6 +7,7 @@ tools:
   - Read
   - Bash
   - Skill
+  - Agent
   - mcp__playwright__browser_navigate
   - mcp__playwright__browser_navigate_back
   - mcp__playwright__browser_click
