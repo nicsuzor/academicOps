@@ -40,6 +40,7 @@ PR #805 and issue #806.
 | --------------------------- | -------------------------------------- | -------------------------- | ------ | --------------------------------------------------------------------- |
 | `check-no-new-orphan-md`    | `scripts/check_no_new_orphan_md.py`    | R5.6                       | `warn` | Exits 1 on new `.md` files outside canonical-location allowlist       |
 | `check-framework-integrity` | `scripts/check_framework_integrity.py` | (wikilink index integrity) | `warn` | Exits 1 on broken wikilinks or missing SKILLS/WORKFLOWS index entries |
+| `check-no-pkb-path-aliases` | `scripts/check_no_pkb_path_aliases.py` | (anti-pattern: PKB alias regression) | `warn` | Exits 1 when `.py` or `.md` files contain `path=/data/brain` in PKB tool calls; blocks regression of the alias-rewrite shim removed in task-40390848 |
 
 ## CORE.md directives (always-on)
 
