@@ -73,11 +73,8 @@ def _debug_log_path(session_id: str | None) -> Path:
     state_dir = os.environ.get("AOPS_SESSION_STATE_DIR")
     if state_dir:
         log_dir = Path(state_dir)
-        try:
-            log_dir.mkdir(parents=True, exist_ok=True)
-            return log_dir / f"cc_hooks_{slug}.jsonl"
-        except OSError:
-            pass
+        log_dir.mkdir(parents=True, exist_ok=True)
+        return log_dir / f"cc_hooks_{slug}.jsonl"
     return DEBUG_LOG_DIR / f"cc_hooks_{slug}.jsonl"
 
 
