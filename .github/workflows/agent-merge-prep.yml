@@ -94,6 +94,16 @@ jobs:
           fetch-depth: 0
           ref: ${{ steps.pr-info.outputs.ref }}
 
+      # Checkout academicOps to read the canonical merge-prep prompt
+      # (origin in the working tree is the caller's repo, not academicOps)
+      - uses: actions/checkout@v4
+        with:
+          repository: nicsuzor/academicOps
+          ref: pipeline-v1
+          path: .aops
+          sparse-checkout: .github/agents/merge-prep.agent.md
+          token: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+
       # Step 1: Dismiss prior merge-prep approval (approval must reflect latest code)
       - name: Dismiss prior merge-prep approval
         run: |
@@ -204,7 +214,7 @@ jobs:
         if: steps.loop-check.outputs.skip != 'true' && steps.ceiling-check.outputs.exceeded != 'true' && steps.fast-path.outputs.skip_agent != 'true'
         id: prompt
         run: |
-          PROMPT=$(git show origin/main:.github/agents/merge-prep.agent.md)
+          PROMPT=$(cat .aops/.github/agents/merge-prep.agent.md)
           {
             echo "prompt<<AGENT_EOF"
             echo "$PROMPT"
