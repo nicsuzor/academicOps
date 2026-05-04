@@ -3309,9 +3309,7 @@ class SessionProcessor:
         if not h.get("hook_is_cc_summary"):
             return True
         return bool(
-            h.get("hook_prevented_continuation")
-            or h.get("content")
-            or h.get("hook_duration_ms")
+            h.get("hook_prevented_continuation") or h.get("content") or h.get("hook_duration_ms")
         )
 
     @staticmethod
