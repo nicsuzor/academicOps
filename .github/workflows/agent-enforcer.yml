@@ -126,10 +126,13 @@ jobs:
           ref: ${{ steps.pr-info.outputs.ref }}
 
       # Checkout academicOps to read the canonical enforcer prompt
+      # Pinned to pipeline-v1 so the prompt stays in lockstep with the
+      # workflow code that loaded it (matches agent-merge-prep.yml).
       - uses: actions/checkout@v4
         if: (github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]') && steps.workflow-run-pr.outputs.skip != 'true'
         with:
           repository: nicsuzor/academicOps
+          ref: pipeline-v1
           path: .aops
           sparse-checkout: aops-core/agents/rbg.md
           token: ${{ secrets.AOPS_BOT_GH_TOKEN }}
