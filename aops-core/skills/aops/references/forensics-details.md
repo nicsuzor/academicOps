@@ -12,11 +12,13 @@ This reference provides the specific knowledge needed to diagnose hook and gate 
 
 ## Hook JSONL Schema
 
-Hook events are logged by `unified_logger.py` next to the session stream they instrument (PKB kb-d8f58167):
+Hook events are logged by `unified_logger.py` into the session status dir, alongside the state file. All artefacts for one session share a single canonical base name (PKB kb-d8f58167):
 
-- Claude: `~/.claude/projects/<workspace>/<session-id>-hooks.jsonl`
-- Gemini: `~/.gemini/tmp/<workspace>/logs/<unified>-hooks.jsonl`
-- Polecat workers: `$POLECAT_HOME/polecats/<task-id>/<workspace>/<session-id>-hooks.jsonl`
+- Claude: `~/.claude/projects/<workspace>/<base>-hooks.jsonl`
+- Gemini: `~/.gemini/tmp/<workspace>/<base>-hooks.jsonl` (no `logs/` subdir)
+- Polecat workers: `/home/worker/.claude/projects/<workspace>/<base>-hooks.jsonl`
+
+Where `<workspace>` for Gemini is the cwd basename (Gemini CLI's per-project tmp dir) and `<base>` is the unified session-naming string `{YYYYMMDD}-{HHMM}-{shorthash}-{shortform}-{slug}` shared across the state file, hook log, and gate context files for that session.
 
 Each line is a JSON object. Hook logs are local-only — they are not synced to the sessions repo.
 
@@ -60,21 +62,28 @@ This is the most important field for forensics. Written by `unified_logger.py:69
 
 ### Finding Files for a Session
 
-| Artifact              | Location                            | Pattern                                                   |
-| --------------------- | ----------------------------------- | --------------------------------------------------------- |
-| CC session JSONL      | `~/.claude/projects/<project-dir>/` | `<session-uuid>.jsonl`                                    |
-| Hook JSONL            | `~/.claude/projects/<project-dir>/` | `<session-id>-hooks.jsonl` (co-located with session)      |
-| Enforcer audit        | `~/.claude/projects/<project-dir>/` | `<session-id>-enforcer.md` (co-located with session)      |
-| Custodiet audit       | `~/.claude/projects/<project-dir>/` | `<session-id>-custodiet.md` (co-located with session)     |
-| Session state         | `$AOPS_SESSION_STATE_DIR/`          | `<YYYYMMDD>-<HH>-<session-short-hash>.json`               |
-| Transcript (full)     | `$AOPS_SESSIONS/transcripts/`       | `<YYYYMMDD>-<HH>-<worktree-name>-<session>-*-full.md`     |
-| Transcript (abridged) | `$AOPS_SESSIONS/transcripts/`       | `<YYYYMMDD>-<HH>-<worktree-name>-<session>-*-abridged.md` |
+All session artefacts share one base name `<base> = {date}-{time}-{shorthash}-{shortform}-{slug}` where `<shortform>` is `{crew?}-{repo}-{provider}` (e.g. `gloria-academicops-gemini`):
+
+| Artifact                        | Location                           | Pattern                         |
+| ------------------------------- | ---------------------------------- | ------------------------------- |
+| Session state                   | `$AOPS_SESSION_STATE_DIR/`         | `<base>-session.json`           |
+| Hook JSONL                      | `$AOPS_SESSION_STATE_DIR/`         | `<base>-session-hooks.jsonl`    |
+| Enforcer audit                  | `$AOPS_SESSION_STATE_DIR/`         | `<base>-session-enforcer.md`    |
+| DEBUG_HOOKS dump                | `$AOPS_SESSION_STATE_DIR/`         | `cc_hooks_<session-uuid>.jsonl` |
+| Provider session JSONL (Claude) | `~/.claude/projects/<workspace>/`  | `<session-uuid>.jsonl`          |
+| Provider session JSONL (Gemini) | `~/.gemini/tmp/<workspace>/chats/` | `session-*.jsonl`               |
+| Transcript (full)               | `$AOPS_SESSIONS/transcripts/`      | `<base>-full.md`                |
+| Transcript (abridged)           | `$AOPS_SESSIONS/transcripts/`      | `<base>-abridged.md`            |
+| Summary                         | `$AOPS_SESSIONS/summaries/`        | `<base>.json`                   |
+
+`$AOPS_SESSIONS` holds **only** parsed/synced outputs (transcripts, summaries) that get committed to git. Everything else — state, hook logs, gate context, debug dumps, provider's raw session stream — lives in `$AOPS_SESSION_STATE_DIR` (the per-provider tmp dir) and is not synced.
 
 ### Example Local Paths
 
-- `$AOPS_SESSIONS` = `$HOME/.aops/sessions`
+- `$AOPS_SESSIONS` = `$HOME/src/sessions` (parsed transcripts/summaries; git-tracked)
 - `$POLECAT_HOME` = `$HOME/.aops`
-- `$AOPS_SESSION_STATE_DIR` = `$HOME/.claude/projects/<project-dir>/`
+- `$AOPS_SESSION_STATE_DIR` = `$HOME/.claude/projects/<project-dir>/` (Claude) or `$HOME/.gemini/tmp/<basename(cwd)>/` (Gemini)
+- Session env file (Claude only) = `$CLAUDE_ENV_FILE` set by Claude Code at session start (typically `~/.claude/shell-snapshots/...`); written to by `session_env_setup.py`. Gemini has no analog — Gemini hooks anchor on the existing state file in `$AOPS_SESSION_STATE_DIR` instead.
 
 ### Correlating Task → Session → Artifacts
 

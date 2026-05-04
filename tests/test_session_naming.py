@@ -105,45 +105,55 @@ class TestGetSessionShortform:
         result = get_session_shortform(
             crew_name=None, repo="academicops", machine="nuc", provider="claude"
         )
-        assert result == "academicops"
+        assert result == "academicops-claude"
 
     def test_manual_gemini(self):
         result = get_session_shortform(
             crew_name=None, repo="writing", machine="mbp", provider="gemini"
         )
-        assert result == "writing"
+        assert result == "writing-gemini"
 
     def test_crew_claude(self):
         result = get_session_shortform(
             crew_name="gloria", repo="academicops", machine="nuc", provider="claude"
         )
-        assert result == "gloria-academicops"
+        assert result == "gloria-academicops-claude"
 
     def test_crew_gemini(self):
         result = get_session_shortform(
             crew_name="banjo", repo="buttermilk", machine="nuc", provider="gemini"
         )
-        assert result == "banjo-buttermilk"
+        assert result == "banjo-buttermilk-gemini"
 
     def test_sanitizes_components(self):
         result = get_session_shortform(
             crew_name="My Crew", repo="My.Repo", machine="DEV-01", provider="claude"
         )
         # Dashes are stripped from shortform components to keep the delimiter unambiguous
-        assert result == "mycrew-myrepo"
+        assert result == "mycrew-myrepo-claude"
 
     def test_dashed_repo_name_no_crew(self):
         """Repo names with dashes must not break parsing — dashes are collapsed."""
         result = get_session_shortform(
             crew_name=None, repo="my-project", machine="nuc", provider="claude"
         )
-        assert result == "myproject"
+        assert result == "myproject-claude"
 
     def test_dashed_repo_name_with_crew(self):
         result = get_session_shortform(
             crew_name="gloria", repo="my-project", machine="nuc", provider="claude"
         )
-        assert result == "gloria-myproject"
+        assert result == "gloria-myproject-claude"
+
+    def test_provider_optional_when_unknown(self):
+        """Empty/None provider is dropped — never emit a trailing dash."""
+        result = get_session_shortform(crew_name=None, repo="academicops", provider="")
+        assert result == "academicops"
+
+    def test_github_provider(self):
+        """Non-claude/gemini providers (CI runners, agents) are accepted."""
+        result = get_session_shortform(crew_name=None, repo="academicops", provider="github")
+        assert result == "academicops-github"
 
 
 # --- generate_session_filename ---
@@ -160,7 +170,7 @@ class TestGenerateSessionFilename:
             provider="claude",
             artifact_type="transcript-full",
         )
-        assert result == "20260411-1430-a1b2c3d4-academicops-fix-hook-paths-full.md"
+        assert result == "20260411-1430-a1b2c3d4-academicops-claude-fix-hook-paths-full.md"
 
     def test_transcript_abridged(self):
         result = generate_session_filename(
@@ -172,7 +182,7 @@ class TestGenerateSessionFilename:
             provider="claude",
             artifact_type="transcript-abridged",
         )
-        assert result == "20260411-1430-a1b2c3d4-academicops-fix-hook-paths-abridged.md"
+        assert result == "20260411-1430-a1b2c3d4-academicops-claude-fix-hook-paths-abridged.md"
 
     def test_insights(self):
         result = generate_session_filename(
@@ -184,7 +194,7 @@ class TestGenerateSessionFilename:
             provider="claude",
             artifact_type="insights",
         )
-        assert result == "20260411-1430-a1b2c3d4-academicops-fix-hook-paths.json"
+        assert result == "20260411-1430-a1b2c3d4-academicops-claude-fix-hook-paths.json"
 
     def test_hooks(self):
         result = generate_session_filename(
@@ -196,7 +206,7 @@ class TestGenerateSessionFilename:
             provider="claude",
             artifact_type="hooks",
         )
-        assert result == "20260411-1430-a1b2c3d4-academicops-fix-hook-paths-hooks.jsonl"
+        assert result == "20260411-1430-a1b2c3d4-academicops-claude-fix-hook-paths-hooks.jsonl"
 
     def test_client(self):
         result = generate_session_filename(
@@ -208,7 +218,7 @@ class TestGenerateSessionFilename:
             provider="claude",
             artifact_type="client",
         )
-        assert result == "20260411-1430-a1b2c3d4-academicops-fix-hook-paths-client.jsonl"
+        assert result == "20260411-1430-a1b2c3d4-academicops-claude-fix-hook-paths-client.jsonl"
 
     def test_with_crew(self):
         result = generate_session_filename(
@@ -221,7 +231,19 @@ class TestGenerateSessionFilename:
             provider="claude",
             artifact_type="transcript-full",
         )
-        assert result == "20260411-1430-c3d4e5f6-gloria-academicops-refactor-tests-full.md"
+        assert result == "20260411-1430-c3d4e5f6-gloria-academicops-claude-refactor-tests-full.md"
+
+    def test_gemini_provider_visible(self):
+        """Provider rides in the filename — visible at a glance for CI/sync."""
+        result = generate_session_filename(
+            session_id="8f9194f1-7cae-46b4-9ed7-dd88db95016c",
+            timestamp=TS,
+            slug="session",
+            repo="academicops",
+            provider="gemini",
+            artifact_type="insights",
+        )
+        assert result == "20260411-1430-8f9194f1-academicops-gemini-session.json"
 
     def test_invalid_artifact_type(self):
         with pytest.raises(ValueError, match="Unknown artifact_type"):
@@ -290,7 +312,7 @@ class TestGenerateBaseName:
             machine="nuc",
             provider="claude",
         )
-        assert result == "20260411-1430-a1b2c3d4-academicops-fix-paths"
+        assert result == "20260411-1430-a1b2c3d4-academicops-claude-fix-paths"
 
     def test_all_artifacts_share_base(self):
         kwargs = {
@@ -313,7 +335,7 @@ class TestGenerateBaseName:
 class TestParseSessionFilename:
     def test_manual_claude_transcript(self):
         parsed = parse_session_filename(
-            "20260411-1430-a1b2c3d4-academicops-nuc-claude-fix-hook-paths-full.md"
+            "20260411-1430-a1b2c3d4-academicops-claude-fix-hook-paths-full.md"
         )
         assert parsed is not None
         assert parsed.date == "20260411"
@@ -321,7 +343,7 @@ class TestParseSessionFilename:
         assert parsed.session_id == "a1b2c3d4"
         assert parsed.crew is None
         assert parsed.repo == "academicops"
-        assert parsed.machine == "nuc"
+        assert parsed.machine is None
         assert parsed.provider == "claude"
         assert parsed.slug == "fix-hook-paths"
         assert parsed.variant == "-full"
@@ -329,21 +351,19 @@ class TestParseSessionFilename:
 
     def test_crew_gemini_hooks(self):
         parsed = parse_session_filename(
-            "20260411-1445-d4e5f6a7-banjo-buttermilk-nuc-gemini-update-docs-hooks.jsonl"
+            "20260411-1445-d4e5f6a7-banjo-buttermilk-gemini-update-docs-hooks.jsonl"
         )
         assert parsed is not None
         assert parsed.crew == "banjo"
         assert parsed.repo == "buttermilk"
-        assert parsed.machine == "nuc"
+        assert parsed.machine is None
         assert parsed.provider == "gemini"
         assert parsed.slug == "update-docs"
         assert parsed.variant == "-hooks"
         assert parsed.ext == ".jsonl"
 
     def test_insights_no_variant(self):
-        parsed = parse_session_filename(
-            "20260411-1430-a1b2c3d4-academicops-nuc-claude-fix-paths.json"
-        )
+        parsed = parse_session_filename("20260411-1430-a1b2c3d4-academicops-claude-fix-paths.json")
         assert parsed is not None
         assert parsed.variant == ""
         assert parsed.ext == ".json"
@@ -351,34 +371,34 @@ class TestParseSessionFilename:
 
     def test_client_log(self):
         parsed = parse_session_filename(
-            "20260411-1500-e5f6a7b8-academicops-nuc-claude-fix-lint-client.jsonl"
+            "20260411-1500-e5f6a7b8-academicops-claude-fix-lint-client.jsonl"
         )
         assert parsed is not None
         assert parsed.variant == "-client"
         assert parsed.slug == "fix-lint"
 
     def test_gate_variant(self):
-        parsed = parse_session_filename("20260411-1430-a1b2c3d4-academicops-session-enforcer.md")
+        parsed = parse_session_filename(
+            "20260411-1430-a1b2c3d4-academicops-claude-session-enforcer.md"
+        )
         assert parsed is not None
         assert parsed.variant == "-enforcer"
         assert parsed.slug == "session"
 
     def test_with_directory_prefix(self):
         parsed = parse_session_filename(
-            "transcripts/20260411-1430-a1b2c3d4-academicops-nuc-claude-test-full.md"
+            "transcripts/20260411-1430-a1b2c3d4-academicops-claude-test-full.md"
         )
         assert parsed is not None
         assert parsed.session_id == "a1b2c3d4"
 
     def test_dashed_repo_no_crew_roundtrips(self):
-        """Repo names with dashes have dashes stripped, so parsing is unambiguous."""
-        parsed = parse_session_filename(
-            "20260411-1430-a1b2c3d4-myproject-nuc-claude-fix-bug-full.md"
-        )
+        """No-crew repo with provider parses to repo+provider (machine elided)."""
+        parsed = parse_session_filename("20260411-1430-a1b2c3d4-myproject-claude-fix-bug-full.md")
         assert parsed is not None
         assert parsed.crew is None
         assert parsed.repo == "myproject"
-        assert parsed.machine == "nuc"
+        assert parsed.machine is None
         assert parsed.provider == "claude"
 
     def test_invalid_returns_none(self):
@@ -387,7 +407,7 @@ class TestParseSessionFilename:
         assert parse_session_filename("") is None
 
     def test_v4_legacy_format_parses(self):
-        """v4.0.0 format with embedded machine/provider should still parse."""
+        """v4.0.0 archive format with embedded machine still parses."""
         filename = "20260411-1430-a1b2c3d4-gloria-academicops-nuc-claude-fix-hook-paths-full.md"
         parsed = parse_session_filename(filename)
         assert parsed is not None
@@ -397,22 +417,33 @@ class TestParseSessionFilename:
         assert parsed.machine == "nuc"
         assert parsed.provider == "claude"
         assert parsed.slug == "fix-hook-paths"
+
+    def test_github_provider_parses(self):
+        """Non-claude/gemini providers (CI runners) parse cleanly."""
+        parsed = parse_session_filename(
+            "20260411-1430-a1b2c3d4-academicops-github-self-test-full.md"
+        )
+        assert parsed is not None
+        assert parsed.repo == "academicops"
+        assert parsed.provider == "github"
+        assert parsed.slug == "self-test"
         assert parsed.variant == "-full"
         assert parsed.ext == ".md"
 
-    def test_v4_legacy_format_no_crew_parses(self):
-        """v4.0.0 format with embedded machine/provider (no crew) should still parse."""
+    def test_v4_legacy_no_crew_disambiguates_to_current_format(self):
+        """Two-shortform-part filenames are inherently ambiguous between the v4
+        legacy ``repo-machine-provider`` and current ``crew-repo-provider`` —
+        the parser prefers the current interpretation. Frontmatter remains
+        authoritative for crew/repo on archive files."""
         filename = "20260411-1430-a1b2c3d4-academicops-nuc-claude-fix-hook-paths-full.md"
         parsed = parse_session_filename(filename)
         assert parsed is not None
-        assert parsed.session_id == "a1b2c3d4"
-        assert parsed.crew is None
-        assert parsed.repo == "academicops"
-        assert parsed.machine == "nuc"
+        # Disambiguation: parts before provider = [academicops, nuc] —
+        # parsed as [crew, repo] under the current rule.
+        assert parsed.crew == "academicops"
+        assert parsed.repo == "nuc"
+        assert parsed.machine is None
         assert parsed.provider == "claude"
-        assert parsed.slug == "fix-hook-paths"
-        assert parsed.variant == "-full"
-        assert parsed.ext == ".md"
 
 
 # --- Round-trip tests ---
