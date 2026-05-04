@@ -61,6 +61,14 @@ to hooks or CI — enforced by the agent's own instructions.
 | `supervisor A8 prose scan`  | `aops-core/skills/supervisor/SKILL.md` § "Engineering Integrity (A8) Is Non-Negotiable"  | A8      | Supervisor skill sessions during decomposition and plan-review | `block` | Prohibits drift-framing phrases (#821 blacklist) in triage tables, subtask bodies, and user-facing summaries. Requires rewrite before posting.                                                                                                                                      |
 | `supervisor decomp A8 gate` | `aops-core/skills/supervisor/instructions/decomposition-and-review.md` § "A8 prose scan" | A8      | Supervisor decomposition phase (Post-Decomposition Self-Check) | `block` | Mandatory prose scan of every subtask body and plan-review summary before posting. Prohibited phrase + structural patterns; rewrite to fix-only decomposition if triggered.                                                                                                         |
 
+## CI workflows (GitHub Actions)
+
+Enforcement gates that run on PRs and pushes to main via GitHub Actions.
+
+| Workflow                  | Source                                                        | Rule(s)                                    | Tier         | Behaviour                                                                                                                                                                                                      |
+| ------------------------- | ------------------------------------------------------------- | ------------------------------------------ | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `agent-compliance-lint`   | `.github/workflows/agent-compliance-lint.yml` (lint tool: `aops-core/scripts/agent_compliance_lint.py`) | `agents-f552b6c1` (four-axes schema), `skill-delegation` | `warn` (soft gate) | Validates agent frontmatter against four-axes permissions schema (tools, mcp_servers, bash_scopes, file_access). 7 rules R1–R7. Fails on errors; warnings non-fatal. Exempt: `runtime: github-actions` files. |
+
 ## Whole-repo audits (advisory; not wired to commit/CI)
 
 | Check                    | Script                              | Rule(s)                | Tier       | Behaviour                                                    |
