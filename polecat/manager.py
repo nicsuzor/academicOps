@@ -103,14 +103,23 @@ def resolve_project_path(
     """Resolve a project slug to an on-disk path.
 
     Order:
-    1. $POLECAT_HOME/local.yaml `paths.<slug>` (with ${VAR} interpolation)
-    2. $AOPS_SRC_DIR/<repo> if it has .git
-    3. Legacy fallbacks: ~/src/<repo>, ~/<repo>, /opt/$USER/<repo>
+    1. `sessions` slug always resolves via $AOPS_SESSIONS (the same env var the
+       rest of the framework uses, via lib.paths.get_sessions_repo). Bypasses
+       overlay/convention so the registry path and the runtime path can't drift.
+    2. $POLECAT_HOME/local.yaml `paths.<slug>` (with ${VAR} interpolation)
+    3. $AOPS_SRC_DIR/<repo> if it has .git
+    4. Legacy fallbacks: ~/src/<repo>, ~/<repo>, /opt/$USER/<repo>
 
     Pass `overlay` to skip re-reading local.yaml when batch-resolving.
     Returns None if no candidate has a .git directory.
     """
     repo_name = repo or slug
+
+    if slug == "sessions":
+        sessions_env = os.environ.get("AOPS_SESSIONS")
+        if sessions_env:
+            candidate = Path(_expand_env(sessions_env))
+            return candidate if candidate.exists() else None
 
     if overlay is None:
         overlay = load_local_overlay(overlay_path)
