@@ -2279,6 +2279,40 @@ def _unstage_oversized(repo_path: Path, name: str) -> None:
     )
 
 
+_GIT_NETWORK_TIMEOUT = 60
+_GIT_NETWORK_ENV = {
+    "GIT_TERMINAL_PROMPT": "0",
+    "GIT_SSH_COMMAND": "ssh -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new",
+    "GIT_HTTP_LOW_SPEED_LIMIT": "1000",
+    "GIT_HTTP_LOW_SPEED_TIME": "30",
+}
+
+
+def _run_git_network(
+    args: list[str],
+    cwd: Path,
+    *,
+    timeout: int = _GIT_NETWORK_TIMEOUT,
+) -> subprocess.CompletedProcess | None:
+    """Run a network-touching git command with a timeout and SSH/HTTP hardening.
+
+    Returns the CompletedProcess on completion, or None if it timed out.
+    """
+    env = {**os.environ, **_GIT_NETWORK_ENV}
+    try:
+        return subprocess.run(
+            args,
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            check=False,
+            env=env,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired:
+        return None
+
+
 def _sync_working_repo(
     repo_path: Path,
     *,
@@ -2299,12 +2333,8 @@ def _sync_working_repo(
         return False, f"{name}: git lock held by active process"
 
     # Fetch
-    subprocess.run(
-        ["git", "fetch", "--quiet"],
-        cwd=repo_path,
-        capture_output=True,
-        check=False,
-    )
+    if _run_git_network(["git", "fetch", "--quiet"], repo_path) is None:
+        return False, f"{name}: fetch timed out after {_GIT_NETWORK_TIMEOUT}s"
 
     # Check status
     porcelain = subprocess.run(
@@ -2369,12 +2399,9 @@ def _sync_working_repo(
                 )
 
             pull_flag = "--rebase" if merge_strategy == "rebase" else "--no-rebase"
-            pull = subprocess.run(
-                ["git", "pull", pull_flag, "--quiet"],
-                cwd=repo_path,
-                capture_output=True,
-                check=False,
-            )
+            pull = _run_git_network(["git", "pull", pull_flag, "--quiet"], repo_path)
+            if pull is None:
+                return False, f"{name}: pull timed out after {_GIT_NETWORK_TIMEOUT}s"
             if pull.returncode != 0:
                 if merge_strategy == "merge":
                     ok, resolve_msg = _auto_resolve_merge(repo_path, name)
@@ -2384,12 +2411,9 @@ def _sync_working_repo(
                     return False, resolve_msg
 
             # Push
-            push = subprocess.run(
-                ["git", "push", "--quiet"],
-                cwd=repo_path,
-                capture_output=True,
-                check=False,
-            )
+            push = _run_git_network(["git", "push", "--quiet"], repo_path)
+            if push is None:
+                return False, f"{name}: push timed out after {_GIT_NETWORK_TIMEOUT}s"
             if push.returncode != 0:
                 return False, f"{name}: push failed"
             return True, f"{name}: auto-synced (committed + pushed)"
@@ -2402,12 +2426,9 @@ def _sync_working_repo(
             return False, f"{name}: {', '.join(status_parts)} (skipped — not auto-commit)"
 
     elif behind_count > 0 and ahead_count == 0:
-        pull = subprocess.run(
-            ["git", "pull", "--quiet"],
-            cwd=repo_path,
-            capture_output=True,
-            check=False,
-        )
+        pull = _run_git_network(["git", "pull", "--quiet"], repo_path)
+        if pull is None:
+            return False, f"{name}: pull timed out after {_GIT_NETWORK_TIMEOUT}s"
         if pull.returncode == 0:
             return True, f"{name}: pulled {behind_count} commit(s)"
         return False, f"{name}: pull failed"
@@ -2415,12 +2436,9 @@ def _sync_working_repo(
     elif ahead_count > 0:
         if behind_count > 0:
             pull_flag = "--rebase" if merge_strategy == "rebase" else "--no-rebase"
-            pull = subprocess.run(
-                ["git", "pull", pull_flag, "--quiet"],
-                cwd=repo_path,
-                capture_output=True,
-                check=False,
-            )
+            pull = _run_git_network(["git", "pull", pull_flag, "--quiet"], repo_path)
+            if pull is None:
+                return False, f"{name}: pull timed out after {_GIT_NETWORK_TIMEOUT}s"
             if pull.returncode != 0:
                 if merge_strategy == "merge":
                     ok, resolve_msg = _auto_resolve_merge(repo_path, name)
@@ -2428,12 +2446,9 @@ def _sync_working_repo(
                     ok, resolve_msg = _auto_resolve_rebase(repo_path, name, ahead_count)
                 if not ok:
                     return False, resolve_msg
-        push = subprocess.run(
-            ["git", "push", "--quiet"],
-            cwd=repo_path,
-            capture_output=True,
-            check=False,
-        )
+        push = _run_git_network(["git", "push", "--quiet"], repo_path)
+        if push is None:
+            return False, f"{name}: push timed out after {_GIT_NETWORK_TIMEOUT}s"
         if push.returncode == 0:
             return True, f"{name}: pushed {ahead_count} commit(s)"
         return False, f"{name}: push failed"
@@ -3067,13 +3082,10 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
                 print(f"\U0001f4c1 {project_dir.name}: {project_dir}")
                 # Sync with upstream so we don't resume on stale code
                 print(f"   Syncing {project_dir.name} with origin...")
-                fetch_result = subprocess.run(
-                    ["git", "fetch", "origin"],
-                    cwd=project_dir,
-                    check=False,
-                    capture_output=True,
-                    text=True,
-                )
+                fetch_result = _run_git_network(["git", "fetch", "origin"], project_dir)
+                if fetch_result is None:
+                    print(f"   \u26a0 git fetch timed out after {_GIT_NETWORK_TIMEOUT}s")
+                    continue
                 if fetch_result.returncode != 0:
                     print(f"   \u26a0 git fetch failed: {fetch_result.stderr.strip()}")
                     continue
