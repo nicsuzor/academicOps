@@ -7,10 +7,9 @@ Session files are stored in ~/writing/sessions/status/ as YYYYMMDD-HH-sessionID.
 where HH is the 24-hour local time when the session was created.
 """
 
-import hashlib
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from lib import session_naming
@@ -169,20 +168,24 @@ def _is_gemini_session(session_id: str | None, transcript_path: str | None = Non
     return False
 
 
-def _gemini_project_hash(cwd: str | None = None) -> str:
-    """Compute Gemini CLI's project hash for the given cwd.
+def _gemini_workspace_name(cwd: str | None = None) -> str:
+    """Resolve Gemini CLI's workspace dir name for the current project.
 
-    Gemini CLI stores per-project state under ``~/.gemini/tmp/<sha256(cwd)>/``.
+    Recent Gemini CLI versions store per-project state under
+    ``~/.gemini/tmp/<workspace>/`` where ``<workspace>`` is the basename of
+    the project directory (not a hash). Earlier versions used ``sha256(cwd)``;
+    we no longer compute that fallback because writing to a different dir than
+    Gemini itself uses splits artefacts across two locations and pollutes
+    ``~/.gemini/tmp/`` with orphan dirs.
 
-    The hook wrapper runs through ``uv --directory <HOOK_DIR>`` which chdirs the
-    Python process into the extension directory, so ``os.getcwd()`` returns the
-    extension dir, not the user's project. Bash exports ``PWD`` before exec, and
-    libc/uv don't refresh it on chdir, so ``$PWD`` still points at the user's
-    project — that's the value Gemini hashed.
+    The hook wrapper runs through ``uv --directory <HOOK_DIR>`` which chdirs
+    the Python process into the extension directory, so ``os.getcwd()`` is the
+    extension dir, not the user's project. ``$PWD`` is preserved across exec
+    and so still points at the user's project — that's the value Gemini uses.
     """
     if cwd is None:
         cwd = os.environ.get("PWD") or os.getcwd()
-    return hashlib.sha256(cwd.encode()).hexdigest()
+    return Path(cwd).name
 
 
 def _get_gemini_status_dir(transcript_path: str | None = None) -> Path | None:
@@ -214,9 +217,12 @@ def _get_gemini_status_dir(transcript_path: str | None = None) -> Path | None:
     if state_dir and "/.gemini/" in state_dir:
         return Path(state_dir)
 
-    # 3. Derive from cwd via sha256 — matches Gemini CLI's project layout.
+    # 3. Derive from cwd basename — matches Gemini CLI's per-project layout
+    #    (~/.gemini/tmp/<basename>/). Used at SessionStart when transcript_path
+    #    has not been emitted yet and AOPS_SESSION_STATE_DIR is the var we are
+    #    about to compute.
     if os.environ.get("GEMINI_SESSION_ID"):
-        return Path.home() / ".gemini" / "tmp" / _gemini_project_hash()
+        return Path.home() / ".gemini" / "tmp" / _gemini_workspace_name()
 
     return None
 
@@ -234,14 +240,85 @@ def get_gemini_logs_dir(transcript_path: str | None = None) -> Path | None:
     return None
 
 
+def _find_existing_state_file(session_id: str, status_dir: Path) -> Path | None:
+    """Locate the existing session-state JSON file for ``session_id``, if any.
+
+    The state file is the canonical timestamp anchor for a session: every
+    hook/gate/transcript artefact derives its base name from it. Subsequent
+    hooks find it here when ``AOPS_SESSION_STATE_PATH`` has not been
+    propagated (e.g. Gemini, which has no ``CLAUDE_ENV_FILE`` analog).
+    """
+    if not status_dir.is_dir():
+        return None
+    short = session_naming.get_session_short_hash(session_id)
+    today = datetime.now().astimezone().strftime("%Y%m%d")
+    yesterday = (datetime.now().astimezone() - timedelta(days=1)).strftime("%Y%m%d")
+    candidates: list[Path] = []
+    for date_compact in (today, yesterday):
+        # Unified format (insights variant has no -variant suffix, ext .json)
+        candidates.extend(status_dir.glob(f"{date_compact}-????-{short}-*.json"))
+        # Legacy formats kept readable so old state files still anchor.
+        candidates.extend(status_dir.glob(f"{date_compact}-??-*-{short}-*.json"))
+        candidates.extend(status_dir.glob(f"{date_compact}-??-{short}.json"))
+        candidates.extend(status_dir.glob(f"{date_compact}-{short}.json"))
+    # Drop temp/swap files
+    candidates = [p for p in candidates if not p.name.startswith("aops-")]
+    if not candidates:
+        return None
+    return max(candidates, key=lambda p: p.stat().st_mtime)
+
+
+def _canonical_artifact_path(
+    session_id: str,
+    transcript_path: str | None,
+    date: str | None,
+    artifact_type: str,
+) -> Path:
+    """Build a session artefact path anchored on the existing state file.
+
+    All artefacts (state, hooks, gate context) for one session share a single
+    base name — this function locates the canonical base via the state file on
+    disk and swaps in the requested artefact's variant/extension. If no state
+    file exists yet (SessionStart, before save), a fresh filename is generated
+    from ``date`` (or ``now``).
+    """
+    status_dir = get_session_status_dir(session_id, transcript_path)
+
+    art = session_naming.ARTIFACT_TYPES[artifact_type]
+
+    existing = _find_existing_state_file(session_id, status_dir)
+    if existing is not None:
+        parsed = session_naming.parse_session_filename(existing.name)
+        if parsed is not None:
+            base = parsed.base_name()
+            return status_dir / f"{base}{art['variant']}{art['ext']}"
+
+    filename = session_naming.generate_session_filename(
+        session_id,
+        timestamp=_parse_date_arg(date),
+        artifact_type=artifact_type,
+        crew_name=session_naming.resolve_crew_name(),
+        task_id=os.environ.get("AOPS_TASK_ID"),
+    )
+    return status_dir / filename
+
+
 def get_hook_log_path(
     session_id: str, transcript_path: str | None = None, date: str | None = None
 ) -> Path:
     """Get the path for the per-session hook log file.
 
-    Logs to:
-    - Claude: ~/.claude/projects/<project>/YYYYMMDD-HH-<shorthash>-hooks.jsonl
-    - Gemini: ~/.gemini/tmp/<hash>/logs/YYYYMMDD-HH-<shorthash>-hooks.jsonl
+    Layout:
+    - Claude: ``~/.claude/projects/<project>/<base>-hooks.jsonl``
+    - Gemini: ``~/.gemini/tmp/<workspace>/<base>-hooks.jsonl``
+
+    Resolution order:
+    1. ``AOPS_HOOK_LOG_PATH`` env var (set at SessionStart, propagated for
+       Claude via ``CLAUDE_ENV_FILE``).
+    2. Sibling of the existing state file in the session status dir — found
+       on disk so that Gemini hooks (which inherit no env-file) still anchor
+       on the same canonical timestamp as SessionStart wrote.
+    3. A freshly-generated filename (only on SessionStart, before save).
 
     Args:
         session_id: Session ID from Claude Code or Gemini CLI
@@ -251,38 +328,10 @@ def get_hook_log_path(
     Returns:
         Path to the hook log file
     """
-
-    # if we successfully saved the session state path in env vars, we should use that to ensure consistency across all hooks
     if env_hook_log_path := os.environ.get("AOPS_HOOK_LOG_PATH"):
         return Path(env_hook_log_path)
 
-    filename = session_naming.generate_session_filename(
-        session_id,
-        timestamp=_parse_date_arg(date),
-        artifact_type="hooks",
-        crew_name=session_naming.resolve_crew_name(),
-        task_id=os.environ.get("AOPS_TASK_ID"),
-    )
-
-    # Hooks live next to their session stream — see PKB kb-d8f58167.
-    # No centralized $AOPS_SESSIONS/hooks/ aggregation: that broke the
-    # invariant that everything for a session is in one directory and
-    # made polecat/container handoff messier (the host couldn't tell
-    # which hook log belonged to which extracted session dir).
-    if _is_gemini_session(session_id, transcript_path):
-        # Gemini: write to logs/ directory in state dir
-        logs_dir = get_gemini_logs_dir(transcript_path)
-        if logs_dir is None:
-            raise ValueError("Gemini session detected but no logs directory configured")
-        return logs_dir / filename
-    else:
-        # Claude: ~/.claude/projects/<project>/YYYYMMDD-HH-<shorthash>-hooks.jsonl
-        project_folder = get_claude_project_folder()
-        if _is_polecat_sandbox():
-            return _polecat_claude_state_dir(project_folder, "hooks") / filename
-        claude_projects_dir = Path.home() / ".claude" / "projects" / project_folder
-        claude_projects_dir.mkdir(parents=True, exist_ok=True)
-        return claude_projects_dir / filename
+    return _canonical_artifact_path(session_id, transcript_path, date, "hooks")
 
 
 def get_session_status_dir(
@@ -458,30 +507,22 @@ def get_gate_file_path(
     if env_path := os.environ.get(env_var):
         return Path(env_path)
 
-    # Gates reuse the shared base name then append {-gate}.md
+    # Anchor on the existing state file so all artefacts share one base name.
+    status_dir = get_session_status_dir(session_id, transcript_path)
+    existing = _find_existing_state_file(session_id, status_dir)
+    if existing is not None:
+        parsed = session_naming.parse_session_filename(existing.name)
+        if parsed is not None:
+            return status_dir / f"{parsed.base_name()}-{gate}.md"
+
+    # SessionStart fallback: build a fresh base before the state file exists.
     base = session_naming.generate_base_name(
         session_id,
         timestamp=_parse_date_arg(date),
         crew_name=session_naming.resolve_crew_name(),
         task_id=os.environ.get("AOPS_TASK_ID"),
     )
-    filename = f"{base}-{gate}.md"
-
-    # Gate context files live next to their session stream — see PKB
-    # kb-d8f58167. No centralized $AOPS_SESSIONS/hooks/ aggregation;
-    # everything for one session stays in one directory.
-    if _is_gemini_session(session_id, transcript_path):
-        logs_dir = get_gemini_logs_dir(transcript_path)
-        if logs_dir is None:
-            raise ValueError("Gemini session detected but no logs directory configured")
-        return logs_dir / filename
-    else:
-        project_folder = get_claude_project_folder()
-        if _is_polecat_sandbox():
-            return _polecat_claude_state_dir(project_folder, "gates") / filename
-        claude_projects_dir = Path.home() / ".claude" / "projects" / project_folder
-        claude_projects_dir.mkdir(parents=True, exist_ok=True)
-        return claude_projects_dir / filename
+    return status_dir / f"{base}-{gate}.md"
 
 
 def get_all_gate_file_paths(

@@ -44,21 +44,19 @@ class TestSessionPaths(unittest.TestCase):
                     session_paths.get_session_status_dir("gemini-test-session")
 
     def test_get_session_status_dir_gemini_derives_from_cwd(self):
-        """SessionStart with GEMINI_SESSION_ID set but no transcript_path → derive from cwd.
+        """SessionStart with GEMINI_SESSION_ID set but no transcript_path → derive from cwd basename.
 
-        Reproduces the production failure where Gemini's SessionStart hook fired
-        before AOPS_SESSION_STATE_DIR was computed and without a transcript_path,
-        causing every downstream call to raise. Now we hash $PWD/cwd the same
-        way Gemini CLI does and return ~/.gemini/tmp/<sha256(cwd)>/.
+        Recent Gemini CLI versions name per-project tmp dirs as
+        ``~/.gemini/tmp/<basename(cwd)>/``, not by sha256(cwd). Earlier we
+        used sha256 here, which polluted ``~/.gemini/tmp/`` with orphan dirs
+        and split session artefacts across two locations.
         """
-        import hashlib
         import tempfile
 
         with tempfile.TemporaryDirectory() as tmpdir:
             project_root = Path(tmpdir) / "project"
             project_root.mkdir(parents=True, exist_ok=True)
-            project_hash = hashlib.sha256(str(project_root).encode()).hexdigest()
-            expected = Path(tmpdir) / ".gemini" / "tmp" / project_hash
+            expected = Path(tmpdir) / ".gemini" / "tmp" / "project"
 
             with patch.dict(
                 os.environ,
@@ -73,9 +71,9 @@ class TestSessionPaths(unittest.TestCase):
 
     def test_get_session_status_dir_gemini_prefers_pwd_over_getcwd(self):
         """The ``uv --directory`` wrapper chdir's into the extension dir, so
-        ``os.getcwd()`` lies. PWD still reflects the user's project — use it.
+        ``os.getcwd()`` lies. PWD still reflects the user's project — use it
+        when computing the workspace dir basename.
         """
-        import hashlib
         import tempfile
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -83,7 +81,6 @@ class TestSessionPaths(unittest.TestCase):
             user_project.mkdir(parents=True, exist_ok=True)
             extension_dir = Path(tmpdir) / "extension_dir"
             extension_dir.mkdir(parents=True, exist_ok=True)
-            user_hash = hashlib.sha256(str(user_project).encode()).hexdigest()
 
             with patch.dict(
                 os.environ,
@@ -95,8 +92,8 @@ class TestSessionPaths(unittest.TestCase):
                     patch("os.getcwd", return_value=str(extension_dir)),
                 ):
                     result = session_paths.get_session_status_dir("any-session-id")
-                    # Hash matches PWD, not the lying os.getcwd()
-                    self.assertEqual(result.name, user_hash)
+                    # Workspace name comes from PWD, not the lying os.getcwd()
+                    self.assertEqual(result.name, "user_project")
 
     @patch.dict(os.environ, {"AOPS_SESSION_STATE_DIR": ""}, clear=True)
     def test_get_session_status_dir_claude_fallback(self):
@@ -309,7 +306,11 @@ class TestSessionPaths(unittest.TestCase):
                 )
 
     def test_get_gate_file_path_gemini_polecat(self):
-        """get_gate_file_path returns a valid path for Gemini sessions (polecat style - UUID ID)."""
+        """get_gate_file_path returns a valid path for Gemini sessions (polecat style - UUID ID).
+
+        Gate context files share the session status dir with state and hooks —
+        no ``logs/`` subdir split.
+        """
         import tempfile
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -327,10 +328,11 @@ class TestSessionPaths(unittest.TestCase):
                 )
 
                 self.assertIn(".gemini/tmp/abc123hash", str(gate_path))
+                self.assertEqual(gate_path.parent, state_dir)
                 import re
 
                 self.assertTrue(
-                    re.search(r"logs/20260124-\d{4}-07328230-.*-enforcer\.md", str(gate_path))
+                    re.search(r"20260124-\d{4}-07328230-.*-enforcer\.md", gate_path.name)
                 )
 
 

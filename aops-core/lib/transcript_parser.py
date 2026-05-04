@@ -3767,8 +3767,17 @@ class SessionProcessor:
         edited_files = details.get("edited_files", session.edited_files)
         files_list = edited_files if edited_files and isinstance(edited_files, list) else []
 
-        title = session.summary or "Claude Code Session"
-        permalink = f"sessions/claude/{session_uuid[:8]}-{variant}"
+        provider = (session.provider or "claude").lower()
+        provider_label = {
+            "claude": "Claude Code",
+            "gemini": "Gemini CLI",
+            "github": "GitHub Agent",
+            "jules": "Jules",
+            "codex": "Codex",
+            "copilot": "Copilot",
+        }.get(provider, provider.title())
+        title = session.summary or f"{provider_label} Session"
+        permalink = f"sessions/{provider}/{session_uuid[:8]}-{variant}"
 
         files_yaml = ""
         if files_list:
@@ -3814,7 +3823,7 @@ title: "{title} ({variant})"
 type: session
 permalink: {permalink}
 tags:
-  - claude-session
+  - {provider}-session
   - transcript
   - {variant}
 date: {date_str}

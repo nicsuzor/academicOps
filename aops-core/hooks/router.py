@@ -62,11 +62,17 @@ DEBUG_LOG_DIR = Path("/tmp")
 
 
 def _debug_log_path(session_id: str | None) -> Path:
-    """Return per-session debug log path."""
+    """Return per-session debug log path.
+
+    DEBUG_HOOKS=1 raw-input dump. Lives next to the session state file in
+    ``$AOPS_SESSION_STATE_DIR`` (per-provider tmp dir) — never in
+    ``$AOPS_SESSIONS``, which is reserved for parsed transcripts/summaries
+    that get committed and synced.
+    """
     slug = session_id if session_id else "unknown"
-    aops_sessions = os.environ.get("AOPS_SESSIONS")
-    if aops_sessions:
-        log_dir = Path(aops_sessions).resolve() / "hooks"
+    state_dir = os.environ.get("AOPS_SESSION_STATE_DIR")
+    if state_dir:
+        log_dir = Path(state_dir)
         log_dir.mkdir(parents=True, exist_ok=True)
         return log_dir / f"cc_hooks_{slug}.jsonl"
     return DEBUG_LOG_DIR / f"cc_hooks_{slug}.jsonl"
