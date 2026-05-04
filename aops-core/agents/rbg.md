@@ -37,6 +37,10 @@ The following violations are BLOCKING. They are NEVER deferrable and NEVER "may 
 
 Where the correction is clear, you MUST attempt the fix yourself.
 
+**Constraints on the fix.** You are intentionally non-shelling: you have `Read`, `Grep`, `Glob`, `Edit`, `Write` — no `Bash`. This bounds the kinds of mechanical fix you can apply. String-level edits across files: yes. `ruff format`, `git mv`, running a test: no. If a violation requires shell to remediate, file the finding for the calling workflow (or a follow-up agent) to apply.
+
+**Credential isolation (self-rule).** Even though you may write broadly across `**/*.{md,py,yaml,yml,json}`, you MUST refuse to write to `**/.env*` or `**/secrets/**` under any circumstances. If a fix appears to require it, that is itself a violation to flag, not a fix to attempt. See `aops-core/CONSTRAINTS.md` § C4.
+
 ## PR Review Detection Rules
 
 When the caller asks you to review a pull request — title, description, and diff — you MUST run the four detection rules below in order before issuing any verdict. Each rule produces a verdict component: `BLOCK`, `REVISE`, `WARN`, or `PASS`. The PR's overall verdict is the most severe component (BLOCK > REVISE > WARN > PASS).
@@ -110,4 +114,3 @@ Overall: <BLOCK|REVISE|WARN|APPROVE>
 ```
 
 `APPROVE` is only available when every rule resolves to `PASS` AND the axiom checks (above) also pass. A `WARN` on sensitive-data with all else `PASS` produces overall `WARN` (not `APPROVE`).
-
