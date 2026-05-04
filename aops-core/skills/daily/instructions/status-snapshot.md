@@ -34,17 +34,17 @@ Pull tasks with `due` ≤ 7 days via `mcp__pkb__list_tasks(format=json)` and sor
 - [task-id] [[Title]] — due YYYY-MM-DD (Nd away / overdue Nd)
 ```
 
-### 3.3a: High-Urgency Surface
+### 3.3a: High-Focus Surface
 
-After the deadline list, emit a short factual block of the top 5 tasks ranked by composite `urgency` (severity × edge weight × slack × decay) — restricted to `status` in {`queued`, `ready`, `in_progress`}. Use `mcp__pkb__list_tasks(status=["queued","ready","in_progress"], limit=100, format="json")` and read each task's `urgency` field; sort descending. Load this once and reuse the result for the §3.3b SEV4 count. List one per line:
+After the deadline list, emit a short factual block of the top 5 tasks ranked by composite `focus_score` — restricted to `status` in {`queued`, `ready`, `in_progress`}. `focus_score` is the canonical composite (embeds severity, priority, downstream weight, urgency, stakeholder waiting; see [[multi-parent]] §7). Use `mcp__pkb__list_tasks(status=["queued","ready","in_progress"], limit=100, format="json")` and read each task's `focus_score` field; sort descending. Load this once and reuse the result for the §3.3b SEV4 count. List one per line:
 
 ```
-High-urgency:
-- [task-id] [[Title]] — urgency 0.83 (SEV3, due 2026-05-02)
-- [task-id] [[Title]] — urgency 0.61 (SEV2)
+High-focus:
+- [task-id] [[Title]] — focus 0.83 (SEV3, due 2026-05-02)
+- [task-id] [[Title]] — focus 0.61 (SEV2)
 ```
 
-This is **factual surfacing**, not ranking-as-recommendation — it reports what the graph computes, the user still decides what to work on. If `urgency` is absent or zero across all tasks (mem-side emission not yet landed), omit this block entirely rather than falling back to an alternative ordering. Do **not** call urgency a "priority" or attach editorial framing.
+This is **factual surfacing**, not ranking-as-recommendation — it reports what the graph computes, the user still decides what to work on. If `focus_score` is absent or zero across all tasks (mem-side emission not yet landed), omit this block entirely rather than falling back to an alternative ordering. Do **not** call focus_score a "priority" or attach editorial framing. Component fields like `urgency` may be filtered/displayed for debug, but ranking always goes through `focus_score`.
 
 ### 3.3b: SEV4 Concurrency-Cap Warning
 

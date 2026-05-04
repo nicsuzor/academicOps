@@ -81,7 +81,7 @@ Every node carries three core computed properties that drive both label assignme
 
 **What it tells you**: Which nodes to work on first when time is scarce. High criticality = unblocks many downstream nodes. Low criticality = isolated or terminal work.
 
-> **Note**: For user-facing prioritisation and ranking, use `urgency` (composes severity, edge weights, slack time, and decay). `criticality` and its inputs (including `downstream_weight`) are internal graph properties — do not sort or display them as the headline ranking signal.
+> **Note**: For user-facing prioritisation and ranking, use `focus_score` — the canonical composite that embeds severity, priority, `urgency` (deadline slack + decay), `downstream_weight`, stakeholder waiting, and `criticality`. See [[multi-parent]] §7 for the full model. Component fields (`urgency`, `downstream_weight`, `criticality`) remain visible in metadata for filtering and debugging, but should never be the headline ranking signal — ranking always goes through `focus_score`.
 
 ### depth and leaf
 
@@ -181,7 +181,7 @@ The single canonical definition of priority. Other framework documents MUST link
 
 **Lower number = higher priority.** When sorting "highest priority first", sort ascending by label number (`P0` before `P1` before `P2`, etc.).
 
-**Priority is not urgency or severity.** Urgency is a time-decay function over `due` and slack (computed by the PKB and used in ranking). Severity is a property of incidents (impact when they occur). Priority is the user-facing label that says "where does this slot in my queue right now?" — composed of, but distinct from, both. Skills that infer priority from deadlines (e.g. hydrator email capture) layer their own deadline-mapping rules on top of these definitions; they do not redefine the labels.
+**Priority is not urgency or severity.** Urgency is a time-decay function over `due` and slack (computed by the PKB; consumed as one component of `focus_score`, not used directly for ranking). Severity is a property of incidents (impact when they occur). Priority is the user-facing label that says "where does this slot in my queue right now?" — composed of, but distinct from, both. Skills that infer priority from deadlines (e.g. hydrator email capture) layer their own deadline-mapping rules on top of these definitions; they do not redefine the labels.
 
 ---
 

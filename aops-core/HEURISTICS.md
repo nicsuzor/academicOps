@@ -33,11 +33,11 @@ Framework instructions should be no more detailed than required. Brevity reduces
 
 ## Imminent Deadline Surfacing (H91)
 
-**Imminent deadlines MUST surface regardless of task status.** A `blocked` or `in_progress` task with a deadline in the current "safe horizon" (default: 7 days) is more important than a `ready` task with no deadline. The `focus_score` calculation must escalate exponentially as the deadline approaches to ensure high-priority surfacing. Priority labels (P0–P4) are defined canonically in [[PRIORITY.md]].
+**Imminent deadlines MUST surface regardless of task status.** A `blocked` or `in_progress` task with a deadline in the current "safe horizon" (default: 7 days) is more important than a `ready` task with no deadline. The `focus_score` calculation must escalate exponentially as the deadline approaches to ensure high-priority surfacing — this escalation enters via the `urgency` term within `focus_score` (see [[multi-parent]] §7 for the canonical composite). Priority labels (P0–P4) are defined canonically in [[PRIORITY.md]].
 
 - **Check**: Does `pkb focus` show tasks due this week that are `blocked`?
-- **Check**: Does the `focus_score` increase daily for tasks with a `due` date?
-- **Violation**: Filtering for `status: ready` before computing focus/urgency, causing deadlines to be hidden.
+- **Check**: Does the `focus_score` increase daily for tasks with a `due` date (via the `urgency` component)?
+- **Violation**: Filtering for `status: ready` before computing focus_score, causing deadlines to be hidden.
 
 ## Feedback Loops For Uncertainty (P#45)
 
