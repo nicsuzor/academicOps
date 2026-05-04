@@ -1,24 +1,22 @@
 #!/usr/bin/env bash
-# repo-sync-cron.sh - Periodic maintenance: transcripts, dashboard, repo sync.
+# repo-sync-cron.sh - Periodic maintenance: transcripts, repo sync.
 #
-# Five functions, composable via CLI:
+# Four functions, composable via CLI:
 #   do_cowork_ingest - Normalize and sync Cowork audit logs into sessions repo
 #   do_gha_sync      - Sync claude-session artifacts from configured GHA repos
 #   do_transcript    - Generate recent session transcripts
-#   do_dashboard     - Update task graph (pkb graph)
 #   do_sync          - Sync all git repositories via polecat sync
 #
 # Note: PR-state sweeping is now handled by the supervisor agent loop
 # (event-driven monitoring), not by `polecat sweep` (removed; see task-9fa50763).
 #
 # Usage:
-#   ./scripts/repo-sync-cron.sh              # Full: cowork_ingest + gha_sync + transcript + dashboard + sync
+#   ./scripts/repo-sync-cron.sh              # Full: cowork_ingest + gha_sync + transcript + sync
 #   ./scripts/repo-sync-cron.sh cowork_ingest # Just Cowork audit log ingestion
 #   ./scripts/repo-sync-cron.sh gha_sync     # Just GHA artifact sync
 #   ./scripts/repo-sync-cron.sh transcript   # Just transcript
-#   ./scripts/repo-sync-cron.sh dashboard    # Just dashboard
 #   ./scripts/repo-sync-cron.sh sync         # Just sync
-#   ./scripts/repo-sync-cron.sh gha_sync transcript dashboard sync # Specific combination
+#   ./scripts/repo-sync-cron.sh gha_sync transcript sync # Specific combination
 #
 # Crontab suggested setup:
 #   */5 * * * * /path/to/repo/scripts/repo-sync-cron.sh >> /tmp/repo-sync-cron.log 2>&1
@@ -131,16 +129,6 @@ do_transcript() {
     fi
 }
 
-do_dashboard() {
-    # This step handles the task graph only.
-    echo "==> Updating task graph..."
-    if command -v pkb &>/dev/null; then
-        flock -n /tmp/pkb-graph.lock pkb graph -f all || echo "Warning: pkb graph skipped (locked or failed)"
-    else
-        echo "Warning: pkb CLI not found, skipping graph update"
-    fi
-}
-
 do_sync() {
     # Sync all configured git repos and bare mirrors via polecat sync
     echo "==> Syncing repositories..."
@@ -154,25 +142,23 @@ do_sync() {
 # ============================================================================
 
 if [[ $# -eq 0 ]]; then
-    # Full run: cowork_ingest + gha_sync + transcript + dashboard + sync
+    # Full run: cowork_ingest + gha_sync + transcript + sync
     echo "${TS} repo-sync-cron starting (full)"
     do_cowork_ingest
     do_gha_sync
     do_transcript
-    do_dashboard
     do_sync
 else
-    # Named functions: ./repo-sync-cron.sh gha_sync transcript dashboard sync
+    # Named functions: ./repo-sync-cron.sh gha_sync transcript sync
     echo "${TS} repo-sync-cron starting ($*)"
     for func in "$@"; do
         case "$func" in
             cowork_ingest) do_cowork_ingest ;;
             gha_sync)   do_gha_sync ;;
             transcript) do_transcript ;;
-            dashboard)  do_dashboard ;;
             sync)       do_sync ;;
             --quick)    do_cowork_ingest; do_gha_sync; do_transcript; do_sync ;;
-            *)          echo "Unknown function: $func (valid: cowork_ingest, gha_sync, transcript, dashboard, sync, --quick)" >&2; exit 1 ;;
+            *)          echo "Unknown function: $func (valid: cowork_ingest, gha_sync, transcript, sync, --quick)" >&2; exit 1 ;;
         esac
     done
 fi
