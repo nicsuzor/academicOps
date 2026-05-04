@@ -18,7 +18,7 @@ def check_for_path_aliases(filenames: list[str]) -> int:
     violations = []
 
     # Construct regex to detect deprecated parameter alias (dynamically built to avoid self-match)
-    invalid_path = "path" + r"\s*=\s*" + "[\"']?" + "/data/brain"
+    invalid_path = r"\b" + "path" + r"\s*=\s*" + "[\"']?" + "/data/brain"
     pattern = re.compile(invalid_path)
 
     for filename in filenames:
