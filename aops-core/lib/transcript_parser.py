@@ -2429,15 +2429,6 @@ class SessionProcessor:
 
         return sorted(matches)
 
-    def _find_hook_file(self, session_file_path: Path) -> Path | None:
-        """Back-compat shim: return the first matching hook file (or None).
-
-        Prefer ``_find_hook_files`` — sessions can span multiple per-minute
-        hook files and this single-file accessor will miss most of them.
-        """
-        files = self._find_hook_files(session_file_path)
-        return files[0] if files else None
-
     @staticmethod
     def _map_hook_jsonl_to_entry_data(data: dict) -> dict:
         """Map our hook JSONL format to Entry-compatible dict.
@@ -3307,6 +3298,23 @@ class SessionProcessor:
         return out
 
     @staticmethod
+    def _keep_hook(h: dict) -> bool:
+        """Return True if this hook turn should be rendered in the transcript.
+
+        CC's own ``stop_hook_summary`` echoes the same Stop event our router
+        already logs with richer payload. Suppress the echo when it carries no
+        extra signal (no errors, no prevented-continuation flag, no duration).
+        All non-CC-summary hooks are always kept.
+        """
+        if not h.get("hook_is_cc_summary"):
+            return True
+        return bool(
+            h.get("hook_prevented_continuation")
+            or h.get("content")
+            or h.get("hook_duration_ms")
+        )
+
+    @staticmethod
     def _render_session_context(
         ctx: dict[str, list[dict[str, str]]],
         variant: str,
@@ -3450,15 +3458,7 @@ class SessionProcessor:
 
         for turn in turns:
             if isinstance(turn, dict) and turn.get("type") == "hook_context":
-                # Suppress the Claude-Code-side stop_hook_summary echo when
-                # we have no extra payload (errors / prevented-continuation
-                # / duration). Our own -hooks.jsonl Stop entry is richer
-                # and renders elsewhere.
-                if turn.get("hook_is_cc_summary") and not (
-                    turn.get("hook_prevented_continuation")
-                    or turn.get("content")
-                    or turn.get("hook_duration_ms")
-                ):
+                if not self._keep_hook(turn):
                     continue
                 markdown += self._render_hook(turn, full_mode)
                 continue
@@ -3573,20 +3573,8 @@ class SessionProcessor:
                 pre_turn_hooks = [h for h in inline_hooks if not h.get("is_post_turn")]
                 post_turn_hooks = [h for h in inline_hooks if h.get("is_post_turn")]
 
-                # Drop CC stop_hook_summary echoes when our own hook log will
-                # render the same Stop event; only keep them when they carry
-                # extra signal (errors / prevented continuation / duration).
-                def _keep_hook(h: dict) -> bool:
-                    if not h.get("hook_is_cc_summary"):
-                        return True
-                    return bool(
-                        h.get("hook_prevented_continuation")
-                        or h.get("content")
-                        or h.get("hook_duration_ms")
-                    )
-
-                pre_turn_hooks = [h for h in pre_turn_hooks if _keep_hook(h)]
-                post_turn_hooks = [h for h in post_turn_hooks if _keep_hook(h)]
+                pre_turn_hooks = [h for h in pre_turn_hooks if self._keep_hook(h)]
+                post_turn_hooks = [h for h in post_turn_hooks if self._keep_hook(h)]
 
                 for hook in pre_turn_hooks:
                     markdown += self._render_hook(hook, full_mode)
