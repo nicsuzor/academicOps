@@ -236,7 +236,7 @@ def generate_session_filename(
     time_str = timestamp.strftime("%H%M")
     if shortform is None:
         shortform = get_session_shortform(crew_name, repo)
-    safe_slug = _sanitize_slug(slug)
+    safe_slug = _sanitize_slug(slug, shortform=shortform)
     art = ARTIFACT_TYPES[artifact_type]
     task_prefix = _format_task_prefix(task_id)
 
@@ -266,7 +266,7 @@ def generate_base_name(
     time_str = timestamp.strftime("%H%M")
     if shortform is None:
         shortform = get_session_shortform(crew_name, repo)
-    safe_slug = _sanitize_slug(slug)
+    safe_slug = _sanitize_slug(slug, shortform=shortform)
     task_prefix = _format_task_prefix(task_id)
 
     return f"{date_str}-{time_str}-{short_id}-{shortform}-{task_prefix}{safe_slug}"
@@ -458,18 +458,35 @@ def _sanitize(s: str, *, allow_dashes: bool = True) -> str:
     return s
 
 
-def _sanitize_slug(slug: str, max_words: int = 5) -> str:
+def _sanitize_slug(slug: str, max_words: int = 5, shortform: str | None = None) -> str:
     """Sanitize and truncate a slug.
 
     Args:
         slug: Raw slug string
         max_words: Maximum number of words to keep
+        shortform: Optional shortform string (e.g. ``"jewelle-academicops"``)
+            whose component tokens get stripped from the slug to avoid
+            repetition like ``jewelle-crewjewelle-...``. A slug token is
+            dropped when it *contains* any shortform token as a substring
+            — which catches both bare repeats (``jewelle``) and run-on
+            forms produced by separator-less first messages
+            (``crewjewelle``, ``aopsmaintenance``).
 
     Returns:
         Kebab-case slug, max max_words words
     """
     slug = _sanitize(slug)
     words = [w for w in slug.split("-") if w]
+
+    if shortform:
+        shortform_tokens = {t for t in _sanitize(shortform).split("-") if len(t) >= 3}
+        if shortform_tokens:
+            filtered = [w for w in words if not any(tok in w for tok in shortform_tokens)]
+            # Only apply the filter if it leaves us with something — never
+            # let dedupe drop the slug entirely.
+            if filtered:
+                words = filtered
+
     if len(words) > max_words:
         words = words[:max_words]
     return "-".join(words) or "session"

@@ -1443,6 +1443,10 @@ class Entry:
     hook_verdict: str | None = None  # Gate verdict from CanonicalHookOutput
     hook_system_message: str | None = None  # System message from gate
     hook_context_injection: str | None = None  # Context injection from gate
+    hook_raw_input: dict | None = None  # Hook input payload (e.g. Stop's last_assistant_message)
+    hook_duration_ms: int | None = None  # Hook execution duration (CC stop_hook_summary)
+    hook_prevented_continuation: bool = False  # Stop hook blocked the agent
+    hook_is_cc_summary: bool = False  # Synthetic entry from CC stop_hook_summary (dedupe marker)
     skills_matched: list[str] | None = None
     files_loaded: list[str] | None = None
     tool_name: str | None = None
@@ -1518,6 +1522,9 @@ class Entry:
                 entry.hook_verdict = hook_output.get("verdict")
                 entry.hook_system_message = hook_output.get("systemMessage")
                 entry.hook_context_injection = hook_output.get("contextInjection")
+                raw_input = hook_output.get("rawInput")
+                if isinstance(raw_input, dict) and raw_input:
+                    entry.hook_raw_input = raw_input
             # Fall back to content.additionalContext
             if not entry.additional_context and isinstance(entry.content, dict):
                 entry.additional_context = entry.content.get("additionalContext", "")
@@ -1528,17 +1535,27 @@ class Entry:
 
         # Extract hook data from system entries with stop_hook_summary subtype
         if entry.type == "system" and data.get("subtype") == "stop_hook_summary":
-            # Normalize to system_reminder for downstream processing
+            # Normalize to system_reminder for downstream processing.
+            # This is Claude Code's own summary of the Stop hook run; the
+            # richer payload (verdict / system_message / raw_input) lives in
+            # our -hooks.jsonl Stop entry. We mark this as a CC summary so
+            # the renderer can dedupe with the our-log Stop event.
             entry.type = "system_reminder"
             entry.hook_event_name = "Stop"
+            entry.hook_is_cc_summary = True
             entry.hook_exit_code = 0 if not data.get("hookErrors") else 1
-            # Extract hook command info
-            hook_infos = data.get("hookInfos", [])
-            if hook_infos:
-                commands = [h.get("command", "") for h in hook_infos]
-                entry.additional_context = f"Hooks executed: {', '.join(commands)}"
-            if data.get("hasOutput"):
-                entry.additional_context = (entry.additional_context or "") + " (has output)"
+            entry.hook_prevented_continuation = bool(data.get("preventedContinuation"))
+            hook_infos = data.get("hookInfos", []) or []
+            durations = [h.get("durationMs") for h in hook_infos if h.get("durationMs")]
+            if durations:
+                entry.hook_duration_ms = sum(durations)
+            errors = data.get("hookErrors") or []
+            extra = []
+            if entry.hook_prevented_continuation:
+                extra.append("PREVENTED CONTINUATION")
+            if errors:
+                extra.append(f"errors: {errors}")
+            entry.additional_context = " · ".join(extra) if extra else ""
 
         # Parse timestamp (Claude uses "timestamp", Cowork audit uses "_audit_timestamp")
         timestamp_str = data.get("timestamp") or data.get("_audit_timestamp")
@@ -2178,16 +2195,17 @@ class SessionProcessor:
         if load_agents:
             agent_entries = self._load_agent_files(file_path)
 
-        # Load hook entries if hook file exists
+        # Load hook entries if hook file(s) exist. A long session is split
+        # across multiple per-minute hook files (router.sh rotates by clock
+        # minute), so we must load all matching files, not just the first.
         if load_hooks:
-            hook_file = self._find_hook_file(file_path)
-            if hook_file:
-                hook_entries = self._load_hook_entries(hook_file)
-                entries.extend(hook_entries)
-                # Sort by timestamp to maintain chronological order
-                entries.sort(
-                    key=lambda e: e.timestamp if e.timestamp else datetime.min.replace(tzinfo=UTC)
-                )
+            for hook_file in self._find_hook_files(file_path):
+                entries.extend(self._load_hook_entries(hook_file))
+            # Sort by timestamp to maintain chronological order
+            entries.sort(
+                key=lambda e: e.timestamp if e.timestamp else datetime.min.replace(tzinfo=UTC)
+            )
+            entries = self._merge_cc_stop_summaries(entries)
 
         return session_summary, entries, agent_entries
 
@@ -2361,11 +2379,17 @@ class SessionProcessor:
 
         return agent_entries
 
-    def _find_hook_file(self, session_file_path: Path) -> Path | None:
-        """Find hook file by searching for transcript_path match."""
-        session_path = Path(session_file_path)
+    def _find_hook_files(self, session_file_path: Path) -> list[Path]:
+        """Find all hook files whose entries reference this session transcript.
 
-        # Search locations for hook files
+        Hook logs rotate per clock-minute (router.sh writes one file per
+        ``YYYYMMDD-HHMM-…-hooks.jsonl``), so a multi-minute session has
+        multiple files. We return every file whose first matching record
+        points at ``session_file_path``.
+        """
+        session_path = Path(session_file_path)
+        target = str(session_file_path)
+
         # Hooks are stored in {project_dir}-hooks/ (sibling directory with -hooks suffix)
         project_dir = session_path.parent
         hooks_sibling = project_dir.parent / (project_dir.name + "-hooks")
@@ -2377,11 +2401,15 @@ class SessionProcessor:
             Path.home() / ".cache" / "aops" / "sessions",  # Legacy location
         ]
 
+        matches: list[Path] = []
+        seen: set[Path] = set()
         for hook_dir in search_locations:
             if not hook_dir.exists():
                 continue
 
             for hook_file in hook_dir.glob("*-hooks.jsonl"):
+                if hook_file in seen:
+                    continue
                 try:
                     with open(hook_file, encoding="utf-8") as f:
                         for line in f:
@@ -2390,14 +2418,25 @@ class SessionProcessor:
                                 continue
                             try:
                                 data = json.loads(line)
-                                if data.get("transcript_path") == str(session_file_path):
-                                    return hook_file
+                                if data.get("transcript_path") == target:
+                                    matches.append(hook_file)
+                                    seen.add(hook_file)
+                                    break
                             except json.JSONDecodeError:
                                 continue
                 except OSError:
                     continue
 
-        return None
+        return sorted(matches)
+
+    def _find_hook_file(self, session_file_path: Path) -> Path | None:
+        """Back-compat shim: return the first matching hook file (or None).
+
+        Prefer ``_find_hook_files`` — sessions can span multiple per-minute
+        hook files and this single-file accessor will miss most of them.
+        """
+        files = self._find_hook_files(session_file_path)
+        return files[0] if files else None
 
     @staticmethod
     def _map_hook_jsonl_to_entry_data(data: dict) -> dict:
@@ -2430,6 +2469,12 @@ class SessionProcessor:
             hook_output["toolInput"] = data["tool_input"]
         if "agent_id" in data:
             hook_output["agentId"] = data["agent_id"]
+        # Carry raw_input through so the renderer can show what triggered
+        # the hook (e.g. Stop's last_assistant_message, UserPromptSubmit's
+        # prompt, Notification's message).
+        raw_input = data.get("raw_input")
+        if isinstance(raw_input, dict) and raw_input:
+            hook_output["rawInput"] = raw_input
 
         return {
             "type": "system_reminder",
@@ -2456,6 +2501,64 @@ class SessionProcessor:
                 entries.append(Entry.from_dict(entry_data))
 
         return entries
+
+    @staticmethod
+    def _merge_cc_stop_summaries(entries: list[Entry]) -> list[Entry]:
+        """Fold Claude Code's ``stop_hook_summary`` echo into our Stop entry.
+
+        The same Stop event is logged twice: once by our router (rich:
+        verdict, system_message, raw_input.last_assistant_message) and once
+        by Claude Code itself (lean: durationMs, preventedContinuation).
+        We merge the CC fields onto the our-log entry and drop the CC
+        duplicate so the transcript shows a single, complete record.
+        """
+        if not entries:
+            return entries
+
+        cc_window = timedelta(seconds=10)
+        result: list[Entry] = []
+        # Pre-index our-log Stop entries by timestamp so we can merge in
+        # under O(n) per CC summary without quadratic scans.
+        our_stops: list[Entry] = [
+            e
+            for e in entries
+            if e.type == "system_reminder"
+            and e.hook_event_name == "Stop"
+            and not e.hook_is_cc_summary
+        ]
+
+        def _find_match(cc_entry: Entry) -> Entry | None:
+            if cc_entry.timestamp is None:
+                return None
+            for s in our_stops:
+                if s.timestamp is None:
+                    continue
+                if (
+                    abs((s.timestamp - cc_entry.timestamp).total_seconds())
+                    <= cc_window.total_seconds()
+                ):
+                    return s
+            return None
+
+        for entry in entries:
+            if (
+                entry.type == "system_reminder"
+                and entry.hook_event_name == "Stop"
+                and entry.hook_is_cc_summary
+            ):
+                match = _find_match(entry)
+                if match is not None:
+                    # Carry CC-only fields onto the rich entry; drop the CC echo.
+                    if entry.hook_duration_ms and not match.hook_duration_ms:
+                        match.hook_duration_ms = entry.hook_duration_ms
+                    if entry.hook_prevented_continuation:
+                        match.hook_prevented_continuation = True
+                    if entry.additional_context and not match.additional_context:
+                        match.additional_context = entry.additional_context
+                    continue
+            result.append(entry)
+
+        return result
 
     def group_entries_into_turns(
         self,
@@ -2527,10 +2630,21 @@ class SessionProcessor:
                     "hook_context_injection": entry.hook_context_injection,
                     "hook_verdict": entry.hook_verdict,
                     "hook_system_message": entry.hook_system_message,
+                    "hook_raw_input": entry.hook_raw_input,
+                    "hook_duration_ms": entry.hook_duration_ms,
+                    "hook_prevented_continuation": entry.hook_prevented_continuation,
+                    "hook_is_cc_summary": entry.hook_is_cc_summary,
                     "start_time": entry.timestamp,
                     "end_time": entry.timestamp,
                 }
                 if current_turn and current_turn.get("user_message"):
+                    # Position the hook relative to the agent's work in the
+                    # current turn: anything that fires after assistant items
+                    # have started landing is a "post-turn" hook (e.g. Stop,
+                    # PostToolUse on the final tool call). The renderer uses
+                    # this flag to place hooks chronologically rather than
+                    # bunching them at the top of the turn.
+                    hook_turn["is_post_turn"] = bool(current_turn.get("assistant_sequence"))
                     current_turn["inline_hooks"].append(hook_turn)
                 else:
                     turns.append(hook_turn)
@@ -3014,6 +3128,184 @@ class SessionProcessor:
             "early_reads": early_reads,
         }
 
+    # Hook events that get their own ``### Hook:`` header (session-level
+    # transitions worth flagging on their own line). Everything else is a
+    # tool-related event that we collapse to a one-line annotation when it
+    # carries useful payload, or skip when the verdict is the default.
+    _SESSION_LEVEL_HOOKS = frozenset(
+        {
+            "Stop",
+            "SessionStart",
+            "SessionEnd",
+            "UserPromptSubmit",
+            "Notification",
+            "PreCompact",
+        }
+    )
+
+    @staticmethod
+    def _render_hook(hook: dict, full_mode: bool) -> str:
+        """Render a single hook event compactly.
+
+        Tool-related hooks (PreToolUse, PostToolUse, SubagentStart/Stop)
+        collapse to a one-line ``> 🪝 …`` blockquote — and are suppressed
+        entirely when the verdict is the default ``allow`` and there's no
+        message or context-injection payload to surface, regardless of
+        ``full_mode``. The hook log is the source of truth for those; the
+        transcript is for human reading.
+
+        Session-level events (``Stop``, ``SessionStart`` etc.) keep an
+        ``### Hook:`` header and surface verdict, system message, and (for
+        ``Stop``) the last assistant message that triggered it.
+        """
+        event_name = hook.get("hook_event_name") or "Hook"
+        exit_code = hook.get("exit_code")
+        content = (hook.get("content") or "").strip()
+        skills_matched = hook.get("skills_matched")
+        files_loaded = hook.get("files_loaded")
+        tool_name = hook.get("tool_name")
+        agent_id = hook.get("agent_id")
+        tool_input = hook.get("tool_input")
+        hook_verdict = hook.get("hook_verdict")
+        hook_system_message = hook.get("hook_system_message")
+        hook_context_injection = hook.get("hook_context_injection")
+        hook_raw_input = hook.get("hook_raw_input") or {}
+        duration_ms = hook.get("hook_duration_ms")
+        prevented = hook.get("hook_prevented_continuation", False)
+
+        is_blocking = hook_verdict in ("deny", "block", "request-changes")
+        noteworthy_verdict = hook_verdict if hook_verdict and hook_verdict != "allow" else None
+        is_error = exit_code is not None and exit_code != 0
+        is_session_level = event_name in SessionProcessor._SESSION_LEVEL_HOOKS
+
+        # Suppress noisy tool-related no-op hooks. The hook log keeps them;
+        # the transcript only shows the ones that DID something.
+        if not is_session_level:
+            has_payload = bool(
+                hook_system_message
+                or hook_context_injection
+                or skills_matched
+                or files_loaded
+                or noteworthy_verdict
+                or is_blocking
+                or is_error
+                or prevented
+            )
+            if not has_payload:
+                return ""
+
+        # Compact one-line form for tool-related hooks with payload.
+        if not is_session_level:
+            label = event_name
+            if tool_name:
+                label += f" {tool_name}"
+            elif agent_id:
+                label += f" (agent-{agent_id})"
+            verdict_part = ""
+            if is_blocking:
+                verdict_part = f" → 🛑 {hook_verdict}"
+            elif noteworthy_verdict:
+                verdict_part = f" → {noteworthy_verdict}"
+            elif is_error:
+                verdict_part = f" → exit {exit_code}"
+            msg_part = ""
+            if hook_system_message:
+                msg = hook_system_message.replace("\n", " ").strip()
+                if len(msg) > 120:
+                    msg = msg[:117] + "..."
+                msg_part = f" — {msg}"
+            extras: list[str] = []
+            if skills_matched:
+                extras.append("skills: " + ", ".join(f"`{s}`" for s in skills_matched))
+            if files_loaded:
+                extras.append(
+                    "loaded: " + ", ".join(f"`{fp.split('/')[-1]}`" for fp in files_loaded)
+                )
+            if hook_context_injection:
+                extras.append(f"+ctx {len(hook_context_injection):,}c")
+            extras_part = f" ({'; '.join(extras)})" if extras else ""
+            return f"> 🪝 {label}{verdict_part}{msg_part}{extras_part}\n\n"
+
+        # Session-level hook — full ### Hook: section with rich payload.
+        checkmark = ""
+        if exit_code is not None:
+            checkmark = " ✓" if exit_code == 0 else f" ✗ (exit {exit_code})"
+        detail = ""
+        if tool_name:
+            detail = f": {tool_name}"
+        elif agent_id:
+            detail = f": agent-{agent_id}"
+        out = f"### Hook: {event_name}{detail}{checkmark}\n\n"
+
+        if prevented:
+            out += "🛑 **Prevented continuation** — Stop hook blocked the agent from halting.\n\n"
+        if is_blocking:
+            out += f"🛑 Hook denied: verdict=`{hook_verdict}`\n\n"
+        elif noteworthy_verdict:
+            out += f"**Verdict:** `{noteworthy_verdict}`\n\n"
+        elif event_name == "Stop":
+            # The default Stop verdict is "allow" — make it explicit so a
+            # reader can see that the gate was open at this point.
+            out += "**Verdict:** `allow` (continuation permitted)\n\n"
+
+        if hook_system_message:
+            msg = hook_system_message
+            if not full_mode and len(msg) > 600:
+                msg = msg[:600] + "..."
+            out += f"ℹ️ Hook message:\n\n```\n{msg}\n```\n\n"
+
+        # Stop: show the tail of the last assistant message that triggered
+        # this Stop event, so the reader can see what the agent had just
+        # said when the gate fired.
+        if event_name == "Stop" and isinstance(hook_raw_input, dict):
+            last = hook_raw_input.get("last_assistant_message")
+            if isinstance(last, str) and last.strip():
+                tail = last.strip()
+                if len(tail) > 240:
+                    tail = "…" + tail[-240:]
+                # Quote every line and demote any inner headings — the raw
+                # last-assistant message often contains markdown that would
+                # otherwise punch through the transcript's own structure.
+                quoted = _quote_block(_adjust_heading_levels(tail, 4))
+                out += f"_Triggered after assistant message:_\n\n{quoted}\n\n"
+
+        # UserPromptSubmit: show the prompt itself in full mode.
+        if event_name == "UserPromptSubmit" and full_mode and isinstance(hook_raw_input, dict):
+            prompt = hook_raw_input.get("prompt")
+            if isinstance(prompt, str) and prompt.strip():
+                preview = prompt.strip()
+                if len(preview) > 300:
+                    preview = preview[:300] + "..."
+                out += f"_Prompt:_ {preview}\n\n"
+
+        # Notification: show the notification text (e.g. idle prompt).
+        if event_name == "Notification" and isinstance(hook_raw_input, dict):
+            note = hook_raw_input.get("message")
+            if isinstance(note, str) and note.strip():
+                out += f"_Notification:_ {note.strip()}\n\n"
+
+        if duration_ms:
+            out += f"_Hook ran in {duration_ms}ms._\n\n"
+
+        if skills_matched:
+            out += "Skills matched: " + ", ".join(f"`{s}`" for s in skills_matched) + "\n\n"
+        if files_loaded:
+            files_str = ", ".join(f"`{fp.split('/')[-1]}`" for fp in files_loaded)
+            out += f"Loaded {files_str} (content injected)\n\n"
+        if tool_input and tool_name:
+            tool_summary = _summarize_tool_input(tool_name, tool_input)
+            if tool_summary:
+                out += f"**{tool_name}**: `{tool_summary}`\n\n"
+        if content:
+            shown = content if full_mode or len(content) <= 300 else content[:300] + "..."
+            out += f"```\n{shown}\n```\n\n"
+        if hook_context_injection:
+            inj = hook_context_injection
+            preview = inj if full_mode and len(inj) <= 1200 else inj[:300] + "..."
+            out += f"_Injected context ({len(inj):,} chars):_\n\n```\n{preview}\n```\n\n"
+
+        return out
+
     @staticmethod
     def _render_session_context(
         ctx: dict[str, list[dict[str, str]]],
@@ -3158,95 +3450,17 @@ class SessionProcessor:
 
         for turn in turns:
             if isinstance(turn, dict) and turn.get("type") == "hook_context":
-                event_name = turn.get("hook_event_name")
-                exit_code = turn.get("exit_code")
-                content = turn.get("content", "").strip()
-                skills_matched = turn.get("skills_matched")
-                files_loaded = turn.get("files_loaded")
-                tool_name = turn.get("tool_name")
-                agent_id = turn.get("agent_id")
-                hook_context_injection = turn.get("hook_context_injection")
-                hook_verdict = turn.get("hook_verdict")
-                hook_system_message = turn.get("hook_system_message")
-
-                is_error = exit_code is not None and exit_code != 0
-                is_blocking_verdict = hook_verdict in ("deny", "block", "request-changes")
-                # "allow" is the default verdict — only surface non-default ones
-                noteworthy_verdict = (
-                    hook_verdict if hook_verdict and hook_verdict != "allow" else None
-                )
-
-                has_content = (
-                    content
-                    or skills_matched
-                    or files_loaded
-                    or hook_context_injection
-                    or noteworthy_verdict
-                    or hook_system_message
-                    or is_blocking_verdict
-                )
-                if not full_mode and not has_content and not is_error:
-                    continue
-
-                if exit_code is None:
-                    status = " (no exit code)"
-                elif exit_code == 0:
-                    status = " (exit 0)"
-                else:
-                    status = f" ✗ (exit {exit_code})"
-
-                hook_name = event_name or "Hook"
-                hook_detail = ""
-                if tool_name:
-                    hook_detail = f": {tool_name}"
-                elif agent_id:
-                    hook_detail = f": agent-{agent_id}"
-                markdown += f"- Hook({hook_name}{hook_detail}){status}\n"
-
-                if (
-                    full_mode
-                    and not content
-                    and not skills_matched
-                    and not files_loaded
-                    and not hook_context_injection
-                    and not hook_system_message
-                    and not is_blocking_verdict
-                    and not noteworthy_verdict
+                # Suppress the Claude-Code-side stop_hook_summary echo when
+                # we have no extra payload (errors / prevented-continuation
+                # / duration). Our own -hooks.jsonl Stop entry is richer
+                # and renders elsewhere.
+                if turn.get("hook_is_cc_summary") and not (
+                    turn.get("hook_prevented_continuation")
+                    or turn.get("content")
+                    or turn.get("hook_duration_ms")
                 ):
-                    markdown += "  - (no output)\n"
-                if is_blocking_verdict:
-                    markdown += f"  - 🛑 Hook denied: verdict={hook_verdict}\n"
-                elif hook_verdict and hook_verdict not in ("allow", None):
-                    markdown += f"  - Hook verdict: {hook_verdict}\n"
-                if hook_system_message:
-                    msg_preview = (
-                        hook_system_message[:300] + "..."
-                        if not full_mode and len(hook_system_message) > 300
-                        else hook_system_message
-                    )
-                    markdown += f"  - ℹ️ Hook message: {msg_preview}\n"
-                if noteworthy_verdict:
-                    markdown += f"  - Verdict: `{noteworthy_verdict}`\n"
-                if skills_matched:
-                    skills_str = ", ".join(f"`{s}`" for s in skills_matched)
-                    markdown += f"  - Skills matched: {skills_str}\n"
-                if files_loaded:
-                    files_str = ", ".join(f"`{fp.split('/')[-1]}`" for fp in files_loaded)
-                    markdown += f"  - Loaded: {files_str}\n"
-                if content:
-                    if full_mode:
-                        markdown += f"```\n{content}\n```\n"
-                    else:
-                        display_content = content[:200] + "..." if len(content) > 200 else content
-                        markdown += f"  - {display_content}\n"
-                if hook_context_injection:
-                    inj_preview = (
-                        hook_context_injection[:300] + "..."
-                        if len(hook_context_injection) > 300
-                        else hook_context_injection
-                    )
-                    markdown += f"  - Injected context ({len(hook_context_injection):,} chars): `{inj_preview[:80]}...`\n"
-                markdown += "\n"
+                    continue
+                markdown += self._render_hook(turn, full_mode)
                 continue
 
             # Skip old-style summary entries (now handled by _generate_context_summary)
@@ -3352,100 +3566,32 @@ class SessionProcessor:
                     if isinstance(turn, ConversationTurn)
                     else turn.get("inline_hooks", [])
                 )
-                if inline_hooks:
-                    for hook in inline_hooks:
-                        event_name = hook.get("hook_event_name") or "Hook"
-                        exit_code = (
-                            hook.get("exit_code") if hook.get("exit_code") is not None else 0
-                        )
-                        content = hook.get("content", "").strip()
-                        skills_matched = hook.get("skills_matched")
-                        files_loaded = hook.get("files_loaded")
-                        tool_input = hook.get("tool_input")
-                        tool_name = hook.get("tool_name")
-                        agent_id = hook.get("agent_id")
-                        hook_verdict = hook.get("hook_verdict")
-                        hook_system_message = hook.get("hook_system_message")
+                # Split into hooks that fired BEFORE any assistant work (pre)
+                # and ones that fired during/after the agent's tool calls
+                # (post). Post-turn hooks render after the assistant sequence
+                # so chronology survives in the markdown.
+                pre_turn_hooks = [h for h in inline_hooks if not h.get("is_post_turn")]
+                post_turn_hooks = [h for h in inline_hooks if h.get("is_post_turn")]
 
-                        is_blocking_verdict = hook_verdict in ("deny", "block", "request-changes")
+                # Drop CC stop_hook_summary echoes when our own hook log will
+                # render the same Stop event; only keep them when they carry
+                # extra signal (errors / prevented continuation / duration).
+                def _keep_hook(h: dict) -> bool:
+                    if not h.get("hook_is_cc_summary"):
+                        return True
+                    return bool(
+                        h.get("hook_prevented_continuation")
+                        or h.get("content")
+                        or h.get("hook_duration_ms")
+                    )
 
-                        noteworthy_verdict = (
-                            hook_verdict if hook_verdict and hook_verdict != "allow" else None
-                        )
-                        has_useful_content = (
-                            content
-                            or skills_matched
-                            or files_loaded
-                            or tool_input
-                            or hook_system_message
-                            or is_blocking_verdict
-                            or noteworthy_verdict
-                        )
-                        is_error = exit_code is not None and exit_code != 0
+                pre_turn_hooks = [h for h in pre_turn_hooks if _keep_hook(h)]
+                post_turn_hooks = [h for h in post_turn_hooks if _keep_hook(h)]
 
-                        if (
-                            not full_mode
-                            and not has_useful_content
-                            and not is_error
-                            and not is_blocking_verdict
-                        ):
-                            continue
-
-                        checkmark = (
-                            ""
-                            if exit_code is None
-                            else (" ✓" if exit_code == 0 else f" ✗ (exit {exit_code})")
-                        )
-                        hook_detail = ""
-                        if tool_name:
-                            hook_detail = f": {tool_name}"
-                        elif agent_id:
-                            hook_detail = f": agent-{agent_id}"
-                        hook_label = f"{event_name}{hook_detail}"
-
-                        markdown += f"### Hook: {hook_label}{checkmark}\n\n"
-
-                        if is_blocking_verdict:
-                            markdown += f"🛑 Hook denied: verdict={hook_verdict}\n\n"
-                        elif hook_verdict and hook_verdict not in ("allow", None):
-                            markdown += f"Hook verdict: {hook_verdict}\n\n"
-                        if hook_system_message:
-                            msg_preview = (
-                                hook_system_message[:300] + "..."
-                                if not full_mode and len(hook_system_message) > 300
-                                else hook_system_message
-                            )
-                            markdown += f"ℹ️ Hook message: {msg_preview}\n\n"
-                        if noteworthy_verdict:
-                            markdown += f"**Verdict**: `{noteworthy_verdict}`\n\n"
-
-                        if tool_input and tool_name:
-                            tool_summary = _summarize_tool_input(tool_name, tool_input)
-                            if tool_summary:
-                                markdown += f"**{tool_name}**: `{tool_summary}`\n\n"
-
-                        if skills_matched:
-                            skills_str = ", ".join(f"`{s}`" for s in skills_matched)
-                            markdown += f"Skills matched: {skills_str}\n\n"
-                        if files_loaded:
-                            files_str = ", ".join(f"`{fp.split('/')[-1]}`" for fp in files_loaded)
-                            markdown += f"Loaded {files_str} (content injected)\n\n"
-                        if content:
-                            if not full_mode and len(content) > 200:
-                                display_content = content[:200] + "..."
-                            else:
-                                display_content = content
-                            markdown += f"```\n{display_content}\n```\n\n"
-
-                        hook_injection = hook.get("hook_context_injection")
-                        if hook_injection:
-                            injection_preview = (
-                                hook_injection[:300] + "..."
-                                if len(hook_injection) > 300
-                                else hook_injection
-                            )
-                            markdown += f"_Injected context ({len(hook_injection):,} chars):_\n\n"
-                            markdown += f"```\n{injection_preview}\n```\n\n"
+                for hook in pre_turn_hooks:
+                    markdown += self._render_hook(hook, full_mode)
+            else:
+                post_turn_hooks = []
 
             if assistant_sequence:
                 in_actions_section = False
@@ -3625,6 +3771,12 @@ class SessionProcessor:
                             condensed = "\n".join(line for line in lines if line.strip())
                             # Quote the subagent summary/content
                             markdown += _quote_block(condensed) + "\n\n"
+
+            # Hooks that fired AFTER the agent's last assistant entry
+            # (Stop, terminal PostToolUse, etc.) — render at the bottom of
+            # the turn so their chronological position is preserved.
+            for hook in post_turn_hooks:
+                markdown += self._render_hook(hook, full_mode)
 
         edited_files = details.get("edited_files", session.edited_files)
         files_list = edited_files if edited_files and isinstance(edited_files, list) else []
