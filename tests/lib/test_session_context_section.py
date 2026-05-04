@@ -131,12 +131,13 @@ def _render(session_path: Path, variant: str) -> str:
 def _extract_section(md: str, heading: str = "## Session Context") -> str:
     """Slice out just the Session Context section so assertions about its
     contents aren't polluted by content rendered elsewhere in the transcript
-    (e.g. the same Read shown again inside a turn body, or the existing
-    legacy hook-bullet rendering that lives outside the structured section).
+    (e.g. the same Read shown again inside a turn body, or the per-turn
+    hook rendering that lives outside the structured section).
 
     The Session Context section ends at:
       - the next top-level ``## `` heading, OR
-      - the first legacy ``- Hook(`` bullet (existing pre-section rendering).
+      - the first per-turn ``### Hook:`` header (new compact rendering), OR
+      - the first legacy ``- Hook(`` bullet (old rendering, kept for safety).
     """
     if heading not in md:
         return ""
@@ -146,6 +147,9 @@ def _extract_section(md: str, heading: str = "## Session Context") -> str:
     next_h2 = rest.find("\n## ")
     if next_h2 != -1:
         candidates.append(next_h2)
+    per_turn_hook = rest.find("\n### Hook:")
+    if per_turn_hook != -1:
+        candidates.append(per_turn_hook)
     legacy_hook = rest.find("\n- Hook(")
     if legacy_hook != -1:
         candidates.append(legacy_hook)
