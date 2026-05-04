@@ -804,12 +804,16 @@ def _infer_project(
 
         return "antigravity"  # Default for brain directories
 
-    # Handle Gemini JSON sessions
-    if session_path.suffix == ".json":
+    # Handle Gemini JSON/JSONL sessions (Gemini chat dumps may use either ext)
+    if session_path.suffix in (".json", ".jsonl"):
         project = session_path.parent.name
         if project == "chats":
             return normalize_gemini_project(session_path.parent.parent.name)
-        return "gemini"
+        # ``.json`` extension alone is a strong Gemini signal (Claude uses
+        # .jsonl for transcripts), but ``.jsonl`` is shared — fall through so
+        # Claude/Polecat detection can run.
+        if session_path.suffix == ".json":
+            return "gemini"
 
     # Handle Polecat/Crew sessions
     # Use path parts directly to avoid false positives from partial string matches
