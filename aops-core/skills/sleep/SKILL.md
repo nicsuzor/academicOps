@@ -310,7 +310,45 @@ For matches:
 - Ambiguous → flag in cycle summary
 - Batch limit: up to 30 per cycle.
 
-**Time budget**: Phase 6 gets 10 minutes max. Exit the phase when time is up.
+### Activity 4: Loop-close (PR-state sweep + gate-1 verification audit)
+
+Two checks added to Phase 6 — not new phases. Per `spec-7715b135` §4.
+
+> **Planning note**: Putting Activity 4a (PR-state sweep) under Phase 6 alongside Activity 4b (gate-1 verification audit) is a planning choice for grouping data-quality-class loop-close work, not a spec mandate. Future readers may re-litigate placement if Phase 6 starts feeling overloaded.
+
+**Activity 4a — PR-state sweep.**
+
+For each tracked repo (`$ACA_DATA/state/tracked-repos.json`, initial `["nicsuzor/academicOps", "nicsuzor/brain"]`), for each PR closed since the cursor at `$ACA_DATA/state/close-loop-cursor.json`:
+
+Match PR → task by precedence:
+
+1. `pr_url` already on the task
+2. `task-XXXXXXXX` ID found in PR body
+3. PR `headRefName` matches the task's recorded branch
+4. PR title matches task title (whole-word, ignoring `feat()` / `fix()` / `chore()` prefixes)
+
+Resolution:
+
+- **Merged** → `complete_task(id, completion_evidence="PR #N merged <ISO> — <url>", pr_url=<url>)`.
+- **Closed-without-merge** → re-queue to `inbox` (always; see Re-queue policy below); append reviewer comments via `mcp__pkb__append`.
+- **Open** → no-op (optional `pr_url` annotation if missing).
+- **No match** → log to ambiguous queue in artefact, surface in next `/daily`. Never invent a task.
+
+PRs only — **no `git log` scanning**. Idempotent. Cursor advances only after writes succeed. Phase no-ops when PKB MCP unavailable (CI guard per `.agents/CAPABILITIES.md`).
+
+Artefact written to `$ACA_DATA/state/pr-state.json` for `/daily` and dashboard consumers (single producer / two consumers).
+
+**Activity 4b — gate-1 verification audit.**
+
+For tasks transitioned `in_progress → done` since the last cycle, look up the verification subtask the planner gate (`spec-64352eac`) created at `inbox → ready`. Confirm terminal state (`done` or `cancelled` with rationale). If missing or unresolved, surface in the cycle summary under `Loop-close gaps`. **Do NOT auto-close or auto-fail — surface only.**
+
+> **Planner-gate discoverability gap (open)**: `spec-64352eac` requires planners to emit a verification subtask but does not yet mandate a tag, title prefix, or `kind: verification` frontmatter field that makes that subtask programmatically discoverable. Activity 4b currently relies on heuristics (subtasks of the just-completed task whose title contains "verify" / "verification" / "QA" or whose body cites the parent's AC). When the convention is firmed up in `spec-64352eac`, replace the heuristic with the explicit signal and tighten the audit. Until then, false negatives are expected and `Loop-close gaps` surfacing is conservative.
+
+### Re-queue policy (closed-without-merge): always to `inbox`
+
+Closed-without-merge PRs carry new counter-evidence (review comments, surfaced bugs). The planner gate (`spec-64352eac`) exists precisely to re-decompose: AC, named file/symbol, verification subtask, lens subtasks. Bypassing it would let stale assumptions ride. Reviewer comments are appended to the task body either way, preserving visibility. Cost is one extra trip through the planner gate — that is the design intent.
+
+**Time budget**: Phase 6 gets 15 minutes max (10m baseline + 5m for Activity 4). Exit the phase when time is up.
 
 ## Phase 7: Staleness Sweep
 
@@ -321,6 +359,16 @@ Detect orphans, stale docs, and under-specified tasks. The agent uses these as *
 - **Own judgment**: The agent reads flagged tasks and decides whether they genuinely need attention.
 
 **Per [HEURISTICS P#123](../../HEURISTICS.md#P123) — age is not staleness.** Surface candidates for human review; do not auto-cancel based on age. Cancellation requires evidence the work has become irrelevant, not just that it is old.
+
+### Gate-1 artifact rot check
+
+For each task in `ready` or `queued` whose age is ≥ 14 days: read the planner-gate outputs recorded on the task (acceptance criteria, named file/symbol, target repo); verify the named file/symbol still exists in the named repo (same grep mechanic Part A row 2 uses for supervisor pre-flight). If rotted (file deleted, symbol renamed, repo no longer contains it), demote to `inbox` with an annotation appended to the body:
+
+```
+# Demoted by /sleep YYYY-MM-DD: gate-1 artifacts no longer present (file deleted / symbol renamed). Re-decompose.
+```
+
+Per `spec-7715b135` §4: surface, don't decide — the demotion is mechanical (artifacts no longer exist), not editorial. Per P#123: age alone is not staleness — only artifact rot triggers demotion. A 14-day-old `ready` task whose artifacts still exist is left alone.
 
 ## Phase 8: Refile Processing
 
@@ -476,6 +524,60 @@ When running via `/loop` or `/active-loop`, the sleep cycle follows the active-l
 4. **Surfaces, doesn't decide** — flags candidates for human/supervised review
 5. **No moldy docs** — never creates knowledge docs without a named consumer
 6. **Agents can consolidate (hypothesis under test)** — we believe agents can perform the episodic→semantic transformation given proper value alignment, clear provenance requirements, and bounded autonomy. The `/qa` review on each consolidation PR tests this hypothesis. If quality review reveals persistent problems, escalate enforcement — don't just trust harder.
+
+## Cycle Summary Template
+
+Every cycle emits a summary written to the PR body (or `$GITHUB_STEP_SUMMARY` on CI). Sections appear in this order; sections with no content are omitted (except `Sub-agent halts` which always renders, even at zero, as the silent-failure anti-pattern guard).
+
+```markdown
+# Sleep cycle summary — YYYY-MM-DD HH:MM (mode: <short-loop|full-session>; trigger: <signal>)
+
+## Sub-agent halts
+
+<count + per-phase tool gaps; or "none">
+
+## Phase 0 — Graph Health
+
+<baseline metrics_hash, key counts>
+
+## Phase 2 — Transcript Mining
+
+<N transcripts processed, M canonical notes touched>
+
+## Phase 4 — Knowledge Consolidation
+
+<N episodic sources consolidated, M canonical notes created/restructured>
+
+## Phase 6 — Data Quality Reconciliation
+
+- Activity 1 (dedup): <N merges, M ambiguous>
+- Activity 2 (staleness): <N completed via evidence, M flagged for review, K skipped (CI guard)>
+- Activity 3 (misclassification): <N archived/reclassified, M flagged>
+- Activity 4a (PR-state sweep): <N closed by sweep, M re-queued to inbox, K ambiguous>
+- Activity 4b (gate-1 verification audit): see Loop-close gaps below
+
+## Phase 7 — Staleness Sweep
+
+<orphan/stale candidates flagged; gate-1 artifact rot demotions: N>
+
+## Phase 9 — Graph Maintenance
+
+<strategy chosen, N items processed, metrics_hash delta>
+
+## Phase 10 — Self-check
+
+<pass/fail per check; flags for QA reviewer>
+
+## Loop-close gaps
+
+<tasks transitioned in_progress → done in this cycle whose verification subtask is missing or unresolved; one bullet per task with task ID + reason. "none" if clean.>
+
+## Next
+
+<single-sentence forward note for the next cycle's Phase 9 strategy or unresolved threads>
+```
+
+The `Loop-close gaps` section is the dedicated surface for Activity 4b output. It is **information for review** — never converted to an automatic action by the cycle itself. The section is omitted when empty.
 
 ## Output: Consolidation PR
 

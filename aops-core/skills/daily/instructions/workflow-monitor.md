@@ -10,17 +10,27 @@ Read `$AOPS_SESSIONS/projects.yaml` to get the project registry. For each projec
 
 This is the same repo discovery used by Step 4.2.5 (merged PR query). The repo list is configurable — repos are added/removed by editing `projects.yaml` in the sessions repo, not by changing skill code.
 
-### Step 6.2: Fetch Open PRs Across Repos
+### Step 6.2: Read PR State From Sleep Artefact
 
-**Run per-repo fetches in parallel.** Each repo query is independent — agent teams should dispatch a concurrent subagent per repo; single-agent environments should issue all `gh pr list` calls simultaneously rather than repo-by-repo. Merge results after all fetches complete.
-
-For each tracked repo:
+**Primary path: read `$ACA_DATA/state/pr-state.json`.** The /sleep cycle's Phase 6 Activity 4a (`aops-core/skills/sleep/SKILL.md` § "Activity 4: Loop-close") is the **single producer** of PR state across tracked repos. `/daily` is a **consumer** — it MUST NOT re-run `gh pr list` itself. One producer / two consumers (daily + dashboard) is the design.
 
 ```bash
-cd <repo_path> && gh pr list --state open --json number,title,isDraft,mergeable,createdAt,updatedAt,reviewDecision,headRefName,url,author,statusCheckRollup,additions,deletions,changedFiles,labels --limit 100 2>/dev/null
+test -f "$ACA_DATA/state/pr-state.json" && cat "$ACA_DATA/state/pr-state.json"
 ```
 
-**Graceful degradation**: If `gh` CLI is unavailable or authentication fails for a repo, note it inline ("GitHub CLI unavailable for [repo] — skipped") and continue to the next repo. If all repos fail, skip the entire section and note "GitHub unavailable — skipped workflow monitoring" in natural language. Never produce empty tables or error codes.
+The artefact contains, per repo, the bucketed open PR list (Ready to merge / Needs review / Needs fixes / Stale / Draft) plus the timestamp of the producing /sleep cycle.
+
+**Staleness threshold (concrete)**: If `pr-state.json` is older than **24 hours** (or missing entirely), render Outstanding Workflows with a single inline note: `Outstanding Workflows: stale (last sleep artefact YYYY-MM-DD HH:MM, >24h ago) — running /sleep will refresh.` Do NOT fall back to a live `gh pr list` from this skill — the producer/consumer separation is the whole point. The user can run `/sleep` (or wait for cron) to refresh.
+
+**Graceful degradation**:
+
+- Missing artefact (file does not exist) → render: `Outstanding Workflows: no sleep artefact yet — run /sleep to populate.`
+- Stale artefact (>24h) → render the stale note above.
+- Malformed JSON → render: `Outstanding Workflows: artefact unreadable — check $ACA_DATA/state/pr-state.json.`
+
+Never produce empty tables or error codes.
+
+> **Migration note**: prior versions of this step ran `gh pr list` per repo with parallel subagents. Removed in favour of consuming the /sleep artefact produced by /sleep Phase 6 Activity 4a.
 
 ### Step 6.3: Bucket PRs by Actionability
 

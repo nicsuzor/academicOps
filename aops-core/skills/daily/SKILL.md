@@ -128,6 +128,8 @@ Include direct PR URLs. Do not rank buckets or say "tackle X first".
 
 **Repo list**: Use the project registry from `$AOPS_SESSIONS/projects.yaml`. Configurable — repos are added/removed by editing the sessions-repo registry.
 
+**Artefact dependency**: This subsection AND the Task Sweep below both consume `$ACA_DATA/state/pr-state.json`, produced by /sleep Phase 6 Activity 4a. `/daily` does not re-run `gh pr list` itself. If the artefact is older than **24 hours** (or missing), the subsection reports "stale" with a one-line note pointing the user to `/sleep` to refresh — see [[instructions/workflow-monitor]] §"Step 6.2: Read PR State From Sleep Artefact" for the exact rendering rules.
+
 > See [[instructions/workflow-monitor]] for the full procedure.
 
 ### 4. Today's Log
@@ -224,11 +226,11 @@ This sweep closes the loop on tasks whose completion can be inferred from extern
 **Procedure:**
 
 1. Call `list_tasks(status="review")` and `list_tasks(status="merge_ready")` to get candidate tasks.
-2. Group tasks by repository, then check for merge evidence repo-by-repo:
+2. **Read merge evidence from `$ACA_DATA/state/pr-state.json`** (produced by /sleep Phase 6 Activity 4a). The artefact already contains, per tracked repo, recent merged-PR records (number, title, url, mergedAt, headRefName, body excerpt, matched task ID). Match locally:
    - Inspect each task's `evidence`, `notes`, `description`, and frontmatter for a linked PR number, PR URL (`pr_url`), task ID, task title, and any linked branch name
-   - For each repo, fetch merged PRs once with `gh pr list --state merged --json number,title,url,mergedAt,body,headRefName`
-   - Match tasks locally against the fetched PR set: PR number already linked on the task, `pr_url` in frontmatter, task ID in PR body, `headRefName` matching the task's linked branch, or PR title matching the task title (whole-word boundaries)
-   - Only if a specific candidate PR number is already known and the batch result lacks needed detail, use `gh pr view <number> --json state,url,mergedAt,headRefName`
+   - For each task, look up the artefact's merged-PR records: PR number already linked on the task, `pr_url` in frontmatter, task ID in PR body, `headRefName` matching the task's linked branch, or PR title matching the task title (whole-word boundaries)
+   - **Do NOT run `gh pr list` from this skill.** The /sleep artefact is the single source. If the artefact is older than 24 hours or missing, report counts as `unknown — sleep artefact stale` and skip auto-close.
+   - Only if a specific candidate PR number is already known and the artefact lacks detail, use `gh pr view <number> --json state,url,mergedAt,headRefName` as a one-off lookup (not a list scan).
 3. **Auto-complete clear cases**: If a merged PR is found matching the task, call `mcp__pkb__complete_task` with a completion note including the PR URL and merge timestamp as evidence. No human confirmation needed — the merge is sufficient evidence.
 4. **Sent-email evidence**: For tasks where the completion signal is a sent email, cross-reference against recent sent items. If a sent reply matches the task's correspondent + subject (whole-word boundaries) within 48 hours of task creation, call `mcp__pkb__complete_task` with the sent email as evidence. Only auto-close when the match is unambiguous.
 5. **Ambiguous cases**: When evidence exists but is ambiguous (partial subject match, PR closed but not merged), surface the task in the note under "Needs your call" within "What Needs Attention". Include the PR/email link. **Never auto-close ambiguous cases.**
