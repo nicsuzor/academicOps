@@ -56,16 +56,14 @@ class TestRouterFormatting:
         assert output.hookSpecificOutput.hookEventName == "BeforeTool"
 
     def test_format_for_gemini_deny_without_system_message(self):
-        """Backward-compat: when only context_injection exists, fall back to
-        putting it in reason so the user still gets an explanation, but ALSO
-        keep it in additionalContext so the model sees it."""
+        """When no system_message, reason is unset — hook definition must be well-formed."""
         canonical = CanonicalHookOutput(
             verdict="deny",
             context_injection="Recovery: call aops_core_enforcer(...)",
         )
         output = self.router.output_for_gemini(canonical, "BeforeTool")
         assert output.decision == "deny"
-        assert output.reason == "Recovery: call aops_core_enforcer(...)"
+        assert output.reason is None
         assert (
             output.hookSpecificOutput.additionalContext == "Recovery: call aops_core_enforcer(...)"
         )
