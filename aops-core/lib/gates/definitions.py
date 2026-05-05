@@ -1,16 +1,9 @@
-import os
-
 from hooks.gate_config import (
     ENFORCER_GATE_MODE,
     ENFORCER_TOOL_CALL_THRESHOLD,
     HANDOVER_GATE_MODE,
     QA_GATE_MODE,
 )
-
-# Orchestrator-boundary gate mode. Defaults to "warn". Set to "off" to disable.
-# Hard-block ("deny") is Phase 3 per the orchestrator-boundary spec (brain PKB) and is not
-# yet activated — verify polecat efficiency first.
-ORCHESTRATOR_BOUNDARY_GATE_MODE = os.environ.get("ORCHESTRATOR_BOUNDARY_GATE_MODE", "warn")
 
 from lib.gate_types import (
     CountdownConfig,
@@ -201,35 +194,6 @@ GATE_CONFIGS = [
                 verdict=HANDOVER_GATE_MODE,
                 message_key="handover.policy_message",
                 context_key="stop.handover_block",
-            ),
-        ],
-    ),
-    # --- Orchestrator Boundary ---
-    # Level 4 detection for the orchestrator-boundary spec (brain PKB). Warns (does not
-    # block) when the orchestrator session writes to project source outside
-    # the framework allowlist. Polecat worker sessions are exempt (they set
-    # POLECAT_SESSION_TYPE in the env). Hard-block mode is Phase 3 and not
-    # yet wired — verify polecat efficiency first.
-    GateConfig(
-        name="orchestrator_boundary",
-        description=(
-            "Warns when the orchestrator session writes to project (non-framework) "
-            "source files. See the orchestrator-boundary spec in the brain PKB."
-        ),
-        initial_status=GateStatus.OPEN,
-        policies=[
-            GatePolicy(
-                condition=GateCondition(
-                    hook_event="PostToolUse",
-                    custom_check="is_orchestrator_project_write",
-                ),
-                verdict=ORCHESTRATOR_BOUNDARY_GATE_MODE,
-                message_key=None,  # Short inline message; the rich guidance is in context_key.
-                message_template=(
-                    "Orchestrator boundary: write to project source detected. "
-                    "Consider dispatching to polecat instead."
-                ),
-                context_key="orchestrator.boundary_warn",
             ),
         ],
     ),

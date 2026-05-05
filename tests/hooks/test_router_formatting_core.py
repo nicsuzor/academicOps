@@ -32,6 +32,14 @@ class TestRouterFormatting:
             self.router = HookRouter()
 
     def test_format_for_gemini_deny(self):
+        """Deny: recovery payload must reach the model via additionalContext.
+
+        ``reason`` is user-visible only — the model never sees it. So when the
+        enforcer returns recovery instructions in ``context_injection`` (e.g.
+        ``aops_core_enforcer(message=...)``), they MUST land on
+        ``hookSpecificOutput.additionalContext``. ``reason`` carries the short
+        denial summary (``system_message``).
+        """
         canonical = CanonicalHookOutput(
             verdict="deny",
             system_message="Blocked",
@@ -40,12 +48,25 @@ class TestRouterFormatting:
         output = self.router.output_for_gemini(canonical, "BeforeTool")
         assert output.decision == "deny"
         assert output.systemMessage == "Blocked"
-        assert output.reason == "Reasoning here"
-        # `reason` is user-only; the model needs additionalContext to see
-        # recovery instructions on deny.
+        # Short denial reason → reason (user-visible)
+        assert output.reason == "Blocked"
+        # Recovery payload → additionalContext (model-visible)
         assert output.hookSpecificOutput is not None
         assert output.hookSpecificOutput.additionalContext == "Reasoning here"
         assert output.hookSpecificOutput.hookEventName == "BeforeTool"
+
+    def test_format_for_gemini_deny_without_system_message(self):
+        """When no system_message, reason is unset — hook definition must be well-formed."""
+        canonical = CanonicalHookOutput(
+            verdict="deny",
+            context_injection="Recovery: call aops_core_enforcer(...)",
+        )
+        output = self.router.output_for_gemini(canonical, "BeforeTool")
+        assert output.decision == "deny"
+        assert output.reason is None
+        assert (
+            output.hookSpecificOutput.additionalContext == "Recovery: call aops_core_enforcer(...)"
+        )
 
     def test_format_for_gemini_deny_no_context_injection(self):
         # Without context_injection there's nothing to surface to the model;

@@ -126,6 +126,50 @@ def _walk_up_for_project(parts: tuple[str, ...]) -> str | None:
     return None
 
 
+def _is_gemini_chat_jsonl(file_path: Path) -> bool:
+    """Detect Gemini CLI chat-jsonl files.
+
+    Gemini CLI's interactive chat history (post-2026) is written as JSON Lines
+    where each line is a message of the form
+    ``{"role": "user"|"model", "parts": [...]}``. The parts contain ``text``,
+    ``functionCall``, or ``functionResponse`` entries — the Gemini API
+    conversation schema. This is distinct from Claude's JSONL format and from
+    the older Gemini ``.json`` chat dump (`messages: [...]`).
+
+    Heuristics (any sufficient):
+      1. Path contains ``.gemini/tmp/`` and lives under a ``chats/`` directory
+         with filename matching ``session-*.jsonl``.
+      2. First non-empty line parses as JSON and has ``role`` in {user, model}
+         alongside a ``parts`` list.
+    """
+    if file_path.suffix.lower() != ".jsonl":
+        return False
+
+    s = str(file_path)
+    name = file_path.name
+    if ".gemini/tmp/" in s and "chats" in file_path.parts and name.startswith("session-"):
+        return True
+
+    try:
+        with open(file_path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                obj = json.loads(line)
+                if (
+                    isinstance(obj, dict)
+                    and obj.get("role") in ("user", "model")
+                    and isinstance(obj.get("parts"), list)
+                ):
+                    return True
+                # Only sniff the first non-empty line.
+                return False
+    except (OSError, json.JSONDecodeError):
+        return False
+    return False
+
+
 def normalize_gemini_project(dir_name: str) -> str:
     """Normalize a Gemini tmp directory name to a project name.
 
@@ -1947,6 +1991,8 @@ class SessionProcessor:
             summary, entries, agents = self._parse_jsonl_file(
                 file_path, load_agents=False, load_hooks=False
             )
+        elif _is_gemini_chat_jsonl(file_path):
+            summary, entries, agents = self._parse_gemini_chat_jsonl(file_path)
         else:
             summary, entries, agents = self._parse_jsonl_file(
                 file_path, load_agents=load_agents, load_hooks=load_hooks
@@ -2130,6 +2176,182 @@ class SessionProcessor:
                 entries.append(result_entry)
 
         return session_summary, entries, {}
+
+    def _parse_gemini_chat_jsonl(
+        self, file_path: Path
+    ) -> tuple[SessionSummary, list[Entry], dict[str, list[Entry]]]:
+        """Parse Gemini CLI chat-jsonl session files.
+
+        Each line is one message in the Gemini API conversation schema:
+
+            {"role": "user"|"model", "parts": [...]}
+
+        Where ``parts`` items are dicts with one of:
+          - ``text``: free-form text
+          - ``functionCall``: ``{"name": str, "args": dict}``
+          - ``functionResponse``: ``{"name": str, "response": dict|str}``
+
+        Some Gemini CLI variants annotate entries with ``timestamp``, ``id``,
+        ``model``, or ``tokens`` — we read these when present but treat them
+        as optional.
+
+        Returns standard (summary, entries, agents) tuple. Tool results in a
+        ``model`` entry's parts are routed to a synthetic ``user``-typed entry
+        so downstream rendering treats them like Claude tool_results.
+        """
+        # Derive 8-char session id from filename: session-<...>-<8hex>.jsonl
+        stem = file_path.stem
+        if stem.startswith("session-") and "-" in stem:
+            short_id = stem.split("-")[-1]
+        else:
+            short_id = stem
+
+        entries: list[Entry] = []
+        first_text: str | None = None
+        first_ts: datetime | None = None
+
+        try:
+            with open(file_path, encoding="utf-8") as f:
+                lines = f.readlines()
+        except OSError:
+            return SessionSummary(uuid=short_id), [], {}
+
+        idx = 0
+        for raw in lines:
+            raw = raw.strip()
+            if not raw:
+                continue
+            try:
+                obj = json.loads(raw)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(obj, dict):
+                continue
+
+            role = obj.get("role")
+            parts = obj.get("parts")
+            if role not in ("user", "model") or not isinstance(parts, list):
+                continue
+
+            idx += 1
+            entry_uuid = obj.get("id") or f"gemini-{short_id}-{idx}"
+
+            timestamp = None
+            ts_str = obj.get("timestamp")
+            if isinstance(ts_str, str):
+                try:
+                    s = ts_str.replace("Z", "+00:00") if ts_str.endswith("Z") else ts_str
+                    timestamp = datetime.fromisoformat(s).astimezone()
+                except (ValueError, TypeError):
+                    timestamp = None
+            if timestamp and first_ts is None:
+                first_ts = timestamp
+
+            tokens = obj.get("tokens") or {}
+            model_name = obj.get("model")
+
+            text_chunks: list[str] = []
+            tool_uses: list[dict] = []
+            tool_results: list[dict] = []
+
+            for i, part in enumerate(parts):
+                if not isinstance(part, dict):
+                    if isinstance(part, str):
+                        text_chunks.append(part)
+                    continue
+                if "text" in part and isinstance(part["text"], str):
+                    text_chunks.append(part["text"])
+                elif "functionCall" in part and isinstance(part["functionCall"], dict):
+                    fc = part["functionCall"]
+                    call_id = fc.get("id") or f"{entry_uuid}-call-{i}"
+                    tool_uses.append(
+                        {
+                            "type": "tool_use",
+                            "id": call_id,
+                            "name": fc.get("name", ""),
+                            "input": fc.get("args", {}) or {},
+                        }
+                    )
+                elif "functionResponse" in part and isinstance(part["functionResponse"], dict):
+                    fr = part["functionResponse"]
+                    call_id = fr.get("id") or f"{entry_uuid}-resp-{i}"
+                    resp = fr.get("response")
+                    is_error = False
+                    if isinstance(resp, dict):
+                        if "error" in resp:
+                            tool_output = str(resp["error"])
+                            is_error = True
+                        elif "output" in resp:
+                            tool_output = str(resp["output"])
+                        else:
+                            tool_output = json.dumps(resp)
+                    else:
+                        tool_output = "" if resp is None else str(resp)
+                    tool_results.append(
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": call_id,
+                            "content": tool_output,
+                            "is_error": is_error,
+                        }
+                    )
+
+            text = "".join(text_chunks).strip()
+
+            # Capture first user-role text as Original Request
+            if role == "user" and first_text is None and text:
+                first_text = text
+
+            # Build content blocks for the main entry
+            content_blocks: list[dict] = []
+            if text:
+                content_blocks.append({"type": "text", "text": text})
+            if tool_uses:
+                content_blocks.extend(tool_uses)
+
+            entry_type = "assistant" if role == "model" else "user"
+            # If a user line carried only functionResponse parts, keep it as
+            # a user entry whose content is the tool_results — matches the
+            # Claude convention where tool_result blocks live in user entries.
+            if role == "user" and tool_results and not content_blocks:
+                main_content = tool_results
+            else:
+                main_content = content_blocks if content_blocks else text
+
+            entry = Entry(
+                type=entry_type,
+                uuid=entry_uuid,
+                timestamp=timestamp,
+                message={"content": main_content},
+                content={"content": main_content},
+                model=model_name if isinstance(model_name, str) else None,
+                input_tokens=tokens.get("input") if isinstance(tokens, dict) else None,
+                output_tokens=tokens.get("output") if isinstance(tokens, dict) else None,
+                cache_read_input_tokens=tokens.get("cached") if isinstance(tokens, dict) else None,
+                thoughts_tokens=tokens.get("thoughts") if isinstance(tokens, dict) else None,
+            )
+            entries.append(entry)
+
+            # If a model entry produced tool_results (rare — usually
+            # functionResponse appears in user-role lines), append a synthetic
+            # user entry to carry them so renderers see them after the call.
+            if role == "model" and tool_results:
+                entries.append(
+                    Entry(
+                        type="user",
+                        uuid=f"result-{entry_uuid}",
+                        timestamp=timestamp,
+                        message={"content": tool_results},
+                        content={"content": tool_results},
+                    )
+                )
+
+        summary = SessionSummary(
+            uuid=short_id,
+            summary="Gemini CLI Session",
+            created_at=first_ts.isoformat() if first_ts else "",
+        )
+        return summary, entries, {}
 
     def _parse_jsonl_file(
         self,

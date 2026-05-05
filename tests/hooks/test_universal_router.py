@@ -56,8 +56,13 @@ class TestUniversalRouter:
 
         assert isinstance(out, GeminiHookOutput)
         assert out.decision == "deny"
-        assert out.reason == "Reason"
+        # `reason` is the user-visible short denial summary (system_message).
+        # The recovery payload (context_injection) goes to additionalContext
+        # so the model can see it.
+        assert out.reason == "Msg"
         assert out.systemMessage == "Msg"
+        assert out.hookSpecificOutput is not None
+        assert out.hookSpecificOutput.additionalContext == "Reason"
 
     def test_output_for_claude_stop(self, router_instance):
         canonical = CanonicalHookOutput(

@@ -15,6 +15,7 @@ Used by:
 from __future__ import annotations
 
 import glob
+import itertools
 import json
 import logging
 import re
@@ -1098,9 +1099,12 @@ def find_sessions(
             if not base_dir.exists():
                 continue
 
-            # Gemini structure: ~/.gemini/tmp/{hash}/chats/session-*.json
-            # Or in framework: $AOPS_SESSIONS/**/.gemini/tmp/{slug}/chats/session-*.json
-            for chat_file in base_dir.glob("**/chats/session-*.json"):
+            # Gemini structure: ~/.gemini/tmp/{hash}/chats/session-*.{json,jsonl}
+            # Or in framework: $AOPS_SESSIONS/**/.gemini/tmp/{slug}/chats/session-*.{json,jsonl}
+            for chat_file in itertools.chain(
+                base_dir.glob("**/chats/session-*.json"),
+                base_dir.glob("**/chats/session-*.jsonl"),
+            ):
                 # Determine session_id from filename or content
                 # session-2026-01-08T08-18-a5234d3e -> a5234d3e
                 session_id = chat_file.stem

@@ -940,17 +940,15 @@ class HookRouter:
         # Set decision based on verdict
         if result.verdict == "deny":
             out.decision = "deny"
+            # Recovery payload (e.g. enforcer instructions) MUST go to
+            # hookSpecificOutput.additionalContext — `reason` is user-visible
+            # only and the model never sees it. Mirrors the Claude side, where
+            # context_injection lands on hookSpecificOutput.additionalContext.
             if result.context_injection:
-                out.reason = result.context_injection
-                # `reason` is user-only; the model needs context_injection too
-                # so recovery instructions reach the agent, not just the user.
                 out.hookSpecificOutput = GeminiHookSpecificOutput(
                     hookEventName=event, additionalContext=result.context_injection
                 )
-                if not out.systemMessage:
-                    out.systemMessage = f"Blocked: {result.context_injection}"
-            elif out.systemMessage:
-                out.reason = out.systemMessage
+            out.reason = result.system_message
         else:
             out.decision = "allow"
             if result.context_injection:
