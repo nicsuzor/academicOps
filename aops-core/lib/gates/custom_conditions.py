@@ -26,17 +26,4 @@ def check_custom_condition(
         tool_input = ctx.tool_input if isinstance(ctx.tool_input, dict) else None
         return ctx.tool_name is not None and get_tool_category(ctx.tool_name, tool_input) == "write"
 
-    if name == "is_orchestrator_project_write":
-        # Fires PostToolUse on Edit/Write to non-framework project source in an
-        # orchestrator (non-polecat) session. See the orchestrator-boundary spec (brain PKB).
-        from lib.orchestrator_boundary import (
-            is_orchestrator_session,
-            is_project_source_write,
-        )
-
-        if not is_orchestrator_session(cwd=ctx.cwd):
-            return False
-        tool_input = ctx.tool_input if isinstance(ctx.tool_input, dict) else None
-        return is_project_source_write(ctx.tool_name, tool_input, ctx.cwd)
-
     return False
