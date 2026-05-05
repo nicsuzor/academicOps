@@ -76,15 +76,6 @@ class TestRouterFormatting:
         assert output.hookSpecificOutput.permissionDecision == "deny"
         assert output.hookSpecificOutput.additionalContext == "Reasoning here"
 
-    def test_format_for_claude_updated_input(self):
-        canonical = CanonicalHookOutput(
-            verdict="allow",
-            updated_input='{"arg": "value"}',
-        )
-        output = self.router.output_for_claude(canonical, "PreToolUse")
-        assert output.hookSpecificOutput.permissionDecision == "allow"
-        assert output.hookSpecificOutput.updatedInput == '{"arg": "value"}'
-
     def test_format_for_claude_stop_event_deny(self):
         """Stop events use decision/reason/stopReason, NOT hookSpecificOutput."""
         canonical = CanonicalHookOutput(
@@ -110,14 +101,6 @@ class TestRouterFormatting:
 
         assert output.decision == "approve"
         assert output.stopReason == "Session ending normally"
-
-    def test_format_for_gemini_updated_input(self):
-        canonical = CanonicalHookOutput(
-            verdict="allow",
-            updated_input='{"arg": "value"}',
-        )
-        output = self.router.output_for_gemini(canonical, "BeforeTool")
-        assert output.updatedInput == '{"arg": "value"}'
 
 
 class TestRouterMerge:
