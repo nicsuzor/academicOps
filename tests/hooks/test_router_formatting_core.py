@@ -32,6 +32,14 @@ class TestRouterFormatting:
             self.router = HookRouter()
 
     def test_format_for_gemini_deny(self):
+        """Deny: recovery payload must reach the model via additionalContext.
+
+        ``reason`` is user-visible only — the model never sees it. So when the
+        enforcer returns recovery instructions in ``context_injection`` (e.g.
+        ``aops_core_enforcer(message=...)``), they MUST land on
+        ``hookSpecificOutput.additionalContext``. ``reason`` carries the short
+        denial summary (``system_message``).
+        """
         canonical = CanonicalHookOutput(
             verdict="deny",
             system_message="Blocked",
@@ -40,7 +48,27 @@ class TestRouterFormatting:
         output = self.router.output_for_gemini(canonical, "BeforeTool")
         assert output.decision == "deny"
         assert output.systemMessage == "Blocked"
-        assert output.reason == "Reasoning here"
+        # Short denial reason → reason (user-visible)
+        assert output.reason == "Blocked"
+        # Recovery payload → additionalContext (model-visible)
+        assert output.hookSpecificOutput is not None
+        assert output.hookSpecificOutput.additionalContext == "Reasoning here"
+        assert output.hookSpecificOutput.hookEventName == "BeforeTool"
+
+    def test_format_for_gemini_deny_without_system_message(self):
+        """Backward-compat: when only context_injection exists, fall back to
+        putting it in reason so the user still gets an explanation, but ALSO
+        keep it in additionalContext so the model sees it."""
+        canonical = CanonicalHookOutput(
+            verdict="deny",
+            context_injection="Recovery: call aops_core_enforcer(...)",
+        )
+        output = self.router.output_for_gemini(canonical, "BeforeTool")
+        assert output.decision == "deny"
+        assert output.reason == "Recovery: call aops_core_enforcer(...)"
+        assert (
+            output.hookSpecificOutput.additionalContext == "Recovery: call aops_core_enforcer(...)"
+        )
 
     def test_format_for_gemini_allow_with_context(self):
         canonical = CanonicalHookOutput(verdict="allow", context_injection="Info")
