@@ -52,7 +52,7 @@ from typing import Any
 
 DEFAULT_TRACKED_REPOS = ["nicsuzor/academicOps", "nicsuzor/brain"]
 
-TASK_ID_RE = re.compile(r"\b(task|aops|ns|spec|epic|targ|goal)-[0-9a-f]{8}\b")
+TASK_ID_RE = re.compile(r"\b(?:task|aops|ns|spec|epic|targ|goal)-[0-9a-f]{8}\b")
 TITLE_PREFIX_RE = re.compile(
     r"^(?:feat|fix|chore|docs|refactor|test|perf|build|ci|style|revert)"
     r"(?:\([^)]*\))?\s*:\s*",
@@ -278,10 +278,8 @@ def match_pr_to_task(pr: dict[str, Any], tasks: Iterable[dict[str, Any]]) -> Mat
                 return MatchResult(task_id=t["id"], signal="pr_url")
 
     # 2. task-XXXXXXXX in PR body
-    matches = TASK_ID_RE.findall(body)
-    if matches:
-        # the regex returns just the prefix group; re-scan to grab full IDs
-        ids_in_body = [m.group(0) for m in TASK_ID_RE.finditer(body)]
+    ids_in_body = TASK_ID_RE.findall(body)
+    if ids_in_body:
         task_ids = {t["id"] for t in tasks}
         for tid in ids_in_body:
             if tid in task_ids:
@@ -499,7 +497,7 @@ def write_ci_noop_artefact(path: Path | None = None) -> Path:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
+    parser = argparse.ArgumentParser(description=(__doc__ or "").split("\n", 1)[0])
     parser.add_argument(
         "--dry-run",
         action="store_true",
