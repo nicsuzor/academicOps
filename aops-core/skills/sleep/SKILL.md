@@ -312,7 +312,7 @@ For matches:
 
 ### Activity 4: Loop-close (PR-state sweep + gate-1 verification audit)
 
-Two checks added to Phase 6 — not new phases. Per `spec-7715b135` §4. Helper script at `aops-core/scripts/close_loop.py` is permitted but **this SKILL.md phase entry is the SSoT**.
+Two checks added to Phase 6 — not new phases. Per `spec-7715b135` §4.
 
 > **Planning note**: Putting Activity 4a (PR-state sweep) under Phase 6 alongside Activity 4b (gate-1 verification audit) is a planning choice for grouping data-quality-class loop-close work, not a spec mandate. Future readers may re-litigate placement if Phase 6 starts feeling overloaded.
 

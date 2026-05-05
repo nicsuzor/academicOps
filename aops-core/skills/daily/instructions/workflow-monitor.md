@@ -30,7 +30,7 @@ The artefact contains, per repo, the bucketed open PR list (Ready to merge / Nee
 
 Never produce empty tables or error codes.
 
-> **Migration note**: prior versions of this step ran `gh pr list` per repo with parallel subagents. Removed in favour of consuming the /sleep artefact. The fetch logic now lives once in `aops-core/scripts/close_loop.py` (helper for sleep Phase 6 Activity 4a).
+> **Migration note**: prior versions of this step ran `gh pr list` per repo with parallel subagents. Removed in favour of consuming the /sleep artefact produced by /sleep Phase 6 Activity 4a.
 
 ### Step 6.3: Bucket PRs by Actionability
 
