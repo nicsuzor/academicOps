@@ -1073,37 +1073,57 @@ def build_aops_cowork(
     if commit_sha:
         write_plugin_version(src_dir, commit_sha)
 
-    # 1. Copy only Cowork-compatible content (no hooks, lib, scripts, config)
+    # Cowork is a slimmed-down Claude-format plugin for an RO dispatch agent
+    # running against ~/brain. The shipped surface is intentionally narrow:
+    # only the components that dispatch needs.
+    #
+    # Top-level component directories under aops-core/ to include.
     COWORK_INCLUDE = {
         "skills",
         "commands",
         "agents",
     }
-    # Top-level markdown files to include
+    # Top-level markdown/config files to include.
     COWORK_MD_INCLUDE = {
         "AXIOMS.md",
-        "HEURISTICS.md",
-        "CONSTRAINTS.md",
         "agent-env-map.conf",
     }
+    # Per-component allowlists. Anything outside these is dropped.
+    COWORK_SKILLS = {"planner", "aops", "remember"}
+    COWORK_AGENTS = {"pauli.md", "jr.md"}
+    COWORK_COMMANDS = {"q.md", "pull.md", "learn.md", "bump.md"}
 
     for src_item in src_dir.iterdir():
         if src_item.name.startswith(".") or src_item.name == "__pycache__":
             continue
 
-        if src_item.name in COWORK_INCLUDE:
-            if src_item.name == "agents" and src_item.is_dir():
-                # Transform agent frontmatter for Claude format (same as claude build)
-                dst = dist_dir / src_item.name
-                dst.mkdir(parents=True, exist_ok=True)
-                for agent_file in src_item.glob("*.md"):
-                    content = agent_file.read_text()
-                    content = transform_agent_for_platform(content, "claude", agent_file.name)
-                    content = translate_tool_calls(content, "claude")
-                    (dst / agent_file.name).write_text(content)
-                print(f"  ✓ Copied agents -> {dst}")
-            else:
-                safe_copy(src_item, dist_dir / src_item.name)
+        if src_item.name == "agents" and src_item.is_dir():
+            dst = dist_dir / "agents"
+            dst.mkdir(parents=True, exist_ok=True)
+            for agent_file in src_item.glob("*.md"):
+                if agent_file.name not in COWORK_AGENTS:
+                    continue
+                content = agent_file.read_text()
+                content = transform_agent_for_platform(content, "claude", agent_file.name)
+                content = translate_tool_calls(content, "claude")
+                (dst / agent_file.name).write_text(content)
+            print(f"  ✓ Copied agents ({sorted(COWORK_AGENTS)}) -> {dst}")
+        elif src_item.name == "skills" and src_item.is_dir():
+            dst = dist_dir / "skills"
+            dst.mkdir(parents=True, exist_ok=True)
+            for skill_dir in src_item.iterdir():
+                if skill_dir.is_dir() and skill_dir.name in COWORK_SKILLS:
+                    safe_copy(skill_dir, dst / skill_dir.name)
+            print(f"  ✓ Copied skills ({sorted(COWORK_SKILLS)}) -> {dst}")
+        elif src_item.name == "commands" and src_item.is_dir():
+            dst = dist_dir / "commands"
+            dst.mkdir(parents=True, exist_ok=True)
+            for cmd_file in src_item.glob("*.md"):
+                if cmd_file.name in COWORK_COMMANDS:
+                    safe_copy(cmd_file, dst / cmd_file.name)
+            print(f"  ✓ Copied commands ({sorted(COWORK_COMMANDS)}) -> {dst}")
+        elif src_item.name in COWORK_INCLUDE:
+            safe_copy(src_item, dist_dir / src_item.name)
         elif src_item.is_file() and src_item.name in COWORK_MD_INCLUDE:
             safe_copy(src_item, dist_dir / src_item.name)
 
@@ -1152,25 +1172,6 @@ def build_aops_cowork(
             if src_script.exists():
                 safe_copy(src_script, scripts_dst / script_name)
         print("  ✓ Copied MCP launch scripts")
-
-    # 4. Also include aops-tools skills if available
-    tools_src = aops_root / "aops-tools" / "skills"
-    if tools_src.exists():
-        tools_skills_dst = dist_dir / "skills"
-        # Merge tool skills into the main skills directory
-        for skill_dir in tools_src.iterdir():
-            dst = tools_skills_dst / skill_dir.name
-            if not dst.exists():
-                safe_copy(skill_dir, dst)
-        tools_index = aops_root / "aops-tools" / "SKILLS.md"
-        if tools_index.exists():
-            # Append tools skills index to main SKILLS.md
-            main_skills_md = dist_dir / "SKILLS.md"
-            if main_skills_md.exists():
-                with open(main_skills_md, "a") as f:
-                    f.write("\n\n## Domain Tools\n\n")
-                    f.write(tools_index.read_text())
-        print("  ✓ Merged aops-tools skills")
 
     print("✓ Built aops-cowork")
 
