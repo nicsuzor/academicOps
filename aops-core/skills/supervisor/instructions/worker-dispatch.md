@@ -87,6 +87,59 @@ Record the gate result before firing the worker:
 [ISO timestamp] host=nicwin: ping-pkb FAILED (exit 5) → halting; filing reachability subtask
 ```
 
+### Gate 3: Pre-flight Confirmation Summary (task-4cea5008, aops-e2d639e2)
+
+After Gates 1 and 2 pass, the supervisor MUST emit a 4-row pre-flight
+confirmation table to visible output AND append it to the epic's
+`## Supervisor Log` under a `### Pre-flight Confirmation` heading.
+This is a deterministic check, not a prose conditional. The grep below
+IS the row 2 evidence source.
+
+This gate is the existing **Halt-on-substitute** discipline (see
+[[../SKILL.md#halt-on-substitute]]) specialised for pre-flight
+verification. Same halt protocol — set the epic to `blocked` (canonical
+status per `skills/remember/references/TAXONOMY.md`: external dependency
+on a human decision the supervisor cannot resolve internally), record
+the report in the body, exit. Do not silently substitute repo or
+`project=`.
+
+| Row | Field                  | Source of truth                                                                                          | Halt-if-unknown rule                                                               |
+| --- | ---------------------- | -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| 1   | **Task ID**            | The epic / subtask being dispatched                                                                      | Halt if no task ID resolved                                                        |
+| 2   | **Source repo**        | Inferred from file paths the task names (AC, body, gate-1 named file/symbol) — NOT from `project=` alone | Halt if no file path is named, or named file does not resolve to exactly one repo  |
+| 3   | **project= field**     | Task's `project:` frontmatter                                                                            | Halt if missing OR disagrees with row 2 (Polecat #3 class)                         |
+| 4   | **Next link in chain** | Task this dispatch unblocks (parent's next ready child OR next subtask of same epic)                     | Halt if no next link AND epic has more than one ready descendant (orientation rot) |
+
+**Row 2 mechanic** — the supervisor reads the task body and AC, extracts
+named files / symbols, and greps the working tree to confirm each named
+file resolves to exactly one repo. Bare repo names ("brain", "aops-core",
+"polecat") are not evidence — only files / symbols that grep can locate
+count for row 2. If multiple file paths are named and they resolve to
+different repos, that is a row 2 halt (ambiguous source).
+
+Halt protocol on any row failing:
+
+```
+[ISO timestamp] PRE-FLIGHT HALT: task-<id> row=<N> reason=<one line>
+  → epic status set to `blocked`
+  → table appended to epic body under `## Supervisor Log`
+```
+
+Do NOT proceed to `polecat run`. Do NOT pick a substitute repo or
+project. Exit and surface to user.
+
+Worked replays (the table MUST halt these — both are dogfood references):
+
+- **Polecat #3** — frontmatter says `project: brain`; AC names a file
+  under `aops-core/`. Row 2 grep resolves to `aops-core`; row 3
+  frontmatter says `brain`. Mismatch → halt at row 2/3 boundary,
+  status set to `blocked` (canonical).
+- **pkb→public-PR incident** — task source files live under
+  `$ACA_DATA/` (private PKB clone); `project=` and the implied target
+  repo are public. Row 2 grep resolves source to the private clone;
+  row 3 / target disagrees. Halt before any commit or push reaches a
+  public repo.
+
 ## Pre-Dispatch Validation (MANDATORY)
 
 Before dispatching ANY task to a worker, the supervisor must validate:

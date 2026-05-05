@@ -35,7 +35,7 @@ should still apply unchanged.
 
 ## Mandatory Pre-Dispatch Gates
 
-Two gates MUST pass before any `polecat run` invocation. See
+Three gates MUST pass before any `polecat run` invocation. See
 [[worker-dispatch#mandatory-pre-dispatch-gates]] for the canonical
 specifications. Summarised:
 
@@ -45,6 +45,13 @@ specifications. Summarised:
 2. **PKB readiness probe (issue #600)** — `polecat ping-pkb` must succeed on
    the intended worker host. A failure means `PkbClient._initialize()` will
    crash inside the worker; supervisor refuses to dispatch.
+3. **Pre-flight Confirmation Summary (task-4cea5008, aops-e2d639e2)** —
+   4-row table (Task ID / Source repo / `project=` field / Next link in
+   chain) confirming the dispatch parameters resolve unambiguously. Halt
+   if any row is unknown or rows 2/3 disagree. See
+   [[../SKILL.md#pre-flight-confirmation-summary]] for the table and
+   [[worker-dispatch#gate-3-pre-flight-confirmation-summary-task-4cea5008-aops-e2d639e2]]
+   for the grep mechanic. Do not duplicate the table here.
 
 ---
 

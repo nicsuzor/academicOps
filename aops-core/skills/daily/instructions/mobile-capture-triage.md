@@ -58,7 +58,7 @@ No downstream call. Proceed to step 3.
 After a capture has been successfully routed (or confirmed as discard):
 
 ```
-mcp__pkb__delete(path="notes/mobile-captures/<filename>.md")
+mcp__pkb__delete(id="notes/mobile-captures/<filename>.md")
 ```
 
 Git retains the history. Do not rename, archive, or flag-as-processed — the file is gone.

@@ -69,7 +69,6 @@ class ClaudeHookSpecificOutput(BaseModel):
     permissionDecision: Literal["allow", "deny", "ask"] | None = None
     permissionDecisionReason: str | None = None
     additionalContext: str | None = None
-    updatedInput: str | None = None
 
 
 class ClaudeStopHookOutput(BaseModel):
@@ -134,7 +133,6 @@ class GeminiHookOutput(BaseModel):
     suppressOutput: bool | None = None
     continue_: bool | None = Field(default=None, alias="continue")
     stopReason: str | None = None
-    updatedInput: str | None = None
     # Metadata for internal tracking/debugging
     metadata: dict[str, Any] = Field(default_factory=dict)
 
@@ -151,5 +149,4 @@ class CanonicalHookOutput(BaseModel):
     system_message: str | None = None
     verdict: Literal["allow", "deny", "ask", "warn"] | None = "allow"
     context_injection: str | None = None
-    updated_input: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)

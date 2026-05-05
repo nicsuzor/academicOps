@@ -94,7 +94,7 @@ Skills are Claude Code / Gemini CLI extensions that know how to do specific thin
 Hooks make every session framework-aware without manual setup:
 
 - **SessionStart**: loads principles, pulls latest state
-- **UserPromptSubmit hints**: inject context-map pointers and the dispositor reminder (brain repo only — see [specs/enforcement-map.md](specs/enforcement-map.md))
+- **UserPromptSubmit hints**: inject context-map pointers
 - **PreToolUse gates**: hydration, enforcer (periodic compliance), custodiet (workflow discipline), policy enforcer (destructive-command block)
 - **PostToolUse**: orchestrator-boundary detection (brain only), warn-tier checks, autocommit
 - **Stop gates**: QA + handover discipline before session ends
