@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.3.23](https://github.com/nicsuzor/academicOps/compare/v0.3.22...v0.3.23) (2026-05-05)
+
+
+### Features
+
+* **sleep:** /sleep loop-close — Phase 6 + Phase 7 additions (Part B of dispatch improvements) ([#909](https://github.com/nicsuzor/academicOps/issues/909)) ([0cce5bb](https://github.com/nicsuzor/academicOps/commit/0cce5bb7c73049d83d1ee6886e3f00a31eaefbf1))
+* **supervisor:** pre-flight confirmation summary (Part A of dispatch improvements) ([#908](https://github.com/nicsuzor/academicOps/issues/908)) ([d6667ac](https://github.com/nicsuzor/academicOps/commit/d6667ac8f8dcb471cc5e9d5c8c74270902e0a685))
+
+
+### Bug Fixes
+
+* address review feedback + merge main ([22ce15a](https://github.com/nicsuzor/academicOps/commit/22ce15ac973f294024375bbfe0941d4f8912ff75))
+* **gates:** remove orchestrator_boundary refs left by delete-dispositor ([fb7e02b](https://github.com/nicsuzor/academicOps/commit/fb7e02b94c1041b9c5bc21248130ebb22b8134b9))
+* **polecat:** drop CI=true for gemini crew so REPL stays  interactive ([41bb286](https://github.com/nicsuzor/academicOps/commit/41bb286d037660381553f50daaf9dd83a110fbdf))
+* **polecat:** launch gemini crew with --approval-mode=yolo, not plan ([b6ef88c](https://github.com/nicsuzor/academicOps/commit/b6ef88c256311f79819fb29002af199ae418c86c))
+* **router:** remove fallback logic from output_for_gemini deny path ([af221a4](https://github.com/nicsuzor/academicOps/commit/af221a43dfbb53c73a316dcf25f7464ab4803a2d))
+* **router:** surface deny-branch context_injection to gemini model ([421a7cc](https://github.com/nicsuzor/academicOps/commit/421a7cc2797467d0bf94e36df287be4b1d428f1f))
+* **transcripts,hooks:** parse gemini chat-jsonl + route deny recovery to model ([88682f0](https://github.com/nicsuzor/academicOps/commit/88682f0480301e1cec10e3acfce08fd4a49dc95d))
+* **transcripts,hooks:** parse gemini chat-jsonl + route deny recovery to model ([44c8791](https://github.com/nicsuzor/academicOps/commit/44c87914ac25a0b9079284d83add1e9b719cd926))
+
+
+### Build System
+
+* **cowork:** trim aops-cowork to RO dispatch surface ([#910](https://github.com/nicsuzor/academicOps/issues/910)) ([28bb396](https://github.com/nicsuzor/academicOps/commit/28bb39695700ef17feafc0d78b8382a952c6cc6e))
+
 ## [0.3.22](https://github.com/nicsuzor/academicOps/compare/v0.3.21...v0.3.22) (2026-05-04)
 
 
