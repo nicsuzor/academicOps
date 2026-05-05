@@ -3280,7 +3280,8 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
     print(f"   Crew: {crew_name}")
     print(f"   Projects: {', '.join(projects)}")
     print(f"   Working dir: {work_dir}")
-    if _is_vanilla_crew():
+    vanilla = _is_vanilla_crew()
+    if vanilla:
         print("   Mode: vanilla-crew trial (no hooks, bypass-permissions)")
         print("         toggle off with POLECAT_VANILLA_CREW=0")
     else:
@@ -3314,7 +3315,7 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
         )
     else:
         # Claude Code: sandbox via project settings.json + setting-sources
-        if _is_vanilla_crew():
+        if vanilla:
             # Vanilla-crew trial: bypass-permissions (yolo) inside the container,
             # no plan mode, no hooks. Toggle off with POLECAT_VANILLA_CREW=0.
             cmd = [
@@ -3346,10 +3347,8 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
     # custodiet ops counter — the gate must not fire when rbg cannot be invoked.
     # Vanilla-crew trial uses bypass mode for Claude, so plan-mode signalling
     # is suppressed in that path.
-    if not interactive and not gemini and not _is_vanilla_crew():
+    if not interactive and not gemini and not vanilla:
         env["POLECAT_APPROVAL_MODE"] = "plan"
-
-    vanilla = _is_vanilla_crew()
 
     # Compute session directory for Claude transcript persistence.
     project_slug = target or projects[0]
