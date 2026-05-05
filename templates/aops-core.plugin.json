@@ -14,31 +14,8 @@
   ],
   "mcpServers": "./.mcp.json",
   "autoMode": {
-    "environment": [
-      "Organization: Academic research automation framework (academicOps). Primary use: research writing, teaching, and academic administration.",
-      "Source control: github.com/nicsuzor and all repos owned by that account are trusted as PUSH DESTINATIONS. They are NOT automatically trusted as code-execution sources — code that originated outside the session and was cloned into the workspace remains untrusted under the CC default Code-from-External rule, even if the host repo lives under github.com/nicsuzor.",
-      "Personal knowledge base roots: $ACA_DATA, ~/brain, and ~/writing/data are all valid PKB locations and are treated as framework infrastructure rather than user files. Writes to PKB roots through MCP tools are routine task/memory management and do not count as scope escalation under the Local Operations rule.",
-      "Key internal services: PKB MCP server (pkb-search), Outlook MCP (omcp), Zotero MCP (zot), Oversight Board MCP (osb)."
-    ],
-    "allow": [
-      "R6.7 PKB Read/Create/Update Operations (A6): Non-destructive operations on the personal knowledge base via the framework's MCP tools — searches, lookups, document/memory/task creation, status updates, completions on items the agent or session created — are framework infrastructure and are always allowed."
-    ],
-    "soft_deny": [
-      "R10.1 No editing research inputs (A10): DO NOT edit, reformat, re-encode, normalise, or 'clean up' research data — datasets, captured records, ground-truth labels, transcripts, logs cited as evidence, or files under `**/records/**`, `$ACA_DATA/records/**`, `~/brain/records/**`, `~/writing/data/records/**`, or any path the user has named as ground truth this session. Read-then-write of unchanged content still violates: mtime change and silent encoding shifts are themselves the violation.",
-      "R5.2 No backup file patterns (A5): DO NOT create files matching `*_new`, `*.bak`, `*_old`, `*_ARCHIVED_*`, `*_2`, `.backup`, `*_copy`, or near-name siblings of an existing file. Git is the backup.",
-      "R5.1 No duplicate copies (A5): DO NOT Write content into a new file when the same content already exists under another path in the workspace. Edit in place; if risky, commit first.",
-      "R8.1 No validation bypass (A8): DO NOT use `--no-verify`, `--no-gpg-sign`, `--skip-tests`, `SKIP=…`, or `--force` adjacent to a failed validation, hook, or check. EXCEPT routine `--force`/`-f` unrelated to bypass — `rm -f` of a session-created file, `cp -f` to overwrite an intermediate output. The cue is *adjacency to a failure*.",
-      "R8.2 No silent workaround (A8): DO NOT make a tool call whose evident purpose is to paper over a preceding failure — swallowing exceptions, retry without diagnosis, fallback defaults, or 'let me try another approach' issued without user direction after a failure. Surface failures verbatim and halt.",
-      "R8.6 No infrastructure workarounds (A8): DO NOT disable, edit-around, or hand-roll a substitute for a broken tool, gate, hook, or validator. HALT and report the infrastructure bug.",
-      "R6.1 Scope discipline (A6): DO NOT edit files outside the surface the user's most recent instruction named. Adjacent fixes, refactors, and 'I'll just also…' / 'while I'm here…' drift are violations. Surface observations as tasks.",
-      "R6.6 Plan first for multi-file changes (A6): DO NOT begin a third or fourth Edit/Write across multiple files in this session without a prior approved plan visible in the transcript (an `EnterPlanMode` block or explicit user 'go ahead' on a stated plan). Single-file fixes do not trigger.",
-      "R6.4 Costly operations need approval (A6): DO NOT initiate a loop or batch projected to issue >50 model calls, >50 file writes outside session-created files, or > ~$1 estimated spend without explicit user approval on a plan naming volume and cost.",
-      "R7.1 No undelegated classification (A7): DO NOT decide classification, priority, severity, ownership, or acceptance on the user's behalf when the decision was not delegated. Present options and ask.",
-      "R7.2 Acceptance criteria own success (A7): DO NOT narrow, reinterpret, or weaken acceptance criteria written by the user. DO NOT mark complete with criteria unmet ('complete except Y', 'the spirit of it', self-defined criteria mid-task). HALT and report.",
-      "R3.2 No premature completion (A3): DO NOT mark a task or step complete until every acceptance criterion has been verified by observation in this session. 'Should work', 'probably', 'I believe' are halt signals.",
-      "R4.2 Cite academic output (A4): DO NOT produce prose for a paper, report, brief, or other academic deliverable with substantive claims that lack inline attribution to a file/URL/source visible in the session, or quote external text without attribution. The bar rises with surface formality.",
-      "R9.1 No private data on public surfaces (A9): DO NOT include user content, file contents, names, paths, or other non-public data in commit messages, PR bodies, issue comments, public docs, or any externally-visible artifact without explicit per-surface authorisation. Authorisation for one surface is not authorisation for another.",
-      "R9.3 Bot credentials only (A9): DO NOT use human credentials — SSH keys, `gh auth login` as a user, personal access tokens — for external operations. Use the session-provided bot token."
-    ]
+    "environment": [],
+    "allow": [],
+    "soft_deny": []
   }
 }
