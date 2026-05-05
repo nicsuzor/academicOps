@@ -1122,8 +1122,6 @@ def build_aops_cowork(
                 if cmd_file.name in COWORK_COMMANDS:
                     safe_copy(cmd_file, dst / cmd_file.name)
             print(f"  ✓ Copied commands ({sorted(COWORK_COMMANDS)}) -> {dst}")
-        elif src_item.name in COWORK_INCLUDE:
-            safe_copy(src_item, dist_dir / src_item.name)
         elif src_item.is_file() and src_item.name in COWORK_MD_INCLUDE:
             safe_copy(src_item, dist_dir / src_item.name)
 
