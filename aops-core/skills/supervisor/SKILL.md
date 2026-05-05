@@ -247,6 +247,46 @@ exit codes, coordinated branch dispatch). The universal contract is:
 > selection, and dispatch protocol. See
 > [[instructions/code-deliverable]] for the code-PR specialisation.
 
+### Pre-flight Confirmation Summary
+
+Before invoking a worker (post user-promote-to-`queued`, before
+`polecat run` / equivalent), the supervisor MUST emit a 4-row
+confirmation table to visible output AND append it to the epic's
+`## Supervisor Log`. The grep mechanics that produce row 2 evidence live
+in [[instructions/worker-dispatch#mandatory-pre-dispatch-gates]] — this
+table joins those gates as a peer step.
+
+This is the existing **Halt-on-substitute** discipline (see above)
+specialised for pre-flight verification. Bound to `task-4cea5008`
+(supervisor: confirm repo/project) and `aops-e2d639e2` (repo-routing
+pre-flight).
+
+| Row | Field                  | Source of truth                                                                                          | Halt-if-unknown rule                                                               |
+| --- | ---------------------- | -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| 1   | **Task ID**            | The epic / subtask being dispatched                                                                      | Halt if no task ID resolved                                                        |
+| 2   | **Source repo**        | Inferred from file paths the task names (AC, body, gate-1 named file/symbol) — NOT from `project=` alone | Halt if no file path is named, or named file does not resolve to exactly one repo  |
+| 3   | **project= field**     | Task's `project:` frontmatter                                                                            | Halt if missing OR disagrees with row 2 (Polecat #3 class)                         |
+| 4   | **Next link in chain** | Task this dispatch unblocks (parent's next ready child OR next subtask of same epic)                     | Halt if no next link AND epic has more than one ready descendant (orientation rot) |
+
+On halt: do NOT call `polecat run` (or equivalent dispatch). Append the
+table to the epic body under `## Supervisor Log` with marker
+PRE-FLIGHT HALT; set the epic status to `blocked` (canonical taxonomy —
+see `skills/remember/references/TAXONOMY.md`: "Waiting on an external
+dependency that cannot be resolved internally" — here the external
+dependency is a human decision on the ambiguous source repo or
+`project=` field); emit a user-facing summary; exit.
+No silent substitution; no "best guess" repo or project field.
+
+Worked replays (must halt):
+
+- **Polecat #3** — task frontmatter says `project: brain` but AC names a
+  file under `aops-core/`. Row 2 (grep) returns `aops-core`; row 3
+  (frontmatter) says `brain`. Mismatch → halt at row 3.
+- **pkb→public-PR incident** — task names a source file under
+  `$ACA_DATA/...` but `project=` and target repo are public. Row 2 grep
+  resolves the source to the private PKB clone; target repo is public →
+  row 2/3 disagreement, halt before any push.
+
 ## Handoff
 
 The supervisor's job ends when each work item has reached its review
