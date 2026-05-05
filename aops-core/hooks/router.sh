@@ -4,6 +4,13 @@
 # Bootstraps the environment to ensure 'uv' and 'python' are available
 # before delegating to the Python router.
 
+# 0. Vanilla-crew bypass: skip all framework hooks when AOPS_HOOKS_OFF=1.
+# Set by polecat when launching crew containers in vanilla trial mode
+# (POLECAT_VANILLA_CREW=1). Exit 0 with no stdout = continue normally.
+if [ "$AOPS_HOOKS_OFF" = "1" ]; then
+    exit 0
+fi
+
 # 1. Ensure uv/uvx are on PATH (shared with run-mcp.sh)
 SCRIPT_DIR="$(cd "$(dirname "$0")/../scripts" && pwd)"
 source "$SCRIPT_DIR/ensure-path.sh"
