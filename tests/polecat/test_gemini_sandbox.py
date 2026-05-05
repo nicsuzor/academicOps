@@ -50,13 +50,17 @@ def _gemini_branch_source() -> str:
     regressions here.
 
     Note: the ``crew`` command also has an ``if gemini:`` block that builds a
-    gemini command, but it uses ``--approval-mode plan``.  The ``run`` command
-    uses ``--approval-mode yolo`` (full auto-approve for polecat tasks).  We
-    anchor on ``"yolo"`` to select the correct block.
+    gemini command. Both crew and run now use ``--approval-mode yolo`` (gemini's
+    plan mode default-denies tools). The blocks are distinguished by form: crew
+    builds ``cmd = ["gemini"]`` on a single line and extends conditionally,
+    while run builds a multi-line ``cmd = [`` list literal with the flags
+    inline. The regex below anchors on the multi-line form to select run.
     """
     text = CLI_PY.read_text()
-    # Anchor on the run-function's gemini block by requiring '"yolo"' nearby,
-    # which distinguishes it from the crew-function's '"plan"' block.
+    # Anchor on the run-function's gemini block: it builds `cmd = [` as a
+    # multi-line list literal with `"gemini",` on its own line followed by
+    # `"yolo",`. The crew-function builds `cmd = ["gemini"]` on a single line,
+    # which won't match this pattern.
     m = re.search(
         r"if gemini:\s*\n(?:.*\n){0,40}?\s*cmd\s*=\s*\[\s*\n\s*\"gemini\",(?:.*\n){0,10}?\s*\"yolo\",",
         text,
