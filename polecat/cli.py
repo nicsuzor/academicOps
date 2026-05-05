@@ -3304,9 +3304,16 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
         # Hook state dir inside the container
         env["AOPS_SESSION_STATE_DIR"] = "/home/worker/.gemini/tmp"
 
+        # Gemini's isHeadlessMode() forces non-interactive mode when CI=true,
+        # even with a TTY attached. _make_worker_env sets CI=true to suppress
+        # prompts in gh/git, but that breaks gemini's interactive REPL — crew
+        # sessions must stay interactive. Drop it for this path only.
+        headless = agent_args and "-p" in agent_args
+        if not headless:
+            env.pop("CI", None)
+
         # Wrap Gemini in our Docker container (same as Claude path).
         # Headless when agent_args contains -p (prompt mode, no TTY needed)
-        headless = agent_args and "-p" in agent_args
         docker_cmd = _build_docker_cmd(
             "gemini",
             work_dir,
