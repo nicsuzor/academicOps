@@ -270,11 +270,11 @@ pre-flight).
 
 On halt: do NOT call `polecat run` (or equivalent dispatch). Append the
 table to the epic body under `## Supervisor Log` with marker
-`HALT-PREFLIGHT`; set the epic status to `blocked` (canonical taxonomy —
+PRE-FLIGHT HALT; set the epic status to `blocked` (canonical taxonomy —
 see `skills/remember/references/TAXONOMY.md`: "Waiting on an external
 dependency that cannot be resolved internally" — here the external
 dependency is a human decision on the ambiguous source repo or
-`project=` field); emit a user-facing summary; return to HALT phase.
+`project=` field); emit a user-facing summary; exit.
 No silent substitution; no "best guess" repo or project field.
 
 Worked replays (must halt):
