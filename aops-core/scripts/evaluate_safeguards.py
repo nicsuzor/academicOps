@@ -50,28 +50,27 @@ def generate_report(insights):
         outcome = session.get("outcome", "unknown")
         outcomes[outcome] += 1
 
-        metrics = session.get("token_metrics", {})
-        totals = metrics.get("totals", {})
-        input_t = totals.get("input_tokens", 0)
-        output_t = totals.get("output_tokens", 0)
+        metrics = session.get("token_metrics") or {}
+        totals = metrics.get("totals") or {}
+        input_t = totals.get("input_tokens") or 0
+        output_t = totals.get("output_tokens") or 0
         total_tokens += input_t + output_t
 
-        by_tool = metrics.get("by_tool", {})
+        by_tool = metrics.get("by_tool") or {}
         for tool, stats in by_tool.items():
-            tool_usage[tool]["count"] += stats.get("count", 0)
-            tool_usage[tool]["input_tokens"] += stats.get("input", 0)
-            tool_usage[tool]["output_tokens"] += stats.get("output", 0)
+            stats = stats or {}
+            tool_usage[tool]["count"] += stats.get("count") or 0
+            tool_usage[tool]["input_tokens"] += stats.get("input") or 0
+            tool_usage[tool]["output_tokens"] += stats.get("output") or 0
 
             if outcome == "success":
-                success_tool_usage[tool]["count"] += stats.get("count", 0)
-                success_tool_usage[tool]["input_tokens"] += stats.get("input", 0)
+                success_tool_usage[tool]["count"] += stats.get("count") or 0
             elif outcome in ("failure", "partial"):
-                failure_tool_usage[tool]["count"] += stats.get("count", 0)
-                failure_tool_usage[tool]["input_tokens"] += stats.get("input", 0)
+                failure_tool_usage[tool]["count"] += stats.get("count") or 0
 
-        refs = session.get("framework_reflections", [])
+        refs = session.get("framework_reflections") or []
         for ref in refs:
-            f_points = ref.get("friction_points", [])
+            f_points = (ref or {}).get("friction_points") or []
             friction_points.extend(f_points)
 
     report = ["# AcademicOps Safeguards Evaluation Report\n"]
