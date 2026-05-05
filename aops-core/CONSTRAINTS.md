@@ -27,8 +27,8 @@ This is the SSoT for per-agent authority. Extends the principles in `.agents/ENF
 | marsha | QA / verifier   | `**/*` | _none_ ("Modify code yourself — report only")              | `pytest`, `ruff`, `fs:read`, `net:http`, `pkg:install`, `git:read`, `gh:read` | rbg                       | qa                                                 | source writes; `git:write`; `gh:write`                                  |
 | jr     | Router / butler | `**/*` | `.agents/CAPABILITIES.md`, `.agents/README.md` only        | `git:read`, `gh:read`, `fs:read`, narrow `fs:write`                           | james, rbg, marsha, pauli | aops, planner, qa, research, dump, daily, remember | `.agents/CORE.md`, `.agents/BUTLER.md`, `.agents/rules/**`; `git:write` |
 
-**`.github/agents/*.agent.md`** (`merge-prep`, `pr-reviewer`, `qa`) are GitHub Actions runners. Their authority is governed by the workflow YAML's `permissions:` block and the runner's bot PAT scopes — **not** by this table. They are out of scope.
+## GitHub actions
 
-**Enforced by**: Agent body prose + frontmatter `tools:` allowlist (the harness consumes the allowlist directly). No standalone lint — drift is caught at review time by `rbg` against this table.
+**`.github/agents/*.agent.md`** (`merge-prep`, `pr-reviewer`, `qa`) are GitHub Actions runners. Their authority is governed by the workflow YAML's `permissions:` block and the runner's bot PAT scopes:
 
-**When changing an agent's envelope**: update the row above in the same PR, and explain the rationale in the PR body. Adding shell scope, broadening write globs, or removing a deny-override is a permission change that warrants reviewer attention even when the diff to the agent file looks small.
+TODO: finish this table.
