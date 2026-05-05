@@ -1096,6 +1096,10 @@ def build_aops_cowork(
     for src_item in src_dir.iterdir():
         if src_item.name.startswith(".") or src_item.name == "__pycache__":
             continue
+        if src_item.is_dir() and src_item.name not in COWORK_INCLUDE:
+            continue
+        if src_item.is_file() and src_item.name not in COWORK_MD_INCLUDE:
+            continue
 
         if src_item.name == "agents" and src_item.is_dir():
             dst = dist_dir / "agents"
