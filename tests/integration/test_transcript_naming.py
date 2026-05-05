@@ -132,7 +132,7 @@ class TestTranscriptNamingIntegration:
         # Mock summaries dir
         import unittest.mock as mock
 
-        with mock.patch("lib.insights_generator.get_summaries_dir", return_value=tmp_path):
+        with mock.patch.object(insights_generator, "get_summaries_dir", return_value=tmp_path):
             # Old v3.7.0 format (HH)
             old_path = tmp_path / "20260411-17-project-a1b2c3d4-slug.json"
             old_path.touch()
