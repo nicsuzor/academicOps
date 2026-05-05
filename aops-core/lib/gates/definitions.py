@@ -5,7 +5,6 @@ from hooks.gate_config import (
     QA_GATE_MODE,
 )
 
-
 from lib.gate_types import (
     CountdownConfig,
     GateCondition,
