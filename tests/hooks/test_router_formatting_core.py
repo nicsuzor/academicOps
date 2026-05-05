@@ -41,6 +41,22 @@ class TestRouterFormatting:
         assert output.decision == "deny"
         assert output.systemMessage == "Blocked"
         assert output.reason == "Reasoning here"
+        # `reason` is user-only; the model needs additionalContext to see
+        # recovery instructions on deny.
+        assert output.hookSpecificOutput is not None
+        assert output.hookSpecificOutput.additionalContext == "Reasoning here"
+        assert output.hookSpecificOutput.hookEventName == "BeforeTool"
+
+    def test_format_for_gemini_deny_no_context_injection(self):
+        # Without context_injection there's nothing to surface to the model;
+        # hookSpecificOutput should remain unset rather than carrying empty.
+        canonical = CanonicalHookOutput(
+            verdict="deny",
+            system_message="Blocked",
+        )
+        output = self.router.output_for_gemini(canonical, "BeforeTool")
+        assert output.decision == "deny"
+        assert output.hookSpecificOutput is None
 
     def test_format_for_gemini_allow_with_context(self):
         canonical = CanonicalHookOutput(verdict="allow", context_injection="Info")

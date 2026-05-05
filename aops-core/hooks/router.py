@@ -1041,6 +1041,11 @@ class HookRouter:
             out.decision = "deny"
             if result.context_injection:
                 out.reason = result.context_injection
+                # `reason` is user-only; the model needs context_injection too
+                # so recovery instructions reach the agent, not just the user.
+                out.hookSpecificOutput = GeminiHookSpecificOutput(
+                    hookEventName=event, additionalContext=result.context_injection
+                )
                 if not out.systemMessage:
                     out.systemMessage = f"Blocked: {result.context_injection}"
             elif out.systemMessage:
