@@ -70,6 +70,17 @@ class TestRouterFormatting:
             output.hookSpecificOutput.additionalContext == "Recovery: call aops_core_enforcer(...)"
         )
 
+    def test_format_for_gemini_deny_no_context_injection(self):
+        # Without context_injection there's nothing to surface to the model;
+        # hookSpecificOutput should remain unset rather than carrying empty.
+        canonical = CanonicalHookOutput(
+            verdict="deny",
+            system_message="Blocked",
+        )
+        output = self.router.output_for_gemini(canonical, "BeforeTool")
+        assert output.decision == "deny"
+        assert output.hookSpecificOutput is None
+
     def test_format_for_gemini_allow_with_context(self):
         canonical = CanonicalHookOutput(verdict="allow", context_injection="Info")
         output = self.router.output_for_gemini(canonical, "BeforeTool")

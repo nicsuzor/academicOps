@@ -3244,14 +3244,16 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
         # Gemini: run inside our Docker container (not --sandbox, which uses
         # bind mounts that fail on WSL2/Docker Desktop).  Auth files are staged
         # via docker cp, and session transcripts are extracted after the run.
-        # --approval-mode plan mirrors Claude crew's --permission-mode=plan:
-        # reads are auto-approved, writes require policy-level allow rules.
+        # --approval-mode yolo: gemini's plan mode default-denies tools that
+        # lack an explicit allow rule, blocking even read_file/list_directory.
+        # Trust boundary is the polecat router hook + policy engine, not the
+        # gemini approval prompt. Autonomous workers must never run in plan mode.
         # Only inject approval-mode if agent_args doesn't already provide one —
         # callers may pass --approval-mode via extra args after '--'.
         _has_approval = agent_args and "--approval-mode" in agent_args
         cmd = ["gemini"]
         if not _has_approval:
-            cmd.extend(["--approval-mode", "plan"])
+            cmd.extend(["--approval-mode", "yolo"])
         cmd.extend(
             [
                 "--include-directories",
@@ -3277,10 +3279,11 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
     env["POLECAT_SESSION_TYPE"] = "crew"
     env["POLECAT_CREW_NAME"] = crew_name
     env["POLECAT_WORKTREE"] = str(work_dir)
-    # Both Gemini (--approval-mode plan) and Claude (--permission-mode=plan) crew
-    # sessions run in plan mode. Signal this to the gate engine so it skips the
+    # Claude crew runs in plan mode (--permission-mode=plan); Gemini crew uses
+    # yolo because gemini's plan mode default-denies tools (see crew gemini
+    # branch above). Signal plan mode to the gate engine so it skips the
     # custodiet ops counter — the gate must not fire when rbg cannot be invoked.
-    if not interactive:
+    if not interactive and not gemini:
         env["POLECAT_APPROVAL_MODE"] = "plan"
 
     # Compute session directory for Claude transcript persistence.

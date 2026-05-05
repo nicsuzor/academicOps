@@ -2279,11 +2279,7 @@ class SessionProcessor:
                     is_error = False
                     if isinstance(resp, dict):
                         if "error" in resp:
-                            tool_output = (
-                                str(resp["error"])
-                                if not isinstance(resp["error"], str | int | float)
-                                else str(resp["error"])
-                            )
+                            tool_output = str(resp["error"])
                             is_error = True
                         elif "output" in resp:
                             tool_output = str(resp["output"])
