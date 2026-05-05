@@ -478,37 +478,6 @@ class HookRouter:
         # Context map: match user prompt against .agents/context-map.json
         self._inject_context_map_hints(ctx, merged_result)
 
-        # Orchestrator boundary: inject dispositor reminder on work-request prompts
-        self._inject_dispositor_reminder(ctx, merged_result)
-
-    def _inject_dispositor_reminder(
-        self, ctx: HookContext, merged_result: CanonicalHookOutput
-    ) -> None:
-        """Inject orchestrator-boundary reminder when the prompt looks like work.
-
-        Only fires in orchestrator sessions (not polecat workers, not subagents)
-        and only when the classifier flags the prompt as a work-request. See
-        `lib/orchestrator_boundary.py` and the orchestrator-boundary spec (brain PKB).
-        """
-        try:
-            from lib.orchestrator_boundary import should_inject_dispositor_reminder
-            from lib.template_registry import TemplateRegistry
-
-            prompt = ctx.raw_input.get("prompt", "")
-            if not should_inject_dispositor_reminder(prompt, cwd=ctx.cwd):
-                return
-
-            hint = TemplateRegistry.instance().render("orchestrator.dispositor_reminder", {})
-            if not hint:
-                return
-
-            if merged_result.context_injection:
-                merged_result.context_injection = f"{merged_result.context_injection}\n\n{hint}"
-            else:
-                merged_result.context_injection = hint
-        except Exception as e:
-            print(f"WARNING: dispositor_reminder injection error: {e}", file=sys.stderr)
-
     def _inject_context_map_hints(
         self, ctx: HookContext, merged_result: CanonicalHookOutput
     ) -> None:

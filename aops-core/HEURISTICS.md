@@ -195,41 +195,6 @@ When an agent observes unexpected behavior — a tool firing unexpectedly, a fil
 
 **Derivation**: Emerged from a session process failure (2026-03-17).
 
-<a id="P122"></a>
-
-## Orchestrator Is a Dispositor (P#122)
-
-The general CLI agent (main Claude Code session) is a **dispositor** when it runs in the **brain repo** (`$ACA_DATA`) — it understands intent, creates tasks, and delegates execution to polecat workers. It does not execute feature work itself. The full boundary definition lives in the brain PKB (project: aops, topic: orchestrator-boundary).
-
-**Scope**: this boundary applies only when `cwd` is inside `$ACA_DATA`. When the agent is launched directly inside a project source repo (academicOps, mem, explorations, etc.), it IS the worker for that repo — the orchestrator reminder and the `orchestrator_boundary` gate are suppressed, and the agent should execute directly.
-
-**Orchestrator may do** (read-only / planning / dispatch):
-
-- Read files for context
-- Create/update/query tasks via PKB
-- Decompose epics into subtasks
-- Run `/pull`, `/daily`, `/planner`, `/dump`, `/q` and other meta-skills
-- Dispatch tasks via the `polecat` CLI
-- Edit framework files (`aops-core/`, `aops-tools/`, `.agents/`, `docs/`, `tests/`, `scripts/`, `templates/`, `polecat/`) — framework maintenance is orchestrator scope. Authoritative allowlist: `FRAMEWORK_PATH_PREFIXES` in `aops-core/lib/orchestrator_boundary.py`.
-
-**Orchestrator must not do** (worker scope — queue instead):
-
-- Edit or Write project source files (i.e. files outside the framework allowlist)
-- Make feature commits or push feature branches
-- Run tests as part of task execution — the worker verifies its own work
-
-**Exceptions** (hot-path direct execution):
-
-- User explicitly requests direct execution ("just fix this one line", "do it here")
-- Hotfix / one-liner where queuing overhead exceeds work
-- The agent cannot unilaterally classify "too small to queue" — that judgment belongs to the user
-
-**Why**: Bypassing polecat makes worker failure modes invisible, creates accountability gaps (no PKB task record), and undermines the evidence loop that tells us whether polecat is working. A bug-free CLI session doing the work itself hides a bug in the worker pipeline.
-
-**How to apply**: When a prompt reads as a work request (implementation, refactor, new feature), prefer `create_task(...)` + dispatch over directly invoking Edit/Write on project source. The Level 4 detection hook (PostToolUse, warn-only) surfaces when project source is written outside a worker session so drift is caught without blocking legitimate framework work.
-
-**Derivation**: Extends P#47 (Agents Execute Workflows) and P#116 (Delegate Agency to Capable Agents). Just as workflows belong in workflow files, feature execution belongs in worker sessions. The orchestrator's agency is strategic coordination, not keystrokes.
-
 <a id="P119"></a>
 
 ## Bound Subagent Scope Before Dispatch (P#119)

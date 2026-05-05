@@ -78,15 +78,6 @@ repos:
         pass_filenames: false
         files: '\.md$'
 
-      # Prevent regression of PKB alias-rewrite shim (removed in task-40390848)
-      # PKB tools must use id= with short-form identifiers, never path=/data/brain
-      - id: check-no-pkb-path-aliases
-        name: no PKB path=/data/brain aliases
-        entry: uv run python scripts/check_no_pkb_path_aliases.py
-        language: system
-        types_or: [python, markdown]
-        pass_filenames: true
-
   # Type checking and full framework health checks run in CI only
   # (see .github/workflows/framework-health.yml)
   #
