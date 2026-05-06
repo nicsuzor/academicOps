@@ -242,7 +242,6 @@ When streaming a polecat's stdout/stderr, expect a lot of noise that looks
 catastrophic but isn't. Gemini workers in particular emit:
 
 - "Failed to load API key from storage: Error: Corrupted credentials file detected…"
-- "Policy file error in deny-extension-writes.toml / polecat-sandbox.toml"
 - "Error executing tool mcp_pkb_release_task: Tool … not found. Did you mean…"
 - "Hook system message: ▶ Task bound. Handover required before exit." repeated 20+ times
 

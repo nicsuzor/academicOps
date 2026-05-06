@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import fcntl
 import os
-import re
 import shutil
 import subprocess
 import sys
@@ -2011,93 +2010,6 @@ class PolecatManager:
                 f"  ⚠ Could not install pre-commit hooks: {e}",
                 file=sys.stderr,
             )
-
-    def create_sandbox_settings(self, worktree_path: Path) -> Path:
-        """Write .claude/settings.json and .gemini/policies/sandbox.toml to sandbox access.
-
-        The settings permit Write and Edit operations within the worktree directory.
-        Claude Code's default sandbox already restricts file operations to the
-        project directory, so we only need allow rules -- no blanket deny rules.
-
-        For Gemini CLI, we use the Policy Engine to restrict file operations.
-        Priority semantics: higher number wins. sandbox.toml uses allow=50 and
-        deny=10 so that allow beats deny inside the worktree. deny-extension-writes
-        uses deny=100 which beats sandbox allow=50, preserving extension protection.
-        See: https://cloud.google.com/gemini/docs/codeassist/policy-engine
-
-        Args:
-            worktree_path: Absolute path to the worktree root directory
-
-        Returns:
-            Path to the created Claude settings file
-        """
-        import json
-
-        worktree_str = str(worktree_path.resolve())
-        claude_dir = worktree_path / ".claude"
-        claude_dir.mkdir(exist_ok=True)
-
-        # 1. Claude Settings
-        settings = {
-            "permissions": {
-                "allow": [
-                    f"Write({worktree_str}/**)",
-                    f"Edit({worktree_str}/**)",
-                ],
-            }
-        }
-
-        settings_path = claude_dir / "settings.json"
-        with open(settings_path, "w") as f:
-            json.dump(settings, f, indent=2)
-
-        # 2. Gemini Policy
-        gemini_policies_dir = worktree_path / ".gemini" / "policies"
-        gemini_policies_dir.mkdir(parents=True, exist_ok=True)
-
-        # Use re.escape() to handle all regex metacharacters in the path robustly.
-        worktree_regex = re.escape(worktree_str)
-        policy_content = f"""# academicOps: Sandbox agent to this worktree
-[[rule]]
-toolName = "Write"
-argsPattern = "^{worktree_regex}.*"
-decision = "allow"
-priority = 50
-
-[[rule]]
-toolName = "Edit"
-argsPattern = "^{worktree_regex}.*"
-decision = "allow"
-priority = 50
-
-[[rule]]
-toolName = "run_shell_command"
-commandRegex = ".*{worktree_regex}.*"
-decision = "allow"
-priority = 50
-
-[[rule]]
-toolName = "Write"
-decision = "deny"
-priority = 10
-denyMessage = "File writes are restricted to the worktree: {worktree_str}"
-
-[[rule]]
-toolName = "Edit"
-decision = "deny"
-priority = 10
-denyMessage = "File edits are restricted to the worktree: {worktree_str}"
-
-[[rule]]
-toolName = "run_shell_command"
-decision = "deny"
-priority = 10
-denyMessage = "Shell commands are restricted in the sandbox"
-"""
-        policy_path = gemini_policies_dir / "sandbox.toml"
-        policy_path.write_text(policy_content)
-
-        return settings_path
 
     def _verify_worktree_setup(self, worktree_path: Path, branch_name: str, default_branch: str):
         """Verify worktree is correctly set up for the PR workflow.

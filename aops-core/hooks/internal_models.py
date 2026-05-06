@@ -33,45 +33,6 @@ class SessionCleanupResult(BaseModel):
     message: str = ""
 
 
-# --- Autocommit State Models (autocommit_state.py) ---
-
-
-class RepoSyncStatus(BaseModel):
-    """Status of repository sync operation.
-
-    Attributes:
-        can_sync: Whether sync is possible (not detached HEAD, has tracking)
-        reason: Reason if sync not possible
-        is_behind: Local is behind remote
-        commits_behind: Number of commits behind remote
-        fetch_error: Error from fetch operation if any
-    """
-
-    can_sync: bool = True
-    reason: str = ""
-    is_behind: bool = False
-    commits_behind: int = 0
-    fetch_error: str = ""
-
-
-class CommitPushResult(BaseModel):
-    """Result of commit and push operation.
-
-    Attributes:
-        success: Operation completed successfully
-        committed: Changes were committed
-        pushed: Changes were pushed to remote
-        sync_warning: Warning message from sync operation
-        message: Human-readable status message
-    """
-
-    success: bool = False
-    committed: bool = False
-    pushed: bool = False
-    sync_warning: str = ""
-    message: str = ""
-
-
 class HookLogEntry(HookContext):
     """Single entry in the per-session hooks JSONL log.
     Inherits all fields from HookContext, plus additional metadata and caching.

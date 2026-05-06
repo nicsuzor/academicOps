@@ -17,7 +17,6 @@ For Claude Code's hook system in general, see the [official docs](https://code.c
 | session_env_setup.sh  | SessionStart     | Environment setup                |
 | user_prompt_submit.py | UserPromptSubmit | Context enrichment via temp file |
 | policy_enforcer.py    | PreToolUse       | Block destructive operations     |
-| autocommit_state.py   | PostToolUse      | Auto-commit data/ changes        |
 | unified_logger.py     | ALL events       | Universal event logging          |
 
 Axiom enforcement is delegated to the `rbg` agent — axiom content is no longer injected at session start.
