@@ -1307,6 +1307,10 @@ class UsageStats:
     user_messages: int = 0
     mid_session_corrections: int = 0
 
+    # Per-subagent-invocation verdict + issues_count rows (Build B of Safeguard
+    # ROI v0). Populated by `_aggregate_session_usage`. Empty when no subagents.
+    subagent_verdicts: list[dict[str, Any]] = field(default_factory=list)
+
     def add_entry(
         self,
         entry: Entry,
@@ -1411,6 +1415,7 @@ class UsageStats:
                 "user_messages": self.user_messages,
                 "mid_session_corrections": self.mid_session_corrections,
             },
+            "subagent_verdicts": self.subagent_verdicts,
             "efficiency": {
                 "cache_hit_rate": round(cache_hit_rate, 3),
             },
@@ -4677,6 +4682,13 @@ session_id: {session_uuid}
                                     break
 
                     stats.add_entry(entry, tool_name=tool_name, agent_id=agent_id)
+
+        if agent_entries:
+            from .reviewer_verdicts import build_subagent_verdicts
+
+            stats.subagent_verdicts = build_subagent_verdicts(
+                entries, agent_entries, stats.by_agent
+            )
 
         return stats
 
