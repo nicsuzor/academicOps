@@ -301,13 +301,13 @@ def _validate_token_metrics(token_metrics: dict[str, Any]) -> None:
                     f"{sorted(allowed_verdicts)} or null, got {verdict!r}"
                 )
             issues_count = row.get("issues_count")
-            if (
+            if issues_count is not None and (
                 not isinstance(issues_count, int)
                 or isinstance(issues_count, bool)
                 or issues_count < 0
             ):
                 raise InsightsValidationError(
-                    f"Field 'token_metrics.subagent_verdicts[{i}].issues_count' must be a non-negative int"
+                    f"Field 'token_metrics.subagent_verdicts[{i}].issues_count' must be a non-negative int or null"
                 )
             tokens = row.get("tokens")
             if not isinstance(tokens, int) or isinstance(tokens, bool) or tokens < 0:

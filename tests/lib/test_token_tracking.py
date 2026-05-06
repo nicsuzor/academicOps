@@ -6,6 +6,8 @@ from lib.transcript_parser import (
     SessionProcessor,
     TimingInfo,
     UsageStats,
+    _estimate_tokens,
+    _format_token_count,
 )
 
 
@@ -492,3 +494,208 @@ class TestAttentionCounters:
         ]
         stats = self._processor()._aggregate_session_usage(entries)
         assert stats.user_messages == 1
+
+
+class TestPerToolResultTokens:
+    """Each tool call's result payload gets an approximate token annotation
+    appended to its rendered line in the transcript. The estimate is
+    ``len(content) // 4``; the rendering uses ``[~N tok]`` to mark it
+    as approximate.
+    """
+
+    def test_estimate_tokens_basic(self):
+        # 100 chars → ~25 tokens
+        assert _estimate_tokens("a" * 100) == 25
+        assert _estimate_tokens("") == 0
+        # Tiny non-empty floors at 1 to make the annotation visible
+        assert _estimate_tokens("ab") == 1
+
+    def test_format_token_count_compact(self):
+        assert _format_token_count(0) == "0"
+        assert _format_token_count(87) == "87"
+        assert _format_token_count(1234) == "1.2k"
+        assert _format_token_count(12345) == "12k"
+        assert _format_token_count(1_234_567) == "1.2M"
+
+    def test_tool_line_carries_token_annotation(self, tmp_path):
+        """A session with one Read tool call surfaces ``[~N tok]`` in the
+        rendered tool line."""
+        import json
+
+        session_file = tmp_path / "session.jsonl"
+        big_result = "x" * 4000  # → ~1000 tokens
+        records = [
+            {
+                "type": "user",
+                "uuid": "u1",
+                "timestamp": "2026-01-15T10:00:00Z",
+                "message": {"content": [{"type": "text", "text": "read it"}]},
+            },
+            {
+                "type": "assistant",
+                "uuid": "a1",
+                "timestamp": "2026-01-15T10:00:01Z",
+                "message": {
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "id": "tu1",
+                            "name": "Read",
+                            "input": {"file_path": "/tmp/x"},
+                        }
+                    ],
+                    "usage": {"input_tokens": 10, "output_tokens": 5},
+                },
+            },
+            {
+                "type": "user",
+                "uuid": "u2",
+                "timestamp": "2026-01-15T10:00:02Z",
+                "message": {
+                    "content": [
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": "tu1",
+                            "content": big_result,
+                        }
+                    ]
+                },
+            },
+        ]
+        with session_file.open("w") as f:
+            for r in records:
+                f.write(json.dumps(r) + "\n")
+
+        processor = SessionProcessor()
+        session, parsed_entries, agent_entries = processor.parse_session_file(session_file)
+        markdown = processor.format_session_as_markdown(
+            session, parsed_entries, agent_entries=agent_entries, variant="full"
+        )
+        # The annotation must be the approximate form, not a billed count.
+        assert "[~1.0k tok]" in markdown, f"Expected token annotation in:\n{markdown}"
+
+    def test_tiny_result_has_no_annotation(self, tmp_path):
+        """Empty/tiny results don't deserve a noisy ``[~0 tok]`` tag."""
+        import json
+
+        session_file = tmp_path / "session.jsonl"
+        records = [
+            {
+                "type": "user",
+                "uuid": "u1",
+                "timestamp": "2026-01-15T10:00:00Z",
+                "message": {"content": [{"type": "text", "text": "do it"}]},
+            },
+            {
+                "type": "assistant",
+                "uuid": "a1",
+                "timestamp": "2026-01-15T10:00:01Z",
+                "message": {
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "id": "tu1",
+                            "name": "Bash",
+                            "input": {"command": "true"},
+                        }
+                    ],
+                    "usage": {"input_tokens": 10, "output_tokens": 5},
+                },
+            },
+            {
+                "type": "user",
+                "uuid": "u2",
+                "timestamp": "2026-01-15T10:00:02Z",
+                "message": {
+                    "content": [{"type": "tool_result", "tool_use_id": "tu1", "content": ""}]
+                },
+            },
+        ]
+        with session_file.open("w") as f:
+            for r in records:
+                f.write(json.dumps(r) + "\n")
+
+        processor = SessionProcessor()
+        session, parsed_entries, agent_entries = processor.parse_session_file(session_file)
+        markdown = processor.format_session_as_markdown(
+            session, parsed_entries, agent_entries=agent_entries, variant="full"
+        )
+        assert "[~" not in markdown
+
+
+class TestCondensedHookHeader:
+    """The session-level Hook header collapses event + checkmark + verdict
+    + (intro to any system message) into a single line. The body of the
+    system message follows as a fenced block; the verdose intermediary
+    lines (`**Verdict:** \\`x\\``, `ℹ️ Hook message:`) are removed, as is
+    the `_Triggered after assistant message:_` literal under Stop hooks.
+    """
+
+    def test_stop_with_warn_verdict_and_message_collapses_to_one_line(self, tmp_path):
+        import json
+
+        from lib.transcript_parser import SessionSummary
+
+        hook_file = tmp_path / "stop-hook.jsonl"
+        record = {
+            "session_id": "sess-stop",
+            "hook_event": "Stop",
+            "logged_at": "2026-04-30T10:00:00+00:00",
+            "exit_code": 0,
+            "output": {
+                "system_message": "Halted — review pending.",
+                "verdict": "warn",
+                "metadata": {},
+            },
+            "raw_input": {"last_assistant_message": "I'm stopping here."},
+        }
+        with hook_file.open("w") as f:
+            f.write(json.dumps(record) + "\n")
+
+        processor = SessionProcessor()
+        entries = processor._load_hook_entries(hook_file)
+        session = SessionSummary(uuid="sess-stop", summary="t")
+        markdown = processor.format_session_as_markdown(
+            session, entries, agent_entries=None, variant="full"
+        )
+
+        # Single-line condensed header: event + checkmark + verdict + intro.
+        assert "### Hook: Stop ✓ — verdict `warn` — ℹ️ Hook message:" in markdown
+        # Removed: the standalone `**Verdict:** ...` line that used to follow
+        # the heading. (The string matches must be on its own line — i.e.
+        # surrounded by newlines — to distinguish from the inline form.)
+        assert "\n**Verdict:** `warn`\n" not in markdown
+        # Removed: the standalone `ℹ️ Hook message:` paragraph above the
+        # fenced body (still allowed as a tail of the condensed header).
+        assert "\n\nℹ️ Hook message:\n\n```" not in markdown
+        # Removed the "Triggered after" literal — quoted block stands alone.
+        assert "_Triggered after assistant message:_" not in markdown
+        # The body still appears.
+        assert "Halted — review pending." in markdown
+        assert "I'm stopping here." in markdown
+
+    def test_stop_with_no_message_only_header_line(self, tmp_path):
+        import json
+
+        from lib.transcript_parser import SessionSummary
+
+        hook_file = tmp_path / "stop-hook.jsonl"
+        record = {
+            "session_id": "sess-stop2",
+            "hook_event": "Stop",
+            "logged_at": "2026-04-30T10:00:00+00:00",
+            "exit_code": 0,
+            "output": {"system_message": None, "verdict": "allow", "metadata": {}},
+        }
+        with hook_file.open("w") as f:
+            f.write(json.dumps(record) + "\n")
+
+        processor = SessionProcessor()
+        entries = processor._load_hook_entries(hook_file)
+        session = SessionSummary(uuid="sess-stop2", summary="t")
+        markdown = processor.format_session_as_markdown(
+            session, entries, agent_entries=None, variant="full"
+        )
+        # Default Stop verdict surfaces as `allow`, no intro since no message.
+        assert "### Hook: Stop ✓ — verdict `allow`" in markdown
+        assert "Hook message" not in markdown

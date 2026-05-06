@@ -1,8 +1,14 @@
-"""Tests for the reviewer verdict parser (Build B of Safeguard ROI v0)."""
+"""Tests for the reviewer verdict parser (Build B of Safeguard ROI v0).
+
+The contract is now strict: agents must emit a structured trailer using
+HTML-comment markers. Anything else parses as ``None`` (fail-open). This
+removes the regex-over-prose extraction the earlier iteration used and
+which violated the No Shitty NLP axiom (issue #917).
+"""
 
 from lib.reviewer_verdicts import (
     build_subagent_verdicts,
-    count_issues,
+    extract_issues_count,
     extract_verdict,
     last_assistant_text,
 )
@@ -10,72 +16,74 @@ from lib.transcript_parser import Entry
 
 
 class TestExtractVerdict:
-    def test_bare_token_at_start(self):
-        assert extract_verdict("APPROVE\n\nLooks good.") == "APPROVE"
+    def test_canonical_marker(self):
+        text = "## Verdict\n\nOverall: APPROVE\n\n<!-- aops-verdict: APPROVE -->\n"
+        assert extract_verdict(text) == "APPROVE"
 
-    def test_lowercase_token(self):
-        assert extract_verdict("revise\n\n- issue 1") == "REVISE"
+    def test_lowercase_value_normalises(self):
+        # The marker syntax accepts any case but the canonicalisation
+        # is uppercase. Reviewers that accidentally lowercase the token
+        # still resolve to the canonical form.
+        assert extract_verdict("<!-- aops-verdict: revise -->") == "REVISE"
 
-    def test_markdown_header(self):
-        assert extract_verdict("# Verdict: PASS\n") == "PASS"
+    def test_marker_anywhere_in_message(self):
+        text = (
+            "Long preamble.\n\n"
+            "Lots of analysis with the word APPROVE and even **Verdict: FAIL** in prose.\n\n"
+            "<!-- aops-verdict: ESCALATE -->\n"
+        )
+        assert extract_verdict(text) == "ESCALATE"
 
-    def test_bold_label(self):
-        assert extract_verdict("**Verdict:** FAIL — see below") == "FAIL"
+    def test_first_marker_wins(self):
+        text = "<!-- aops-verdict: APPROVE -->\n<!-- aops-verdict: FAIL -->\n"
+        assert extract_verdict(text) == "APPROVE"
 
-    def test_bold_inline(self):
-        assert extract_verdict("**Verdict: ESCALATE**\n") == "ESCALATE"
+    def test_unknown_token_yields_none(self):
+        # The marker is present but the value is not in VERDICT_TOKENS —
+        # the parser returns None rather than guessing.
+        assert extract_verdict("<!-- aops-verdict: OK -->") is None
 
-    def test_em_dash_separator(self):
-        assert extract_verdict("Verdict — APPROVE\n") == "APPROVE"
+    def test_prose_without_marker_yields_none(self):
+        # Earlier regex would have extracted from `**Verdict: APPROVE**`
+        # in prose. The strict contract refuses to: no marker, no verdict.
+        assert extract_verdict("**Verdict: APPROVE** — looks fine.") is None
 
-    def test_no_match_for_unknown_token(self):
-        # The real-world case the spec must NOT misclassify: a "Verdict: OK ..."
-        # message uses the word but no canonical token, so we must return None.
-        assert extract_verdict("**Verdict: OK with minor WARN**\n- a\n- b") is None
-
-    def test_no_match_for_word_extension(self):
-        # "APPROVED" must not match APPROVE because of the trailing word
-        # boundary.
-        assert extract_verdict("APPROVED\nfollowing review") is None
+    def test_markdown_decoration_around_marker_rejected(self):
+        # The marker must occupy its own line with no decoration.
+        # Embedding it inside other markdown breaks the contract.
+        assert extract_verdict("> <!-- aops-verdict: APPROVE -->") is None
+        assert extract_verdict("**<!-- aops-verdict: APPROVE -->**") is None
 
     def test_empty_text(self):
         assert extract_verdict("") is None
         assert extract_verdict(None) is None  # type: ignore[arg-type]
 
-    def test_skips_blank_lines(self):
-        assert extract_verdict("\n\n   \n## REVISE\n") == "REVISE"
-
-    def test_first_match_wins_top_to_bottom(self):
-        text = "## APPROVE\n\nDetails:\n- but consider FAIL"
-        assert extract_verdict(text) == "APPROVE"
-
-    def test_does_not_scan_arbitrarily_deep(self):
-        # A token buried 50 lines down should be ignored — verdicts are
-        # supposed to live near the top.
-        body = "\n".join("filler" for _ in range(50))
-        assert extract_verdict(body + "\nAPPROVE\n") is None
+    def test_whitespace_around_marker_tolerated(self):
+        assert extract_verdict("   <!--   aops-verdict:  PASS   -->  \n") == "PASS"
 
 
-class TestCountIssues:
-    def test_empty(self):
-        assert count_issues("") == 0
+class TestExtractIssuesCount:
+    def test_canonical_marker(self):
+        assert extract_issues_count("<!-- aops-issues: 3 -->") == 3
 
-    def test_dash_bullets(self):
-        text = "Summary\n\n- one\n- two\n- three\n"
-        assert count_issues(text) == 3
+    def test_zero_is_valid(self):
+        assert extract_issues_count("<!-- aops-issues: 0 -->") == 0
 
-    def test_star_bullets_and_numbered_mixed(self):
-        text = "* a\n* b\n\n1. x\n2. y\n"
-        assert count_issues(text) == 4
+    def test_no_marker_returns_none(self):
+        # Distinct from "0 issues": absence means we couldn't determine.
+        assert extract_issues_count("Some review prose without the marker") is None
 
-    def test_indented_bullets_count(self):
-        text = "  - nested\n    * deeper\n1. first\n"
-        assert count_issues(text) == 3
+    def test_negative_or_non_integer_rejected(self):
+        # The marker regex requires \d+, so non-digits never match.
+        assert extract_issues_count("<!-- aops-issues: -1 -->") is None
+        assert extract_issues_count("<!-- aops-issues: many -->") is None
 
-    def test_dash_inside_prose_does_not_count(self):
-        # "- " at start of line is the trigger; a bare hyphen in prose is not.
-        text = "this - is not a list\nneither is this -- one\n"
-        assert count_issues(text) == 0
+    def test_first_marker_wins(self):
+        text = "<!-- aops-issues: 7 -->\n<!-- aops-issues: 2 -->\n"
+        assert extract_issues_count(text) == 7
+
+    def test_empty_text(self):
+        assert extract_issues_count("") is None
 
 
 class TestLastAssistantText:
@@ -110,9 +118,7 @@ class TestLastAssistantText:
 
     def test_assistant_with_only_tool_use_falls_back_to_earlier(self):
         # If the very last assistant entry has no text (only tool_use blocks),
-        # fall back to the prior assistant text. Subagents normally end on a
-        # verdict text block, so this only matters at the tail; we'd rather
-        # surface the most recent textual content than return "".
+        # fall back to the prior assistant text.
         entries = [
             Entry(type="assistant", message={"content": [{"type": "text", "text": "verdict"}]}),
             Entry(type="assistant", message={"content": [{"type": "tool_use", "name": "Read"}]}),
@@ -126,8 +132,6 @@ class TestBuildSubagentVerdicts:
         assert build_subagent_verdicts([], {}, {}) == []
 
     def test_emits_one_row_per_invocation_with_tokens(self):
-        # Main session: a Task tool_use to subagent_type=rbg with tool_id "tu1"
-        # and a tool_result that links to agentId "agentA".
         main = [
             Entry(
                 type="assistant",
@@ -156,7 +160,11 @@ class TestBuildSubagentVerdicts:
                         "content": [
                             {
                                 "type": "text",
-                                "text": "## Verdict: REVISE\n\n- one\n- two\n- three",
+                                "text": (
+                                    "## Verdict\n\nOverall: REVISE\n\n"
+                                    "<!-- aops-verdict: REVISE -->\n"
+                                    "<!-- aops-issues: 3 -->\n"
+                                ),
                             }
                         ]
                     },
@@ -175,7 +183,7 @@ class TestBuildSubagentVerdicts:
             }
         ]
 
-    def test_unparseable_message_yields_null_verdict(self):
+    def test_unparseable_message_yields_null_fields(self):
         agent_entries = {
             "agentZ": [
                 Entry(
@@ -189,18 +197,23 @@ class TestBuildSubagentVerdicts:
         row = rows[0]
         assert row["invocation_id"] == "agentZ"
         assert row["verdict"] is None
-        assert row["issues_count"] == 0
+        assert row["issues_count"] is None
         assert row["tokens"] == 0
         assert row["agent_id"] is None
 
     def test_unmapped_invocation_keeps_invocation_id(self):
-        # When the main entries don't expose a Task tool_use we can't recover
-        # the subagent_type, but we still emit the row.
         agent_entries = {
             "orphan": [
                 Entry(
                     type="assistant",
-                    message={"content": [{"type": "text", "text": "APPROVE\n- nit"}]},
+                    message={
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": "<!-- aops-verdict: APPROVE -->\n<!-- aops-issues: 1 -->\n",
+                            }
+                        ]
+                    },
                 ),
             ]
         }
@@ -251,13 +264,27 @@ class TestBuildSubagentVerdicts:
             "a1": [
                 Entry(
                     type="assistant",
-                    message={"content": [{"type": "text", "text": "APPROVE"}]},
+                    message={
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": "<!-- aops-verdict: APPROVE -->\n<!-- aops-issues: 0 -->\n",
+                            }
+                        ]
+                    },
                 )
             ],
             "a2": [
                 Entry(
                     type="assistant",
-                    message={"content": [{"type": "text", "text": "FAIL\n- bad"}]},
+                    message={
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": "<!-- aops-verdict: FAIL -->\n<!-- aops-issues: 1 -->\n",
+                            }
+                        ]
+                    },
                 )
             ],
         }

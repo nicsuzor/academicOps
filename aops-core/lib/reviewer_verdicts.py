@@ -1,12 +1,36 @@
 """Parse reviewer verdicts and issue counts from subagent invocations.
 
 Build B of Safeguard ROI v0 (epic aops-85b082c5). Emits one row per subagent
-invocation with the verdict token (APPROVE/REVISE/PASS/FAIL/ESCALATE) and a
-crude count of bullet/numbered list items in the final assistant message.
+invocation with the verdict token (APPROVE/REVISE/PASS/FAIL/ESCALATE) and an
+issues count, both read from a structured trailer the agent emits at the end
+of its review.
 
-Failure mode is "fail open": unparseable messages yield ``verdict=None``,
-``issues_count=0``. The downstream cost/benefit join treats those as
-unclassified rather than aborting the rollup.
+## Contract — what reviewers must emit
+
+The reviewer agent ends its message with HTML-comment markers on their own
+lines. These are invisible in rendered markdown but trivial to parse:
+
+    <!-- aops-verdict: APPROVE -->
+    <!-- aops-issues: 0 -->
+
+`aops-verdict` value MUST be one of ``VERDICT_TOKENS`` (uppercase, exact).
+`aops-issues` value MUST be a non-negative integer. Either marker may be
+omitted; the corresponding field then resolves to ``None``.
+
+This is a structured field with a fixed syntax — the parser does no
+inference about agent intent. Anything that doesn't match the marker is
+ignored. Agents that don't emit the trailer yield ``verdict=None`` and
+``issues_count=None``.
+
+## Why structured markers, not regex over prose
+
+Earlier iterations tried to extract verdicts via regex permutations over
+markdown (`# Verdict: TOKEN`, `**Verdict:** TOKEN`, em-dash variants…).
+That is "shitty NLP": offloading a semantic question — *what did this
+reviewer conclude?* — to a deterministic heuristic that compensates for
+inconsistent agent output. The fix is to make the contract strict at the
+source. Reviewers declare the verdict in a fixed-syntax field; we read
+the field. No semantic extraction is performed.
 """
 
 from __future__ import annotations
@@ -19,59 +43,49 @@ if TYPE_CHECKING:
 
 
 VERDICT_TOKENS: tuple[str, ...] = ("APPROVE", "REVISE", "PASS", "FAIL", "ESCALATE")
+_ALLOWED_TOKENS = frozenset(VERDICT_TOKENS)
 
-# Match a verdict token preceded only by markdown decoration (#, *, _, whitespace,
-# optional "Verdict:" label). Word boundary on the trailing side so APPROVED etc.
-# don't false-match.
-_VERDICT_RE = re.compile(
-    r"^[\s#*_>`]*"
-    r"(?:\*+\s*)?"
-    r"(?:verdict\s*[:\-—–]\s*)?"
-    r"(?:\*+\s*)?"
-    r"(APPROVE|REVISE|PASS|FAIL|ESCALATE)\b",
-    re.IGNORECASE,
-)
-
-_LIST_ITEM_RE = re.compile(r"^\s*(?:[-*]\s+|\d+\.\s+)")
-
-# How many leading lines of the final message we scan for a verdict. Verdicts
-# in practice appear at the very top; scanning the whole message increases the
-# chance of a false-positive from quoted code or examples.
-_VERDICT_SCAN_LINES = 30
+# Structured trailer markers. Each occupies its own line; surrounding whitespace
+# is permitted but no markdown decoration is. The values are pure data: a
+# canonical token (verdict) or a non-negative integer (issues).
+_VERDICT_MARKER = re.compile(r"^\s*<!--\s*aops-verdict:\s*([A-Za-z]+)\s*-->\s*$")
+_ISSUES_MARKER = re.compile(r"^\s*<!--\s*aops-issues:\s*(\d+)\s*-->\s*$")
 
 
 def extract_verdict(text: str) -> str | None:
-    """Return the canonical verdict token from the text, or None.
+    """Return the canonical verdict token from the structured trailer, or None.
 
-    Scans the first ``_VERDICT_SCAN_LINES`` non-empty lines for a match.
-    Recognises bare tokens, markdown-header tokens, and ``Verdict: TOKEN``
-    style labels, case-insensitively.
+    Walks the text for the first ``<!-- aops-verdict: TOKEN -->`` line whose
+    TOKEN is one of ``VERDICT_TOKENS``. No fuzzy matching, no markdown
+    permutations — agents must emit the marker verbatim or the field
+    resolves to ``None`` (fail-open).
     """
     if not text:
         return None
-    seen = 0
-    for raw_line in text.splitlines():
-        line = raw_line.strip()
-        if not line:
+    for line in text.splitlines():
+        m = _VERDICT_MARKER.match(line)
+        if not m:
             continue
-        seen += 1
-        if seen > _VERDICT_SCAN_LINES:
-            break
-        m = _VERDICT_RE.match(line)
-        if m:
-            return m.group(1).upper()
+        token = m.group(1).upper()
+        if token in _ALLOWED_TOKENS:
+            return token
     return None
 
 
-def count_issues(text: str) -> int:
-    """Count bullet/numbered list items in the text.
+def extract_issues_count(text: str) -> int | None:
+    """Return the issues count from the structured trailer, or None.
 
-    Each line matching ``- ``, ``* ``, or ``<n>.`` (with optional leading
-    whitespace) counts as one issue. Min 0.
+    Walks the text for the first ``<!-- aops-issues: N -->`` line, where
+    N is a non-negative integer. Returns ``None`` when no marker is found,
+    which downstream rollups treat as "unknown" (distinct from "0 issues").
     """
     if not text:
-        return 0
-    return sum(1 for line in text.splitlines() if _LIST_ITEM_RE.match(line))
+        return None
+    for line in text.splitlines():
+        m = _ISSUES_MARKER.match(line)
+        if m:
+            return int(m.group(1))
+    return None
 
 
 def last_assistant_text(entries: list[Entry]) -> str:
@@ -168,6 +182,8 @@ def build_subagent_verdicts(
         A list of dicts, one per subagent invocation, with keys
         ``invocation_id``, ``agent_id``, ``verdict``, ``issues_count``,
         ``tokens``. Order follows ``agent_entries`` insertion order.
+        ``verdict`` and ``issues_count`` are ``None`` when the agent did
+        not emit the structured trailer.
     """
     if not agent_entries:
         return []
@@ -182,7 +198,7 @@ def build_subagent_verdicts(
                 "invocation_id": invocation_id,
                 "agent_id": type_index.get(invocation_id),
                 "verdict": extract_verdict(text),
-                "issues_count": count_issues(text),
+                "issues_count": extract_issues_count(text),
                 "tokens": int(agent_stats.get("input", 0)) + int(agent_stats.get("output", 0)),
             }
         )

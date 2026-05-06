@@ -111,6 +111,16 @@ When the caller has commissioned a PR review, end your response with a `## Verdi
 - sensitive-data: <BLOCK|WARN|PASS> — <one-line reason>
 
 Overall: <BLOCK|REVISE|WARN|APPROVE>
+
+<!-- aops-verdict: APPROVE -->
+<!-- aops-issues: 0 -->
 ```
 
 `APPROVE` is only available when every rule resolves to `PASS` AND the axiom checks (above) also pass. A `WARN` on sensitive-data with all else `PASS` produces overall `WARN` (not `APPROVE`).
+
+The two HTML-comment lines at the end are a machine-readable trailer the session-summary parser reads. They are mandatory:
+
+- `aops-verdict` MUST be one of `APPROVE`, `REVISE`, `PASS`, `FAIL`, `ESCALATE` (uppercase, exact). Map your `Overall` token: `BLOCK` and `WARN` both render as `REVISE` for the trailer (the canonical token vocabulary the rollup uses); `APPROVE`, `REVISE`, `PASS`, `FAIL`, `ESCALATE` pass through unchanged.
+- `aops-issues` MUST be a non-negative integer counting the _distinct findings_ you raised in the review (not the count of bullet points used to express them). For an `APPROVE` with no findings, emit `0`.
+
+Do not add markdown decoration to the comment lines, do not concatenate them on the same line, and do not omit them — the rollup treats absence as "unknown verdict / unknown issue count" and the review will not surface in the per-session summary.
