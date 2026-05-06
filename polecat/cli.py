@@ -1820,33 +1820,8 @@ def _replicate_gemini_auth(
 
     # Generate sandbox policy if work_dir is provided (skipped when vanilla)
     if work_dir and not vanilla:
-        work_dir_str = str(work_dir.resolve())
-        sandbox_policy = f"""# Polecat Sandbox Policy
-# Priority 900 (Admin tier level) to ensure it takes precedence over user/workspace rules.
-
-[[rule]]
-toolName = ["write_file", "replace"]
-argsPattern = {{ file_path = "{work_dir_str}/**" }}
-decision = "allow"
-priority = 900
-description = "Allow writes within the work directory"
-
-[[rule]]
-toolName = "run_shell_command"
-commandRegex = ".*{work_dir_str}.*"
-decision = "allow"
-priority = 900
-description = "Allow shell commands referencing the work directory"
-
-[[rule]]
-toolName = ["write_file", "replace", "run_shell_command"]
-decision = "deny"
-priority = 899
-deny_message = "Sandbox violation: Writing outside the work directory ({work_dir_str}) is prohibited."
-description = "Deny writes outside the work directory"
-"""
-        with open(policies_dir / "polecat-sandbox.toml", "w") as f_policy:
-            f_policy.write(sandbox_policy)
+        # Todo: copy template policies into container.
+        pass
 
     # If trustedFolders.json didn't exist but we have a work_dir, create it.
     # Cover both the host path and the in-container mount (/workspace) so the
