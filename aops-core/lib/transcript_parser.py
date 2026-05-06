@@ -1300,6 +1300,17 @@ class UsageStats:
     by_tool: dict[str, dict[str, int]] = field(default_factory=dict)
     by_agent: dict[str, dict[str, int]] = field(default_factory=dict)
 
+    # Human-attention proxies (main session only; subagent-internal entries excluded).
+    # user_messages: real user-role entries excluding tool_result wrappers and meta.
+    # mid_session_corrections: user_messages that occur AFTER the first assistant tool_use
+    # (i.e. interruptions, not the dispatch/initial prompt).
+    user_messages: int = 0
+    mid_session_corrections: int = 0
+
+    # Per-subagent-invocation verdict + issues_count rows (Build B of Safeguard
+    # ROI v0). Populated by `_aggregate_session_usage`. Empty when no subagents.
+    subagent_verdicts: list[dict[str, Any]] = field(default_factory=list)
+
     def add_entry(
         self,
         entry: Entry,
@@ -1400,6 +1411,11 @@ class UsageStats:
             "by_model": self.by_model,
             "by_tool": self.by_tool,
             "by_agent": self.by_agent,
+            "attention": {
+                "user_messages": self.user_messages,
+                "mid_session_corrections": self.mid_session_corrections,
+            },
+            "subagent_verdicts": self.subagent_verdicts,
             "efficiency": {
                 "cache_hit_rate": round(cache_hit_rate, 3),
             },
@@ -1934,6 +1950,32 @@ def _extract_exit_code_from_content(content: str, is_error: bool) -> int | None:
 
     # If is_error but no explicit exit code, it's a non-zero exit
     return 1  # Default to 1 for errors without explicit code
+
+
+def _estimate_tokens(text: str) -> int:
+    """Estimate token count from raw text.
+
+    Uses the standard ``len(text) // 4`` rough-equivalence: roughly four
+    characters per token for English-and-code mixed text. Caller renders
+    with a ``~`` prefix to flag the approximation.
+    """
+    if not text:
+        return 0
+    return max(1, len(text) // 4)
+
+
+def _format_token_count(n: int) -> str:
+    """Compact token-count format for inline transcript annotations.
+
+    Examples: 87 -> "87", 1234 -> "1.2k", 12345 -> "12k", 1234567 -> "1.2M".
+    """
+    if n < 1000:
+        return str(n)
+    if n < 10_000:
+        return f"{n / 1000:.1f}k"
+    if n < 1_000_000:
+        return f"{n // 1000}k"
+    return f"{n / 1_000_000:.1f}M"
 
 
 def _summarize_tool_input(tool_name: str, tool_input: dict) -> str:
@@ -2999,6 +3041,10 @@ class SessionProcessor:
                                         if result_info.get("exit_code") is not None:
                                             tool_item["exit_code"] = result_info["exit_code"]
                                         tool_item["is_error"] = result_info.get("is_error", False)
+                                        if result_info.get("result_tokens") is not None:
+                                            tool_item["result_tokens"] = result_info[
+                                                "result_tokens"
+                                            ]
 
                                 if tool_name in ("Agent", "Task") and tool_id:
                                     agent_id = self._extract_agent_id_from_result(tool_id, entries)
@@ -3486,6 +3532,9 @@ class SessionProcessor:
             return f"> 🪝 {label}{verdict_part}{msg_part}{extras_part}\n\n"
 
         # Session-level hook — full ### Hook: section with rich payload.
+        # The header line condenses event + checkmark + verdict + (intro to
+        # any system message) into one line; the message body, when present,
+        # follows as a fenced block.
         checkmark = ""
         if exit_code is not None:
             checkmark = " ✓" if exit_code == 0 else f" ✗ (exit {exit_code})"
@@ -3494,28 +3543,30 @@ class SessionProcessor:
             detail = f": {tool_name}"
         elif agent_id:
             detail = f": agent-{agent_id}"
-        out = f"### Hook: {event_name}{detail}{checkmark}\n\n"
+
+        verdict_part = ""
+        if is_blocking:
+            verdict_part = f" — 🛑 denied verdict=`{hook_verdict}`"
+        elif noteworthy_verdict:
+            verdict_part = f" — verdict `{noteworthy_verdict}`"
+        elif event_name == "Stop":
+            verdict_part = " — verdict `allow`"
+
+        intro_part = " — ℹ️ Hook message:" if hook_system_message else ""
+        out = f"### Hook: {event_name}{detail}{checkmark}{verdict_part}{intro_part}\n\n"
 
         if prevented:
             out += "🛑 **Prevented continuation** — Stop hook blocked the agent from halting.\n\n"
-        if is_blocking:
-            out += f"🛑 Hook denied: verdict=`{hook_verdict}`\n\n"
-        elif noteworthy_verdict:
-            out += f"**Verdict:** `{noteworthy_verdict}`\n\n"
-        elif event_name == "Stop":
-            # The default Stop verdict is "allow" — make it explicit so a
-            # reader can see that the gate was open at this point.
-            out += "**Verdict:** `allow` (continuation permitted)\n\n"
 
         if hook_system_message:
             msg = hook_system_message
             if not full_mode and len(msg) > 600:
                 msg = msg[:600] + "..."
-            out += f"ℹ️ Hook message:\n\n```\n{msg}\n```\n\n"
+            out += f"```\n{msg}\n```\n\n"
 
         # Stop: show the tail of the last assistant message that triggered
-        # this Stop event, so the reader can see what the agent had just
-        # said when the gate fired.
+        # this Stop event. Position alone (immediately under the Stop hook
+        # header) signals what the quoted block is; no label needed.
         if event_name == "Stop" and isinstance(hook_raw_input, dict):
             last = hook_raw_input.get("last_assistant_message")
             if isinstance(last, str) and last.strip():
@@ -3526,7 +3577,7 @@ class SessionProcessor:
                 # last-assistant message often contains markdown that would
                 # otherwise punch through the transcript's own structure.
                 quoted = _quote_block(_adjust_heading_levels(tail, 4))
-                out += f"_Triggered after assistant message:_\n\n{quoted}\n\n"
+                out += f"{quoted}\n\n"
 
         # UserPromptSubmit: show the prompt itself in full mode.
         if event_name == "UserPromptSubmit" and full_mode and isinstance(hook_raw_input, dict):
@@ -3961,6 +4012,17 @@ class SessionProcessor:
                         elif is_error:
                             exit_suffix = " → error"
 
+                        # Per-tool result-size annotation. The estimate is
+                        # ``len(content) // 4`` (no tokenizer dep), so the
+                        # ``~`` prefix is load-bearing — it tells the reader
+                        # this is an approximation, not a billed count.
+                        result_tokens = item.get("result_tokens")
+                        token_suffix = (
+                            f" [~{_format_token_count(result_tokens)} tok]"
+                            if isinstance(result_tokens, int) and result_tokens > 0
+                            else ""
+                        )
+
                         # Track if we render subagent content from result
                         # to avoid duplication with sidechain_summary
                         rendered_subagent_from_result = False
@@ -3973,8 +4035,7 @@ class SessionProcessor:
                         elif include_tool_results and item.get("result"):
                             result_text = item["result"]
                             tool_call = content.strip().lstrip("- ").rstrip("\n")
-                            # Add exit code suffix for Bash commands
-                            display_call = f"{tool_call}{exit_suffix}"
+                            display_call = f"{tool_call}{exit_suffix}{token_suffix}"
 
                             if _is_subagent_jsonl(result_text):
                                 parsed = _parse_subagent_output(result_text, heading_level=4)
@@ -3994,12 +4055,12 @@ class SessionProcessor:
                                 )
                                 markdown += f"- **Tool:** {display_call}\n```{code_lang}\n{result_text}\n```\n\n"
                         else:
-                            # Abridged mode - show tool call with exit code suffix
-                            if exit_suffix:
-                                # Add exit code to the tool call line
+                            # Abridged mode - show tool call with exit/token suffix.
+                            inline_suffix = exit_suffix + token_suffix
+                            if inline_suffix:
                                 lines = content.rstrip("\n").split("\n")
                                 if lines:
-                                    lines[0] = lines[0].rstrip() + exit_suffix
+                                    lines[0] = lines[0].rstrip() + inline_suffix
                                     content = "\n".join(lines) + "\n"
                             markdown += content
 
@@ -4341,6 +4402,9 @@ session_id: {session_uuid}
             - content: The result content string
             - is_error: Whether it was an error
             - exit_code: Extracted exit code (int or None)
+            - result_tokens: Approximate token count for the result payload
+              (len(content) // 4, the standard rough-equivalence ratio used
+              when no tokenizer is available). Marked ``~`` at render time.
         """
         for entry in all_entries:
             if entry.type != "user":
@@ -4371,10 +4435,14 @@ session_id: {session_uuid}
                             is_error,
                         )
 
+                        text_for_tokens = result_content if isinstance(result_content, str) else ""
+                        result_tokens = _estimate_tokens(text_for_tokens)
+
                         return {
                             "content": result_content,
                             "is_error": is_error,
                             "exit_code": exit_code,
+                            "result_tokens": result_tokens,
                         }
         return None
 
@@ -4617,6 +4685,7 @@ session_id: {session_uuid}
         stats = UsageStats()
 
         # Process main entries
+        seen_assistant_tool_use = False
         for entry in entries:
             tool_name = None
             # Extract tool name from assistant tool_use blocks
@@ -4627,6 +4696,29 @@ session_id: {session_uuid}
                         if isinstance(block, dict) and block.get("type") == "tool_use":
                             tool_name = block.get("name")
                             break
+
+            # Attention counters: count real user messages on the main session.
+            # Excludes tool_result wrappers (Claude's convention is to carry tool_result
+            # blocks inside user-role entries) and meta entries.
+            if entry.type == "user" and not entry.is_meta and not entry.is_sidechain:
+                content = entry.message.get("content", []) if entry.message else []
+                if isinstance(content, str):
+                    is_real_user_message = bool(content.strip())
+                elif isinstance(content, list):
+                    is_real_user_message = any(
+                        (isinstance(b, dict) and b.get("type") != "tool_result")
+                        or (isinstance(b, str) and b.strip())
+                        for b in content
+                    )
+                else:
+                    is_real_user_message = False
+                if is_real_user_message:
+                    stats.user_messages += 1
+                    if seen_assistant_tool_use:
+                        stats.mid_session_corrections += 1
+
+            if tool_name and not seen_assistant_tool_use:
+                seen_assistant_tool_use = True
 
             stats.add_entry(entry, tool_name=tool_name, agent_id=None)
 
@@ -4645,13 +4737,18 @@ session_id: {session_uuid}
 
                     stats.add_entry(entry, tool_name=tool_name, agent_id=agent_id)
 
+        if agent_entries:
+            from .reviewer_verdicts import build_subagent_verdicts
+
+            stats.subagent_verdicts = build_subagent_verdicts(
+                entries, agent_entries, stats.by_agent
+            )
+
         return stats
 
     def _estimate_tokens(self, text: str) -> int:
         """Estimate token count from text (~1 token per 4 characters)."""
-        if not text:
-            return 0
-        return max(1, len(text) // 4)
+        return _estimate_tokens(text)
 
     def _format_compact_args(self, tool_input: dict[str, Any], max_length: int = 60) -> str:
         """Format tool arguments as compact Python-like syntax."""

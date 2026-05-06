@@ -261,6 +261,65 @@ def _validate_token_metrics(token_metrics: dict[str, Any]) -> None:
                     f"Field 'token_metrics.by_agent.{agent_name}' must be a dict"
                 )
 
+    # Validate 'attention' sub-object (optional but must be dict if present)
+    if "attention" in token_metrics:
+        attention = token_metrics["attention"]
+        if not isinstance(attention, dict):
+            raise InsightsValidationError(
+                f"Field 'token_metrics.attention' must be a dict, got {type(attention).__name__}"
+            )
+        for field in ("user_messages", "mid_session_corrections"):
+            if field in attention and attention[field] is not None:
+                value = attention[field]
+                if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+                    raise InsightsValidationError(
+                        f"Field 'token_metrics.attention.{field}' must be a non-negative int"
+                    )
+
+    # Validate 'subagent_verdicts' (optional list of per-invocation rows)
+    if "subagent_verdicts" in token_metrics:
+        rows = token_metrics["subagent_verdicts"]
+        if not isinstance(rows, list):
+            raise InsightsValidationError(
+                f"Field 'token_metrics.subagent_verdicts' must be a list, got {type(rows).__name__}"
+            )
+        allowed_verdicts = {"APPROVE", "REVISE", "PASS", "FAIL", "ESCALATE"}
+        for i, row in enumerate(rows):
+            if not isinstance(row, dict):
+                raise InsightsValidationError(
+                    f"Field 'token_metrics.subagent_verdicts[{i}]' must be a dict"
+                )
+            invocation_id = row.get("invocation_id")
+            if not isinstance(invocation_id, str) or not invocation_id:
+                raise InsightsValidationError(
+                    f"Field 'token_metrics.subagent_verdicts[{i}].invocation_id' must be a non-empty str"
+                )
+            verdict = row.get("verdict")
+            if verdict is not None and verdict not in allowed_verdicts:
+                raise InsightsValidationError(
+                    f"Field 'token_metrics.subagent_verdicts[{i}].verdict' must be one of "
+                    f"{sorted(allowed_verdicts)} or null, got {verdict!r}"
+                )
+            issues_count = row.get("issues_count")
+            if issues_count is not None and (
+                not isinstance(issues_count, int)
+                or isinstance(issues_count, bool)
+                or issues_count < 0
+            ):
+                raise InsightsValidationError(
+                    f"Field 'token_metrics.subagent_verdicts[{i}].issues_count' must be a non-negative int or null"
+                )
+            tokens = row.get("tokens")
+            if not isinstance(tokens, int) or isinstance(tokens, bool) or tokens < 0:
+                raise InsightsValidationError(
+                    f"Field 'token_metrics.subagent_verdicts[{i}].tokens' must be a non-negative int"
+                )
+            agent_id = row.get("agent_id")
+            if agent_id is not None and not isinstance(agent_id, str):
+                raise InsightsValidationError(
+                    f"Field 'token_metrics.subagent_verdicts[{i}].agent_id' must be a str or null"
+                )
+
     # Validate 'efficiency' sub-object (optional but must be dict if present)
     if "efficiency" in token_metrics:
         efficiency = token_metrics["efficiency"]
