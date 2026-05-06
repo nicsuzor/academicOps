@@ -635,10 +635,6 @@ class HookRouter:
             except Exception as e:
                 print(f"WARNING: session_env_setup error: {e}", file=sys.stderr)
 
-        # Auto-commit ACA_DATA after state-modifying operations
-        if ctx.hook_event == "PostToolUse":
-            self._run_aca_data_autocommit(ctx)
-
         # Generate transcript on stop
         if ctx.hook_event == "Stop":
             transcript_path = ctx.transcript_path

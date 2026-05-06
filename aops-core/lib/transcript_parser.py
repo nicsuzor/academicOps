@@ -4654,7 +4654,9 @@ session_id: {session_uuid}
                     is_real_user_message = bool(content.strip())
                 elif isinstance(content, list):
                     is_real_user_message = any(
-                        isinstance(b, dict) and b.get("type") != "tool_result" for b in content
+                        (isinstance(b, dict) and b.get("type") != "tool_result")
+                        or (isinstance(b, str) and b.strip())
+                        for b in content
                     )
                 else:
                     is_real_user_message = False
