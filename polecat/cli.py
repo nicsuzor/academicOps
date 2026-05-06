@@ -881,11 +881,39 @@ def _is_colima_env(env: dict) -> bool:
     return ".colima" in str(sock.host_path)
 
 
+def _format_watchdog_terminated_message(task_id: str | None = None) -> str:
+    """Format the message printed when polecat's own watchdog killed the container.
+
+    The PKB termination watchdog (`_pkb_termination_watchdog`) fires SIGKILL
+    after the task reaches a terminal status (done / merge_ready / blocked /
+    cancelled) and the agent fails to exit within the grace + SIGTERM window.
+    Clean termination — distinct from OOM — must not show OOM remediation
+    (that sent users chasing memory ghosts).
+    """
+    target = f"task {task_id}" if task_id else "the task"
+    return (
+        "\n"
+        f"\u2713  Container terminated by polecat watchdog: {target} "
+        "reached a terminal status and the agent did not exit on its own.\n"
+        "    (exit 137 = SIGKILL from polecat, NOT out-of-memory.)\n"
+    )
+
+
 def _format_oom_message(env: dict, daemon_mem_bytes: int | None = None) -> str:
-    """Format a clear OOM error message with platform-specific remediation."""
+    """Format a SIGKILL diagnostic message with OOM as the leading hypothesis.
+
+    Exit 137 = SIGKILL. The watchdog path is checked separately by the caller;
+    if we reach this message, polecat did not initiate the kill, so the
+    suspect list is OOM killer, manual `docker kill`, or a system signal. OOM
+    is the most common cause when no human pressed anything — but we tell the
+    user how to confirm it rather than asserting it.
+    """
     lines = [
         "",
-        "\u274c  Container killed by Out-Of-Memory (OOM) killer — exit code 137",
+        "\u274c  Container killed by SIGKILL — exit code 137",
+        "    Most likely cause: Out-Of-Memory (OOM) killer.",
+        "    Confirm with: docker inspect <container> --format '{{.State.OOMKilled}}'",
+        "    or check kernel logs: dmesg | grep -i 'killed process'",
         "",
     ]
     if daemon_mem_bytes is not None:
@@ -1279,6 +1307,7 @@ def _pkb_termination_watchdog(
     container_id: str,
     task_id: str,
     cancel_event: threading.Event,
+    fired_event: threading.Event | None = None,
 ) -> None:
     """Poll PKB for task terminal status; kill the container when reached.
 
@@ -1336,6 +1365,11 @@ def _pkb_termination_watchdog(
             # Grace period — respect cancellation so a natural exit wins.
             if cancel_event.wait(timeout=grace_seconds):
                 return
+            # Mark that the watchdog (not OOM, not user) is the cause of any
+            # subsequent SIGKILL exit. Caller checks this to format the right
+            # exit message — see `_format_watchdog_terminated_message`.
+            if fired_event is not None:
+                fired_event.set()
             try:
                 subprocess.run(
                     ["docker", "kill", "--signal=TERM", container_id],
@@ -1396,19 +1430,29 @@ def _run_docker_container(
         cmd[3:3] = ["--name", container_name]
 
         _watchdog_cancel = None
+        _watchdog_fired: threading.Event | None = None
         _watchdog_thread = None
         if gemini and task_id:
             _watchdog_cancel = threading.Event()
+            _watchdog_fired = threading.Event()
             _watchdog_thread = threading.Thread(
                 target=_pkb_termination_watchdog,
-                args=(container_name, task_id, _watchdog_cancel),
+                args=(container_name, task_id, _watchdog_cancel, _watchdog_fired),
                 name=f"polecat-watchdog-{task_id}",
                 daemon=True,
             )
             _watchdog_thread.start()
 
         try:
-            return subprocess.run(cmd, cwd=cwd, env=env, capture_output=capture_output, text=text)
+            _result = subprocess.run(
+                cmd, cwd=cwd, env=env, capture_output=capture_output, text=text
+            )
+            # Annotate so callers can distinguish polecat-initiated SIGKILL
+            # from OOM / external SIGKILL when returncode == 137.
+            _result.watchdog_terminated = bool(  # type: ignore[attr-defined]
+                _watchdog_fired and _watchdog_fired.is_set()
+            )
+            return _result
         except KeyboardInterrupt:
             # SIGINT/SIGTERM reached us while docker run was blocking. Ask
             # docker to gracefully stop the container so the agent has time
@@ -1535,12 +1579,14 @@ def _run_docker_container(
         # observed. Claude workers terminate via their own Stop hook —
         # leave that path unchanged.
         watchdog_cancel: threading.Event | None = None
+        watchdog_fired: threading.Event | None = None
         watchdog_thread: threading.Thread | None = None
         if gemini and task_id:
             watchdog_cancel = threading.Event()
+            watchdog_fired = threading.Event()
             watchdog_thread = threading.Thread(
                 target=_pkb_termination_watchdog,
-                args=(container_id, task_id, watchdog_cancel),
+                args=(container_id, task_id, watchdog_cancel, watchdog_fired),
                 name=f"polecat-watchdog-{task_id}",
                 daemon=True,
             )
@@ -1551,6 +1597,11 @@ def _run_docker_container(
             try:
                 run_result = subprocess.run(
                     start_cmd, cwd=cwd, env=env, capture_output=capture_output, text=text
+                )
+                # Annotate so callers can distinguish polecat-initiated SIGKILL
+                # from OOM / external SIGKILL when returncode == 137.
+                run_result.watchdog_terminated = bool(  # type: ignore[attr-defined]
+                    watchdog_fired and watchdog_fired.is_set()
                 )
             except KeyboardInterrupt:
                 # SIGTERM/SIGINT reached us while docker start -a was blocking.
@@ -3467,7 +3518,10 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
 
     print("-" * 50)
     if result is not None and result.returncode == 137:
-        print(_format_oom_message(env, daemon_mem))
+        if getattr(result, "watchdog_terminated", False):
+            print(_format_watchdog_terminated_message(task_id=crew_name))
+        else:
+            print(_format_oom_message(env, daemon_mem))
     print(f"\n\U0001f4cb Crew '{crew_name}' session ended.")
 
     # Auto-cleanup: nuke clone if no changes were made or a PR is open
@@ -4263,7 +4317,10 @@ def run(
             print(f"   Worktree: {worktree_path}")
     else:
         if exit_code == 137:
-            print(_format_oom_message(env, daemon_mem))
+            if getattr(result, "watchdog_terminated", False):
+                print(_format_watchdog_terminated_message(task_id=task.id))
+            else:
+                print(_format_oom_message(env, daemon_mem))
         else:
             print(f"\n⚠️  Agent exited with code {exit_code}. Skipping auto-finish.")
         print(f"   Worktree: {worktree_path}")
