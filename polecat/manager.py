@@ -920,9 +920,6 @@ class PolecatManager:
             # Install pre-commit hooks
             self._install_precommit_hooks(worktree_path)
 
-            # Apply sandbox settings to isolate the worker to this worktree
-            self.create_sandbox_settings(worktree_path)
-
             return worktree_path
 
     def nuke_crew(self, name: str, force: bool = False):
@@ -1948,11 +1945,6 @@ class PolecatManager:
 
         # Install pre-commit hooks
         self._install_precommit_hooks(worktree_path)
-
-        # --- SANDBOX SETTINGS ---
-        # Write .claude/settings.json to restrict file writes to this worktree only.
-        # Loaded via --setting-sources=user,project when spawning the worker.
-        self.create_sandbox_settings(worktree_path)
 
         # --- WORKTREE VERIFICATION ---
         # Verify the worktree is correctly set up for PR workflow
