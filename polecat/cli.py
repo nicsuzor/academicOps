@@ -249,6 +249,23 @@ def _node_version_key(p: Path) -> tuple[int, ...]:
     return tuple(int(x) for x in m.groups()) if m else (0, 0, 0)
 
 
+def _is_vanilla_crew() -> bool:
+    """Return True when the vanilla-crew trial config is active.
+
+    Trial: crew containers run with no framework hooks, no auto-mode permission
+    rules, and Claude in --dangerously-skip-permissions mode. Default is ON;
+    set POLECAT_VANILLA_CREW=0 (or "false"/"off"/"no") to revert to the
+    plan-mode + hooks behaviour.
+    """
+    val = os.environ.get("POLECAT_VANILLA_CREW", "1").strip().lower()
+    # Empty-string is treated as "default" (vanilla on) — same as unset — to
+    # avoid the surprise where `POLECAT_VANILLA_CREW= polecat crew ...` and
+    # `polecat crew ...` produce opposite results.
+    if val == "":
+        return True
+    return val not in ("0", "false", "off", "no")
+
+
 def _make_worker_env(interactive: bool = False, work_dir: Path | None = None) -> dict[str, str]:
     """Create a sanitized environment for polecat/crew worker subprocesses.
 
@@ -1007,6 +1024,7 @@ def _build_docker_cmd(
     session_dir: Path | None = None,
     session_volume: str | None = None,
     memory_limit: str | None = None,
+    vanilla: bool = False,
 ) -> DockerCmd:
     """Build a Docker command with appropriate mounts and env for an agent session.
 
@@ -1134,10 +1152,23 @@ def _build_docker_cmd(
             # (potentially stale or wrong-path) copy.
             staged_claude_dir = staging_dir / ".claude"
             staged_claude_dir.mkdir(exist_ok=True)
-            for auth_file in (".credentials.json", "settings.json"):
+            staged_files = (
+                (".credentials.json",) if vanilla else (".credentials.json", "settings.json")
+            )
+            for auth_file in staged_files:
                 src = claude_dir / auth_file
                 if src.exists():
                     shutil.copy2(src, staged_claude_dir / auth_file)
+        # Vanilla-crew trial: stage a minimal settings.json (no autoMode, no
+        # permission rules) instead of the host's. Combined with AOPS_HOOKS_OFF=1
+        # below, this gives the container a clean almost-vanilla Claude install.
+        if vanilla:
+            vanilla_template = SCRIPT_DIR / "defaults" / "claude-settings-vanilla.json"
+            if not vanilla_template.exists():
+                raise RuntimeError(f"Missing bundled template: {vanilla_template}")
+            staged_claude_dir = staging_dir / ".claude"
+            staged_claude_dir.mkdir(exist_ok=True)
+            shutil.copy2(vanilla_template, staged_claude_dir / "settings.json")
         # Stage Gemini auth files for "shell" mode so users can run gemini interactively.
         # Gemini normally handles its own sandbox, but in shell mode we're managing Docker.
         if cli_tool == "shell":
@@ -1232,6 +1263,12 @@ def _build_docker_cmd(
         if _gm_key not in env:
             _gm_val = os.environ.get(_gm_key, _gm_default)
             cmd.extend(["-e", f"{_gm_key}={_gm_val}"])
+
+    # Vanilla-crew trial: signal the hook router (router.sh / router.py) to
+    # exit immediately. Settings.json is already stripped above; this disables
+    # the plugin-declared hooks that ship inside the image.
+    if vanilla:
+        cmd.extend(["-e", "AOPS_HOOKS_OFF=1"])
 
     cmd.append(image)
     cmd.extend(agent_cmd)
@@ -1647,7 +1684,9 @@ def _mount_gemini_git_credentials(env: dict, tmp_files: list[Path]) -> list[str]
     return extra_flags
 
 
-def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | None:
+def _replicate_gemini_auth(
+    env: dict, work_dir: Path | None = None, vanilla: bool = False
+) -> Path | None:
     """Replicate Gemini authentication files to a directory.
 
     For headless sessions to authenticate properly in a sandbox, critical files
@@ -1744,7 +1783,13 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
                 # selectedType is missing. We infer the type from available files:
                 #   oauth_creds.json → "oauth-personal"
                 #   GEMINI_API_KEY env → "api-key" (handled by env, no setting needed)
-                template_path = SCRIPT_DIR / "defaults" / "gemini-settings.json"
+                # Vanilla-crew trial uses a stripped template with no policyEngine.
+                template_name = (
+                    "gemini-settings-vanilla.json" if vanilla else "gemini-settings.json"
+                )
+                template_path = SCRIPT_DIR / "defaults" / template_name
+                if not template_path.exists():
+                    raise RuntimeError(f"Missing bundled template: {template_path}")
                 with open(template_path) as tpl_f:
                     minimal = json.load(tpl_f)
 
@@ -1765,14 +1810,16 @@ def _replicate_gemini_auth(env: dict, work_dir: Path | None = None) -> Path | No
         # This is critical for ~/.gemini/settings.json which is often symlinked.
         shutil.copy2(gemini_dir / f, target_dir / f, follow_symlinks=True)
 
-    # Copy our default framework policies
-    deny_ext_src = SCRIPT_DIR / "defaults" / "deny-extension-writes.toml"
-    if not deny_ext_src.exists():
-        raise RuntimeError(f"Missing bundled policy file: {deny_ext_src}")
-    shutil.copy2(deny_ext_src, policies_dir / "deny-extension-writes.toml")
+    # Copy our default framework policies — skipped in vanilla-crew trial,
+    # which intentionally drops the policy-engine restrictions.
+    if not vanilla:
+        deny_ext_src = SCRIPT_DIR / "defaults" / "deny-extension-writes.toml"
+        if not deny_ext_src.exists():
+            raise RuntimeError(f"Missing bundled policy file: {deny_ext_src}")
+        shutil.copy2(deny_ext_src, policies_dir / "deny-extension-writes.toml")
 
-    # Generate sandbox policy if work_dir is provided
-    if work_dir:
+    # Generate sandbox policy if work_dir is provided (skipped when vanilla)
+    if work_dir and not vanilla:
         work_dir_str = str(work_dir.resolve())
         sandbox_policy = f"""# Polecat Sandbox Policy
 # Priority 900 (Admin tier level) to ensure it takes precedence over user/workspace rules.
@@ -3233,6 +3280,12 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
     print(f"   Crew: {crew_name}")
     print(f"   Projects: {', '.join(projects)}")
     print(f"   Working dir: {work_dir}")
+    vanilla = _is_vanilla_crew()
+    if vanilla:
+        print("   Mode: vanilla-crew trial (no hooks, bypass-permissions)")
+        print("         toggle off with POLECAT_VANILLA_CREW=0")
+    else:
+        print("   Mode: legacy (plan + hooks)")
     print("-" * 50)
 
     if interactive:
@@ -3262,12 +3315,21 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
         )
     else:
         # Claude Code: sandbox via project settings.json + setting-sources
-        cmd = [
-            "claude",
-            "--permission-mode=plan",
-            "--allow-dangerously-skip-permissions",
-            "--setting-sources=user,project",
-        ]
+        if vanilla:
+            # Vanilla-crew trial: bypass-permissions (yolo) inside the container,
+            # no plan mode, no hooks. Toggle off with POLECAT_VANILLA_CREW=0.
+            cmd = [
+                "claude",
+                "--dangerously-skip-permissions",
+                "--setting-sources=user,project",
+            ]
+        else:
+            cmd = [
+                "claude",
+                "--permission-mode=plan",
+                "--allow-dangerously-skip-permissions",
+                "--setting-sources=user,project",
+            ]
 
     # Append any extra args passed after '--' to the agent command
     if agent_args:
@@ -3283,7 +3345,9 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
     # yolo because gemini's plan mode default-denies tools (see crew gemini
     # branch above). Signal plan mode to the gate engine so it skips the
     # custodiet ops counter — the gate must not fire when rbg cannot be invoked.
-    if not interactive and not gemini:
+    # Vanilla-crew trial uses bypass mode for Claude, so plan-mode signalling
+    # is suppressed in that path.
+    if not interactive and not gemini and not vanilla:
         env["POLECAT_APPROVAL_MODE"] = "plan"
 
     # Compute session directory for Claude transcript persistence.
@@ -3297,7 +3361,7 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
     tmp_files: list[Path] = []
     if gemini:
         # Replicate Gemini authentication — creates a temp dir with .gemini/ auth files.
-        tmp_gemini_home = _replicate_gemini_auth(env, work_dir=work_dir)
+        tmp_gemini_home = _replicate_gemini_auth(env, work_dir=work_dir, vanilla=vanilla)
         if tmp_gemini_home:
             print(f"   Auth: Replicated to {tmp_gemini_home}")
 
@@ -3326,6 +3390,7 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
             tmp_files=tmp_files,
             session_dir=session_dir,
             memory_limit=memory_limit,
+            vanilla=vanilla,
         )
 
         # Copy replicated .gemini/ auth into staging_dir so docker cp injects
@@ -3350,6 +3415,7 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
             tmp_files=tmp_files,
             session_dir=session_dir,
             memory_limit=memory_limit,
+            vanilla=vanilla,
         )
         final_cmd = docker_cmd.cmd
     else:
@@ -3365,6 +3431,7 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
             tmp_files=tmp_files,
             session_dir=session_dir,
             memory_limit=memory_limit,
+            vanilla=vanilla,
         )
         final_cmd = docker_cmd.cmd
     print(f"   Sessions: {session_dir}")
@@ -3940,7 +4007,9 @@ def run(
 
     if gemini:
         # Replicate Gemini authentication — creates a temp dir with .gemini/ auth files.
-        tmp_gemini_home = _replicate_gemini_auth(env, work_dir=worktree_path)
+        # Autonomous workers always run with full policies (vanilla=False);
+        # the vanilla-crew trial only applies to interactive `crew` sessions.
+        tmp_gemini_home = _replicate_gemini_auth(env, work_dir=worktree_path, vanilla=False)
         if tmp_gemini_home:
             print(f"   Auth: Replicated to {tmp_gemini_home}")
 

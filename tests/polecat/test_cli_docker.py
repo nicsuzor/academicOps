@@ -28,6 +28,7 @@ from cli import (
     _find_docker_sock,
     _format_oom_message,
     _is_colima_env,
+    _is_vanilla_crew,
     _node_version_key,
     _parse_memory_string,
     _pass_pkb_url_sandbox,
@@ -1403,3 +1404,132 @@ class TestFormatOomMessage:
         with patch("cli._find_docker_sock", return_value=None):
             msg = _format_oom_message({}, daemon_mem_bytes=None)
         assert "GB memory available" not in msg
+
+
+class TestIsVanillaCrew:
+    """Tests for the POLECAT_VANILLA_CREW toggle parser."""
+
+    @pytest.mark.parametrize(
+        "value,expected",
+        [
+            (None, True),  # unset → default on
+            ("", True),  # empty → default on (matches docstring)
+            ("1", True),
+            ("true", True),
+            ("True", True),
+            ("yes", True),
+            ("on", True),
+            ("0", False),
+            ("false", False),
+            ("FALSE", False),
+            ("off", False),
+            ("Off", False),
+            ("no", False),
+            ("  0  ", False),  # whitespace stripped
+        ],
+    )
+    def test_toggle_parsing(self, monkeypatch, value, expected):
+        if value is None:
+            monkeypatch.delenv("POLECAT_VANILLA_CREW", raising=False)
+        else:
+            monkeypatch.setenv("POLECAT_VANILLA_CREW", value)
+        assert _is_vanilla_crew() is expected
+
+
+class TestReplicateGeminiAuthVanilla:
+    """Vanilla-crew trial: framework policies must be skipped."""
+
+    def _seed(self, gemini_dir: Path):
+        gemini_dir.mkdir(parents=True)
+        (gemini_dir / "settings.json").write_text("{}")
+        (gemini_dir / "oauth_creds.json").write_text("{}")
+        (gemini_dir / "installation_id").write_text("abc")
+
+    def test_skips_deny_extension_policy(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("HOME", str(tmp_path))
+        monkeypatch.delenv("POLECAT_GEMINI_AUTH_DISABLED", raising=False)
+        self._seed(tmp_path / ".gemini")
+        result = _replicate_gemini_auth({}, work_dir=tmp_path, vanilla=True)
+        assert result is not None
+        assert not (result / ".gemini" / "policies" / "deny-extension-writes.toml").exists()
+
+    def test_skips_sandbox_policy(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("HOME", str(tmp_path))
+        monkeypatch.delenv("POLECAT_GEMINI_AUTH_DISABLED", raising=False)
+        self._seed(tmp_path / ".gemini")
+        result = _replicate_gemini_auth({}, work_dir=tmp_path, vanilla=True)
+        assert result is not None
+        assert not (result / ".gemini" / "policies" / "polecat-sandbox.toml").exists()
+
+    def test_uses_vanilla_settings_template(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("HOME", str(tmp_path))
+        monkeypatch.delenv("POLECAT_GEMINI_AUTH_DISABLED", raising=False)
+        self._seed(tmp_path / ".gemini")
+        result = _replicate_gemini_auth({}, work_dir=tmp_path, vanilla=True)
+        assert result is not None
+        settings = json.loads((result / ".gemini" / "settings.json").read_text())
+        # Vanilla template has no policyEngine and no hooksConfig.
+        assert "security" not in settings or "policyEngine" not in settings.get("security", {})
+        assert "hooksConfig" not in settings
+
+    def test_legacy_still_writes_policies(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("HOME", str(tmp_path))
+        monkeypatch.delenv("POLECAT_GEMINI_AUTH_DISABLED", raising=False)
+        self._seed(tmp_path / ".gemini")
+        result = _replicate_gemini_auth({}, work_dir=tmp_path, vanilla=False)
+        assert result is not None
+        # Legacy regression guard: deny-extension and sandbox policies still written.
+        assert (result / ".gemini" / "policies" / "deny-extension-writes.toml").exists()
+        assert (result / ".gemini" / "policies" / "polecat-sandbox.toml").exists()
+
+
+class TestBuildDockerCmdVanilla:
+    """Vanilla-crew trial: settings staging + AOPS_HOOKS_OFF env."""
+
+    def test_vanilla_stages_minimal_claude_settings(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("HOME", str(tmp_path))
+        # Seed a host settings.json that should NOT be copied in vanilla mode.
+        host_claude = tmp_path / ".claude"
+        host_claude.mkdir()
+        (host_claude / "settings.json").write_text('{"autoMode":{"allow":["DANGEROUS"]}}')
+        with patch("cli._find_docker_sock", return_value=None):
+            docker_cmd = _build_docker_cmd(
+                "claude",
+                tmp_path,
+                {"PATH": "/usr/bin"},
+                ["claude"],
+                is_interactive=False,
+                vanilla=True,
+            )
+        assert docker_cmd.staging_dir is not None
+        staged = docker_cmd.staging_dir / ".claude" / "settings.json"
+        content = json.loads(staged.read_text())
+        # Vanilla template — no autoMode, no permissions block.
+        assert "autoMode" not in content
+        assert "permissions" not in content
+
+    def test_vanilla_sets_hooks_off_env(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("HOME", str(tmp_path))
+        with patch("cli._find_docker_sock", return_value=None):
+            docker_cmd = _build_docker_cmd(
+                "claude",
+                tmp_path,
+                {"PATH": "/usr/bin"},
+                ["claude"],
+                is_interactive=False,
+                vanilla=True,
+            )
+        assert "AOPS_HOOKS_OFF=1" in docker_cmd.cmd
+
+    def test_legacy_does_not_set_hooks_off_env(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("HOME", str(tmp_path))
+        with patch("cli._find_docker_sock", return_value=None):
+            docker_cmd = _build_docker_cmd(
+                "claude",
+                tmp_path,
+                {"PATH": "/usr/bin"},
+                ["claude"],
+                is_interactive=False,
+                vanilla=False,
+            )
+        assert "AOPS_HOOKS_OFF=1" not in docker_cmd.cmd
