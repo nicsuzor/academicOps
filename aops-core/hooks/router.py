@@ -39,7 +39,7 @@ try:
     from lib.session_paths import get_pid_session_map_path, get_session_short_hash
     from lib.session_state import SessionState
 
-    from hooks.gate_config import SPAWN_TOOLS, extract_subagent_type
+    from hooks.gate_config import extract_subagent_type
     from hooks.schemas import (
         CanonicalHookOutput,
         ClaudeGeneralHookOutput,
@@ -616,11 +616,6 @@ class HookRouter:
         except Exception as e:
             print(f"WARNING: unified_logger error: {e}", file=sys.stderr)
 
-        # ntfy push notifications (not on Stop — ntfy has a 5s network timeout
-        # which equals the entire Stop hook budget and causes timeouts)
-        if ctx.hook_event in ("SessionStart", "PostToolUse"):
-            self._run_ntfy_notifier(ctx, state)
-
         # Session env setup on start
         if ctx.hook_event == "SessionStart":
             try:
@@ -634,83 +629,6 @@ class HookRouter:
                         return  # Fail-fast on initialization failure
             except Exception as e:
                 print(f"WARNING: session_env_setup error: {e}", file=sys.stderr)
-
-        # Auto-commit ACA_DATA after state-modifying operations
-        if ctx.hook_event == "PostToolUse":
-            self._run_aca_data_autocommit(ctx)
-
-        # Generate transcript on stop
-        if ctx.hook_event == "Stop":
-            transcript_path = ctx.transcript_path
-            if transcript_path:
-                self._run_generate_transcript(transcript_path)
-
-    def _run_ntfy_notifier(self, ctx: HookContext, state: SessionState) -> None:
-        """Run ntfy push notification handler."""
-        try:
-            from lib.paths import get_ntfy_config
-
-            config = get_ntfy_config()
-            if not config:
-                return
-
-            from hooks.ntfy_notifier import (
-                notify_session_start,
-                notify_subagent_stop,
-                notify_task_bound,
-                notify_task_completed,
-            )
-
-            if ctx.hook_event == "SessionStart":
-                notify_session_start(config, ctx.session_id)
-            elif ctx.hook_event == "PostToolUse":
-                TASK_BINDING_TOOLS = {
-                    "mcp__pkb__update_task",
-                    "mcp__pkb__complete_task",
-                    "update_task",
-                    "complete_task",
-                }
-                if ctx.tool_name in TASK_BINDING_TOOLS:
-                    tool_input = ctx.tool_input
-                    if (
-                        isinstance(tool_input, dict)
-                        and "status" in tool_input
-                        and "id" in tool_input
-                    ):
-                        status = tool_input["status"]
-                        task_id = tool_input["id"]
-                        if status == "in_progress":
-                            state.main_agent.current_task = task_id
-                            state.main_agent.task_binding_ts = datetime.now().isoformat()
-                            notify_task_bound(config, ctx.session_id, task_id)
-                        elif status == "done":
-                            notify_task_completed(config, ctx.session_id, task_id)
-
-                if ctx.tool_name in SPAWN_TOOLS:
-                    agent_type = "unknown"
-                    tool_input = ctx.tool_input
-                    if isinstance(tool_input, dict):
-                        # Support both Claude (subagent_type) and Gemini (name) parameters
-                        # extracted_st already covers Strategy 1 (tool_name IS agent_name)
-                        extracted_st, is_skill = extract_subagent_type(ctx.tool_name, tool_input)
-                        if extracted_st:
-                            agent_type = extracted_st
-                        else:
-                            # Use tool name itself for bare agent dispatches that aren't
-                            # in COMPLIANCE_SUBAGENT_TYPES but are in SPAWN_TOOLS.
-                            agent_type = (
-                                tool_input.get("subagent_type")
-                                or tool_input.get("agent_name")
-                                or tool_input.get("name")
-                                or ctx.tool_name
-                            )
-                    verdict = None
-                    if tool_result := ctx.tool_output:
-                        if isinstance(tool_result, dict) and "verdict" in tool_result:
-                            verdict = tool_result["verdict"]
-                    notify_subagent_stop(config, ctx.session_id, agent_type, verdict)
-        except Exception as e:
-            print(f"WARNING: ntfy_notifier error: {e}", file=sys.stderr)
 
     def _run_generate_transcript(self, transcript_path: str) -> None:
         """Run transcript generation on stop."""
