@@ -2032,10 +2032,139 @@ class SessionProcessor:
         """Alias for parse_session_file (backward compatibility)."""
         return self.parse_session_file(file_path, load_agents=load_agents, load_hooks=load_hooks)
 
+    def _parse_gemini_message_dict(self, msg: dict) -> list[Entry]:
+        """Parse one Gemini message-style dict into one or two Entry objects.
+
+        Handles the schema used by both the legacy bundled ``.json`` chat
+        dump (``{messages: [...]}``) and the current Gemini CLI per-line
+        chat-jsonl format (``session-*.jsonl`` under ``.gemini/tmp/<proj>/chats/``).
+
+        Each message has shape::
+
+            {"id", "timestamp", "type": "user"|"gemini"|...,
+             "content": str | [parts], "toolCalls"?: [...], "tokens"?, "model"?, "thoughts"?}
+
+        Non user/gemini types (e.g. ``info``) return an empty list.
+        """
+        msg_type = msg.get("type", "unknown")
+        if msg_type not in ("user", "gemini"):
+            return []
+
+        timestamp_str = msg.get("timestamp")
+        timestamp = None
+        if timestamp_str:
+            try:
+                if timestamp_str.endswith("Z"):
+                    timestamp_str = timestamp_str[:-1] + "+00:00"
+                dt = datetime.fromisoformat(timestamp_str)
+                timestamp = dt.astimezone()
+            except (ValueError, TypeError):
+                pass
+
+        entry_type = "assistant" if msg_type == "gemini" else "user"
+
+        content_raw = msg.get("content", "")
+        content_text = ""
+        if isinstance(content_raw, str):
+            content_text = content_raw
+        elif isinstance(content_raw, list):
+            text_parts = []
+            for part in content_raw:
+                if isinstance(part, str):
+                    text_parts.append(part)
+                elif isinstance(part, dict):
+                    if "text" in part:
+                        text_parts.append(part["text"])
+                    elif "content" in part:
+                        text_parts.append(str(part["content"]))
+            content_text = "".join(text_parts)
+
+        content_blocks: list[dict] = []
+        if content_text:
+            content_blocks.append({"type": "text", "text": content_text})
+
+        tool_calls = msg.get("toolCalls", [])
+        tool_results_to_add: list[dict] = []
+
+        if entry_type == "assistant" and tool_calls:
+            for tool_call in tool_calls:
+                call_id = tool_call.get("id")
+                name = tool_call.get("name")
+                args = tool_call.get("args", {})
+
+                content_blocks.append(
+                    {"type": "tool_use", "id": call_id, "name": name, "input": args}
+                )
+
+                result_data = tool_call.get("result", [])
+                tool_output = ""
+                is_error = False
+
+                if result_data and isinstance(result_data, list):
+                    first_res = result_data[0]
+                    if "functionResponse" in first_res:
+                        resp = first_res["functionResponse"].get("response", {})
+                        if "output" in resp:
+                            tool_output = str(resp["output"])
+                        elif "error" in resp:
+                            tool_output = str(resp["error"])
+                            is_error = True
+                        else:
+                            tool_output = json.dumps(resp)
+                    else:
+                        tool_output = json.dumps(result_data)
+                elif tool_call.get("status") == "error":
+                    is_error = True
+                    tool_output = tool_call.get("resultDisplay") or "Error executing tool"
+                elif tool_call.get("resultDisplay"):
+                    tool_output = tool_call.get("resultDisplay")
+
+                tool_results_to_add.append(
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": call_id,
+                        "content": tool_output,
+                        "is_error": is_error,
+                    }
+                )
+
+        gemini_thoughts = msg.get("thoughts") if isinstance(msg.get("thoughts"), list) else None
+        gemini_tokens = msg.get("tokens") or {}
+        gemini_model = msg.get("model")
+
+        out: list[Entry] = []
+        out.append(
+            Entry(
+                type=entry_type,
+                uuid=msg.get("id", ""),
+                timestamp=timestamp,
+                message={"content": content_blocks if content_blocks else content_text},
+                content={"content": content_blocks if content_blocks else content_text},
+                model=gemini_model,
+                input_tokens=gemini_tokens.get("input") if gemini_tokens else None,
+                output_tokens=gemini_tokens.get("output") if gemini_tokens else None,
+                cache_read_input_tokens=gemini_tokens.get("cached") if gemini_tokens else None,
+                thoughts=gemini_thoughts if gemini_thoughts else None,
+                thoughts_tokens=gemini_tokens.get("thoughts") if gemini_tokens else None,
+            )
+        )
+
+        if tool_results_to_add:
+            out.append(
+                Entry(
+                    type="user",
+                    uuid=f"result-{msg.get('id', '')}",
+                    timestamp=timestamp,
+                    message={"content": tool_results_to_add},
+                    content={"content": tool_results_to_add},
+                )
+            )
+        return out
+
     def _parse_gemini_json(
         self, file_path: Path
     ) -> tuple[SessionSummary, list[Entry], dict[str, list[Entry]]]:
-        """Parse Gemini JSON session file."""
+        """Parse Gemini JSON session file (legacy bundled ``.json`` format)."""
         entries: list[Entry] = []
         try:
             with open(file_path, encoding="utf-8") as f:
@@ -2046,134 +2175,14 @@ class SessionProcessor:
         session_id = data.get("sessionId", file_path.stem)
         start_time_str = data.get("startTime")
 
-        # Create summary
         session_summary = SessionSummary(
             uuid=session_id,
             summary="Gemini CLI Session",
             created_at=start_time_str or "",
         )
 
-        messages = data.get("messages", [])
-        for msg in messages:
-            msg_type = msg.get("type", "unknown")
-            timestamp_str = msg.get("timestamp")
-            timestamp = None
-            if timestamp_str:
-                try:
-                    if timestamp_str.endswith("Z"):
-                        timestamp_str = timestamp_str[:-1] + "+00:00"
-                    dt = datetime.fromisoformat(timestamp_str)
-                    timestamp = dt.astimezone()
-                except (ValueError, TypeError):
-                    pass
-
-            # Map Gemini type to Entry type
-            entry_type = "assistant" if msg_type == "gemini" else "user"
-
-            content_raw = msg.get("content", "")
-            content_text = ""
-            if isinstance(content_raw, str):
-                content_text = content_raw
-            elif isinstance(content_raw, list):
-                # Gemini standard: list of parts
-                text_parts = []
-                for part in content_raw:
-                    if isinstance(part, str):
-                        text_parts.append(part)
-                    elif isinstance(part, dict):
-                        if "text" in part:
-                            text_parts.append(part["text"])
-                        elif "content" in part:  # some variants
-                            text_parts.append(str(part["content"]))
-                content_text = "".join(text_parts)
-
-            # Handle tool calls (assistant only)
-            content_blocks = []
-            if content_text:
-                content_blocks.append({"type": "text", "text": content_text})
-
-            tool_calls = msg.get("toolCalls", [])
-            tool_results_to_add = []
-
-            if entry_type == "assistant" and tool_calls:
-                for tool_call in tool_calls:
-                    call_id = tool_call.get("id")
-                    name = tool_call.get("name")
-                    args = tool_call.get("args", {})
-
-                    content_blocks.append(
-                        {"type": "tool_use", "id": call_id, "name": name, "input": args}
-                    )
-
-                    # Extract result for subsequent user entry
-                    result_data = tool_call.get("result", [])
-                    # Result is usually a list of objects, often with functionResponse
-                    # We need to format this for tool_result
-
-                    tool_output = ""
-                    is_error = False
-
-                    if result_data and isinstance(result_data, list):
-                        first_res = result_data[0]
-                        if "functionResponse" in first_res:
-                            resp = first_res["functionResponse"].get("response", {})
-                            if "output" in resp:
-                                tool_output = str(resp["output"])
-                            elif "error" in resp:
-                                tool_output = str(resp["error"])
-                                is_error = True
-                            else:
-                                tool_output = json.dumps(resp)
-                        else:
-                            tool_output = json.dumps(result_data)
-                    elif tool_call.get("status") == "error":
-                        is_error = True
-                        tool_output = tool_call.get("resultDisplay") or "Error executing tool"
-                    elif tool_call.get("resultDisplay"):
-                        tool_output = tool_call.get("resultDisplay")
-
-                    tool_results_to_add.append(
-                        {
-                            "type": "tool_result",
-                            "tool_use_id": call_id,
-                            "content": tool_output,
-                            "is_error": is_error,
-                        }
-                    )
-
-            # Extract Gemini-specific reasoning + token + model metadata
-            gemini_thoughts = msg.get("thoughts") if isinstance(msg.get("thoughts"), list) else None
-            gemini_tokens = msg.get("tokens") or {}
-            gemini_model = msg.get("model")
-
-            # Create main entry
-            entry = Entry(
-                type=entry_type,
-                uuid=msg.get("id", ""),
-                timestamp=timestamp,
-                message={"content": content_blocks if content_blocks else content_text},
-                content={"content": content_blocks if content_blocks else content_text},  # Fallback
-                model=gemini_model,
-                input_tokens=gemini_tokens.get("input") if gemini_tokens else None,
-                output_tokens=gemini_tokens.get("output") if gemini_tokens else None,
-                cache_read_input_tokens=gemini_tokens.get("cached") if gemini_tokens else None,
-                thoughts=gemini_thoughts if gemini_thoughts else None,
-                thoughts_tokens=gemini_tokens.get("thoughts") if gemini_tokens else None,
-            )
-            entries.append(entry)
-
-            # Create synthetic user entry for tool results if any
-            if tool_results_to_add:
-                # Use slightly later timestamp to maintain order if needed,
-                # but usually same timestamp is fine as list order is preserved.
-                result_entry = Entry(
-                    type="user",
-                    uuid=f"result-{msg.get('id', '')}",
-                    timestamp=timestamp,
-                    message={"content": tool_results_to_add},
-                    content={"content": tool_results_to_add},
-                )
-                entries.append(result_entry)
+        for msg in data.get("messages", []):
+            entries.extend(self._parse_gemini_message_dict(msg))
 
         return session_summary, entries, {}
 
@@ -2228,8 +2237,45 @@ class SessionProcessor:
             if not isinstance(obj, dict):
                 continue
 
+            # Skip Gemini CLI bookkeeping lines: metadata header
+            # ({sessionId, projectHash, startTime, ...}) and `$set` updates.
+            if "$set" in obj and len(obj) == 1:
+                continue
+            if "sessionId" in obj and "role" not in obj and "type" not in obj:
+                if first_ts is None:
+                    st = obj.get("startTime")
+                    if isinstance(st, str):
+                        try:
+                            s = st.replace("Z", "+00:00") if st.endswith("Z") else st
+                            first_ts = datetime.fromisoformat(s).astimezone()
+                        except (ValueError, TypeError):
+                            pass
+                continue
+
             role = obj.get("role")
             parts = obj.get("parts")
+            # Message-style schema (current Gemini CLI chat-jsonl):
+            # {id, timestamp, type: "user"|"gemini"|"info", content, toolCalls?, ...}
+            if role is None and obj.get("type") in ("user", "gemini"):
+                msg_entries = self._parse_gemini_message_dict(obj)
+                for me in msg_entries:
+                    if me.timestamp and first_ts is None:
+                        first_ts = me.timestamp
+                    if me.type == "user" and first_text is None:
+                        # Pull first user text for Original Request capture
+                        c = me.message.get("content") if isinstance(me.message, dict) else None
+                        if isinstance(c, list):
+                            for blk in c:
+                                if isinstance(blk, dict) and blk.get("type") == "text":
+                                    t = (blk.get("text") or "").strip()
+                                    if t:
+                                        first_text = t
+                                        break
+                        elif isinstance(c, str) and c.strip():
+                            first_text = c.strip()
+                entries.extend(msg_entries)
+                continue
+            # Skip non-conversation lines (e.g. type=="info").
             if role not in ("user", "model") or not isinstance(parts, list):
                 continue
 
