@@ -1300,6 +1300,13 @@ class UsageStats:
     by_tool: dict[str, dict[str, int]] = field(default_factory=dict)
     by_agent: dict[str, dict[str, int]] = field(default_factory=dict)
 
+    # Human-attention proxies (main session only; subagent-internal entries excluded).
+    # user_messages: real user-role entries excluding tool_result wrappers and meta.
+    # mid_session_corrections: user_messages that occur AFTER the first assistant tool_use
+    # (i.e. interruptions, not the dispatch/initial prompt).
+    user_messages: int = 0
+    mid_session_corrections: int = 0
+
     def add_entry(
         self,
         entry: Entry,
@@ -1400,6 +1407,10 @@ class UsageStats:
             "by_model": self.by_model,
             "by_tool": self.by_tool,
             "by_agent": self.by_agent,
+            "attention": {
+                "user_messages": self.user_messages,
+                "mid_session_corrections": self.mid_session_corrections,
+            },
             "efficiency": {
                 "cache_hit_rate": round(cache_hit_rate, 3),
             },
@@ -4617,6 +4628,7 @@ session_id: {session_uuid}
         stats = UsageStats()
 
         # Process main entries
+        seen_assistant_tool_use = False
         for entry in entries:
             tool_name = None
             # Extract tool name from assistant tool_use blocks
@@ -4627,6 +4639,27 @@ session_id: {session_uuid}
                         if isinstance(block, dict) and block.get("type") == "tool_use":
                             tool_name = block.get("name")
                             break
+
+            # Attention counters: count real user messages on the main session.
+            # Excludes tool_result wrappers (Claude's convention is to carry tool_result
+            # blocks inside user-role entries) and meta entries.
+            if entry.type == "user" and not entry.is_meta and not entry.is_sidechain:
+                content = entry.message.get("content", []) if entry.message else []
+                if isinstance(content, str):
+                    is_real_user_message = bool(content.strip())
+                elif isinstance(content, list):
+                    is_real_user_message = any(
+                        isinstance(b, dict) and b.get("type") != "tool_result" for b in content
+                    )
+                else:
+                    is_real_user_message = False
+                if is_real_user_message:
+                    stats.user_messages += 1
+                    if seen_assistant_tool_use:
+                        stats.mid_session_corrections += 1
+
+            if tool_name and not seen_assistant_tool_use:
+                seen_assistant_tool_use = True
 
             stats.add_entry(entry, tool_name=tool_name, agent_id=None)
 

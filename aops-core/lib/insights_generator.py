@@ -261,6 +261,21 @@ def _validate_token_metrics(token_metrics: dict[str, Any]) -> None:
                     f"Field 'token_metrics.by_agent.{agent_name}' must be a dict"
                 )
 
+    # Validate 'attention' sub-object (optional but must be dict if present)
+    if "attention" in token_metrics:
+        attention = token_metrics["attention"]
+        if not isinstance(attention, dict):
+            raise InsightsValidationError(
+                f"Field 'token_metrics.attention' must be a dict, got {type(attention).__name__}"
+            )
+        for field in ("user_messages", "mid_session_corrections"):
+            if field in attention and attention[field] is not None:
+                value = attention[field]
+                if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+                    raise InsightsValidationError(
+                        f"Field 'token_metrics.attention.{field}' must be a non-negative int"
+                    )
+
     # Validate 'efficiency' sub-object (optional but must be dict if present)
     if "efficiency" in token_metrics:
         efficiency = token_metrics["efficiency"]

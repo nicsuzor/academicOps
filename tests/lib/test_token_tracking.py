@@ -1,6 +1,12 @@
 """Tests for token tracking in transcript parser."""
 
-from lib.transcript_parser import ConversationTurn, Entry, TimingInfo
+from lib.transcript_parser import (
+    ConversationTurn,
+    Entry,
+    SessionProcessor,
+    TimingInfo,
+    UsageStats,
+)
 
 
 class TestTokenExtraction:
@@ -386,3 +392,103 @@ class TestPerTurnTokensInTranscript:
         # Tokens should be aggregated: 500+700=1200 in, 100+150=250 out
         assert "1,200 in" in markdown, "Aggregated input tokens should appear"
         assert "250 out" in markdown, "Aggregated output tokens should appear"
+
+
+class TestAttentionCounters:
+    """Attention counters: user_messages and mid_session_corrections.
+
+    These are emitted on `to_token_metrics()['attention']` and computed by
+    `SessionProcessor._aggregate_session_usage` over the main entries list.
+    """
+
+    @staticmethod
+    def _processor() -> SessionProcessor:
+        return SessionProcessor.__new__(SessionProcessor)
+
+    def test_to_token_metrics_surfaces_attention(self):
+        stats = UsageStats()
+        stats.user_messages = 5
+        stats.mid_session_corrections = 2
+        metrics = stats.to_token_metrics()
+        assert metrics["attention"] == {
+            "user_messages": 5,
+            "mid_session_corrections": 2,
+        }
+
+    def test_dispatch_then_corrections(self):
+        entries = [
+            Entry(type="user", message={"content": [{"type": "text", "text": "go"}]}),
+            Entry(
+                type="assistant",
+                message={"content": [{"type": "tool_use", "name": "Read"}]},
+            ),
+            # tool_result wrapper — not a real user message
+            Entry(type="user", message={"content": [{"type": "tool_result"}]}),
+            Entry(
+                type="user",
+                message={"content": [{"type": "text", "text": "wait, change tack"}]},
+            ),
+            Entry(type="user", message={"content": "another correction"}),
+        ]
+        stats = self._processor()._aggregate_session_usage(entries)
+        assert stats.user_messages == 3
+        assert stats.mid_session_corrections == 2
+
+    def test_pre_tool_use_user_msgs_are_not_corrections(self):
+        entries = [
+            Entry(type="user", message={"content": [{"type": "text", "text": "hi"}]}),
+            Entry(
+                type="assistant",
+                message={"content": [{"type": "text", "text": "ok"}]},
+            ),
+            Entry(
+                type="user",
+                message={"content": [{"type": "text", "text": "still pre-tool"}]},
+            ),
+        ]
+        stats = self._processor()._aggregate_session_usage(entries)
+        assert stats.user_messages == 2
+        assert stats.mid_session_corrections == 0
+
+    def test_pure_tool_result_entries_ignored(self):
+        entries = [
+            Entry(type="user", message={"content": [{"type": "text", "text": "go"}]}),
+            Entry(
+                type="assistant",
+                message={"content": [{"type": "tool_use", "name": "Read"}]},
+            ),
+            Entry(
+                type="user",
+                message={"content": [{"type": "tool_result"}, {"type": "tool_result"}]},
+            ),
+        ]
+        stats = self._processor()._aggregate_session_usage(entries)
+        assert stats.user_messages == 1
+        assert stats.mid_session_corrections == 0
+
+    def test_meta_and_sidechain_user_entries_ignored(self):
+        entries = [
+            Entry(
+                type="user",
+                is_meta=True,
+                message={"content": [{"type": "text", "text": "meta"}]},
+            ),
+            Entry(
+                type="user",
+                is_sidechain=True,
+                message={"content": [{"type": "text", "text": "sub"}]},
+            ),
+            Entry(type="user", message={"content": [{"type": "text", "text": "real"}]}),
+        ]
+        stats = self._processor()._aggregate_session_usage(entries)
+        assert stats.user_messages == 1
+        assert stats.mid_session_corrections == 0
+
+    def test_empty_string_user_content_ignored(self):
+        entries = [
+            Entry(type="user", message={"content": ""}),
+            Entry(type="user", message={"content": "   "}),
+            Entry(type="user", message={"content": [{"type": "text", "text": "x"}]}),
+        ]
+        stats = self._processor()._aggregate_session_usage(entries)
+        assert stats.user_messages == 1
