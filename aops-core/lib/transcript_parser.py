@@ -4748,9 +4748,7 @@ session_id: {session_uuid}
 
     def _estimate_tokens(self, text: str) -> int:
         """Estimate token count from text (~1 token per 4 characters)."""
-        if not text:
-            return 0
-        return max(1, len(text) // 4)
+        return _estimate_tokens(text)
 
     def _format_compact_args(self, tool_input: dict[str, Any], max_length: int = 60) -> str:
         """Format tool arguments as compact Python-like syntax."""
