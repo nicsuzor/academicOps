@@ -3518,10 +3518,7 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
 
     print("-" * 50)
     if result is not None and result.returncode == 137:
-        if getattr(result, "watchdog_terminated", False):
-            print(_format_watchdog_terminated_message(task_id=crew_name))
-        else:
-            print(_format_oom_message(env, daemon_mem))
+        print(_format_oom_message(env, daemon_mem))
     print(f"\n\U0001f4cb Crew '{crew_name}' session ended.")
 
     # Auto-cleanup: nuke clone if no changes were made or a PR is open
