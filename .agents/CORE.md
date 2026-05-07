@@ -46,7 +46,7 @@ The framework uses named agents with distinct personalities and areas of experti
 - **Ruth (rbg, The Judge)**: Enforces universal axioms and workflow discipline.
 - **Pauli (The Logician)**: Provides strategic review, systems thinking, and acts as the Memory Custodian owning PKB-facing skills (`/remember`, `/planner`, `/dump`, `/daily`, `/sleep`).
 - **Marsha (The QA Reviewer)**: Independently verifies work against original user intent.
-- **Jr (The Assistant)**: General-purpose framework interaction — loads framework + project context from PKB, coordinates work, maintains institutional memory (`aops-state` PKB document).
+- **Junior (The Assistant)**: General-purpose framework interaction — loads framework + project context from PKB, coordinates work, maintains institutional memory (`aops-state` PKB document).
 
 ## Tool Capabilities in Dispatched Sessions
 
