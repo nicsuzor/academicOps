@@ -1105,28 +1105,22 @@ def build_aops_cowork(
         if src_item.name == "agents" and src_item.is_dir():
             dst = dist_dir / "agents"
             dst.mkdir(parents=True, exist_ok=True)
-            # Cowork-specific rewrites:
-            # - Agent names <3 chars are rejected by the Cowork remote validator
-            #   (error_code: plugin_upload_agent_name_too_short). Prefix short
-            #   names with "aops-".
-            # - When loaded inside Cowork, the plugin's MCP server namespaces as
-            #   `mcp__plugin_aops-cowork_pkb__*`, not `aops-core_pkb`. Rewrite
-            #   tool names in agent frontmatter to match the runtime namespace.
-            COWORK_AGENT_NAME_REWRITES = {"jr": "aops-jr"}
+            # Cowork-specific rewrites applied to every included agent file:
+            # - Names <3 chars rejected by validator (plugin_upload_agent_name_too_short)
+            # - MCP server namespace inside Cowork is aops-cowork_pkb, not aops-core_pkb
             for agent_file in src_item.glob("*.md"):
                 if agent_file.name not in COWORK_AGENTS:
                     continue
                 content = agent_file.read_text()
                 content = transform_agent_for_platform(content, "claude", agent_file.name)
                 content = translate_tool_calls(content, "claude")
-                for old, new in COWORK_AGENT_NAME_REWRITES.items():
-                    content = re.sub(
-                        rf"^(name:\s*){old}\s*$",
-                        rf"\g<1>{new}",
-                        content,
-                        count=1,
-                        flags=re.MULTILINE,
-                    )
+                content = re.sub(
+                    r"^(name:\s*)(\S{1,2})\s*$",
+                    r"\g<1>aops-\g<2>",
+                    content,
+                    count=1,
+                    flags=re.MULTILINE,
+                )
                 content = content.replace(
                     "mcp__plugin_aops-core_pkb__",
                     "mcp__plugin_aops-cowork_pkb__",
