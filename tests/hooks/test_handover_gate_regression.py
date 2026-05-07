@@ -117,15 +117,28 @@ def test_handover_skill_invoked_state_transitions(router):
     )
     assert state.gates["handover"].status == GateStatus.OPEN
 
-    # 3. Use write tool (Bash)
-    ctx_write = HookContext(
+    # 3. Use light write tool (Bash) - latch should keep it True
+    ctx_bash = HookContext(
         session_id="test-session-state",
         hook_event="PostToolUse",
         tool_name="Bash",
-        tool_input={"command": "touch foo"},
+        tool_input={"command": "echo 'checking state'"},
     )
-    router._dispatch_gates(ctx_write, state)
+    router._dispatch_gates(ctx_bash, state)
+    assert state.state.get("handover_skill_invoked") is True, (
+        "Light Bash should not reset handover_skill_invoked due to latch"
+    )
+    assert state.gates["handover"].status == GateStatus.OPEN
+
+    # 4. Use heavy write tool (Edit) - should reset
+    ctx_edit = HookContext(
+        session_id="test-session-state",
+        hook_event="PostToolUse",
+        tool_name="Edit",
+        tool_input={"file_path": "foo.py"},
+    )
+    router._dispatch_gates(ctx_edit, state)
     assert state.state.get("handover_skill_invoked") is False, (
-        "Write tool should reset handover_skill_invoked"
+        "Heavy write tool should reset handover_skill_invoked"
     )
     assert state.gates["handover"].status == GateStatus.CLOSED

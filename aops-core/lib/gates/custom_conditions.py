@@ -23,6 +23,20 @@ def check_custom_condition(
     if name == "is_write_tool":
         from hooks.gate_config import get_tool_category
 
+        # Refinement (aops-2283a8b0): if handover was just invoked, treat light
+        # shell tools as read-only. This prevents the gate from re-closing on
+        # checking tools (e.g. git status, echo) run by the agent after /dump.
+        if session_state.state.get("handover_skill_invoked"):
+            if ctx.tool_name in ("Bash", "run_shell_command", "shell", "execute_code"):
+                return False
+
+        # Additional Refinement (aops-2283a8b0): If no task is bound, treat
+        # Bash/run_shell_command as read-only to avoid closing the gate on
+        # exploration in read-only Q&A sessions.
+        if not session_state.main_agent.current_task:
+            if ctx.tool_name in ("Bash", "run_shell_command", "shell", "execute_code"):
+                return False
+
         tool_input = ctx.tool_input if isinstance(ctx.tool_input, dict) else None
         return ctx.tool_name is not None and get_tool_category(ctx.tool_name, tool_input) == "write"
 
