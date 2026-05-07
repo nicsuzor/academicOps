@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import zipfile
 from pathlib import Path
 
 # Add shared lib to path (assuming scripts/lib exists)
@@ -1619,8 +1620,6 @@ def package_artifacts(
     # silently drops hooks and Python scripts it can't execute, so the same
     # full aops-core build (dist/aops-claude/) is shipped to both Claude Code
     # CLI and Cowork — no stripped-down variant.
-    import zipfile
-
     claude_dir = dist_root / "aops-claude"
     if claude_dir.exists():
         cowork_zip = dist_root / f"aops-core-v{version}.zip"
