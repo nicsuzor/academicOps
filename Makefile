@@ -16,7 +16,6 @@ GEMINI_REMOTE_URL := https://github.com/nicsuzor/aops.git
 # Extension names
 GEMINI_EXT_NAME := aops-core
 CLAUDE_PLUGIN_NAME := aops-core@academicOps
-COWORK_PLUGIN_NAME := aops-cowork@academicOps
 
 # Platform detection for binaries
 UNAME_S := $(shell uname -s)
@@ -47,7 +46,7 @@ help:
 	@echo "User Installation (Install from remote releases):"
 	@echo "  make install        - Install all components from GitHub releases"
 	@echo "  make install-claude - Install Claude plugin from dist repo"
-	@echo "  make package-cowork - Build the Cowork upload zip (dist/aops-cowork-vX.Y.Z.zip)"
+	@echo "  make package-cowork - Build the Cowork upload zip (dist/aops-core-vX.Y.Z.zip)"
 	@echo "  make install-gemini - Install Gemini extension from main repo"
 	@echo "  make install-crontab - Setup background sync"
 	@echo ""
@@ -153,15 +152,14 @@ install-claude:
 	command claude plugin install $(CLAUDE_PLUGIN_NAME) && \
 	echo "✓ Claude Code plugin installed"
 
-# Cowork on personal accounts has no marketplace mechanism — `claude plugin
-# install` writes to the Claude Code CLI's plugin store, which is not visible
-# to the macOS Claude desktop app's Cowork tab. Plugins are uploaded manually
-# as zip files via Customize → Add plugins → Upload a file. The build already
-# produces the upload-ready artifact at dist/aops-cowork-v{VERSION}.zip; this
-# target just builds it.
+# Cowork on personal accounts has no marketplace mechanism. The same aops-core
+# plugin shipped to Claude Code CLI is uploaded to Cowork as a zip via
+# Customize → Add plugins → Upload a file. Cowork silently drops hooks and
+# Python scripts it can't run; no separate cowork-flavoured build exists.
+# The build emits the upload artifact at dist/aops-core-v{VERSION}.zip.
 package-cowork: build-dev
 	@echo "Cowork upload package built at:"
-	@ls -1 $(DIST_DIR)/aops-cowork-v*.zip 2>/dev/null | tail -1 || \
+	@ls -1 $(DIST_DIR)/aops-core-v*.zip 2>/dev/null | tail -1 || \
 		echo "  (missing — check build output above)"
 	@echo ""
 	@echo "Upload via Claude desktop app:"

@@ -9,7 +9,7 @@
 - PKB write: verify that you can create a task for this self-test session and that claiming it is sufficient to open the previously blocked gates.
 - RBG enforcer: ensure you can invoke the RBG periodic compliance enforcer with the instructions given
 - Skills: Invoke core framework skills like /plan, /aops, and /remember to verify they load and execute.
-- Subagents: Dispatch subagents (e.g., jr or marsha) to ensure inter-agent coordination and context passing work without dropping threads.
+- Subagents: Dispatch subagents (e.g., junior or marsha) to ensure inter-agent coordination and context passing work without dropping threads.
 - Polecats: verify that you can dispatch remote polecat workers (both gemini and claude) over SSH on the correct host.
 - Stop Gates: Verify stop is prevented before handover
 - Handover: verify that /dump (handover) command provides useful instructions and that you are able to execute them all.
