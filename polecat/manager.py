@@ -162,7 +162,7 @@ def load_projects(
 ) -> dict:
     """Load project registry. Returns dict slug -> {path: Path|None, default_branch, repo, ...}.
 
-    Pass `config` to skip re-reading projects.yaml when callers already loaded it.
+    Pass `config` to skip re-reading polecat.yaml when callers already loaded it.
 
     NOTE: `path` may be None when the repo isn't found via overlay or convention.
     Callers must check `if entry["path"] is None` before using it.
@@ -198,7 +198,7 @@ def load_project_aliases(config_path: Path | None = None) -> dict[str, str]:
     """Load shorthand aliases that map to project slugs.
 
     Aliases come from three sources, merged in priority order (first wins):
-        1. Top-level ``project_aliases:`` block in projects.yaml::
+        1. Top-level ``project_aliases:`` block in polecat.yaml::
 
                project_aliases:
                    bm: buttermilk
@@ -306,7 +306,7 @@ class PolecatManager:
         else:
             self.home_dir = get_polecat_home()
 
-        # Project registry path ($AOPS_SESSIONS/projects.yaml)
+        # Project registry path ($AOPS_SESSIONS/polecat.yaml)
         self.config_path = get_config_path()
 
         # Ensure home directory exists
@@ -329,7 +329,7 @@ class PolecatManager:
         self.crew_dir = self.home_dir / "crew"
         self.crew_dir.mkdir(exist_ok=True)
 
-        # Load project registry from $AOPS_SESSIONS/projects.yaml
+        # Load project registry from $AOPS_SESSIONS/polecat.yaml
         self.overlay_path = self.home_dir / "local.yaml"
         self.config = load_config(self.config_path)
         self.projects = load_projects(
@@ -489,7 +489,7 @@ class PolecatManager:
         """Register an ad-hoc project from an arbitrary repo path.
 
         Creates a temporary project entry so crew can work on repos
-        not in projects.yaml. The slug is derived from the directory name.
+        not in polecat.yaml. The slug is derived from the directory name.
 
         Args:
             repo_path: Absolute path to a git repository
@@ -1037,7 +1037,7 @@ class PolecatManager:
         except ValueError as e:
             mirror_path = self.repos_dir / f"{task.project}.git"
             if mirror_path.exists():
-                # Bare mirror present even though slug isn't in projects.yaml —
+                # Bare mirror present even though slug isn't in polecat.yaml —
                 # honour it (matches prior behaviour).
                 return mirror_path
             raise ValueError(
