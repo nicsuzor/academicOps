@@ -58,10 +58,14 @@ REAL_EVENTS = _load_real_events()
 
 
 def _reinit_gates_with_defaults():
-    """Reload gate_config and definitions with current env vars, reinit registry."""
-    if "gate_config" in sys.modules:
-        importlib.reload(sys.modules["gate_config"])
+    """Reload gate_config and definitions, reinit registry.
+
+    Gate modes now come from $AOPS_POLECAT_CONFIG / $AOPS_SESSIONS/polecat.yaml
+    (loaded by lib.polecat_config). Tests stage a fresh YAML and call this
+    helper after invalidating the gate-mode cache.
+    """
     if "hooks.gate_config" in sys.modules:
+        sys.modules["hooks.gate_config"]._reset_gate_mode_cache()
         importlib.reload(sys.modules["hooks.gate_config"])
     if "lib.gates.definitions" in sys.modules:
         importlib.reload(sys.modules["lib.gates.definitions"])
@@ -69,16 +73,45 @@ def _reinit_gates_with_defaults():
     GateRegistry.initialize()
 
 
+def _stage_gate_modes_yaml(tmp_path, **modes) -> Path:
+    p = tmp_path / "polecat.yaml"
+    body = """
+session_defaults:
+  hooks_enabled: true
+  model: claude-sonnet-4-6
+  debug: false
+  gates:
+    handover: "{handover}"
+    qa: "{qa}"
+    enforcer: "{enforcer}"
+    commit: "{commit}"
+    hydration: "{hydration}"
+    enforcer_threshold: {enforcer_threshold}
+crew_defaults: {{}}
+run_defaults: {{}}
+docker:
+  image: aops-crew
+external_agents: {{}}
+""".strip().format(
+        handover=modes.get("handover", "warn"),
+        qa=modes.get("qa", "block"),
+        enforcer=modes.get("enforcer", "block"),
+        commit=modes.get("commit", "warn"),
+        hydration=modes.get("hydration", "off"),
+        enforcer_threshold=modes.get("enforcer_threshold", 50),
+    )
+    p.write_text(body)
+    return p
+
+
 @pytest.fixture(autouse=True)
-def gate_mode(monkeypatch):
-    """Set gate modes for all tests.
+def gate_mode(monkeypatch, tmp_path):
+    """Set gate modes for all tests via polecat.yaml.
 
     Yields a SimpleNamespace with gate configuration info.
     """
-    monkeypatch.setenv("ENFORCER_GATE_MODE", "block")
-    monkeypatch.setenv("QA_GATE_MODE", "block")
-    monkeypatch.setenv("HANDOVER_GATE_MODE", "warn")
-    monkeypatch.setenv("ENFORCER_TOOL_CALL_THRESHOLD", "50")
+    cfg_path = _stage_gate_modes_yaml(tmp_path)
+    monkeypatch.setenv("AOPS_POLECAT_CONFIG", str(cfg_path))
     _reinit_gates_with_defaults()
     yield SimpleNamespace()
     _reinit_gates_with_defaults()

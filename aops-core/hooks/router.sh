@@ -4,9 +4,11 @@
 # Bootstraps the environment to ensure 'uv' and 'python' are available
 # before delegating to the Python router.
 
-# 0. Vanilla-crew bypass: skip all framework hooks when AOPS_HOOKS_OFF=1.
-# Set by polecat when launching crew containers in vanilla trial mode
-# (POLECAT_VANILLA_CREW=1). Exit 0 with no stdout = continue normally.
+# 0. Hooks-off bypass: skip all framework hooks when AOPS_HOOKS_OFF=1.
+# Set by polecat when launching containers with hooks_enabled=false in
+# polecat.yaml (lib/polecat_config.py). The env var is the runtime contract
+# from polecat to this shell router; the config file is the SSoT for the
+# decision. Exit 0 with no stdout = continue normally.
 if [ "$AOPS_HOOKS_OFF" = "1" ]; then
     exit 0
 fi

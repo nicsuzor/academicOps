@@ -68,37 +68,24 @@ class TestSessionEnvSetup:
         # Verify AOPS_SESSION_STATE_DIR
         assert "export AOPS_SESSION_STATE_DIR=/tmp/aops/sessions" in content
 
-        # Gate mode env vars are set in pytest.ini_options env, so they are
-        # already in the environment — the hook should NOT re-persist them
-        # (unless they are enforced by agent-env-map.conf literals).
+        # Gate modes now live in $AOPS_SESSIONS/polecat.yaml and are read by
+        # hooks at runtime; they are no longer persisted as env vars at all.
         assert "ENFORCER_GATE_MODE" not in content
         assert "QA_GATE_MODE" not in content
         assert "HANDOVER_GATE_MODE" not in content
+        assert "HYDRATION_GATE_MODE" not in content
 
-        # HYDRATION_GATE_MODE is now enforced by agent-env-map.conf literal
-        # to ensure friction is removed everywhere (aops-c255c989).
-        assert "export HYDRATION_GATE_MODE=off" in content
+    def test_run_session_env_setup_does_not_persist_gate_modes(self, tmp_path):
+        """Gate modes are no longer env-var persisted: hooks read polecat.yaml.
 
-    def test_run_session_env_setup_persists_gate_mode_defaults_when_missing(self, tmp_path):
-        """When gate mode env vars are absent, defaults should be persisted via CLAUDE_ENV_FILE.
-
-        This covers the non-shell runtime case (Claude macOS app) where
-        ~/.env.local is not sourced and gate mode vars are missing from the environment.
+        Replaces the legacy test that asserted gate-mode defaults were written
+        into CLAUDE_ENV_FILE for non-shell runtimes (macOS app). With config
+        as the SSoT, persistence is unnecessary — every hook re-reads the
+        YAML at first access.
         """
         env_file = tmp_path / "claude_env"
         env_file.touch()
-        gate_vars = [
-            "HANDOVER_GATE_MODE",
-            "QA_GATE_MODE",
-            "ENFORCER_GATE_MODE",
-            "HYDRATION_GATE_MODE",
-        ]
-        # Set gate mode vars to "" to simulate them being absent.
-        # os.environ.get(var) returns "" which is falsy, triggering persistence.
         env_overrides = {"CLAUDE_ENV_FILE": str(env_file), "PYTHONPATH": ""}
-        for var in gate_vars:
-            env_overrides[var] = ""
-
         ctx = HookContext(
             session_id="test-session-456",
             session_short_hash="def56789",
@@ -116,12 +103,17 @@ class TestSessionEnvSetup:
             run_session_env_setup(ctx, state)
 
         content = env_file.read_text()
-        # Gate mode defaults should have been written since vars were absent.
-        for var in gate_vars:
-            assert var in content, f"{var} should be persisted when missing from env"
-
-        # Specifically verify hydration gate is off (aops-c255c989)
-        assert "export HYDRATION_GATE_MODE=off" in content
+        for var in (
+            "HANDOVER_GATE_MODE",
+            "QA_GATE_MODE",
+            "ENFORCER_GATE_MODE",
+            "HYDRATION_GATE_MODE",
+            "COMMIT_GATE_MODE",
+            "ENFORCER_TOOL_CALL_THRESHOLD",
+        ):
+            assert var not in content, (
+                f"{var} must not be persisted: gate modes live in polecat.yaml now"
+            )
 
     def test_run_session_env_setup_ignored_for_other_events(self, temp_env_file):
         """Verify setup is ignored for non-SessionStart events."""

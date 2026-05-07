@@ -1,0 +1,9 @@
+{
+  "bypassPermissionsModeAccepted": true,
+  "projects": {
+    "/workspace": {
+      "hasTrustDialogAccepted": true,
+      "hasCompletedProjectOnboarding": true
+    }
+  }
+}

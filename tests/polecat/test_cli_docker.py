@@ -28,7 +28,6 @@ from cli import (
     _find_docker_sock,
     _format_oom_message,
     _is_colima_env,
-    _is_vanilla_crew,
     _node_version_key,
     _parse_memory_string,
     _pass_pkb_url_sandbox,
@@ -152,20 +151,19 @@ class TestBuildDockerCmd:
         assert not any("MY_SECRET" in a for a in env_args)
         assert not any("DATABASE_URL" in a for a in env_args)
 
-    def test_forwards_gate_mode_vars(self):
-        """Gate mode env vars must reach the hook subprocess inside the container."""
-        env = {
-            "ENFORCER_GATE_MODE": "block",
-            "HANDOVER_GATE_MODE": "warn",
-            "QA_GATE_MODE": "warn",
-            "ENFORCER_TOOL_CALL_THRESHOLD": "50",
-        }
-        cmd = self._build(env=env)
+    def test_polecat_yaml_staged_for_container_hooks(self):
+        """Hooks resolve gate modes from the staged polecat.yaml, not env vars.
+
+        The container receives AOPS_POLECAT_CONFIG pointing at the staged
+        copy of polecat.yaml; the previous *_GATE_MODE env-var forwarding
+        no longer exists.
+        """
+        cmd = self._build()
         env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
-        assert "ENFORCER_GATE_MODE=block" in env_args
-        assert "HANDOVER_GATE_MODE=warn" in env_args
-        assert "QA_GATE_MODE=warn" in env_args
-        assert "ENFORCER_TOOL_CALL_THRESHOLD=50" in env_args
+        assert any(a.startswith("AOPS_POLECAT_CONFIG=") for a in env_args)
+        # Legacy gate-mode env vars are no longer forwarded.
+        assert not any(a.startswith("ENFORCER_GATE_MODE=") for a in env_args)
+        assert not any(a.startswith("HYDRATION_GATE_MODE=") for a in env_args)
 
     def test_forwards_aops_prefixed_env(self):
         """AOPS_* vars are forwarded (e.g. ACA_DATA, AOPS_SESSIONS)."""
@@ -373,15 +371,16 @@ class TestBuildDockerCmd:
         assert "SSH_AUTH_SOCK=" in env_args
         assert "SSH_AUTH_SOCK=/tmp/host-ssh-agent.sock" not in env_args
 
-    def test_hydration_gate_mode_emitted_exactly_once(self):
-        """HYDRATION_GATE_MODE appears exactly once — pattern arm and conf
-        literal don't double up. Catches future regressions in ordering.
+    def test_no_gate_mode_env_vars_emitted(self):
+        """Gate modes live in polecat.yaml; legacy *_GATE_MODE env vars are
+        no longer forwarded into containers — even when the host happens to
+        have one set, the var is not propagated.
         """
-        env = {"HYDRATION_GATE_MODE": "off"}
+        env = {"HYDRATION_GATE_MODE": "off", "ENFORCER_GATE_MODE": "warn"}
         cmd = self._build(env=env)
         env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
-        hydra = [a for a in env_args if a.startswith("HYDRATION_GATE_MODE=")]
-        assert hydra == ["HYDRATION_GATE_MODE=off"], f"Expected exactly one entry, got {hydra}"
+        assert not any(a.startswith("HYDRATION_GATE_MODE=") for a in env_args)
+        assert not any(a.startswith("ENFORCER_GATE_MODE=") for a in env_args)
 
     @pytest.mark.parametrize("cli_tool", ["claude", "gemini"])
     def test_gemini_api_key_forwarded_for_any_cli_tool(self, cli_tool):
@@ -437,10 +436,16 @@ class TestClaudeStagedConfig:
         with patch("cli._is_remote_daemon", return_value=False):
             yield
 
-    def test_workspace_trust_flags_with_existing_source(self, tmp_path):
-        """Staged .claude.json has /workspace trust flags when ~/.claude.json exists."""
-        source = {"bypassPermissionsModeAccepted": False, "someKey": "value"}
-        (tmp_path / ".claude.json").write_text(json.dumps(source))
+    def test_workspace_trust_flags_from_template(self, tmp_path):
+        """Staged .claude.json comes from polecat/defaults/claude-headless.json.
+
+        The host's ~/.claude.json is NOT merged in — staging is a clean copy
+        of the bundled template. This is the no-inline-configs invariant.
+        """
+        # Seed a host file that should NOT influence the staged copy.
+        (tmp_path / ".claude.json").write_text(
+            json.dumps({"bypassPermissionsModeAccepted": False, "someKey": "value"})
+        )
 
         with patch("cli.Path.home", return_value=tmp_path):
             docker_cmd = _build_docker_cmd(
@@ -457,7 +462,8 @@ class TestClaudeStagedConfig:
         assert workspace["hasTrustDialogAccepted"] is True
         assert workspace["hasCompletedProjectOnboarding"] is True
         assert staged["bypassPermissionsModeAccepted"] is True
-        assert staged["someKey"] == "value"
+        # Host-side keys are deliberately NOT preserved.
+        assert "someKey" not in staged
 
     def test_workspace_trust_flags_without_source(self, tmp_path):
         """Staged .claude.json is created with trust flags even when ~/.claude.json is absent."""
@@ -1366,52 +1372,22 @@ class TestFormatOomMessage:
         assert "GB memory available" not in msg
 
 
-class TestIsVanillaCrew:
-    """Tests for the POLECAT_VANILLA_CREW toggle parser."""
+class TestBuildDockerCmdHooksToggle:
+    """``hooks_enabled`` boolean drives settings staging + AOPS_HOOKS_OFF env.
 
-    @pytest.mark.parametrize(
-        "value,expected",
-        [
-            (None, True),  # unset → default on
-            ("", True),  # empty → default on (matches docstring)
-            ("1", True),
-            ("true", True),
-            ("True", True),
-            ("yes", True),
-            ("on", True),
-            ("0", False),
-            ("false", False),
-            ("FALSE", False),
-            ("off", False),
-            ("Off", False),
-            ("no", False),
-            ("  0  ", False),  # whitespace stripped
-        ],
-    )
-    def test_toggle_parsing(self, monkeypatch, value, expected):
-        if value is None:
-            monkeypatch.delenv("POLECAT_VANILLA_CREW", raising=False)
-        else:
-            monkeypatch.setenv("POLECAT_VANILLA_CREW", value)
-        assert _is_vanilla_crew() is expected
+    Replaces the old POLECAT_VANILLA_CREW env-var trial: the boolean is now
+    sourced from polecat.yaml (loaded by lib.polecat_config) and threaded as
+    a kwarg into _build_docker_cmd.
+    """
 
+    def _cfg(self):
+        from lib.polecat_config import load_polecat_config
 
-class TestReplicateGeminiAuthVanilla:
-    """Vanilla-crew trial: framework policies must be skipped."""
+        return load_polecat_config()
 
-    def _seed(self, gemini_dir: Path):
-        gemini_dir.mkdir(parents=True)
-        (gemini_dir / "settings.json").write_text("{}")
-        (gemini_dir / "oauth_creds.json").write_text("{}")
-        (gemini_dir / "installation_id").write_text("abc")
-
-
-class TestBuildDockerCmdVanilla:
-    """Vanilla-crew trial: settings staging + AOPS_HOOKS_OFF env."""
-
-    def test_vanilla_stages_minimal_claude_settings(self, tmp_path, monkeypatch):
+    def test_hooks_off_stages_minimal_claude_settings(self, tmp_path, monkeypatch):
         monkeypatch.setenv("HOME", str(tmp_path))
-        # Seed a host settings.json that should NOT be copied in vanilla mode.
+        # Seed a host settings.json that should NOT be copied with hooks off.
         host_claude = tmp_path / ".claude"
         host_claude.mkdir()
         (host_claude / "settings.json").write_text('{"autoMode":{"allow":["DANGEROUS"]}}')
@@ -1422,7 +1398,8 @@ class TestBuildDockerCmdVanilla:
                 {"PATH": "/usr/bin"},
                 ["claude"],
                 is_interactive=False,
-                vanilla=True,
+                cfg=self._cfg(),
+                hooks_enabled=False,
             )
         assert docker_cmd.staging_dir is not None
         staged = docker_cmd.staging_dir / ".claude" / "settings.json"
@@ -1431,7 +1408,7 @@ class TestBuildDockerCmdVanilla:
         assert "autoMode" not in content
         assert "permissions" not in content
 
-    def test_vanilla_sets_hooks_off_env(self, tmp_path, monkeypatch):
+    def test_hooks_off_sets_hooks_off_env(self, tmp_path, monkeypatch):
         monkeypatch.setenv("HOME", str(tmp_path))
         with patch("cli._find_docker_sock", return_value=None):
             docker_cmd = _build_docker_cmd(
@@ -1440,11 +1417,12 @@ class TestBuildDockerCmdVanilla:
                 {"PATH": "/usr/bin"},
                 ["claude"],
                 is_interactive=False,
-                vanilla=True,
+                cfg=self._cfg(),
+                hooks_enabled=False,
             )
         assert "AOPS_HOOKS_OFF=1" in docker_cmd.cmd
 
-    def test_legacy_does_not_set_hooks_off_env(self, tmp_path, monkeypatch):
+    def test_hooks_on_does_not_set_hooks_off_env(self, tmp_path, monkeypatch):
         monkeypatch.setenv("HOME", str(tmp_path))
         with patch("cli._find_docker_sock", return_value=None):
             docker_cmd = _build_docker_cmd(
@@ -1453,6 +1431,7 @@ class TestBuildDockerCmdVanilla:
                 {"PATH": "/usr/bin"},
                 ["claude"],
                 is_interactive=False,
-                vanilla=False,
+                cfg=self._cfg(),
+                hooks_enabled=True,
             )
         assert "AOPS_HOOKS_OFF=1" not in docker_cmd.cmd

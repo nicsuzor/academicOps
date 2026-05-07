@@ -158,26 +158,10 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
     for gate_name, gate_path in gate_paths.items():
         persist[f"AOPS_GATE_FILE_{gate_name.upper()}"] = str(gate_path)
 
-    # 5. Persist gate mode defaults for non-shell runtimes (macOS app)
-    # These are normally inherited from ~/.env.local via interactive zsh.
-    # When missing, gate_config.py falls back to "warn"; we persist that
-    # so subsequent hooks in this session also get the defaults.
-    from hooks.gate_config import (
-        ENFORCER_GATE_MODE,
-        ENFORCER_TOOL_CALL_THRESHOLD,
-        HANDOVER_GATE_MODE,
-        QA_GATE_MODE,
-    )
-
-    gate_mode_vars = {
-        "HANDOVER_GATE_MODE": HANDOVER_GATE_MODE,
-        "QA_GATE_MODE": QA_GATE_MODE,
-        "ENFORCER_GATE_MODE": ENFORCER_GATE_MODE,
-        "ENFORCER_TOOL_CALL_THRESHOLD": str(ENFORCER_TOOL_CALL_THRESHOLD),
-    }
-    for var, val in gate_mode_vars.items():
-        if not os.environ.get(var):
-            persist[var] = val
+    # 5. Gate modes are no longer persisted as env vars — they live in
+    # $AOPS_SESSIONS/polecat.yaml and every hook reads them via
+    # lib.polecat_config. Removing this section is the load-bearing piece of
+    # the env-var → config-file migration.
 
     # 6. Apply agent-env-map.conf credential isolation mappings (issue #581).
     # We split this into two pieces:

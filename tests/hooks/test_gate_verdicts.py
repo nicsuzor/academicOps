@@ -83,17 +83,57 @@ def _flatten_scenarios(*groups: str) -> list[dict]:
 
 
 def _reinit_gates_with_defaults():
-    """Reload gate_config and definitions with current env vars, reinit registry.
+    """Reload gate_config and definitions, then reinit the registry.
 
-    All imports use qualified paths from aops-core/ root (e.g. hooks.gate_config,
-    not bare gate_config), so there is exactly one sys.modules entry per module.
+    Gate modes now live in $AOPS_POLECAT_CONFIG / $AOPS_SESSIONS/polecat.yaml
+    (loaded by lib.polecat_config). Tests that change modes write a new YAML
+    and call ``hooks.gate_config._reset_gate_mode_cache()`` before invoking
+    this helper. All imports use qualified paths from aops-core/ root so
+    sys.modules has exactly one entry per module.
     """
     if "hooks.gate_config" in sys.modules:
+        sys.modules["hooks.gate_config"]._reset_gate_mode_cache()
         importlib.reload(sys.modules["hooks.gate_config"])
     if "lib.gates.definitions" in sys.modules:
         importlib.reload(sys.modules["lib.gates.definitions"])
     GateRegistry._initialized = False
     GateRegistry.initialize()
+
+
+def _write_polecat_yaml_with_gate_modes(
+    tmp_path: Path,
+    *,
+    handover: str = "warn",
+    qa: str = "block",
+    enforcer: str = "block",
+    commit: str = "warn",
+    hydration: str = "off",
+    enforcer_threshold: int = 50,
+) -> Path:
+    """Stage a polecat.yaml with the requested gate modes and return its path."""
+    p = tmp_path / "polecat.yaml"
+    # YAML quoted to avoid 'off'/'on' boolean coercion when callers pass them
+    # via positional defaults.
+    body = f"""
+session_defaults:
+  hooks_enabled: true
+  model: claude-sonnet-4-6
+  debug: false
+  gates:
+    handover: "{handover}"
+    qa: "{qa}"
+    enforcer: "{enforcer}"
+    commit: "{commit}"
+    hydration: "{hydration}"
+    enforcer_threshold: {enforcer_threshold}
+crew_defaults: {{}}
+run_defaults: {{}}
+docker:
+  image: aops-crew
+external_agents: {{}}
+""".strip()
+    p.write_text(body)
+    return p
 
 
 def _make_session_state(scenario: dict) -> SessionState:
@@ -178,16 +218,21 @@ def _make_gate_trigger_context(gate_name: str) -> HookContext:
 
 
 @pytest.fixture(autouse=True)
-def _deterministic_gate_modes(monkeypatch):
-    """Ensure gate modes use known defaults regardless of env.
+def _deterministic_gate_modes(monkeypatch, tmp_path):
+    """Ensure gate modes use known defaults regardless of host env.
 
-    This prevents test flakiness from env var leakage when tests run
-    inside a live Claude Code session.
+    Writes a deterministic polecat.yaml under tmp_path and points
+    ``AOPS_POLECAT_CONFIG`` at it; the gate-mode cache in hooks.gate_config
+    is invalidated before reload so the test sees the fresh values.
     """
-    monkeypatch.setenv("HYDRATION_GATE_MODE", "off")
-    monkeypatch.setenv("ENFORCER_GATE_MODE", "block")
-    monkeypatch.setenv("QA_GATE_MODE", "block")
-    monkeypatch.setenv("HANDOVER_GATE_MODE", "warn")
+    cfg_path = _write_polecat_yaml_with_gate_modes(
+        tmp_path,
+        handover="warn",
+        qa="block",
+        enforcer="block",
+        hydration="off",
+    )
+    monkeypatch.setenv("AOPS_POLECAT_CONFIG", str(cfg_path))
     _reinit_gates_with_defaults()
 
 
@@ -231,38 +276,38 @@ class TestReadOnlyBypassesEnforcer:
 # ===========================================================================
 
 _GATE_MODE_CASES = [
-    # Enforcer: default=block
-    ("enforcer", "ENFORCER_GATE_MODE", "warn", GateVerdict.WARN),
-    ("enforcer", "ENFORCER_GATE_MODE", "block", GateVerdict.DENY),
-    ("enforcer", "ENFORCER_GATE_MODE", "deny", GateVerdict.DENY),
-    # QA: default=block
-    ("qa", "QA_GATE_MODE", "warn", GateVerdict.WARN),
-    ("qa", "QA_GATE_MODE", "block", GateVerdict.DENY),
-    ("qa", "QA_GATE_MODE", "deny", GateVerdict.DENY),
-    # Handover: default=warn
-    ("handover", "HANDOVER_GATE_MODE", "warn", GateVerdict.WARN),
-    ("handover", "HANDOVER_GATE_MODE", "block", GateVerdict.DENY),
-    ("handover", "HANDOVER_GATE_MODE", "deny", GateVerdict.DENY),
+    # Enforcer
+    ("enforcer", "warn", GateVerdict.WARN),
+    ("enforcer", "block", GateVerdict.DENY),
+    # QA
+    ("qa", "warn", GateVerdict.WARN),
+    ("qa", "block", GateVerdict.DENY),
+    # Handover
+    ("handover", "warn", GateVerdict.WARN),
+    ("handover", "block", GateVerdict.DENY),
 ]
 
 
-class TestGateModeEnvVarOverrides:
-    """Verify *_GATE_MODE env vars control enforcement for all gates.
+class TestGateModeConfigOverrides:
+    """Verify polecat.yaml gate modes control enforcement for all gates.
 
-    Each gate's mode env var (e.g. HANDOVER_GATE_MODE=block) must produce
-    the correct verdict when the gate's policy fires. Tests every gate x
-    every valid mode value (warn, block, deny).
+    Each gate's mode (handover/qa/enforcer/commit/hydration in the YAML)
+    must produce the correct verdict when the gate's policy fires.
+    Replaces the previous *_GATE_MODE env-var test class — env vars are
+    no longer a config source.
     """
 
     @pytest.mark.parametrize(
-        "gate_name,env_var,mode,expected_verdict",
+        "gate_name,mode,expected_verdict",
         _GATE_MODE_CASES,
-        ids=[f"{g}-{m}" for g, _, m, _ in _GATE_MODE_CASES],
+        ids=[f"{g}-{m}" for g, m, _ in _GATE_MODE_CASES],
     )
     def test_gate_mode_verdict(
-        self, router, monkeypatch, gate_name, env_var, mode, expected_verdict
+        self, router, monkeypatch, tmp_path, gate_name, mode, expected_verdict
     ):
-        monkeypatch.setenv(env_var, mode)
+        kwargs: dict[str, str] = {gate_name: mode}
+        cfg_path = _write_polecat_yaml_with_gate_modes(tmp_path, **kwargs)
+        monkeypatch.setenv("AOPS_POLECAT_CONFIG", str(cfg_path))
         _reinit_gates_with_defaults()
 
         state = _make_gate_trigger_state(gate_name)
@@ -272,16 +317,16 @@ class TestGateModeEnvVarOverrides:
 
         if expected_verdict is None:
             assert result is None, (
-                f"{gate_name} gate with {env_var}={mode} should be ALLOW (None), "
+                f"{gate_name} gate with mode={mode} should be ALLOW (None), "
                 f"got {result.verdict.value if result else 'N/A'}"
             )
             return
 
         assert result is not None, (
-            f"{gate_name} gate with {env_var}={mode} should produce a verdict, got None (allow)"
+            f"{gate_name} gate with mode={mode} should produce a verdict, got None (allow)"
         )
         assert result.verdict == expected_verdict, (
-            f"{gate_name} gate with {env_var}={mode}: "
+            f"{gate_name} gate with mode={mode}: "
             f"expected {expected_verdict.value}, got {result.verdict.value}"
         )
 

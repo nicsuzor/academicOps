@@ -49,13 +49,21 @@ def get_polecat_home() -> Path:
 
 
 def get_config_path() -> Path:
-    """Get the project registry path: $AOPS_SESSIONS/projects.yaml."""
+    """Get the unified config path: $AOPS_SESSIONS/polecat.yaml.
+
+    This file holds both project registry (projects, project_aliases,
+    crew_names — read here via ``load_config``) and operational config
+    (gates, hooks_enabled, model, docker, external_agents — read by
+    ``aops-core/lib/polecat_config.py``). Single SSoT, two consumers.
+    """
+    if env_path := os.environ.get("AOPS_POLECAT_CONFIG"):
+        return Path(env_path).expanduser()
     sessions = os.environ.get("AOPS_SESSIONS")
     if sessions:
         sessions_path = Path(sessions).expanduser()
     else:
         sessions_path = get_polecat_home() / "sessions"
-    return sessions_path / "projects.yaml"
+    return sessions_path / "polecat.yaml"
 
 
 def get_local_overlay_path() -> Path:
@@ -64,14 +72,15 @@ def get_local_overlay_path() -> Path:
 
 
 def load_config(config_path: Path | None = None) -> dict:
-    """Load the project registry from $AOPS_SESSIONS/projects.yaml."""
+    """Load the unified config from $AOPS_SESSIONS/polecat.yaml."""
     if config_path is None:
         config_path = get_config_path()
 
     if not config_path.exists():
         raise FileNotFoundError(
-            f"Project registry not found: {config_path}\n"
-            f"Set $AOPS_SESSIONS to your sessions repo and ensure projects.yaml exists."
+            f"Polecat config not found: {config_path}\n"
+            f"Set $AOPS_SESSIONS to your sessions repo and ensure polecat.yaml exists. "
+            f"See polecat/defaults/polecat.yaml.example for the canonical schema."
         )
 
     with open(config_path) as f:

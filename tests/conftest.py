@@ -27,6 +27,16 @@ from .paths import (
 
 log = logging.getLogger(__name__)
 
+# Point AOPS_POLECAT_CONFIG at the canonical example *before* any test module
+# is imported. lib/polecat_config.py hard-fails when no config is found, and
+# many modules (lib/gates/definitions.py, hooks/gate_config.py) resolve gate
+# modes at import time. Tests that need a different config monkeypatch it
+# per-test via the autouse `ensure_test_environment` fixture below.
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+_POLECAT_EXAMPLE = _REPO_ROOT / "polecat" / "defaults" / "polecat.yaml.example"
+if _POLECAT_EXAMPLE.exists():
+    os.environ["AOPS_POLECAT_CONFIG"] = str(_POLECAT_EXAMPLE)
+
 # Max turns for Claude in test fixtures — higher than the default of 3 to allow
 # for hook overhead (hydration gate, enforcer) before reaching the actual task.
 TEST_CLAUDE_MAX_TURNS = "10"
@@ -289,6 +299,15 @@ def ensure_test_environment(monkeypatch, tmp_path):
     sessions_dir = tmp_path / "sessions"
     sessions_dir.mkdir(parents=True, exist_ok=True)
     monkeypatch.setenv("AOPS_SESSIONS", str(sessions_dir))
+
+    # Seed a polecat.yaml inside the per-test sessions dir; clear the
+    # module-level AOPS_POLECAT_CONFIG override so $AOPS_SESSIONS/polecat.yaml
+    # is what tests resolve. Test fixtures that swap projects.yaml content for
+    # polecat.yaml (tests/polecat/conftest.py:write_polecat_test_config) write
+    # to the same path and replace this default.
+    if _POLECAT_EXAMPLE.exists():
+        (sessions_dir / "polecat.yaml").write_text(_POLECAT_EXAMPLE.read_text())
+    monkeypatch.delenv("AOPS_POLECAT_CONFIG", raising=False)
 
     # Redirect UV cache to prevent PermissionError in /opt/suzor/cache/uv
     # This is required for hooks to run successfully under macOS Seatbelt
