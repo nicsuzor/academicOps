@@ -7,6 +7,7 @@ Generates dist/aops-gemini, dist/aops-claude, dist/aops-cowork, dist/aops-tools-
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -1104,12 +1105,32 @@ def build_aops_cowork(
         if src_item.name == "agents" and src_item.is_dir():
             dst = dist_dir / "agents"
             dst.mkdir(parents=True, exist_ok=True)
+            # Cowork-specific rewrites:
+            # - Agent names <3 chars are rejected by the Cowork remote validator
+            #   (error_code: plugin_upload_agent_name_too_short). Prefix short
+            #   names with "aops-".
+            # - When loaded inside Cowork, the plugin's MCP server namespaces as
+            #   `mcp__plugin_aops-cowork_pkb__*`, not `aops-core_pkb`. Rewrite
+            #   tool names in agent frontmatter to match the runtime namespace.
+            COWORK_AGENT_NAME_REWRITES = {"jr": "aops-jr"}
             for agent_file in src_item.glob("*.md"):
                 if agent_file.name not in COWORK_AGENTS:
                     continue
                 content = agent_file.read_text()
                 content = transform_agent_for_platform(content, "claude", agent_file.name)
                 content = translate_tool_calls(content, "claude")
+                for old, new in COWORK_AGENT_NAME_REWRITES.items():
+                    content = re.sub(
+                        rf"^(name:\s*){old}\s*$",
+                        rf"\g<1>{new}",
+                        content,
+                        count=1,
+                        flags=re.MULTILINE,
+                    )
+                content = content.replace(
+                    "mcp__plugin_aops-core_pkb__",
+                    "mcp__plugin_aops-cowork_pkb__",
+                )
                 (dst / agent_file.name).write_text(content)
             print(f"  ✓ Copied agents ({sorted(COWORK_AGENTS)}) -> {dst}")
         elif src_item.name == "skills" and src_item.is_dir():
@@ -1768,6 +1789,23 @@ def package_artifacts(
             tar.add(cowork_dir, arcname="aops-cowork", filter=_source_filter)
         print(f"  ✓ Packaged {cowork_archive.name}")
         safe_symlink(cowork_archive, dist_root / "aops-cowork-latest.tar.gz")
+
+        # 3b. aops-cowork-v{version}.zip — manual upload artifact for Cowork.
+        # Cowork has no marketplace on personal accounts; users upload via
+        # Customize → Add plugins → Upload a file. The validator requires
+        # `.claude-plugin/plugin.json` at the archive root, so zip from inside
+        # the plugin directory rather than from its parent.
+        import zipfile
+
+        cowork_zip = dist_root / f"aops-cowork-v{version}.zip"
+        with zipfile.ZipFile(cowork_zip, "w", zipfile.ZIP_DEFLATED) as zf:
+            for path in sorted(cowork_dir.rglob("*")):
+                rel = path.relative_to(cowork_dir)
+                if any(part in {".git", "__pycache__", ".DS_Store"} for part in rel.parts):
+                    continue
+                zf.write(path, arcname=str(rel))
+        print(f"  ✓ Packaged {cowork_zip.name} (manual Cowork upload)")
+        safe_symlink(cowork_zip, dist_root / "aops-cowork-latest.zip")
 
     # 4. aops-antigravity-v{version}.tar.gz
     antigravity_archive = dist_root / f"aops-antigravity-v{version}.tar.gz"

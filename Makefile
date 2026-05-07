@@ -1,7 +1,7 @@
 # AcademicOps Makefile
 # Unified build and installation entry point
 
-.PHONY: help dev build-dev install-dev uninstall-dev install-remote install-claude install-gemini install-cowork install-cli install-crontab install-hooks nextver release prerelease clean build build-docker shell
+.PHONY: help dev build-dev install-dev uninstall-dev install-remote install-claude install-gemini package-cowork install-cli install-crontab install-hooks nextver release prerelease clean build build-docker shell
 
 # --- Configuration ---
 
@@ -47,7 +47,7 @@ help:
 	@echo "User Installation (Install from remote releases):"
 	@echo "  make install        - Install all components from GitHub releases"
 	@echo "  make install-claude - Install Claude plugin from dist repo"
-	@echo "  make install-cowork - Install Cowork plugin from local dist (Cowork can't use github marketplaces)"
+	@echo "  make package-cowork - Build the Cowork upload zip (dist/aops-cowork-vX.Y.Z.zip)"
 	@echo "  make install-gemini - Install Gemini extension from main repo"
 	@echo "  make install-crontab - Setup background sync"
 	@echo ""
@@ -123,11 +123,12 @@ install-hooks:
 
 # --- User Installation (Remote) ---
 
-# Standard user install from official releases
-# Order matters: install-cowork registers the marketplace as a local directory
-# (Cowork bug workaround). install-claude must run AFTER so the final marketplace
-# registration is the github source — that's what aops-core auto-update tracks.
-install: ensure-docker install-cowork install-claude install-gemini install-crontab
+# Standard user install from official releases.
+# Cowork is intentionally excluded from this chain: personal Anthropic accounts
+# can't add custom marketplaces, so the Cowork plugin must be uploaded manually
+# via the Claude desktop app (Customize → Add plugins → Upload a file). Run
+# `make package-cowork` to produce the zip, then upload it through the UI.
+install: ensure-docker install-claude install-gemini install-crontab
 	@$(MAKE) report-versions
 
 ensure-docker:
@@ -152,18 +153,19 @@ install-claude:
 	command claude plugin install $(CLAUDE_PLUGIN_NAME) && \
 	echo "✓ Claude Code plugin installed"
 
-# Cowork installs from the local dist build because Cowork's RemotePluginManager
-# nukes plugins from `source: "github"` marketplaces on every restart
-# (claude-code issues #38429, #39274, #40600). A local-directory marketplace
-# survives the sync.
-install-cowork: build-dev
-	@echo "Installing aops plugin for Claude Cowork (local source — Cowork bug workaround)..."
-	@echo "  Source: $(DIST_DIR) (local build marketplace)"
-	-command claude plugin uninstall $(COWORK_PLUGIN_NAME)
-	@command claude plugin marketplace add $(DIST_DIR) && \
-	command claude plugin install $(COWORK_PLUGIN_NAME) && \
-	echo "✓ Cowork plugin installed"
-	@echo "  ⚠️  Marketplace 'academicOps' now points to $(DIST_DIR)"
+# Cowork on personal accounts has no marketplace mechanism — `claude plugin
+# install` writes to the Claude Code CLI's plugin store, which is not visible
+# to the macOS Claude desktop app's Cowork tab. Plugins are uploaded manually
+# as zip files via Customize → Add plugins → Upload a file. The build already
+# produces the upload-ready artifact at dist/aops-cowork-v{VERSION}.zip; this
+# target just builds it.
+package-cowork: build-dev
+	@echo "Cowork upload package built at:"
+	@ls -1 $(DIST_DIR)/aops-cowork-v*.zip 2>/dev/null | tail -1 || \
+		echo "  (missing — check build output above)"
+	@echo ""
+	@echo "Upload via Claude desktop app:"
+	@echo "  Cowork tab → Customize → Add plugins → Upload a file → select the zip above."
 
 install-gemini:
 	@echo "Installing aops extension for Gemini CLI..."
