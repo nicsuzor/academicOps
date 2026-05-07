@@ -80,17 +80,20 @@ def temp_polecat_home(tmp_path):
         "session_defaults": {
             "hooks_enabled": True,
             "model": "claude-sonnet-4-6",
+            "debug": False,
             "gates": {
                 "handover": "warn",
                 "qa": "warn",
                 "enforcer": "warn",
                 "commit": "warn",
                 "hydration": "off",
+                "enforcer_threshold": 50,
             },
         },
         "crew_defaults": {},
         "run_defaults": {},
         "docker": {"image": "aops-crew"},
+        "external_agents": {},
         "projects": {},
     }
     (sessions / "polecat.yaml").write_text(yaml.dump(config))
