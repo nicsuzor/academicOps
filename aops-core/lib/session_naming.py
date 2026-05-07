@@ -25,9 +25,44 @@ ARTIFACT_TYPES = {
 }
 
 # Known providers/clients (used as shortform terminators for parsing).
-# Listed agents that produce session artefacts: include any non-interactive
-# runner whose output we expect to ingest.
-PROVIDERS = {"claude", "gemini", "github", "jules", "codex", "copilot"}
+#
+# Two sources, merged at first access:
+#   - Built-in LLM CLIs (claude, gemini): framework primitives, always present.
+#   - external_agents map in $AOPS_SESSIONS/polecat.yaml: the operator-curated
+#     list of dispatch targets (github, jules, codex, copilot, ...).
+#
+# Lazy resolution because session_naming is imported during test collection,
+# before fixtures stage a config file.
+_BUILTIN_PROVIDERS: frozenset[str] = frozenset({"claude", "gemini"})
+_PROVIDERS_CACHE: set[str] | None = None
+
+
+def _load_providers() -> set[str]:
+    global _PROVIDERS_CACHE
+    if _PROVIDERS_CACHE is None:
+        # Local import to avoid circular dependencies and to keep this module
+        # importable in environments without polecat_config (it will hard-fail
+        # only when a caller actually exercises filename parsing).
+        from lib.polecat_config import load_polecat_config
+
+        cfg = load_polecat_config()
+        _PROVIDERS_CACHE = set(_BUILTIN_PROVIDERS) | {
+            name for name, agent in cfg.external_agents.items() if agent.enabled
+        }
+    return _PROVIDERS_CACHE
+
+
+def _reset_providers_cache() -> None:
+    """Test-only hook: drop cached providers so the next access re-reads YAML."""
+    global _PROVIDERS_CACHE
+    _PROVIDERS_CACHE = None
+
+
+def __getattr__(name: str):
+    if name == "PROVIDERS":
+        return _load_providers()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 # Known variants (used for parsing)
 VARIANTS = {"-full", "-abridged", "-hooks", "-client", "-enforcer"}
@@ -367,9 +402,10 @@ def parse_session_filename(filename: str) -> ParsedFilename | None:
         return None
 
     # Detect provider token (claude/gemini/github/jules/...) in shortform
+    providers = _load_providers()
     provider_idx = None
     for i in range(3, len(parts)):
-        if parts[i] in PROVIDERS:
+        if parts[i] in providers:
             provider_idx = i
             break
 

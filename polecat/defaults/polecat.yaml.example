@@ -1,0 +1,107 @@
+# polecat.yaml — operational config for polecat / crew sessions.
+#
+# Copy this file to $AOPS_SESSIONS/polecat.yaml and edit to taste.
+# Loaded by aops-core/lib/polecat_config.py — that module is the SSoT for
+# the schema; consult its docstring for field semantics.
+#
+# This file is the ONLY place these knobs are configured. There are no
+# legacy env-var fallbacks: missing fields hard-fail at startup.
+
+# ---------------------------------------------------------------------------
+# session_defaults — applied to every polecat / crew session.
+# ---------------------------------------------------------------------------
+session_defaults:
+  # Master switch. Collapses what used to be POLECAT_VANILLA_CREW +
+  # AOPS_HOOKS_OFF + permission-mode selection into one boolean.
+  #
+  #   true   ⇒ framework hooks ON,
+  #            claude --permission-mode=plan,
+  #            full claude-settings.json staged.
+  #   false  ⇒ framework hooks OFF (router.sh exits 0),
+  #            claude --dangerously-skip-permissions,
+  #            minimal claude-settings.json staged.
+  hooks_enabled: true
+
+  # Default model for claude / gemini sessions. Per-session-type overlays
+  # below may override.
+  model: claude-sonnet-4-6
+
+  # Forwarded into containers as DEBUG_HOOKS=1 when true; the hook router
+  # then dumps raw stdin to /tmp/cc_hooks_<slug>.jsonl.
+  debug: false
+
+  # Gate enforcement modes. Each value MUST be one of warn | block | off.
+  gates:
+    handover: warn
+    qa: warn
+    enforcer: warn
+    commit: warn
+    hydration: off
+    enforcer_threshold: 50
+
+# ---------------------------------------------------------------------------
+# Per-session-type overlays. Both blocks MUST exist (use {} when empty).
+# Keys present here override the matching key in session_defaults for that
+# session type. Supports nested ``gates: {...}`` overrides.
+# ---------------------------------------------------------------------------
+
+# `polecat crew` — interactive multi-agent sessions. Today's default mirrors
+# the "vanilla crew" trial: hooks off, bypass permissions.
+crew_defaults:
+  hooks_enabled: false
+
+# `polecat run` — autonomous workers. Hooks always on, full policy.
+run_defaults: {}
+
+# ---------------------------------------------------------------------------
+# Docker runtime config. The ssh / unix daemon endpoint is read by the
+# docker SDK from $DOCKER_HOST (load-bearing for the SDK; not duplicated
+# here).
+# ---------------------------------------------------------------------------
+docker:
+  image: aops-crew
+
+# ---------------------------------------------------------------------------
+# External agents available for dispatch (github actions, jules, codex, ...).
+# Hand-maintained — no auto-discovery. The set of keys here is the
+# authoritative provider list consumed by lib/session_naming.py for
+# artifact-filename parsing.
+# ---------------------------------------------------------------------------
+external_agents:
+  github:
+    enabled: true
+    workflows:
+      - agent-enforcer
+      - agent-merge-prep
+      - agent-qa
+      - sleep-cycle
+  jules:
+    enabled: true
+  codex:
+    enabled: false
+  copilot:
+    enabled: false
+
+# ---------------------------------------------------------------------------
+# Project registry (read by polecat/manager.py).
+# Each entry maps a slug to a GitHub repo + per-project metadata. Slugs are
+# the canonical names; aliases below let `polecat crew <alias>` resolve.
+# Per-machine path overrides live in $POLECAT_HOME/local.yaml under `paths:`.
+# ---------------------------------------------------------------------------
+projects:
+  aops:
+    repo: academicOps
+    default_branch: main
+    aliases: [academicOps, acaops]
+  sessions:
+    repo: sessions
+    default_branch: main
+
+# Top-level shorthand aliases. Highest priority over per-project aliases.
+project_aliases:
+  ao: aops
+
+# Crew name pool. `polecat crew --name X` overrides; otherwise a name is
+# drawn at random from this list.
+crew_names:
+  - crew

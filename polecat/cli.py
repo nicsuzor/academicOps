@@ -29,8 +29,14 @@ if str(REPO_ROOT / "aops-core") not in sys.path:
 
 import click
 from lib.agent_env import apply_env_mappings, get_container_env_forwards
+from lib.polecat_config import CONFIG_PATH_ENV, PolecatConfig, load_polecat_config
 from manager import PolecatManager
 from validation import TaskIDValidationError, validate_task_id_or_raise
+
+# In-container path for the staged polecat.yaml. Hooks running inside the
+# container read AOPS_POLECAT_CONFIG (set by ``_build_docker_cmd``) to resolve
+# this same file.
+_CONTAINER_POLECAT_YAML = "/home/worker/.aops/polecat.yaml"
 
 # Turn budget for headless Claude runs.
 #
@@ -249,21 +255,47 @@ def _node_version_key(p: Path) -> tuple[int, ...]:
     return tuple(int(x) for x in m.groups()) if m else (0, 0, 0)
 
 
-def _is_vanilla_crew() -> bool:
-    """Return True when the vanilla-crew trial config is active.
+def _resolve_session_config(
+    mode: str,
+    *,
+    hooks_enabled: bool | None = None,
+    model: str | None = None,
+    debug: bool | None = None,
+    set_overrides: tuple[str, ...] = (),
+) -> tuple[PolecatConfig, "SessionDefaults"]:  # type: ignore[name-defined]  # noqa: F821
+    """Load polecat.yaml, apply per-mode overlay + CLI overrides, return both.
 
-    Trial: crew containers run with no framework hooks, no auto-mode permission
-    rules, and Claude in --dangerously-skip-permissions mode. Default is ON;
-    set POLECAT_VANILLA_CREW=0 (or "false"/"off"/"no") to revert to the
-    plan-mode + hooks behaviour.
+    The full ``PolecatConfig`` is returned alongside the resolved session
+    defaults so callers can also reach ``cfg.docker`` etc.
     """
-    val = os.environ.get("POLECAT_VANILLA_CREW", "1").strip().lower()
-    # Empty-string is treated as "default" (vanilla on) — same as unset — to
-    # avoid the surprise where `POLECAT_VANILLA_CREW= polecat crew ...` and
-    # `polecat crew ...` produce opposite results.
-    if val == "":
+    cfg = load_polecat_config()
+    overrides: dict[str, object] = {}
+    if hooks_enabled is not None:
+        overrides["hooks_enabled"] = hooks_enabled
+    if model is not None:
+        overrides["model"] = model
+    if debug is not None:
+        overrides["debug"] = debug
+    for entry in set_overrides:
+        if "=" not in entry:
+            raise click.UsageError(f"--set expects KEY=VALUE, got {entry!r}")
+        key, _, value = entry.partition("=")
+        overrides[key.strip()] = _coerce_set_value(value.strip())
+    resolved = cfg.with_overrides(mode, overrides) if overrides else cfg.for_mode(mode)
+    return cfg, resolved
+
+
+def _coerce_set_value(raw: str) -> object:
+    """Coerce a ``--set`` value to bool / int / str."""
+    lowered = raw.lower()
+    if lowered in ("true", "yes", "on"):
         return True
-    return val not in ("0", "false", "off", "no")
+    if lowered in ("false", "no", "off"):
+        return False
+    try:
+        return int(raw)
+    except ValueError:
+        return raw
 
 
 def _make_worker_env(interactive: bool = False, work_dir: Path | None = None) -> dict[str, str]:
@@ -1048,11 +1080,13 @@ def _build_docker_cmd(
     env: dict,
     agent_cmd: list[str],
     is_interactive: bool,
+    *,
+    cfg: PolecatConfig | None = None,
+    hooks_enabled: bool | None = None,
     tmp_files: list[Path] | None = None,
     session_dir: Path | None = None,
     session_volume: str | None = None,
     memory_limit: str | None = None,
-    vanilla: bool = False,
 ) -> DockerCmd:
     """Build a Docker command with appropriate mounts and env for an agent session.
 
@@ -1073,9 +1107,15 @@ def _build_docker_cmd(
     If session_dir is provided (and session_volume is not), mounts it as a bind mount at
     /home/worker/.claude/projects so Claude session transcripts persist on the host.
     """
-    # Use POLECAT_DOCKER_IMAGE if set, otherwise default to the aops-crew image
-    # built from the repo root Dockerfile via `make build-docker`.
-    image = os.environ.get("POLECAT_DOCKER_IMAGE", "aops-crew")
+    # Container image — sourced from polecat.yaml (no env-var override).
+    # ``cfg`` and ``hooks_enabled`` default to the loaded config's session
+    # defaults; production callers always pass both. Defaulting is for tests
+    # that exercise pure docker-arg construction without crew/run handlers.
+    if cfg is None:
+        cfg = load_polecat_config()
+    if hooks_enabled is None:
+        hooks_enabled = cfg.session_defaults.hooks_enabled
+    image = cfg.docker.image
 
     # Resolve docker to an absolute path up front so the eventual
     # ``subprocess.run(..., env=env)`` cannot fail with FileNotFoundError when
@@ -1145,52 +1185,45 @@ def _build_docker_cmd(
         assert (
             staging_dir is not None
         )  # always set: ("claude","shell") ⊆ ("claude","shell","gemini")
-        claude_json = home / ".claude.json"
         claude_dir = home / ".claude"
-        # Stage a modified .claude.json rather than touching the user's actual config.
-        # Three flags are needed for fully headless operation inside Docker:
+        # Stage a fixed .claude.json template rather than reading & merging the
+        # host's. Three flags are needed for fully headless operation inside
+        # Docker:
         #   bypassPermissionsModeAccepted — skips the --dangerously-skip-permissions prompt.
         #   hasTrustDialogAccepted — suppresses "Skipping project agents due to untrusted
         #     folder" so CLAUDE.md and framework hooks are loaded from /workspace.
         #   hasCompletedProjectOnboarding — suppresses the first-run onboarding wizard
         #     that would otherwise block a headless session on new projects.
-        if claude_json.exists():
-            try:
-                with open(claude_json) as f:
-                    config = json.load(f)
-                if not isinstance(config, dict):
-                    config = {}
-            except (json.JSONDecodeError, OSError):
-                config = {}
-        else:
-            config = {}
-        config["bypassPermissionsModeAccepted"] = True
-        projects = config.setdefault("projects", {})
-        workspace_project = projects.setdefault("/workspace", {})
-        workspace_project["hasTrustDialogAccepted"] = True
-        workspace_project["hasCompletedProjectOnboarding"] = True
+        # Template lives in polecat/defaults/claude-headless.json — that is the
+        # single source of truth for the staged file's contents.
+        headless_template = SCRIPT_DIR / "defaults" / "claude-headless.json"
+        if not headless_template.exists():
+            raise RuntimeError(f"Missing bundled template: {headless_template}")
         staged_claude_json = staging_dir / ".claude.json"
-        fd = os.open(staged_claude_json, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-        with os.fdopen(fd, "w") as f:
-            json.dump(config, f)
+        shutil.copy2(headless_template, staged_claude_json)
+        os.chmod(staged_claude_json, 0o600)
         if claude_dir.exists():
             # Copy only the auth files Claude needs at runtime — not the whole directory.
             # The plugin installation is baked into the image (see Dockerfile), so mounting
             # the full ~/.claude dir would override the image's plugin data with the host's
             # (potentially stale or wrong-path) copy.
+            #
+            # Hooks-on sessions also pick up the host's settings.json (autoMode
+            # rules, status line). Hooks-off sessions stage a minimal template
+            # instead — see below.
             staged_claude_dir = staging_dir / ".claude"
             staged_claude_dir.mkdir(exist_ok=True)
             staged_files = (
-                (".credentials.json",) if vanilla else (".credentials.json", "settings.json")
+                (".credentials.json", "settings.json") if hooks_enabled else (".credentials.json",)
             )
             for auth_file in staged_files:
                 src = claude_dir / auth_file
                 if src.exists():
                     shutil.copy2(src, staged_claude_dir / auth_file)
-        # Vanilla-crew trial: stage a minimal settings.json (no autoMode, no
-        # permission rules) instead of the host's. Combined with AOPS_HOOKS_OFF=1
-        # below, this gives the container a clean almost-vanilla Claude install.
-        if vanilla:
+        # Hooks-off sessions: stage a minimal claude settings.json (no autoMode,
+        # no permission rules). Combined with the in-container hook router
+        # short-circuit, this gives an almost-vanilla Claude install.
+        if not hooks_enabled:
             vanilla_template = SCRIPT_DIR / "defaults" / "claude-settings-vanilla.json"
             if not vanilla_template.exists():
                 raise RuntimeError(f"Missing bundled template: {vanilla_template}")
@@ -1246,15 +1279,16 @@ def _build_docker_cmd(
     for key, val in conf_forwards.items():
         cmd.extend(["-e", f"{key}={val}"])
 
-    # Pattern-arm forwarding — POLECAT_*, AOPS_*, *_GATE_MODE.
-    # These are dynamic prefixes/suffixes not expressible in conf entries.
-    # Same empty-skip rule as the conf-driven path. Skip keys already
-    # forwarded by the conf to avoid double-`-e` (e.g. HYDRATION_GATE_MODE
-    # is both a conf literal and matches the *_GATE_MODE pattern).
+    # Pattern-arm forwarding — POLECAT_* and AOPS_* (excluding the resolved
+    # config-path env: that is set explicitly below to point at the in-container
+    # staged polecat.yaml). Gate-mode env vars no longer exist; gate modes are
+    # resolved from polecat.yaml inside the container.
     for key, val in env.items():
         if not val or key in conf_forwards:
             continue
-        if key.startswith("POLECAT_") or key.startswith("AOPS_") or key.endswith("_GATE_MODE"):
+        if key == CONFIG_PATH_ENV:
+            continue
+        if key.startswith("POLECAT_") or key.startswith("AOPS_"):
             cmd.extend(["-e", f"{key}={val}"])
 
     # Session storage: transcripts persist beyond container lifetime.
@@ -1273,29 +1307,19 @@ def _build_docker_cmd(
             if not _is_remote_daemon():
                 cmd.extend(["-v", f"{session_dir}:{session_container_path}"])
 
-    # Ensure gate mode vars have explicit values inside the container.
-    # The hook router emits WARNING and silently defaults to 'warn' when these
-    # are unset — in polecat containers they won't be set unless forwarded here.
-    # We forward from env (caller's dict) first, then os.environ, then the same
-    # 'warn' default that gate_config.py uses. The existing forwarding loop above
-    # only forwards vars present in the caller's env dict, so vars not in env
-    # (e.g. when only POLECAT_SESSION_TYPE is provided) would be silently skipped.
-    _gate_mode_defaults = {
-        "COMMIT_GATE_MODE": "warn",
-        "HANDOVER_GATE_MODE": "warn",
-        "QA_GATE_MODE": "warn",
-        "ENFORCER_GATE_MODE": "warn",
-        "HYDRATION_GATE_MODE": "off",  # gate_config.py: os.environ.get("HYDRATION_GATE_MODE", "off")
-    }
-    for _gm_key, _gm_default in _gate_mode_defaults.items():
-        if _gm_key not in env:
-            _gm_val = os.environ.get(_gm_key, _gm_default)
-            cmd.extend(["-e", f"{_gm_key}={_gm_val}"])
+    # Stage polecat.yaml into the container so hooks resolve gate modes,
+    # provider lists, and any other config without re-reading host paths.
+    # The host config is the SSoT — the staged file is a copy.
+    staged_aops_dir = staging_dir / ".aops" if staging_dir else None
+    if staged_aops_dir is not None:
+        staged_aops_dir.mkdir(exist_ok=True)
+        shutil.copy2(cfg.source_path, staged_aops_dir / "polecat.yaml")
+    cmd.extend(["-e", f"{CONFIG_PATH_ENV}={_CONTAINER_POLECAT_YAML}"])
 
-    # Vanilla-crew trial: signal the hook router (router.sh / router.py) to
-    # exit immediately. Settings.json is already stripped above; this disables
-    # the plugin-declared hooks that ship inside the image.
-    if vanilla:
+    # Hooks master switch. When False, the in-container hook router exits 0
+    # before any Python work; combined with the minimal claude settings staged
+    # above, this gives the container an almost-vanilla Claude install.
+    if not hooks_enabled:
         cmd.extend(["-e", "AOPS_HOOKS_OFF=1"])
 
     cmd.append(image)
@@ -1736,7 +1760,7 @@ def _mount_gemini_git_credentials(env: dict, tmp_files: list[Path]) -> list[str]
 
 
 def _replicate_gemini_auth(
-    env: dict, work_dir: Path | None = None, vanilla: bool = False
+    env: dict, work_dir: Path | None = None, hooks_enabled: bool = True
 ) -> Path | None:
     """Replicate Gemini authentication files to a directory.
 
@@ -1836,7 +1860,7 @@ def _replicate_gemini_auth(
                 #   GEMINI_API_KEY env → "api-key" (handled by env, no setting needed)
                 # Vanilla-crew trial uses a stripped template with no policyEngine.
                 template_name = (
-                    "gemini-settings-vanilla.json" if vanilla else "gemini-settings.json"
+                    "gemini-settings.json" if hooks_enabled else "gemini-settings-vanilla.json"
                 )
                 template_path = SCRIPT_DIR / "defaults" / template_name
                 if not template_path.exists():
@@ -1861,16 +1885,16 @@ def _replicate_gemini_auth(
         # This is critical for ~/.gemini/settings.json which is often symlinked.
         shutil.copy2(gemini_dir / f, target_dir / f, follow_symlinks=True)
 
-    # Copy our default framework policies — skipped in vanilla-crew trial,
-    # which intentionally drops the policy-engine restrictions.
-    if not vanilla:
+    # Copy our default framework policies — skipped when hooks are off, which
+    # intentionally drops the policy-engine restrictions.
+    if hooks_enabled:
         deny_ext_src = SCRIPT_DIR / "defaults" / "deny-extension-writes.toml"
         if not deny_ext_src.exists():
             raise RuntimeError(f"Missing bundled policy file: {deny_ext_src}")
         shutil.copy2(deny_ext_src, policies_dir / "deny-extension-writes.toml")
 
-    # Generate sandbox policy if work_dir is provided (skipped when vanilla)
-    if work_dir and not vanilla:
+    # Generate sandbox policy if work_dir is provided (skipped when hooks off)
+    if work_dir and hooks_enabled:
         # Todo: copy template policies into container.
         pass
 
@@ -2538,7 +2562,7 @@ def _sync_working_repo(
 def sync(ctx, check, quiet, mirrors_only):
     """Sync all git repos: working repos and bare mirrors.
 
-    Fetches, pulls, and pushes working repos defined in $AOPS_SESSIONS/projects.yaml.
+    Fetches, pulls, and pushes working repos defined in $AOPS_SESSIONS/polecat.yaml.
     Also updates bare mirrors used by polecat workers.
 
     Working repos are only pulled/pushed if clean.
@@ -2754,7 +2778,7 @@ def nuke(ctx, target, force, allow_unpushed):
                     # A malformed task raises ValueError from get_repo_path.
                     # Two distinct cases:
                     #   1. task.project is None/empty — structural data problem.
-                    #   2. task.project names a project removed from projects.yaml
+                    #   2. task.project names a project removed from polecat.yaml
                     #      — the project is no longer resolvable, so this
                     #      worktree will be silently skipped on every sweep and
                     #      never automatically cleaned up.
@@ -3046,9 +3070,45 @@ def _branch_has_open_pr(branch_name: str, repo_path: Path) -> bool:
 @click.option("--resume", "-r", help="Resume existing crew worker by name")
 @click.option("--keep", "-k", is_flag=True, help="Keep worktree even if a PR is open")
 @click.option("--memory", default=None, help="Container memory limit (e.g. 4g, 2048m)")
+@click.option(
+    "--hooks/--no-hooks",
+    "hooks_enabled",
+    default=None,
+    help="Override hooks_enabled from polecat.yaml. --hooks ⇒ plan-mode + full hooks; "
+    "--no-hooks ⇒ bypass-permissions + minimal settings + router exit.",
+)
+@click.option("--model", default=None, help="Override the model (claude/gemini model id).")
+@click.option(
+    "--debug/--no-debug",
+    "debug_flag",
+    default=None,
+    help="Override debug from polecat.yaml. --debug forwards DEBUG_HOOKS=1 into the container.",
+)
+@click.option(
+    "--set",
+    "set_overrides",
+    multiple=True,
+    metavar="KEY=VALUE",
+    help="Override an arbitrary config key (e.g. gates.handover=block).",
+)
 @click.argument("agent_args", nargs=-1, type=click.UNPROCESSED)
 @click.pass_context
-def crew_alias(ctx, target, extra, name, gemini, interactive, resume, keep, memory, agent_args):
+def crew_alias(
+    ctx,
+    target,
+    extra,
+    name,
+    gemini,
+    interactive,
+    resume,
+    keep,
+    memory,
+    hooks_enabled,
+    model,
+    debug_flag,
+    set_overrides,
+    agent_args,
+):
     """Shorthand for 'crew'. See 'polecat crew --help'."""
     ctx.invoke(
         crew,
@@ -3060,6 +3120,10 @@ def crew_alias(ctx, target, extra, name, gemini, interactive, resume, keep, memo
         resume=resume,
         keep=keep,
         memory=memory,
+        hooks_enabled=hooks_enabled,
+        model=model,
+        debug_flag=debug_flag,
+        set_overrides=set_overrides,
         agent_args=agent_args,
     )
 
@@ -3073,9 +3137,45 @@ def crew_alias(ctx, target, extra, name, gemini, interactive, resume, keep, memo
 @click.option("--resume", "-r", help="Resume existing crew worker by name")
 @click.option("--keep", "-k", is_flag=True, help="Keep worktree even if a PR is open")
 @click.option("--memory", default=None, help="Container memory limit (e.g. 4g, 2048m)")
+@click.option(
+    "--hooks/--no-hooks",
+    "hooks_enabled",
+    default=None,
+    help="Override hooks_enabled from polecat.yaml. --hooks ⇒ plan-mode + full hooks; "
+    "--no-hooks ⇒ bypass-permissions + minimal settings + router exit.",
+)
+@click.option("--model", default=None, help="Override the model (claude/gemini model id).")
+@click.option(
+    "--debug/--no-debug",
+    "debug_flag",
+    default=None,
+    help="Override debug from polecat.yaml. --debug forwards DEBUG_HOOKS=1 into the container.",
+)
+@click.option(
+    "--set",
+    "set_overrides",
+    multiple=True,
+    metavar="KEY=VALUE",
+    help="Override an arbitrary config key (e.g. gates.handover=block).",
+)
 @click.argument("agent_args", nargs=-1, type=click.UNPROCESSED)
 @click.pass_context
-def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, agent_args):
+def crew(
+    ctx,
+    target,
+    extra,
+    name,
+    gemini,
+    interactive,
+    resume,
+    keep,
+    memory,
+    hooks_enabled,
+    model,
+    debug_flag,
+    set_overrides,
+    agent_args,
+):
     """Start an interactive crew session with worker isolation.
 
     Crew workers are persistent, named agents for interactive collaboration.
@@ -3306,12 +3406,19 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
     print(f"   Crew: {crew_name}")
     print(f"   Projects: {', '.join(projects)}")
     print(f"   Working dir: {work_dir}")
-    vanilla = _is_vanilla_crew()
-    if vanilla:
-        print("   Mode: vanilla-crew trial (no hooks, bypass-permissions)")
-        print("         toggle off with POLECAT_VANILLA_CREW=0")
-    else:
-        print("   Mode: legacy (plan + hooks)")
+    cfg, session_cfg = _resolve_session_config(
+        "crew",
+        hooks_enabled=hooks_enabled,
+        model=model,
+        debug=debug_flag,
+        set_overrides=set_overrides,
+    )
+    print(
+        "   Mode: "
+        f"hooks_enabled={session_cfg.hooks_enabled}, "
+        f"model={session_cfg.model}, debug={session_cfg.debug}"
+    )
+    print(f"   Config: {cfg.source_path}")
     print("-" * 50)
 
     if interactive:
@@ -3340,21 +3447,26 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
             ]
         )
     else:
-        # Claude Code: sandbox via project settings.json + setting-sources
-        if vanilla:
-            # Vanilla-crew trial: bypass-permissions (yolo) inside the container,
-            # no plan mode, no hooks. Toggle off with POLECAT_VANILLA_CREW=0.
-            cmd = [
-                "claude",
-                "--dangerously-skip-permissions",
-                "--setting-sources=user,project",
-            ]
-        else:
+        # Claude Code: sandbox via project settings.json + setting-sources.
+        # hooks_enabled=False ⇒ bypass permissions and skip the plan-mode prompt
+        # (matches the in-container hook router exit). hooks_enabled=True keeps
+        # plan mode and the full hook stack.
+        if session_cfg.hooks_enabled:
             cmd = [
                 "claude",
                 "--permission-mode=plan",
                 "--allow-dangerously-skip-permissions",
                 "--setting-sources=user,project",
+                "--model",
+                session_cfg.model,
+            ]
+        else:
+            cmd = [
+                "claude",
+                "--dangerously-skip-permissions",
+                "--setting-sources=user,project",
+                "--model",
+                session_cfg.model,
             ]
 
     # Append any extra args passed after '--' to the agent command
@@ -3367,13 +3479,13 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
     env["POLECAT_SESSION_TYPE"] = "crew"
     env["POLECAT_CREW_NAME"] = crew_name
     env["POLECAT_WORKTREE"] = str(work_dir)
-    # Claude crew runs in plan mode (--permission-mode=plan); Gemini crew uses
-    # yolo because gemini's plan mode default-denies tools (see crew gemini
-    # branch above). Signal plan mode to the gate engine so it skips the
-    # custodiet ops counter — the gate must not fire when rbg cannot be invoked.
-    # Vanilla-crew trial uses bypass mode for Claude, so plan-mode signalling
-    # is suppressed in that path.
-    if not interactive and not gemini and not vanilla:
+    if session_cfg.debug:
+        env["DEBUG_HOOKS"] = "1"
+    # Claude crew with hooks enabled runs in plan mode; signal that to the
+    # gate engine so it skips the custodiet ops counter (the gate must not
+    # fire when rbg cannot be invoked). Suppressed for hooks-off / gemini /
+    # interactive shell paths.
+    if not interactive and not gemini and session_cfg.hooks_enabled:
         env["POLECAT_APPROVAL_MODE"] = "plan"
 
     # Compute session directory for Claude transcript persistence.
@@ -3387,7 +3499,9 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
     tmp_files: list[Path] = []
     if gemini:
         # Replicate Gemini authentication — creates a temp dir with .gemini/ auth files.
-        tmp_gemini_home = _replicate_gemini_auth(env, work_dir=work_dir, vanilla=vanilla)
+        tmp_gemini_home = _replicate_gemini_auth(
+            env, work_dir=work_dir, hooks_enabled=session_cfg.hooks_enabled
+        )
         if tmp_gemini_home:
             print(f"   Auth: Replicated to {tmp_gemini_home}")
 
@@ -3416,7 +3530,8 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
             tmp_files=tmp_files,
             session_dir=session_dir,
             memory_limit=memory_limit,
-            vanilla=vanilla,
+            cfg=cfg,
+            hooks_enabled=session_cfg.hooks_enabled,
         )
 
         # Copy replicated .gemini/ auth into staging_dir so docker cp injects
@@ -3441,7 +3556,8 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
             tmp_files=tmp_files,
             session_dir=session_dir,
             memory_limit=memory_limit,
-            vanilla=vanilla,
+            cfg=cfg,
+            hooks_enabled=session_cfg.hooks_enabled,
         )
         final_cmd = docker_cmd.cmd
     else:
@@ -3457,7 +3573,8 @@ def crew(ctx, target, extra, name, gemini, interactive, resume, keep, memory, ag
             tmp_files=tmp_files,
             session_dir=session_dir,
             memory_limit=memory_limit,
-            vanilla=vanilla,
+            cfg=cfg,
+            hooks_enabled=session_cfg.hooks_enabled,
         )
         final_cmd = docker_cmd.cmd
     print(f"   Sessions: {session_dir}")
@@ -3688,6 +3805,26 @@ class _IssueTask:
         "PR-locked). Still claims the task to in_progress before running."
     ),
 )
+@click.option(
+    "--hooks/--no-hooks",
+    "hooks_enabled",
+    default=None,
+    help="Override hooks_enabled from polecat.yaml.",
+)
+@click.option("--model", default=None, help="Override the model.")
+@click.option(
+    "--debug/--no-debug",
+    "debug_flag",
+    default=None,
+    help="Override debug from polecat.yaml.",
+)
+@click.option(
+    "--set",
+    "set_overrides",
+    multiple=True,
+    metavar="KEY=VALUE",
+    help="Override an arbitrary config key.",
+)
 @click.pass_context
 def run(
     ctx,
@@ -3701,6 +3838,10 @@ def run(
     no_auto_finish,
     memory,
     force,
+    hooks_enabled,
+    model,
+    debug_flag,
+    set_overrides,
 ):
     """Run a polecat cycle: claim → setup → work → finish.
 
@@ -3974,7 +4115,20 @@ def run(
     # Choose CLI tool based on --gemini flag
     cli_tool = "gemini" if gemini else "claude"
     mode = "interactive" if interactive else "headless"
+    cfg, session_cfg = _resolve_session_config(
+        "run",
+        hooks_enabled=hooks_enabled,
+        model=model,
+        debug=debug_flag,
+        set_overrides=set_overrides,
+    )
     print(f"\n🤖 Starting {cli_tool} agent ({mode})...")
+    print(
+        "   Mode: "
+        f"hooks_enabled={session_cfg.hooks_enabled}, "
+        f"model={session_cfg.model}, debug={session_cfg.debug}"
+    )
+    print(f"   Config: {cfg.source_path}")
     print("-" * 50)
 
     # Build command - gemini and claude have different CLI interfaces
@@ -4003,12 +4157,26 @@ def run(
             # Headless mode with auto-approve
             cmd.extend(["-p", prompt])
     else:
-        # Claude CLI
-        cmd = [
-            "claude",
-            "--dangerously-skip-permissions",
-            "--setting-sources=user,project",
-        ]
+        # Claude CLI. Autonomous workers run bypass-permissions when hooks are
+        # off (the in-container hook router exits 0 anyway); when hooks are
+        # on, plan mode + the hook stack provide the policy boundary.
+        if session_cfg.hooks_enabled:
+            cmd = [
+                "claude",
+                "--permission-mode=plan",
+                "--allow-dangerously-skip-permissions",
+                "--setting-sources=user,project",
+                "--model",
+                session_cfg.model,
+            ]
+        else:
+            cmd = [
+                "claude",
+                "--dangerously-skip-permissions",
+                "--setting-sources=user,project",
+                "--model",
+                session_cfg.model,
+            ]
 
         if interactive:
             # Interactive: just append the prompt as positional arg
@@ -4021,6 +4189,8 @@ def run(
     # Use sanitized env: SSH stripped, git auth set to bot token only
     env = _make_worker_env(interactive=interactive, work_dir=worktree_path)
     env["POLECAT_SESSION_TYPE"] = "polecat"
+    if session_cfg.debug:
+        env["DEBUG_HOOKS"] = "1"
 
     # Resolve container memory limit and check daemon memory
     memory_limit, daemon_mem = _init_container_memory(memory, manager, env)
@@ -4033,9 +4203,9 @@ def run(
 
     if gemini:
         # Replicate Gemini authentication — creates a temp dir with .gemini/ auth files.
-        # Autonomous workers always run with full policies (vanilla=False);
-        # the vanilla-crew trial only applies to interactive `crew` sessions.
-        tmp_gemini_home = _replicate_gemini_auth(env, work_dir=worktree_path, vanilla=False)
+        tmp_gemini_home = _replicate_gemini_auth(
+            env, work_dir=worktree_path, hooks_enabled=session_cfg.hooks_enabled
+        )
         if tmp_gemini_home:
             print(f"   Auth: Replicated to {tmp_gemini_home}")
 
@@ -4055,6 +4225,8 @@ def run(
             tmp_files=tmp_files,
             session_dir=run_session_dir,
             memory_limit=memory_limit,
+            cfg=cfg,
+            hooks_enabled=session_cfg.hooks_enabled,
         )
 
         # Copy replicated .gemini/ auth into staging_dir so docker cp injects
@@ -4079,6 +4251,8 @@ def run(
             tmp_files=tmp_files,
             session_dir=run_session_dir,
             memory_limit=memory_limit,
+            cfg=cfg,
+            hooks_enabled=session_cfg.hooks_enabled,
         )
         final_cmd = docker_cmd.cmd
     print(f"   Sessions: {run_session_dir}")

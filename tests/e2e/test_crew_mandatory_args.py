@@ -9,7 +9,27 @@ def _write_registry(sessions_dir, projects):
     import yaml
 
     sessions_dir.mkdir(parents=True, exist_ok=True)
-    (sessions_dir / "projects.yaml").write_text(yaml.dump({"projects": projects}))
+    config = {
+        "session_defaults": {
+            "hooks_enabled": True,
+            "model": "claude-sonnet-4-6",
+            "debug": False,
+            "gates": {
+                "handover": "warn",
+                "qa": "warn",
+                "enforcer": "warn",
+                "commit": "warn",
+                "hydration": "off",
+                "enforcer_threshold": 50,
+            },
+        },
+        "crew_defaults": {},
+        "run_defaults": {},
+        "docker": {"image": "aops-crew"},
+        "external_agents": {},
+        "projects": projects,
+    }
+    (sessions_dir / "polecat.yaml").write_text(yaml.dump(config))
 
 
 def _write_overlay(home, paths):
@@ -34,6 +54,7 @@ def temp_polecat_home(tmp_path):
 
 def _env(temp_polecat_home):
     env = os.environ.copy()
+    env["AOPS"] = os.getcwd()
     env["POLECAT_HOME"] = str(temp_polecat_home)
     env["AOPS_SESSIONS"] = str(temp_polecat_home.parent / "sessions")
     env["PYTHONPATH"] = os.getcwd() + "/polecat" + ":" + os.getcwd() + "/aops-core"

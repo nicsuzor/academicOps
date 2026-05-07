@@ -52,7 +52,7 @@ from lib.transcript_parser import (  # noqa: E402
 
 
 def _load_transcript_config() -> dict:
-    """Load transcript config from $AOPS_SESSIONS/projects.yaml.
+    """Load transcript config from $AOPS_SESSIONS/polecat.yaml.
 
     Returns the 'transcripts' section, or empty dict if not found.
     Example config:
@@ -60,7 +60,7 @@ def _load_transcript_config() -> dict:
           exclude_projects:
             - sessions
     """
-    registry = get_sessions_repo() / "projects.yaml"
+    registry = get_sessions_repo() / "polecat.yaml"
     if not registry.exists():
         return {}
     try:

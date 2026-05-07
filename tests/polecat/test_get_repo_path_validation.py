@@ -12,7 +12,7 @@ User preference (CORE.md): fail fast. Silent defaults are wrong.
 These tests lock in the new contract:
 - ``get_repo_path`` raises ``ValueError`` when ``task.project`` is falsy.
 - ``get_repo_path`` raises ``ValueError`` when ``task.project`` is unknown
-  (not configured in ``projects.yaml`` and no bare mirror on disk).
+  (not configured in ``polecat.yaml`` and no bare mirror on disk).
 - ``get_repo_path`` still returns the configured path for known projects.
 - ``_do_setup_worktree`` / ``setup_worktree`` refuse to operate without a
   project — no clone attempt happens.
