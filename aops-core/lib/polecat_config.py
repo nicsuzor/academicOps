@@ -189,7 +189,14 @@ def _validate_gates(raw: dict[str, Any], allow_partial: bool = False) -> dict[st
         elif not allow_partial:
             raise ValueError(f"missing required gates.{name}")
     if "enforcer_threshold" in raw:
-        out["enforcer_threshold"] = int(raw["enforcer_threshold"])
+        val = raw["enforcer_threshold"]
+        try:
+            out["enforcer_threshold"] = int(val)
+        except (ValueError, TypeError) as exc:
+            raise RuntimeError(
+                f"polecat config: gates.enforcer_threshold must be an integer"
+                f" (got {type(val).__name__}: {val!r})"
+            ) from exc
     elif not allow_partial:
         raise ValueError("missing required gates.enforcer_threshold")
     unknown = set(raw) - {

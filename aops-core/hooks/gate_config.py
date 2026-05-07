@@ -414,11 +414,11 @@ SPAWN_TOOLS: dict[str, tuple[tuple[str, ...], bool]] = {
 import sys as _sys
 from pathlib import Path as _Path
 
-_LIB_DIR = _Path(__file__).resolve().parent.parent / "lib"
-if str(_LIB_DIR) not in _sys.path:
-    _sys.path.insert(0, str(_LIB_DIR))
+_ROOT_DIR = _Path(__file__).resolve().parent.parent
+if str(_ROOT_DIR) not in _sys.path:
+    _sys.path.insert(0, str(_ROOT_DIR))
 
-from polecat_config import load_polecat_config  # noqa: E402
+from lib.polecat_config import load_polecat_config  # noqa: E402
 
 _GATE_MODE_NAMES = {
     "HANDOVER_GATE_MODE": "handover",
