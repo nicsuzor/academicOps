@@ -143,8 +143,8 @@ class TestEnforcerTemplateDispatch:
     """Regression guard: enforcer templates must dispatch aops-core:rbg.
 
     Bug: templates previously dispatched aops-core:enforcer, which does not
-    exist in aops-core. When aops-cowork was also loaded, Claude resolved the
-    name to aops-cowork:enforcer, producing a hydration loop.
+    exist in aops-core, producing a hydration loop when name resolution
+    fell through.
     """
 
     TEMPLATES_DIR = Path(__file__).parent.parent.parent / "aops-core" / "hooks" / "templates"

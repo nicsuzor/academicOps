@@ -25,7 +25,7 @@ This is the SSoT for per-agent authority. Extends the principles in `.agents/ENF
 | pauli  | PKB curator     | `**/*` | _none on disk_ (PKB writes go through MCP)                 | _none_                                                                        | _none_                    | remember, planner, strategic-review                | shell; filesystem writes                                                |
 | rbg    | Judge / editor  | `**/*` | `**/*.md`, `**/*.py`, `**/*.yaml`, `**/*.yml`, `**/*.json` | _none_ (intentionally non-shelling — string-edit only)                        | _none_                    | _none_                                             | `**/.env*`, `**/secrets/**`; shell                                      |
 | marsha | QA / verifier   | `**/*` | _none_ ("Modify code yourself — report only")              | `pytest`, `ruff`, `fs:read`, `net:http`, `pkg:install`, `git:read`, `gh:read` | rbg                       | qa                                                 | source writes; `git:write`; `gh:write`                                  |
-| jr     | Router / butler | `**/*` | `.agents/CAPABILITIES.md`, `.agents/README.md` only        | `git:read`, `gh:read`, `fs:read`, narrow `fs:write`                           | james, rbg, marsha, pauli | aops, planner, qa, research, dump, daily, remember | `.agents/CORE.md`, `.agents/BUTLER.md`, `.agents/rules/**`; `git:write` |
+| junior | Router / butler | `**/*` | `.agents/CAPABILITIES.md`, `.agents/README.md` only        | `git:read`, `gh:read`, `fs:read`, narrow `fs:write`                           | james, rbg, marsha, pauli | aops, planner, qa, research, dump, daily, remember | `.agents/CORE.md`, `.agents/BUTLER.md`, `.agents/rules/**`; `git:write` |
 
 ## GitHub actions
 

@@ -230,4 +230,4 @@ Age is not a staleness signal. Never cancel based on age alone. Only cancel when
 
 ## Dispatch Specialist-Owned Tasks (P#124)
 
-When operating as supervisor (top-level interactive session) and a claimed task has an `assignee` matching a specialist sub-agent namespace (`aops-core:<name>`, `aops-cowork:<name>`, or the bare name `polecat`), the main agent MUST dispatch via the Agent tool with `subagent_type` set to the bare name — NOT execute inline with Read/Grep/Bash. See `/pull` Step 1.7 for the short-circuit. Inline execution by the supervisor erases the specialist's audit trail and bypasses the agent's specialised prompt.
+When operating as supervisor (top-level interactive session) and a claimed task has an `assignee` matching a specialist sub-agent namespace (`aops-core:<name>` or the bare name `polecat`), the main agent MUST dispatch via the Agent tool with `subagent_type` set to the bare name — NOT execute inline with Read/Grep/Bash. See `/pull` Step 1.7 for the short-circuit. Inline execution by the supervisor erases the specialist's audit trail and bypasses the agent's specialised prompt.

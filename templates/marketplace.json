@@ -18,16 +18,6 @@
       "category": "productivity"
     },
     {
-      "name": "aops-cowork",
-      "description": "academicOps for Cowork - stripped-down plugin with skills, agents, and tools (no hooks/scripts)",
-      "version": "__COWORK_VERSION__",
-      "author": {
-        "name": "Nicolas Suzor"
-      },
-      "source": "./aops-cowork",
-      "category": "productivity"
-    },
-    {
       "name": "aops-tools",
       "description": "AcademicOps domain skills - fungible academic tools for research workflows (PDF, data analysis, document conversion, diagramming)",
       "version": "__VERSION__",
