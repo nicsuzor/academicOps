@@ -62,7 +62,7 @@ def _assistant_entry(uuid: str, ts: str, text: str) -> dict:
 
 
 class TestParserSkipsReplay:
-    """Bug-mode: cowork emits a duplicate user entry with isReplay=True."""
+    """Bug-mode: a replay user entry (isReplay=True) must be dropped."""
 
     def test_replay_user_entry_dropped(self, tmp_path: Path) -> None:
         """Entry with isReplay=true MUST NOT produce a turn or event."""
@@ -190,7 +190,7 @@ class TestExtractTimelineEventsIdempotent:
         ts = datetime(2026, 4, 28, 2, 10, 4, tzinfo=UTC)
         tool_block = {
             "type": "tool",
-            "tool_name": "mcp__plugin_aops-cowork_pkb__create_task",
+            "tool_name": "mcp__plugin_aops-core_pkb__create_task",
             "tool_input": {"title": "demo task", "project": "demo"},
         }
         turn = ConversationTurn(

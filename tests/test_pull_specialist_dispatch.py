@@ -2,7 +2,7 @@
 
 Verifies that the /pull command file contains an explicit pre-EXECUTE
 short-circuit that dispatches to a specialist sub-agent when the task's
-assignee names one (aops-core:*, aops-cowork:*, or bare `polecat`).
+assignee names one (aops-core:* or bare `polecat`).
 
 Also verifies the corresponding heuristic exists in HEURISTICS.md.
 """
@@ -36,9 +36,9 @@ class TestPullSpecialistDispatch:
         ), "Step 1.7 (Specialist Agent Dispatch) heading missing from /pull"
 
     def test_pull_lists_namespace_prefixes(self) -> None:
-        """The dispatch rule must list aops-core:, aops-cowork:, and polecat."""
+        """The dispatch rule must list aops-core: and polecat."""
         content = PULL_PATH.read_text(encoding="utf-8")
-        for needle in ("aops-core:", "aops-cowork:", "polecat"):
+        for needle in ("aops-core:", "polecat"):
             assert needle in content, f"specialist namespace {needle!r} missing from /pull"
 
     def test_pull_dispatches_via_agent_tool(self) -> None:

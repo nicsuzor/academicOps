@@ -79,7 +79,6 @@ If the claimed task — or its parent epic — has an `assignee` that names a sp
 **Specialist namespaces** (match against `assignee`):
 
 - `aops-core:<name>` → dispatch with `subagent_type="<name>"` (strip the `aops-core:` prefix)
-- `aops-cowork:<name>` → dispatch with `subagent_type="<name>"` (strip the `aops-cowork:` prefix)
 - `polecat` (bare name) → dispatch with `subagent_type="polecat"`
 
 Known specialist names include `marsha`, `rbg`, `pauli`, `james`, `junior`, `qa`, `enforcer`, `polecat`. Any value matching the namespace patterns above is treated as a specialist regardless of whether the bare name is recognised — the namespace itself is the trigger.
