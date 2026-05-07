@@ -24,13 +24,28 @@ if str(REPO_ROOT / "polecat") not in sys.path:
 from manager import PolecatManager
 
 GH_FIELDS = [
-    "number", "title", "url", "state", "isDraft", "author",
-    "createdAt", "updatedAt", "mergedAt", "closedAt",
-    "headRefName", "baseRefName", "body",
-    "mergeable", "reviewDecision", "statusCheckRollup", "labels", "mergeStateStatus"
+    "number",
+    "title",
+    "url",
+    "state",
+    "isDraft",
+    "author",
+    "createdAt",
+    "updatedAt",
+    "mergedAt",
+    "closedAt",
+    "headRefName",
+    "baseRefName",
+    "body",
+    "mergeable",
+    "reviewDecision",
+    "statusCheckRollup",
+    "labels",
+    "mergeStateStatus",
 ]
 
 BODY_LIMIT = 2048
+
 
 def fetch_prs(repo_path: Path, state: str, limit: int = 50) -> list:
     """Fetch PRs for a specific repo and state."""
@@ -38,20 +53,19 @@ def fetch_prs(repo_path: Path, state: str, limit: int = 50) -> list:
         return []
 
     cmd = [
-        "gh", "pr", "list",
-        "--state", state,
-        "--limit", str(limit),
-        "--json", ",".join(GH_FIELDS)
+        "gh",
+        "pr",
+        "list",
+        "--state",
+        state,
+        "--limit",
+        str(limit),
+        "--json",
+        ",".join(GH_FIELDS),
     ]
 
     try:
-        result = subprocess.run(
-            cmd,
-            cwd=repo_path,
-            capture_output=True,
-            text=True,
-            check=True
-        )
+        result = subprocess.run(cmd, cwd=repo_path, capture_output=True, text=True, check=True)
         data = json.loads(result.stdout)
 
         # Truncate body
@@ -66,6 +80,7 @@ def fetch_prs(repo_path: Path, state: str, limit: int = 50) -> list:
     except Exception as e:
         print(f"Error processing {state} PRs for {repo_path.name}: {e}", file=sys.stderr)
         raise e
+
 
 def main():
     manager = PolecatManager()
@@ -86,7 +101,7 @@ def main():
     report = {
         "generated_at": datetime.now(UTC).isoformat(),
         "generator": "repo-sync-cron",
-        "repos": {}
+        "repos": {},
     }
 
     for slug, proj in manager.projects.items():
@@ -100,7 +115,7 @@ def main():
             "fetched_at": datetime.now(UTC).isoformat(),
             "open_prs": [],
             "recent_merged": [],
-            "recent_closed": []
+            "recent_closed": [],
         }
 
         try:
@@ -118,6 +133,7 @@ def main():
 
     tmp_path.rename(output_path)
     print(f"PR state dumped to {output_path}")
+
 
 if __name__ == "__main__":
     main()
