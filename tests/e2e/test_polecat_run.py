@@ -18,6 +18,7 @@ import pytest
 def _polecat_env(polecat_home, sessions_dir=None):
     """Build an env dict for running polecat CLI."""
     env = os.environ.copy()
+    env["AOPS"] = os.getcwd()
     env["POLECAT_HOME"] = str(polecat_home)
     if sessions_dir is not None:
         env["AOPS_SESSIONS"] = str(sessions_dir)
@@ -66,7 +67,7 @@ def temp_polecat_home(tmp_path):
     """Create a polecat home directory and an empty sessions registry.
 
     Returns the polecat home; the sessions registry sits at
-    `tmp_path / "sessions" / "projects.yaml"`. Tests that need to drive the
+    `tmp_path / "sessions" / "polecat.yaml"`. Tests that need to drive the
     CLI must pass `sessions_dir=tmp_path / "sessions"` to `_polecat_env`.
     """
     import yaml
@@ -75,7 +76,24 @@ def temp_polecat_home(tmp_path):
     home.mkdir(exist_ok=True)
     sessions = tmp_path / "sessions"
     sessions.mkdir(exist_ok=True)
-    (sessions / "projects.yaml").write_text(yaml.dump({"projects": {}}))
+    config = {
+        "session_defaults": {
+            "hooks_enabled": True,
+            "model": "claude-sonnet-4-6",
+            "gates": {
+                "handover": "warn",
+                "qa": "warn",
+                "enforcer": "warn",
+                "commit": "warn",
+                "hydration": "off",
+            },
+        },
+        "crew_defaults": {},
+        "run_defaults": {},
+        "docker": {"image": "aops-crew"},
+        "projects": {},
+    }
+    (sessions / "polecat.yaml").write_text(yaml.dump(config))
     return home
 
 

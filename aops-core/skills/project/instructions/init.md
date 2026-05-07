@@ -593,7 +593,7 @@ to retry. Do not delete the local repo.
 ### Register with polecat (git-native propagation)
 
 Per decision `epic-fe52f422`, polecat registration is git-native: edit the
-sessions repo's `projects.yaml`, commit, and push. The registry is portable —
+sessions repo's `polecat.yaml`, commit, and push. The registry is portable —
 no machine-local data lives in it. Path resolution happens at read-time via
 convention (`$AOPS_SRC_DIR/<repo>`) with overrides in
 `$POLECAT_HOME/local.yaml`.
@@ -607,7 +607,7 @@ git pull --rebase                 # avoid stale-write conflicts
 Check for an existing entry before appending (idempotency):
 
 ```bash
-grep -E "^\s*<slug>:" "$AOPS_SESSIONS/projects.yaml" && echo "EXISTS"
+grep -E "^\s*<slug>:" "$AOPS_SESSIONS/polecat.yaml" && echo "EXISTS"
 ```
 
 If the slug already appears, **HALT** and ask the user whether to reuse it,
@@ -622,7 +622,7 @@ rename, or abort. Otherwise append (note: no `path:` — that's machine-local):
 Commit and push:
 
 ```bash
-git add projects.yaml
+git add polecat.yaml
 git commit -m "chore(projects): register <slug>"
 git push
 ```

@@ -34,7 +34,7 @@ fail() { echo -e "  ${RED}FAIL${NC}  $1"; ERRORS=$((ERRORS + 1)); }
 
 AOPS="${AOPS:-$(cd "$(dirname "$0")/.." && pwd)}"
 AOPS_SESSIONS="${AOPS_SESSIONS:-${POLECAT_HOME:-${HOME}/.polecat}/sessions}"
-MASTER_REGISTRY="${AOPS_SESSIONS}/projects.yaml"
+MASTER_REGISTRY="${AOPS_SESSIONS}/polecat.yaml"
 
 echo -e "${BOLD}academicOps machine setup${NC}"
 echo ""

@@ -2562,7 +2562,7 @@ def _sync_working_repo(
 def sync(ctx, check, quiet, mirrors_only):
     """Sync all git repos: working repos and bare mirrors.
 
-    Fetches, pulls, and pushes working repos defined in $AOPS_SESSIONS/projects.yaml.
+    Fetches, pulls, and pushes working repos defined in $AOPS_SESSIONS/polecat.yaml.
     Also updates bare mirrors used by polecat workers.
 
     Working repos are only pulled/pushed if clean.
@@ -2778,7 +2778,7 @@ def nuke(ctx, target, force, allow_unpushed):
                     # A malformed task raises ValueError from get_repo_path.
                     # Two distinct cases:
                     #   1. task.project is None/empty — structural data problem.
-                    #   2. task.project names a project removed from projects.yaml
+                    #   2. task.project names a project removed from polecat.yaml
                     #      — the project is no longer resolvable, so this
                     #      worktree will be silently skipped on every sweep and
                     #      never automatically cleaned up.

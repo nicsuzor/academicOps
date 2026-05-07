@@ -27,7 +27,7 @@ from manager import PolecatManager  # noqa: E402
 def _make_manager(tmp_path: Path) -> PolecatManager:
     """Return a minimal PolecatManager backed by a temp directory."""
     # Patch load_config / load_projects / load_crew_names to avoid needing
-    # a real projects.yaml on disk.
+    # a real polecat.yaml on disk.
     with (
         patch("manager.load_config", return_value={}),
         patch("manager.load_projects", return_value={}),

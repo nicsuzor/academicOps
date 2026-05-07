@@ -126,7 +126,7 @@ Include direct PR URLs. Do not rank buckets or say "tackle X first".
 
 **Graceful degradation**: If `gh` CLI is unavailable or authentication fails, note the gap in natural language ("GitHub CLI unavailable — skipped workflow monitoring") and continue. Never error or produce empty table structures.
 
-**Repo list**: Use the project registry from `$AOPS_SESSIONS/projects.yaml`. Configurable — repos are added/removed by editing the sessions-repo registry.
+**Repo list**: Use the project registry from `$AOPS_SESSIONS/polecat.yaml`. Configurable — repos are added/removed by editing the sessions-repo registry.
 
 **Artefact dependency**: This subsection AND the Task Sweep below both consume `$ACA_DATA/state/pr-state.json`, produced by /sleep Phase 6 Activity 4a. `/daily` does not re-run `gh pr list` itself. If the artefact is older than **24 hours** (or missing), the subsection reports "stale" with a one-line note pointing the user to `/sleep` to refresh — see [[instructions/workflow-monitor]] §"Step 6.2: Read PR State From Sleep Artefact" for the exact rendering rules.
 

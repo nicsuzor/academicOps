@@ -35,7 +35,7 @@ def _write_registry(tmp_path: Path, registry: dict) -> Path:
 
     sessions = tmp_path / "sessions"
     sessions.mkdir(exist_ok=True)
-    cfg = sessions / "projects.yaml"
+    cfg = sessions / "polecat.yaml"
     cfg.write_text(yaml.dump(registry))
     return cfg
 

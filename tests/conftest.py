@@ -302,8 +302,8 @@ def ensure_test_environment(monkeypatch, tmp_path):
 
     # Seed a polecat.yaml inside the per-test sessions dir; clear the
     # module-level AOPS_POLECAT_CONFIG override so $AOPS_SESSIONS/polecat.yaml
-    # is what tests resolve. Test fixtures that swap projects.yaml content for
-    # polecat.yaml (tests/polecat/conftest.py:write_polecat_test_config) write
+    # is what tests resolve. Test fixtures that swap polecat.yaml content
+    # (tests/polecat/conftest.py:write_polecat_test_config) write
     # to the same path and replace this default.
     if _POLECAT_EXAMPLE.exists():
         (sessions_dir / "polecat.yaml").write_text(_POLECAT_EXAMPLE.read_text())
