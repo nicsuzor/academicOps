@@ -34,17 +34,33 @@ Pull tasks with `due` ≤ 7 days via `mcp__pkb__list_tasks(format=json)` and sor
 - [task-id] [[Title]] — due YYYY-MM-DD (Nd away / overdue Nd)
 ```
 
-### 3.3a: High-Focus Surface
+### 3.3a: High-Focus Surface (Target-Driven Grouping)
 
-After the deadline list, emit a short factual block of the top 5 tasks ranked by composite `focus_score` — restricted to `status` in {`queued`, `ready`, `in_progress`}. `focus_score` is the canonical composite (embeds severity, priority, downstream weight, urgency, stakeholder waiting; see [[multi-parent]] §7). Use `mcp__pkb__list_tasks(status=["queued","ready","in_progress"], limit=100, format="json")` and read each task's `focus_score` field; sort descending. Load this once and reuse the result for the §3.3b SEV4 count. List one per line:
+After the deadline list, emit a factual block of the top 5–10 tasks ranked by composite `focus_score` — restricted to `status` in {`queued`, `ready`, `in_progress`}. `focus_score` is the canonical composite (embeds severity, priority, downstream weight, urgency, stakeholder waiting; see [[multi-parent]] §7).
+
+**Loading and Grouping Logic**:
+
+1. Use `mcp__pkb__list_tasks(status=["queued","ready","in_progress"], limit=100, format="json")` and sort by `focus_score` descending.
+2. **Threshold**: Identify tasks with `urgency >= 100` (default threshold; configurable via session context).
+3. **Badging**: For any task in the top list, check for `contributes_to` edges (call `mcp__pkb__get_task` for the top candidates if the list output lacks edge details). If a task contributes to a target with `severity >= 3`, prepare an inline badge `[→[[Target Title]]]`.
+4. **Split the display** into two sub-groups:
+   - **Target-propagated urgency (SEV3+)**: Tasks meeting the urgency threshold.
+   - **Other high-focus work**: Other top tasks.
+
+List each on its own line:
 
 ```
 High-focus:
+Target-propagated (SEV3+):
+- [task-id] [[Title]] [→[[Target Title]]] — focus 0.95 (urgency 1000)
+- [task-id] [[Title]] [→[[Target Title]]] — focus 0.92 (urgency 1000)
+
+Other:
 - [task-id] [[Title]] — focus 0.83 (SEV3, due 2026-05-02)
 - [task-id] [[Title]] — focus 0.61 (SEV2)
 ```
 
-This is **factual surfacing**, not ranking-as-recommendation — it reports what the graph computes, the user still decides what to work on. If `focus_score` is absent or zero across all tasks (mem-side emission not yet landed), omit this block entirely rather than falling back to an alternative ordering. Do **not** call focus_score a "priority" or attach editorial framing. Component fields like `urgency` may be filtered/displayed for debug, but ranking always goes through `focus_score`.
+This is **factual surfacing**, not ranking-as-recommendation — it reports what the graph computes. If `focus_score` is absent or zero across all tasks, omit this block entirely. Component fields like `urgency` may be filtered/displayed for debug, but ranking always goes through `focus_score`.
 
 ### 3.3b: SEV4 Concurrency-Cap Warning
 
