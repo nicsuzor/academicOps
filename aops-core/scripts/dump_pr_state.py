@@ -64,7 +64,8 @@ _CHECK_KEEP = ("name", "conclusion", "status")
 
 
 def _project_pr(pr: dict, *, is_open: bool) -> dict:
-    if author := pr.get("author"):
+    author = pr.get("author") or {}
+    if author and isinstance(author, dict):
         pr["author"] = {k: author[k] for k in _AUTHOR_KEEP if k in author}
     if is_open:
         pr["statusCheckRollup"] = [
