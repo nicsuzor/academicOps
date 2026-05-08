@@ -506,8 +506,13 @@ def parse_session_handover(text: str) -> dict[str, Any] | None:
     Returns:
         Dict mapped to reflection schema, or None if no handover found
     """
-    _SECTION_END = r"(?=\n#{1,4}\s|\n---|\Z)"
-    pattern = rf"### Session Handover[^\S\n]*\n(.*?){_SECTION_END}"
+    # Match Session Handover at H2-H6. Agents emit at varying levels in
+    # practice (the abridged-transcript renderer wraps each turn in headings,
+    # so an agent's "### Session Handover" gets pushed deeper). Trend review
+    # 2026-05-08 found 100% of emitted handovers used `##### Session Handover`
+    # while this regex only matched `###`, rendering them all parser-invisible.
+    _SECTION_END = r"(?=\n#{1,6}\s|\n---|\Z)"
+    pattern = rf"#{{2,6}} Session Handover[^\S\n]*\n(.*?){_SECTION_END}"
     match = re.search(pattern, text, re.DOTALL | re.IGNORECASE)
     if not match:
         return None

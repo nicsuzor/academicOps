@@ -6,7 +6,7 @@ unstructured fallback, outcome inference, and edge cases.
 
 from __future__ import annotations
 
-from lib.transcript_parser import parse_framework_reflection
+from lib.transcript_parser import parse_framework_reflection, parse_session_handover
 
 
 class TestStandardHeadingFormat:
@@ -399,3 +399,55 @@ Handover complete.
         assert result is not None
         assert result.get("inferred") is True
         assert "single-feature session" in result["summary"]
+
+
+class TestSessionHandoverHeadingLevels:
+    """Regression tests: parser must accept Session Handover at any heading
+    level H2-H6. Trend review 2026-05-08 found 100% of emitted handovers
+    in the May 1-8 corpus used ##### (5 hashes) because the abridged-transcript
+    renderer pushes agent-emitted ### deeper. Prior parser only matched ### and
+    silently ignored every emitted handover.
+    """
+
+    _BODY = """\
+
+- **Session ID**: `abc123`
+- **Primary Task**: `task-deadbeef` (test fixture)
+- **PR**: https://github.com/x/y/pull/1
+- **Branch**: `main`
+- **Summary**: Test handover.
+
+### Hook: Stop ✓
+"""
+
+    def test_handover_at_h3_canonical(self):
+        text = "### Session Handover" + self._BODY
+        result = parse_session_handover(text)
+        assert result is not None
+        assert result["session_id"] == "`abc123`"
+        assert result["pr_url"] == "https://github.com/x/y/pull/1"
+
+    def test_handover_at_h5_observed_in_corpus(self):
+        text = "##### Session Handover" + self._BODY
+        result = parse_session_handover(text)
+        assert result is not None, (
+            "##### Session Handover must parse — this was the dominant emitted form May 1-8"
+        )
+        assert result["session_id"] == "`abc123`"
+        assert result["pr_url"] == "https://github.com/x/y/pull/1"
+
+    def test_handover_at_h2(self):
+        text = "## Session Handover" + self._BODY
+        result = parse_session_handover(text)
+        assert result is not None
+
+    def test_handover_at_h6(self):
+        text = "###### Session Handover" + self._BODY
+        result = parse_session_handover(text)
+        assert result is not None
+
+    def test_h1_still_rejected(self):
+        # H1 is reserved for the document title; not a valid handover heading.
+        text = "# Session Handover" + self._BODY
+        result = parse_session_handover(text)
+        assert result is None
