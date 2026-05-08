@@ -10,14 +10,15 @@ Before syncing progress, run a sweep of tasks in `merge_ready` and `review` stat
 
 > **Note**: The `polecat sweep` shell command was removed (see task-9fa50763) because the supervisor agent loop already handles PR-state transitions in-band via `gh pr view` + Monitor. Run the agent-side sweep below directly.
 
-**Agent-side sweep** (approximates SKILL.md Step 7 — intentionally simplified for daily-skill context; uses per-PR queries rather than a batch fetch and omits the stale-flag step):
+**Agent-side sweep** (SSoT: SKILL.md Step 7):
 
 1. Call `list_tasks(status="merge_ready")` and `list_tasks(status="review")` to get all candidate tasks.
-2. For tasks with a `pr_url` in frontmatter: query the PR state via `gh pr view <number> --json state,mergedAt,url`. If `state == "MERGED"`, call `complete_task` with the merge timestamp + URL as evidence.
-3. For tasks **without** a `pr_url`: match by `headRefName` substring or task ID in PR body against merged PRs fetched in Step 4.2.5. Same auto-complete rule applies.
-4. **Sent-email evidence**: For tasks where the completion signal is a sent email (e.g., reply-required tasks from `/email`), cross-reference against recent sent items. Auto-close (using `mcp__pkb__complete_task`) only when the match is unambiguous — same correspondent, subject line matching (using whole-word boundaries), sent after task creation within ~48 hours.
-5. **Ambiguous cases**: Surface in the daily note under "Needs your call" in "What Needs Attention" (see [[instructions/workflow-monitor]] Step 6.5). Never auto-close ambiguous cases.
-6. **Report** in Work Log: `N tasks auto-closed from merged PRs`, `N tasks auto-closed from sent emails`, `N flagged for user decision`.
+2. **Read merge evidence from `$AOPS_SESSIONS/state/pr-state.json`** (produced by `repo-sync-cron`). The artefact contains, per tracked repo, recent merged-PR records (number, title, url, mergedAt, headRefName, body excerpt, matched task ID).
+3. For each task, look up the artefact's merged-PR records: PR number already linked on the task, `pr_url` in frontmatter, task ID in PR body, `headRefName` matching the task's linked branch, or PR title matching the task title (whole-word boundaries).
+4. **Auto-complete clear cases**: If a merged PR is found matching the task, call `mcp__pkb__complete_task` with a completion note including the PR URL and merge timestamp as evidence. No human confirmation needed — the merge is sufficient evidence.
+5. **Sent-email evidence**: For tasks where the completion signal is a sent email (e.g., reply-required tasks from `/email`), cross-reference against recent sent items. Auto-close (using `mcp__pkb__complete_task`) only when the match is unambiguous — same correspondent, subject line matching (using whole-word boundaries), sent after task creation within ~48 hours.
+6. **Ambiguous cases**: Surface in the daily note under "Needs your call" in "What Needs Attention" (see [[instructions/workflow-monitor]] Step 6.5). Never auto-close ambiguous cases.
+7. **Report** in Work Log: `N tasks auto-closed from merged PRs`, `N tasks auto-closed from sent emails`, `N flagged for user decision`.
 
 **Steps 4.1, 4.1.5, 4.2, and 4.2.5 — run in parallel.** These data-gathering steps are independent: they read from different sources (shell scripts, PKB, session JSONs, GitHub) and produce separate outputs that are merged only at composition time. Agent teams should dispatch concurrent subagents for each; single-agent environments should issue all data-fetching tool calls simultaneously rather than sequentially.
 

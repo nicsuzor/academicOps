@@ -161,13 +161,13 @@ The framework is designed to work with minimal configuration. Default values are
 2. `~/.env.local` file
 3. Framework defaults (e.g., local `pkb` binary for MCP)
 
-| Variable              | Purpose                                       | Default                  |
-| --------------------- | --------------------------------------------- | ------------------------ |
-| `ACA_DATA`              | Your personal knowledge base root               | Required (no default)    |
-| `AOPS_SESSIONS`         | Sessions repo (holds `polecat.yaml` registry)   | `$POLECAT_HOME/sessions` |
-| `AOPS_SRC_DIR`          | Default search root for project repos           | `~/src`                  |
-| `PKB_MCP_URL`           | Endpoint for the PKB MCP server                 | (local stdio fallback)   |
-| `AOPS_POLECAT_CONFIG`   | Explicit path to `polecat.yaml` (skips env resolution) | (resolved via `$AOPS_SESSIONS`) |
+| Variable              | Purpose                                                | Default                         |
+| --------------------- | ------------------------------------------------------ | ------------------------------- |
+| `ACA_DATA`            | Your personal knowledge base root                      | Required (no default)           |
+| `AOPS_SESSIONS`       | Sessions repo (holds `polecat.yaml` registry)          | `$POLECAT_HOME/sessions`        |
+| `AOPS_SRC_DIR`        | Default search root for project repos                  | `~/src`                         |
+| `PKB_MCP_URL`         | Endpoint for the PKB MCP server                        | (local stdio fallback)          |
+| `AOPS_POLECAT_CONFIG` | Explicit path to `polecat.yaml` (skips env resolution) | (resolved via `$AOPS_SESSIONS`) |
 
 The project registry is the checked-in `$AOPS_SESSIONS/polecat.yaml`. Path
 resolution is convention-based (`$AOPS_SRC_DIR/<repo>`); for off-convention
