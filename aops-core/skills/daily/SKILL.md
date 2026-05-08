@@ -128,7 +128,7 @@ Include direct PR URLs. Do not rank buckets or say "tackle X first".
 
 **Repo list**: Use the project registry from `$AOPS_SESSIONS/polecat.yaml`. Configurable — repos are added/removed by editing the sessions-repo registry.
 
-**Artefact dependency**: This subsection AND the Task Sweep below both consume `$AOPS_SESSIONS/state/pr-state.json`, produced by `repo-sync-cron`. `/daily` does not re-run `gh pr list` itself. If the artefact is older than **24 hours** (or missing), the subsection reports "stale" with a one-line note pointing the user to `repo-sync-cron` to refresh — see [[instructions/workflow-monitor]] §"Step 6.2: Read PR State From repo-sync-cron Artefact" for the exact rendering rules.
+**Artefact dependency**: This subsection AND the Task Sweep below both consume `$AOPS_SESSIONS/state/pr-state.json`, produced by `repo-sync-cron`. `/daily` does not re-run `gh pr list` itself. If the artefact is older than **24 hours** (or missing), the subsection reports "stale" with a one-line note pointing the user to `scripts/repo-sync-cron.sh` to refresh — see [[instructions/workflow-monitor]] §"Step 6.2: Read PR State From repo-sync-cron Artefact" for the exact rendering rules.
 
 > See [[instructions/workflow-monitor]] for the full procedure.
 

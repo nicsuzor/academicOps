@@ -20,7 +20,7 @@ test -f "$AOPS_SESSIONS/state/pr-state.json" && cat "$AOPS_SESSIONS/state/pr-sta
 
 The artefact contains, per repo, the bucketed open PR list (Ready to merge / Needs review / Needs fixes / Stale / Draft) plus the timestamp of the producing `repo-sync-cron` run.
 
-**Staleness threshold (concrete)**: If `pr-state.json` is older than **24 hours** (or missing entirely), render Outstanding Workflows with a single inline note: `Outstanding Workflows: stale (last repo-sync-cron artefact YYYY-MM-DD HH:MM, >24h ago) — running repo-sync-cron will refresh.` Do NOT fall back to a live `gh pr list` from this skill — the producer/consumer separation is the whole point. The user can run `scripts/repo-sync-cron.sh` (or wait for the hourly cron) to refresh.
+**Staleness threshold (concrete)**: If `pr-state.json` is older than **24 hours** (or missing entirely), render Outstanding Workflows with a single inline note: `Outstanding Workflows: stale (last repo-sync-cron artefact YYYY-MM-DD HH:MM, >24h ago) — running scripts/repo-sync-cron.sh will refresh.` Do NOT fall back to a live `gh pr list` from this skill — the producer/consumer separation is the whole point. The user can run `scripts/repo-sync-cron.sh` (or wait for the cron) to refresh.
 
 **Graceful degradation**:
 
