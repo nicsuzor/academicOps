@@ -96,16 +96,24 @@ def _resolve_fixture_task_id() -> str:
     worktrees and branches under the task's ``id`` frontmatter field, which
     differs from the alias (e.g. ``e2e-test-85fabbbf``). Use this for any
     path/branch derivation that needs to match polecat's view of the task.
-    """
-    try:
-        from polecat.pkb_bridge import get_task
 
-        task = get_task(TEST_FIXTURE_TASK_ID)
-        if task and task.id:
-            return task.id
-    except Exception:
-        pass
-    return TEST_FIXTURE_TASK_ID
+    Fails loud if PKB is unreachable: a silent fallback to the alias would
+    point worktree/session-dir lookups at a non-existent path, producing
+    opaque "file not found"/"no session" failures that wrongly look like
+    bind-mount or auth bugs. Per ``feedback_no_skip_no_drift.md`` —
+    everything must work; surface the actual failure.
+    """
+    from polecat.pkb_bridge import get_task
+
+    task = get_task(TEST_FIXTURE_TASK_ID)
+    if not task or not task.id:
+        raise RuntimeError(
+            f"PKB MCP returned no canonical id for fixture task "
+            f"'{TEST_FIXTURE_TASK_ID}' (got {task!r}). The test cannot proceed "
+            f"without it — worktree paths and session-dir lookups depend on "
+            f"the resolved id matching what polecat uses."
+        )
+    return task.id
 
 
 def _cleanup_run_worktree():
@@ -249,10 +257,9 @@ class TestAllInvocationPaths:
         started_after: float = 0,
         crew_name: str | None = None,
         backend: str | None = None,
+        session_dir: Path | None = None,
     ):
-        """Discover the most-recently-modified session file and hook log.
-
-        Searches for both Claude JSONL and Gemini JSON session files.
+        """Discover the session file and hook log produced by THIS test run.
 
         Args:
             started_after: Unix timestamp — only consider files modified after
@@ -263,8 +270,15 @@ class TestAllInvocationPaths:
                 where a concurrent session's hook log is created in the same
                 time window.
             backend: "claude" or "gemini". When set, filters session files by
-                expected format (.jsonl for Claude, session-*.json for Gemini)
-                to prevent cross-backend contamination.
+                location (claude lives at the top of the per-session dir;
+                gemini lives one level deeper under ``chats/``).
+            session_dir: Required for race-free discovery. Polecat writes the
+                test agent's artefacts under ``$AOPS_SESSIONS/{crew,polecats}/
+                {name_or_task}/{project}/`` — passing this dir scopes the
+                rglob to that subtree only. Without it, a concurrent polecat
+                run on an unrelated task (e.g. somebody actively working on
+                another epic on the same machine) wins on mtime and produces
+                an opaque "wrong-session" failure.
 
         Returns:
             (hook_files_content, session_file, tool_calls)
@@ -274,13 +288,23 @@ class TestAllInvocationPaths:
         from tests.conftest import parse_tool_calls
 
         aops_sessions = get_sessions_repo()
+        # Scope to the per-test session_dir when provided (the only honest
+        # source of truth for "this test's session"). Fall back to a global
+        # search only if the caller didn't pass it — we keep the fallback so
+        # legacy callers don't silently break, but in-tree callers should
+        # always pass session_dir.
+        search_root = session_dir if session_dir is not None else aops_sessions
 
         def _hook_birthtime(f: Path) -> float:
             st = f.stat()
             # st_birthtime is macOS/BSD; fall back to st_ctime on Linux
             return getattr(st, "st_birthtime", st.st_ctime)
 
-        hook_files = sorted(aops_sessions.rglob("*-hooks.jsonl"), key=_hook_birthtime)
+        hook_files = (
+            sorted(search_root.rglob("*-hooks.jsonl"), key=_hook_birthtime)
+            if search_root.exists()
+            else []
+        )
         if started_after:
             hook_files = [f for f in hook_files if _hook_birthtime(f) >= started_after]
         if crew_name:
@@ -309,21 +333,16 @@ class TestAllInvocationPaths:
         else:
             hook_files_content = ""
 
-        # Search ONLY $AOPS_SESSIONS — never ~/.claude/projects/. The agent
-        # under test runs inside the polecat container, and its transcript
-        # is exfiltrated to the per-session bind-mount under $AOPS_SESSIONS.
-        # Searching the host's ~/.claude/projects/ tree picks up the
-        # developer's concurrent host-side Claude sessions (any session that
-        # happens to be running in another terminal), producing false positives
-        # that mask real failures — e.g. an agent that never authenticated
-        # in the container and produced no session at all would still appear
-        # to "have a transcript" if any host session was modified during the
-        # test window.
+        # Search the per-test session_dir only — never ~/.claude/projects/
+        # (would match the developer's concurrent host Claude sessions) and
+        # never the global $AOPS_SESSIONS (would match any other polecat run
+        # currently active on this machine, which is common during dev). The
+        # only sessions we care about are the ones polecat writes into the
+        # per-test subtree under $AOPS_SESSIONS/{crew|polecats}/{name}/...
         is_session = TestAllInvocationPaths._is_session_file
         session_files: list[Path] = []
-        if aops_sessions.exists():
-            # Search both .jsonl (Claude) and .json (Gemini chats)
-            for f in aops_sessions.rglob("*"):
+        if search_root.exists():
+            for f in search_root.rglob("*"):
                 if f.is_file() and is_session(f):
                     session_files.append(f)
 
@@ -431,10 +450,16 @@ class TestAllInvocationPaths:
             pytest.fail(f"crew-{backend} timed out after {timeout}s")
 
         combined = proc.stdout + proc.stderr
+        # Mirror polecat's session_dir construction (see polecat/cli.py around
+        # line 3493) so we scope discovery to THIS test run's subtree.
+        from lib.paths import get_sessions_repo as _get_sessions_repo
+
+        crew_session_dir = _get_sessions_repo() / "crew" / crew_name / "repo"
         hook_files_content, session_file, tool_calls = self._find_latest_session_logs(
             started_after=started_at,
             crew_name=crew_name,
             backend=backend,
+            session_dir=crew_session_dir,
         )
 
         return {
@@ -536,9 +561,17 @@ class TestAllInvocationPaths:
         _cleanup_run_worktree()
 
         combined = proc.stdout + proc.stderr
+        # Mirror polecat's run_session_dir construction (see polecat/cli.py
+        # around line 4202) so we scope discovery to THIS test run's subtree.
+        # The fixture task is project=aops; its resolved id is what polecat
+        # names the per-task subdir.
+        from lib.paths import get_sessions_repo as _get_sessions_repo
+
+        run_session_dir = _get_sessions_repo() / "polecats" / resolved_task_id / "aops"
         hook_files_content, session_file, tool_calls = self._find_latest_session_logs(
             started_after=started_at,
             backend=backend,
+            session_dir=run_session_dir,
         )
 
         return {

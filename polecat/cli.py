@@ -4168,26 +4168,23 @@ def run(
             # Headless mode with auto-approve
             cmd.extend(["-p", prompt])
     else:
-        # Claude CLI. Autonomous workers run bypass-permissions when hooks are
-        # off (the in-container hook router exits 0 anyway); when hooks are
-        # on, plan mode + the hook stack provide the policy boundary.
-        if session_cfg.hooks_enabled:
-            cmd = [
-                "claude",
-                "--permission-mode=plan",
-                "--allow-dangerously-skip-permissions",
-                "--setting-sources=user,project",
-                "--model",
-                session_cfg.model,
-            ]
-        else:
-            cmd = [
-                "claude",
-                "--dangerously-skip-permissions",
-                "--setting-sources=user,project",
-                "--model",
-                session_cfg.model,
-            ]
+        # Claude CLI. Autonomous polecat workers run bypass-permissions in both
+        # hooks-on and hooks-off cases.
+        #
+        # We deliberately do NOT use --permission-mode=plan here, even when
+        # hooks are enabled. In headless ``-p`` mode, claude calls
+        # ``ExitPlanMode`` after writing the plan and then exits — it never
+        # proceeds to execute. The hook stack (router + gates inside the
+        # container) is the actual policy boundary; plan mode would only
+        # add value if a human were present to confirm the plan, which by
+        # definition isn't the case for an autonomous polecat run.
+        cmd = [
+            "claude",
+            "--dangerously-skip-permissions",
+            "--setting-sources=user,project",
+            "--model",
+            session_cfg.model,
+        ]
 
         if interactive:
             # Interactive: just append the prompt as positional arg
