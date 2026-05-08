@@ -398,14 +398,27 @@ class TestBuildDockerCmd:
         )
 
     @pytest.mark.parametrize("cli_tool", ["claude", "gemini"])
-    def test_gemini_cli_home_literal_emitted_for_any_cli_tool(self, cli_tool):
-        """GEMINI_CLI_HOME is a conf literal — forwarded unconditionally.
+    def test_gemini_cli_home_forwarded_when_set_for_any_cli_tool(self, cli_tool):
+        """GEMINI_CLI_HOME is env-forwarded (not a literal) — only propagated
+        when set in the parent env. Fix for #930: the old literal default
+        `/home/worker` leaked into host sessions via SessionStart hooks.
+        polecat/cli.py sets it explicitly per-launch for containers.
+        """
+        custom_home = "/tmp/test-gemini-home"
+        cmd = self._build(cli_tool=cli_tool, env={"GEMINI_CLI_HOME": custom_home})
+        env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
+        assert f"GEMINI_CLI_HOME={custom_home}" in env_args
 
-        It's harmless on the claude path; gemini reads it to find ~/.gemini/.
+    @pytest.mark.parametrize("cli_tool", ["claude", "gemini"])
+    def test_gemini_cli_home_not_emitted_when_unset(self, cli_tool):
+        """GEMINI_CLI_HOME is NOT forwarded when absent from parent env (fix #930).
+
+        The literal default `/home/worker` is gone — polecat/cli.py sets it
+        explicitly per-launch so the host SessionStart hook is unaffected.
         """
         cmd = self._build(cli_tool=cli_tool, env={})
         env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
-        assert "GEMINI_CLI_HOME=/home/worker" in env_args
+        assert not any(a.startswith("GEMINI_CLI_HOME=") for a in env_args)
 
     def test_all_conf_literals_appear_in_cmd(self):
         """Property test: every `:=` literal in agent-env-map.conf must appear
