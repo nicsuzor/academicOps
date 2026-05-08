@@ -7,6 +7,7 @@ Part of repo-sync-cron.sh. Producer for the PR state index.
 
 import json
 import os
+import re
 import subprocess
 import sys
 from datetime import UTC, datetime, timedelta
@@ -25,6 +26,8 @@ from manager import PolecatManager
 
 # Fields fetched per state. Open PRs need bucketing signals (CI rollup, mergeable,
 # reviewDecision); closed/merged need only what /sleep's PR→task matcher reads.
+# New field added during projection:
+# - trailers: List[str] - git-style trailers (Closes: #123, etc.) extracted from full body
 OPEN_FIELDS = [
     "number",
     "title",
@@ -62,6 +65,22 @@ BODY_LIMIT = 2048
 _AUTHOR_KEEP = ("login", "is_bot")
 _CHECK_KEEP = ("name", "conclusion", "status")
 
+TRAILER_RE = re.compile(
+    r"^(Closes|Refs|Fixes|Resolves|Closes-issue|Closes-pr):\s*\S+",
+    re.MULTILINE | re.IGNORECASE,
+)
+
+
+def _extract_trailers(body: str | None) -> list[str]:
+    r"""Extract git-style trailers from PR body.
+
+    Trailers match: ^(Closes|Refs|Fixes|Resolves|Closes-issue|Closes-pr):\s*\S+
+    (case-insensitive, multi-line).
+    """
+    if not body:
+        return []
+    return [m.group(0) for m in TRAILER_RE.finditer(body)]
+
 
 def _project_pr(pr: dict, *, is_open: bool) -> dict:
     author = pr.get("author") or {}
@@ -73,8 +92,12 @@ def _project_pr(pr: dict, *, is_open: bool) -> dict:
             for c in pr.get("statusCheckRollup") or []
             if isinstance(c, dict)
         ]
-    if pr.get("body") and len(pr["body"]) > BODY_LIMIT:
-        pr["body"] = pr["body"][:BODY_LIMIT] + "... [truncated]"
+
+    body = pr.get("body")
+    pr["trailers"] = _extract_trailers(body)
+
+    if body and len(body) > BODY_LIMIT:
+        pr["body"] = body[:BODY_LIMIT] + "... [truncated]"
     return pr
 
 
