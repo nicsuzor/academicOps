@@ -463,6 +463,13 @@ class TestAllInvocationPaths:
                 "(missing, or pkb binary not available)"
             )
 
+        # Defensive: ensure no stale worktree from a prior aborted invocation.
+        # Polecat (correctly) refuses to overwrite a worktree that has
+        # uncommitted changes, which can leave us stuck if a previous run-*
+        # test was interrupted before its post-run cleanup. Cleanup also runs
+        # at-end via the post-process block; doing it at-start guarantees
+        # clean state regardless of what any prior session left behind.
+        _cleanup_run_worktree()
         _reset_fixture_task()
 
         cmd = [

@@ -280,8 +280,10 @@ jobs:
 
           # rsync --delete keeps the dist repo a strict mirror of build.py output:
           # files removed from the source tree are removed downstream too.
+          # aops-cowork was collapsed into aops-core (commit 6d40abc4); drop any
+          # stale directory still in the dist repo on the first run after the kill.
+          rm -rf dist-repo/aops-cowork
           rsync -a --delete source/dist/aops-claude/  dist-repo/aops-claude/
-          rsync -a --delete source/dist/aops-cowork/  dist-repo/aops-cowork/
           rsync -a --delete source/dist/aops-gemini/  dist-repo/aops-gemini/
           [ -d "source/dist/aops-tools-claude" ] && rsync -a --delete source/dist/aops-tools-claude/  dist-repo/aops-tools-claude/
           [ -d "source/dist/aops-tools-gemini" ] && rsync -a --delete source/dist/aops-tools-gemini/  dist-repo/aops-tools-gemini/
