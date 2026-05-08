@@ -34,17 +34,34 @@ Pull tasks with `due` ≤ 7 days via `mcp__pkb__list_tasks(format=json)` and sor
 - [task-id] [[Title]] — due YYYY-MM-DD (Nd away / overdue Nd)
 ```
 
-### 3.3a: High-Focus Surface
+### 3.3a: High-Focus Surface (Target-Driven Grouping)
 
-After the deadline list, emit a short factual block of the top 5 tasks ranked by composite `focus_score` — restricted to `status` in {`queued`, `ready`, `in_progress`}. `focus_score` is the canonical composite (embeds severity, priority, downstream weight, urgency, stakeholder waiting; see [[multi-parent]] §7). Use `mcp__pkb__list_tasks(status=["queued","ready","in_progress"], limit=100, format="json")` and read each task's `focus_score` field; sort descending. Load this once and reuse the result for the §3.3b SEV4 count. List one per line:
+After the deadline list, emit a factual block of tasks ranked by composite `focus_score` — restricted to `status` in {`queued`, `ready`, `in_progress`}. `focus_score` is the canonical composite (embeds severity, priority, downstream weight, urgency, stakeholder waiting; see [[multi-parent]] §7).
+
+**Loading and Grouping Logic**:
+
+1. Use `mcp__pkb__list_tasks(status=["queued","ready","in_progress"], limit=100, format="json")` and sort by `focus_score` descending. Load this once and reuse the result for the §3.3b SEV4 count.
+2. **Threshold**: A task qualifies for the SEV3+ bucket when it has `urgency >= 100` (a high-urgency tier per the PKB's urgency scale; see [[multi-parent]] §7) **and** at least one entry in its `goals` field links to a target node with `severity >= 3`.
+3. **Badging**: For tasks in the top list, read their `goals` field. Fetch each linked target's metadata — cache results per target ID to avoid redundant calls when multiple tasks share a target. If a linked target has `severity >= 3`, prepare an inline badge `[→[[Target Title]]]`.
+4. **Display rule** (deterministic): Take the top 10 tasks by `focus_score` and split into:
+   - **Target-propagated urgency (SEV3+)**: tasks meeting both criteria in step 2.
+   - **Other high-focus work**: the remaining tasks from the top 10.
+   Show all SEV3+ tasks first (sorted by `focus_score` descending), then Other tasks. If the SEV3+ bucket is empty, show the top 5 Other tasks. If SEV3+ is non-empty, add up to 5 Other tasks (hard ceiling: 10 total).
+
+List each on its own line:
 
 ```
 High-focus:
+Target-propagated (SEV3+):
+- [task-id] [[Title]] [→[[Target Title]]] — focus 0.95 (urgency 1000)
+- [task-id] [[Title]] [→[[Target Title]]] — focus 0.92 (urgency 1000)
+
+Other:
 - [task-id] [[Title]] — focus 0.83 (SEV3, due 2026-05-02)
 - [task-id] [[Title]] — focus 0.61 (SEV2)
 ```
 
-This is **factual surfacing**, not ranking-as-recommendation — it reports what the graph computes, the user still decides what to work on. If `focus_score` is absent or zero across all tasks (mem-side emission not yet landed), omit this block entirely rather than falling back to an alternative ordering. Do **not** call focus_score a "priority" or attach editorial framing. Component fields like `urgency` may be filtered/displayed for debug, but ranking always goes through `focus_score`.
+This is **factual surfacing**, not ranking-as-recommendation — it reports what the graph computes. If `focus_score` is absent or zero across all tasks, omit this block entirely. Do **not** call `focus_score` a "priority" or attach editorial framing. Component fields like `urgency` may be filtered/displayed for debug, but ranking always goes through `focus_score`.
 
 ### 3.3b: SEV4 Concurrency-Cap Warning
 
