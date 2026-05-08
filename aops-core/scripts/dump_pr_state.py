@@ -69,7 +69,9 @@ def _project_pr(pr: dict, *, is_open: bool) -> dict:
         pr["author"] = {k: author[k] for k in _AUTHOR_KEEP if k in author}
     if is_open:
         pr["statusCheckRollup"] = [
-            {k: c[k] for k in _CHECK_KEEP if k in c} for c in pr.get("statusCheckRollup") or []
+            {k: c[k] for k in _CHECK_KEEP if k in c}
+            for c in pr.get("statusCheckRollup") or []
+            if isinstance(c, dict)
         ]
     if pr.get("body") and len(pr["body"]) > BODY_LIMIT:
         pr["body"] = pr["body"][:BODY_LIMIT] + "... [truncated]"
