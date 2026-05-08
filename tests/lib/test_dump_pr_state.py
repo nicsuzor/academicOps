@@ -2,11 +2,9 @@ import sys
 from pathlib import Path
 
 # Add aops-core/scripts to path for imports
-SCRIPT_DIR = Path(__file__).parent.parent.parent / "scripts"
+SCRIPT_DIR = Path(__file__).parents[2] / "aops-core" / "scripts"
 sys.path.insert(0, str(SCRIPT_DIR))
 
-# We'll import after the file is updated, or we can use a mock/local version for now.
-# For now, let's assume we've updated it.
 from dump_pr_state import _extract_trailers, _project_pr
 
 
