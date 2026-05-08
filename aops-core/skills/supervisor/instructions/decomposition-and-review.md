@@ -181,64 +181,12 @@ Before invoking reviewers, prepare a context document containing:
 
 **Step 2: Invoke Reviewers in Parallel**
 
-```python
-# Spawn both mandatory reviewers simultaneously
-    model='opus',
-    prompt='''Review this decomposition proposal:
+Dispatch both mandatory reviewers concurrently:
 
-<context>
-{review_context}
-</context>
+- **pauli** (`aops-core:pauli`, opus) — reviews the decomposition for logical errors, untested assumptions, missing edge cases, scope drift, review-sizing violations, decision/prep dependencies, academic methodology gaps. Returns `PROCEED / REVISE / HALT`.
+- **rbg** (`aops-core:rbg`, haiku) — verifies the decomposition stays within granted authority and original scope, no unapproved expansions, no assumed permissions. Returns `OK / WARN / BLOCK`.
 
-Check for:
-1. Logical errors in the decomposition
-2. Untested assumptions about dependencies
-3. Missing edge cases or error handling
-4. Scope drift from original request
-5. Review-sizing violations (>4h, >10 files/artefacts, multiple "whys")
-6. Decision tasks without information prerequisites (every decision needs a prep task)
-7. Execution tasks unblocked when they depend on an unmade decision
-8. Academic outputs missing methodology layer (justification, validation, audit)
-
-Return your assessment in this exact format:
-
-## Pauli Review
-
-**Reviewing**: [1-line description]
-
-### Issues Found
-- [Issue]: [why it's a problem]
-
-### Untested Assumptions
-- [Assumption]: [why it matters if wrong]
-
-### Verdict
-[PROCEED / REVISE / HALT]
-
-[If REVISE or HALT: specific changes needed]
-''',
-    description='Pauli review of decomposition'
-)
-
-rbg_task = Task(
-    subagent_type='aops-core:enforcer',
-    model='haiku',
-    prompt='''Verify this task is within granted authority:
-
-<context>
-{review_context}
-</context>
-
-Check:
-1. Does the decomposition stay within the original request scope?
-2. Are there any scope expansions not explicitly authorized?
-3. Do any subtasks assume permissions not granted?
-
-Output exactly: OK, WARN, or BLOCK (see rbg format spec)
-''',
-    description='Authority verification'
-)
-```
+Both receive the same review context (decomposition proposal + files affected + relevant principles).
 
 **Step 3: Collect and Parse Responses**
 
@@ -279,11 +227,7 @@ Parse responses into structured verdicts:
 → Proceeding to human approval gate (status='review')
 ```
 
-Then:
-
-```python
-update_task(id=task_id, updates={"status": "review", "body": synthesis_markdown})
-```
+Then call `mcp__pkb__update_task(id=task_id, updates={"status": "review", "body": synthesis_markdown})`.
 
 ---
 
@@ -295,34 +239,7 @@ action, the supervisor MUST check the parent task's status. Per
 agents pull only from `queued`. The transition from `review` → `queued` is
 the **human approval record** — no separate marker, no extra metadata.
 
-**Gate check** (run exactly once, immediately after Phase 2 synthesis):
-
-```python
-parent = get_task(task_id)
-
-if parent.status != "queued":
-    # Plan-review halt — human has not yet approved the decomposition.
-    comment = render_synthesis_summary(
-        subtask_count=len(subtasks),
-        files_affected=sorted_unique_files(subtasks),
-        key_risks=extracted_risks,
-        pauli_verdict=pauli.verdict,
-        rbg_verdict=rbg.verdict,
-    )
-    mcp__pkb__append(id=task_id, content=comment)
-    update_task(id=task_id, updates={"status": "review"})
-    emit_user_summary(
-        f"Plan-review gate: {task_id} is {parent.status!r}. "
-        f"Decomposition complete with {len(subtasks)} subtasks. "
-        f"Promote to 'queued' to release for dispatch."
-    )
-    # Do NOT transition any subtask out of inbox/ready.
-    # Do NOT dispatch. STOP here. Resume from ORIENT only
-    # after the human promotes parent to 'queued'.
-    return HALT
-
-# parent.status == "queued": human has approved. Proceed to DISPATCH as today.
-```
+**Gate check** (run exactly once, immediately after Phase 2 synthesis): read `parent.status`. If it is **not** `queued`, halt — append a synthesis summary comment (subtask count, files affected, key risks, pauli + rbg verdicts) and set parent `status = review`. Resume only after the human promotes parent to `queued`; on the next ORIENT the supervisor falls through this gate to DISPATCH.
 
 **Semantics** (explicit):
 
@@ -419,12 +336,7 @@ user at all.
 → Returning to decomposition phase (status remains `in_progress`; phase annotation: decomposing)
 ```
 
-Then:
-
-```python
-update_task(id=task_id, updates={"status": "in_progress", "body": synthesis_markdown})
-# Re-enter Phase 1 with reviewer feedback
-```
+Then call `mcp__pkb__update_task(id=task_id, updates={"status": "in_progress", "body": synthesis_markdown})` and re-enter Phase 1 with reviewer feedback.
 
 **On BLOCKED**:
 
@@ -446,11 +358,7 @@ update_task(id=task_id, updates={"status": "in_progress", "body": synthesis_mark
 → Escalating to human (status='blocked')
 ```
 
-Then:
-
-```python
-update_task(id=task_id, updates={"status": "blocked", "body": synthesis_markdown})
-```
+Then call `mcp__pkb__update_task(id=task_id, updates={"status": "blocked", "body": synthesis_markdown})`.
 
 ---
 
@@ -460,7 +368,7 @@ If reviewers return conflicting verdicts (one PROCEED, one REVISE), initiate a d
 
 **Debate Protocol** (max 2 rounds):
 
-```markdown
+````markdown
 ## Debate Round 1
 
 ### Conflicting Assessments
@@ -469,29 +377,8 @@ If reviewers return conflicting verdicts (one PROCEED, one REVISE), initiate a d
 - **RBG** says WARN: "[concern]"
 
 ### Resolution Attempt
-```
 
-```python
-# Share concerns with the other reviewer
-debate_task = Task(
-    model='opus',
-    prompt='''RBG raised this concern about the decomposition:
-
-<concern>
-{rbg_concern}
-</concern>
-
-Your original assessment was PROCEED. Given this new information:
-
-1. Do you MAINTAIN your PROCEED verdict?
-2. Do you REVISE to account for this concern?
-
-Respond with:
-- MAINTAIN: [brief justification]
-- REVISE: [what changes you now recommend]
-''',
-)
-```
+Share rbg's concern back with pauli (or vice versa) and ask whether they MAINTAIN or REVISE their original verdict given the new information. One round of cross-feedback per debate cycle.
 
 **Debate Outcomes**:
 
@@ -526,6 +413,7 @@ Respond with:
 
 → Awaiting human decision (status='review')
 ```
+````
 
 ---
 
@@ -548,15 +436,4 @@ When task tags indicate specialized domain expertise is needed:
 4. Synthesize specialist input with mandatory reviewer verdicts
 ```
 
-```python
-# Invoke specialist (conceptual)
-for domain in matching_domains:
-    specialist = lookup_specialist(domain)  # from WORKERS.md
-    specialist_task = Task(
-        subagent_type=specialist.agent,
-        prompt=build_specialist_prompt(domain, review_context),
-        description=f'{domain} specialist review'
-    )
-```
-
-**Note**: Domain specialists are advisory. Their concerns inform but don't automatically block—supervisor synthesizes their input alongside mandatory reviewers.
+**Note**: Domain specialists are advisory. Their concerns inform but don't automatically block — supervisor synthesizes their input alongside mandatory reviewers.
