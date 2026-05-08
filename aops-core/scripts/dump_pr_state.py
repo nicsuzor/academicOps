@@ -66,7 +66,7 @@ _AUTHOR_KEEP = ("login", "is_bot")
 _CHECK_KEEP = ("name", "conclusion", "status")
 
 TRAILER_RE = re.compile(
-    r"^(Closes|Refs|Fixes|Resolves|Closes-issue|Closes-pr):\s*\S+",
+    r"^\b(Closes|Refs|Fixes|Resolves|Closes-issue|Closes-pr)\b:\s*.+",
     re.MULTILINE | re.IGNORECASE,
 )
 
@@ -74,12 +74,12 @@ TRAILER_RE = re.compile(
 def _extract_trailers(body: str | None) -> list[str]:
     r"""Extract git-style trailers from PR body.
 
-    Trailers match: ^(Closes|Refs|Fixes|Resolves|Closes-issue|Closes-pr):\s*\S+
+    Trailers match: ^\b(Closes|Refs|Fixes|Resolves|Closes-issue|Closes-pr)\b:\s*.+
     (case-insensitive, multi-line).
     """
     if not body:
         return []
-    return [m.group(0) for m in TRAILER_RE.finditer(body)]
+    return [m.group(0).strip() for m in TRAILER_RE.finditer(body)]
 
 
 def _project_pr(pr: dict, *, is_open: bool) -> dict:

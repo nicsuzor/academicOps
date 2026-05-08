@@ -38,6 +38,15 @@ def test_extract_trailers_multiline():
     assert trailers == ["Fixes: #123", "Refs: #456"]
 
 
+def test_extract_trailers_complex_values():
+    body = "Closes: #123, #456\nRefs: https://github.com/org/repo/issues/1 (comment)"
+    trailers = _extract_trailers(body)
+    assert trailers == [
+        "Closes: #123, #456",
+        "Refs: https://github.com/org/repo/issues/1 (comment)",
+    ]
+
+
 def test_project_pr_preserves_trailers_after_truncation():
     long_body = "A" * 3000 + "\nFixes: #999"
     pr = {"number": 1, "body": long_body, "author": {"login": "user", "is_bot": False}}
