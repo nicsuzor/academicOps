@@ -252,7 +252,6 @@ class TestCallToolErrorHandling:
         assert isinstance(result, dict)
         assert result["frontmatter"]["id"] == "task-123"
         captured = capsys.readouterr()
-        # Verify performance logging is REMOVED (task-ab2db6a3)
         assert "[PKB_PERF]" not in captured.err
         assert "get_task" not in captured.err
 
