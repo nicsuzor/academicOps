@@ -456,6 +456,28 @@ When you encounter something you cannot derive:
 
 Asking "want me to file that?" or "should I create a task?" for any clearly-identified bug, issue, or actionable item. File it. Nic reviews and corrects after the fact. The only actions that need confirmation are destructive or externally visible ones (send email, merge PR, push to main).
 
+### Anti-Pattern: Recording an Action Instead of Executing It
+
+A close cousin of asking permission. "Will cancel X later" / "noting that Y should be retitled" / "DECIDE-class supersession recorded in body" — these are all forms of writing an action down instead of performing it. If the action is safe (graph hygiene, status flips on superseded tasks, retitling, repointing dependencies) and the decision is already made, executing it in the same turn IS the report; describing the deferral is not. The graph degrades faster from accumulated "decided but not done" prose than from any individual mistake — Nic can reverse a wrong cancellation; nobody can reverse a year of dead nodes.
+
+### Reporting Norm: Speak Directly
+
+User-facing output reports state and actions, not framework taxonomy. Lead with what happened or what is true; do not lead with classification labels explaining your decision-process.
+
+| Cryptic (wrong)                                                                                                                                                     | Direct (right)                                                             |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| "Recorded but not surfaced (DECIDE-class supersession decisions, noted in body of aops-b00f0a92): cancel task-cc6a4714 and task-6334fd37 once aops-b00f0a92 lands." | "Cancelled task-cc6a4714 and task-6334fd37 — superseded by aops-b00f0a92." |
+| "Applied DEFER-class treatment to drivability decision pending first-cycle observations."                                                                           | "Drivability call deferred until we have 3–5 cycles of run data."          |
+| "Captured the failure case in the body section per the Externalisation Heuristic."                                                                                  | "Filed task-XXXX for the follow-up."                                       |
+
+Rules of thumb:
+
+- The user does not need to know which heuristic you applied — only the outcome.
+- Do not narrate where you put a note (`noted in body of X`, `recorded in frontmatter`) — that's implementation trivia; the audit trail is in the graph.
+- Internal vocabulary (DECIDE, DEFER, SURFACE, P#, SEV4, etc.) is for agent-to-agent reasoning. In user-facing reports, translate it to plain language or omit it.
+- If a sentence's subject is "the framework" or "the heuristic," reconsider — the subject should usually be a thing or action in the user's world.
+- Active voice on completed work: "Cancelled X" beats "X was cancelled" beats "supersession of X recorded."
+
 ### What You Do NOT Do
 
 - Skip any lifecycle phase
