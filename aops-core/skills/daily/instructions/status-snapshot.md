@@ -46,7 +46,7 @@ After the deadline list, emit a factual block of tasks ranked by composite `focu
 4. **Display rule** (deterministic): Take the top 10 tasks by `focus_score` and split into:
    - **Target-propagated urgency (SEV3+)**: tasks meeting both criteria in step 2.
    - **Other high-focus work**: the remaining tasks from the top 10.
-   Show all SEV3+ tasks first (sorted by `focus_score` descending), then Other tasks. If the SEV3+ bucket is empty, show the top 5 Other tasks. If SEV3+ is non-empty, add up to 5 Other tasks (hard ceiling: 10 total).
+     Show all SEV3+ tasks first (sorted by `focus_score` descending), then Other tasks. If the SEV3+ bucket is empty, show the top 5 Other tasks. If SEV3+ is non-empty, add up to 5 Other tasks (hard ceiling: 10 total).
 
 List each on its own line:
 

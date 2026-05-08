@@ -89,31 +89,54 @@ def _check_fixture_task():
         return False
 
 
+_RESOLVED_FIXTURE_ID_CACHE: str | None = None
+
+
 def _resolve_fixture_task_id() -> str:
-    """Resolve the fixture task's canonical ID via PKB MCP.
+    """Resolve the fixture task's canonical ID via PKB MCP, once per session.
 
     ``TEST_FIXTURE_TASK_ID`` is the alias (filename stem). Polecat creates
     worktrees and branches under the task's ``id`` frontmatter field, which
     differs from the alias (e.g. ``e2e-test-85fabbbf``). Use this for any
     path/branch derivation that needs to match polecat's view of the task.
 
-    Fails loud if PKB is unreachable: a silent fallback to the alias would
-    point worktree/session-dir lookups at a non-existent path, producing
-    opaque "file not found"/"no session" failures that wrongly look like
-    bind-mount or auth bugs. Per ``feedback_no_skip_no_drift.md`` —
-    everything must work; surface the actual failure.
+    Caches the resolved id for the lifetime of the test process — the
+    fixture task's id never changes, and each polecat invocation triggers
+    PKB writes (status updates, release) that can race read-after-write
+    consistency on the MCP server, occasionally returning HTTP 404 for a
+    handful of seconds. Caching avoids that race entirely after the first
+    successful resolve.
+
+    Fails loud if PKB is unreachable on the very first call: a silent
+    fallback to the alias would point worktree/session-dir lookups at a
+    non-existent path, producing opaque "file not found"/"no session"
+    failures that wrongly look like bind-mount or auth bugs. Retries the
+    initial resolve a few times to ride out transient post-write 404s.
     """
+    global _RESOLVED_FIXTURE_ID_CACHE
+    if _RESOLVED_FIXTURE_ID_CACHE is not None:
+        return _RESOLVED_FIXTURE_ID_CACHE
+
     from polecat.pkb_bridge import get_task
 
-    task = get_task(TEST_FIXTURE_TASK_ID)
-    if not task or not task.id:
-        raise RuntimeError(
-            f"PKB MCP returned no canonical id for fixture task "
-            f"'{TEST_FIXTURE_TASK_ID}' (got {task!r}). The test cannot proceed "
-            f"without it — worktree paths and session-dir lookups depend on "
-            f"the resolved id matching what polecat uses."
-        )
-    return task.id
+    last_err: Exception | None = None
+    for _attempt in range(5):
+        try:
+            task = get_task(TEST_FIXTURE_TASK_ID)
+            if task and task.id:
+                _RESOLVED_FIXTURE_ID_CACHE = task.id
+                return task.id
+            last_err = RuntimeError(f"PKB returned no task for {TEST_FIXTURE_TASK_ID!r}")
+        except Exception as e:  # noqa: BLE001 — surface any error after retries
+            last_err = e
+        time.sleep(1.0)
+
+    raise RuntimeError(
+        f"PKB MCP did not return a canonical id for fixture task "
+        f"'{TEST_FIXTURE_TASK_ID}' after 5 attempts (last error: {last_err!r}). "
+        f"The test cannot proceed without it — worktree paths and session-dir "
+        f"lookups depend on the resolved id matching what polecat uses."
+    )
 
 
 def _cleanup_run_worktree():
@@ -139,20 +162,49 @@ def _cleanup_run_worktree():
 def _reset_fixture_task():
     """Reset the test fixture task to active status so it can be re-run.
 
-    Uses the PKB MCP HTTP API to update the remote server, then also
-    resets the local file to keep them in sync.
+    PKB MCP is the source of truth for ``pc run``: an autonomous polecat
+    worker calls ``release_task`` at the end of each successful run, leaving
+    the fixture task with status ``done``. The next test must flip it back
+    to ``queued`` before launching polecat or polecat refuses ("already
+    done"). Both the PKB write and a read-back verification are required;
+    transient PKB errors are retried (read-after-write consistency on the
+    MCP server can briefly miss a fresh write under load).
+
+    Fails loud if the reset can't be confirmed — silently moving on would
+    let polecat see stale ``done`` and produce an opaque "already done"
+    failure that masquerades as an agent/auth bug.
     """
-    # Reset via PKB MCP API (the source of truth for `pc run`).
-    # `project="aops"` is required because polecat run dispatch refuses to
-    # set up a worktree without an explicit project (silent fallbacks disabled).
-    try:
-        from polecat.pkb_bridge import update_task
+    from polecat.pkb_bridge import get_task, update_task
 
-        update_task(TEST_FIXTURE_TASK_ID, status="queued", assignee="polecat", project="aops")
-    except Exception:
-        pass  # Best-effort; local reset below is the fallback
+    last_err: Exception | None = None
+    for _attempt in range(5):
+        try:
+            update_task(
+                TEST_FIXTURE_TASK_ID,
+                status="queued",
+                assignee="polecat",
+                project="aops",
+            )
+            task = get_task(TEST_FIXTURE_TASK_ID)
+            if task and task.status == "queued":
+                break
+            last_err = RuntimeError(
+                f"after update_task, PKB read-back returned status="
+                f"{task.status if task else None!r} (expected 'queued')"
+            )
+        except Exception as e:  # noqa: BLE001 — surface after retries
+            last_err = e
+        time.sleep(1.0)
+    else:
+        raise RuntimeError(
+            f"Could not reset fixture task '{TEST_FIXTURE_TASK_ID}' to 'queued' "
+            f"after 5 attempts (last error: {last_err!r}). Polecat will refuse "
+            f"to run a 'done' task; the test cannot proceed without a successful "
+            f"reset."
+        )
 
-    # Also reset the local file for environments where PKB reads locally
+    # Sync the local file to PKB so `_check_fixture_task` and any local PKB
+    # reads see the same status. This is best-effort — PKB is authoritative.
     aca_data = os.environ.get("ACA_DATA", str(Path.home() / "brain"))
     task_file = Path(aca_data) / "tasks" / f"{TEST_FIXTURE_TASK_ID}.md"
     if not task_file.exists():

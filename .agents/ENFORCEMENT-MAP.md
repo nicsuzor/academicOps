@@ -31,8 +31,8 @@ is the source of truth for the decision.
 
 ## Pre-commit hooks
 
-| Hook ID                     | Script                                 | Rule(s)                    | Tier   | Behaviour                                                             |
-| --------------------------- | -------------------------------------- | -------------------------- | ------ | --------------------------------------------------------------------- |
+| Hook ID                     | Script                                 | Rule(s)                    | Tier   | Behaviour                                                                                                                                               |
+| --------------------------- | -------------------------------------- | -------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `check-no-new-orphan-md`    | `scripts/check_no_new_orphan_md.py`    | R5.6                       | `warn` | Exits 1 on new `.md` files outside canonical-location allowlist                                                                                         |
 | `check-framework-integrity` | `scripts/check_framework_integrity.py` | (wikilink index integrity) | `warn` | Exits 1 on broken wikilinks or missing SKILLS/WORKFLOWS index entries                                                                                   |
 | `check-no-fallbacks`        | `scripts/check_no_fallbacks.py`        | A8 / P#8                   | `warn` | Exits 1 on silent-fallback patterns in `aops-core/hooks/*.py`, `aops-core/agent-env-map.conf`, `scripts/repo-sync-cron.sh` (see issue #930 for context) |
