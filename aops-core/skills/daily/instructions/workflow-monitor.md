@@ -10,27 +10,27 @@ Read `$AOPS_SESSIONS/polecat.yaml` to get the project registry. For each project
 
 This is the same repo discovery used by Step 4.2.5 (merged PR query). The repo list is configurable — repos are added/removed by editing `polecat.yaml` in the sessions repo, not by changing skill code.
 
-### Step 6.2: Read PR State From Sleep Artefact
+### Step 6.2: Read PR State From repo-sync-cron Artefact
 
-**Primary path: read `$ACA_DATA/state/pr-state.json`.** The /sleep cycle's Phase 6 Activity 4a (`aops-core/skills/sleep/SKILL.md` § "Activity 4: Loop-close") is the **single producer** of PR state across tracked repos. `/daily` is a **consumer** — it MUST NOT re-run `gh pr list` itself. One producer / two consumers (daily + dashboard) is the design.
+**Primary path: read `$AOPS_SESSIONS/state/pr-state.json`.** `repo-sync-cron` (invoking `gha_sync`) is the **single producer** of PR state across tracked repos. `/daily` is a **consumer** — it MUST NOT re-run `gh pr list` itself. One producer / two consumers (daily + dashboard) is the design.
 
 ```bash
-test -f "$ACA_DATA/state/pr-state.json" && cat "$ACA_DATA/state/pr-state.json"
+test -f "$AOPS_SESSIONS/state/pr-state.json" && cat "$AOPS_SESSIONS/state/pr-state.json"
 ```
 
-The artefact contains, per repo, the bucketed open PR list (Ready to merge / Needs review / Needs fixes / Stale / Draft) plus the timestamp of the producing /sleep cycle.
+The artefact contains, per repo, the bucketed open PR list (Ready to merge / Needs review / Needs fixes / Stale / Draft) plus the timestamp of the producing `repo-sync-cron` run.
 
-**Staleness threshold (concrete)**: If `pr-state.json` is older than **24 hours** (or missing entirely), render Outstanding Workflows with a single inline note: `Outstanding Workflows: stale (last sleep artefact YYYY-MM-DD HH:MM, >24h ago) — running /sleep will refresh.` Do NOT fall back to a live `gh pr list` from this skill — the producer/consumer separation is the whole point. The user can run `/sleep` (or wait for cron) to refresh.
+**Staleness threshold (concrete)**: If `pr-state.json` is older than **24 hours** (or missing entirely), render Outstanding Workflows with a single inline note: `Outstanding Workflows: stale (last repo-sync-cron artefact YYYY-MM-DD HH:MM, >24h ago) — running scripts/repo-sync-cron.sh will refresh.` Do NOT fall back to a live `gh pr list` from this skill — the producer/consumer separation is the whole point. The user can run `scripts/repo-sync-cron.sh` (or wait for the cron) to refresh.
 
 **Graceful degradation**:
 
-- Missing artefact (file does not exist) → render: `Outstanding Workflows: no sleep artefact yet — run /sleep to populate.`
+- Missing artefact (file does not exist) → render: `Outstanding Workflows: no repo-sync-cron artefact yet — run scripts/repo-sync-cron.sh to populate.`
 - Stale artefact (>24h) → render the stale note above.
-- Malformed JSON → render: `Outstanding Workflows: artefact unreadable — check $ACA_DATA/state/pr-state.json.`
+- Malformed JSON → render: `Outstanding Workflows: artefact unreadable — check $AOPS_SESSIONS/state/pr-state.json.`
 
 Never produce empty tables or error codes.
 
-> **Migration note**: prior versions of this step ran `gh pr list` per repo with parallel subagents. Removed in favour of consuming the /sleep artefact produced by /sleep Phase 6 Activity 4a.
+> **Migration note**: prior versions of this step ran `gh pr list` per repo with parallel subagents. Removed in favour of consuming the `$AOPS_SESSIONS/state/pr-state.json` artefact produced by `repo-sync-cron`.
 
 ### Step 6.3: Bucket PRs by Actionability
 
