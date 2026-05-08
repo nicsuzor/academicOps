@@ -6,16 +6,18 @@
 #   do_gha_sync      - Sync claude-session artifacts from configured GHA repos
 #   do_transcript    - Generate recent session transcripts
 #   do_sync          - Sync all git repositories via polecat sync
+#   do_pr_state      - Dump raw PR state from tracked repos to $AOPS_SESSIONS/state/
 #
-# Note: PR-state sweeping is now handled by the supervisor agent loop
-# (event-driven monitoring), not by `polecat sweep` (removed; see task-9fa50763).
+# Note: Automated PR-state dumping for task-auto-close is handled here.
+# Consumers (like /daily) use the resulting artefact to close the loop.
 #
 # Usage:
-#   ./scripts/repo-sync-cron.sh              # Full: cowork_ingest + gha_sync + transcript + sync
+#   ./scripts/repo-sync-cron.sh              # Full: cowork_ingest + gha_sync + transcript + sync + pr_state
 #   ./scripts/repo-sync-cron.sh cowork_ingest # Just Cowork audit log ingestion
 #   ./scripts/repo-sync-cron.sh gha_sync     # Just GHA artifact sync
 #   ./scripts/repo-sync-cron.sh transcript   # Just transcript
 #   ./scripts/repo-sync-cron.sh sync         # Just sync
+#   ./scripts/repo-sync-cron.sh pr_state     # Just PR state dump
 #   ./scripts/repo-sync-cron.sh gha_sync transcript sync # Specific combination
 #
 # Crontab suggested setup:
@@ -137,17 +139,26 @@ do_sync() {
     git -C "${AOPS}" fetch --prune --quiet 2>&1 || echo "Warning: git fetch --prune failed"
 }
 
+do_pr_state() {
+    # Fetch raw PR data from tracked repos and dump to JSON artefact
+    echo "==> Dumping PR state..."
+    if [[ -f "${AOPS}/aops-core/scripts/dump_pr_state.py" ]]; then
+        uv run python "${AOPS}/aops-core/scripts/dump_pr_state.py" || echo "Warning: PR state dump failed" >&2
+    fi
+}
+
 # ============================================================================
 # Dispatch
 # ============================================================================
 
 if [[ $# -eq 0 ]]; then
-    # Full run: cowork_ingest + gha_sync + transcript + sync
+    # Full run: cowork_ingest + gha_sync + transcript + sync + pr_state
     echo "${TS} repo-sync-cron starting (full)"
     do_cowork_ingest
     do_gha_sync
     do_transcript
     do_sync
+    do_pr_state
 else
     # Named functions: ./repo-sync-cron.sh gha_sync transcript sync
     echo "${TS} repo-sync-cron starting ($*)"
@@ -157,8 +168,9 @@ else
             gha_sync)   do_gha_sync ;;
             transcript) do_transcript ;;
             sync)       do_sync ;;
-            --quick)    do_cowork_ingest; do_gha_sync; do_transcript; do_sync ;;
-            *)          echo "Unknown function: $func (valid: cowork_ingest, gha_sync, transcript, sync, --quick)" >&2; exit 1 ;;
+            pr_state)   do_pr_state ;;
+            --quick)    do_cowork_ingest; do_gha_sync; do_transcript; do_sync; do_pr_state ;;
+            *)          echo "Unknown function: $func (valid: cowork_ingest, gha_sync, transcript, sync, pr_state, --quick)" >&2; exit 1 ;;
         esac
     done
 fi
