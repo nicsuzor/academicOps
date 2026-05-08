@@ -43,6 +43,13 @@ Per [[session-handover-contract]]:
 
 This is the canonical decision rule. [[session-handover-contract]] §1 and the stop-gate handover-block template both reference this section rather than restating the conditions; do not duplicate the rule elsewhere.
 
+Use **Read-only Q&A** if **all** of the following are true:
+
+- No mutating tools (`Edit`, `Write`, `replace`, `write_file`, `NotebookEdit`, `MultiEdit`) have been used in the session.
+- No `Bash` or `run_shell_command` tool has been used for anything other than read-only discovery (e.g. `git status`, `ls`, `grep`).
+- No task is bound to the session (or the bound task has not been mutated).
+- No new tasks have been created.
+
 Use **Short-form** only if **all** of the following are true:
 
 - The session is **interactive** — the user is steering the conversation in real time, not an autonomous/headless polecat or cron worker.
@@ -52,13 +59,18 @@ Use **Short-form** only if **all** of the following are true:
 
 Use **Full-form** in **every other case**, including: task complete, end-of-day close, autonomous/headless run (any polecat or cron-dispatched worker), emergency handover, cross-machine or cross-environment transfer, or the gate has reopened after further mutating tool calls.
 
-### 2. Short-form Branch (Interactive)
+### 2. Read-only Q&A Branch
+
+1. **Emit one-liner**. Output `Output: none — read-only Q&A`.
+2. **Finish**. Do NOT emit the handover block or call `release_task`.
+
+### 3. Short-form Branch (Interactive)
 
 1. **Update the task**. Use `update_task` to (a) write the latest delta — what was just done, what is left — to the **task body**, and (b) ensure the task's `session_id` frontmatter field equals `$AOPS_SESSION_ID`. Do not modify other frontmatter fields here; those are reserved for `release_task`.
 2. **Present follow-up**. Output a one or two-line summary: "Next: [X]" or "Blocked on: [Y]".
 3. **Finish**. Do NOT emit the handover block or halt. The gate is satisfied for this turn. If the gate reopens after further mutating tool calls, you must run the Full-form branch on the next close.
 
-### 3. Full-form Branch (Standard)
+### 4. Full-form Branch (Standard)
 
 1. **Commit, push, file PR**. If file changes exist, commit them, push the branch, and run `gh pr create --fill`. If no file changes, skip. Never end a session with uncommitted work.
 
