@@ -642,6 +642,26 @@ def _build_isolated_claude_config(plugin_dirs: list[Path]) -> Path:
     (plugins_dir / "installed_plugins.json").write_text(
         json.dumps({"version": 2, "plugins": installed}, indent=2)
     )
+
+    # Propagate the user's stored OAuth credentials into the isolated config
+    # dir so headless `claude` can authenticate. Without this the CLI falls
+    # back to "Not logged in · Please run /login" because CLAUDE_CONFIG_DIR
+    # is fresh and contains no .credentials.json. Skipped silently when the
+    # host has no stored credentials (CI runners use ANTHROPIC_API_KEY /
+    # CLAUDE_CODE_OAUTH_TOKEN env vars instead).
+    #
+    # Use os.path.expanduser rather than Path.home() so tests that
+    # ``patch.object(Path, "home", ...)`` (e.g. test_plugin_integration's
+    # mock_home fixture) don't redirect us to an empty tmp dir and skip the
+    # copy.
+    host_creds = Path(os.path.expanduser("~/.claude/.credentials.json"))
+    if host_creds.exists():
+        import shutil as _shutil
+
+        dest = config_dir / ".credentials.json"
+        _shutil.copy2(host_creds, dest)
+        os.chmod(dest, 0o600)
+
     return config_dir
 
 

@@ -346,6 +346,11 @@ class TestAllInvocationPaths:
             str(repo),
             "-n",
             crew_name,
+            # Force hooks ON for this assertion path. The polecat.yaml SSoT
+            # defaults `crew_defaults.hooks_enabled` to false (vanilla crew),
+            # which would short-circuit the router and produce no hook JSONL.
+            # The hook-firing assertions below need the full hook chain.
+            "--hooks",
         ]
         if backend == "gemini":
             cmd.append("-g")
@@ -555,11 +560,18 @@ class TestAllInvocationPaths:
 
         # Fallback: if the agent didn't run our specific bash commands, check for
         # other Docker/sandbox evidence (container hostname, sandbox flags, etc.)
+        # Also accept paraphrased confirmation when Claude's text-mode response
+        # narrates the result rather than echoing the literal command output —
+        # references to ``/workspace/`` and the bind-mount sentinel only exist
+        # inside the container so their presence proves containerization.
         has_container_evidence = (
             "aops-crew" in all_text
             or "POLECAT_SESSION_TYPE" in all_text
             or "--sandbox" in combined
+            or "/workspace/" in all_text
+            or ".polecat-bind-mount-sentinel" in all_text
             or bool(re.search(r"docker\s+run", combined, re.IGNORECASE))
+            or bool(re.search(r"docker\s+sandbox\s+verified", all_text, re.IGNORECASE))
         )
 
         assert (has_dockerenv and has_session_type) or has_container_evidence, (

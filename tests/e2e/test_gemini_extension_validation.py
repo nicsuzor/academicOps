@@ -468,11 +468,16 @@ class TestGeminiCliValidate:
 @pytest.mark.slow
 @pytest.mark.integration
 class TestGeminiCliListExtensions:
-    """Post-install smoke test: `gemini --list-extensions` prints no load errors.
+    """Post-install smoke test: `gemini extensions list` prints no load errors.
 
     This is the exact codepath a user hits after running the install. We
     install `dist/aops-gemini` into a disposable `$HOME/.gemini/extensions`
     via HOME override, then assert stderr is clean.
+
+    Uses the ``extensions list`` subcommand rather than the legacy
+    ``--list-extensions`` flag — the latter prints nothing on
+    gemini-cli ≥ 0.41 (silent return-zero), so it can no longer detect
+    whether the install registered an extension at all.
     """
 
     @pytest.fixture(scope="class")
@@ -486,14 +491,61 @@ class TestGeminiCliListExtensions:
         ext_root.parent.mkdir(parents=True, exist_ok=True)
         shutil.copytree(DIST, ext_root)
 
-        env = {**os.environ, "HOME": str(fake_home)}
+        # Replicate the host's gemini auth state into the fake HOME so
+        # gemini doesn't refuse to start with "Please set an Auth method...".
+        # Skip silently when the host has nothing — CI runners typically set
+        # GEMINI_API_KEY instead.
+        host_gemini = Path(os.path.expanduser("~/.gemini"))
+        if host_gemini.is_dir():
+            for filename in (
+                "settings.json",
+                "google_accounts.json",
+                "oauth_creds.json",
+                "installation_id",
+            ):
+                src = host_gemini / filename
+                if src.exists():
+                    shutil.copy2(src, fake_home / ".gemini" / filename)
+
+        # Enable the extension for any working directory. Without this gemini
+        # treats the extension as installed-but-not-enabled and `extensions
+        # list` returns a stub line that won't include the extension's name
+        # in any easily-greppable form.
+        import json as _json
+
+        (fake_home / ".gemini" / "extensions" / "extension-enablement.json").write_text(
+            _json.dumps({"aops-core": {"overrides": ["*"]}})
+        )
+
+        # Trust both the fake home and the extension dir so gemini doesn't
+        # refuse to load extensions ("Approval mode overridden to default
+        # because the current folder is not trusted"). Gemini's trust list
+        # is keyed by absolute path.
+        (fake_home / ".gemini" / "trustedFolders.json").write_text(
+            _json.dumps(
+                {
+                    str(fake_home): "TRUST_FOLDER",
+                    str(fake_home / ".gemini"): "TRUST_FOLDER",
+                    str(ext_root): "TRUST_FOLDER",
+                    str(Path.cwd()): "TRUST_FOLDER",
+                }
+            )
+        )
+
+        # Override HOME *and* GEMINI_CLI_HOME — the latter is set in
+        # agent-env-map.conf to /home/worker (the container path) and may
+        # leak from the host shell. If left set the gemini CLI tries to
+        # mkdir /home/worker/.gemini and fails with EACCES, never reaches
+        # extension discovery, and the listing comes back empty.
+        env = {**os.environ, "HOME": str(fake_home), "GEMINI_CLI_HOME": str(fake_home)}
         return subprocess.run(
-            [shutil.which("gemini") or "gemini", "--list-extensions"],
+            [shutil.which("gemini") or "gemini", "extensions", "list"],
             capture_output=True,
             text=True,
             timeout=60,
             env=env,
             check=False,
+            cwd=str(fake_home),
         )
 
     def test_stderr_is_clean(self, list_output):
@@ -503,12 +555,16 @@ class TestGeminiCliListExtensions:
             for pat in CLI_ERROR_PATTERNS
         }
         offenders = {k: v for k, v in offenders.items() if v}
-        assert not offenders, "gemini --list-extensions emitted regressions:\n" + "\n\n".join(
+        assert not offenders, "gemini extensions list emitted regressions:\n" + "\n\n".join(
             f"[{k}]\n  " + "\n  ".join(v) for k, v in offenders.items()
         )
 
     def test_extension_listed(self, list_output):
-        assert "aops-core" in list_output.stdout, (
+        # gemini-cli ≥ 0.41 writes the extension listing to stderr (alongside
+        # the `[SAFETY] Registering Conseca Safety Checker` banner). Earlier
+        # versions wrote to stdout. Accept either.
+        combined = (list_output.stdout or "") + (list_output.stderr or "")
+        assert "aops-core" in combined, (
             f"aops-core not listed by Gemini. stdout:\n{list_output.stdout}\n"
             f"stderr:\n{list_output.stderr}"
         )

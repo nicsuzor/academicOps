@@ -55,10 +55,9 @@ echo "POLECAT_SESSION_TYPE=$POLECAT_SESSION_TYPE"
 echo "POLECAT_CREW_NAME=$POLECAT_CREW_NAME"
 echo "MY_SECRET=$MY_SECRET"
 echo "DATABASE_URL=$DATABASE_URL"
-echo "ENFORCER_GATE_MODE=$ENFORCER_GATE_MODE"
-echo "HANDOVER_GATE_MODE=$HANDOVER_GATE_MODE"
-echo "QA_GATE_MODE=$QA_GATE_MODE"
-echo "ENFORCER_TOOL_CALL_THRESHOLD=$ENFORCER_TOOL_CALL_THRESHOLD"
+echo "AOPS_POLECAT_CONFIG=$AOPS_POLECAT_CONFIG"
+if [ -f "$AOPS_POLECAT_CONFIG" ]; then echo POLECAT_YAML_PRESENT=true; else echo POLECAT_YAML_PRESENT=false; fi
+echo "POLECAT_YAML_HASH=$(sha256sum $AOPS_POLECAT_CONFIG 2>/dev/null | awk '{print $1}')"
 echo "AOPS_SESSIONS=$AOPS_SESSIONS"
 echo "AOPS_CUSTOM_VAR=$AOPS_CUSTOM_VAR"
 echo "TZ_VAL=$TZ"
@@ -114,10 +113,6 @@ class TestDockerEndState:
             "POLECAT_CREW_NAME": "integration-test",
             "MY_SECRET": "should-not-leak",
             "DATABASE_URL": "postgres://should-not-leak",
-            "ENFORCER_GATE_MODE": "block",
-            "HANDOVER_GATE_MODE": "warn",
-            "QA_GATE_MODE": "warn",
-            "ENFORCER_TOOL_CALL_THRESHOLD": "50",
             "AOPS_SESSIONS": "/tmp/test-sessions",
             "AOPS_CUSTOM_VAR": "custom-value",
             # AOPS_BOT_GH_TOKEN is the SSoT for GH auth — conf maps it to
@@ -256,12 +251,19 @@ class TestDockerEndState:
         assert env_results.get("MY_SECRET", "") == ""
         assert env_results.get("DATABASE_URL", "") == ""
 
-    def test_gate_mode_vars_reach_container(self, env_results):
-        """Gate mode variables reach the container for hook enforcement."""
-        assert env_results["ENFORCER_GATE_MODE"] == "block"
-        assert env_results["HANDOVER_GATE_MODE"] == "warn"
-        assert env_results["QA_GATE_MODE"] == "warn"
-        assert env_results["ENFORCER_TOOL_CALL_THRESHOLD"] == "50"
+    def test_polecat_yaml_staged_in_container(self, env_results):
+        """Gate config reaches the container via the staged polecat.yaml.
+
+        Post-SSoT consolidation, gate modes are no longer forwarded as env
+        vars (ENFORCER_GATE_MODE et al.); they are loaded from polecat.yaml
+        staged at /home/worker/.aops/polecat.yaml. ``AOPS_POLECAT_CONFIG``
+        points the in-container hook router at that path. Verify both:
+        the env var is set and the file exists with content.
+        """
+        assert env_results["AOPS_POLECAT_CONFIG"] == "/home/worker/.aops/polecat.yaml"
+        assert env_results["POLECAT_YAML_PRESENT"] == "true"
+        # Non-empty sha256 → file has content (sha256sum prints empty on missing/empty).
+        assert env_results["POLECAT_YAML_HASH"], "Staged polecat.yaml is missing or empty"
 
     def test_aops_prefixed_env_reaches_container(self, env_results):
         """AOPS_* env vars are forwarded."""

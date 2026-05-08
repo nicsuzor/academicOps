@@ -48,9 +48,16 @@ _SYNTHETIC_SESSION_START = json.dumps(
 _HOOK_INVOKE_SCRIPT = r"""
 set -e
 
-# Prefer local source from /workspace so changes are reflected without
-# image rebuilds. Fall back to the installed plugin.
-PLUGIN_DIR=$(find /workspace -path '*/aops-core/hooks/router.py' -maxdepth 6 -print -quit 2>/dev/null || true)
+# Prefer the top-level workspace plugin so changes are reflected without
+# image rebuilds. Stale Claude worktrees under .claude/worktrees/ may carry
+# pre-SSoT plugin code and would mask the current source's behavior, so
+# probe the canonical path first and only fall back to a search if absent.
+if [ -f /workspace/aops-core/hooks/router.py ]; then
+    PLUGIN_DIR=/workspace/aops-core/hooks/router.py
+else
+    PLUGIN_DIR=$(find /workspace -path '*/aops-core/hooks/router.py' \
+        -not -path '*/.claude/worktrees/*' -maxdepth 6 -print -quit 2>/dev/null || true)
+fi
 if [ -z "$PLUGIN_DIR" ]; then
     PLUGIN_DIR=$(find /home -path '*/aops-core/hooks/router.py' -print -quit 2>/dev/null || true)
 fi
