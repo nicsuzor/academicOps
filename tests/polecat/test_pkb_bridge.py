@@ -252,9 +252,8 @@ class TestCallToolErrorHandling:
         assert isinstance(result, dict)
         assert result["frontmatter"]["id"] == "task-123"
         captured = capsys.readouterr()
-        # Verify performance logging
-        assert "[PKB_PERF]" in captured.err
-        assert "get_task" in captured.err
+        assert "[PKB_PERF]" not in captured.err
+        assert "get_task" not in captured.err
 
     def test_happy_path_returns_plain_text_when_not_json(self):
         """list_tasks returns a markdown table — plain text fallback path."""
