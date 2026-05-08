@@ -1136,16 +1136,24 @@ def find_session_jsonl(session_id: str, search_dirs: list[Path] | None = None) -
 
 
 def parse_tool_calls(session_file: Path) -> list[dict]:
-    """Parse tool calls from a session file (Claude JSONL or Gemini JSON).
+    """Parse tool calls from a session file.
 
-    Args:
-        session_file: Path to session file (.jsonl for Claude, .json for Gemini)
+    Three concrete shapes are recognised:
+    - Claude JSONL: one JSON object per line, ``type:"assistant"`` entries
+      carry ``message.content[*].type=="tool_use"`` blocks.
+    - Gemini chat JSONL: ``chats/session-*.jsonl`` line-delimited, where
+      ``type:"gemini"`` entries carry a top-level ``toolCalls`` array.
+    - Gemini wrapper JSON (legacy): single JSON object with a ``messages``
+      array. Retained for older fixtures.
 
-    Returns:
-        List of tool call dictionaries with 'name' and 'input' keys
+    Routing is by file path rather than suffix because both Claude and
+    Gemini-chat now use ``.jsonl``; the disambiguator is whether the file
+    sits under a ``chats/`` directory (gemini) or not (claude).
     """
     if session_file.suffix == ".json":
         return _parse_gemini_tool_calls(session_file)
+    if session_file.parent.name == "chats":
+        return _parse_gemini_chat_jsonl_tool_calls(session_file)
     return _parse_claude_tool_calls(session_file)
 
 
@@ -1191,7 +1199,7 @@ _GEMINI_TOOL_NAMES = [
 
 
 def _parse_gemini_tool_calls(session_file: Path) -> list[dict]:
-    """Parse tool calls from Gemini JSON session file.
+    """Parse tool calls from legacy Gemini single-JSON session file.
 
     Gemini stores tool calls as structured ``toolCalls`` arrays inside
     each model message.  Falls back to grepping for known tool names
@@ -1216,6 +1224,39 @@ def _parse_gemini_tool_calls(session_file: Path) -> list[dict]:
                 for tool_name in _GEMINI_TOOL_NAMES:
                     if re.search(rf"\b{tool_name}\b", content):
                         tool_calls.append({"name": tool_name, "input": {}})
+    return tool_calls
+
+
+def _parse_gemini_chat_jsonl_tool_calls(session_file: Path) -> list[dict]:
+    """Parse tool calls from gemini-cli's line-delimited ``chats/session-*.jsonl``.
+
+    Format (one JSON object per line):
+      ``{"sessionId":..., "kind":"main"}``         — header (no ``type``)
+      ``{"type":"user", "content":[{"text":...}]}``
+      ``{"type":"gemini", "content":..., "toolCalls":[{"name":..,"args":..}, ...]}``
+
+    Each ``toolCalls`` entry is the full call record including ``args`` and
+    ``result``; we surface ``name`` + ``input`` to match the Claude shape.
+    """
+    tool_calls = []
+    with session_file.open() as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entry = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if entry.get("type") != "gemini":
+                continue
+            for tc in entry.get("toolCalls", []) or []:
+                tool_calls.append(
+                    {
+                        "name": tc.get("name", ""),
+                        "input": tc.get("args", {}),
+                    }
+                )
     return tool_calls
 
 

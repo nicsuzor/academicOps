@@ -3505,6 +3505,17 @@ def crew(
         if tmp_gemini_home:
             print(f"   Auth: Replicated to {tmp_gemini_home}")
 
+        # _replicate_gemini_auth sets env["GEMINI_CLI_HOME"] to the host tmp
+        # path (its original use was Gemini's own --sandbox flag, where the
+        # host path equals the in-container path via bind-mount). For polecat's
+        # docker-wrap path the auth files are staged to /home/worker/.gemini/
+        # via docker cp (see staging block below), so the in-container value
+        # must be /home/worker. agent-env-map.conf forwards GEMINI_CLI_HOME
+        # verbatim from this env into `docker run -e`, so override here BEFORE
+        # _build_docker_cmd reads it. Without this, gemini in-container reads
+        # from the non-existent host path and auth fails (regression of #931).
+        env["GEMINI_CLI_HOME"] = "/home/worker"
+
         # Provide a stable Gemini session ID based on the crew name
         env["GEMINI_SESSION_ID"] = f"gemini-{crew_name}"
 
@@ -4208,6 +4219,11 @@ def run(
         )
         if tmp_gemini_home:
             print(f"   Auth: Replicated to {tmp_gemini_home}")
+
+        # See parallel block in the crew path: override the host tmp path
+        # that _replicate_gemini_auth set so gemini-in-container reads from
+        # /home/worker/.gemini/ where docker cp stages the auth files.
+        env["GEMINI_CLI_HOME"] = "/home/worker"
 
         # Provide a stable Gemini session ID based on the task ID
         env["GEMINI_SESSION_ID"] = f"gemini-{task.id}"

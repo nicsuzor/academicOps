@@ -215,14 +215,32 @@ class TestAllInvocationPaths:
 
     @staticmethod
     def _is_session_file(f: Path) -> bool:
-        """Return True if the file looks like a session transcript (Claude or Gemini)."""
+        """Return True if the file looks like a session transcript.
+
+        Three concrete shapes (all line-delimited or single JSON):
+        - Claude transcript: ``<uuid>.jsonl`` written under the agent's
+          ``$CLAUDE_CONFIG_DIR/projects/...`` and exfiltrated under
+          ``$AOPS_SESSIONS/{crew,polecats}/.../<uuid>.jsonl``. NOT under a
+          ``chats/`` directory.
+        - Gemini chat: ``chats/session-*.jsonl`` written by gemini-cli into
+          ``$GEMINI_CLI_HOME/.gemini/tmp/<projectHash>/chats/`` and bind-
+          mounted out under ``$AOPS_SESSIONS/.../workspace/chats/``. This is
+          where the actual conversation + tool calls live.
+        - Per-session aops wrapper (``*-{backend}-session.json``) is metadata
+          only — gate state, hooks log path — and is NOT treated as a
+          transcript.
+
+        Hook logs (``*-hooks.jsonl``) are excluded explicitly.
+        """
         if TestAllInvocationPaths._is_hook_file(f):
             return False
-        # Claude: *.jsonl (not hooks)
-        if f.suffix == ".jsonl":
+        if f.suffix != ".jsonl":
+            return False
+        # Gemini chat: chats/session-*.jsonl
+        if f.parent.name == "chats" and f.name.startswith("session-"):
             return True
-        # Gemini: chats/session-*.json
-        if f.suffix == ".json" and f.name.startswith("session-"):
+        # Claude transcript: any *.jsonl outside chats/ that isn't a hook log
+        if f.parent.name != "chats":
             return True
         return False
 
@@ -291,11 +309,18 @@ class TestAllInvocationPaths:
         else:
             hook_files_content = ""
 
+        # Search ONLY $AOPS_SESSIONS — never ~/.claude/projects/. The agent
+        # under test runs inside the polecat container, and its transcript
+        # is exfiltrated to the per-session bind-mount under $AOPS_SESSIONS.
+        # Searching the host's ~/.claude/projects/ tree picks up the
+        # developer's concurrent host-side Claude sessions (any session that
+        # happens to be running in another terminal), producing false positives
+        # that mask real failures — e.g. an agent that never authenticated
+        # in the container and produced no session at all would still appear
+        # to "have a transcript" if any host session was modified during the
+        # test window.
         is_session = TestAllInvocationPaths._is_session_file
-        claude_dir = Path.home() / ".claude" / "projects"
-        session_files = []
-        if claude_dir.exists():
-            session_files.extend(f for f in claude_dir.rglob("*.jsonl") if is_session(f))
+        session_files: list[Path] = []
         if aops_sessions.exists():
             # Search both .jsonl (Claude) and .json (Gemini chats)
             for f in aops_sessions.rglob("*"):
@@ -306,13 +331,17 @@ class TestAllInvocationPaths:
         if started_after:
             session_files = [f for f in session_files if f.stat().st_mtime >= started_after]
 
-        # Filter by expected file format for the backend to prevent cross-session
-        # contamination when Claude and Gemini sessions run in the same time window.
+        # Filter by expected file location for the backend to prevent cross-
+        # backend contamination when Claude and Gemini sessions sit side by
+        # side under $AOPS_SESSIONS. Claude lives at the top of the per-session
+        # dir; Gemini lives one level deeper under chats/.
         if backend == "claude":
-            session_files = [f for f in session_files if f.suffix == ".jsonl"]
+            session_files = [f for f in session_files if f.parent.name != "chats"]
         elif backend == "gemini":
             session_files = [
-                f for f in session_files if f.suffix == ".json" and f.name.startswith("session-")
+                f
+                for f in session_files
+                if f.parent.name == "chats" and f.name.startswith("session-")
             ]
 
         session_files = sorted(session_files, key=os.path.getmtime)
@@ -526,59 +555,61 @@ class TestAllInvocationPaths:
     # --- Assertions (all parse the shared session result) ---
 
     def test_agent_responds(self, session):
-        """Agent starts, produces output, and exits."""
-        combined = session["combined"]
-        # Must have SOME output from the agent (not just CLI status lines)
-        assert len(combined) > 100, (
-            f"{session['param']} produced very little output "
-            f"({len(combined)} chars).\n"
-            f"stdout: {session['stdout'][-500:]}\n"
-            f"stderr: {session['stderr'][-500:]}"
+        """Agent started, ran to completion, and persisted a transcript.
+
+        Hard requirement: the agent's session transcript exists and is
+        non-empty. Polecat's stdout/stderr alone is NOT evidence the agent
+        ran — polecat prints setup logs even when the in-container agent
+        never authenticates or never starts. The transcript is the only
+        artifact that proves the LLM produced output.
+        """
+        session_file = session.get("session_file")
+        assert session_file is not None and session_file.exists(), (
+            f"[{session['param']}] No session transcript was produced. The agent "
+            f"either never started, never authenticated, or never logged anything. "
+            f"This is the failure mode where polecat reports success but the "
+            f"in-container agent silently failed.\n"
+            f"stdout (last 500): {session['stdout'][-500:]}\n"
+            f"stderr (last 500): {session['stderr'][-500:]}"
+        )
+        assert session_file.stat().st_size > 0, (
+            f"[{session['param']}] Session transcript exists at {session_file} "
+            f"but is empty — agent started but produced no output."
         )
 
     def test_sandbox_isolation(self, session):
-        """Agent runs inside a Docker container / Gemini sandbox."""
-        import re
+        """Agent ran INSIDE the container and reported it via the transcript.
 
-        combined = session["combined"]
+        The bash check ``test -f /.dockerenv && echo SANDBOX_VERIFIED=true``
+        in the MEGA_PROMPT only emits ``SANDBOX_VERIFIED=true`` when executed
+        inside a Docker container. Asserting on the agent's session transcript
+        (not stdout/stderr) is the only honest signal that the agent actually
+        ran inside the sandbox.
+
+        Stdout/stderr include polecat CLI's own setup logs — they mention
+        ``aops-crew``, ``/workspace/``, ``docker run``, and the sentinel
+        filename as part of normal staging output, so substring-matching on
+        ``combined`` would pass the test even when the in-container agent
+        never executed a single bash command (e.g. auth failure).
+        """
         session_file = session.get("session_file")
-        raw_log = session_file.read_text() if session_file and session_file.exists() else ""
-        all_text = raw_log + combined
-
-        # Primary proof: the agent executed the bash command inside the container
-        # and reported SANDBOX_VERIFIED=true, or we can see Docker container evidence.
-        has_dockerenv = (
-            "SANDBOX_VERIFIED=true" in all_text
-            or bool(re.search(r"\bSANDBOX_VERIFIED\s*=\s*true\b", all_text, re.IGNORECASE))
-            or "/.dockerenv" in all_text
+        assert session_file is not None and session_file.exists(), (
+            f"[{session['param']}] No session transcript — agent did not run. "
+            f"See test_agent_responds for the underlying diagnosis."
         )
+        raw_log = session_file.read_text()
 
-        # Secondary proof: the agent read the injected environment variables
-        has_session_type = bool(
-            re.search(r"SESSION_TYPE.*?(crew|polecat)", all_text, re.IGNORECASE)
-        )
-
-        # Fallback: if the agent didn't run our specific bash commands, check for
-        # other Docker/sandbox evidence (container hostname, sandbox flags, etc.)
-        # Also accept paraphrased confirmation when Claude's text-mode response
-        # narrates the result rather than echoing the literal command output —
-        # references to ``/workspace/`` and the bind-mount sentinel only exist
-        # inside the container so their presence proves containerization.
-        has_container_evidence = (
-            "aops-crew" in all_text
-            or "POLECAT_SESSION_TYPE" in all_text
-            or "--sandbox" in combined
-            or "/workspace/" in all_text
-            or ".polecat-bind-mount-sentinel" in all_text
-            or bool(re.search(r"docker\s+run", combined, re.IGNORECASE))
-            or bool(re.search(r"docker\s+sandbox\s+verified", all_text, re.IGNORECASE))
-        )
-
-        assert (has_dockerenv and has_session_type) or has_container_evidence, (
-            f"[{session['param']}] Failed to verify sandbox isolation.\n"
-            f"has_dockerenv={has_dockerenv}, has_session_type={has_session_type}, "
-            f"has_container_evidence={has_container_evidence}\n"
-            f"Agent output (last 1000 chars): {combined[-1000:]}"
+        # Hard requirement: the agent emitted SANDBOX_VERIFIED=true into its
+        # transcript. This string only appears when the agent (a) was alive,
+        # (b) executed our bash command, and (c) the file /.dockerenv existed
+        # — which only happens inside the Docker container.
+        assert "SANDBOX_VERIFIED=true" in raw_log, (
+            f"[{session['param']}] Agent transcript does not contain "
+            f"'SANDBOX_VERIFIED=true'. Either the agent never executed the "
+            f"bash check from MEGA_PROMPT step 1, or the check ran outside "
+            f"the container (no /.dockerenv).\n"
+            f"Transcript path: {session_file}\n"
+            f"Transcript tail (last 1500 chars):\n{raw_log[-1500:]}"
         )
 
     def test_hooks_fired(self, session):
@@ -729,16 +760,13 @@ class TestAllInvocationPaths:
           a bind-mount of that host path, what we see on the host is exactly
           what the agent sees inside the container.
 
-        - run path: the agent echoes WORKSPACE_VERIFIED=true via the bash
-          command in the MEGA_PROMPT.  The session transcript (JSONL) is
-          accessible on the host for this path, so the string appears in
-          raw_log or combined.
+        - run path: the agent must emit WORKSPACE_VERIFIED=true into its
+          session transcript by executing the bash check from MEGA_PROMPT
+          step 3. We assert ONLY against the transcript — polecat's
+          stdout/stderr can echo the prompt template (which contains the
+          literal "WORKSPACE_VERIFIED=true" inside an echo command), so
+          matching ``combined`` would pass even when the bash never ran.
         """
-        combined = session["combined"]
-        session_file = session.get("session_file")
-        raw_log = session_file.read_text() if session_file and session_file.exists() else ""
-        all_text = raw_log + combined
-
         if session["path_type"] == "crew":
             # Host-side verification: find the worktree via sentinel file and
             # check that .git is a directory (proves the mount points at a
@@ -751,12 +779,13 @@ class TestAllInvocationPaths:
                 for p in polecat_home.rglob(sentinel_name)
                 if p.is_file() and p.stat().st_mtime >= started_at
             ]
-            if not sentinel_matches:
-                pytest.skip(
-                    f"[{session['param']}] Sentinel file not found on host — "
-                    "cannot verify workspace via host-side check "
-                    "(test_workspace_writes_visible_on_host would also fail)"
-                )
+            assert sentinel_matches, (
+                f"[{session['param']}] Sentinel file '{sentinel_name}' not found "
+                f"under {polecat_home}. The agent never wrote it inside /workspace, "
+                f"so we cannot locate the worktree to verify the bind-mount. "
+                f"This is the same failure as test_workspace_writes_visible_on_host "
+                f"and indicates the agent did not run inside the container."
+            )
             worktree_path = sentinel_matches[0].parent
             git_dir = worktree_path / ".git"
             assert git_dir.is_dir(), (
@@ -765,9 +794,18 @@ class TestAllInvocationPaths:
                 "— agent saw a git-worktree-add mount, not a full clone."
             )
         else:
-            assert "WORKSPACE_VERIFIED=true" in all_text, (
-                f"[{session['param']}] No evidence the repo worktree was available at /workspace. "
-                f"Agent output (last 1000 chars): {all_text[-1000:]}"
+            session_file = session.get("session_file")
+            assert session_file is not None and session_file.exists(), (
+                f"[{session['param']}] No session transcript — agent did not run."
+            )
+            raw_log = session_file.read_text()
+            assert "WORKSPACE_VERIFIED=true" in raw_log, (
+                f"[{session['param']}] Agent transcript does not contain "
+                f"'WORKSPACE_VERIFIED=true'. The agent did not execute the "
+                f"bash check from MEGA_PROMPT step 3, so /workspace mounting "
+                f"cannot be verified.\n"
+                f"Transcript path: {session_file}\n"
+                f"Transcript tail (last 1000 chars):\n{raw_log[-1000:]}"
             )
 
     def test_session_persists(self, session):
