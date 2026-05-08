@@ -23,7 +23,9 @@ if str(REPO_ROOT / "polecat") not in sys.path:
 
 from manager import PolecatManager
 
-GH_FIELDS = [
+# Fields fetched per state. Open PRs need bucketing signals (CI rollup, mergeable,
+# reviewDecision); closed/merged need only what /sleep's PR→task matcher reads.
+OPEN_FIELDS = [
     "number",
     "title",
     "url",
@@ -32,25 +34,57 @@ GH_FIELDS = [
     "author",
     "createdAt",
     "updatedAt",
-    "mergedAt",
-    "closedAt",
     "headRefName",
     "baseRefName",
     "body",
     "mergeable",
     "reviewDecision",
     "statusCheckRollup",
-    "labels",
-    "mergeStateStatus",
+]
+CLOSED_FIELDS = [
+    "number",
+    "title",
+    "url",
+    "state",
+    "author",
+    "createdAt",
+    "updatedAt",
+    "mergedAt",
+    "closedAt",
+    "headRefName",
+    "baseRefName",
+    "body",
 ]
 
 BODY_LIMIT = 2048
+
+# Only fields any consumer actually reads. Everything else gh emits is dropped.
+_AUTHOR_KEEP = ("login", "is_bot")
+_CHECK_KEEP = ("name", "conclusion", "status")
+
+
+def _project_pr(pr: dict, *, is_open: bool) -> dict:
+    author = pr.get("author") or {}
+    if author and isinstance(author, dict):
+        pr["author"] = {k: author[k] for k in _AUTHOR_KEEP if k in author}
+    if is_open:
+        pr["statusCheckRollup"] = [
+            {k: c[k] for k in _CHECK_KEEP if k in c}
+            for c in pr.get("statusCheckRollup") or []
+            if isinstance(c, dict)
+        ]
+    if pr.get("body") and len(pr["body"]) > BODY_LIMIT:
+        pr["body"] = pr["body"][:BODY_LIMIT] + "... [truncated]"
+    return pr
 
 
 def fetch_prs(repo_path: Path, state: str, limit: int = 50, since: str | None = None) -> list:
     """Fetch PRs for a specific repo and state."""
     if not repo_path.exists():
         return []
+
+    is_open = state == "open"
+    fields = OPEN_FIELDS if is_open else CLOSED_FIELDS
 
     cmd = [
         "gh",
@@ -61,7 +95,7 @@ def fetch_prs(repo_path: Path, state: str, limit: int = 50, since: str | None = 
         "--limit",
         str(limit),
         "--json",
-        ",".join(GH_FIELDS),
+        ",".join(fields),
     ]
 
     if since:
@@ -71,13 +105,7 @@ def fetch_prs(repo_path: Path, state: str, limit: int = 50, since: str | None = 
     try:
         result = subprocess.run(cmd, cwd=repo_path, capture_output=True, text=True, check=True)
         data = json.loads(result.stdout)
-
-        # Truncate body
-        for pr in data:
-            if pr.get("body") and len(pr["body"]) > BODY_LIMIT:
-                pr["body"] = pr["body"][:BODY_LIMIT] + "... [truncated]"
-
-        return data
+        return [_project_pr(pr, is_open=is_open) for pr in data]
     except subprocess.CalledProcessError as e:
         print(f"Error fetching {state} PRs for {repo_path.name}: {e.stderr}", file=sys.stderr)
         raise
