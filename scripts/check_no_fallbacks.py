@@ -105,7 +105,7 @@ class FallbackDetector(ast.NodeVisitor):
 
     # -- helpers ------------------------------------------------------------
 
-    def _record(self, node: ast.AST, pattern: str, message: str) -> None:
+    def _record(self, node: ast.expr, pattern: str, message: str) -> None:
         if _line_allowed(self.source_lines, node.lineno):
             return
         self.violations.append(
@@ -136,7 +136,7 @@ class FallbackDetector(ast.NodeVisitor):
         (those are computed at runtime, not silent literal defaults)."""
         if isinstance(node, ast.Constant):
             v = node.value
-            if v is None or v is False or v == "":
+            if v is None or v == "":
                 return False
             return isinstance(v, str | int | float | bool)
         return False
@@ -224,11 +224,12 @@ def check_shell_file(filepath: Path) -> list[dict]:
     violations: list[dict] = []
     lines = source.splitlines()
     for lineno, line in enumerate(lines, start=1):
-        # Skip comments wholesale — but only those that start the line.
-        stripped = line.lstrip()
-        if stripped.startswith("#"):
+        # Strip trailing comments before matching to avoid false positives on
+        # commented-out examples. Full-line comments produce an empty `code`.
+        code, _, _ = line.partition("#")
+        if not code.strip():
             continue
-        for m in _SHELL_DEFAULT_RE.finditer(line):
+        for m in _SHELL_DEFAULT_RE.finditer(code):
             var, _op, default = m.group(1), m.group(2), m.group(3)
             # Skip computed defaults (env-var delegation, command substitution).
             if not default or "$" in default or "`" in default:
