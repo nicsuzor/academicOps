@@ -16,10 +16,8 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from datetime import UTC, date, datetime
+from datetime import date, datetime
 from typing import Any
-
-_SLOW_THRESHOLD_MS = float(os.environ.get("PKB_SLOW_THRESHOLD_MS", 500))
 
 
 class PkbTask:
@@ -159,10 +157,7 @@ class PkbClient:
 
     def call_tool(self, name: str, arguments: dict) -> Any:
         """Call an MCP tool and return the parsed JSON content."""
-        from polecat.observability import metrics
-
         start_time = time.perf_counter()
-        success = False
         try:
             resp = self._post(
                 {
@@ -192,7 +187,6 @@ class PkbClient:
                 print(f"PKB error ({name}): {err_text}", file=sys.stderr)
                 return None
 
-            success = True
             content = result.get("content", [])
             if not content:
                 return None
@@ -205,30 +199,6 @@ class PkbClient:
                 return text
         finally:
             duration_ms = (time.perf_counter() - start_time) * 1000
-
-            # Log structured performance data
-            perf_entry = {
-                "timestamp": datetime.now(UTC).isoformat(),
-                "tool": name,
-                "duration_ms": round(duration_ms, 2),
-                "success": success,
-                "args": arguments,
-            }
-            # Emit JSON line for easy parsing
-            print(f"[PKB_PERF] {json.dumps(perf_entry)}", file=sys.stderr)
-
-            # Record via standard observability
-            metrics._emit(
-                "pkb_tool_latency", tool=name, duration_ms=round(duration_ms, 2), success=success
-            )
-
-            # Slow-call threshold logging (default 500ms)
-            if duration_ms > _SLOW_THRESHOLD_MS:
-                print(
-                    f"[PKB_SLOW_CALL] tool={name} duration={duration_ms:.2f}ms "
-                    f"threshold={_SLOW_THRESHOLD_MS}ms args={json.dumps(arguments)}",
-                    file=sys.stderr,
-                )
 
             # Update in-memory history for p50/p95/p99
             if not hasattr(self, "_latencies"):

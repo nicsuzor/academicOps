@@ -11,7 +11,6 @@ import os
 import statistics
 import sys
 import time
-from datetime import UTC, datetime
 from typing import Any
 
 import mcp.types as mt
@@ -21,7 +20,6 @@ from fastmcp.server.middleware.middleware import Middleware, MiddlewareContext
 
 # Configuration
 PKB_MCP_URL = os.environ.get("PKB_MCP_URL")
-SLOW_THRESHOLD_MS = float(os.environ.get("PKB_SLOW_THRESHOLD_MS", 500))
 
 # Latency storage
 HISTORY_LIMIT = 1000
@@ -54,34 +52,15 @@ class PerfMiddleware(Middleware):
         call_next: Any,
     ) -> Any:
         tool_name = context.message.name
-        arguments = context.message.arguments or {}
 
         start = time.perf_counter()
-        success = False
         try:
             result = await call_next(context)
-            success = True
             return result
         except Exception:
             raise
         finally:
             duration_ms = (time.perf_counter() - start) * 1000
-
-            perf_entry = {
-                "timestamp": datetime.now(UTC).isoformat(),
-                "tool": tool_name,
-                "duration_ms": round(duration_ms, 2),
-                "success": success,
-                "args": arguments,
-            }
-            print(f"[PKB_PERF] {json.dumps(perf_entry)}", file=sys.stderr)
-
-            if duration_ms > SLOW_THRESHOLD_MS:
-                print(
-                    f"[PKB_SLOW_CALL] tool={tool_name} duration={duration_ms:.2f}ms "
-                    f"threshold={SLOW_THRESHOLD_MS}ms args={json.dumps(arguments)}",
-                    file=sys.stderr,
-                )
 
             if tool_name not in tool_latencies:
                 tool_latencies[tool_name] = []
