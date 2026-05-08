@@ -56,11 +56,16 @@ if [[ -f "$HOME/.env.local" ]]; then
     done < "$HOME/.env.local"
 fi
 
-export ACA_DATA="${ACA_DATA:-$HOME/brain}"
-export AOPS_SESSIONS="${AOPS_SESSIONS:-${POLECAT_HOME:-$HOME/.polecat}/sessions}"
+# Required env: must come from ~/.env.local (sourced above) or the cron
+# environment. No defaults — silent fallback to $HOME/brain or
+# $HOME/.polecat/sessions has bitten us before by writing to the wrong
+# repo on machines where these paths differ. See issue #930.
+: "${ACA_DATA:?ACA_DATA must be exported (set in ~/.env.local). No default — refusing to guess.}"
+: "${AOPS_SESSIONS:?AOPS_SESSIONS must be exported (set in ~/.env.local). No default — refusing to guess.}"
 
 # 2b. Source system paths (CARGO_HOME, UV_CACHE_DIR, Homebrew, GOPATH, etc.)
-# Cron doesn't set $USER; .env.system-paths needs it for /opt/$USER paths
+# Cron doesn't set $USER; .env.system-paths needs it for /opt/$USER paths.
+# `whoami` is a syscall, not a literal default — defensible.
 export USER="${USER:-$(whoami)}"
 [[ -f "$HOME/.env.system-paths" ]] && source "$HOME/.env.system-paths"
 
@@ -116,8 +121,9 @@ do_gha_sync() {
         echo "skipping gha sync (gh not authed)"
         return 0
     fi
+    local gha_repos="${AOPS_GHA_REPOS:-nicsuzor/academicOps}"  # allow-fallback: cron-only convenience for single-repo users; multi-repo users must export AOPS_GHA_REPOS in ~/.env.local
     timeout 300 uv run python "${AOPS}/aops-core/scripts/sync_gha_sessions.py" \
-        --repos "${AOPS_GHA_REPOS:-nicsuzor/academicOps}" \
+        --repos "$gha_repos" \
         --limit 100 \
         || echo "Warning: gha sync failed or timed out" >&2
 }

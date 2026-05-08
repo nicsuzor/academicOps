@@ -64,6 +64,9 @@ def load_env_entries(
         if ":=" in line:
             target, value = line.split(":=", 1)
             target = target.strip()
+            # Strip trailing inline comments (e.g. "# allow-fallback: reason")
+            value, _, _ = value.partition("#")
+            value = value.strip()
             if target:
                 entries.append(EnvEntry(target=target, value=value, is_literal=True))
             continue
@@ -72,6 +75,7 @@ def load_env_entries(
         if "=" in line:
             target, source = line.split("=", 1)
             target = target.strip()
+            source, _, _ = source.partition("#")
             source = source.strip()
             if target and source:
                 entries.append(EnvEntry(target=target, value=source, is_literal=False))
