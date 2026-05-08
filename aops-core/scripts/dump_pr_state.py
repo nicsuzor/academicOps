@@ -9,7 +9,7 @@ import json
 import os
 import subprocess
 import sys
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 # Add aops-core to path for lib imports
@@ -47,7 +47,7 @@ GH_FIELDS = [
 BODY_LIMIT = 2048
 
 
-def fetch_prs(repo_path: Path, state: str, limit: int = 50) -> list:
+def fetch_prs(repo_path: Path, state: str, limit: int = 50, since: str | None = None) -> list:
     """Fetch PRs for a specific repo and state."""
     if not repo_path.exists():
         return []
@@ -64,6 +64,10 @@ def fetch_prs(repo_path: Path, state: str, limit: int = 50) -> list:
         ",".join(GH_FIELDS),
     ]
 
+    if since:
+        qualifier = "merged" if state == "merged" else "closed"
+        cmd += ["--search", f"{qualifier}:>{since}"]
+
     try:
         result = subprocess.run(cmd, cwd=repo_path, capture_output=True, text=True, check=True)
         data = json.loads(result.stdout)
@@ -76,10 +80,10 @@ def fetch_prs(repo_path: Path, state: str, limit: int = 50) -> list:
         return data
     except subprocess.CalledProcessError as e:
         print(f"Error fetching {state} PRs for {repo_path.name}: {e.stderr}", file=sys.stderr)
-        raise e
+        raise
     except Exception as e:
         print(f"Error processing {state} PRs for {repo_path.name}: {e}", file=sys.stderr)
-        raise e
+        raise
 
 
 def main():
@@ -98,6 +102,7 @@ def main():
     output_path = state_dir / "pr-state.json"
     tmp_path = output_path.with_suffix(".json.tmp")
 
+    cutoff = (datetime.now(UTC) - timedelta(days=14)).strftime("%Y-%m-%d")
     report = {
         "generated_at": datetime.now(UTC).isoformat(),
         "generator": "repo-sync-cron",
@@ -120,8 +125,8 @@ def main():
 
         try:
             repo_data["open_prs"] = fetch_prs(repo_path, "open", limit=100)
-            repo_data["recent_merged"] = fetch_prs(repo_path, "merged", limit=50)
-            repo_data["recent_closed"] = fetch_prs(repo_path, "closed", limit=20)
+            repo_data["recent_merged"] = fetch_prs(repo_path, "merged", limit=50, since=cutoff)
+            repo_data["recent_closed"] = fetch_prs(repo_path, "closed", limit=20, since=cutoff)
         except Exception as e:
             repo_data["error"] = str(e)
 
