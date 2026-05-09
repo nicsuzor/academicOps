@@ -205,6 +205,14 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         description="Block message requiring handover before stop",
         env_override="STOP_GATE_HANDOVER_TEMPLATE",
     ),
+    # --- Ida (Ida B. Wells — proof-of-claim reminder) gate ---
+    "ida.reminder": TemplateSpec(
+        name="ida.reminder",
+        category=TemplateCategory.USER_MESSAGE,
+        filename="ida-reminder.md",
+        required_vars=(),
+        description="Non-blocking honesty reminder surfaced on Stop",
+    ),
 }
 
 

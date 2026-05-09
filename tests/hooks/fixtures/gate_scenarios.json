@@ -379,7 +379,7 @@
     },
     {
       "id": "syn-stop-all-open-allow",
-      "description": "Stop allowed when handover+QA gates are both open (normal exit after /dump and QA)",
+      "description": "Stop with handover+QA both OPEN; ida surfaces a warn-tier reminder (no block).",
       "_synthetic": "real-tool-synthetic-gate",
       "hook_event": "Stop",
       "tool_name": null,
@@ -394,7 +394,27 @@
         }
       },
       "expected": {
-        "verdict": "allow"
+        "verdict": "warn"
+      }
+    },
+    {
+      "id": "syn-stop-ida-fires-standalone",
+      "description": "Stop with handover+QA both OPEN; ida fires unconditionally with warn verdict.",
+      "_synthetic": "real-tool-synthetic-gate",
+      "hook_event": "Stop",
+      "tool_name": null,
+      "tool_input": {},
+      "is_subagent": false,
+      "gate_overrides": {
+        "handover": {
+          "status": "open"
+        },
+        "qa": {
+          "status": "open"
+        }
+      },
+      "expected": {
+        "verdict": "warn"
       }
     }
   ],

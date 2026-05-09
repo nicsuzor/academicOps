@@ -25,6 +25,7 @@ CANONICAL_YAML = dedent(
         enforcer: warn
         commit: warn
         hydration: off
+        ida: warn
         enforcer_threshold: 50
     crew_defaults:
       hooks_enabled: false
@@ -118,6 +119,7 @@ def test_missing_required_field_hard_fails(tmp_path: Path) -> None:
                 enforcer: warn
                 commit: warn
                 hydration: off
+                ida: warn
                 enforcer_threshold: 50
             crew_defaults: {}
             run_defaults: {}

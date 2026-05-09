@@ -37,6 +37,7 @@ session_defaults:
     enforcer: warn
     commit: warn
     hydration: off
+    ida: warn
     enforcer_threshold: 50
 
 # ---------------------------------------------------------------------------

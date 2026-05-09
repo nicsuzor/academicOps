@@ -2,6 +2,7 @@ from hooks.gate_config import (
     ENFORCER_GATE_MODE,
     ENFORCER_TOOL_CALL_THRESHOLD,
     HANDOVER_GATE_MODE,
+    IDA_GATE_MODE,
     QA_GATE_MODE,
 )
 
@@ -194,6 +195,34 @@ GATE_CONFIGS = [
                 verdict=HANDOVER_GATE_MODE,
                 message_key="handover.policy_message",
                 context_key="stop.handover_block",
+            ),
+        ],
+    ),
+    # --- Ida ---
+    # Named for Ida B. Wells — investigative journalist who built her career
+    # on documented evidence ("turn the light of truth upon them"). Non-
+    # blocking honesty reminder fired on every Stop. Targets criterion
+    # substitution, narrative-as-proof, fabricated diagnostics, skipped
+    # verification, positive-framing bias, unverified keystone assumptions,
+    # and subagent-output laundering (issues #621, #563, #380, #430, #359,
+    # #798, #549, #624, #317, #100, #376, #437, #391, #416, #335, #932,
+    # #822, #714). Mode resolved from polecat.yaml gates.ida — set to "off"
+    # to disable. Strategically warn-only: a block-tier version would force
+    # the agent to discharge the gate by writing some disclosure block,
+    # which is itself the criterion-substitution failure mode. If reminder-
+    # only fails to shift behaviour, the next intervention is structural
+    # (forced disclosure / mandatory review subagent), not a stricter prose
+    # gate.
+    GateConfig(
+        name="ida",
+        description="Reminds the agent to show proof for assertions before stopping.",
+        initial_status=GateStatus.OPEN,
+        triggers=[],
+        policies=[
+            GatePolicy(
+                condition=GateCondition(hook_event="Stop"),
+                verdict=IDA_GATE_MODE,
+                message_key="ida.reminder",
             ),
         ],
     ),

@@ -86,6 +86,7 @@ session_defaults:
     enforcer: "{enforcer}"
     commit: "{commit}"
     hydration: "{hydration}"
+    ida: "{ida}"
     enforcer_threshold: {enforcer_threshold}
 crew_defaults: {{}}
 run_defaults: {{}}
@@ -97,6 +98,7 @@ external_agents: {{}}
         qa=modes.get("qa", "block"),
         enforcer=modes.get("enforcer", "block"),
         commit=modes.get("commit", "warn"),
+        ida=modes.get("ida", "off"),
         hydration=modes.get("hydration", "off"),
         enforcer_threshold=modes.get("enforcer_threshold", 50),
     )
