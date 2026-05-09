@@ -292,7 +292,7 @@ _GATE_MODE_CASES = [
     # Handover
     ("handover", "warn", GateVerdict.WARN),
     ("handover", "block", GateVerdict.DENY),
-    # Eager Micali (fires unconditionally on Stop; default state has all gates OPEN)
+    # Ida (Ida B. Wells — fires unconditionally on Stop; default state has all gates OPEN)
     ("ida", "warn", GateVerdict.WARN),
     ("ida", "block", GateVerdict.DENY),
 ]
