@@ -109,7 +109,6 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "mcp__pkb__create_document",
         "mcp__pkb__find_duplicates",
         "mcp__pkb__delete",
-        "mcp__pkb__pkb_perf_stats",
         # --- PKB all ops: mcp__plugin_aops-core_pkb__* (Claude Code full plugin) ---
         "mcp__plugin_aops-core_pkb__list_tasks",
         "mcp__plugin_aops-core_pkb__search",
@@ -156,7 +155,6 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "search",
         "get_task_children",
         "pkb_orphans",
-        "pkb_perf_stats",
         "create_memory",
         "decompose_task",
         "create_subtask",
@@ -481,7 +479,6 @@ _PKB_OPERATIONS: dict[str, str] = {
     "search": "infrastructure",
     "pkb_context": "infrastructure",
     "pkb_orphans": "infrastructure",
-    "pkb_perf_stats": "infrastructure",
     "get_document": "infrastructure",
     "list_documents": "infrastructure",
     "get_network_metrics": "infrastructure",
@@ -558,7 +555,7 @@ def get_tool_category(tool_name: str, tool_input: dict[str, Any] | None = None) 
     # is the compliance agent name directly) are infrastructure.
     # This ensures dispatching the enforcer is never blocked by any gate,
     # including the enforcer's own ops-threshold policy.
-    extracted_st, _ = extract_subagent_type(tool_name, tool_input or {})
+    extracted_st, _ = extract_subagent_type(tool_name, tool_input)
     if extracted_st and extracted_st in COMPLIANCE_SUBAGENT_TYPES:
         return "infrastructure"
 
