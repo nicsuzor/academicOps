@@ -44,4 +44,9 @@ fi
 # Launch the PKB Performance Proxy. The proxy reads PKB_MCP_URL from env: if
 # set it proxies the remote server with latency tracking; if unset it falls
 # back to local `pkb mcp` stdio.
+if [[ -z "$PKB_MCP_URL" && -z "$ACA_DATA" ]]; then
+    echo "WARNING: ACA_DATA is not set. Local 'pkb mcp' may fail." >&2
+    echo "Ensure ACA_DATA is set in ~/.env.local or your shell environment." >&2
+fi
+
 exec "$SCRIPT_DIR/pkb_perf_proxy.py"
