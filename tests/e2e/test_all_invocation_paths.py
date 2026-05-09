@@ -446,11 +446,6 @@ class TestAllInvocationPaths:
             str(repo),
             "-n",
             crew_name,
-            # Force hooks ON for this assertion path. The polecat.yaml SSoT
-            # defaults `crew_defaults.hooks_enabled` to false (vanilla crew),
-            # which would short-circuit the router and produce no hook JSONL.
-            # The hook-firing assertions below need the full hook chain.
-            "--hooks",
         ]
         if backend == "gemini":
             cmd.append("-g")

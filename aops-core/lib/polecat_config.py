@@ -21,7 +21,7 @@ Config locations (resolution order):
 Schema (see ``polecat/defaults/polecat.yaml.example`` for the canonical doc):
 
     session_defaults:                         # applied to every session
-        hooks_enabled: bool                   # master switch (see below)
+        hooks_enabled: bool                   # legacy field, must be true (#940)
         model: str                            # claude/gemini model id
         debug: bool                           # forwarded as DEBUG_HOOKS=1
         gates:
@@ -31,24 +31,17 @@ Schema (see ``polecat/defaults/polecat.yaml.example`` for the canonical doc):
             commit: warn|block|off
             hydration: warn|block|off
             enforcer_threshold: int
-    crew_defaults: { hooks_enabled: bool, ... }   # overlay for `polecat crew`
-    run_defaults:  { hooks_enabled: bool, ... }   # overlay for `polecat run`
+    crew_defaults: {...}                          # overlay for `polecat crew`
+    run_defaults:  {...}                          # overlay for `polecat run`
     docker:
         image: str
     external_agents:
         <name>: { enabled: bool, ... }
 
-The ``hooks_enabled`` master switch collapses what used to be three
-orthogonal toggles (POLECAT_VANILLA_CREW, AOPS_HOOKS_OFF, --permission-mode):
-
-    hooks_enabled = True   ⇒ framework hooks ON,
-                              claude --permission-mode=plan,
-                              full claude-settings.json staged.
-    hooks_enabled = False  ⇒ framework hooks OFF (router.sh exits 0),
-                              claude --dangerously-skip-permissions,
-                              minimal claude-settings.json staged.
-
-There is no third option.
+``hooks_enabled`` is retained in the schema for back-compat with existing
+``polecat.yaml`` files but no longer branches behaviour: hooks are always
+on, plan-mode is the only claude path, the vanilla settings template is
+gone (issue #940). Setting it to false is silently ignored.
 """
 
 from __future__ import annotations

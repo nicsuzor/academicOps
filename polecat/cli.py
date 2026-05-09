@@ -1200,7 +1200,29 @@ def _build_docker_cmd(
         if not headless_template.exists():
             raise RuntimeError(f"Missing bundled template: {headless_template}")
         staged_claude_json = staging_dir / ".claude.json"
-        shutil.copy2(headless_template, staged_claude_json)
+        # Interactive `claude` (crew) consults .claude.json on launch and runs
+        # the onboarding wizard unless `oauthAccount` is present — the staged
+        # `.credentials.json` alone is not enough. Merge the host's account
+        # record into the template so crew workers boot authenticated. Non-
+        # interactive `polecat run` uses `-p` (print mode) which bypasses
+        # onboarding entirely, but interactive crew has no such escape hatch.
+        # (oauthAccount is PII — email, org UUID — so it cannot live in the
+        # bundled template.) See issue #938.
+        host_claude_json = home / ".claude.json"
+        with open(headless_template) as f:
+            staged_data = json.load(f)
+        if host_claude_json.exists():
+            try:
+                with open(host_claude_json) as f:
+                    host_data = json.load(f)
+                if "oauthAccount" in host_data:
+                    staged_data["oauthAccount"] = host_data["oauthAccount"]
+            except (OSError, json.JSONDecodeError):
+                # Host .claude.json missing/corrupt — proceed without merge;
+                # worker will hit the OAuth wall and the user will see why.
+                pass
+        with open(staged_claude_json, "w") as f:
+            json.dump(staged_data, f)
         os.chmod(staged_claude_json, 0o600)
         if claude_dir.exists():
             # Copy only the auth files Claude needs at runtime — not the whole directory.
@@ -1208,28 +1230,13 @@ def _build_docker_cmd(
             # the full ~/.claude dir would override the image's plugin data with the host's
             # (potentially stale or wrong-path) copy.
             #
-            # Hooks-on sessions also pick up the host's settings.json (autoMode
-            # rules, status line). Hooks-off sessions stage a minimal template
-            # instead — see below.
+            # Pick up the host's settings.json (autoMode rules, status line).
             staged_claude_dir = staging_dir / ".claude"
             staged_claude_dir.mkdir(exist_ok=True)
-            staged_files = (
-                (".credentials.json", "settings.json") if hooks_enabled else (".credentials.json",)
-            )
-            for auth_file in staged_files:
+            for auth_file in (".credentials.json", "settings.json"):
                 src = claude_dir / auth_file
                 if src.exists():
                     shutil.copy2(src, staged_claude_dir / auth_file)
-        # Hooks-off sessions: stage a minimal claude settings.json (no autoMode,
-        # no permission rules). Combined with the in-container hook router
-        # short-circuit, this gives an almost-vanilla Claude install.
-        if not hooks_enabled:
-            vanilla_template = SCRIPT_DIR / "defaults" / "claude-settings-vanilla.json"
-            if not vanilla_template.exists():
-                raise RuntimeError(f"Missing bundled template: {vanilla_template}")
-            staged_claude_dir = staging_dir / ".claude"
-            staged_claude_dir.mkdir(exist_ok=True)
-            shutil.copy2(vanilla_template, staged_claude_dir / "settings.json")
         # Stage Gemini auth files for "shell" mode so users can run gemini interactively.
         # Gemini normally handles its own sandbox, but in shell mode we're managing Docker.
         if cli_tool == "shell":
@@ -1315,12 +1322,6 @@ def _build_docker_cmd(
         staged_aops_dir.mkdir(exist_ok=True)
         shutil.copy2(cfg.source_path, staged_aops_dir / "polecat.yaml")
     cmd.extend(["-e", f"{CONFIG_PATH_ENV}={_CONTAINER_POLECAT_YAML}"])
-
-    # Hooks master switch. When False, the in-container hook router exits 0
-    # before any Python work; combined with the minimal claude settings staged
-    # above, this gives the container an almost-vanilla Claude install.
-    if not hooks_enabled:
-        cmd.extend(["-e", "AOPS_HOOKS_OFF=1"])
 
     cmd.append(image)
     cmd.extend(agent_cmd)
@@ -1843,6 +1844,11 @@ def _replicate_gemini_auth(
                 # Adding both covers either invocation without an extra parameter.
                 trust_data[str(work_dir.resolve())] = "TRUST_FOLDER"
                 trust_data["/workspace"] = "TRUST_FOLDER"
+                # Pre-trust the aops-core extension dir — its path is identical
+                # in every fresh worker. Without this, gemini prompts for trust
+                # on the extension on every crew start, even though "remember"
+                # is meaningless across ephemeral workers.
+                trust_data["/home/worker/.gemini/extensions/aops-core"] = "TRUST_FOLDER"
                 with open(target_dir / f, "w") as dest_f:
                     json.dump(trust_data, dest_f, indent=2)
                 continue
@@ -1858,11 +1864,7 @@ def _replicate_gemini_auth(
                 # selectedType is missing. We infer the type from available files:
                 #   oauth_creds.json → "oauth-personal"
                 #   GEMINI_API_KEY env → "api-key" (handled by env, no setting needed)
-                # Vanilla-crew trial uses a stripped template with no policyEngine.
-                template_name = (
-                    "gemini-settings.json" if hooks_enabled else "gemini-settings-vanilla.json"
-                )
-                template_path = SCRIPT_DIR / "defaults" / template_name
+                template_path = SCRIPT_DIR / "defaults" / "gemini-settings.json"
                 if not template_path.exists():
                     raise RuntimeError(f"Missing bundled template: {template_path}")
                 with open(template_path) as tpl_f:
@@ -1885,18 +1887,14 @@ def _replicate_gemini_auth(
         # This is critical for ~/.gemini/settings.json which is often symlinked.
         shutil.copy2(gemini_dir / f, target_dir / f, follow_symlinks=True)
 
-    # Copy our default framework policies — skipped when hooks are off, which
-    # intentionally drops the policy-engine restrictions.
-    if hooks_enabled:
-        deny_ext_src = SCRIPT_DIR / "defaults" / "deny-extension-writes.toml"
-        if not deny_ext_src.exists():
-            raise RuntimeError(f"Missing bundled policy file: {deny_ext_src}")
-        shutil.copy2(deny_ext_src, policies_dir / "deny-extension-writes.toml")
-
-    # Generate sandbox policy if work_dir is provided (skipped when hooks off)
-    if work_dir and hooks_enabled:
-        # Todo: copy template policies into container.
-        pass
+    # Copy our default framework policies. Source from aops-core/policies/
+    # (the single source of truth) rather than a duplicate under
+    # polecat/defaults/ — the bundled copy got out of sync with gemini's
+    # policy engine schema and silently disabled itself. See issue #940.
+    deny_ext_src = SCRIPT_DIR.parent / "aops-core" / "policies" / "deny-extension-writes.toml"
+    if not deny_ext_src.exists():
+        raise RuntimeError(f"Missing framework policy file: {deny_ext_src}")
+    shutil.copy2(deny_ext_src, policies_dir / "deny-extension-writes.toml")
 
     # If trustedFolders.json didn't exist but we have a work_dir, create it.
     # Cover both the host path and the in-container mount (/workspace) so the
@@ -1906,6 +1904,7 @@ def _replicate_gemini_auth(
             trust_data = {
                 str(work_dir.resolve()): "TRUST_FOLDER",
                 "/workspace": "TRUST_FOLDER",
+                "/home/worker/.gemini/extensions/aops-core": "TRUST_FOLDER",
             }
             with open(target_dir / "trustedFolders.json", "w") as f:
                 json.dump(trust_data, f, indent=2)
@@ -3070,13 +3069,6 @@ def _branch_has_open_pr(branch_name: str, repo_path: Path) -> bool:
 @click.option("--resume", "-r", help="Resume existing crew worker by name")
 @click.option("--keep", "-k", is_flag=True, help="Keep worktree even if a PR is open")
 @click.option("--memory", default=None, help="Container memory limit (e.g. 4g, 2048m)")
-@click.option(
-    "--hooks/--no-hooks",
-    "hooks_enabled",
-    default=None,
-    help="Override hooks_enabled from polecat.yaml. --hooks ⇒ plan-mode + full hooks; "
-    "--no-hooks ⇒ bypass-permissions + minimal settings + router exit.",
-)
 @click.option("--model", default=None, help="Override the model (claude/gemini model id).")
 @click.option(
     "--debug/--no-debug",
@@ -3103,7 +3095,6 @@ def crew_alias(
     resume,
     keep,
     memory,
-    hooks_enabled,
     model,
     debug_flag,
     set_overrides,
@@ -3120,7 +3111,6 @@ def crew_alias(
         resume=resume,
         keep=keep,
         memory=memory,
-        hooks_enabled=hooks_enabled,
         model=model,
         debug_flag=debug_flag,
         set_overrides=set_overrides,
@@ -3137,13 +3127,6 @@ def crew_alias(
 @click.option("--resume", "-r", help="Resume existing crew worker by name")
 @click.option("--keep", "-k", is_flag=True, help="Keep worktree even if a PR is open")
 @click.option("--memory", default=None, help="Container memory limit (e.g. 4g, 2048m)")
-@click.option(
-    "--hooks/--no-hooks",
-    "hooks_enabled",
-    default=None,
-    help="Override hooks_enabled from polecat.yaml. --hooks ⇒ plan-mode + full hooks; "
-    "--no-hooks ⇒ bypass-permissions + minimal settings + router exit.",
-)
 @click.option("--model", default=None, help="Override the model (claude/gemini model id).")
 @click.option(
     "--debug/--no-debug",
@@ -3170,7 +3153,6 @@ def crew(
     resume,
     keep,
     memory,
-    hooks_enabled,
     model,
     debug_flag,
     set_overrides,
@@ -3408,7 +3390,6 @@ def crew(
     print(f"   Working dir: {work_dir}")
     cfg, session_cfg = _resolve_session_config(
         "crew",
-        hooks_enabled=hooks_enabled,
         model=model,
         debug=debug_flag,
         set_overrides=set_overrides,
@@ -3448,26 +3429,16 @@ def crew(
         )
     else:
         # Claude Code: sandbox via project settings.json + setting-sources.
-        # hooks_enabled=False ⇒ bypass permissions and skip the plan-mode prompt
-        # (matches the in-container hook router exit). hooks_enabled=True keeps
-        # plan mode and the full hook stack.
-        if session_cfg.hooks_enabled:
-            cmd = [
-                "claude",
-                "--permission-mode=plan",
-                "--allow-dangerously-skip-permissions",
-                "--setting-sources=user,project",
-                "--model",
-                session_cfg.model,
-            ]
-        else:
-            cmd = [
-                "claude",
-                "--dangerously-skip-permissions",
-                "--setting-sources=user,project",
-                "--model",
-                session_cfg.model,
-            ]
+        # Plan mode + full hook stack — the legacy hooks-off branch was removed
+        # along with the vanilla settings template (#940).
+        cmd = [
+            "claude",
+            "--permission-mode=plan",
+            "--allow-dangerously-skip-permissions",
+            "--setting-sources=user,project",
+            "--model",
+            session_cfg.model,
+        ]
 
     # Append any extra args passed after '--' to the agent command
     if agent_args:
@@ -3481,11 +3452,10 @@ def crew(
     env["POLECAT_WORKTREE"] = str(work_dir)
     if session_cfg.debug:
         env["DEBUG_HOOKS"] = "1"
-    # Claude crew with hooks enabled runs in plan mode; signal that to the
-    # gate engine so it skips the custodiet ops counter (the gate must not
-    # fire when rbg cannot be invoked). Suppressed for hooks-off / gemini /
-    # interactive shell paths.
-    if not interactive and not gemini and session_cfg.hooks_enabled:
+    # Claude crew runs in plan mode; signal that to the gate engine so it
+    # skips the custodiet ops counter (the gate must not fire when rbg
+    # cannot be invoked). Suppressed for gemini / interactive shell paths.
+    if not interactive and not gemini:
         env["POLECAT_APPROVAL_MODE"] = "plan"
 
     # Compute session directory for Claude transcript persistence.
@@ -3816,12 +3786,6 @@ class _IssueTask:
         "PR-locked). Still claims the task to in_progress before running."
     ),
 )
-@click.option(
-    "--hooks/--no-hooks",
-    "hooks_enabled",
-    default=None,
-    help="Override hooks_enabled from polecat.yaml.",
-)
 @click.option("--model", default=None, help="Override the model.")
 @click.option(
     "--debug/--no-debug",
@@ -3849,7 +3813,6 @@ def run(
     no_auto_finish,
     memory,
     force,
-    hooks_enabled,
     model,
     debug_flag,
     set_overrides,
@@ -4128,7 +4091,6 @@ def run(
     mode = "interactive" if interactive else "headless"
     cfg, session_cfg = _resolve_session_config(
         "run",
-        hooks_enabled=hooks_enabled,
         model=model,
         debug=debug_flag,
         set_overrides=set_overrides,

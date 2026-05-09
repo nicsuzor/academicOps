@@ -1,5 +1,6 @@
 {
   "bypassPermissionsModeAccepted": true,
+  "hasCompletedOnboarding": true,
   "projects": {
     "/workspace": {
       "hasTrustDialogAccepted": true,
