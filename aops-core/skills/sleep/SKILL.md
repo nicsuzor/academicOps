@@ -326,6 +326,7 @@ Match PR → task by precedence:
 2. `task-XXXXXXXX` ID found in PR body
 3. PR `headRefName` matches the task's recorded branch
 4. PR title matches task title (whole-word, ignoring `feat()` / `fix()` / `chore()` prefixes)
+5. **Reverse-match for session-release adhoc tasks** (tag `session-release` or parent under `adhoc-sessions*`): the task title narrates the work, not the change — extract distinctive component substrings from the title (file paths, symbol names, PR numbers explicitly cited, e.g. `cli.py:1278`, `agent-env-map.conf`, `GEMINI_CLI_HOME`, `#931`) and search PR bodies for those substrings within the cursor window. Surface as `likely-closed-by` in the artefact — **never auto-complete on this signal alone**; let `/daily` present the candidate to the user.
 
 Resolution:
 
@@ -338,6 +339,21 @@ PRs only — **no `git log` scanning**. Idempotent. Cursor advances only after w
 
 Artefact written to `$ACA_DATA/state/pr-state.json` for `/daily` and dashboard consumers (single producer / two consumers).
 
+**Activity 4a-bis — status-drift backstop (cursor-independent).**
+
+The cursor-based forward sweep above misses two failure modes observed during the 2026-05-09 sweep (47 candidate tasks, 9 unrecovered drift cases): (i) the cursor did not run for a stretch and PRs were closed before the next advance; (ii) the task body contains a `## Release: merge_ready` block written by an agent but no PR was ever opened, so the closed-PR signal does not exist. Both leave tasks marooned in `merge_ready` or `review` with shipped/dead/missing evidence the cursor will never revisit.
+
+For every task currently in `merge_ready` or `review` (cap 50 per cycle, oldest-modified first), apply these checks **regardless of cursor position**:
+
+1. **PR-status reverify.** If frontmatter has a `pr_url`, fetch the PR's current state from the artefact (or one-off `gh pr view --json state,mergedAt`). State `MERGED` and task is not yet `done` → `complete_task` with the merge evidence. State `CLOSED` and not merged → re-queue to `inbox` per the Re-queue policy and append the closure rationale (PR comments, last sweep report) to the body. `OPEN` → no-op.
+2. **Body-vs-frontmatter drift.** If the body contains a `## Release: merge_ready` block (or the legacy `## Release: review` block) but frontmatter has **no** `pr_url` AND no PR can be found in the artefact via rules 1–4 above, the agent declared the work shipped but never opened a PR. Surface as `claim-without-pr` in the cycle summary; do not auto-act.
+3. **Worker-no-op marker.** If the body contains the literal markers `⚠️ Review needed (zero changes detected)` or `Worker finished without making changes`, the dispatched worker advanced status without doing anything. Re-queue to `inbox` with annotation `# Demoted by /sleep YYYY-MM-DD: worker-zero-changes marker present; status was advanced without work shipped.`.
+4. **Repeated-sweep-failure marker.** If the body contains ≥3 `## 🧹 Sweep Report` entries that all read `PR Closed without merge`, the surface PR has been dead for hours/days while the task has remained in `merge_ready` — a strong drift signal. Re-queue to `inbox`.
+
+Output a single `status-drift` block in the cycle summary listing every task touched by 4a-bis with the rule that fired and the action taken (or `surface-only` for rule 2). The block is also written to `pr-state.json` under `status_drift` so `/daily` Step 7 can render it without re-running the checks.
+
+Time budget: 4a-bis adds at most 5 minutes to Phase 6. If the 50-task cap is too tight to finish a cycle, lower the cap and surface "drift backlog: N tasks unchecked" rather than truncating silently.
+
 **Activity 4b — gate-1 verification audit.**
 
 For tasks transitioned `in_progress → done` since the last cycle, look up the verification subtask the planner gate (`spec-64352eac`) created at `inbox → ready`. Confirm terminal state (`done` or `cancelled` with rationale). If missing or unresolved, surface in the cycle summary under `Loop-close gaps`. **Do NOT auto-close or auto-fail — surface only.**
@@ -348,7 +364,7 @@ For tasks transitioned `in_progress → done` since the last cycle, look up the 
 
 Closed-without-merge PRs carry new counter-evidence (review comments, surfaced bugs). The planner gate (`spec-64352eac`) exists precisely to re-decompose: AC, named file/symbol, verification subtask, lens subtasks. Bypassing it would let stale assumptions ride. Reviewer comments are appended to the task body either way, preserving visibility. Cost is one extra trip through the planner gate — that is the design intent.
 
-**Time budget**: Phase 6 gets 15 minutes max (10m baseline + 5m for Activity 4). Exit the phase when time is up.
+**Time budget**: Phase 6 gets 20 minutes max (10m baseline + 5m for Activity 4a/4b + 5m for Activity 4a-bis status-drift backstop). Exit the phase when time is up.
 
 ## Phase 7: Staleness Sweep
 
