@@ -158,7 +158,7 @@ contributes_to:
     inherits_from: <prototype-id>
 ```
 
-**Canonical fields**: `stated_weight`, `justification`. Aliases `weight` / `why` are accepted on read for backward compatibility but new edges should use canonical names.
+**Canonical fields**: `to`, `stated_weight`, `justification`. Aliases `weight` / `why` are accepted on read for backward compatibility but new edges should use the fields listed above.
 
 **Weight is verbal, not numeric.** Raw decimals are rejected at parse. The Renooij-Witteman scale: `Impossible` (0.00) / `Improbable` (0.15) / `Uncertain` (0.25) / `Fifty-Fifty` (0.50) / `Expected` (0.75) / `Probable` (0.85) / `Certain` (1.00). Semantics are Birnbaum importance — the marginal probability that missing this task guarantees failure of the target. `Certain` = single point of failure; `Fifty-Fifty` = redundancy exists.
 
