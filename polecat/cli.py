@@ -3449,7 +3449,6 @@ def crew(
     env = _make_worker_env(interactive=True, work_dir=work_dir)
     env["POLECAT_SESSION_TYPE"] = "crew"
     env["POLECAT_CREW_NAME"] = crew_name
-    env["POLECAT_WORKTREE"] = str(work_dir)
     if session_cfg.debug:
         env["DEBUG_HOOKS"] = "1"
     # Claude crew runs in plan mode; signal that to the gate engine so it
@@ -3486,8 +3485,15 @@ def crew(
         # from the non-existent host path and auth fails (regression of #931).
         env["GEMINI_CLI_HOME"] = "/home/worker"
 
-        # Provide a stable Gemini session ID based on the crew name
-        env["GEMINI_SESSION_ID"] = f"gemini-{crew_name}"
+        # Provide a stable Gemini session ID based on the crew name.
+        # GEMINI_SESSION_ID is also used by the framework as a provider
+        # discriminator (Gemini CLI sets it itself when launched directly).
+        # AOPS_SESSION_ID is the canonical, vendor-neutral name read by
+        # skills/agents/gates — set it here so Gemini sessions match the
+        # Claude Code path (which sets it via the SessionStart hook).
+        gemini_session_id = f"gemini-{crew_name}"
+        env["GEMINI_SESSION_ID"] = gemini_session_id
+        env["AOPS_SESSION_ID"] = gemini_session_id
 
         # Hook state dir inside the container
         env["AOPS_SESSION_STATE_DIR"] = "/home/worker/.gemini/tmp"
@@ -4184,8 +4190,12 @@ def run(
         # /home/worker/.gemini/ where docker cp stages the auth files.
         env["GEMINI_CLI_HOME"] = "/home/worker"
 
-        # Provide a stable Gemini session ID based on the task ID
-        env["GEMINI_SESSION_ID"] = f"gemini-{task.id}"
+        # Provide a stable Gemini session ID based on the task ID.
+        # See parallel block in `_crew` for the AOPS_SESSION_ID rationale —
+        # it's the canonical, vendor-neutral session-id env var.
+        gemini_session_id = f"gemini-{task.id}"
+        env["GEMINI_SESSION_ID"] = gemini_session_id
+        env["AOPS_SESSION_ID"] = gemini_session_id
 
         # Hook state dir inside the container
         env["AOPS_SESSION_STATE_DIR"] = "/home/worker/.gemini/tmp"

@@ -466,7 +466,7 @@ class TestAllInvocationPaths:
             ]
         )
         for key in [
-            "CLAUDE_SESSION_ID",
+            "AOPS_SESSION_ID",
             "CLAUDE_ENV_FILE",
             "AOPS_SESSION_STATE_DIR",
             "AOPS_HOOK_LOG_PATH",
@@ -568,7 +568,7 @@ class TestAllInvocationPaths:
             ]
         )
         for key in [
-            "CLAUDE_SESSION_ID",
+            "AOPS_SESSION_ID",
             "CLAUDE_ENV_FILE",
             "AOPS_SESSION_STATE_DIR",
             "AOPS_HOOK_LOG_PATH",

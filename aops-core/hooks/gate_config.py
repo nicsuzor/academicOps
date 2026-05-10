@@ -583,7 +583,7 @@ def get_tool_category(tool_name: str, tool_input: dict[str, Any] | None = None) 
 
 
 def extract_subagent_type(
-    tool_name: str | None, tool_input: dict[str, Any]
+    tool_name: str | None, tool_input: dict[str, Any] | None
 ) -> tuple[str | None, bool]:
     """Extract subagent_type from a tool invocation.
 
@@ -617,6 +617,8 @@ def extract_subagent_type(
     spec = SPAWN_TOOLS.get(tool_name)
     if spec:
         param_names, is_skill = spec
+        if tool_input is None:
+            return None, is_skill
         for param in param_names:
             value = tool_input.get(param)
             if isinstance(value, str):

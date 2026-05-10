@@ -37,10 +37,10 @@ def get_session_id(input_data: dict[str, Any] | None = None) -> str:
     if input_data:
         session_id = input_data.get("session_id")
     if not session_id:
-        session_id = os.environ.get("CLAUDE_SESSION_ID")
+        session_id = os.environ.get("AOPS_SESSION_ID")
     if not session_id:
         raise ValueError(
-            "session_id is required in hook input_data or CLAUDE_SESSION_ID env var. "
+            "session_id is required in hook input_data or AOPS_SESSION_ID env var. "
             "If you're seeing this error, the hook invocation is missing required context."
         )
     return session_id

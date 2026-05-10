@@ -245,8 +245,9 @@ def _find_existing_state_file(session_id: str, status_dir: Path) -> Path | None:
 
     The state file is the canonical timestamp anchor for a session: every
     hook/gate/transcript artefact derives its base name from it. Subsequent
-    hooks find it here when ``AOPS_SESSION_STATE_PATH`` has not been
-    propagated (e.g. Gemini, which has no ``CLAUDE_ENV_FILE`` analog).
+    hooks discover it by scanning ``status_dir`` for a file matching
+    ``session_id`` (e.g. Gemini, which has no ``CLAUDE_ENV_FILE`` analog
+    for propagating an explicit path).
     """
     if not status_dir.is_dir():
         return None
@@ -392,7 +393,7 @@ def get_session_file_path(
     Returns: ~/writing/sessions/status/YYYYMMDD-HH-sessionID.json
 
     Args:
-        session_id: Session identifier from CLAUDE_SESSION_ID
+        session_id: Session identifier from AOPS_SESSION_ID
         date: Date in YYYY-MM-DD format or ISO 8601 with timezone (defaults to now local time).
               The hour component is extracted from ISO 8601 dates (e.g., 2026-01-24T17:30:00+10:00).
               For simple YYYY-MM-DD dates, the current hour (local time) is used.
@@ -423,7 +424,7 @@ def get_session_directory(
     The base_dir parameter is preserved for test isolation only.
 
     Args:
-        session_id: Session identifier from CLAUDE_SESSION_ID
+        session_id: Session identifier from AOPS_SESSION_ID
         date: Date in YYYY-MM-DD or ISO 8601 format (defaults to now local time)
         base_dir: Override base directory (primarily for test isolation)
 

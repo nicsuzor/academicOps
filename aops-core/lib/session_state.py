@@ -276,11 +276,6 @@ class SessionState(BaseModel):
 # --- Utility Functions ---
 
 
-def is_enforcer_enabled() -> bool:
-    """Check if enforcer is enabled via env var."""
-    return os.environ.get("ENFORCER_DISABLED") != "1"
-
-
 def set_enforcer_block(session_id: str, reason: str) -> None:
     """Set enforcer block on a session.
 

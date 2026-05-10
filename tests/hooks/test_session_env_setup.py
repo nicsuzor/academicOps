@@ -59,7 +59,7 @@ class TestSessionEnvSetup:
         content = temp_env_file.read_text()
 
         # Verify Session ID (shlex.quote leaves shell-safe strings unquoted)
-        assert "export CLAUDE_SESSION_ID=test-session-123" in content
+        assert "export AOPS_SESSION_ID=test-session-123" in content
 
         # Verify PYTHONPATH
         assert "export PYTHONPATH=" in content

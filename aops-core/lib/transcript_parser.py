@@ -535,7 +535,7 @@ def parse_session_handover(text: str) -> dict[str, Any] | None:
         f_match = re.search(reg, handover_text, re.IGNORECASE)
         if f_match:
             val = f_match.group(1).strip()
-            if val.lower() != "none" and val != "$AOPS_SESSION_ID":
+            if val.lower() != "none":
                 raw_fields[key] = val
 
     if not raw_fields:

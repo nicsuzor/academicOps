@@ -222,7 +222,7 @@ GATE_CONFIGS = [
             GatePolicy(
                 condition=GateCondition(hook_event="Stop"),
                 verdict=IDA_GATE_MODE,
-                message_key="ida.reminder",
+                context_key="ida.reminder",
             ),
         ],
     ),

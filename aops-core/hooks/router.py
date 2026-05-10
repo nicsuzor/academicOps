@@ -83,7 +83,7 @@ def _debug_log_input(raw_input: dict[str, Any], args: Any) -> None:
     if not os.environ.get("DEBUG_HOOKS"):
         return
     try:
-        session_id = raw_input.get("session_id") or os.environ.get("CLAUDE_SESSION_ID")
+        session_id = raw_input.get("session_id") or os.environ.get("AOPS_SESSION_ID")
         entry = {
             "ts": datetime.now().isoformat(),
             "session_id": session_id,
@@ -263,13 +263,13 @@ class HookRouter:
         if gemini_event:
             hook_event = GEMINI_EVENT_MAP.get(gemini_event, gemini_event)
         else:
-            raw_event = raw_input.get("hook_event_name") or ""
+            raw_event = raw_input.get("hook_event_name") or ""  # allow-fallback: maps to itself
             hook_event = GEMINI_EVENT_MAP.get(raw_event, raw_event)
 
         # 2. Determine Session ID
         session_id = raw_input.get("session_id")
         if not session_id:
-            session_id = self.session_data.get("session_id") or os.environ.get("CLAUDE_SESSION_ID")
+            session_id = self.session_data.get("session_id") or os.environ.get("AOPS_SESSION_ID")
 
         if not session_id and hook_event == "SessionStart":
             timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -304,7 +304,8 @@ class HookRouter:
 
         # 5. Tool Data
         tool_name = raw_input.get("tool_name")
-        tool_input = self._normalize_json_field(raw_input.get("tool_input", {}))
+        raw_ti = raw_input.get("tool_input", {})  # allow-fallback: type-coerced below
+        tool_input = self._normalize_json_field(raw_ti)
         if not isinstance(tool_input, dict):
             tool_input = {}
 
@@ -439,7 +440,7 @@ class HookRouter:
         These are internal Claude Code plumbing, not real user input.
         The prompt field contains <task-notification>...</task-notification>.
         """
-        prompt = ctx.raw_input.get("prompt", "")
+        prompt = ctx.raw_input.get("prompt", "")  # allow-fallback: empty cannot match prefix
         return isinstance(prompt, str) and prompt.lstrip().startswith("<task-notification>")
 
     def _run_lightweight_hydrator(
@@ -464,7 +465,6 @@ class HookRouter:
 
             variables = {
                 "session_id": ctx.session_id,
-                "client_type": os.environ.get("AOPS_CLIENT_TYPE", "unknown"),
             }
             hint = TemplateRegistry.instance().render("hydration.warn", variables)
             if hint:
@@ -572,7 +572,7 @@ class HookRouter:
         if ctx.hook_event in ("Stop", "SessionEnd") and merged_result.verdict == "deny":
             try:
                 now = datetime.now().timestamp()
-                block_timestamps: list[float] = state.state.get("stop_block_timestamps", [])
+                block_timestamps = state.state.get("stop_block_timestamps", [])  # noqa: E501  # allow-fallback: lazy init  # fmt: skip
                 # Purge entries older than 2 minutes
                 block_timestamps = [ts for ts in block_timestamps if now - ts < 120.0]
                 block_timestamps.append(now)

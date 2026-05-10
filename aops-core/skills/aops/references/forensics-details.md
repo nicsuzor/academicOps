@@ -99,7 +99,7 @@ The compliance gate periodically requires the agent to invoke the enforcer (Haik
 
 **Configuration**:
 
-- Threshold: `ENFORCER_TOOL_CALL_THRESHOLD` env var (default: **50 operations**)
+- Threshold: `gates.enforcer_threshold` in `$AOPS_SESSIONS/polecat.yaml` (default: **50 operations**)
 - Countdown starts: 7 operations before threshold (`start_before=7`)
 - Counter: tracks `ops_since_open` (incremented on PostToolUse for non-subagent calls)
 - Resets: when enforcer/rbg subagent completes (SubagentStop event)

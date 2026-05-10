@@ -65,7 +65,7 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
 
 
     Sets:
-    - CLAUDE_SESSION_ID
+    - AOPS_SESSION_ID  (canonical, vendor-neutral session id)
     - PYTHONPATH (includes aops-core)
     - AOPS_SESSION_STATE_DIR
     - AOPS_HOOK_LOG_PATH
@@ -100,7 +100,7 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
                 metadata={"source": "session_start", "error": str(e)},
             )
 
-    transcript_path = ctx.transcript_path or ""
+    transcript_path = ctx.transcript_path or ""  # allow-fallback: status string only
 
     # Session started messages
     messages = [
@@ -125,13 +125,17 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
         messages.append(f"autoMode: check failed ({e})")
 
     # 1. Persist Session ID
+    # AOPS_SESSION_ID is the canonical, vendor-neutral session-id env var
+    # used by skills, agents, and the gate engine. Set here for Claude Code;
+    # polecat sets it for Gemini sessions in cli.py (alongside GEMINI_SESSION_ID,
+    # which Gemini CLI sets itself and we read as a provider discriminator).
     if ctx.session_id:
-        persist["CLAUDE_SESSION_ID"] = ctx.session_id
+        persist["AOPS_SESSION_ID"] = ctx.session_id
 
     # 2. Persist PYTHONPATH
     # Include aops-core in PYTHONPATH so hooks and scripts can find lib/
     aops_core = str(AOPS_CORE_DIR)
-    current_pythonpath = os.environ.get("PYTHONPATH", "")
+    current_pythonpath = os.environ.get("PYTHONPATH", "")  # allow-fallback: PYTHONPATH may be unset
     if aops_core not in current_pythonpath:
         new_pythonpath = f"{aops_core}:{current_pythonpath}".strip(":")
         persist["PYTHONPATH"] = new_pythonpath
@@ -151,7 +155,6 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
         print(f"WARNING: Failed to determine session status dir: {e}", file=sys.stderr)
 
     persist["AOPS_HOOK_LOG_PATH"] = str(hook_log_path)
-    persist["AOPS_SESSION_STATE_PATH"] = str(state_file_path)
 
     # 4. Persist gate file paths
     gate_paths = get_all_gate_file_paths(ctx.session_id, transcript_path=ctx.transcript_path)
@@ -210,7 +213,8 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
     # Centralised in lib/path_bootstrap — shared logic with ensure-path.sh.
     from lib.path_bootstrap import detect_path_additions
 
-    updated_path = detect_path_additions(os.environ.get("PATH", ""))
+    current_path = os.environ.get("PATH", "")  # allow-fallback: handler accepts ""
+    updated_path = detect_path_additions(current_path)
     if updated_path:
         persist["PATH"] = updated_path
         # Also update live env so subprocesses spawned later in this hook
