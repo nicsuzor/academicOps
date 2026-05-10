@@ -17,7 +17,7 @@ from pathlib import Path
 aops_core_path = Path(__file__).parent.parent
 sys.path.insert(0, str(aops_core_path))
 
-from lib.session_state import is_enforcer_enabled, set_enforcer_block
+from lib.session_state import set_enforcer_block
 
 
 def main() -> int:
@@ -29,11 +29,7 @@ def main() -> int:
     reason = sys.argv[2]
 
     set_enforcer_block(session_id, reason)
-
-    if is_enforcer_enabled():
-        print(f"Block set for session {session_id}")
-    else:
-        print(f"Block recorded for session {session_id} (ENFORCER_DISABLED - not enforced)")
+    print(f"Block set for session {session_id}")
     return 0
 
 

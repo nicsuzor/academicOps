@@ -60,56 +60,6 @@ class TestEnforcerBlockCLI:
         assert "Block" in result.stdout
         assert "test-session-123" in result.stdout
 
-    def test_enforcer_disabled_message(self, tmp_path: Path) -> None:
-        """Script shows 'not enforced' message when ENFORCER_DISABLED=1."""
-        state_dir = tmp_path / "claude-session"
-        state_dir.mkdir()
-
-        env = {
-            "CLAUDE_SESSION_STATE_DIR": str(state_dir),
-            "ENFORCER_DISABLED": "1",
-        }
-        result = subprocess.run(
-            [
-                sys.executable,
-                str(SCRIPT_PATH),
-                "test-session-456",
-                "Test violation",
-            ],
-            capture_output=True,
-            text=True,
-            env={**subprocess.os.environ, **env},
-        )
-
-        assert result.returncode == 0
-        assert "not enforced" in result.stdout.lower() or "ENFORCER_DISABLED" in result.stdout
-
-    def test_enforcer_enabled_message(self, tmp_path: Path) -> None:
-        """Script shows standard message when the enforcer is enabled."""
-        state_dir = tmp_path / "claude-session"
-        state_dir.mkdir()
-
-        # Explicitly unset ENFORCER_DISABLED
-        env = subprocess.os.environ.copy()
-        env["CLAUDE_SESSION_STATE_DIR"] = str(state_dir)
-        env.pop("ENFORCER_DISABLED", None)
-
-        result = subprocess.run(
-            [
-                sys.executable,
-                str(SCRIPT_PATH),
-                "test-session-789",
-                "Test violation",
-            ],
-            capture_output=True,
-            text=True,
-            env=env,
-        )
-
-        assert result.returncode == 0
-        # Should NOT say "not enforced"
-        assert "not enforced" not in result.stdout.lower()
-
 
 class TestEnforcerBlockIntegration:
     """Integration tests verifying block is actually persisted."""
@@ -150,39 +100,3 @@ class TestEnforcerBlockIntegration:
         # <!-- NS: these tests need to be refactored for the new pydantic objects. -->
         assert state["gates"]["enforcer"]["blocked"] is True
         assert state["gates"]["enforcer"]["block_reason"] == "Policy violation reason"
-
-    def test_block_recorded_even_when_disabled(self, tmp_path: Path) -> None:
-        """Block is recorded even when ENFORCER_DISABLED=1 (just not enforced)."""
-        import json
-
-        state_dir = tmp_path / "claude-session"
-        state_dir.mkdir()
-
-        env = {
-            **subprocess.os.environ,
-            "AOPS_SESSION_STATE_DIR": str(state_dir),
-            "ENFORCER_DISABLED": "1",
-        }
-
-        result = subprocess.run(
-            [
-                sys.executable,
-                str(SCRIPT_PATH),
-                "disabled-test-session",
-                "Recorded but not enforced",
-            ],
-            capture_output=True,
-            text=True,
-            env=env,
-            cwd=str(tmp_path),
-        )
-
-        assert result.returncode == 0
-
-        # Find and verify the session state file (named YYYYMMDD-HH-<hash>.json)
-        session_files = list(state_dir.rglob("*.json"))
-        assert len(session_files) == 1
-
-        state = json.loads(session_files[0].read_text())
-        assert state["gates"]["enforcer"]["blocked"] is True
-        assert state["gates"]["enforcer"]["block_reason"] == "Recorded but not enforced"

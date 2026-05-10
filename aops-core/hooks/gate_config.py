@@ -424,6 +424,7 @@ _GATE_MODE_NAMES = {
     "ENFORCER_GATE_MODE": "enforcer",
     "COMMIT_GATE_MODE": "commit",
     "HYDRATION_GATE_MODE": "hydration",
+    "IDA_GATE_MODE": "ida",
 }
 _GATE_MODE_CACHE: dict[str, Any] = {}
 
@@ -547,7 +548,7 @@ def get_tool_category(tool_name: str, tool_input: dict[str, Any] | None = None) 
     # Blocking it creates an unresolvable loop: the agent needs ToolSearch to load
     # tools, but ToolSearch is sometimes blocked.
     if tool_name == "ToolSearch" and tool_input:
-        query = tool_input.get("query", "")
+        query = tool_input.get("query", "")  # allow-fallback: optional input
         if isinstance(query, str) and query.startswith("select:"):
             return "infrastructure"
 
@@ -582,7 +583,7 @@ def get_tool_category(tool_name: str, tool_input: dict[str, Any] | None = None) 
 
 
 def extract_subagent_type(
-    tool_name: str | None, tool_input: dict[str, Any]
+    tool_name: str | None, tool_input: dict[str, Any] | None
 ) -> tuple[str | None, bool]:
     """Extract subagent_type from a tool invocation.
 
@@ -616,6 +617,8 @@ def extract_subagent_type(
     spec = SPAWN_TOOLS.get(tool_name)
     if spec:
         param_names, is_skill = spec
+        if tool_input is None:
+            return None, is_skill
         for param in param_names:
             value = tool_input.get(param)
             if isinstance(value, str):

@@ -108,9 +108,15 @@ def _write_polecat_yaml_with_gate_modes(
     enforcer: str = "block",
     commit: str = "warn",
     hydration: str = "off",
+    ida: str = "off",
     enforcer_threshold: int = 50,
 ) -> Path:
-    """Stage a polecat.yaml with the requested gate modes and return its path."""
+    """Stage a polecat.yaml with the requested gate modes and return its path.
+
+    ida defaults to "off" here so existing test scenarios that
+    expect "allow" on Stop (e.g. syn-stop-all-open-allow) keep their
+    invariants. Tests targeting ida behaviour pass it explicitly.
+    """
     p = tmp_path / "polecat.yaml"
     # YAML quoted to avoid 'off'/'on' boolean coercion when callers pass them
     # via positional defaults.
@@ -125,6 +131,7 @@ session_defaults:
     enforcer: "{enforcer}"
     commit: "{commit}"
     hydration: "{hydration}"
+    ida: "{ida}"
     enforcer_threshold: {enforcer_threshold}
 crew_defaults: {{}}
 run_defaults: {{}}
@@ -285,6 +292,9 @@ _GATE_MODE_CASES = [
     # Handover
     ("handover", "warn", GateVerdict.WARN),
     ("handover", "block", GateVerdict.DENY),
+    # Ida (Ida B. Wells — fires unconditionally on Stop; default state has all gates OPEN)
+    ("ida", "warn", GateVerdict.WARN),
+    ("ida", "block", GateVerdict.DENY),
 ]
 
 

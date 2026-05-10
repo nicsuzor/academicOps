@@ -86,6 +86,7 @@ session_defaults:
     enforcer: "{enforcer}"
     commit: "{commit}"
     hydration: "{hydration}"
+    ida: "{ida}"
     enforcer_threshold: {enforcer_threshold}
 crew_defaults: {{}}
 run_defaults: {{}}
@@ -97,6 +98,7 @@ external_agents: {{}}
         qa=modes.get("qa", "block"),
         enforcer=modes.get("enforcer", "block"),
         commit=modes.get("commit", "warn"),
+        ida=modes.get("ida", "off"),
         hydration=modes.get("hydration", "off"),
         enforcer_threshold=modes.get("enforcer_threshold", 50),
     )
@@ -112,6 +114,11 @@ def gate_mode(monkeypatch, tmp_path):
     """
     cfg_path = _stage_gate_modes_yaml(tmp_path)
     monkeypatch.setenv("AOPS_POLECAT_CONFIG", str(cfg_path))
+    # When run inside a polecat container, POLECAT_APPROVAL_MODE=plan flips
+    # the gate engine into plan mode, which skips the ops counter (see
+    # lib/gates/engine.py:548). Clear it so counter-increment tests behave
+    # the same on the host and inside a polecat session.
+    monkeypatch.delenv("POLECAT_APPROVAL_MODE", raising=False)
     _reinit_gates_with_defaults()
     yield SimpleNamespace()
     _reinit_gates_with_defaults()
@@ -537,6 +544,10 @@ class TestTempPathValidation:
         monkeypatch.delenv("GEMINI_SESSION_ID", raising=False)
         monkeypatch.delenv("AOPS_SESSION_STATE_DIR", raising=False)
         monkeypatch.delenv("AOPS_SESSIONS", raising=False)
+        # When run inside a polecat container, POLECAT_SESSION_TYPE redirects
+        # writes to /home/worker/.claude/projects (the host-extracted dir),
+        # bypassing this test's tmp_path home.
+        monkeypatch.delenv("POLECAT_SESSION_TYPE", raising=False)
 
         path = get_gate_file_path("enforcer", "test-session-abc123")
 

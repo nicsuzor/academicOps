@@ -26,7 +26,7 @@ def _isolate_env(monkeypatch):
         "POLECAT_CREW_NAME",
         "AOPS_MACHINE",
         "GEMINI_SESSION_ID",
-        "CLAUDE_SESSION_ID",
+        "AOPS_SESSION_ID",
         "AOPS_SESSION_STATE_DIR",
         "CLAUDE_PROJECT_DIR",
     ):

@@ -37,6 +37,7 @@ session_defaults:
     enforcer: warn
     commit: warn
     hydration: off
+    ida: warn
     enforcer_threshold: 50
 
 # ---------------------------------------------------------------------------
@@ -105,3 +106,163 @@ project_aliases:
 # drawn at random from this list.
 crew_names:
   - crew
+
+# ===========================================================================
+# MASTER ENVIRONMENT-VARIABLE INVENTORY
+# ===========================================================================
+#
+# This is the authoritative list of every environment variable the framework
+# reads or writes. polecat.yaml is the SSoT for *config values* (gates, model,
+# debug, docker image); env vars are reserved for things that genuinely need
+# to be env: filesystem paths, secrets, runtime context injected by the host
+# (Claude Code / Gemini CLI / shell), and signals propagated to subprocesses.
+#
+# When you add a new env var, add it here. When you migrate a knob into the
+# YAML schema above, delete its row here. If a row exists below, it is real;
+# if it does not exist below, the framework does not read it.
+#
+# ─── Path locators (host shell sets these in ~/.zshenv / ~/.bashrc) ────────
+#
+#   AOPS                  Path to academicOps repo. Used by install/bootstrap.
+#                         Set by setup.sh and Dockerfile.
+#   AOPS_SESSIONS         Path to sessions repo (where polecat.yaml lives by
+#                         default). Resolved by aops-core/lib/polecat_config.
+#   AOPS_SRC_DIR          Convention root for project repos
+#                         (`$AOPS_SRC_DIR/<repo>`).
+#   AOPS_POLECAT_CONFIG   Explicit path to polecat.yaml. Overrides
+#                         $AOPS_SESSIONS/polecat.yaml. The ONLY env var that
+#                         *names* a config; every config *value* lives here.
+#   POLECAT_HOME          Local cache root; default ~/.polecat. Also overridable
+#                         via `polecat --polecat-home`.
+#   ACA_DATA              Path to brain/PKB repo. Used by lib/paths.py.
+#   AOPS_GHA_REPOS        Comma-separated list of repos to sync from GHA
+#                         artifacts. Read by scripts/repo-sync-cron.sh.
+#
+# ─── Secrets (forwarded into containers via agent-env-map.conf) ────────────
+#
+#   AOPS_BOT_GH_TOKEN     Bot PAT for credential isolation (issue #581).
+#                         Mapped to GH_TOKEN and GITHUB_TOKEN inside containers.
+#   ANTHROPIC_API_KEY     Anthropic API auth.
+#   CLAUDE_CODE_OAUTH_TOKEN  Claude Code OAuth credential.
+#   GEMINI_API_KEY        Gemini API auth.
+#   PKB_MCP_URL           PKB MCP HTTP endpoint.
+#   PKB_MCP_TOKEN         PKB MCP auth token.
+#   AOPS_DIST_PAT         Distribution PAT for cross-repo workflow dispatches
+#                         (GitHub Actions only).
+#
+# ─── Spawn-time runtime context (set by polecat/cli.py per session) ────────
+#
+#   POLECAT_SESSION_TYPE      "crew" or "polecat" (selects per-mode YAML
+#                             overlay for gate-mode lookup).
+#   POLECAT_CREW_NAME         Crew name for filenames.
+#   POLECAT_APPROVAL_MODE     "plan" when launched in plan mode (signals the
+#                             gate engine to skip the custodiet ops counter).
+#   DEBUG_HOOKS               Materialised from `debug:` above. Router dumps
+#                             raw hook stdin to /tmp/cc_hooks_<slug>.jsonl.
+#   GEMINI_SESSION_ID         Set on the Gemini path; also a provider
+#                             discriminator (Gemini CLI sets it itself when
+#                             launched directly).
+#   GEMINI_CLI_HOME           Gemini's ~/.gemini location. Polecat overrides
+#                             to /home/worker for in-container auth staging.
+#
+# ─── Session-scoped (set by SessionStart hook, persisted via CLAUDE_ENV_FILE) ─
+#
+#   AOPS_SESSION_ID           Canonical, vendor-neutral session id. Set by
+#                             aops-core/hooks/session_env_setup.py for Claude
+#                             Code; set by polecat/cli.py for Gemini sessions
+#                             (alongside GEMINI_SESSION_ID). This is the var
+#                             skills, agents, and the gate engine reference.
+#   AOPS_SESSION_STATE_DIR    Per-provider tmp dir holding session.json, hook
+#                             JSONL, gate files.
+#   AOPS_HOOK_LOG_PATH        Path to per-session hook JSONL.
+#   AOPS_GATE_FILE_<NAME>     Per-gate file path overrides (HANDOVER, QA,
+#                             ENFORCER, COMMIT, HYDRATION, IDA — six dynamic
+#                             names). Lets in-session hook invocations share
+#                             the same gate file.
+#   PYTHONPATH                Includes aops-core/ so hooks can import lib.*.
+#   PATH                      Augmented with uv/gh/etc by lib/path_bootstrap.
+#   GIT_CONFIG_COUNT,         Force SSH→HTTPS rewrite + bot-PAT credential
+#   GIT_CONFIG_KEY_*,         helper for github.com (defence in depth for
+#   GIT_CONFIG_VALUE_*        credential isolation, issue #581).
+#
+# ─── Claude Code injected (we read; we do not set) ─────────────────────────
+#
+#   CLAUDE_PROJECT_DIR        Project root. Injected at hook execution time.
+#   CLAUDE_ENV_FILE           File the SessionStart hook appends `export ...`
+#                             lines to so subsequent tool calls see them.
+#   CLAUDE_PLUGIN_ROOT        Plugin install path (templated into hook command
+#                             lines and agent @-includes).
+#   CLAUDE_AGENT_TYPE         Subagent type (set in spawned subagents).
+#   CLAUDE_SUBAGENT_TYPE      Compliance subagent type.
+#   CLAUDE_PARENT_SESSION_ID  Parent session linkage in spawned subagents.
+#
+# ─── Git/credential isolation literals (set by agent-env-map.conf in container) ─
+#
+#   GH_TOKEN, GITHUB_TOKEN          Mapped from AOPS_BOT_GH_TOKEN.
+#   GIT_AUTHOR_NAME,                Bot identity literals.
+#   GIT_AUTHOR_EMAIL,
+#   GIT_COMMITTER_NAME,
+#   GIT_COMMITTER_EMAIL
+#   GIT_ASKPASS, GIT_SSH_COMMAND,   Block interactive prompts and SSH-key
+#   GIT_TERMINAL_PROMPT,            access; force HTTPS+bot-PAT.
+#   SSH_AUTH_SOCK
+#   GIT_EDITOR                      Suppress interactive editor (set to "true").
+#
+# ─── Terminal / CI signals ─────────────────────────────────────────────────
+#
+#   CI, NONINTERACTIVE, COLORTERM, FORCE_COLOR, NO_COLOR,
+#   GH_PROMPT_DISABLED, TZ, TMUX, NVM_DIR, NVM_BIN, DOCKER_HOST,
+#   UV_CACHE_DIR, UV_INSTALL_DIR, UV_PROJECT_ENVIRONMENT
+#
+# ─── Optional per-host overrides ───────────────────────────────────────────
+#
+#   AOPS_MACHINE              Short machine name override for filenames;
+#                             falls back to `socket.gethostname()`.
+#   AOPS_TASK_ID              Task ID embedded in artifact filenames. NOTE:
+#                             read by lib/session_paths, transcript.py,
+#                             insights_generator. NOT currently set by polecat
+#                             in production spawn paths — task-tagged artifact
+#                             names only work in tests today. Either wire it
+#                             up in polecat/cli.py or strip the readers.
+#   POLECAT_HOSTS             Permitted polecat hosts allowlist (used by
+#                             supervisor worker dispatch).
+#   NTFY_TOPIC, NTFY_SERVER,  ntfy push notification config. Used by
+#   NTFY_PRIORITY, NTFY_TAGS  hooks/ntfy_notifier.py. Could be folded into
+#                             polecat.yaml in a future pass.
+#   POLECAT_DOCKER_MEMORY     Container memory limit (override of CLI
+#                             --memory). Could be folded into docker:.
+#   POLECAT_TERMINATION_GRACE_SECONDS   Watchdog grace window override.
+#
+# ─── Test/dev opt-in flags ─────────────────────────────────────────────────
+#
+#   POLECAT_FORCE_STAGING            Force `cp` over bind-mount staging.
+#   POLECAT_DISABLE_STARTUP_STAGGER  Skip startup-stagger sleep.
+#   POLECAT_GEMINI_AUTH_DISABLED     Skip host-side Gemini auth check.
+#   POLECAT_SKIP_PR_URL_CHECK        Skip live `gh` PR URL validation.
+#   POLECAT_E2E, POLECAT_E2E_PROJECT, POLECAT_E2E_PARENT
+#   POLECAT_GEMINI_HOST              Pre-staged Gemini home for sandbox tests.
+#   HEALTH_THRESHOLD_CRITICAL,       Framework-health CLI thresholds.
+#   HEALTH_THRESHOLD_WARNING
+#   PYTEST_XDIST_WORKER              pytest-xdist worker id.
+#
+# ─── Template overrides (agent-side string replacement, low-traffic) ───────
+#
+#   HYDRATION_WARN_TEMPLATE, ENFORCER_CONTEXT_TEMPLATE,
+#   ENFORCER_POLICY_CONTEXT_TEMPLATE, ENFORCER_INSTRUCTION_TEMPLATE,
+#   STOP_GATE_HANDOVER_TEMPLATE
+#
+# ─── Removed (do not set; covered by the YAML above) ───────────────────────
+#
+#   HANDOVER_GATE_MODE, QA_GATE_MODE, ENFORCER_GATE_MODE, COMMIT_GATE_MODE,
+#   HYDRATION_GATE_MODE, IDA_GATE_MODE   →  use `gates:` above.
+#   ENFORCER_TOOL_CALL_THRESHOLD          →  use `gates.enforcer_threshold`.
+#   ENFORCER_DISABLED                     →  use `gates.enforcer: off`.
+#   CLAUDE_SESSION_ID                     →  renamed to AOPS_SESSION_ID
+#                                            (vendor-neutral; works for both
+#                                            Claude Code and Gemini sessions).
+#   AOPS_SESSION_STATE_PATH               →  dead. Hooks discover the state
+#                                            file by scanning AOPS_SESSION_STATE_DIR.
+#   POLECAT_WORKTREE                      →  dead. No reader.
+#   AOPS_CLIENT_TYPE                      →  dead. Hydration template no
+#                                            longer references it.
+# ===========================================================================

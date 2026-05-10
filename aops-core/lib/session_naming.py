@@ -538,7 +538,7 @@ def get_provider_name() -> str:
     if os.environ.get("GEMINI_SESSION_ID"):
         return "gemini"
 
-    session_id = os.environ.get("CLAUDE_SESSION_ID", "")
+    session_id = os.environ.get("AOPS_SESSION_ID", "")
     if session_id.startswith("gemini-"):
         return "gemini"
 
