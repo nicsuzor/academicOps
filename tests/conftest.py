@@ -1746,12 +1746,12 @@ def _docker_available() -> bool:
     """Check if Docker is available and the aops-crew image exists."""
     try:
         result = subprocess.run(
-            ["docker", "images", "aops-crew", "--format", "{{.Repository}}"],
+            ["docker", "images", "ghcr.io/nicsuzor/aops-crew", "--format", "{{.Repository}}"],
             capture_output=True,
             text=True,
             timeout=10,
         )
-        return result.returncode == 0 and "aops-crew" in result.stdout
+        return result.returncode == 0 and "ghcr.io/nicsuzor/aops-crew" in result.stdout
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return False
 
@@ -1987,7 +1987,7 @@ def gemini_docker(tmp_path):
         if not tmp_gemini_home:
             pytest.skip("Gemini auth replication failed")
 
-        env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-crew")
+        env.setdefault("GEMINI_SANDBOX_IMAGE", "ghcr.io/nicsuzor/aops-crew")
 
         gemini_slug = "docker-test"
         # Match how polecat/cli.py mounts the volume using the native Gemini log path inside the sandbox
