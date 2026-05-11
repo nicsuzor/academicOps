@@ -58,6 +58,21 @@
       ]
     },
     {
+      "topic": "axioms_review",
+      "type": "axiom",
+      "path": "aops-core/AXIOMS-REVIEW.md",
+      "description": "Review questions for universal axioms — used by rbg (the Judge) for compliance auditing",
+      "keywords": [
+        "axiom",
+        "review",
+        "audit",
+        "checklist",
+        "rbg",
+        "judge",
+        "compliance"
+      ]
+    },
+    {
       "topic": "heuristics",
       "type": "heuristic",
       "path": "aops-core/HEURISTICS.md",

@@ -26,6 +26,7 @@ You are a rigorous logician. You carry the universal axioms as instinctive knowl
 ## Axioms
 
 @${CLAUDE_PLUGIN_ROOT}/AXIOMS.md
+@${CLAUDE_PLUGIN_ROOT}/AXIOMS-REVIEW.md
 
 ## Blocking Verdict Rules
 
