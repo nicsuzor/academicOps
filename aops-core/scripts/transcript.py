@@ -31,6 +31,7 @@ from lib.insights_generator import (  # noqa: E402
     InsightsValidationError,
     find_existing_insights,
     get_insights_file_path,
+    merge_insights,
     validate_insights_schema,
     write_insights_file,
 )
@@ -205,6 +206,23 @@ def _should_overwrite_existing(new: dict, existing: dict) -> str | None:
         return "client metadata appeared"
 
     return None
+
+
+def _cleanup_legacy_suffixed_summaries(canonical_path: Path) -> None:
+    """Delete legacy `-1.json`, `-2.json`, ... siblings produced by an older
+    multi-reflection layout. Reflections now live in a single file's
+    framework_reflections[] array; the suffixed files are stale duplicates.
+    """
+    base = canonical_path.stem
+    parent = canonical_path.parent
+    for sibling in parent.glob(f"{base}-*.json"):
+        rest = sibling.stem[len(base) + 1 :]
+        if rest.isdigit():
+            try:
+                sibling.unlink()
+                print(f"🧹 Removed legacy suffixed summary: {sibling.name}")
+            except OSError as e:
+                print(f"⚠️  Could not remove {sibling}: {e}", file=sys.stderr)
 
 
 def _load_existing_insights(path: Path) -> dict | None:
@@ -397,90 +415,95 @@ def _process_reflection(
             )
         return None, None
 
-    # Collect headers for all reflections
+    # Build display headers and per-reflection insights dicts in one pass.
+    # Multiple reflections in a single session collapse into ONE summary file
+    # with framework_reflections[] holding each entry, rather than the legacy
+    # `-1.json`, `-2.json` sibling files (which duplicated all session-level
+    # metadata). Old suffixed files are cleaned up below.
     headers = []
+    per_reflection_insights = []
     for i, reflection in enumerate(reflections):
-        # Format header for display
         header = format_reflection_header(reflection)
         if len(reflections) > 1:
             header = f"### Reflection {i + 1} of {len(reflections)}\n\n{header}"
         headers.append(header)
 
-        # Convert to insights format and save
-        insights = reflection_to_insights(
-            reflection,
-            session_id,
-            date_str,
-            project,
-            timestamp=timestamp,
-            usage_stats=usage_stats,
-            session_duration_minutes=session_duration_minutes,
-            timeline_events=timeline_events if i == 0 else None,  # only on first reflection
-            provider=provider,
-            session_path=session_path,
+        per_reflection_insights.append(
+            reflection_to_insights(
+                reflection,
+                session_id,
+                date_str,
+                project,
+                timestamp=timestamp,
+                usage_stats=usage_stats,
+                session_duration_minutes=session_duration_minutes,
+                # timeline_events is session-level; only attach once (last reflection
+                # so the merged dict's scalar fields and timeline_events come from
+                # the same source — i.e. the most recent reflection in the session).
+                timeline_events=timeline_events if i == len(reflections) - 1 else None,
+                provider=provider,
+                session_path=session_path,
+            )
         )
 
-        try:
-            validate_insights_schema(insights)
-            # Use index for multi-reflection sessions (index > 0 gets suffix)
-            idx = i if len(reflections) > 1 else None
+    # Merge all reflections into a single insights dict. Strategy:
+    # - List fields (accomplishments, friction_points, proposed_changes,
+    #   framework_reflections, ...) concatenate across reflections.
+    # - Scalar fields (summary, outcome, next_step, root_cause, ...) take the
+    #   last reflection's value — it represents the session's final state.
+    # This is what `merge_insights` does, applied left-to-right.
+    insights = per_reflection_insights[0]
+    for nxt in per_reflection_insights[1:]:
+        insights = merge_insights(insights, nxt)
 
-            # Check for existing insights (avoid duplicates with different slugs).
-            # If the source jsonl has grown since the previous run, refresh
-            # rather than skip — but preserve reflection-derived fields that
-            # the existing file may have (so we don't destroy a hand-edited
-            # or previously-extracted reflection).
-            existing_path = find_existing_insights(date_str, session_id, index=idx)
-            if existing_path:
-                existing = _load_existing_insights(existing_path)
-                if existing is None:
-                    print(
-                        f"⏭️  Insights already exist for session {session_id} (unreadable, "
-                        f"skipping): {existing_path.name}"
-                    )
-                    continue
-                # Use the full timeline for the heuristic even when i > 0 doesn't
-                # save timeline_events, so secondary reflections can also refresh.
-                check_insights = (
-                    {**insights, "timeline_events": timeline_events} if i > 0 else insights
+    try:
+        validate_insights_schema(insights)
+
+        existing_path = find_existing_insights(date_str, session_id)
+        if existing_path:
+            existing = _load_existing_insights(existing_path)
+            if existing is None:
+                print(
+                    f"⏭️  Insights already exist for session {session_id} (unreadable, "
+                    f"skipping): {existing_path.name}"
                 )
-                reason = _should_overwrite_existing(check_insights, existing)
+            else:
+                reason = _should_overwrite_existing(insights, existing)
                 if not reason:
                     print(
                         f"⏭️  Insights already exist for session {session_id}: {existing_path.name}"
                     )
-                    continue
-                insights = _preserve_reflection_fields(insights, existing)
-                write_insights_file(existing_path, insights, session_id=session_id)
-                print(
-                    f"🔄 Reflection {i + 1}/{len(reflections)} refreshed ({reason}, "
-                    f"{len(existing.get('timeline_events') or [])} → "
-                    f"{len(timeline_events or [])} events): {existing_path}"
-                )
-                continue
-
+                else:
+                    insights = _preserve_reflection_fields(insights, existing)
+                    write_insights_file(existing_path, insights, session_id=session_id)
+                    print(
+                        f"🔄 Refreshed insights ({reason}, "
+                        f"{len(existing.get('timeline_events') or [])} → "
+                        f"{len(timeline_events or [])} events, "
+                        f"{len(reflections)} reflection(s)): {existing_path}"
+                    )
+                    _cleanup_legacy_suffixed_summaries(existing_path)
+        else:
             date_for_insights = (
                 timestamp if timestamp else f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
             )
             insights_path = get_insights_file_path(
-                date_for_insights, session_id, slug, idx, project, shortform=shortform
+                date_for_insights, session_id, slug, None, project, shortform=shortform
             )
             write_insights_file(insights_path, insights, session_id=session_id)
-            print(f"💡 Reflection {i + 1}/{len(reflections)} saved to: {insights_path}")
-            # Surface /dump quality warnings (missing Output / Tasks worked /
-            # bare-id references / feature-suggestion smell). See
-            # aops-core/skills/end_session/transcript-metadata-schema.md.
-            for warning in insights.get("quality_warnings") or []:
-                print(
-                    f"⚠️  Reflection {i + 1} quality warning: {warning}",
-                    file=sys.stderr,
-                )
-        except InsightsValidationError as e:
-            print(f"⚠️  Reflection {i + 1} validation failed: {e}", file=sys.stderr)
-        except Exception as e:
-            print(f"⚠️  Failed to save reflection {i + 1}: {e}", file=sys.stderr)
+            print(f"💡 Saved insights ({len(reflections)} reflection(s)): {insights_path}")
+            _cleanup_legacy_suffixed_summaries(insights_path)
 
-    # Combine headers with separator
+        # Surface /dump quality warnings (missing Output / Tasks worked /
+        # bare-id references / feature-suggestion smell). See
+        # aops-core/skills/end_session/transcript-metadata-schema.md.
+        for warning in insights.get("quality_warnings") or []:
+            print(f"⚠️  Quality warning: {warning}", file=sys.stderr)
+    except InsightsValidationError as e:
+        print(f"⚠️  Insights validation failed: {e}", file=sys.stderr)
+    except Exception as e:
+        print(f"⚠️  Failed to save insights: {e}", file=sys.stderr)
+
     combined_header = "\n\n---\n\n".join(headers)
     return combined_header, reflections
 

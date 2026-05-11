@@ -1,78 +1,73 @@
 ---
-name: dump
-alias: end_session
+name: end_session
+alias: end-session
 type: skill
 category: instruction
-description: Complete session handover. Interactive sessions may use the Short-form branch (task delta + follow-up); the Full-form path is commit + push + PR + release_task + halt.
+description: Canonical session close — commit, push, PR, release_task, reflection blocks, handover. Use /dump for emergency bail (no commit/PR/reflection).
 triggers:
-  - "emergency handoff"
   - "save work"
   - "handover"
-  - "interrupted"
   - "session end"
   - "close session"
   - "wrap up"
   - "session complete"
+  - "task complete"
   - "stop hook blocked"
 modifies_files: true
 needs_task: true
 mode: execution
 domain:
   - operations
-permalink: skills/dump
+permalink: skills/end-session
 ---
 
-# /dump: session close and handover
+# /end-session: canonical session close and handover
 
-Close a work session cleanly. This skill supports two paths — see §1 Branch decision below for the canonical rule:
+Close a work session cleanly with the full quality bar: commit, push, PR, `release_task`, reflection blocks, handover.
 
-1. **Short-form** (interactive sessions only, when work is continuing).
-2. **Full-form** (everything else: normal end-of-session, autonomous/headless, emergency, cross-machine, interrupted).
+For an **emergency bail** (mid-flight work, context full, restart needed) use `/dump` instead — it captures a resume task + short handover and skips commit/PR/reflection.
+
+## Before you invoke this skill: did you actually finish?
+
+This skill is for **closing** a session, not for **escaping** one. Two failure modes to check yourself against before running it:
+
+- **Don't finish early.** If the bound task is not actually done and you are not blocked on user input or external dependencies, you are not at end-of-session yet — keep working. "I have written something plausible and now want to stop" is not a complete task. Re-read the task body and acceptance criteria; if any line is not satisfied and you have the capability to satisfy it, do that first.
+
+- **Don't ask permission for work that is within your scope.** Decisions inside the four corners of the bound task — and inside your declared area of expertise — are yours to make. Picking a library when the task says "implement X", choosing a sensible refactor, deciding test layout, naming things, fixing an obvious bug you hit along the way: do it, don't poll. Save user questions for: scope changes, irreversible/destructive actions, ambiguous requirements you cannot resolve from the task text, and decisions that depend on private context the user has and you don't.
+
+If you want to **keep going** rather than close, do not invent a short-form handover branch. Use the `AskUserQuestion` tool (or the equivalent question tool in your harness) with a **specific recommended next step** the user can approve or redirect. Example: "Recommend: extract the rate-limiter into a separate module, then land the PR. Proceed, or stop here?" — not "what should I do next?".
+
+If you are genuinely at end-of-session, continue below.
 
 ## Contract
 
 Per [[session-handover-contract]]:
 
-- **Full-form** terminal output is a terse 5–10 line markdown block in a strict parseable format. **Short-form** output is a one-or-two-line next-step statement.
-- **Full-form** writes structured session data to the task's YAML frontmatter via `release_task`. **Short-form** writes a delta to the task body via `update_task` and does not mutate frontmatter (other than ensuring `session_id` is set — see step 1 below).
-- `$AOPS_SESSION_ID` is the join key that groups session artifacts. Both branches must ensure the bound task carries it.
+- Terminal output is a terse 5–10 line markdown block in a strict parseable format.
+- Structured session data is written to the task's YAML frontmatter via `release_task`.
+- `$AOPS_SESSION_ID` is the join key that groups session artifacts. The bound task must carry it.
 
 ## Execution
 
-### 1. Branch decision (canonical)
+### 1. Branch decision
 
-This is the canonical decision rule. [[session-handover-contract]] §1 and the stop-gate handover-block template both reference this section rather than restating the conditions; do not duplicate the rule elsewhere.
-
-Use **Read-only Q&A** if **all** of the following are true:
+Use the **Read-only Q&A** path if **all** of the following are true:
 
 - No mutating tools (`Edit`, `Write`, `replace`, `write_file`, `NotebookEdit`, `MultiEdit`) have been used in the session.
 - No `Bash` or `run_shell_command` tool has been used for anything other than read-only discovery (e.g. `git status`, `ls`, `grep`).
 - No task is bound to the session (or the bound task has not been mutated).
 - No new tasks have been created.
 
-Use **Short-form** only if **all** of the following are true:
+Otherwise, use the **Full-form** path. There is no longer a "Short-form" interactive shortcut — if more work remains and the session is continuing, you should not be invoking this skill yet (see the "did you actually finish?" preamble above). For mid-flight bail without finishing, use `/dump`.
 
-- The session is **interactive** — the user is steering the conversation in real time, not an autonomous/headless polecat or cron worker.
-- The bound task is **not complete** — more work remains, or you are blocked on input/decisions from the user.
-- You have a **clear single next step or block** to state in one or two lines.
-- The session is **continuing**, not ending.
-
-Use **Full-form** in **every other case**, including: task complete, end-of-day close, autonomous/headless run (any polecat or cron-dispatched worker), emergency handover, cross-machine or cross-environment transfer, or the gate has reopened after further mutating tool calls.
-
-### 2. Read-only Q&A Branch
+### 2. Read-only Q&A path
 
 1. **Emit one-liner**. Output `Output: none — read-only Q&A`.
 2. **Finish**. Do NOT emit the handover block or call `release_task`.
 
-### 3. Short-form Branch (Interactive)
+### 3. Full-form path (standard close)
 
-1. **Update the task**. Use `update_task` to (a) write the latest delta — what was just done, what is left — to the **task body**, and (b) ensure the task's `session_id` frontmatter field equals `$AOPS_SESSION_ID`. Do not modify other frontmatter fields here; those are reserved for `release_task`.
-2. **Present follow-up**. Output a one or two-line summary: "Next: [X]" or "Blocked on: [Y]".
-3. **Finish**. Do NOT emit the handover block or halt. The gate is satisfied for this turn. If the gate reopens after further mutating tool calls, you must run the Full-form branch on the next close.
-
-### 4. Full-form Branch (Standard)
-
-1. **Commit, push, file PR**. If file changes exist, commit them, push the branch, and run `gh pr create --fill`. If no file changes, skip. Never end a session with uncommitted work.
+1. **Commit, push, file PR**. If file changes exist, commit them, push the branch, and run `gh pr create --fill`. If no file changes, skip. Never end a session with uncommitted work — if work is genuinely incomplete, use `/dump` instead so it is captured as a resume task rather than abandoned.
 
 2. **Update the project breadcrumb** (project → active epic → task linkage).
 
@@ -158,7 +153,7 @@ Use **Full-form** in **every other case**, including: task complete, end-of-day 
    1. The **stable identifier** (`task-id`, `PR #NNN`, `org/repo#NNN`, commit SHA, etc.).
    2. A **short precis in parentheses** — what the thing is, in <60 chars.
 
-   Required form: `task-acba1234 (/dump: add explicit process reflection)`, `PR #847 (transcript.py: extract reflection metadata)`, `commit cf83b1f (pkb: broaden --allowed-hosts)`. A bare `task-acba1234` is non-compliant — `transcript.py` flags it as a `bare-identifier` quality warning.
+   Required form: `task-acba1234 (/end-session: add explicit process reflection)`, `PR #847 (transcript.py: extract reflection metadata)`, `commit cf83b1f (pkb: broaden --allowed-hosts)`. A bare `task-acba1234` is non-compliant — `transcript.py` flags it as a `bare-identifier` quality warning.
 
    **Useful (require)** — concrete description of friction, surprises, dead-ends, wasted token paths, environment mismatches, instructions that were wrong or absent. Bug reports for things that look like real bugs (`$AOPS_SESSIONS=...` referenced but doesn't exist on worker container — file it). Token-cost breakdown of friction is the most useful framing.
 
@@ -166,7 +161,7 @@ Use **Full-form** in **every other case**, including: task complete, end-of-day 
 
    **b. `## Output` — required, explicit artefact link**
 
-   Final summary MUST contain a `## Output` block with an explicit URL to the artefact produced — PR, commit, issue, deployed doc, etc. This is the forcing function: requiring a real link implicitly requires the agent to actually file the PR / push the commit / open the issue. **No link → /dump does not pass.**
+   Final summary MUST contain a `## Output` block with an explicit URL to the artefact produced — PR, commit, issue, deployed doc, etc. This is the forcing function: requiring a real link implicitly requires the agent to actually file the PR / push the commit / open the issue. **No link → /end-session does not pass.**
 
    Example:
 
@@ -187,7 +182,7 @@ Use **Full-form** in **every other case**, including: task complete, end-of-day 
    ```markdown
    ## Tasks worked
 
-   - task-5a54f813 (/dump + transcript.py: require useful framework reflection) — updated, added quality bar
+   - task-5a54f813 (/end-session + transcript.py: require useful framework reflection) — updated, added quality bar
    - task-d4932f32 (audit find_existing_* early-returns) — created
    - task-acd9af54 (aops session inspect tool) — cancelled per user
    ```
@@ -217,4 +212,5 @@ Use **Full-form** in **every other case**, including: task complete, end-of-day 
 ## What this skill does NOT do
 
 - Does **not** persist discoveries to memory, codify learnings, or file GitHub issues. Those are separate skills ([[remember]], [[learn]]) and belong in the session body, not the close.
-- Does **not** loop on itself. If the gate reopens after further edits, run `end_session` again.
+- Does **not** loop on itself. If the gate reopens after further edits, run `/end-session` again.
+- Does **not** substitute for `/dump`. If you are bailing mid-task without finishing, use `/dump` — it skips commit/PR/reflection and writes a resume task instead.

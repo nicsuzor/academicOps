@@ -1,4 +1,6 @@
-# Transcript Metadata Schema (`/dump` quality-bar fields)
+# Transcript Metadata Schema (`/end-session` quality-bar fields)
+
+> `/dump` (emergency bail) does not produce these fields — it skips the reflection blocks intentionally. Only `/end-session` is bound by this schema.
 
 This document defines the structured metadata fields that
 `aops-core/scripts/transcript.py` (via `aops-core/lib/transcript_parser.py`)
@@ -98,7 +100,7 @@ reflecting by wishlisting".
 
 ## Required blocks (per `SKILL.md`)
 
-A Full-form `/dump` MUST emit, in any order before the handover block:
+A Full-form `/end-session` MUST emit, in any order before the handover block:
 
 1. `## Framework Reflection` — friction + improvement (+ optional kept).
 2. `## Output` — explicit URL(s) or `Output: none — <reason>`.

@@ -107,7 +107,8 @@ GATE_CONFIGS = [
     # --- Handover ---
     # Gate starts OPEN (so short interactive chats don't require handover).
     # Closes when work begins (task bound or write tool used).
-    # Opens when end_session (default) or /dump (alias) skill completes.
+    # Opens when /end-session (canonical full close) or /dump (emergency bail)
+    # skill completes — both satisfy the handover gate.
     # Policy blocks Stop when CLOSED.
     GateConfig(
         name="handover",
@@ -145,7 +146,7 @@ GATE_CONFIGS = [
             # Uses subagent_type_pattern to match skill name extracted by router
             # (router.py extracts tool_input["skill"] into ctx.subagent_type)
             # Matches both Claude's Skill tool and Gemini's activate_skill tool.
-            # Pattern matches "end_session" (default), "dump" (alias), "handover" (legacy),
+            # Pattern matches "end_session" (canonical), "dump" (emergency), "handover" (legacy),
             # and aops-core: prefixed forms.
             GateTrigger(
                 condition=GateCondition(
