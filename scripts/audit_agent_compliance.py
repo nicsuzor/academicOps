@@ -87,7 +87,7 @@ def audit_agent(file_path, is_gh=False):
         }
 
     try:
-        fm = yaml.safe_load(fm_match.group(1))
+        fm = yaml.safe_load(fm_match.group(1)) or {}
     except Exception as e:
         return {
             "agent": str(file_path),
@@ -188,7 +188,7 @@ def audit_skill(file_path):
         return str(file_path), "❌ No FM"
 
     try:
-        fm = yaml.safe_load(fm_match.group(1))
+        fm = yaml.safe_load(fm_match.group(1)) or {}
     except Exception:
         return str(file_path), "❌ Invalid YAML"
 
@@ -236,37 +236,47 @@ def main():
         for s, res in skill_results:
             f.write(f"| {s} | {res} |\n")
 
-    # 2. Generate Remediation Backlog
-    with open(REMEDIATION_FILE, "w") as f:
-        f.write("# Agent Compliance Remediation Backlog\n\n")
-        f.write(
-            "This backlog lists the actions required to bring all agents and skills into full compliance with the `Agent Authority` spec.\n\n"
+    # 2. Generate Remediation Backlog — one-shot bootstrapper only.
+    # The backlog is hand-edited after the initial run; regenerating it unconditionally
+    # would silently overwrite manual tracking (in-progress, done, blocked) and
+    # guarantee drift from the dynamic compliance matrix (A5 violation).
+    if REMEDIATION_FILE.exists():
+        print(
+            f"Skipping {REMEDIATION_FILE} — file already exists. Edit manually or delete to regenerate."
         )
+    else:
+        with open(REMEDIATION_FILE, "w") as f:
+            f.write("# Agent Compliance Remediation Backlog\n\n")
+            f.write(
+                "This backlog lists the actions required to bring all agents and skills into full compliance with the `Agent Authority` spec.\n\n"
+            )
 
-        f.write("## Core Agents\n\n")
-        f.write("| Agent | Priority | Required Action |\n")
-        f.write("| :--- | :--- | :--- |\n")
-        f.write("| `james.md` | P1 | Add `skills:` and `subagents:` allowlists. |\n")
-        f.write("| `junior.md` | P1 | Add `skills:` and `subagents:` allowlists. |\n")
-        f.write("| `marsha.md` | P1 | Add `skills:` and `subagents:` allowlists. |\n")
-        f.write("| `pauli.md` | P1 | Add `skills:` allowlist. |\n")
-        f.write("| `rbg.md` | P2 | Add `skills: []` and `subagents: []` for explicitness. |\n\n")
+            f.write("## Core Agents\n\n")
+            f.write("| Agent | Priority | Required Action |\n")
+            f.write("| :--- | :--- | :--- |\n")
+            f.write("| `james.md` | P1 | Add `skills:` and `subagents:` allowlists. |\n")
+            f.write("| `junior.md` | P1 | Add `skills:` and `subagents:` allowlists. |\n")
+            f.write("| `marsha.md` | P1 | Add `skills:` and `subagents:` allowlists. |\n")
+            f.write("| `pauli.md` | P1 | Add `skills:` allowlist. |\n")
+            f.write(
+                "| `rbg.md` | P2 | Add `skills: []` and `subagents: []` for explicitness. |\n\n"
+            )
 
-        f.write("## Skills\n\n")
-        f.write("| Skill | Required Action |\n")
-        f.write("| :--- | :--- |\n")
-        f.write("| `aops/SKILL.md` | Add `allowed-tools` block to frontmatter. |\n")
-        f.write("| `end_session/SKILL.md` | Add `allowed-tools` block to frontmatter. |\n")
-        f.write("| `planner/SKILL.md` | Add `allowed-tools` block to frontmatter. |\n")
-        f.write("| `project/SKILL.md` | Add `allowed-tools` block to frontmatter. |\n")
-        f.write("| `supervisor/SKILL.md` | Add `allowed-tools` block to frontmatter. |\n\n")
+            f.write("## Skills\n\n")
+            f.write("| Skill | Required Action |\n")
+            f.write("| :--- | :--- |\n")
+            f.write("| `aops/SKILL.md` | Add `allowed-tools` block to frontmatter. |\n")
+            f.write("| `end_session/SKILL.md` | Add `allowed-tools` block to frontmatter. |\n")
+            f.write("| `planner/SKILL.md` | Add `allowed-tools` block to frontmatter. |\n")
+            f.write("| `project/SKILL.md` | Add `allowed-tools` block to frontmatter. |\n")
+            f.write("| `supervisor/SKILL.md` | Add `allowed-tools` block to frontmatter. |\n\n")
 
-        f.write("## Tool Authority (Drift Remediation)\n\n")
-        f.write("Based on `.agents/AGENT-TOOLS.md`:\n\n")
-        f.write(
-            "- **Exclusivity Enforcement**: Remove destructive PKB tools from `junior.md` (should be exclusive to `pauli`).\n"
-        )
-        f.write("- **Edit Tool**: Evaluate if `junior.md` needs `Edit`.\n")
+            f.write("## Tool Authority (Drift Remediation)\n\n")
+            f.write("Based on `.agents/AGENT-TOOLS.md`:\n\n")
+            f.write(
+                "- **Exclusivity Enforcement**: Remove destructive PKB tools from `junior.md` (should be exclusive to `pauli`).\n"
+            )
+            f.write("- **Edit Tool**: Evaluate if `junior.md` needs `Edit`.\n")
 
     # 3. Generate Tool Matrix
     # Gather all tools and their owners
