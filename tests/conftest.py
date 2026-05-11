@@ -1744,14 +1744,15 @@ def check_blocked(result: dict) -> bool:
 
 def _docker_available() -> bool:
     """Check if Docker is available and the ghcr.io/nicsuzor/aops-crew image exists."""
+    image = "ghcr.io/nicsuzor/aops-crew"
     try:
         result = subprocess.run(
-            ["docker", "images", "ghcr.io/nicsuzor/aops-crew", "--format", "{{.Repository}}"],
+            ["docker", "images", image, "--format", "{{.Repository}}"],
             capture_output=True,
             text=True,
             timeout=10,
         )
-        return result.returncode == 0 and "ghcr.io/nicsuzor/aops-crew" in result.stdout
+        return result.returncode == 0 and image == result.stdout.strip()
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return False
 
