@@ -491,7 +491,7 @@ When terminal condition is met during an active loop: cancel the cron/loop and l
 
 ## Phase 10: Consolidation Self-Check (Lightweight)
 
-A 2-minute sanity check of THIS cycle's own output. This is NOT a quality review — the real quality check is the `/qa` review on the consolidation PR (see "Output" section below).
+A 2-minute sanity check of THIS cycle's own output. This is NOT a quality review — the real quality review is the `/qa` review on the consolidation PR (see "Output" section below).
 
 ### Check
 
