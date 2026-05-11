@@ -135,6 +135,34 @@
         "agent context",
         "repo self-description"
       ]
+    },
+    {
+      "topic": "agent_compliance",
+      "type": "reference",
+      "path": ".agents/AGENT-COMPLIANCE-MATRIX.md",
+      "description": "Compliance matrix for agents against the Agent Authority spec — required fields, naming, referential integrity",
+      "keywords": ["agent", "compliance", "authority", "matrix", "audit", "permission", "conformance"]
+    },
+    {
+      "topic": "agent_tools",
+      "type": "reference",
+      "path": ".agents/AGENT-TOOLS.md",
+      "description": "Authoritative agent × tool access matrix — groups tools by server, highlights exclusivity and drift",
+      "keywords": ["agent", "tool", "matrix", "authority", "exclusivity", "drift", "permissions", "SSoT"]
+    },
+    {
+      "topic": "agent_remediation",
+      "type": "reference",
+      "path": ".agents/AGENT-REMEDIATION-BACKLOG.md",
+      "description": "Backlog of required fixes to bring agents and skills into full compliance with authority specs",
+      "keywords": ["remediation", "backlog", "fix", "agent", "skill", "compliance", "priority"]
+    },
+    {
+      "topic": "compliance_audit_script",
+      "type": "reference",
+      "path": "scripts/audit_agent_compliance.py",
+      "description": "Generator script for agent compliance and tool matrices",
+      "keywords": ["audit", "script", "generator", "matrix", "compliance", "automation"]
     }
   ]
 }
