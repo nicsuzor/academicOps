@@ -1743,7 +1743,7 @@ def check_blocked(result: dict) -> bool:
 
 
 def _docker_available() -> bool:
-    """Check if Docker is available and the aops-crew image exists."""
+    """Check if Docker is available and the ghcr.io/nicsuzor/aops-crew image exists."""
     try:
         result = subprocess.run(
             ["docker", "images", "ghcr.io/nicsuzor/aops-crew", "--format", "{{.Repository}}"],
@@ -1767,14 +1767,14 @@ def claude_docker(tmp_path):
             timeout_seconds=60,
         )
 
-    Skips if: Docker unavailable, no Claude auth, or aops-crew image not built.
+    Skips if: Docker unavailable, no Claude auth, or ghcr.io/nicsuzor/aops-crew image not built.
     Claude authenticates via OAuth (stored in ~/.claude/.credentials.json) which is
     bind-mounted into the container. Falls back to ANTHROPIC_API_KEY if set.
     """
     import uuid
 
     if not _docker_available():
-        pytest.skip("Docker not available or aops-crew image not built")
+        pytest.skip("Docker not available or ghcr.io/nicsuzor/aops-crew image not built")
 
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     oauth_token = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN")
@@ -1951,7 +1951,7 @@ def gemini_docker(tmp_path):
     from pathlib import Path
 
     if not _docker_available():
-        pytest.skip("Docker not available or aops-crew image not built")
+        pytest.skip("Docker not available or ghcr.io/nicsuzor/aops-crew image not built")
     if not _gemini_cli_available():
         pytest.skip("Gemini CLI not available")
 
