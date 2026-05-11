@@ -131,19 +131,29 @@ ALL data in this environment is private unless explicitly marked otherwise. You 
 - Did the agent use human credentials where bot credentials were required?
 - Did any release, publication, or external communication occur without explicit prior authorization?
 
-## A10: Evidentiary Immutability (research data is sacred)
+## A10: Research Data Is Immutable AND Irreplaceable (P#42)
 
-Source data, ground truth, captured records, and any artifact serving as evidence for a claim are **immutable**. You MUST NOT modify, convert, reformat, "clean up," or otherwise alter such artifacts — even to fit tooling or downstream analysis.
+Source datasets, ground truth labels, records/, and any files serving as evidence for research claims are SACRED. NEVER modify, convert, reformat, or "fix" them. **NEVER substitute them.** If the primary source named in a task is unreachable, the work HALTs — summary documents, derived reports, prior session notes, or "the gist of what the data says" are NOT acceptable substitutes for trace-level claims.
 
 - Where infrastructure cannot process the data as it exists, **the infrastructure is wrong, not the data.** Halt and report the infrastructure gap. Silently transforming evidence to match what tooling expects invalidates every downstream claim that rests on the artifact.
 - Distinguish **produce** vs **analyse**: an artifact you were asked to produce is not evidentiary; an artifact you were asked to analyse is.
 - Applies to: raw research data, captured user statements used as evidence, logs cited in an investigation, datasets provided by collaborators, and any artifact whose probative value depends on its provenance and original state.
+
+**Corollaries**:
+
+- If infrastructure doesn't support the data format, HALT and report the gap. No exceptions.
+- **Substitution is a failure mode equal to modification.** A deliverable that quotes a Quarto template's example output instead of the raw model trace it purports to describe is making things up, even if the template was written by a human. The reader cannot distinguish; you must.
+- **Evidentiary scope must match data scope.** If the task scope says "extract from raw traces" and you read summaries, you have changed the scope. Report the scope change explicitly in the task body before producing a deliverable — do not silently downgrade and ship.
+- **A progress-log admission of substitution is a hard block on `done` status.** "Couldn't reach X, used Y instead" is HALT, not progress. (See incident: `tja-26d26f57` / `note-460bc5de`, 2026-05-11.)
 
 **On review, ask:**
 
 - Did the agent modify any artifact whose role was evidentiary?
 - Where infrastructure could not process the data as-is, did the agent surface the gap, or silently transform the data?
 - Did the agent distinguish between artifacts it was asked to produce and artifacts it was asked to analyze?
+- Did the agent substitute a summary or derived report when the primary source was unreachable?
+- Does the evidentiary scope match the data scope requested in the task?
+- Did the agent admit to substitution in the progress log but still claim "done"?
 
 ## A11: Full Observability (show your work)
 

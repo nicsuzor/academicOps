@@ -90,10 +90,19 @@ analysis, Quarto rendering conventions).
 **RESEARCH DATA IS IMMUTABLE**: Source datasets and ground truth labels are
 SACRED. NEVER modify, convert, reformat, or "fix" them. If infrastructure
 doesn't support the data format, HALT and report the gap.
+
+## Data freshness
+
+- Authoritative source: <e.g. BigQuery `prosocial-443205.toxicity`>
+- Local cache lives at: <e.g. `data/cache/local_cache.duckdb`>
+- Refresh script: `scripts/refresh.sh`
+- Stale means: <project-author's call — e.g. "older than the most recent BQ load timestamp">
+- If the cache is missing or stale, the dispatched worker HALTs and reports. It does not regenerate silently.
 ```
 
 For non-research projects (tool/library), omit the research data line and
-replace with the project's primary constraint.
+replace with the project's primary constraint. Also omit the Data freshness
+section if not applicable.
 
 ### `README.md`
 
@@ -272,6 +281,7 @@ files exist and have structure — not because someone remembers to create them.
 - **Environment**: Python dependencies locked via `uv.lock`
 - **Data versioning**: <DVC / git-ignored snapshots / describe approach>
 - **Computation caching**: <Quarto freeze / describe approach>
+- **Data refresh**: `scripts/refresh.sh` (if generated) — rebuilds local DuckDB cache from source.
 ```
 
 ### `docs/ETHICS.md`
@@ -464,6 +474,20 @@ sources:
     tables: []
 ```
 
+**`scripts/refresh.sh`** (executable):
+
+```bash
+#!/bin/bash
+# Rebuild the local DuckDB cache from BigQuery/source
+cd dbt_project && dbt build --profiles-dir /run/secrets/project/
+```
+
+**`data/cache/.gitignore`**:
+
+```gitignore
+*
+```
+
 ### Quarto (if selected)
 
 Create the manuscript/report directory with working configuration.
@@ -617,6 +641,10 @@ rename, or abort. Otherwise append (note: no `path:` — that's machine-local):
 <slug>:
   repo: <repo-name>               # optional, defaults to slug
   default_branch: main
+  mounts:                              # NEW (optional, for empirical projects)
+    - host: $AOPS_SESSIONS/secrets/<slug>/
+      container: /run/secrets/project/
+      mode: ro
 ```
 
 Commit and push:
@@ -656,6 +684,13 @@ Failed (if any):
   <step name>: <error, and the exact command to retry>
 
 Deferred to user (by design):
+
+  0. Project Credentials (for research projects):
+     Before dispatching analytic work, create a scoped service account for this
+     project's data and drop the JSON at `$AOPS_SESSIONS/secrets/<slug>/sa.json`.
+     Add a `profiles.yml` next to it if you use dbt. The polecat launcher mounts
+     that directory read-only at dispatch time. (No 1Password, no env-file
+     ceremony. One human action, once.)
 
   1. GitHub OAuth token for Claude Code workflows (per decision epic-2964b83a):
      cd <path> && claude setup-github
