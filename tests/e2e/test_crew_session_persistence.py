@@ -55,9 +55,9 @@ def test_session_dir_created_by_build(build_docker_cmd, tmp_path):
 @pytest.mark.parametrize(
     "cli_tool,is_interactive,agent_cmd,container_path",
     [
-        ("claude", False, ["claude", "-p", "hello"], "/home/worker/.claude/projects"),
-        ("shell", True, ["bash"], "/home/worker/.claude/projects"),
-        ("gemini", False, ["gemini"], "/home/worker/.gemini/tmp"),
+        ("claude", False, ["claude", "-p", "hello"], "/home/worker/.claude/projects/-workspace"),
+        ("shell", True, ["bash"], "/home/worker/.claude/projects/-workspace"),
+        ("gemini", False, ["gemini"], "/home/worker/.gemini/tmp/workspace"),
     ],
 )
 def test_session_dir_is_bind_mounted(
@@ -75,12 +75,18 @@ def test_session_dir_is_bind_mounted(
     )
     vol_idx = [i for i, x in enumerate(cmd) if x == "-v"]
     volumes = [cmd[i + 1] for i in vol_idx]
-    expected = f"{session_dir}:{container_path}"
-    assert expected in volumes, f"expected session bind-mount {expected} in {volumes}"
+    expected_mount = f"{session_dir}:{container_path}"
+    assert expected_mount in volumes, f"expected session bind-mount {expected_mount} in {volumes}"
+
+    # Verify AOPS_SESSION_STATE_DIR is set to the same container path
+    expected_env = f"AOPS_SESSION_STATE_DIR={container_path}"
+    env_idx = [i for i, x in enumerate(cmd) if x == "-e"]
+    envs = [cmd[i + 1] for i in env_idx]
+    assert expected_env in envs, f"expected {expected_env} in {envs}"
 
 
 def test_no_session_mount_without_param(build_docker_cmd, tmp_path):
-    """Without session_dir, no .claude/projects or .gemini/tmp mount is added."""
+    """Without session_dir, no .claude/projects or .gemini/tmp bind mount is added."""
     cmd = build_docker_cmd(
         cli_tool="claude",
         work_dir=tmp_path,
@@ -88,6 +94,8 @@ def test_no_session_mount_without_param(build_docker_cmd, tmp_path):
         agent_cmd=["claude", "-p", "hello"],
         is_interactive=False,
     )
-    cmd_str = " ".join(cmd)
-    assert ".claude/projects" not in cmd_str
-    assert ".gemini/tmp" not in cmd_str
+    vol_idx = [i for i, x in enumerate(cmd) if x == "-v"]
+    volumes = [cmd[i + 1] for i in vol_idx]
+    for vol in volumes:
+        assert ".claude/projects" not in vol
+        assert ".gemini/tmp" not in vol
