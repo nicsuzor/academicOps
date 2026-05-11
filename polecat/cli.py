@@ -1291,28 +1291,39 @@ def _build_docker_cmd(
         cmd.extend(["-e", f"{key}={val}"])
 
     # Project-specific mounts and env (from polecat.yaml mounts: block).
-    if project_slug and manager and project_slug in manager.projects:
-        project_entry = manager.projects[project_slug]
-        for mount in project_entry.get("mounts") or []:
-            if not isinstance(mount, dict):
-                continue
-            host_raw = mount.get("host")
-            container_path = mount.get("container")
-            if not host_raw or not container_path:
-                continue
+    if project_slug and manager:
+        try:
+            _canonical_slug = manager.resolve_project_alias(project_slug)
+        except ValueError:
+            _canonical_slug = project_slug
+        _project_entry = manager.projects.get(_canonical_slug)
+        if _project_entry:
+            for mount in _project_entry.get("mounts") or []:
+                if not isinstance(mount, dict):
+                    continue
+                host_raw = mount.get("host")
+                container_path = mount.get("container")
+                if not host_raw or not container_path:
+                    continue
 
-            mode = mount.get("mode", "ro")
-            # Expand ~ and environment variables in host path
-            host_path = Path(os.path.expandvars(os.path.expanduser(str(host_raw)))).resolve()
+                mode = mount.get("mode", "ro")
+                # Expand ~ and env vars; resolve relative paths against polecat.yaml location
+                _host_raw_path = Path(os.path.expandvars(os.path.expanduser(str(host_raw))))
+                if not _host_raw_path.is_absolute() and cfg and getattr(cfg, "source_path", None):
+                    host_path = (cfg.source_path.parent / _host_raw_path).resolve()
+                else:
+                    host_path = _host_raw_path.resolve()
 
-            if host_path.exists():
-                cmd.extend(["-v", f"{host_path}:{container_path}:{mode}"])
+                if host_path.exists():
+                    cmd.extend(["-v", f"{host_path}:{container_path}:{mode}"])
 
-                # Auto-set credentials env vars if matching files are found
-                if (host_path / "sa.json").exists():
-                    cmd.extend(["-e", f"GOOGLE_APPLICATION_CREDENTIALS={container_path}/sa.json"])
-                if (host_path / "profiles.yml").exists():
-                    cmd.extend(["-e", f"DBT_PROFILES_DIR={container_path}/"])
+                    # Auto-set credentials env vars if matching files are found
+                    if (host_path / "sa.json").exists():
+                        cmd.extend(
+                            ["-e", f"GOOGLE_APPLICATION_CREDENTIALS={container_path}/sa.json"]
+                        )
+                    if (host_path / "profiles.yml").exists():
+                        cmd.extend(["-e", f"DBT_PROFILES_DIR={container_path}/"])
 
     # Pattern-arm forwarding — POLECAT_* and AOPS_* (excluding the resolved
     # config-path env: that is set explicitly below to point at the in-container
