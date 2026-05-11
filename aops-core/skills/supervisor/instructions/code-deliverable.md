@@ -61,10 +61,13 @@ The supervisor's only monitoring obligation is "did the worker open a PR?" Once 
 polecat run -t <task-id> -p <project>  # Bash run_in_background: true
 ```
 
-| Mechanism                                                          | What it watches | How it notifies             |
-| ------------------------------------------------------------------ | --------------- | --------------------------- |
-| `run_in_background` completion                                     | Worker exit     | Automatic Bash notification |
-| `gh pr list --search head:polecat/<id>` (one-shot, on worker exit) | PR opened?      | Direct check                |
+| Mechanism                                                                                         | What it watches              | How it notifies                                                              |
+| ------------------------------------------------------------------------------------------------- | ---------------------------- | ---------------------------------------------------------------------------- |
+| `run_in_background` completion                                                                    | Worker exit (one dispatched) | Automatic Bash notification                                                  |
+| `gh pr list --search head:polecat/<id>` (one-shot, on worker exit)                                | PR opened?                   | Direct check                                                                 |
+| `Monitor` on `docker events --filter event=die --filter name=polecat-` (persistent, session-life) | Any polecat worker exit      | One chat notification per `die` — use for in-session batch (concurrency-cap) |
+
+The third row is the **in-session notify-watch** — armed once when the user requests a multi-tick batch ("maintain N concurrent workers" / "drain the queue this session"). See [[../SKILL.md#in-session-multi-tick-supervision-notify-watch]] for arming, crew filtering, and stop conditions.
 
 On worker exit, hand the result to **marsha** (see [[../SKILL.md#marsha--verify]]). Marsha reads the PR / diff / transcript on the supervisor's behalf and returns PASS/FAIL/REVISE. The main agent never reads them.
 

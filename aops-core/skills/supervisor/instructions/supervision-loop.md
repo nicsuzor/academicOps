@@ -147,10 +147,31 @@ Reconstruct the `## Supervisor State`, `## Work Items`, and `## Pattern Memory` 
 
 Workers coordinate through atomic task claiming, not through the supervisor.
 
+## Monitoring Mechanisms
+
+The supervisor never polls. State changes arrive through one of four event sources; choose by the lifetime and signal shape needed.
+
+| Mechanism                                              | Lifetime       | Signal                             | When to use                                                                                                    |
+| ------------------------------------------------------ | -------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Background-task completion (`Bash run_in_background`)  | Per task       | One Bash command exited            | Single dispatched worker; one outcome needed                                                                   |
+| Persistent `Monitor` on review-surface poll            | Session-length | PR check status flipped            | Async review-pipeline state (CI, mergeability)                                                                 |
+| Persistent `Monitor` on `docker events` (notify-watch) | Session-length | One line per worker container exit | **In-session batch with concurrency cap** — see [[../SKILL.md#in-session-multi-tick-supervision-notify-watch]] |
+| `ScheduleWakeup`                                       | One-shot       | Time-based wake                    | Safety net only when no event source exists; ≥1800s, never 300s                                                |
+
+The notify-watch is the in-session counterpart to `/loop`. `/loop` paces across sessions on a 30 min cadence; the notify-watch paces within one session on the worker-exit cadence. Both ultimately drive the same per-tick loop (ORIENT → BRAKE → DECIDE → ACT → CHECKPOINT) — they only differ in what fires the next tick.
+
+Operational notes for the notify-watch:
+
+- **Arm immediately after the first dispatch that fills a slot.** Arming before any dispatch is harmless but wastes the watch on no-op events.
+- **Each event is one notification, not one action.** The agent reacts by running a normal tick; it does NOT auto-dispatch from inside the watch script.
+- **Filter crew sessions.** Crew containers share the `polecat-` name prefix. Skip events where `POLECAT_SESSION_TYPE=crew` (look up via `docker inspect` on the exit) or refine the watch's `--filter` to match the in-use task-naming pattern.
+- **Stop the watch when done.** `TaskStop` on the Monitor when the batch is complete; a leaked persistent Monitor keeps emitting notifications across unrelated work.
+
 ## Anti-Patterns
 
-- **Polling for worker status**: don't poll the review surface every few minutes. Use event-driven monitoring instead — `run_in_background` notification on worker exit, then a single marsha invocation. See MONITOR phase above and the deliverable subworkflow.
-- **Tight polling loops**: don't `watch` or `sleep` between checks. Check once, checkpoint, exit. The next `/loop` tick comes back later.
+- **Polling for worker status**: don't poll the review surface every few minutes. Use one of the event-driven mechanisms above.
+- **Bash polling loops as a substitute for supervision (nicsuzor/academicOps#942)**: `while true; do polecat run -g; sleep N; done` is not supervision — it carries no preflight, no verify, no react. The notify-watch (`docker events`) carries _signal_; every dispatch and verify still goes through pauli/marsha.
+- **Tight polling loops**: don't `watch` or `sleep` between checks within a tick. Check once, checkpoint, exit. The next event-fired tick comes back later.
 - **Environment-specific state**: don't write paths, PIDs, or container IDs into the epic body. They won't be valid next tick.
 - **Silent failures**: if something breaks, append a Pattern Memory row. The next tick needs to know.
 - **Delegating judgment**: if a work item involves academic output, methodology, or citations — set the task to `review`. Never auto-finalise.

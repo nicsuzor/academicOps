@@ -186,6 +186,42 @@ The supervisor loop is **deliverable-agnostic**. The same orient → decompose �
 
 The supervisor's job ends when each work item has reached its review surface (open PR for code; equivalent surface for other deliverable types). Set the epic to `ready_for_user_review` once every child is at the surface or escalated/blocked with a recorded reason. The async review pipeline takes over; the supervisor produces its final summary and exits. See [[instructions/code-deliverable#handoff-contract-task-212f1c82]] for the code case.
 
+## In-Session Multi-Tick Supervision (notify-watch)
+
+The default cadence is one tick per `/loop 30m` invocation. When the user explicitly asks for an in-session batch ("maintain N concurrent workers", "keep draining the queue this session"), the supervisor stays resident and ticks **on event** rather than on time. The event is "a worker exited" — surfaced by an OS-level stream, not by polling, and not by a bash refill loop (see Forbidden, below).
+
+The canonical in-session watch is `Monitor` over `docker events`:
+
+```
+Monitor(
+  description: "polecat exits",
+  persistent: true,
+  command: "docker events --filter event=die --filter 'name=polecat-' "
+           "--format '{{.Time}} {{.Actor.Attributes.name}} exit={{.Actor.Attributes.exitCode}}'"
+)
+```
+
+Arm it **once**, immediately after the first DISPATCH that fills a slot in the requested concurrency window. Each `die` event for a polecat-* container emits one stdout line → one chat notification. On each notification:
+
+1. Identify the exited work item from the container name (`polecat-<task-id>`).
+2. Run the normal supervisor tick on that item's epic: ORIENT → BRAKE → DECIDE (marsha verify) → ACT → CHECKPOINT.
+3. If the user's concurrency cap has a free slot after the verify settles, run a second tick on the same or a different epic with DECIDE = pauli preflight + dispatch.
+
+**The watch carries signal, not judgment.** It is _not_ a replacement for the per-tick loop. Every dispatch decision still goes through pauli preflight; every verify still goes through marsha. The watch only removes idle time between ticks within one session. Re-read [[#forbidden-in-the-main-agent]] and the non-delegable-supervision principle (nicsuzor/academicOps#942) — a bash `docker events` pipe carries event lines; it does not select tasks, file fix-tasks, or skip gates.
+
+**Crew filtering.** The crew session is also a `polecat-*` container. Filter it out at the agent layer (look up the exit's container env via `docker inspect <name>` and skip if `POLECAT_SESSION_TYPE=crew`), or refine the `--filter` to match the headless naming pattern in use.
+
+**When to stop the watch.** Call `TaskStop` on the Monitor when (a) the user-requested batch is complete, (b) all in-flight epics have reached `ready_for_user_review`/`blocked`/`review`, or (c) the session is about to end. A leaked persistent Monitor keeps consuming notifications across unrelated tasks.
+
+**Choosing between mechanisms** (see [[instructions/supervision-loop#monitoring-mechanisms]] for the table):
+
+| Situation                                    | Use this                                                                |
+| -------------------------------------------- | ----------------------------------------------------------------------- |
+| Single dispatched worker, one outcome needed | `run_in_background` Bash with an `until <ready>; do sleep 2; done` body |
+| Waiting on PR state transitions (async)      | Persistent `Monitor` on `gh pr checks` poll loop                        |
+| Truly idle, no event source                  | `ScheduleWakeup` (safety net only; ≥1800s — never 300s)                 |
+| **In-session batch with concurrency cap**    | **Persistent `Monitor` on `docker events`** (this section)              |
+
 ## Lifecycle Trigger Hooks
 
 | Hook          | Trigger       | What it does                                                            |
