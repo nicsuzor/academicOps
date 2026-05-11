@@ -100,7 +100,7 @@ def _read_user_settings() -> tuple[dict, Path]:
 def is_installed() -> bool:
     """Check if aops autoMode rules are already in user settings.
 
-    Uses the presence of "Evidentiary Immutability (A10)" in soft_deny as a
+    Uses the presence of "Research Data Is Immutable AND Irreplaceable (P#42)" in soft_deny as a
     fingerprint for aops rules. LOAD-BEARING: if that rule's heading text is
     renamed or removed from plugin.json, this fingerprint silently breaks —
     sessions will re-install on every start (if the heading no longer matches)
@@ -110,7 +110,7 @@ def is_installed() -> bool:
     settings, _ = _read_user_settings()
     auto_mode = settings.get("autoMode", {})
     soft_deny = auto_mode.get("soft_deny", [])
-    return any("Evidentiary Immutability (A10)" in rule for rule in soft_deny)
+    return any("Research Data Is Immutable AND Irreplaceable (P#42)" in rule for rule in soft_deny)
 
 
 def install(dry_run: bool = False) -> tuple[bool, str]:
