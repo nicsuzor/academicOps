@@ -188,6 +188,125 @@ def resolve_crew_name() -> str | None:
     return name or None
 
 
+def get_surface() -> str:
+    """Identify the runtime surface this session is executing on.
+
+    Surface = provider × launcher. Used by the overwhelm-dashboard Insights view
+    to group cost/yield by where work actually ran ("rbg on github actions" vs
+    "rbg on claude polecat"). See Safeguard ROI v0 epic (aops-85b082c5).
+
+    Returns one of:
+        - ``github-actions``: $GITHUB_ACTIONS=true (CI runner)
+        - ``{provider}-crew``: $POLECAT_SESSION_TYPE=crew (crew container)
+        - ``{provider}-polecat``: $POLECAT_SESSION_TYPE is set but not crew
+        - ``claude-code-cli`` / ``gemini-cli``: bare terminal session
+    """
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        return "github-actions"
+
+    provider = get_provider_name()
+    session_type = (os.environ.get("POLECAT_SESSION_TYPE") or "").strip().lower()
+    if session_type == "crew":
+        return f"{provider}-crew"
+    if session_type:
+        return f"{provider}-polecat"
+
+    if provider == "gemini":
+        return "gemini-cli"
+    return "claude-code-cli"
+
+
+def get_client() -> str:
+    """Identify the launching tool/client for this session.
+
+    Returns one of: ``claude-code``, ``gemini-cli``, ``polecat``, ``crew``,
+    ``github-actions``. Coarser than ``surface``; useful for "which CLI was
+    invoked" filtering independent of provider.
+    """
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        return "github-actions"
+
+    session_type = (os.environ.get("POLECAT_SESSION_TYPE") or "").strip().lower()
+    if session_type == "crew":
+        return "crew"
+    if session_type:
+        return "polecat"
+
+    provider = get_provider_name()
+    if provider == "gemini":
+        return "gemini-cli"
+    return "claude-code"
+
+
+def get_session_metadata(*, provider: str | None = None) -> dict[str, str | None]:
+    """Return the canonical session-metadata block stamped onto summary JSON.
+
+    Mirrors the fields read by the overwhelm-dashboard Insights view:
+    machine, hostname, provider, surface, client, crew. ``provider`` may be
+    overridden by callers that have detected it from a transcript path (e.g.
+    the offline transcript→summary converter reading a ``.gemini/`` file from
+    a shell whose env vars don't advertise gemini).
+
+    Args:
+        provider: Optional override for provider. When ``None`` (the default),
+            falls back to ``get_provider_name()``.
+    """
+    eff_provider = provider or get_provider_name()
+    # When provider is overridden, recompute surface/client with that provider
+    # in scope so the trio stays internally consistent.
+    if provider is not None:
+        original_env = os.environ.get("AOPS_PROVIDER_OVERRIDE")
+        os.environ["AOPS_PROVIDER_OVERRIDE"] = provider
+        try:
+            surface = _surface_with_provider(eff_provider)
+            client = _client_with_provider(eff_provider)
+        finally:
+            if original_env is None:
+                os.environ.pop("AOPS_PROVIDER_OVERRIDE", None)
+            else:
+                os.environ["AOPS_PROVIDER_OVERRIDE"] = original_env
+    else:
+        surface = get_surface()
+        client = get_client()
+
+    return {
+        "machine": os.environ.get("AOPS_MACHINE"),
+        "hostname": get_hostname(),
+        "provider": eff_provider,
+        "surface": surface,
+        "client": client,
+        "crew": resolve_crew_name(),
+    }
+
+
+def _surface_with_provider(provider: str) -> str:
+    """Internal: surface detection with an explicit provider value."""
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        return "github-actions"
+    session_type = (os.environ.get("POLECAT_SESSION_TYPE") or "").strip().lower()
+    if session_type == "crew":
+        return f"{provider}-crew"
+    if session_type:
+        return f"{provider}-polecat"
+    if provider == "gemini":
+        return "gemini-cli"
+    return "claude-code-cli"
+
+
+def _client_with_provider(provider: str) -> str:
+    """Internal: client detection with an explicit provider value."""
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        return "github-actions"
+    session_type = (os.environ.get("POLECAT_SESSION_TYPE") or "").strip().lower()
+    if session_type == "crew":
+        return "crew"
+    if session_type:
+        return "polecat"
+    if provider == "gemini":
+        return "gemini-cli"
+    return "claude-code"
+
+
 def get_session_shortform(
     crew_name: str | None = None,
     repo: str | None = None,

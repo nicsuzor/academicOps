@@ -953,6 +953,7 @@ def reflection_to_insights(
     usage_stats: UsageStats | None = None,
     session_duration_minutes: float | None = None,
     timeline_events: list[dict[str, Any]] | None = None,
+    provider: str | None = None,
 ) -> dict[str, Any]:
     """Convert parsed Framework Reflection to session insights format.
 
@@ -1045,11 +1046,8 @@ def reflection_to_insights(
         "accomplishments": reflection.get("accomplishments", []),
         "friction_points": reflection.get("friction_points", []),
         "proposed_changes": reflection.get("proposed_changes", []),
-        # Metadata (aops-d9ba7159)
-        "machine": os.environ.get("AOPS_MACHINE"),
-        "hostname": session_naming.get_hostname(),
-        "provider": session_naming.get_provider_name(),
-        "crew": os.environ.get("POLECAT_CREW_NAME"),
+        # Metadata (aops-d9ba7159, aops-eaf402f5)
+        **session_naming.get_session_metadata(provider=provider),
         "repo": stable_project,
         "task_id": task_id,
         # Framework reflections as array (schema-compliant)
@@ -1435,6 +1433,32 @@ class UsageStats:
             metrics["efficiency"]["session_duration_minutes"] = round(session_duration_minutes, 1)
 
         return metrics
+
+
+def _remap_by_agent_keys(
+    by_agent: dict[str, dict[str, int]],
+    type_index: dict[str, str],
+) -> dict[str, dict[str, int]]:
+    """Rename UUID-keyed by_agent entries to human-readable subagent names.
+
+    Args:
+        by_agent: Mapping of agent file-id (UUID) → token stats. ``"main"`` is
+            passed through unchanged.
+        type_index: Mapping of agent file-id → subagent_type (e.g. ``"rbg"``)
+            produced by ``reviewer_verdicts._build_subagent_type_index``.
+
+    Returns:
+        A new dict with names substituted for UUIDs where known. Multiple
+        invocations of the same subagent are summed.
+    """
+    remapped: dict[str, dict[str, int]] = {}
+    for key, stats in by_agent.items():
+        new_key = type_index.get(key, key) if key != "main" else "main"
+        if new_key not in remapped:
+            remapped[new_key] = {k: 0 for k in stats}
+        for stat_key, value in stats.items():
+            remapped[new_key][stat_key] = remapped[new_key].get(stat_key, 0) + value
+    return remapped
 
 
 def normalize_cowork_event(data: dict) -> tuple[str, dict] | None:
@@ -4743,11 +4767,22 @@ session_id: {session_uuid}
                     stats.add_entry(entry, tool_name=tool_name, agent_id=agent_id)
 
         if agent_entries:
-            from .reviewer_verdicts import build_subagent_verdicts
+            from .reviewer_verdicts import _build_subagent_type_index, build_subagent_verdicts
 
             stats.subagent_verdicts = build_subagent_verdicts(
                 entries, agent_entries, stats.by_agent
             )
+
+            # Remap by_agent UUIDs → subagent names (rbg/pauli/marsha/…) so the
+            # overwhelm-dashboard Insights view can attribute cost per agent
+            # without re-resolving hashes. Unknown UUIDs are preserved verbatim
+            # (acceptance criterion: fall back rather than crash). When two
+            # invocations of the same subagent appear, sum their stats —
+            # per-invocation detail is preserved separately in
+            # ``subagent_verdicts``.
+            type_index = _build_subagent_type_index(entries)
+            if type_index:
+                stats.by_agent = _remap_by_agent_keys(stats.by_agent, type_index)
 
         return stats
 
