@@ -1089,6 +1089,8 @@ def _build_docker_cmd(
     session_dir: Path | None = None,
     session_volume: str | None = None,
     memory_limit: str | None = None,
+    project_slug: str | None = None,
+    manager: PolecatManager | None = None,
 ) -> DockerCmd:
     """Build a Docker command with appropriate mounts and env for an agent session.
 
@@ -1287,6 +1289,30 @@ def _build_docker_cmd(
     conf_forwards = get_container_env_forwards(env)
     for key, val in conf_forwards.items():
         cmd.extend(["-e", f"{key}={val}"])
+
+    # Project-specific mounts and env (from polecat.yaml mounts: block).
+    if project_slug and manager and project_slug in manager.projects:
+        project_entry = manager.projects[project_slug]
+        for mount in project_entry.get("mounts") or []:
+            if not isinstance(mount, dict):
+                continue
+            host_raw = mount.get("host")
+            container_path = mount.get("container")
+            if not host_raw or not container_path:
+                continue
+
+            mode = mount.get("mode", "ro")
+            # Expand ~ and environment variables in host path
+            host_path = Path(os.path.expandvars(os.path.expanduser(str(host_raw)))).resolve()
+
+            if host_path.exists():
+                cmd.extend(["-v", f"{host_path}:{container_path}:{mode}"])
+
+                # Auto-set credentials env vars if matching files are found
+                if (host_path / "sa.json").exists():
+                    cmd.extend(["-e", f"GOOGLE_APPLICATION_CREDENTIALS={container_path}/sa.json"])
+                if (host_path / "profiles.yml").exists():
+                    cmd.extend(["-e", f"DBT_PROFILES_DIR={container_path}/"])
 
     # Pattern-arm forwarding — POLECAT_* and AOPS_* (excluding the resolved
     # config-path env: that is set explicitly below to point at the in-container
@@ -3534,6 +3560,8 @@ def crew(
             memory_limit=memory_limit,
             cfg=cfg,
             hooks_enabled=session_cfg.hooks_enabled,
+            project_slug=project_slug,
+            manager=manager,
         )
 
         # Copy replicated .gemini/ auth into staging_dir so docker cp injects
@@ -3560,6 +3588,8 @@ def crew(
             memory_limit=memory_limit,
             cfg=cfg,
             hooks_enabled=session_cfg.hooks_enabled,
+            project_slug=project_slug,
+            manager=manager,
         )
         final_cmd = docker_cmd.cmd
     else:
@@ -3577,6 +3607,8 @@ def crew(
             memory_limit=memory_limit,
             cfg=cfg,
             hooks_enabled=session_cfg.hooks_enabled,
+            project_slug=project_slug,
+            manager=manager,
         )
         final_cmd = docker_cmd.cmd
     print(f"   Sessions: {session_dir}")
@@ -4227,6 +4259,8 @@ def run(
             memory_limit=memory_limit,
             cfg=cfg,
             hooks_enabled=session_cfg.hooks_enabled,
+            project_slug=project_slug,
+            manager=manager,
         )
 
         # Copy replicated .gemini/ auth into staging_dir so docker cp injects
@@ -4253,6 +4287,8 @@ def run(
             memory_limit=memory_limit,
             cfg=cfg,
             hooks_enabled=session_cfg.hooks_enabled,
+            project_slug=project_slug,
+            manager=manager,
         )
         final_cmd = docker_cmd.cmd
     print(f"   Sessions: {run_session_dir}")

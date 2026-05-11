@@ -186,6 +186,7 @@ def load_projects(
             "default_branch": proj.get("default_branch", "main"),
             "repo": repo,
             "aliases": aliases,
+            "mounts": proj.get("mounts") or [],
         }
         for key in ("auto_commit", "merge_strategy"):
             if key in proj:
@@ -483,7 +484,7 @@ class PolecatManager:
                 parts.append(f"{slug} (aliases: {', '.join(extras)})")
             else:
                 parts.append(slug)
-        return f"unknown project {value!r}. Known: {', '.join(parts)}"
+        return f"unknown project {value!r}. Register {value!r} in polecat.yaml. Known: {', '.join(parts)}"
 
     def register_adhoc_project(self, repo_path: Path) -> str:
         """Register an ad-hoc project from an arbitrary repo path.
