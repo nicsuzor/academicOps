@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import functools
+import hashlib
 import json
 import os
 import re
@@ -30,6 +31,7 @@ if str(REPO_ROOT / "aops-core") not in sys.path:
 import click
 from lib.agent_env import apply_env_mappings, get_container_env_forwards
 from lib.polecat_config import CONFIG_PATH_ENV, PolecatConfig, load_polecat_config
+from lib.session_naming import derive_polecat_session_id
 from manager import PolecatManager
 from validation import TaskIDValidationError, validate_task_id_or_raise
 
@@ -1303,12 +1305,26 @@ def _build_docker_cmd(
     # Remote daemon → mkdir only; callers extract via docker cp after run.
     # session_volume (named volume) is the DinD path and overrides both.
     if cli_tool in ("claude", "shell", "gemini"):
+        # Determine the project-specific subdirectory name.
+        # Inside the container, we chdir to /workspace.
+        # Claude uses -workspace (sanitized /workspace), Gemini uses workspace.
         if cli_tool in ("claude", "shell"):
-            session_container_path = f"{container_home}/.claude/projects"
+            session_container_path = f"{container_home}/.claude/projects/-workspace"
         else:
-            session_container_path = f"{container_home}/.gemini/tmp"
+            session_container_path = f"{container_home}/.gemini/tmp/workspace"
+
+        # Set AOPS_SESSION_STATE_DIR so hooks write to the same directory.
+        # This ensures hooks.jsonl and state JSON land in the host session_dir.
+        cmd.extend(["-e", f"AOPS_SESSION_STATE_DIR={session_container_path}"])
+
         if session_volume:
-            cmd.extend(["-v", f"{session_volume}:{session_container_path}"])
+            # For volumes, we still mount to the parent so multiple projects can coexist if needed
+            vol_target = (
+                f"{container_home}/.claude/projects"
+                if cli_tool in ("claude", "shell")
+                else f"{container_home}/.gemini/tmp"
+            )
+            cmd.extend(["-v", f"{session_volume}:{vol_target}"])
         elif session_dir:
             session_dir.mkdir(parents=True, exist_ok=True)
             if not _is_remote_daemon():
@@ -3460,6 +3476,7 @@ def crew(
     # Compute session directory for Claude transcript persistence.
     project_slug = target or projects[0]
     session_dir = _get_sessions_base() / "crew" / crew_name / project_slug
+    env["AOPS_SESSION_STATE_DIR"] = str(session_dir)
 
     # Resolve container memory limit and check daemon memory
     memory_limit, daemon_mem = _init_container_memory(memory, manager, env)
@@ -3491,12 +3508,10 @@ def crew(
         # AOPS_SESSION_ID is the canonical, vendor-neutral name read by
         # skills/agents/gates — set it here so Gemini sessions match the
         # Claude Code path (which sets it via the SessionStart hook).
-        gemini_session_id = f"gemini-{crew_name}"
+        crew_hash = hashlib.sha256(crew_name.encode()).hexdigest()[:8]
+        gemini_session_id = f"{crew_hash}-gemini"
         env["GEMINI_SESSION_ID"] = gemini_session_id
         env["AOPS_SESSION_ID"] = gemini_session_id
-
-        # Hook state dir inside the container
-        env["AOPS_SESSION_STATE_DIR"] = "/home/worker/.gemini/tmp"
 
         # Gemini's isHeadlessMode() forces non-interactive mode when CI=true,
         # even with a TTY attached. _make_worker_env sets CI=true to suppress
@@ -3576,13 +3591,13 @@ def crew(
     try:
         if docker_cmd and docker_cmd.staging_dir:
             # Extract session transcripts after the container stops.
-            # Claude writes to /home/worker/.claude/projects/;
-            # Gemini writes to /home/worker/.gemini/tmp/.
+            # Claude writes to /home/worker/.claude/projects/-workspace/
+            # Gemini writes to /home/worker/.gemini/tmp/workspace/
             extract = []
             if gemini:
-                extract.append(("/home/worker/.gemini/tmp", session_dir))
+                extract.append(("/home/worker/.gemini/tmp/workspace", session_dir))
             else:
-                extract.append(("/home/worker/.claude/projects", session_dir))
+                extract.append(("/home/worker/.claude/projects/-workspace", session_dir))
             result = _run_docker_container(
                 docker_cmd,
                 cwd=work_dir,
@@ -4165,6 +4180,7 @@ def run(
     # Use sanitized env: SSH stripped, git auth set to bot token only
     env = _make_worker_env(interactive=interactive, work_dir=worktree_path)
     env["POLECAT_SESSION_TYPE"] = "polecat"
+    env["AOPS_TASK_ID"] = task.id
     if session_cfg.debug:
         env["DEBUG_HOOKS"] = "1"
 
@@ -4176,6 +4192,7 @@ def run(
     # Compute session directory for transcript persistence.
     project_slug = project or task.project or worktree_path.name
     run_session_dir = _get_sessions_base() / "polecats" / task.id / project_slug
+    env["AOPS_SESSION_STATE_DIR"] = str(run_session_dir)
 
     if gemini:
         # Replicate Gemini authentication — creates a temp dir with .gemini/ auth files.
@@ -4190,15 +4207,13 @@ def run(
         # /home/worker/.gemini/ where docker cp stages the auth files.
         env["GEMINI_CLI_HOME"] = "/home/worker"
 
-        # Provide a stable Gemini session ID based on the task ID.
-        # See parallel block in `_crew` for the AOPS_SESSION_ID rationale —
-        # it's the canonical, vendor-neutral session-id env var.
-        gemini_session_id = f"gemini-{task.id}"
+        # Provide a stable Gemini session ID based on the task ID hash.
+        # This ensures the task's 8-char hash (e.g. 33dee777) appears in the
+        # session-*.json filename.
+        task_hash = derive_polecat_session_id(task.id)
+        gemini_session_id = f"{task_hash}-gemini"
         env["GEMINI_SESSION_ID"] = gemini_session_id
         env["AOPS_SESSION_ID"] = gemini_session_id
-
-        # Hook state dir inside the container
-        env["AOPS_SESSION_STATE_DIR"] = "/home/worker/.gemini/tmp"
 
         # Wrap Gemini in our Docker container (same as Claude path).
         docker_cmd = _build_docker_cmd(
@@ -4247,13 +4262,13 @@ def run(
     if resolved:
         final_cmd[0] = resolved
 
-    # Compute extract_paths for session transcript extraction.
-    # Claude writes to /home/worker/.claude/projects/;
-    # Gemini writes to /home/worker/.gemini/tmp/.
+    # Compute extract_paths for session transcript persistence.
+    # Claude writes to /home/worker/.claude/projects/-workspace/
+    # Gemini writes to /home/worker/.gemini/tmp/workspace/
     if gemini:
-        _extract = [("/home/worker/.gemini/tmp", run_session_dir)]
+        _extract = [("/home/worker/.gemini/tmp/workspace", run_session_dir)]
     else:
-        _extract = [("/home/worker/.claude/projects", run_session_dir)]
+        _extract = [("/home/worker/.claude/projects/-workspace", run_session_dir)]
 
     if interactive:
         set_terminal_title(f"polecat:{task.id}")

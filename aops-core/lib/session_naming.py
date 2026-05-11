@@ -657,6 +657,8 @@ def get_provider_name() -> str:
     if os.environ.get("GEMINI_SESSION_ID"):
         return "gemini"
 
+    # Legacy fallback: polecat now emits "{hash}-gemini" but older sessions
+    # or hand-set AOPS_SESSION_IDs may still use "gemini-" prefix.
     session_id = os.environ.get("AOPS_SESSION_ID", "")
     if session_id.startswith("gemini-"):
         return "gemini"

@@ -137,12 +137,12 @@ def _is_gemini_session(session_id: str | None, transcript_path: str | None = Non
 
     Detection methods:
     1. GEMINI_SESSION_ID env var is set (Gemini CLI always provides this)
-    2. session_id starts with "gemini-"
+    2. session_id starts with "gemini-" (legacy fallback; polecat now emits "{hash}-gemini")
     3. transcript_path contains "/.gemini/"
     4. AOPS_SESSION_STATE_DIR contains "/.gemini/" (polecat worker fallback)
 
     Args:
-        session_id: Session ID (may have "gemini-" prefix)
+        session_id: Session ID (polecat Gemini sessions use "{hash}-gemini" format)
         transcript_path: Optional transcript path for Gemini detection
 
     Returns:
