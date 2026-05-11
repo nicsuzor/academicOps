@@ -234,5 +234,87 @@ class TestSurfaceClientDetection(unittest.TestCase):
         self.assertEqual(meta["client"], "polecat")
 
 
+class TestInferSessionOriginFromPath(unittest.TestCase):
+    """Path-based surface/client/crew inference for the offline converter.
+
+    The transcript.py batch job runs long after the original runtime env has
+    been torn down (GHA jobs ended, polecat containers exited). It must infer
+    the surface trio from where the session file lives, not from the
+    converter shell's live env. See infer_session_origin_from_path docstring.
+    """
+
+    def test_github_actions_path(self):
+        from pathlib import Path
+
+        p = Path(
+            "/home/nic/src/sessions/github/academicops/25594329521/1/"
+            "-home-runner-work-academicOps-academicOps/27cbbac8.jsonl"
+        )
+        origin = session_naming.infer_session_origin_from_path(p)
+        self.assertEqual(origin["surface"], "github-actions")
+        self.assertEqual(origin["client"], "github-actions")
+        self.assertIsNone(origin["crew"])
+
+    def test_crew_path(self):
+        from pathlib import Path
+
+        p = Path(
+            "/home/nic/src/sessions/crew/gloria/aops/-workspace/"
+            "20260504-1534-6bcb0403-gloria-workspace-session.json"
+        )
+        origin = session_naming.infer_session_origin_from_path(p)
+        self.assertEqual(origin["surface"], "claude-crew")
+        self.assertEqual(origin["client"], "crew")
+        self.assertEqual(origin["crew"], "gloria")
+
+    def test_crew_path_with_gemini_provider(self):
+        from pathlib import Path
+
+        p = Path("/home/nic/src/sessions/crew/bayard/mem/-workspace/x.json")
+        origin = session_naming.infer_session_origin_from_path(p, provider="gemini")
+        self.assertEqual(origin["surface"], "gemini-crew")
+        self.assertEqual(origin["client"], "crew")
+        self.assertEqual(origin["crew"], "bayard")
+
+    def test_polecat_path(self):
+        from pathlib import Path
+
+        p = Path("/home/nic/src/sessions/polecats/task-4747a704/aops/-workspace/x.json")
+        origin = session_naming.infer_session_origin_from_path(p)
+        self.assertEqual(origin["surface"], "claude-polecat")
+        self.assertEqual(origin["client"], "polecat")
+        self.assertIsNone(origin["crew"])
+
+    def test_gemini_cli_path(self):
+        from pathlib import Path
+
+        p = Path("/home/nic/.gemini/tmp/abc123/chats/session-2026-05-11T10-58-a5234d3e.json")
+        origin = session_naming.infer_session_origin_from_path(p)
+        self.assertEqual(origin["surface"], "gemini-cli")
+        self.assertEqual(origin["client"], "gemini-cli")
+        self.assertIsNone(origin["crew"])
+
+    def test_claude_cli_default(self):
+        from pathlib import Path
+
+        p = Path("/home/nic/.claude/projects/-home-nic-src-academicOps/abc.jsonl")
+        origin = session_naming.infer_session_origin_from_path(p)
+        self.assertEqual(origin["surface"], "claude-code-cli")
+        self.assertEqual(origin["client"], "claude-code")
+        self.assertIsNone(origin["crew"])
+
+    def test_metadata_accepts_path_overrides(self):
+        """get_session_metadata forwards explicit surface/client/crew overrides."""
+        meta = session_naming.get_session_metadata(
+            provider="claude",
+            surface="github-actions",
+            client="github-actions",
+            crew=None,
+        )
+        self.assertEqual(meta["surface"], "github-actions")
+        self.assertEqual(meta["client"], "github-actions")
+        self.assertEqual(meta["provider"], "claude")
+
+
 if __name__ == "__main__":
     unittest.main()

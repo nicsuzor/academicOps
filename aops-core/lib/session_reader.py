@@ -1249,6 +1249,45 @@ def find_sessions(
                         )
                     )
 
+    # 4b. Find GitHub Actions sessions
+    # Synced from gh artifacts by sync_gha_sessions.py into:
+    #   $AOPS_SESSIONS/github/<repo>/<run_id>/<attempt>/<workspace>/<uuid>.jsonl
+    # Including these in batch mode means an offline re-run (e.g. after an
+    # extraction-logic change) refreshes GHA summaries alongside everything
+    # else, instead of requiring a separate sync_gha_sessions invocation.
+    github_root = sessions_repo / "github"
+    if github_root.exists():
+        for jsonl_file in github_root.rglob("*.jsonl"):
+            if jsonl_file.name.endswith("-hooks.jsonl"):
+                continue
+            if jsonl_file.name.startswith("agent-"):
+                continue
+
+            # Project = repo slug (first segment under github/)
+            try:
+                rel = jsonl_file.relative_to(github_root)
+                project_name = rel.parts[0] if rel.parts else "github"
+            except ValueError:
+                project_name = "github"
+
+            if project and project.lower() not in project_name.lower():
+                continue
+
+            session_id = jsonl_file.stem
+            mtime = datetime.fromtimestamp(jsonl_file.stat().st_mtime, tz=UTC)
+            if since and mtime < since:
+                continue
+
+            sessions.append(
+                SessionInfo(
+                    path=jsonl_file,
+                    project=project_name,
+                    session_id=session_id,
+                    last_modified=mtime,
+                    source="claude",
+                )
+            )
+
     # 5. Find Claude Desktop Cowork sessions
     if include_cowork:
         cowork_base = (

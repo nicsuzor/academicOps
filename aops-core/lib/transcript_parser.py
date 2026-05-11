@@ -954,6 +954,7 @@ def reflection_to_insights(
     session_duration_minutes: float | None = None,
     timeline_events: list[dict[str, Any]] | None = None,
     provider: str | None = None,
+    session_path: Path | None = None,
 ) -> dict[str, Any]:
     """Convert parsed Framework Reflection to session insights format.
 
@@ -1037,6 +1038,15 @@ def reflection_to_insights(
                     stable_project = event["project"]
                     break
 
+    # Infer surface/client/crew from session_path so offline conversion of
+    # GHA/crew/polecat sessions doesn't fall back to live env (which usually
+    # reports the converter shell, not the original runtime).
+    origin = (
+        session_naming.infer_session_origin_from_path(session_path, provider=provider)
+        if session_path is not None
+        else {}
+    )
+
     result = {
         "session_id": session_id,
         "date": date_iso,
@@ -1047,7 +1057,7 @@ def reflection_to_insights(
         "friction_points": reflection.get("friction_points", []),
         "proposed_changes": reflection.get("proposed_changes", []),
         # Metadata (aops-d9ba7159, aops-eaf402f5)
-        **session_naming.get_session_metadata(provider=provider),
+        **session_naming.get_session_metadata(provider=provider, **origin),
         "repo": stable_project,
         "task_id": task_id,
         # Framework reflections as array (schema-compliant)

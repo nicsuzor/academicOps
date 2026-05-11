@@ -14,6 +14,7 @@ import re
 import socket
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 
 # Known artifact variants and their extensions
 ARTIFACT_TYPES = {
@@ -238,7 +239,13 @@ def get_client() -> str:
     return "claude-code"
 
 
-def get_session_metadata(*, provider: str | None = None) -> dict[str, str | None]:
+def get_session_metadata(
+    *,
+    provider: str | None = None,
+    surface: str | None = None,
+    client: str | None = None,
+    crew: str | None = None,
+) -> dict[str, str | None]:
     """Return the canonical session-metadata block stamped onto summary JSON.
 
     Mirrors the fields read by the overwhelm-dashboard Insights view:
@@ -250,6 +257,12 @@ def get_session_metadata(*, provider: str | None = None) -> dict[str, str | None
     Args:
         provider: Optional override for provider. When ``None`` (the default),
             falls back to ``get_provider_name()``.
+        surface: Optional override for surface. When set, bypasses env-based
+            detection (used by the offline converter which reads sessions long
+            after the runtime env has been torn down — e.g. GHA jsonl files
+            persisted under ``$AOPS_SESSIONS/github/``).
+        client: Optional override for client. Same semantics as ``surface``.
+        crew: Optional override for crew. Same semantics as ``surface``.
     """
     eff_provider = provider or get_provider_name()
     # When provider is overridden, recompute surface/client with that provider
@@ -258,25 +271,97 @@ def get_session_metadata(*, provider: str | None = None) -> dict[str, str | None
         original_env = os.environ.get("AOPS_PROVIDER_OVERRIDE")
         os.environ["AOPS_PROVIDER_OVERRIDE"] = provider
         try:
-            surface = _surface_with_provider(eff_provider)
-            client = _client_with_provider(eff_provider)
+            detected_surface = _surface_with_provider(eff_provider)
+            detected_client = _client_with_provider(eff_provider)
         finally:
             if original_env is None:
                 os.environ.pop("AOPS_PROVIDER_OVERRIDE", None)
             else:
                 os.environ["AOPS_PROVIDER_OVERRIDE"] = original_env
     else:
-        surface = get_surface()
-        client = get_client()
+        detected_surface = get_surface()
+        detected_client = get_client()
 
     return {
         "machine": os.environ.get("AOPS_MACHINE"),
         "hostname": get_hostname(),
         "provider": eff_provider,
-        "surface": surface,
-        "client": client,
-        "crew": resolve_crew_name(),
+        "surface": surface if surface is not None else detected_surface,
+        "client": client if client is not None else detected_client,
+        "crew": crew if crew is not None else resolve_crew_name(),
     }
+
+
+def infer_session_origin_from_path(
+    session_path: Path | str,
+    *,
+    provider: str | None = None,
+) -> dict[str, str | None]:
+    """Infer surface/client/crew from a persisted session file path.
+
+    Used by the offline transcript→summary converter, which reads jsonl/json
+    files long after the original runtime env (``GITHUB_ACTIONS``,
+    ``POLECAT_SESSION_TYPE``, ``POLECAT_CREW_NAME``) is gone. Without this,
+    every offline-converted summary stamps ``surface: claude-code-cli`` even
+    for GHA/crew/polecat sessions.
+
+    Path → (surface, client, crew) mapping:
+
+    - ``$AOPS_SESSIONS/github/<repo>/<run_id>/<attempt>/...`` →
+      surface=``github-actions``, client=``github-actions``, crew=None
+    - ``$AOPS_SESSIONS/crew/<crew_name>/...`` →
+      surface=``{provider}-crew``, client=``crew``, crew=``<crew_name>``
+    - ``$AOPS_SESSIONS/polecats/<task_id>/...`` →
+      surface=``{provider}-polecat``, client=``polecat``, crew=None
+    - ``~/.gemini/...`` or any ``.gemini/`` segment →
+      surface=``gemini-cli``, client=``gemini-cli``, crew=None
+    - default →
+      surface=``claude-code-cli``, client=``claude-code``, crew=None
+
+    Args:
+        session_path: Path to the persisted session file.
+        provider: Provider override for ``{provider}-crew``/``{provider}-polecat``
+            shortforms. Defaults to ``"claude"`` when not specified.
+
+    Returns:
+        ``{"surface": ..., "client": ..., "crew": ...}`` — fields suitable to
+        forward as overrides to :func:`get_session_metadata`.
+    """
+    p = Path(session_path)
+    parts = p.parts
+    path_str = str(p)
+    eff_provider = provider or "claude"
+
+    # GHA: $AOPS_SESSIONS/github/<repo>/<run_id>/<attempt>/...
+    if "github" in parts:
+        return {"surface": "github-actions", "client": "github-actions", "crew": None}
+
+    # Crew: $AOPS_SESSIONS/crew/<crew_name>/...
+    if "crew" in parts:
+        idx = parts.index("crew")
+        crew_name = parts[idx + 1] if len(parts) > idx + 1 else None
+        return {
+            "surface": f"{eff_provider}-crew",
+            "client": "crew",
+            "crew": crew_name,
+        }
+
+    # Polecat: $AOPS_SESSIONS/polecats/<task_id>/...
+    if "polecats" in parts:
+        return {
+            "surface": f"{eff_provider}-polecat",
+            "client": "polecat",
+            "crew": None,
+        }
+
+    # Gemini CLI (incl. ~/.gemini/tmp/.../chats/session-*.json)
+    if ".gemini" in path_str or "/gemini/" in path_str:
+        return {"surface": "gemini-cli", "client": "gemini-cli", "crew": None}
+
+    # Default: bare Claude Code CLI
+    if eff_provider == "gemini":
+        return {"surface": "gemini-cli", "client": "gemini-cli", "crew": None}
+    return {"surface": "claude-code-cli", "client": "claude-code", "crew": None}
 
 
 def _surface_with_provider(provider: str) -> str:

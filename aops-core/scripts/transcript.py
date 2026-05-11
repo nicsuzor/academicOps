@@ -197,6 +197,13 @@ def _should_overwrite_existing(new: dict, existing: dict) -> str | None:
     if len(new_refl) > len(old_refl):
         return "framework_reflections grew"
 
+    # If the new run resolves surface/client metadata that was missing on disk
+    # (e.g. old summary predates path-based inference), refresh in place.
+    if new.get("surface") and not existing.get("surface"):
+        return "surface metadata appeared"
+    if new.get("client") and not existing.get("client"):
+        return "client metadata appeared"
+
     return None
 
 
@@ -222,6 +229,7 @@ def _save_minimal_token_summary(
     timeline_events: list[dict] | None = None,
     shortform: str | None = None,
     provider: str | None = None,
+    session_path: Path | None = None,
 ) -> None:
     """Save minimal summary with just token_metrics when no reflection exists.
 
@@ -259,6 +267,16 @@ def _save_minimal_token_summary(
                     stable_project = event["project"]
                     break
 
+    # Infer surface/client/crew from the persisted session path. The live env
+    # ($GITHUB_ACTIONS, $POLECAT_SESSION_TYPE, $POLECAT_CREW_NAME) is gone by
+    # the time the offline converter runs, so without this overrides every
+    # GHA/crew/polecat summary mis-stamps `surface: claude-code-cli`.
+    origin = (
+        session_naming.infer_session_origin_from_path(session_path, provider=provider)
+        if session_path is not None
+        else {}
+    )
+
     # Build minimal insights with token_metrics
     insights = {
         "session_id": session_id,
@@ -270,7 +288,7 @@ def _save_minimal_token_summary(
         "friction_points": [],
         "proposed_changes": [],
         # Metadata (aops-d9ba7159, aops-eaf402f5)
-        **session_naming.get_session_metadata(provider=provider),
+        **session_naming.get_session_metadata(provider=provider, **origin),
         "repo": stable_project,
         "task_id": task_id,
         "token_metrics": usage_stats.to_token_metrics(session_duration_minutes),
@@ -340,6 +358,7 @@ def _process_reflection(
     timeline_events: list[dict] | None = None,
     shortform: str | None = None,
     provider: str | None = None,
+    session_path: Path | None = None,
 ) -> tuple[str | None, list[dict] | None]:
     """Extract reflections from entries and save to insights JSON files.
 
@@ -374,6 +393,7 @@ def _process_reflection(
                 timeline_events,
                 shortform=shortform,
                 provider=provider,
+                session_path=session_path,
             )
         return None, None
 
@@ -397,6 +417,7 @@ def _process_reflection(
             session_duration_minutes=session_duration_minutes,
             timeline_events=timeline_events if i == 0 else None,  # only on first reflection
             provider=provider,
+            session_path=session_path,
         )
 
         try:
@@ -596,6 +617,70 @@ def _get_session_id(session_path: Path) -> str:
     return session_id
 
 
+# GHA agents (rbg, merge-prep, enforcer-review, fix, review, …) inject their
+# own ``name: <slug>`` frontmatter at the head of the very first user prompt.
+# Extracting that slug recovers the workflow identity even when we're seeing
+# the jsonl long after the action ran (no artifact name available).
+_GHA_NAME_FRONTMATTER = re.compile(
+    r"(?im)^---\s*\n(?:.*\n)*?name:\s*([A-Za-z][A-Za-z0-9_-]*)\s*\n",
+)
+_GHA_NAME_SIMPLE = re.compile(r"(?im)^name:\s*([A-Za-z][A-Za-z0-9_-]*)\b")
+
+
+def _infer_gha_workflow_from_session(session_path: Path, entries: list) -> str | None:
+    """Heuristically identify which GHA workflow/agent drove a session.
+
+    GitHub Actions sessions live under
+    ``$AOPS_SESSIONS/github/<repo>/<run_id>/<attempt>/...`` and historically
+    have their workflow name baked into the artifact name (parsed by
+    sync_gha_sessions.py). When batch mode picks them up later we can't read
+    the artifact name, so we extract the ``name:`` slug from the agent
+    frontmatter in the first user prompt (e.g. ``name: rbg``,
+    ``name: merge-prep``, ``name: enforcer-review``).
+    """
+
+    def _entry_text(entry) -> str:
+        msg = getattr(entry, "message", None) or {}
+        content = msg.get("content") if isinstance(msg, dict) else None
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            parts = []
+            for block in content:
+                if isinstance(block, dict):
+                    t = block.get("text") or block.get("content") or ""
+                    if isinstance(t, str):
+                        parts.append(t)
+                elif isinstance(block, str):
+                    parts.append(block)
+            return "\n".join(parts)
+        return ""
+
+    # Walk forward until we hit a user-role message with content. GHA jsonls
+    # are front-padded with synthetic ``ai-title`` / ``last-prompt`` entries
+    # before the real first user prompt, so the first few slots are usually
+    # empty.
+    sample = ""
+    for entry in entries[:40]:
+        msg = getattr(entry, "message", None) or {}
+        if isinstance(msg, dict) and msg.get("role") and msg.get("role") != "user":
+            continue
+        text = _entry_text(entry)
+        if text:
+            sample = text[:4096]
+            break
+    if not sample:
+        return None
+
+    # Prefer fenced YAML frontmatter (---\nname: …\n…\n---) since it's the
+    # canonical agent identity. Fall back to a bare `name:` line for prompts
+    # that injected the agent header without fences.
+    match = _GHA_NAME_FRONTMATTER.search(sample) or _GHA_NAME_SIMPLE.search(sample)
+    if match:
+        return match.group(1).lower()
+    return None
+
+
 def _generate_transcript_filename(
     session_path: Path,
     entries: list,
@@ -634,6 +719,19 @@ def _generate_transcript_filename(
 
     # 4. Project/Repo
     repo = _infer_project(session_path, entries)
+
+    # 4b. Synthesise a "gha-…" shortform when batch-mode discovery picks up a
+    # GHA session directly out of $AOPS_SESSIONS/github/. Without this the
+    # transcript filename collapses to "academicops-claude" and loses the
+    # workflow distinction that sync_gha_sessions.py would have preserved.
+    # Layout: github/<repo>/<run_id>/<attempt>/<workspace>/<uuid>.jsonl
+    if shortform is None and "github" in parts:
+        idx = parts.index("github")
+        if len(parts) > idx + 1:
+            repo_slug = parts[idx + 1]
+            workflow = _infer_gha_workflow_from_session(session_path, entries)
+            workflow_segment = f"-{workflow}" if workflow else ""
+            shortform = f"gha{workflow_segment}-{repo_slug}-claude"
 
     # 5. Session ID
     session_id = _get_session_id(session_path)
@@ -1128,6 +1226,7 @@ Examples:
                     session_duration_minutes,
                     timeline_events,
                     provider=session_summary.provider,
+                    session_path=session_path,
                 )
 
                 # Generate full version
@@ -1320,6 +1419,7 @@ Examples:
                 session_duration_minutes,
                 timeline_events,
                 provider=session_summary.provider,
+                session_path=session_path,
             )
 
             # Generate transcripts and return
@@ -1436,6 +1536,7 @@ Examples:
             timeline_events,
             shortform=args.shortform,
             provider=session_summary.provider,
+            session_path=session_path,
         )
 
         # Generate full version
