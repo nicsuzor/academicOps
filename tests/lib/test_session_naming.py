@@ -1,3 +1,4 @@
+import os
 import unittest
 
 from lib import session_naming
@@ -138,6 +139,99 @@ class TestTaskIdAlignment(unittest.TestCase):
         )
         # Non-hex task IDs still get an 8-char shortform via SHA-256.
         self.assertRegex(filename, r"-task-[0-9a-f]{8}-")
+
+
+class TestSurfaceClientDetection(unittest.TestCase):
+    """aops-eaf402f5: surface/client/crew tagging on session summaries.
+
+    Each test scrubs the relevant env vars so host env doesn't leak in.
+    """
+
+    SCRUBBED = (
+        "GITHUB_ACTIONS",
+        "POLECAT_SESSION_TYPE",
+        "POLECAT_CREW_NAME",
+        "GEMINI_SESSION_ID",
+        "AOPS_SESSION_ID",
+        "AOPS_SESSION_STATE_DIR",
+        "AOPS_MACHINE",
+    )
+
+    def setUp(self):
+        self._saved = {k: os.environ.get(k) for k in self.SCRUBBED}
+        for k in self.SCRUBBED:
+            os.environ.pop(k, None)
+
+    def tearDown(self):
+        for k, v in self._saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+    def test_github_actions_surface(self):
+        os.environ["GITHUB_ACTIONS"] = "true"
+        self.assertEqual(session_naming.get_surface(), "github-actions")
+        self.assertEqual(session_naming.get_client(), "github-actions")
+
+    def test_polecat_run_surface(self):
+        os.environ["POLECAT_SESSION_TYPE"] = "run"
+        self.assertEqual(session_naming.get_surface(), "claude-polecat")
+        self.assertEqual(session_naming.get_client(), "polecat")
+
+    def test_polecat_crew_surface(self):
+        os.environ["POLECAT_SESSION_TYPE"] = "crew"
+        os.environ["POLECAT_CREW_NAME"] = "barbara"
+        self.assertEqual(session_naming.get_surface(), "claude-crew")
+        self.assertEqual(session_naming.get_client(), "crew")
+        self.assertEqual(session_naming.resolve_crew_name(), "barbara")
+
+    def test_plain_cli_surface(self):
+        # No polecat, no GHA — default claude CLI.
+        self.assertEqual(session_naming.get_surface(), "claude-code-cli")
+        self.assertEqual(session_naming.get_client(), "claude-code")
+
+    def test_gemini_cli_surface(self):
+        os.environ["GEMINI_SESSION_ID"] = "gemini-test"
+        self.assertEqual(session_naming.get_surface(), "gemini-cli")
+        self.assertEqual(session_naming.get_client(), "gemini-cli")
+
+    def test_gemini_polecat_surface(self):
+        os.environ["GEMINI_SESSION_ID"] = "gemini-test"
+        os.environ["POLECAT_SESSION_TYPE"] = "run"
+        self.assertEqual(session_naming.get_surface(), "gemini-polecat")
+        self.assertEqual(session_naming.get_client(), "polecat")
+
+    def test_gha_takes_precedence_over_polecat(self):
+        os.environ["GITHUB_ACTIONS"] = "true"
+        os.environ["POLECAT_SESSION_TYPE"] = "run"
+        # CI is the dominant surface — polecat-on-GHA is still "github-actions".
+        self.assertEqual(session_naming.get_surface(), "github-actions")
+
+    def test_metadata_dict_has_all_fields(self):
+        os.environ["POLECAT_SESSION_TYPE"] = "crew"
+        os.environ["POLECAT_CREW_NAME"] = "barbara"
+        meta = session_naming.get_session_metadata()
+        self.assertEqual(
+            set(meta.keys()),
+            {"machine", "hostname", "provider", "surface", "client", "crew"},
+        )
+        self.assertEqual(meta["surface"], "claude-crew")
+        self.assertEqual(meta["client"], "crew")
+        self.assertEqual(meta["crew"], "barbara")
+        self.assertEqual(meta["provider"], "claude")
+
+    def test_provider_override_propagates_to_surface_and_client(self):
+        """Path-detected provider must override env-detected provider.
+
+        The offline transcript-to-summary converter reads `.gemini/` files from
+        a Claude shell; without override the JSON would mis-stamp provider.
+        """
+        os.environ["POLECAT_SESSION_TYPE"] = "run"
+        meta = session_naming.get_session_metadata(provider="gemini")
+        self.assertEqual(meta["provider"], "gemini")
+        self.assertEqual(meta["surface"], "gemini-polecat")
+        self.assertEqual(meta["client"], "polecat")
 
 
 if __name__ == "__main__":

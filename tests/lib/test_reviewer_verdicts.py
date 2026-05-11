@@ -317,3 +317,50 @@ class TestUsageStatsIntegration:
         stats = UsageStats()
         metrics = stats.to_token_metrics()
         assert metrics["subagent_verdicts"] == []
+
+
+class TestRemapByAgentKeys:
+    """aops-eaf402f5: by_agent UUIDs must resolve to subagent names."""
+
+    def test_known_uuid_resolves_to_subagent_name(self):
+        from lib.transcript_parser import _remap_by_agent_keys
+
+        by_agent = {
+            "main": {"input": 100, "output": 50, "cache_create": 0, "cache_read": 0},
+            "ababa0cf498c0ed61": {"input": 20, "output": 10, "cache_create": 0, "cache_read": 0},
+        }
+        type_index = {"ababa0cf498c0ed61": "rbg"}
+        remapped = _remap_by_agent_keys(by_agent, type_index)
+        assert set(remapped.keys()) == {"main", "rbg"}
+        assert remapped["rbg"]["input"] == 20
+
+    def test_unknown_uuid_falls_back_to_uuid(self):
+        """Acceptance: unknown agents fall back to UUID rather than crashing."""
+        from lib.transcript_parser import _remap_by_agent_keys
+
+        by_agent = {"main": {"input": 1, "output": 1, "cache_create": 0, "cache_read": 0}}
+        by_agent["orphan-hash"] = {"input": 5, "output": 5, "cache_create": 0, "cache_read": 0}
+        remapped = _remap_by_agent_keys(by_agent, type_index={})
+        assert "orphan-hash" in remapped
+
+    def test_duplicate_invocations_sum(self):
+        from lib.transcript_parser import _remap_by_agent_keys
+
+        by_agent = {
+            "uuid1": {"input": 10, "output": 5, "cache_create": 0, "cache_read": 0},
+            "uuid2": {"input": 20, "output": 15, "cache_create": 0, "cache_read": 0},
+        }
+        type_index = {"uuid1": "rbg", "uuid2": "rbg"}
+        remapped = _remap_by_agent_keys(by_agent, type_index)
+        assert set(remapped.keys()) == {"rbg"}
+        assert remapped["rbg"]["input"] == 30
+        assert remapped["rbg"]["output"] == 20
+
+    def test_main_is_never_remapped(self):
+        from lib.transcript_parser import _remap_by_agent_keys
+
+        by_agent = {"main": {"input": 1, "output": 1, "cache_create": 0, "cache_read": 0}}
+        # Adversarial: type_index claims "main" maps elsewhere — must be ignored.
+        remapped = _remap_by_agent_keys(by_agent, type_index={"main": "rbg"})
+        assert "main" in remapped
+        assert "rbg" not in remapped

@@ -221,6 +221,7 @@ def _save_minimal_token_summary(
     session_duration_minutes: float | None,
     timeline_events: list[dict] | None = None,
     shortform: str | None = None,
+    provider: str | None = None,
 ) -> None:
     """Save minimal summary with just token_metrics when no reflection exists.
 
@@ -268,11 +269,8 @@ def _save_minimal_token_summary(
         "accomplishments": [],
         "friction_points": [],
         "proposed_changes": [],
-        # Metadata (aops-d9ba7159)
-        "machine": os.environ.get("AOPS_MACHINE"),
-        "hostname": session_naming.get_hostname(),
-        "provider": session_naming.get_provider_name(),
-        "crew": os.environ.get("POLECAT_CREW_NAME"),
+        # Metadata (aops-d9ba7159, aops-eaf402f5)
+        **session_naming.get_session_metadata(provider=provider),
         "repo": stable_project,
         "task_id": task_id,
         "token_metrics": usage_stats.to_token_metrics(session_duration_minutes),
@@ -341,6 +339,7 @@ def _process_reflection(
     session_duration_minutes: float | None = None,
     timeline_events: list[dict] | None = None,
     shortform: str | None = None,
+    provider: str | None = None,
 ) -> tuple[str | None, list[dict] | None]:
     """Extract reflections from entries and save to insights JSON files.
 
@@ -374,6 +373,7 @@ def _process_reflection(
                 session_duration_minutes,
                 timeline_events,
                 shortform=shortform,
+                provider=provider,
             )
         return None, None
 
@@ -396,6 +396,7 @@ def _process_reflection(
             usage_stats=usage_stats,
             session_duration_minutes=session_duration_minutes,
             timeline_events=timeline_events if i == 0 else None,  # only on first reflection
+            provider=provider,
         )
 
         try:
@@ -1126,6 +1127,7 @@ Examples:
                     usage_stats,
                     session_duration_minutes,
                     timeline_events,
+                    provider=session_summary.provider,
                 )
 
                 # Generate full version
@@ -1317,6 +1319,7 @@ Examples:
                 usage_stats,
                 session_duration_minutes,
                 timeline_events,
+                provider=session_summary.provider,
             )
 
             # Generate transcripts and return
@@ -1432,6 +1435,7 @@ Examples:
             session_duration_minutes,
             timeline_events,
             shortform=args.shortform,
+            provider=session_summary.provider,
         )
 
         # Generate full version
