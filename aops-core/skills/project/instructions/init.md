@@ -479,7 +479,7 @@ sources:
 ```bash
 #!/bin/bash
 # Rebuild the local DuckDB cache from BigQuery/source
-cd dbt_project && dbt build --profiles-dir /run/secrets/project/
+uv run dbt build --project-dir dbt_project --profiles-dir dbt_project
 ```
 
 **`data/cache/.gitignore`**:
@@ -641,7 +641,7 @@ rename, or abort. Otherwise append (note: no `path:` — that's machine-local):
 <slug>:
   repo: <repo-name>               # optional, defaults to slug
   default_branch: main
-  mounts:                              # NEW (optional, for empirical projects)
+  mounts:                              # optional, for empirical projects
     - host: $AOPS_SESSIONS/secrets/<slug>/
       container: /run/secrets/project/
       mode: ro
@@ -688,7 +688,7 @@ Deferred to user (by design):
   0. Project Credentials (for research projects):
      Before dispatching analytic work, create a scoped service account for this
      project's data and drop the JSON at `$AOPS_SESSIONS/secrets/<slug>/sa.json`.
-     Add a `profiles.yml` next to it if you use dbt. The polecat launcher mounts
+     The polecat launcher mounts
      that directory read-only at dispatch time. (No 1Password, no env-file
      ceremony. One human action, once.)
 
