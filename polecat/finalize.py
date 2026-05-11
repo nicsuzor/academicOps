@@ -80,9 +80,10 @@ def finish_cmd(ctx, no_push, do_nuke, force, force_done, project):
         sys.exit(1)
 
     # CLI --project/-p overrides task.project
-    if project:
+    _target_project = project or task.project
+    if _target_project:
         try:
-            task.project = manager.resolve_project_alias(project)
+            task.project = manager.resolve_project_alias(_target_project)
         except ValueError as e:
             print(f"Error: {e}", file=sys.stderr)
             sys.exit(1)
