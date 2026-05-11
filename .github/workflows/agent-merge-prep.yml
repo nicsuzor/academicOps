@@ -142,8 +142,11 @@ jobs:
         id: ceiling-check
         if: steps.loop-check.outputs.skip != 'true'
         run: |
-          git fetch origin main
-          MP_COUNT=$(git log origin/main..HEAD --grep="^Merge-Prep-By:" --oneline | wc -l | tr -d ' ')
+          # Use the consumer repo's default branch, not a hardcoded 'main' —
+          # consumers like `qut-dmrc/buttermilk` default to `dev`.
+          DEFAULT_BRANCH=$(gh api "repos/${{ github.repository }}" --jq '.default_branch')
+          git fetch origin "$DEFAULT_BRANCH"
+          MP_COUNT=$(git log "origin/$DEFAULT_BRANCH..HEAD" --grep="^Merge-Prep-By:" --oneline | wc -l | tr -d ' ')
           echo "Merge-Prep-By commits in branch: $MP_COUNT (ceiling: $MAX_MERGE_PREP_RUNS)"
           if [ "$MP_COUNT" -ge "$MAX_MERGE_PREP_RUNS" ]; then
             echo "CEILING REACHED: $MP_COUNT merge-prep commits >= $MAX_MERGE_PREP_RUNS"
