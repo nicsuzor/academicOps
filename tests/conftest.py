@@ -316,19 +316,6 @@ def ensure_test_environment(monkeypatch, tmp_path):
     monkeypatch.setenv("UV_CACHE_DIR", str(uv_cache))
 
 
-@pytest.fixture(autouse=True)
-def skip_demo_in_xdist(request):
-    """Skip demo tests when running in xdist workers.
-
-    Demo tests need visible print output for human validation (H37a).
-    xdist captures worker output, hiding print statements.
-
-    Run demo tests with: pytest -m demo -n 0
-    """
-    if "demo" in request.keywords and _is_xdist_worker():
-        pytest.skip("Demo tests require -n 0 for visible output. Run: pytest -m demo -n 0")
-
-
 @pytest.fixture
 def bots_dir() -> Path:
     """Return Path to framework root (AOPS).
