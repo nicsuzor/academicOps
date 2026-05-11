@@ -48,6 +48,6 @@ Agents must not circulate, send, or publish any academic output without the user
 
 ---
 
-**Note on Evidentiary Immutability**: What was previously listed here as P#42 (Research Data Is Immutable) is now axiom **A10 (Evidentiary Immutability)** in `AXIOMS.md`. It applies universally, not just in academic contexts.
+**Note on Evidentiary Immutability**: What was previously listed here as P#42 (Research Data Is Immutable) is now axiom **A10 (Research Data Is Immutable AND Irreplaceable)** in `AXIOMS.md`. It applies universally, not just in academic contexts.
 
 **Note on Citation**: What was previously listed here as P#4 (Always Cite Sources) is now axiom **A4 (Cite Sources)** in `AXIOMS.md`.
