@@ -141,14 +141,16 @@ This phase exists because of a specific, observed failure: a dogfooding supervis
 
 This is the hardest phase. Commission a separate reviewer agent — ideally a different model or agent type — to evaluate the subagent's output against the original objectives.
 
-1. **Commission the review.** Use the critic agent or James (orchestrator):
+1. **Commission the review.** Use pauli (critic mode) or James (full orchestration):
 
    ```
    Agent(
-     subagent_type="aops-core:critic",
+     subagent_type="aops-core:pauli",
      prompt="Review the following report against these objectives: <objectives>. The report is at: <path>. Assess depth, accuracy, specificity, and actionability. Be brutal — adequate is not good enough."
    )
    ```
+
+   For full multi-agent review use `/strategic-review` (default mode with James).
 
 2. **Evaluate the review.** The reviewer's assessment tells you about BOTH the instructions and the execution:
    - If the execution was poor but instructions were clear → the task may be too hard for this agent tier
