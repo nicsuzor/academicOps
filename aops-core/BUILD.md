@@ -105,7 +105,7 @@ echo '{"hook_event_name":"SessionStart","session_id":"diag","transcript_path":"/
 - **Subagent / isolated-worktree sessions don't run SessionStart.** Programmatically-spawned Claude sessions (Agent tool with `isolation: worktree`, FleetView-launched sessions) may not invoke SessionStart hooks the way the interactive `claude` CLI does. Symptom: hooks fire fine for normal `claude` sessions in the same project, but a subagent in the same repo has no env file written. This is a session-kind issue, not a plugin manifest issue.
 - **Plugin shows installed but version drifted.** `~/.claude/plugins/installed_plugins.json` pins an older version than `marketplace.json` advertises. Run `claude plugin update aops-core@aops` (note: the marketplace nickname is `aops`, the plugin name is `aops-core`).
 - **"Unrecognized keys" validation error on install.** `source` and `category` leaked into `dist/aops-claude/.claude-plugin/plugin.json`. `build.py` already strips these — if it recurs, check the template doesn't have them either.
-- **Gemini extension fails to load.** Usually `_generate_gemini_hooks_json()` rejecting the source hooks.json. Run the build with `-v` and look for "Could not read hooks.json" or "hooks.json has no 'hooks' key".
+- **Gemini extension fails to load.** Usually `_generate_gemini_hooks_json()` rejecting the source hooks.json. Look for "Could not read hooks.json" or "hooks.json has no 'hooks' key" in the build output.
 
 ## Do not modify
 
