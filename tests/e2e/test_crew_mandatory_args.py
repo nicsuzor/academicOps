@@ -25,7 +25,7 @@ def _write_registry(sessions_dir, projects):
         },
         "crew_defaults": {},
         "run_defaults": {},
-        "docker": {"image": "aops-crew"},
+        "docker": {"image": "ghcr.io/nicsuzor/aops-crew"},
         "external_agents": {},
         "projects": projects,
     }

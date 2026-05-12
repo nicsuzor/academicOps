@@ -23,11 +23,13 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from tests.conftest import _docker_available  # noqa: E402
 
+CREW_IMAGE = "ghcr.io/nicsuzor/aops-crew"
+
 
 def _image_built() -> bool:
     try:
         result = subprocess.run(
-            ["docker", "image", "inspect", "aops-crew"],
+            ["docker", "image", "inspect", CREW_IMAGE],
             capture_output=True,
             text=True,
             timeout=10,
@@ -46,7 +48,7 @@ def test_procps_available() -> None:
         pytest.skip("aops-crew image not built locally")
 
     result = subprocess.run(
-        ["docker", "run", "--rm", "aops-crew", "which", "pgrep"],
+        ["docker", "run", "--rm", CREW_IMAGE, "which", "pgrep"],
         capture_output=True,
         text=True,
         timeout=60,
@@ -106,7 +108,7 @@ def test_playwright_chromium_runnable() -> None:
     )
 
     result = subprocess.run(
-        ["docker", "run", "--rm", "aops-crew", "sh", "-c", script],
+        ["docker", "run", "--rm", CREW_IMAGE, "sh", "-c", script],
         capture_output=True,
         text=True,
         timeout=120,
@@ -149,7 +151,7 @@ def test_playwright_browsers_path_writable() -> None:
     )
 
     result = subprocess.run(
-        ["docker", "run", "--rm", "--user", "1001:1001", "aops-crew", "sh", "-c", script],
+        ["docker", "run", "--rm", "--user", "1001:1001", CREW_IMAGE, "sh", "-c", script],
         capture_output=True,
         text=True,
         timeout=60,
@@ -191,7 +193,7 @@ def test_cc_can_link() -> None:
     )
 
     result = subprocess.run(
-        ["docker", "run", "--rm", "aops-crew", "sh", "-c", script],
+        ["docker", "run", "--rm", CREW_IMAGE, "sh", "-c", script],
         capture_output=True,
         text=True,
         timeout=60,

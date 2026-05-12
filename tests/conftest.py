@@ -1743,15 +1743,16 @@ def check_blocked(result: dict) -> bool:
 
 
 def _docker_available() -> bool:
-    """Check if Docker is available and the aops-crew image exists."""
+    """Check if Docker is available and the ghcr.io/nicsuzor/aops-crew image exists."""
+    image = "ghcr.io/nicsuzor/aops-crew"
     try:
         result = subprocess.run(
-            ["docker", "images", "aops-crew", "--format", "{{.Repository}}"],
+            ["docker", "images", image, "--format", "{{.Repository}}"],
             capture_output=True,
             text=True,
             timeout=10,
         )
-        return result.returncode == 0 and "aops-crew" in result.stdout
+        return result.returncode == 0 and image == result.stdout.strip()
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return False
 
@@ -1767,14 +1768,14 @@ def claude_docker(tmp_path):
             timeout_seconds=60,
         )
 
-    Skips if: Docker unavailable, no Claude auth, or aops-crew image not built.
+    Skips if: Docker unavailable, no Claude auth, or ghcr.io/nicsuzor/aops-crew image not built.
     Claude authenticates via OAuth (stored in ~/.claude/.credentials.json) which is
     bind-mounted into the container. Falls back to ANTHROPIC_API_KEY if set.
     """
     import uuid
 
     if not _docker_available():
-        pytest.skip("Docker not available or aops-crew image not built")
+        pytest.skip("Docker not available or ghcr.io/nicsuzor/aops-crew image not built")
 
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     oauth_token = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN")
@@ -1951,7 +1952,7 @@ def gemini_docker(tmp_path):
     from pathlib import Path
 
     if not _docker_available():
-        pytest.skip("Docker not available or aops-crew image not built")
+        pytest.skip("Docker not available or ghcr.io/nicsuzor/aops-crew image not built")
     if not _gemini_cli_available():
         pytest.skip("Gemini CLI not available")
 
@@ -1987,7 +1988,7 @@ def gemini_docker(tmp_path):
         if not tmp_gemini_home:
             pytest.skip("Gemini auth replication failed")
 
-        env.setdefault("GEMINI_SANDBOX_IMAGE", "aops-crew")
+        env.setdefault("GEMINI_SANDBOX_IMAGE", "ghcr.io/nicsuzor/aops-crew")
 
         gemini_slug = "docker-test"
         # Match how polecat/cli.py mounts the volume using the native Gemini log path inside the sandbox
