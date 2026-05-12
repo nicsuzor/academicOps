@@ -225,6 +225,5 @@ These were observed during dogfooding runs and should be watched for:
 
 - brain PKB (project: aops, topic: dogfood) — the inner-loop spec (per-step reflection)
 - `.agents/skills/framework/workflows/10-reflective-execution.md` — the workflow version
-- `aops-core/commands/retro.md` — single-transcript review (a task this skill might dogfood)
-- `aops-core/commands/trend-review.md` — multi-session trend analysis (a task this skill might dogfood)
+- `aops-core/skills/survey/SKILL.md` — retro/trend/sweep modes (tasks this skill might dogfood)
 - `aops-core/skills/qa/SKILL.md` — quality assessment (used in Phase 4)
