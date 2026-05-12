@@ -10,7 +10,7 @@ description: Guidance on using built-in Excalidraw libraries and creating custom
 
 ## Built-in Libraries
 
-**Available in this skill** (`skills/excalidraw/libraries/`):
+**Available in this skill** (`skills/diagram/libraries/`):
 
 6 curated library files ready for immediate use:
 
@@ -29,7 +29,7 @@ description: Guidance on using built-in Excalidraw libraries and creating custom
    - Open Excalidraw
    - Click library icon (book/folder icon in toolbar)
    - Click "Load library from file"
-   - Navigate to `skills/excalidraw/libraries/`
+   - Navigate to `skills/diagram/libraries/`
    - Select one or more .excalidrawlib files
    - Components now available in library panel
 
