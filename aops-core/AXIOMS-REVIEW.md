@@ -1,7 +1,5 @@
 ---
-trigger: always_on
-condition: subagent_type == rbg
-description: review questions for rbg
+description: review questions for rbg — loaded explicitly by rbg.md (@include) and build.py (GHA inline); not auto-loaded
 ---
 
 # Universal Axioms Review Checklist
