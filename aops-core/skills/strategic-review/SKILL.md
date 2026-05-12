@@ -2,7 +2,7 @@
 name: strategic-review
 type: skill
 category: instruction
-description: Multi-agent strategic review of documents, plans, and proposals. Commissions review agents and iterates until the review meets quality standards.
+description: Multi-agent strategic review of documents, plans, and proposals. Commissions review agents and iterates until the review meets quality standards. Use mode=critic for a fast pauli-only pre-hoc critique.
 triggers:
   - "strategic review"
   - "pre-hoc plan evaluation"
@@ -10,6 +10,9 @@ triggers:
   - "plan review"
   - "review this document"
   - "review this proposal"
+  - "/strategic-review --critic"
+  - "critic review"
+  - "critic mode"
 modifies_files: false
 needs_task: false
 mode: conversational
@@ -17,13 +20,18 @@ domain:
   - framework
   - quality-assurance
 allowed-tools: Task,Read
-version: 2.1.0
+version: 2.2.0
 permalink: skills-strategic-review
 ---
 
 # /strategic-review — Strategic Review
 
-Multi-agent strategic review of documents, plans, and proposals. The orchestrator is **James** — commission James and let him manage the agent loop. If you are James, this skill is your operating context.
+Multi-agent strategic review of documents, plans, and proposals. Supports two modes:
+
+| Mode       | Agent                    | Use when                                                               |
+| ---------- | ------------------------ | ---------------------------------------------------------------------- |
+| default    | James (multi-agent loop) | Full strategic review — architecture, compliance, runtime verification |
+| `--critic` | Pauli (solo)             | Fast pre-hoc critique using 10 cognitive moves — plans, proposals      |
 
 ## When to invoke
 
@@ -35,7 +43,17 @@ Use this when a document needs strategic review, not proofreading:
 - Design decisions and specs
 - Any time the question "is this actually good, or just coherent?" matters
 
-## Orchestrator: James
+## Critic mode (`/strategic-review --critic`)
+
+For a focused, solo pre-hoc critique — invoke Pauli directly, bypassing the full James loop:
+
+```
+Agent(subagent_type="aops-core:pauli", prompt="[document or file path]")
+```
+
+Pauli applies 10 cognitive moves and returns a structured strategic critique. Use this before implementation when you want adversarial plan review without the overhead of full multi-agent orchestration. Equivalent to the former `/critic` command.
+
+## Orchestrator: James (default mode)
 
 Commission James as the orchestrator. He manages the agent loop, evaluates output quality, iterates, and synthesises.
 
