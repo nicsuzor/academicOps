@@ -120,23 +120,18 @@ the polecat `--max-turns` budget (XS=40, S=70, M=100, L=150).
 
 ### 2. Tag Routing
 
-| Tag(s) on task                                           | Worker                                               |
-| -------------------------------------------------------- | ---------------------------------------------------- |
-| `high-risk`, `irreversible`, `production`, `destructive` | `claude` only — and route through the critic gate    |
-| `methodology`, `academic-integrity`, `published-output`  | `claude` only — requires human decision point        |
-| `bulk`, `mechanical`, `find-replace`, `rename`           | `gemini` preferred                                   |
-| `async-ok`, `long-running`, `off-host`                   | `jules` preferred                                    |
-
-If a task carries both a high-stakes and a bulk tag, high-stakes wins.
+| Tag(s) on task                               | Worker             |
+| -------------------------------------------- | ------------------ |
+| `bulk`, `mechanical`, `find-replace`, `rename` | `gemini` preferred |
+| `async-ok`, `long-running`, `off-host`       | `jules` preferred  |
 
 ### 3. Heuristic Thresholds
 
-| Signal                                                                        | Action                                                    |
-| ----------------------------------------------------------------------------- | --------------------------------------------------------- |
-| Files affected > 20                                                           | Prefer `claude` (coordination overhead)                   |
-| Estimated effort > 4 hours of agent wall-time                                 | Prefer `jules` (async — survives lid close)               |
-| Task body explicitly references methodology, citations, or research integrity | `claude` only                                             |
-| Pre-dispatch validation failed once already                                   | Surface to human; do not auto-retry on a different worker |
+| Signal                                        | Action                                                    |
+| --------------------------------------------- | --------------------------------------------------------- |
+| Files affected > 20                           | Prefer `claude` (coordination overhead)                   |
+| Estimated effort > 4 hours of agent wall-time | Prefer `jules` (async — survives lid close)               |
+| Pre-dispatch validation failed once already   | Surface to human; do not auto-retry on a different worker |
 
 ### 4. Default
 
