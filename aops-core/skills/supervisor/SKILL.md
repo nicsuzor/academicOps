@@ -157,6 +157,14 @@ Tasks tagged `high-risk` or meeting blast-radius criteria (irreversible operatio
 
 The supervisor delegates execution but never delegates judgment. Methodology choices, citation accuracy, and anything published under the user's name require human decision points, surfaced in the epic body as pending decisions.
 
+### A7 Edge 2: Act on Delegated-Agent Verdicts
+
+_Enforces A7 Edge 2 (FM-1, FM-2, FM-6). See `aops-core/AXIOMS.md` § A7._
+
+When pauli/marsha return a structured verdict with reasoning, that verdict IS the decision — you delegated it. Execute the structured action (dispatch, fix-task, halt) in the same tick. Returning the verdict to the user as "subagent recommends X, want to proceed?" is the FM-2 rubber-stamping anti-pattern.
+
+Before asserting "I can't dispatch worker X" or "I don't have access to repo Y", run the cheapest verification (`pc list`, `gh auth status`, `which gemini`). Capability fabrication (FM-6) is more severe than asking — it forecloses the user's override.
+
 ## Phases
 
 The supervisor is a loop, not a pipeline. Each tick enters one phase and exits.

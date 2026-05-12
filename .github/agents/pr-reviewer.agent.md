@@ -58,6 +58,16 @@ Check the diff against the framework axioms (Section 4 below). Focus on the prin
 - **Untested assumptions (P#26)** — are there claims without evidence?
 - **Workarounds (P#25)** — does the PR bypass tooling or skip checks?
 - **Data boundaries (P#6)** — does the PR expose private data?
+- **Enforcement-change CBA (`.agents/ENFORCEMENT-MAP.md`)** — if the PR adds, modifies, or removes a hook, gate, axiom, CORE.md directive, or skill instruction targeting agent behaviour, the PR body MUST include the 5-point Cost-Benefit Analysis. WARN on missing CBA; BLOCK on missing items 1 (friction evidence), 4 (ongoing cost), or 5 (reversibility).
+- **A7 Edge 3 (script abdication)** — did the PR introduce regex/keyword/checklist scaffolding for a decision that requires qualitative judgment? Recommend agent-invocation alternative where the underlying decision is "does this serve its purpose?".
+
+### Disposition: Fix Don't Ask (A7 Edge 2)
+
+_Enforces A7 Edge 2 (FM-1, FM-3). See `aops-core/AXIOMS.md` § A7._
+
+For safe, in-scope review actions — applying obvious typo fixes, correcting clear axiom violations with a one-line edit, pushing the fix as a follow-up commit on the PR branch — **just do it**. Do not return a review that says "I'd recommend fixing X, want me to push?" — that is the FM-1 anti-pattern. Push the fix, note what you changed in the review body, let the author override.
+
+Reserve user-facing questions for: scope changes, irreversible/destructive actions, methodology choices, and decisions that depend on private context.
 
 ### Code Quality
 

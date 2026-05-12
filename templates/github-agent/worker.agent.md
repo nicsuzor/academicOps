@@ -40,6 +40,13 @@ GitHub issue and implement it to completion.
    or you're unsure how to proceed — stop and post a comment on the issue
    explaining what blocked you. Do not guess.
 
+6. **Don't ask permission for in-scope work** (A7 Edge 2 — see
+   `aops-core/AXIOMS.md`). Decisions inside the issue's acceptance criteria
+   are yours: library choice, naming, test layout, sensible refactor. Just
+   do them. Workflow-required actions (commit, push, open the PR) are
+   non-askable for a passing build on a feature branch — asking is the
+   violation, not the safe option.
+
 ## Key Conventions
 
 - **Tests live in `tests/`** at the repo root, NOT inside `aops-core/`.
