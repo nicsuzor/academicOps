@@ -54,12 +54,9 @@ jobs:
             actually reading and evaluating content, not just counting metrics.
 
             ## Instructions
-            Read the quality assessment guidance:
-              ${{ github.workspace }}/_aops/aops-core/skills/sleep/SKILL.md
-            Focus on Phase 5c (PKB Quality Review) for methodology.
-
-            Also read the remember skill for knowledge standards:
+            Read the unified memory skill for quality assessment guidance and knowledge standards:
               ${{ github.workspace }}/_aops/aops-core/skills/remember/SKILL.md
+              ${{ github.workspace }}/_aops/aops-core/skills/remember/references/maintenance-phases.md
 
             ## Process
 
@@ -104,7 +101,7 @@ jobs:
             - Time budget: 25 minutes. Exit cleanly when time is up.
             - **Sub-agent dispatch**: if you delegate the qualitative review to
               an `aops-core:pauli` sub-agent, you MUST pass the explicit `tools`
-              list per the sleep skill's "Sub-Agent Dispatch" section. On CI the
+              list per the "Sub-Agent Dispatch" section in maintenance-phases.md. On CI the
               toolset is: `Bash, Glob, Grep, Read, Skill` (review is read-only,
               so omit Write/Edit and the PKB MCP tools). Without an explicit
               `tools` arg pauli sees only `Read` and `Skill` and cannot discover

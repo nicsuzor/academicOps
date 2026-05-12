@@ -74,12 +74,10 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
-            You are the Sleep Cycle consolidation agent. Read the sleep skill for
-            full phase instructions:
-              ${{ github.workspace }}/_aops/aops-core/skills/sleep/SKILL.md
-
-            Also read the remember skill for knowledge standards and consolidation:
+            You are the Sleep Cycle consolidation agent running in maintenance mode.
+            Read the unified memory skill for full instructions:
               ${{ github.workspace }}/_aops/aops-core/skills/remember/SKILL.md
+              ${{ github.workspace }}/_aops/aops-core/skills/remember/references/maintenance-phases.md
               ${{ github.workspace }}/_aops/aops-core/skills/remember/procedures/consolidate.md
 
             Work through ALL phases in order (0 through 11):
@@ -101,8 +99,8 @@ jobs:
 
             ## Values Alignment
 
-            Read the **Values** and **Why This Works** sections in the sleep skill
-            file — they explain both the principles and the cognitive science rationale.
+            Read the **Values** section in `remember/SKILL.md` (Maintenance Mode) —
+            it explains both the principles and the cognitive science rationale.
             You are trusted to do complex knowledge work. Understand WHY, not just WHAT.
 
             ## Environment
@@ -118,7 +116,7 @@ jobs:
               reference mcp__pkb__* tools. Changes sync to PKB consumers via git push.
             - **Sub-agent dispatch (Phases 2, 4, quality review)**: when you
               delegate to `aops-core:pauli` sub-agents, you MUST pass the explicit
-              `tools` list per the sleep skill's "Sub-Agent Dispatch" section.
+              `tools` list per the "Sub-Agent Dispatch" section in maintenance-phases.md.
               Pauli's default profile lacks `Bash`, `Glob`, `Edit`, and the PKB
               MCP tools — without an explicit `tools` arg the sub-agent will only
               see `Read` and `Skill` and cannot do consolidation work. On CI

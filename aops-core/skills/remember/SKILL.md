@@ -2,24 +2,31 @@
 name: remember
 type: skill
 category: instruction
-description: Persist knowledge via PKB. PKB IS $ACA_DATA — never write to $ACA_DATA directly with Write/Edit.
+description: "Unified memory skill: immediate mode (/remember) persists knowledge via PKB MCP; maintenance mode (/sleep, GHA cron) runs periodic consolidation — transcript mining, knowledge synthesis, data quality, brain sync."
 triggers:
   - "remember this"
   - "save to memory"
   - "store knowledge"
+  - "sleep cycle"
+  - "consolidation"
+  - "brain maintenance"
 modifies_files: true
 needs_task: false
 mode: execution
 domain:
   - operations
-allowed-tools: mcp__pkb__create,mcp__pkb__create_memory,mcp__pkb__append,mcp__pkb__get_document,mcp__pkb__search,mcp__pkb__update_task
+allowed-tools: mcp__pkb__create,mcp__pkb__create_memory,mcp__pkb__append,mcp__pkb__get_document,mcp__pkb__search,mcp__pkb__update_task,Bash,Read,Write,Grep,Glob,Edit,Skill,mcp__pkb__pkb_orphans,mcp__pkb__list_tasks,mcp__pkb__graph_stats,mcp__pkb__get_network_metrics,mcp__pkb__get_task,mcp__pkb__task_search,mcp__pkb__pkb_context,mcp__pkb__bulk_reparent,mcp__pkb__find_duplicates,mcp__pkb__batch_merge,mcp__pkb__merge_node,mcp__pkb__complete_task,mcp__pkb__batch_reclassify,mcp__pkb__batch_archive,mcp__pkb__batch_update,mcp__pkb__create_task,mcp__pkb__update_memory,mcp__omcp__messages_search,mcp__omcp__messages_query,mcp__omcp__calendar_list_events
 owner: pauli
-version: 3.0.0
+version: 4.0.0
 ---
 
-# Remember Skill
+# Memory Skill
 
+> **Modes**: **Immediate** (`/remember`) — write a memory/task/doc now via PKB MCP. **Maintenance** (`/sleep`, GHA cron) — periodic consolidation: transcript mining, knowledge synthesis, data quality, graph maintenance. Immediate mode requires PKB MCP. Maintenance mode works directly on markdown files in CI contexts (no PKB MCP). Full maintenance phase instructions: [[references/maintenance-phases]].
+>
 > **Taxonomy note**: This skill provides domain expertise (HOW) for knowledge capture and persistence. See [[references/TAXONOMY.md]] for the skill/workflow distinction.
+
+## Immediate Mode
 
 Persist knowledge via PKB. **PKB IS `$ACA_DATA`** — managed properly. The PKB MCP owns all writes, reads, indexing, deduplication, and linking. **Agents MUST NOT use `Write` or `Edit` on any path under `$ACA_DATA`** — that bypasses PKB's invariants and silently fails on environments where `$ACA_DATA` is a remote or differently-permissioned mount.
 
@@ -50,18 +57,6 @@ Durable, decontextualized truths. Lives in `$ACA_DATA/knowledge/`, project files
 1. **Task bodies** (`type: task`): Document what was done. Preserved even when archived. Managed via tasks MCP.
 2. **Daily notes** (`type: daily-note`, in `sessions/`): High-quality user synthesis of what happened and what matters. Created by the user. NOT edited after the day.
 3. **Contemporaneous notes** (`type: meeting-note`, in `knowledge/` or project dirs): Notes of meetings, phone calls, conversations. Captured close to the event. May not be edited afterwards. Valuable as primary sources.
-
-### Cognitive Foundations
-
-The episodic/semantic distinction mirrors how biological memory works. Complementary Learning Systems theory (McClelland et al. 1995) shows that rapid episode capture and gradual pattern extraction are complementary processes — you need both. Semanticization (Baddeley 1988) is the natural process where episodic memories lose temporal context through repeated retrieval, becoming context-free semantic knowledge. The /sleep cycle's consolidation phases mirror this: offline replay of episodes, pattern extraction, integration into durable knowledge. The review process IS the consolidation mechanism — passive storage does not produce understanding.
-
-### Synthesis Flow (the consolidation pipeline)
-
-- Episodic content accumulates → patterns emerge across multiple notes
-- Agent or human extracts observations → creates/updates semantic knowledge notes
-- Semantic notes always cite their episodic sources (provenance)
-- The transformation from episodic to semantic mirrors cognitive semanticization
-- Git history preserves the full record; semantic notes in `$ACA_DATA` reflect what's current
 
 ## Storage Hierarchy (Critical)
 
@@ -416,3 +411,56 @@ Report the PKB write:
 - ID / permalink: `[returned by PKB]`
 
 Do **not** report a filesystem path — PKB owns the storage location. Referencing the filesystem path invites future agents to bypass PKB and edit it directly.
+
+## Maintenance Mode
+
+**Trigger**: `/sleep` command or `sleep-cycle` GitHub Actions workflow.
+**Purpose**: Periodic offline consolidation — transforming write-optimised storage (tasks, session logs) into durable semantic knowledge that agents can retrieve.
+
+This mirrors biological memory consolidation (Complementary Learning Systems, McClelland et al. 1995): episodic memories are replayed offline to extract durable semantic patterns. The review IS the consolidation — passive storage does not produce understanding.
+
+### Values
+
+1. **Never fabricate** — only extract what is grounded in source material. If you can't cite it, don't assert it.
+2. **Always track provenance** — every synthesized fact must cite its source. The chain from claim → source must be traversable.
+3. **Preserve episodic originals** — never modify daily notes, meeting notes, or task bodies. Only add `consolidated: YYYY-MM-DD` to their frontmatter.
+4. **Leave editorializing to the user** — agents extract patterns and connections; value judgments are the user's domain.
+5. **Respect uncertainty** — use confidence levels honestly. Don't upgrade `provisional` to `established` without additional independent evidence.
+6. **Quality over quantity** — one well-sourced synthesis note beats ten unsourced assertions.
+7. **Knowledge writing standards defer to Immediate Mode** — canonical topic notes, reconciliation, maturity, observation notation, provenance, MOC creation all follow the rules above. Maintenance mode does not duplicate or contradict them.
+
+### Mode Detection
+
+Detect at the start of every cycle. First match wins:
+
+1. `SLEEP_MODE=short-loop` or `SLEEP_MODE=full-session` in environment overrides everything.
+2. `LOOP_INTERVAL_MINUTES <= 30` → `short-loop`.
+3. Prior cycles exist in this session under `/loop` → `short-loop`.
+4. Default: `full-session` (manual `/sleep`, GHA cron).
+
+Log the detected mode and signal in the cycle summary.
+
+### Phases
+
+Full per-phase instructions in [[references/maintenance-phases]].
+
+| Phase | Name                        |
+| ----- | --------------------------- |
+| 0     | Graph Health Baseline       |
+| 1     | Session Backfill            |
+| 2     | Transcript Mining           |
+| 3     | Episode Replay              |
+| 4     | Knowledge Consolidation     |
+| 5     | Index Refresh               |
+| 6     | Data Quality Reconciliation |
+| 7     | Staleness Sweep             |
+| 8     | Refile Processing           |
+| 9     | Graph Maintenance           |
+| 10    | Consolidation Self-Check    |
+| 11    | Brain Sync                  |
+
+[[references/maintenance-phases]] also contains: sub-agent dispatch rules (Phases 2, 4), halt surfacing protocol, pacing (short-loop vs full-session), cycle summary template, and consolidation PR process.
+
+### CI Environment
+
+When running on GitHub Actions, no PKB MCP server is available. Use `Bash`, `Glob`, `Grep`, `Read`, `Write`, `Edit` directly on markdown files. Changes sync to PKB consumers via git push. `Edit` is restricted to transcript frontmatter under `$AOPS_SESSIONS/` only — never inside `$ACA_DATA`.
