@@ -2974,12 +2974,18 @@ def _get_running_polecat_containers() -> set[str] | None:
     """Return task IDs with running polecat containers, or None if Docker unavailable.
 
     Queries `docker ps` for containers named polecat-<task_id> and extracts
-    the task ID portion. Returns None when Docker cannot be reached so callers
-    can degrade gracefully.
+    the task ID portion. Returns None when Docker cannot be reached or the daemon
+    is remote (containers won't carry the polecat- prefix there) so callers can
+    degrade gracefully to [UNKNOWN].
     """
     try:
+        if _is_remote_daemon():
+            return None
+    except Exception:
+        return None
+    try:
         result = subprocess.run(
-            ["docker", "ps", "--format", "{{.Names}}"],
+            [_resolve_docker_binary(), "ps", "--filter", "name=polecat-", "--format", "{{.Names}}"],
             capture_output=True,
             text=True,
             timeout=5,

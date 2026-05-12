@@ -95,7 +95,7 @@ If validation fails: pauli returns `{action: "file_fix_task"}` with the fix scop
 - `[STALE]` — worktree directory exists but no matching container is running (crashed or already finished).
 - `[UNKNOWN]` — Docker was unreachable; container status could not be determined.
 
-**Limitation (remote daemon)**: container-liveness detection runs `docker ps --format {{.Names}}` and matches names with the `polecat-` prefix. When the Docker daemon is remote (SSH/TCP), containers are not named with that prefix and will appear `[STALE]` even if actually running. Use `docker ps` on the daemon host directly to confirm.
+**Limitation (remote daemon)**: when the Docker daemon is remote (SSH/TCP), container status cannot be determined and all entries will appear `[UNKNOWN]`. Use `docker ps` on the daemon host directly to confirm actual container status.
 
 **Recovery from a stuck claim**: if a polecat claimed a task but exited before spawning a worktree (no entry in `polecat list`, no directory under `$POLECAT_HOME/worktrees/`, but task shows `status: in_progress`): run `polecat reset-stalled --hours 0 --force`, then re-dispatch once validation passes.
 

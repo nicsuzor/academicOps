@@ -29,39 +29,60 @@ class TestGetRunningPolecatContainers:
             returncode=0,
             stdout="polecat-task-abc12345\nnginx\npolecat-framework-def67890\n",
         )
-        with patch("subprocess.run", return_value=mock_result):
+        with (
+            patch("cli._is_remote_daemon", return_value=False),
+            patch("subprocess.run", return_value=mock_result),
+        ):
             result = _get_running_polecat_containers()
         assert result == {"task-abc12345", "framework-def67890"}
 
     def test_returns_empty_set_when_no_polecat_containers(self):
         mock_result = subprocess.CompletedProcess(args=[], returncode=0, stdout="nginx\nredis\n")
-        with patch("subprocess.run", return_value=mock_result):
+        with (
+            patch("cli._is_remote_daemon", return_value=False),
+            patch("subprocess.run", return_value=mock_result),
+        ):
             result = _get_running_polecat_containers()
         assert result == set()
 
     def test_returns_none_when_docker_not_found(self):
-        with patch("subprocess.run", side_effect=FileNotFoundError):
+        with (
+            patch("cli._is_remote_daemon", return_value=False),
+            patch("subprocess.run", side_effect=FileNotFoundError),
+        ):
             result = _get_running_polecat_containers()
         assert result is None
 
     def test_returns_none_on_timeout(self):
-        with patch(
-            "subprocess.run", side_effect=subprocess.TimeoutExpired(cmd="docker", timeout=5)
+        with (
+            patch("cli._is_remote_daemon", return_value=False),
+            patch("subprocess.run", side_effect=subprocess.TimeoutExpired(cmd="docker", timeout=5)),
         ):
             result = _get_running_polecat_containers()
         assert result is None
 
     def test_returns_none_when_docker_returns_nonzero(self):
         mock_result = subprocess.CompletedProcess(args=[], returncode=1, stdout="")
-        with patch("subprocess.run", return_value=mock_result):
+        with (
+            patch("cli._is_remote_daemon", return_value=False),
+            patch("subprocess.run", return_value=mock_result),
+        ):
             result = _get_running_polecat_containers()
         assert result is None
 
     def test_handles_empty_output(self):
         mock_result = subprocess.CompletedProcess(args=[], returncode=0, stdout="")
-        with patch("subprocess.run", return_value=mock_result):
+        with (
+            patch("cli._is_remote_daemon", return_value=False),
+            patch("subprocess.run", return_value=mock_result),
+        ):
             result = _get_running_polecat_containers()
         assert result == set()
+
+    def test_returns_none_when_remote_daemon(self):
+        with patch("cli._is_remote_daemon", return_value=True):
+            result = _get_running_polecat_containers()
+        assert result is None
 
 
 # ---------------------------------------------------------------------------
