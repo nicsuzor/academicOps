@@ -278,11 +278,8 @@ jobs:
           git config --global user.name  "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-          # rsync --delete keeps the dist repo a strict mirror of build.py output:
-          # files removed from the source tree are removed downstream too.
-          # aops-cowork was collapsed into aops-core (commit 6d40abc4); drop any
-          # stale directory still in the dist repo on the first run after the kill.
-          rm -rf dist-repo/aops-cowork
+          # rsync --delete keeps each dist repo subdirectory in sync with build.py output:
+          # files removed within a synced subdirectory are removed downstream too.
           rsync -a --delete source/dist/aops-claude/  dist-repo/aops-claude/
           rsync -a --delete source/dist/aops-gemini/  dist-repo/aops-gemini/
           [ -d "source/dist/aops-tools-claude" ] && rsync -a --delete source/dist/aops-tools-claude/  dist-repo/aops-tools-claude/
