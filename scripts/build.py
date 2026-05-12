@@ -1238,6 +1238,7 @@ def generate_gha_agents(aops_root: Path, dist_root: Path) -> None:
     print("\nGenerating GHA agent prompts...")
     agents_src = aops_root / "aops-core" / "agents"
     axioms_path = aops_root / "aops-core" / "AXIOMS.md"
+    axioms_review_path = aops_root / "aops-core" / "AXIOMS-REVIEW.md"
     gha_out = dist_root / "gha-agents"
     gha_out.mkdir(parents=True, exist_ok=True)
 
@@ -1246,7 +1247,14 @@ def generate_gha_agents(aops_root: Path, dist_root: Path) -> None:
         return
 
     _, axioms_body = _parse_agent_frontmatter(axioms_path.read_text())
-    axioms_body = axioms_body.strip()
+    axioms_body = _strip_agent_body_h1(axioms_body).strip()
+
+    if not axioms_review_path.exists():
+        raise FileNotFoundError(
+            f"{axioms_review_path} not found — required for review agent prompts"
+        )
+    _, axioms_review_body = _parse_agent_frontmatter(axioms_review_path.read_text())
+    axioms_review_body = _strip_agent_body_h1(axioms_review_body).strip()
 
     # Review agents only — dev-standards and framework-ops are CC-only subagents
     review_agents = ["enforcer", "qa"]
@@ -1296,6 +1304,19 @@ def generate_gha_agents(aops_root: Path, dist_root: Path) -> None:
             axioms_body,
             "",
         ]
+
+        sections.extend(
+            [
+                "---",
+                "",
+                "## Review Questions",
+                "",
+                "<!-- Source: aops-core/AXIOMS-REVIEW.md — regenerate via `scripts/build.py` if axioms change -->",
+                "",
+                axioms_review_body,
+                "",
+            ]
+        )
 
         out_path = gha_out / f"{agent_name}.agent.md"
         out_path.write_text("\n".join(sections))
