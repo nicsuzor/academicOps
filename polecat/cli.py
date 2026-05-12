@@ -1844,11 +1844,14 @@ def _replicate_gemini_auth(
         return None
 
     # Check if we have any auth-related files
+    # gemini-credentials.json is intentionally excluded: it's encrypted with the
+    # host's libsecret/keyring key, which isn't available inside the container,
+    # so Gemini logs a "Corrupted credentials file" stack trace on every
+    # dispatch. oauth_creds.json provides working OAuth auth on its own.
     auth_files = [
         "settings.json",
         "google_accounts.json",
         "oauth_creds.json",
-        "gemini-credentials.json",
         "installation_id",
         "trustedFolders.json",
         "projects.json",
