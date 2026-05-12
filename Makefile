@@ -225,8 +225,8 @@ SANDBOX_IMAGE := $(DOCKER_IMAGE)
 # picking up the latest release. Pass an explicit version to pin.
 build-docker:
 	@echo "Building aops crew image..."
-	@docker build --build-arg CLAUDE_CODE_VERSION=$$(date +%s) --build-arg RUST_CACHEBUST=$$(date +%s) -t $(DOCKER_IMAGE) .
-	@echo "✓ Image built: $(DOCKER_IMAGE)"
+	@docker build --build-arg CLAUDE_CODE_VERSION=$$(date +%s) --build-arg RUST_CACHEBUST=$$(date +%s) -t $(DOCKER_IMAGE) -t $(notdir $(DOCKER_IMAGE)):latest .
+	@echo "✓ Image built: $(DOCKER_IMAGE) (also tagged $(notdir $(DOCKER_IMAGE)):latest)"
 	@echo "  Use with: GEMINI_SANDBOX_IMAGE=$(DOCKER_IMAGE) gemini --sandbox"
 
 # Aliases
