@@ -3565,6 +3565,9 @@ class SessionProcessor:
         out = "> " + " — ".join(bits) + "\n"
 
         def _add_block(label: str, body: str, limit: int) -> str:
+            body = body.strip()
+            if not body:
+                return ""
             shown = body if full_mode or len(body) <= limit else body[:limit] + "..."
             quoted = _quote_block(_adjust_heading_levels(shown.strip(), 4))
             prefix = f"> _{label}:_\n" if label else ""
