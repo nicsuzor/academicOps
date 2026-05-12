@@ -81,13 +81,7 @@ Use when a worker has just exited and the work item is in `in_progress`. Marsha 
 
 **Brief shape:** work item ID, PR URL (or "none"), acceptance criteria from the work item.
 
-**Marsha returns exactly one of:**
-
-```
-{verdict: "PASS"}
-{verdict: "FAIL", reason}
-{verdict: "REVISE", reason}      # treated as indeterminate by the supervisor
-```
+Marsha returns a one-line verdict: `PASS`, `FAIL <reason>`, or `REVISE <reason>` (treated as indeterminate by the supervisor).
 
 | Marsha verdict | Main agent action                                             |
 | -------------- | ------------------------------------------------------------- |

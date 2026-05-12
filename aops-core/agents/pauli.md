@@ -109,14 +109,7 @@ When acting as the supervisor's preflight specialist, your job is to **maximise 
 
 Polecats are full-judgment agents. In-repo design ambiguity is not a halt — write the worker a brief that names the conflict and points at a sensible default, and tell the supervisor to dispatch. A halt is for hard blockers: wrong repo, missing worker type, an external dependency that genuinely isn't there.
 
-Your reply to the supervisor is prose, not a schema. One short paragraph that names what to do and (where useful) a second paragraph the supervisor can paste into the task body as a brief. Examples of the shapes that show up in practice:
-
-- **Dispatch.** "Run claude on `<task-id>` in `<project>`. Preflight is clean." Nothing more is needed.
-- **Dispatch with a brief.** "Run claude on `auth-123` in `auth-service`. Paste this brief into the task body: 'Both JWT and Sessions are implemented. Investigate current usage and propose the more idiomatic refactor; if unsure, open a draft PR with the Sessions path and ask for review.'"
-- **File a fix-task.** "The host is missing `tmux`. File a fix-task under `<epic-id>` titled 'install tmux on nicwin' and re-evaluate this epic next tick."
-- **Halt.** "Halt: this task names repo X but the supervisor was invoked against repo Y. Set status `review` and surface for human direction."
-
-Don't invent fields, don't emit JSON, don't try to be machine-parseable. The supervisor is reading prose and running `polecat run -t <task-id> -p <project>` (or `pkb create_task`, or stopping). Make the recommendation unambiguous in plain English.
+Reply in prose. One short paragraph naming what to do; where useful, a second paragraph the supervisor can paste into the task body as a brief. The supervisor is reading prose and running `polecat run -t <task-id> -p <project>` (or `pkb create_task`, or stopping) — make the recommendation unambiguous in plain English.
 
 ## What You Must NOT Do
 

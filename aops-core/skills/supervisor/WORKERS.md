@@ -29,16 +29,7 @@ requires human approval on the Jules web UI before a PR appears.
 
 ## Polecat Capability
 
-Polecats are not limited to mechanical or bulk work. They are **full-judgment** agents (powered by `claude-sonnet-4-6` by default, per `polecat/defaults/polecat.yaml.example` → `session_defaults.model`, or the Gemini CLI) with the full claude-worker tool surface: Bash, Edit, Write, Read, Skill, and PKB tools (see `.agents/AGENT-TOOLS.md`).
-
-**What they can do**:
-
-- **Investigate**: explore the codebase and PKB to build context.
-- **Propose**: draft design decisions and open "discussion PRs" for human feedback.
-- **Verify**: run tests, debug failures, and iterate on fixes.
-- **File tasks**: decompose their own follow-ups if a task uncovers new scope.
-
-**Trust level**: trust polecats to make in-repo architectural and design decisions. If a task is ambiguous but remains within the target repository, **dispatch with a brief** rather than halting for human orientation. See [[SKILL.md#halt-on-substitute]] for the updated boundary.
+Polecats are **full-judgment** agents (powered by `claude-sonnet-4-6` by default, per `polecat/defaults/polecat.yaml.example` → `session_defaults.model`, or the Gemini CLI) with the full claude-worker tool surface: Bash, Edit, Write, Read, Skill, and PKB tools (see `.agents/AGENT-TOOLS.md`). Trust them to make in-repo architectural and design decisions. If a task is ambiguous but stays within the target repository, **dispatch with a brief** rather than halting. See [[SKILL.md#halt-on-substitute]].
 
 ---
 
@@ -132,7 +123,7 @@ the polecat `--max-turns` budget (XS=40, S=70, M=100, L=150).
 | Tag(s) on task                                           | Worker                                               |
 | -------------------------------------------------------- | ---------------------------------------------------- |
 | `high-risk`, `irreversible`, `production`, `destructive` | `claude` only — and route through the critic gate    |
-| `methodology`, `academic-integrity`, `published-output`  | `claude` only — never delegate **academic** judgment |
+| `methodology`, `academic-integrity`, `published-output`  | `claude` only — requires human decision point        |
 | `bulk`, `mechanical`, `find-replace`, `rename`           | `gemini` preferred                                   |
 | `async-ok`, `long-running`, `off-host`                   | `jules` preferred                                    |
 
