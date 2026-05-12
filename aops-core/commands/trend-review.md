@@ -15,6 +15,7 @@ mode: execution
 domain:
   - quality-assurance
   - framework
+allowed-tools: Agent
 permalink: commands/trend-review
 ---
 
@@ -42,6 +43,9 @@ Follow the trend mode workflow exactly: define question → identify data source
     'mcp__plugin_aops-core_pkb__task_search',
     'mcp__plugin_aops-core_pkb__get_document',
     'mcp__plugin_aops-core_pkb__pkb_context',
+    'mcp__plugin_aops-core_pkb__append',
+    'mcp__plugin_aops-core_pkb__create_task',
+    'mcp__plugin_aops-core_pkb__update_task',
   ],
 )
 ```

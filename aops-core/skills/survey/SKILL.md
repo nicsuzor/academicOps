@@ -67,6 +67,12 @@ Agent(
 Agent(
   subagent_type='aops-core:jr',
   prompt='Read aops-core/skills/survey/SKILL.md. Execute in sweep mode. [user context]',
+  tools=['Bash','Read','Grep','Glob','Skill','AskUserQuestion',
+         'mcp__plugin_aops-core_pkb__get_task',
+         'mcp__plugin_aops-core_pkb__create_task',
+         'mcp__plugin_aops-core_pkb__update_task',
+         'mcp__plugin_aops-core_pkb__append',
+         'mcp__plugin_aops-core_pkb__task_search'],
 )
 ```
 

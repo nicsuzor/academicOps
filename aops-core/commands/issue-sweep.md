@@ -16,6 +16,7 @@ domain:
   - framework
   - operations
   - quality-assurance
+allowed-tools: Agent
 permalink: commands/issue-sweep
 ---
 
@@ -37,6 +38,14 @@ Agent(
 Context from user: <paste user's invocation context — batch size override, dry-run flag, or specific instructions>
 
 Follow the sweep mode workflow exactly: pre-flight → pull batch → classify → present plan and gate → execute confirmed → append cycle log → /qa handoff → HALT.""",
+  tools=[
+    'Bash', 'Read', 'Grep', 'Glob', 'Skill', 'AskUserQuestion',
+    'mcp__plugin_aops-core_pkb__get_task',
+    'mcp__plugin_aops-core_pkb__create_task',
+    'mcp__plugin_aops-core_pkb__update_task',
+    'mcp__plugin_aops-core_pkb__append',
+    'mcp__plugin_aops-core_pkb__task_search',
+  ],
 )
 ```
 

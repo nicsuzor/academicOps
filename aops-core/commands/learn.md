@@ -17,6 +17,7 @@ needs_task: false
 mode: execution
 domain:
   - framework
+allowed-tools: Agent
 permalink: commands/learn
 ---
 
@@ -26,7 +27,7 @@ permalink: commands/learn
 
 **Privacy rule**: Anonymise all findings before filing. No real names, emails, student details, or session dumps in GitHub issues.
 
-## Dispatch
+## Workflow
 
 Delegate to pauli with the extended tool set the survey skill requires:
 
