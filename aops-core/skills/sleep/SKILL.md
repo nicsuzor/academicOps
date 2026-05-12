@@ -28,18 +28,5 @@ superseded_by: aops-core/skills/remember/SKILL.md
 - **Full phase instructions (0–11)**: `aops-core/skills/remember/references/maintenance-phases.md`
 - **Knowledge writing standards**: `aops-core/skills/remember/SKILL.md` → section "Immediate Mode"
 
-## For GHA Workflows
-
-If you are reading this from an installed `sleep-cycle.yml` workflow that references this file, read the unified skill files instead:
-
-```
-aops-core/skills/remember/SKILL.md
-aops-core/skills/remember/references/maintenance-phases.md
-aops-core/skills/remember/procedures/consolidate.md
-```
-
 Update your installed workflow to reference `remember/SKILL.md` and `remember/references/maintenance-phases.md` instead of this file. The template at `templates/github-workflows/sleep-cycle.yml` in the academicOps repo has already been updated.
 
-## Behaviour (unchanged)
-
-The maintenance mode of [[remember]] provides identical behaviour to the previous `/sleep` skill. No functionality was removed — the content was reorganised so that both immediate knowledge writes and periodic consolidation share one canonical skill with no duplication.

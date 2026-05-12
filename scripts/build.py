@@ -1074,7 +1074,7 @@ def build_antigravity(aops_root: Path, dist_root: Path, all_mcps: dict):
 def install_pkb_binary(dist_dir: Path, binary_path: Path) -> None:
     """Install pre-built binaries into a distribution directory.
 
-    Copies pkb and aops binaries to dist_dir/bin/ and sets executable permissions.
+    Copies pkb binary to dist_dir/bin/ and sets executable permissions.
     """
     bin_dir = dist_dir / "bin"
     bin_dir.mkdir(parents=True, exist_ok=True)
@@ -1083,14 +1083,6 @@ def install_pkb_binary(dist_dir: Path, binary_path: Path) -> None:
     shutil.copy2(binary_path, dest)
     dest.chmod(0o755)
     print(f"  ✓ Installed pkb binary -> {dest}")
-
-    # Install aops binary if present in the same directory
-    aops_binary = binary_path.parent / "aops"
-    if aops_binary.exists():
-        aops_dest = bin_dir / "aops"
-        shutil.copy2(aops_binary, aops_dest)
-        aops_dest.chmod(0o755)
-        print(f"  ✓ Installed aops binary -> {aops_dest}")
 
 
 def main():
@@ -1246,6 +1238,7 @@ def generate_gha_agents(aops_root: Path, dist_root: Path) -> None:
     print("\nGenerating GHA agent prompts...")
     agents_src = aops_root / "aops-core" / "agents"
     axioms_path = aops_root / "aops-core" / "AXIOMS.md"
+    axioms_review_path = aops_root / "aops-core" / "AXIOMS-REVIEW.md"
     gha_out = dist_root / "gha-agents"
     gha_out.mkdir(parents=True, exist_ok=True)
 
@@ -1254,7 +1247,14 @@ def generate_gha_agents(aops_root: Path, dist_root: Path) -> None:
         return
 
     _, axioms_body = _parse_agent_frontmatter(axioms_path.read_text())
-    axioms_body = axioms_body.strip()
+    axioms_body = _strip_agent_body_h1(axioms_body).strip()
+
+    if not axioms_review_path.exists():
+        raise FileNotFoundError(
+            f"{axioms_review_path} not found — required for review agent prompts"
+        )
+    _, axioms_review_body = _parse_agent_frontmatter(axioms_review_path.read_text())
+    axioms_review_body = _strip_agent_body_h1(axioms_review_body).strip()
 
     # Review agents only — dev-standards and framework-ops are CC-only subagents
     review_agents = ["enforcer", "qa"]
@@ -1304,6 +1304,19 @@ def generate_gha_agents(aops_root: Path, dist_root: Path) -> None:
             axioms_body,
             "",
         ]
+
+        sections.extend(
+            [
+                "---",
+                "",
+                "## Review Questions",
+                "",
+                "<!-- Source: aops-core/AXIOMS-REVIEW.md — regenerate via `scripts/build.py` if axioms change -->",
+                "",
+                axioms_review_body,
+                "",
+            ]
+        )
 
         out_path = gha_out / f"{agent_name}.agent.md"
         out_path.write_text("\n".join(sections))

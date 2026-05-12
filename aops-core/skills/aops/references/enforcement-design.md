@@ -364,7 +364,7 @@ TodoWrite(todos=[
 
 **Commands → Router pipeline**:
 
-1. **Prototype with /commands**: Create a `/command` to test a workflow (e.g., `/qa`, `/ttd`)
+1. **Prototype with /commands**: Create a `/command` to test a workflow (e.g., `/verify`, `/ttd`)
 2. **Iterate**: Refine the workflow based on real usage
 3. **Graduate to router**: When workflow is proven, add it to the intent router for automatic/general application
 

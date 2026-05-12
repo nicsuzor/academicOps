@@ -386,7 +386,7 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         "extractor",
         "transcript",
         "python-dev",
-        "convert-to-md",
+        "extract",
         "learning-log",
         "link",
         "writing",
@@ -498,7 +498,7 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         "28 USC § 1446(b)(3)",
         "Task MCP server",
         "Overwhelm dashboard",
-        "aops CLI",
+        "pkb CLI",
         "auth-provider-comparison",
         # Axiom slugs (anchor references within AXIOMS.md)
         "no-other-truths",

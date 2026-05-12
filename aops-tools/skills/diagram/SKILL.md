@@ -1,32 +1,225 @@
 ---
-name: excalidraw
+name: diagram
 type: skill
 category: instruction
-description: Creating visually compelling, hand-drawn diagrams with organic mind-map layouts and accessibility-focused design.
+description: Creating diagrams in any style — Mermaid flowcharts (structured, code-based) or Excalidraw (hand-drawn, organic). Use style parameter to select.
 triggers:
+  - "create flowchart"
+  - "mermaid diagram"
+  - "process flow"
   - "draw diagram"
   - "mind map"
   - "visual diagram"
+  - "diagram"
 modifies_files: true
 needs_task: true
 mode: execution
 domain:
   - design
-allowed-tools: Read,Skill
+allowed-tools: Read,Write,Edit,Skill
 version: 1.0.0
-permalink: skills-excalidraw-skill
-title: Excalidraw Diagram Design Skill
+permalink: skills-diagram-skill
+title: Diagram Design Skill
 ---
 
-# Excalidraw Diagram Design Skill
+# Diagram Design Skill
 
-> **Taxonomy note**: This skill provides domain expertise (HOW) for creating hand-drawn diagrams with organic layouts. See [[aops-core/skills/remember/references/TAXONOMY.md]] for the skill/workflow distinction.
+> **Taxonomy note**: This skill provides domain expertise (HOW) for creating diagrams. See [[aops-core/skills/remember/references/TAXONOMY.md]] for the skill/workflow distinction.
+
+**Purpose**: Create diagrams that communicate clearly. Choose the right style for the job.
+
+## Style Selection
+
+Invoke with a style argument:
+
+- `diagram(style="mermaid", ...)` — structured, code-based Mermaid flowcharts for process flows, decision trees, system diagrams
+- `diagram(style="excalidraw", ...)` — hand-drawn, organic Excalidraw diagrams for mind maps, concept maps, informal architecture sketches
+
+**Quick heuristic**: Use `mermaid` when the diagram lives in documentation and needs version control. Use `excalidraw` when the diagram is for presentations, exploration, or visual communication where feel matters.
+
+---
+
+## Style: mermaid
+
+**Purpose**: Create Mermaid flowcharts that are clear, readable, and visually attractive.
+
+**Key principle**: One message per chart. Hierarchy and chunking. Obvious flow. Distinct shapes for distinct semantics.
+
+### When to Use Mermaid
+
+- Creating flowcharts for documentation
+- Designing process flows, decision trees, or system diagrams
+- Documenting execution flows or workflows
+- Any task requiring code-based structured diagrams
+
+### Universal Chart Craft
+
+#### Define One Message Per Chart
+
+- Write a one-line purpose before starting ("This chart shows how a session moves from prompt to cleanup")
+- Remove anything that doesn't serve that message
+- Use separate charts for deep sub-processes
+
+#### Use Hierarchy and Chunking
+
+- Group related steps into visual blocks (subgraphs: "INIT", "PROMPT", "HYDRATE")
+- Keep each block under 6-9 nodes
+- If it grows, split to a new chart or link out
+
+#### Make the Flow Obvious
+
+- Use consistent direction (top-down or left-right)
+- Minimize backward arrows and edge crossings
+- Put the "happy path" on a straight spine; move exceptions/loops to the side
+
+#### Use Distinct Shapes for Distinct Semantics
+
+| Shape         | Mermaid Syntax | Use For       |
+| ------------- | -------------- | ------------- |
+| Rectangle     | `[text]`       | Process steps |
+| Diamond       | `{text}`       | Decisions     |
+| Rounded       | `([text])`     | Start/End     |
+| Parallelogram | `[/text/]`     | Data/IO       |
+| Stadium       | `([text])`     | Terminals     |
+
+#### Write Tight, Scannable Labels
+
+- Start with a **verb** ("Invoke skill", "Verify criteria", "HALT + ask user")
+- Aim for 3-9 words
+- Split long text across `<br/>` lines or move detail to notes/legends
+
+### Color and Styling
+
+Maintain visual hierarchy and accessibility through deliberate color choices and consistent typography.
+
+> See [[references/color-and-styling]] for palettes, accessibility guidelines, and typography rules.
+
+### Layout Strategy: Horizontal Space First
+
+**Default assumption**: Charts are too tall. Optimize for horizontal spread - most users' screens are wider than tall.
+
+#### Choose Direction Based on Content
+
+| Content Type              | Direction                          | When to Use                           | Result                          |
+| ------------------------- | ---------------------------------- | ------------------------------------- | ------------------------------- |
+| Linear process (≤8 steps) | `LR`                               | Simple pipelines, single thread       | 1 tall row, many columns (BEST) |
+| Branching/decisions       | `TD`                               | Multiple branches, complex logic      | Wider at branch points          |
+| Parallel workflows        | `LR` with `direction TB` subgraphs | Phases left-to-right, steps top-down  | Compact horizontal grouping     |
+| Complex systems (>15)     | `LR` + ELK layout                  | Systems with cross-links, multi-layer | Optimal automatic distribution  |
+
+**PRINCIPLE: Prefer LR layout for 80% of use cases.** It naturally spreads horizontally, matching screen dimensions.
+
+#### Use ELK for Complex Diagrams
+
+For diagrams with many nodes (>15) or cross-links, ELK layout produces dramatically better results:
+
+```yaml
+---
+config:
+  layout: elk
+  elk:
+    mergeEdges: true
+    nodePlacementStrategy: SIMPLE
+---
+```
+
+#### Mixed-Direction Subgraphs
+
+Place phases horizontally, let steps flow vertically within:
+
+```mermaid
+flowchart LR
+    subgraph PHASE1["Phase 1"]
+        direction TB
+        A1[Step 1] --> A2[Step 2]
+    end
+    subgraph PHASE2["Phase 2"]
+        direction TB
+        B1[Step 1] --> B2[Step 2]
+    end
+    PHASE1 --> PHASE2
+```
+
+**Critical**: Link between subgraphs, not between internal nodes. Internal-to-external links force direction inheritance.
+
+### Mermaid-Specific Techniques
+
+Master advanced layout tricks, initialization blocks, and professional styling.
+
+> See [[references/mermaid-techniques]] for spacing configurations, multi-layer alignment, and semantic styling.
+
+### Quality and Anti-Patterns
+
+Ensure your charts meet high standards and avoid common Mermaid pitfalls.
+
+> See [[references/quality-and-anti-patterns]] for a final quality checklist and a list of common layout, visual, and structural sins.
+
+### Phase-Based Organization (Recommended for Complex Flows)
+
+For flows with many steps (10+ nodes), organize into **numbered phases** rather than one long chain.
+
+```mermaid
+flowchart TB
+    subgraph INIT["① INITIALIZATION"]
+        direction TB
+        S0([Start]) --> S1[Load Config]
+        S1 --> S2[Validate]
+    end
+
+    subgraph EXEC["② EXECUTION"]
+        direction TB
+        E1[Process] --> E2{Check}
+        E2 -->|OK| E3[Continue]
+        E2 -->|Fail| E1
+    end
+
+    subgraph END["③ CLEANUP"]
+        direction TB
+        C1[Save] --> C2([End])
+    end
+
+    INIT --> EXEC --> END
+
+    %% Side panels for auxiliary systems
+    subgraph AUX["⚡ AUXILIARY"]
+        A1[Helper 1]
+        A2[Helper 2]
+    end
+
+    E1 -.-> A1
+    C1 -.-> A2
+
+    style INIT fill:#ecfdf5,stroke:#059669,stroke-width:2px
+    style EXEC fill:#fefce8,stroke:#ca8a04,stroke-width:2px
+    style END fill:#f5f5f5,stroke:#737373,stroke-width:2px
+    style AUX fill:#fef2f2,stroke:#ef4444,stroke-width:1px,stroke-dasharray: 5 5
+```
+
+**Key principles:**
+
+1. **Numbered phase labels** (① ② ③) - Creates visual hierarchy and reading order
+2. **Phase subgraphs link to each other** - `INIT --> EXEC --> END` keeps main flow clean
+3. **Auxiliary systems in dashed side panels** - Hooks, agents, external services
+4. **Minimal cross-connections** - Only essential interactions, always dashed
+5. **Color-coded phases** - Distinct hues per phase (green → yellow → gray for start → process → end)
+
+### Mermaid Templates and Examples
+
+See [[references/templates-and-examples.md]] for complete templates including:
+
+- Horizontal process flow (simple linear)
+- Multi-phase workflow (phases with internal steps)
+- Complex system flow (hook pipelines with ELK layout)
+
+---
+
+## Style: excalidraw
 
 **Purpose**: Create hand-drawn, organic diagrams that communicate clearly and feel human.
 
 **Key principle**: Rigid, corporate diagrams fail to engage. Sloppy, hand-drawn aesthetics with spatial mind-map layouts capture attention and convey meaning effectively.
 
-## Special Note: Task Visualization
+### Special Note: Task Visualization
 
 **For task visualization specifically**, use the automated `task_viz.py` script instead of this skill:
 
@@ -34,9 +227,9 @@ title: Excalidraw Diagram Design Skill
 uv run python skills/tasks/scripts/task_viz.py $ACA_DATA current-tasks.excalidraw
 ```
 
-The script generates a complete force-directed layout of goals, projects, and tasks. Only invoke this excalidraw skill AFTER the script runs if manual refinement or customization is needed.
+The script generates a complete force-directed layout of goals, projects, and tasks. Only invoke this diagram skill with `style=excalidraw` AFTER the script runs if manual refinement or customization is needed.
 
-## Aesthetic Defaults (CRITICAL)
+### Aesthetic Defaults (CRITICAL)
 
 **Always use these settings for the hand-drawn feel**:
 
@@ -60,9 +253,9 @@ The script generates a complete force-directed layout of goals, projects, and ta
 - **Embrace asymmetry** - "randomness dressed up as creativity"
 - **Use zoom for hierarchy** - big things BIG (use Excalidraw's unlimited canvas), children progressively smaller
 
-## Core Visual Design Principles
+### Core Visual Design Principles
 
-### 1. Visual Hierarchy
+#### 1. Visual Hierarchy
 
 **Identical content looks completely different based on presentation.** Position and style choices are critical.
 
@@ -78,7 +271,7 @@ The script generates a complete force-directed layout of goals, projects, and ta
 
 **Anti-pattern**: Big blocks of text in boxes. Keep labels SHORT (1-5 words). Don't overload the user's view.
 
-### Mind Mapping Design Principles
+#### Mind Mapping Design Principles
 
 For mind maps and concept maps, apply four fundamental design principles: **Proximity** (group related elements), **Alignment** (consistent positioning), **Contrast** (hierarchy through visual differences), and **Repetition** (unified patterns).
 
@@ -86,7 +279,7 @@ For mind maps and concept maps, apply four fundamental design principles: **Prox
 
 See [[references/mind-mapping-principles.md]] for complete principles and examples.
 
-### 2. The Two-Phase Design Process
+#### 2. The Two-Phase Design Process
 
 **Phase 1: Structure** (ignore aesthetics)
 
@@ -104,7 +297,7 @@ See [[references/mind-mapping-principles.md]] for complete principles and exampl
 
 **Why this works**: Ensures diagrams are both technically correct AND visually appealing.
 
-### 3. Whitespace is a Design Element
+#### 3. Whitespace is a Design Element
 
 Whitespace (negative space) is not "empty"—it's a powerful tool for:
 
@@ -124,7 +317,7 @@ Whitespace (negative space) is not "empty"—it's a powerful tool for:
 
 **Rule of thumb**: If it feels crowded, it IS crowded. Add more space than you think you need.
 
-## Technical Elements
+### Technical Elements
 
 **Colors**: User's preferred muted terminal theme (see [[references/theme-colors.md]]) - muted gold, soft greens, blues, on **WHITE backgrounds** (NOT dark). Maintain 4.5:1 contrast ratio for accessibility.
 
@@ -144,9 +337,9 @@ Whitespace (negative space) is not "empty"—it's a powerful tool for:
 
 See [[references/technical-details.md]] for complete specifications on colors, typography, shapes, arrows, layout, layering, and fill patterns. See [[references/theme-colors.md]] for user's preferred color palette. See [[references/text-container-pattern.md]] for text-in-container binding.
 
-## Process: Creating a Professional Diagram
+### Process: Creating a Professional Excalidraw Diagram
 
-### Step 1: Analyze & Plan
+#### Step 1: Analyze & Plan
 
 Before opening Excalidraw:
 
@@ -155,7 +348,7 @@ Before opening Excalidraw:
 3. What's the key message? (main takeaway)
 4. What level of detail? (high-level vs. comprehensive)
 
-### Step 2: Content Structure
+#### Step 2: Content Structure
 
 In Excalidraw (ignore aesthetics):
 
@@ -165,7 +358,7 @@ In Excalidraw (ignore aesthetics):
 4. Verify accuracy and completeness
 5. Get feedback if possible
 
-### Step 3: Visual Design
+#### Step 3: Visual Design
 
 Now make it beautiful:
 
@@ -192,7 +385,7 @@ Now make it beautiful:
    - Remove visual clutter
    - Test at different zoom levels
 
-### Step 4: Export with Quality
+#### Step 4: Export with Quality
 
 **Export settings**:
 
@@ -202,17 +395,17 @@ Now make it beautiful:
 - Choose "Embed scene" to preserve editability
 - Export formally (don't screenshot)
 
-## Common Patterns & Templates
+### Excalidraw Common Patterns & Templates
 
 See [[references/common-patterns.md]] for diagram templates: System Architecture, Process Flow, Concept/Mind Map, Graph/Network, and Comparison Matrix patterns.
 
-## Component Libraries & Resources
+### Component Libraries & Resources
 
-**Built-in libraries** (`~/.claude/skills/excalidraw/libraries/`): 6 curated libraries available - awesome-icons, data-processing, data-viz, hearts, stick-figures, stick-figures-collaboration.
+**Built-in libraries** (`~/.claude/skills/diagram/libraries/`): 6 curated libraries available - awesome-icons, data-processing, data-viz, hearts, stick-figures, stick-figures-collaboration.
 
 **Material Symbols** (RECOMMENDED for new icons): Professional icon set from Google Fonts. Import SVGs, recolor to theme palette. See [[references/icon-integration.md]] for complete workflow.
 
-**Quick start**: Load via Excalidraw library panel → "Load library from file" → Select from `~/.claude/skills/excalidraw/libraries/`
+**Quick start**: Load via Excalidraw library panel → "Load library from file" → Select from `~/.claude/skills/diagram/libraries/`
 
 **Usage tips**:
 
@@ -223,7 +416,7 @@ See [[references/common-patterns.md]] for diagram templates: System Architecture
 
 See [[references/library-guide.md]] for library loading, [[references/icon-integration.md]] for Material Symbols integration, [[references/theme-colors.md]] for color palette.
 
-## Quality Checklist
+### Excalidraw Quality Checklist
 
 Before considering a diagram complete:
 
@@ -262,7 +455,7 @@ Before considering a diagram complete:
 - [ ] Readable at intended viewing size
 - [ ] Professional export (2-3x scale)
 
-## Anti-Patterns to Avoid
+### Excalidraw Anti-Patterns to Avoid
 
 **Visual sins**:
 
@@ -286,9 +479,9 @@ Before considering a diagram complete:
 
 **Result**: Technically accurate but visually dead. Nobody wants to look at it.
 
-## Tools & Shortcuts
+### Tools & Shortcuts
 
-### Essential Keyboard Shortcuts
+#### Essential Keyboard Shortcuts
 
 **Drawing**:
 
@@ -335,7 +528,7 @@ Before considering a diagram complete:
 - `Cmd/Ctrl + 0` → Reset zoom to 100%
 - `Cmd/Ctrl + 1` → Zoom to fit all elements
 
-### Productivity Tips (2025 Best Practices)
+#### Productivity Tips (2025 Best Practices)
 
 **Essential techniques**:
 
@@ -347,12 +540,12 @@ Before considering a diagram complete:
 
 See [[references/productivity-tips.md]] for complete list of 12 productivity techniques and keyboard shortcuts.
 
-### Browser Extensions
+#### Browser Extensions
 
 **Excalisave**: Save unlimited canvases locally
 **Excalidraw Custom Font**: Use custom .woff2 fonts
 
-### Visualization from Data
+#### Visualization from Data
 
 **Paste table → chart**:
 
@@ -361,9 +554,9 @@ See [[references/productivity-tips.md]] for complete list of 12 productivity tec
 - Auto-generates bar/line chart
 - Fully editable afterward
 
-## Technical Integration
+### Technical Integration
 
-### MCP Server (Optional Advanced Feature)
+#### MCP Server (Optional Advanced Feature)
 
 For real-time canvas manipulation, see [[references/mcp-server-setup.md]].
 
@@ -375,7 +568,7 @@ For real-time canvas manipulation, see [[references/mcp-server-setup.md]].
 
 **Not needed for**: Manual diagram creation, which is the primary use case.
 
-### JSON Format (Advanced)
+#### JSON Format (Advanced)
 
 For direct file manipulation or automation, see [[references/json-format.md]].
 
@@ -387,7 +580,7 @@ For direct file manipulation or automation, see [[references/json-format.md]].
 
 **Not needed for**: Standard diagram creation.
 
-### Alternative: Mermaid Conversion
+#### Alternative: Mermaid Conversion
 
 Excalidraw can import Mermaid.js diagrams and convert to hand-drawn style.
 
@@ -397,7 +590,7 @@ Excalidraw can import Mermaid.js diagrams and convert to hand-drawn style.
 
 **Recommendation**: Direct creation in Excalidraw produces better visual results.
 
-## Summary
+### Excalidraw Summary
 
 **The Goal**: Create diagrams that are both accurate AND visually compelling.
 
