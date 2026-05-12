@@ -2970,23 +2970,63 @@ def ping_pkb(ctx):
     print(f"polecat ping-pkb: OK — {url} reachable, MCP handshake succeeded.")
 
 
+def _get_running_polecat_containers() -> set[str] | None:
+    """Return task IDs with running polecat containers, or None if Docker unavailable.
+
+    Queries `docker ps` for containers named polecat-<task_id> and extracts
+    the task ID portion. Returns None when Docker cannot be reached so callers
+    can degrade gracefully.
+    """
+    try:
+        result = subprocess.run(
+            ["docker", "ps", "--format", "{{.Names}}"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if result.returncode != 0:
+            return None
+        running: set[str] = set()
+        for name in result.stdout.strip().splitlines():
+            if name.startswith("polecat-"):
+                running.add(name[len("polecat-") :])
+        return running
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+        return None
+
+
 @main.command("list")
 @click.pass_context
 def list_polecats(ctx):
-    """List active polecats."""
+    """List active polecats, labelling stale worktrees without running containers."""
     manager = PolecatManager(home_dir=ctx.obj.get("home"))
     if not manager.polecats_dir.exists():
-        print("No polecats directory found.")
+        print("No active polecats.")
         return
 
+    running = _get_running_polecat_containers()
+    docker_unavailable = running is None
+
     found = False
-    for item in manager.polecats_dir.iterdir():
+    for item in sorted(manager.polecats_dir.iterdir()):
         if item.is_dir() and not item.name.startswith("."):
-            print(f"{item.name} -> {item}")
+            task_id = item.name
+            if docker_unavailable:
+                label = "[UNKNOWN]"
+            elif task_id in running:
+                label = "[ACTIVE] "
+            else:
+                label = "[STALE]  "
+            print(f"{label} {task_id} -> {item}")
             found = True
 
     if not found:
         print("No active polecats.")
+    elif docker_unavailable:
+        print(
+            "\nWarning: Docker unavailable — container status unknown.",
+            file=sys.stderr,
+        )
 
 
 # `sweep` subcommand removed — see task-9fa50763.
