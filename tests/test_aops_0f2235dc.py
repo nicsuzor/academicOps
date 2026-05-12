@@ -12,7 +12,9 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parent.parent
 HEURISTICS = PROJECT_ROOT / "aops-core" / "HEURISTICS.md"
-SLEEP_SKILL = PROJECT_ROOT / "aops-core" / "skills" / "remember" / "references" / "maintenance-phases.md"
+SLEEP_SKILL = (
+    PROJECT_ROOT / "aops-core" / "skills" / "remember" / "references" / "maintenance-phases.md"
+)
 
 VERBATIM = (
     "Age is not a staleness signal. Never cancel based on age alone. "
