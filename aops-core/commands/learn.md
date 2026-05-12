@@ -38,7 +38,9 @@ Agent(
 
 Context from user: <paste user's invocation context here — transcript path if specified, or omit for auto-select>
 
-Follow the retro mode workflow exactly: select transcript → read in full → review against all seven lenses → produce structured review → file issues → stamp transcript → framework reflection.""",
+Follow the retro mode workflow exactly: select transcript → read in full → review against all seven lenses → for each finding produce facts + most-general Root Cause Category + the rule already in place at the time (if any) + an impact statement → file forensic issues (no remediation proposals) → stamp transcript → framework reflection.
+
+**A17 (Recusal) — hard constraint**: /learn is the forensic phase. You are recused from proposing framework change motivated by the transcript you just read. Do NOT include "suggested axiom", "add a gate", "propose a mechanism", or any cost-ladder placement in the report or the filed issues. The detached judgment phase (sweep mode / /issue-sweep) reads your forensic report later, with no prior exposure to this incident, and is the only agent allowed to author rule changes. Recency is bias; the split is the discipline that prevents it.""",
   tools=[
     'Bash', 'Read', 'Grep', 'Glob', 'Edit', 'Write', 'Skill',
     'mcp__plugin_aops-core_pkb__search',

@@ -124,7 +124,7 @@ _Edge 2 — abdication (FM-1 through FM-7):_ For each question posed to the user
 
 _Edge 3 — script abdication:_ Where the agent built a deterministic check, would an agent invocation have been more accurate? Was the cost difference _measured_ or assumed? Where the agent reached for regex/keyword/checklist scaffolding, was the underlying decision qualitative? Did the agent build infrastructure for a problem one well-crafted agent prompt would solve in a single pass?
 
-When proposing a fix for an A7 violation, propose the **cheapest sufficient level** on the enforcement ladder (`.agents/ENFORCEMENT-MAP.md`). Most A7 recurrences are L1 propagation failures (skill SKILL.md text didn't reach a surface), not L3+ failures — don't propose hooks where a skill edit suffices.
+Note any A7 violation forensically per step 3b; do **not** propose the remediation here. A7 recurrence judgments belong in `sweep` mode under A17 (Recusal).
 
 **D. Communication** — concise or verbose? Decisions explained? Trailing summaries adding friction?
 
@@ -133,6 +133,19 @@ When proposing a fix for an A7 violation, propose the **cheapest sufficient leve
 **F. Knowledge & Learning** — existing infrastructure checked before building? PKB/tasks updated as info emerged? Learnings filed? Duplicate work avoided?
 
 **G. Excellence Gap** — what would a 10x agent have done differently? Biggest missed opportunity?
+
+### 3b. Forensic scope (A17 Recusal)
+
+**The retro is a forensic instrument. It does not legislate.** Per AXIOMS.md § A17, the agent that just read the transcript is normatively recused from proposing framework change motivated by that transcript. Cross-incident judgment about adding/escalating/propagating rules happens in the detached `sweep` mode (a separate context, no prior exposure to this incident).
+
+For each Critical Issue and Warning, the retro report must include — and must stop at:
+
+1. **The facts.** What happened, quoted from the transcript.
+2. **The most general category.** Pick one from the Root Cause Categories vocabulary (Discovery Gap, Detection Failure, Instruction Weighting, Index Lag, Cross-workflow Gap, Enforcement Gap, Dropped Thread). One category per finding — if it spans two, the finding is probably two findings.
+3. **Rule already in place (if any).** Read `.agents/ENFORCEMENT-MAP.md` and grep AXIOMS.md / HEURISTICS.md / open issues. If a mechanism that should have caught this exists, name it and the tier it sits at. If none exists, say so plainly. **Do not propose what should be added, escalated, or propagated. That is the sweep agent's job, not yours.**
+4. **Impact statement.** What did this failure cost — agent turns, user time, downstream cleanup, trust? One paragraph. Concrete.
+
+You may flag the finding as severe; you may not author the legislation that severity might motivate. If you find yourself writing "we should add…", "the framework needs…", "an axiom against… would prevent this," strike it. The detached reviewer reading this report later, with the enforcement map and the incident register open, is the agent allowed to write that sentence.
 
 ### 4. Produce the review
 
@@ -189,16 +202,26 @@ gh issue create --repo nicsuzor/academicOps \
   --label "bug" --label "criticality:<level>"
 ```
 
-**Issue body must include**:
+**Issue body must include — and must stop at — these forensic fields. No remediation, no "suggested axiom," no proposed mechanism (A17 Recusal):**
 
 ```yaml
-## Root Cause Analysis
+## Incident report (forensic)
 **Failure**: [1-sentence description]
 **Causal chain**: [trigger → expected → actual → root cause]
 **Root cause category**: [Discovery Gap | Detection Failure | Instruction Weighting | Index Lag | Cross-workflow Gap | Enforcement Gap | Dropped Thread]
 **Framework layer**: Component: [name] / File: [path]
 **Expected vs Actual**: Expected: [...] / Actual: [...]
+
+## Rule already in place (if any)
+[Cite the row of `.agents/ENFORCEMENT-MAP.md`, the axiom in `aops-core/AXIOMS.md`, or the skill instruction that was supposed to catch this. Name the tier (L0–L7). If no rule exists anywhere, say so plainly. Do NOT propose what should change — only document what existed at the time of the incident.]
+
+## Impact statement
+[Concrete cost: agent turns burned, user time consumed, downstream actions that had to be reverted (PRs closed, commits reverted), trust impact. One paragraph.]
 ```
+
+Issues that include a "suggested axiom," "proposed gate," or any remediation are out-of-scope under A17 and will be edited down to the forensic core by the sweep agent. Volume bumps on existing issues (`gh issue comment`) follow the same discipline — facts and impact only.
+
+**Why this discipline:** the sweep agent (or a strategic review) reads many incident reports against the enforcement map and the axiom set, and decides what to add, propagate, escalate, or leave alone. That cross-incident judgment is undermined when each incident report ships pre-packaged with the legislation its author thought it implied. The detached reviewer needs facts; the framework needs coherence; the recused incident agent provides one and protects the other by withholding the second.
 
 For **Observations**: only file if the observation reveals a systemic pattern.
 
@@ -229,15 +252,18 @@ Append (do not replace) if `reviewed_by` already exists.
 
 ### Retro anti-patterns
 
-| Anti-pattern                     | What to do instead             |
-| -------------------------------- | ------------------------------ |
-| Skimming                         | Read every line                |
-| "Overall good with minor issues" | Quote specifically             |
-| Filing one mega-issue            | One issue per distinct finding |
-| Inventing praise                 | Only genuine strengths         |
-| Reviewing your own session       | Review a DIFFERENT session     |
-| Filing > 3 issues per session    | Triage first; cap at 3         |
-| New issue for known pattern      | Comment on existing issue      |
+| Anti-pattern                                                                               | What to do instead                                                                                 |
+| ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| Skimming                                                                                   | Read every line                                                                                    |
+| "Overall good with minor issues"                                                           | Quote specifically                                                                                 |
+| Filing one mega-issue                                                                      | One issue per distinct finding                                                                     |
+| Inventing praise                                                                           | Only genuine strengths                                                                             |
+| Reviewing your own session                                                                 | Review a DIFFERENT session                                                                         |
+| Filing > 3 issues per session                                                              | Triage first; cap at 3                                                                             |
+| New issue for known pattern                                                                | Comment on existing issue                                                                          |
+| Including "suggested axiom", "add a gate", or any remediation proposal in the report (A17) | Stop at facts + rule-already-in-place + impact. The sweep agent legislates from a detached context |
+| "We should change Y because I just hit X"                                                  | The agent that hit X is recused (A17). Surface the incident; leave the change proposal to sweep    |
+| Citing a single session as justification for a new mechanism                               | Recurrence is the evidence base for framework change, not the salience of one transcript           |
 
 ---
 
@@ -350,7 +376,9 @@ mkdir -p ~/.aops/sessions/reviews
 
 **Purpose**: Run ONE cycle of the open-issue sweep on `nicsuzor/academicOps`. Classify ≤ 20 open issues, present the proposed dispatch plan, wait for sign-off, execute confirmed actions, log the cycle. **HALT after one cycle.** Fix-epics are left `queued` for `/supervisor` in a later session.
 
-**Hard halts**: No silent dispatch. No improvised dispositions. No cursor in task body (labels ARE the cursor).
+**Detached judgment role (A17)**: sweep is the framework's _legislative_ phase. The agents that diagnosed each incident are recused; the sweep agent reads their forensic reports together with the enforcement map and the axiom set, and is the one allowed to propose adding, propagating, escalating, or retiring rules. Recency exposure is what makes this work — sweep enters with no prior context on any individual incident, so the cross-incident pattern (not the salience of any one report) drives the call.
+
+**Hard halts**: No silent dispatch. No improvised dispositions. No cursor in task body (labels ARE the cursor). No framework-change recommendation without ≥3 cited recurrences (the CBA bar in ENFORCEMENT-MAP.md).
 
 ### Disposition rubric
 
@@ -390,6 +418,23 @@ mcp__pkb__get_task(id="epic-a0523a25")  # halt if not in_progress
 ### 2. Pull batch (≤ 20 issues) and classify
 
 For each issue: read body + ≤ 3 recent comments. Apply rubric. Group `fix-epic` candidates by root cause (cap 5 issues per proposed epic). Note one-line rationale per issue.
+
+### 2b. Cost-ladder review for framework-change candidates (A17 — sweep's legislative role)
+
+For every issue whose remediation would touch an axiom, gate, hook, skill instruction, or any row of `.agents/ENFORCEMENT-MAP.md`, run this sequence before assigning a disposition. This is the work that retro is forbidden to do; sweep is the only mode allowed to author it.
+
+1. **Read the forensic reports.** The issue body should be a clean incident report (per A17). If it carries a "suggested axiom" or "proposed gate," strip that from your reasoning — the proposal was authored under prejudicial recency and is evidence of urgency, not of the right answer. Edit the issue to remove the stripped section and leave a comment explaining the A17 split.
+2. **Generalise the failure.** Name the most general Root Cause Category from the documented vocabulary (Discovery Gap, Detection Failure, Instruction Weighting, Index Lag, Cross-workflow Gap, Enforcement Gap, Dropped Thread). One per issue.
+3. **Map to existing mechanisms.** Read `.agents/ENFORCEMENT-MAP.md` end-to-end (it is short by design). Grep AXIOMS.md and HEURISTICS.md for prior framing of the rule. List every existing mechanism that should plausibly have caught this failure, with its tier (L0–L7).
+4. **Classify the failure shape**:
+   - **Propagation failure** — rule exists at the right tier but didn't reach this surface. Fix is L1 propagation: edit the specific skill / agent / CORE.md text that needs to carry the rule. Same tier, more callsites.
+   - **Escalation candidate** — rule exists but at a tier too cheap to beat the trained reflex. Apply the CBA from ENFORCEMENT-MAP.md (≥3 recurrence links, named cheaper levels already tried with evidence, ongoing cost estimate, reversibility criterion). If you can't satisfy the CBA, the disposition is `defer` with a `needs-more-recurrences` comment, not an escalation.
+   - **Rule absent** — name the rule before naming the mechanism. Phrase it as a sentence the user could quote. Then ask which tier it belongs at, defaulting to L0/L1 unless the CBA forces a higher placement.
+5. **Default cheap, escalate reluctantly.** ENFORCEMENT-MAP.md:27 names the dominant failure mode: jumping to L3+ when the actual fix is L1 propagation. Most A7 recurrences are L1 propagation failures; assume the same here unless evidence contradicts.
+6. **Cite the row.** The disposition proposal must name either the row of ENFORCEMENT-MAP.md the fix propagates from, or the new row it would add. "Add a gate" is not a disposition; "L1 propagation into `aops-core/agents/marsha.md` lines XX–YY, citing existing axiom A8" is.
+7. **No-change is a valid outcome.** If the rule exists at the right tier and the failure was a single agent slip, the disposition is `close-as-stale` (or `comment-only` to track volume) — not a framework change. Recurrence count is the evidence base; one slip is not.
+
+The output of this step feeds the disposition decision in the rubric below (most often `fix-epic` for L1 propagation work, `defer` for "needs more recurrences," or `close-as-stale` for "no change warranted"). Surface every framework-change proposal to the user gate in step 3 with the cost-ladder reasoning visible.
 
 ### 3. Present cycle plan and gate
 
@@ -447,13 +492,16 @@ Loop stops only when ALL open issues are either: < 7 days old, stamped `triaged-
 
 ### Sweep anti-patterns
 
-| Anti-pattern                              | What to do instead                              |
-| ----------------------------------------- | ----------------------------------------------- |
-| Skipping user-confirmation gate           | Always present and wait                         |
-| Stamping `triaged-epic` before user `y`   | All stamps live after gate returns `y`          |
-| Invoking `/supervisor` inline             | Leave fix-epics `queued`; user dispatches later |
-| Inventing a sixth disposition             | Surface under "Needs human triage"              |
-| Storing numeric cursor in task body       | Labels are the cursor                           |
-| Parenting fix-epics under `epic-a0523a25` | Parent under relevant component epic            |
-| Bundling > 5 issues into one fix-epic     | Split or surface as human-triage                |
-| Re-running cycle without halting          | Halt; re-invoke for next cycle                  |
+| Anti-pattern                                                         | What to do instead                                                               |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Skipping user-confirmation gate                                      | Always present and wait                                                          |
+| Stamping `triaged-epic` before user `y`                              | All stamps live after gate returns `y`                                           |
+| Invoking `/supervisor` inline                                        | Leave fix-epics `queued`; user dispatches later                                  |
+| Inventing a sixth disposition                                        | Surface under "Needs human triage"                                               |
+| Storing numeric cursor in task body                                  | Labels are the cursor                                                            |
+| Parenting fix-epics under `epic-a0523a25`                            | Parent under relevant component epic                                             |
+| Bundling > 5 issues into one fix-epic                                | Split or surface as human-triage                                                 |
+| Re-running cycle without halting                                     | Halt; re-invoke for next cycle                                                   |
+| Adopting a "suggested axiom" from an incident report verbatim        | Strip per A17; redo the cost-ladder reasoning from the detached vantage          |
+| Proposing escalation from one incident                               | Need ≥3 cited recurrences (CBA); otherwise `defer` with `needs-more-recurrences` |
+| "Add a gate" / "add an axiom" without naming the ENFORCEMENT-MAP row | Cite the specific row the fix propagates from or would add; default L0/L1        |

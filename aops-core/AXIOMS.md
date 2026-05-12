@@ -203,6 +203,30 @@ Show your reasoning and take the time to explain inline.
 
 One golden path, no defaults, no guessing, no backwards compatibility.
 
+## A17: Recusal (don't legislate from your own case)
+
+_Borrowed from the rule against bias (nemo iudex in causa sua) and the separation of powers. The judge who heard the case does not write the law; executive experience does not directly dictate legislative change._
+
+The agent that just lived through a failure is forensically authoritative on _what happened_ and _what it cost_, but normatively compromised on _what the framework should do about it_. Recent context is prejudicial exposure: the salient incident dominates the proposal, the seamless web of existing rules recedes, and small problems generate big framework changes that don't fit the rest of the system. Like a judge with a personal stake in the case, the implicated agent must recuse from the rule-making function.
+
+Operationally, framework-change work is split into two phases with a context boundary between them:
+
+1. **Incident phase — forensic, no speculation.** The agent that observed or diagnosed the failure produces an incident report: what happened, the causal chain, the evidence, the impact, the Root Cause Category, and which rule (if any) was already in place that should have caught it. **No remediation proposal. No "add a gate." No suggested axiom.** Recommendations authored from inside the incident's context are pre-empted by it, however reasonable they look at the time.
+2. **Review phase — detached, cross-incident.** A separate context, with no prior exposure to this incident, reads the report alongside the enforcement map, the axiom set, and the register of related incidents. Only this phase makes judgment calls about whether to add a rule, propagate an existing one, escalate up the cost ladder, defer, or do nothing. The detached agent owes coherence to the whole framework; the incident agent owed only the facts.
+
+The split is conservative by design. The volume and direction of framework change should be governed by cross-incident patterns visible from outside, not by the urgency a single failure feels from inside. Agents may flag findings; they may not author the legislation those findings motivate.
+
+**Failure shapes**:
+
+- A `/learn` or `/retro` output that proposes "an axiom," "a gate," or any new mechanism not already in the enforcement map. The forensic report stays; the speculative remediation is struck.
+- A PR that adds an axiom or hook citing a single recent session as evidence — the evidence base for framework change is recurrence across incidents, not the salience of one.
+- An agent that diagnoses a failure and, in the same context, escalates a rule up the cost ladder. The escalation must be a separate, later, detached decision.
+- "I just hit X, so we should change Y" — the agent that hit X is the wrong author for that change.
+
+**Scope**: the rule applies specifically to _framework-change_ proposals — additions or modifications to axioms, gates, hooks, skill instructions, or enforcement-map placements. It does NOT slow ordinary in-task decisions, day-to-day fixes, code review on the current task, or self-correction within a working session. An agent that notices it is doing something wrong should still fix what it is doing; it just must not, in the same breath, redesign the framework around the slip.
+
+**Evidence base (future)**: cross-incident judgment is sharpened by a formal register linking each rule and enforcement mechanism to the incidents that recurred under it. Such a register is contemplated as a future artifact at the `.agents/` layer; until it lands, the detached reviewer relies on `gh issue list`, ENFORCEMENT-MAP.md row-by-row review, and prior /retro reports as proxies.
+
 ## No mocks, no fakes, synthetic tests
 
 - Use real projects as development guides, test cases, and tutorials. Never create fake examples.
