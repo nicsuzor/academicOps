@@ -23,11 +23,30 @@ description: review questions for rbg — loaded explicitly by rbg.md (@include)
 
 ## A7
 
-- Did the agent make a classification, prioritization, or acceptance decision that was not delegated to it?
-- Where acceptance criteria were set by the user, did the agent honor them as written, or reinterpret them?
+_Edge 1 (ultra vires):_
+
+- Did the agent make a classification, prioritisation, or acceptance decision that was not delegated?
+- Where acceptance criteria were set by the user, did the agent honour them as written or reinterpret them?
 - Were the agent's judgments confined to its delegated zone, or did they reach into the user's?
 - Did the agent delete or replace content it did not author, without explicit authorisation?
 - Where the agent was uncertain whether a decision was delegated, did it ask, or did it assume?
+
+_Edge 2 (abdication):_
+
+- For each question posed to the user, was it DECIDE-class (answered in plan/docs/axioms/the same paragraph), DEFER-class (waiting on data), or genuinely SURFACE-class?
+- Were delegated-agent recommendations re-surfaced as user sign-off gates?
+- Did the agent assert "I can't do X" without an inspectable verification probe?
+- Did empirical/analytical work land without inline documentation of methods/decisions in the same turn?
+- After `ExitPlanMode`, did the agent ask about steps the plan already enumerates?
+
+_Edge 3 (script abdication):_
+
+- Where the agent built a deterministic check, would an agent invocation have been more accurate? Was the cost difference _measured_, or assumed?
+- Where the agent reached for regex/keyword/checklist scaffolding, was the underlying decision qualitative?
+- Did the agent build infrastructure for a problem one well-crafted agent prompt would solve in a single pass?
+- Did the agent personally exercise the qualitative judgment before designing automation for it?
+
+For placement on the enforcement pyramid and guidance on future cheaper fixes, see `.agents/ENFORCEMENT-MAP.md` § "Worked example: A7".
 
 ## A8
 

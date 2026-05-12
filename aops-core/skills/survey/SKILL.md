@@ -116,6 +116,16 @@ Evaluate against each lens. Quote the transcript when citing problems. Do not so
 
 **C. Judgment Quality** — HALT when required? Guess vs investigate vs ask? Assumptions stated or silently embedded? Self-correction when wrong?
 
+**C2. A7 Compliance — Authority and Capability** (`aops-core/AXIOMS.md` § A7).
+
+_Edge 1 — ultra vires:_ Did the agent make a classification, prioritisation, or acceptance decision that was not delegated? Where acceptance criteria were set by the user, did the agent honour them as written or reinterpret them?
+
+_Edge 2 — abdication (FM-1 through FM-7):_ For each question posed to the user, was it DECIDE-class (already answered), DEFER-class (waiting on data), or genuinely SURFACE-class? Bundled DECIDE+SURFACE returns are reportable. Were delegated-agent recommendations re-surfaced as user sign-off gates (FM-2)? Did the agent write the answer in the same paragraph as a question, then ask anyway (FM-4)? Did the agent assert "I can't do X" without an inspectable verification probe (FM-6)? Did empirical/analytical work land without inline documentation in the same turn (FM-7)? After `ExitPlanMode`, did the agent ask about steps the plan already enumerates (FM-5)?
+
+_Edge 3 — script abdication:_ Where the agent built a deterministic check, would an agent invocation have been more accurate? Was the cost difference _measured_ or assumed? Where the agent reached for regex/keyword/checklist scaffolding, was the underlying decision qualitative? Did the agent build infrastructure for a problem one well-crafted agent prompt would solve in a single pass?
+
+When proposing a fix for an A7 violation, propose the **cheapest sufficient level** on the enforcement ladder (`.agents/ENFORCEMENT-MAP.md`). Most A7 recurrences are L1 propagation failures (skill SKILL.md text didn't reach a surface), not L3+ failures — don't propose hooks where a skill edit suffices.
+
 **D. Communication** — concise or verbose? Decisions explained? Trailing summaries adding friction?
 
 **E. Tool Use** — right tools (dedicated vs bash)? Parallel tool calls used? Redundant work? Tool boundary violations?

@@ -430,6 +430,8 @@ User prompt
 
 ## Decision Surfacing Heuristic
 
+_Enforces A7 Edge 2 (FM-2, FM-3, FM-4). See `aops-core/AXIOMS.md` § A7._
+
 **The user's time is the scarcest resource in decomposition.** Surfacing pseudo-decisions trains the user to rubber-stamp and erodes the signal of genuine asks. Before presenting any decision to the user, classify it:
 
 | Category    | Criterion                                                                                                                                               | Action                                                                                                                                                                                                                                                                                                                                                                         |
@@ -455,7 +457,9 @@ User prompt
 - Asking "do you prefer X or Y" when X is documented best practice and Y is a known failure mode.
 - Asking for input on something that requires runtime evidence before it's answerable — defer instead, or scope a spike.
 - Hiding behind "I want to be careful": if every choice is surfaced, the user is doing the planner's job. The planner adds value by absorbing decisions the framework already answers.
-- **Recording a DECIDE-class action without executing it.** "Cancel X once Y lands" / "supersede Z" / "retitle W" are actions whose decision is already made. Writing them into a task body as future work converts a DECIDE into a DEFER and leaks dead nodes into the graph. If the action is safe and unambiguous, do it in the same turn — do not narrate it as a deferred follow-up. The framework's "Anti-Pattern: Asking Permission for Safe Actions" (aops SKILL.md) applies recursively: don't ask, don't note-for-later, just act.
+- **Recording a DECIDE-class action without executing it.** "Cancel X once Y lands" / "supersede Z" / "retitle W" are actions whose decision is already made. Writing them into a task body as future work converts a DECIDE into a DEFER and leaks dead nodes into the graph. If the action is safe and unambiguous, do it in the same turn — do not narrate it as a deferred follow-up. A7 Edge 2 (FM-1) applies recursively: don't ask, don't note-for-later, just act.
+- **Re-surfacing a delegated agent's recommendation as a sign-off gate** (A7 Edge 2 FM-2). When pauli/marsha/a subagent returns a recommendation with reasoning, you delegated the decision — execute it. Returning it to the user as "pauli recommends X, want to proceed?" is the agent rubber-stamping pattern.
+- **Self-answered rhetorical questions** (A7 Edge 2 FM-4). If you can write the answer in the same paragraph as the question, it is rhetorical. Act on the answer.
 
 **When in doubt about whether to surface**: name the decision in one sentence and check it against this heuristic. If still unsure between DECIDE and SURFACE, prefer DECIDE — record your reasoning in the task body so the user can override on review. Surfacing should be the deliberate exception, not the default.
 
