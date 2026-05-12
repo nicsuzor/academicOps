@@ -1255,14 +1255,14 @@ def generate_gha_agents(aops_root: Path, dist_root: Path) -> None:
         return
 
     _, axioms_body = _parse_agent_frontmatter(axioms_path.read_text())
-    axioms_body = axioms_body.strip()
+    axioms_body = _strip_agent_body_h1(axioms_body).strip()
 
     if not axioms_review_path.exists():
         raise FileNotFoundError(
             f"{axioms_review_path} not found — required for review agent prompts"
         )
     _, axioms_review_body = _parse_agent_frontmatter(axioms_review_path.read_text())
-    axioms_review_body = axioms_review_body.strip()
+    axioms_review_body = _strip_agent_body_h1(axioms_review_body).strip()
 
     # Review agents only — dev-standards and framework-ops are CC-only subagents
     review_agents = ["enforcer", "qa"]
