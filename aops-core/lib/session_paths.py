@@ -381,14 +381,8 @@ def get_session_status_dir(
     if _is_polecat_sandbox():
         return _polecat_claude_state_dir(project_folder, "state")
     status_dir = Path.home() / ".claude" / "projects" / project_folder
-    try:
-        status_dir.mkdir(parents=True, exist_ok=True)
-        return status_dir
-    except OSError:
-        # Home directory not writable — sandbox without POLECAT_SESSION_TYPE set.
-        # Route to _polecat_claude_state_dir which falls back to /tmp silently,
-        # preventing PermissionError from propagating into hook stderr.
-        return _polecat_claude_state_dir(project_folder, "state")
+    status_dir.mkdir(parents=True, exist_ok=True)
+    return status_dir
 
 
 def get_session_file_path(
