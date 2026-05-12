@@ -89,7 +89,7 @@ esac
 
 if [[ "$CHECK_ONLY" == true ]]; then
     if command -v pkb &>/dev/null; then
-        ok "pkb installed"
+        ok "pkb installed ($(pkb --version 2>/dev/null || echo 'unknown'))"
     else
         fail "pkb not installed. Run: make install-cli"
     fi
