@@ -89,6 +89,14 @@ Triage cheapest first: check (1) yourself, ask the user about (2), only escalate
 
 If validation fails: pauli returns `{action: "file_fix_task"}` with the fix scope, OR `{action: "halt"}` if the gap requires human direction. Always leave a loose thread.
 
+**`polecat list` output**: each entry is prefixed `[ACTIVE]`, `[STALE]`, or `[UNKNOWN]`.
+
+- `[ACTIVE]` — worktree exists and a `polecat-<task-id>` Docker container is running.
+- `[STALE]` — worktree directory exists but no matching container is running (crashed or already finished).
+- `[UNKNOWN]` — Docker was unreachable; container status could not be determined.
+
+**Limitation (remote daemon)**: when the Docker daemon is remote (SSH/TCP), container status cannot be determined and all entries will appear `[UNKNOWN]`. Use `docker ps` on the daemon host directly to confirm actual container status.
+
 **Recovery from a stuck claim**: if a polecat claimed a task but exited before spawning a worktree (no entry in `polecat list`, no directory under `$POLECAT_HOME/worktrees/`, but task shows `status: in_progress`): run `polecat reset-stalled --hours 0 --force`, then re-dispatch once validation passes.
 
 ## Critic Gate for High-Blast-Radius Tasks
