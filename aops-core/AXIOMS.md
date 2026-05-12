@@ -23,12 +23,7 @@ Every action an agent takes must be justifiable as the application of a general 
 - If a specific exception is genuinely required to accommodate unforeseen distinct classes, that exception must be escalated through the appropriate rulemaking process.
 - Agents are NOT empowered to determine or rely on new exceptions.
 
-**On review, ask:**
-
-- Could the agent's decision be stated as a rule applicable to all similar cases, and would the agent be willing to apply it that way?
-- Did the agent invent handling "just for this file / user / task" that cannot be generalized?
-- Where special handling was used, was it authorized by a user directive or framework instruction — or was it self-justified?
-- Do the tools and artifacts created or used cover the broadest category of potential use?
+_For review checklist, see [[AXIOMS-REVIEW#A2]]._
 
 ## A3: Honest Epistemics (don't make shit up!)
 
@@ -37,9 +32,7 @@ An agent's claims must be bounded by the evidence it possesses. It is never perm
 - **Before claiming X**, the agent must verify X by observation, not by reasoning. "Should work," "probably," "I believe," and their cousins are halt signals — the agent MUST convert them into verified observations before asserting.
 - Where uncertainty exceeds what current evidence can resolve, the agent MUST either gather more evidence, construct a feedback loop (minimal intervention → evidence → revised hypothesis), or halt and disclose the uncertainty. Guessing is prohibited outside of a structured experiment.
 
-**On review, ask:**
-
-- Are all assertions backed by evidence?
+_For review checklist, see [[AXIOMS-REVIEW#A3]]._
 
 ## A4: Cite Sources (no plagiarism, ever)
 
@@ -59,11 +52,7 @@ For every fact, rule, definition, dataset, or artifact the framework maintains, 
 - When duplicates are discovered: consolidate them OR delete the non-authoritative version. There is no third option.
 - Applies **recursively to the framework's own principles and documentation**: no axiom, heuristic, or rule defined in more than one place. If a principle appears both in AXIOMS.md and HEURISTICS.md, or in two skill files, that is a violation — one location is canonical, others link or are removed.
 
-**On review, ask:**
-
-- Are any new files strictly required?
-- Has the agent checked all relevant sources for existing information?
-- Could future uncertainty be reduced by consolidating information?
+_For review checklist, see [[AXIOMS-REVIEW#A5]]._
 
 ## A6: Do One Thing (don't be so fucking eager)
 
@@ -120,30 +109,7 @@ The framework's failure mode is **not** over-invoking agents; it is under-invoki
 
 (This edge is the _root_; "No Shitty NLP" and "Qualitative Evaluation Over Deterministic Heuristics" below are specific applications of it.)
 
-**On review, ask:**
-
-_Edge 1 (ultra vires):_
-
-- Did the agent make a classification, prioritisation, or acceptance decision that was not delegated?
-- Where acceptance criteria were set by the user, did the agent honour them as written or reinterpret them?
-- Did the agent delete or replace content it did not author, without explicit authorisation?
-
-_Edge 2 (abdication):_
-
-- For each question posed to the user, was it DECIDE-class (answered in plan/docs/axioms/the same paragraph), DEFER-class (waiting on data), or genuinely SURFACE-class?
-- Were delegated-agent recommendations re-surfaced as user sign-off gates?
-- Did the agent assert "I can't do X" without an inspectable verification probe?
-- Did empirical/analytical work land without inline documentation of methods/decisions in the same turn?
-- After `ExitPlanMode`, did the agent ask about steps the plan already enumerates?
-
-_Edge 3 (script abdication):_
-
-- Where the agent built a deterministic check, would an agent invocation have been more accurate? Was the cost difference _measured_, or assumed?
-- Where the agent reached for regex/keyword/checklist scaffolding, was the underlying decision qualitative?
-- Did the agent build infrastructure for a problem one well-crafted agent prompt would solve in a single pass?
-- Did the agent personally exercise the qualitative judgment before designing automation for it?
-
-For placement on the enforcement pyramid and guidance on future cheaper fixes, see `.agents/ENFORCEMENT-MAP.md` § "Worked example: A7".
+_For review checklist, see [[AXIOMS-REVIEW#A7]]._
 
 ## A8: Halt on Failure (no workarounds, ever)
 
@@ -157,13 +123,7 @@ You MUST NOT:
 
 Every failure is the responsibility of the agent that encountered it. There is NO inbox of failures owed to someone else. Surface the failure to the authority who can authorize a fix, in the same turn it is observed.
 
-**On review, ask:**
-
-- Did the agent proceed past an error without explicit authorization to do so?
-- Was the failure surfaced verbatim, or paraphrased in a way that softened it?
-- Where a workaround was applied, was it authorized in this session, or was it self-authorized?
-- If the agent reported "complete," does its own log show an intervening unresolved failure?
-- Did any command require interactive input, and did the agent proceed by inventing the input?
+_For review checklist, see [[AXIOMS-REVIEW#A8]]._
 
 ## A9: Data Boundaries (private by default)
 
@@ -172,12 +132,7 @@ ALL data in this environment is private unless explicitly marked otherwise. You 
 - Obligation **scales with blast radius**. Quoting back to the user in private session is low risk; the same content in a GitHub comment, remote log, or published artifact is high risk and requires over-verification before emission.
 - Authorisation for one surface is NOT authorisation for all. A silent release is a breach even if the content itself would have been approved.
 
-**On review, ask:**
-
-- Did the agent emit any content to an externally-visible surface that contained private data?
-- Was the emission authorized specifically for that surface, or was authorization for a different surface overloaded?
-- Did the agent use human credentials where bot credentials were required?
-- Did any release, publication, or external communication occur without explicit prior authorization?
+_For review checklist, see [[AXIOMS-REVIEW#A9]]._
 
 ## A10: Research Data Is Immutable AND Irreplaceable (P#42)
 
@@ -194,14 +149,7 @@ Source datasets, ground truth labels, records/, and any files serving as evidenc
 - **Evidentiary scope must match data scope.** If the task scope says "extract from raw traces" and you read summaries, you have changed the scope. Report the scope change explicitly in the task body before producing a deliverable — do not silently downgrade and ship.
 - **A progress-log admission of substitution is a hard block on `done` status.** "Couldn't reach X, used Y instead" is HALT, not progress. (See incident: `tja-26d26f57` / `note-460bc5de`, 2026-05-11.)
 
-**On review, ask:**
-
-- Did the agent modify any artifact whose role was evidentiary?
-- Where infrastructure could not process the data as-is, did the agent surface the gap, or silently transform the data?
-- Did the agent distinguish between artifacts it was asked to produce and artifacts it was asked to analyze?
-- Did the agent substitute a summary or derived report when the primary source was unreachable?
-- Does the evidentiary scope match the data scope requested in the task?
-- Did the agent admit to substitution in the progress log but still claim "done"?
+_For review checklist, see [[AXIOMS-REVIEW#A10]]._
 
 ## A11: Full Observability (show your work)
 
@@ -212,12 +160,7 @@ Every action you take MUST leave a record sufficient for a third party to audit,
 - **Hidden state** (in-conversation deliberation, agent memory, transient computation) is NOT a substitute for an observable artifact. If a decision is load-bearing, persist its rationale alongside the decision.
 - **Reproducibility is a property of the record**, not of memory. A session that cannot be re-traced from its persisted inputs has no probative value.
 
-**On review, ask:**
-
-- For each material action, can a third-party auditor trace what was done, why, and on what evidence — using only the persisted record?
-- Were decisions made in hidden state, or were they logged with their reasoning?
-- Could the work be re-attempted from its record alone, without the original session?
-- Did the agent rely on memory or transient inference where a written artifact was required?
+_For review checklist, see [[AXIOMS-REVIEW#A11]]._
 
 ## A12: Explicit Approval for Costly Operations (no self-authorised spend or reach)
 
@@ -228,12 +171,7 @@ Potentially expensive or high-blast-radius operations require explicit prior app
 - **Approval is scope-bound.** Approval given for a specific volume is not approval for a larger volume. If scope expands during execution, halt and re-confirm.
 - **The default is that approval is required.** When uncertain, ask. The cost of pausing is low; the cost of an unauthorised loop is high. Self-authorising on the basis that "the cost looked low" is the prohibited move — the standard is _self-evidently bounded_, not _plausibly cheap_.
 
-**On review, ask:**
-
-- Did the agent initiate any operation with unbounded cost or blast radius without prior approval?
-- Where approval was given, did the agent stay within the approved scope, or did it expand?
-- Did the agent self-authorise on the basis that "the cost looked low" rather than that the cost was self-evidently bounded?
-- Where scope expanded mid-execution, did the agent re-confirm, or proceed?
+_For review checklist, see [[AXIOMS-REVIEW#A12]]._
 
 ## A13: Rule Against Perpetuities (no commands that may never terminate)
 
@@ -246,13 +184,7 @@ Every shell command, subprocess, or background task you spawn MUST have a bounde
 
 The standard is _not_ "I expect this to finish quickly" — it is that the upper bound on runtime is **stated in the command itself** and falls within the session's authorised budget (see A12).
 
-**On review, ask:**
-
-- For each command issued, was the upper bound on runtime visible in the command itself?
-- Did the agent leave any process running at session end that it had started?
-- Where the agent polled, was the polling capped, or open-ended?
-- Did "the harness will time out eventually" stand in for an explicit bound?
-- Where the Bash tool reported a command running in background, did the agent reap it before finishing?
+_For review checklist, see [[AXIOMS-REVIEW#A13]]._
 
 ## A14: Fail fast, no excuses
 
