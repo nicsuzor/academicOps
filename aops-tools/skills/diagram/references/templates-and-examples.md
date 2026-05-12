@@ -1,12 +1,12 @@
 ---
-title: Flowchart Templates and Examples
+title: Mermaid Templates and Examples
 category: ref
 permalink: skills-flowchart-templates
 ---
 
-# Flowchart Templates and Examples
+# Mermaid Templates and Examples
 
-Reference templates for common Mermaid flowchart patterns.
+Reference templates for common Mermaid diagram patterns.
 
 ## Template: Horizontal Process Flow (MOST COMMON - Use This for 80% of Charts)
 
