@@ -77,11 +77,9 @@ jobs:
             the original session.
 
             ## Instructions
-            Read the remember skill for knowledge standards:
+            Read the unified memory skill for knowledge standards and transcript mining guidance:
               ${{ github.workspace }}/_aops/aops-core/skills/remember/SKILL.md
-
-            Read the sleep skill for transcript mining guidance (Phase 1b):
-              ${{ github.workspace }}/_aops/aops-core/skills/sleep/SKILL.md
+              ${{ github.workspace }}/_aops/aops-core/skills/remember/references/maintenance-phases.md
 
             ## Environment
             - Brain repo (knowledge base): ${{ github.workspace }}
@@ -136,7 +134,7 @@ jobs:
             - Time budget: 25 minutes. Exit cleanly when time is up.
             - **Sub-agent dispatch**: if you delegate any per-transcript work to
               an `aops-core:pauli` sub-agent, pass the explicit `tools` list per
-              the sleep skill's "Sub-Agent Dispatch" section. On CI: `Bash,
+              the "Sub-Agent Dispatch" section in maintenance-phases.md. On CI: `Bash,
               Glob, Grep, Read, Write, Edit, Skill` (omit mcp__plugin_aops-core_pkb__*
               — not available). `Edit` is restricted to transcript frontmatter
               under `_sessions/` only. Without an explicit `tools` arg pauli sees
