@@ -227,4 +227,4 @@ These were observed during dogfooding runs and should be watched for:
 - `.agents/skills/framework/workflows/10-reflective-execution.md` — the workflow version
 - `aops-core/commands/retro.md` — single-transcript review (a task this skill might dogfood)
 - `aops-core/commands/trend-review.md` — multi-session trend analysis (a task this skill might dogfood)
-- `aops-core/skills/qa/SKILL.md` — quality assessment (used in Phase 4)
+- `aops-core/skills/verify/SKILL.md` — quality assessment (used in Phase 4)

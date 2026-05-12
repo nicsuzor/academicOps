@@ -33,7 +33,7 @@ permalink: commands/issue-sweep
 - No improvised disposition. If an issue does not fit a rubric row cleanly, surface it under "Needs human triage" — do not invent a sixth bucket mid-cycle.
 - No cursor stored in task body. The label `triaged-*` IS the cursor; the next cycle's `gh` query excludes already-stamped issues.
 
-**See also**: [[../skills/supervisor/SKILL.md]] · [[../skills/qa/SKILL.md]] · [[../AXIOMS.md]] · [[../HEURISTICS.md]]
+**See also**: [[../skills/supervisor/SKILL.md]] · [[../skills/verify/SKILL.md]] · [[../AXIOMS.md]] · [[../HEURISTICS.md]]
 
 ## Concepts
 
@@ -200,12 +200,12 @@ Append:
 mcp__pkb__append(id="epic-a0523a25", content="<populated entry, including: cursor=label-based; batch size; issues processed; per-disposition lists; friction filed; open count after cycle; triaged-* totals; stopping condition met yes/no with one-line evidence>")
 ```
 
-### 7. Hand off to /qa
+### 7. Hand off to /verify
 
-After the log entry is appended, hand off to the per-cycle independent reviewer (T3 in the loop architecture). Pass a prose brief naming the cycle, the epic, and the reviewer pair; the `/qa` skill itself accepts a free-form prompt rather than CLI flags.
+After the log entry is appended, hand off to the per-cycle independent reviewer (T3 in the loop architecture). Pass a prose brief naming the cycle, the epic, and the reviewer pair; the `/verify` skill itself accepts a free-form prompt rather than CLI flags.
 
 ```
-Skill(skill="qa", args="Verify cycle <N> of /issue-sweep on epic-a0523a25. Sample 20% of processed issues (minimum 3). Reviewers: Pauli (cohesion) + RBG (axiom compliance). Conditionally also Marsha if any single-tasks dispatched this cycle.")
+Skill(skill="verify", args="Verify cycle <N> of /issue-sweep on epic-a0523a25. Sample 20% of processed issues (minimum 3). Reviewers: Pauli (cohesion) + RBG (axiom compliance). Conditionally also Marsha if any single-tasks dispatched this cycle.")
 ```
 
 The QA contract (sample size: 20% of the cycle's processed issues, minimum 3):

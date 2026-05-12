@@ -11,7 +11,7 @@
 ## Invocation
 
 ```
-Task(subagent_type="qa",
+Task(subagent_type="aops-core:marsha",
      prompt="Verify work meets acceptance criteria: [CRITERIA]. Check functionality, quality, completeness.")
 ```
 

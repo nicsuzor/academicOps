@@ -88,7 +88,7 @@ Build the designed system: test infrastructure, reporting tools, automation.
 ## Invocation
 
 ```
-Task(subagent_type="qa",
+Task(subagent_type="aops-core:marsha",
      prompt="System Design mode. Design QA infrastructure and criteria for [PROJECT].
      Inventory existing tests, analyze gaps, design qualitative acceptance criteria
      per qa-planning.md, then design evaluation suites and workflow.")
