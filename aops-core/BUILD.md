@@ -1,6 +1,6 @@
 # Build & Deploy
 
-How AcademicOps plugin artifacts are built, packaged, and installed. End-users want [INSTALL.md](INSTALL.md); this doc is for developers changing the build.
+How AcademicOps plugin artifacts are built, packaged, and installed. End-users want [INSTALL.md](../INSTALL.md); this doc is for developers changing the build.
 
 ## Three repos, one direction
 
