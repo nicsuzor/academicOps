@@ -46,7 +46,7 @@ body:
         Please provide details about your environment:
         - OS: [e.g. macOS, Ubuntu]
         - Python version: [e.g. 3.11.5]
-        - academicOps version: [run `aops --version` or check `pyproject.toml`]
+        - academicOps version: [run `pkb --version` or check `pyproject.toml`]
         - Model used (if applicable): [e.g. Claude 3.5 Sonnet]
     validations:
       required: true

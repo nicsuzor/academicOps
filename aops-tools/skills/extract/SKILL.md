@@ -9,6 +9,9 @@ triggers:
   - "ingest"
   - "extract decisions"
   - "extract training data"
+  - "convert document"
+  - "DOCX/PDF/XLSX conversion"
+  - "/convert-to-md"
 modifies_files: true
 needs_task: true
 mode: execution
@@ -110,6 +113,19 @@ When invoked, analyze the input and route to the appropriate workflow:
 **Route to**: `workflows/document-knowledge.md` (to be created)
 
 **Storage**: Depends on content - PKB or framework docs
+
+### 5. Document to Markdown Conversion
+
+**Signals**:
+
+- Input is a document file (DOCX, PDF, XLSX, TXT, PPTX, MSG, DOC, DOTX)
+- User mentions "convert", "convert to markdown", "docx to markdown", "pdf to markdown"
+- Invoked as `/convert-to-md` (alias preserved for backwards compatibility)
+- Goal is format conversion, not structured extraction
+
+**Route to**: `workflows/docs-to-md.md`
+
+**Storage**: Converted `.md` files replace originals in the same directory
 
 ## Workflow: Training Data Extraction
 
@@ -260,6 +276,8 @@ When adding examples to public framework docs:
 - `/remember` - When you know you want to add to knowledge base
 - `/decision-extract` - When specifically extracting decisions
 - `/review-training` - When processing matched review/source pairs (legacy)
+
+**Note on `/convert-to-md`**: This trigger is now an alias for `/extract`. Invoking `/convert-to-md` routes to the `workflows/docs-to-md.md` workflow.
 
 ### Skill Composition
 

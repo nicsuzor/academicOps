@@ -1074,7 +1074,7 @@ def build_antigravity(aops_root: Path, dist_root: Path, all_mcps: dict):
 def install_pkb_binary(dist_dir: Path, binary_path: Path) -> None:
     """Install pre-built binaries into a distribution directory.
 
-    Copies pkb and aops binaries to dist_dir/bin/ and sets executable permissions.
+    Copies pkb binary to dist_dir/bin/ and sets executable permissions.
     """
     bin_dir = dist_dir / "bin"
     bin_dir.mkdir(parents=True, exist_ok=True)
@@ -1083,14 +1083,6 @@ def install_pkb_binary(dist_dir: Path, binary_path: Path) -> None:
     shutil.copy2(binary_path, dest)
     dest.chmod(0o755)
     print(f"  ✓ Installed pkb binary -> {dest}")
-
-    # Install aops binary if present in the same directory
-    aops_binary = binary_path.parent / "aops"
-    if aops_binary.exists():
-        aops_dest = bin_dir / "aops"
-        shutil.copy2(aops_binary, aops_dest)
-        aops_dest.chmod(0o755)
-        print(f"  ✓ Installed aops binary -> {aops_dest}")
 
 
 def main():

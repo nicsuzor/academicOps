@@ -112,7 +112,7 @@ gh workflow run sleep-cycle -R nicsuzor/brain -f focus="staleness only"
 
 ## Pacing & Mode
 
-The skill runs in two modes with different output cadences. **Detect the mode at the start of every cycle** and pick the matching output strategy. This is the fix for #712 — under `/loop` short intervals the per-cycle PR-and-QA gate is too heavy and Phases 2/4 get skipped, defeating the purpose of the cycle.
+The skill runs in two modes with different output cadences. **Detect the mode at the start of every cycle** and pick the matching output strategy. This is the fix for #712 — under `/loop` short intervals the per-cycle PR-and-QA review overhead is too high and Phases 2/4 get skipped, defeating the purpose of the cycle.
 
 ### Mode detection
 
@@ -127,11 +127,11 @@ Log the detected mode and the signal that determined it in the cycle summary.
 
 ### Short-loop mode (interval <= 30m, in-session)
 
-- **Always run Phases 2 and 4.** They are the highest-value work; never skip them because the output gate feels heavy. If the gate is the obstacle, change the gate (below), not the work.
+- **Always run Phases 2 and 4.** They are the highest-value work; never skip them because the output review feels heavy. If the review is the obstacle, change the review process (below), not the work.
 - **Persistent branch per day**: use `sleep/consolidation-YYYY-MM-DD` (no `-HHMM` suffix). Reuse it across every cycle in the day. Create on first cycle, fast-forward / rebase from main on later cycles.
 - **Accumulate commits**: each cycle adds commits to the same branch — one commit per phase that produced output is fine.
 - **No PR per cycle.** Open the PR on the _first_ cycle of the day if it doesn't exist; subsequent cycles push to the same branch and the PR updates automatically.
-- **QA runs once per day** (or on demand), not per cycle. The PR description should note "short-loop accumulation; QA on close" so reviewers know not to expect a per-cycle gate.
+- **QA runs once per day** (or on demand), not per cycle. The PR description should note "short-loop accumulation; QA on close" so reviewers know not to expect a per-cycle QA review.
 - **Time budget per cycle**: keep Phase 4 to ~5 minutes and Phase 2 to ~5 minutes when interval is 20m or less. Quality over coverage — better one well-sourced note than five superficial ones.
 
 ### Full-session mode (manual `/sleep`, GHA cron)
@@ -140,7 +140,7 @@ Existing behaviour, unchanged:
 
 - Branch: `sleep/consolidation-YYYY-MM-DD-HHMM` (timestamped, fresh per invocation).
 - One PR per cycle.
-- `/qa` review per PR before merge.
+- `/verify` review per PR before merge.
 - Time budgets per phase as documented in each phase below.
 
 ### Brain repo auto-merge
@@ -151,7 +151,7 @@ On the **brain repo only** (`$ACA_DATA`, currently `nicsuzor/brain`), and ONLY a
 gh pr merge --auto --squash -R nicsuzor/brain <pr-number>
 ```
 
-The branch acts as recovery/audit trail, not a blocking gate — brain consolidation is low-blast-radius (knowledge notes, not code) and the per-cycle review backlog is the bigger risk. Per #448 graduated-trust rules:
+The branch acts as recovery/audit trail, not a mandatory blocking step — brain consolidation is low-blast-radius (knowledge notes, not code) and the per-cycle review backlog is the bigger risk. Per #448 graduated-trust rules:
 
 - Auto-merge is enabled ONLY on the brain repo. Never on `academicOps` or any other repo.
 - Auto-merge requires Phase 10 self-check to have **passed** (no failures logged). On any Phase 10 failure, do NOT enable auto-merge — leave the PR open for human review.
@@ -491,7 +491,7 @@ When terminal condition is met during an active loop: cancel the cron/loop and l
 
 ## Phase 10: Consolidation Self-Check (Lightweight)
 
-A 2-minute sanity check of THIS cycle's own output. This is NOT a quality review — the real quality gate is the `/qa` review on the consolidation PR (see "Output" section below).
+A 2-minute sanity check of THIS cycle's own output. This is NOT a quality review — the real quality review is the `/verify` review on the consolidation PR (see "Output" section below).
 
 ### Check
 
@@ -508,7 +508,7 @@ If any check fails: log the issue in the cycle summary and flag it in the PR des
 
 ### Evaluation Feedback Loop
 
-Quality findings from this cycle and from /qa reviews should feed back into improving the consolidation process. When a pattern of quality issues is detected (same issue appearing across 3+ cycles):
+Quality findings from this cycle and from /verify reviews should feed back into improving the consolidation process. When a pattern of quality issues is detected (same issue appearing across 3+ cycles):
 
 1. **Create a task** describing the recurring quality pattern (via `mcp__pkb__create_task` or `gh issue create`)
 2. **Link to examples** — cite the specific notes/PRs where the issue appeared
@@ -539,7 +539,7 @@ When running via `/loop` or `/active-loop`, the sleep cycle follows the active-l
 3. **Incremental** — only processes what's new since last run
 4. **Surfaces, doesn't decide** — flags candidates for human/supervised review
 5. **No moldy docs** — never creates knowledge docs without a named consumer
-6. **Agents can consolidate (hypothesis under test)** — we believe agents can perform the episodic→semantic transformation given proper value alignment, clear provenance requirements, and bounded autonomy. The `/qa` review on each consolidation PR tests this hypothesis. If quality review reveals persistent problems, escalate enforcement — don't just trust harder.
+6. **Agents can consolidate (hypothesis under test)** — we believe agents can perform the episodic→semantic transformation given proper value alignment, clear provenance requirements, and bounded autonomy. The `/verify` review on each consolidation PR tests this hypothesis. If quality review reveals persistent problems, escalate enforcement — don't just trust harder.
 
 ## Cycle Summary Template
 
@@ -597,7 +597,7 @@ The `Loop-close gaps` section is the dedicated surface for Activity 4b output. I
 
 ## Output: Consolidation PR
 
-Knowledge creation (Phases 2, 4) produces output of uncertain quality. This output MUST go through a QA gate before reaching the main branch. The sleep cycle creates a PR — it never commits knowledge directly to main.
+Knowledge creation (Phases 2, 4) produces output of uncertain quality. This output MUST go through a QA review before reaching the main branch. The sleep cycle creates a PR — it never commits knowledge directly to main.
 
 ### Process
 
@@ -606,14 +606,14 @@ Knowledge creation (Phases 2, 4) produces output of uncertain quality. This outp
    - **Full-session**: fresh branch `sleep/consolidation-YYYY-MM-DD-HHMM` per cycle, one PR per cycle.
    - **Short-loop**: persistent daily branch `sleep/consolidation-YYYY-MM-DD`, one PR per day that accumulates commits from every cycle.
 3. Create the PR against main on first use of the branch; subsequent short-loop cycles push to the existing PR.
-4. The `/qa` skill reviews the PR for fitness-for-purpose. In short-loop mode, QA runs once per day (or on demand) on the accumulated branch, not per cycle.
+4. The `/verify` skill reviews the PR for fitness-for-purpose. In short-loop mode, QA runs once per day (or on demand) on the accumulated branch, not per cycle.
 5. Merge only after QA passes. On the brain repo, enable `gh pr merge --auto --squash` after Phase 10 passes (see "Brain repo auto-merge" above). During supervised phase on other repos, human reviews the QA decision.
 
 ### Graduation Path
 
 - **Current**: Human reviews every consolidation PR
-- **Next**: `/qa` agent reviews, human reviews QA decisions
-- **Future**: `/qa` auto-approves, human reviews only rejections
+- **Next**: `/verify` agent reviews, human reviews QA decisions
+- **Future**: `/verify` auto-approves, human reviews only rejections
 - **Autonomous**: Full auto-merge after sustained evidence of quality
 
 Each transition requires evidence from the previous level (P#22 corollary on graduated trust).

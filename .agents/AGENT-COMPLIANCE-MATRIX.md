@@ -25,7 +25,7 @@ Generated on Mon May 11 00:29:32 UTC 2026 from `scripts/audit_agent_compliance.p
 | aops-core/skills/end_session/SKILL.md      | ❌ Missing allowed-tools |
 | aops-core/skills/planner/SKILL.md          | ❌ Missing allowed-tools |
 | aops-core/skills/project/SKILL.md          | ❌ Missing allowed-tools |
-| aops-core/skills/qa/SKILL.md               | ✅                       |
+| aops-core/skills/verify/SKILL.md           | ✅                       |
 | aops-core/skills/remember/SKILL.md         | ✅                       |
 | aops-core/skills/research/SKILL.md         | ✅                       |
 | aops-core/skills/sleep/SKILL.md            | ✅                       |

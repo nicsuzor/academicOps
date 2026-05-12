@@ -14,7 +14,7 @@ description: Add professional iconography to Excalidraw diagrams using Material 
 
 ### 1. Built-in Excalidraw Libraries (READY TO USE)
 
-Located in: `~/.claude/skills/excalidraw/libraries/`
+Located in: `~/.claude/skills/diagram/libraries/`
 
 **awesome-icons.excalidrawlib** (107 KB):
 
@@ -88,7 +88,7 @@ If using Obsidian Excalidraw plugin:
 1. Open Excalidraw drawing
 2. Click library icon (bottom right)
 3. Click "Load library from file"
-4. Navigate to: `~/.claude/skills/excalidraw/libraries/`
+4. Navigate to: `~/.claude/skills/diagram/libraries/`
 5. Select desired `.excalidrawlib` file
 6. Icons now available in library panel
 
@@ -97,7 +97,7 @@ If using Obsidian Excalidraw plugin:
 1. Open excalidraw.com
 2. Click library icon (left sidebar)
 3. Click three-dot menu → "Import library"
-4. Upload file from: `~/.claude/skills/excalidraw/libraries/`
+4. Upload file from: `~/.claude/skills/diagram/libraries/`
 5. Library loads into current session
 
 ### Method 3: Programmatic (for agents)
@@ -106,7 +106,7 @@ When generating Excalidraw JSON programmatically:
 
 ```python
 # Read library file
-with open('~/.claude/skills/excalidraw/libraries/awesome-icons.excalidrawlib') as f:
+with open('~/.claude/skills/diagram/libraries/awesome-icons.excalidrawlib') as f:
     library_data = json.load(f)
 
 # Extract desired icon element
@@ -177,7 +177,7 @@ To reuse themed icons:
 2. Click library icon → "Add to library"
 3. Icon saved to personal library
 4. Export library: Three-dot menu → "Export library"
-5. Save to: `~/.claude/skills/excalidraw/libraries/custom-material-symbols.excalidrawlib`
+5. Save to: `~/.claude/skills/diagram/libraries/custom-material-symbols.excalidrawlib`
 
 ## Icon Usage Guidelines
 

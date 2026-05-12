@@ -36,6 +36,6 @@ Full user acceptance testing workflow. Creates test plans, runs qualitative eval
 ## Invocation
 
 ```
-Task(subagent_type="qa",
+Task(subagent_type="aops-core:marsha",
      prompt="Execute acceptance test plan from task [TASK-ID]. Evaluate qualitatively, document failures as new tasks.")
 ```

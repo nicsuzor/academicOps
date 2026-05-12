@@ -24,6 +24,6 @@ Framework integration testing. "Does it connect properly?"
 ## Invocation
 
 ```
-Task(subagent_type="qa",
+Task(subagent_type="aops-core:marsha",
      prompt="Validate framework integration: [FEATURE]. Capture baseline, execute, verify structural changes, report evidence.")
 ```
