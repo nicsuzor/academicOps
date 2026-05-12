@@ -215,6 +215,24 @@ _Specific application of A7 Edge 3 — see above._
 - Legacy NLP (keyword matching, regex heuristics, fuzzy string matching) is forbidden for semantic decisions.
 - We have smart LLMs — use them. NEVER offload a qualitative test to a deterministic heuristic.
 
+## Don't Dress Prose as Structure (no schema theatre)
+
+_The mirror of No Shitty NLP. That axiom forbids hiding LLM-grade judgment behind regex; this one forbids hiding prose-grade delegation behind JSON._
+
+When the payload of an agent-to-agent message is read by another LLM as natural language, do not wrap it in a JSON-shaped "schema" that implies structure the consumer does not actually parse. Either own it as prose-passing (one action, one body field, no discriminator theatre), OR define fields that have machine-distinguishable meaning AND that consumer code actually branches on. Discriminator-only "schemas" around free-form strings are forbidden — they manufacture the appearance of contract without the substance.
+
+**The diagnostic question**: what does the consumer DO differently between two payloads with the same discriminator value? If the answer is "it depends on what the prose says," the contract is prose — own it as prose.
+
+**Failure shapes to recognise**:
+
+- A "verdict schema" whose payload is a `brief` / `reason` / `notes` / `context` string the next agent reads as natural language. The discriminator (`action: "dispatch_with_brief"` vs `"dispatch_investigative"`) gives the _illusion_ of contract; the substance is delegation by prose.
+- Growing a dispatch surface by adding more discriminator values (`dispatch`, `dispatch_with_brief`, `dispatch_investigative`, …) instead of acknowledging that all of them resolve to "pass this string to the next agent."
+- Designing JSON Schema fragments and validators around payloads whose content the LLM reads as text anyway. The schema work doesn't change behaviour; it changes documentation.
+
+**Why this matters**: a verdict shape implies structure the worker can rely on. When the substance is prose, two verdicts with the same discriminator can produce wildly different work depending on the brief's wording. Worse, reviewers tick the rigour box ("the contract is documented") without asking whether the payload is actually structured. The schema grows; the contract does not.
+
+**Worked recurrence**: #956 → PR #974 → #978. Each pass added more discriminator variants to pauli's verdict surface; each payload was still prose appended to the task body. PR #974 was reverted to plain-English recommendations once the pattern was named.
+
 ## Deterministic Computation Stays in Code
 
 LLMs are bad at counting and aggregation. Use Python/scripts for deterministic operations; LLMs for judgment, classification, and generation. MCP servers return raw data; agents do all classification/selection.

@@ -93,3 +93,12 @@ For placement on the enforcement pyramid and guidance on future cheaper fixes, s
 - Where the agent polled, was the polling capped, or open-ended?
 - Did "the harness will time out eventually" stand in for an explicit bound?
 - Where the Bash tool reported a command running in background, did the agent reap it before finishing?
+
+## Don't Dress Prose as Structure
+
+- For each agent-to-agent payload the artifact introduces or modifies: what does the consumer DO differently between two payloads with the same discriminator value? If the answer is "depends on what the prose says," it is a prose contract — does the artifact own it as prose, or dress it as a schema?
+- Did the agent propose a new discriminator value (e.g. `dispatch_with_brief`, `verdict_with_context`) whose distinguishing payload is a free-form string the next LLM reads as natural language?
+- Where the artifact defines fields named like contracts (`brief`, `reason`, `research_goal`, `context`, `notes`), does any consumer code branch on the field's content — or is it passed through to another LLM verbatim?
+- Did the agent grow a dispatch / verdict surface by adding discriminator variants instead of acknowledging that all of them resolve to "pass this string to the next agent"?
+- Did the agent invent JSON Schema fragments, validators, or required-field lists around payloads whose substance is LLM-read prose?
+- Where structured fields are claimed, is there a citation to the consumer code that parses them? If not, the structure is documentation theatre.
