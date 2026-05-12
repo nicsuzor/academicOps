@@ -54,7 +54,7 @@ def write_polecat_test_config(
         },
         "crew_defaults": {},
         "run_defaults": {},
-        "docker": {"image": "aops-crew"},
+        "docker": {"image": "ghcr.io/nicsuzor/aops-crew"},
         "external_agents": {},
         "projects": projects_block,
     }

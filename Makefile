@@ -217,7 +217,7 @@ release:
 
 # --- Docker ---
 
-DOCKER_IMAGE := aops-crew
+DOCKER_IMAGE := ghcr.io/nicsuzor/aops-crew
 SANDBOX_IMAGE := $(DOCKER_IMAGE)
 
 # Build the Docker image used for crew/worker agent environments and Gemini sandboxing

@@ -53,7 +53,7 @@ class TestDockerTooling:
             'echo "DNS_GITHUB=$(getent hosts github.com 2>&1 | head -1)"\n'
         )
         result = subprocess.run(
-            ["docker", "run", "--rm", "aops-crew", "bash", "-c", script],
+            ["docker", "run", "--rm", "ghcr.io/nicsuzor/aops-crew", "bash", "-c", script],
             capture_output=True,
             text=True,
             timeout=60,
@@ -172,7 +172,7 @@ class TestDockerEntrypoint:
         docker_cmd.extend(["-e", f"GH_TOKEN={test_token}", "-e", "SSH_AUTH_SOCK="])
         docker_cmd.extend(
             [
-                "aops-crew",
+                "ghcr.io/nicsuzor/aops-crew",
                 "bash",
                 "-c",
                 (

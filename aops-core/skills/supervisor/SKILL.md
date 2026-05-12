@@ -20,6 +20,23 @@ domain:
 
 # Supervisor — Stateless Tick
 
+## Reporting Posture
+
+The supervisor is **decide-and-report, not ask-and-wait**. Each tick exits in exactly one of three modes:
+
+- **silent** — tick advanced (dispatch fired, verify passed, pattern memory appended). No user-facing output beyond the checkpoint commit. The dashboard and `gh pr list` carry the signal.
+- **`[ATTN]` block** — a decision the supervisor cannot make autonomously per the [Critic Gate](#critic-gate-high-blast-radius-dispatch), [Academic Integrity](#academic-integrity-is-non-negotiable), or [Halt-on-substitute](#halt-on-substitute) rules. Emit a single `[ATTN]` block (see [User Attention Notification](#user-attention-notification)) and exit.
+- **halt summary** — terminal state per the [Emergency Brake](#emergency-brake) or `Halt` phase. One-line summary + epic status set; no question posed.
+
+Escalation criteria (anything outside these → decide-and-report, no `[ATTN]`):
+
+1. Irreversible or external-system-modifying action without prior user authorization.
+2. Methodology, citation, or claim-evidence choice on a deliverable published under the user's name.
+3. Genuine binary choice with **no defensible default** (see [Task Assignment Rules](#task-assignment-rules)). If a defensible default exists, the supervisor takes it and reports — it does not ask.
+4. Three consecutive react-halts on the same epic (brake fired).
+
+A tick that prompts the user for a decision with a defensible default is a rubber-stamp anti-pattern — file via `/learn`. Asking for one clarifying fact that decides between two equally-defensible defaults is legitimate; framing that ask as a single-line block is fine.
+
 **Canonical invocation:** `/loop 30m /supervisor <epic-id>`
 
 Each tick gets a fresh main-agent context. The supervisor's job is to advance one epic by one decision, then exit. All cross-tick state lives in the epic body — no in-memory continuity is assumed or relied on.
@@ -46,6 +63,8 @@ If any of these appear in a supervisor transcript, the loop instructions need fi
 - running pre-flight gates inline (host check, `polecat ping-pkb`, A8 scan)
 - editing code or test files
 - emitting "the fix is X" — fix decisions are pauli's, never the main agent's
+- writing local JSON state files outside the epic body — the epic body is the only persisted state (see [The Task File Is the Only State](#the-task-file-is-the-only-state)); display surfaces are read-only projections (see [Status Display Surfaces](#status-display-surfaces))
+- prompting the user on a decision with a defensible default — the supervisor takes the default and reports; user attention is only invoked per the [Reporting Posture](#reporting-posture) escalation criteria
 
 Pre-flight, verification, and reaction are subagent work. The main agent reads structured verdicts and acts.
 
@@ -182,9 +201,72 @@ The supervisor loop is **deliverable-agnostic**. The same orient → decompose �
 | Code change        | [[instructions/code-deliverable]]         | active  |
 | Research / writing | (would live alongside, not in scope here) | not yet |
 
-## Handoff
+## Status Display Surfaces
 
-The supervisor's job ends when each work item has reached its review surface (open PR for code; equivalent surface for other deliverable types). Set the epic to `ready_for_user_review` once every child is at the surface or escalated/blocked with a recorded reason. The async review pipeline takes over; the supervisor produces its final summary and exits. See [[instructions/code-deliverable#handoff-contract-task-212f1c82]] for the code case.
+State lives in the epic body (see [The Task File Is the Only State](#the-task-file-is-the-only-state)). For _display_ — answering "what is happening across N sessions / N epics right now?" — the supervisor and downstream UIs read from upstream surfaces that already exist for other reasons. These are **read-only projections, not state**:
+
+- `gh pr list` / `gh pr checks` — PR + review-pipeline status
+- `gh run list` — cron + GHA worker state
+- `$AOPS_SESSIONS/tasks.json` — dashboard producer
+- `$AOPS_SESSIONS/state/pr-state.json` — if a `/sleep` or equivalent producer is running
+- GitHub Issues with a `halt` label — escalation queue
+- container-runtime events (e.g. `docker events`) — fleet exit signals where the runtime is local
+- the epic body's `## Work Items` table — authoritative summary of children, never re-derived from individual task bodies
+
+**Forbidden as state surfaces:** any new local JSON state file outside the epic body (Stop-hook JSON, `session-state.json`, `coordination-state.json`); per-skill `gh pr list` re-fetching when a fresher producer (like `pr-state.json`) is available.
+
+The supervisor's job ends when each work item has reached its review surface (open PR for code; equivalent for other deliverable types). Set the epic to `ready_for_user_review` once every child is at the surface or escalated/blocked with a recorded reason. The async review pipeline takes over; emit the final summary and exit. See [[instructions/code-deliverable]] for the code case.
+
+## User Attention Notification
+
+When the [Reporting Posture](#reporting-posture) escalation criteria fire, emit a single `[ATTN]` block — machine-parseable YAML inside a fenced block. One block per tick, never more. The block is the _entire_ user-facing payload; no surrounding prose.
+
+The `[ATTN]` block is an **ephemeral notification surface, not state**. It restates a decision recorded in the epic body's `## Pattern Memory` and (where relevant) `## Work Items`. A future tick reads the epic body; it does not re-read past `[ATTN]` blocks. The block exists to make a single user-facing decision easy to read and dismiss, not to carry information the next tick depends on.
+
+### Template
+
+```
+[ATTN]
+---
+id: <epic-id>:<tick-sequence>
+urgency: now | today | whenever
+action_required: decision | review | info
+one_line: <=80-char summary
+context_ref: <task-id | PR-url | issue-url>
+dismiss_if: <one-line condition under which this no longer needs attention>
+suggested_response: <the supervisor's default if user says "you decide">
+---
+```
+
+### Required fields
+
+- `id` — `<epic-id>:<tick-sequence>`. Stable across re-emits of the _same_ unresolved decision (re-emits reuse the sequence); a new decision on the same epic increments the sequence. Notification consumers dedupe on `id`.
+- `urgency` — `now` (blocks pipeline), `today` (daily-brief horizon), `whenever` (next interactive session).
+- `action_required` — `decision` (the supervisor cannot proceed), `review` (deliverable at review surface), `info` (one-shot heads-up).
+- `context_ref` — the single canonical link to the underlying work; never a wall of context.
+- `dismiss_if` — auto-clear condition for the notification surface (e.g. "task status moves out of in_progress"). Consumed by the notification UI, not by the next supervisor tick.
+- `suggested_response` — what the supervisor will do if the user says "you decide". Required for `action_required: decision`; omit otherwise.
+
+### Worked example (synthetic)
+
+```
+[ATTN]
+---
+id: task-EPICID:3
+urgency: today
+action_required: decision
+one_line: N workers exited with zero diffs on task-XXXX — abandon or re-scope?
+context_ref: task-XXXX
+dismiss_if: task-XXXX status moves out of in_progress
+suggested_response: file refinement task, set epic to review
+---
+```
+
+### Push notification pairing
+
+Where a push channel (e.g. Discord, Slack, email) is configured for the session, push the `one_line` field when `urgency in {now, today}` AND `action_required == decision`. The full block stays in the terminal transcript. `urgency: whenever` and `action_required: info|review` blocks are terminal-only — they surface in the next `/daily` briefing, not as a push notification. Never push twice for the same `id`.
+
+If no push channel is configured, the block is terminal-only. The supervisor does not configure push channels itself.
 
 ## In-Session Multi-Tick Supervision (notify-watch)
 

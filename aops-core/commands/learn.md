@@ -2,142 +2,72 @@
 name: learn
 type: command
 category: instruction
-description: File high-quality, anonymised bug reports to GitHub Issues for framework failures and knowledge capture.
+description: Thin shortcut — delegates to the survey skill in retro mode. Surveys recent transcripts, classifies issues, files GitHub bug reports.
 triggers:
+  - "learn"
+  - "retro"
+  - "transcript review"
+  - "session retro"
+  - "review session"
+  - "file a bug"
   - "framework issue"
-  - "fix this pattern"
-  - "improve the system"
   - "knowledge capture"
-  - "bug report"
-modifies_files: false
+modifies_files: true
 needs_task: false
-mode: observation
+mode: execution
 domain:
   - framework
-allowed-tools: Bash, Read, Grep, Glob
+allowed-tools: Agent
 permalink: commands/learn
 ---
 
-# /learn - Knowledge Capture & Bug Reporting
+# /learn — Survey Shortcut (retro mode)
 
-**Purpose**: Capture framework failures, recurring friction, and knowledge by filing high-quality, anonymised bug reports to GitHub Issues. We no longer make code changes directly; if a code change is warranted, someone will pick up the issue and address it. Not every issue will get addressed, as we use volume indicators to let the most active and critical issues float to the top.
+**Purpose**: Shortcut that delegates to the survey skill in `retro` mode. Reviews a recent session transcript through a framework-development lens, identifies problems, and files GitHub issues.
 
-**Privacy rule**: You MUST anonymise bug reports and transcripts before sending them out. NEVER include direct logs, session dumps, real people's names, email addresses, student details, or personal information.
+**Privacy rule**: Anonymise all findings before filing. No real names, emails, student details, or session dumps in GitHub issues.
 
 ## Workflow
 
-### 1. Capture & Anonymise Failure Context
+Delegate to pauli with the extended tool set the survey skill requires:
 
-**Identify the failure**:
+```python
+Agent(
+  subagent_type='aops-core:pauli',
+  prompt="""Read aops-core/skills/survey/SKILL.md. Execute in retro mode.
 
-- Where did the mistake occur?
-- What was the trigger?
+Context from user: <paste user's invocation context here — transcript path if specified, or omit for auto-select>
 
-**Generate Session Transcript** (if analyzing a prior session):
-
-```bash
-# Locate the session file (For Gemini or Claude)
-SESSION_FILE=$(fd -t f -a --newer 1h .json ~/.gemini/tmp | xargs ls -t | head -1)
-
-# Generate transcript using the installed plugin path
-TRANSCRIPT_SCRIPT="${ACA_DATA:-~}/.claude/skills/framework/scripts/transcript.py"
-if [ -f "$TRANSCRIPT_SCRIPT" ]; then
-  uv run python "$TRANSCRIPT_SCRIPT" "$SESSION_FILE" > transcript.md
-else
-  uv run python -m aops_core.scripts.transcript "$SESSION_FILE" > transcript.md
-fi
+Follow the retro mode workflow exactly: select transcript → read in full → review against all seven lenses → produce structured review → file issues → stamp transcript → framework reflection.""",
+  tools=[
+    'Bash', 'Read', 'Grep', 'Glob', 'Edit', 'Write', 'Skill',
+    'mcp__plugin_aops-core_pkb__search',
+    'mcp__plugin_aops-core_pkb__task_search',
+    'mcp__plugin_aops-core_pkb__get_document',
+    'mcp__plugin_aops-core_pkb__pkb_context',
+    'mcp__plugin_aops-core_pkb__append',
+    'mcp__plugin_aops-core_pkb__create_task',
+    'mcp__plugin_aops-core_pkb__update_task',
+  ],
+)
 ```
 
-**Anonymisation**: Review `transcript.md` (or the current session context) and manually strip any PII, replacing it with placeholders like `[REDACTED_NAME]` or `[REDACTED_PROJECT]`.
+The dispatched pauli agent owns the session from here. The main context is clean.
 
-### 2. Look for Existing GitHub Issues
+## Arguments
 
-We track volume by adding activity to existing issues rather than creating duplicates.
+- `/learn` — auto-select the most recent unreviewed transcript
+- `/learn <path>` — review the specified transcript
+- `/learn <session-id>` — review the session matching that ID
 
-Search GitHub Issues for prior occurrences:
+## What this command does NOT do
 
-```bash
-gh issue list --repo nicsuzor/academicOps --search "<failure keywords>"
-```
+- Does not run inline — always dispatches to pauli.
+- Does not fix issues — it identifies and files them.
+- Does not review code — it reviews agent behavior and framework compliance.
 
-If an existing issue matches the failure:
+## See also
 
-- **Do not create a new issue.**
-- Add a comment to the existing issue with your anonymised context to increase its volume indicator:
-  ```bash
-  gh issue comment <issue-number> --repo nicsuzor/academicOps --body-file <path-to-anonymised-comment.md>
-  ```
-- _Stop here._ The increased activity will help the issue float to the top.
-
-### 3. Root Cause Analysis (MANDATORY structured output)
-
-If no existing issue is found, perform a root cause analysis to include in the new bug report.
-
-**Emit this block in the issue body:**
-
-```yaml
-## Root Cause Analysis
-
-**Failure**: [1-sentence description of what went wrong]
-
-**Causal chain**:
-1. [Trigger event]
-2. [What the framework was supposed to do]
-3. [What actually happened instead]
-4. [Why — the root cause, not the symptom]
-
-**Root cause category**: [Discovery Gap | Detection Failure | Instruction Weighting | Index Lag | Cross-workflow Gap | Enforcement Gap | Dropped Thread]
-
-**Framework layer that failed**:
-- Component: [skill/command/hook/workflow name]
-- File: [path to the relevant file]
-
-**Expected vs Actual**:
-- Expected: [What VISION.md or the relevant axiom says should happen]
-- Actual: [What happened]
-```
-
-> **Resource exhaustion failures** (turn limits, timeouts, quota exceeded): do NOT diagnose
-> "limit is too low" without first investigating the consumption pattern. Fetch the full
-> session log, count tool calls/turns, and look for loops, retries, or redundant operations.
-> Only recommend raising a threshold when consumption is confirmed legitimate. Stopping at
-> the error message is symptom diagnosis, not root cause analysis.
-
-### 4. Determine Criticality Flags
-
-Assess the severity of the issue to apply the correct labels. Critical issues will float to the top of the queue.
-
-- **Critical**: System crash, data loss, or total blockage of a core workflow.
-- **High**: Significant friction, workarounds required, but progress is possible.
-- **Medium**: Annoyance, minor efficiency loss.
-- **Low**: Polish, cosmetic, or edge-case behavior.
-
-### 5. File the GitHub Issue
-
-Create the issue with the appropriate labels for criticality and category.
-
-```bash
-gh issue create --repo nicsuzor/academicOps --title "Bug: <brief-slug>" --body-file <path-to-report.md> --label "bug" --label "criticality:<level>"
-```
-
-**Note**: Your job is now done. Do NOT attempt to fix the issue, create PKB tasks, or modify framework files.
-
-## Anti-patterns (things this command must NOT do)
-
-| Anti-pattern                                            | Why it's wrong                                                                | What to do instead                                                                       |
-| :------------------------------------------------------ | :---------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------- |
-| Create a PKB task                                       | We use GitHub Issues to track bugs now.                                       | File a GitHub issue or comment on an existing one.                                       |
-| Attempt a direct fix                                    | `/learn` no longer makes code changes.                                        | Let someone else pick up the issue.                                                      |
-| Include PII in the report                               | Violates privacy rules.                                                       | Anonymise all transcripts and logs before submission.                                    |
-| Create duplicate issues                                 | Dilutes the volume indicator.                                                 | Search `gh issue list` first and comment to bump activity.                               |
-| Diagnose "limit too low" without inspecting consumption | Raising the threshold masks efficiency bugs, loops, or misconfigured tooling. | Fetch the full log and count turns/tool calls before concluding the limit needs raising. |
-
-## Framework Reflection
-
-```
-## Framework Reflection
-**Prompts**: [The observation/feedback that triggered /learn]
-**Outcome**: success
-**Accomplishments**: Anonymised context captured, GitHub issue filed/updated.
-**Issue**: [GitHub Issue URL]
-```
+- Full retro workflow: `aops-core/skills/survey/SKILL.md` (retro mode)
+- Trend analysis: `/trend-review` (survey skill, trend mode)
+- Issue triage: `/issue-sweep` (survey skill, sweep mode)
