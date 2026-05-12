@@ -10,13 +10,13 @@ A research deliverable would have its own subworkflow file with different vocabu
 
 ## Mapping the Generic Loop to Code Deliverables
 
-| Generic phase  | Code-deliverable specialisation                                                                            |
-| -------------- | ---------------------------------------------------------------------------------------------------------- |
-| Decompose      | Subtasks are PR-sized (≤ 0.5d, ≤ 10 files, single "why", reviewable in ≤ 15 min).                          |
-| Dispatch       | `polecat run -t <task-id> -p <project>` (with `-g` for Gemini), or Jules via `aops task ... \| jules new`. |
-| Verify         | Marsha reads the PR diff + worker exit; returns PASS/FAIL/REVISE.                                          |
-| Review surface | GitHub PR; mechanical merge-prep adds the `ready-for-review` label asynchronously.                         |
-| Integrate      | Replaced by **halt at `ready_for_user_review`**. The supervisor never merges.                              |
+| Generic phase  | Code-deliverable specialisation                                                                           |
+| -------------- | --------------------------------------------------------------------------------------------------------- |
+| Decompose      | Subtasks are PR-sized (≤ 0.5d, ≤ 10 files, single "why", reviewable in ≤ 15 min).                         |
+| Dispatch       | `polecat run -t <task-id> -p <project>` (with `-g` for Gemini), or Jules via `pkb task ... \| jules new`. |
+| Verify         | Marsha reads the PR diff + worker exit; returns PASS/FAIL/REVISE.                                         |
+| Review surface | GitHub PR; mechanical merge-prep adds the `ready-for-review` label asynchronously.                        |
+| Integrate      | Replaced by **halt at `ready_for_user_review`**. The supervisor never merges.                             |
 
 ## Mandatory Pre-Dispatch Gates
 
@@ -36,7 +36,7 @@ polecat run -t <task-id> -p <project>
 polecat run -t <task-id> -p <project> -g
 
 # Jules (async, Google infrastructure)
-aops task <task-id> | jules new --repo <owner>/<repo>
+pkb task <task-id> | jules new --repo <owner>/<repo>
 ```
 
 ### Polecat Exit Codes
