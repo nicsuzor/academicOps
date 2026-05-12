@@ -19,6 +19,24 @@ import sys
 from pathlib import Path
 from typing import Any
 
+# Commands that can read file contents
+READ_COMMANDS = ["cat", "head", "tail", "grep", "less", "more", "strings"]
+
+# Credential path patterns (anchored to avoid partial matches)
+CREDENTIAL_PATH_PATTERNS = [
+    r"~/\.config/gh/",
+    r"~/\.claude/[^/\s]*\.json",
+    r"/home/[^/]+/\.config/gh/",
+    r"/home/[^/]+/\.claude/[^/\s]*\.json",
+    r"/root/\.config/gh/",
+    r"/root/\.claude/[^/\s]*\.json",
+    r"~/\.ssh/",
+    r"/home/[^/]+/\.ssh/",
+    r"/root/\.ssh/",
+    r"\boauth_token\b",
+    r"\.oauth[^/\s]*",
+]
+
 # Destructive git operations that should be blocked
 DESTRUCTIVE_GIT_PATTERNS = [
     r"git\s+reset\s+--hard",
@@ -99,6 +117,34 @@ def validate_safe_git_usage(tool_name: str, args: dict[str, Any]) -> dict[str, A
                     f"BLOCKED: Destructive git command.\n"
                     f"Command: {command}\n"
                     f"Use safe alternatives or ask user for explicit confirmation."
+                ),
+            }
+
+    return None
+
+
+def validate_credential_protection(tool_name: str, args: dict[str, Any]) -> dict[str, Any] | None:
+    """Block Bash commands that read credential files (GH #408)."""
+    if tool_name != "Bash":
+        return None
+
+    if "command" not in args:
+        raise ValueError("Bash tool args requires 'command' parameter (P#8: fail-fast)")
+    command = args["command"]
+
+    # Only flag commands that lead with a file-reading utility
+    read_cmd_pattern = r"^\s*(?:" + "|".join(READ_COMMANDS) + r")\b"
+    if not re.search(read_cmd_pattern, command, re.IGNORECASE | re.MULTILINE):
+        return None
+
+    for path_pattern in CREDENTIAL_PATH_PATTERNS:
+        if re.search(path_pattern, command):
+            return {
+                "continue": False,
+                "systemMessage": (
+                    "BLOCKED: Reading credential files via shell is not allowed.\n"
+                    f"Command: {command}\n"
+                    "Use the Read tool for file access so path-based rules apply."
                 ),
             }
 

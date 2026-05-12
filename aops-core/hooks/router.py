@@ -630,6 +630,36 @@ class HookRouter:
             except Exception as e:
                 print(f"WARNING: session_env_setup error: {e}", file=sys.stderr)
 
+        # Deterministic policy checks on every tool call
+        if ctx.hook_event == "PreToolUse":
+            try:
+                from hooks.policy_enforcer import (
+                    validate_credential_protection,
+                    validate_minimal_documentation,
+                    validate_protect_artifacts,
+                    validate_safe_git_usage,
+                )
+
+                tool_name = ctx.tool_name or ""  # allow-fallback: malformed event
+                raw_input = ctx.tool_input if isinstance(ctx.tool_input, dict) else {}
+                validators = [
+                    validate_credential_protection,
+                    validate_minimal_documentation,
+                    validate_safe_git_usage,
+                    validate_protect_artifacts,
+                ]
+                for validator in validators:
+                    result = validator(tool_name, raw_input)
+                    if result:
+                        policy_output = CanonicalHookOutput(
+                            verdict="deny",
+                            system_message=result.get("systemMessage"),
+                        )
+                        self._merge_result(merged_result, policy_output)
+                        break
+            except Exception as e:
+                print(f"WARNING: policy_enforcer error: {e}", file=sys.stderr)
+
     def _run_generate_transcript(self, transcript_path: str) -> None:
         """Run transcript generation on stop."""
         try:
