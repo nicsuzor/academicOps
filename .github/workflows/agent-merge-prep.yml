@@ -52,20 +52,22 @@ on:
         description: 'OAuth token for Claude agent'
         required: true
 
-# Global concurrency: serialise merge-prep across all PRs to prevent API rate limits
-concurrency:
-  group: merge-prep-global
-  cancel-in-progress: false
+# No global concurrency group. GitHub's concurrency model only keeps 1 running +
+# 1 pending per group — dispatching N runs into one group discards N-2 immediately.
+# Serialisation happens at the dispatcher level (one PR per tick) instead.
 
 jobs:
   fix:
     timeout-minutes: 45
     name: Merge Prep
     runs-on: ubuntu-latest
-    # Per-PR concurrency prevents duplicate runs on the same PR across cron ticks
+    # Per-PR concurrency prevents duplicate runs on the same PR across cron ticks.
+    # cancel-in-progress: false — let a running prep finish rather than killing it
+    # and restarting. The dispatcher's active-check prevents dispatching duplicates;
+    # this is the safety net if one slips through.
     concurrency:
       group: merge-prep-${{ inputs.pr_number }}
-      cancel-in-progress: true
+      cancel-in-progress: false
     permissions:
       contents: write
       pull-requests: write
