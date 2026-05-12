@@ -173,7 +173,7 @@ The handoff: QA Planning produces the criteria and plan. The developer builds th
 ## Invocation
 
 ```
-Task(subagent_type="qa",
+Task(subagent_type="aops-core:marsha",
      prompt="QA Planning mode. Design acceptance criteria and QA plan for [FEATURE]
      based on spec [SPEC]. Inhabit the user persona. Write qualitative dimensions
      with quality spectra, not binary checklists. Design scenarios, not test cases.

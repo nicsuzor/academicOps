@@ -82,7 +82,7 @@ GATE_CONFIGS = [
             GateTrigger(
                 condition=GateCondition(
                     hook_event="^(SubagentStart|SubagentStop|PostToolUse)$",
-                    subagent_type_pattern="^(aops-core:)?(qa|marsha)$",
+                    subagent_type_pattern="^(aops-core:)?(qa|verify|marsha)$",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,

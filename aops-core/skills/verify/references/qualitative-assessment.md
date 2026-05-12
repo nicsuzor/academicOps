@@ -190,7 +190,7 @@ The QA report is evidence. The task is the action. Without a task, findings rot 
 ## Invocation
 
 ```
-Task(subagent_type="qa",
+Task(subagent_type="aops-core:marsha",
      prompt="Qualitative assessment of [FEATURE] against user stories in [SPEC/TASK].
      Inhabit the user persona. Walk the scenarios.
      If the task involves UI changes or visual artifacts, you MUST apply the Visual Analysis Protocol in references/visual-analysis.md.

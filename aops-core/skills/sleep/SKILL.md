@@ -140,7 +140,7 @@ Existing behaviour, unchanged:
 
 - Branch: `sleep/consolidation-YYYY-MM-DD-HHMM` (timestamped, fresh per invocation).
 - One PR per cycle.
-- `/qa` review per PR before merge.
+- `/verify` review per PR before merge.
 - Time budgets per phase as documented in each phase below.
 
 ### Brain repo auto-merge
@@ -491,7 +491,7 @@ When terminal condition is met during an active loop: cancel the cron/loop and l
 
 ## Phase 10: Consolidation Self-Check (Lightweight)
 
-A 2-minute sanity check of THIS cycle's own output. This is NOT a quality review — the real quality review is the `/qa` review on the consolidation PR (see "Output" section below).
+A 2-minute sanity check of THIS cycle's own output. This is NOT a quality review — the real quality review is the `/verify` review on the consolidation PR (see "Output" section below).
 
 ### Check
 
@@ -508,7 +508,7 @@ If any check fails: log the issue in the cycle summary and flag it in the PR des
 
 ### Evaluation Feedback Loop
 
-Quality findings from this cycle and from /qa reviews should feed back into improving the consolidation process. When a pattern of quality issues is detected (same issue appearing across 3+ cycles):
+Quality findings from this cycle and from /verify reviews should feed back into improving the consolidation process. When a pattern of quality issues is detected (same issue appearing across 3+ cycles):
 
 1. **Create a task** describing the recurring quality pattern (via `mcp__pkb__create_task` or `gh issue create`)
 2. **Link to examples** — cite the specific notes/PRs where the issue appeared
@@ -539,7 +539,7 @@ When running via `/loop` or `/active-loop`, the sleep cycle follows the active-l
 3. **Incremental** — only processes what's new since last run
 4. **Surfaces, doesn't decide** — flags candidates for human/supervised review
 5. **No moldy docs** — never creates knowledge docs without a named consumer
-6. **Agents can consolidate (hypothesis under test)** — we believe agents can perform the episodic→semantic transformation given proper value alignment, clear provenance requirements, and bounded autonomy. The `/qa` review on each consolidation PR tests this hypothesis. If quality review reveals persistent problems, escalate enforcement — don't just trust harder.
+6. **Agents can consolidate (hypothesis under test)** — we believe agents can perform the episodic→semantic transformation given proper value alignment, clear provenance requirements, and bounded autonomy. The `/verify` review on each consolidation PR tests this hypothesis. If quality review reveals persistent problems, escalate enforcement — don't just trust harder.
 
 ## Cycle Summary Template
 
@@ -606,14 +606,14 @@ Knowledge creation (Phases 2, 4) produces output of uncertain quality. This outp
    - **Full-session**: fresh branch `sleep/consolidation-YYYY-MM-DD-HHMM` per cycle, one PR per cycle.
    - **Short-loop**: persistent daily branch `sleep/consolidation-YYYY-MM-DD`, one PR per day that accumulates commits from every cycle.
 3. Create the PR against main on first use of the branch; subsequent short-loop cycles push to the existing PR.
-4. The `/qa` skill reviews the PR for fitness-for-purpose. In short-loop mode, QA runs once per day (or on demand) on the accumulated branch, not per cycle.
+4. The `/verify` skill reviews the PR for fitness-for-purpose. In short-loop mode, QA runs once per day (or on demand) on the accumulated branch, not per cycle.
 5. Merge only after QA passes. On the brain repo, enable `gh pr merge --auto --squash` after Phase 10 passes (see "Brain repo auto-merge" above). During supervised phase on other repos, human reviews the QA decision.
 
 ### Graduation Path
 
 - **Current**: Human reviews every consolidation PR
-- **Next**: `/qa` agent reviews, human reviews QA decisions
-- **Future**: `/qa` auto-approves, human reviews only rejections
+- **Next**: `/verify` agent reviews, human reviews QA decisions
+- **Future**: `/verify` auto-approves, human reviews only rejections
 - **Autonomous**: Full auto-merge after sustained evidence of quality
 
 Each transition requires evidence from the previous level (P#22 corollary on graduated trust).
