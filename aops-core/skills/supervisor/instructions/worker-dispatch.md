@@ -87,7 +87,7 @@ Triage cheapest first: check (1) yourself, ask the user about (2), only escalate
 - Does the task belong in this repository? Body and AC may reference other repos; if the deliverable lives elsewhere, redirect — don't dispatch.
 - Can the AC be met against the current codebase? If AC references APIs / tools / patterns that no longer exist, the task needs updating before dispatch.
 
-If validation fails: pauli returns `{action: "file_fix_task"}` with the fix scope, OR `{action: "halt"}` if the gap requires human direction. Always leave a loose thread.
+If validation fails: pauli recommends filing a fix-task with the fix scope, or halting if the gap requires human direction. Always leave a loose thread.
 
 **`polecat list` output**: each entry is prefixed `[ACTIVE]`, `[STALE]`, or `[UNKNOWN]`.
 
@@ -121,11 +121,11 @@ Pauli judgment is the primary trigger; tag matching and keyword heuristics are d
 2. **Invoke critic** — pauli already IS the critic; it self-applies the questions: is the spec complete? Are preconditions verified from evidence? Does the action close any recovery path? Verdict: `SAFE_TO_DISPATCH` / `NEEDS_REFINEMENT` / `DO_NOT_DISPATCH`.
 3. **Gate decision**:
 
-| Verdict          | Result                                                   |
-| ---------------- | -------------------------------------------------------- |
-| SAFE_TO_DISPATCH | Pauli returns `{action: "dispatch"}`                     |
-| NEEDS_REFINEMENT | Pauli returns `{action: "file_fix_task"}` for refinement |
-| DO_NOT_DISPATCH  | Pauli returns `{action: "halt", status: "review"}`       |
+| Verdict          | Result                                                       |
+| ---------------- | ------------------------------------------------------------ |
+| SAFE_TO_DISPATCH | Pauli recommends dispatch                                    |
+| NEEDS_REFINEMENT | Pauli recommends filing a fix-task for refinement            |
+| DO_NOT_DISPATCH  | Pauli recommends halting with status `review` and the reason |
 
 4. **Record gate result** in the task body's Pattern Memory.
 5. **Human override**: humans can set the task back to `queued` and append `CRITIC OVERRIDE: <rationale>` — pauli dispatches on the next preflight without re-invoking the gate.
@@ -183,11 +183,14 @@ A failure on a single transport is **not** infeasibility — try the others firs
 
 ### Protocol
 
-1. **Halt.** Pauli returns `{action: "halt"}`. Do not substitute. Do not "adapt" to a different worker type.
-2. **Produce a dispatch infeasibility report** in the epic body under `## Dispatch Infeasibility Report` — Requested (worker, project, repo), Missing / Failed Discovery (each transport tried), Substitutes Available (cost / trust / audit deltas — DO NOT auto-pick).
-3. **Interactive session**: surface the report; wait for explicit affirmative before dispatching anything. A bare "ok" is sufficient; silence is not. Record the user's choice before dispatch.
-4. **Autonomous (loop) session**: do **not** substitute. Set the epic to `needs_decision`, leave the report in the body, exit. The next interactive supervisor invocation picks it up.
-5. **Never** invoke a substitute worker without an explicit approval line in the task body.
+1. **Equip or halt.** If the failure is a missing tool or permission gap on a transport that _could_ work, **do not halt.** Pauli recommends filing a fix-task to equip the host (e.g., "install tmux on nicwin", "fix PKB_MCP_URL on target"). Re-dispatch is a separate action in the next supervisor tick after the fix-task lands — pauli does not bundle both into a single recommendation.
+2. **Halt on infeasibility.** If the worker type, project, or repo is fundamentally unreachable or unsupported, halt. Do not substitute. Do not "adapt" to a different worker type.
+3. **Produce a dispatch infeasibility report** in the epic body under `## Dispatch Infeasibility Report` — Requested (worker, project, repo), Missing / Failed Discovery (each transport tried), Substitutes Available (cost / trust / audit deltas — DO NOT auto-pick).
+4. **Interactive session**: surface the report; wait for explicit affirmative before dispatching anything. A bare "ok" is sufficient; silence is not. Record the user's choice before dispatch.
+5. **Autonomous (loop) session**: do **not** substitute. Set the epic to `needs_decision`, leave the report in the body, exit. The next interactive supervisor invocation picks it up.
+6. **Never** invoke a substitute worker without an explicit approval line in the task body.
+
+**User intent** (aops-725a0549): "If there are gaps, we should fill them, not refuse to dispatch." A tool gap is a bug in the environment, not a reason to stop the epic.
 
 ## Dispatch Protocol
 

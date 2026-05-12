@@ -86,15 +86,13 @@ Use for every decision the supervisor would otherwise inline: "what should I dis
 - A8 prose-scan against any draft body it produces — canonical phrase list at [[instructions/decomposition-and-review#a8-prose-scan-mandatory-before-posting-any-decomposition]]
 - worker selection — see [[WORKERS.md]]
 
-**Pauli returns exactly one of:**
+**Pauli returns a prose recommendation.** Not a schema, not JSON — a short paragraph that names exactly one action. In practice the recommendations fall into a few shapes:
 
-```
-{action: "dispatch", task_id, worker, project, command}
-{action: "file_fix_task", parent, title, body}
-{action: "halt", status: "blocked"|"review", reason}
-```
+- **Dispatch:** "Run `<worker>` on `<task-id>` in `<project>`" — optionally followed by a brief paragraph the supervisor pastes into the task body under `## Dispatch Brief` (via `pkb update_task`) before running `polecat run -t <task-id> -p <project>`. There is no `--brief` CLI flag; the worker receives context through the task body.
+- **File a fix-task:** "The environment is missing X — file a fix-task under `<parent>` titled `<title>` and re-evaluate this epic next tick." The supervisor creates the task via `pkb create_task` and exits the tick.
+- **Halt:** "Halt: `<reason>`. Set status `blocked` or `review`." The supervisor records the reason and stops.
 
-The main agent does not interpret pauli's reasoning — it executes the action. If the verdict is shaped wrong, append "pauli verdict malformed" to Pattern Memory and exit; do not improvise.
+The main agent does not interpret pauli's reasoning — it follows the recommendation. If the recommendation is incoherent (no action named, or the named action contradicts itself), append "pauli verdict malformed" to Pattern Memory and exit; do not improvise.
 
 ### marsha — verify
 
@@ -102,13 +100,7 @@ Use when a worker has just exited and the work item is in `in_progress`. Marsha 
 
 **Brief shape:** work item ID, PR URL (or "none"), acceptance criteria from the work item.
 
-**Marsha returns exactly one of:**
-
-```
-{verdict: "PASS"}
-{verdict: "FAIL", reason}
-{verdict: "REVISE", reason}      # treated as indeterminate by the supervisor
-```
+Marsha returns a one-line verdict: `PASS`, `FAIL <reason>`, or `REVISE <reason>` (treated as indeterminate by the supervisor).
 
 | Marsha verdict | Main agent action                                             |
 | -------------- | ------------------------------------------------------------- |
@@ -158,9 +150,11 @@ Supervisor appends to the epic body — `## Pattern Memory`, `## Work Items`, `#
 
 ### Halt-on-substitute
 
-The supervisor never silently substitutes a different worker, deliverable type, or scope. It halts, records infeasibility in the epic body, and waits for explicit human direction. Whether the substitution would be "use Gemini instead of Claude," "ship a partial draft instead of the full section," or "write a stub instead of the requested fix" — same rule.
+The supervisor never silently substitutes a different **worker type**, **deliverable type**, or **repository**. It halts, records infeasibility in the epic body, and waits for explicit human direction. Whether the substitution would be "use Gemini instead of Claude" (when Claude was requested), "ship a partial draft instead of the full section," or "modify repo B when repo A was requested" — same rule.
 
-In autonomous (loop) sessions, halts set the epic to `blocked` or `review`; the next interactive supervisor invocation picks it up.
+**The ambiguity exception:** in-repo design ambiguity is not a halt. If the task is underspecified but the work stays inside the requested repository, the supervisor MUST NOT halt — it dispatches. Pauli writes a brief naming the ambiguity and pointing at a sensible default; the supervisor pastes it into the task body; the polecat investigates and either resolves it or opens a draft PR for review. Polecats are full-judgment agents — trust them to make in-repo design calls.
+
+In autonomous (loop) sessions, legitimate halts set the epic to `blocked` or `review`; the next interactive supervisor invocation picks it up.
 
 ### Engineering Integrity (A8) Is Non-Negotiable
 
@@ -174,7 +168,7 @@ Tasks tagged `high-risk` or meeting blast-radius criteria (irreversible operatio
 
 ### Academic Integrity Is Non-Negotiable
 
-The supervisor delegates execution but never delegates judgment. Methodology choices, citation accuracy, and anything published under the user's name require human decision points, surfaced in the epic body as pending decisions.
+The supervisor delegates execution but never delegates **final academic judgment**. Methodology choices, citation accuracy, and anything published under the user's name require human decision points, surfaced in the epic body as pending decisions. This is distinct from engineering judgment: polecats ARE trusted to make in-repo design and architectural decisions (see [[#halt-on-substitute]]).
 
 ### A7 Edge 2: Act on Delegated-Agent Verdicts
 
@@ -188,15 +182,15 @@ Before asserting "I can't dispatch worker X" or "I don't have access to repo Y",
 
 The supervisor is a loop, not a pipeline. Each tick enters one phase and exits.
 
-| Phase     | Subagent | What happens                                                                               |
-| --------- | -------- | ------------------------------------------------------------------------------------------ |
-| Orient    | (none)   | Main agent reads epic body; runs brake; chooses subagent role                              |
-| Decompose | pauli    | Pauli proposes subtasks. See [[instructions/decomposition-and-review]]                     |
-| Review    | (none)   | Plan-review halt — decomposition synthesised; awaits human promotion to `queued`           |
-| Dispatch  | pauli    | Pauli returns `dispatch` action; main agent fires it. See [[instructions/worker-dispatch]] |
-| Verify    | marsha   | Marsha returns PASS/FAIL/REVISE on a worker exit                                           |
-| React     | pauli    | Pauli returns `file_fix_task` or `halt` after a FAIL                                       |
-| Halt      | (none)   | All work items at review surface or escalated; emit final summary; exit                    |
+| Phase     | Subagent | What happens                                                                                 |
+| --------- | -------- | -------------------------------------------------------------------------------------------- |
+| Orient    | (none)   | Main agent reads epic body; runs brake; chooses subagent role                                |
+| Decompose | pauli    | Pauli proposes subtasks. See [[instructions/decomposition-and-review]]                       |
+| Review    | (none)   | Plan-review halt — decomposition synthesised; awaits human promotion to `queued`             |
+| Dispatch  | pauli    | Pauli recommends dispatch; main agent runs the command. See [[instructions/worker-dispatch]] |
+| Verify    | marsha   | Marsha returns PASS/FAIL/REVISE on a worker exit                                             |
+| React     | pauli    | Pauli recommends a fix-task or a halt after a FAIL                                           |
+| Halt      | (none)   | All work items at review surface or escalated; emit final summary; exit                      |
 
 `Review` and `Halt` are real terminal states, not transient phases. The supervisor never finalises the deliverable itself — it hands off at the review surface. Async ownership transfers to whatever review pipeline the deliverable subworkflow defines.
 
