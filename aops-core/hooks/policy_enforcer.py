@@ -132,21 +132,21 @@ def validate_credential_protection(tool_name: str, args: dict[str, Any]) -> dict
         raise ValueError("Bash tool args requires 'command' parameter (P#8: fail-fast)")
     command = args["command"]
 
-    # Only flag commands that lead with a file-reading utility
-    read_cmd_pattern = r"^\s*(?:" + "|".join(READ_COMMANDS) + r")\b"
+    # Flag read utilities at start of command or after shell separators (; & | &&  ||)
+    read_cmd_pattern = r"(?:^|[|&;])\s*(?:" + "|".join(re.escape(c) for c in READ_COMMANDS) + r")\b"
     if not re.search(read_cmd_pattern, command, re.IGNORECASE | re.MULTILINE):
         return None
 
-    for path_pattern in CREDENTIAL_PATH_PATTERNS:
-        if re.search(path_pattern, command):
-            return {
-                "continue": False,
-                "systemMessage": (
-                    "BLOCKED: Reading credential files via shell is not allowed.\n"
-                    f"Command: {command}\n"
-                    "Use the Read tool for file access so path-based rules apply."
-                ),
-            }
+    combined_path_pattern = "(?:" + "|".join(CREDENTIAL_PATH_PATTERNS) + ")"
+    if re.search(combined_path_pattern, command):
+        return {
+            "continue": False,
+            "systemMessage": (
+                "BLOCKED: Reading credential files via shell is not allowed.\n"
+                f"Command: {command}\n"
+                "Use the Read tool for file access so path-based rules apply."
+            ),
+        }
 
     return None
 

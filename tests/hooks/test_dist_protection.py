@@ -163,10 +163,19 @@ class TestEdgeCases:
         # Empty command has no read utility, so should pass
         assert _allowed("Bash", "")
 
-    def test_cat_in_middle_of_pipeline_not_blocked(self):
-        # "cat" must appear at the start of the command (or after newline)
-        # A command like "echo cat ~/.config/gh/hosts.yml" doesn't read the file
+    def test_cat_inside_quoted_string_not_blocked(self):
+        # "cat" inside a quoted echo argument doesn't execute, so it must be allowed
         assert _allowed("Bash", "echo 'cat ~/.config/gh/hosts.yml'")
+
+    def test_semicolon_separator_blocked(self):
+        # `; cat` is a real execution path — must be caught
+        assert _blocked("Bash", "echo x; cat ~/.ssh/id_rsa")
+
+    def test_and_separator_blocked(self):
+        assert _blocked("Bash", "echo x && cat ~/.ssh/id_rsa")
+
+    def test_pipe_separator_blocked(self):
+        assert _blocked("Bash", "echo x | cat ~/.config/gh/hosts.yml")
 
     def test_multiline_bash_with_cat_at_start_of_line(self):
         # A multiline Bash command where cat is at the start of a new line
