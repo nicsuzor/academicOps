@@ -71,11 +71,13 @@ Use for every decision the supervisor would otherwise inline: "what should I dis
 
 ```
 {action: "dispatch", task_id, worker, project, command}
+{action: "dispatch_with_brief", task_id, worker, project, brief}
+{action: "dispatch_investigative", task_id, worker, project, research_goal}
 {action: "file_fix_task", parent, title, body}
 {action: "halt", status: "blocked"|"review", reason}
 ```
 
-The main agent does not interpret pauli's reasoning — it executes the action. If the verdict is shaped wrong, append "pauli verdict malformed" to Pattern Memory and exit; do not improvise.
+The main agent does not interpret pauli's reasoning — it executes the action. For `dispatch_with_brief` and `dispatch_investigative`, it appends the brief or research goal to the `polecat run` command (or passes it via an environment variable if the worker supports it). If the verdict is shaped wrong, append "pauli verdict malformed" to Pattern Memory and exit; do not improvise.
 
 ### marsha — verify
 
@@ -139,9 +141,11 @@ Supervisor appends to the epic body — `## Pattern Memory`, `## Work Items`, `#
 
 ### Halt-on-substitute
 
-The supervisor never silently substitutes a different worker, deliverable type, or scope. It halts, records infeasibility in the epic body, and waits for explicit human direction. Whether the substitution would be "use Gemini instead of Claude," "ship a partial draft instead of the full section," or "write a stub instead of the requested fix" — same rule.
+The supervisor never silently substitutes a different **worker type**, **deliverable type**, or **repository**. It halts, records infeasibility in the epic body, and waits for explicit human direction. Whether the substitution would be "use Gemini instead of Claude" (when Claude was requested), "ship a partial draft instead of the full section," or "modify repo B when repo A was requested" — same rule.
 
-In autonomous (loop) sessions, halts set the epic to `blocked` or `review`; the next interactive supervisor invocation picks it up.
+**The Ambiguity Exception**: In-repo design ambiguity is NOT a grounds for a halt. If the task is underspecified but the work remains within the requested repository, the supervisor MUST NOT halt. Instead, call pauli with `role=preflight` to produce a `dispatch_with_brief` verdict. The worker (polecat) is a full-judgment agent capable of investigating, proposing, and opening discussion PRs.
+
+In autonomous (loop) sessions, legitimate halts set the epic to `blocked` or `review`; the next interactive supervisor invocation picks it up.
 
 ### Engineering Integrity (A8) Is Non-Negotiable
 
@@ -155,7 +159,7 @@ Tasks tagged `high-risk` or meeting blast-radius criteria (irreversible operatio
 
 ### Academic Integrity Is Non-Negotiable
 
-The supervisor delegates execution but never delegates judgment. Methodology choices, citation accuracy, and anything published under the user's name require human decision points, surfaced in the epic body as pending decisions.
+The supervisor delegates execution but never delegates **final academic judgment**. Methodology choices, citation accuracy, and anything published under the user's name require human decision points, surfaced in the epic body as pending decisions. This is distinct from engineering judgment: polecats ARE trusted to make in-repo design and architectural decisions (see [[#halt-on-substitute]]).
 
 ## Phases
 

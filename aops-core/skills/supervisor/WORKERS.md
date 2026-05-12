@@ -27,6 +27,21 @@ requires human approval on the Jules web UI before a PR appears.
 
 ---
 
+## Polecat Capability
+
+Polecats are not limited to mechanical or bulk work. They are **full-judgment** agents (powered by Claude 3.5 Opus or Gemini 1.5 Pro) with exactly the same tool surface as the supervisor's `pauli` specialist.
+
+**What they can do**:
+
+- **Investigate**: explore the codebase and PKB to build context.
+- **Propose**: draft design decisions and open "discussion PRs" for human feedback.
+- **Verify**: run tests, debug failures, and iterate on fixes.
+- **File tasks**: decompose their own follow-ups if a task uncovers new scope.
+
+**Trust level**: trust polecats to make in-repo architectural and design decisions. If a task is ambiguous but remains within the target repository, **dispatch with a brief** rather than halting for human orientation. See [[SKILL.md#halt-on-substitute]] for the updated boundary.
+
+---
+
 ## Capabilities Matrix
 
 | Capability                         | claude |   gemini    |           jules           |
@@ -114,12 +129,12 @@ the polecat `--max-turns` budget (XS=40, S=70, M=100, L=150).
 
 ### 2. Tag Routing
 
-| Tag(s) on task                                           | Worker                                            |
-| -------------------------------------------------------- | ------------------------------------------------- |
-| `high-risk`, `irreversible`, `production`, `destructive` | `claude` only — and route through the critic gate |
-| `methodology`, `academic-integrity`, `published-output`  | `claude` only — never delegate judgment           |
-| `bulk`, `mechanical`, `find-replace`, `rename`           | `gemini` preferred                                |
-| `async-ok`, `long-running`, `off-host`                   | `jules` preferred                                 |
+| Tag(s) on task                                           | Worker                                               |
+| -------------------------------------------------------- | ---------------------------------------------------- |
+| `high-risk`, `irreversible`, `production`, `destructive` | `claude` only — and route through the critic gate    |
+| `methodology`, `academic-integrity`, `published-output`  | `claude` only — never delegate **academic** judgment |
+| `bulk`, `mechanical`, `find-replace`, `rename`           | `gemini` preferred                                   |
+| `async-ok`, `long-running`, `off-host`                   | `jules` preferred                                    |
 
 If a task carries both a high-stakes and a bulk tag, high-stakes wins.
 
