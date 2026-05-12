@@ -62,7 +62,7 @@ on:
 
 concurrency:
   group: merge-prep-dispatcher
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   dispatch:
@@ -245,7 +245,7 @@ jobs:
             echo "$PR_NUM|$HEAD_REF" >> /tmp/qualifying_prs.txt
           done
 
-      - name: Dispatch merge-prep for qualifying PRs
+      - name: Dispatch merge-prep for oldest qualifying PR
         if: inputs.pr_number == '' && steps.pr-count.outputs.skip != 'true' && steps.active-check.outputs.skip_all != 'true'
         run: |
           REPO="${{ github.repository }}"
@@ -255,14 +255,19 @@ jobs:
             exit 0
           fi
 
-          while IFS='|' read -r PR_NUM HEAD_REF; do
-            echo "Dispatching merge-prep for PR #$PR_NUM (branch: $HEAD_REF)"
+          # Dispatch ONE PR per tick. GitHub's concurrency model only keeps
+          # 1 running + 1 pending per group — dispatching N runs discards N-2.
+          # The cron (30 min) and workflow_run triggers ensure the next PR gets
+          # picked up after the current one finishes.
+          IFS='|' read -r PR_NUM HEAD_REF < /tmp/qualifying_prs.txt
 
-            gh workflow run "$WORKFLOW_REF" \
-              --repo "$REPO" \
-              --ref "refs/heads/$HEAD_REF" \
-              -f pr_number="$PR_NUM" \
-              -f bot_identity="$BOT_IDENTITY"
+          TOTAL=$(wc -l < /tmp/qualifying_prs.txt | tr -d ' ')
+          echo "Dispatching merge-prep for PR #$PR_NUM (1 of $TOTAL qualifying)"
 
-            echo "  Dispatched successfully"
-          done < /tmp/qualifying_prs.txt
+          gh workflow run "$WORKFLOW_REF" \
+            --repo "$REPO" \
+            --ref "refs/heads/$HEAD_REF" \
+            -f pr_number="$PR_NUM" \
+            -f bot_identity="$BOT_IDENTITY"
+
+          echo "  Dispatched successfully. Remaining $((TOTAL - 1)) PRs will be picked up on subsequent ticks."
