@@ -625,10 +625,11 @@ class TestPerToolResultTokens:
 
 class TestCondensedHookHeader:
     """The session-level Hook header collapses event + checkmark + verdict
-    + (intro to any system message) into a single line. The body of the
-    system message follows as a fenced block; the verdose intermediary
-    lines (`**Verdict:** \\`x\\``, `ℹ️ Hook message:`) are removed, as is
-    the `_Triggered after assistant message:_` literal under Stop hooks.
+    + duration + skills/files/+ctx into a single line. The body of any
+    system message follows as a blockquote; the verbose intermediary
+    lines (`**Verdict:** \\`x\\``, `ℹ️ Hook message:`, `_Hook ran in Xms._`)
+    are removed, as is the `_Triggered after assistant message:_` literal
+    under Stop hooks.
     """
 
     def test_stop_with_warn_verdict_and_message_collapses_to_one_line(self, tmp_path):
@@ -659,20 +660,16 @@ class TestCondensedHookHeader:
             session, entries, agent_entries=None, variant="full"
         )
 
-        # Single-line condensed header: event + checkmark + verdict + intro.
-        assert "### Hook: Stop ✓ — verdict `warn` — ℹ️ Hook message:" in markdown
-        # Removed: the standalone `**Verdict:** ...` line that used to follow
-        # the heading. (The string matches must be on its own line — i.e.
-        # surrounded by newlines — to distinguish from the inline form.)
+        # Unified one-line header: event + verdict (no checkmark on this form).
+        assert "> 🪝 Stop — verdict `warn`" in markdown
+        # No standalone `**Verdict:** ...` line.
         assert "\n**Verdict:** `warn`\n" not in markdown
-        # Removed: the standalone `ℹ️ Hook message:` paragraph above the
-        # fenced body (still allowed as a tail of the condensed header).
-        assert "\n\nℹ️ Hook message:\n\n```" not in markdown
-        # Removed the "Triggered after" literal — quoted block stands alone.
-        assert "_Triggered after assistant message:_" not in markdown
-        # The body still appears.
-        assert "Halted — review pending." in markdown
-        assert "I'm stopping here." in markdown
+        # No "ℹ️ Hook message:" intro and no fenced code body.
+        assert "ℹ️ Hook message" not in markdown
+        assert "```\nHalted" not in markdown
+        # The body still appears, as a blockquote.
+        assert "> Halted — review pending." in markdown
+        assert "> I'm stopping here." in markdown
 
     def test_stop_with_no_message_only_header_line(self, tmp_path):
         import json
@@ -696,6 +693,7 @@ class TestCondensedHookHeader:
         markdown = processor.format_session_as_markdown(
             session, entries, agent_entries=None, variant="full"
         )
-        # Default Stop verdict surfaces as `allow`, no intro since no message.
-        assert "### Hook: Stop ✓ — verdict `allow`" in markdown
+        # Default `allow` verdict with no message/payload is suppressed
+        # entirely — the hook log is the source of truth for no-op hooks.
+        assert "🪝 Stop" not in markdown
         assert "Hook message" not in markdown

@@ -19,10 +19,9 @@ If you cannot do what was asked, **STOP and report** — do NOT search broadly, 
 
 - `analyst` — Research data analysis (dbt, Streamlit, statistics)
 - `pdf` — PDF generation with academic typography
-- `convert-to-md` — Batch document conversion (DOCX, PDF, XLSX → markdown)
+- `extract` — General extraction and ingestion routing (includes document-to-markdown: DOCX, PDF, XLSX → markdown via `/extract` or `/convert-to-md`)
 - `excalidraw` — Hand-drawn diagram creation
 - `flowchart` — Mermaid flowchart generation
-- `extract` — General extraction and ingestion routing
 
 ## Design principle
 

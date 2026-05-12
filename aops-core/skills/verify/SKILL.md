@@ -211,5 +211,5 @@ When invoked as `/verify` with no arguments, do a quick verification of the curr
 
 - **Stop hook**: May require verification before session end
 - **Task completion**: Verify before `complete_task()`
-- **Gate tracking**: `post_qa_trigger()` detects verification invocation
-- **Spec writing**: templates/spec.md references qa-planning.md for criteria design
+- **Gate tracking**: `prepare_qa_review` custom action fires on marsha/verify subagent start/stop
+- **Spec writing**: templates/spec.md references `verify/references/qa-planning.md` for criteria design

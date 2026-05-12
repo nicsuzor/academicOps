@@ -214,7 +214,7 @@ class TestGeminiSandboxDocker:
             "run",
             "--rm",
             *docker_args,
-            "aops-crew",
+            "ghcr.io/nicsuzor/aops-crew",
             "gemini",
             "--approval-mode",
             "yolo",

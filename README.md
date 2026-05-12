@@ -81,13 +81,13 @@ Skills are Claude Code / Gemini CLI extensions that know how to do specific thin
 
 **Domain skills** (fungible — retire when better external tools exist):
 
-| Skill            | Purpose                                 |
-| ---------------- | --------------------------------------- |
-| `/analyst`       | Research data analysis (dbt, Streamlit) |
-| `/pdf`           | PDF generation with academic typography |
-| `/convert-to-md` | Batch document conversion               |
-| `/excalidraw`    | Hand-drawn diagrams                     |
-| `/flowchart`     | Mermaid flowchart generation            |
+| Skill         | Purpose                                            |
+| ------------- | -------------------------------------------------- |
+| `/analyst`    | Research data analysis (dbt, Streamlit)            |
+| `/pdf`        | PDF generation with academic typography            |
+| `/extract`    | General extraction and ingestion (incl. doc-to-md) |
+| `/excalidraw` | Hand-drawn diagrams                                |
+| `/flowchart`  | Mermaid flowchart generation                       |
 
 ### 3. Session infrastructure (hooks)
 

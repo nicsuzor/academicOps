@@ -1,45 +1,34 @@
 ---
-name: convert-to-md
-type: skill
-category: instruction
+name: docs-to-md
+type: workflow
+parent: extract
 description: Batch convert documents (DOCX, PDF, XLSX, TXT, PPTX, MSG, DOC) to markdown, preserving tracked changes and comments.
-triggers:
-  - "convert document"
-  - "DOCX/PDF/XLSX conversion"
-modifies_files: true
-needs_task: true
-mode: batch
-domain:
-  - operations
-allowed-tools: Bash,Read
-version: 1.0.0
-permalink: skills-convert-to-md
 ---
 
-# Document to Markdown Conversion
-
-> **Taxonomy note**: This skill provides domain expertise (HOW) for batch document conversion to markdown. See [[aops-core/skills/remember/references/TAXONOMY.md]] for the skill/workflow distinction.
+# Workflow: Document to Markdown Conversion
 
 Batch convert documents to markdown format, preserving tracked changes, comments, and other markup.
 
 ## Usage
 
 ```
-/convert-to-md [directory]
+/extract [directory|file] --type docs-to-md
 ```
+
+Or invoke directly when the input is a document file without a clear extraction goal (DOCX, PDF, XLSX, PPTX, MSG, DOC, TXT, DOTX).
 
 ## Supported Formats
 
-| Format | Method                       | Notes                                |
-| ------ | ---------------------------- | ------------------------------------ |
-| DOCX   | pandoc `--track-changes=all` | Preserves comments & tracked changes |
-| PDF    | PyMuPDF                      | Text extraction                      |
-| XLSX   | pandas                       | Converts to markdown tables          |
-| TXT    | rename                       | Direct rename to .md                 |
-| PPTX   | pandoc                       | Slide content to markdown            |
-| MSG    | extract-msg                  | Email metadata + body                |
-| DOC    | textutil                     | macOS native (fallback)              |
-| DOTX   | pandoc                       | Word templates                       |
+| Format | Method                       | Notes                                                     |
+| ------ | ---------------------------- | --------------------------------------------------------- |
+| DOCX   | pandoc `--track-changes=all` | Preserves comments & tracked changes                      |
+| PDF    | PyMuPDF or pdfminer.six      | Text extraction (see scripts/pdf2md.py for richer output) |
+| XLSX   | pandas                       | Converts to markdown tables                               |
+| TXT    | rename                       | Direct rename to .md                                      |
+| PPTX   | pandoc                       | Slide content to markdown                                 |
+| MSG    | extract-msg                  | Email metadata + body                                     |
+| DOC    | textutil                     | macOS native (fallback)                                   |
+| DOTX   | pandoc                       | Word templates                                            |
 
 ## Process
 
@@ -55,7 +44,7 @@ Batch convert documents to markdown format, preserving tracked changes, comments
    done
    ```
 
-3. **Convert PDF**:
+3. **Convert PDF** (simple — PyMuPDF):
    ```python
    import fitz
    from pathlib import Path
@@ -64,6 +53,11 @@ Batch convert documents to markdown format, preserving tracked changes, comments
        text = "\n\n".join(page.get_text() for page in doc)
        pdf.with_suffix(".md").write_text(text.strip())
        pdf.unlink()
+   ```
+
+   For richer PDF extraction (pdfminer.six + pandoc, dual-pass heuristic):
+   ```bash
+   python aops-tools/skills/extract/scripts/pdf2md.py input.pdf output.md
    ```
 
 4. **Convert XLSX** to tables:
@@ -100,6 +94,7 @@ Batch convert documents to markdown format, preserving tracked changes, comments
 
 - `pandoc` (system): DOCX, PPTX, DOTX conversion
 - `textutil` (macOS): DOC fallback
-- `pymupdf` (Python): PDF text extraction
+- `pymupdf` (Python): PDF text extraction (simple path)
+- `pdfminer.six` (Python): PDF text extraction (rich path via pdf2md.py)
 - `pandas`, `openpyxl`, `tabulate` (Python): XLSX tables
 - `extract-msg` (Python): Outlook MSG files

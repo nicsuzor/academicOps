@@ -5,7 +5,7 @@
 #   - ACA_DATA git hooks path
 #   - Crontab for periodic sync + viz generation
 #   - Polecat project config (local paths from master registry)
-#   - CLI tools (aops, pkb) from GitHub releases
+#   - CLI tools (pkb) from GitHub releases
 #   - Claude Code plugins from marketplace
 #   - Validates required environment variables and tools
 #
@@ -64,7 +64,7 @@ for cmd in git uv; do
 done
 
 # Optional tools (warn only)
-for cmd in claude aops; do
+for cmd in claude pkb; do
     if command -v "$cmd" &>/dev/null; then
         version=$("$cmd" --version 2>/dev/null | head -1 || echo "unknown")
         ok "$cmd ($version)"
@@ -73,9 +73,9 @@ for cmd in claude aops; do
     fi
 done
 
-# --- 3. Install CLI tools (aops + pkb) ---
+# --- 3. Install CLI tools (pkb) ---
 echo ""
-echo -e "${BOLD}CLI tools (aops + pkb):${NC}"
+echo -e "${BOLD}CLI tools (pkb):${NC}"
 
 INSTALL_BIN="${USER_OPT:+${USER_OPT}/bin}"
 INSTALL_BIN="${INSTALL_BIN:-${HOME}/.local/bin}"
@@ -88,13 +88,8 @@ case "$(uname -s)-$(uname -m)" in
 esac
 
 if [[ "$CHECK_ONLY" == true ]]; then
-    if command -v aops &>/dev/null; then
-        ok "aops installed ($(aops --version 2>/dev/null || echo 'unknown'))"
-    else
-        fail "aops not installed. Run: make install-cli"
-    fi
     if command -v pkb &>/dev/null; then
-        ok "pkb installed"
+        ok "pkb installed ($(pkb --version 2>/dev/null || echo 'unknown'))"
     else
         fail "pkb not installed. Run: make install-cli"
     fi
@@ -104,14 +99,14 @@ else
     elif ! command -v gh &>/dev/null; then
         fail "gh (GitHub CLI) not found. Install it first, or use: make install-cli-dev"
     else
-        echo -n "  Downloading aops + pkb for ${PLATFORM}... "
+        echo -n "  Downloading pkb for ${PLATFORM}... "
         TMPDIR=$(mktemp -d)
         ARCHIVE="aops-claude-${PLATFORM}.tar.gz"
         if gh release download --repo nicsuzor/aops --pattern "${ARCHIVE}" --dir "${TMPDIR}" --clobber 2>/dev/null; then
             mkdir -p "${INSTALL_BIN}"
             tar xzf "${TMPDIR}/${ARCHIVE}" -C "${TMPDIR}"
             # Find and install binaries (may be at bin/ or aops-claude/bin/)
-            for bin_name in aops pkb; do
+            for bin_name in pkb; do
                 src=$(find "${TMPDIR}" -name "${bin_name}" -type f | head -1)
                 if [[ -n "$src" ]]; then
                     cp "$src" "${INSTALL_BIN}/${bin_name}"

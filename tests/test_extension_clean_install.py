@@ -45,7 +45,6 @@ BUILTIN_TOOLS = {
     "codebase_investigator",
     "cli_help",
     "generalist",
-    "critic",
     "dev-standards",
     "framework-ops",
     "james",

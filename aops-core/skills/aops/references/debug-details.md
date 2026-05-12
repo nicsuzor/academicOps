@@ -379,11 +379,11 @@ cat ~/.gemini/extensions/aops-core/gemini-extension.json | python3 -m json.tool
 
 In sandbox mode (`gemini --sandbox`), env vars are forwarded via special mechanisms:
 
-| Mechanism              | Purpose                                  | Limitation                          |
-| ---------------------- | ---------------------------------------- | ----------------------------------- |
-| `SANDBOX_FLAGS`        | Extra `-e KEY=VAL` Docker flags          | Shell-quote mangles shell functions |
-| `SANDBOX_MOUNTS`       | Extra volume mounts (`from:to:opts`)     | Must be comma-separated             |
-| `GEMINI_SANDBOX_IMAGE` | Docker image name (default: `aops-crew`) | Must have pkb on PATH               |
+| Mechanism              | Purpose                                                   | Limitation                          |
+| ---------------------- | --------------------------------------------------------- | ----------------------------------- |
+| `SANDBOX_FLAGS`        | Extra `-e KEY=VAL` Docker flags                           | Shell-quote mangles shell functions |
+| `SANDBOX_MOUNTS`       | Extra volume mounts (`from:to:opts`)                      | Must be comma-separated             |
+| `GEMINI_SANDBOX_IMAGE` | Docker image name (default: `ghcr.io/nicsuzor/aops-crew`) | Must have pkb on PATH               |
 
 ```bash
 # Check what env vars are forwarded to sandbox

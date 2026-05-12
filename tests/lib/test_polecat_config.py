@@ -31,7 +31,7 @@ CANONICAL_YAML = dedent(
       hooks_enabled: false
     run_defaults: {}
     docker:
-      image: aops-crew
+      image: ghcr.io/nicsuzor/aops-crew
     external_agents:
       github:
         enabled: true
@@ -58,7 +58,7 @@ def test_load_canonical(cfg_path: Path) -> None:
     assert cfg.session_defaults.gates.handover == "warn"
     assert cfg.session_defaults.gates.hydration == "off"
     assert cfg.session_defaults.gates.enforcer_threshold == 50
-    assert cfg.docker.image == "aops-crew"
+    assert cfg.docker.image == "ghcr.io/nicsuzor/aops-crew"
     assert cfg.external_agents["github"].enabled is True
     assert cfg.external_agents["jules"].enabled is False
 

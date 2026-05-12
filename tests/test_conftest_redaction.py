@@ -11,7 +11,7 @@ def test_redact_env_vars():
         "ANTHROPIC_API_KEY=sk-ant-api03-secret",
         "-e",
         "OTHER_VAR=public_value",
-        "aops-crew",
+        "ghcr.io/nicsuzor/aops-crew",
     ]
     redacted = _redact_cmd(cmd)
 
@@ -32,7 +32,7 @@ def test_redact_mount_paths():
         "/tmp/tmp-claude.json:/home/worker/.claude.json",
         "-v",
         "/home/user/workspace:/workspace",
-        "aops-crew",
+        "ghcr.io/nicsuzor/aops-crew",
     ]
     redacted = _redact_cmd(cmd)
 
@@ -52,7 +52,7 @@ def test_redact_gemini_mounts():
         "run",
         "-v",
         "/Users/nic/.gemini/settings.json:/home/worker/.gemini/settings.json:ro",
-        "aops-crew",
+        "ghcr.io/nicsuzor/aops-crew",
     ]
     redacted = _redact_cmd(cmd)
     assert "[REDACTED_PATH]:/home/worker/.gemini/settings.json:ro" in redacted
