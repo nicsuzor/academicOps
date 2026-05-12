@@ -256,3 +256,75 @@ class TestPolebcatSandboxRouting:
         mock_polecat_dir.assert_called_with("-home-worker-project", "state")
         assert str(path).startswith(str(tmp_path))
         assert not str(path).startswith(str(Path.home()))
+
+
+class TestSandboxFallbackWithoutPolecatEnv:
+    """Regression tests for task-12177ae8: inaccessible HOME without POLECAT_SESSION_TYPE.
+
+    When a polecat container doesn't propagate POLECAT_SESSION_TYPE to the hook
+    subprocess, _is_polecat_sandbox() returns False and get_session_status_dir()
+    tries Path.home() / ".claude/..." which fails with PermissionError because
+    the container mounts the host home read-only (or not at all).
+
+    The fix: catch OSError from mkdir and route to _polecat_claude_state_dir
+    instead of letting the exception propagate into hook stderr as CRITICAL/WARNING.
+    """
+
+    @patch("lib.session_paths._polecat_claude_state_dir")
+    @patch("lib.session_paths.get_claude_project_folder")
+    def test_home_mkdir_oserror_falls_back_silently(
+        self, mock_project_folder, mock_polecat_dir, monkeypatch, tmp_path
+    ):
+        """OSError from home mkdir → silently routes via _polecat_claude_state_dir.
+
+        Reproduces the polecat bug: POLECAT_SESSION_TYPE not set, HOME not writable.
+        Must NOT raise and must NOT print to stderr.
+        """
+        monkeypatch.delenv("POLECAT_SESSION_TYPE", raising=False)
+        monkeypatch.delenv("AOPS_SESSION_STATE_DIR", raising=False)
+        mock_project_folder.return_value = "-workspace"
+        mock_polecat_dir.return_value = tmp_path
+
+        with patch("lib.session_paths.Path") as mock_path_cls:
+            # Path.home() returns a mock that fails on mkdir
+            mock_home = mock_path_cls.home.return_value
+            mock_status_dir = (
+                mock_home.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value
+            )
+            mock_status_dir.mkdir.side_effect = PermissionError(
+                "[Errno 13] Permission denied: '/home/nic'"
+            )
+            # Path(...) for other uses should still work
+            mock_path_cls.side_effect = lambda *a, **k: Path(*a, **k)
+
+            result = get_session_status_dir()
+
+        mock_polecat_dir.assert_called_once_with("-workspace", "state")
+        assert result == tmp_path
+
+    @patch("lib.session_paths._polecat_claude_state_dir")
+    @patch("lib.session_paths.get_claude_project_folder")
+    def test_home_mkdir_oserror_does_not_raise(
+        self, mock_project_folder, mock_polecat_dir, monkeypatch, tmp_path
+    ):
+        """get_session_status_dir() must never raise OSError — callers catch Exception not OSError."""
+        monkeypatch.delenv("POLECAT_SESSION_TYPE", raising=False)
+        monkeypatch.delenv("AOPS_SESSION_STATE_DIR", raising=False)
+        mock_project_folder.return_value = "-workspace"
+        mock_polecat_dir.return_value = tmp_path
+
+        # Simulate sandbox: home doesn't exist, mkdir raises
+        with patch("lib.session_paths.Path.home") as mock_home:
+            fake_home = Path("/home/nonexistent-sandbox-user")
+            mock_home.return_value = fake_home
+            # The function will try fake_home / ".claude" / "projects" / "-workspace"
+            # mkdir will raise PermissionError since /home/nonexistent-sandbox-user doesn't exist
+            try:
+                result = get_session_status_dir()
+                # If it didn't raise, fallback was used — verify it's the polecat dir
+                assert result == tmp_path
+            except OSError as e:
+                raise AssertionError(
+                    f"get_session_status_dir() raised OSError ({e}) — "
+                    "must fall back to _polecat_claude_state_dir instead"
+                ) from e
