@@ -182,7 +182,7 @@ A failure on a single transport is **not** infeasibility — try the others firs
 5. **Autonomous (loop) session**: do **not** substitute. Set the epic to `needs_decision`, leave the report in the body, exit. The next interactive supervisor invocation picks it up.
 6. **Never** invoke a substitute worker without an explicit approval line in the task body.
 
-**User intent**: "If there are gaps, we should fill them, not refuse to dispatch." A tool gap is a bug in the environment, not a reason to stop the epic.
+**User intent** (aops-725a0549): "If there are gaps, we should fill them, not refuse to dispatch." A tool gap is a bug in the environment, not a reason to stop the epic.
 
 ## Dispatch Protocol
 
