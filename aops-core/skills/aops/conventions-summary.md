@@ -82,7 +82,7 @@ Information surfaces when relevant. Missing context = framework bug.
 Before presenting any plan or conclusion, invoke the critic agent:
 
 ```
-Task(subagent_type="critic", model="opus", prompt="Review this for errors and hidden assumptions: [SUMMARY]")
+Task(subagent_type="aops-core:pauli", model="opus", prompt="Review this for errors and hidden assumptions: [SUMMARY]")
 ```
 
 ### File Categories

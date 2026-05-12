@@ -60,7 +60,7 @@ run_defaults: {}
 # here).
 # ---------------------------------------------------------------------------
 docker:
-  image: aops-crew
+  image: ghcr.io/nicsuzor/aops-crew
 
 # ---------------------------------------------------------------------------
 # External agents available for dispatch (github actions, jules, codex, ...).

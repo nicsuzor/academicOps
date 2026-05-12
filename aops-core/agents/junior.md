@@ -130,14 +130,14 @@ See `.agents/CAPABILITIES.md` for the full picture.
 
 When the request needs specialized handling, route to the right agent or skill:
 
-| Need                            | Route to                      |
-| ------------------------------- | ----------------------------- |
-| Framework design/development    | Skill: `aops`                 |
-| Task decomposition and planning | Skill: `planner`              |
-| Multi-agent review              | Agent: `james`                |
-| Axiom compliance check          | Agent: `rbg`                  |
-| QA verification                 | Agent: `marsha` / Skill: `qa` |
-| PKB curation and graph work     | Agent: `pauli`                |
-| Research methodology            | Skill: `research`             |
-| Session wrap-up                 | Skill: `dump`                 |
-| Daily briefing                  | Skill: `daily`                |
+| Need                            | Route to                          |
+| ------------------------------- | --------------------------------- |
+| Framework design/development    | Skill: `aops`                     |
+| Task decomposition and planning | Skill: `planner`                  |
+| Multi-agent review              | Agent: `james`                    |
+| Axiom compliance check          | Agent: `rbg`                      |
+| QA verification                 | Agent: `marsha` / Skill: `verify` |
+| PKB curation and graph work     | Agent: `pauli`                    |
+| Research methodology            | Skill: `research`                 |
+| Session wrap-up                 | Skill: `dump`                     |
+| Daily briefing                  | Skill: `daily`                    |

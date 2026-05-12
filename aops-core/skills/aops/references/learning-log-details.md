@@ -94,9 +94,9 @@ Report to user:
 
 1. Task ID created/updated
 2. Category assigned
-3. Next step: "Run `/qa [task-id]` to perform full analysis"
+3. Next step: "Run `/verify [task-id]` to perform full analysis"
 
-**DO NOT perform root cause analysis immediately.** The `/qa` command (workflow 05) handles transcript generation, analysis, and proposal creation.
+**DO NOT perform root cause analysis immediately.** The `/verify` command (workflow 05) handles transcript generation, analysis, and proposal creation.
 
 ## Task Tags (Categories)
 
@@ -127,7 +127,7 @@ We don't control agents - they're probabilistic. Root causes must be framework c
 **DO ONE THING**: Document observations only. Do NOT:
 
 - Fix reported issues
-- Perform root cause analysis (deferred to /qa)
+- Perform root cause analysis (deferred to /verify)
 - Implement solutions
 - Debug problems
 
@@ -146,7 +146,7 @@ Phase 2 - Update existing task:
 task = mcp__plugin_aops-core_tasks__get_task(id="aops-42")
 mcp__plugin_aops-core_tasks__update_task(id="aops-42", body="[existing + new observation]")
 
-Report: "Added observation to aops-42 - recurring pattern. Run `/qa aops-42` to perform full analysis."
+Report: "Added observation to aops-42 - recurring pattern. Run `/verify aops-42` to perform full analysis."
 ```
 
 ### Example: New Task
@@ -183,5 +183,5 @@ Stack trace:
 - [ ] Create fix proposal"""
 )
 
-Report: "Created aops-47 for prompt_router bug. Run `/qa aops-47` to analyze."
+Report: "Created aops-47 for prompt_router bug. Run `/verify aops-47` to analyze."
 ```

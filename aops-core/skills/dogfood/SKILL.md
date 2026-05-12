@@ -141,14 +141,16 @@ This phase exists because of a specific, observed failure: a dogfooding supervis
 
 This is the hardest phase. Commission a separate reviewer agent — ideally a different model or agent type — to evaluate the subagent's output against the original objectives.
 
-1. **Commission the review.** Use the critic agent or James (orchestrator):
+1. **Commission the review.** Use pauli (critic mode) or James (full orchestration):
 
    ```
    Agent(
-     subagent_type="aops-core:critic",
+     subagent_type="aops-core:pauli",
      prompt="Review the following report against these objectives: <objectives>. The report is at: <path>. Assess depth, accuracy, specificity, and actionability. Be brutal — adequate is not good enough."
    )
    ```
+
+   For full multi-agent review use `/strategic-review` (default mode with James).
 
 2. **Evaluate the review.** The reviewer's assessment tells you about BOTH the instructions and the execution:
    - If the execution was poor but instructions were clear → the task may be too hard for this agent tier
@@ -225,6 +227,5 @@ These were observed during dogfooding runs and should be watched for:
 
 - brain PKB (project: aops, topic: dogfood) — the inner-loop spec (per-step reflection)
 - `.agents/skills/framework/workflows/10-reflective-execution.md` — the workflow version
-- `aops-core/commands/retro.md` — single-transcript review (a task this skill might dogfood)
-- `aops-core/commands/trend-review.md` — multi-session trend analysis (a task this skill might dogfood)
-- `aops-core/skills/qa/SKILL.md` — quality assessment (used in Phase 4)
+- `aops-core/skills/survey/SKILL.md` — retro/trend/sweep modes (tasks this skill might dogfood)
+- `aops-core/skills/verify/SKILL.md` — quality assessment (used in Phase 4)

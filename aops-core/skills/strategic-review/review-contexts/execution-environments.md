@@ -70,16 +70,16 @@ Agents run via `polecat run` or `start_code_task` dispatch, in a full Claude Cod
 
 ## When to Use Which
 
-| Need                                              | Use           |
-| ------------------------------------------------- | ------------- |
-| Lint, type check, pytest                          | GHA runner    |
-| Axiom compliance review (rbg / enforcer)          | GHA runner    |
-| Code review — diff only (pauli / pr-reviewer)     | GHA runner    |
-| Runtime verification (spin up server, click test) | Local polecat |
-| Strategic review requiring PKB context            | Local polecat |
-| Work that needs framework skills (`/plan`, `/qa`) | Local polecat |
-| Anything requiring MCP tools                      | Local polecat |
-| Long-running tasks (>30 min)                      | Local polecat |
+| Need                                                  | Use           |
+| ----------------------------------------------------- | ------------- |
+| Lint, type check, pytest                              | GHA runner    |
+| Axiom compliance review (rbg / enforcer)              | GHA runner    |
+| Code review — diff only (pauli / pr-reviewer)         | GHA runner    |
+| Runtime verification (spin up server, click test)     | Local polecat |
+| Strategic review requiring PKB context                | Local polecat |
+| Work that needs framework skills (`/plan`, `/verify`) | Local polecat |
+| Anything requiring MCP tools                          | Local polecat |
+| Long-running tasks (>30 min)                          | Local polecat |
 
 **Rule of thumb:** If the task only needs the repo diff, use GHA. If it needs context
 beyond the repo — runtime, PKB, memory, external services — use a local polecat.

@@ -51,7 +51,7 @@ Do ALL of the following steps and report results exactly as labeled:
    - Run: hostname
 
 2. BINARY CHECK:
-   - Run: which aops
+   - Run: which pkb
 
 3. WORKSPACE CHECK:
    - Run: test -d /workspace/.git && echo "WORKSPACE_VERIFIED=true" || echo "WORKSPACE_VERIFIED=false"

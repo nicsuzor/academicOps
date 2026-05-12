@@ -3472,35 +3472,19 @@ class SessionProcessor:
             "early_reads": early_reads,
         }
 
-    # Hook events that get their own ``### Hook:`` header (session-level
-    # transitions worth flagging on their own line). Everything else is a
-    # tool-related event that we collapse to a one-line annotation when it
-    # carries useful payload, or skip when the verdict is the default.
-    _SESSION_LEVEL_HOOKS = frozenset(
-        {
-            "Stop",
-            "SessionStart",
-            "SessionEnd",
-            "UserPromptSubmit",
-            "Notification",
-            "PreCompact",
-        }
-    )
-
     @staticmethod
     def _render_hook(hook: dict, full_mode: bool) -> str:
-        """Render a single hook event compactly.
+        """Render a single hook event in unified format.
 
-        Tool-related hooks (PreToolUse, PostToolUse, SubagentStart/Stop)
-        collapse to a one-line ``> 🪝 …`` blockquote — and are suppressed
-        entirely when the verdict is the default ``allow`` and there's no
-        message or context-injection payload to surface, regardless of
-        ``full_mode``. The hook log is the source of truth for those; the
-        transcript is for human reading.
+        All hooks (PreToolUse, PostToolUse, Stop, Notification, etc.) share
+        one shape: a single ``> 🪝 …`` header line carrying every piece of
+        metadata (event, tool/agent, verdict, duration, skills, files,
+        +ctx), followed by blockquoted bodies for any multi-line payload —
+        system message, last-assistant tail (Stop), submitted prompt
+        (UserPromptSubmit), notification text, and injected context.
 
-        Session-level events (``Stop``, ``SessionStart`` etc.) keep an
-        ``### Hook:`` header and surface verdict, system message, and (for
-        ``Stop``) the last assistant message that triggered it.
+        No-op hooks (default ``allow`` verdict, no message, no payload) are
+        suppressed entirely — the hook log is the source of truth for those.
         """
         event_name = hook.get("hook_event_name") or "Hook"
         exit_code = hook.get("exit_code")
@@ -3520,140 +3504,98 @@ class SessionProcessor:
         is_blocking = hook_verdict in ("deny", "block", "request-changes")
         noteworthy_verdict = hook_verdict if hook_verdict and hook_verdict != "allow" else None
         is_error = exit_code is not None and exit_code != 0
-        is_session_level = event_name in SessionProcessor._SESSION_LEVEL_HOOKS
 
-        # Suppress noisy tool-related no-op hooks. The hook log keeps them;
-        # the transcript only shows the ones that DID something.
-        if not is_session_level:
-            has_payload = bool(
-                hook_system_message
-                or hook_context_injection
-                or skills_matched
-                or files_loaded
-                or noteworthy_verdict
-                or is_blocking
-                or is_error
-                or prevented
-            )
-            if not has_payload:
-                return ""
-
-        # Compact one-line form for tool-related hooks with payload.
-        if not is_session_level:
-            label = event_name
-            if tool_name:
-                label += f" {tool_name}"
-            elif agent_id:
-                label += f" (agent-{agent_id})"
-            verdict_part = ""
-            if is_blocking:
-                verdict_part = f" → 🛑 {hook_verdict}"
-            elif noteworthy_verdict:
-                verdict_part = f" → {noteworthy_verdict}"
-            elif is_error:
-                verdict_part = f" → exit {exit_code}"
-            msg_part = ""
-            if hook_system_message:
-                msg = hook_system_message.replace("\n", " ").strip()
-                if len(msg) > 120:
-                    msg = msg[:117] + "..."
-                msg_part = f" — {msg}"
-            extras: list[str] = []
-            if skills_matched:
-                extras.append("skills: " + ", ".join(f"`{s}`" for s in skills_matched))
-            if files_loaded:
-                extras.append(
-                    "loaded: " + ", ".join(f"`{fp.split('/')[-1]}`" for fp in files_loaded)
-                )
-            if hook_context_injection:
-                extras.append(f"+ctx {len(hook_context_injection):,}c")
-            extras_part = f" ({'; '.join(extras)})" if extras else ""
-            return f"> 🪝 {label}{verdict_part}{msg_part}{extras_part}\n\n"
-
-        # Session-level hook — full ### Hook: section with rich payload.
-        # The header line condenses event + checkmark + verdict + (intro to
-        # any system message) into one line; the message body, when present,
-        # follows as a fenced block.
-        checkmark = ""
-        if exit_code is not None:
-            checkmark = " ✓" if exit_code == 0 else f" ✗ (exit {exit_code})"
-        detail = ""
-        if tool_name:
-            detail = f": {tool_name}"
-        elif agent_id:
-            detail = f": agent-{agent_id}"
-
-        verdict_part = ""
-        if is_blocking:
-            verdict_part = f" — 🛑 denied verdict=`{hook_verdict}`"
-        elif noteworthy_verdict:
-            verdict_part = f" — verdict `{noteworthy_verdict}`"
-        elif event_name == "Stop":
-            verdict_part = " — verdict `allow`"
-
-        intro_part = " — ℹ️ Hook message:" if hook_system_message else ""
-        out = f"### Hook: {event_name}{detail}{checkmark}{verdict_part}{intro_part}\n\n"
-
-        if prevented:
-            out += "🛑 **Prevented continuation** — Stop hook blocked the agent from halting.\n\n"
-
-        if hook_system_message:
-            msg = hook_system_message
-            if not full_mode and len(msg) > 600:
-                msg = msg[:600] + "..."
-            out += f"```\n{msg}\n```\n\n"
-
-        # Stop: show the tail of the last assistant message that triggered
-        # this Stop event. Position alone (immediately under the Stop hook
-        # header) signals what the quoted block is; no label needed.
+        # Pull lifecycle-event payloads (prompt / notification text) up front so
+        # they count as "this hook did something" for suppression purposes.
+        prompt_text = ""
+        if event_name == "UserPromptSubmit" and isinstance(hook_raw_input, dict):
+            p = hook_raw_input.get("prompt")
+            if isinstance(p, str) and p.strip():
+                prompt_text = p.strip()
+        notification_text = ""
+        if event_name == "Notification" and isinstance(hook_raw_input, dict):
+            n = hook_raw_input.get("message")
+            if isinstance(n, str) and n.strip():
+                notification_text = n.strip()
+        last_assistant_tail = ""
         if event_name == "Stop" and isinstance(hook_raw_input, dict):
             last = hook_raw_input.get("last_assistant_message")
             if isinstance(last, str) and last.strip():
-                tail = last.strip()
-                if len(tail) > 240:
-                    tail = "…" + tail[-240:]
-                # Quote every line and demote any inner headings — the raw
-                # last-assistant message often contains markdown that would
-                # otherwise punch through the transcript's own structure.
-                quoted = _quote_block(_adjust_heading_levels(tail, 4))
-                out += f"{quoted}\n\n"
+                last_assistant_tail = last.strip()
 
-        # UserPromptSubmit: show the prompt itself in full mode.
-        if event_name == "UserPromptSubmit" and full_mode and isinstance(hook_raw_input, dict):
-            prompt = hook_raw_input.get("prompt")
-            if isinstance(prompt, str) and prompt.strip():
-                preview = prompt.strip()
-                if len(preview) > 300:
-                    preview = preview[:300] + "..."
-                out += f"_Prompt:_ {preview}\n\n"
+        has_payload = bool(
+            hook_system_message
+            or hook_context_injection
+            or skills_matched
+            or files_loaded
+            or noteworthy_verdict
+            or is_blocking
+            or is_error
+            or prevented
+            or prompt_text
+            or notification_text
+            or last_assistant_tail
+            or content
+        )
+        if not has_payload:
+            return ""
 
-        # Notification: show the notification text (e.g. idle prompt).
-        if event_name == "Notification" and isinstance(hook_raw_input, dict):
-            note = hook_raw_input.get("message")
-            if isinstance(note, str) and note.strip():
-                out += f"_Notification:_ {note.strip()}\n\n"
-
+        # One-line metadata header.
+        bits: list[str] = [f"🪝 {event_name}"]
+        if tool_name:
+            bits.append(f"`{tool_name}`")
+        elif agent_id:
+            bits.append(f"agent-{agent_id}")
+        if is_blocking:
+            bits.append(f"🛑 `{hook_verdict}`")
+        elif noteworthy_verdict:
+            bits.append(f"verdict `{noteworthy_verdict}`")
+        elif is_error:
+            bits.append(f"exit {exit_code}")
+        if prevented:
+            bits.append("🛑 prevented-continuation")
         if duration_ms:
-            out += f"_Hook ran in {duration_ms}ms._\n\n"
-
+            bits.append(f"{duration_ms}ms")
         if skills_matched:
-            out += "Skills matched: " + ", ".join(f"`{s}`" for s in skills_matched) + "\n\n"
+            bits.append("skills: " + ", ".join(f"`{s}`" for s in skills_matched))
         if files_loaded:
-            files_str = ", ".join(f"`{fp.split('/')[-1]}`" for fp in files_loaded)
-            out += f"Loaded {files_str} (content injected)\n\n"
+            bits.append("loaded: " + ", ".join(f"`{fp.split('/')[-1]}`" for fp in files_loaded))
+        if hook_context_injection:
+            bits.append(f"+ctx {len(hook_context_injection):,}c")
+        out = "> " + " — ".join(bits) + "\n"
+
+        def _add_block(label: str, body: str, limit: int) -> str:
+            body = body.strip()
+            if not body:
+                return ""
+            shown = body if full_mode or len(body) <= limit else body[:limit] + "..."
+            quoted = _quote_block(_adjust_heading_levels(shown.strip(), 4))
+            prefix = f"> _{label}:_\n" if label else ""
+            return f">\n{prefix}{quoted}\n"
+
         if tool_input and tool_name:
             tool_summary = _summarize_tool_input(tool_name, tool_input)
             if tool_summary:
-                out += f"**{tool_name}**: `{tool_summary}`\n\n"
+                out += f"> **{tool_name}**: `{tool_summary}`\n"
+        if prompt_text and full_mode:
+            out += _add_block("prompt", prompt_text, 300)
+        if notification_text:
+            out += _add_block("notification", notification_text, 300)
+        if hook_system_message:
+            out += _add_block("", hook_system_message.strip(), 600)
+        if last_assistant_tail:
+            tail = last_assistant_tail
+            if len(tail) > 240:
+                tail = "…" + tail[-240:]
+            out += _add_block("triggered after", tail, len(tail))
         if content:
-            shown = content if full_mode or len(content) <= 300 else content[:300] + "..."
-            out += f"```\n{shown}\n```\n\n"
+            out += _add_block("", content, 300)
         if hook_context_injection:
             inj = hook_context_injection
-            preview = inj if full_mode and len(inj) <= 1200 else inj[:300] + "..."
-            out += f"_Injected context ({len(inj):,} chars):_\n\n```\n{preview}\n```\n\n"
+            limit = 1200 if full_mode else 300
+            out += _add_block(f"injected context ({len(inj):,} chars)", inj, limit)
 
-        return out
+        return out + "\n"
 
     @staticmethod
     def _keep_hook(h: dict) -> bool:

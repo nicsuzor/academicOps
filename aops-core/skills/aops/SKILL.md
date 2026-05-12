@@ -404,7 +404,7 @@ IF git operations fail:
 ### Phase 4: Post-Work (MANDATORY)
 
 ```
-1. RUN QA VERIFICATION — /qa or Skill(skill="qa")
+1. RUN QA VERIFICATION — /verify or Skill(skill="verify")
 2. RUN TESTS — uv run pytest tests/ -v --tb=short
 3. FORMAT AND COMMIT — ./scripts/format.sh, git add, git commit
 4. PUSH — git pull --rebase, git push, git status

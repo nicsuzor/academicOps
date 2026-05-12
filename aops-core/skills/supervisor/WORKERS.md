@@ -14,11 +14,11 @@ selection rules — without editing the skill instructions themselves.
 
 Three worker types are wired into the supervisor today:
 
-| Worker   | Engine             | Dispatch                               | Sandbox        | Async? |
-| -------- | ------------------ | -------------------------------------- | -------------- | ------ |
-| `claude` | Claude (Anthropic) | `polecat run -t <id> -p <project>`     | local worktree | No     |
-| `gemini` | Gemini (Google)    | `polecat run -t <id> -p <project> -g`  | local worktree | No     |
-| `jules`  | Jules (Google)     | `aops task <id> \| jules new --repo …` | Google infra   | Yes    |
+| Worker   | Engine             | Dispatch                              | Sandbox        | Async? |
+| -------- | ------------------ | ------------------------------------- | -------------- | ------ |
+| `claude` | Claude (Anthropic) | `polecat run -t <id> -p <project>`    | local worktree | No     |
+| `gemini` | Gemini (Google)    | `polecat run -t <id> -p <project> -g` | local worktree | No     |
+| `jules`  | Jules (Google)     | `pkb task <id> \| jules new --repo …` | Google infra   | Yes    |
 
 `claude` and `gemini` are the two polecat flavours: same dispatcher, same
 worktree pattern, different underlying CLI. `jules` is a different beast —

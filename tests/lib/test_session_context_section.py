@@ -136,8 +136,9 @@ def _extract_section(md: str, heading: str = "## Session Context") -> str:
 
     The Session Context section ends at:
       - the next top-level ``## `` heading, OR
-      - the first per-turn ``### Hook:`` header (new compact rendering), OR
-      - the first legacy ``- Hook(`` bullet (old rendering, kept for safety).
+      - the first per-turn ``> 🪝`` header (unified compact rendering), OR
+      - the first legacy ``### Hook:`` header (old rendering, kept for safety), OR
+      - the first legacy ``- Hook(`` bullet (older rendering, kept for safety).
     """
     if heading not in md:
         return ""
@@ -147,9 +148,12 @@ def _extract_section(md: str, heading: str = "## Session Context") -> str:
     next_h2 = rest.find("\n## ")
     if next_h2 != -1:
         candidates.append(next_h2)
-    per_turn_hook = rest.find("\n### Hook:")
+    per_turn_hook = rest.find("\n> 🪝")
     if per_turn_hook != -1:
         candidates.append(per_turn_hook)
+    legacy_hook_h3 = rest.find("\n### Hook:")
+    if legacy_hook_h3 != -1:
+        candidates.append(legacy_hook_h3)
     legacy_hook = rest.find("\n- Hook(")
     if legacy_hook != -1:
         candidates.append(legacy_hook)
