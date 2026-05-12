@@ -92,17 +92,21 @@ cat dist/aops-claude/hooks/hooks.json | jq '.hooks | keys'
 # 3. Install locally and confirm hooks fire
 claude plugin install ./dist/aops-claude
 # then in a new Claude session, check:
-ls ~/.claude/projects/$(pwd | sed 's|/|-|g')/*-session-hooks.jsonl
+ls ~/.claude/projects/$(pwd | sed 's|^/||; s|/|-|g')/*-session-hooks.jsonl
 ```
 
-If step 3 produces no file, the manifest is missing the `hooks` declaration or the hooks router is failing — invoke `bash ~/.claude/plugins/cache/aops/aops-core/<version>/hooks/router.sh --client claude <<<'{"hook_event_name":"SessionStart","session_id":"diag","transcript_path":"/tmp/x","cwd":"'$PWD'"}'` to test the router in isolation.
+If step 3 produces no file, the manifest is missing the `hooks` declaration or the hooks router is failing — invoke the router directly to test in isolation. For a local install (`claude plugin install ./dist/aops-claude`), the router is at `~/.claude/plugins/installed/aops-core/hooks/router.sh`; for a marketplace install it is at `~/.claude/plugins/cache/aops/aops-core/<version>/hooks/router.sh`. Run:
+
+```bash
+bash <router-path> --client claude <<<'{"hook_event_name":"SessionStart","session_id":"diag","transcript_path":"/tmp/x","cwd":"'"$PWD"'"}'
+```
 
 ## Common breakage modes
 
 - **Hook payload present but not loading.** Manifest missing the explicit `"hooks"` declaration. Fix in `templates/aops-core.plugin.json`, never in `dist/`.
 - **Plugin shows installed but version drifted.** `~/.claude/plugins/installed_plugins.json` pins an older version than `marketplace.json` advertises. Run `claude plugin update aops-core@aops` (note: the marketplace nickname is `aops`, the plugin name is `aops-core`).
 - **"Unrecognized keys" validation error on install.** `source` and `category` leaked into `dist/aops-claude/.claude-plugin/plugin.json`. `build.py` already strips these — if it recurs, check the template doesn't have them either.
-- **Gemini extension fails to load.** Usually `_generate_gemini_hooks_json()` rejecting the source hooks.json. Run the build with `-v` and look for "Could not read hooks.json" or "hooks.json has no 'hooks' key".
+- **Gemini extension fails to load.** Usually `_generate_gemini_hooks_json()` rejecting the source hooks.json. Run the build and look for "Could not read hooks.json" or "hooks.json has no 'hooks' key" in stdout/stderr (build.py prints these warnings by default; there is no `-v` flag).
 
 ## Do not modify
 
