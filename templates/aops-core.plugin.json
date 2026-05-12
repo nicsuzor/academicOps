@@ -12,6 +12,7 @@
     "framework",
     "workflow"
   ],
+  "hooks": "./hooks/hooks.json",
   "mcpServers": "./.mcp.json",
   "autoMode": {
     "environment": [],
