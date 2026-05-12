@@ -386,7 +386,7 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         "extractor",
         "transcript",
         "python-dev",
-        "convert-to-md",
+        "extract",
         "learning-log",
         "link",
         "writing",
