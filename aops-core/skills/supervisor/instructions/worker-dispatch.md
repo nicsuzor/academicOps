@@ -175,7 +175,7 @@ A failure on a single transport is **not** infeasibility — try the others firs
 
 ### Protocol
 
-1. **Equip or Halt.** If the failure is a missing tool or permission gap on a transport that _could_ work, **do not halt.** Pauli returns `{action: "file_fix_task"}` to equip the host (e.g., "install tmux on nicwin", "fix PKB_MCP_URL on target"), followed by a re-dispatch instruction.
+1. **Equip or Halt.** If the failure is a missing tool or permission gap on a transport that _could_ work, **do not halt.** Pauli returns `{action: "file_fix_task"}` to equip the host (e.g., "install tmux on nicwin", "fix PKB_MCP_URL on target"). The re-dispatch is a **separate action in the next supervisor tick** after the fix-task is resolved — pauli does not issue both actions in a single verdict.
 2. **Halt on Infeasibility.** If the worker type, project, or repo is fundamentally unreachable or unsupported, **Halt.** Pauli returns `{action: "halt"}`. Do not substitute. Do not "adapt" to a different worker type.
 3. **Produce a dispatch infeasibility report** in the epic body under `## Dispatch Infeasibility Report` — Requested (worker, project, repo), Missing / Failed Discovery (each transport tried), Substitutes Available (cost / trust / audit deltas — DO NOT auto-pick).
 4. **Interactive session**: surface the report; wait for explicit affirmative before dispatching anything. A bare "ok" is sufficient; silence is not. Record the user's choice before dispatch.

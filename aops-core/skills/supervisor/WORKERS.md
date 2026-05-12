@@ -29,7 +29,7 @@ requires human approval on the Jules web UI before a PR appears.
 
 ## Polecat Capability
 
-Polecats are not limited to mechanical or bulk work. They are **full-judgment** agents (powered by Claude 3.5 Opus or Gemini 1.5 Pro) with exactly the same tool surface as the supervisor's `pauli` specialist.
+Polecats are not limited to mechanical or bulk work. They are **full-judgment** agents (powered by `claude-sonnet-4-6` by default, per `polecat/defaults/polecat.yaml`, or the Gemini CLI) with the full claude-worker tool surface: Bash, Edit, Write, Read, Skill, and PKB tools (see `.agents/AGENT-TOOLS.md`).
 
 **What they can do**:
 

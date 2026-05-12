@@ -77,7 +77,7 @@ Use for every decision the supervisor would otherwise inline: "what should I dis
 {action: "halt", status: "blocked"|"review", reason}
 ```
 
-The main agent does not interpret pauli's reasoning — it executes the action. For `dispatch_with_brief` and `dispatch_investigative`, it appends the brief or research goal to the `polecat run` command (or passes it via an environment variable if the worker supports it). If the verdict is shaped wrong, append "pauli verdict malformed" to Pattern Memory and exit; do not improvise.
+The main agent does not interpret pauli's reasoning — it executes the action. For `dispatch_with_brief` and `dispatch_investigative`, the main agent appends the `brief` or `research_goal` to the task body under a `## Dispatch Brief` section (via `pkb update_task`) before running `polecat run -t <task-id> -p <project>` — there is no `--brief` CLI flag; the worker receives context through the task body. If the verdict is shaped wrong, append "pauli verdict malformed" to Pattern Memory and exit; do not improvise.
 
 ### marsha — verify
 

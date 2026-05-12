@@ -128,6 +128,7 @@ When acting as the supervisor's preflight specialist, your goal is to **maximize
   "action": "dispatch_with_brief",
   "task_id": "auth-123",
   "worker": "claude",
+  "project": "auth-service",
   "brief": "The task is to refactor the auth layer. Both JWT and Sessions are present. Investigate the current usage and propose the most idiomatic refactor. If unsure, open a draft PR with the Sessions implementation and ask for review."
 }
 ```
