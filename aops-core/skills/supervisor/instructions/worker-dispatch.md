@@ -197,10 +197,10 @@ polecat run -p <project>
 polecat run -g -p <project>
 
 # Jules (asynchronous, runs on Google infrastructure)
-aops task <task-id> | jules new --repo <owner>/<repo>
+pkb task <task-id> | jules new --repo <owner>/<repo>
 ```
 
-**Jules notes**: pipe task context from `aops task` into `jules new` — gives Jules the full task body, relationships, and AC. Sessions are async; check via `jules remote list --session`. One session per task. "Completed" sessions still require human approval on the Jules web UI before PRs appear.
+**Jules notes**: pipe task context from `pkb task` into `jules new` — gives Jules the full task body, relationships, and AC. Sessions are async; check via `jules remote list --session`. One session per task. "Completed" sessions still require human approval on the Jules web UI before PRs appear.
 
 ### Coordinated Branch Dispatch
 
