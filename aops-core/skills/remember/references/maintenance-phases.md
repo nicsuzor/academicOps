@@ -23,7 +23,7 @@ When dispatching, ALWAYS pass the explicit `tools` argument so the sub-agent inh
 ```
 Agent(
   subagent_type='aops-core:pauli',
-  prompt='Execute Phase 2 (Transcript Mining) per aops-core/skills/remember/procedures/maintenance-phases.md. Process up to 15 unmined transcripts under $AOPS_SESSIONS. Report HALT explicitly if any required tool is missing.',
+  prompt='Execute Phase 2 (Transcript Mining) per aops-core/skills/remember/references/maintenance-phases.md. Process up to 15 unmined transcripts under $AOPS_SESSIONS. Report HALT explicitly if any required tool is missing.',
   tools=[
     # PKB MCP — read
     'mcp__plugin_aops-core_pkb__search',
