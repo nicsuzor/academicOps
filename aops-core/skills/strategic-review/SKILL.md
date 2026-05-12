@@ -2,7 +2,7 @@
 name: strategic-review
 type: skill
 category: instruction
-description: Multi-agent strategic review of documents, plans, and proposals. Commissions review agents and iterates until the review meets quality standards. Use mode=critic for a fast pauli-only pre-hoc critique.
+description: Multi-agent strategic review of documents, plans, and proposals. Commissions review agents and iterates until the review meets quality standards. Use --critic for a fast pauli-only pre-hoc critique.
 triggers:
   - "strategic review"
   - "pre-hoc plan evaluation"
