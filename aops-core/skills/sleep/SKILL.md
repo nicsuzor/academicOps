@@ -38,7 +38,7 @@ aops-core/skills/remember/references/maintenance-phases.md
 aops-core/skills/remember/procedures/consolidate.md
 ```
 
-Update your installed workflow to reference `remember/SKILL.md` and `remember/procedures/maintenance-phases.md` instead of this file. The template at `templates/github-workflows/sleep-cycle.yml` in the academicOps repo has already been updated.
+Update your installed workflow to reference `remember/SKILL.md` and `remember/references/maintenance-phases.md` instead of this file. The template at `templates/github-workflows/sleep-cycle.yml` in the academicOps repo has already been updated.
 
 ## Behaviour (unchanged)
 
