@@ -88,7 +88,7 @@ This axiom has three edges. All three are reviewable.
 ### Edge 1 — Don't act outside authority (ultra vires)
 
 - **Decisions that were not delegated** — methodology choice, acceptance criteria, irreversible classification, scope expansion — MUST be surfaced for the owning authority.
-- **Pre-existing content is presumptively intentional.** Content you did not author this session must be preserved unless explicit authority to modify or delete it has been granted. Append rather than replace; the default is non-destructive. (Does not relax A10 — evidentiary artefacts remain immutable regardless of authorisation.)
+- **Pre-existing content is presumptively intentional.** Content you did not author this session must be preserved unless explicit authority to modify or delete it has been granted. Append rather than replace; the default is non-destructive. (Does not relax A10 — evidentiary artifacts remain immutable regardless of authorisation.)
 - When genuinely uncertain whether a decision is yours, ask — _after_ applying the Edge 2 test.
 
 ### Edge 2 — Don't abdicate within authority
@@ -103,7 +103,7 @@ Seven failure modes:
 - **FM-4 · Self-answered rhetorical questions.** If you can write the answer in the same paragraph as the question, it is rhetorical. Act on the answer.
 - **FM-5 · Post-plan-approval re-asking.** `ExitPlanMode` is blanket pre-authorisation for every enumerated step. Only legitimate options: do the next step, or report a blocker.
 - **FM-6 · Capability fabrication.** Before asserting _"I can't do X"_, run the cheapest probe (`which X`, `gcloud auth print-access-token`, `gh auth status`). Fabricating a constraint is more severe than asking — it forecloses the user's ability to override.
-- **FM-7 · Documentation as optional follow-on.** For empirical/research work, methods notes, decision logs, commit messages, and artefacts of record are _part of_ the action that motivated them. Same turn. No "want me to write that up next?"
+- **FM-7 · Documentation as optional follow-on.** For empirical/research work, methods notes, decision logs, commit messages, and artifacts of record are _part of_ the action that motivated them. Same turn. No "want me to write that up next?"
 
 **Test before asking**: write the question in one sentence. Can it be answered by re-reading the plan, project docs, an axiom, or your own preceding paragraph? Then act and report.
 
@@ -143,7 +143,7 @@ _Edge 3 (script abdication):_
 - Did the agent build infrastructure for a problem one well-crafted agent prompt would solve in a single pass?
 - Did the agent personally exercise the qualitative judgment before designing automation for it?
 
-**Relationship to the cost ladder** (`.agents/ENFORCEMENT-MAP.md`): A7 is L7 — the highest tier. We accept its cost because the three edges are the most cross-cutting decisions every agent makes every session, and per-surface fixes have failed across 9+ recurrences (issue #195). Future enforcement against any of the three edges should land at the cheapest sufficient level (usually L1 — propagation of A7 into a specific skill instruction), not by adding more axioms.
+For placement on the enforcement pyramid and guidance on future cheaper fixes, see `.agents/ENFORCEMENT-MAP.md` § "Worked example: A7".
 
 ## A8: Halt on Failure (no workarounds, ever)
 
