@@ -156,6 +156,12 @@ The supervisor never silently substitutes a different **worker type**, **deliver
 
 In autonomous (loop) sessions, legitimate halts set the epic to `blocked` or `review`; the next interactive supervisor invocation picks it up.
 
+### Dispatch Is Supervisor Judgment — Not A Wrapper Or A Swarm
+
+Dispatch policy — _when_ to fire the next worker, _whether_ to pair two in flight, when to back off, when to halt — is **supervisor judgment**. It does not belong in a CLI flag, a shell wrapper (`~/bin/polecat-*.sh`), or a batched "swarm" abstraction. The dispatch CLI is documented at [[instructions/worker-dispatch#dispatch-protocol]] — exit code, `gh pr list`, and PKB status are the whole telemetry surface at the sequential N=2–4 regime [Reporting Posture](#reporting-posture) actually supports.
+
+**When a correction lands** ("stop building wrappers"), the lesson is **not** "encode the same policy into a different tool." The lesson is: this judgment lives in the supervisor loop. Do it in supervisor judgment, in bash, one call at a time, with PKB writes between. If pacing-the-pipe ever genuinely needs more, that is a SKILL.md change to discuss with the user — not a polecat feature request and not a wrapper.
+
 ### Engineering Integrity (A8) Is Non-Negotiable
 
 Failing tests, broken tools, and incompatible environments are bugs the supervisor's plan must fix — never categories the supervisor's plan triages around. The verbatim list of prohibited prose patterns (drift candidate, skip-on-env, "fix vs skip", etc.) is canonical at [[instructions/decomposition-and-review#a8-prose-scan-mandatory-before-posting-any-decomposition]] and is enforced by pauli during preflight and decomposition. Casual user phrasing such as "we may need to adjust some tests" does NOT authorise A8 exemption — A8 is universal (per A7) and only an explicit user directive to skip a specific test counts.
