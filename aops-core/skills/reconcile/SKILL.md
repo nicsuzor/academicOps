@@ -1,8 +1,13 @@
 ---
-skill: reconcile
+name: reconcile
+type: skill
+category: instruction
 description: On-demand GH ↔ PKB reconciliation — full sweep of closure-loop gaps, triage of needs_user_call items.
-trigger: user_invoked
-entrypoint: scripts/reconcile.py --full
+triggers:
+  - "/reconcile"
+  - "reconcile github"
+  - "reconcile pkb"
+  - "close the loop"
 ---
 
 # Reconcile Skill
