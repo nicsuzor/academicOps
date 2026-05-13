@@ -161,51 +161,16 @@ Polecats are **smart agents, not mechanical drones**. The supervisor's job is th
 - Read every task body and design the implementation before firing.
 - Plan how the polecat should approach the work, what files to edit, or what tests to add.
 - Wait for one polecat to finish before firing the next.
-- Halt to ask the user for direction on something the supervisor can resolve itself (pick a sensible default, decompose an epic, fire a wave instead of one task).
 
-Bias hard toward dispatching — but **start small and ramp**. A queue of N user-approved tasks gets fired with strict concurrency limits, NOT all at once. Friction is captured as it surfaces (task created under the supervisor meta-epic) — not as a reason to slow down.
-
-**Concurrency limits — adaptive backoff (HARD CAP, default DOWN):**
-
-The supervisor uses **discretion to ramp up and down** based on observed signals. The user is not in a rush — under-shooting is always preferable to over-shooting.
-
-| Wave | Default cap | Wave size | Inter-wave wait | Promote / demote rule                                            |
-| ---- | ----------- | --------- | --------------- | ---------------------------------------------------------------- |
-| 1    | **2**       | 2–3 tasks | —               | Wait for at least 1 `DONE` before wave 2                         |
-| 2    | 2 → 3       | 3–4 tasks | 5–10 min        | If wave 1 = clean (0 QUOTA, 0 FAIL): promote to 3. Else: hold 2. |
-| 3+   | up to 4     | 4–5 tasks | 5–10 min        | If clean run continues: promote +1. Cap at 4. Never above.       |
-
-**Demotion (back-off) triggers** — any of these on the most recent wave:
-
-- **≥1 `QUOTA` event** → demote concurrency by 1 (min 1), wait 15–30 min before next wave (quota windows usually clear within 30 min).
-- **≥1 `FAIL` event with infra cause** (docker OOM, worktree lock saturation, PKB MCP unreachable) → demote by 1 and investigate before next dispatch.
-- **2+ FAIL events of any class** → halt the swarm, summarise, report to user.
-- **Same task FAILs twice in a row** → leave that task alone; file an investigation subtask under the supervisor meta-epic.
-
-**Promotion (ramp-up) triggers**:
-
-- 2 consecutive waves with 0 QUOTA / 0 FAIL and at least 1 DONE per wave → promote by 1.
-- Never promote past 4 without an explicit user line authorising higher fanout.
-
-**Inter-wave pacing**:
-
-- Default 5 min between waves once the first wave is in flight.
-- After any QUOTA event: 15 min minimum cool-down.
-- After back-to-back QUOTA: 30 min, and consider switching workers (halt-on-substitute applies — confirm with user before flipping gemini↔claude).
-
-Why: shared upstream APIs (Gemini, Anthropic), worktree-creation locks, docker resource limits, and review-pipeline capacity all degrade non-linearly. At 20+ concurrent polecats against a single Gemini account, quota exhaustion is near-certain. At 38 it's guaranteed. "Keep the pipe flowing" means _steady throughput_, not _parallel fanout_. Two polecats finishing every 10 minutes is faster than 30 polecats failing.
-
-The supervisor reads `polecat list` / `gh pr list` / PKB status between waves and applies this table — this IS supervisor discretion. The cap is not a fixed number; it's a state the supervisor maintains and adjusts by sizing the next `polecat swarm` invocation (`-c <claude-N>` / `-g <gemini-N>` flags).
-
-If `polecat swarm` lacks the signals needed for adaptive ramp (e.g. a structured exit summary, run-id-namespaced logs, quota-aware backoff), file the gap as a **polecat feature**, not as a supervisor shell-script. The dispatcher owns concurrency mechanics; the supervisor owns the policy.
+Bias hard toward dispatching. A queue of approved tasks gets fired one-per-tick in rapid succession, maintaining a small concurrency window. **Concurrency is the supervisor's discretion** — ramp up or down based on observed signals (quota events, infra failures, review-pipeline pressure). The user is not in a rush; under-shooting beats over-shooting.
 
 **"Bigger chunks of work" ≠ "more polecats simultaneously".** It means give each polecat a substantive task (an epic, a multi-step refactor, a design+implementation) instead of micro-decomposing it for them. Trust polecat _depth_, throttle polecat _width_.
 
-**Big tasks are still polecat-able.** Epics with `scope > 10`, design tasks, decomposition-heavy work — fire them at a polecat first. Polecats can plan and decompose. The supervisor only owns decomposition when (a) the user asked for it explicitly, or (b) a polecat already tried and returned with a structured "this needs decomposition" verdict.
+**Discourage substantive supervisor work — including planning.** Epics with `scope > 10`, design tasks, decomposition-heavy work — fire them at a polecat. Polecats can plan and decompose; supervisor only owns decomposition when the user asks explicitly or a polecat returns a structured "needs decomposition" verdict. (See [[instructions/decomposition-and-review]] for the canonical phase split.)
 
-**Batched interruptions, not per-task.** When the supervisor genuinely cannot proceed (irrecoverable infeasibility, user-only decisions on multiple items), collect them into ONE batched message at the end of the wave — not one ping per blocker. "Don't get the user out of bed for something you can handle yourself."
+**Batched interruptions, not per-task.** When the supervisor genuinely cannot proceed on multiple items, collect them into ONE message (generic summary in the [ATTN] block, details in the epic body) — not one ping per blocker.
 
-The right mental model: the supervisor is a **conveyor belt operator**, not a project manager. Keep parts moving onto the belt. Track outcomes via Monitor. Iterate.
+The right mental model: the supervisor is a **conveyor belt operator**, not a project manager. Keep parts moving onto the belt. Track outcomes. Iterate.
 
 In autonomous (loop) sessions, legitimate halts set the epic to `blocked` or `review`; the next interactive supervisor invocation picks it up.
 

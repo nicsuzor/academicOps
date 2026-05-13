@@ -213,30 +213,6 @@ pkb task <task-id> | jules new --repo <owner>/<repo>
 
 **Jules notes**: pipe task context from `pkb task` into `jules new` — gives Jules the full task body, relationships, and AC. Sessions are async; check via `jules remote list --session`. One session per task. "Completed" sessions still require human approval on the Jules web UI before PRs appear.
 
-### Swarm Dispatch (preferred for multi-task queues) — use `polecat swarm`
-
-When the supervisor has N user-approved tasks to fire, **do not** loop `polecat run -t <id>` once per task via separate background SSH calls. Each ssh+nohup emits its own "background command completed" notification, gives the supervisor no enforced concurrency control, and scatters logs across `/tmp/polecat-*.log` with no per-run namespacing.
-
-Use `polecat swarm` — it already does what supervisor-side shell scripts would otherwise reinvent (CPU-affinity management, restart on success, stop on failure):
-
-```bash
-# 2 concurrent gemini workers, claiming next-ready tasks from the aops project queue
-ssh wsl 'cd ~/src/academicOps && PYTHONPATH=..:. python polecat/cli.py swarm -g 2 -p aops --caller supervisor'
-```
-
-Flags (see `polecat swarm --help`):
-
-- `-c <N>` / `-g <M>`: number of Claude / Gemini workers (cap at 2; ramp to 4 max per [SKILL.md](../SKILL.md#keep-the-pipe-flowing--dont-micromanage-polecats))
-- `-p <project>`: project to focus on (workers claim next-ready from that project's queue)
-- `--caller <identity>`: who's claiming the tasks (audit)
-- `--dry-run`: simulate
-
-**Curating which tasks the swarm claims.** `polecat swarm` pulls from the project's ready queue — workers grab whatever's next, by design. To restrict which tasks run in this wave, **set the rest to `status != ready` first** (`queued` is fine — only `ready` is in the claim pool). This is a PKB hygiene move, not a shell-script move.
-
-A previously-filed feature request to add `polecat swarm -t task1,task2,...` (a curated-batch flag) lives at `aops-2e13ecb4` and is intentionally **not approved** for build — the gate is "what's `ready` in PKB", not "what the supervisor passes on the CLI."
-
-**Don't wrap polecat.** If `polecat swarm` lacks something the supervisor needs (e.g. adaptive ramp-up, namespaced run logs, quota-aware backoff), file the feature **against polecat itself**, not as a shell-script in `~/bin/`. The dispatcher owns dispatching; the supervisor calls it.
-
 ### Coordinated Branch Dispatch
 
 For tightly coupled subtasks (3+ tasks modifying overlapping files or contributing to a single logical feature), pauli may coordinate multiple polecats onto a shared feature branch instead of individual `polecat/<task-id>` branches.
