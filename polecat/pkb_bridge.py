@@ -365,11 +365,8 @@ def create_task(
                     f"ID prefix '{prefix}-' does not match type '{task_type}' (expected '{expected_type}')"
                 )
         # 2. If it's not a known type prefix, it should likely be a project prefix.
-        # If project is provided, it MUST match the prefix.
-        elif project and prefix != project:
-            # Some projects might have sub-prefixes or aliases, but usually it matches
-            # the slug. We allow common project prefixes like 'aops', 'mem', etc.
-            # Downstream consumers infer project from prefix, so this is critical.
+        # If project is provided, the ID must start with "{project}-" (handles hyphenated slugs).
+        elif project and not (task_id == project or task_id.startswith(f"{project}-")):
             raise ValueError(
                 f"ID prefix '{prefix}-' does not match project '{project}'. "
                 f"Downstream consumers infer project from ID prefix; use '{project}-' or a type prefix."

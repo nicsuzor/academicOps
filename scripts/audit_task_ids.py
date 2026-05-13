@@ -34,7 +34,7 @@ def get_graph():
 
 def audit_tasks():
     graph_data = get_graph()
-    if not graph_data:
+    if not graph_data or not isinstance(graph_data, dict):
         print("No graph data returned.")
         return
 
@@ -53,6 +53,7 @@ def audit_tasks():
     }
 
     for node in nodes:
+        node = node or {}
         node_id = node.get("id")
         node_type = node.get("node_type") or node.get("type")
         path = node.get("path")
