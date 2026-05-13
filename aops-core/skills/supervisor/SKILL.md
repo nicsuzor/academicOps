@@ -163,7 +163,17 @@ Polecats are **smart agents, not mechanical drones**. The supervisor's job is th
 - Wait for one polecat to finish before firing the next.
 - Halt to ask the user for direction on something the supervisor can resolve itself (set a missing `project:` from `target_ancestors`, pick a sensible default, decompose an epic, fire a wave instead of one task).
 
-Bias hard toward dispatching. A queue of N user-approved tasks gets fired in waves of 4–8, in parallel, with minimal pre-flight. Friction is captured as it surfaces (task created under the supervisor meta-epic) — not as a reason to slow down.
+Bias hard toward dispatching — but **start small and ramp**. A queue of N user-approved tasks gets fired with strict concurrency limits, NOT all at once. Friction is captured as it surfaces (task created under the supervisor meta-epic) — not as a reason to slow down.
+
+**Concurrency limits (HARD CAP):**
+
+- **Start with 2 concurrent polecats.** Always. No matter how big the queue.
+- **Ramp to a maximum of ~4 concurrent** only after the first 2 are visibly healthy (one merge_ready landed, no API quota errors, no infrastructure thrashing).
+- **Never exceed ~4 concurrent** unless the user has explicitly authorised higher fanout for this session.
+
+Why: shared upstream APIs (Gemini, Anthropic), worktree-creation locks, docker resource limits, and review-pipeline capacity all degrade non-linearly. At 20+ concurrent polecats against a single Gemini account, quota exhaustion is near-certain. At 38 it's guaranteed. "Keep the pipe flowing" means _steady throughput_, not _parallel fanout_. Two polecats finishing every 10 minutes is faster than 30 polecats failing.
+
+**"Bigger chunks of work" ≠ "more polecats simultaneously".** It means give each polecat a substantive task (an epic, a multi-step refactor, a design+implementation) instead of micro-decomposing it for them. Trust polecat _depth_, throttle polecat _width_.
 
 **Big tasks are still polecat-able.** Epics with `scope > 10`, design tasks, decomposition-heavy work — fire them at a polecat first. Polecats can plan and decompose. The supervisor only owns decomposition when (a) the user asked for it explicitly, or (b) a polecat already tried and returned with a structured "this needs decomposition" verdict.
 
