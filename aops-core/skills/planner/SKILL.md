@@ -31,6 +31,11 @@ triggers:
   - "explore complexity"
   - "think through"
   - "let me think"
+  # wire mode
+  - "wire edges"
+  - "link to target"
+  - "contributes_to"
+  - "Renooij-Witteman"
   # maintain mode (from /garden + /densify)
   - "prune knowledge"
   - "consolidate notes"
