@@ -67,26 +67,26 @@ Skills are Claude Code / Gemini CLI extensions that know how to do specific thin
 
 **Core skills** (non-fungible — framework operations):
 
-| Skill                | Purpose                                              |
-| -------------------- | ---------------------------------------------------- |
-| `/plan`              | Effectual planning, decomposition, graph maintenance |
-| `/aops`              | Institutional memory, framework coordination         |
-| `/daily`             | Daily notes, briefing, progress sync                 |
-| `/learn`             | Capture friction and failures, fix instructions      |
-| `/qa`                | Independent verification against acceptance criteria |
-| `/pull` `/q` `/dump` | Task queue lifecycle                                 |
-| `/remember`          | Persist knowledge to PKB                             |
-| `/sleep`             | Periodic consolidation, graph maintenance            |
-| `/email`             | Email triage and task capture                        |
+| Skill                | Purpose                                                             |
+| -------------------- | ------------------------------------------------------------------- |
+| `/plan`              | Effectual planning, decomposition, graph maintenance                |
+| `/aops`              | Institutional memory, framework coordination                        |
+| `/daily`             | Daily notes, briefing, progress sync                                |
+| `/learn`             | File **forensic** incident reports (facts + impact, no speculation) |
+| `/qa`                | Independent verification against acceptance criteria                |
+| `/pull` `/q` `/dump` | Task queue lifecycle                                                |
+| `/remember`          | Persist knowledge to PKB                                            |
+| `/sleep`             | Periodic consolidation, graph maintenance                           |
+| `/email`             | Email triage and task capture                                       |
 
 **Domain skills** (fungible — retire when better external tools exist):
 
-| Skill       | Purpose                                            |
-| ----------- | -------------------------------------------------- |
-| `/analyst`  | Research data analysis (dbt, Streamlit)            |
-| `/pdf`      | PDF generation with academic typography            |
-| `/extract`  | General extraction and ingestion (incl. doc-to-md) |
-| `/diagram`  | Diagrams — Mermaid or Excalidraw (`style` param)   |
+| Skill      | Purpose                                            |
+| ---------- | -------------------------------------------------- |
+| `/analyst` | Research data analysis (dbt, Streamlit)            |
+| `/pdf`     | PDF generation with academic typography            |
+| `/extract` | General extraction and ingestion (incl. doc-to-md) |
+| `/diagram` | Diagrams — Mermaid or Excalidraw (`style` param)   |
 
 ### 3. Session infrastructure (hooks)
 
@@ -119,6 +119,11 @@ PR opened → lint + typecheck + tests → agent review → merge prep → human
 5. **Components earn their keep** — assessed against: used voluntarily? reduces friction? agents understand it? survives neglect?
 6. **Graduated enforcement** — start with instructions, escalate only when evidence shows lower levels failing
 7. **Anti-bloat** — before creating anything new, check if an existing thing already does it. Two okay things are worse than one good thing.
+8. **Recusal — don't legislate from your own case** (AXIOMS § A17) — the agent that just experienced a failure is forensically authoritative but normatively recused from proposing the framework change motivated by it. Framework-change work is split in two:
+   - **Incident phase** (`/learn`, `/retro`): facts, root-cause category, the rule already in place at the time (if any), and an impact statement. **No "suggested axiom", no "add a gate", no remediation.** Recency exposure is bias; the report does not propose its own remedy.
+   - **Review phase** (`/issue-sweep`): a separate, detached context reads incident reports against `.agents/ENFORCEMENT-MAP.md` and the axiom set, and is the only phase allowed to author rule changes — defaulting to the cheapest sufficient level (L0/L1 propagation), escalating only when the cost-benefit threshold (≥3 cited recurrences) is satisfied.
+
+   The evidence base for framework change is _recurrence_, not the salience of the most recent incident. A future incident register (rule ↔ mechanism ↔ incident report) will formalise this; until it lands, the detached reviewer relies on `gh issue list` and row-by-row ENFORCEMENT-MAP review.
 
 ## Memory architecture
 

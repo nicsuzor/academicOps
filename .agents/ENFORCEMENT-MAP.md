@@ -4,6 +4,84 @@ Maps each mechanical enforcement mechanism to the rule(s) it enforces, its
 execution context, its failure tier, and **what it costs to run**. Updated
 whenever a check is added or retired (P#65).
 
+## User story: how the framework gets better
+
+Two flows, separated by design (AXIOMS § A17 — Recusal). The user is the
+client of both, but each flow runs in its own context with its own job.
+
+### Flow 1 — File a bug (incident phase, forensic)
+
+> "Something just went wrong in this session."
+
+Anywhere in or after a Claude / Gemini session, the user runs `/learn`
+(equivalent: `/retro`). The dispatched agent reads the transcript and
+files a GitHub issue containing only:
+
+1. **What happened** — quoted from the transcript.
+2. **Root cause category** — one of the documented categories.
+3. **Rule already in place (if any)** — which axiom, gate, hook, or skill
+   instruction was supposed to catch this, and at what tier.
+4. **Impact** — concrete cost (turns burned, work to undo, trust hit).
+
+That's it. **The /learn agent is forbidden from proposing a fix.** It is
+the witness, not the legislator. The user doesn't have to think about
+"what should the framework do about this" at file time — they just have to
+report what happened. If they hit the same problem three times, that's
+three forensic issues; the recurrence count is the evidence base later.
+
+The user can file an issue by hand instead — same constraints. A bare
+"please add a gate that does X" issue is in scope to be edited down to
+forensic facts before it gets used.
+
+### Flow 2 — Improve the framework (review phase, detached)
+
+> "Let's look at what's piled up and decide what to actually change."
+
+Periodically — when the issue queue feels heavy, or on a cadence the user
+sets — the user runs `/issue-sweep`. The dispatched agent enters with no
+prior exposure to any individual incident. It:
+
+1. Pulls up to 20 open issues and classifies each (close-stale, comment-
+   only, single-task, fix-epic, defer).
+2. For any issue whose remediation would touch the framework (an axiom,
+   gate, hook, skill instruction, or row of this map), runs the
+   cost-ladder review: generalise the category → check existing
+   mechanisms → classify the failure shape (propagation / escalation /
+   rule absent) → default to the cheapest sufficient level → cite the
+   specific row of this map the fix propagates from or would add.
+3. Surfaces the proposed cycle to the user (`AskUserQuestion` gates on
+   each disposition group). The user approves, edits, or defers.
+4. On `y`: files fix-epics or single tasks, stamps labels, logs the
+   cycle. Fix-epics stay `queued` until the user dispatches them via
+   `/supervisor`.
+
+The sweep agent will not propose escalation up the ladder from one
+incident. It needs ≥3 cited recurrences plus the CBA evidence below
+(named cheaper level tried, ongoing cost, reversibility). Single
+incidents get logged and either closed or deferred to wait for pattern.
+
+### Why the split
+
+Recency is bias. The agent that just lived through a failure proposes
+fixes shaped by that failure — usually a new gate or axiom built around
+one incident, which doesn't fit the seamless web of existing rules. By
+separating the witness role from the judicial role, the framework's
+volume and direction of change is governed by cross-incident patterns
+visible from outside, not by the urgency a single failure feels from
+inside. The user gets to be honest in flow 1 (no need to over-frame a
+problem to justify a fix) and disciplined in flow 2 (no rule changes
+without the evidence base).
+
+### What the user does NOT need to do
+
+- Propose remediations at /learn time. Just describe what happened.
+- Worry about whether their issue duplicates an existing one. The sweep
+  agent groups by root cause and bumps volume on duplicates.
+- Choose a tier (L0–L7) for any rule. The sweep agent applies the cost
+  ladder; the user gates the proposal.
+- Maintain this document by hand. Approved fix-epics that add or move a
+  row update this map as part of the change (per P#65).
+
 ## Cost ladder — escalate reluctantly
 
 Every enforcement mechanism is paid for in tokens, latency, or attention,
