@@ -90,6 +90,15 @@ jobs:
           HEAD_SHA=$(echo "$PR_DATA" | jq -r '.headRefOid')
           echo "ref=$HEAD_REF" >> "$GITHUB_OUTPUT"
           echo "sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+          echo "REVIEWED_SHA=$HEAD_SHA" >> "$GITHUB_ENV"
+
+      - name: Set running status
+        run: |
+          gh api "repos/${{ github.repository }}/statuses/$REVIEWED_SHA" \
+            -f state="pending" \
+            -f context="merge-prep-running" \
+            -f description="Merge prep in progress" \
+            -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
 
       - uses: actions/checkout@v4
         with:
@@ -310,15 +319,31 @@ jobs:
           fi
 
           # Set merge-prep-status commit status
-          # Re-fetch HEAD SHA — the agent may have pushed new commits during its run
-          HEAD_SHA=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json headRefOid --jq '.headRefOid')
-          echo "Setting merge-prep-status on HEAD: $HEAD_SHA"
-          gh api "repos/$REPO/statuses/$HEAD_SHA" \
+          # Re-fetch HEAD SHA to check for external drift during the run
+          LATEST_SHA=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json headRefOid --jq '.headRefOid')
+          CURRENT_SHA=$(git rev-parse HEAD)
+
+          if [ "$LATEST_SHA" != "$CURRENT_SHA" ]; then
+            # Drift detected. Check if the latest commit has the merge-prep trailer.
+            LATEST_MSG=$(gh api "repos/$REPO/commits/$LATEST_SHA" --jq '.commit.message')
+            if ! echo "$LATEST_MSG" | grep -q 'Merge-Prep-By:'; then
+              echo "Drift detected: HEAD moved to unreviewed commit $LATEST_SHA"
+              # Set pending on the new HEAD to trigger a re-run
+              gh api "repos/$REPO/statuses/$LATEST_SHA" \
+                -f state="pending" \
+                -f context="merge-prep-status" \
+                -f description="Drift detected during prep — re-invoking" \
+                -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+              exit 0
+            fi
+          fi
+
+          echo "Setting merge-prep-status on $CURRENT_SHA"
+          gh api "repos/$REPO/statuses/$CURRENT_SHA" \
             -f state="success" \
             -f context="merge-prep-status" \
             -f description="Merge prep complete — ready for summary" \
             -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-
           # Enable auto-merge (merges once checks pass + human approves)
           gh pr merge "$PR_NUMBER" --repo "$REPO" --auto --squash --delete-branch \
             || echo "WARNING: Could not enable auto-merge (may already be enabled)"
@@ -394,3 +419,12 @@ jobs:
           EOF
           )"
           fi
+
+      - name: Clear running status
+        if: always()
+        run: |
+          gh api "repos/${{ github.repository }}/statuses/$REVIEWED_SHA" \
+            -f state="success" \
+            -f context="merge-prep-running" \
+            -f description="Merge prep run finished" \
+            -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"

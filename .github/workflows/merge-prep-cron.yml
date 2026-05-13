@@ -142,10 +142,11 @@ jobs:
         run: |
           REPO="${{ github.repository }}"
 
-          # Check if any merge-prep runs are currently active
+          # Check if any merge-prep runs are currently active.
+          # We also count runs created in the last 60s to bridge API consistency lag.
+          MINUTE_AGO_ISO=$(date -u -d "60 seconds ago" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date -u -v-60s +"%Y-%m-%dT%H:%M:%SZ")
           ACTIVE=$(gh run list --workflow="$WORKFLOW_REF" --repo "$REPO" \
-            --json status --jq '[.[] | select(.status == "in_progress" or .status == "queued")] | length')
-
+            --json status,createdAt --jq "[.[] | select((.status == \"in_progress\" or .status == \"queued\") or .createdAt > \"$MINUTE_AGO_ISO\")] | length")
           echo "Active merge-prep runs: $ACTIVE"
           if [ "$ACTIVE" -gt 0 ]; then
             echo "skip_all=true" >> "$GITHUB_OUTPUT"
@@ -195,7 +196,17 @@ jobs:
               continue
             fi
 
+            # Check if a run is currently in progress on this SHA (stake planted by agent)
+            MP_RUNNING=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses" \
+              --jq '[.[] | select(.context == "merge-prep-running")] | sort_by(.created_at) | last | .state' \
+              2>/dev/null || echo "")
+            if [ "$MP_RUNNING" = "pending" ]; then
+              echo "  SKIP: merge-prep already running on this SHA (stake detected)"
+              continue
+            fi
+
             # Check merge-prep-status commit status — skip if success or failure
+
             MP_STATUS=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses" \
               --jq '[.[] | select(.context == "merge-prep-status")] | sort_by(.created_at) | last | .state' \
               2>/dev/null || echo "")
