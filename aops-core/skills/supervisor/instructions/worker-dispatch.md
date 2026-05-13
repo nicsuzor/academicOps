@@ -53,10 +53,13 @@ This gate is the [Halt-on-substitute](../SKILL.md#halt-on-substitute) discipline
 
 | Row | Field                  | Source of truth                                                                                          | Halt-if-unknown rule                                                               |
 | --- | ---------------------- | -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| 0   | **Existing PR**        | Task's `pr_url:` frontmatter (if set) checked via `gh pr view <url> --json state -q .state`              | Halt with `existing PR pending` if state is not `MERGED` or `CLOSED`               |
 | 1   | **Task ID**            | The epic / subtask being dispatched                                                                      | Halt if no task ID resolved                                                        |
 | 2   | **Source repo**        | Inferred from file paths the task names (AC, body, gate-1 named file/symbol) — NOT from `project=` alone | Halt if no file path is named, or named file does not resolve to exactly one repo  |
 | 3   | **project= field**     | Task's `project:` frontmatter (auto-resolved from `target_ancestors` if missing — see row 3 mechanic)    | Halt if disagrees with row 2 (Polecat #3 class), OR missing AND auto-resolve fails |
 | 4   | **Next link in chain** | Task this dispatch unblocks (parent's next ready child OR next subtask of same epic)                     | Halt if no next link AND epic has more than one ready descendant (orientation rot) |
+
+**Row 0 mechanic** — if the task's frontmatter has a `pr_url:` field, pauli MUST query the PR state before dispatch: `gh pr view <pr_url> --json state -q .state`. Open states (`OPEN`, `DRAFT`) mean the task already has work in flight — dispatching wastes ~30s on sync+clone+bootstrap before polecat refuses with `🔒 Task is locked`. Halt early with `existing PR pending` and surface the PR for human triage (merge it, close it, or clear `pr_url`). Friction source: dogfood 2026-05-13 (F8) — `aops-87842d60`.
 
 **Row 2 mechanic** — pauli reads the task body and AC, extracts named files / symbols, and greps the working tree to confirm each named file resolves to exactly one repo. Bare repo names ("brain", "aops-core", "polecat") are not evidence — only files / symbols that grep can locate count for row 2. If multiple file paths are named and they resolve to different repos, that is a row 2 halt (ambiguous source).
 
