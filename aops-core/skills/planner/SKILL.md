@@ -198,7 +198,7 @@ To promote a node from `inbox` to `ready`, you must produce all of the following
 2. **Project / source-location field, verified**: `project: <name>` on parent and children, matching CORE.md topology. Name at least one file or symbol the work will modify.
 3. **Acceptance criteria — first-class, on the node body**: A `## Acceptance Criteria` H2 block with discrete, falsifiable statements.
 4. **Verification task — separate node, linked**: A child task with `tag: lens: verification` and `depends_on: [<execution-children>]`. Use `verification-template.md`.
-5. **Review-lens annotations — RBG (axioms) + Pauli (alignment)**: Create two child subtasks: `lens: rbg-axiom-check` and `lens: pauli-alignment-check`. Wait for both to reach `done`.
+5. Review-lens annotations — RBG (axioms) + Pauli (alignment): Create two child subtasks: lens: rbg-axiom-check and lens: pauli-alignment-check. Promotion is blocked until both reach status: done.
 
 **Promotion decision recording**: Write a "Promotion log" entry to the parent body capturing lens verdicts addressed/overruled and the rationale for promotion.
 
