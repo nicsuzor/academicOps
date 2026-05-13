@@ -156,27 +156,11 @@ The supervisor never silently substitutes a different **worker type**, **deliver
 
 In autonomous (loop) sessions, legitimate halts set the epic to `blocked` or `review`; the next interactive supervisor invocation picks it up.
 
-### The Dispatch Primitive Is `polecat run` — The Supervisor Is The Smart Layer
+### Dispatch Is Supervisor Judgment — Not A Wrapper Or A Swarm
 
-Dispatch policy — _when_ to fire the next worker, _whether_ to pair two in flight, when to back off, when to halt — is **supervisor judgment**. It does not belong in a CLI flag, a shell wrapper, or a batched "swarm" abstraction. The primitive is one line:
+Dispatch policy — _when_ to fire the next worker, _whether_ to pair two in flight, when to back off, when to halt — is **supervisor judgment**. It does not belong in a CLI flag, a shell wrapper (`~/bin/polecat-*.sh`), or a batched "swarm" abstraction. The dispatch CLI is documented at [[instructions/worker-dispatch#dispatch-protocol]] — exit code, `gh pr list`, and PKB status are the whole telemetry surface at the sequential N=2–4 regime [Reporting Posture](#reporting-posture) actually supports.
 
-```bash
-ssh TARGET_HOST "zsh -i -c 'polecat run -t <task-id> -p <project> [--gemini]'"
-```
-
-(Drop the SSH wrapper when supervisor and polecat host are the same machine. `DOCKER_HOST=ssh://wsl` is **not** a clean alternative — `polecat run` does local FS work for worktrees, `.polecat` state, and PKB socket reachability, so the docker daemon must live on the same host as polecat.)
-
-That contract — one agent, one task, exit code is the verdict, PR in `gh pr list`, PKB status flips — is the whole interface. The supervisor does not need a structured events stream, run-id-namespaced logs, or quota-aware backoff features _in polecat_ to operate. Those needs only emerge if the supervisor tries to fan out 30+ workers and parse stream telemetry; at sequential N=2–4 (the regime [[#halt-on-substitute]] and [Reporting Posture](#reporting-posture) actually support), exit codes plus `gh pr list` plus PKB status are sufficient.
-
-**Forbidden dispatch shapes** (file via `/learn` if any appear in a supervisor transcript):
-
-- Building `~/bin/polecat-*.sh` or any wrapper that "manages" `polecat run` invocations.
-- Using `polecat swarm` as the primary dispatch path. The subcommand exists, but it externalises judgment the supervisor should be making per-dispatch. Reach for it only on explicit user direction for a known-uniform batch.
-- Filing "polecat needs feature X for adaptive supervision" without first asking: do I actually need this at N=2–4 sequential?
-
-**When a correction lands** ("stop building wrappers"), the lesson is **not** "encode the same policy into a different tool." The lesson is: this judgment lives in the supervisor loop. Do it in supervisor judgment, in bash, one call at a time, with PKB writes between.
-
-If pacing-the-pipe ever genuinely needs more than the supervisor + `polecat run` + PKB + `gh pr list`, that is a SKILL.md change to discuss with the user — not a polecat feature request and not a wrapper.
+**When a correction lands** ("stop building wrappers"), the lesson is **not** "encode the same policy into a different tool." The lesson is: this judgment lives in the supervisor loop. Do it in supervisor judgment, in bash, one call at a time, with PKB writes between. If pacing-the-pipe ever genuinely needs more, that is a SKILL.md change to discuss with the user — not a polecat feature request and not a wrapper.
 
 ### Engineering Integrity (A8) Is Non-Negotiable
 
