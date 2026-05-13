@@ -111,7 +111,7 @@ class TestNukeUnpushedGate:
 
         # force=True should NOT bypass the unpushed-commits gate — force is for
         # unmerged-WIP, allow_unpushed is for never-pushed integrity.
-        with pytest.raises(RuntimeError, match="never been pushed|ahead of origin"):
+        with pytest.raises(RuntimeError, match="not been pushed|ahead of origin"):
             manager.nuke_worktree(task_id, force=True)
 
         assert worktree.exists(), "worktree must NOT be destroyed when gate refuses"
@@ -137,5 +137,24 @@ class TestNukeUnpushedGate:
 
         # force=True bypasses the unmerged-commits check; unpushed gate is
         # satisfied because the branch really is pushed.
+        manager.nuke_worktree(task_id, force=True)
+        assert not worktree.exists()
+
+    def test_passes_when_pushed_to_different_branch(
+        self, manager: PolecatManager, local_clone: Path
+    ):
+        """If the commits are pushed to a DIFFERENT branch on origin, the gate should NOT fire."""
+        task_id = "aops-abc12345"
+        worktree = _make_worktree_with_unpushed_commit(manager, task_id, local_clone)
+
+        # Push to a DIFFERENT branch on origin
+        branch = f"polecat/{task_id}"
+        other_branch = "crew/sylvia_7df3"
+        _git(["push", "origin", f"{branch}:refs/heads/{other_branch}"], cwd=worktree)
+
+        # Fetch in local_clone so manager can see it (manager operates in local_clone/shared repo usually)
+        _git(["fetch", "origin"], cwd=local_clone)
+
+        # This should NOT raise RuntimeError after the fix.
         manager.nuke_worktree(task_id, force=True)
         assert not worktree.exists()

@@ -2196,16 +2196,17 @@ class PolecatManager:
         worktree_path: Path | None = None,
         base: str = "main",
     ) -> tuple[int, str]:
-        """Count local commits on branch_name that are not on origin.
+        """Count local commits on branch_name that are not on any remote.
 
         Returns (count, detail). ``count == 0`` means "safe to delete"; a
         positive count means commits would be lost if the worktree/branch is
         destroyed.
 
-        Comparison strategy (in order):
-        1. If ``refs/remotes/origin/<branch_name>`` exists: compare against it
-           (catches the "pushed earlier then added more commits" case).
-        2. Otherwise: compare against ``origin/<base>`` (branch never pushed).
+        Comparison strategy:
+        Checks reachability from ANY configured remote ref (``--remotes``). This
+        is more robust than checking against ``origin/<branch_name>`` alone,
+        as workers may push to non-default branches (e.g., PR branches) to
+        satisfy specialized workflows.
 
         If the worktree is still on disk we prefer to read commits from there
         so that a detached local branch in the shared repo (whose ref may be
@@ -2215,17 +2216,6 @@ class PolecatManager:
         # since polecat worktrees can commit without the shared repo's branch
         # ref being updated.
         query_cwd = worktree_path if (worktree_path and worktree_path.exists()) else repo_path
-
-        # Does origin/<branch> exist?
-        remote_ref = f"refs/remotes/origin/{branch_name}"
-        check_remote = subprocess.run(
-            ["git", "for-each-ref", "--format=%(refname)", remote_ref],
-            cwd=query_cwd,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        has_remote = bool(check_remote.returncode == 0 and check_remote.stdout.strip())
 
         # Resolve the HEAD of the branch in our query repo.
         head_rev = subprocess.run(
@@ -2239,19 +2229,24 @@ class PolecatManager:
             # Can't resolve — nothing to lose.
             return 0, "branch HEAD could not be resolved"
 
-        compare_ref = f"origin/{branch_name}" if has_remote else f"origin/{base}"
+        head_sha = head_rev.stdout.strip()
+
+        # Integrity gate: are there any commits reachable from HEAD that are NOT
+        # reachable from any remote ref?
         rev_list = subprocess.run(
-            ["git", "rev-list", "--count", f"{compare_ref}..{head_rev.stdout.strip()}"],
+            ["git", "rev-list", "--count", head_sha, "--not", "--remotes"],
             cwd=query_cwd,
             capture_output=True,
             text=True,
             check=False,
         )
+
         if rev_list.returncode != 0:
-            # Base ref missing (e.g., no origin/main). Be conservative: if the
-            # branch has any commits at all, treat as unpushed.
+            # This should generally not happen if head_sha is valid, but if it
+            # does, be conservative. If the branch has any commits at all,
+            # treat as unpushed.
             any_commits = subprocess.run(
-                ["git", "rev-list", "--count", head_rev.stdout.strip()],
+                ["git", "rev-list", "--count", head_sha],
                 cwd=query_cwd,
                 capture_output=True,
                 text=True,
@@ -2262,18 +2257,21 @@ class PolecatManager:
             except ValueError:
                 return 0, "could not determine commit count"
             if n > 0:
-                return n, f"{compare_ref} not found; {n} commit(s) on branch with no remote base"
+                return (
+                    n,
+                    f"remote check failed; {n} commit(s) on branch with no verifiable remote presence",
+                )
             return 0, ""
 
         try:
             count = int(rev_list.stdout.strip() or 0)
         except ValueError:
             return 0, "could not parse rev-list output"
+
         if count == 0:
             return 0, ""
-        if has_remote:
-            return count, f"{count} commit(s) ahead of origin/{branch_name}"
-        return count, f"{count} commit(s) on {branch_name} have never been pushed to origin"
+
+        return count, f"{count} commit(s) on {branch_name} have not been pushed to any remote"
 
     def nuke_worktree(self, task_id, force=False, allow_unpushed=False):
         """Removes the worktree and deletes the branch.
