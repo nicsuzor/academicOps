@@ -92,6 +92,19 @@ SEV4-committed concurrency exceeded: N active (cap = 2). Review or downgrade.
 
 If `count <= 2`, write `SEV4-committed concurrency within cap (N active, cap = 2).`
 
+### 5. Type/ID-prefix/Filename consistency
+
+> Spec: `projects/aops/specs/pkb/consistency.md`. AC#5.
+
+List every node where the ID prefix does not match its type, or the filename stem does not match the ID:
+
+```
+Type/ID/Filename mismatches (SURFACE):
+  - [task-id] [[Title]] — reason: <mismatch details>
+```
+
+If none, write `No Type/ID/Filename mismatches found.` Do not omit the section.
+
 ## Constraints
 
 - **Surface only.** `/maintain` reports findings; it never edits frontmatter, never moves tasks between statuses, never resolves edges.

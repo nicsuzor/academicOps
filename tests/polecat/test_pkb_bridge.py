@@ -512,3 +512,55 @@ def test_list_tasks_project_filter_accurate_exclusion(mock_client):
     # Should only return task-1 because task-other is not in the subtree
     assert len(tasks) == 1
     assert tasks[0].id == "task-1"
+
+
+class TestCreateTaskPrefixConsistency:
+    """create_task validates type↔ID-prefix↔project consistency."""
+
+    _task_response = {
+        "frontmatter": {"id": "task-123"},
+        "body": "",
+        "path": "/tasks/task-123.md",
+    }
+
+    def test_valid_task_prefix(self, mock_client):
+        mock_client.call_tool.return_value = self._task_response
+        assert create_task(title="T", id="task-123", type="task") == "task-123"
+
+    def test_invalid_task_prefix(self, mock_client):
+        with pytest.raises(ValueError, match="ID prefix 'epic-' does not match type 'task'"):
+            create_task(title="T", id="epic-123", type="task")
+
+    def test_valid_epic_prefix(self, mock_client):
+        mock_client.call_tool.return_value = {"frontmatter": {"id": "epic-123"}}
+        assert create_task(title="T", id="epic-123", type="epic") == "epic-123"
+
+    def test_invalid_epic_prefix(self, mock_client):
+        with pytest.raises(ValueError, match="ID prefix 'task-' does not match type 'epic'"):
+            create_task(title="T", id="task-123", type="epic")
+
+    def test_valid_bug_prefix(self, mock_client):
+        mock_client.call_tool.return_value = {"frontmatter": {"id": "bug-123"}}
+        # bug prefix is allowed for type task
+        assert create_task(title="T", id="bug-123", type="task") == "bug-123"
+
+    def test_invalid_bug_prefix_type(self, mock_client):
+        with pytest.raises(ValueError, match="ID prefix 'bug-' is only allowed for type 'task'"):
+            create_task(title="T", id="bug-123", type="epic")
+
+    def test_valid_project_prefix(self, mock_client):
+        mock_client.call_tool.return_value = {"frontmatter": {"id": "aops-123"}}
+        assert create_task(title="T", id="aops-123", project="aops") == "aops-123"
+
+    def test_invalid_project_prefix(self, mock_client):
+        with pytest.raises(ValueError, match="ID prefix 'mem-' does not match project 'aops'"):
+            create_task(title="T", id="mem-123", project="aops")
+
+    def test_type_prefix_wins_over_project(self, mock_client):
+        # Using task- prefix with project aops is allowed even if it doesn't match 'aops-'
+        mock_client.call_tool.return_value = self._task_response
+        assert create_task(title="T", id="task-123", project="aops", type="task") == "task-123"
+
+    def test_no_id_bypasses_prefix_check(self, mock_client):
+        mock_client.call_tool.return_value = self._task_response
+        assert create_task(title="T", project="aops", type="task") == "task-123"
