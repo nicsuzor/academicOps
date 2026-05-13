@@ -422,7 +422,6 @@ _GATE_MODE_NAMES = {
     "HANDOVER_GATE_MODE": "handover",
     "QA_GATE_MODE": "qa",
     "ENFORCER_GATE_MODE": "enforcer",
-    "COMMIT_GATE_MODE": "commit",
     "HYDRATION_GATE_MODE": "hydration",
     "IDA_GATE_MODE": "ida",
 }

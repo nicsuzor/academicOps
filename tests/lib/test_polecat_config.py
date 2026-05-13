@@ -23,7 +23,6 @@ CANONICAL_YAML = dedent(
         handover: warn
         qa: warn
         enforcer: warn
-        commit: warn
         hydration: off
         ida: warn
         enforcer_threshold: 50
@@ -117,7 +116,6 @@ def test_missing_required_field_hard_fails(tmp_path: Path) -> None:
                 handover: warn
                 qa: warn
                 enforcer: warn
-                commit: warn
                 hydration: off
                 ida: warn
                 enforcer_threshold: 50
