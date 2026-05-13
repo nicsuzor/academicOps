@@ -1528,7 +1528,7 @@ def _run_docker_container(
     cmd = list(docker_cmd.cmd)  # copy to avoid mutation
     # Bypass watchdog kills for interactive or crew sessions (user present)
     _is_crew = env.get("POLECAT_SESSION_TYPE") == "crew" if env else False
-    _is_interactive = any(arg in cmd for arg in ["-i", "-it", "--interactive"])
+    _is_interactive = any(arg in cmd for arg in ["-t", "--tty"])
     _bypass = _is_crew or _is_interactive
 
     if not _is_remote_daemon():
