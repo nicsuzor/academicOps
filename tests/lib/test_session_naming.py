@@ -316,5 +316,105 @@ class TestInferSessionOriginFromPath(unittest.TestCase):
         self.assertEqual(meta["provider"], "claude")
 
 
+class TestInferSessionOriginFromEntries(unittest.TestCase):
+    """Content-based surface upgrade for Claude Desktop LAM sessions.
+
+    Claude Code launched from inside the desktop GUI's Local Agent Mode writes
+    JSONL to the same path as a terminal launch (~/.claude/projects/...), so
+    path inference can't distinguish them. The entry-content scan looks for
+    the desktop GUI's plugin cache path leaking into early entries.
+    """
+
+    class _StubEntry:
+        def __init__(self, content=None, cwd=None):
+            self.message = {"content": content} if content is not None else {}
+            self.cwd = cwd
+
+    _LAM_SKILL_REMINDER = (
+        "<system-reminder>\n"
+        "Invoked: /supervisor (skill)\n\n"
+        "Base directory for this skill: "
+        "/Users/x/Library/Application Support/Claude/local-agent-mode-sessions/"
+        "abc/def/skills/supervisor\n"
+        "</system-reminder>"
+    )
+
+    def test_plain_cli_stays_cli(self):
+        entries = [self._StubEntry("hello world"), self._StubEntry("no marker here")]
+        base = {"surface": "claude-code-cli", "client": "claude-code", "crew": None}
+        origin = session_naming.infer_session_origin_from_entries(entries, base)
+        self.assertEqual(origin["surface"], "claude-code-cli")
+        self.assertEqual(origin["client"], "claude-code")
+
+    def test_conversational_mention_does_not_trigger(self):
+        """Users typing the LAM path in chat must not be classified as LAM.
+
+        Regression: this very session discussed local-agent-mode-sessions while
+        being a regular terminal launch — without the narrow signal it would
+        misclassify itself.
+        """
+        entries = [
+            self._StubEntry(
+                "Today I'm working on detecting "
+                "Library/Application Support/Claude/local-agent-mode-sessions paths "
+                "in transcript.py — see the plan."
+            )
+        ]
+        base = {"surface": "claude-code-cli", "client": "claude-code", "crew": None}
+        origin = session_naming.infer_session_origin_from_entries(entries, base)
+        self.assertEqual(origin["surface"], "claude-code-cli")
+
+    def test_skill_reminder_string_content_upgrades(self):
+        entries = [self._StubEntry(self._LAM_SKILL_REMINDER)]
+        base = {"surface": "claude-code-cli", "client": "claude-code", "crew": None}
+        origin = session_naming.infer_session_origin_from_entries(entries, base)
+        self.assertEqual(origin["surface"], "claude-code-desktop")
+        self.assertEqual(origin["client"], "claude-desktop")
+
+    def test_skill_reminder_block_list_content_upgrades(self):
+        entries = [self._StubEntry([{"type": "text", "text": self._LAM_SKILL_REMINDER}])]
+        base = {"surface": "claude-code-cli", "client": "claude-code", "crew": None}
+        origin = session_naming.infer_session_origin_from_entries(entries, base)
+        self.assertEqual(origin["surface"], "claude-code-desktop")
+
+    def test_lam_cwd_upgrades(self):
+        entries = [
+            self._StubEntry(
+                "ok",
+                cwd="/Users/x/Library/Application Support/Claude/local-agent-mode-sessions/abc",
+            )
+        ]
+        base = {"surface": "claude-code-cli", "client": "claude-code", "crew": None}
+        origin = session_naming.infer_session_origin_from_entries(entries, base)
+        self.assertEqual(origin["surface"], "claude-code-desktop")
+
+    def test_path_origin_wins_over_content(self):
+        """GHA/crew/polecat detection should not be downgraded by content."""
+        entries = [self._StubEntry(self._LAM_SKILL_REMINDER)]
+        for base in (
+            {"surface": "github-actions", "client": "github-actions", "crew": None},
+            {"surface": "claude-crew", "client": "crew", "crew": "gloria"},
+            {"surface": "claude-polecat", "client": "polecat", "crew": None},
+        ):
+            with self.subTest(surface=base["surface"]):
+                origin = session_naming.infer_session_origin_from_entries(entries, dict(base))
+                self.assertEqual(origin["surface"], base["surface"])
+                self.assertEqual(origin["client"], base["client"])
+
+    def test_scan_window_respects_max_scan(self):
+        """Entries beyond max_scan must not be inspected."""
+        entries = [self._StubEntry("clean") for _ in range(20)] + [
+            self._StubEntry(self._LAM_SKILL_REMINDER)
+        ]
+        base = {"surface": "claude-code-cli", "client": "claude-code", "crew": None}
+        origin = session_naming.infer_session_origin_from_entries(entries, base, max_scan=10)
+        self.assertEqual(origin["surface"], "claude-code-cli")
+
+    def test_none_entries_returns_base_unchanged(self):
+        base = {"surface": "claude-code-cli", "client": "claude-code", "crew": None}
+        origin = session_naming.infer_session_origin_from_entries(None, base)
+        self.assertEqual(origin, base)
+
+
 if __name__ == "__main__":
     unittest.main()

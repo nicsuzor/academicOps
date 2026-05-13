@@ -955,6 +955,7 @@ def reflection_to_insights(
     timeline_events: list[dict[str, Any]] | None = None,
     provider: str | None = None,
     session_path: Path | None = None,
+    origin_override: dict[str, str | None] | None = None,
 ) -> dict[str, Any]:
     """Convert parsed Framework Reflection to session insights format.
 
@@ -1040,12 +1041,15 @@ def reflection_to_insights(
 
     # Infer surface/client/crew from session_path so offline conversion of
     # GHA/crew/polecat sessions doesn't fall back to live env (which usually
-    # reports the converter shell, not the original runtime).
-    origin = (
-        session_naming.infer_session_origin_from_path(session_path, provider=provider)
-        if session_path is not None
-        else {}
-    )
+    # reports the converter shell, not the original runtime). When the caller
+    # has already computed origin (e.g. transcript.py also scans entries for
+    # Claude Desktop LAM markers), prefer that.
+    if origin_override is not None:
+        origin = origin_override
+    elif session_path is not None:
+        origin = session_naming.infer_session_origin_from_path(session_path, provider=provider)
+    else:
+        origin = {}
 
     result = {
         "session_id": session_id,
@@ -1690,6 +1694,11 @@ class SessionSummary:
     repo: str | None = None
     task_id: str | None = None
     slug: str | None = None
+    # Launch surface/client. surface = provider × launcher (e.g. claude-code-cli,
+    # claude-code-desktop, claude-crew); client = which CLI/tool invoked it
+    # (claude-code, claude-desktop, polecat, crew, github-actions).
+    surface: str | None = None
+    client: str | None = None
 
 
 @dataclass
@@ -4119,6 +4128,10 @@ class SessionProcessor:
             metadata_yaml += f"hostname: {session.hostname}\n"
         if session.provider:
             metadata_yaml += f"provider: {session.provider}\n"
+        if session.surface:
+            metadata_yaml += f"surface: {session.surface}\n"
+        if session.client:
+            metadata_yaml += f"client: {session.client}\n"
         if session.crew:
             metadata_yaml += f"crew: {session.crew}\n"
         if session.repo:
@@ -4144,35 +4157,13 @@ session_id: {session_uuid}
 
         header = f"# {title}\n\n"
 
-        first_request = self._extract_first_user_request(entries)
-        session_context = "## Overview\n\n"
-        if first_request:
-            # Blockquote and demote headings so user content can't corrupt doc structure
-            quoted_request = _quote_block(_adjust_heading_levels(first_request, 2))
-            session_context += f"**Original Request:**\n\n{quoted_request}\n\n"
-        else:
-            session_context += "**Original Request:** (not found)\n\n"
-
-        # Tools used, token totals, files touched
-        context_summary = self._generate_context_summary(entries, agent_entries)
-        if context_summary:
-            session_context += context_summary
-
-        # Surface injected/read context (hook injections, system reminders,
-        # early Read tool calls) near the top so a reviewer can see what
-        # bootstrap material the agent had visible.
-        ctx = self._extract_session_context(turns)
-        injected_context_section = self._render_session_context(ctx, variant)
-
-        reflection_section = reflection_header if reflection_header else ""
-        return (
-            frontmatter
-            + header
-            + session_context
-            + injected_context_section
-            + reflection_section
-            + markdown
-        )
+        # The previous out-of-chronological-order top summary (Overview /
+        # Session Context / Session Reflection) has been removed — reflection
+        # extraction still lands in the insights JSON via _process_reflection,
+        # but the markdown stays purely chronological. The ``reflection_header``
+        # parameter is kept for caller compatibility; it is intentionally unused.
+        _ = reflection_header
+        return frontmatter + header + markdown
 
     def _group_sidechain_entries(
         self, sidechain_entries: list[Entry]

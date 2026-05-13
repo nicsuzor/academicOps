@@ -222,7 +222,6 @@ class TestPerTurnTokensInTranscript:
         # Verify per-turn token counts appear in output
         assert "1,500 in" in markdown, "Input tokens should appear in transcript"
         assert "250 out" in markdown, "Output tokens should appear in transcript"
-        assert "Token" in markdown, "Token label should appear"
 
     def test_per_turn_cache_tokens_displayed(self, tmp_path):
         """Verify cache tokens (read and create) are displayed per turn."""
