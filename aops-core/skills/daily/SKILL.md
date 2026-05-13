@@ -87,9 +87,7 @@ A factual snapshot of the task graph and today's calendar. No recommendations.
 - **Calendar**: Today's events from the calendar source, in time order. No commentary.
 - **Pending decisions**: Count of `ready` + `review` tasks assigned to the user (one line).
 
-**No recommendations**: Do not emit SHOULD/DEEP/ENJOY/QUICK/UNBLOCK categories. Do not suggest a sequence. Do not add rationales like "start with X because Y".
-
-**`### My priorities` subsection**: A user-owned space. The agent creates the empty heading on first run and never writes to it afterwards. Do not ask the user what their priorities are — they will write them in if and when they want to.
+**No recommendations**: Do not suggest a sequence. Do not add rationales like "start with X because Y".
 
 > See [[instructions/status-snapshot]] for task data loading.
 
@@ -124,8 +122,6 @@ A snapshot of open PRs across tracked repos. This is the **sole place** open PRs
 
 Include direct PR URLs. Do not rank buckets or say "tackle X first".
 
-**Graceful degradation**: If `gh` CLI is unavailable or authentication fails, note the gap in natural language ("GitHub CLI unavailable — skipped workflow monitoring") and continue. Never error or produce empty table structures.
-
 **Repo list**: Use the project registry from `$AOPS_SESSIONS/polecat.yaml`. Configurable — repos are added/removed by editing the sessions-repo registry.
 
 **Artefact dependency**: This subsection AND the Task Sweep below both consume `$AOPS_SESSIONS/state/pr-state.json`, produced by `repo-sync-cron`. `/daily` does not re-run `gh pr list` itself. If the artefact is older than **24 hours** (or missing), the subsection reports "stale" with a one-line note pointing the user to `scripts/repo-sync-cron.sh` to refresh — see [[instructions/workflow-monitor]] §"Step 6.2: Read PR State From repo-sync-cron Artefact" for the exact rendering rules.
@@ -148,7 +144,7 @@ An editorial synthesis of the day's work. Not a transcript, not an audit log, no
 
 **The agent is trusted to choose what to surface and how.** No prescribed sub-structure (no required "Interactive / Dispatched / Autonomous" blocks, no enforced chronology). Pick the form that fits this day — by thread, by project, by significance of outcome, chronologically — and commit. See [[instructions/work-summary]] for the full editorial brief.
 
-### 5. Work Log (collapsed by default)
+### 5. Work Log
 
 Provenance only. A reference section for traceability — **merged PRs and completed tasks**. No Session Log table: session narration lives in Today's Log as editorial synthesis, not here as a row dump.
 
