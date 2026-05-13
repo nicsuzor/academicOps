@@ -280,7 +280,7 @@ Time budget: 4a-bis adds at most 5 minutes to Phase 6.
 
 **Activity 4b — gate-1 verification audit (including lens-task resolution).**
 
-For tasks transitioned `in_progress → done` since the last cycle (up to 20 per cycle):
+For tasks transitioned `in_progress → done` since the last cycle (up to 20 per cycle, oldest-modified first):
 
 1. Look up the verification subtask the planner gate created at `inbox → ready`.
 2. Look up any lens-tasks (security, accessibility, etc.) created during the same decomposition.
@@ -305,7 +305,7 @@ Detect orphans, stale docs, and under-specified tasks. The agent uses these as *
 
 ### Gate-1 artifact rot check
 
-For each task in `ready` or `queued` whose age is ≥ 14 days (up to 20 per cycle):
+For each task in `ready` or `queued` whose age is ≥ 14 days (up to 20 per cycle, oldest-modified first):
 
 1. Read the planner-gate outputs: AC bullets, named file/symbol, target repo.
 2. Verify the named file/symbol still exists in the named repo (one-shot grep, like supervisor pre-flight does).
