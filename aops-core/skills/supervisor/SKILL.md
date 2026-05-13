@@ -161,7 +161,7 @@ Polecats are **smart agents, not mechanical drones**. The supervisor's job is th
 - Read every task body and design the implementation before firing.
 - Plan how the polecat should approach the work, what files to edit, or what tests to add.
 - Wait for one polecat to finish before firing the next.
-- Halt to ask the user for direction on something the supervisor can resolve itself (set a missing `project:` from `target_ancestors`, pick a sensible default, decompose an epic, fire a wave instead of one task).
+- Halt to ask the user for direction on something the supervisor can resolve itself (pick a sensible default, decompose an epic, fire a wave instead of one task).
 
 Bias hard toward dispatching — but **start small and ramp**. A queue of N user-approved tasks gets fired with strict concurrency limits, NOT all at once. Friction is captured as it surfaces (task created under the supervisor meta-epic) — not as a reason to slow down.
 
