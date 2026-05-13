@@ -278,9 +278,14 @@ Output a `status-drift` block in the cycle summary and in `pr-state.json` under 
 
 Time budget: 4a-bis adds at most 5 minutes to Phase 6.
 
-**Activity 4b — gate-1 verification audit.**
+**Activity 4b — gate-1 verification audit (including lens-task resolution).**
 
-For tasks transitioned `in_progress → done` since the last cycle, look up the verification subtask the planner gate created at `inbox → ready`. Confirm terminal state (`done` or `cancelled` with rationale). If missing or unresolved, surface in cycle summary under `Loop-close gaps`. **Do NOT auto-close or auto-fail — surface only.**
+For tasks transitioned `in_progress → done` since the last cycle (up to 20 per cycle, oldest-modified first):
+
+1. Look up the verification subtask the planner gate created at `inbox → ready`.
+2. Look up any lens-tasks (security, accessibility, etc.) created during the same decomposition.
+3. Confirm all such subtasks are in a terminal state (`done` or `cancelled` with rationale).
+4. If any subtask is missing or unresolved: surface in cycle summary under `Loop-close gaps`. **Do NOT auto-close or auto-fail — surface only.**
 
 ### Re-queue policy (closed-without-merge): always to `inbox`
 
@@ -300,7 +305,11 @@ Detect orphans, stale docs, and under-specified tasks. The agent uses these as *
 
 ### Gate-1 artifact rot check
 
-For each task in `ready` or `queued` whose age is ≥ 14 days: verify the named file/symbol still exists. If rotted (file deleted, symbol renamed), demote to `inbox` with annotation:
+For each task in `ready` or `queued` whose age is ≥ 14 days (up to 20 per cycle, oldest-modified first):
+
+1. Read the planner-gate outputs: AC bullets, named file/symbol, target repo.
+2. Verify the named file/symbol still exists in the named repo (one-shot grep, like supervisor pre-flight does).
+3. If artifacts have rotted: demote the task to `inbox` with an annotation:
 
 ```
 # Demoted by /sleep YYYY-MM-DD: gate-1 artifacts no longer present (file deleted / symbol renamed). Re-decompose.
@@ -467,7 +476,7 @@ Every cycle emits a summary written to the PR body (or `$GITHUB_STEP_SUMMARY` on
 
 ## Loop-close gaps
 
-<tasks transitioned in_progress → done in this cycle whose verification subtask is missing or unresolved; one bullet per task with task ID + reason. "none" if clean.>
+<tasks transitioned in_progress → done in this cycle whose verification subtask or lens-tasks are missing or unresolved; one bullet per task with task ID + reason. "none" if clean.>
 
 ## Next
 
