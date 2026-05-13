@@ -18,4 +18,3 @@ requires human approval on the Jules web UI before a PR appears.
 ## Polecat Capability
 
 Polecats are **full-judgment** agents (powered by `claude-sonnet-4-6` by default, per `polecat/defaults/polecat.yaml.example` → `session_defaults.model`, or the Gemini CLI) with the full claude-worker tool surface: Bash, Edit, Write, Read, Skill, and PKB tools (see `.agents/AGENT-TOOLS.md`). Trust them to make in-repo architectural and design decisions. If a task is ambiguous but stays within the target repository, **dispatch with a brief** rather than halting. See [[SKILL.md#halt-on-substitute]].
-

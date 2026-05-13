@@ -29,4 +29,3 @@ superseded_by: aops-core/skills/remember/SKILL.md
 - **Knowledge writing standards**: `aops-core/skills/remember/SKILL.md` → section "Immediate Mode"
 
 Update your installed workflow to reference `remember/SKILL.md` and `remember/references/maintenance-phases.md` instead of this file. The template at `templates/github-workflows/sleep-cycle.yml` in the academicOps repo has already been updated.
-
