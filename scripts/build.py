@@ -71,6 +71,46 @@ def sanitize_version(version: str) -> str:
     return version
 
 
+def _git_build_metadata(aops_root: Path) -> str:
+    """SemVer build metadata (`+g<sha>[.dirty]`) for the current HEAD, or ''.
+
+    The `g` prefix keeps the identifier alphanumeric and follows `git describe`
+    convention. Build metadata is ignored for version precedence (SemVer 2.0
+    §10), so this is safe to append unconditionally without affecting ordering.
+    """
+    try:
+        sha = subprocess.run(
+            ["git", "rev-parse", "--short=8", "HEAD"],
+            cwd=aops_root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if sha.returncode != 0 or not sha.stdout.strip():
+            return ""
+        meta = f"g{sha.stdout.strip()}"
+        dirty = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=aops_root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if dirty.returncode == 0 and dirty.stdout.strip():
+            meta += ".dirty"
+        return meta
+    except FileNotFoundError:
+        return ""
+
+
+def _with_build_metadata(version: str, aops_root: Path) -> str:
+    """Append `+g<sha>[.dirty]` if not already present."""
+    if "+" in version:
+        return version
+    meta = _git_build_metadata(aops_root)
+    return f"{version}+{meta}" if meta else version
+
+
 def get_project_version(aops_root: Path) -> str:
     """Get the project version.
 
@@ -94,7 +134,7 @@ def get_project_version(aops_root: Path) -> str:
             for line in result.stdout.splitlines():
                 if "academicops v" in line:
                     version = line.split(" v")[1].split(" ")[0]
-                    return sanitize_version(version)
+                    return _with_build_metadata(sanitize_version(version), aops_root)
     except FileNotFoundError:
         pass
 
@@ -155,7 +195,7 @@ def get_project_version(aops_root: Path) -> str:
                         base = f"{major}.{minor}.{int(patch) + 1}"
 
                     return f"{base}-dev.{dev_num}+{sha}{dirty}"
-            return sanitize_version(desc)
+            return _with_build_metadata(sanitize_version(desc), aops_root)
     except FileNotFoundError:
         pass
 
@@ -185,9 +225,9 @@ def get_project_version(aops_root: Path) -> str:
             )
         ]
         if stable_tags:
-            return stable_tags[0].lstrip("v")
+            return _with_build_metadata(stable_tags[0].lstrip("v"), aops_root)
         if tags:
-            return sanitize_version(tags[0].lstrip("v"))
+            return _with_build_metadata(sanitize_version(tags[0].lstrip("v")), aops_root)
     except Exception:
         pass
 
@@ -1593,6 +1633,10 @@ def package_artifacts(
         return
 
     # Generic archives (no platform-specific binary)
+    # Strip SemVer build metadata (+gSHA[.dirty]) from filenames only; it lives
+    # inside plugin.json. Filenames stay clean for tooling that mangles `+`.
+    fs_version = version.split("+", 1)[0]
+
     # 1. aops-core.tar.gz (generic fallback for Gemini CLI)
     # Named to match extension name in gemini-extension.json
     # gemini-extension.json must be at archive root (arcname=".")
@@ -1609,7 +1653,7 @@ def package_artifacts(
         print(f"  ✓ Packaged {tools_gemini_archive.name}")
 
     # 2. aops-claude-v{version}.tar.gz
-    claude_archive = dist_root / f"aops-claude-v{version}.tar.gz"
+    claude_archive = dist_root / f"aops-claude-v{fs_version}.tar.gz"
     with tarfile.open(claude_archive, "w:gz") as tar:
         tar.add(dist_root / "aops-claude", arcname="aops-claude", filter=_source_filter)
     print(f"  ✓ Packaged {claude_archive.name}")
@@ -1617,7 +1661,7 @@ def package_artifacts(
 
     # 2a. aops-tools-claude-v{version}.tar.gz
     if (dist_root / "aops-tools-claude").exists():
-        tools_claude_archive = dist_root / f"aops-tools-claude-v{version}.tar.gz"
+        tools_claude_archive = dist_root / f"aops-tools-claude-v{fs_version}.tar.gz"
         with tarfile.open(tools_claude_archive, "w:gz") as tar:
             tar.add(
                 dist_root / "aops-tools-claude", arcname="aops-tools-claude", filter=_source_filter
@@ -1635,7 +1679,7 @@ def package_artifacts(
     # CLI and Cowork — no stripped-down variant.
     claude_dir = dist_root / "aops-claude"
     if claude_dir.exists():
-        cowork_zip = dist_root / f"aops-core-v{version}.zip"
+        cowork_zip = dist_root / f"aops-core-v{fs_version}.zip"
         with zipfile.ZipFile(cowork_zip, "w", zipfile.ZIP_DEFLATED) as zf:
             for path in sorted(claude_dir.rglob("*")):
                 rel = path.relative_to(claude_dir)
@@ -1646,7 +1690,7 @@ def package_artifacts(
         safe_symlink(cowork_zip, dist_root / "aops-core-latest.zip")
 
     # 4. aops-antigravity-v{version}.tar.gz
-    antigravity_archive = dist_root / f"aops-antigravity-v{version}.tar.gz"
+    antigravity_archive = dist_root / f"aops-antigravity-v{fs_version}.tar.gz"
     with tarfile.open(antigravity_archive, "w:gz") as tar:
         tar.add(dist_root / "aops-antigravity", arcname=".", filter=_source_filter)
     print(f"  ✓ Packaged {antigravity_archive.name}")
@@ -1661,7 +1705,8 @@ def create_git_tags(aops_root: Path, version: str):
     """
     print("\nCreating git tags...")
 
-    version_tag = f"v{version}"
+    # Strip build metadata for git tag — `+` is awkward in tag refs.
+    version_tag = f"v{version.split('+', 1)[0]}"
 
     # Create/update version tag
     result = subprocess.run(
