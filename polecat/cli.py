@@ -1526,6 +1526,10 @@ def _run_docker_container(
     ``docker start -a``.
     """
     cmd = list(docker_cmd.cmd)  # copy to avoid mutation
+    # Bypass watchdog kills for interactive or crew sessions (user present)
+    _is_crew = env.get("POLECAT_SESSION_TYPE") == "crew" if env else False
+    _is_interactive = any(arg in cmd for arg in ["-i", "-it", "--interactive"])
+    _bypass = _is_crew or _is_interactive
 
     if not _is_remote_daemon():
         # Local: bind mounts already in cmd. Add --name for watchdog targeting.
@@ -1536,11 +1540,6 @@ def _run_docker_container(
         _watchdog_fired: threading.Event | None = None
         _watchdog_thread = None
         if gemini and task_id:
-            # Bypass watchdog kills for interactive or crew sessions (user present)
-            _is_crew = env.get("POLECAT_SESSION_TYPE") == "crew" if env else False
-            _is_interactive = any(arg in cmd for arg in ["-i", "-it", "--interactive"])
-            _bypass = _is_crew or _is_interactive
-
             _watchdog_cancel = threading.Event()
             _watchdog_fired = threading.Event()
             _watchdog_thread = threading.Thread(
@@ -1696,11 +1695,6 @@ def _run_docker_container(
         watchdog_fired: threading.Event | None = None
         watchdog_thread: threading.Thread | None = None
         if gemini and task_id:
-            # Bypass watchdog kills for interactive or crew sessions (user present)
-            _is_crew = env.get("POLECAT_SESSION_TYPE") == "crew" if env else False
-            _is_interactive = any(arg in cmd for arg in ["-i", "-it", "--interactive"])
-            _bypass = _is_crew or _is_interactive
-
             watchdog_cancel = threading.Event()
             watchdog_fired = threading.Event()
             watchdog_thread = threading.Thread(
