@@ -154,6 +154,23 @@ The supervisor never silently substitutes a different **worker type**, **deliver
 
 **The ambiguity exception:** in-repo design ambiguity is not a halt. If the task is underspecified but the work stays inside the requested repository, the supervisor MUST NOT halt — it dispatches. Pauli writes a brief naming the ambiguity and pointing at a sensible default; the supervisor pastes it into the task body; the polecat investigates and either resolves it or opens a draft PR for review. Polecats are full-judgment agents — trust them to make in-repo design calls.
 
+### Keep the Pipe Flowing — Don't Micromanage Polecats
+
+Polecats are **smart agents, not mechanical drones**. The supervisor's job is throughput: claim → dispatch → next. It is NOT to:
+
+- Read every task body and design the implementation before firing.
+- Plan how the polecat should approach the work, what files to edit, or what tests to add.
+- Wait for one polecat to finish before firing the next.
+- Halt to ask the user for direction on something the supervisor can resolve itself (set a missing `project:` from `target_ancestors`, pick a sensible default, decompose an epic, fire a wave instead of one task).
+
+Bias hard toward dispatching. A queue of N user-approved tasks gets fired in waves of 4–8, in parallel, with minimal pre-flight. Friction is captured as it surfaces (task created under the supervisor meta-epic) — not as a reason to slow down.
+
+**Big tasks are still polecat-able.** Epics with `scope > 10`, design tasks, decomposition-heavy work — fire them at a polecat first. Polecats can plan and decompose. The supervisor only owns decomposition when (a) the user asked for it explicitly, or (b) a polecat already tried and returned with a structured "this needs decomposition" verdict.
+
+**Batched interruptions, not per-task.** When the supervisor genuinely cannot proceed (irrecoverable infeasibility, user-only decisions on multiple items), collect them into ONE batched message at the end of the wave — not one ping per blocker. "Don't get the user out of bed for something you can handle yourself."
+
+The right mental model: the supervisor is a **conveyor belt operator**, not a project manager. Keep parts moving onto the belt. Track outcomes via Monitor. Iterate.
+
 In autonomous (loop) sessions, legitimate halts set the epic to `blocked` or `review`; the next interactive supervisor invocation picks it up.
 
 ### Engineering Integrity (A8) Is Non-Negotiable
