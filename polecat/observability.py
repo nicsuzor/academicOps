@@ -154,6 +154,29 @@ class PolecatMetrics:
             failure_reason=failure_reason,
         )
 
+    def record_watchdog_event(
+        self,
+        task_id: str,
+        event: str,
+        status: str | None = None,
+        grace_seconds: int | None = None,
+    ):
+        """Record a watchdog event (waiting, natural_exit, timeout, bypass).
+
+        Args:
+            task_id: ID of the task being watched
+            event: Event name (waiting, natural_exit, timeout, bypass)
+            status: Task status when event occurred
+            grace_seconds: Configured grace period in seconds
+        """
+        self._emit(
+            "watchdog_event",
+            task_id=task_id,
+            event=event,
+            status=status,
+            grace_seconds=grace_seconds,
+        )
+
 
 # Global metrics instance
 metrics = PolecatMetrics()
