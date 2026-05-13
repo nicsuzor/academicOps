@@ -175,3 +175,11 @@ listed cost is the cold-start contribution.
 | Directive   | Source                                                    | Rule(s)                           | Scope            | Tier   | Cost / Impact                           | Behaviour                                               |
 | ----------- | --------------------------------------------------------- | --------------------------------- | ---------------- | ------ | --------------------------------------- | ------------------------------------------------------- |
 | `pkb-first` | `.agents/CORE.md` — "Where to find documentation" section | (procedural: PKB-first discovery) | academicOps repo | `hint` | L1 · ~120 tok at session start (cached) | Instructs agents to use PKB before reading source code. |
+
+## Bridge-level constraints
+
+Synchronous validation in library/bridge code that fires at call time, not via the hook router. Not session hooks — fire whenever the underlying function is invoked (MCP call, direct import, or CLI).
+
+| Mechanism | Source | Rule(s) | Scope | Tier | Cost / Impact | Behaviour |
+| --------- | ------ | -------- | ----- | ---- | ------------- | --------- |
+| `create_task` prefix guard | `polecat/pkb_bridge.py` | type-prefix-filename consistency (spec: `projects/aops/specs/pkb/consistency.md` AC#5) | All `create_task` calls via PKB bridge | `block` | L2 · negligible (string match × each call) | Raises `ValueError` when ID prefix mismatches the task type or project slug |
