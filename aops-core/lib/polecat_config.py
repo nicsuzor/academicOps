@@ -28,7 +28,6 @@ Schema (see ``polecat/defaults/polecat.yaml.example`` for the canonical doc):
             handover: warn|block|off
             qa: warn|block|off
             enforcer: warn|block|off
-            commit: warn|block|off
             hydration: warn|block|off
             ida: warn|block|off            # Ida B. Wells reminder gate
             enforcer_threshold: int
@@ -67,7 +66,6 @@ class GatesConfig:
     handover: str
     qa: str
     enforcer: str
-    commit: str
     hydration: str
     ida: str
     enforcer_threshold: int
@@ -161,7 +159,7 @@ def _validate_gates(raw: dict[str, Any], allow_partial: bool = False) -> dict[st
     are validated); False when loading the YAML (all keys required).
     """
     out: dict[str, Any] = {}
-    for name in ("handover", "qa", "enforcer", "commit", "hydration", "ida"):
+    for name in ("handover", "qa", "enforcer", "hydration", "ida"):
         if name in raw:
             raw_value = raw[name]
             # YAML 1.1 parses bare `off` / `on` as booleans. Translate False→"off"
@@ -198,7 +196,6 @@ def _validate_gates(raw: dict[str, Any], allow_partial: bool = False) -> dict[st
         "handover",
         "qa",
         "enforcer",
-        "commit",
         "hydration",
         "ida",
         "enforcer_threshold",

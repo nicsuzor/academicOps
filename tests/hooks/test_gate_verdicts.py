@@ -106,7 +106,6 @@ def _write_polecat_yaml_with_gate_modes(
     handover: str = "warn",
     qa: str = "block",
     enforcer: str = "block",
-    commit: str = "warn",
     hydration: str = "off",
     ida: str = "off",
     enforcer_threshold: int = 50,
@@ -129,7 +128,6 @@ session_defaults:
     handover: "{handover}"
     qa: "{qa}"
     enforcer: "{enforcer}"
-    commit: "{commit}"
     hydration: "{hydration}"
     ida: "{ida}"
     enforcer_threshold: {enforcer_threshold}
@@ -301,7 +299,7 @@ _GATE_MODE_CASES = [
 class TestGateModeConfigOverrides:
     """Verify polecat.yaml gate modes control enforcement for all gates.
 
-    Each gate's mode (handover/qa/enforcer/commit/hydration in the YAML)
+    Each gate's mode (handover/qa/enforcer/hydration in the YAML)
     must produce the correct verdict when the gate's policy fires.
     Replaces the previous *_GATE_MODE env-var test class — env vars are
     no longer a config source.

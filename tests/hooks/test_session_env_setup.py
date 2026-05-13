@@ -108,7 +108,6 @@ class TestSessionEnvSetup:
             "QA_GATE_MODE",
             "ENFORCER_GATE_MODE",
             "HYDRATION_GATE_MODE",
-            "COMMIT_GATE_MODE",
             "ENFORCER_TOOL_CALL_THRESHOLD",
         ):
             assert var not in content, (
