@@ -213,55 +213,29 @@ pkb task <task-id> | jules new --repo <owner>/<repo>
 
 **Jules notes**: pipe task context from `pkb task` into `jules new` — gives Jules the full task body, relationships, and AC. Sessions are async; check via `jules remote list --session`. One session per task. "Completed" sessions still require human approval on the Jules web UI before PRs appear.
 
-### Swarm Dispatch (preferred for multi-task queues)
+### Swarm Dispatch (preferred for multi-task queues) — use `polecat swarm`
 
-When the supervisor has N user-approved tasks to fire (more than 1, typically up to a wave-size of 4), **do not** loop and fire them one-by-one with separate background SSH calls. That pattern:
+When the supervisor has N user-approved tasks to fire, **do not** loop `polecat run -t <id>` once per task via separate background SSH calls. Each ssh+nohup emits its own "background command completed" notification, gives the supervisor no enforced concurrency control, and scatters logs across `/tmp/polecat-*.log` with no per-run namespacing.
 
-- emits one "background command completed" notification per dispatch (pure context noise — the SSH wrapper exits in milliseconds, the actual polecat runs for minutes)
-- gives the supervisor no concurrency control (firing 8 tasks at once = 8 simultaneous polecats, blowing past the [hard concurrency cap](../SKILL.md#keep-the-pipe-flowing--dont-micromanage-polecats))
-- scatters logs across `/tmp/polecat-*.log` with no per-run namespacing (the supervisor's Monitor glob picks up stale completions from prior sessions)
-
-Use the **swarm dispatcher** (`~/bin/polecat-swarm.sh` on the worker host) instead:
+Use `polecat swarm` — it already does what supervisor-side shell scripts would otherwise reinvent (CPU-affinity management, restart on success, stop on failure):
 
 ```bash
-# On the worker host (e.g. wsl), via ONE ssh call:
-ssh wsl 'POLECAT_RUN_ID=<run-id> nohup ~/bin/polecat-swarm.sh \
-    <concurrency> <gemini|claude> \
-    <task-id-1> <task-id-2> ... <task-id-N> \
-    >/dev/null 2>&1 &disown; echo "swarm started: $POLECAT_RUN_ID"'
+# 2 concurrent gemini workers, claiming next-ready tasks from the aops project queue
+ssh wsl 'cd ~/src/academicOps && PYTHONPATH=..:. python polecat/cli.py swarm -g 2 -p aops --caller supervisor'
 ```
 
-- `<concurrency>`: hard cap on simultaneous polecats. **Start with 2**, ramp to ~4 maximum (see SKILL.md).
-- `<gemini|claude>`: worker model. The user's directive is binding (halt-on-substitute applies).
-- `<run-id>`: a short label (e.g. `dogfood-2026-05-13`) — namespaces logs under `/tmp/polecat-runs/<run-id>/`.
+Flags (see `polecat swarm --help`):
 
-The swarm enforces concurrency server-side (one `wait -n` per finished slot), writes per-task logs to `/tmp/polecat-runs/<run-id>/<task>.log`, and emits **one consolidated event stream** to `/tmp/polecat-runs/<run-id>/events.log` with lines like:
+- `-c <N>` / `-g <M>`: number of Claude / Gemini workers (cap at 2; ramp to 4 max per [SKILL.md](../SKILL.md#keep-the-pipe-flowing--dont-micromanage-polecats))
+- `-p <project>`: project to focus on (workers claim next-ready from that project's queue)
+- `--caller <identity>`: who's claiming the tasks (audit)
+- `--dry-run`: simulate
 
-```
-[swarm] FIRE task-abc123
-[swarm] DONE task-abc123 merge_ready
-[swarm] QUOTA task-def456 gemini-rate-limit
-[swarm] FAIL task-ghi789 rc=1
-[swarm] complete RUN_ID=dogfood-... tasks=8
-```
+**Curating which tasks the swarm claims.** `polecat swarm` pulls from the project's ready queue — workers grab whatever's next, by design. To restrict which tasks run in this wave, **set the rest to `status != ready` first** (`queued` is fine — only `ready` is in the claim pool). This is a PKB hygiene move, not a shell-script move.
 
-The supervisor watches this single events stream:
+A previously-filed feature request to add `polecat swarm -t task1,task2,...` (a curated-batch flag) lives at `aops-2e13ecb4` and is intentionally **not approved** for build — the gate is "what's `ready` in PKB", not "what the supervisor passes on the CLI."
 
-```
-Monitor: ssh wsl 'tail -F /tmp/polecat-runs/<run-id>/events.log | grep -E --line-buffered "DONE|QUOTA|FAIL|complete"'
-```
-
-One Monitor instead of one notification per dispatch. One log directory per run instead of cross-session pollution. Concurrency enforced at the swarm boundary, not implicit in the supervisor's discipline.
-
-A queue file form is also supported for very large batches:
-
-```bash
-# Write queue to host, then dispatch
-printf '%s\n' task-1 task-2 task-3 ... | ssh wsl 'cat > /tmp/queue.txt'
-ssh wsl 'POLECAT_RUN_ID=<run-id> nohup ~/bin/polecat-swarm.sh 2 gemini -f /tmp/queue.txt >/dev/null 2>&1 &disown'
-```
-
-**When NOT to use the swarm**: a single one-off dispatch (just call `polecat run` directly via ssh). The swarm overhead is justified at N≥2.
+**Don't wrap polecat.** If `polecat swarm` lacks something the supervisor needs (e.g. adaptive ramp-up, namespaced run logs, quota-aware backoff), file the feature **against polecat itself**, not as a shell-script in `~/bin/`. The dispatcher owns dispatching; the supervisor calls it.
 
 ### Coordinated Branch Dispatch
 
