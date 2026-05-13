@@ -32,7 +32,7 @@ class PkbTask:
         self.project: str | None = fm.get("project") or data.get("project")
         self.type: str = fm.get("type") or data.get("type", "task")
         self.status: str | None = fm.get("status")  # plain string, not enum
-        self.autonomy: str | None = fm.get("autonomy")
+        self.autonomy: str | None = (fm or {}).get("autonomy")
         self.parent: str | None = fm.get("parent")
         self.priority: int | None = fm.get("priority")
         self.tags: list = fm.get("tags") or []
