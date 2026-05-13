@@ -51,6 +51,14 @@ version: 2.0.0
 
 12. **Create in PKB** — Use `mcp__pkb__decompose_task(parent_id, subtasks)` for batch creation under the epic. Include dependencies, effort, due, consequence, priority, and deliverable descriptions as explicit fields.
 
+13. **Create Verification Task** — Create a child task using `references/verification-template.md`. Restate parent AC as pass/fail checks in `## Acceptance Standards` and describe the `## Qualitative Verification Process`. Set `depends_on: [<execution-subtasks>]` and tag `lens: verification`.
+
+14. **Create Review Lens Tasks** — Create two child subtasks using `references/lens-templates/rbg-axiom-check.md` and `references/lens-templates/pauli-alignment-check.md`. Tags: `lens: rbg-axiom-check` and `lens: pauli-alignment-check`.
+
+15. **Await Lens Completion** — Monitor the lens tasks until they reach `status: done`.
+
+16. **Record Promotion Decision** — Review lens verdicts. Address or overrule findings with rationale. Write a `## Promotion Log` entry to the parent body and transition status from `inbox` to `ready`.
+
 ## Hierarchy and Depth
 
 - **Prefer depth over breadth**: If decomposition produces >10 tasks, group into sub-epics.
