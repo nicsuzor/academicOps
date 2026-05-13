@@ -117,12 +117,6 @@ _N PRs merged today across M repos_
 
 **Error handling**: If `gh` CLI is unavailable or authentication fails for a repo, note it inline and continue to the next repo.
 
-### Step 4.2.6: (retired — moved to Outstanding Workflows)
-
-Open PR handling lives in `## What Needs Attention / Outstanding Workflows` only. See [[instructions/workflow-monitor]] Step 6 for the bucketing rules (Ready to merge, Needs review, Needs fixes, Stale, Draft/autonomous), the `gh pr list` query, and the decision-oriented formatting. The Work Log does not carry a parallel Open PRs table.
-
-When composing the Outstanding Workflows subsection, the agent may apply the PR-action classification heuristics below inline (e.g., note "fix type check + conflicts" next to the PR in its bucket) rather than in a separate table.
-
 ### Step 4.2.7: PR Action Pipeline
 
 After classifying PRs, recommend specific agent actions for each. The available GitHub agents are:
