@@ -24,13 +24,7 @@ Before syncing progress, run a sweep of tasks in `merge_ready` and `review` stat
 
 ### Step 4.1: Narrative Path Reconstruction (Compass Model)
 
-Instead of a mechanical table, build a narrative timeline of the day's work using the `show_path.py` script. This helps the user recover context and identify "where they are" in the day's story.
-
-```bash
-uv run python3 aops-core/scripts/show_path.py --hours 24
-```
-
-**Use as an input to the editorial synthesis**, not as a section to render verbatim. The path output helps you see the threads of work per project — what was started, what was finished, what was claimed — so the Today's Log narrative can name them. There is no standalone `## Session Timeline` or `## Today's Path` section in the daily note; the synthesis absorbs these signals.
+Build a narrative timeline of the day's work. Create an **editorial synthesis**, not a standalone `## Session Timeline` or `## Today's Path` section in the daily note. Help the reader see the threads of work per project — what was started, what was finished, what was claimed. This helps the user recover context and identify "where they are" in the day's story.
 
 ### Step 4.1.5: Load Closure History
 
