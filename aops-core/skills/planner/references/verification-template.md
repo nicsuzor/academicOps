@@ -15,7 +15,7 @@ depends_on:
 
 ## Acceptance Standards
 
-[Restate the falsifiable criteria from the parent task here as pass/fail checks.]
+[Reference the falsifiable criteria from the parent task here as the basis for pass/fail checks.]
 
 - [ ] Criterion 1: [Description]
 - [ ] Criterion 2: [Description]
