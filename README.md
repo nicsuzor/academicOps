@@ -128,7 +128,7 @@ PR opened → lint + typecheck + tests → agent review → merge prep → human
 | **MCP: computer-use**      | ✅ (unverified) | ✅ (unverified) | ✅ (unverified) | ? (unverified)  | ? (unverified)  | ? (unverified)  | ? (unverified)  |
 | **Background jobs**        | ✗ (unverified)  | ✗ (unverified)  | ? (unverified)  | ✗ (unverified)  | ? (unverified)  | ✅ (unverified) | ✗ (unverified)  |
 
-**Legend**: ✅ verified · ⚠ Partial → link · ✗ N/A · ? unverified · (unverified) unverified
+**Legend**: ✅ Supported · ⚠ Partial · ✗ N/A · ? Unknown · (unverified) status: unverified
 
 ### Per-target install
 
