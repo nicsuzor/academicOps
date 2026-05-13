@@ -55,7 +55,7 @@ version: 2.0.0
 
 14. **Create Review Lens Tasks** — Create two child subtasks using `references/lens-templates/rbg-axiom-check.md` and `references/lens-templates/pauli-alignment-check.md`. Tags: `lens: rbg-axiom-check` and `lens: pauli-alignment-check`.
 
-15. **Await Lens Completion** — Monitor the lens tasks until they reach `status: done`.
+15. Await Lens Completion — The promotion to status: ready is blocked until the lens tasks reach status: done. Halt and wait for completion before proceeding.
 
 16. **Record Promotion Decision** — Review lens verdicts. Address or overrule findings with rationale. Write a `## Promotion Log` entry to the parent body and transition status from `inbox` to `ready`.
 
