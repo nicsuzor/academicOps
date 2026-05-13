@@ -323,7 +323,37 @@ SEV4 targets with weak consequence prose (ADVISORY — heuristic):
 
 This is a heuristic. The keyword list is documented inline above and revisable. False positives are expected — present them as advisory, not as errors. The user (or planner mode) decides whether to rewrite the prose or accept it.
 
-**Implementation note**: All three checks read graph state via `list_tasks` / `pkb_context` / direct YAML inspection of frontmatter. None call `update_task` or any write tool — they print and return. Run on demand when the user explicitly requests `Anti-inflation` (like any other named activity in the table above) or asks for graph hygiene.
+**Check 4 — Active SEV4-committed target concurrency**
+
+> Spec: §6 Q4. AC#4.
+
+Count `type: target` nodes where `goal_type: committed`, `severity: 4`, and `status: active` (or any non-terminal status: `queued`, `ready`, `in_progress`). The cap is **2**. If `count > 2`, emit a warning.
+
+**Check 5 — Type/ID-prefix/Filename consistency**
+
+Find every task/epic/target/learn node where:
+
+1. The ID prefix does not match the type (e.g., `epic-` prefix with `type: task`).
+2. The filename stem does not match the ID (e.g., `task-123-title.md` instead of `task-123.md`).
+
+Prefix rules:
+
+- `epic-` -> `type: epic`
+- `task-` -> `type: task`
+- `bug-` -> `type: task` (classification bug)
+- `learn-` -> `type: learn`
+- `target-` -> `type: target`
+- `goal-` -> `type: target` (legacy)
+- Project slug (e.g., `aops-`) -> allowed for any type within that project.
+
+List as:
+
+```
+Type/ID/Filename mismatches (SURFACE):
+  - [task-id] [[Title]] — reason: <mismatch details>
+```
+
+**Implementation note**: All five checks read graph state via `list_tasks` / `pkb_context` / direct YAML inspection of frontmatter or `graph_json`. None call `update_task` or any write tool — they print and return. Run on demand when the user explicitly requests `Anti-inflation` (like any other named activity in the table above) or asks for graph hygiene.
 
 ### Data Quality Procedures (Dedup, Stale, Misclassification, Domain)
 
