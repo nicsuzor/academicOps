@@ -165,13 +165,37 @@ Polecats are **smart agents, not mechanical drones**. The supervisor's job is th
 
 Bias hard toward dispatching — but **start small and ramp**. A queue of N user-approved tasks gets fired with strict concurrency limits, NOT all at once. Friction is captured as it surfaces (task created under the supervisor meta-epic) — not as a reason to slow down.
 
-**Concurrency limits (HARD CAP):**
+**Concurrency limits — adaptive backoff (HARD CAP, default DOWN):**
 
-- **Start with 2 concurrent polecats.** Always. No matter how big the queue.
-- **Ramp to a maximum of ~4 concurrent** only after the first 2 are visibly healthy (one merge_ready landed, no API quota errors, no infrastructure thrashing).
-- **Never exceed ~4 concurrent** unless the user has explicitly authorised higher fanout for this session.
+The supervisor uses **discretion to ramp up and down** based on observed signals. The user is not in a rush — under-shooting is always preferable to over-shooting.
+
+| Wave | Default cap | Wave size | Inter-wave wait | Promote / demote rule                                            |
+| ---- | ----------- | --------- | --------------- | ---------------------------------------------------------------- |
+| 1    | **2**       | 2–3 tasks | —               | Wait for at least 1 `DONE` before wave 2                         |
+| 2    | 2 → 3       | 3–4 tasks | 5–10 min        | If wave 1 = clean (0 QUOTA, 0 FAIL): promote to 3. Else: hold 2. |
+| 3+   | up to 4     | 4–5 tasks | 5–10 min        | If clean run continues: promote +1. Cap at 4. Never above.       |
+
+**Demotion (back-off) triggers** — any of these on the most recent wave:
+
+- **≥1 `QUOTA` event** → demote concurrency by 1 (min 1), wait 15–30 min before next wave (quota windows usually clear within 30 min).
+- **≥1 `FAIL` event with infra cause** (docker OOM, worktree lock saturation, PKB MCP unreachable) → demote by 1 and investigate before next dispatch.
+- **2+ FAIL events of any class** → halt the swarm, summarise, report to user.
+- **Same task FAILs twice in a row** → leave that task alone; file an investigation subtask under the supervisor meta-epic.
+
+**Promotion (ramp-up) triggers**:
+
+- 2 consecutive waves with 0 QUOTA / 0 FAIL and at least 1 DONE per wave → promote by 1.
+- Never promote past 4 without an explicit user line authorising higher fanout.
+
+**Inter-wave pacing**:
+
+- Default 5 min between waves once the first wave is in flight.
+- After any QUOTA event: 15 min minimum cool-down.
+- After back-to-back QUOTA: 30 min, and consider switching workers (halt-on-substitute applies — confirm with user before flipping gemini↔claude).
 
 Why: shared upstream APIs (Gemini, Anthropic), worktree-creation locks, docker resource limits, and review-pipeline capacity all degrade non-linearly. At 20+ concurrent polecats against a single Gemini account, quota exhaustion is near-certain. At 38 it's guaranteed. "Keep the pipe flowing" means _steady throughput_, not _parallel fanout_. Two polecats finishing every 10 minutes is faster than 30 polecats failing.
+
+The supervisor reads the swarm `events.log` between waves and applies this table — this IS supervisor discretion. The cap is not a fixed number; it's a state the supervisor maintains and adjusts.
 
 **"Bigger chunks of work" ≠ "more polecats simultaneously".** It means give each polecat a substantive task (an epic, a multi-step refactor, a design+implementation) instead of micro-decomposing it for them. Trust polecat _depth_, throttle polecat _width_.
 
