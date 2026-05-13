@@ -195,7 +195,9 @@ The supervisor uses **discretion to ramp up and down** based on observed signals
 
 Why: shared upstream APIs (Gemini, Anthropic), worktree-creation locks, docker resource limits, and review-pipeline capacity all degrade non-linearly. At 20+ concurrent polecats against a single Gemini account, quota exhaustion is near-certain. At 38 it's guaranteed. "Keep the pipe flowing" means _steady throughput_, not _parallel fanout_. Two polecats finishing every 10 minutes is faster than 30 polecats failing.
 
-The supervisor reads the swarm `events.log` between waves and applies this table — this IS supervisor discretion. The cap is not a fixed number; it's a state the supervisor maintains and adjusts.
+The supervisor reads `polecat list` / `gh pr list` / PKB status between waves and applies this table — this IS supervisor discretion. The cap is not a fixed number; it's a state the supervisor maintains and adjusts by sizing the next `polecat swarm` invocation (`-c <claude-N>` / `-g <gemini-N>` flags).
+
+If `polecat swarm` lacks the signals needed for adaptive ramp (e.g. a structured exit summary, run-id-namespaced logs, quota-aware backoff), file the gap as a **polecat feature**, not as a supervisor shell-script. The dispatcher owns concurrency mechanics; the supervisor owns the policy.
 
 **"Bigger chunks of work" ≠ "more polecats simultaneously".** It means give each polecat a substantive task (an epic, a multi-step refactor, a design+implementation) instead of micro-decomposing it for them. Trust polecat _depth_, throttle polecat _width_.
 
