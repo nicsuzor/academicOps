@@ -161,7 +161,7 @@ In autonomous (loop) sessions, legitimate halts set the epic to `blocked` or `re
 Dispatch policy — _when_ to fire the next worker, _whether_ to pair two in flight, when to back off, when to halt — is **supervisor judgment**. It does not belong in a CLI flag, a shell wrapper, or a batched "swarm" abstraction. The primitive is one line:
 
 ```bash
-ssh TARGET_HOST "zsh -i -c 'polecat run -t <task-id> -p <project>' [--gemini]"
+ssh TARGET_HOST "zsh -i -c 'polecat run -t <task-id> -p <project> [--gemini]'"
 ```
 
 (Drop the SSH wrapper when supervisor and polecat host are the same machine. `DOCKER_HOST=ssh://wsl` is **not** a clean alternative — `polecat run` does local FS work for worktrees, `.polecat` state, and PKB socket reachability, so the docker daemon must live on the same host as polecat.)
