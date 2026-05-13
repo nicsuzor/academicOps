@@ -190,6 +190,18 @@ Break validated epics into structured task trees.
 10. **Set subtask priority to P3 by default.** Do not propagate the parent's priority to children, and do not infer priority from subtask content. Only elevate a subtask above P3 if the user explicitly signals urgency for that specific subtask. See [[#priority-assignment-rules]].
 11. Create in PKB via `mcp__pkb__decompose_task(parent_id, subtasks)`.
 
+### Promotion gate: inbox → ready
+
+To promote a node from `inbox` to `ready`, you must produce all of the following. Missing any one means the node stays in `inbox`.
+
+1. **Subtask breakdown (or explicit "leaf" assertion)**: Either child nodes that cover the parent scope or an explicit "leaf" assertion in the parent body.
+2. **Project / source-location field, verified**: `project: <name>` on parent and children, matching CORE.md topology. Name at least one file or symbol the work will modify.
+3. **Acceptance criteria — first-class, on the node body**: A `## Acceptance Criteria` H2 block with discrete, falsifiable statements.
+4. **Verification task — separate node, linked**: A child task with `tag: lens: verification` and `depends_on: [<execution-children>]`. Use `verification-template.md`.
+5. Review-lens annotations — RBG (axioms) + Pauli (alignment): Create two child subtasks: lens: rbg-axiom-check and lens: pauli-alignment-check. Promotion is blocked until both reach status: done.
+
+**Promotion decision recording**: Write a "Promotion log" entry to the parent body capturing lens verdicts addressed/overruled and the rationale for promotion.
+
 **Critical rules**:
 
 - Every subtask MUST have clear acceptance criteria. If you can't write AC, keep the step in the parent body instead of creating a hollow subtask.
