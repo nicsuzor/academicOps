@@ -58,7 +58,7 @@ Two new PKB task frontmatter fields:
 ## Artefact Schema: `gh-pkb-deltas.json`
 
 Path: `$AOPS_SESSIONS/state/gh-pkb-deltas.json`
-Contract: append-only event log. Events older than 24h are pruned on write. Concurrency primitive: file lock via `sync.py` (same pattern as `pr-state.json`).
+Contract: append-only event log. Events older than 48h are pruned on write. Concurrency primitive: file lock via `sync.py` (same pattern as `pr-state.json`).
 
 ```json
 {
@@ -101,7 +101,7 @@ Consumer: `/daily` Step 7 (Task Completion Sweep) — the only consumer. On each
 | `pr_url` frontmatter | task frontmatter | exact string match against `pr-state.json` PR URL                          |
 | `closes_issues: [N]` | task frontmatter | `gh issue view N --json state` → `state == "CLOSED"`                       |
 | `gates_on: [N]`      | task frontmatter | same issue state check                                                     |
-| Task ID in PR body   | PR body text     | literal `task-[0-9a-f]{8}` prefix match (regex on structured string field) |
+| Task ID in PR body   | PR body text     | regex `[a-z]+-[0-9a-f]{8}` (matches `task-*`, `aops-*`, etc.; regex on structured string field, not prose) |
 | `Closes #N` trailers | GitHub API       | `closingIssuesReferences` field (structured API response — not prose)      |
 
 ### (b) Semantic → agent invocation (never mechanical)
@@ -155,6 +155,6 @@ Expected: zero matches. Any match is a revert trigger. The grep is a pre-merge g
 
 **Who**: human-dispatched agent session, not automated cron.
 **When**: after PR1 (frontmatter fields + lint exist), before PR2 (so cron has clean data on first run).
-**What it does**: `backfill.py` iterates all open GH issues and all non-done PKB tasks. For each, it dispatches a Claude call with the issue/task body to classify any embedded references (`Closes #N`, `gated on #N`, `blocked by #N`, `see #N`). The agent writes `closes_issues:` or `gates_on:` to task frontmatter via PKB MCP. It does not use regex on prose — the agent reads the prose.
+**What it does**: `backfill.py` iterates all open GH issues and all non-done PKB tasks. Before dispatching Claude, a structural pre-filter (`#\d+` present in body) reduces the candidate set to items that mention any GH reference at all — this is not prose classification, just candidate gating. For each candidate, a Claude call classifies the relationship type (`closes_issues` vs `gates_on` vs no relationship). The agent writes `closes_issues:` or `gates_on:` to task frontmatter via PKB MCP. It does not use regex on prose — the agent reads the prose.
 **Ambiguous surfacing**: where the agent cannot determine relationship type (e.g., bare `#123` with no verb), an event is written to `gh-pkb-deltas.json` with `action_taken: "task_needs_user_call"` and a note quoting the ambiguous phrase. These surface in the next `/daily` "Needs your call" block.
 **Backfill scope**: 282 open issues + PKB tasks in `queued`, `in_progress`, `review`, `merge_ready` status only. Closed/done records are read-only.
