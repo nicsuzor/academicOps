@@ -2,6 +2,7 @@
 name: aops
 category: instruction
 description: "Core academicOps skill — institutional memory, strategic coordination, workflow routing, and framework governance. Merges butler (chief-of-staff) with framework development conventions."
+autonomy: high
 ---
 
 # academicOps Core Skill
@@ -420,9 +421,10 @@ IF git operations fail:
 When you encounter something you cannot derive:
 
 1. **STOP** — Do not guess or work around
-2. **STATE** — "I cannot determine [X] because [Y]"
-3. **ASK** — Use AskUserQuestion for clarification
-4. **DOCUMENT** — Once resolved, add the rule
+2. **DECIDE** — Apply Axiom A18: if the decision is in-scope, reversible, or unambiguously implied, act and report.
+3. **STATE** — If a genuine fork remains: "I cannot determine [X] because [Y]"
+4. **ASK** — Use `AskUserQuestion` for safety-critical, cross-scope, or irreversible clarification
+5. **DOCUMENT** — Once resolved, add the rule
 
 ---
 

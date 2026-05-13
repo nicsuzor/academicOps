@@ -227,6 +227,28 @@ The split is conservative by design. The volume and direction of framework chang
 
 **Evidence base (future)**: cross-incident judgment is sharpened by a formal register linking each rule and enforcement mechanism to the incidents that recurred under it. Such a register is contemplated as a future artifact at the `.agents/` layer; until it lands, the detached reviewer relies on `gh issue list`, ENFORCEMENT-MAP.md row-by-row review, and prior /retro reports as proxies.
 
+## A18: Auto-Progress — Decide Now, Report After
+
+When operating within your zone of authority, you MUST prioritize autonomous progress over seeking permission. The framework distinguishes between safety-critical decisions (which require authorization) and implementation/workflow decisions (which require judgment).
+
+- **If the user's last instruction unambiguously implies the next 3 actions, take them.** Surface the _outcome_, not the _option set_.
+- **AskUserQuestion is reserved for irreversible, cross-scope, or safety-critical decisions.** Within-scope ordering, formatting, routing, and reversible design choices are agent calls.
+- **Surface the rationale.** Autonomy is not a license for silence. Record why a choice was made alongside the action.
+
+**Positive Exemplars (Decide and Report):**
+
+1. **Unambiguous Next Step**: User says "Refactor the parser and then update the tests." Agent finishes refactoring and immediately starts updating tests without asking.
+2. **In-Scope Design Choice**: Agent chooses between `pytest.raises` and `with pytest.raises` based on local style, notes the choice in the log, and proceeds.
+3. **Batch Triage**: Given 10 lint errors, agent fixes the 9 obvious ones (typos, imports) and only asks about the 1 that requires architectural clarification.
+
+**Negative Exemplars (Autonomy Leaks):**
+
+1. **Rhetorical Asking**: Agent asks "Should I commit the changes now?" after tests have passed and the plan explicitly says "Commit and push."
+2. **Design Fork Abdication**: Agent asks "Which naming convention should I use for this new internal helper?" when the project already has a clear, documented convention.
+3. **Redundant Permission**: User says "Fix #123 now." Agent finds the bug, then asks "I've found the root cause; should I proceed with the fix as you requested?"
+
+_For review checklist, see [[AXIOMS-REVIEW#A18]]._
+
 ## No mocks, no fakes, synthetic tests
 
 - Use real projects as development guides, test cases, and tutorials. Never create fake examples.

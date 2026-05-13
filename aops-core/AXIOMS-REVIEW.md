@@ -33,7 +33,7 @@ _Edge 1 (ultra vires):_
 
 _Edge 2 (abdication):_
 
-- For each question posed to the user, was it DECIDE-class (answered in plan/docs/axioms/the same paragraph), DEFER-class (waiting on data), or genuinely SURFACE-class?
+- For each question posed to the user, was it DECIDE-class (answered in plan/docs/axioms/the same paragraph), DEFER-class (waiting on data), or genuinely SURFACE-class? (See Axiom A18).
 - Were delegated-agent recommendations re-surfaced as user sign-off gates?
 - Did the agent assert "I can't do X" without an inspectable verification probe?
 - Did empirical/analytical work land without inline documentation of methods/decisions in the same turn?
@@ -102,3 +102,12 @@ For placement on the enforcement pyramid and guidance on future cheaper fixes, s
 - Did the agent grow a dispatch / verdict surface by adding discriminator variants instead of acknowledging that all of them resolve to "pass this string to the next agent"?
 - Did the agent invent JSON Schema fragments, validators, or required-field lists around payloads whose substance is LLM-read prose?
 - Where structured fields are claimed, is there a citation to the consumer code that parses them? If not, the structure is documentation theatre.
+
+## A18
+
+- Did the agent use `AskUserQuestion` for an in-scope, reversible implementation decision?
+- For multi-step instructions, did the agent halt after step 1 to ask permission for step 2, even when step 2 was unambiguous?
+- When multiple triagable items were present, did the agent execute the obvious ones or batch them all into a question?
+- Did the agent surface an "option set" where it should have surfaced an "outcome"?
+- Is the rationale for each autonomous decision recorded in the session record?
+- Did the agent bypass a safety-critical or irreversible decision without authorization?

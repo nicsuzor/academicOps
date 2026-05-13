@@ -3,6 +3,7 @@ name: planner
 type: skill
 category: instruction
 description: Strategic planning agent — graph structure ownership, task decomposition, knowledge-building, and PKM maintenance. Works on WHAT exists and HOW it relates.
+autonomy: high
 triggers:
   # capture mode (from /q)
   - "queue task"
@@ -346,7 +347,7 @@ These are the interactive counterpart to sleep Phase 4. In maintain mode, the hu
    - `calendar_list_events` for past meetings matching task context
 3. Evidence of completion → `complete_task(id=<id>)` with note
 4. Confirmed irrelevant → `batch_archive(ids=[<id>], reason="superseded")`
-5. Ambiguous → present to user via `AskUserQuestion`
+5. Ambiguous → Apply Axiom A18. If a defensible default exists, take it and report. Only present to user via `AskUserQuestion` if the choice is safety-critical or has no defensible default.
 
 **Misclassification procedure**:
 
