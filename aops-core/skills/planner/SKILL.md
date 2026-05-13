@@ -244,13 +244,13 @@ Facilitated strategic thinking. Thinking partner, NOT a doing agent.
 - Let synthesis emerge naturally
 
 ### wire
-
+Allowed tools: mcp__pkb__list_tasks, mcp__pkb__get_task, mcp__pkb__update_task, mcp__pkb__get_semantic_neighbors, AskUserQuestion
 Interactive flow for densifying `contributes_to` edges on target nodes.
 
 **When**: "wire edges", "link to target", "contributes_to", "Renooij-Witteman"
 
 **Allowed tools**: `mcp__pkb__list_tasks`, `mcp__pkb__get_task`, `mcp__pkb__update_task`, `mcp__pkb__get_semantic_neighbors`, `AskUserQuestion`, `replace`
-
+3. Find Candidates: For the selected target, search for related tasks (status: ready/queued/in_progress) in the same project or semantically related. Filter out tasks that already have a contributes_to edge pointing to the target.
 **Workflow**:
 
 1. **List Targets**: Identify `type: target` nodes in the PKB.

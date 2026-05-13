@@ -28,7 +28,7 @@ version: 1.0.0
      - Tasks in the same project as the target.
      - Tasks mentioned in the target's body under "Active children to wire" or similar.
      - Semantic neighbors: `mcp__pkb__get_semantic_neighbors(target_id)`.
-     - Recent active tasks: `mcp__pkb__list_tasks(status="ready", limit=20)`.
+     - Recent tasks with status: ready, queued, or in_progress: mcp__pkb__list_tasks(status=["ready", "queued", "in_progress"], limit=20)
    - Filter out tasks that already have a `contributes_to` edge pointing to the target.
 
 4. **Iterate & Elicit**: For each candidate task, present its summary (ID, Title, Project, Status) and the target summary.
@@ -37,8 +37,7 @@ version: 1.0.0
      - **Select Weight**: Prompt for weight using the Renooij-Witteman scale.
        - _Options_: Certain, Probable, Expected, Fifty-Fifty, Uncertain, Improbable, Impossible.
      - **Capture Justification**: Prompt for a single-sentence justification (e.g., "Direct contribution to X").
-     - **Write Edge**: Use the `replace` tool to add the edge to the task's frontmatter.
-       - _Workaround_: Although `update_task` exists, use `replace` for precise frontmatter editing until nested field support is verified.
+     - Write Edge: Use the mcp__pkb__update_task tool to add the edge to the task's frontmatter.
 
 5. **Report**: After processing candidates, provide a summary report of edges added.
 
