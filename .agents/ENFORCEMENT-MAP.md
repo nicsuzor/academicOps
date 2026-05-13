@@ -156,6 +156,14 @@ through `aops-core/hooks/router.py`. Tier: `hint` = injected reminder,
 | `aca_data_autocommit` | PostToolUse      | `aops-core/hooks/router.py` `_run_aca_data_autocommit`  | (procedural: keep PKB synced)                     | When `$ACA_DATA` set                  | n/a     | L2 · ~100ms wall-clock × per write op                       | Auto-commits `$ACA_DATA` after state-modifying tool calls                |
 | `context-map hints`   | UserPromptSubmit | `aops-core/hooks/router.py` `_inject_context_map_hints` | (procedural: discovery via `.agents/context-map`) | Repos with `.agents/context-map.json` | `hint`  | L1 · ~50–200 tok × per prompt                               | Injects relevant doc pointers from the repo's context map                |
 
+## Retired runtime hooks
+
+Gates that were defined in config infrastructure but have since been removed.
+
+| Mechanism      | Retired in  | Notes                                                                                                                              |
+| -------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `commit` gate  | PR #988     | Config key only — never implemented in `gates/definitions.py` and never registered here. Superseded by `handover` gate (Stop hook already mandates commit before Stop). |
+
 ## Pre-commit hooks
 
 | Hook ID                     | Script                                 | Rule(s)                    | Tier   | Cost / Impact               | Behaviour                                                                                                                                               |
