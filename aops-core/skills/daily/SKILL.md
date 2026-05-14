@@ -238,12 +238,15 @@ This sweep closes the loop on tasks whose completion can be inferred from extern
 3. **Auto-complete clear cases**: If a merged PR is found matching the task, call `mcp__pkb__complete_task` with a completion note including the PR URL and merge timestamp as evidence. No human confirmation needed — the merge is sufficient evidence.
 4. **Sent-email evidence**: For tasks where the completion signal is a sent email, cross-reference against recent sent items. If a sent reply matches the task's correspondent + subject (whole-word boundaries) within 48 hours of task creation, call `mcp__pkb__complete_task` with the sent email as evidence. Only auto-close when the match is unambiguous.
 5. **Ambiguous cases**: When evidence exists but is ambiguous (partial subject match, PR closed but not merged), surface the task in the note under "Needs your call" within "What Needs Attention". Include the PR/email link. **Never auto-close ambiguous cases.**
-6. **Stale tasks**: If a task has been in `review` or `merge_ready` for more than 14 days with no evidence found, surface it under "Stale review/merge_ready" in Status. Do not auto-close.
+6. **Stale tasks**:
+   - **Weekly Triage (>14d)**: If a task has been in `review` or `merge_ready` for more than 14 days with no evidence found, surface it weekly in the note under "Stale review/merge_ready" in Status with the prompt: `Still relevant? [unblock / archive / surface]`.
+   - **Auto-archive (>30d)**: If a task has been in `review` for more than 30 days with zero updates, auto-archive it. Call `mcp__pkb__update_task` to set `status="done"` and add the tag `auto-archived: stale-review`. Append an explanation to the task body. Do not surface these in the note as needing review, just log the auto-archive in the sweep summary.
 7. **Report summary**: Include a brief sweep summary in the Work Log section:
    - `N tasks auto-closed from merged PRs`
    - `N tasks auto-closed from sent emails`
    - `N flagged as ambiguous`
-   - `N flagged as stale (>14d)` — list task IDs inline
+   - `N flagged as stale (>14d)` — list task IDs inline with 'Still relevant?' prompt
+   - `N auto-archived as stale (>30d)`
 
 **What counts as evidence**: A merged PR linked by `pr_url`, PR number already on task, task ID in PR body, `headRefName` matching branch, or PR title matching task title (whole-word boundaries). A sent email matching correspondent + subject (whole-word boundaries) within 48 hours of task creation. A closed-but-not-merged PR is **not** evidence.
 

@@ -20,10 +20,11 @@ narrative_generated: null
 
 # Daily Summary - YYYY-MM-DD
 
-## Carryover
+## Carryover (Human-Action Items)
 
-- [ ] [example-carryover-task] **[[Committee Task]]** — deadline tomorrow
-- [ ] [academic-example1] Reply to [[External Contact]] — response pending
+- [ ] [example-carryover-task] **[[Committee Task]]** — due tomorrow (orange) [DECIDE]
+- [ ] [academic-example1] Reply to [[External Contact]] — 2 days overdue (red) [CONFIRM] Draft reply ready: `<summary>`. Send? `[y/N]`
+- [ ] [fyi-item-1] Read the new proposal [FYI]
 
 ## Status
 
