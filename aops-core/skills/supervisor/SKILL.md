@@ -20,6 +20,19 @@ domain:
 
 # Supervisor — Stateless Tick
 
+## Posture: Golden Path First
+
+The supervisor's default action is **dispatch and trust**. It does not pre-pay the cost of every failure mode through stacked gates and checklists. Pauli decides one thing (dispatch / fix-task / halt); the supervisor executes; reactions handle whatever reality actually returns.
+
+Things the supervisor does **not** do up front:
+
+- enumerate environment probes, capability checks, or host pings before a dispatch
+- design the polecat's implementation or decompose its work for it
+- read PR diffs, task bodies, or transcripts to second-guess a worker
+- collect "what could go wrong" gates that exceed the failure rate they protect against
+
+Reaction surface (the real brake): the [Emergency Brake](#emergency-brake) below catches the small set of terminal patterns. Everything else routes through pauli (`react`) when it actually fails.
+
 ## Reporting Posture
 
 The supervisor is **decide-and-report, not ask-and-wait**. Each tick exits in exactly one of three modes:
@@ -32,10 +45,10 @@ Escalation criteria (anything outside these → decide-and-report, no `[ATTN]`):
 
 1. Irreversible or external-system-modifying action without prior user authorization.
 2. Methodology, citation, or claim-evidence choice on a deliverable published under the user's name.
-3. Genuine binary choice with **no defensible default** (see [Task Assignment Rules](#task-assignment-rules)). If a defensible default exists, the supervisor takes it and reports — it does not ask.
-4. Three consecutive react-halts on the same epic (brake fired).
+3. Genuine binary choice with **no defensible default**. If a defensible default exists, take it and report — do not ask.
+4. Brake fired (see [Emergency Brake](#emergency-brake)).
 
-A tick that prompts the user for a decision with a defensible default is a rubber-stamp anti-pattern — file via `/learn`. Asking for one clarifying fact that decides between two equally-defensible defaults is legitimate; framing that ask as a single-line block is fine.
+Prompting the user when a defensible default exists is a rubber-stamp anti-pattern — file via `/learn`.
 
 **Canonical invocation:** `/loop 30m /supervisor <epic-id>`
 
@@ -55,18 +68,14 @@ That is the whole loop. The next tick fires 30 minutes later with a fresh contex
 
 ## Forbidden in the main agent
 
-If any of these appear in a supervisor transcript, the loop instructions need fixing — file via `/learn`:
+The main agent reads structured verdicts and acts. It does **not**:
 
-- reading task bodies (children, deps, work items by ID)
-- `grep` / `find` / repo scans
-- reading PR diffs, transcripts, polecat stream output
-- running pre-flight gates inline (host check, `polecat ping-pkb`, A8 scan)
-- editing code or test files
-- emitting "the fix is X" — fix decisions are pauli's, never the main agent's
-- writing local JSON state files outside the epic body — the epic body is the only persisted state (see [The Task File Is the Only State](#the-task-file-is-the-only-state)); display surfaces are read-only projections (see [Status Display Surfaces](#status-display-surfaces))
-- prompting the user on a decision with a defensible default — the supervisor takes the default and reports; user attention is only invoked per the [Reporting Posture](#reporting-posture) escalation criteria
+- inspect work — task bodies, PR diffs, transcripts, repo scans, polecat output, pre-flight probes (`ssh`, `polecat ping-pkb`, etc.). Pauli reads PKB; marsha reads runtime artifacts; the supervisor only reads the epic body.
+- author fixes — code edits, test edits, "the fix is X" prose. Fix decisions are pauli's.
+- persist state outside the epic body (no local JSON, no Stop-hook files). See [The Task File Is the Only State](#the-task-file-is-the-only-state).
+- prompt the user on a decision with a defensible default — take the default, report. User attention only per [Reporting Posture](#reporting-posture).
 
-Pre-flight, verification, and reaction are subagent work. The main agent reads structured verdicts and acts.
+If any of these appear in a supervisor transcript, file via `/learn`.
 
 ## Subagent Contracts
 
@@ -78,24 +87,9 @@ Use for every decision the supervisor would otherwise inline: "what should I dis
 
 **Brief shape:** epic ID + role (`preflight` | `react`) + (for `react`) one-line context (work item ID, exit signal).
 
-**Pauli owns:**
+**Scope:** PKB-side judgment — task readiness, decomposability, dependency state, worker selection ([[WORKERS.md]]), Critic Gate for high-blast-radius tasks, A8 scan on any draft body she writes (canonical list at [[instructions/decomposition-and-review#a8-prose-scan-mandatory-before-posting-any-decomposition]]). Pauli does NOT run shell, probe hosts, or test capabilities — she has no Bash tool.
 
-- Task structural readiness: clarity, AC presence, decomposability
-- Dependency state resolution (are blockers truly cleared?)
-- PKB graph consistency: resolving missing `project` frontmatter via ancestor traversal
-- A8 prose-scan against any draft body it produces — canonical phrase list at [[instructions/decomposition-and-review#a8-prose-scan-mandatory-before-posting-any-decomposition]]
-- worker selection — see [[WORKERS.md]]
-- Critic Gate evaluation for high-blast-radius tasks
-
-**Pauli is strictly PKB-side.** She does NOT run shell commands, grep the worktree, probe host connectivity, or test SSH configurations. She reads PKB evidence and recommends action.
-
-**Pauli returns a prose recommendation.** Not a schema, not JSON — a short paragraph that names exactly one action. In practice the recommendations fall into a few shapes:
-
-- **Dispatch:** "Run `<worker>` on `<task-id>` in `<project>`" — optionally followed by a brief paragraph the supervisor pastes into the task body under `## Dispatch Brief` (via `pkb update_task`) before running `polecat run -t <task-id> -p <project>`. There is no `--brief` CLI flag; the worker receives context through the task body.
-- **File a fix-task:** "The environment is missing X — file a fix-task under `<parent>` titled `<title>` and re-evaluate this epic next tick." The supervisor creates the task via `pkb create_task` and exits the tick.
-- **Halt:** "Halt: `<reason>`. Set status `blocked` or `review`." The supervisor records the reason and stops.
-
-The main agent does not interpret pauli's reasoning — it follows the recommendation. If the recommendation is incoherent (no action named, or the named action contradicts itself), append "pauli verdict malformed" to Pattern Memory and exit; do not improvise.
+**Verdict shape:** one short paragraph naming exactly one action — `dispatch <worker> on <task-id>`, `file fix-task <title> under <parent>`, or `halt: <reason>`. The supervisor executes it without re-deriving the reasoning. If the verdict is incoherent (no action, or contradictory), append "pauli verdict malformed" to Pattern Memory and exit; do not improvise.
 
 ### marsha — verify
 
@@ -129,16 +123,14 @@ The supervisor pastes a `## Dispatch Brief` into the task body (via `pkb update_
 
 ## Emergency Brake
 
-Before calling any subagent, apply this table against `## Pattern Memory` (capped to the last 8 rows) and `## Work Items`:
+The brake is the **only** pre-dispatch check. It catches terminal loops; it does not gate the golden path. Apply against `## Pattern Memory` (last 8 rows) and `## Work Items`:
 
-| Rule               | Trigger condition                                            | Action                                                   |
-| ------------------ | ------------------------------------------------------------ | -------------------------------------------------------- |
-| Recurring failure  | Same failure class appears ≥3× in last 8 Pattern Memory rows | Halt epic; status `review`; reason `recurring: <class>`  |
-| Stalled workers    | ≥2 work items `in_progress` with last activity > 4h ago      | Halt epic; status `review`; reason `stalled workers`     |
-| Reactor exhaustion | Pauli `react` returned `halt` ≥2× since last brake reset     | Halt epic; status `review`; reason `repeated react halt` |
-| Preflight halt     | Pauli `preflight` returned `halt` this tick                  | Halt epic; status from pauli; reason from pauli          |
+| Rule              | Trigger condition                                          | Action                                                  |
+| ----------------- | ---------------------------------------------------------- | ------------------------------------------------------- |
+| Recurring failure | Same `*_fail` or `*_halt` class appears ≥3× in last 8 rows | Halt epic; status `review`; reason `recurring: <class>` |
+| Stalled workers   | ≥2 work items `in_progress` with last activity > 4h ago    | Halt epic; status `review`; reason `stalled workers`    |
 
-Halt protocol: append the reason as a Pattern Memory row, set the epic status, emit a one-line user summary, exit. **Never** substitute a different worker, repo, or scope. Brake reset happens only when a human explicitly clears the epic (status → `queued`).
+A direct `halt` recommendation from pauli is not a brake rule — it is just pauli's verdict, executed normally. Halt protocol: append the reason as a Pattern Memory row, set the epic status, emit a one-line summary, exit. **Never** substitute a different worker, repo, or scope. Brake reset happens only when a human explicitly clears the epic (status → `queued`).
 
 ## Pattern Memory format
 
@@ -215,9 +207,7 @@ The supervisor delegates execution but never delegates **final academic judgment
 
 _Enforces A7 Edge 2 (FM-1, FM-2, FM-6). See `aops-core/AXIOMS.md` § A7._
 
-When pauli/marsha return a structured verdict with reasoning, that verdict IS the decision — you delegated it. Execute the structured action (dispatch, fix-task, halt) in the same tick. Returning the verdict to the user as "subagent recommends X, want to proceed?" is the FM-2 rubber-stamping anti-pattern.
-
-Before asserting "I can't dispatch worker X" or "I don't have access to repo Y", run the cheapest verification (`pc list`, `gh auth status`, `which gemini`). Capability fabrication (FM-6) is more severe than asking — it forecloses the user's override.
+Pauli/marsha verdicts ARE decisions, not recommendations to forward. Execute in the same tick. Forwarding ("subagent recommends X, want to proceed?") is FM-2 rubber-stamping. Before asserting "I can't dispatch X", run the cheapest verification (`gh auth status`, `which gemini`) — capability fabrication (FM-6) forecloses the user's override.
 
 ## Phases
 
