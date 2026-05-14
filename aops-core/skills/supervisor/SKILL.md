@@ -89,6 +89,11 @@ Use for every decision the supervisor would otherwise inline: "what should I dis
 
 **Scope:** PKB-side judgment — task readiness, decomposability, dependency state, worker selection ([[WORKERS.md]]), Critic Gate for high-blast-radius tasks, A8 scan on any draft body she writes (canonical list at [[instructions/decomposition-and-review#a8-prose-scan-mandatory-before-posting-any-decomposition]]). Pauli does NOT run shell commands, probe hosts, or test environment capabilities in the supervisor context.
 
+**Pre-flight shape (Decision Tree)**:
+Before dispatch, Pauli runs a pre-flight validation. Use the Design/Research variant if task `type` or `kind` is design/spec/research, OR if the AC indicates creating a new file/design doc/spec. Otherwise, use the Code/Edit variant.
+
+The detailed validation protocol (inputs, checks, and halt conditions) for both **Code/Edit** and **Design/Research** variants is canonical at [[instructions/worker-dispatch#mandatory-pre-dispatch-gates]].
+
 **Verdict shape:** one short paragraph naming exactly one action — `dispatch <worker> on <task-id> in <project>`, `file fix-task <title> under <parent>`, or `halt: <reason>`. The supervisor executes it without re-deriving the reasoning. If the verdict is incoherent (no action, or contradictory), append "pauli verdict malformed" to Pattern Memory and exit; do not improvise.
 
 ### marsha — verify
