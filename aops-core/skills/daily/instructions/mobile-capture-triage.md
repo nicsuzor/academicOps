@@ -76,8 +76,9 @@ Add a brief summary under `## Mobile Captures` in the "What Needs Attention" sec
 - **GitHub rate-limit gotcha** → Knowledge: [[github-rate-limits]]
 - **Faster note processing** → Task `[aops-abc]` + [[note-processing-ideas]]
 - **(test)** → discarded
+- **<filename>** → skipped: routing failed (or other skip reason)
 
-_4 captures processed_
+_5 captures processed_
 ```
 
 One line per capture. Link to the created task ID (wikilink or code span per local convention) and/or knowledge doc. Do not include the capture body — the body lives in the task / knowledge now.
