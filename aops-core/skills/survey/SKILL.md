@@ -125,9 +125,10 @@ However, **what counts as forensic includes structural articulation.** You may a
 For each finding, the retro report must include — and must stop at:
 
 1. **The facts.** What happened, quoted from the transcript.
-2. **The most general category.** Pick one from the Root Cause Categories vocabulary (Discovery Gap, Detection Failure, Instruction Weighting, Index Lag, Cross-workflow Gap, Enforcement Gap, Dropped Thread, Design Inversion, Wrong Layer of Abstraction, Rule Should Not Exist) OR use a free-form framing if these do not fit.
-3. **Structural shape / Rule context.** Describe factually how the framework's shape contributed to this. Name any rule that fired or should have fired. **Do not propose what should be added, escalated, or propagated. That is the sweep agent's job, not yours.**
-4. **Impact statement.** What did this failure cost — agent turns, user time, downstream cleanup, trust? One paragraph. Concrete.
+2. **The most general category.** Pick one from the Root Cause Categories vocabulary (Discovery Gap, Detection Failure, Instruction Weighting, Index Lag, Cross-workflow Gap, Enforcement Gap, Dropped Thread, Design Inversion, Wrong Layer of Abstraction, Rule Should Not Exist, Other) OR use a free-form framing if these do not fit.
+3. **Causal chain.** trigger → expected → actual → root cause. Include the framework layer: Component: [name] / File: [path].
+4. **Structural shape / Rule context.** Describe factually how the framework's shape contributed to this. Name any rule that fired or should have fired. **Do not propose what should be added, escalated, or propagated. That is the sweep agent's job, not yours.**
+5. **Impact statement.** What did this failure cost — agent turns, user time, downstream cleanup, trust? One paragraph. Concrete.
 
 You may flag the finding as severe; you may not author the legislation that severity might motivate. If you find yourself writing "we should add…", "the framework needs…", "an axiom against… would prevent this," strike it. The detached reviewer reading this report later, with the enforcement map and the incident register open, is the agent allowed to write that sentence.
 
