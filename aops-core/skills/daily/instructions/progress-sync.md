@@ -18,7 +18,7 @@ Before syncing progress, run a sweep of tasks in `merge_ready` and `review` stat
 
 ### Step 4.1: Narrative Path Reconstruction (Compass Model)
 
-Build a narrative timeline of the day's work. Create an **editorial synthesis**, not a standalone `## Session Timeline` or `## Today's Path` section in the daily note. Help the reader see the threads of work per project — what was started, what was finished, what was claimed. This helps the user recover context and identify "where they are" in the day's story.
+Build a narrative timeline of the day's work to inform the editorial synthesis (see [[instructions/work-summary]] Step 5.3). Do not render a standalone `## Session Timeline` or `## Today's Path` section; instead, gather the threads of work per project — what was started, what was finished, what was claimed — so the synthesis step can help the user recover context and identify "where they are" in the day's story.
 
 ### Step 4.1.5: Load Closure History
 
