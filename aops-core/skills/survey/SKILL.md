@@ -106,44 +106,29 @@ Read(file_path="<path>", offset=500, limit=500)
 # continue until EOF
 ```
 
-### 3. Critical review — seven lenses
+### 3. Critical review — structural over symptomatic
 
-Evaluate against each lens. Quote the transcript when citing problems. Do not soften findings.
+Evaluate the transcript critically. We are aiming for EXCELLENCE, not "running code".
 
-**A. Framework Compliance** — task lifecycle, plan + pauli review for non-trivial work, tasks tracked/updated/completed, push before claiming done, QA run.
+You are trusted to find what matters. Read the transcript. Find what's worth fixing. Write it up however makes most sense. Flag your own biases.
 
-**B. Scope Discipline** — did the agent do what was asked, or did it drift? Scope expansion without user approval? Unnecessary features/refactors?
-
-**C. Judgment Quality** — HALT when required? Guess vs investigate vs ask? Assumptions stated or silently embedded? Self-correction when wrong?
-
-**C2. A7 Compliance — Authority and Capability** (`aops-core/AXIOMS.md` § A7).
-
-_Edge 1 — ultra vires:_ Did the agent make a classification, prioritisation, or acceptance decision that was not delegated? Where acceptance criteria were set by the user, did the agent honour them as written or reinterpret them?
-
-_Edge 2 — abdication (FM-1 through FM-7):_ For each question posed to the user, was it DECIDE-class (already answered), DEFER-class (waiting on data), or genuinely SURFACE-class? Bundled DECIDE+SURFACE returns are reportable. Were delegated-agent recommendations re-surfaced as user sign-off gates (FM-2)? Did the agent write the answer in the same paragraph as a question, then ask anyway (FM-4)? Did the agent assert "I can't do X" without an inspectable verification probe (FM-6)? Did empirical/analytical work land without inline documentation in the same turn (FM-7)? After `ExitPlanMode`, did the agent ask about steps the plan already enumerates (FM-5)?
-
-_Edge 3 — script abdication:_ Where the agent built a deterministic check, would an agent invocation have been more accurate? Was the cost difference _measured_ or assumed? Where the agent reached for regex/keyword/checklist scaffolding, was the underlying decision qualitative? Did the agent build infrastructure for a problem one well-crafted agent prompt would solve in a single pass?
-
-Note any A7 violation forensically per step 3b; do **not** propose the remediation here. A7 recurrence judgments belong in `sweep` mode under A17 (Recusal).
-
-**D. Communication** — concise or verbose? Decisions explained? Trailing summaries adding friction?
-
-**E. Tool Use** — right tools (dedicated vs bash)? Parallel tool calls used? Redundant work? Tool boundary violations?
-
-**F. Knowledge & Learning** — existing infrastructure checked before building? PKB/tasks updated as info emerged? Learnings filed? Duplicate work avoided?
-
-**G. Excellence Gap** — what would a 10x agent have done differently? Biggest missed opportunity?
+- **Look for structural causes**: If you find yourself listing the same proximate cause across multiple findings, the deeper cause is upstream. Say so explicitly. Instead of listing four separate errors, articulate the structural mis-design that caused them.
+- **Is the shape right?**: Instead of just asking "what went wrong against the framework as-is", ask "is the framework's shape correct?"
+- **Pattern recognition**: Before filing issues, look for patterns across your findings. Are these discrete bugs, or symptoms of a single misaligned rule?
 
 ### 3b. Forensic scope (A17 Recusal)
 
 **The retro is a forensic instrument. It does not legislate.** Per AXIOMS.md § A17, the agent that just read the transcript is normatively recused from proposing framework change motivated by that transcript. Cross-incident judgment about adding/escalating/propagating rules happens in the detached `sweep` mode (a separate context, no prior exposure to this incident).
 
-For each Critical Issue and Warning, the retro report must include — and must stop at:
+However, **what counts as forensic includes structural articulation.** You may articulate structural shape factually (e.g., "design X is impossible because Y", "the rule forces the agent into an impossible loop"). You may flag: "this looks structural; sweep should ask whether the rule shape is right, not just whether the rule fired".
+
+For each finding, the retro report must include — and must stop at:
 
 1. **The facts.** What happened, quoted from the transcript.
-2. **The most general category.** Pick one from the Root Cause Categories vocabulary (Discovery Gap, Detection Failure, Instruction Weighting, Index Lag, Cross-workflow Gap, Enforcement Gap, Dropped Thread). One category per finding — if it spans two, the finding is probably two findings.
-3. **Rule already in place (if any).** Read `.agents/ENFORCEMENT-MAP.md` and grep AXIOMS.md / HEURISTICS.md / open issues. If a mechanism that should have caught this exists, name it and the tier it sits at. If none exists, say so plainly. **Do not propose what should be added, escalated, or propagated. That is the sweep agent's job, not yours.**
-4. **Impact statement.** What did this failure cost — agent turns, user time, downstream cleanup, trust? One paragraph. Concrete.
+2. **The most general category.** Pick one from the Root Cause Categories vocabulary (Discovery Gap, Detection Failure, Instruction Weighting, Index Lag, Cross-workflow Gap, Enforcement Gap, Dropped Thread, Design Inversion, Wrong Layer of Abstraction, Rule Should Not Exist, Other) OR use a free-form framing if these do not fit.
+3. **Causal chain.** trigger → expected → actual → root cause. Include the framework layer: Component: [name] / File: [path].
+4. **Structural shape / Rule context.** Describe factually how the framework's shape contributed to this. Name any rule that fired or should have fired. **Do not propose what should be added, escalated, or propagated. That is the sweep agent's job, not yours.**
+5. **Impact statement.** What did this failure cost — agent turns, user time, downstream cleanup, trust? One paragraph. Concrete.
 
 You may flag the finding as severe; you may not author the legislation that severity might motivate. If you find yourself writing "we should add…", "the framework needs…", "an axiom against… would prevent this," strike it. The detached reviewer reading this report later, with the enforcement map and the incident register open, is the agent allowed to write that sentence.
 
@@ -155,30 +140,18 @@ You may flag the finding as severe; you may not author the legislation that seve
 **Session**: <session_id> **Date**: <date> **Project**: <project>
 **Verdict**: [EXCELLENT | GOOD | ADEQUATE | POOR | FAILING]
 
-### Critical Issues (must fix)
+### Findings
 
-1. **[Issue title]**: [Quote] — [Why this matters]
+[Free-form description of what went wrong, what went well, and what could be improved. You may use lists, paragraphs, or whatever structure best articulates the issues. Group symptoms under structural causes if applicable.]
 
-### Warnings (should fix)
+### Patterns (Optional)
 
-1. **[Issue title]**: [Quote] — [Why this matters]
-
-### Observations (worth noting)
-
-1.
-
-### What Went Well
-
-1. [Genuine strengths only — do not manufacture praise]
-
-### Excellence Gap
-
-[The single most impactful change that would elevate this session to EXCELLENT]
+[If you notice a pattern across findings, articulate the single upstream/structural cause here.]
 ```
 
 ### 5. File issues
 
-For every **Critical Issue** and **Warning**, file or update a GitHub issue.
+For every **Finding** that requires action, file or update a GitHub issue. Group findings that share a structural cause into a single issue.
 
 **Search for existing issues first** — add volume to existing ones rather than duplicating:
 
@@ -202,18 +175,18 @@ gh issue create --repo nicsuzor/academicOps \
   --label "bug" --label "criticality:<level>"
 ```
 
-**Issue body must include — and must stop at — these forensic fields. No remediation, no "suggested axiom," no proposed mechanism (A17 Recusal):**
+**Issue body must include — and must stop at — these forensic fields. Factual structural articulation is allowed, but no remediation proposals (A17 Recusal):**
 
 ```yaml
 ## Incident report (forensic)
 **Failure**: [1-sentence description]
 **Causal chain**: [trigger → expected → actual → root cause]
-**Root cause category**: [Discovery Gap | Detection Failure | Instruction Weighting | Index Lag | Cross-workflow Gap | Enforcement Gap | Dropped Thread]
+**Root cause category**: [Discovery Gap | Detection Failure | Instruction Weighting | Index Lag | Cross-workflow Gap | Enforcement Gap | Dropped Thread | Design Inversion | Wrong Layer of Abstraction | Rule Should Not Exist | Other]
 **Framework layer**: Component: [name] / File: [path]
 **Expected vs Actual**: Expected: [...] / Actual: [...]
 
-## Rule already in place (if any)
-[Cite the row of `.agents/ENFORCEMENT-MAP.md`, the axiom in `aops-core/AXIOMS.md`, or the skill instruction that was supposed to catch this. Name the tier (L0–L7). If no rule exists anywhere, say so plainly. Do NOT propose what should change — only document what existed at the time of the incident.]
+## Structural shape / Rule context
+[Describe factually how the framework's shape contributed to this. Name any rule that fired or should have fired. Do NOT propose what should change — only document what existed at the time of the incident and the structural realities of why it failed.]
 
 ## Impact statement
 [Concrete cost: agent turns burned, user time consumed, downstream actions that had to be reverted (PRs closed, commits reverted), trust impact. One paragraph.]
@@ -223,9 +196,7 @@ Issues that include a "suggested axiom," "proposed gate," or any remediation are
 
 **Why this discipline:** the sweep agent (or a strategic review) reads many incident reports against the enforcement map and the axiom set, and decides what to add, propagate, escalate, or leave alone. That cross-incident judgment is undermined when each incident report ships pre-packaged with the legislation its author thought it implied. The detached reviewer needs facts; the framework needs coherence; the recused incident agent provides one and protects the other by withholding the second.
 
-For **Observations**: only file if the observation reveals a systemic pattern.
-
-In batch mode: cap at **3 issues per session** (1 critical, 1 warning, 1 observation).
+In batch mode: cap at **3 issues per session**.
 
 ### 6. Stamp the transcript as reviewed
 
@@ -252,18 +223,18 @@ Append (do not replace) if `reviewed_by` already exists.
 
 ### Retro anti-patterns
 
-| Anti-pattern                                                                               | What to do instead                                                                                 |
-| ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
-| Skimming                                                                                   | Read every line                                                                                    |
-| "Overall good with minor issues"                                                           | Quote specifically                                                                                 |
-| Filing one mega-issue                                                                      | One issue per distinct finding                                                                     |
-| Inventing praise                                                                           | Only genuine strengths                                                                             |
-| Reviewing your own session                                                                 | Review a DIFFERENT session                                                                         |
-| Filing > 3 issues per session                                                              | Triage first; cap at 3                                                                             |
-| New issue for known pattern                                                                | Comment on existing issue                                                                          |
-| Including "suggested axiom", "add a gate", or any remediation proposal in the report (A17) | Stop at facts + rule-already-in-place + impact. The sweep agent legislates from a detached context |
-| "We should change Y because I just hit X"                                                  | The agent that hit X is recused (A17). Surface the incident; leave the change proposal to sweep    |
-| Citing a single session as justification for a new mechanism                               | Recurrence is the evidence base for framework change, not the salience of one transcript           |
+| Anti-pattern                                                                               | What to do instead                                                                              |
+| ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| Skimming                                                                                   | Read every line                                                                                 |
+| "Overall good with minor issues"                                                           | Quote specifically                                                                              |
+| Filing four separate issues for symptoms of the same structural flaw                       | Identify the structural flaw and file one issue mapping the symptoms back to it                 |
+| Inventing praise                                                                           | Only genuine strengths                                                                          |
+| Reviewing your own session                                                                 | Review a DIFFERENT session                                                                      |
+| Filing > 3 issues per session                                                              | Triage first; group structural causes; cap at 3 issues                                          |
+| New issue for known pattern                                                                | Comment on existing issue                                                                       |
+| Including "suggested axiom", "add a gate", or any remediation proposal in the report (A17) | Stop at facts + structural-context + impact. The sweep agent legislates from a detached context |
+| "We should change Y because I just hit X"                                                  | The agent that hit X is recused (A17). Surface the incident; leave the change proposal to sweep |
+| Citing a single session as justification for a new mechanism                               | Recurrence is the evidence base for framework change, not the salience of one transcript        |
 
 ---
 
@@ -424,7 +395,7 @@ For each issue: read body + ≤ 3 recent comments. Apply rubric. Group `fix-epic
 For every issue whose remediation would touch an axiom, gate, hook, skill instruction, or any row of `.agents/ENFORCEMENT-MAP.md`, run this sequence before assigning a disposition. This is the work that retro is forbidden to do; sweep is the only mode allowed to author it.
 
 1. **Read the forensic reports.** The issue body should be a clean incident report (per A17). If it carries a "suggested axiom" or "proposed gate," strip that from your reasoning — the proposal was authored under prejudicial recency and is evidence of urgency, not of the right answer. Edit the issue to remove the stripped section and leave a comment explaining the A17 split.
-2. **Generalise the failure.** Name the most general Root Cause Category from the documented vocabulary (Discovery Gap, Detection Failure, Instruction Weighting, Index Lag, Cross-workflow Gap, Enforcement Gap, Dropped Thread). One per issue.
+2. **Generalise the failure.** Name the most general Root Cause Category from the documented vocabulary (Discovery Gap, Detection Failure, Instruction Weighting, Index Lag, Cross-workflow Gap, Enforcement Gap, Dropped Thread, Design Inversion, Wrong Layer of Abstraction, Rule Should Not Exist, Other) OR use a free-form framing if these do not fit. One per issue.
 3. **Map to existing mechanisms.** Read `.agents/ENFORCEMENT-MAP.md` end-to-end (it is short by design). Grep AXIOMS.md and HEURISTICS.md for prior framing of the rule. List every existing mechanism that should plausibly have caught this failure, with its tier (L0–L7).
 4. **Classify the failure shape**:
    - **Propagation failure** — rule exists at the right tier but didn't reach this surface. Fix is L1 propagation: edit the specific skill / agent / CORE.md text that needs to carry the rule. Same tier, more callsites.
