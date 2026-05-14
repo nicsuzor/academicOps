@@ -191,3 +191,11 @@ Synchronous validation in library/bridge code that fires at call time, not via t
 | Mechanism | Source | Rule(s) | Scope | Tier | Cost / Impact | Behaviour |
 | --------- | ------ | -------- | ----- | ---- | ------------- | --------- |
 | `create_task` prefix guard | `polecat/pkb_bridge.py` | type-prefix-filename consistency (spec: `projects/aops/specs/pkb/consistency.md` AC#5) | All `create_task` calls via PKB bridge | `block` | L2 · negligible (string match × each call) | Raises `ValueError` when ID prefix mismatches the task type or project slug |
+
+## Scheduled batch automation
+
+Side-effects triggered by `aops-core/scripts/dump_pr_state.py` on a cron schedule.
+
+| Mechanism | Source | Rule(s) | Scope | Tier | Cost / Impact | Behaviour |
+| --------- | ------ | -------- | ----- | ---- | ------------- | --------- |
+| `apply_triage` labels | `aops-core/scripts/dump_pr_state.py` | (procedural: PR routing visibility) | All open PRs per cron run | n/a | L0 · negligible (subprocess × per open PR per run) | Applies `triage:escalate`, `triage:stale`, `triage:auto-mergeable`, or `triage:needs-judgment` based on CI status, staleness, and branch naming; creates a GitHub issue for escalate-class PRs if none exists |

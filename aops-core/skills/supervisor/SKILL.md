@@ -80,11 +80,14 @@ Use for every decision the supervisor would otherwise inline: "what should I dis
 
 **Pauli owns:**
 
-- row-2 grep (file paths named in the task → exactly one repo)
-- the 4-row pre-flight table (Task ID / Source repo / `project=` / Next link in chain) — see [[instructions/worker-dispatch#gate-3-pre-flight-confirmation-summary-task-4cea5008-aops-e2d639e2]]
-- PKB consistency triage (push not landed / remote pull stalled / MCP in-memory index stale) — see [[instructions/worker-dispatch#pre-dispatch-validation-pkb-consistency]]
+- Task structural readiness: clarity, AC presence, decomposability
+- Dependency state resolution (are blockers truly cleared?)
+- PKB graph consistency: resolving missing `project` frontmatter via ancestor traversal
 - A8 prose-scan against any draft body it produces — canonical phrase list at [[instructions/decomposition-and-review#a8-prose-scan-mandatory-before-posting-any-decomposition]]
 - worker selection — see [[WORKERS.md]]
+- Critic Gate evaluation for high-blast-radius tasks
+
+**Pauli is strictly PKB-side.** She does NOT run shell commands, grep the worktree, probe host connectivity, or test SSH configurations. She reads PKB evidence and recommends action.
 
 **Pauli returns a prose recommendation.** Not a schema, not JSON — a short paragraph that names exactly one action. In practice the recommendations fall into a few shapes:
 
@@ -109,6 +112,20 @@ Marsha returns a one-line verdict: `PASS`, `FAIL <reason>`, or `REVISE <reason>`
 | REVISE         | File a verification subtask (depends_on PR); checkpoint       |
 
 Marsha never dispatches, never edits, never files tasks. The supervisor consumes her verdict.
+
+## Canonical Dispatch Template
+
+The supervisor main agent executes dispatch directly using this canonical shape. It does not probe the environment first.
+
+```bash
+# Local dispatch (canonical)
+zsh -i -c "polecat run -t <task-id> -p <project> [--gemini]"
+
+# Remote dispatch (SSH + tmux) - use when TARGET_HOST is required
+ssh "$TARGET_HOST" "tmux new-session -d -s 'polecat-<task-id>' 'zsh -i -c \"polecat run -t <task-id> -p <project> [--gemini]\"'"
+```
+
+The supervisor pastes a `## Dispatch Brief` into the task body (via `pkb update_task`) before running the command. If the dispatch fails synchronously, or the worker fails asynchronously, the error routes to pauli in the `react` phase.
 
 ## Emergency Brake
 
