@@ -6,6 +6,7 @@ model: inherit
 tools:
   - Read
   - Skill
+  - Bash
   - mcp__plugin_aops-core_pkb__search
   - mcp__plugin_aops-core_pkb__get_document
   - mcp__plugin_aops-core_pkb__pkb_context
