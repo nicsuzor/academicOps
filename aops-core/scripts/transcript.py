@@ -130,8 +130,8 @@ def _resolve_project_key(name: str, match_suffix: bool = False) -> str:
             parts = name.strip("-").split("-")
             return parts[-1] if parts else name
 
-    except Exception:
-        pass
+    except (OSError, yaml.YAMLError) as e:
+        print(f"Warning: could not load polecat.yaml registry: {e}", file=sys.stderr)
 
     if match_suffix:
         parts = name.strip("-").split("-")
