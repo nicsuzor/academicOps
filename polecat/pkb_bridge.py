@@ -24,7 +24,7 @@ class PkbTask:
     """Duck-types the task attributes needed by polecat commands."""
 
     def __init__(self, data: dict[str, Any]):
-        fm = data.get("frontmatter", {})
+        fm = data.get("frontmatter") or {}
         self.id: str = fm.get("id") or data.get("id", "")
         self.title: str = fm.get("title") or data.get("title", "")
         self.body: str = data.get("body", "")
@@ -32,7 +32,6 @@ class PkbTask:
         self.project: str | None = fm.get("project") or data.get("project")
         self.type: str = fm.get("type") or data.get("type", "task")
         self.status: str | None = fm.get("status")  # plain string, not enum
-        self.autonomy: str | None = (fm or {}).get("autonomy")
         self.parent: str | None = fm.get("parent")
         self.priority: int | None = fm.get("priority")
         self.tags: list = fm.get("tags") or []
@@ -360,7 +359,7 @@ def update_task(task_id: str | None = None, id: str | None = None, **kwargs: Any
 
     Supports both 'task_id' (positional) and 'id' (named) to reduce friction.
     Supported kwargs: status, assignee, priority, project, tags, body, pr_url,
-    due, effort, consequence, autonomy.
+    due, effort, consequence.
     Pass ``None`` to remove a field.
     """
     final_id = task_id or id
@@ -446,8 +445,6 @@ def save_task(task: PkbTask) -> bool:
         updates["effort"] = task.effort
     if task.consequence is not None:
         updates["consequence"] = task.consequence
-    if task.autonomy is not None:
-        updates["autonomy"] = task.autonomy
     return update_task(task.id, **updates)
 
 

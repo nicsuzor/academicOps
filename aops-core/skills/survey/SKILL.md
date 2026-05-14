@@ -3,7 +3,6 @@ name: survey
 type: skill
 category: instruction
 description: "Survey a corpus, classify, and dispatch outputs. Three modes: retro (transcript review → issues), trend (longitudinal performance analysis), sweep (GitHub issue triage → fix-epics). Delegates execution to pauli/jr to keep main context clean."
-autonomy: high
 triggers:
   - "survey"
   - "retro"
@@ -458,7 +457,7 @@ Confirm? [y / edit]
 - #Z (rubric ambiguous: <reason>)
 ```
 
-Use `AskUserQuestion` only for gates involving safety-critical or non-idiomatic decisions. For routine triage (grouping issues, creating tasks/epics, closing stale issues), apply Axiom A18: execute the proposed batch and report the outcome.
+Use `AskUserQuestion` for each gate. Halt cleanly on decline — re-emit and gate again.
 
 ### 4. Execute (low blast-radius first)
 

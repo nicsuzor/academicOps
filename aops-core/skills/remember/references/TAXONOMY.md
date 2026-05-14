@@ -255,22 +255,6 @@ The single canonical definition of priority. Other framework documents MUST link
 
 **Propagation**: Completion of a node should trigger readiness re-evaluation of all nodes that depend on it. The system surfaces dependency chains so that cascading unblocks are visible.
 
----
-
-## Autonomy Tiers
-
-The `autonomy` field (frontmatter/metadata) defines the agent's zone of authority for making in-scope decisions without pausing for permission. (See Axiom A18).
-
-| Tier     | Name               | Typical behaviour                                                                                              |
-| -------- | ------------------ | -------------------------------------------------------------------------------------------------------------- |
-| `high`   | Decide and Execute | Agent self-resolves all in-scope design choices and unambiguous next steps. Reports outcome only.              |
-| `medium` | In-Scope Decision  | Agent self-resolves implementation details; halts only for cross-cutting or high-blast-radius changes.         |
-| `low`    | Baseline           | Agent halts on significant design uncertainty or multi-route forks. Current baseline for interactive sessions. |
-
-**Default**: `low` (baseline). Tasks created during parallel-workflow contexts default to `high`.
-
-**Override**: The `AOPS_AUTONOMY` environment variable overrides the task-level setting for the duration of the session.
-
 ### Actionable vs. Ready
 
 Framework reporting distinguishes between the **broad view** of all open work and the **narrow view** of what can be started right now:

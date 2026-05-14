@@ -99,21 +99,6 @@ Carve-outs:
 
 Output: list each match with file, line, and pattern. State `sensitive-data: BLOCK|WARN|PASS` and the specific identifiers found.
 
-### Rule 5 — Autonomy Leak (REVISE)
-
-An **autonomy leak** occurs when an agent uses `AskUserQuestion` (or equivalent pause-for-permission) for a decision that is within its own delegated scope, reversible, or clearly implied by the preceding user instruction. (See Axiom A18).
-
-Verdict: **REVISE**.
-
-Detection signals:
-
-- **Self-evident next step**: User said "Fix A and then B"; agent fixed A, then asked "Should I fix B now?".
-- **In-scope design choice**: Agent asks "Should I use pattern X or Y?" when both are idiomatic and safe.
-- **Batching failure**: Agent asks about a batch of 10 items instead of executing the 9 clear ones and asking only about the 1 outlier.
-- **Rhetorical asking**: Agent's question is answered in its own preceding or following paragraph.
-
-Output: cite the specific `AskUserQuestion` invocation and why it is an abdication of authority. State `autonomy-leak: REVISE` (or `PASS`).
-
 ### Output Format
 
 When the caller has commissioned a PR review, end your response with a `## Verdict` section in this shape:
@@ -125,7 +110,6 @@ When the caller has commissioned a PR review, end your response with a `## Verdi
 - scope-error: <BLOCK|PASS> — <one-line reason>
 - keystone-disclosure: <REVISE|PASS> — <one-line reason>
 - sensitive-data: <BLOCK|WARN|PASS> — <one-line reason>
-- autonomy-leak: <REVISE|PASS> — <one-line reason>
 
 Overall: <BLOCK|REVISE|WARN|APPROVE>
 

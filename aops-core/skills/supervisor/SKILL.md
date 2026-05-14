@@ -14,7 +14,6 @@ triggers:
 modifies_files: true
 needs_task: true
 mode: iterative
-autonomy: high
 domain:
   - operations
 ---
@@ -26,18 +25,8 @@ domain:
 The supervisor is **decide-and-report, not ask-and-wait**. Each tick exits in exactly one of three modes:
 
 - **silent** — tick advanced (dispatch fired, verify passed, pattern memory appended). No user-facing output beyond the checkpoint commit. The dashboard and `gh pr list` carry the signal.
-- **`[ATTN]` block** — a decision the supervisor cannot make autonomously per the [Critic Gate](#critic-gate-high-blast-radius-dispatch), [Academic Integrity](#academic-integrity-is-non-negotiable), [Halt-on-substitute](#halt-on-substitute) rules, or the [Autonomy Tier](#autonomy-tier) constraints. Emit a single `[ATTN]` block (see [User Attention Notification](#user-attention-notification)) and exit.
+- **`[ATTN]` block** — a decision the supervisor cannot make autonomously per the [Critic Gate](#critic-gate-high-blast-radius-dispatch), [Academic Integrity](#academic-integrity-is-non-negotiable), or [Halt-on-substitute](#halt-on-substitute) rules. Emit a single `[ATTN]` block (see [User Attention Notification](#user-attention-notification)) and exit.
 - **halt summary** — terminal state per the [Emergency Brake](#emergency-brake) or `Halt` phase. One-line summary + epic status set; no question posed.
-
-### Autonomy Tier
-
-The supervisor respects the `autonomy` tier from frontmatter or `$AOPS_AUTONOMY`.
-
-- `high`: Decide and execute; report only at merge surface.
-- `medium`: Decide on in-scope; halt for cross-cutting / irreversible.
-- `low`: Baseline — halt on design uncertainty.
-
-Tasks created during parallel-workflow contexts default to `high`.
 
 Escalation criteria (anything outside these → decide-and-report, no `[ATTN]`):
 
@@ -45,7 +34,6 @@ Escalation criteria (anything outside these → decide-and-report, no `[ATTN]`):
 2. Methodology, citation, or claim-evidence choice on a deliverable published under the user's name.
 3. Genuine binary choice with **no defensible default** (see [Task Assignment Rules](#task-assignment-rules)). If a defensible default exists, the supervisor takes it and reports — it does not ask.
 4. Three consecutive react-halts on the same epic (brake fired).
-5. (If `autonomy < high`) Significant design forks where neither path is clearly idiomatic.
 
 A tick that prompts the user for a decision with a defensible default is a rubber-stamp anti-pattern — file via `/learn`. Asking for one clarifying fact that decides between two equally-defensible defaults is legitimate; framing that ask as a single-line block is fine.
 
