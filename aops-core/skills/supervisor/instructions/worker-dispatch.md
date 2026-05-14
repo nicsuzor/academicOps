@@ -42,4 +42,3 @@ The supervisor checks status on its next ORIENT tick — it does not actively po
 Stale task cleanup is periodic: `polecat reset-stalled --hours 4`
 
 Worker failures surface as missing PRs or crashed statuses. The task stays `in_progress` until reset or picked up by the react phase.
-

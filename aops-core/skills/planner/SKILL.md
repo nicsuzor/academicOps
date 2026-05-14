@@ -256,6 +256,7 @@ Facilitated strategic thinking. Thinking partner, NOT a doing agent.
 - Let synthesis emerge naturally
 
 ### wire
+
 Allowed tools: mcp__pkb__list_tasks, mcp__pkb__get_task, mcp__pkb__update_task, mcp__pkb__get_semantic_neighbors, AskUserQuestion
 Interactive flow for densifying `contributes_to` edges on target nodes.
 
