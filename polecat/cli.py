@@ -4648,7 +4648,7 @@ def run(
 
                         current_task = pkb_get_task(task.id)
                         current_status = getattr(current_task, "status", None)
-                        if current_status in TERMINAL_PKB_STATUSES:
+                        if current_status in TERMINAL_PKB_STATUSES or current_status == "review":
                             print(
                                 f"🔄 Task {task.id} is terminal ({current_status}). Nuking orphaned worktree..."
                             )
