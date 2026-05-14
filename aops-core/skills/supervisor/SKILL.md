@@ -84,6 +84,7 @@ Use for every decision the supervisor would otherwise inline: "what should I dis
 - Dependency state resolution (are blockers truly cleared?)
 - PKB graph consistency: resolving missing `project` frontmatter via ancestor traversal
 - A8 prose-scan against any draft body it produces — canonical phrase list at [[instructions/decomposition-and-review#a8-prose-scan-mandatory-before-posting-any-decomposition]]
+- RBG pre-flight check: invoke RBG inline to review the proposed decomposition for axiom violations (A1–A8) before creating tasks
 - worker selection — see [[WORKERS.md]]
 - Critic Gate evaluation for high-blast-radius tasks
 

@@ -193,7 +193,8 @@ Break validated epics into structured task trees.
 8. Estimate effort — duration (0.5d, 1d, 1w); tasks over 0.5d need further decomposition.
 9. Extract `due` and `consequence` for subtasks if mentioned or implied by the parent task.
 10. **Set subtask priority to P3 by default.** Do not propagate the parent's priority to children, and do not infer priority from subtask content. Only elevate a subtask above P3 if the user explicitly signals urgency for that specific subtask. See [[#priority-assignment-rules]].
-11. Create in PKB via `mcp__pkb__decompose_task(parent_id, subtasks)`.
+11. **RBG pre-flight check**: invoke RBG inline to review the proposed decomposition for axiom violations (A1–A8) before creating tasks.
+12. Create in PKB via `mcp__pkb__decompose_task(parent_id, subtasks)`.
 
 ### Promotion gate: inbox → ready
 
@@ -256,6 +257,7 @@ Facilitated strategic thinking. Thinking partner, NOT a doing agent.
 - Let synthesis emerge naturally
 
 ### wire
+
 Allowed tools: mcp__pkb__list_tasks, mcp__pkb__get_task, mcp__pkb__update_task, mcp__pkb__get_semantic_neighbors, AskUserQuestion
 Interactive flow for densifying `contributes_to` edges on target nodes.
 
