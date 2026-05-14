@@ -40,7 +40,6 @@ from lib.session_reader import find_sessions  # noqa: E402
 from lib.transcript_parser import (  # noqa: E402
     SessionProcessor,
     UsageStats,
-    decode_claude_project_path,
     extract_reflection_from_entries,
     extract_timeline_events,
     extract_working_dir_from_content,
@@ -81,6 +80,63 @@ def _load_transcript_config() -> dict:
 # (`~/.claude/projects/<workspace>/<sid>.jsonl`, `~/.gemini/tmp/...`,
 # `$POLECAT_HOME/polecats/<task-id>/...`). The sessions repo only carries
 # distilled `transcripts/` and `summaries/`.
+
+
+def _resolve_project_key(name: str, match_suffix: bool = False) -> str:
+    """Resolve a project name to its registry key from polecat.yaml.
+
+    If the name matches a slug, repo name, or alias, returns the slug.
+    If match_suffix is True, also checks if name ends with a dash/underscore followed by a key.
+    Otherwise returns the name verbatim (or the extracted suffix if match_suffix was used).
+    """
+    registry = get_sessions_repo() / "polecat.yaml"
+    if not registry.exists():
+        if match_suffix:
+            # Best effort fallback: extract last dash segment
+            parts = name.strip("-").split("-")
+            return parts[-1] if parts else name
+        return name
+
+    try:
+        import yaml
+
+        with open(registry) as f:
+            config = yaml.safe_load(f) or {}
+        projects = config.get("projects", {}) or {}
+
+        valid_keys = {}  # map valid_key -> slug
+        for slug, proj in projects.items():
+            valid_keys[slug] = slug
+            proj = proj or {}
+            if proj.get("repo"):
+                valid_keys[proj["repo"]] = slug
+            aliases = proj.get("aliases", [])
+            if isinstance(aliases, str):
+                aliases = [aliases]
+            for alias in aliases:
+                valid_keys[alias] = slug
+
+        if not match_suffix:
+            if name in valid_keys:
+                return valid_keys[name]
+        else:
+            # Sort keys by length descending so overwhelm-dashboard matches before dashboard
+            sorted_keys = sorted(valid_keys.keys(), key=len, reverse=True)
+            for key in sorted_keys:
+                if name == key or name.endswith("-" + key) or name.endswith("_" + key):
+                    return valid_keys[key]
+
+            # Fallback if no suffix matches registry
+            parts = name.strip("-").split("-")
+            return parts[-1] if parts else name
+
+    except Exception:
+        pass
+
+    if match_suffix:
+        parts = name.strip("-").split("-")
+        return parts[-1] if parts else name
+    return name
 
 
 def _is_excluded_project(project: str, config: dict | None = None) -> bool:
@@ -915,7 +971,7 @@ def _infer_project(
             if working_dir:
                 project = infer_project_from_working_dir(working_dir)
                 if project:
-                    return project
+                    return _resolve_project_key(project)
 
         # Try to extract from markdown content in the brain directory
         for md_file in ["task.md", "implementation_plan.md"]:
@@ -927,7 +983,7 @@ def _infer_project(
                     if working_dir:
                         project = infer_project_from_working_dir(working_dir)
                         if project:
-                            return project
+                            return _resolve_project_key(project)
                 except OSError:
                     continue
 
@@ -959,7 +1015,7 @@ def _infer_project(
                 project = parts[idx + 2]
                 # Skip workspace markers and reach the real project dir.
                 if project.lstrip("-_") and not project.startswith(("-workspace", "_workspace")):
-                    return project
+                    return _resolve_project_key(project)
             # Fallback when there's no project segment: return ``{category}``
             # (singular) so downstream still has a sensible repo name without
             # duplicating the worker.
@@ -974,19 +1030,15 @@ def _infer_project(
         if working_dir:
             inferred = infer_project_from_working_dir(working_dir)
             if inferred:
-                return inferred
+                return _resolve_project_key(inferred)
 
     # Decode Claude project path format: -home-nic-src-myproject
     if project.startswith("-"):
-        decoded = decode_claude_project_path(project)
-        if decoded:
-            inferred = infer_project_from_working_dir(decoded)
-            if inferred:
-                return inferred
+        return _resolve_project_key(project, match_suffix=True)
 
-    # Fallback: extract last segment
-    project_parts = project.strip("-").split("-")
-    return project_parts[-1] if project_parts and project_parts[-1] else "unknown"
+    # Fallback: do not truncate, just resolve the name verbatim
+    clean_project = project.strip("-")
+    return _resolve_project_key(clean_project) if clean_project else "unknown"
 
 
 def git_sync():
