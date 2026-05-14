@@ -4653,6 +4653,7 @@ def run(
                                 f"🔄 Task {task.id} is terminal ({current_status}). Nuking orphaned worktree..."
                             )
                             original_cwd = os.getcwd()
+                            # git worktree remove fails if cwd is inside the tree being removed
                             os.chdir(Path.home())
                             try:
                                 manager.nuke_worktree(task.id, force=True, allow_unpushed=False)
