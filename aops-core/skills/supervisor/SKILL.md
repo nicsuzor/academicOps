@@ -213,15 +213,15 @@ Pauli/marsha verdicts ARE decisions, not recommendations to forward. Execute in 
 
 The supervisor is a loop, not a pipeline. Each tick enters one phase and exits.
 
-| Phase     | Subagent | What happens                                                                                 |
-| --------- | -------- | -------------------------------------------------------------------------------------------- |
-| Orient    | (none)   | Main agent reads epic body; runs brake; chooses subagent role                                |
-| Decompose | pauli    | Pauli proposes subtasks. See [[instructions/decomposition-and-review]]                       |
-| Review    | (none)   | Plan-review halt — decomposition synthesised; awaits human promotion to `queued`             |
-| Dispatch  | pauli    | Pauli recommends dispatch; main agent runs the command. See [[instructions/worker-dispatch]] |
-| Verify    | marsha   | Marsha returns PASS/FAIL/REVISE on a worker exit                                             |
-| React     | pauli    | Pauli recommends a fix-task or a halt after a FAIL                                           |
-| Halt      | (none)   | All work items at review surface or escalated; emit final summary; exit                      |
+| Phase     | Subagent | What happens                                                                                                                                                              |
+| --------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Orient    | (none)   | Main agent reads epic body; runs brake; chooses subagent role                                                                                                             |
+| Decompose | pauli    | Pauli proposes subtasks; RBG axiom-check runs in parallel as a mandatory reviewer (verdict: OK/WARN/BLOCK gates promotion). See [[instructions/decomposition-and-review]] |
+| Review    | (none)   | Plan-review halt — decomposition synthesised; awaits human promotion to `queued`                                                                                          |
+| Dispatch  | pauli    | Pauli recommends dispatch; main agent runs the command. See [[instructions/worker-dispatch]]                                                                              |
+| Verify    | marsha   | Marsha returns PASS/FAIL/REVISE on a worker exit                                                                                                                          |
+| React     | pauli    | Pauli recommends a fix-task or a halt after a FAIL                                                                                                                        |
+| Halt      | (none)   | All work items at review surface or escalated; emit final summary; exit                                                                                                   |
 
 `Review` and `Halt` are real terminal states, not transient phases. The supervisor never finalises the deliverable itself — it hands off at the review surface. Async ownership transfers to whatever review pipeline the deliverable subworkflow defines.
 
